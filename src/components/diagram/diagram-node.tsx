@@ -12,7 +12,7 @@ import type { DiagramNodeData } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { ItemTypes } from "../editor/draggable-item";
 
-const NODE_WIDTH = 128;
+const NODE_WIDTH = 104;
 const NODE_HEIGHT = 100;
 
 interface DiagramNodeProps {

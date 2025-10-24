@@ -51,6 +51,13 @@ Added `launch.sh` for macOS to streamline testing:
 - Optional Genkit server via --genkit, logs to .genkit-dev.log
 - Opens browser, waits for server, traps cleanup on exit
 
+### Grid & Snap Updates (2025-10-24)
+- Improved grid visibility in `globals.css` (contrast and CSS var `--grid-size`)
+- Snap on move for top-level items (snaps inside moveItem too)
+- Prevent overlapping placements at top-level; drop aborted if collision
+- New top-level items snap and nudge to nearest free grid slot
+- Reduced node horizontal padding by ~50% (NODE_WIDTH 128 -> 104)
+
 ### Next Steps for Future Development
 - WARP.md is comprehensive and ready for use
 - .gitignore properly configured to exclude build artifacts and dependencies

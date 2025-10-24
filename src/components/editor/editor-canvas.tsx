@@ -18,7 +18,7 @@ import { findPath } from "@/lib/pathfinding";
 import type { Obstacle } from "@/lib/pathfinding";
 
 
-const NODE_WIDTH = 128;
+const NODE_WIDTH = 104;
 const NODE_HEIGHT = 100;
 const GROUP_PADDING = 40;
 const GROUP_NODE_SPACING = 30;
@@ -235,10 +235,47 @@ export function EditorCanvas({ diagramData, setDiagramData, onItemSelect, select
           return g;
         });
       } else {
+        // Top-level placement: snap to grid and avoid overlap by nudging to nearest free slot
+        const snap = (v: number) => Math.round(v / GRID_SNAP) * GRID_SNAP;
+        let posX = snap(position.x);
+        let posY = snap(position.y);
+
+        const isOverlapAt = (x: number, y: number) => {
+          const width = (item.type === 'zone' || item.type === 'group') ? 300 : NODE_WIDTH;
+          const height = (item.type === 'zone' || item.type === 'group') ? 220 : NODE_HEIGHT;
+          const rectA = { x, y, width, height };
+          // existing obstacles from processed nodes/groups at this render cycle are not available here,
+          // so approximate using current prevData nodes/groups positions
+          const obstacles: { x: number; y: number; width: number; height: number; id: string }[] = [];
+          for (const n of newNodes) {
+            const nn: any = n as any;
+            if (nn.x != null && nn.y != null) obstacles.push({ id: n.id, x: nn.x, y: nn.y, width: NODE_WIDTH, height: NODE_HEIGHT });
+          }
+          for (const g of newGroups) {
+            const gg: any = g as any;
+            if (gg.x != null && gg.y != null && g.id !== newItemId) {
+              // groups without computed size: approximate
+              obstacles.push({ id: g.id, x: gg.x, y: gg.y, width: 300, height: 220 });
+            }
+          }
+          return obstacles.some(o => !(x + rectA.width <= o.x || o.x + o.width <= x || y + rectA.height <= o.y || o.y + o.height <= y));
+        };
+
+        // nudge search (spiral-ish) up to 50 attempts
+        const dirs = [ [1,0],[0,1],[-1,0],[0,-1] ];
+        let step = 1; let attempts = 0; let dirIdx = 0; let movesInDir = 0; let changes = 0;
+        while (isOverlapAt(posX, posY) && attempts < 50) {
+          posX += dirs[dirIdx][0] * GRID_SNAP;
+          posY += dirs[dirIdx][1] * GRID_SNAP;
+          movesInDir++;
+          if (movesInDir === step) { dirIdx = (dirIdx + 1) % 4; movesInDir = 0; changes++; if (changes % 2 === 0) step++; }
+          attempts++;
+        }
+
         const addedItem = newNodes.find(n => n.id === newItemId) || newGroups.find(g => g.id === newItemId);
         if (addedItem) {
-            addedItem.x = position.x;
-            addedItem.y = position.y;
+          (addedItem as any).x = posX;
+          (addedItem as any).y = posY;
         }
       }
 
@@ -289,30 +326,53 @@ export function EditorCanvas({ diagramData, setDiagramData, onItemSelect, select
             currentGroups = currentGroups.map(g => g.id === item.id ? { ...g, x: undefined, y: undefined } : g);
           }
         } else {
-          // If the item is a top-level item, apply the snapped position.
-          const draggedItemData = processedNodes.find(n => n.id === item.id) || processedGroups.find(g => g.id === item.id);
-          const originalX = draggedItemData?.x ?? 0;
-          const originalY = draggedItemData?.y ?? 0;
-          const dx = newPos.x - originalX;
-          const dy = newPos.y - originalY;
+          // Top-level: snap and prevent overlap
+          const snap = (v: number) => Math.round(v / GRID_SNAP) * GRID_SNAP;
+          const snappedX = snap(newPos.x);
+          const snappedY = snap(newPos.y);
+
+          const movingIsGroup = item.type === ItemTypes.GROUP;
+          const movingDims = movingIsGroup
+            ? (() => {
+                const g = processedGroups.find(pg => pg.id === item.id);
+                return { width: g?.width ?? 300, height: g?.height ?? 220 };
+              })()
+            : { width: NODE_WIDTH, height: NODE_HEIGHT };
 
           const allChildIds = new Set<string>();
           const getChildrenRecursive = (itemId: string) => {
               if (allChildIds.has(itemId)) return;
               allChildIds.add(itemId);
-
               const group = currentGroups.find(g => g.id === itemId);
               if (!group) return;
-              group.nodes.forEach(childId => {
-                  getChildrenRecursive(childId);
-              });
+              group.nodes.forEach(childId => getChildrenRecursive(childId));
+          };
+          if (movingIsGroup) getChildrenRecursive(item.id);
+
+          const isOverlapAt = (x: number, y: number) => {
+            const rectA = { x, y, width: movingDims.width, height: movingDims.height };
+            // obstacles: all processed nodes/groups except moving item and its descendants
+            const obstacles: { x: number; y: number; width: number; height: number; id: string }[] = [
+              ...processedNodes.map(n => ({ id: n.id, x: n.x, y: n.y, width: NODE_WIDTH, height: NODE_HEIGHT })),
+              ...processedGroups.map(g => ({ id: g.id, x: g.x, y: g.y, width: g.width, height: g.height })),
+            ].filter(o => o.id !== item.id && !allChildIds.has(o.id));
+            return obstacles.some(o => !(x + rectA.width <= o.x || o.x + o.width <= x || y + rectA.height <= o.y || o.y + o.height <= y));
           };
 
+          if (isOverlapAt(snappedX, snappedY)) {
+            // Abort move if overlapping; user must choose a free grid cell
+            return prevData;
+          }
 
-          if (item.type === ItemTypes.GROUP) {
-            getChildrenRecursive(item.id);
+          const draggedItemData = processedNodes.find(n => n.id === item.id) || processedGroups.find(g => g.id === item.id);
+          const originalX = draggedItemData?.x ?? 0;
+          const originalY = draggedItemData?.y ?? 0;
+          const dx = snappedX - originalX;
+          const dy = snappedY - originalY;
+
+          if (movingIsGroup) {
             currentGroups = currentGroups.map(g => {
-              if (g.id === item.id) return { ...g, x: newPos.x, y: newPos.y };
+              if (g.id === item.id) return { ...g, x: snappedX, y: snappedY };
               if (allChildIds.has(g.id)) {
                 const originalChild = processedGroups.find(cg => cg.id === g.id);
                 return { ...g, x: (originalChild?.x ?? 0) + dx, y: (originalChild?.y ?? 0) + dy };
@@ -327,7 +387,7 @@ export function EditorCanvas({ diagramData, setDiagramData, onItemSelect, select
               return n;
             });
           } else {
-            currentNodes = currentNodes.map(n => n.id === item.id ? { ...n, x: newPos.x, y: newPos.y } : n);
+            currentNodes = currentNodes.map(n => n.id === item.id ? { ...n, x: snappedX, y: snappedY } : n);
           }
         }
       }
@@ -405,13 +465,10 @@ export function EditorCanvas({ diagramData, setDiagramData, onItemSelect, select
           y = initialY + delta.y / transform.k;
         }
         
-        const snappedX = Math.round(x / GRID_SNAP) * GRID_SNAP;
-        const snappedY = Math.round(y / GRID_SNAP) * GRID_SNAP;
-
         if (itemType === ItemTypes.DIAGRAM_NODE) { 
-            addNode({type: item.type, label: item.label}, { x: snappedX, y: snappedY }, hoveredGroupId);
+            addNode({type: item.type, label: item.label}, { x, y }, hoveredGroupId);
         } else if (item.id && (itemType === ItemTypes.CANVAS_NODE || itemType === ItemTypes.GROUP)) {
-            moveItem({ id: item.id, type: item.type, x: item.x, y: item.y }, { x: snappedX, y: snappedY }, hoveredGroupId);
+            moveItem({ id: item.id, type: item.type, x: item.x, y: item.y }, { x, y }, hoveredGroupId);
         }
         
         setHoveredGroupId(null);
