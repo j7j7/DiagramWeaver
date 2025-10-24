@@ -1,0 +1,116 @@
+{
+  "nodes": [
+    {
+      "id": "k8s-source",
+      "type": "aws.compute.Kubernetes",
+      "label": "k8s source",
+      "info": "Kubernetes cluster as the event source.",
+      "x": 50,
+      "y": 450
+    },
+    {
+      "id": "worker1",
+      "type": "generic.server",
+      "label": "worker1",
+      "info": "Event worker 1"
+    },
+    {
+      "id": "worker2",
+      "type": "generic.server",
+      "label": "worker2",
+      "info": "Event worker 2"
+    },
+    {
+      "id": "worker3",
+      "type": "generic.server",
+      "label": "worker3",
+      "info": "Event worker 3"
+    },
+    {
+      "id": "event-queue",
+      "type": "aws.applicationintegration.EventBridge",
+      "label": "event queue",
+      "info": "Central event bus for decoupling services.",
+      "x": 650,
+      "y": 450
+    },
+    {
+      "id": "proc1",
+      "type": "aws.compute.Lambda",
+      "label": "proc1",
+      "info": "Processing function 1"
+    },
+    {
+      "id": "proc2",
+      "type": "aws.compute.Lambda",
+      "label": "proc2",
+      "info": "Processing function 2"
+    },
+    {
+      "id": "proc3",
+      "type": "aws.compute.Lambda",
+      "label": "proc3",
+      "info": "Processing function 3"
+    },
+    {
+      "id": "events-store",
+      "type": "aws.storage.S3",
+      "label": "events store",
+      "info": "S3 bucket for storing raw events.",
+      "x": 1300,
+      "y": 275
+    },
+    {
+      "id": "analytics",
+      "type": "aws.database.RDS",
+      "label": "analytics",
+      "info": "RDS database for analytics.",
+      "x": 1300,
+      "y": 625
+    }
+  ],
+  "edges": [
+    { "from": "k8s-source", "to": "worker1" },
+    { "from": "k8s-source", "to": "worker2" },
+    { "from": "k8s-source", "to": "worker3" },
+    { "from": "worker1", "to": "event-queue" },
+    { "from": "worker2", "to": "event-queue" },
+    { "from": "worker3", "to": "event-queue" },
+    { "from": "event-queue", "to": "proc1" },
+    { "from": "event-queue", "to": "proc2" },
+    { "from": "event-queue", "to": "proc3" },
+    { "from": "proc1", "to": "analytics" },
+    { "from": "proc2", "to": "analytics" },
+    { "from": "proc3", "to": "events-store" }
+  ],
+  "groups": [
+    {
+      "id": "event-flows",
+      "type": "group",
+      "subType": "zone",
+      "label": "Event Flows",
+      "info": "Main container for event flow processing.",
+      "nodes": ["event-workers", "processing"],
+      "x": 300,
+      "y": 100
+    },
+    {
+      "id": "event-workers",
+      "type": "group",
+      "subType": "group",
+      "color": "#fdeace",
+      "label": "Event Workers",
+      "info": "Group of workers processing incoming events.",
+      "nodes": ["worker1", "worker2", "worker3"]
+    },
+    {
+      "id": "processing",
+      "type": "group",
+      "subType": "group",
+      "color": "#fdeace",
+      "label": "Processing",
+      "info": "Group of functions for processing events from the queue.",
+      "nodes": ["proc1", "proc2", "proc3"]
+    }
+  ]
+}
