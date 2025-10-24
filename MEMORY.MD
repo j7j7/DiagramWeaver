@@ -57,6 +57,8 @@ Added `launch.sh` for macOS to streamline testing:
 - Prevent overlapping placements at top-level; drop aborted if collision
 - New top-level items snap and nudge to nearest free grid slot
 - Reduced node horizontal padding by ~50% (NODE_WIDTH 128 -> 104)
+- Fixed nested group layout: child group x/y now computed on original group objects to avoid overlap in parent grids
+- Intra-group drag reordering: dropping within a group re-inserts item by row-major position (no manual coords)
 
 ### Next Steps for Future Development
 - WARP.md is comprehensive and ready for use

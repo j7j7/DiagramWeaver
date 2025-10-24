@@ -68,10 +68,12 @@ export function EditorCanvas({ diagramData, setDiagramData, onItemSelect, select
         let contentWidth = 0;
         let contentHeight = 0;
 
-        // Layout child groups first and get their dimensions
+        // Layout child groups first and get their dimensions (mutate originals so positions persist)
         const laidOutChildGroups = childGroups.map(cg => {
             const dims = layoutGroup(cg);
-            return { ...cg, width: dims.width, height: dims.height };
+            (cg as any).width = dims.width;
+            (cg as any).height = dims.height;
+            return cg; // IMPORTANT: return original reference so x/y set below apply to allItems
         });
 
         // Simple grid layout for all children (nodes and groups)
@@ -289,8 +291,31 @@ export function EditorCanvas({ diagramData, setDiagramData, onItemSelect, select
       let currentGroups = [...(prevData.groups || [])];
       
       const oldParentId = currentGroups.find(g => g.nodes.includes(item.id))?.id;
+
+      // Utility to compute insert index inside a group based on pointer position
+      const computeInsertIndex = (groupId: string, drop: { x: number; y: number }) => {
+        const pg = processedGroups.find(g => g.id === groupId);
+        if (!pg) return 0;
+        const children = currentGroups.find(g => g.id === groupId)?.nodes.filter(id => id !== item.id) || [];
+        const infos = children
+          .map(id => {
+            const n = processedNodes.find(pn => pn.id === id);
+            if (n) return { id, x: n.x, y: n.y, width: NODE_WIDTH, height: NODE_HEIGHT };
+            const g = processedGroups.find(pg2 => pg2.id === id);
+            if (g) return { id, x: g.x, y: g.y, width: g.width, height: g.height };
+            return null;
+          })
+          .filter(Boolean) as { id: string; x: number; y: number; width: number; height: number }[];
+        infos.sort((a, b) => (a.y === b.y ? a.x - b.x : a.y - b.y));
+        for (let i = 0; i < infos.length; i++) {
+          const c = infos[i];
+          const cy = c.y + c.height / 2;
+          if (drop.y < cy) return i;
+        }
+        return infos.length;
+      };
   
-      // Handle re-parenting
+      // Handle re-parenting (remove from old, we'll insert into target with ordering below)
       if (oldParentId !== targetGroupId) {
         currentGroups = currentGroups.map(g => {
           if (g.id === oldParentId) { 
@@ -306,19 +331,31 @@ export function EditorCanvas({ diagramData, setDiagramData, onItemSelect, select
               const childGroup = currentGroups.find(g => g.id === childId);
               if (!childGroup) return false;
               return childGroup.nodes.some(nid => isDescendant(nid, parentId));
-            }
+            };
             if (item.type === ItemTypes.GROUP && isDescendant(g.id, item.id)) {
               return g;
             }
-            return { ...g, nodes: [...g.nodes, item.id] };
+            // Defer actual insertion to ordering step below
+            return g;
           }
           return g;
+        });
+      }
+
+      // If target is a group, set ordering within that group (reorder or insert)
+      if (targetGroupId) {
+        currentGroups = currentGroups.map(g => {
+          if (g.id !== targetGroupId) return g;
+          const filtered = g.nodes.filter(nid => nid !== item.id);
+          const insertIndex = computeInsertIndex(targetGroupId, newPos);
+          filtered.splice(insertIndex, 0, item.id);
+          return { ...g, nodes: filtered };
         });
       }
   
       // Handle positioning
       if (item.type === ItemTypes.CANVAS_NODE || item.type === ItemTypes.GROUP) {
-        // If the item is now a child, its position is auto-calculated, so remove explicit coords.
+        // If the item is (now) a child, its position is auto-calculated, so remove explicit coords.
         if (targetGroupId) {
           if (item.type === ItemTypes.CANVAS_NODE) {
             currentNodes = currentNodes.map(n => n.id === item.id ? { ...n, x: undefined, y: undefined } : n);
