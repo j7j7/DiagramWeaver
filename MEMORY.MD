@@ -43,6 +43,14 @@ Created comprehensive .gitignore file for the project including:
 - Cache and temporary files
 - Testing coverage directories
 
+### launch.sh Creation (2025-10-24)
+Added `launch.sh` for macOS to streamline testing:
+- Validates Node/npm, checks Node >= 18
+- Installs deps (npm ci/install) with --fresh-install option
+- Kills conflicting processes on :9002, starts Next dev or production
+- Optional Genkit server via --genkit, logs to .genkit-dev.log
+- Opens browser, waits for server, traps cleanup on exit
+
 ### Next Steps for Future Development
 - WARP.md is comprehensive and ready for use
 - .gitignore properly configured to exclude build artifacts and dependencies

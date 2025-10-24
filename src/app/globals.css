@@ -81,8 +81,12 @@
   body {
     @apply bg-background text-foreground;
   }
+  :root {
+    --grid-size: 20px;
+  }
   .dot-grid {
-    background-image: radial-gradient(circle, hsl(var(--border)) 1px, transparent 1px);
-    background-size: 20px 20px;
+    /* Slightly higher contrast so dots are visible on light and dark backgrounds */
+    background-image: radial-gradient(circle, hsl(var(--foreground) / 0.12) 1px, transparent 1px);
+    background-size: var(--grid-size) var(--grid-size);
   }
 }

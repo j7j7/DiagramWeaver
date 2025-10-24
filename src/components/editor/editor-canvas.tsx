@@ -522,7 +522,7 @@ export function EditorCanvas({ diagramData, setDiagramData, onItemSelect, select
         <div
             ref={canvasRef}
             className={cn(
-              "w-full h-full overflow-hidden bg-background dot-grid",
+              "w-full h-full overflow-hidden bg-background",
               isConnectMode && "cursor-crosshair",
               !isConnectMode && "cursor-grab",
               isPanning && "cursor-grabbing"
@@ -535,7 +535,7 @@ export function EditorCanvas({ diagramData, setDiagramData, onItemSelect, select
             onClick={handleCanvasClick}
         >
             <div
-                className="relative"
+                className="relative dot-grid"
                 style={{
                   width: `${width}px`,
                   height: `${height}px`,
