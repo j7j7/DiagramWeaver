@@ -27,6 +27,7 @@ interface ComponentSidebarProps {
   selectedItem: SelectedItem | null;
   onItemUpdate: (updatedItem: SelectedItem) => void;
   onConnect: () => void;
+  onDisconnect: () => void;
   onItemDelete: (itemToDelete: SelectedItem) => void;
   diagramData: DiagramData;
   onSave: () => void;
@@ -36,7 +37,7 @@ interface ComponentSidebarProps {
 type FormValues = Omit<DiagramNodeData & DiagramGroupData, 'id' | 'type' | 'nodes'>;
 
 
-export function ComponentSidebar({ selectedItem, onItemUpdate, onConnect, onItemDelete, diagramData, onSave, onLoad }: ComponentSidebarProps) {
+export function ComponentSidebar({ selectedItem, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onSave, onLoad }: ComponentSidebarProps) {
   const { register, handleSubmit, reset, watch, getValues } = useForm<FormValues>();
 
   useEffect(() => {
@@ -139,9 +140,14 @@ export function ComponentSidebar({ selectedItem, onItemUpdate, onConnect, onItem
             
             <div className="flex gap-2">
                 {selectedItem.type === 'node' && (
-                  <Button type="button" onClick={onConnect} className="w-full">
-                    Connect
-                  </Button>
+                  <>
+                    <Button type="button" onClick={onConnect} className="w-full">
+                      Connect
+                    </Button>
+                    <Button type="button" variant="secondary" onClick={onDisconnect} className="w-full">
+                      Disconnect
+                    </Button>
+                  </>
                 )}
                 <Button type="button" variant="destructive" onClick={() => onItemDelete(selectedItem)} className="w-full">
                   Delete

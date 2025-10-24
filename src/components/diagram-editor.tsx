@@ -100,6 +100,16 @@ export default function DiagramEditor() {
       setIsConnectMode(true);
     }
   }
+
+  const disconnectSelected = () => {
+    if (!selectedItem || selectedItem.type !== 'node') return;
+    const id = selectedItem.id;
+    setDiagramData(prevData => ({
+      ...prevData,
+      edges: prevData.edges.filter(e => e.from !== id && e.to !== id),
+    }));
+    toast({ title: 'Disconnected', description: 'All connections to/from this node have been removed.' });
+  };
   
   const handleSave = () => {
     const jsonString = JSON.stringify(diagramData, null, 2);
@@ -162,6 +172,7 @@ export default function DiagramEditor() {
           selectedItem={selectedItem} 
           onItemUpdate={handleItemUpdate}
           onConnect={startConnecting}
+          onDisconnect={disconnectSelected}
           onItemDelete={handleItemDelete}
           diagramData={diagramData}
           onSave={handleSave}

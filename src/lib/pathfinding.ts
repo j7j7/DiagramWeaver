@@ -84,9 +84,10 @@ export function findPath(start: Point, end: Point, obstacles: Obstacle[], canvas
     const startNode = grid[Math.floor(start.y / GRID_SIZE)]?.[Math.floor(start.x / GRID_SIZE)];
     const endNode = grid[Math.floor(end.y / GRID_SIZE)]?.[Math.floor(end.x / GRID_SIZE)];
   
-    // If start or end are outside grid or on an obstacle, return a straight line.
+    // If start or end are outside grid or on an obstacle, return a simple orthogonal fallback (no diagonals).
     if (!startNode || startNode.isObstacle || !endNode || endNode.isObstacle) {
-      return [start, end];
+      const elbow: Point = { x: end.x, y: start.y };
+      return simplifyPath([start, elbow, end]);
     }
   
     const openSet: GridNode[] = [startNode];
@@ -136,8 +137,9 @@ export function findPath(start: Point, end: Point, obstacles: Obstacle[], canvas
       }
     }
   
-    // No path found, return a straight line as fallback
-    return [start, end];
+    // No path found, return an orthogonal L-shaped fallback (may cross obstacles)
+    const elbow: Point = { x: end.x, y: start.y };
+    return simplifyPath([start, elbow, end]);
 }
 
 function simplifyPath(path: Point[]): Point[] {

@@ -59,6 +59,11 @@ Added `launch.sh` for macOS to streamline testing:
 - Reduced node horizontal padding by ~50% (NODE_WIDTH 128 -> 104)
 - Fixed nested group layout: child group x/y now computed on original group objects to avoid overlap in parent grids
 - Intra-group drag reordering: dropping within a group re-inserts item by row-major position (no manual coords)
+- Edge rendering: orthogonal routing with rounded corners; pathfinding fallback now L-shaped (no diagonals)
+- Edge routing respects hierarchy: may pass through ancestor groups of endpoints; avoids unrelated groups/nodes
+- Removed arrowheads; edges anchor to centers; highlight edges/nodes when connected to selection
+- Fixed duplicate export in diagram-edge.tsx and ensured endpoints are excluded from obstacles
+- Disconnect button now removes all edges to/from the selected node immediately (no extra click)
 
 ### Next Steps for Future Development
 - WARP.md is comprehensive and ready for use

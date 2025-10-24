@@ -19,9 +19,10 @@ interface DiagramNodeProps {
   node: DiagramNodeData & { x: number; y: number };
   isSelected?: boolean;
   isTargetable?: boolean;
+  isHighlighted?: boolean;
 }
 
-export function DiagramNode({ node, isSelected, isTargetable }: DiagramNodeProps) {
+export function DiagramNode({ node, isSelected, isTargetable, isHighlighted }: DiagramNodeProps) {
   const [isOpen, setIsOpen] = useState(false);
   
   const [{ isDragging }, drag] = useDrag(() => ({
@@ -38,7 +39,7 @@ export function DiagramNode({ node, isSelected, isTargetable }: DiagramNodeProps
       ref={drag}
       className={cn(
         "absolute group transition-transform duration-200 ease-in-out hover:scale-105",
-        isSelected && "ring-2 ring-primary ring-offset-2 rounded-lg",
+        (isSelected || isHighlighted) && "ring-2 ring-accent ring-offset-2 rounded-lg drop-shadow-md",
         isDragging && "opacity-50 cursor-grabbing",
         isTargetable && "cursor-crosshair opacity-70 hover:opacity-100"
         )}

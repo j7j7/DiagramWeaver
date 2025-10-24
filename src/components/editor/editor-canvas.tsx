@@ -668,37 +668,69 @@ export function EditorCanvas({ diagramData, setDiagramData, onItemSelect, select
                     const fromItem = nodesById[edge.from] || groupsById[edge.from];
                     const toItem = nodesById[edge.to] || groupsById[edge.to];
                     if (!fromItem || !toItem) return null;
-                    
+
                     const fromPos = {
                       ...fromItem,
-                      width: 'width' in fromItem ? fromItem.width : NODE_WIDTH,
-                      height: 'height' in fromItem ? fromItem.height : NODE_HEIGHT
-                    }
+                      width: 'width' in fromItem ? (fromItem as any).width : NODE_WIDTH,
+                      height: 'height' in fromItem ? (fromItem as any).height : NODE_HEIGHT
+                    } as any;
                     const toPos = {
                       ...toItem,
-                      width: 'width' in toItem ? toItem.width : NODE_WIDTH,
-                      height: 'height' in toItem ? toItem.height : NODE_HEIGHT
-                    }
+                      width: 'width' in toItem ? (toItem as any).width : NODE_WIDTH,
+                      height: 'height' in toItem ? (toItem as any).height : NODE_HEIGHT
+                    } as any;
+
+                    // Build parent map for groups to gather ancestor groups of endpoints
+                    const parentMap = new Map<string, string>();
+                    processedGroups.forEach(g => {
+                      g.nodes.forEach(id => parentMap.set(id, g.id));
+                    });
+                    const ancestorsOf = (id: string): string[] => {
+                      const res: string[] = [];
+                      let cur = parentMap.get(id);
+                      const guard = new Set<string>();
+                      while (cur && !guard.has(cur)) {
+                        res.push(cur);
+                        guard.add(cur);
+                        cur = parentMap.get(cur);
+                      }
+                      return res;
+                    };
+
+                    const allowedOverlapIds = [
+                      ...ancestorsOf(edge.from),
+                      ...ancestorsOf(edge.to),
+                      ...(toItem && 'type' in toItem && (toItem as any).type === 'group' ? [edge.to] : []),
+                    ];
+
+                    const isEdgeHighlighted = selectedItemId === edge.from || selectedItemId === edge.to;
 
                     return (
-                    <DiagramEdge
+                    <g className={cn(isEdgeHighlighted && 'drop-shadow-[0_0_6px_rgba(0,200,150,0.8)]')}>
+                      <DiagramEdge
                         key={`${edge.from}-${edge.to}-${index}`}
                         from={fromPos}
                         to={toPos}
                         allObstacles={allObstacles}
-                    />
+                        allowedOverlapIds={allowedOverlapIds}
+                      />
+                    </g>
                     );
                 })}
                 </svg>
-                {processedNodes.map((node) => (
-                <div key={node.id} onClick={(e) => handleNodeClick(e, node)}>
-                    <DiagramNode 
-                      node={node} 
-                      isSelected={selectedItemId === node.id && !isConnectMode}
-                      isTargetable={isConnectMode && selectedItemId !== node.id}
-                     />
-                </div>
-                ))}
+                {processedNodes.map((node) => {
+                  const isConnectedToSelected = !!selectedItemId && (diagramData.edges || []).some(e => e.from === selectedItemId && e.to === node.id || e.to === selectedItemId && e.from === node.id);
+                  return (
+                    <div key={node.id} onClick={(e) => handleNodeClick(e, node)}>
+                      <DiagramNode 
+                        node={node} 
+                        isSelected={selectedItemId === node.id && !isConnectMode}
+                        isTargetable={isConnectMode && selectedItemId !== node.id}
+                        isHighlighted={isConnectedToSelected}
+                      />
+                    </div>
+                  );
+                })}
             </div>
         </div>
          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full max-w-2xl p-2">
