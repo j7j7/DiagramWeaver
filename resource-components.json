@@ -534,7 +534,7 @@
     "generic": {
       "name": "Generic",
       "icon": "generic.png",
-      "totalResources": 29,
+      "totalResources": 30,
       "categories": {
         "grouping": {
           "name": "Grouping",
@@ -599,6 +599,13 @@
             {"name": "SUSE", "file": "suse.png", "type": "os"},
             {"name": "Fedora", "file": "fedora.png", "type": "os"},
             {"name": "Docker", "file": "docker.png", "type": "platform"}
+          ]
+        },
+        "text": {
+          "name": "Text",
+          "path": "generic/text",
+          "resources": [
+            {"name": "Text", "file": "text.png", "type": "text"}
           ]
         }
       }

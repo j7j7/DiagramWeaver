@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useMemo } from 'react';
-import { ChevronDown, ChevronRight, Search, Package, Server, Database, Globe, Cloud, Cpu, Shield, BarChart3, Layers, Box, Network, Maximize2, Minimize2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Search, Package, Server, Database, Globe, Cloud, Cpu, Shield, BarChart3, Layers, Box, Network, Maximize2, Minimize2, Type } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { ScrollArea } from '../ui/scroll-area';
@@ -52,6 +52,7 @@ const typeIcons: Record<string, React.ReactNode> = {
   storage: <Database className="w-4 h-4" />,
   compute: <Server className="w-4 h-4" />,
   group: <Box className="w-4 h-4" />,
+  text: <Type className="w-4 h-4" />,
 };
 
 // Provider icon component that tries to load actual provider icons

@@ -137,6 +137,9 @@ export function AwsIcon({ type, ...props }: AwsIconProps) {
             <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
         </svg>
        );
+    case "generic.text.text":
+      // Return null for text type - no icon, just text
+      return null;
     default:
       return (
         <svg {...props} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

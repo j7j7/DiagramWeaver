@@ -14,6 +14,7 @@ import { ItemTypes } from "../editor/draggable-item";
 
 const NODE_WIDTH = 104;
 const BASE_NODE_HEIGHT = 100;
+const TEXT_NODE_HEIGHT = 40; // Height for text-only nodes
 const EXTRA_LINE_HEIGHT = 20; // Additional height per extra line of text
 
 interface DiagramNodeProps {
@@ -26,14 +27,21 @@ interface DiagramNodeProps {
 export function DiagramNode({ node, isSelected, isTargetable, isHighlighted }: DiagramNodeProps) {
   const [isOpen, setIsOpen] = useState(false);
   
-  // Calculate dynamic height based on label length
-  const calculateNodeHeight = (label: string) => {
-    const maxCharsPerLine = 12; // Approximate characters that fit in node width
-    const lines = Math.ceil(label.length / maxCharsPerLine);
-    return BASE_NODE_HEIGHT + ((lines - 1) * EXTRA_LINE_HEIGHT);
+  // Calculate dynamic height based on label length and node type
+  const calculateNodeHeight = (label: string, isTextNode: boolean) => {
+    if (isTextNode) {
+      const maxCharsPerLine = 20; // More characters fit in text-only nodes
+      const lines = Math.ceil(label.length / maxCharsPerLine);
+      return TEXT_NODE_HEIGHT + ((lines - 1) * EXTRA_LINE_HEIGHT);
+    } else {
+      const maxCharsPerLine = 12; // Approximate characters that fit in node width
+      const lines = Math.ceil(label.length / maxCharsPerLine);
+      return BASE_NODE_HEIGHT + ((lines - 1) * EXTRA_LINE_HEIGHT);
+    }
   };
   
-  const nodeHeight = calculateNodeHeight(node.label);
+  const isTextNode = node.type === 'generic.text.text';
+  const nodeHeight = calculateNodeHeight(node.label, isTextNode);
   
   const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.CANVAS_NODE,
@@ -56,7 +64,9 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted }: D
       style={{
         left: node.x,
         top: node.y,
-        width: NODE_WIDTH,
+        width: isTextNode ? 'auto' : NODE_WIDTH,
+        minWidth: isTextNode ? 80 : NODE_WIDTH,
+        maxWidth: isTextNode ? 200 : NODE_WIDTH,
         height: nodeHeight,
       }}
       onMouseEnter={() => !isDragging && setIsOpen(true)}
@@ -65,16 +75,27 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted }: D
       <Popover open={isOpen && !isDragging} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <div className="flex flex-col items-center justify-center h-full w-full cursor-pointer">
-            <div className={cn(
-                "flex items-center justify-center w-20 h-20 rounded-lg bg-card shadow-md border transition-colors",
-                isSelected ? "border-primary" : "group-hover:border-accent",
-                isTargetable && "border-dashed border-primary"
-                )}>
-                <AwsIcon type={node.type} className="w-10 h-10" />
-            </div>
-            <p className="mt-2 text-sm font-medium text-center text-foreground w-full px-1 break-words leading-tight">
-              {node.label}
-            </p>
+            {node.type === 'generic.text.text' ? (
+              // Text-only node - just show the text without icon container
+              <div className="flex items-center justify-center h-full w-full px-2">
+                <p className="text-sm font-medium text-center text-foreground break-words leading-tight">
+                  {node.label}
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className={cn(
+                    "flex items-center justify-center w-20 h-20 rounded-lg bg-card shadow-md border transition-colors",
+                    isSelected ? "border-primary" : "group-hover:border-accent",
+                    isTargetable && "border-dashed border-primary"
+                    )}>
+                    <AwsIcon type={node.type} className="w-10 h-10" />
+                </div>
+                <p className="mt-2 text-sm font-medium text-center text-foreground w-full px-1 break-words leading-tight">
+                  {node.label}
+                </p>
+              </>
+            )}
           </div>
         </PopoverTrigger>
         <PopoverContent

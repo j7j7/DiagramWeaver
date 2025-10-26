@@ -67,6 +67,14 @@
       "info": "RDS database for analytics.",
       "x": 1300,
       "y": 625
+    },
+    {
+      "id": "note",
+      "type": "generic.text.text",
+      "label": "Important: Check logs daily",
+      "info": "A text-only note for documentation purposes.",
+      "x": 900,
+      "y": 50
     }
   ],
   "edges": [

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useRef, useCallback } from "react";
+import React, { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { useDrop } from 'react-dnd';
 import { DiagramNode } from "../diagram/diagram-node";
 import { DiagramEdge } from "../diagram/diagram-edge";
@@ -16,6 +16,7 @@ import type { SelectedItem } from "../diagram-editor";
 import { cn } from "@/lib/utils";
 import { findPath } from "@/lib/pathfinding";
 import type { Obstacle } from "@/lib/pathfinding";
+import { ContextMenu } from "../ui/context-menu";
 
 
 const NODE_WIDTH = 104;
@@ -31,12 +32,14 @@ interface EditorCanvasProps {
   selectedItemId?: string;
   isConnectMode: boolean;
   onNodeClickInConnectMode: (node: DiagramNodeData) => void;
+  onConnect?: () => void;
+  onDisconnect?: () => void;
 }
 
 type PositionedNode = DiagramNodeData & { x: number; y: number; };
 type PositionedGroup = DiagramGroupData & { x: number; y: number; width: number; height: number; };
 
-export function EditorCanvas({ diagramData, setDiagramData, onItemSelect, selectedItemId, isConnectMode, onNodeClickInConnectMode }: EditorCanvasProps) {
+export function EditorCanvas({ diagramData, setDiagramData, onItemSelect, selectedItemId, isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect }: EditorCanvasProps) {
   const [transform, setTransform] = useState({ x: 0, y: 0, k: 1 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
@@ -45,6 +48,27 @@ export function EditorCanvas({ diagramData, setDiagramData, onItemSelect, select
   const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null);
   const { toast } = useToast();
   const canvasRef = useRef<HTMLDivElement>(null);
+  
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    itemType: 'node' | 'group';
+    itemId: string;
+  }>({
+    visible: false,
+    x: 0,
+    y: 0,
+    itemType: 'node',
+    itemId: ''
+  });
+  
+  // Clipboard state
+  const [clipboard, setClipboard] = useState<{
+    node?: DiagramNodeData;
+    group?: DiagramGroupData;
+  } | null>(null);
 
   const { processedNodes, processedGroups, width, height } = useMemo(() => {
     const nodes: DiagramNodeData[] = JSON.parse(JSON.stringify(diagramData.nodes || []));
@@ -549,6 +573,11 @@ const [{ isOver, canDrop }, drop] = useDrop(() => ({
     }
   }
 
+  const handleNodeRightClick = (e: React.MouseEvent, node: DiagramNodeData) => {
+    e.stopPropagation();
+    handleContextMenu(e, node.id, 'node');
+  }
+
   const handleGroupClick = (e: React.MouseEvent, group: DiagramGroupData) => {
     e.stopPropagation();
     if (isConnectMode) {
@@ -556,6 +585,11 @@ const [{ isOver, canDrop }, drop] = useDrop(() => ({
     } else {
       onItemSelect({ ...group, itemType: 'group' });
     }
+  }
+
+  const handleGroupRightClick = (e: React.MouseEvent, group: DiagramGroupData) => {
+    e.stopPropagation();
+    handleContextMenu(e, group.id, 'group');
   };
 
   drop(canvasRef);
@@ -630,6 +664,134 @@ const [{ isOver, canDrop }, drop] = useDrop(() => ({
     }
   };
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Don't trigger shortcuts when typing in input fields
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      // Delete key - delete selected item
+      if (event.key === 'Delete' && selectedItemId) {
+        handleDelete(selectedItemId);
+        return;
+      }
+
+      // Ctrl+C - copy selected item
+      if (event.ctrlKey && event.key === 'c' && selectedItemId) {
+        event.preventDefault();
+        handleCopy(selectedItemId);
+        return;
+      }
+
+      // Ctrl+V - paste item
+      if (event.ctrlKey && event.key === 'v' && clipboard) {
+        event.preventDefault();
+        handlePaste();
+        return;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [selectedItemId, clipboard]);
+
+  // Context menu handlers
+  const handleContextMenu = (event: React.MouseEvent, itemId: string, itemType: 'node' | 'group') => {
+    event.preventDefault();
+    setContextMenu({
+      visible: true,
+      x: event.clientX,
+      y: event.clientY,
+      itemType,
+      itemId
+    });
+  };
+
+  const closeContextMenu = () => {
+    setContextMenu(prev => ({ ...prev, visible: false }));
+  };
+
+  // Action handlers
+  const handleDelete = (itemId: string) => {
+    const isNode = diagramData.nodes.some(n => n.id === itemId);
+    
+    if (isNode) {
+      setDiagramData(prev => ({
+        ...prev,
+        nodes: prev.nodes.filter(n => n.id !== itemId),
+        edges: prev.edges.filter(e => e.from !== itemId && e.to !== itemId),
+        groups: prev.groups?.map(g => ({
+          ...g,
+          nodes: g.nodes.filter(n => n !== itemId)
+        }))
+      }));
+    } else {
+      setDiagramData(prev => ({
+        ...prev,
+        groups: prev.groups?.filter(g => g.id !== itemId)
+      }));
+    }
+    
+    onItemSelect(null);
+    toast({
+      title: "Item Deleted",
+      description: "The selected item has been deleted.",
+    });
+  };
+
+  const handleCopy = (itemId: string) => {
+    const node = diagramData.nodes.find(n => n.id === itemId);
+    const group = diagramData.groups?.find(g => g.id === itemId);
+    
+    if (node) {
+      setClipboard({ node: { ...node } });
+    } else if (group) {
+      setClipboard({ group: { ...group } });
+    }
+    
+    toast({
+      title: "Item Copied",
+      description: "The selected item has been copied to clipboard.",
+    });
+  };
+
+  const handlePaste = () => {
+    if (!clipboard) return;
+
+    if (clipboard.node) {
+      const newNode: DiagramNodeData = {
+        ...clipboard.node,
+        id: `${clipboard.node.type}-${Date.now()}`,
+        x: (clipboard.node.x || 0) + 50,
+        y: (clipboard.node.y || 0) + 50,
+      };
+      
+      setDiagramData(prev => ({
+        ...prev,
+        nodes: [...prev.nodes, newNode]
+      }));
+    } else if (clipboard.group) {
+      const newGroup: DiagramGroupData = {
+        ...clipboard.group,
+        id: `${clipboard.group.type}-${Date.now()}`,
+        x: (clipboard.group.x || 0) + 50,
+        y: (clipboard.group.y || 0) + 50,
+      };
+      
+      setDiagramData(prev => ({
+        ...prev,
+        groups: [...(prev.groups || []), newGroup]
+      }));
+    }
+    
+    toast({
+      title: "Item Pasted",
+      description: "The copied item has been pasted to the canvas.",
+    });
+  };
+
   return (
     <>
         <div
@@ -657,7 +819,7 @@ const [{ isOver, canDrop }, drop] = useDrop(() => ({
                 }}
             >
                 {processedGroups.map((group) => (
-                    <div key={group.id} onClick={(e) => handleGroupClick(e, group)} style={{ zIndex: 2 }}>
+                    <div key={group.id} onClick={(e) => handleGroupClick(e, group)} onContextMenu={(e) => handleGroupRightClick(e, group)} style={{ zIndex: 2, overflow: 'visible' }}>
                         <DiagramGroup 
                             group={group}
                             isSelected={selectedItemId === group.id && !isConnectMode}
@@ -751,7 +913,7 @@ return (
                 {processedNodes.map((node) => {
                   const isConnectedToSelected = !!selectedItemId && (diagramData.edges || []).some(e => e.from === selectedItemId && e.to === node.id || e.to === selectedItemId && e.from === node.id);
                   return (
-                    <div key={node.id} onClick={(e) => handleNodeClick(e, node)}>
+                    <div key={node.id} onClick={(e) => handleNodeClick(e, node)} onContextMenu={(e) => handleNodeRightClick(e, node)}>
                       <DiagramNode 
                         node={node} 
                         isSelected={selectedItemId === node.id && !isConnectMode}
@@ -783,6 +945,37 @@ return (
                 </Button>
             </div>
         </div>
+        
+        {/* Context Menu */}
+        <ContextMenu
+          visible={contextMenu.visible}
+          x={contextMenu.x}
+          y={contextMenu.y}
+          itemType={contextMenu.itemType}
+          onClose={closeContextMenu}
+          onCopy={() => handleCopy(contextMenu.itemId)}
+          onDelete={() => handleDelete(contextMenu.itemId)}
+          onConnect={() => {
+            const item = diagramData.nodes.find(n => n.id === contextMenu.itemId) || 
+                       diagramData.groups?.find(g => g.id === contextMenu.itemId);
+            if (item) {
+              onItemSelect({ ...item, itemType: contextMenu.itemType });
+              onConnect?.();
+            }
+          }}
+          onDisconnect={() => {
+            // Remove all connections to/from this item
+            setDiagramData(prev => ({
+              ...prev,
+              edges: prev.edges.filter(e => e.from !== contextMenu.itemId && e.to !== contextMenu.itemId)
+            }));
+            toast({
+              title: "Connections Disconnected",
+              description: "All connections to/from this item have been removed.",
+            });
+            onDisconnect?.();
+          }}
+        />
     </>
   );
 }

@@ -29,6 +29,11 @@ function hexToRgba(hex: string, alpha: number) {
 
 
 export function DiagramGroup({ group, isSelected, isDropTarget, isTargetable }: DiagramGroupProps) {
+  // Debug: Log when shadow is enabled
+  if (group.shadow) {
+    console.log('Shadow enabled for group:', group.label, group.shadow);
+  }
+  
   const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.GROUP,
     item: { ...group, type: ItemTypes.GROUP },
@@ -47,13 +52,13 @@ export function DiagramGroup({ group, isSelected, isDropTarget, isTargetable }: 
   return (
     <div
       ref={drag as any}
-      className={cn(
+className={cn(
         "absolute rounded-lg cursor-move",
         isZone ? "border-2 border-dashed" : "border-2",
         isDragging && "opacity-50",
         (isSelected || isDropTarget) && "ring-2 ring-primary ring-offset-2",
         isTargetable && "ring-2 ring-green-500 ring-offset-2 animate-pulse",
-        group.shadow && "shadow-lg"
+        group.shadow && "shadow-[0_10px_15px_-3px_rgba(239,68,68,0.3),0_4px_6px_-2px_rgba(239,68,68,0.2)]"
         )}
       style={{
         left: group.x,
@@ -63,6 +68,11 @@ export function DiagramGroup({ group, isSelected, isDropTarget, isTargetable }: 
         backgroundColor: backgroundColor,
         borderColor: borderColor,
         color: textColor,
+        margin: group.shadow ? 4 : 0, // Add margin when shadow is enabled to prevent clipping
+        ...(group.shadow && { 
+          transform: 'translateZ(0)',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' // More prominent shadow
+        })
       }}
     >
       <Popover>

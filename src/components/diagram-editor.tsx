@@ -265,6 +265,20 @@ export default function DiagramEditor() {
                     selectedItemId={selectedItem?.id}
                     isConnectMode={isConnectMode}
                     onNodeClickInConnectMode={handleConnect}
+                    onConnect={() => setIsConnectMode(true)}
+                    onDisconnect={() => {
+                        // Remove all connections from selected item
+                        if (selectedItem) {
+                            setDiagramData(prevData => ({
+                                ...prevData,
+                                edges: prevData.edges?.filter(e => e.from !== selectedItem.id && e.to !== selectedItem.id) || []
+                            }));
+                            toast({
+                                title: "Connections Disconnected",
+                                description: "All connections from the selected item have been removed.",
+                            });
+                        }
+                    }}
                 />
             </div>
         </main>
