@@ -14,6 +14,10 @@ export type SelectedItem = (DiagramNodeData | DiagramGroupData) & {
   borderColor?: string,
   textColor?: string,
   backgroundColor?: string,
+  borderStyle?: 'solid' | 'gradient';
+  borderColors?: string[];
+  backgroundStyle?: 'solid' | 'gradient';
+  backgroundColors?: string[];
   orientation?: 'horizontal' | 'vertical' | 'square',
   lineColor?: string,
   maxItemsPerRow?: number,

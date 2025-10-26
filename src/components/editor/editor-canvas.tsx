@@ -100,10 +100,22 @@ export function EditorCanvas({ diagramData, setDiagramData, onItemSelect, select
             return cg; // IMPORTANT: return original reference so x/y set below apply to allItems
         });
 
-        // Simple grid layout for all children (nodes and groups)
+        // Grid layout for all children (nodes and groups) with orientation and maxItemsPerRow support
         const allChildren = [...childNodes, ...laidOutChildGroups];
         const numItems = allChildren.length;
-        const itemsPerRow = Math.max(1, Math.floor(Math.sqrt(numItems) * 1.2));
+        
+        // Determine items per row based on orientation and maxItemsPerRow
+        let itemsPerRow: number;
+        if (group.orientation === 'vertical') {
+            // Vertical orientation: single column, but respect maxItemsPerRow for column height
+            itemsPerRow = 1;
+        } else if (group.orientation === 'horizontal') {
+            // Horizontal orientation: use maxItemsPerRow if specified, otherwise calculate
+            itemsPerRow = group.maxItemsPerRow || Math.max(1, Math.floor(Math.sqrt(numItems) * 1.2));
+        } else {
+            // Square orientation: use maxItemsPerRow if specified, otherwise calculate
+            itemsPerRow = group.maxItemsPerRow || Math.max(1, Math.floor(Math.sqrt(numItems) * 1.2));
+        }
         
         let currentX = GROUP_PADDING;
         let currentY = GROUP_PADDING;

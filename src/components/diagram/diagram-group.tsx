@@ -45,8 +45,16 @@ export function DiagramGroup({ group, isSelected, isDropTarget, isTargetable }: 
   const isZone = group.subType === 'zone';
   
   // Use new color properties with fallbacks
-  const borderColor = group.borderColor || (isZone ? '#6b7280' : '#3b82f6');
   const textColor = group.textColor || '#374151';
+  
+  // Handle border color (solid or gradient)
+  const borderStyle = group.borderStyle || 'solid';
+  const borderColors = group.borderColors || [group.borderColor || (isZone ? '#6b7280' : '#3b82f6'), group.borderColor || (isZone ? '#6b7280' : '#3b82f6')];
+  const borderColor = group.borderColor || (isZone ? '#6b7280' : '#3b82f6');
+  
+  // Handle background color (solid or gradient)
+  const backgroundStyle = group.backgroundStyle || 'solid';
+  const backgroundColors = group.backgroundColors || [group.backgroundColor || (isZone ? '#f3f4f6' : '#f3f4f6'), group.backgroundColor || (isZone ? '#e5e7eb' : '#e5e7eb')];
   const backgroundColor = group.backgroundColor || (isZone ? 'transparent' : '#f3f4f6');
 
   return (
@@ -65,8 +73,15 @@ className={cn(
         top: group.y,
         width: group.width,
         height: group.height,
-        backgroundColor: backgroundColor,
-        borderColor: borderColor,
+        background: backgroundStyle === 'gradient' 
+          ? `linear-gradient(135deg, ${backgroundColors[0]}, ${backgroundColors[1]})`
+          : backgroundColor,
+        border: borderStyle === 'gradient'
+          ? `2px solid transparent`
+          : isZone ? `2px dashed ${borderColor}` : `2px solid ${borderColor}`,
+        borderImage: borderStyle === 'gradient'
+          ? `linear-gradient(135deg, ${borderColors[0]}, ${borderColors[1]}) 1`
+          : undefined,
         color: textColor,
         margin: group.shadow ? 4 : 0, // Add margin when shadow is enabled to prevent clipping
         ...(group.shadow && { 

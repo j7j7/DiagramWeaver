@@ -27,6 +27,24 @@
       "info": "Event worker 3"
     },
     {
+      "id": "worker4",
+      "type": "generic.compute.server",
+      "label": "worker4",
+      "info": "Event worker 4"
+    },
+    {
+      "id": "worker5",
+      "type": "generic.compute.server",
+      "label": "worker5",
+      "info": "Event worker 5"
+    },
+    {
+      "id": "worker6",
+      "type": "generic.compute.server",
+      "label": "worker6",
+      "info": "Event worker 6"
+    },
+    {
       "id": "event-queue",
       "type": "aws.applicationintegration.EventBridge",
       "label": "event queue",
@@ -81,9 +99,15 @@
     { "from": "k8s-source", "to": "worker1" },
     { "from": "k8s-source", "to": "worker2" },
     { "from": "k8s-source", "to": "worker3" },
+    { "from": "k8s-source", "to": "worker4" },
+    { "from": "k8s-source", "to": "worker5" },
+    { "from": "k8s-source", "to": "worker6" },
     { "from": "worker1", "to": "event-queue" },
     { "from": "worker2", "to": "event-queue" },
     { "from": "worker3", "to": "event-queue" },
+    { "from": "worker4", "to": "event-queue" },
+    { "from": "worker5", "to": "event-queue" },
+    { "from": "worker6", "to": "event-queue" },
     { "from": "event-queue", "to": "proc1" },
     { "from": "event-queue", "to": "proc2" },
     { "from": "event-queue", "to": "proc3" },
@@ -114,11 +138,14 @@
   "color": "#fdeace",
   "label": "Event Workers",
   "info": "Group of workers processing incoming events.",
-  "nodes": ["worker1", "worker2", "worker3"],
+  "nodes": ["worker1", "worker2", "worker3", "worker4", "worker5", "worker6"],
   "orientation": "square",
-  "borderColor": "#3b82f6",
+  "maxItemsPerRow": 4,
+  "borderStyle": "gradient",
+  "borderColors": ["#3b82f6", "#8b5cf6"],
   "textColor": "#374151",
-  "backgroundColor": "#f3f4f6",
+  "backgroundStyle": "gradient",
+  "backgroundColors": ["#f0f9ff", "#e0e7ff"],
   "shadow": true
 },
 {
@@ -130,9 +157,11 @@
   "info": "Group of functions for processing events from queue.",
   "nodes": ["proc1", "proc2", "proc3"],
   "orientation": "vertical",
-  "borderColor": "#3b82f6",
-  "textColor": "#374151",
-  "backgroundColor": "#f3f4f6"
+  "borderStyle": "gradient",
+  "borderColors": ["#10b981", "#3b82f6"],
+  "textColor": "#ffffff",
+  "backgroundStyle": "gradient",
+  "backgroundColors": ["#065f46", "#1e3a8a"]
 }
   ]
 }

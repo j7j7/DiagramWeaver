@@ -24,9 +24,13 @@ export interface DiagramGroupData {
   y?: number;
   subType?: 'zone' | 'group'; // Differentiate between zone and group styling
   color?: string; // For colored groups (legacy, kept for compatibility)
-  borderColor?: string; // Border color
+  borderColor?: string; // Border color (legacy, kept for compatibility)
   textColor?: string; // Text color
-  backgroundColor?: string; // Background color
+  backgroundColor?: string; // Background color (legacy, kept for compatibility)
+  borderStyle?: 'solid' | 'gradient'; // Border style
+  borderColors?: string[]; // Border colors for gradient [startColor, endColor]
+  backgroundStyle?: 'solid' | 'gradient'; // Background style
+  backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
   orientation?: 'horizontal' | 'vertical' | 'square'; // Group shape orientation
   maxItemsPerRow?: number; // Maximum items per row (for grid layouts)
   lineColor?: string; // Color for connections from this group
