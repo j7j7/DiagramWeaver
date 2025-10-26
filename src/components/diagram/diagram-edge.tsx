@@ -81,44 +81,8 @@ function getGroupBoundaryConnection(from: any, to: any): { fromX: number; fromY:
   const isToGroup = 'type' in to && to.type === 'group';
 
   if (isFromGroup && isToGroup) {
-    // Calculate direction from from-center to to-center
-    const dx = toCenterX - fromCenterX;
-    const dy = toCenterY - fromCenterY;
-    
-    // Determine connection points on group boundaries
-    let fromX = fromCenterX;
-    let fromY = fromCenterY;
-    let toX = toCenterX;
-    let toY = toCenterY;
-
-    // Find the best edge for each group based on direction
-    if (Math.abs(dx) > Math.abs(dy)) {
-      // Horizontal connection is primary
-      if (dx > 0) {
-        // From left to right
-        fromX = from.x + fromWidth;
-        toX = to.x;
-      } else {
-        // From right to left
-        fromX = from.x;
-        toX = to.x + toWidth;
-      }
-      // Keep Y coordinates at center for vertical alignment
-    } else {
-      // Vertical connection is primary
-      if (dy > 0) {
-        // From top to bottom
-        fromY = from.y + fromHeight;
-        toY = to.y;
-      } else {
-        // From bottom to top
-        fromY = from.y;
-        toY = to.y + toHeight;
-      }
-      // Keep X coordinates at center for horizontal alignment
-    }
-
-    return { fromX, fromY, toX, toY };
+    // Advanced connection point selection that avoids edge-hugging
+    return getOptimalBoundaryConnection(from, to, fromCenterX, fromCenterY, toCenterX, toCenterY, fromWidth, fromHeight, toWidth, toHeight);
   }
 
   // For non-group-to-group connections, use centers
@@ -128,6 +92,98 @@ function getGroupBoundaryConnection(from: any, to: any): { fromX: number; fromY:
     toX: toCenterX,
     toY: toCenterY
   };
+}
+
+function getOptimalBoundaryConnection(from: any, to: any, fromCenterX: number, fromCenterY: number, toCenterX: number, toCenterY: number, fromWidth: number, fromHeight: number, toWidth: number, toHeight: number): { fromX: number; fromY: number; toX: number; toY: number } {
+  const dx = toCenterX - fromCenterX;
+  const dy = toCenterY - fromCenterY;
+  
+  // Generate all possible connection points for the source
+  const fromCandidates = [
+    { x: from.x + fromWidth, y: fromCenterY, side: 'right', direction: { x: 1, y: 0 } },
+    { x: from.x, y: fromCenterY, side: 'left', direction: { x: -1, y: 0 } },
+    { x: fromCenterX, y: from.y + fromHeight, side: 'bottom', direction: { x: 0, y: 1 } },
+    { x: fromCenterX, y: from.y, side: 'top', direction: { x: 0, y: -1 } }
+  ];
+
+  // Generate all possible connection points for the target
+  const toCandidates = [
+    { x: to.x, y: toCenterY, side: 'left', direction: { x: -1, y: 0 } },
+    { x: to.x + toWidth, y: toCenterY, side: 'right', direction: { x: 1, y: 0 } },
+    { x: toCenterX, y: to.y, side: 'top', direction: { x: 0, y: -1 } },
+    { x: toCenterX, y: to.y + toHeight, side: 'bottom', direction: { x: 0, y: 1 } }
+  ];
+
+  // Score each connection pair based on multiple factors
+  let bestScore = -Infinity;
+  let bestConnection = { fromX: fromCenterX, fromY: fromCenterY, toX: toCenterX, toY: toCenterY };
+
+  for (const fromPoint of fromCandidates) {
+    for (const toPoint of toCandidates) {
+      const score = calculateConnectionScore(fromPoint, toPoint, from, to, dx, dy);
+      if (score > bestScore) {
+        bestScore = score;
+        bestConnection = {
+          fromX: fromPoint.x,
+          fromY: fromPoint.y,
+          toX: toPoint.x,
+          toY: toPoint.y
+        };
+      }
+    }
+  }
+
+  return bestConnection;
+}
+
+function calculateConnectionScore(fromPoint: any, toPoint: any, from: any, to: any, dx: number, dy: number): number {
+  let score = 0;
+
+  // Factor 1: Directional alignment - reward connections that follow the general direction
+  const connectionDx = toPoint.x - fromPoint.x;
+  const connectionDy = toPoint.y - fromPoint.y;
+  const directionAlignment = (connectionDx * dx + connectionDy * dy) / (Math.sqrt(dx * dx + dy * dy) * Math.sqrt(connectionDx * connectionDx + connectionDy * connectionDy) + 0.001);
+  score += directionAlignment * 50;
+
+  // Factor 2: Distance - shorter is better
+  const distance = Math.abs(connectionDx) + Math.abs(connectionDy);
+  score -= distance * 0.1;
+
+  // Factor 3: Avoid edge-hugging for zones
+  const isFromZone = from.subType === 'zone';
+  const isToZone = to.subType === 'zone';
+  
+  if (isFromZone) {
+    // Penalize starting points that are likely to cause edge-hugging
+    if (fromPoint.side === 'right' && Math.abs(connectionDy) > Math.abs(connectionDx)) {
+      score -= 30; // Penalize right exit when going mostly vertical
+    }
+    if (fromPoint.side === 'bottom' && Math.abs(connectionDx) > Math.abs(connectionDy)) {
+      score -= 30; // Penalize bottom exit when going mostly horizontal
+    }
+    
+    // Reward exits that align with the primary direction
+    if (Math.abs(dx) > Math.abs(dy) && fromPoint.side === 'right') {
+      score += 20; // Reward right exit for horizontal movement
+    }
+    if (Math.abs(dy) > Math.abs(dx) && fromPoint.side === 'bottom') {
+      score += 20; // Reward bottom exit for vertical movement
+    }
+  }
+
+  // Factor 4: Prefer orthogonal connections (less bending)
+  const isOrthogonal = (connectionDx === 0 || connectionDy === 0);
+  if (isOrthogonal) {
+    score += 15;
+  }
+
+  // Factor 5: Avoid crossing the source or target boundaries
+  if (fromPoint.side === 'right' && connectionDx < 0) score -= 10;
+  if (fromPoint.side === 'left' && connectionDx > 0) score -= 10;
+  if (fromPoint.side === 'bottom' && connectionDy < 0) score -= 10;
+  if (fromPoint.side === 'top' && connectionDy > 0) score -= 10;
+
+  return score;
 }
 
 export function DiagramEdge({ from, to, allObstacles, allowedOverlapIds = [], edgeColor }: DiagramEdgeProps) {

@@ -590,14 +590,16 @@ const [{ isOver, canDrop }, drop] = useDrop(() => ({
       x: n.x,
       y: n.y,
       width: NODE_WIDTH,
-      height: NODE_HEIGHT
+      height: NODE_HEIGHT,
+      isZone: false
     }));
     const groupObstacles = processedGroups.map(g => ({
       id: g.id,
       x: g.x,
       y: g.y,
       width: g.width,
-      height: g.height
+      height: g.height,
+      isZone: g.subType === 'zone'
     }));
     return [...nodeObstacles, ...groupObstacles];
   }, [processedNodes, processedGroups]);
