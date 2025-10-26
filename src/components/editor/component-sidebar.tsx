@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { DraggableItem } from './draggable-item';
-import { Server, Database, Network, Group as GroupIcon, Layers, Box, Download, Upload } from 'lucide-react';
+import { Server, Database, Network, Group as GroupIcon, Layers, Box, Download, Upload, Plus } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import type { DiagramNodeData, DiagramGroupData, DiagramData } from '@/lib/types';
 import { Label } from '../ui/label';
@@ -33,6 +33,7 @@ interface ComponentSidebarProps {
   diagramData: DiagramData;
   onSave: () => void;
   onLoad: () => void;
+  onNew: () => void;
 }
 
 type FormValues = Omit<DiagramNodeData & DiagramGroupData, 'id' | 'type' | 'nodes'> & {
@@ -46,7 +47,7 @@ type FormValues = Omit<DiagramNodeData & DiagramGroupData, 'id' | 'type' | 'node
 };
 
 
-export function ComponentSidebar({ selectedItem, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onSave, onLoad }: ComponentSidebarProps) {
+export function ComponentSidebar({ selectedItem, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onSave, onLoad, onNew }: ComponentSidebarProps) {
   const { register, handleSubmit, reset, watch, getValues } = useForm<FormValues>();
 
   useEffect(() => {
@@ -71,6 +72,11 @@ export function ComponentSidebar({ selectedItem, onItemUpdate, onConnect, onDisc
     if(selectedItem) {
         const currentValues = getValues();
         const updatedItem = { ...selectedItem, ...currentValues };
+        
+        // Debug: log the lineColor update
+        if (currentValues.lineColor !== selectedItem.lineColor) {
+            console.log('Line color changing from', selectedItem.lineColor, 'to', currentValues.lineColor);
+        }
         
         // Prevent infinite loop by checking for actual changes
         const hasChanged = Object.keys(currentValues).some(key => {
@@ -113,6 +119,7 @@ export function ComponentSidebar({ selectedItem, onItemUpdate, onConnect, onDisc
     <aside className="w-80 bg-card border-r p-4 flex flex-col">
       <h2 className="text-lg font-headline font-semibold mb-4">Components</h2>
       <div className="flex items-center gap-2 mb-4">
+          <Button variant="outline" onClick={onNew} className="w-full"><Plus className="mr-2"/>New</Button>
           <Button variant="outline" onClick={onSave} className="w-full"><Download className="mr-2"/>Save</Button>
           <Button variant="outline" onClick={onLoad} className="w-full"><Upload className="mr-2"/>Load</Button>
       </div>

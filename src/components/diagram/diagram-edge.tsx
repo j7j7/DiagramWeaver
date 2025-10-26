@@ -153,6 +153,9 @@ export function DiagramEdge({ from, to, allObstacles, allowedOverlapIds = [], ed
 
   // Use edge color first, then 'to' node, fallback to 'from' node, then default
   const finalEdgeColor = edgeColor || to.lineColor || from.lineColor || '#6b7280';
+  
+  // Debug: log the final edge color
+  console.log('DiagramEdge final color:', finalEdgeColor, 'edgeColor:', edgeColor, 'to.lineColor:', to.lineColor, 'from.lineColor:', from.lineColor);
 
   return (
     <path

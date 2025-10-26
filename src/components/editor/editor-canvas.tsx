@@ -433,9 +433,17 @@ export function EditorCanvas({ diagramData, setDiagramData, onItemSelect, select
   }, [setDiagramData, processedNodes, processedGroups]);
 
 
-  const [{ isOver, canDrop }, drop] = useDrop(() => ({
+  type DropItem = { 
+    id?: string; 
+    type?: string; 
+    label?: string; 
+    x?: number; 
+    y?: number;
+};
+
+const [{ isOver, canDrop }, drop] = useDrop(() => ({
     accept: [ItemTypes.DIAGRAM_NODE, ItemTypes.CANVAS_NODE, ItemTypes.GROUP],
-    hover: (item: { id?: string }, monitor) => {
+    hover: (item: DropItem, monitor) => {
         if (!canvasRef.current) return;
         const clientOffset = monitor.getClientOffset();
         if (!clientOffset) return;
@@ -475,7 +483,7 @@ export function EditorCanvas({ diagramData, setDiagramData, onItemSelect, select
         }
         setHoveredGroupId(targetGroupId);
     },
-    drop: (item: { id?: string, type: string; label: string, x?: number, y?: number }, monitor) => {
+    drop: (item: DropItem, monitor) => {
         if (!canvasRef.current) return;
         const canvasRect = canvasRef.current.getBoundingClientRect();
         
@@ -503,9 +511,9 @@ export function EditorCanvas({ diagramData, setDiagramData, onItemSelect, select
         }
         
         if (itemType === ItemTypes.DIAGRAM_NODE) { 
-            addNode({type: item.type, label: item.label}, { x, y }, hoveredGroupId);
+            addNode({type: item.type || '', label: item.label || ''}, { x, y }, hoveredGroupId);
         } else if (item.id && (itemType === ItemTypes.CANVAS_NODE || itemType === ItemTypes.GROUP)) {
-            moveItem({ id: item.id, type: item.type, x: item.x, y: item.y }, { x, y }, hoveredGroupId);
+            moveItem({ id: item.id, type: item.type || '', x: item.x, y: item.y }, { x, y }, hoveredGroupId);
         }
         
         setHoveredGroupId(null);
@@ -536,7 +544,9 @@ export function EditorCanvas({ diagramData, setDiagramData, onItemSelect, select
 
   const handleGroupClick = (e: React.MouseEvent, group: DiagramGroupData) => {
     e.stopPropagation();
-    if (!isConnectMode) {
+    if (isConnectMode) {
+      onNodeClickInConnectMode(group as any);
+    } else {
       onItemSelect({ ...group, type: 'group' });
     }
   };
@@ -670,16 +680,27 @@ export function EditorCanvas({ diagramData, setDiagramData, onItemSelect, select
                     const toItem = nodesById[edge.to] || groupsById[edge.to];
                     if (!fromItem || !toItem) return null;
 
-                    const fromPos = {
+                    // Debug: log the original items to see what they contain
+                    console.log('Original fromItem:', fromItem);
+                    console.log('Original toItem:', toItem);
+
+                    const fromPos: any = {
                       ...fromItem,
                       width: 'width' in fromItem ? (fromItem as any).width : NODE_WIDTH,
-                      height: 'height' in fromItem ? (fromItem as any).height : NODE_HEIGHT
-                    } as any;
-                    const toPos = {
+                      height: 'height' in fromItem ? (fromItem as any).height : NODE_HEIGHT,
+                    };
+                    const toPos: any = {
                       ...toItem,
                       width: 'width' in toItem ? (toItem as any).width : NODE_WIDTH,
-                      height: 'height' in toItem ? (toItem as any).height : NODE_HEIGHT
-                    } as any;
+                      height: 'height' in toItem ? (toItem as any).height : NODE_HEIGHT,
+                    };
+
+                    // Explicitly set lineColor after spreading to ensure it's not overwritten
+                    fromPos.lineColor = (fromItem as any).lineColor;
+                    toPos.lineColor = (toItem as any).lineColor;
+
+                    // Debug: log lineColor values being passed to DiagramEdge
+                    console.log('Edge rendering:', edge.from, '->', edge.to, 'fromLineColor:', fromPos.lineColor, 'toLineColor:', toPos.lineColor);
 
                     // Build parent map for groups to gather ancestor groups of endpoints
                     const parentMap = new Map<string, string>();
@@ -706,10 +727,9 @@ export function EditorCanvas({ diagramData, setDiagramData, onItemSelect, select
 
                     const isEdgeHighlighted = selectedItemId === edge.from || selectedItemId === edge.to;
 
-                    return (
-                    <g className={cn(isEdgeHighlighted && 'drop-shadow-[0_0_6px_rgba(0,200,150,0.8)]')}>
+return (
+                    <g key={`${edge.from}-${edge.to}-${index}`} className={cn(isEdgeHighlighted && 'drop-shadow-[0_0_6px_rgba(0,200,150,0.8)]')}>
                       <DiagramEdge
-                        key={`${edge.from}-${edge.to}-${index}`}
                         from={fromPos}
                         to={toPos}
                         allObstacles={allObstacles}

@@ -224,6 +224,12 @@ export default function DiagramEditor() {
     }
   };
 
+  const handleNew = () => {
+    setDiagramData({ nodes: [], edges: [], groups: [] });
+    setSelectedItem(null);
+    toast({ title: 'New Diagram', description: 'Diagram has been cleared.' });
+  };
+
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -237,6 +243,7 @@ export default function DiagramEditor() {
           diagramData={diagramData}
           onSave={handleSave}
           onLoad={handleLoadClick}
+          onNew={handleNew}
         />
         <main className="flex-1 flex flex-col">
             <header className="flex items-center justify-between p-4 border-b">
