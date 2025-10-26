@@ -84,33 +84,47 @@
     { "from": "proc3", "to": "events-store" }
   ],
   "groups": [
-    {
-      "id": "event-flows",
-      "type": "group",
-      "subType": "zone",
-      "label": "Event Flows",
-      "info": "Main container for event flow processing.",
-      "nodes": ["event-workers", "processing"],
-      "x": 300,
-      "y": 100
-    },
-    {
-      "id": "event-workers",
-      "type": "group",
-      "subType": "group",
-      "color": "#fdeace",
-      "label": "Event Workers",
-      "info": "Group of workers processing incoming events.",
-      "nodes": ["worker1", "worker2", "worker3"]
-    },
-    {
-      "id": "processing",
-      "type": "group",
-      "subType": "group",
-      "color": "#fdeace",
-      "label": "Processing",
-      "info": "Group of functions for processing events from the queue.",
-      "nodes": ["proc1", "proc2", "proc3"]
-    }
+{
+  "id": "event-flows",
+  "type": "group",
+  "subType": "zone",
+  "label": "Event Flows",
+  "info": "Main container for event flow processing.",
+  "nodes": ["event-workers", "processing"],
+  "x": 300,
+  "y": 100,
+  "orientation": "horizontal",
+  "borderColor": "#6b7280",
+  "textColor": "#374151",
+  "backgroundColor": "transparent",
+  "shadow": true
+},
+{
+  "id": "event-workers",
+  "type": "group",
+  "subType": "group",
+  "color": "#fdeace",
+  "label": "Event Workers",
+  "info": "Group of workers processing incoming events.",
+  "nodes": ["worker1", "worker2", "worker3"],
+  "orientation": "square",
+  "borderColor": "#3b82f6",
+  "textColor": "#374151",
+  "backgroundColor": "#f3f4f6",
+  "shadow": true
+},
+{
+  "id": "processing",
+  "type": "group",
+  "subType": "group",
+  "color": "#fdeace",
+  "label": "Processing",
+  "info": "Group of functions for processing events from queue.",
+  "nodes": ["proc1", "proc2", "proc3"],
+  "orientation": "vertical",
+  "borderColor": "#3b82f6",
+  "textColor": "#374151",
+  "backgroundColor": "#f3f4f6"
+}
   ]
 }

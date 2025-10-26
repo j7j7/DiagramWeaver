@@ -11,6 +11,7 @@ import { Textarea } from '../ui/textarea';
 import { Button } from '../ui/button';
 import type { SelectedItem } from '../diagram-editor';
 import { ScrollArea } from '../ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const availableComponents = [
     { type: 'zone', label: 'Zone', icon: <Layers className="w-6 h-6" /> },
@@ -34,7 +35,15 @@ interface ComponentSidebarProps {
   onLoad: () => void;
 }
 
-type FormValues = Omit<DiagramNodeData & DiagramGroupData, 'id' | 'type' | 'nodes'>;
+type FormValues = Omit<DiagramNodeData & DiagramGroupData, 'id' | 'type' | 'nodes'> & {
+  borderColor?: string;
+  textColor?: string;
+  backgroundColor?: string;
+  orientation?: 'horizontal' | 'vertical' | 'square';
+  lineColor?: string;
+  maxItemsPerRow?: number;
+  shadow?: boolean;
+};
 
 
 export function ComponentSidebar({ selectedItem, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onSave, onLoad }: ComponentSidebarProps) {
@@ -44,7 +53,17 @@ export function ComponentSidebar({ selectedItem, onItemUpdate, onConnect, onDisc
     if (selectedItem) {
       reset(selectedItem);
     } else {
-      reset({ label: '', info: '', color: '#e0e0e0'});
+      reset({ 
+        label: '', 
+        info: '', 
+        borderColor: '#6b7280',
+        textColor: '#374151',
+        backgroundColor: '#f3f4f6',
+        orientation: 'square',
+        lineColor: '#6b7280',
+        maxItemsPerRow: 3,
+        shadow: false
+      });
     }
   }, [selectedItem, reset]);
 
@@ -71,22 +90,19 @@ export function ComponentSidebar({ selectedItem, onItemUpdate, onConnect, onDisc
     if (!selectedItem || !diagramData) return { incoming: [], outgoing: [], parentGroup: null };
     
     const parent = (diagramData.groups || []).find(g => g.nodes.includes(selectedItem.id));
-
-    if (selectedItem.type !== 'node') {
-        return { incoming: [], outgoing: [], parentGroup: parent };
-    }
     
-    const nodeId = selectedItem.id;
+    const itemId = selectedItem.id;
     const nodesById = new Map(diagramData.nodes.map(n => [n.id, n]));
+    const groupsById = new Map((diagramData.groups || []).map(g => [g.id, g]));
 
     const incoming = (diagramData.edges || [])
-      .filter(edge => edge.to === nodeId)
-      .map(edge => nodesById.get(edge.from)?.label)
+      .filter(edge => edge.to === itemId)
+      .map(edge => nodesById.get(edge.from)?.label || groupsById.get(edge.from)?.label)
       .filter(Boolean);
       
     const outgoing = (diagramData.edges || [])
-      .filter(edge => edge.from === nodeId)
-      .map(edge => nodesById.get(edge.to)?.label)
+      .filter(edge => edge.from === itemId)
+      .map(edge => nodesById.get(edge.to)?.label || groupsById.get(edge.to)?.label)
       .filter(Boolean);
 
     return { incoming, outgoing, parentGroup: parent };
@@ -122,10 +138,104 @@ export function ComponentSidebar({ selectedItem, onItemUpdate, onConnect, onDisc
                 <Label htmlFor="info">Description</Label>
                 <Textarea id="info" {...register('info')} rows={5} />
             </div>
-            {selectedItem.type === 'group' && selectedItem.subType === 'group' && (
+{selectedItem.type === 'group' && (
+              <>
+                <div>
+                  <Label htmlFor="orientation">Orientation</Label>
+                  <Select 
+                    value={selectedItem?.orientation || 'square'} 
+                    onValueChange={(value) => {
+                      const updatedItem = { 
+                        ...selectedItem, 
+                        orientation: value as 'horizontal' | 'vertical' | 'square'
+                      };
+                      onItemUpdate(updatedItem);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select orientation" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="square">Square</SelectItem>
+                      <SelectItem value="horizontal">Horizontal Rectangle</SelectItem>
+                      <SelectItem value="vertical">Vertical Rectangle</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {(selectedItem.orientation === 'horizontal' || selectedItem.orientation === 'square') && (
+                  <div>
+                    <Label htmlFor="maxItemsPerRow">Max Items Per Row</Label>
+                    <Input 
+                      id="maxItemsPerRow" 
+                      type="number" 
+                      min="1" 
+                      max="10"
+                      {...register('maxItemsPerRow', { valueAsNumber: true })} 
+                      className="p-1 h-10"
+                      defaultValue={selectedItem.maxItemsPerRow || 3}
+                    />
+                  </div>
+                )}
+                
+                <div>
+                  <Label htmlFor="borderColor">Border Color</Label>
+                  <Input 
+                    id="borderColor" 
+                    type="color" 
+                    {...register('borderColor')} 
+                    className="p-1 h-10"
+                    defaultValue={selectedItem.borderColor || (selectedItem.subType === 'zone' ? '#6b7280' : '#3b82f6')}
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="textColor">Text Color</Label>
+                  <Input 
+                    id="textColor" 
+                    type="color" 
+                    {...register('textColor')} 
+                    className="p-1 h-10"
+                    defaultValue={selectedItem.textColor || '#374151'}
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="backgroundColor">Background Color</Label>
+                  <Input 
+                    id="backgroundColor" 
+                    type="color" 
+                    {...register('backgroundColor')} 
+                    className="p-1 h-10"
+                    defaultValue={selectedItem.backgroundColor || (selectedItem.subType === 'zone' ? 'transparent' : '#f3f4f6')}
+                  />
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <input
+                    id="shadow"
+                    type="checkbox"
+                    {...register('shadow')}
+                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    defaultChecked={selectedItem.shadow || false}
+                  />
+                  <Label htmlFor="shadow" className="text-sm font-medium">
+                    Show Shadow
+                  </Label>
+                </div>
+              </>
+            )}
+
+            {(selectedItem.type === 'node' || selectedItem.type === 'group') && (
               <div>
-                <Label htmlFor="color">Group Color</Label>
-                <Input id="color" type="color" {...register('color')} className="p-1 h-10" />
+                <Label htmlFor="lineColor">Line Color</Label>
+                <Input 
+                  id="lineColor" 
+                  type="color" 
+                  {...register('lineColor')} 
+                  className="p-1 h-10"
+                  defaultValue={selectedItem.lineColor || '#6b7280'}
+                />
               </div>
             )}
             
@@ -139,7 +249,7 @@ export function ComponentSidebar({ selectedItem, onItemUpdate, onConnect, onDisc
             <p className="text-sm text-muted-foreground break-words">ID: {selectedItem.id}</p>
             
             <div className="flex gap-2">
-                {selectedItem.type === 'node' && (
+                {(selectedItem.type === 'node' || selectedItem.type === 'group') && (
                   <>
                     <Button type="button" onClick={onConnect} className="w-full">
                       Connect
@@ -154,7 +264,7 @@ export function ComponentSidebar({ selectedItem, onItemUpdate, onConnect, onDisc
                 </Button>
             </div>
 
-            {selectedItem.type === 'node' && (
+            {(selectedItem.type === 'node' || selectedItem.type === 'group') && (
               <div>
                 <h3 className="text-md font-semibold mt-4 mb-2">Connections</h3>
                 <div className="text-sm space-y-2">

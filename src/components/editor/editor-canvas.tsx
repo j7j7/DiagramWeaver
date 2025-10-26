@@ -638,11 +638,12 @@ export function EditorCanvas({ diagramData, setDiagramData, onItemSelect, select
                 }}
             >
                 {processedGroups.map((group) => (
-                    <div key={group.id} onClick={(e) => handleGroupClick(e, group)}>
+                    <div key={group.id} onClick={(e) => handleGroupClick(e, group)} style={{ zIndex: 2 }}>
                         <DiagramGroup 
                             group={group}
                             isSelected={selectedItemId === group.id && !isConnectMode}
                             isDropTarget={hoveredGroupId === group.id}
+                            isTargetable={isConnectMode && selectedItemId !== group.id}
                         />
                     </div>
                 ))}

@@ -13,10 +13,11 @@ const CORNER_RADIUS = 12;
 type Positionable = (DiagramNodeData | DiagramGroupData) & { x: number; y: number; width: number; height: number; };
 
 interface DiagramEdgeProps {
-  from: Positionable;
-  to: Positionable;
+  from: Positionable & { lineColor?: string };
+  to: Positionable & { lineColor?: string };
   allObstacles: Obstacle[];
   allowedOverlapIds?: string[]; // obstacles with these IDs are ignored when routing
+  edgeColor?: string; // Specific color for this edge
 }
 
 function roundedPathData(points: {x: number; y: number}[], r: number): string {
@@ -64,16 +65,74 @@ function roundedPathData(points: {x: number; y: number}[], r: number): string {
   return cmds.join(' ');
 }
 
-export function DiagramEdge({ from, to, allObstacles, allowedOverlapIds = [] }: DiagramEdgeProps) {
+function getGroupBoundaryConnection(from: any, to: any): { fromX: number; fromY: number; toX: number; toY: number } {
   const fromWidth = from.width || NODE_WIDTH;
   const fromHeight = from.height || NODE_HEIGHT;
   const toWidth = to.width || NODE_WIDTH;
   const toHeight = to.height || NODE_HEIGHT;
 
-  const fromX = from.x + fromWidth / 2;
-  const fromY = from.y + fromHeight / 2;
-  const toX = to.x + toWidth / 2;
-  const toY = to.y + toHeight / 2;
+  const fromCenterX = from.x + fromWidth / 2;
+  const fromCenterY = from.y + fromHeight / 2;
+  const toCenterX = to.x + toWidth / 2;
+  const toCenterY = to.y + toHeight / 2;
+
+  // For group-to-group connections, use boundary points instead of centers
+  const isFromGroup = 'type' in from && from.type === 'group';
+  const isToGroup = 'type' in to && to.type === 'group';
+
+  if (isFromGroup && isToGroup) {
+    // Calculate direction from from-center to to-center
+    const dx = toCenterX - fromCenterX;
+    const dy = toCenterY - fromCenterY;
+    
+    // Determine connection points on group boundaries
+    let fromX = fromCenterX;
+    let fromY = fromCenterY;
+    let toX = toCenterX;
+    let toY = toCenterY;
+
+    // Find the best edge for each group based on direction
+    if (Math.abs(dx) > Math.abs(dy)) {
+      // Horizontal connection is primary
+      if (dx > 0) {
+        // From left to right
+        fromX = from.x + fromWidth;
+        toX = to.x;
+      } else {
+        // From right to left
+        fromX = from.x;
+        toX = to.x + toWidth;
+      }
+      // Keep Y coordinates at center for vertical alignment
+    } else {
+      // Vertical connection is primary
+      if (dy > 0) {
+        // From top to bottom
+        fromY = from.y + fromHeight;
+        toY = to.y;
+      } else {
+        // From bottom to top
+        fromY = from.y;
+        toY = to.y + toHeight;
+      }
+      // Keep X coordinates at center for horizontal alignment
+    }
+
+    return { fromX, fromY, toX, toY };
+  }
+
+  // For non-group-to-group connections, use centers
+  return {
+    fromX: fromCenterX,
+    fromY: fromCenterY,
+    toX: toCenterX,
+    toY: toCenterY
+  };
+}
+
+export function DiagramEdge({ from, to, allObstacles, allowedOverlapIds = [], edgeColor }: DiagramEdgeProps) {
+  const connectionPoints = getGroupBoundaryConnection(from, to);
+  const { fromX, fromY, toX, toY } = connectionPoints;
 
   // Determine grid dimensions
   const maxX = Math.max(...allObstacles.map(e => e.x + e.width)) + CANVAS_PADDING * 2;
@@ -92,10 +151,14 @@ export function DiagramEdge({ from, to, allObstacles, allowedOverlapIds = [] }: 
 
   const roundedPath = roundedPathData(path, CORNER_RADIUS);
 
+  // Use edge color first, then 'to' node, fallback to 'from' node, then default
+  const finalEdgeColor = edgeColor || to.lineColor || from.lineColor || '#6b7280';
+
   return (
     <path
       d={roundedPath}
-      className="stroke-current transition-all duration-300"
+      stroke={finalEdgeColor}
+      className="transition-all duration-300"
       strokeWidth="2.5"
       fill="none"
     />

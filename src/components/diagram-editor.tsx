@@ -5,13 +5,23 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { ComponentSidebar } from './editor/component-sidebar';
 import { EditorCanvas } from './editor/editor-canvas';
 import type { DiagramData, DiagramNodeData, DiagramGroupData, DiagramEdgeData } from '@/lib/types';
-import sampleDiagram from '@/lib/sample-diagram.json';
+import sampleDiagram from '@/lib/sample-diagram.json' with { type: 'json' };
 import { useToast } from '@/hooks/use-toast';
 
-export type SelectedItem = (DiagramNodeData | DiagramGroupData) & { type: 'node' | 'group', subType?: 'zone' | 'group' };
+export type SelectedItem = (DiagramNodeData | DiagramGroupData) & { 
+  type: 'node' | 'group', 
+  subType?: 'zone' | 'group',
+  borderColor?: string,
+  textColor?: string,
+  backgroundColor?: string,
+  orientation?: 'horizontal' | 'vertical' | 'square',
+  lineColor?: string,
+  maxItemsPerRow?: number,
+  shadow?: boolean
+};
 
 export default function DiagramEditor() {
-  const [diagramData, setDiagramData] = React.useState<DiagramData>(sampleDiagram);
+  const [diagramData, setDiagramData] = React.useState<DiagramData>(sampleDiagram as DiagramData);
   const [selectedItem, setSelectedItem] = React.useState<SelectedItem | null>(null);
   const [isConnectMode, setIsConnectMode] = React.useState<boolean>(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -28,10 +38,60 @@ export default function DiagramEditor() {
   
   const handleItemUpdate = (updatedItem: SelectedItem) => {
     if (updatedItem.type === 'group') {
-        setDiagramData(prevData => ({
-            ...prevData,
-            groups: (prevData.groups || []).map(g => g.id === updatedItem.id ? (updatedItem as DiagramGroupData) : g)
-        }));
+        setDiagramData(prevData => {
+            const currentGroup = (prevData.groups || []).find(g => g.id === updatedItem.id);
+            const orientationChanged = currentGroup && currentGroup.orientation !== updatedItem.orientation;
+            
+            let newGroups = (prevData.groups || []).map(g => g.id === updatedItem.id ? (updatedItem as DiagramGroupData) : g);
+            let newNodes = prevData.nodes;
+            
+            // If orientation changed, reset positions of child items to trigger re-layout
+            if (orientationChanged) {
+                const groupData = updatedItem as DiagramGroupData;
+                
+                // Reset positions of child nodes
+                newNodes = prevData.nodes.map(node => {
+                    if (groupData.nodes.includes(node.id)) {
+                        return { ...node, x: undefined, y: undefined };
+                    }
+                    return node;
+                });
+                
+                // Reset positions of child groups recursively
+                const resetChildGroupPositions = (groupId: string) => {
+                    newGroups = newGroups.map(g => {
+                        if (g.id === groupId) {
+                            return { ...g, x: undefined, y: undefined };
+                        }
+                        return g;
+                    });
+                    
+                    // Recursively reset children of this group
+                    const group = newGroups.find(g => g.id === groupId);
+                    if (group) {
+                        group.nodes.forEach(childId => {
+                            const childGroup = newGroups.find(g => g.id === childId);
+                            if (childGroup) {
+                                resetChildGroupPositions(childId);
+                            }
+                        });
+                    }
+                };
+                
+                groupData.nodes.forEach(nodeId => {
+                    const childGroup = newGroups.find(g => g.id === nodeId);
+                    if (childGroup) {
+                        resetChildGroupPositions(nodeId);
+                    }
+                });
+            }
+            
+            return {
+                ...prevData,
+                groups: newGroups,
+                nodes: newNodes
+            };
+        });
     } else {
         setDiagramData(prevData => ({
             ...prevData,
@@ -71,13 +131,13 @@ export default function DiagramEditor() {
     setSelectedItem(null); // Deselect after deleting
   };
 
-  const handleConnect = (targetNode: DiagramNodeData) => {
-    if (!isConnectMode || !selectedItem || selectedItem.type !== 'node' || selectedItem.id === targetNode.id) {
+  const handleConnect = (targetItem: DiagramNodeData | DiagramGroupData) => {
+    if (!isConnectMode || !selectedItem || (selectedItem.type !== 'node' && selectedItem.type !== 'group') || selectedItem.id === targetItem.id) {
       setIsConnectMode(false);
       return;
     }
 
-    const newEdge: DiagramEdgeData = { from: selectedItem.id, to: targetNode.id };
+    const newEdge: DiagramEdgeData = { from: selectedItem.id, to: targetItem.id };
     
     // Avoid creating duplicate edges
     const edgeExists = diagramData.edges.some(
@@ -96,19 +156,19 @@ export default function DiagramEditor() {
   };
 
   const startConnecting = () => {
-    if (selectedItem && selectedItem.type === 'node') {
+    if (selectedItem && (selectedItem.type === 'node' || selectedItem.type === 'group')) {
       setIsConnectMode(true);
     }
   }
 
   const disconnectSelected = () => {
-    if (!selectedItem || selectedItem.type !== 'node') return;
+    if (!selectedItem || (selectedItem.type !== 'node' && selectedItem.type !== 'group')) return;
     const id = selectedItem.id;
     setDiagramData(prevData => ({
       ...prevData,
       edges: prevData.edges.filter(e => e.from !== id && e.to !== id),
     }));
-    toast({ title: 'Disconnected', description: 'All connections to/from this node have been removed.' });
+    toast({ title: 'Disconnected', description: 'All connections to/from this item have been removed.' });
   };
   
   const handleSave = () => {

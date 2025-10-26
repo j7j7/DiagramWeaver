@@ -13,7 +13,8 @@ import { cn } from "@/lib/utils";
 import { ItemTypes } from "../editor/draggable-item";
 
 const NODE_WIDTH = 104;
-const NODE_HEIGHT = 100;
+const BASE_NODE_HEIGHT = 100;
+const EXTRA_LINE_HEIGHT = 20; // Additional height per extra line of text
 
 interface DiagramNodeProps {
   node: DiagramNodeData & { x: number; y: number };
@@ -24,6 +25,15 @@ interface DiagramNodeProps {
 
 export function DiagramNode({ node, isSelected, isTargetable, isHighlighted }: DiagramNodeProps) {
   const [isOpen, setIsOpen] = useState(false);
+  
+  // Calculate dynamic height based on label length
+  const calculateNodeHeight = (label: string) => {
+    const maxCharsPerLine = 12; // Approximate characters that fit in node width
+    const lines = Math.ceil(label.length / maxCharsPerLine);
+    return BASE_NODE_HEIGHT + ((lines - 1) * EXTRA_LINE_HEIGHT);
+  };
+  
+  const nodeHeight = calculateNodeHeight(node.label);
   
   const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.CANVAS_NODE,
@@ -36,7 +46,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted }: D
 
   return (
     <div
-      ref={drag}
+      ref={drag as any}
       className={cn(
         "absolute group transition-transform duration-200 ease-in-out hover:scale-105",
         (isSelected || isHighlighted) && "ring-2 ring-accent ring-offset-2 rounded-lg drop-shadow-md",
@@ -47,7 +57,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted }: D
         left: node.x,
         top: node.y,
         width: NODE_WIDTH,
-        height: NODE_HEIGHT,
+        height: nodeHeight,
       }}
       onMouseEnter={() => !isDragging && setIsOpen(true)}
       onMouseLeave={() => setIsOpen(false)}
@@ -62,7 +72,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted }: D
                 )}>
                 <AwsIcon type={node.type} className="w-10 h-10" />
             </div>
-            <p className="mt-2 text-sm font-medium text-center text-foreground truncate w-full px-1">
+            <p className="mt-2 text-sm font-medium text-center text-foreground w-full px-1 break-words leading-tight">
               {node.label}
             </p>
           </div>

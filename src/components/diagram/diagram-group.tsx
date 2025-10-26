@@ -11,6 +11,7 @@ interface DiagramGroupProps {
   group: DiagramGroupData & { x: number; y: number; width: number; height: number };
   isSelected?: boolean;
   isDropTarget?: boolean;
+  isTargetable?: boolean;
 }
 
 function hexToRgba(hex: string, alpha: number) {
@@ -27,7 +28,7 @@ function hexToRgba(hex: string, alpha: number) {
 }
 
 
-export function DiagramGroup({ group, isSelected, isDropTarget }: DiagramGroupProps) {
+export function DiagramGroup({ group, isSelected, isDropTarget, isTargetable }: DiagramGroupProps) {
   const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.GROUP,
     item: { ...group, type: ItemTypes.GROUP },
@@ -37,32 +38,43 @@ export function DiagramGroup({ group, isSelected, isDropTarget }: DiagramGroupPr
   }), [group]);
 
   const isZone = group.subType === 'zone';
-  const backgroundColor = group.color ? hexToRgba(group.color, 0.1) : 'transparent';
+  
+  // Use new color properties with fallbacks
+  const borderColor = group.borderColor || (isZone ? '#6b7280' : '#3b82f6');
+  const textColor = group.textColor || '#374151';
+  const backgroundColor = group.backgroundColor || (isZone ? 'transparent' : '#f3f4f6');
 
   return (
     <div
-      ref={drag}
+      ref={drag as any}
       className={cn(
         "absolute rounded-lg cursor-move",
-        isZone ? "border-2 border-dashed border-muted-foreground" : `border-2 border-transparent`,
+        isZone ? "border-2 border-dashed" : "border-2",
         isDragging && "opacity-50",
-        (isSelected || isDropTarget) && "ring-2 ring-primary ring-offset-2"
+        (isSelected || isDropTarget) && "ring-2 ring-primary ring-offset-2",
+        isTargetable && "ring-2 ring-green-500 ring-offset-2 animate-pulse",
+        group.shadow && "shadow-lg"
         )}
       style={{
         left: group.x,
         top: group.y,
         width: group.width,
         height: group.height,
-        backgroundColor: !isZone ? backgroundColor : 'transparent',
-        borderColor: !isZone && group.color ? group.color : undefined,
+        backgroundColor: backgroundColor,
+        borderColor: borderColor,
+        color: textColor,
       }}
     >
       <Popover>
         <PopoverTrigger asChild>
           <div className={cn(
-            "absolute px-2 bg-background text-sm font-semibold hover:text-primary cursor-pointer",
-            isZone ? "-top-3 left-4 text-muted-foreground" : "bottom-1 right-2 text-foreground"
-          )}>
+            "absolute px-2 text-sm font-semibold hover:text-primary cursor-pointer",
+            isZone ? "-top-3 left-4" : "bottom-1 right-2"
+          )}
+          style={{
+            backgroundColor: isZone ? 'hsl(var(--background))' : 'transparent',
+            color: textColor,
+          }}>
             {group.label}
           </div>
         </PopoverTrigger>
