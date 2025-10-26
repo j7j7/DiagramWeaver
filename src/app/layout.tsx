@@ -5,6 +5,9 @@ import { Toaster } from "@/components/ui/toaster";
 export const metadata: Metadata = {
   title: 'Diagram Weaver',
   description: 'Create interactive diagrams from JSON or natural language.',
+  icons: {
+    icon: '/icon',
+  },
 };
 
 export default function RootLayout({

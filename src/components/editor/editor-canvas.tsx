@@ -194,36 +194,42 @@ export function EditorCanvas({ diagramData, setDiagramData, onItemSelect, select
   const selectedItem = useMemo(() => {
     if (!selectedItemId) return null;
     const node = nodesById[selectedItemId];
-    if (node) return { ...node, type: 'node' as const };
+    if (node) return { ...node, itemType: 'node' as const };
     const group = groupsById[selectedItemId];
-    if (group) return { ...group, type: 'group' as const, subType: group.subType };
+    if (group) return { ...group, itemType: 'group' as const, subType: group.subType };
     return null;
   }, [selectedItemId, nodesById, groupsById]);
 
-  const addNode = useCallback((item: { type: string; label: string }, position: { x: number; y: number }, targetGroupId: string | null) => {
+  const addNode = useCallback((item: any, position: { x: number; y: number }, targetGroupId: string | null) => {
     setDiagramData((prevData) => {
       let newGroups = prevData.groups ? [...prevData.groups] : [];
       let newNodes = prevData.nodes ? [...prevData.nodes] : [];
       let newItemId: string;
 
-      if (item.type === 'zone' || item.type === 'group') {
+      const itemType = item.type || '';
+      const itemLabel = item.label || '';
+      
+      if (itemType === 'zone' || itemType === 'group') {
         const newGroup: DiagramGroupData = {
           id: `group-${Date.now()}`,
-          label: item.label,
+          label: itemLabel,
           nodes: [],
           type: 'group',
-          subType: item.type === 'zone' ? 'zone' : 'group',
-          info: `A new ${item.label}`,
-          color: item.type === 'group' ? '#e0e0e0' : undefined,
+          subType: itemType === 'zone' ? 'zone' : 'group',
+          info: `A new ${itemLabel}`,
+          color: itemType === 'group' ? '#e0e0e0' : undefined,
         };
         newGroups.push(newGroup);
         newItemId = newGroup.id;
       } else {
+        // For resource items from the sidebar, preserve the full type path
+        const nodeType = item.resource ? `${item.provider}.${item.category}.${item.resource.name.replace(/\s+/g, '-').toLowerCase()}` : itemType;
+        
         const newNode: DiagramNodeData = {
-          id: `${item.type}-${Date.now()}`,
-          type: item.type,
-          label: item.label,
-          info: `A new ${item.label}`,
+          id: `${nodeType.replace(/[^a-zA-Z0-9-]/g, '-')}-${Date.now()}`,
+          type: nodeType,
+          label: itemLabel,
+          info: item.resource ? `${item.resource.name} from ${item.provider}` : `A new ${itemLabel}`,
         };
         newNodes.push(newNode);
         newItemId = newNode.id;
@@ -511,7 +517,8 @@ const [{ isOver, canDrop }, drop] = useDrop(() => ({
         }
         
         if (itemType === ItemTypes.DIAGRAM_NODE) { 
-            addNode({type: item.type || '', label: item.label || ''}, { x, y }, hoveredGroupId);
+            // Pass the full item data to preserve resource information
+            addNode(item as any, { x, y }, hoveredGroupId);
         } else if (item.id && (itemType === ItemTypes.CANVAS_NODE || itemType === ItemTypes.GROUP)) {
             moveItem({ id: item.id, type: item.type || '', x: item.x, y: item.y }, { x, y }, hoveredGroupId);
         }
@@ -538,7 +545,7 @@ const [{ isOver, canDrop }, drop] = useDrop(() => ({
     if (isConnectMode) {
       onNodeClickInConnectMode(node);
     } else {
-      onItemSelect({ ...node, type: 'node' });
+      onItemSelect({ ...node, itemType: 'node' });
     }
   }
 
@@ -547,7 +554,7 @@ const [{ isOver, canDrop }, drop] = useDrop(() => ({
     if (isConnectMode) {
       onNodeClickInConnectMode(group as any);
     } else {
-      onItemSelect({ ...group, type: 'group' });
+      onItemSelect({ ...group, itemType: 'group' });
     }
   };
 

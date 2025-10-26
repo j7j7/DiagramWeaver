@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Server, User } from "lucide-react";
 
 interface AwsIconProps extends React.SVGProps<SVGSVGElement> {
@@ -8,6 +8,75 @@ interface AwsIconProps extends React.SVGProps<SVGSVGElement> {
 }
 
 export function AwsIcon({ type, ...props }: AwsIconProps) {
+  const [imageError, setImageError] = useState(false);
+  
+  // Handle all provider resources by loading PNG files
+  const parts = type.split('.');
+  if (parts.length >= 3) {
+    const provider = parts[0];
+    const category = parts[1];
+    const resourceName = parts.slice(2).join('-').toLowerCase();
+    const imagePath = `/resources/${provider}/${category}/${resourceName}.png`;
+    
+    if (!imageError) {
+      return (
+        <img
+          src={imagePath}
+          alt={type}
+          onError={() => setImageError(true)}
+          width={props.width || '40'}
+          height={props.height || '40'}
+          style={{ 
+            width: props.width || '40px', 
+            height: props.height || '40px',
+            objectFit: 'contain'
+          }}
+        />
+      );
+    }
+  }
+  
+  // Handle legacy generic resources
+  if (type.startsWith('generic.')) {
+    if (parts.length === 2) {
+      // Handle legacy simple types like "generic.server"
+      const provider = parts[0];
+      const typeMap: Record<string, { category: string; file: string }> = {
+        'server': { category: 'compute', file: 'server' },
+        'vm': { category: 'compute', file: 'vm' },
+        'database': { category: 'database', file: 'database' },
+        'load-balancer': { category: 'network', file: 'load-balancer' },
+        'gateway': { category: 'network', file: 'gateway' },
+        'router': { category: 'network', file: 'router' },
+        'switch': { category: 'network', file: 'switch' },
+        'firewall': { category: 'network', file: 'firewall' },
+        'storage': { category: 'storage', file: 'storage' }
+      };
+      
+      const mapping = typeMap[parts[1].toLowerCase()];
+      if (mapping) {
+        const imagePath = `/resources/${provider}/${mapping.category}/${mapping.file}.png`;
+        
+        if (!imageError) {
+          return (
+            <img
+              src={imagePath}
+              alt={type}
+              onError={() => setImageError(true)}
+              width={props.width || '40'}
+              height={props.height || '40'}
+              style={{ 
+                width: props.width || '40px', 
+                height: props.height || '40px',
+                objectFit: 'contain'
+              }}
+            />
+          );
+        }
+      }
+    }
+  }
+  
   switch (type) {
     case "user":
       return <User {...props} />;

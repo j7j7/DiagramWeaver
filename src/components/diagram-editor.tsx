@@ -9,7 +9,7 @@ import sampleDiagram from '@/lib/sample-diagram.json' with { type: 'json' };
 import { useToast } from '@/hooks/use-toast';
 
 export type SelectedItem = (DiagramNodeData | DiagramGroupData) & { 
-  type: 'node' | 'group', 
+  itemType: 'node' | 'group', 
   subType?: 'zone' | 'group',
   borderColor?: string,
   textColor?: string,
@@ -37,7 +37,7 @@ export default function DiagramEditor() {
   };
   
   const handleItemUpdate = (updatedItem: SelectedItem) => {
-    if (updatedItem.type === 'group') {
+    if (updatedItem.itemType === 'group') {
         setDiagramData(prevData => {
             const currentGroup = (prevData.groups || []).find(g => g.id === updatedItem.id);
             const orientationChanged = currentGroup && currentGroup.orientation !== updatedItem.orientation;
@@ -111,10 +111,10 @@ export default function DiagramEditor() {
       let newGroups = prevData.groups || [];
       let newEdges = prevData.edges;
 
-      if (itemToDelete.type === 'node') {
+      if (itemToDelete.itemType === 'node') {
         newNodes = prevData.nodes.filter(n => n.id !== itemToDelete.id);
         newEdges = prevData.edges.filter(e => e.from !== itemToDelete.id && e.to !== itemToDelete.id);
-      } else if (itemToDelete.type === 'group') {
+      } else if (itemToDelete.itemType === 'group') {
         newGroups = newGroups.filter(g => g.id !== itemToDelete.id);
         // Also remove nodes that were inside the group if desired, or re-parent them.
         // For simplicity, we'll just remove the group for now. Any nodes inside become "homeless".
@@ -132,7 +132,7 @@ export default function DiagramEditor() {
   };
 
   const handleConnect = (targetItem: DiagramNodeData | DiagramGroupData) => {
-    if (!isConnectMode || !selectedItem || (selectedItem.type !== 'node' && selectedItem.type !== 'group') || selectedItem.id === targetItem.id) {
+    if (!isConnectMode || !selectedItem || (selectedItem.itemType !== 'node' && selectedItem.itemType !== 'group') || selectedItem.id === targetItem.id) {
       setIsConnectMode(false);
       return;
     }
@@ -156,13 +156,13 @@ export default function DiagramEditor() {
   };
 
   const startConnecting = () => {
-    if (selectedItem && (selectedItem.type === 'node' || selectedItem.type === 'group')) {
+    if (selectedItem && (selectedItem.itemType === 'node' || selectedItem.itemType === 'group')) {
       setIsConnectMode(true);
     }
   }
 
   const disconnectSelected = () => {
-    if (!selectedItem || (selectedItem.type !== 'node' && selectedItem.type !== 'group')) return;
+    if (!selectedItem || (selectedItem.itemType !== 'node' && selectedItem.itemType !== 'group')) return;
     const id = selectedItem.id;
     setDiagramData(prevData => ({
       ...prevData,
@@ -173,6 +173,7 @@ export default function DiagramEditor() {
   
   const handleSave = () => {
     const jsonString = JSON.stringify(diagramData, null, 2);
+    
     const blob = new Blob([jsonString], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

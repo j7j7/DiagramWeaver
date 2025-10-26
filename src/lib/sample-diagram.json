@@ -10,19 +10,19 @@
     },
     {
       "id": "worker1",
-      "type": "generic.server",
+      "type": "generic.compute.server",
       "label": "worker1",
       "info": "Event worker 1"
     },
     {
       "id": "worker2",
-      "type": "generic.server",
+      "type": "generic.compute.server",
       "label": "worker2",
       "info": "Event worker 2"
     },
     {
       "id": "worker3",
-      "type": "generic.server",
+      "type": "generic.compute.server",
       "label": "worker3",
       "info": "Event worker 3"
     },

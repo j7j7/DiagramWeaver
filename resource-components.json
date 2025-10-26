@@ -1,0 +1,1425 @@
+{
+  "version": "1.0.0",
+  "description": "Hierarchical index of all diagram resources organized by provider and category",
+  "totalResources": 2421,
+  "lastUpdated": "2025-10-26",
+  "providers": {
+    "alibabacloud": {
+      "name": "Alibaba Cloud",
+      "icon": "alibabacloud.png",
+      "totalResources": 95,
+      "categories": {
+        "analytics": {
+          "name": "Analytics",
+          "path": "alibabacloud/analytics",
+          "resources": [
+            {"name": "DataWorks", "file": "dataworks.png", "type": "service"},
+            {"name": "E-MapReduce", "file": "emapreduce.png", "type": "service"},
+            {"name": "MaxCompute", "file": "maxcompute.png", "type": "service"},
+            {"name": "Quick BI", "file": "quickbi.png", "type": "service"},
+            {"name": "OpenSearch", "file": "opensearch.png", "type": "service"}
+          ]
+        },
+        "application": {
+          "name": "Application",
+          "path": "alibabacloud/application",
+          "resources": [
+            {"name": "EDAS", "file": "edas.png", "type": "service"},
+            {"name": "SAE", "file": "sae.png", "type": "service"},
+            {"name": "MSE", "file": "mse.png", "type": "service"},
+            {"name": "ARMS", "file": "arms.png", "type": "service"},
+            {"name": "AHAS", "file": "ahas.png", "type": "service"}
+          ]
+        },
+        "compute": {
+          "name": "Compute",
+          "path": "alibabacloud/compute",
+          "resources": [
+            {"name": "ECS", "file": "ecs.png", "type": "service"},
+            {"name": "ECI", "file": "eci.png", "type": "service"},
+            {"name": "EGS", "file": "egs.png", "type": "service"},
+            {"name": "Auto Scaling", "file": "autoscaling.png", "type": "service"},
+            {"name": "Container Service", "file": "container-service.png", "type": "service"}
+          ]
+        },
+        "database": {
+          "name": "Database",
+          "path": "alibabacloud/database",
+          "resources": [
+            {"name": "RDS", "file": "rds.png", "type": "service"},
+            {"name": "PolarDB", "file": "polardb.png", "type": "service"},
+            {"name": "Redis", "file": "redis.png", "type": "service"},
+            {"name": "MongoDB", "file": "mongodb.png", "type": "service"},
+            {"name": "DRDS", "file": "drds.png", "type": "service"}
+          ]
+        },
+        "network": {
+          "name": "Network",
+          "path": "alibabacloud/network",
+          "resources": [
+            {"name": "VPC", "file": "vpc.png", "type": "service"},
+            {"name": "SLB", "file": "slb.png", "type": "service"},
+            {"name": "CDN", "file": "cdn.png", "type": "service"},
+            {"name": "DNS", "file": "dns.png", "type": "service"},
+            {"name": "Global Accelerator", "file": "globalaccelerator.png", "type": "service"}
+          ]
+        },
+        "security": {
+          "name": "Security",
+          "path": "alibabacloud/security",
+          "resources": [
+            {"name": "Anti-DDoS", "file": "antiddos.png", "type": "service"},
+            {"name": "WAF", "file": "waf.png", "type": "service"},
+            {"name": "SSL Certificates", "file": "ssl.png", "type": "service"},
+            {"name": "Security Center", "file": "securitycenter.png", "type": "service"},
+            {"name": "ActionTrail", "file": "actiontrail.png", "type": "service"}
+          ]
+        },
+        "storage": {
+          "name": "Storage",
+          "path": "alibabacloud/storage",
+          "resources": [
+            {"name": "OSS", "file": "oss.png", "type": "service"},
+            {"name": "NAS", "file": "nas.png", "type": "service"},
+            {"name": "Table Store", "file": "tablestore.png", "type": "service"},
+            {"name": "File Storage HDFS", "file": "hdfs.png", "type": "service"}
+          ]
+        },
+        "iot": {
+          "name": "IoT",
+          "path": "alibabacloud/iot",
+          "resources": [
+            {"name": "IoT Platform", "file": "iot-platform.png", "type": "service"},
+            {"name": "Link WAN", "file": "linkwan.png", "type": "service"}
+          ]
+        }
+      }
+    },
+    "aws": {
+      "name": "Amazon Web Services",
+      "icon": "aws.png",
+      "totalResources": 525,
+      "categories": {
+        "compute": {
+          "name": "Compute",
+          "path": "aws/compute",
+          "resources": [
+            {"name": "EC2", "file": "ec2.png", "type": "service"},
+            {"name": "EC2 Instance", "file": "ec2-instance.png", "type": "resource"},
+            {"name": "Lambda", "file": "lambda.png", "type": "service"},
+            {"name": "Lambda Function", "file": "lambda-function.png", "type": "resource"},
+            {"name": "Batch", "file": "batch.png", "type": "service"},
+            {"name": "Compute Optimizer", "file": "compute-optimizer.png", "type": "service"},
+            {"name": "EC2 AMI", "file": "ec2-ami.png", "type": "resource"},
+            {"name": "EC2 Auto Scaling", "file": "ec2-auto-scaling.png", "type": "service"},
+            {"name": "EC2 Spot Instance", "file": "ec2-spot-instance.png", "type": "resource"}
+          ]
+        },
+        "storage": {
+          "name": "Storage",
+          "path": "aws/storage",
+          "resources": [
+            {"name": "S3", "file": "s3.png", "type": "service"},
+            {"name": "S3 Bucket", "file": "s3-bucket.png", "type": "resource"},
+            {"name": "EFS", "file": "efs.png", "type": "service"},
+            {"name": "EBS", "file": "ebs.png", "type": "service"},
+            {"name": "Storage Gateway", "file": "storage-gateway.png", "type": "service"},
+            {"name": "FSx", "file": "fsx.png", "type": "service"},
+            {"name": "Backup", "file": "backup.png", "type": "service"},
+            {"name": "Snowball", "file": "snowball.png", "type": "service"}
+          ]
+        },
+        "database": {
+          "name": "Database",
+          "path": "aws/database",
+          "resources": [
+            {"name": "RDS", "file": "rds.png", "type": "service"},
+            {"name": "RDS Instance", "file": "rds-instance.png", "type": "resource"},
+            {"name": "DynamoDB", "file": "dynamodb.png", "type": "service"},
+            {"name": "Redshift", "file": "redshift.png", "type": "service"},
+            {"name": "Aurora", "file": "aurora.png", "type": "service"},
+            {"name": "DocumentDB", "file": "documentdb.png", "type": "service"},
+            {"name": "Neptune", "file": "neptune.png", "type": "service"},
+            {"name": "Timestream", "file": "timestream.png", "type": "service"},
+            {"name": "QLDB", "file": "qldb.png", "type": "service"}
+          ]
+        },
+        "network": {
+          "name": "Networking",
+          "path": "aws/network",
+          "resources": [
+            {"name": "VPC", "file": "vpc.png", "type": "service"},
+            {"name": "CloudFront", "file": "cloudfront.png", "type": "service"},
+            {"name": "Route 53", "file": "route53.png", "type": "service"},
+            {"name": "API Gateway", "file": "api-gateway.png", "type": "service"},
+            {"name": "ELB", "file": "elb.png", "type": "service"},
+            {"name": "ALB", "file": "alb.png", "type": "service"},
+            {"name": "NLB", "file": "nlb.png", "type": "service"},
+            {"name": "Direct Connect", "file": "direct-connect.png", "type": "service"},
+            {"name": "Transit Gateway", "file": "transit-gateway.png", "type": "service"}
+          ]
+        },
+        "analytics": {
+          "name": "Analytics",
+          "path": "aws/analytics",
+          "resources": [
+            {"name": "EMR", "file": "emr.png", "type": "service"},
+            {"name": "Kinesis", "file": "kinesis.png", "type": "service"},
+            {"name": "Glue", "file": "glue.png", "type": "service"},
+            {"name": "Athena", "file": "athena.png", "type": "service"},
+            {"name": "QuickSight", "file": "quicksight.png", "type": "service"},
+            {"name": "OpenSearch", "file": "opensearch.png", "type": "service"},
+            {"name": "Redshift Spectrum", "file": "redshift-spectrum.png", "type": "service"}
+          ]
+        },
+        "machinelearning": {
+          "name": "Machine Learning",
+          "path": "aws/machinelearning",
+          "resources": [
+            {"name": "SageMaker", "file": "sagemaker.png", "type": "service"},
+            {"name": "Comprehend", "file": "comprehend.png", "type": "service"},
+            {"name": "Rekognition", "file": "rekognition.png", "type": "service"},
+            {"name": "Translate", "file": "translate.png", "type": "service"},
+            {"name": "Polly", "file": "polly.png", "type": "service"},
+            {"name": "Lex", "file": "lex.png", "type": "service"},
+            {"name": "Forecast", "file": "forecast.png", "type": "service"}
+          ]
+        },
+        "security": {
+          "name": "Security",
+          "path": "aws/security",
+          "resources": [
+            {"name": "IAM", "file": "iam.png", "type": "service"},
+            {"name": "KMS", "file": "kms.png", "type": "service"},
+            {"name": "CloudHSM", "file": "cloudhsm.png", "type": "service"},
+            {"name": "Secrets Manager", "file": "secrets-manager.png", "type": "service"},
+            {"name": "GuardDuty", "file": "guardduty.png", "type": "service"},
+            {"name": "Inspector", "file": "inspector.png", "type": "service"},
+            {"name": "Macie", "file": "macie.png", "type": "service"},
+            {"name": "WAF", "file": "waf.png", "type": "service"},
+            {"name": "Shield", "file": "shield.png", "type": "service"}
+          ]
+        },
+        "management": {
+          "name": "Management",
+          "path": "aws/management",
+          "resources": [
+            {"name": "CloudWatch", "file": "cloudwatch.png", "type": "service"},
+            {"name": "CloudTrail", "file": "cloudtrail.png", "type": "service"},
+            {"name": "Config", "file": "config.png", "type": "service"},
+            {"name": "Trusted Advisor", "file": "trusted-advisor.png", "type": "service"},
+            {"name": "Systems Manager", "file": "systems-manager.png", "type": "service"},
+            {"name": "OpsWorks", "file": "opsworks.png", "type": "service"}
+          ]
+        }
+      }
+    },
+    "azure": {
+      "name": "Microsoft Azure",
+      "icon": "azure.png",
+      "totalResources": 808,
+      "categories": {
+        "compute": {
+          "name": "Compute",
+          "path": "azure/compute",
+          "resources": [
+            {"name": "Virtual Machines", "file": "vm.png", "type": "service"},
+            {"name": "VM Scale Sets", "file": "vm-scale-sets.png", "type": "service"},
+            {"name": "App Services", "file": "app-services.png", "type": "service"},
+            {"name": "Function Apps", "file": "function-apps.png", "type": "service"},
+            {"name": "VM Images", "file": "vm-images.png", "type": "service"},
+            {"name": "Availability Sets", "file": "availability-sets.png", "type": "service"},
+            {"name": "Batch Accounts", "file": "batch-accounts.png", "type": "service"},
+            {"name": "Azure Compute Galleries", "file": "azure-compute-galleries.png", "type": "service"}
+          ]
+        },
+        "storage": {
+          "name": "Storage",
+          "path": "azure/storage",
+          "resources": [
+            {"name": "Storage Account", "file": "storage-account.png", "type": "service"},
+            {"name": "Blob Storage", "file": "blob-storage.png", "type": "service"},
+            {"name": "File Storage", "file": "file-storage.png", "type": "service"},
+            {"name": "Disk Storage", "file": "disk-storage.png", "type": "service"},
+            {"name": "Data Box", "file": "data-box.png", "type": "service"},
+            {"name": "Archive Storage", "file": "archive-storage.png", "type": "service"},
+            {"name": "StorageSync", "file": "storage-sync.png", "type": "service"}
+          ]
+        },
+        "database": {
+          "name": "Database",
+          "path": "azure/database",
+          "resources": [
+            {"name": "SQL Database", "file": "sql-database.png", "type": "service"},
+            {"name": "Cosmos DB", "file": "cosmos-db.png", "type": "service"},
+            {"name": "Database for MySQL", "file": "database-mysql.png", "type": "service"},
+            {"name": "Database for PostgreSQL", "file": "database-postgresql.png", "type": "service"},
+            {"name": "Database for MariaDB", "file": "database-mariadb.png", "type": "service"},
+            {"name": "SQL Data Warehouse", "file": "sql-data-warehouse.png", "type": "service"},
+            {"name": "SQL Managed Instance", "file": "sql-managed-instance.png", "type": "service"},
+            {"name": "Cache for Redis", "file": "cache-redis.png", "type": "service"}
+          ]
+        },
+        "network": {
+          "name": "Networking",
+          "path": "azure/network",
+          "resources": [
+            {"name": "Virtual Network", "file": "virtual-network.png", "type": "service"},
+            {"name": "VPN Gateway", "file": "vpn-gateway.png", "type": "service"},
+            {"name": "ExpressRoute", "file": "expressroute.png", "type": "service"},
+            {"name": "Load Balancer", "file": "load-balancer.png", "type": "service"},
+            {"name": "Application Gateway", "file": "application-gateway.png", "type": "service"},
+            {"name": "CDN", "file": "cdn.png", "type": "service"},
+            {"name": "DNS", "file": "dns.png", "type": "service"},
+            {"name": "Traffic Manager", "file": "traffic-manager.png", "type": "service"}
+          ]
+        },
+        "aimachinelearning": {
+          "name": "AI + Machine Learning",
+          "path": "azure/aimachinelearning",
+          "resources": [
+            {"name": "Machine Learning", "file": "machine-learning.png", "type": "service"},
+            {"name": "Cognitive Services", "file": "cognitive-services.png", "type": "service"},
+            {"name": "Bot Service", "file": "bot-service.png", "type": "service"},
+            {"name": "Azure OpenAI", "file": "openai.png", "type": "service"},
+            {"name": "Vision", "file": "vision.png", "type": "service"},
+            {"name": "Speech", "file": "speech.png", "type": "service"},
+            {"name": "Language", "file": "language.png", "type": "service"},
+            {"name": "Anomaly Detector", "file": "anomaly-detector.png", "type": "service"}
+          ]
+        },
+        "analytics": {
+          "name": "Analytics",
+          "path": "azure/analytics",
+          "resources": [
+            {"name": "Synapse Analytics", "file": "synapse-analytics.png", "type": "service"},
+            {"name": "Databricks", "file": "databricks.png", "type": "service"},
+            {"name": "HDInsight", "file": "hdinsight.png", "type": "service"},
+            {"name": "Stream Analytics", "file": "stream-analytics.png", "type": "service"},
+            {"name": "Data Factory", "file": "data-factory.png", "type": "service"},
+            {"name": "Event Hubs", "file": "event-hubs.png", "type": "service"},
+            {"name": "IoT Hub", "file": "iot-hub.png", "type": "service"}
+          ]
+        }
+      }
+    },
+    "gcp": {
+      "name": "Google Cloud Platform",
+      "icon": "gcp.png",
+      "totalResources": 94,
+      "categories": {
+        "compute": {
+          "name": "Compute",
+          "path": "gcp/compute",
+          "resources": [
+            {"name": "Compute Engine", "file": "compute-engine.png", "type": "service"},
+            {"name": "Kubernetes Engine", "file": "kubernetes-engine.png", "type": "service"},
+            {"name": "App Engine", "file": "app-engine.png", "type": "service"},
+            {"name": "Cloud Functions", "file": "functions.png", "type": "service"},
+            {"name": "Cloud Run", "file": "run.png", "type": "service"},
+            {"name": "GKE On-Prem", "file": "gke-on-prem.png", "type": "service"},
+            {"name": "GPU", "file": "gpu.png", "type": "service"},
+            {"name": "Container Optimized OS", "file": "container-optimized-os.png", "type": "service"}
+          ]
+        },
+        "storage": {
+          "name": "Storage",
+          "path": "gcp/storage",
+          "resources": [
+            {"name": "Cloud Storage", "file": "storage.png", "type": "service"},
+            {"name": "Filestore", "file": "filestore.png", "type": "service"},
+            {"name": "Persistent Disk", "file": "persistent-disk.png", "type": "service"},
+            {"name": "Local SSD", "file": "local-ssd.png", "type": "service"},
+            {"name": "Cloud Storage Bucket", "file": "storage-bucket.png", "type": "resource"}
+          ]
+        },
+        "database": {
+          "name": "Database",
+          "path": "gcp/database",
+          "resources": [
+            {"name": "Cloud SQL", "file": "sql.png", "type": "service"},
+            {"name": "Spanner", "file": "spanner.png", "type": "service"},
+            {"name": "Bigtable", "file": "bigtable.png", "type": "service"},
+            {"name": "Firestore", "file": "firestore.png", "type": "service"},
+            {"name": "BigQuery", "file": "bigquery.png", "type": "service"},
+            {"name": "Cloud Memorystore", "file": "memorystore.png", "type": "service"}
+          ]
+        },
+        "network": {
+          "name": "Networking",
+          "path": "gcp/network",
+          "resources": [
+            {"name": "VPC Network", "file": "vpc-network.png", "type": "service"},
+            {"name": "Cloud CDN", "file": "cdn.png", "type": "service"},
+            {"name": "Cloud Load Balancing", "file": "load-balancing.png", "type": "service"},
+            {"name": "Cloud DNS", "file": "dns.png", "type": "service"},
+            {"name": "Cloud Interconnect", "file": "interconnect.png", "type": "service"},
+            {"name": "Cloud Armor", "file": "cloud-armor.png", "type": "service"}
+          ]
+        },
+        "analytics": {
+          "name": "Analytics",
+          "path": "gcp/analytics",
+          "resources": [
+            {"name": "BigQuery", "file": "bigquery.png", "type": "service"},
+            {"name": "Dataflow", "file": "dataflow.png", "type": "service"},
+            {"name": "Dataproc", "file": "dataproc.png", "type": "service"},
+            {"name": "Pub/Sub", "file": "pubsub.png", "type": "service"},
+            {"name": "Data Studio", "file": "data-studio.png", "type": "service"}
+          ]
+        },
+        "aimachinelearning": {
+          "name": "AI + Machine Learning",
+          "path": "gcp/aimachinelearning",
+          "resources": [
+            {"name": "Vertex AI", "file": "vertex-ai.png", "type": "service"},
+            {"name": "AutoML", "file": "automl.png", "type": "service"},
+            {"name": "AI Platform", "file": "ai-platform.png", "type": "service"},
+            {"name": "Speech-to-Text", "file": "speech-to-text.png", "type": "service"},
+            {"name": "Text-to-Speech", "file": "text-to-speech.png", "type": "service"},
+            {"name": "Natural Language", "file": "natural-language.png", "type": "service"},
+            {"name": "Vision AI", "file": "vision-ai.png", "type": "service"},
+            {"name": "Translation", "file": "translation.png", "type": "service"}
+          ]
+        }
+      }
+    },
+    "oci": {
+      "name": "Oracle Cloud Infrastructure",
+      "icon": "oci.png",
+      "totalResources": 141,
+      "categories": {
+        "compute": {
+          "name": "Compute",
+          "path": "oci/compute",
+          "resources": [
+            {"name": "Virtual Machine", "file": "vm.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Bare Metal", "file": "bm.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Container Engine for Kubernetes", "file": "oke.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Container", "file": "container.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Functions", "file": "functions.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Instance Pools", "file": "instance-pools.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Autoscaling", "file": "autoscale.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Registry", "file": "ocir.png", "type": "service", "hasWhiteVariant": true}
+          ]
+        },
+        "storage": {
+          "name": "Storage",
+          "path": "oci/storage",
+          "resources": [
+            {"name": "Object Storage", "file": "object-storage.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Block Storage", "file": "block-storage.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Block Storage Clone", "file": "block-storage-clone.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "File Storage", "file": "file-storage.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Storage Gateway", "file": "storage-gateway.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Data Transfer", "file": "data-transfer.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Buckets", "file": "buckets.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Backup and Restore", "file": "backup-restore.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Elastic Performance", "file": "elastic-performance.png", "type": "service", "hasWhiteVariant": true}
+          ]
+        },
+        "network": {
+          "name": "Networking",
+          "path": "oci/network",
+          "resources": [
+            {"name": "Virtual Cloud Network", "file": "vcn.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Internet Gateway", "file": "internet-gateway.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Dynamic Routing Gateway", "file": "drg.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Route Table", "file": "route-table.png", "type": "service"},
+            {"name": "Security Lists", "file": "security-lists.png", "type": "service", "hasWhiteVariant": true}
+          ]
+        },
+        "database": {
+          "name": "Database",
+          "path": "oci/database",
+          "resources": [
+            {"name": "Autonomous Database", "file": "autonomous-database.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Base Database", "file": "base-database.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Exadata", "file": "exadata.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "VM Cluster", "file": "vm-cluster.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Bare Metal Cluster", "file": "bm-cluster.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Database Cloud Service", "file": "dcs.png", "type": "service", "hasWhiteVariant": true}
+          ]
+        },
+        "monitoring": {
+          "name": "Monitoring",
+          "path": "oci/monitoring",
+          "resources": [
+            {"name": "Telemetry", "file": "telemetry.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Alarms", "file": "alarm.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Health Checks", "file": "health-check.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Events", "file": "events.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Notifications", "file": "notifications.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Email", "file": "email.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Search", "file": "search.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Queue", "file": "queue.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Workflow", "file": "workflow.png", "type": "service", "hasWhiteVariant": true}
+          ]
+        },
+        "governance": {
+          "name": "Governance",
+          "path": "oci/governance",
+          "resources": [
+            {"name": "Compartments", "file": "compartments.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Identity", "file": "ocid.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Groups", "file": "groups.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Policies", "file": "policies.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Tagging", "file": "tagging.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Audit", "file": "audit.png", "type": "service", "hasWhiteVariant": true},
+            {"name": "Logging", "file": "logging.png", "type": "service", "hasWhiteVariant": true}
+          ]
+        }
+      }
+    },
+    "k8s": {
+      "name": "Kubernetes",
+      "icon": "k8s.png",
+      "totalResources": 46,
+      "categories": {
+        "compute": {
+          "name": "Compute",
+          "path": "k8s/compute",
+          "resources": [
+            {"name": "Pod", "file": "pod.png", "type": "resource"},
+            {"name": "Deployment", "file": "deploy.png", "type": "resource"},
+            {"name": "StatefulSet", "file": "sts.png", "type": "resource"},
+            {"name": "DaemonSet", "file": "ds.png", "type": "resource"},
+            {"name": "Job", "file": "job.png", "type": "resource"},
+            {"name": "CronJob", "file": "cronjob.png", "type": "resource"},
+            {"name": "ReplicaSet", "file": "rs.png", "type": "resource"}
+          ]
+        },
+        "network": {
+          "name": "Networking",
+          "path": "k8s/network",
+          "resources": [
+            {"name": "Service", "file": "svc.png", "type": "resource"},
+            {"name": "Ingress", "file": "ing.png", "type": "resource"},
+            {"name": "NetworkPolicy", "file": "netpol.png", "type": "resource"},
+            {"name": "Endpoint", "file": "ep.png", "type": "resource"}
+          ]
+        },
+        "storage": {
+          "name": "Storage",
+          "path": "k8s/storage",
+          "resources": [
+            {"name": "PersistentVolume", "file": "pv.png", "type": "resource"},
+            {"name": "PersistentVolumeClaim", "file": "pvc.png", "type": "resource"},
+            {"name": "StorageClass", "file": "sc.png", "type": "resource"},
+            {"name": "Volume", "file": "vol.png", "type": "resource"}
+          ]
+        },
+        "config": {
+          "name": "Configuration",
+          "path": "k8s/podconfig",
+          "resources": [
+            {"name": "ConfigMap", "file": "cm.png", "type": "resource"},
+            {"name": "Secret", "file": "secret.png", "type": "resource"}
+          ]
+        },
+        "controlplane": {
+          "name": "Control Plane",
+          "path": "k8s/controlplane",
+          "resources": [
+            {"name": "API Server", "file": "api.png", "type": "component"},
+            {"name": "Scheduler", "file": "sched.png", "type": "component"},
+            {"name": "Controller Manager", "file": "c-m.png", "type": "component"},
+            {"name": "Cloud Controller Manager", "file": "c-c-m.png", "type": "component"},
+            {"name": "kube-proxy", "file": "k-proxy.png", "type": "component"},
+            {"name": "kubelet", "file": "kubelet.png", "type": "component"}
+          ]
+        }
+      }
+    },
+    "generic": {
+      "name": "Generic",
+      "icon": "generic.png",
+      "totalResources": 29,
+      "categories": {
+        "grouping": {
+          "name": "Grouping",
+          "path": "generic/grouping",
+          "resources": [
+            {"name": "Zone", "file": "zone.png", "type": "group"},
+            {"name": "Group", "file": "group.png", "type": "group"}
+          ]
+        },
+        "compute": {
+          "name": "Compute",
+          "path": "generic/compute",
+          "resources": [
+            {"name": "Server", "file": "server.png", "type": "resource"},
+            {"name": "Virtual Machine", "file": "vm.png", "type": "resource"}
+          ]
+        },
+        "database": {
+          "name": "Database",
+          "path": "generic/database",
+          "resources": [
+            {"name": "Database", "file": "database.png", "type": "resource"}
+          ]
+        },
+        "network": {
+          "name": "Network",
+          "path": "generic/network",
+          "resources": [
+            {"name": "Router", "file": "router.png", "type": "resource"},
+            {"name": "Switch", "file": "switch.png", "type": "resource"},
+            {"name": "Firewall", "file": "firewall.png", "type": "resource"},
+            {"name": "Load Balancer", "file": "load-balancer.png", "type": "resource"},
+            {"name": "Gateway", "file": "gateway.png", "type": "resource"}
+          ]
+        },
+        "storage": {
+          "name": "Storage",
+          "path": "generic/storage",
+          "resources": [
+            {"name": "Storage", "file": "storage.png", "type": "resource"}
+          ]
+        },
+        "device": {
+          "name": "Device",
+          "path": "generic/device",
+          "resources": [
+            {"name": "Mobile", "file": "mobile.png", "type": "device"},
+            {"name": "Desktop", "file": "desktop.png", "type": "device"}
+          ]
+        },
+        "os": {
+          "name": "Operating System",
+          "path": "generic/os",
+          "resources": [
+            {"name": "Linux", "file": "linux.png", "type": "os"},
+            {"name": "Windows", "file": "windows.png", "type": "os"},
+            {"name": "macOS", "file": "macos.png", "type": "os"},
+            {"name": "Ubuntu", "file": "ubuntu.png", "type": "os"},
+            {"name": "CentOS", "file": "centos.png", "type": "os"},
+            {"name": "Debian", "file": "debian.png", "type": "os"},
+            {"name": "Red Hat", "file": "redhat.png", "type": "os"},
+            {"name": "SUSE", "file": "suse.png", "type": "os"},
+            {"name": "Fedora", "file": "fedora.png", "type": "os"},
+            {"name": "Docker", "file": "docker.png", "type": "platform"}
+          ]
+        }
+      }
+    },
+    "programming": {
+      "name": "Programming",
+      "icon": "programming.png",
+      "totalResources": 74,
+      "categories": {
+        "language": {
+          "name": "Programming Languages",
+          "path": "programming/language",
+          "resources": [
+            {"name": "JavaScript", "file": "javascript.png", "type": "language"},
+            {"name": "TypeScript", "file": "typescript.png", "type": "language"},
+            {"name": "Python", "file": "python.png", "type": "language"},
+            {"name": "Java", "file": "java.png", "type": "language"},
+            {"name": "C++", "file": "cpp.png", "type": "language"},
+            {"name": "C#", "file": "csharp.png", "type": "language"},
+            {"name": "Go", "file": "go.png", "type": "language"},
+            {"name": "Rust", "file": "rust.png", "type": "language"},
+            {"name": "Ruby", "file": "ruby.png", "type": "language"},
+            {"name": "PHP", "file": "php.png", "type": "language"},
+            {"name": "Swift", "file": "swift.png", "type": "language"},
+            {"name": "Kotlin", "file": "kotlin.png", "type": "language"},
+            {"name": "Scala", "file": "scala.png", "type": "language"},
+            {"name": "R", "file": "r.png", "type": "language"},
+            {"name": "MATLAB", "file": "matlab.png", "type": "language"},
+            {"name": "Perl", "file": "perl.png", "type": "language"},
+            {"name": "Lua", "file": "lua.png", "type": "language"},
+            {"name": "Dart", "file": "dart.png", "type": "language"},
+            {"name": "Elixir", "file": "elixir.png", "type": "language"},
+            {"name": "Haskell", "file": "haskell.png", "type": "language"},
+            {"name": "Clojure", "file": "clojure.png", "type": "language"},
+            {"name": "F#", "file": "fsharp.png", "type": "language"},
+            {"name": "Objective-C", "file": "objectivec.png", "type": "language"}
+          ]
+        },
+        "framework": {
+          "name": "Frameworks",
+          "path": "programming/framework",
+          "resources": [
+            {"name": "React", "file": "react.png", "type": "framework"},
+            {"name": "Vue.js", "file": "vue.png", "type": "framework"},
+            {"name": "Angular", "file": "angular.png", "type": "framework"},
+            {"name": "Next.js", "file": "nextjs.png", "type": "framework"},
+            {"name": "Nuxt.js", "file": "nuxtjs.png", "type": "framework"},
+            {"name": "Svelte", "file": "svelte.png", "type": "framework"},
+            {"name": "Express.js", "file": "express.png", "type": "framework"},
+            {"name": "FastAPI", "file": "fastapi.png", "type": "framework"},
+            {"name": "Django", "file": "django.png", "type": "framework"},
+            {"name": "Flask", "file": "flask.png", "type": "framework"},
+            {"name": "Spring Boot", "file": "springboot.png", "type": "framework"},
+            {"name": "Laravel", "file": "laravel.png", "type": "framework"},
+            {"name": "Ruby on Rails", "file": "rails.png", "type": "framework"},
+            {"name": "ASP.NET", "file": "aspnet.png", "type": "framework"},
+            {"name": "NestJS", "file": "nestjs.png", "type": "framework"},
+            {"name": "Gatsby", "file": "gatsby.png", "type": "framework"},
+            {"name": "Remix", "file": "remix.png", "type": "framework"},
+            {"name": "Solid.js", "file": "solid.png", "type": "framework"},
+            {"name": "Qwik", "file": "qwik.png", "type": "framework"},
+            {"name": "Astro", "file": "astro.png", "type": "framework"},
+            {"name": "Alpine.js", "file": "alpine.png", "type": "framework"},
+            {"name": "HTMX", "file": "htmx.png", "type": "framework"},
+            {"name": "Tailwind CSS", "file": "tailwind.png", "type": "framework"},
+            {"name": "Bootstrap", "file": "bootstrap.png", "type": "framework"},
+            {"name": "Material-UI", "file": "materialui.png", "type": "framework"}
+          ]
+        },
+        "flowchart": {
+          "name": "Flowchart",
+          "path": "programming/flowchart",
+          "resources": [
+            {"name": "Start/End", "file": "start-end.png", "type": "flowchart"},
+            {"name": "Process", "file": "process.png", "type": "flowchart"},
+            {"name": "Decision", "file": "decision.png", "type": "flowchart"},
+            {"name": "Input/Output", "file": "input-output.png", "type": "flowchart"},
+            {"name": "Subroutine", "file": "subroutine.png", "type": "flowchart"},
+            {"name": "Loop", "file": "loop.png", "type": "flowchart"},
+            {"name": "Connector", "file": "connector.png", "type": "flowchart"},
+            {"name": "Delay", "file": "delay.png", "type": "flowchart"},
+            {"name": "Preparation", "file": "preparation.png", "type": "flowchart"},
+            {"name": "Manual Operation", "file": "manual-operation.png", "type": "flowchart"},
+            {"name": "Display", "file": "display.png", "type": "flowchart"},
+            {"name": "Document", "file": "document.png", "type": "flowchart"},
+            {"name": "Data", "file": "data.png", "type": "flowchart"},
+            {"name": "Database", "file": "database.png", "type": "flowchart"},
+            {"name": "Hard Disk", "file": "hard-disk.png", "type": "flowchart"},
+            {"name": "Internal Storage", "file": "internal-storage.png", "type": "flowchart"},
+            {"name": "Manual Input", "file": "manual-input.png", "type": "flowchart"},
+            {"name": "Card", "file": "card.png", "type": "flowchart"},
+            {"name": "Paper Tape", "file": "paper-tape.png", "type": "flowchart"},
+            {"name": "Magnetic Tape", "file": "magnetic-tape.png", "type": "flowchart"},
+            {"name": "Magnetic Disk", "file": "magnetic-disk.png", "type": "flowchart"},
+            {"name": "Magnetic Drum", "file": "magnetic-drum.png", "type": "flowchart"},
+            {"name": "Offline Storage", "file": "offline-storage.png", "type": "flowchart"},
+            {"name": "Online Storage", "file": "online-storage.png", "type": "flowchart"}
+          ]
+        },
+        "runtime": {
+          "name": "Runtime",
+          "path": "programming/runtime",
+          "resources": [
+            {"name": "Node.js", "file": "nodejs.png", "type": "runtime"},
+            {"name": "Deno", "file": "deno.png", "type": "runtime"},
+            {"name": "Bun", "file": "bun.png", "type": "runtime"}
+          ]
+        }
+      }
+    },
+    "onprem": {
+      "name": "On-Premise",
+      "icon": "onprem.png",
+      "totalResources": 173,
+      "categories": {
+        "compute": {
+          "name": "Compute",
+          "path": "onprem/compute",
+          "resources": [
+            {"name": "Server", "file": "server.png", "type": "hardware"},
+            {"name": "Nomad", "file": "nomad.png", "type": "software"}
+          ]
+        },
+        "network": {
+          "name": "Network",
+          "path": "onprem/network",
+          "resources": [
+            {"name": "Router", "file": "router.png", "type": "hardware"},
+            {"name": "Switch", "file": "switch.png", "type": "hardware"},
+            {"name": "Firewall", "file": "firewall.png", "type": "hardware"},
+            {"name": "Load Balancer", "file": "load-balancer.png", "type": "hardware"},
+            {"name": "Gateway", "file": "gateway.png", "type": "hardware"},
+            {"name": "Access Point", "file": "access-point.png", "type": "hardware"},
+            {"name": "Network Interface Card", "file": "nic.png", "type": "hardware"},
+            {"name": "Cable", "file": "cable.png", "type": "hardware"}
+          ]
+        },
+        "storage": {
+          "name": "Storage",
+          "path": "onprem/storage",
+          "resources": [
+            {"name": "Storage Array", "file": "storage-array.png", "type": "hardware"},
+            {"name": "SAN", "file": "san.png", "type": "hardware"},
+            {"name": "NAS", "file": "nas.png", "type": "hardware"},
+            {"name": "Tape Library", "file": "tape-library.png", "type": "hardware"},
+            {"name": "JBOD", "file": "jbod.png", "type": "hardware"},
+            {"name": "RAID", "file": "raid.png", "type": "hardware"}
+          ]
+        },
+        "database": {
+          "name": "Database",
+          "path": "onprem/database",
+          "resources": [
+            {"name": "Database Server", "file": "database-server.png", "type": "software"},
+            {"name": "MySQL", "file": "mysql.png", "type": "software"},
+            {"name": "PostgreSQL", "file": "postgresql.png", "type": "software"},
+            {"name": "Oracle", "file": "oracle.png", "type": "software"},
+            {"name": "SQL Server", "file": "sql-server.png", "type": "software"},
+            {"name": "MongoDB", "file": "mongodb.png", "type": "software"},
+            {"name": "Redis", "file": "redis.png", "type": "software"},
+            {"name": "Elasticsearch", "file": "elasticsearch.png", "type": "software"}
+          ]
+        },
+        "analytics": {
+          "name": "Analytics",
+          "path": "onprem/analytics",
+          "resources": [
+            {"name": "Data Warehouse", "file": "data-warehouse.png", "type": "software"},
+            {"name": "Hadoop", "file": "hadoop.png", "type": "software"},
+            {"name": "Spark", "file": "spark.png", "type": "software"},
+            {"name": "Kafka", "file": "kafka.png", "type": "software"},
+            {"name": "Flink", "file": "flink.png", "type": "software"},
+            {"name": "Tableau", "file": "tableau.png", "type": "software"},
+            {"name": "Power BI", "file": "powerbi.png", "type": "software"},
+            {"name": "Qlik", "file": "qlik.png", "type": "software"},
+            {"name": "Looker", "file": "looker.png", "type": "software"},
+            {"name": "Grafana", "file": "grafana.png", "type": "software"},
+            {"name": "Kibana", "file": "kibana.png", "type": "software"},
+            {"name": "Superset", "file": "superset.png", "type": "software"},
+            {"name": "Metabase", "file": "metabase.png", "type": "software"},
+            {"name": "Redash", "file": "redash.png", "type": "software"},
+            {"name": "Apache Drill", "file": "drill.png", "type": "software"},
+            {"name": "Presto", "file": "presto.png", "type": "software"},
+            {"name": "Trino", "file": "trino.png", "type": "software"}
+          ]
+        },
+        "ci": {
+          "name": "Continuous Integration",
+          "path": "onprem/ci",
+          "resources": [
+            {"name": "Jenkins", "file": "jenkins.png", "type": "software"},
+            {"name": "GitLab CI", "file": "gitlab-ci.png", "type": "software"},
+            {"name": "Bamboo", "file": "bamboo.png", "type": "software"},
+            {"name": "TeamCity", "file": "teamcity.png", "type": "software"},
+            {"name": "CircleCI", "file": "circleci.png", "type": "software"},
+            {"name": "Travis CI", "file": "travis.png", "type": "software"},
+            {"name": "Drone", "file": "drone.png", "type": "software"},
+            {"name": "Concourse", "file": "concourse.png", "type": "software"},
+            {"name": "GoCD", "file": "gocd.png", "type": "software"}
+          ]
+        },
+        "cd": {
+          "name": "Continuous Deployment",
+          "path": "onprem/cd",
+          "resources": [
+            {"name": "Spinnaker", "file": "spinnaker.png", "type": "software"},
+            {"name": "Argo CD", "file": "argocd.png", "type": "software"},
+            {"name": "Flux", "file": "flux.png", "type": "software"},
+            {"name": "Rancher", "file": "rancher.png", "type": "software"}
+          ]
+        },
+        "auth": {
+          "name": "Authentication",
+          "path": "onprem/auth",
+          "resources": [
+            {"name": "Active Directory", "file": "active-directory.png", "type": "software"},
+            {"name": "LDAP", "file": "ldap.png", "type": "software"},
+            {"name": "Kerberos", "file": "kerberos.png", "type": "software"},
+            {"name": "FreeIPA", "file": "freeipa.png", "type": "software"}
+          ]
+        },
+        "monitoring": {
+          "name": "Monitoring",
+          "path": "onprem/monitoring",
+          "resources": [
+            {"name": "Nagios", "file": "nagios.png", "type": "software"},
+            {"name": "Zabbix", "file": "zabbix.png", "type": "software"},
+            {"name": "Prometheus", "file": "prometheus.png", "type": "software"},
+            {"name": "Grafana", "file": "grafana.png", "type": "software"},
+            {"name": "ELK Stack", "file": "elk-stack.png", "type": "software"},
+            {"name": "Splunk", "file": "splunk.png", "type": "software"},
+            {"name": "Datadog", "file": "datadog.png", "type": "software"},
+            {"name": "New Relic", "file": "newrelic.png", "type": "software"}
+          ]
+        }
+      }
+    },
+    "saas": {
+      "name": "SaaS",
+      "icon": "saas.png",
+      "totalResources": 41,
+      "categories": {
+        "analytics": {
+          "name": "Analytics",
+          "path": "saas/analytics",
+          "resources": [
+            {"name": "Google Analytics", "file": "google-analytics.png", "type": "service"},
+            {"name": "Mixpanel", "file": "mixpanel.png", "type": "service"},
+            {"name": "Amplitude", "file": "amplitude.png", "type": "service"}
+          ]
+        },
+        "automation": {
+          "name": "Automation",
+          "path": "saas/automation",
+          "resources": [
+            {"name": "Zapier", "file": "zapier.png", "type": "service"}
+          ]
+        },
+        "cdn": {
+          "name": "CDN",
+          "path": "saas/cdn",
+          "resources": [
+            {"name": "Cloudflare", "file": "cloudflare.png", "type": "service"},
+            {"name": "Fastly", "file": "fastly.png", "type": "service"},
+            {"name": "Akamai", "file": "akamai.png", "type": "service"},
+            {"name": "MaxCDN", "file": "maxcdn.png", "type": "service"}
+          ]
+        },
+        "chat": {
+          "name": "Chat",
+          "path": "saas/chat",
+          "resources": [
+            {"name": "Slack", "file": "slack.png", "type": "service"},
+            {"name": "Microsoft Teams", "file": "teams.png", "type": "service"},
+            {"name": "Discord", "file": "discord.png", "type": "service"},
+            {"name": "WhatsApp", "file": "whatsapp.png", "type": "service"},
+            {"name": "Telegram", "file": "telegram.png", "type": "service"},
+            {"name": "Signal", "file": "signal.png", "type": "service"},
+            {"name": "WeChat", "file": "wechat.png", "type": "service"},
+            {"name": "Line", "file": "line.png", "type": "service"}
+          ]
+        },
+        "collaboration": {
+          "name": "Collaboration",
+          "path": "saas/collaboration",
+          "resources": [
+            {"name": "Microsoft 365", "file": "microsoft365.png", "type": "service"},
+            {"name": "Google Workspace", "file": "google-workspace.png", "type": "service"},
+            {"name": "Notion", "file": "notion.png", "type": "service"},
+            {"name": "Confluence", "file": "confluence.png", "type": "service"},
+            {"name": "Miro", "file": "miro.png", "type": "service"},
+            {"name": "Figma", "file": "figma.png", "type": "service"},
+            {"name": "Sketch", "file": "sketch.png", "type": "service"},
+            {"name": "Adobe XD", "file": "adobe-xd.png", "type": "service"}
+          ]
+        },
+        "crm": {
+          "name": "CRM",
+          "path": "saas/crm",
+          "resources": [
+            {"name": "Salesforce", "file": "salesforce.png", "type": "service"},
+            {"name": "HubSpot", "file": "hubspot.png", "type": "service"},
+            {"name": "Zoho CRM", "file": "zoho-crm.png", "type": "service"},
+            {"name": "Pipedrive", "file": "pipedrive.png", "type": "service"}
+          ]
+        },
+        "email": {
+          "name": "Email",
+          "path": "saas/email",
+          "resources": [
+            {"name": "Gmail", "file": "gmail.png", "type": "service"},
+            {"name": "Outlook", "file": "outlook.png", "type": "service"},
+            {"name": "Mailchimp", "file": "mailchimp.png", "type": "service"},
+            {"name": "SendGrid", "file": "sendgrid.png", "type": "service"}
+          ]
+        },
+        "alerting": {
+          "name": "Alerting",
+          "path": "saas/alerting",
+          "resources": [
+            {"name": "PagerDuty", "file": "pagerduty.png", "type": "service"},
+            {"name": "Opsgenie", "file": "opsgenie.png", "type": "service"},
+            {"name": "VictorOps", "file": "victorops.png", "type": "service"},
+            {"name": "xMatters", "file": "xmatters.png", "type": "service"},
+            {"name": "AlertManager", "file": "alertmanager.png", "type": "service"}
+          ]
+        }
+      }
+    },
+    "elastic": {
+      "name": "Elastic",
+      "icon": "elastic.png",
+      "totalResources": 45,
+      "categories": {
+        "elasticsearch": {
+          "name": "Elasticsearch",
+          "path": "elastic/elasticsearch",
+          "resources": [
+            {"name": "Elasticsearch", "file": "elasticsearch.png", "type": "product"},
+            {"name": "Kibana", "file": "kibana.png", "type": "product"},
+            {"name": "Logstash", "file": "logstash.png", "type": "product"},
+            {"name": "Beats", "file": "beats.png", "type": "product"},
+            {"name": "Machine Learning", "file": "machine-learning.png", "type": "feature"},
+            {"name": "Alerting", "file": "alerting.png", "type": "feature"},
+            {"name": "Security", "file": "security-settings.png", "type": "feature"},
+            {"name": "Monitoring", "file": "monitoring.png", "type": "feature"},
+            {"name": "Maps", "file": "maps.png", "type": "feature"},
+            {"name": "SQL", "file": "sql.png", "type": "feature"},
+            {"name": "Logstash Pipeline", "file": "logstash-pipeline.png", "type": "feature"},
+            {"name": "Map Services", "file": "map-services.png", "type": "feature"},
+            {"name": "Searchable Snapshots", "file": "searchable-snapshots.png", "type": "feature"},
+            {"name": "Stack", "file": "stack.png", "type": "product"}
+          ]
+        },
+        "beats": {
+          "name": "Beats",
+          "path": "elastic/beats",
+          "resources": [
+            {"name": "Filebeat", "file": "filebeat.png", "type": "beat"},
+            {"name": "Metricbeat", "file": "metricbeat.png", "type": "beat"},
+            {"name": "Packetbeat", "file": "packetbeat.png", "type": "beat"},
+            {"name": "Winlogbeat", "file": "winlogbeat.png", "type": "beat"},
+            {"name": "Auditbeat", "file": "auditbeat.png", "type": "beat"},
+            {"name": "Heartbeat", "file": "heartbeat.png", "type": "beat"},
+            {"name": "Functionbeat", "file": "functionbeat.png", "type": "beat"},
+            {"name": "APM", "file": "apm.png", "type": "beat"}
+          ]
+        },
+        "enterprisesearch": {
+          "name": "Enterprise Search",
+          "path": "elastic/enterprisesearch",
+          "resources": [
+            {"name": "Enterprise Search", "file": "enterprise-search.png", "type": "product"},
+            {"name": "App Search", "file": "app-search.png", "type": "product"},
+            {"name": "Workplace Search", "file": "workplace-search.png", "type": "product"},
+            {"name": "Site Search", "file": "site-search.png", "type": "product"},
+            {"name": "Crawler", "file": "crawler.png", "type": "feature"}
+          ]
+        },
+        "orchestration": {
+          "name": "Orchestration",
+          "path": "elastic/orchestration",
+          "resources": [
+            {"name": "ECK", "file": "eck.png", "type": "product"},
+            {"name": "ECE", "file": "ece.png", "type": "product"}
+          ]
+        },
+        "saas": {
+          "name": "Cloud",
+          "path": "elastic/saas",
+          "resources": [
+            {"name": "Elastic Cloud", "file": "cloud.png", "type": "service"},
+            {"name": "Elastic", "file": "elastic.png", "type": "brand"}
+          ]
+        }
+      }
+    },
+    "firebase": {
+      "name": "Firebase",
+      "icon": "firebase.png",
+      "totalResources": 23,
+      "categories": {
+        "base": {
+          "name": "Core",
+          "path": "firebase/base",
+          "resources": [
+            {"name": "Firebase", "file": "firebase.png", "type": "brand"}
+          ]
+        },
+        "develop": {
+          "name": "Develop",
+          "path": "firebase/develop",
+          "resources": [
+            {"name": "Authentication", "file": "authentication.png", "type": "service"},
+            {"name": "Cloud Functions", "file": "functions.png", "type": "service"},
+            {"name": "Hosting", "file": "hosting.png", "type": "service"},
+            {"name": "Cloud Storage", "file": "storage.png", "type": "service"},
+            {"name": "Test Lab", "file": "test-lab.png", "type": "service"},
+            {"name": "App Distribution", "file": "app-distribution.png", "type": "service"},
+            {"name": "Crashlytics", "file": "crashlytics.png", "type": "service"}
+          ]
+        },
+        "quality": {
+          "name": "Quality",
+          "path": "firebase/quality",
+          "resources": [
+            {"name": "Crashlytics", "file": "crashlytics.png", "type": "service"},
+            {"name": "Performance Monitoring", "file": "performance.png", "type": "service"},
+            {"name": "Test Lab", "file": "test-lab.png", "type": "service"},
+            {"name": "App Distribution", "file": "app-distribution.png", "type": "service"}
+          ]
+        },
+        "grow": {
+          "name": "Grow",
+          "path": "firebase/grow",
+          "resources": [
+            {"name": "Cloud Messaging", "file": "cloud-messaging.png", "type": "service"},
+            {"name": "In-App Messaging", "file": "in-app-messaging.png", "type": "service"},
+            {"name": "Google Analytics", "file": "analytics.png", "type": "service"},
+            {"name": "Predictions", "file": "predictions.png", "type": "service"},
+            {"name": "Remote Config", "file": "remote-config.png", "type": "service"},
+            {"name": "A/B Testing", "file": "ab-testing.png", "type": "service"},
+            {"name": "Dynamic Links", "file": "dynamic-links.png", "type": "service"}
+          ]
+        }
+      }
+    },
+    "digitalocean": {
+      "name": "DigitalOcean",
+      "icon": "digitalocean.png",
+      "totalResources": 26,
+      "categories": {
+        "compute": {
+          "name": "Compute",
+          "path": "digitalocean/compute",
+          "resources": [
+            {"name": "Droplets", "file": "droplet.png", "type": "service"},
+            {"name": "Kubernetes", "file": "k8s-cluster.png", "type": "service"},
+            {"name": "Kubernetes Node", "file": "k8s-node.png", "type": "service"},
+            {"name": "Kubernetes Node Pool", "file": "k8s-node-pool.png", "type": "service"},
+            {"name": "Docker", "file": "docker.png", "type": "service"},
+            {"name": "Containers", "file": "containers.png", "type": "service"}
+          ]
+        },
+        "database": {
+          "name": "Database",
+          "path": "digitalocean/database",
+          "resources": [
+            {"name": "Managed Databases", "file": "managed-databases.png", "type": "service"},
+            {"name": "Redis", "file": "redis.png", "type": "service"},
+            {"name": "PostgreSQL", "file": "postgresql.png", "type": "service"},
+            {"name": "MySQL", "file": "mysql.png", "type": "service"}
+          ]
+        },
+        "network": {
+          "name": "Networking",
+          "path": "digitalocean/network",
+          "resources": [
+            {"name": "Load Balancers", "file": "load-balancers.png", "type": "service"},
+            {"name": "VPC", "file": "vpc.png", "type": "service"},
+            {"name": "Cloud Firewalls", "file": "firewalls.png", "type": "service"}
+          ]
+        },
+        "storage": {
+          "name": "Storage",
+          "path": "digitalocean/storage",
+          "resources": [
+            {"name": "Spaces", "file": "spaces.png", "type": "service"},
+            {"name": "Volumes", "file": "volumes.png", "type": "service"}
+          ]
+        }
+      }
+    },
+    "ibm": {
+      "name": "IBM Cloud",
+      "icon": "ibm.png",
+      "totalResources": 181,
+      "categories": {
+        "compute": {
+          "name": "Compute",
+          "path": "ibm/compute",
+          "resources": [
+            {"name": "Virtual Servers", "file": "virtual-servers.png", "type": "service"},
+            {"name": "Bare Metal Servers", "file": "bare-metal.png", "type": "service"},
+            {"name": "Kubernetes Service", "file": "kubernetes.png", "type": "service"},
+            {"name": "OpenShift", "file": "openshift.png", "type": "service"},
+            {"name": "Cloud Functions", "file": "functions.png", "type": "service"}
+          ]
+        },
+        "database": {
+          "name": "Database",
+          "path": "ibm/database",
+          "resources": [
+            {"name": "Db2", "file": "db2.png", "type": "service"},
+            {"name": "Cloudant", "file": "cloudant.png", "type": "service"},
+            {"name": "DashDB", "file": "dashdb.png", "type": "service"},
+            {"name": "MongoDB", "file": "mongodb.png", "type": "service"},
+            {"name": "PostgreSQL", "file": "postgresql.png", "type": "service"},
+            {"name": "Redis", "file": "redis.png", "type": "service"},
+            {"name": "Elasticsearch", "file": "elasticsearch.png", "type": "service"}
+          ]
+        },
+        "ai": {
+          "name": "AI & Machine Learning",
+          "path": "ibm/ai",
+          "resources": [
+            {"name": "Watson Assistant", "file": "watson-assistant.png", "type": "service"},
+            {"name": "Watson Discovery", "file": "watson-discovery.png", "type": "service"},
+            {"name": "Watson Language Translator", "file": "watson-translator.png", "type": "service"},
+            {"name": "Watson Speech to Text", "file": "watson-speech.png", "type": "service"},
+            {"name": "Watson Text to Speech", "file": "watson-tts.png", "type": "service"},
+            {"name": "Watson Machine Learning", "file": "watson-ml.png", "type": "service"},
+            {"name": "Watson OpenScale", "file": "watson-openscale.png", "type": "service"},
+            {"name": "Watson Knowledge Catalog", "file": "watson-kc.png", "type": "service"}
+          ]
+        },
+        "analytics": {
+          "name": "Analytics",
+          "path": "ibm/analytics",
+          "resources": [
+            {"name": "Cognos Analytics", "file": "cognos.png", "type": "service"},
+            {"name": "Planning Analytics", "file": "planning-analytics.png", "type": "service"},
+            {"name": "Watson Analytics", "file": "watson-analytics.png", "type": "service"},
+            {"name": "Db2 Warehouse", "file": "db2-warehouse.png", "type": "service"},
+            {"name": "SPSS", "file": "spss.png", "type": "service"}
+          ]
+        }
+      }
+    },
+    "openstack": {
+      "name": "OpenStack",
+      "icon": "openstack.png",
+      "totalResources": 51,
+      "categories": {
+        "compute": {
+          "name": "Compute",
+          "path": "openstack/compute",
+          "resources": [
+            {"name": "Nova", "file": "nova.png", "type": "service"},
+            {"name": "Instance", "file": "instance.png", "type": "resource"},
+            {"name": "Flavor", "file": "flavor.png", "type": "resource"}
+          ]
+        },
+        "storage": {
+          "name": "Storage",
+          "path": "openstack/storage",
+          "resources": [
+            {"name": "Swift", "file": "swift.png", "type": "service"},
+            {"name": "Cinder", "file": "cinder.png", "type": "service"},
+            {"name": "Volume", "file": "volume.png", "type": "resource"}
+          ]
+        },
+        "network": {
+          "name": "Network",
+          "path": "openstack/network",
+          "resources": [
+            {"name": "Neutron", "file": "neutron.png", "type": "service"},
+            {"name": "Router", "file": "router.png", "type": "resource"},
+            {"name": "Network", "file": "network.png", "type": "resource"},
+            {"name": "Port", "file": "port.png", "type": "resource"},
+            {"name": "Floating IP", "file": "floating-ip.png", "type": "resource"}
+          ]
+        }
+      }
+    },
+    "outscale": {
+      "name": "Outscale",
+      "icon": "outscale.png",
+      "totalResources": 13,
+      "categories": {
+        "compute": {
+          "name": "Compute",
+          "path": "outscale/compute",
+          "resources": [
+            {"name": "VM", "file": "vm.png", "type": "service"},
+            {"name": "Flexible Instance", "file": "flexible-instance.png", "type": "service"}
+          ]
+        },
+        "network": {
+          "name": "Network",
+          "path": "outscale/network",
+          "resources": [
+            {"name": "Net", "file": "net.png", "type": "service"},
+            {"name": "Public IP", "file": "public-ip.png", "type": "service"},
+            {"name": "NIC", "file": "nic.png", "type": "service"},
+            {"name": "Route Table", "file": "route-table.png", "type": "service"},
+            {"name": "Security Group", "file": "security-group.png", "type": "service"},
+            {"name": "Load Balancer", "file": "load-balancer.png", "type": "service"}
+          ]
+        },
+        "storage": {
+          "name": "Storage",
+          "path": "outscale/storage",
+          "resources": [
+            {"name": "Object Storage", "file": "object-storage.png", "type": "service"},
+            {"name": "Volume", "file": "volume.png", "type": "service"}
+          ]
+        },
+        "security": {
+          "name": "Security",
+          "path": "outscale/security",
+          "resources": [
+            {"name": "Access Key", "file": "access-key.png", "type": "service"},
+            {"name": "Keypair", "file": "keypair.png", "type": "service"}
+          ]
+        }
+      }
+    },
+    "gis": {
+      "name": "GIS",
+      "icon": "gis.png",
+      "totalResources": 68,
+      "categories": {
+        "server": {
+          "name": "Server",
+          "path": "gis/server",
+          "resources": [
+            {"name": "GeoServer", "file": "geoserver.png", "type": "software"},
+            {"name": "MapServer", "file": "mapserver.png", "type": "software"},
+            {"name": "QGIS Server", "file": "qgis-server.png", "type": "software"},
+            {"name": "GeoNetwork", "file": "geonetwork.png", "type": "software"},
+            {"name": "GeoNode", "file": "geonode.png", "type": "software"},
+            {"name": "MapStore", "file": "mapstore.png", "type": "software"},
+            {"name": "GeoOrchestra", "file": "georchestra.png", "type": "software"},
+            {"name": "pycsw", "file": "pycsw.png", "type": "software"},
+            {"name": "pygeoapi", "file": "pygeoapi.png", "type": "software"},
+            {"name": "Actinia", "file": "actinia.png", "type": "software"},
+            {"name": "Baremaps", "file": "baremaps.png", "type": "software"},
+            {"name": "deegree", "file": "deegree.png", "type": "software"},
+            {"name": "G3W-Suite", "file": "g3w-suite.png", "type": "software"},
+            {"name": "GeoHealthCheck", "file": "geohealthcheck.png", "type": "software"},
+            {"name": "GeoMapFish", "file": "geomapfish.png", "type": "software"},
+            {"name": "GeoMesa", "file": "geomesa.png", "type": "software"},
+            {"name": "GeoWebCache", "file": "geowebcache.png", "type": "software"},
+            {"name": "Kepler", "file": "kepler.png", "type": "software"},
+            {"name": "MapProxy", "file": "mapproxy.png", "type": "software"},
+            {"name": "Maptunik", "file": "maptunik.png", "type": "software"},
+            {"name": "MViewer", "file": "mviewer.png", "type": "software"},
+            {"name": "pg_tileserv", "file": "pg_tileserv.png", "type": "software"},
+            {"name": "QGIS", "file": "qgis.png", "type": "software"},
+            {"name": "Zoo Project", "file": "zooproject.png", "type": "software"}
+          ]
+        },
+        "database": {
+          "name": "Database",
+          "path": "gis/database",
+          "resources": [
+            {"name": "PostGIS", "file": "postgis.png", "type": "software"}
+          ]
+        },
+        "desktop": {
+          "name": "Desktop",
+          "path": "gis/desktop",
+          "resources": [
+            {"name": "QGIS", "file": "qgis.png", "type": "software"},
+            {"name": "Maptunik", "file": "maptunik.png", "type": "software"}
+          ]
+        },
+        "javascript": {
+          "name": "JavaScript",
+          "path": "gis/javascript",
+          "resources": [
+            {"name": "OpenLayers", "file": "openlayers.png", "type": "library"},
+            {"name": "Leaflet", "file": "leaflet.png", "type": "library"},
+            {"name": "MapLibre", "file": "maplibre.png", "type": "library"},
+            {"name": "Cesium", "file": "cesium.png", "type": "library"},
+            {"name": "Turf.js", "file": "turfjs.png", "type": "library"},
+            {"name": "Kepler.gl", "file": "keplerjs.png", "type": "library"},
+            {"name": "GeoStyler", "file": "geostyler.png", "type": "library"},
+            {"name": "OL-Ext", "file": "ol-ext.png", "type": "library"}
+          ]
+        },
+        "data": {
+          "name": "Data",
+          "path": "gis/data",
+          "resources": [
+            {"name": "OpenStreetMap", "file": "openstreetmap.png", "type": "source"},
+            {"name": "HERE", "file": "here.png", "type": "source"},
+            {"name": "IGN", "file": "ign.png", "type": "source"},
+            {"name": "BAN", "file": "ban.png", "type": "source"},
+            {"name": "Overture Maps", "file": "overturemaps.png", "type": "source"}
+          ]
+        },
+        "format": {
+          "name": "Format",
+          "path": "gis/format",
+          "resources": [
+            {"name": "GeoPackage", "file": "geopackage.png", "type": "format"},
+            {"name": "GeoParquet", "file": "geoparquet.png", "type": "format"}
+          ]
+        },
+        "ogc": {
+          "name": "OGC Standards",
+          "path": "gis/ogc",
+          "resources": [
+            {"name": "OGC", "file": "ogc.png", "type": "standard"},
+            {"name": "WMS", "file": "wms.png", "type": "standard"},
+            {"name": "WFS", "file": "wfs.png", "type": "standard"}
+          ]
+        },
+        "cli": {
+          "name": "CLI Tools",
+          "path": "gis/cli",
+          "resources": [
+            {"name": "GDAL", "file": "gdal.png", "type": "tool"},
+            {"name": "PDAL", "file": "pdal.png", "type": "tool"},
+            {"name": "LAStools", "file": "lastools.png", "type": "tool"},
+            {"name": "Mapnik", "file": "mapnik.png", "type": "tool"},
+            {"name": "Imposm", "file": "imposm.png", "type": "tool"},
+            {"name": "MDAL", "file": "mdal.png", "type": "tool"}
+          ]
+        },
+        "mobile": {
+          "name": "Mobile",
+          "path": "gis/mobile",
+          "resources": [
+            {"name": "QField", "file": "qfield.png", "type": "app"},
+            {"name": "Mergin Maps", "file": "mergin.png", "type": "app"},
+            {"name": "SMASH", "file": "smash.png", "type": "app"}
+          ]
+        },
+        "routing": {
+          "name": "Routing",
+          "path": "gis/routing",
+          "resources": [
+            {"name": "OSRM", "file": "osrm.png", "type": "engine"},
+            {"name": "GraphHopper", "file": "graphhopper.png", "type": "engine"},
+            {"name": "pgRouting", "file": "pgrouting.png", "type": "engine"},
+            {"name": "Valhalla", "file": "valhalla.png", "type": "engine"}
+          ]
+        },
+        "geocoding": {
+          "name": "Geocoding",
+          "path": "gis/geocoding",
+          "resources": [
+            {"name": "Nominatim", "file": "nominatim.png", "type": "service"},
+            {"name": "Pelias", "file": "pelias.png", "type": "service"},
+            {"name": "Addok", "file": "addok.png", "type": "service"},
+            {"name": "GISgraphy", "file": "gisgraphy.png", "type": "service"}
+          ]
+        },
+        "organization": {
+          "name": "Organization",
+          "path": "gis/organization",
+          "resources": [
+            {"name": "OSGeo", "file": "osgeo.png", "type": "organization"}
+          ]
+        },
+        "java": {
+          "name": "Java",
+          "path": "gis/java",
+          "resources": [
+            {"name": "GeoTools", "file": "geotools.png", "type": "library"}
+          ]
+        },
+        "georchestra": {
+          "name": "GeoOrchestra",
+          "path": "gis/georchestra",
+          "resources": [
+            {"name": "Analytics", "file": "analytics.svg", "type": "module", "format": "svg"},
+            {"name": "Data API", "file": "data_api.svg", "type": "module", "format": "svg"},
+            {"name": "DataFeeder", "file": "datafeeder.svg", "type": "module", "format": "svg"}
+          ]
+        }
+      }
+    }
+  },
+  "metadata": {
+    "basePath": "/src/components/resources",
+    "imageFormats": ["png", "svg"],
+    "specialFeatures": {
+      "ociWhiteVariants": "OCI resources have -white.png variants for dark backgrounds",
+      "gisSvgFiles": "GIS category includes SVG format files",
+      "hierarchicalStructure": "Resources organized by provider > category > specific items"
+    },
+    "resourceTypes": {
+      "service": "Cloud service or platform offering",
+      "resource": "Specific resource instance or component",
+      "software": "Software application or tool",
+      "hardware": "Physical hardware component",
+      "framework": "Development framework or library",
+      "language": "Programming language",
+      "product": "Commercial product or offering",
+      "feature": "Specific feature or capability",
+      "beat": "Elastic Beat data shipper",
+      "brand": "Brand or company logo",
+      "platform": "Platform or runtime environment",
+      "device": "Physical device type",
+      "os": "Operating system",
+      "flowchart": "Flowchart symbol or shape",
+      "runtime": "Application runtime environment",
+      "component": "System component or module",
+      "source": "Data source provider",
+      "format": "File format specification",
+      "standard": "Industry standard or protocol",
+      "tool": "Command-line or development tool",
+      "app": "Mobile or desktop application",
+      "engine": "Processing engine or service",
+      "organization": "Organization or foundation",
+      "library": "Software library or SDK",
+      "module": "Software module or extension"
+    }
+  }
+}
