@@ -7,14 +7,14 @@
       "name": "Compute",
       "path": "aws/compute",
       "resources": [
-         {"name": "EC2", "file": "amazon-elastic-compute-cloud.png"},
-         {"name": "EC2 Instance", "file": "amazon-elastic-compute-cloud-instance.png"},
-         {"name": "Lambda", "file": "aws-lambda.png"},
-         {"name": "Lambda Function", "file": "aws-lambda-function.png"},
-         {"name": "Batch", "file": "aws-batch.png"},
+         {"name": "EC2", "file": "ec2.png"},
+         {"name": "EC2 Instance", "file": "ec2-instance.png"},
+         {"name": "Lambda", "file": "lambda.png"},
+         {"name": "Lambda Function", "file": "lambda-function.png"},
+         {"name": "Batch", "file": "batch.png"},
         {"name": "Compute Optimizer", "file": "compute-optimizer.png"},
-         {"name": "EC2 AMI", "file": "amazon-machine-image.png"},
-         {"name": "EC2 Auto Scaling", "file": "auto-scaling.png"},
+         {"name": "EC2 AMI", "file": "ec2-ami.png"},
+         {"name": "EC2 Auto Scaling", "file": "ec2-auto-scaling.png"},
         {"name": "EC2 Spot Instance", "file": "ec2-spot-instance.png"}
       ]
     },

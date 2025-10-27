@@ -90,6 +90,15 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
   - **Smart Scoring**: Prioritizes provider > category > resource matching with weighted scores
   - **Implementation**: New `src/lib/type-matcher.ts` utility integrated into JSON editor for seamless type expansion
   - **Performance**: Caches loaded resource types to avoid repeated API calls
+- **ResourceIcon Component Overhaul** (2025-10-27): Completely fixed icon loading system for 100% reliability across all providers:
+  - **Removed All Fallback Logic**: Eliminated problematic fallback paths that caused wrong 404 requests (e.g., `/resources/aws/compute/ec2.png` instead of correct catalog lookup)
+  - **Pure Catalog Lookup**: Icons now ONLY load from resource catalog files (resource-*.json), ensuring correct filename mapping (e.g., `aws.compute.ec2` → fetch resource-aws.json → find "EC2" → use "amazon-elastic-compute-cloud.png")
+  - **Fixed Infinite Recursion**: Removed buggy `onError` handler that caused infinite incrementing when no more candidates existed
+  - **Simplified State Management**: Removed complex `candidates` array and `idx` state, replaced with simple `iconPath` from catalog lookup
+  - **Enhanced Error Handling**: Added proper HTTP status checking and detailed console warnings for debugging
+  - **Universal Fix**: Works for ALL providers (AWS, Azure, GCP, Generic, K8s, etc.) - no more mixed working/broken icons
+  - **Performance**: Icons load once from catalog, no retry loops or multiple failed requests
+  - **Clean Fallback**: Only shows generic SVG icon if catalog lookup completely fails, no broken image attempts
 
 ### Development Tools
 - **Scripts**: npm run dev, build, lint, typecheck, genkit

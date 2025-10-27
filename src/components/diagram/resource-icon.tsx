@@ -9,7 +9,6 @@ interface ResourceIconProps extends React.SVGProps<SVGSVGElement> {
 }
 
 export function ResourceIcon({ type, imagePath, ...props }: ResourceIconProps) {
-  const [idx, setIdx] = useState(0);
   const [resourceFile, setResourceFile] = useState<string | null>(null);
 
   // Look up file from resource catalog based on type
@@ -20,9 +19,17 @@ export function ResourceIcon({ type, imagePath, ...props }: ResourceIconProps) {
       const category = parts[1];
       const resourceName = parts.slice(2).join('-').toLowerCase();
       
+      // Reset resource file when type changes
+      setResourceFile(null);
+      
       // Fetch the resource catalog to get the correct filename
       fetch(`/resources/resource-${provider}.json`)
-        .then(res => res.json())
+        .then(res => {
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
+          return res.json();
+        })
         .then(data => {
           const categoryData = data.categories?.[category];
           if (categoryData?.resources) {
@@ -33,83 +40,52 @@ export function ResourceIcon({ type, imagePath, ...props }: ResourceIconProps) {
             );
             if (resource?.file) {
               setResourceFile(resource.file);
+            } else {
+              console.warn(`Resource not found: ${resourceName} in ${provider}.${category}`, {
+                availableResources: categoryData.resources.map((r: any) => ({
+                  name: r.name,
+                  normalized: r.name.replace(/\s+/g, '-').toLowerCase()
+                }))
+              });
             }
+          } else {
+            console.warn(`Category not found: ${category} in ${provider}`, {
+              availableCategories: Object.keys(data.categories || {})
+            });
           }
         })
-        .catch(() => {
-          // Silently fail, will use fallback
+        .catch((err) => {
+          console.warn(`Failed to load resource catalog for ${provider}:`, err.message);
         });
     }
-  }, [type]);
+  }, [type, imagePath]);
 
-  const candidates = useMemo(() => {
-    const list: string[] = [];
+  const iconPath = useMemo(() => {
     const parts = type.split('.');
     
     // If imagePath is explicitly provided, use only that
     if (imagePath) {
-      list.push(imagePath);
-      return list;
+      return imagePath;
     }
     
-    // If we found the file from resource catalog, use it
+    // Only use resource catalog lookup - no fallbacks
     if (resourceFile && parts.length >= 3) {
       const provider = parts[0];
       const category = parts[1];
-      list.push(`/resources/${provider}/${category}/${resourceFile}`);
-      return list;
+      return `/resources/${provider}/${category}/${resourceFile}`;
     }
     
-    // Derive path from type: provider.category.resourcename (fallback)
-    if (parts.length >= 3) {
-      const provider = parts[0];
-      const category = parts[1];
-      const resourceName = parts.slice(2).join('-').toLowerCase();
-      // Derived by convention
-      list.push(`/resources/${provider}/${category}/${resourceName}.png`);
-      // Provider-specific aliases (Kubernetes short filenames)
-      if (provider === 'k8s') {
-        const k8sMap: Record<string, string> = {
-          kubernetes: 'infra/master.png',
-          pod: 'pod.png',
-          deployment: 'deploy.png',
-          statefulset: 'sts.png',
-          daemonset: 'ds.png',
-          job: 'job.png',
-          cronjob: 'cronjob.png',
-          replicaset: 'rs.png',
-          service: 'svc.png',
-          ingress: 'ing.png',
-          networkpolicy: 'netpol.png',
-          endpoint: 'ep.png',
-          persistentvolume: 'pv.png',
-          persistentvolumeclaim: 'pvc.png',
-          storageclass: 'sc.png',
-          volume: 'vol.png',
-          'api-server': 'api.png',
-          apiserver: 'api.png',
-          scheduler: 'sched.png',
-          'controller-manager': 'c-m.png',
-          'cloud-controller-manager': 'c-c-m.png',
-          'kube-proxy': 'k-proxy.png',
-          kubelet: 'kubelet.png',
-        };
-        const alias = k8sMap[resourceName];
-        if (alias) list.push(`/resources/k8s/${category}/${alias}`);
-      }
-    }
-    return Array.from(new Set(list));
+    return null;
   }, [type, resourceFile, imagePath]);
 
-  useEffect(() => setIdx(0), [type, resourceFile, imagePath]);
-
-  const src = candidates[idx];
-  if (src) {
+  if (iconPath) {
     return (
       <img
-        src={src}
+        src={iconPath}
         alt={type}
-        onError={() => setIdx(i => (i + 1 < candidates.length ? i + 1 : i + 1))}
+        onError={() => {
+          console.warn(`Icon failed to load for type: ${type}, path: ${iconPath}`);
+        }}
         width={props.width || '40'}
         height={props.height || '40'}
         style={{ width: props.width || '40px', height: props.height || '40px', objectFit: 'contain' }}
@@ -117,36 +93,6 @@ export function ResourceIcon({ type, imagePath, ...props }: ResourceIconProps) {
     );
   }
 
-  // Handle legacy generic resources
-  const parts = type.split('.');
-  if (type.startsWith('generic.') && parts.length === 2) {
-    const provider = parts[0];
-    const typeMap: Record<string, { category: string; file: string }> = {
-      'server': { category: 'compute', file: 'server' },
-      'vm': { category: 'compute', file: 'vm' },
-      'database': { category: 'database', file: 'database' },
-      'load-balancer': { category: 'network', file: 'load-balancer' },
-      'gateway': { category: 'network', file: 'gateway' },
-      'router': { category: 'network', file: 'router' },
-      'switch': { category: 'network', file: 'switch' },
-      'firewall': { category: 'network', file: 'firewall' },
-      'storage': { category: 'storage', file: 'storage' }
-    };
-    const mapping = typeMap[parts[1].toLowerCase()];
-    if (mapping) {
-      const p = `/resources/${provider}/${mapping.category}/${mapping.file}.png`;
-      return (
-        <img
-          src={p}
-          alt={type}
-          onError={() => setIdx(i => i + 1)}
-          width={props.width || '40'}
-          height={props.height || '40'}
-          style={{ width: props.width || '40px', height: props.height || '40px', objectFit: 'contain' }}
-        />
-      );
-    }
-  }
 
   switch (type) {
     case "user":
