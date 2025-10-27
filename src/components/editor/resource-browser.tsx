@@ -16,7 +16,6 @@ import { DraggableResourceItem } from './draggable-resource-item';
 interface ResourceItem {
   name: string;
   file: string;
-  type: string;
   hasWhiteVariant?: boolean;
   format?: string;
 }
@@ -50,7 +49,7 @@ interface ResourceIndex {
 }
 
 interface ResourceBrowserProps {
-  onResourceSelect: (resource: { name: string; file: string; type: string; }, provider: string, category: string) => void;
+  onResourceSelect: (resource: { name: string; file: string; }, provider: string, category: string) => void;
 }
 
 // Icon mapping for different resource types
@@ -273,8 +272,8 @@ export function ResourceBrowser({ onResourceSelect }: ResourceBrowserProps) {
   }, [searchTerm, fullProviders, isLoading]);
 
   const getResourceIcon = (resource: ResourceItem) => {
-    // For now, return a type-based icon
-    return typeIcons[resource.type] || <Box className="w-6 h-6" />;
+    // Return generic box icon (icon will be loaded from file)
+    return <Box className="w-6 h-6" />;
   };
 
   const handleResourceClick = (resource: ResourceItem, provider: string, category: string) => {

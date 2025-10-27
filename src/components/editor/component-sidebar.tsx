@@ -24,7 +24,7 @@ interface ComponentSidebarProps {
   onSave: () => void;
   onLoad: () => void;
   onNew: () => void;
-  onResourceSelect: (resource: { name: string; file: string; type: string; }, provider: string, category: string) => void;
+  onResourceSelect: (resource: { name: string; file: string; }, provider: string, category: string) => void;
   onToggleJsonPanel?: () => void;
   jsonPanelOpen?: boolean;
   onFitToView?: () => void;

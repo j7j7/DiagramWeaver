@@ -4,17 +4,63 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Server, User } from "lucide-react";
 
 interface ResourceIconProps extends React.SVGProps<SVGSVGElement> {
-  type: string;
-  imagePath?: string; // If provided, use this exact icon path
+  type: string; // Format: provider.category.resourcename (e.g., aws.compute.ec2)
+  imagePath?: string; // If provided, use this exact icon path (legacy support)
 }
 
 export function ResourceIcon({ type, imagePath, ...props }: ResourceIconProps) {
   const [idx, setIdx] = useState(0);
+  const [resourceFile, setResourceFile] = useState<string | null>(null);
+
+  // Look up file from resource catalog based on type
+  useEffect(() => {
+    const parts = type.split('.');
+    if (parts.length >= 3) {
+      const provider = parts[0];
+      const category = parts[1];
+      const resourceName = parts.slice(2).join('-').toLowerCase();
+      
+      // Fetch the resource catalog to get the correct filename
+      fetch(`/resources/resource-${provider}.json`)
+        .then(res => res.json())
+        .then(data => {
+          const categoryData = data.categories?.[category];
+          if (categoryData?.resources) {
+            // Find the resource that matches the resourceName (derived from type)
+            // Look for resources where name.toLowerCase().replace(/\s+/g, '-') matches resourceName
+            const resource = categoryData.resources.find((r: {name: string, file: string}) => 
+              r.name.replace(/\s+/g, '-').toLowerCase() === resourceName
+            );
+            if (resource?.file) {
+              setResourceFile(resource.file);
+            }
+          }
+        })
+        .catch(() => {
+          // Silently fail, will use fallback
+        });
+    }
+  }, [type]);
 
   const candidates = useMemo(() => {
     const list: string[] = [];
-    if (imagePath) list.push(imagePath);
     const parts = type.split('.');
+    
+    // If imagePath is explicitly provided, use only that
+    if (imagePath) {
+      list.push(imagePath);
+      return list;
+    }
+    
+    // If we found the file from resource catalog, use it
+    if (resourceFile && parts.length >= 3) {
+      const provider = parts[0];
+      const category = parts[1];
+      list.push(`/resources/${provider}/${category}/${resourceFile}`);
+      return list;
+    }
+    
+    // Derive path from type: provider.category.resourcename (fallback)
     if (parts.length >= 3) {
       const provider = parts[0];
       const category = parts[1];
@@ -53,9 +99,9 @@ export function ResourceIcon({ type, imagePath, ...props }: ResourceIconProps) {
       }
     }
     return Array.from(new Set(list));
-  }, [type, imagePath]);
+  }, [type, resourceFile, imagePath]);
 
-  useEffect(() => setIdx(0), [type, imagePath]);
+  useEffect(() => setIdx(0), [type, resourceFile, imagePath]);
 
   const src = candidates[idx];
   if (src) {

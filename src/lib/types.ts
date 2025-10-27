@@ -1,11 +1,10 @@
 export interface DiagramNodeData {
   id: string;
-  type: string;
+  type: string; // Format: provider.category.resourcename (e.g., aws.compute.ec2)
   label?: string;
   info?: string;
   x?: number;
   y?: number;
-  imagePath?: string; // Optional: Override icon path. If not provided, derived from type
   lineColor?: string; // Color for connections/borders
 }
 

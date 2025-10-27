@@ -308,7 +308,8 @@ export default function DiagramEditor() {
           onToggleJsonPanel={toggleJsonPanel}
           jsonPanelOpen={jsonPanelOpen}
           onResourceSelect={(resource, provider, category) => {
-            // Add the resource to the diagram at a default position
+            // NEVER add file or imagePath to node data
+            // ResourceIcon will derive path from type and resource catalog
             const nodeType = `${provider}.${category}.${resource.name.replace(/\s+/g, '-').toLowerCase()}`;
             setDiagramData(prevData => {
               const newNode = {

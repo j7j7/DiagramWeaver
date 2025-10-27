@@ -270,14 +270,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         newGroups.push(newGroup);
         newItemId = newGroup.id;
       } else {
-        // For resource items from the sidebar, preserve the full type path
-        const nodeType = item.resource ? `${item.provider}.${item.category}.${item.resource.name.replace(/\s+/g, '-').toLowerCase()}` : itemType;
-        
+        // For resource items from the sidebar, use type from drag item
+        // NEVER store file in node - ResourceIcon looks up file from resource catalog
         const newNode: DiagramNodeData = {
-          id: generateSequentialId(nodeType, prevData),
-          type: nodeType,
+          id: generateSequentialId(itemType, prevData),
+          type: itemType,
           label: itemLabel,
-          info: item.resource ? `${item.resource.name} from ${item.provider}` : `A new ${itemLabel}`,
+          info: item.provider ? `${itemLabel} from ${item.provider}` : `A new ${itemLabel}`,
         };
         newNodes.push(newNode);
         newItemId = newNode.id;

@@ -7,112 +7,112 @@
       "name": "Compute",
       "path": "aws/compute",
       "resources": [
-         {"name": "EC2", "file": "amazon-elastic-compute-cloud.png", "type": "service"},
-         {"name": "EC2 Instance", "file": "amazon-elastic-compute-cloud-instance.png", "type": "resource"},
-         {"name": "Lambda", "file": "aws-lambda.png", "type": "service"},
-         {"name": "Lambda Function", "file": "aws-lambda-function.png", "type": "resource"},
-         {"name": "Batch", "file": "aws-batch.png", "type": "service"},
-        {"name": "Compute Optimizer", "file": "compute-optimizer.png", "type": "service"},
-         {"name": "EC2 AMI", "file": "amazon-machine-image.png", "type": "resource"},
-         {"name": "EC2 Auto Scaling", "file": "auto-scaling.png", "type": "service"},
-        {"name": "EC2 Spot Instance", "file": "ec2-spot-instance.png", "type": "resource"}
+         {"name": "EC2", "file": "amazon-elastic-compute-cloud.png"},
+         {"name": "EC2 Instance", "file": "amazon-elastic-compute-cloud-instance.png"},
+         {"name": "Lambda", "file": "aws-lambda.png"},
+         {"name": "Lambda Function", "file": "aws-lambda-function.png"},
+         {"name": "Batch", "file": "aws-batch.png"},
+        {"name": "Compute Optimizer", "file": "compute-optimizer.png"},
+         {"name": "EC2 AMI", "file": "amazon-machine-image.png"},
+         {"name": "EC2 Auto Scaling", "file": "auto-scaling.png"},
+        {"name": "EC2 Spot Instance", "file": "ec2-spot-instance.png"}
       ]
     },
     "storage": {
       "name": "Storage",
       "path": "aws/storage",
       "resources": [
-         {"name": "S3", "file": "s3.png", "type": "service"},
-        {"name": "S3 Bucket", "file": "s3-bucket.png", "type": "resource"},
-         {"name": "EFS", "file": "efs.png", "type": "service"},
-         {"name": "EBS", "file": "ebs.png", "type": "service"},
-        {"name": "Storage Gateway", "file": "storage-gateway.png", "type": "service"},
-        {"name": "FSx", "file": "fsx.png", "type": "service"},
-        {"name": "Backup", "file": "backup.png", "type": "service"},
-        {"name": "Snowball", "file": "snowball.png", "type": "service"}
+         {"name": "S3", "file": "s3.png"},
+        {"name": "S3 Bucket", "file": "s3-bucket.png"},
+         {"name": "EFS", "file": "efs.png"},
+         {"name": "EBS", "file": "ebs.png"},
+        {"name": "Storage Gateway", "file": "storage-gateway.png"},
+        {"name": "FSx", "file": "fsx.png"},
+        {"name": "Backup", "file": "backup.png"},
+        {"name": "Snowball", "file": "snowball.png"}
       ]
     },
     "database": {
       "name": "Database",
       "path": "aws/database",
       "resources": [
-         {"name": "RDS", "file": "relational-database-service.png", "type": "service"},
-        {"name": "RDS Instance", "file": "rds-instance.png", "type": "resource"},
-        {"name": "DynamoDB", "file": "dynamodb.png", "type": "service"},
-        {"name": "Redshift", "file": "redshift.png", "type": "service"},
-        {"name": "Aurora", "file": "aurora.png", "type": "service"},
-        {"name": "DocumentDB", "file": "documentdb.png", "type": "service"},
-        {"name": "Neptune", "file": "neptune.png", "type": "service"},
-        {"name": "Timestream", "file": "timestream.png", "type": "service"},
-        {"name": "QLDB", "file": "qldb.png", "type": "service"}
+         {"name": "RDS", "file": "relational-database-service.png"},
+        {"name": "RDS Instance", "file": "rds-instance.png"},
+        {"name": "DynamoDB", "file": "dynamodb.png"},
+        {"name": "Redshift", "file": "redshift.png"},
+        {"name": "Aurora", "file": "aurora.png"},
+        {"name": "DocumentDB", "file": "documentdb.png"},
+        {"name": "Neptune", "file": "neptune.png"},
+        {"name": "Timestream", "file": "timestream.png"},
+        {"name": "QLDB", "file": "qldb.png"}
       ]
     },
     "network": {
       "name": "Networking",
       "path": "aws/network",
       "resources": [
-         {"name": "VPC", "file": "virtual-private-cloud.png", "type": "service"},
-        {"name": "CloudFront", "file": "cloudfront.png", "type": "service"},
-        {"name": "Route 53", "file": "route53.png", "type": "service"},
-        {"name": "API Gateway", "file": "api-gateway.png", "type": "service"},
-         {"name": "ELB", "file": "elastic-load-balancing.png", "type": "service"},
-         {"name": "ALB", "file": "application-load-balancer.png", "type": "service"},
-         {"name": "NLB", "file": "network-load-balancer.png", "type": "service"},
-        {"name": "Direct Connect", "file": "direct-connect.png", "type": "service"},
-        {"name": "Transit Gateway", "file": "transit-gateway.png", "type": "service"}
+         {"name": "VPC", "file": "virtual-private-cloud.png"},
+        {"name": "CloudFront", "file": "cloudfront.png"},
+        {"name": "Route 53", "file": "route53.png"},
+        {"name": "API Gateway", "file": "api-gateway.png"},
+         {"name": "ELB", "file": "elastic-load-balancing.png"},
+         {"name": "ALB", "file": "application-load-balancer.png"},
+         {"name": "NLB", "file": "network-load-balancer.png"},
+        {"name": "Direct Connect", "file": "direct-connect.png"},
+        {"name": "Transit Gateway", "file": "transit-gateway.png"}
       ]
     },
     "analytics": {
       "name": "Analytics",
       "path": "aws/analytics",
       "resources": [
-        {"name": "EMR", "file": "emr.png", "type": "service"},
-        {"name": "Kinesis", "file": "kinesis.png", "type": "service"},
-        {"name": "Glue", "file": "glue.png", "type": "service"},
-        {"name": "Athena", "file": "athena.png", "type": "service"},
-        {"name": "QuickSight", "file": "quicksight.png", "type": "service"},
-         {"name": "OpenSearch", "file": "amazonopensearchservice.png", "type": "service"},
-        {"name": "Redshift Spectrum", "file": "redshift-spectrum.png", "type": "service"}
+        {"name": "EMR", "file": "emr.png"},
+        {"name": "Kinesis", "file": "kinesis.png"},
+        {"name": "Glue", "file": "glue.png"},
+        {"name": "Athena", "file": "athena.png"},
+        {"name": "QuickSight", "file": "quicksight.png"},
+         {"name": "OpenSearch", "file": "amazonopensearchservice.png"},
+        {"name": "Redshift Spectrum", "file": "redshift-spectrum.png"}
       ]
     },
     "machinelearning": {
       "name": "Machine Learning",
       "path": "aws/machinelearning",
       "resources": [
-        {"name": "SageMaker", "file": "sagemaker.png", "type": "service"},
-        {"name": "Comprehend", "file": "comprehend.png", "type": "service"},
-        {"name": "Rekognition", "file": "rekognition.png", "type": "service"},
-        {"name": "Translate", "file": "translate.png", "type": "service"},
-        {"name": "Polly", "file": "polly.png", "type": "service"},
-        {"name": "Lex", "file": "lex.png", "type": "service"},
-        {"name": "Forecast", "file": "forecast.png", "type": "service"}
+        {"name": "SageMaker", "file": "sagemaker.png"},
+        {"name": "Comprehend", "file": "comprehend.png"},
+        {"name": "Rekognition", "file": "rekognition.png"},
+        {"name": "Translate", "file": "translate.png"},
+        {"name": "Polly", "file": "polly.png"},
+        {"name": "Lex", "file": "lex.png"},
+        {"name": "Forecast", "file": "forecast.png"}
       ]
     },
     "security": {
       "name": "Security",
       "path": "aws/security",
       "resources": [
-         {"name": "IAM", "file": "identity-and-access-management.png", "type": "service"},
-         {"name": "KMS", "file": "key-management-service.png", "type": "service"},
-        {"name": "CloudHSM", "file": "cloudhsm.png", "type": "service"},
-        {"name": "Secrets Manager", "file": "secrets-manager.png", "type": "service"},
-        {"name": "GuardDuty", "file": "guardduty.png", "type": "service"},
-        {"name": "Inspector", "file": "inspector.png", "type": "service"},
-        {"name": "Macie", "file": "macie.png", "type": "service"},
-         {"name": "WAF", "file": "web-application-firewall.png", "type": "service"},
-        {"name": "Shield", "file": "shield.png", "type": "service"}
+         {"name": "IAM", "file": "identity-and-access-management.png"},
+         {"name": "KMS", "file": "key-management-service.png"},
+        {"name": "CloudHSM", "file": "cloudhsm.png"},
+        {"name": "Secrets Manager", "file": "secrets-manager.png"},
+        {"name": "GuardDuty", "file": "guardduty.png"},
+        {"name": "Inspector", "file": "inspector.png"},
+        {"name": "Macie", "file": "macie.png"},
+         {"name": "WAF", "file": "web-application-firewall.png"},
+        {"name": "Shield", "file": "shield.png"}
       ]
     },
     "management": {
       "name": "Management",
       "path": "aws/management",
       "resources": [
-        {"name": "CloudWatch", "file": "cloudwatch.png", "type": "service"},
-        {"name": "CloudTrail", "file": "cloudtrail.png", "type": "service"},
-        {"name": "Config", "file": "config.png", "type": "service"},
-        {"name": "Trusted Advisor", "file": "trusted-advisor.png", "type": "service"},
-        {"name": "Systems Manager", "file": "systems-manager.png", "type": "service"},
-        {"name": "OpsWorks", "file": "opsworks.png", "type": "service"}
+        {"name": "CloudWatch", "file": "cloudwatch.png"},
+        {"name": "CloudTrail", "file": "cloudtrail.png"},
+        {"name": "Config", "file": "config.png"},
+        {"name": "Trusted Advisor", "file": "trusted-advisor.png"},
+        {"name": "Systems Manager", "file": "systems-manager.png"},
+        {"name": "OpsWorks", "file": "opsworks.png"}
       ]
     }
   }
