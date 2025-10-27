@@ -1,5 +1,7 @@
 # Project Directory Tree
 
+Note: All resource JSON and icons are under `public/resources/`. No resource assets live under `src/`.
+
 ```
 DiagramWeaver/
 ├── docs/
@@ -24,24 +26,6 @@ DiagramWeaver/
 │       ├── programming/
 │       └── saas/
 ├── resources/
-│   ├── resource-alibabacloud.json
-│   ├── resource-aws.json
-│   ├── resource-azure.json
-│   ├── resource-components.json
-│   ├── resource-digitalocean.json
-│   ├── resource-elastic.json
-│   ├── resource-firebase.json
-│   ├── resource-gcp.json
-│   ├── resource-generic.json
-│   ├── resource-gis.json
-│   ├── resource-ibm.json
-│   ├── resource-k8s.json
-│   ├── resource-oci.json
-│   ├── resource-onprem.json
-│   ├── resource-openstack.json
-│   ├── resource-outscale.json
-│   ├── resource-programming.json
-│   └── resource-saas.json
 ├── src/
 │   ├── ai/
 │   │   ├── flows/

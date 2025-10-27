@@ -9,8 +9,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/colla
 import { Badge } from '../ui/badge';
 import { DraggableResourceItem } from './draggable-resource-item';
 
-// Import the resource index
-import resourceIndex from '../../../resources/resource-components.json';
+// Resource index is fetched at runtime from public/resources
+// This avoids duplicate JSON sources and keeps a single source of truth.
 
 // ResourceItem interface kept for backward compatibility and internal use
 interface ResourceItem {
@@ -118,49 +118,63 @@ export function ResourceBrowser({ onResourceSelect }: ResourceBrowserProps) {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [fullProviders, setFullProviders] = useState<Record<string, ResourceProvider>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [resourceIndex, setResourceIndex] = useState<ResourceIndex | null>(null);
 
-   useEffect(() => {
-     const loadProviders = async () => {
-       setIsLoading(true);
-       const providers: Record<string, ResourceProvider> = {};
-       for (const [key, provider] of Object.entries(resourceIndex.providers)) {
-         if (provider.enabled) {
-           try {
-             const response = await fetch(`/resources/${provider.file}`);
-             const fullData = await response.json();
-             providers[key] = fullData;
-           } catch (error) {
-             console.error(`Failed to load provider ${key}:`, error);
-           }
-         }
-       }
-       setFullProviders(providers);
+  useEffect(() => {
+    const loadAll = async () => {
+      setIsLoading(true);
+      try {
+        // Fetch the index from the canonical public location
+        const indexRes = await fetch('/resources/resource-components.json', { cache: 'no-cache' });
+        const indexJson: ResourceIndex = await indexRes.json();
+        setResourceIndex(indexJson);
 
-       // Auto-expand the first provider and some categories
-       if (Object.keys(providers).length > 0) {
-         const firstProvider = Object.keys(providers)[0];
-         const newExpandedProviders = new Set([firstProvider]);
-         const newExpandedCategories = new Set<string>();
+        // Fetch enabled providers in parallel for responsiveness
+        const entries = Object.entries(indexJson.providers).filter(([, p]) => p.enabled);
+        const providerPairs = await Promise.all(entries.map(async ([key, provider]) => {
+          try {
+            const res = await fetch(`/resources/${provider.file}`, { cache: 'no-cache' });
+            const data = await res.json();
+            return [key, data as ResourceProvider] as const;
+          } catch (err) {
+            console.error(`Failed to load provider ${key}:`, err);
+            return null;
+          }
+        }));
 
-         // Expand some common categories from the first provider
-         const providerData = providers[firstProvider];
-         if (providerData?.categories) {
-           const categoriesToExpand = ['grouping', 'compute', 'database', 'network'];
-           Object.keys(providerData.categories).forEach(categoryKey => {
-             if (categoriesToExpand.includes(categoryKey)) {
-               newExpandedCategories.add(`${firstProvider}-${categoryKey}`);
-             }
-           });
-         }
+        const providers: Record<string, ResourceProvider> = {};
+        for (const pair of providerPairs) {
+          if (pair) providers[pair[0]] = pair[1];
+        }
+        setFullProviders(providers);
 
-         setExpandedProviders(newExpandedProviders);
-         setExpandedCategories(newExpandedCategories);
-       }
+        // Auto-expand first provider and some categories
+        if (Object.keys(providers).length > 0) {
+          const firstProvider = Object.keys(providers)[0];
+          const newExpandedProviders = new Set([firstProvider]);
+          const newExpandedCategories = new Set<string>();
 
-       setIsLoading(false);
-     };
-     loadProviders();
-   }, []);
+          const providerData = providers[firstProvider];
+          if (providerData?.categories) {
+            const categoriesToExpand = ['grouping', 'compute', 'database', 'network'];
+            Object.keys(providerData.categories).forEach(categoryKey => {
+              if (categoriesToExpand.includes(categoryKey)) {
+                newExpandedCategories.add(`${firstProvider}-${categoryKey}`);
+              }
+            });
+          }
+
+          setExpandedProviders(newExpandedProviders);
+          setExpandedCategories(newExpandedCategories);
+        }
+      } catch (e) {
+        console.error('Failed to load resource index:', e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadAll();
+  }, []);
 
   const toggleProvider = (provider: string) => {
     const newExpanded = new Set(expandedProviders);
@@ -256,7 +270,7 @@ export function ResourceBrowser({ onResourceSelect }: ResourceBrowserProps) {
     });
     
     return filtered;
-  }, [searchTerm]);
+  }, [searchTerm, fullProviders, isLoading]);
 
   const getResourceIcon = (resource: ResourceItem) => {
     // For now, return a type-based icon

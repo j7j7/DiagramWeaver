@@ -6,25 +6,17 @@ An interactive diagram creation tool that allows users to create diagrams from J
 
 ### Resource Management
 
-The application uses a dual-directory structure for resource files:
+- Single source of truth: `public/resources/`
+  - All resource JSON files and icons are served from `public/resources/*`
+  - The Resource Browser fetches the index from `/resources/resource-components.json` and provider files from `/resources/*.json`
+  - The Canvas renders the same icon paths by carrying `imagePath` from the browser into node data
 
-- **Source files**: `resources/*.json` - Edit these files to update resources
-- **Public files**: `public/resources/*.json` - Served by the web application
+There is no separate source directory or sync step. Update JSON files directly under `public/resources/`.
 
-**Important**: After editing any resource files in the `resources/` directory, sync them to the public directory:
-
-```bash
-npm run sync:resources
-```
-
-This ensures that:
-- JSON configurations are accessible via HTTP requests
-- Resource images load correctly in the browser
-- All resource metadata is up-to-date
+See detailed guide: `docs/RESOURCES.md`.
 
 ### Getting Started
 
 1. Start the development server: `npm run dev`
-2. Edit resource files in `resources/` directory
-3. Sync changes: `npm run sync:resources`
-4. Changes will be reflected in the resource browser
+2. Edit resource files in `public/resources/`
+3. Reload the app; changes will appear in the Resource Browser

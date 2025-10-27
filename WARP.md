@@ -69,9 +69,10 @@ Uses Google Genkit for natural language processing:
 ## Development Notes
 
 ### Adding New Node Types
-1. Add AWS icon support in `src/components/diagram/aws-icon.tsx`
+1. Add icon support in `src/components/diagram/aws-icon.tsx` (icons are loaded from `public/resources/...`)
 2. Extend type definitions if needed
 3. Icons should follow diagrams.mingrammer.com naming conventions
+4. Place new icons under `public/resources/<provider>/<category>/` and update the corresponding `public/resources/resource-<provider>.json`
 
 ### Modifying Layout Algorithm
 The layout system in `EditorCanvas` handles:

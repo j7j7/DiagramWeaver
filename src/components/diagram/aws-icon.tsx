@@ -5,23 +5,42 @@ import { Server, User } from "lucide-react";
 
 interface AwsIconProps extends React.SVGProps<SVGSVGElement> {
   type: string;
+  imagePath?: string; // If provided, use this exact icon path
 }
 
-export function AwsIcon({ type, ...props }: AwsIconProps) {
+export function AwsIcon({ type, imagePath, ...props }: AwsIconProps) {
   const [imageError, setImageError] = useState(false);
+
+  // If an explicit imagePath is provided, prefer it for exact parity with browser
+  if (imagePath && !imageError) {
+    return (
+      <img
+        src={imagePath}
+        alt={type}
+        onError={() => setImageError(true)}
+        width={props.width || '40'}
+        height={props.height || '40'}
+        style={{
+          width: props.width || '40px',
+          height: props.height || '40px',
+          objectFit: 'contain'
+        }}
+      />
+    );
+  }
   
-  // Handle all provider resources by loading PNG files
+  // Handle all provider resources by loading PNG files derived from type
   const parts = type.split('.');
   if (parts.length >= 3) {
     const provider = parts[0];
     const category = parts[1];
     const resourceName = parts.slice(2).join('-').toLowerCase();
-    const imagePath = `/resources/${provider}/${category}/${resourceName}.png`;
+    const derivedPath = `/resources/${provider}/${category}/${resourceName}.png`;
     
     if (!imageError) {
       return (
         <img
-          src={imagePath}
+          src={derivedPath}
           alt={type}
           onError={() => setImageError(true)}
           width={props.width || '40'}

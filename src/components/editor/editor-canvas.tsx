@@ -266,6 +266,7 @@ export function EditorCanvas({ diagramData, setDiagramData, onItemSelect, select
           type: nodeType,
           label: itemLabel,
           info: item.resource ? `${item.resource.name} from ${item.provider}` : `A new ${itemLabel}`,
+          imagePath: item.imagePath,
         };
         newNodes.push(newNode);
         newItemId = newNode.id;

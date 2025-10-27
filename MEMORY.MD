@@ -50,6 +50,7 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
 - **Icon Persistence**: Fixes ensure icons remain visible after connections and selections
 
 ### Recent Updates and Fixes
+- Resource JSON consolidation: Single source of truth under `public/resources/`; removed duplicate JSONs under `resources/`. Resource Browser now fetches the index at runtime, and the Canvas uses the same exact icon path via `imagePath` to ensure icon parity.
 - **Pathfinding Overhaul**: Revolutionary improvements for edge routing, anti-hugging, and smart connections
 - **Resource Reorganization**: Split into modular JSON files for better maintainability
 - **Bug Fixes**: Icon persistence, drag-drop preservation, scrollbar issues resolved
