@@ -304,6 +304,7 @@ export default function DiagramEditor() {
           onLoad={handleLoadClick}
           onNew={handleNew}
           onFitToView={() => editorRef.current?.fitToView()}
+          onExportPng={() => editorRef.current?.exportPng()}
           onToggleJsonPanel={toggleJsonPanel}
           jsonPanelOpen={jsonPanelOpen}
           onResourceSelect={(resource, provider, category) => {

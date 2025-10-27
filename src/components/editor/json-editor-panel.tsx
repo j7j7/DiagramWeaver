@@ -7,6 +7,7 @@ import { lintGutter } from '@codemirror/lint';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { DiagramDataSchema } from '@/lib/schemas';
 import { debounce, stableStringify } from '@/lib/json-utils';
+import { expandResourceType } from '@/lib/type-matcher';
 import type { DiagramData } from '@/lib/types';
 
 type Props = {
@@ -44,15 +45,25 @@ export function JsonEditorPanel({
     [onValidJsonChange]
   );
 
-  const handleChange = (newText: string) => {
+  const handleChange = async (newText: string) => {
     changeFromEditorRef.current = true;
     setText(newText);
     try {
       const parsed = JSON.parse(newText);
-      const validationResult = DiagramDataSchema.safeParse(parsed);
+      
+      // Expand abbreviated types in nodes before validation
+      const expandedData = await expandAbbreviatedTypes(parsed);
+      
+      const validationResult = DiagramDataSchema.safeParse(expandedData);
       if (validationResult.success) {
         setError(null);
         emitValid(validationResult.data);
+        
+        // Update text with expanded types if any changes were made
+        const expandedText = stableStringify(expandedData);
+        if (expandedText !== newText) {
+          setText(expandedText);
+        }
       } else {
         const errorMessage = validationResult.error.issues
           .map(issue => `${issue.path.join('.')}: ${issue.message}`)
@@ -67,6 +78,30 @@ export function JsonEditorPanel({
         changeFromEditorRef.current = false; 
       });
     }
+  };
+
+  // Expand abbreviated types in diagram data
+  const expandAbbreviatedTypes = async (data: any): Promise<any> => {
+    if (!data || typeof data !== 'object') return data;
+    
+    const result = { ...data };
+    
+    // Process nodes
+    if (Array.isArray(result.nodes)) {
+      result.nodes = await Promise.all(
+        result.nodes.map(async (node: any) => {
+          if (node.type && typeof node.type === 'string') {
+            const expanded = await expandResourceType(node.type);
+            if (expanded && expanded !== node.type) {
+              return { ...node, type: expanded };
+            }
+          }
+          return node;
+        })
+      );
+    }
+    
+    return result;
   };
 
   return (

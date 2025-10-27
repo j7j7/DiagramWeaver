@@ -57,7 +57,8 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
 - **Grid and Snap Enhancements**: Improved placement, collision prevention, and nested layouts
 - **Type System**: Updated types to preserve resource information during operations
 - **UI Fix**: Resolved React warning about mixing `border` and `borderImage` in `src/components/diagram/diagram-group.tsx` by replacing shorthand `border` with explicit `borderWidth`/`borderStyle`/`borderColor` and using `borderImageSource` + `borderImageSlice` for gradient borders.
-- **New** (2025-10-27): Added "Fit to view" button under the Show JSON toggle in the left sidebar (ComponentSidebar) wired to an imperative `fitToView` method exposed by `EditorCanvas` via `forwardRef`. Also kept a floating canvas button. Implemented `handleFitToView` to compute bounds using dynamic node dimensions (matching DiagramNode sizes) plus extra margins, so all elements fit. Removed temporary console logs from edge rendering and DiagramGroup shadow debug. Typecheck passed; ESLint currently errors due to a circular reference in `.eslintrc.json` (unchanged).
+- **New** (2025-10-27): Added "Fit to view" and "Export PNG" buttons under the Show JSON toggle in the left sidebar (ComponentSidebar). EditorCanvas now exposes `fitToView` and `exportPng` via forwardRef. PNG export uses `html-to-image` to render the viewport and triggers a browser download (diagram.png). Fit-to-view computes bounds using dynamic node dimensions plus margins. Removed temporary console logs from edge rendering and DiagramGroup shadow debug. Typecheck passed; ESLint currently errors due to a circular reference in `.eslintrc.json` (unchanged).
+- Note: PNG export disables font embedding to avoid CSSStyleSheet SecurityError from cross-origin stylesheets.
 - **Optimization** (2025-10-27): Removed redundant `imagePath` fields from diagram JSON files and drag/drop operations. The `ResourceIcon` component (renamed from `AwsIcon`) automatically derives icon paths from the `type` field for all providers (e.g., "generic.device.mobile" → "/resources/generic/device/mobile.png", "aws.database.dynamodb" → "/resources/aws/database/dynamodb.png"). The `imagePath` field is now truly optional and only needed for custom icon overrides. This reduces JSON file size, eliminates data duplication, and works seamlessly with all 18+ supported providers (AWS, Azure, GCP, Generic, K8s, Programming, etc.).
 - **NEW FEATURE** (2025-10-27): JSON Editor Panel - Added a collapsible JSON editor to the right side of the canvas with live sync capabilities. Features include:
   - **CodeMirror Editor**: Professional code editor with line numbers, syntax highlighting, bracket matching, and JSON linting
@@ -78,6 +79,15 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
   - **Consistent Operations**: Copy/paste operations, drag-from-sidebar, and group/zone creation all use sequential IDs
   - **Implementation**: New `src/lib/id-generator.ts` utility integrated in both `diagram-editor.tsx` and `editor-canvas.tsx`
   - **Benefits**: Cleaner diagram JSON, predictable naming, easier debugging and manual editing, eliminates 13-digit timestamp clutter
+- **Type Expansion System** (2025-10-27): Added intelligent type abbreviation expansion for faster JSON editing:
+  - **Fuzzy Matching**: Type patterns like `aws.c.ec2` automatically expand to `aws.compute.ec2-instance`
+  - **Ultra-Short Patterns**: Even `a.c.e` expands to `aws.compute.ec2-instance` (first alphabetical match)
+  - **Multiple Strategies**: Exact match → prefix match → contains match → abbreviation match → fuzzy matching
+  - **Real-time Expansion**: JSON editor automatically expands abbreviated types during editing
+  - **Resource Awareness**: Loads all available resources from providers to ensure accurate matching
+  - **Smart Scoring**: Prioritizes provider > category > resource matching with weighted scores
+  - **Implementation**: New `src/lib/type-matcher.ts` utility integrated into JSON editor for seamless type expansion
+  - **Performance**: Caches loaded resource types to avoid repeated API calls
 
 ### Development Tools
 - **Scripts**: npm run dev, build, lint, typecheck, genkit

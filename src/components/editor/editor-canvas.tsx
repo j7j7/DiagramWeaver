@@ -44,6 +44,7 @@ type PositionedGroup = DiagramGroupData & { x: number; y: number; width: number;
 
 export type EditorCanvasHandle = {
   fitToView: () => void;
+  exportPng: () => Promise<void>;
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
@@ -720,10 +721,34 @@ const [{ isOver, canDrop }, drop] = useDrop(() => ({
     setTransform({ x, y, k });
   }, [processedNodes, processedGroups]);
 
+  const exportPng = useCallback(async () => {
+    if (!canvasRef.current) return;
+    try {
+      const { toPng } = await import('html-to-image');
+      const dataUrl = await toPng(canvasRef.current, {
+        pixelRatio: Math.min(3, window.devicePixelRatio || 1) * 2,
+        cacheBust: true,
+        backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--background') || '#ffffff',
+        skipFonts: true,
+      });
+      const link = document.createElement('a');
+      link.download = 'diagram.png';
+      link.href = dataUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast({ title: 'Exported', description: 'PNG exported successfully.' });
+    } catch (err) {
+      // Swallow known SecurityError from cross-origin styles when fonts are parsed; we already set skipFonts
+      toast({ variant: 'destructive', title: 'Export failed', description: 'Export encountered an issue.' });
+    }
+  }, [toast]);
+
   // Expose imperative API
   React.useImperativeHandle(ref, () => ({
     fitToView: handleFitToView,
-  }), [handleFitToView]);
+    exportPng,
+  }), [handleFitToView, exportPng]);
 
   const allObstacles = useMemo(() => {
     const nodeObstacles = processedNodes.map(n => {
