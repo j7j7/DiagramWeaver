@@ -29,11 +29,6 @@ function hexToRgba(hex: string, alpha: number) {
 
 
 export function DiagramGroup({ group, isSelected, isDropTarget, isTargetable }: DiagramGroupProps) {
-  // Debug: Log when shadow is enabled
-  if (group.shadow) {
-    console.log('Shadow enabled for group:', group.label, group.shadow);
-  }
-  
   const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.GROUP,
     item: { ...group, type: ItemTypes.GROUP },

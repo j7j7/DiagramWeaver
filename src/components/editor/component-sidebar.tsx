@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { DraggableItem } from './draggable-item';
-import { Download, Upload, Plus } from 'lucide-react';
+import { Download, Upload, Plus, Code } from 'lucide-react';
 import type { DiagramNodeData, DiagramGroupData, DiagramData } from '@/lib/types';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
@@ -25,6 +25,8 @@ interface ComponentSidebarProps {
   onLoad: () => void;
   onNew: () => void;
   onResourceSelect: (resource: { name: string; file: string; type: string; }, provider: string, category: string) => void;
+  onToggleJsonPanel?: () => void;
+  jsonPanelOpen?: boolean;
 }
 
 type FormValues = Omit<DiagramNodeData & DiagramGroupData, 'id' | 'type' | 'nodes'> & {
@@ -42,7 +44,7 @@ type FormValues = Omit<DiagramNodeData & DiagramGroupData, 'id' | 'type' | 'node
 };
 
 
-export function ComponentSidebar({ selectedItem, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onSave, onLoad, onNew, onResourceSelect }: ComponentSidebarProps) {
+export function ComponentSidebar({ selectedItem, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onSave, onLoad, onNew, onResourceSelect, onToggleJsonPanel, jsonPanelOpen }: ComponentSidebarProps) {
   const { register, reset, getValues } = useForm<FormValues>();
 
   useEffect(() => {
@@ -132,6 +134,18 @@ return (
             <Button variant="outline" onClick={onSave} className="flex-1"><Download className="mr-2 h-4 w-4"/>Save</Button>
             <Button variant="outline" onClick={onLoad} className="flex-1"><Upload className="mr-2 h-4 w-4"/>Load</Button>
         </div>
+        {onToggleJsonPanel && (
+          <div className="mb-4">
+            <Button 
+              variant={jsonPanelOpen ? "default" : "outline"} 
+              onClick={onToggleJsonPanel} 
+              className="w-full"
+            >
+              <Code className="mr-2 h-4 w-4"/>
+              {jsonPanelOpen ? 'Hide JSON' : 'Show JSON'}
+            </Button>
+          </div>
+        )}
       </div>
       
       <Tabs defaultValue="resources" className="flex-1 flex flex-col min-h-0">

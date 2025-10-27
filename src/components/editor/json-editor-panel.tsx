@@ -69,35 +69,20 @@ export function JsonEditorPanel({
     }
   };
 
-  if (!isOpen) {
-    return (
-      <div className="relative w-0 h-full overflow-visible">
-        {/* Collapsed state - show toggle button */}
-        <div className="absolute right-0 top-1/2 -translate-y-1/2 z-50">
-          <button
-            onClick={onToggleOpen}
-            className="bg-card border border-r-0 rounded-l-md p-3 shadow-lg hover:bg-accent/50 transition-all duration-200 hover:scale-105"
-            title="Open JSON Editor (Ctrl+Shift+J)"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path
-                d="M9 17V19C9 19.5523 8.55228 20 8 20H6C4.34315 20 3 18.6569 3 17V7C3 5.34315 4.34315 4 6 4H8C8.55228 4 9 4.44772 9 5V7M15 17V19C15 19.5523 15.4477 20 16 20H18C19.6569 20 21 18.6569 21 17V7C21 5.34315 19.6569 4 18 4H16C15.4477 4 15 4.44772 15 5V7"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div 
-      className="h-full border-l bg-card flex flex-col" 
-      style={{ width: widthPx }}
+      className="bg-card border-l border-border flex flex-col shadow-lg" 
+      style={{ 
+        width: isOpen ? '420px' : '0px',
+        height: '100vh',
+        minWidth: isOpen ? '420px' : '0px',
+        position: isOpen ? 'fixed' : 'static',
+        right: isOpen ? '0' : 'auto',
+        top: isOpen ? '0' : 'auto',
+        zIndex: isOpen ? '1000' : '0',
+        overflow: isOpen ? 'visible' : 'hidden',
+        transition: 'width 0.3s ease-in-out'
+      }}
     >
       {/* Header */}
       <div className="h-12 flex items-center justify-between px-3 border-b bg-muted/30">
@@ -126,25 +111,27 @@ export function JsonEditorPanel({
 
       {/* Editor */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        <CodeMirror
-          value={text}
-          height="100%"
-          theme={oneDark}
-          onChange={handleChange}
-          extensions={[json(), lintGutter()]}
-          basicSetup={{
-            lineNumbers: true,
-            highlightActiveLine: true,
-            foldGutter: true,
-            autocompletion: true,
-            bracketMatching: true,
-            searchKeymap: true,
-          }}
-          editable={true}
-          onCreateEditor={(view) => { 
-            editorRef.current = view; 
-          }}
-        />
+        {isOpen && (
+          <CodeMirror
+            value={text}
+            height="100%"
+            theme={oneDark}
+            onChange={handleChange}
+            extensions={[json(), lintGutter()]}
+            basicSetup={{
+              lineNumbers: true,
+              highlightActiveLine: true,
+              foldGutter: true,
+              autocompletion: true,
+              bracketMatching: true,
+              searchKeymap: true,
+            }}
+            editable={true}
+            onCreateEditor={(view) => { 
+              editorRef.current = view; 
+            }}
+          />
+        )}
       </div>
 
       {/* Error footer */}

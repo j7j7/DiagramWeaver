@@ -917,9 +917,7 @@ const [{ isOver, canDrop }, drop] = useDrop(() => ({
                     const toItem = nodesById[edge.to] || groupsById[edge.to];
                     if (!fromItem || !toItem) return null;
 
-                    // Debug: log the original items to see what they contain
-                    console.log('Original fromItem:', fromItem);
-                    console.log('Original toItem:', toItem);
+                    // 
 
                     const fromPos: any = {
                       ...fromItem,
@@ -936,8 +934,7 @@ const [{ isOver, canDrop }, drop] = useDrop(() => ({
                     fromPos.lineColor = (fromItem as any).lineColor;
                     toPos.lineColor = (toItem as any).lineColor;
 
-                    // Debug: log lineColor values being passed to DiagramEdge
-                    console.log('Edge rendering:', edge.from, '->', edge.to, 'fromLineColor:', fromPos.lineColor, 'toLineColor:', toPos.lineColor);
+                    // 
 
                     // Build parent map for groups to gather ancestor groups of endpoints
                     const parentMap = new Map<string, string>();

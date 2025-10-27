@@ -301,6 +301,8 @@ export default function DiagramEditor() {
           onSave={handleSave}
           onLoad={handleLoadClick}
           onNew={handleNew}
+          onToggleJsonPanel={toggleJsonPanel}
+          jsonPanelOpen={jsonPanelOpen}
           onResourceSelect={(resource, provider, category) => {
             // Add the resource to the diagram at a default position
             const nodeType = `${provider}.${category}.${resource.name.replace(/\s+/g, '-').toLowerCase()}`;
@@ -320,17 +322,8 @@ export default function DiagramEditor() {
           }}
         />
         <main className="flex-1 flex flex-col">
-            <header className="flex items-center justify-between p-4 border-b">
+            <header className="flex items-center justify-center p-4 border-b">
                 <h1 className="text-2xl font-headline font-bold">Diagram Weaver</h1>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={toggleJsonPanel}
-                    className="text-sm px-3 py-1.5 rounded border hover:bg-accent transition-colors"
-                    title="Toggle JSON Editor (Ctrl+Shift+J)"
-                  >
-                    {jsonPanelOpen ? 'Hide JSON' : 'Show JSON'}
-                  </button>
-                </div>
                 <input
                     type="file"
                     ref={fileInputRef}
@@ -339,9 +332,9 @@ export default function DiagramEditor() {
                     style={{ display: 'none' }}
                 />
             </header>
-            <div className="flex-1">
-                <PanelGroup direction="horizontal" className="h-full">
-                  <Panel defaultSize={jsonPanelOpen ? 75 : 100} minSize={30}>
+            <div className="flex-1 flex flex-col">
+                <div className="flex flex-1">
+                  <div className={`flex-1 h-full ${jsonPanelOpen ? 'mr-2' : ''}`}>
                     <EditorCanvas 
                         diagramData={diagramData} 
                         setDiagramData={setDiagramData}
@@ -364,42 +357,16 @@ export default function DiagramEditor() {
                             }
                         }}
                     />
-                  </Panel>
+                  </div>
                   
-                  {jsonPanelOpen && (
-                    <>
-                      <PanelResizeHandle className="w-1 bg-border hover:bg-accent cursor-col-resize transition-colors" />
-                      <Panel 
-                        defaultSize={25} 
-                        minSize={15} 
-                        maxSize={50}
-                        onResize={(size) => {
-                          // Convert panel percentage to pixels (approximate)
-                          const panelWidth = Math.round((size / 100) * window.innerWidth);
-                          setJsonPanelWidth(panelWidth);
-                        }}
-                      >
-                        <JsonEditorPanel
-                          value={diagramData}
-                          onValidJsonChange={handleJsonValidChange}
-                          isOpen={jsonPanelOpen}
-                          onToggleOpen={toggleJsonPanel}
-                          widthPx={jsonPanelWidth}
-                        />
-                      </Panel>
-                    </>
-                  )}
-                  
-                  {!jsonPanelOpen && (
-                    <JsonEditorPanel
-                      value={diagramData}
-                      onValidJsonChange={handleJsonValidChange}
-                      isOpen={jsonPanelOpen}
-                      onToggleOpen={toggleJsonPanel}
-                      widthPx={0}
-                    />
-                  )}
-                </PanelGroup>
+                  <JsonEditorPanel
+                    value={diagramData}
+                    onValidJsonChange={handleJsonValidChange}
+                    isOpen={jsonPanelOpen}
+                    onToggleOpen={toggleJsonPanel}
+                    widthPx={400}
+                  />
+                </div>
             </div>
         </main>
       </div>
