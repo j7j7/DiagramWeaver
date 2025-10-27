@@ -5,7 +5,6 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { ComponentSidebar } from './editor/component-sidebar';
 import { EditorCanvas } from './editor/editor-canvas';
 import type { DiagramData, DiagramNodeData, DiagramGroupData, DiagramEdgeData } from '@/lib/types';
-import sampleDiagram from '@/lib/sample-diagram.json' with { type: 'json' };
 import { useToast } from '@/hooks/use-toast';
 
 export type SelectedItem = (DiagramNodeData | DiagramGroupData) & { 
@@ -25,7 +24,7 @@ export type SelectedItem = (DiagramNodeData | DiagramGroupData) & {
 };
 
 export default function DiagramEditor() {
-  const [diagramData, setDiagramData] = React.useState<DiagramData>(sampleDiagram as DiagramData);
+  const [diagramData, setDiagramData] = React.useState<DiagramData>({ nodes: [], edges: [], groups: [] });
   const [selectedItem, setSelectedItem] = React.useState<SelectedItem | null>(null);
   const [isConnectMode, setIsConnectMode] = React.useState<boolean>(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -239,8 +238,8 @@ export default function DiagramEditor() {
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="flex h-screen w-screen bg-background text-foreground font-body">
-        <ComponentSidebar 
-          selectedItem={selectedItem} 
+        <ComponentSidebar
+          selectedItem={selectedItem}
           onItemUpdate={handleItemUpdate}
           onConnect={startConnecting}
           onDisconnect={disconnectSelected}
@@ -249,6 +248,23 @@ export default function DiagramEditor() {
           onSave={handleSave}
           onLoad={handleLoadClick}
           onNew={handleNew}
+          onResourceSelect={(resource, provider, category) => {
+            // Add the resource to the diagram at a default position
+            const nodeType = `${provider}.${category}.${resource.name.replace(/\s+/g, '-').toLowerCase()}`;
+            const newNode = {
+              id: `${nodeType.replace(/[^a-zA-Z0-9-]/g, '-')}-${Date.now()}`,
+              type: nodeType,
+              label: resource.name,
+              info: `${resource.name} from ${provider}`,
+              x: 100 + Math.random() * 200, // Random position to avoid overlap
+              y: 100 + Math.random() * 200,
+            };
+            setDiagramData(prevData => ({
+              ...prevData,
+              nodes: [...prevData.nodes, newNode]
+            }));
+            toast({ title: 'Resource Added', description: `${resource.name} has been added to the diagram.` });
+          }}
         />
         <main className="flex-1 flex flex-col">
             <header className="flex items-center justify-between p-4 border-b">

@@ -24,6 +24,7 @@ interface ComponentSidebarProps {
   onSave: () => void;
   onLoad: () => void;
   onNew: () => void;
+  onResourceSelect: (resource: { name: string; file: string; type: string; }, provider: string, category: string) => void;
 }
 
 type FormValues = Omit<DiagramNodeData & DiagramGroupData, 'id' | 'type' | 'nodes'> & {
@@ -41,7 +42,7 @@ type FormValues = Omit<DiagramNodeData & DiagramGroupData, 'id' | 'type' | 'node
 };
 
 
-export function ComponentSidebar({ selectedItem, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onSave, onLoad, onNew }: ComponentSidebarProps) {
+export function ComponentSidebar({ selectedItem, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onSave, onLoad, onNew, onResourceSelect }: ComponentSidebarProps) {
   const { register, reset, getValues } = useForm<FormValues>();
 
   useEffect(() => {
@@ -142,11 +143,8 @@ return (
         </div>
         
         <TabsContent value="resources" className="flex-1 m-0 data-[state=active]:flex data-[state=active]:flex-col min-h-0 overflow-hidden">
-          <ResourceBrowser 
-            onResourceSelect={(resource, provider, category) => {
-              console.log('Selected resource:', resource.name, 'from', provider, category);
-              // TODO: Handle resource selection - create draggable item or add to canvas
-            }}
+          <ResourceBrowser
+            onResourceSelect={onResourceSelect}
           />
         </TabsContent>
         

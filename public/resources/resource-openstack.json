@@ -1,0 +1,36 @@
+{
+  "name": "OpenStack",
+  "icon": "openstack.png",
+  "totalResources": 11,
+  "categories": {
+    "compute": {
+      "name": "Compute",
+      "path": "openstack/compute",
+      "resources": [
+        {"name": "Nova", "file": "nova.png", "type": "service"},
+        {"name": "Instance", "file": "instance.png", "type": "resource"},
+        {"name": "Flavor", "file": "flavor.png", "type": "resource"}
+      ]
+    },
+    "storage": {
+      "name": "Storage",
+      "path": "openstack/storage",
+      "resources": [
+        {"name": "Swift", "file": "swift.png", "type": "service"},
+        {"name": "Cinder", "file": "cinder.png", "type": "service"},
+        {"name": "Volume", "file": "volume.png", "type": "resource"}
+      ]
+    },
+    "network": {
+      "name": "Network",
+      "path": "openstack/network",
+      "resources": [
+        {"name": "Neutron", "file": "neutron.png", "type": "service"},
+        {"name": "Router", "file": "router.png", "type": "resource"},
+        {"name": "Network", "file": "network.png", "type": "resource"},
+        {"name": "Port", "file": "port.png", "type": "resource"},
+        {"name": "Floating IP", "file": "floating-ip.png", "type": "resource"}
+      ]
+    }
+  }
+}

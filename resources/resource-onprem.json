@@ -1,0 +1,127 @@
+{
+  "name": "On-Premise",
+  "icon": "onprem.png",
+  "totalResources": 66,
+  "categories": {
+    "compute": {
+      "name": "Compute",
+      "path": "onprem/compute",
+      "resources": [
+         {"name": "Server", "file": "server.png", "type": "hardware"},
+         {"name": "Nomad", "file": "nomad.png", "type": "software"}
+      ]
+    },
+    "network": {
+      "name": "Network",
+      "path": "onprem/network",
+      "resources": [
+         {"name": "Router", "file": "router.png", "type": "hardware"},
+         {"name": "Switch", "file": "switch.png", "type": "hardware"},
+         {"name": "Firewall", "file": "firewall.png", "type": "hardware"},
+         {"name": "Load Balancer", "file": "load-balancer.png", "type": "hardware"},
+         {"name": "Gateway", "file": "gateway.png", "type": "hardware"},
+         {"name": "Access Point", "file": "access-point.png", "type": "hardware"},
+         {"name": "Network Interface Card", "file": "nic.png", "type": "hardware"},
+         {"name": "Cable", "file": "cable.png", "type": "hardware"}
+      ]
+    },
+    "storage": {
+      "name": "Storage",
+      "path": "onprem/storage",
+      "resources": [
+         {"name": "Storage Array", "file": "storage-array.png", "type": "hardware"},
+         {"name": "SAN", "file": "san.png", "type": "hardware"},
+         {"name": "NAS", "file": "nas.png", "type": "hardware"},
+         {"name": "Tape Library", "file": "tape-library.png", "type": "hardware"},
+         {"name": "JBOD", "file": "jbod.png", "type": "hardware"},
+         {"name": "RAID", "file": "raid.png", "type": "hardware"}
+      ]
+    },
+    "database": {
+      "name": "Database",
+      "path": "onprem/database",
+      "resources": [
+         {"name": "Database Server", "file": "database-server.png", "type": "software"},
+         {"name": "MySQL", "file": "mysql.png", "type": "software"},
+         {"name": "PostgreSQL", "file": "postgresql.png", "type": "software"},
+         {"name": "Oracle", "file": "oracle.png", "type": "software"},
+         {"name": "SQL Server", "file": "sql-server.png", "type": "software"},
+         {"name": "MongoDB", "file": "mongodb.png", "type": "software"},
+         {"name": "Redis", "file": "redis.png", "type": "software"},
+         {"name": "Elasticsearch", "file": "elasticsearch.png", "type": "software"}
+      ]
+    },
+    "analytics": {
+      "name": "Analytics",
+      "path": "onprem/analytics",
+      "resources": [
+         {"name": "Data Warehouse", "file": "data-warehouse.png", "type": "software"},
+         {"name": "Hadoop", "file": "hadoop.png", "type": "software"},
+         {"name": "Spark", "file": "spark.png", "type": "software"},
+         {"name": "Kafka", "file": "kafka.png", "type": "software"},
+         {"name": "Flink", "file": "flink.png", "type": "software"},
+         {"name": "Tableau", "file": "tableau.png", "type": "software"},
+         {"name": "Power BI", "file": "powerbi.png", "type": "software"},
+         {"name": "Qlik", "file": "qlik.png", "type": "software"},
+         {"name": "Looker", "file": "looker.png", "type": "software"},
+         {"name": "Grafana", "file": "grafana.png", "type": "software"},
+         {"name": "Kibana", "file": "kibana.png", "type": "software"},
+         {"name": "Superset", "file": "superset.png", "type": "software"},
+         {"name": "Metabase", "file": "metabase.png", "type": "software"},
+         {"name": "Redash", "file": "redash.png", "type": "software"},
+         {"name": "Apache Drill", "file": "drill.png", "type": "software"},
+         {"name": "Presto", "file": "presto.png", "type": "software"},
+         {"name": "Trino", "file": "trino.png", "type": "software"}
+      ]
+    },
+    "ci": {
+      "name": "Continuous Integration",
+      "path": "onprem/ci",
+      "resources": [
+         {"name": "Jenkins", "file": "jenkins.png", "type": "software"},
+         {"name": "GitLab CI", "file": "gitlab-ci.png", "type": "software"},
+         {"name": "Bamboo", "file": "bamboo.png", "type": "software"},
+         {"name": "TeamCity", "file": "teamcity.png", "type": "software"},
+         {"name": "CircleCI", "file": "circleci.png", "type": "software"},
+         {"name": "Travis CI", "file": "travis.png", "type": "software"},
+         {"name": "Drone", "file": "drone.png", "type": "software"},
+         {"name": "Concourse", "file": "concourse.png", "type": "software"},
+         {"name": "GoCD", "file": "gocd.png", "type": "software"}
+      ]
+    },
+    "cd": {
+      "name": "Continuous Deployment",
+      "path": "onprem/cd",
+      "resources": [
+         {"name": "Spinnaker", "file": "spinnaker.png", "type": "software"},
+         {"name": "Argo CD", "file": "argocd.png", "type": "software"},
+         {"name": "Flux", "file": "flux.png", "type": "software"},
+         {"name": "Rancher", "file": "rancher.png", "type": "software"}
+      ]
+    },
+    "auth": {
+      "name": "Authentication",
+      "path": "onprem/auth",
+      "resources": [
+         {"name": "Active Directory", "file": "active-directory.png", "type": "software"},
+         {"name": "LDAP", "file": "ldap.png", "type": "software"},
+         {"name": "Kerberos", "file": "kerberos.png", "type": "software"},
+         {"name": "FreeIPA", "file": "freeipa.png", "type": "software"}
+      ]
+    },
+    "monitoring": {
+      "name": "Monitoring",
+      "path": "onprem/monitoring",
+      "resources": [
+         {"name": "Nagios", "file": "nagios.png", "type": "software"},
+         {"name": "Zabbix", "file": "zabbix.png", "type": "software"},
+         {"name": "Prometheus", "file": "prometheus.png", "type": "software"},
+        {"name": "Grafana", "file": "grafana.png", "type": "software"},
+        {"name": "ELK Stack", "file": "elk-stack.png", "type": "software"},
+        {"name": "Splunk", "file": "splunk.png", "type": "software"},
+        {"name": "Datadog", "file": "datadog.png", "type": "software"},
+        {"name": "New Relic", "file": "newrelic.png", "type": "software"}
+      ]
+    }
+  }
+}

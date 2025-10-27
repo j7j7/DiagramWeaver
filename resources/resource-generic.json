@@ -1,0 +1,55 @@
+{
+  "name": "Generic",
+  "icon": "generic.png",
+  "totalResources": 17,
+  "categories": {
+    "grouping": {
+      "name": "Grouping",
+      "path": "generic/grouping",
+      "resources": [
+         {"name": "Zone", "file": "zone.png", "type": "group"},
+         {"name": "Group", "file": "group.png", "type": "group"}
+      ]
+    },
+    "text": {
+      "name": "Text",
+      "path": "generic/text",
+      "resources": [
+         {"name": "Text", "file": "text.png", "type": "text"}
+      ]
+    },
+    "user": {
+      "name": "User",
+      "path": "generic/user",
+      "resources": [
+         {"name": "User", "file": "user.png", "type": "user"}
+      ]
+    },
+    "device": {
+      "name": "Device",
+      "path": "generic/device",
+      "resources": [
+         {"name": "Mobile", "file": "mobile.png", "type": "device"},
+         {"name": "Tablet", "file": "tablet.png", "type": "device"},
+         {"name": "Desktop", "file": "desktop.png", "type": "device"}
+      ]
+    },
+    "os": {
+      "name": "Operating System",
+      "path": "generic/os",
+      "resources": [
+         {"name": "Linux", "file": "linux.png", "type": "os"},
+         {"name": "Windows", "file": "windows.png", "type": "os"},
+         {"name": "macOS", "file": "macos.png", "type": "os"},
+         {"name": "Ubuntu", "file": "ubuntu.png", "type": "os"},
+         {"name": "CentOS", "file": "centos.png", "type": "os"},
+         {"name": "Debian", "file": "debian.png", "type": "os"},
+         {"name": "Red Hat", "file": "redhat.png", "type": "os"},
+         {"name": "Raspbian", "file": "raspbian.png", "type": "os"},
+         {"name": "SUSE", "file": "suse.png", "type": "os"},
+         {"name": "Fedora", "file": "fedora.png", "type": "os"},
+         {"name": "Docker", "file": "docker.png", "type": "platform"}
+      ]
+    }
+  }
+}

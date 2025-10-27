@@ -1,0 +1,50 @@
+{
+  "name": "Firebase",
+  "icon": "firebase.png",
+  "totalResources": 19,
+  "categories": {
+    "base": {
+      "name": "Core",
+      "path": "firebase/base",
+      "resources": [
+        {"name": "Firebase", "file": "firebase.png", "type": "brand"}
+      ]
+    },
+    "develop": {
+      "name": "Develop",
+      "path": "firebase/develop",
+      "resources": [
+        {"name": "Authentication", "file": "authentication.png", "type": "service"},
+        {"name": "Cloud Functions", "file": "functions.png", "type": "service"},
+        {"name": "Hosting", "file": "hosting.png", "type": "service"},
+        {"name": "Cloud Storage", "file": "storage.png", "type": "service"},
+        {"name": "Test Lab", "file": "test-lab.png", "type": "service"},
+        {"name": "App Distribution", "file": "app-distribution.png", "type": "service"},
+        {"name": "Crashlytics", "file": "crashlytics.png", "type": "service"}
+      ]
+    },
+    "quality": {
+      "name": "Quality",
+      "path": "firebase/quality",
+      "resources": [
+        {"name": "Crashlytics", "file": "crashlytics.png", "type": "service"},
+        {"name": "Performance Monitoring", "file": "performance.png", "type": "service"},
+        {"name": "Test Lab", "file": "test-lab.png", "type": "service"},
+        {"name": "App Distribution", "file": "app-distribution.png", "type": "service"}
+      ]
+    },
+    "grow": {
+      "name": "Grow",
+      "path": "firebase/grow",
+      "resources": [
+        {"name": "Cloud Messaging", "file": "cloud-messaging.png", "type": "service"},
+        {"name": "In-App Messaging", "file": "in-app-messaging.png", "type": "service"},
+        {"name": "Google Analytics", "file": "analytics.png", "type": "service"},
+        {"name": "Predictions", "file": "predictions.png", "type": "service"},
+        {"name": "Remote Config", "file": "remote-config.png", "type": "service"},
+        {"name": "A/B Testing", "file": "ab-testing.png", "type": "service"},
+        {"name": "Dynamic Links", "file": "dynamic-links.png", "type": "service"}
+      ]
+    }
+  }
+}

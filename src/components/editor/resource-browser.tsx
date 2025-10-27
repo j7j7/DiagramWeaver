@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ChevronDown, ChevronRight, Search, Package, Server, Database, Globe, Cloud, Cpu, Shield, BarChart3, Layers, Box, Network, Maximize2, Minimize2, Type } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
@@ -9,9 +9,10 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/colla
 import { Badge } from '../ui/badge';
 import { DraggableResourceItem } from './draggable-resource-item';
 
-// Import the resource data
-import resourceData from '../../../resource-components.json';
+// Import the resource index
+import resourceIndex from '../../../resources/resource-components.json';
 
+// ResourceItem interface kept for backward compatibility and internal use
 interface ResourceItem {
   name: string;
   file: string;
@@ -33,8 +34,23 @@ interface ResourceProvider {
   categories: Record<string, ResourceCategory>;
 }
 
+interface ResourceIndex {
+  version: string;
+  description: string;
+  totalResources: number;
+  lastUpdated: string;
+  providers: Record<string, {
+    name: string;
+    icon: string;
+    totalResources: number;
+    file: string;
+    enabled: boolean;
+  }>;
+  metadata: any;
+}
+
 interface ResourceBrowserProps {
-  onResourceSelect?: (resource: ResourceItem, provider: string, category: string) => void;
+  onResourceSelect: (resource: { name: string; file: string; type: string; }, provider: string, category: string) => void;
 }
 
 // Icon mapping for different resource types
@@ -98,8 +114,53 @@ function ProviderIcon({ provider }: { provider: string }) {
 
 export function ResourceBrowser({ onResourceSelect }: ResourceBrowserProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [expandedProviders, setExpandedProviders] = useState<Set<string>>(new Set(['generic']));
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['generic-grouping', 'generic-compute', 'generic-database', 'generic-network']));
+  const [expandedProviders, setExpandedProviders] = useState<Set<string>>(new Set());
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [fullProviders, setFullProviders] = useState<Record<string, ResourceProvider>>({});
+  const [isLoading, setIsLoading] = useState(true);
+
+   useEffect(() => {
+     const loadProviders = async () => {
+       setIsLoading(true);
+       const providers: Record<string, ResourceProvider> = {};
+       for (const [key, provider] of Object.entries(resourceIndex.providers)) {
+         if (provider.enabled) {
+           try {
+             const response = await fetch(`/resources/${provider.file}`);
+             const fullData = await response.json();
+             providers[key] = fullData;
+           } catch (error) {
+             console.error(`Failed to load provider ${key}:`, error);
+           }
+         }
+       }
+       setFullProviders(providers);
+
+       // Auto-expand the first provider and some categories
+       if (Object.keys(providers).length > 0) {
+         const firstProvider = Object.keys(providers)[0];
+         const newExpandedProviders = new Set([firstProvider]);
+         const newExpandedCategories = new Set<string>();
+
+         // Expand some common categories from the first provider
+         const providerData = providers[firstProvider];
+         if (providerData?.categories) {
+           const categoriesToExpand = ['grouping', 'compute', 'database', 'network'];
+           Object.keys(providerData.categories).forEach(categoryKey => {
+             if (categoriesToExpand.includes(categoryKey)) {
+               newExpandedCategories.add(`${firstProvider}-${categoryKey}`);
+             }
+           });
+         }
+
+         setExpandedProviders(newExpandedProviders);
+         setExpandedCategories(newExpandedCategories);
+       }
+
+       setIsLoading(false);
+     };
+     loadProviders();
+   }, []);
 
   const toggleProvider = (provider: string) => {
     const newExpanded = new Set(expandedProviders);
@@ -141,7 +202,8 @@ export function ResourceBrowser({ onResourceSelect }: ResourceBrowserProps) {
   };
 
   const filteredProviders = useMemo(() => {
-    const providers = resourceData.providers as Record<string, ResourceProvider>;
+    if (isLoading || Object.keys(fullProviders).length === 0) return {};
+    const providers = fullProviders;
     
     if (!searchTerm) {
       // Reorder providers to put generic first (contains zones/groups)
@@ -202,9 +264,7 @@ export function ResourceBrowser({ onResourceSelect }: ResourceBrowserProps) {
   };
 
   const handleResourceClick = (resource: ResourceItem, provider: string, category: string) => {
-    if (onResourceSelect) {
-      onResourceSelect(resource, provider, category);
-    }
+    onResourceSelect(resource, provider, category);
   };
 
 return (
@@ -221,13 +281,19 @@ return (
           />
         </div>
         <div className="flex items-center gap-2 mt-2">
-          {searchTerm && (
-            <div className="text-sm text-muted-foreground">
-              Found {Object.values(filteredProviders).reduce((acc, provider) => 
+          <div className="text-sm text-muted-foreground">
+            {isLoading ? (
+              'Loading resources...'
+            ) : searchTerm ? (
+              `Found ${Object.values(filteredProviders).reduce((acc, provider) =>
                 acc + Object.values(provider.categories).reduce((catAcc, cat) => catAcc + cat.resources.length, 0), 0
-              )} resources
-            </div>
-          )}
+              )} resources`
+            ) : (
+              `${Object.values(fullProviders).reduce((acc, provider) =>
+                acc + provider.totalResources, 0
+              )} resources loaded`
+            )}
+          </div>
           <div className="ml-auto flex gap-1">
             <Button
               variant="ghost"
@@ -255,79 +321,98 @@ return (
       <div className="flex-1 min-h-0 overflow-hidden">
         <ScrollArea className="h-full">
           <div className="p-2">
-          {Object.entries(filteredProviders).map(([providerKey, provider]) => (
-            <div key={providerKey} className="mb-2">
-              <Collapsible open={expandedProviders.has(providerKey)} onOpenChange={() => toggleProvider(providerKey)}>
-                <CollapsibleTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-between p-2 h-auto hover:bg-muted"
-                  >
-                    <div className="flex items-center gap-2">
-                      {expandedProviders.has(providerKey) ? (
-                        <ChevronDown className="w-4 h-4" />
-                      ) : (
-                        <ChevronRight className="w-4 h-4" />
-                      )}
-                      <ProviderIcon provider={providerKey} />
-                      <span className="font-medium">{provider.name}</span>
-                      <Badge variant="secondary" className="ml-auto">
-                        {provider.totalResources}
-                      </Badge>
-                    </div>
-                  </Button>
-                </CollapsibleTrigger>
-                
-                <CollapsibleContent>
-                  <div className="ml-4 pl-2 border-l-2 border-muted">
-                    {Object.entries(provider.categories).map(([categoryKey, category]) => {
-                      const categoryFullKey = `${providerKey}-${categoryKey}`;
-                      const isExpanded = expandedCategories.has(categoryFullKey);
-                      
-                      return (
-                        <div key={categoryKey} className="mb-1">
-                          <Collapsible open={isExpanded} onOpenChange={() => toggleCategory(categoryFullKey)}>
-                            <CollapsibleTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                className="w-full justify-between p-1 h-auto hover:bg-muted/50"
-                              >
-                                <div className="flex items-center gap-1">
-                                  {isExpanded ? (
-                                    <ChevronDown className="w-3 h-3" />
-                                  ) : (
-                                    <ChevronRight className="w-3 h-3" />
-                                  )}
-                                  <span className="text-sm">{category.name}</span>
-                                  <Badge variant="outline" className="ml-auto text-xs">
-                                    {category.resources.length}
-                                  </Badge>
-                                </div>
-                              </Button>
-                            </CollapsibleTrigger>
-                            
-                            <CollapsibleContent>
-                              <div className="ml-4 grid grid-cols-2 gap-1 p-1">
-                                {category.resources.map((resource, index) => (
-                                  <DraggableResourceItem
-                                    key={index}
-                                    resource={resource}
-                                    provider={providerKey}
-                                    category={categoryKey}
-                                    icon={getResourceIcon(resource)}
-                                  />
-                                ))}
-                              </div>
-                            </CollapsibleContent>
-                          </Collapsible>
+            {isLoading ? (
+              <div className="flex items-center justify-center h-32">
+                <div className="text-sm text-muted-foreground">Loading resources...</div>
+              </div>
+            ) : Object.keys(fullProviders).length === 0 ? (
+              <div className="flex items-center justify-center h-32">
+                <div className="text-sm text-muted-foreground text-center">
+                  <div>No resource providers are enabled.</div>
+                  <div className="text-xs mt-1">Check your resource configuration.</div>
+                </div>
+              </div>
+            ) : Object.keys(filteredProviders).length === 0 ? (
+              <div className="flex items-center justify-center h-32">
+                <div className="text-sm text-muted-foreground">
+                  {searchTerm ? 'No resources found matching your search.' : 'No resources available.'}
+                </div>
+              </div>
+            ) : (
+              Object.entries(filteredProviders).map(([providerKey, provider]) => (
+                <div key={providerKey} className="mb-2">
+                  <Collapsible open={expandedProviders.has(providerKey)} onOpenChange={() => toggleProvider(providerKey)}>
+                    <CollapsibleTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-between p-2 h-auto hover:bg-muted"
+                      >
+                        <div className="flex items-center gap-2">
+                          {expandedProviders.has(providerKey) ? (
+                            <ChevronDown className="w-4 h-4" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4" />
+                          )}
+                          <ProviderIcon provider={providerKey} />
+                          <span className="font-medium">{provider.name}</span>
+                          <Badge variant="secondary" className="ml-auto">
+                            {provider.totalResources}
+                          </Badge>
                         </div>
-                      );
-                    })}
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            </div>
-          ))}
+                      </Button>
+                    </CollapsibleTrigger>
+
+                    <CollapsibleContent>
+                      <div className="ml-4 pl-2 border-l-2 border-muted">
+                        {Object.entries(provider.categories).map(([categoryKey, category]) => {
+                          const categoryFullKey = `${providerKey}-${categoryKey}`;
+                          const isExpanded = expandedCategories.has(categoryFullKey);
+
+                          return (
+                            <div key={categoryKey} className="mb-1">
+                              <Collapsible open={isExpanded} onOpenChange={() => toggleCategory(categoryFullKey)}>
+                                <CollapsibleTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    className="w-full justify-between p-1 h-auto hover:bg-muted/50"
+                                  >
+                                    <div className="flex items-center gap-1">
+                                      {isExpanded ? (
+                                        <ChevronDown className="w-3 h-3" />
+                                      ) : (
+                                        <ChevronRight className="w-3 h-3" />
+                                      )}
+                                      <span className="text-sm">{category.name}</span>
+                                      <Badge variant="outline" className="ml-auto text-xs">
+                                        {category.resources.length}
+                                      </Badge>
+                                    </div>
+                                  </Button>
+                                </CollapsibleTrigger>
+
+                                <CollapsibleContent>
+                                  <div className="ml-4 grid grid-cols-2 gap-1 p-1">
+                                    {category.resources.map((resource, index) => (
+                                      <DraggableResourceItem
+                                        key={index}
+                                        resource={resource}
+                                        provider={providerKey}
+                                        category={categoryKey}
+                                        icon={getResourceIcon(resource)}
+                                      />
+                                    ))}
+                                  </div>
+                                </CollapsibleContent>
+                              </Collapsible>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </div>
+              ))
+            )}
           </div>
         </ScrollArea>
       </div>

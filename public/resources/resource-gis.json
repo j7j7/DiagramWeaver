@@ -1,0 +1,158 @@
+{
+  "name": "GIS",
+  "icon": "gis.png",
+  "totalResources": 67,
+  "categories": {
+    "server": {
+      "name": "Server",
+      "path": "gis/server",
+      "resources": [
+        {"name": "GeoServer", "file": "geoserver.png", "type": "software"},
+        {"name": "MapServer", "file": "mapserver.png", "type": "software"},
+        {"name": "QGIS Server", "file": "qgis-server.png", "type": "software"},
+        {"name": "GeoNetwork", "file": "geonetwork.png", "type": "software"},
+        {"name": "GeoNode", "file": "geonode.png", "type": "software"},
+        {"name": "MapStore", "file": "mapstore.png", "type": "software"},
+        {"name": "GeoOrchestra", "file": "georchestra.png", "type": "software"},
+        {"name": "pycsw", "file": "pycsw.png", "type": "software"},
+        {"name": "pygeoapi", "file": "pygeoapi.png", "type": "software"},
+        {"name": "Actinia", "file": "actinia.png", "type": "software"},
+        {"name": "Baremaps", "file": "baremaps.png", "type": "software"},
+        {"name": "deegree", "file": "deegree.png", "type": "software"},
+        {"name": "G3W-Suite", "file": "g3w-suite.png", "type": "software"},
+        {"name": "GeoHealthCheck", "file": "geohealthcheck.png", "type": "software"},
+        {"name": "GeoMapFish", "file": "geomapfish.png", "type": "software"},
+        {"name": "GeoMesa", "file": "geomesa.png", "type": "software"},
+        {"name": "GeoWebCache", "file": "geowebcache.png", "type": "software"},
+        {"name": "Kepler", "file": "kepler.png", "type": "software"},
+        {"name": "MapProxy", "file": "mapproxy.png", "type": "software"},
+        {"name": "Maptunik", "file": "maptunik.png", "type": "software"},
+        {"name": "MViewer", "file": "mviewer.png", "type": "software"},
+        {"name": "pg_tileserv", "file": "pg_tileserv.png", "type": "software"},
+        {"name": "QGIS", "file": "qgis.png", "type": "software"},
+        {"name": "Zoo Project", "file": "zooproject.png", "type": "software"}
+      ]
+    },
+    "database": {
+      "name": "Database",
+      "path": "gis/database",
+      "resources": [
+        {"name": "PostGIS", "file": "postgis.png", "type": "software"}
+      ]
+    },
+    "desktop": {
+      "name": "Desktop",
+      "path": "gis/desktop",
+      "resources": [
+        {"name": "QGIS", "file": "qgis.png", "type": "software"},
+        {"name": "Maptunik", "file": "maptunik.png", "type": "software"}
+      ]
+    },
+    "javascript": {
+      "name": "JavaScript",
+      "path": "gis/javascript",
+      "resources": [
+        {"name": "OpenLayers", "file": "openlayers.png", "type": "library"},
+        {"name": "Leaflet", "file": "leaflet.png", "type": "library"},
+        {"name": "MapLibre", "file": "maplibre.png", "type": "library"},
+        {"name": "Cesium", "file": "cesium.png", "type": "library"},
+        {"name": "Turf.js", "file": "turfjs.png", "type": "library"},
+        {"name": "Kepler.gl", "file": "keplerjs.png", "type": "library"},
+        {"name": "GeoStyler", "file": "geostyler.png", "type": "library"},
+        {"name": "OL-Ext", "file": "ol-ext.png", "type": "library"}
+      ]
+    },
+    "data": {
+      "name": "Data",
+      "path": "gis/data",
+      "resources": [
+        {"name": "OpenStreetMap", "file": "openstreetmap.png", "type": "source"},
+        {"name": "HERE", "file": "here.png", "type": "source"},
+        {"name": "IGN", "file": "ign.png", "type": "source"},
+        {"name": "BAN", "file": "ban.png", "type": "source"},
+        {"name": "Overture Maps", "file": "overturemaps.png", "type": "source"}
+      ]
+    },
+    "format": {
+      "name": "Format",
+      "path": "gis/format",
+      "resources": [
+        {"name": "GeoPackage", "file": "geopackage.png", "type": "format"},
+        {"name": "GeoParquet", "file": "geoparquet.png", "type": "format"}
+      ]
+    },
+    "ogc": {
+      "name": "OGC Standards",
+      "path": "gis/ogc",
+      "resources": [
+        {"name": "OGC", "file": "ogc.png", "type": "standard"},
+        {"name": "WMS", "file": "wms.png", "type": "standard"},
+        {"name": "WFS", "file": "wfs.png", "type": "standard"}
+      ]
+    },
+    "cli": {
+      "name": "CLI Tools",
+      "path": "gis/cli",
+      "resources": [
+        {"name": "GDAL", "file": "gdal.png", "type": "tool"},
+        {"name": "PDAL", "file": "pdal.png", "type": "tool"},
+        {"name": "LAStools", "file": "lastools.png", "type": "tool"},
+        {"name": "Mapnik", "file": "mapnik.png", "type": "tool"},
+        {"name": "Imposm", "file": "imposm.png", "type": "tool"},
+        {"name": "MDAL", "file": "mdal.png", "type": "tool"}
+      ]
+    },
+    "mobile": {
+      "name": "Mobile",
+      "path": "gis/mobile",
+      "resources": [
+        {"name": "QField", "file": "qfield.png", "type": "app"},
+        {"name": "Mergin Maps", "file": "mergin.png", "type": "app"},
+        {"name": "SMASH", "file": "smash.png", "type": "app"}
+      ]
+    },
+    "routing": {
+      "name": "Routing",
+      "path": "gis/routing",
+      "resources": [
+        {"name": "OSRM", "file": "osrm.png", "type": "engine"},
+        {"name": "GraphHopper", "file": "graphhopper.png", "type": "engine"},
+        {"name": "pgRouting", "file": "pgrouting.png", "type": "engine"},
+        {"name": "Valhalla", "file": "valhalla.png", "type": "engine"}
+      ]
+    },
+    "geocoding": {
+      "name": "Geocoding",
+      "path": "gis/geocoding",
+      "resources": [
+        {"name": "Nominatim", "file": "nominatim.png", "type": "service"},
+        {"name": "Pelias", "file": "pelias.png", "type": "service"},
+        {"name": "Addok", "file": "addok.png", "type": "service"},
+        {"name": "GISgraphy", "file": "gisgraphy.png", "type": "service"}
+      ]
+    },
+    "organization": {
+      "name": "Organization",
+      "path": "gis/organization",
+      "resources": [
+        {"name": "OSGeo", "file": "osgeo.png", "type": "organization"}
+      ]
+    },
+    "java": {
+      "name": "Java",
+      "path": "gis/java",
+      "resources": [
+        {"name": "GeoTools", "file": "geotools.png", "type": "library"}
+      ]
+    },
+    "georchestra": {
+      "name": "GeoOrchestra",
+      "path": "gis/georchestra",
+      "resources": [
+        {"name": "Analytics", "file": "analytics.svg", "type": "module", "format": "svg"},
+        {"name": "Data API", "file": "data_api.svg", "type": "module", "format": "svg"},
+        {"name": "DataFeeder", "file": "datafeeder.svg", "type": "module", "format": "svg"}
+      ]
+    }
+  }
+}

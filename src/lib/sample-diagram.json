@@ -2,7 +2,7 @@
   "nodes": [
     {
       "id": "k8s-source",
-      "type": "aws.compute.Kubernetes",
+      "type": "Kubernetes",
       "label": "k8s source",
       "info": "Kubernetes cluster as the event source.",
       "x": 50,
@@ -10,43 +10,43 @@
     },
     {
       "id": "worker1",
-      "type": "generic.compute.server",
+      "type": "Server",
       "label": "worker1",
       "info": "Event worker 1"
     },
     {
       "id": "worker2",
-      "type": "generic.compute.server",
+      "type": "Server",
       "label": "worker2",
       "info": "Event worker 2"
     },
     {
       "id": "worker3",
-      "type": "generic.compute.server",
+      "type": "Server",
       "label": "worker3",
       "info": "Event worker 3"
     },
     {
       "id": "worker4",
-      "type": "generic.compute.server",
+      "type": "Server",
       "label": "worker4",
       "info": "Event worker 4"
     },
     {
       "id": "worker5",
-      "type": "generic.compute.server",
+      "type": "Server",
       "label": "worker5",
       "info": "Event worker 5"
     },
     {
       "id": "worker6",
-      "type": "generic.compute.server",
+      "type": "Server",
       "label": "worker6",
       "info": "Event worker 6"
     },
     {
       "id": "event-queue",
-      "type": "aws.applicationintegration.EventBridge",
+      "type": "EventBridge",
       "label": "event queue",
       "info": "Central event bus for decoupling services.",
       "x": 650,
@@ -54,25 +54,25 @@
     },
     {
       "id": "proc1",
-      "type": "aws.compute.Lambda",
+      "type": "Lambda",
       "label": "proc1",
       "info": "Processing function 1"
     },
     {
       "id": "proc2",
-      "type": "aws.compute.Lambda",
+      "type": "Lambda",
       "label": "proc2",
       "info": "Processing function 2"
     },
     {
       "id": "proc3",
-      "type": "aws.compute.Lambda",
+      "type": "Lambda",
       "label": "proc3",
       "info": "Processing function 3"
     },
     {
       "id": "events-store",
-      "type": "aws.storage.S3",
+      "type": "S3",
       "label": "events store",
       "info": "S3 bucket for storing raw events.",
       "x": 1300,
@@ -80,7 +80,7 @@
     },
     {
       "id": "analytics",
-      "type": "aws.database.RDS",
+      "type": "RDS",
       "label": "analytics",
       "info": "RDS database for analytics.",
       "x": 1300,
@@ -88,7 +88,7 @@
     },
     {
       "id": "note",
-      "type": "generic.text.text",
+      "type": "Text",
       "label": "Important: Check logs daily",
       "info": "A text-only note for documentation purposes.",
       "x": 900,
@@ -118,8 +118,8 @@
   "groups": [
 {
   "id": "event-flows",
-  "type": "group",
-  "subType": "zone",
+   "type": "generic.grouping",
+   "subType": "Zone",
   "label": "Event Flows",
   "info": "Main container for event flow processing.",
   "nodes": ["event-workers", "processing"],
@@ -132,9 +132,9 @@
   "shadow": true
 },
 {
-  "id": "event-workers",
-  "type": "group",
-  "subType": "group",
+   "id": "event-workers",
+   "type": "generic.grouping",
+   "subType": "Group",
   "color": "#fdeace",
   "label": "Event Workers",
   "info": "Group of workers processing incoming events.",
@@ -149,9 +149,9 @@
   "shadow": true
 },
 {
-  "id": "processing",
-  "type": "group",
-  "subType": "group",
+   "id": "processing",
+   "type": "generic.grouping",
+   "subType": "Group",
   "color": "#fdeace",
   "label": "Processing",
   "info": "Group of functions for processing events from queue.",

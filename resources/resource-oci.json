@@ -1,0 +1,87 @@
+{
+  "name": "Oracle Cloud Infrastructure",
+  "icon": "oci.png",
+  "totalResources": 44,
+  "categories": {
+    "compute": {
+      "name": "Compute",
+      "path": "oci/compute",
+      "resources": [
+         {"name": "Virtual Machine", "file": "vm.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Bare Metal", "file": "bm.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Container Engine for Kubernetes", "file": "oke.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Container", "file": "container.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Functions", "file": "functions.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Instance Pools", "file": "instance-pools.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Autoscaling", "file": "autoscale.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Registry", "file": "ocir.png", "type": "service", "hasWhiteVariant": true}
+      ]
+    },
+    "storage": {
+      "name": "Storage",
+      "path": "oci/storage",
+      "resources": [
+         {"name": "Object Storage", "file": "object-storage.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Block Storage", "file": "block-storage.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Block Storage Clone", "file": "block-storage-clone.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "File Storage", "file": "file-storage.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Storage Gateway", "file": "storage-gateway.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Data Transfer", "file": "data-transfer.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Buckets", "file": "buckets.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Backup and Restore", "file": "backup-restore.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Elastic Performance", "file": "elastic-performance.png", "type": "service", "hasWhiteVariant": true}
+      ]
+    },
+    "network": {
+      "name": "Networking",
+      "path": "oci/network",
+      "resources": [
+         {"name": "Virtual Cloud Network", "file": "vcn.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Internet Gateway", "file": "internet-gateway.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Dynamic Routing Gateway", "file": "drg.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Route Table", "file": "route-table.png", "type": "service"},
+         {"name": "Security Lists", "file": "security-lists.png", "type": "service", "hasWhiteVariant": true}
+      ]
+    },
+    "database": {
+      "name": "Database",
+      "path": "oci/database",
+      "resources": [
+         {"name": "Autonomous Database", "file": "autonomous-database.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Base Database", "file": "base-database.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Exadata", "file": "exadata.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "VM Cluster", "file": "vm-cluster.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Bare Metal Cluster", "file": "bm-cluster.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Database Cloud Service", "file": "dcs.png", "type": "service", "hasWhiteVariant": true}
+      ]
+    },
+    "monitoring": {
+      "name": "Monitoring",
+      "path": "oci/monitoring",
+      "resources": [
+         {"name": "Telemetry", "file": "telemetry.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Alarms", "file": "alarm.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Health Checks", "file": "health-check.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Events", "file": "events.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Notifications", "file": "notifications.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Email", "file": "email.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Search", "file": "search.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Queue", "file": "queue.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Workflow", "file": "workflow.png", "type": "service", "hasWhiteVariant": true}
+      ]
+    },
+    "governance": {
+      "name": "Governance",
+      "path": "oci/governance",
+      "resources": [
+         {"name": "Compartments", "file": "compartments.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Identity", "file": "ocid.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Groups", "file": "groups.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Policies", "file": "policies.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Tagging", "file": "tagging.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Audit", "file": "audit.png", "type": "service", "hasWhiteVariant": true},
+         {"name": "Logging", "file": "logging.png", "type": "service", "hasWhiteVariant": true}
+      ]
+    }
+  }
+}

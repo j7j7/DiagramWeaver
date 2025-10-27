@@ -1,0 +1,25 @@
+{
+  "_comment": "Template for resource JSON files. Use this structure for new providers. Replace placeholders with actual values. Top-level: name (string), icon (string), totalResources (number), categories (object). Categories: name (string), path (string), resources (array of objects). Resources: name (string), file (string), type (string), optional: hasWhiteVariant (boolean), format (string). File paths should match public/resources/{provider}/{category}/{resource}.png or .svg.",
+  "name": "Provider Name",
+  "icon": "provider.png",
+  "totalResources": 2,
+  "categories": {
+    "categoryName": {
+      "name": "Category Display Name",
+      "path": "provider/category",
+      "resources": [
+        {
+          "name": "Resource Name",
+          "file": "category/resource.png",
+          "type": "service"
+        },
+        {
+          "name": "Another Resource",
+          "file": "category/another-resource.png",
+          "type": "resource",
+          "hasWhiteVariant": false
+        }
+      ]
+    }
+  }
+}

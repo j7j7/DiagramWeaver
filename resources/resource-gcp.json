@@ -1,0 +1,81 @@
+{
+  "name": "Google Cloud Platform",
+  "icon": "gcp.png",
+  "totalResources": 38,
+  "categories": {
+    "compute": {
+      "name": "Compute",
+      "path": "gcp/compute",
+      "resources": [
+         {"name": "Compute Engine", "file": "compute-engine.png", "type": "service"},
+         {"name": "Kubernetes Engine", "file": "kubernetes-engine.png", "type": "service"},
+         {"name": "App Engine", "file": "app-engine.png", "type": "service"},
+         {"name": "Cloud Functions", "file": "functions.png", "type": "service"},
+         {"name": "Cloud Run", "file": "run.png", "type": "service"},
+         {"name": "GKE On-Prem", "file": "gke-on-prem.png", "type": "service"},
+         {"name": "GPU", "file": "gpu.png", "type": "service"},
+         {"name": "Container Optimized OS", "file": "container-optimized-os.png", "type": "service"}
+      ]
+    },
+    "storage": {
+      "name": "Storage",
+      "path": "gcp/storage",
+      "resources": [
+         {"name": "Cloud Storage", "file": "storage.png", "type": "service"},
+         {"name": "Filestore", "file": "filestore.png", "type": "service"},
+         {"name": "Persistent Disk", "file": "persistent-disk.png", "type": "service"},
+         {"name": "Local SSD", "file": "local-ssd.png", "type": "service"},
+         {"name": "Cloud Storage Bucket", "file": "storage-bucket.png", "type": "resource"}
+      ]
+    },
+    "database": {
+      "name": "Database",
+      "path": "gcp/database",
+      "resources": [
+         {"name": "Cloud SQL", "file": "sql.png", "type": "service"},
+         {"name": "Spanner", "file": "spanner.png", "type": "service"},
+         {"name": "Bigtable", "file": "bigtable.png", "type": "service"},
+          {"name": "Firestore", "file": "firestore.png", "type": "service"},
+         {"name": "BigQuery", "file": "bigquery.png", "type": "service"},
+         {"name": "Cloud Memorystore", "file": "memorystore.png", "type": "service"}
+      ]
+    },
+    "network": {
+      "name": "Networking",
+      "path": "gcp/network",
+      "resources": [
+         {"name": "VPC Network", "file": "vpc-network.png", "type": "service"},
+         {"name": "Cloud CDN", "file": "cdn.png", "type": "service"},
+         {"name": "Cloud Load Balancing", "file": "load-balancing.png", "type": "service"},
+         {"name": "Cloud DNS", "file": "dns.png", "type": "service"},
+         {"name": "Cloud Interconnect", "file": "interconnect.png", "type": "service"},
+         {"name": "Cloud Armor", "file": "cloud-armor.png", "type": "service"}
+      ]
+    },
+    "analytics": {
+      "name": "Analytics",
+      "path": "gcp/analytics",
+      "resources": [
+         {"name": "BigQuery", "file": "bigquery.png", "type": "service"},
+         {"name": "Dataflow", "file": "dataflow.png", "type": "service"},
+         {"name": "Dataproc", "file": "dataproc.png", "type": "service"},
+         {"name": "Pub/Sub", "file": "pubsub.png", "type": "service"},
+         {"name": "Data Studio", "file": "data-studio.png", "type": "service"}
+      ]
+    },
+    "aimachinelearning": {
+      "name": "AI + Machine Learning",
+      "path": "gcp/aimachinelearning",
+      "resources": [
+         {"name": "Vertex AI", "file": "vertex-ai.png", "type": "service"},
+         {"name": "AutoML", "file": "automl.png", "type": "service"},
+         {"name": "AI Platform", "file": "ai-platform.png", "type": "service"},
+         {"name": "Speech-to-Text", "file": "speech-to-text.png", "type": "service"},
+         {"name": "Text-to-Speech", "file": "text-to-speech.png", "type": "service"},
+         {"name": "Natural Language", "file": "natural-language.png", "type": "service"},
+         {"name": "Vision AI", "file": "vision-ai.png", "type": "service"},
+         {"name": "Translation", "file": "translation.png", "type": "service"}
+      ]
+    }
+  }
+}

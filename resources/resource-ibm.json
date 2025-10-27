@@ -1,0 +1,56 @@
+{
+  "name": "IBM Cloud",
+  "icon": "ibm.png",
+  "totalResources": 25,
+  "categories": {
+    "compute": {
+      "name": "Compute",
+      "path": "ibm/compute",
+      "resources": [
+        {"name": "Virtual Servers", "file": "virtual-servers.png", "type": "service"},
+        {"name": "Bare Metal Servers", "file": "bare-metal.png", "type": "service"},
+        {"name": "Kubernetes Service", "file": "kubernetes.png", "type": "service"},
+        {"name": "OpenShift", "file": "openshift.png", "type": "service"},
+        {"name": "Cloud Functions", "file": "functions.png", "type": "service"}
+      ]
+    },
+    "database": {
+      "name": "Database",
+      "path": "ibm/database",
+      "resources": [
+        {"name": "Db2", "file": "db2.png", "type": "service"},
+        {"name": "Cloudant", "file": "cloudant.png", "type": "service"},
+        {"name": "DashDB", "file": "dashdb.png", "type": "service"},
+        {"name": "MongoDB", "file": "mongodb.png", "type": "service"},
+        {"name": "PostgreSQL", "file": "postgresql.png", "type": "service"},
+        {"name": "Redis", "file": "redis.png", "type": "service"},
+        {"name": "Elasticsearch", "file": "elasticsearch.png", "type": "service"}
+      ]
+    },
+    "ai": {
+      "name": "AI & Machine Learning",
+      "path": "ibm/ai",
+      "resources": [
+        {"name": "Watson Assistant", "file": "watson-assistant.png", "type": "service"},
+        {"name": "Watson Discovery", "file": "watson-discovery.png", "type": "service"},
+        {"name": "Watson Language Translator", "file": "watson-translator.png", "type": "service"},
+        {"name": "Watson Speech to Text", "file": "watson-speech.png", "type": "service"},
+        {"name": "Watson Text to Speech", "file": "watson-tts.png", "type": "service"},
+        {"name": "Watson Machine Learning", "file": "watson-ml.png", "type": "service"},
+        {"name": "Watson OpenScale", "file": "watson-openscale.png", "type": "service"},
+        {"name": "Watson Knowledge Catalog", "file": "watson-kc.png", "type": "service"}
+      ]
+    },
+    "analytics": {
+      "name": "Analytics",
+      "path": "ibm/analytics",
+      "resources": [
+        {"name": "Cognos Analytics", "file": "cognos.png", "type": "service"},
+        {"name": "Planning Analytics", "file": "planning-analytics.png", "type": "service"},
+        {"name": "Watson Analytics", "file": "watson-analytics.png", "type": "service"},
+        {"name": "Db2 Warehouse", "file": "db2-warehouse.png", "type": "service"},
+        {"name": "SPSS", "file": "spss.png", "type": "service"}
+      ]
+    }
+  }
+}
