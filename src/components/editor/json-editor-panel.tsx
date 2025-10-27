@@ -71,15 +71,15 @@ export function JsonEditorPanel({
 
   if (!isOpen) {
     return (
-      <div className="w-0 h-full">
+      <div className="relative w-0 h-full overflow-visible">
         {/* Collapsed state - show toggle button */}
-        <div className="fixed right-0 top-1/2 -translate-y-1/2 z-10">
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 z-50">
           <button
             onClick={onToggleOpen}
-            className="bg-card border border-r-0 rounded-l-md p-2 shadow-md hover:bg-accent/50 transition-colors"
+            className="bg-card border border-r-0 rounded-l-md p-3 shadow-lg hover:bg-accent/50 transition-all duration-200 hover:scale-105"
             title="Open JSON Editor (Ctrl+Shift+J)"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path
                 d="M9 17V19C9 19.5523 8.55228 20 8 20H6C4.34315 20 3 18.6569 3 17V7C3 5.34315 4.34315 4 6 4H8C8.55228 4 9 4.44772 9 5V7M15 17V19C15 19.5523 15.4477 20 16 20H18C19.6569 20 21 18.6569 21 17V7C21 5.34315 19.6569 4 18 4H16C15.4477 4 15 4.44772 15 5V7"
                 stroke="currentColor"

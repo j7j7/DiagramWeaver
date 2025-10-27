@@ -29,19 +29,23 @@ export default function DiagramEditor() {
   const [diagramData, setDiagramData] = React.useState<DiagramData>({ nodes: [], edges: [], groups: [] });
   const [selectedItem, setSelectedItem] = React.useState<SelectedItem | null>(null);
   const [isConnectMode, setIsConnectMode] = React.useState<boolean>(false);
-  const [jsonPanelOpen, setJsonPanelOpen] = React.useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('dw:jsonEditor:open') === 'true';
+  const [jsonPanelOpen, setJsonPanelOpen] = React.useState<boolean>(false);
+  const [jsonPanelWidth, setJsonPanelWidth] = React.useState<number>(420);
+  const [isClient, setIsClient] = React.useState<boolean>(false);
+
+  // Initialize client-side state after hydration
+  React.useEffect(() => {
+    setIsClient(true);
+    const savedOpen = localStorage.getItem('dw:jsonEditor:open');
+    const savedWidth = localStorage.getItem('dw:jsonEditor:width');
+    
+    if (savedOpen !== null) {
+      setJsonPanelOpen(savedOpen === 'true');
     }
-    return false;
-  });
-  const [jsonPanelWidth, setJsonPanelWidth] = React.useState<number>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('dw:jsonEditor:width');
-      return saved ? parseInt(saved, 10) : 420;
+    if (savedWidth !== null) {
+      setJsonPanelWidth(parseInt(savedWidth, 10));
     }
-    return 420;
-  });
+  }, []);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -257,7 +261,7 @@ export default function DiagramEditor() {
   const toggleJsonPanel = () => {
     const newState = !jsonPanelOpen;
     setJsonPanelOpen(newState);
-    if (typeof window !== 'undefined') {
+    if (isClient) {
       localStorage.setItem('dw:jsonEditor:open', String(newState));
     }
   };
@@ -278,10 +282,10 @@ export default function DiagramEditor() {
 
   // Persist panel width
   React.useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (isClient) {
       localStorage.setItem('dw:jsonEditor:width', String(jsonPanelWidth));
     }
-  }, [jsonPanelWidth]);
+  }, [jsonPanelWidth, isClient]);
 
 
   return (
