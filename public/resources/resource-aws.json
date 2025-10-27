@@ -22,10 +22,10 @@
       "name": "Storage",
       "path": "aws/storage",
       "resources": [
-         {"name": "S3", "file": "simple-storage-service-s3.png", "type": "service"},
+         {"name": "S3", "file": "s3.png", "type": "service"},
         {"name": "S3 Bucket", "file": "s3-bucket.png", "type": "resource"},
-         {"name": "EFS", "file": "elastic-file-system.png", "type": "service"},
-         {"name": "EBS", "file": "elastic-block-store-ebs.png", "type": "service"},
+         {"name": "EFS", "file": "efs.png", "type": "service"},
+         {"name": "EBS", "file": "ebs.png", "type": "service"},
         {"name": "Storage Gateway", "file": "storage-gateway.png", "type": "service"},
         {"name": "FSx", "file": "fsx.png", "type": "service"},
         {"name": "Backup", "file": "backup.png", "type": "service"},
@@ -67,12 +67,11 @@
       "path": "aws/analytics",
       "resources": [
         {"name": "EMR", "file": "emr.png", "type": "service"},
-        {"name": "EventBridge", "file": "integration/eventbridge.png", "type": "service"},
         {"name": "Kinesis", "file": "kinesis.png", "type": "service"},
         {"name": "Glue", "file": "glue.png", "type": "service"},
         {"name": "Athena", "file": "athena.png", "type": "service"},
         {"name": "QuickSight", "file": "quicksight.png", "type": "service"},
-         {"name": "OpenSearch", "file": "amazon-opensearch-service.png", "type": "service"},
+         {"name": "OpenSearch", "file": "amazonopensearchservice.png", "type": "service"},
         {"name": "Redshift Spectrum", "file": "redshift-spectrum.png", "type": "service"}
       ]
     },
