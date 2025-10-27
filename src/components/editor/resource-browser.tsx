@@ -359,7 +359,7 @@ return (
                     <CollapsibleTrigger asChild>
                       <Button
                         variant="ghost"
-                        className="w-full justify-between p-2 h-auto hover:bg-muted"
+                        className="w-full justify-between p-2 h-auto hover:bg-accent/50 hover:text-accent-foreground"
                       >
                         <div className="flex items-center gap-2">
                           {expandedProviders.has(providerKey) ? (
@@ -388,7 +388,7 @@ return (
                                 <CollapsibleTrigger asChild>
                                   <Button
                                     variant="ghost"
-                                    className="w-full justify-between p-1 h-auto hover:bg-muted/50"
+                                    className="w-full justify-between p-1 h-auto hover:bg-accent/40 hover:text-accent-foreground"
                                   >
                                     <div className="flex items-center gap-1">
                                       {isExpanded ? (

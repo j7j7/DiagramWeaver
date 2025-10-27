@@ -7,7 +7,7 @@
       "name": "Compute",
       "path": "k8s/compute",
       "resources": [
-         {"name": "Kubernetes", "file": "infra/master.png", "type": "service"},
+         {"name": "Kubernetes", "file": "kubernetes.png", "type": "service"},
          {"name": "Pod", "file": "pod.png", "type": "resource"},
          {"name": "Deployment", "file": "deploy.png", "type": "resource"},
          {"name": "StatefulSet", "file": "sts.png", "type": "resource"},
