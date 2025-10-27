@@ -2,8 +2,10 @@
 import React from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { ComponentSidebar } from './editor/component-sidebar';
 import { EditorCanvas } from './editor/editor-canvas';
+import { JsonEditorPanel } from './editor/json-editor-panel';
 import type { DiagramData, DiagramNodeData, DiagramGroupData, DiagramEdgeData } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -27,6 +29,19 @@ export default function DiagramEditor() {
   const [diagramData, setDiagramData] = React.useState<DiagramData>({ nodes: [], edges: [], groups: [] });
   const [selectedItem, setSelectedItem] = React.useState<SelectedItem | null>(null);
   const [isConnectMode, setIsConnectMode] = React.useState<boolean>(false);
+  const [jsonPanelOpen, setJsonPanelOpen] = React.useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('dw:jsonEditor:open') === 'true';
+    }
+    return false;
+  });
+  const [jsonPanelWidth, setJsonPanelWidth] = React.useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('dw:jsonEditor:width');
+      return saved ? parseInt(saved, 10) : 420;
+    }
+    return 420;
+  });
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -234,6 +249,40 @@ export default function DiagramEditor() {
     toast({ title: 'New Diagram', description: 'Diagram has been cleared.' });
   };
 
+  const handleJsonValidChange = (newDiagramData: DiagramData) => {
+    setDiagramData(newDiagramData);
+    setSelectedItem(null); // Deselect to avoid stale references
+  };
+
+  const toggleJsonPanel = () => {
+    const newState = !jsonPanelOpen;
+    setJsonPanelOpen(newState);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dw:jsonEditor:open', String(newState));
+    }
+  };
+
+  // Keyboard shortcut: Ctrl+Shift+J (or Cmd+Shift+J on Mac)
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isMac = navigator.platform.toUpperCase().includes('MAC');
+      if ((isMac ? e.metaKey : e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'j') {
+        e.preventDefault();
+        toggleJsonPanel();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [jsonPanelOpen]);
+
+  // Persist panel width
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dw:jsonEditor:width', String(jsonPanelWidth));
+    }
+  }, [jsonPanelWidth]);
+
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -269,6 +318,15 @@ export default function DiagramEditor() {
         <main className="flex-1 flex flex-col">
             <header className="flex items-center justify-between p-4 border-b">
                 <h1 className="text-2xl font-headline font-bold">Diagram Weaver</h1>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={toggleJsonPanel}
+                    className="text-sm px-3 py-1.5 rounded border hover:bg-accent transition-colors"
+                    title="Toggle JSON Editor (Ctrl+Shift+J)"
+                  >
+                    {jsonPanelOpen ? 'Hide JSON' : 'Show JSON'}
+                  </button>
+                </div>
                 <input
                     type="file"
                     ref={fileInputRef}
@@ -277,29 +335,67 @@ export default function DiagramEditor() {
                     style={{ display: 'none' }}
                 />
             </header>
-            <div className="flex-1 relative">
-                <EditorCanvas 
-                    diagramData={diagramData} 
-                    setDiagramData={setDiagramData}
-                    onItemSelect={handleItemSelect}
-                    selectedItemId={selectedItem?.id}
-                    isConnectMode={isConnectMode}
-                    onNodeClickInConnectMode={handleConnect}
-                    onConnect={() => setIsConnectMode(true)}
-                    onDisconnect={() => {
-                        // Remove all connections from selected item
-                        if (selectedItem) {
-                            setDiagramData(prevData => ({
-                                ...prevData,
-                                edges: prevData.edges?.filter(e => e.from !== selectedItem.id && e.to !== selectedItem.id) || []
-                            }));
-                            toast({
-                                title: "Connections Disconnected",
-                                description: "All connections from the selected item have been removed.",
-                            });
-                        }
-                    }}
-                />
+            <div className="flex-1">
+                <PanelGroup direction="horizontal" className="h-full">
+                  <Panel defaultSize={jsonPanelOpen ? 75 : 100} minSize={30}>
+                    <EditorCanvas 
+                        diagramData={diagramData} 
+                        setDiagramData={setDiagramData}
+                        onItemSelect={handleItemSelect}
+                        selectedItemId={selectedItem?.id}
+                        isConnectMode={isConnectMode}
+                        onNodeClickInConnectMode={handleConnect}
+                        onConnect={() => setIsConnectMode(true)}
+                        onDisconnect={() => {
+                            // Remove all connections from selected item
+                            if (selectedItem) {
+                                setDiagramData(prevData => ({
+                                    ...prevData,
+                                    edges: prevData.edges?.filter(e => e.from !== selectedItem.id && e.to !== selectedItem.id) || []
+                                }));
+                                toast({
+                                    title: "Connections Disconnected",
+                                    description: "All connections from the selected item have been removed.",
+                                });
+                            }
+                        }}
+                    />
+                  </Panel>
+                  
+                  {jsonPanelOpen && (
+                    <>
+                      <PanelResizeHandle className="w-1 bg-border hover:bg-accent cursor-col-resize transition-colors" />
+                      <Panel 
+                        defaultSize={25} 
+                        minSize={15} 
+                        maxSize={50}
+                        onResize={(size) => {
+                          // Convert panel percentage to pixels (approximate)
+                          const panelWidth = Math.round((size / 100) * window.innerWidth);
+                          setJsonPanelWidth(panelWidth);
+                        }}
+                      >
+                        <JsonEditorPanel
+                          value={diagramData}
+                          onValidJsonChange={handleJsonValidChange}
+                          isOpen={jsonPanelOpen}
+                          onToggleOpen={toggleJsonPanel}
+                          widthPx={jsonPanelWidth}
+                        />
+                      </Panel>
+                    </>
+                  )}
+                  
+                  {!jsonPanelOpen && (
+                    <JsonEditorPanel
+                      value={diagramData}
+                      onValidJsonChange={handleJsonValidChange}
+                      isOpen={jsonPanelOpen}
+                      onToggleOpen={toggleJsonPanel}
+                      widthPx={0}
+                    />
+                  )}
+                </PanelGroup>
             </div>
         </main>
       </div>
