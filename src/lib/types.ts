@@ -1,8 +1,8 @@
 export interface DiagramNodeData {
   id: string;
   type: string;
-  label: string;
-  info: string;
+  label?: string;
+  info?: string;
   x?: number;
   y?: number;
   imagePath?: string; // Optional: Override icon path. If not provided, derived from type
@@ -18,7 +18,7 @@ export interface DiagramEdgeData {
 export interface DiagramGroupData {
   id: string;
   type: 'group';
-  label: string;
+  label?: string;
   nodes: string[];
   info?: string; // Add info for group descriptions/popovers
   x?: number;

@@ -4,8 +4,8 @@ import { z } from 'zod';
 export const DiagramNodeDataSchema = z.object({
   id: z.string(),
   type: z.string(),
-  label: z.string(),
-  info: z.string(),
+  label: z.string().optional(),
+  info: z.string().optional(),
   x: z.number().optional(),
   y: z.number().optional(),
   imagePath: z.string().optional(), // Override icon path
@@ -23,7 +23,7 @@ export const DiagramEdgeDataSchema = z.object({
 export const DiagramGroupDataSchema = z.object({
   id: z.string(),
   type: z.literal('group'),
-  label: z.string(),
+  label: z.string().optional(),
   nodes: z.array(z.string()),
   info: z.string().optional(),
   x: z.number().optional(),

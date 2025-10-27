@@ -28,7 +28,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted }: D
   const [isOpen, setIsOpen] = useState(false);
   
   // Calculate dynamic height based on label length and node type
-  const calculateNodeHeight = (label: string, isTextNode: boolean) => {
+  const calculateNodeHeight = (label: string = '', isTextNode: boolean) => {
     if (isTextNode) {
       const maxCharsPerLine = 20; // More characters fit in text-only nodes
       const lines = Math.ceil(label.length / maxCharsPerLine);
@@ -41,11 +41,11 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted }: D
   };
   
   const isTextNode = node.type === 'generic.text.text';
-  const nodeHeight = calculateNodeHeight(node.label, isTextNode);
+  const nodeHeight = calculateNodeHeight(node.label || '', isTextNode);
   
   const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.CANVAS_NODE,
-    item: { id: node.id, x: node.x, y: node.y, type: ItemTypes.CANVAS_NODE, label: node.label },
+    item: { id: node.id, x: node.x, y: node.y, type: ItemTypes.CANVAS_NODE, label: node.label || '' },
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
@@ -79,7 +79,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted }: D
               // Text-only node - just show the text without icon container
               <div className="flex items-center justify-center h-full w-full px-2">
                 <p className="text-sm font-medium text-center text-foreground break-words leading-tight">
-                  {node.label}
+                  {node.label || 'Untitled'}
                 </p>
               </div>
             ) : (
@@ -92,22 +92,24 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted }: D
                     <ResourceIcon type={node.type} imagePath={node.imagePath} className="w-10 h-10" />
                 </div>
                 <p className="mt-2 text-sm font-medium text-center text-foreground w-full px-1 break-words leading-tight">
-                  {node.label}
+                  {node.label || 'Untitled'}
                 </p>
               </>
             )}
           </div>
         </PopoverTrigger>
-        <PopoverContent
-          side="top"
-          align="center"
-          className="w-64 bg-popover text-popover-foreground shadow-xl border-accent"
-        >
-          <div className="space-y-2">
-            <h4 className="font-semibold font-headline text-primary">{node.label}</h4>
-            <p className="text-sm">{node.info}</p>
-          </div>
-        </PopoverContent>
+        {(node.info || node.label) && (
+          <PopoverContent
+            side="top"
+            align="center"
+            className="w-64 bg-popover text-popover-foreground shadow-xl border-accent"
+          >
+            <div className="space-y-2">
+              <h4 className="font-semibold font-headline text-primary">{node.label || 'Untitled'}</h4>
+              {node.info && <p className="text-sm">{node.info}</p>}
+            </div>
+          </PopoverContent>
+        )}
       </Popover>
     </div>
   );

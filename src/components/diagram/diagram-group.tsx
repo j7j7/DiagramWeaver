@@ -97,7 +97,7 @@ className={cn(
             backgroundColor: isZone ? 'hsl(var(--background))' : 'transparent',
             color: textColor,
           }}>
-            {group.label}
+            {group.label || 'Untitled Group'}
           </div>
         </PopoverTrigger>
         {group.info && (
@@ -107,7 +107,7 @@ className={cn(
             className="w-80 bg-popover text-popover-foreground shadow-xl border-accent"
           >
             <div className="space-y-2">
-              <h4 className="font-semibold font-headline text-primary">{group.label}</h4>
+              <h4 className="font-semibold font-headline text-primary">{group.label || 'Untitled Group'}</h4>
               <p className="text-sm">{group.info}</p>
             </div>
           </PopoverContent>
