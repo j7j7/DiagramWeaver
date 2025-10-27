@@ -36,7 +36,7 @@
       "name": "Database",
       "path": "aws/database",
       "resources": [
-         {"name": "RDS", "file": "relational-database-service.png"},
+         {"name": "RDS", "file": "rds.png"},
         {"name": "RDS Instance", "file": "rds-instance.png"},
         {"name": "DynamoDB", "file": "dynamodb.png"},
         {"name": "Redshift", "file": "redshift.png"},
@@ -51,13 +51,13 @@
       "name": "Networking",
       "path": "aws/network",
       "resources": [
-         {"name": "VPC", "file": "virtual-private-cloud.png"},
+         {"name": "VPC", "file": "vpc.png"},
         {"name": "CloudFront", "file": "cloudfront.png"},
-        {"name": "Route 53", "file": "route53.png"},
+        {"name": "Route 53", "file": "route-53.png"},
         {"name": "API Gateway", "file": "api-gateway.png"},
-         {"name": "ELB", "file": "elastic-load-balancing.png"},
-         {"name": "ALB", "file": "application-load-balancer.png"},
-         {"name": "NLB", "file": "network-load-balancer.png"},
+         {"name": "ELB", "file": "elb.png"},
+         {"name": "ALB", "file": "alb.png"},
+         {"name": "NLB", "file": "nlb.png"},
         {"name": "Direct Connect", "file": "direct-connect.png"},
         {"name": "Transit Gateway", "file": "transit-gateway.png"}
       ]
@@ -72,34 +72,21 @@
         {"name": "Athena", "file": "athena.png"},
         {"name": "QuickSight", "file": "quicksight.png"},
          {"name": "OpenSearch", "file": "amazonopensearchservice.png"},
-        {"name": "Redshift Spectrum", "file": "redshift-spectrum.png"}
-      ]
-    },
-    "machinelearning": {
-      "name": "Machine Learning",
-      "path": "aws/machinelearning",
-      "resources": [
-        {"name": "SageMaker", "file": "sagemaker.png"},
-        {"name": "Comprehend", "file": "comprehend.png"},
-        {"name": "Rekognition", "file": "rekognition.png"},
-        {"name": "Translate", "file": "translate.png"},
-        {"name": "Polly", "file": "polly.png"},
-        {"name": "Lex", "file": "lex.png"},
-        {"name": "Forecast", "file": "forecast.png"}
+        {"name": "Redshift", "file": "redshift.png"}
       ]
     },
     "security": {
       "name": "Security",
       "path": "aws/security",
       "resources": [
-         {"name": "IAM", "file": "identity-and-access-management.png"},
+         {"name": "IAM", "file": "identity-and-access-management-iam.png"},
          {"name": "KMS", "file": "key-management-service.png"},
         {"name": "CloudHSM", "file": "cloudhsm.png"},
         {"name": "Secrets Manager", "file": "secrets-manager.png"},
         {"name": "GuardDuty", "file": "guardduty.png"},
         {"name": "Inspector", "file": "inspector.png"},
         {"name": "Macie", "file": "macie.png"},
-         {"name": "WAF", "file": "web-application-firewall.png"},
+         {"name": "WAF", "file": "waf.png"},
         {"name": "Shield", "file": "shield.png"}
       ]
     },

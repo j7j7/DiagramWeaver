@@ -23,39 +23,39 @@
       "resources": [
          {"name": "Storage Account", "file": "storage-account.png", "type": "service"},
          {"name": "Blob Storage", "file": "blob-storage.png", "type": "service"},
-         {"name": "File Storage", "file": "file-storage.png", "type": "service"},
-         {"name": "Disk Storage", "file": "disk-storage.png", "type": "service"},
+         {"name": "File Storage", "file": "azure-fileshares.png", "type": "service"},
+         {"name": "Disk Storage", "file": "general-storage.png", "type": "service"},
          {"name": "Data Box", "file": "data-box.png", "type": "service"},
          {"name": "Archive Storage", "file": "archive-storage.png", "type": "service"},
-         {"name": "StorageSync", "file": "storage-sync.png", "type": "service"}
+         {"name": "StorageSync", "file": "storage-sync-services.png", "type": "service"}
       ]
     },
     "database": {
       "name": "Database",
       "path": "azure/database",
       "resources": [
-         {"name": "SQL Database", "file": "sql-database.png", "type": "service"},
+         {"name": "SQL Database", "file": "sql-databases.png", "type": "service"},
          {"name": "Cosmos DB", "file": "cosmos-db.png", "type": "service"},
-         {"name": "Database for MySQL", "file": "database-mysql.png", "type": "service"},
-         {"name": "Database for PostgreSQL", "file": "database-postgresql.png", "type": "service"},
-         {"name": "Database for MariaDB", "file": "database-mariadb.png", "type": "service"},
-         {"name": "SQL Data Warehouse", "file": "sql-data-warehouse.png", "type": "service"},
-         {"name": "SQL Managed Instance", "file": "sql-managed-instance.png", "type": "service"},
-         {"name": "Cache for Redis", "file": "cache-redis.png", "type": "service"}
+         {"name": "Database for MySQL", "file": "database-for-mysql-servers.png", "type": "service"},
+         {"name": "Database for PostgreSQL", "file": "database-for-postgresql-servers.png", "type": "service"},
+         {"name": "Database for MariaDB", "file": "database-for-mariadb-servers.png", "type": "service"},
+         {"name": "SQL Data Warehouse", "file": "sql-datawarehouse.png", "type": "service"},
+         {"name": "SQL Managed Instance", "file": "sql-managed-instances.png", "type": "service"},
+         {"name": "Cache for Redis", "file": "cache-for-redis.png", "type": "service"}
       ]
     },
     "network": {
       "name": "Networking",
       "path": "azure/network",
       "resources": [
-         {"name": "Virtual Network", "file": "virtual-network.png", "type": "service"},
-         {"name": "VPN Gateway", "file": "vpn-gateway.png", "type": "service"},
-         {"name": "ExpressRoute", "file": "expressroute.png", "type": "service"},
-         {"name": "Load Balancer", "file": "load-balancer.png", "type": "service"},
+         {"name": "Virtual Network", "file": "virtual-networks.png", "type": "service"},
+         {"name": "VPN Gateway", "file": "virtual-network-gateways.png", "type": "service"},
+         {"name": "ExpressRoute", "file": "expressroute-circuits.png", "type": "service"},
+         {"name": "Load Balancer", "file": "load-balancers.png", "type": "service"},
          {"name": "Application Gateway", "file": "application-gateway.png", "type": "service"},
-         {"name": "CDN", "file": "cdn.png", "type": "service"},
-         {"name": "DNS", "file": "dns.png", "type": "service"},
-         {"name": "Traffic Manager", "file": "traffic-manager.png", "type": "service"}
+         {"name": "CDN", "file": "cdn-profiles.png", "type": "service"},
+         {"name": "DNS", "file": "dns-zones.png", "type": "service"},
+         {"name": "Traffic Manager", "file": "traffic-manager-profiles.png", "type": "service"}
       ]
     },
     "aimachinelearning": {
@@ -64,10 +64,9 @@
       "resources": [
          {"name": "Machine Learning", "file": "machine-learning.png", "type": "service"},
          {"name": "Cognitive Services", "file": "cognitive-services.png", "type": "service"},
-         {"name": "Bot Service", "file": "bot-service.png", "type": "service"},
-         {"name": "Azure OpenAI", "file": "openai.png", "type": "service"},
-         {"name": "Vision", "file": "vision.png", "type": "service"},
-         {"name": "Speech", "file": "speech.png", "type": "service"},
+         {"name": "Bot Service", "file": "bot-services.png", "type": "service"},
+         {"name": "Vision", "file": "computer-vision.png", "type": "service"},
+         {"name": "Speech", "file": "speech-services.png", "type": "service"},
          {"name": "Language", "file": "language.png", "type": "service"},
          {"name": "Anomaly Detector", "file": "anomaly-detector.png", "type": "service"}
       ]
@@ -78,11 +77,10 @@
       "resources": [
          {"name": "Synapse Analytics", "file": "synapse-analytics.png", "type": "service"},
          {"name": "Databricks", "file": "databricks.png", "type": "service"},
-         {"name": "HDInsight", "file": "hdinsight.png", "type": "service"},
-         {"name": "Stream Analytics", "file": "stream-analytics.png", "type": "service"},
-         {"name": "Data Factory", "file": "data-factory.png", "type": "service"},
-         {"name": "Event Hubs", "file": "event-hubs.png", "type": "service"},
-         {"name": "IoT Hub", "file": "iot-hub.png", "type": "service"}
+         {"name": "HDInsight", "file": "hd-insight-clusters.png", "type": "service"},
+         {"name": "Stream Analytics", "file": "stream-analytics-jobs.png", "type": "service"},
+         {"name": "Data Factory", "file": "data-factories.png", "type": "service"},
+         {"name": "Event Hubs", "file": "event-hubs.png", "type": "service"}
       ]
     }
   }
