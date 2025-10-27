@@ -59,6 +59,17 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
 - **UI Fix**: Resolved React warning about mixing `border` and `borderImage` in `src/components/diagram/diagram-group.tsx` by replacing shorthand `border` with explicit `borderWidth`/`borderStyle`/`borderColor` and using `borderImageSource` + `borderImageSlice` for gradient borders.
 - **New** (2025-10-27): Added a floating "Resize to fit" button at the bottom-right of the canvas. Implemented `handleFitToView` in `src/components/editor/editor-canvas.tsx` to compute bounds of all elements and adjust `transform` so everything fits within the viewport with padding. Typecheck passed; ESLint currently errors due to a circular reference in `.eslintrc.json` (unchanged).
 - **Optimization** (2025-10-27): Removed redundant `imagePath` fields from diagram JSON files and drag/drop operations. The `ResourceIcon` component (renamed from `AwsIcon`) automatically derives icon paths from the `type` field for all providers (e.g., "generic.device.mobile" → "/resources/generic/device/mobile.png", "aws.database.dynamodb" → "/resources/aws/database/dynamodb.png"). The `imagePath` field is now truly optional and only needed for custom icon overrides. This reduces JSON file size, eliminates data duplication, and works seamlessly with all 18+ supported providers (AWS, Azure, GCP, Generic, K8s, Programming, etc.).
+- **NEW FEATURE** (2025-10-27): JSON Editor Panel - Added a collapsible JSON editor to the right side of the canvas with live sync capabilities. Features include:
+  - **CodeMirror Editor**: Professional code editor with line numbers, syntax highlighting, bracket matching, and JSON linting
+  - **Live Sync**: Real-time bidirectional updates between canvas and JSON - edit text changes reflect instantly on canvas, canvas changes update JSON
+  - **Validation**: Zod schema validation with detailed error reporting for both JSON syntax and diagram structure
+  - **Resizable Panel**: Uses `react-resizable-panels` for smooth resize and collapse behavior
+  - **Keyboard Shortcut**: Ctrl+Shift+J (Cmd+Shift+J on Mac) to toggle panel
+  - **Local Persistence**: Panel state and width saved to localStorage
+  - **Debounced Updates**: 300ms debounce prevents performance issues during rapid typing
+  - **Loop Protection**: Prevents infinite update cycles between editor and canvas
+  - **Tech Stack**: `@uiw/react-codemirror`, `@codemirror/lang-json`, Zod validation, `react-resizable-panels`
+  - **UI Polish**: Status indicators, error display, smooth transitions, collapsed state toggle button
 
 ### Development Tools
 - **Scripts**: npm run dev, build, lint, typecheck, genkit
