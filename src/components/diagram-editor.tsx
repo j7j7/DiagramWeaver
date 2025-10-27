@@ -4,9 +4,10 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { ComponentSidebar } from './editor/component-sidebar';
-import { EditorCanvas } from './editor/editor-canvas';
+import { EditorCanvas, type EditorCanvasHandle } from './editor/editor-canvas';
 import { JsonEditorPanel } from './editor/json-editor-panel';
 import type { DiagramData, DiagramNodeData, DiagramGroupData, DiagramEdgeData } from '@/lib/types';
+import { generateSequentialId } from '@/lib/id-generator';
 import { useToast } from '@/hooks/use-toast';
 
 export type SelectedItem = (DiagramNodeData | DiagramGroupData) & { 
@@ -27,6 +28,7 @@ export type SelectedItem = (DiagramNodeData | DiagramGroupData) & {
 
 export default function DiagramEditor() {
   const [diagramData, setDiagramData] = React.useState<DiagramData>({ nodes: [], edges: [], groups: [] });
+  const editorRef = React.useRef<EditorCanvasHandle>(null);
   const [selectedItem, setSelectedItem] = React.useState<SelectedItem | null>(null);
   const [isConnectMode, setIsConnectMode] = React.useState<boolean>(false);
   const [jsonPanelOpen, setJsonPanelOpen] = React.useState<boolean>(false);
@@ -301,29 +303,32 @@ export default function DiagramEditor() {
           onSave={handleSave}
           onLoad={handleLoadClick}
           onNew={handleNew}
+          onFitToView={() => editorRef.current?.fitToView()}
           onToggleJsonPanel={toggleJsonPanel}
           jsonPanelOpen={jsonPanelOpen}
           onResourceSelect={(resource, provider, category) => {
             // Add the resource to the diagram at a default position
             const nodeType = `${provider}.${category}.${resource.name.replace(/\s+/g, '-').toLowerCase()}`;
-            const newNode = {
-              id: `${nodeType.replace(/[^a-zA-Z0-9-]/g, '-')}-${Date.now()}`,
-              type: nodeType,
-              label: resource.name,
-              info: `${resource.name} from ${provider}`,
-              x: 100 + Math.random() * 200, // Random position to avoid overlap
-              y: 100 + Math.random() * 200,
-            };
-            setDiagramData(prevData => ({
-              ...prevData,
-              nodes: [...prevData.nodes, newNode]
-            }));
+            setDiagramData(prevData => {
+              const newNode = {
+                id: generateSequentialId(nodeType, prevData),
+                type: nodeType,
+                label: resource.name,
+                info: `${resource.name} from ${provider}`,
+                x: 100 + Math.random() * 200,
+                y: 100 + Math.random() * 200,
+              };
+              return {
+                ...prevData,
+                nodes: [...prevData.nodes, newNode]
+              };
+            });
             toast({ title: 'Resource Added', description: `${resource.name} has been added to the diagram.` });
           }}
         />
         <main className="flex-1 flex flex-col">
-            <header className="flex items-center justify-center p-4 border-b">
-                <h1 className="text-2xl font-headline font-bold">Diagram Weaver</h1>
+            <header className="flex items-center justify-center p-4 border-b bg-card">
+                <h1 className="text-2xl font-headline font-bold text-primary">Diagram Weaver</h1>
                 <input
                     type="file"
                     ref={fileInputRef}
@@ -335,15 +340,16 @@ export default function DiagramEditor() {
             <div className="flex-1 flex flex-col">
                 <div className="flex flex-1">
                   <div className={`flex-1 h-full ${jsonPanelOpen ? 'mr-2' : ''}`}>
-                    <EditorCanvas 
-                        diagramData={diagramData} 
-                        setDiagramData={setDiagramData}
-                        onItemSelect={handleItemSelect}
-                        selectedItemId={selectedItem?.id}
-                        isConnectMode={isConnectMode}
-                        onNodeClickInConnectMode={handleConnect}
-                        onConnect={() => setIsConnectMode(true)}
-                        onDisconnect={() => {
+                <EditorCanvas 
+                    ref={editorRef}
+                    diagramData={diagramData} 
+                    setDiagramData={setDiagramData}
+                    onItemSelect={handleItemSelect}
+                    selectedItemId={selectedItem?.id}
+                    isConnectMode={isConnectMode}
+                    onNodeClickInConnectMode={handleConnect}
+                    onConnect={() => setIsConnectMode(true)}
+                    onDisconnect={() => {
                             // Remove all connections from selected item
                             if (selectedItem) {
                                 setDiagramData(prevData => ({

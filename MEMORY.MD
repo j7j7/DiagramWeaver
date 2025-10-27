@@ -57,7 +57,7 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
 - **Grid and Snap Enhancements**: Improved placement, collision prevention, and nested layouts
 - **Type System**: Updated types to preserve resource information during operations
 - **UI Fix**: Resolved React warning about mixing `border` and `borderImage` in `src/components/diagram/diagram-group.tsx` by replacing shorthand `border` with explicit `borderWidth`/`borderStyle`/`borderColor` and using `borderImageSource` + `borderImageSlice` for gradient borders.
-- **New** (2025-10-27): Added a floating "Resize to fit" button at the bottom-right of the canvas. Implemented `handleFitToView` in `src/components/editor/editor-canvas.tsx` to compute bounds of all elements and adjust `transform` so everything fits within the viewport with padding. Removed temporary console logs from edge rendering and DiagramGroup shadow debug. Typecheck passed; ESLint currently errors due to a circular reference in `.eslintrc.json` (unchanged).
+- **New** (2025-10-27): Added "Fit to view" button under the Show JSON toggle in the left sidebar (ComponentSidebar) wired to an imperative `fitToView` method exposed by `EditorCanvas` via `forwardRef`. Also kept a floating canvas button. Implemented `handleFitToView` to compute bounds using dynamic node dimensions (matching DiagramNode sizes) plus extra margins, so all elements fit. Removed temporary console logs from edge rendering and DiagramGroup shadow debug. Typecheck passed; ESLint currently errors due to a circular reference in `.eslintrc.json` (unchanged).
 - **Optimization** (2025-10-27): Removed redundant `imagePath` fields from diagram JSON files and drag/drop operations. The `ResourceIcon` component (renamed from `AwsIcon`) automatically derives icon paths from the `type` field for all providers (e.g., "generic.device.mobile" → "/resources/generic/device/mobile.png", "aws.database.dynamodb" → "/resources/aws/database/dynamodb.png"). The `imagePath` field is now truly optional and only needed for custom icon overrides. This reduces JSON file size, eliminates data duplication, and works seamlessly with all 18+ supported providers (AWS, Azure, GCP, Generic, K8s, Programming, etc.).
 - **NEW FEATURE** (2025-10-27): JSON Editor Panel - Added a collapsible JSON editor to the right side of the canvas with live sync capabilities. Features include:
   - **CodeMirror Editor**: Professional code editor with line numbers, syntax highlighting, bracket matching, and JSON linting
@@ -70,6 +70,14 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
   - **Loop Protection**: Prevents infinite update cycles between editor and canvas
   - **Tech Stack**: `@uiw/react-codemirror`, `@codemirror/lang-json`, Zod validation, `react-resizable-panels`
   - **UI Polish**: Status indicators, error display, smooth transitions, collapsed state toggle button
+- **ID Generation Improvement** (2025-10-27): Replaced timestamp-based ID generation with sequential numbering for cleaner diagram organization:
+  - **Sequential Node IDs**: New nodes get IDs like `aws-database-dynamodb-1`, `aws-database-dynamodb-2`, etc.
+  - **Sequential Group/Zone IDs**: Groups and zones get IDs like `group-1`, `zone-1`, `group-2`, etc.
+  - **Smart ID Scanning**: The `generateSequentialId()` function scans existing diagram data to find the highest sequential number (1-999) for each type and increments, ignoring timestamp-based IDs (numbers > 999)
+  - **Backward Compatibility**: Handles existing diagrams with timestamp-based IDs gracefully by ignoring them and starting fresh sequential numbering
+  - **Consistent Operations**: Copy/paste operations, drag-from-sidebar, and group/zone creation all use sequential IDs
+  - **Implementation**: New `src/lib/id-generator.ts` utility integrated in both `diagram-editor.tsx` and `editor-canvas.tsx`
+  - **Benefits**: Cleaner diagram JSON, predictable naming, easier debugging and manual editing, eliminates 13-digit timestamp clutter
 
 ### Development Tools
 - **Scripts**: npm run dev, build, lint, typecheck, genkit

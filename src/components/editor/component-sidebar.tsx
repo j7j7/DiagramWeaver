@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { DraggableItem } from './draggable-item';
-import { Download, Upload, Plus, Code } from 'lucide-react';
+import { Download, Upload, Plus, Code, Maximize2 } from 'lucide-react';
 import type { DiagramNodeData, DiagramGroupData, DiagramData } from '@/lib/types';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
@@ -27,6 +27,7 @@ interface ComponentSidebarProps {
   onResourceSelect: (resource: { name: string; file: string; type: string; }, provider: string, category: string) => void;
   onToggleJsonPanel?: () => void;
   jsonPanelOpen?: boolean;
+  onFitToView?: () => void;
 }
 
 type FormValues = Omit<DiagramNodeData & DiagramGroupData, 'id' | 'type' | 'nodes'> & {
@@ -44,7 +45,7 @@ type FormValues = Omit<DiagramNodeData & DiagramGroupData, 'id' | 'type' | 'node
 };
 
 
-export function ComponentSidebar({ selectedItem, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onSave, onLoad, onNew, onResourceSelect, onToggleJsonPanel, jsonPanelOpen }: ComponentSidebarProps) {
+export function ComponentSidebar({ selectedItem, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onSave, onLoad, onNew, onResourceSelect, onToggleJsonPanel, jsonPanelOpen, onFitToView }: ComponentSidebarProps) {
   const { register, reset, getValues } = useForm<FormValues>();
 
   useEffect(() => {
@@ -135,7 +136,7 @@ return (
             <Button variant="outline" onClick={onLoad} className="flex-1"><Upload className="mr-2 h-4 w-4"/>Load</Button>
         </div>
         {onToggleJsonPanel && (
-          <div className="mb-4">
+          <div className="mb-2">
             <Button 
               variant={jsonPanelOpen ? "default" : "outline"} 
               onClick={onToggleJsonPanel} 
@@ -143,6 +144,14 @@ return (
             >
               <Code className="mr-2 h-4 w-4"/>
               {jsonPanelOpen ? 'Hide JSON' : 'Show JSON'}
+            </Button>
+          </div>
+        )}
+        {onFitToView && (
+          <div className="mb-4">
+            <Button variant="outline" onClick={onFitToView} className="w-full">
+              <Maximize2 className="mr-2 h-4 w-4" />
+              Fit to view
             </Button>
           </div>
         )}

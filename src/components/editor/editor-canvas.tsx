@@ -17,10 +17,13 @@ import { cn } from "@/lib/utils";
 import { findPath } from "@/lib/pathfinding";
 import type { Obstacle } from "@/lib/pathfinding";
 import { ContextMenu } from "../ui/context-menu";
+import { generateGroupId, generateSequentialId } from "@/lib/id-generator";
 
 
 const NODE_WIDTH = 104;
 const NODE_HEIGHT = 100;
+const TEXT_NODE_HEIGHT = 40;
+const EXTRA_LINE_HEIGHT = 20;
 const GROUP_PADDING = 40;
 const GROUP_NODE_SPACING = 30;
 const GRID_SNAP = 20;
@@ -39,7 +42,14 @@ interface EditorCanvasProps {
 type PositionedNode = DiagramNodeData & { x: number; y: number; };
 type PositionedGroup = DiagramGroupData & { x: number; y: number; width: number; height: number; };
 
-export function EditorCanvas({ diagramData, setDiagramData, onItemSelect, selectedItemId, isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect }: EditorCanvasProps) {
+export type EditorCanvasHandle = {
+  fitToView: () => void;
+};
+
+export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
+  { diagramData, setDiagramData, onItemSelect, selectedItemId, isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect }: EditorCanvasProps,
+  ref
+) {
   const [transform, setTransform] = useState({ x: 0, y: 0, k: 1 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
@@ -246,14 +256,15 @@ export function EditorCanvas({ diagramData, setDiagramData, onItemSelect, select
       const itemLabel = item.label || '';
       
       if (itemType === 'zone' || itemType === 'group') {
+        const subType = itemType === 'zone' ? 'zone' : 'group';
         const newGroup: DiagramGroupData = {
-          id: `group-${Date.now()}`,
+          id: generateGroupId(subType, prevData),
           label: itemLabel,
           nodes: [],
           type: 'group',
-          subType: itemType === 'zone' ? 'zone' : 'group',
+          subType,
           info: `A new ${itemLabel}`,
-          color: itemType === 'group' ? '#e0e0e0' : undefined,
+          color: subType === 'group' ? '#e0e0e0' : undefined,
         };
         newGroups.push(newGroup);
         newItemId = newGroup.id;
@@ -262,7 +273,7 @@ export function EditorCanvas({ diagramData, setDiagramData, onItemSelect, select
         const nodeType = item.resource ? `${item.provider}.${item.category}.${item.resource.name.replace(/\s+/g, '-').toLowerCase()}` : itemType;
         
         const newNode: DiagramNodeData = {
-          id: `${nodeType.replace(/[^a-zA-Z0-9-]/g, '-')}-${Date.now()}`,
+          id: generateSequentialId(nodeType, prevData),
           type: nodeType,
           label: itemLabel,
           info: item.resource ? `${item.resource.name} from ${item.provider}` : `A new ${itemLabel}`,
@@ -637,6 +648,16 @@ const [{ isOver, canDrop }, drop] = useDrop(() => ({
     setIsPanning(false);
   };
 
+  const measureNodeDims = (n: PositionedNode) => {
+    const isText = n.type === 'generic.text.text';
+    const label = (n.label || '').toString();
+    const maxCharsPerLine = isText ? 20 : 12;
+    const lines = Math.max(1, Math.ceil(label.length / maxCharsPerLine));
+    const height = (isText ? TEXT_NODE_HEIGHT : NODE_HEIGHT) + (lines - 1) * EXTRA_LINE_HEIGHT;
+    const width = isText ? 200 : NODE_WIDTH; // conservative upper bound for text nodes
+    return { width, height };
+  };
+
   const handleFitToView = useCallback(() => {
     if (!canvasRef.current) return;
 
@@ -647,8 +668,8 @@ const [{ isOver, canDrop }, drop] = useDrop(() => ({
       ? {
           minX: Math.min(...processedNodes.map(n => n.x)),
           minY: Math.min(...processedNodes.map(n => n.y)),
-          maxX: Math.max(...processedNodes.map(n => n.x + NODE_WIDTH)),
-          maxY: Math.max(...processedNodes.map(n => n.y + NODE_HEIGHT)),
+          maxX: Math.max(...processedNodes.map(n => n.x + measureNodeDims(n).width)),
+          maxY: Math.max(...processedNodes.map(n => n.y + measureNodeDims(n).height)),
         }
       : null;
 
@@ -666,40 +687,56 @@ const [{ isOver, canDrop }, drop] = useDrop(() => ({
       return;
     }
 
-    const minX = Math.min(nodeBounds?.minX ?? Infinity, groupBounds?.minX ?? Infinity);
-    const minY = Math.min(nodeBounds?.minY ?? Infinity, groupBounds?.minY ?? Infinity);
-    const maxX = Math.max(nodeBounds?.maxX ?? -Infinity, groupBounds?.maxX ?? -Infinity);
-    const maxY = Math.max(nodeBounds?.maxY ?? -Infinity, groupBounds?.maxY ?? -Infinity);
+    let minX = Math.min(nodeBounds?.minX ?? Infinity, groupBounds?.minX ?? Infinity);
+    let minY = Math.min(nodeBounds?.minY ?? Infinity, groupBounds?.minY ?? Infinity);
+    let maxX = Math.max(nodeBounds?.maxX ?? -Infinity, groupBounds?.maxX ?? -Infinity);
+    let maxY = Math.max(nodeBounds?.maxY ?? -Infinity, groupBounds?.maxY ?? -Infinity);
 
-    const padding = 40; // logical pixels in canvas space
+    // Add extra margin to account for edges/labels that can extend beyond shapes
+    const logicalPadding = 60;
+    const extraMargin = 80;
+    minX -= extraMargin;
+    minY -= extraMargin;
+    maxX += extraMargin;
+    maxY += extraMargin;
+
     const contentWidth = Math.max(1, maxX - minX);
     const contentHeight = Math.max(1, maxY - minY);
 
-    const scaleX = viewportWidth / (contentWidth + 2 * padding);
-    const scaleY = viewportHeight / (contentHeight + 2 * padding);
-    const k = Math.max(0.1, Math.min(3, Math.min(scaleX, scaleY)));
+    const scaleX = viewportWidth / (contentWidth + 2 * logicalPadding);
+    const scaleY = viewportHeight / (contentHeight + 2 * logicalPadding);
+    // Allow smaller scales so very large diagrams still fit; cap max zoom-in but allow tiny zoom-out
+    const k = Math.min(4, Math.min(scaleX, scaleY));
 
-    const displayWidth = k * (contentWidth + 2 * padding);
-    const displayHeight = k * (contentHeight + 2 * padding);
+    const displayWidth = k * (contentWidth + 2 * logicalPadding);
+    const displayHeight = k * (contentHeight + 2 * logicalPadding);
 
     const offsetX = (viewportWidth - displayWidth) / 2;
     const offsetY = (viewportHeight - displayHeight) / 2;
 
-    const x = offsetX - k * (minX - padding);
-    const y = offsetY - k * (minY - padding);
+    const x = offsetX - k * (minX - logicalPadding);
+    const y = offsetY - k * (minY - logicalPadding);
 
     setTransform({ x, y, k });
   }, [processedNodes, processedGroups]);
 
+  // Expose imperative API
+  React.useImperativeHandle(ref, () => ({
+    fitToView: handleFitToView,
+  }), [handleFitToView]);
+
   const allObstacles = useMemo(() => {
-    const nodeObstacles = processedNodes.map(n => ({
-      id: n.id,
-      x: n.x,
-      y: n.y,
-      width: NODE_WIDTH,
-      height: NODE_HEIGHT,
-      isZone: false
-    }));
+    const nodeObstacles = processedNodes.map(n => {
+      const dims = measureNodeDims(n);
+      return ({
+        id: n.id,
+        x: n.x,
+        y: n.y,
+        width: dims.width,
+        height: dims.height,
+        isZone: false
+      });
+    });
     const groupObstacles = processedGroups.map(g => ({
       id: g.id,
       x: g.x,
@@ -829,7 +866,7 @@ const [{ isOver, canDrop }, drop] = useDrop(() => ({
     if (clipboard.node) {
       const newNode: DiagramNodeData = {
         ...clipboard.node,
-        id: `${clipboard.node.type}-${Date.now()}`,
+        id: generateSequentialId(clipboard.node.type, diagramData),
         x: (clipboard.node.x || 0) + 50,
         y: (clipboard.node.y || 0) + 50,
       };
@@ -841,7 +878,7 @@ const [{ isOver, canDrop }, drop] = useDrop(() => ({
     } else if (clipboard.group) {
       const newGroup: DiagramGroupData = {
         ...clipboard.group,
-        id: `${clipboard.group.type}-${Date.now()}`,
+        id: generateGroupId((clipboard.group.subType as 'group' | 'zone') || 'group', diagramData),
         x: (clipboard.group.x || 0) + 50,
         y: (clipboard.group.y || 0) + 50,
       };
@@ -1049,4 +1086,4 @@ return (
         </div>
     </div>
   );
-}
+});
