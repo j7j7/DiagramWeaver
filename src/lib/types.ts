@@ -5,7 +5,7 @@ export interface DiagramNodeData {
   info: string;
   x?: number;
   y?: number;
-  imagePath?: string; // Canonical icon path used by both browser and canvas
+  imagePath?: string; // Optional: Override icon path. If not provided, derived from type
   lineColor?: string; // Color for connections/borders
 }
 

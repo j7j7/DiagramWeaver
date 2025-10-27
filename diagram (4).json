@@ -1,0 +1,226 @@
+{
+  "nodes": [
+    {
+      "id": "generic-device-mobile-1761534825148",
+      "type": "generic.device.mobile",
+      "label": "Mobile",
+      "info": "Mobile from generic",
+      "x": 560,
+      "y": 40
+    },
+    {
+      "id": "generic-device-desktop-1761534835201",
+      "type": "generic.device.desktop",
+      "label": "Desktop",
+      "info": "Desktop from generic",
+      "x": 980,
+      "y": 140
+    },
+    {
+      "id": "generic-os-windows-1761534841412",
+      "type": "generic.os.windows",
+      "label": "Windows",
+      "info": "Windows from generic",
+      "x": 1220,
+      "y": 140
+    },
+    {
+      "id": "aws-compute-compute-optimizer-1761534873296",
+      "type": "aws.compute.compute-optimizer",
+      "label": "Compute Optimizer",
+      "info": "Compute Optimizer from aws",
+      "x": 500,
+      "y": 480
+    },
+    {
+      "id": "aws-database-dynamodb-1761534887605",
+      "type": "aws.database.dynamodb",
+      "label": "DynamoDB",
+      "info": "DynamoDB from aws",
+      "x": 648,
+      "y": 680
+    },
+    {
+      "id": "aws-database-neptune-1761534890311",
+      "type": "aws.database.neptune",
+      "label": "Neptune",
+      "info": "Neptune from aws",
+      "x": 380,
+      "y": 680
+    },
+    {
+      "id": "aws-database-timestream-1761534946151",
+      "type": "aws.database.timestream",
+      "label": "Timestream",
+      "info": "Timestream from aws",
+      "x": 514,
+      "y": 680
+    },
+    {
+      "id": "aws-network-api-gateway-1761534976517",
+      "type": "aws.network.api-gateway",
+      "label": "API Gateway",
+      "info": "API Gateway from aws",
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "aws-network-elb-1761534984551",
+      "type": "aws.network.elb",
+      "label": "ELB",
+      "info": "ELB from aws",
+      "x": 180,
+      "y": 100
+    },
+    {
+      "id": "aws-network-api-gateway-1761534990054",
+      "type": "aws.network.api-gateway",
+      "label": "API Gateway",
+      "info": "API Gateway from aws",
+      "x": 234,
+      "y": 280
+    }
+  ],
+  "edges": [
+    {
+      "from": "generic-device-desktop-1761534835201",
+      "to": "generic-os-windows-1761534841412"
+    },
+    {
+      "from": "aws-network-api-gateway-1761534976517",
+      "to": "aws-network-elb-1761534984551"
+    },
+    {
+      "from": "aws-network-api-gateway-1761534990054",
+      "to": "aws-network-elb-1761534984551"
+    },
+    {
+      "from": "aws-network-elb-1761534984551",
+      "to": "generic-device-mobile-1761534825148"
+    },
+    {
+      "from": "aws-network-api-gateway-1761534990054",
+      "to": "aws-compute-compute-optimizer-1761534873296"
+    },
+    {
+      "from": "aws-network-api-gateway-1761534976517",
+      "to": "aws-compute-compute-optimizer-1761534873296"
+    },
+    {
+      "from": "aws-compute-compute-optimizer-1761534873296",
+      "to": "aws-database-neptune-1761534890311"
+    },
+    {
+      "from": "aws-compute-compute-optimizer-1761534873296",
+      "to": "aws-database-dynamodb-1761534887605"
+    }
+  ],
+  "groups": [
+    {
+      "id": "group-1761534820939",
+      "label": "Internet",
+      "nodes": [
+        "generic-device-mobile-1761534825148"
+      ],
+      "type": "group",
+      "subType": "zone",
+      "info": "A new Zone",
+      "x": 520,
+      "y": 0,
+      "width": 184,
+      "height": 180,
+      "itemType": "group",
+      "borderStyle": "solid",
+      "borderColors": [
+        "#6b7280",
+        "#6b7280"
+      ],
+      "backgroundStyle": "solid",
+      "backgroundColors": [
+        "#f3f4f6",
+        "#e5e7eb"
+      ],
+      "textColor": "#374151",
+      "shadow": false,
+      "lineColor": "#6b7280"
+    },
+    {
+      "id": "group-1761534831376",
+      "label": "Zone",
+      "nodes": [
+        "generic-device-desktop-1761534835201"
+      ],
+      "type": "group",
+      "subType": "zone",
+      "info": "A new Zone",
+      "x": 940,
+      "y": 100
+    },
+    {
+      "id": "group-1761534898613",
+      "label": "Data Layer",
+      "nodes": [
+        "aws-database-neptune-1761534890311",
+        "aws-database-timestream-1761534946151",
+        "aws-database-dynamodb-1761534887605"
+      ],
+      "type": "group",
+      "subType": "group",
+      "info": "Data Layer Group",
+      "color": "#e0e0e0",
+      "x": 340,
+      "y": 640,
+      "width": 452,
+      "height": 180,
+      "itemType": "group",
+      "borderStyle": "solid",
+      "borderColors": [
+        "#3b82f6",
+        "#3b82f6"
+      ],
+      "backgroundStyle": "solid",
+      "backgroundColors": [
+        "#f3f4f6",
+        "#e5e7eb"
+      ],
+      "textColor": "#374151",
+      "shadow": false,
+      "lineColor": "#6b7280",
+      "orientation": "horizontal",
+      "maxItemsPerRow": 3,
+      "borderColor": "#48f73b"
+    },
+    {
+      "id": "group-1761535097006",
+      "label": "API Layer",
+      "nodes": [
+        "aws-network-api-gateway-1761534976517",
+        "aws-network-api-gateway-1761534990054"
+      ],
+      "type": "group",
+      "subType": "group",
+      "info": "A new Group",
+      "color": "#e0e0e0",
+      "x": 60,
+      "y": 240,
+      "width": 318,
+      "height": 180,
+      "itemType": "group",
+      "borderStyle": "solid",
+      "borderColors": [
+        "#3b82f6",
+        "#3b82f6"
+      ],
+      "backgroundStyle": "solid",
+      "backgroundColors": [
+        "#f3f4f6",
+        "#e5e7eb"
+      ],
+      "textColor": "#374151",
+      "shadow": true,
+      "lineColor": "#6b7280",
+      "orientation": "horizontal",
+      "maxItemsPerRow": 3
+    }
+  ]
+}

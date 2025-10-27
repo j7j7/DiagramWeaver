@@ -11,7 +11,7 @@ import { generateDiagram } from "@/app/actions";
 import { Textarea } from "../ui/textarea";
 import { Button } from "../ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Loader } from "lucide-react";
+import { Loader, Maximize2 } from "lucide-react";
 import type { SelectedItem } from "../diagram-editor";
 import { cn } from "@/lib/utils";
 import { findPath } from "@/lib/pathfinding";
@@ -266,7 +266,6 @@ export function EditorCanvas({ diagramData, setDiagramData, onItemSelect, select
           type: nodeType,
           label: itemLabel,
           info: item.resource ? `${item.resource.name} from ${item.provider}` : `A new ${itemLabel}`,
-          imagePath: item.imagePath,
         };
         newNodes.push(newNode);
         newItemId = newNode.id;
@@ -638,6 +637,60 @@ const [{ isOver, canDrop }, drop] = useDrop(() => ({
     setIsPanning(false);
   };
 
+  const handleFitToView = useCallback(() => {
+    if (!canvasRef.current) return;
+
+    const viewportWidth = canvasRef.current.clientWidth;
+    const viewportHeight = canvasRef.current.clientHeight;
+
+    const nodeBounds = processedNodes.length
+      ? {
+          minX: Math.min(...processedNodes.map(n => n.x)),
+          minY: Math.min(...processedNodes.map(n => n.y)),
+          maxX: Math.max(...processedNodes.map(n => n.x + NODE_WIDTH)),
+          maxY: Math.max(...processedNodes.map(n => n.y + NODE_HEIGHT)),
+        }
+      : null;
+
+    const groupBounds = processedGroups.length
+      ? {
+          minX: Math.min(...processedGroups.map(g => g.x)),
+          minY: Math.min(...processedGroups.map(g => g.y)),
+          maxX: Math.max(...processedGroups.map(g => g.x + g.width)),
+          maxY: Math.max(...processedGroups.map(g => g.y + g.height)),
+        }
+      : null;
+
+    if (!nodeBounds && !groupBounds) {
+      setTransform({ x: 0, y: 0, k: 1 });
+      return;
+    }
+
+    const minX = Math.min(nodeBounds?.minX ?? Infinity, groupBounds?.minX ?? Infinity);
+    const minY = Math.min(nodeBounds?.minY ?? Infinity, groupBounds?.minY ?? Infinity);
+    const maxX = Math.max(nodeBounds?.maxX ?? -Infinity, groupBounds?.maxX ?? -Infinity);
+    const maxY = Math.max(nodeBounds?.maxY ?? -Infinity, groupBounds?.maxY ?? -Infinity);
+
+    const padding = 40; // logical pixels in canvas space
+    const contentWidth = Math.max(1, maxX - minX);
+    const contentHeight = Math.max(1, maxY - minY);
+
+    const scaleX = viewportWidth / (contentWidth + 2 * padding);
+    const scaleY = viewportHeight / (contentHeight + 2 * padding);
+    const k = Math.max(0.1, Math.min(3, Math.min(scaleX, scaleY)));
+
+    const displayWidth = k * (contentWidth + 2 * padding);
+    const displayHeight = k * (contentHeight + 2 * padding);
+
+    const offsetX = (viewportWidth - displayWidth) / 2;
+    const offsetY = (viewportHeight - displayHeight) / 2;
+
+    const x = offsetX - k * (minX - padding);
+    const y = offsetY - k * (minY - padding);
+
+    setTransform({ x, y, k });
+  }, [processedNodes, processedGroups]);
+
   const allObstacles = useMemo(() => {
     const nodeObstacles = processedNodes.map(n => ({
       id: n.id,
@@ -806,7 +859,7 @@ const [{ isOver, canDrop }, drop] = useDrop(() => ({
   };
 
   return (
-    <>
+    <div className="relative w-full h-full">
         <div
             ref={canvasRef}
             className={cn(
@@ -989,6 +1042,14 @@ return (
             onDisconnect?.();
           }}
         />
-    </>
+
+        {/* Fit-to-view floating button */}
+        <div className="absolute bottom-4 right-4 z-50">
+          <Button variant="secondary" size="icon" onClick={handleFitToView} className="rounded-full shadow-md">
+            <Maximize2 className="h-5 w-5" />
+            <span className="sr-only">Resize to fit</span>
+          </Button>
+        </div>
+    </div>
   );
 }

@@ -28,8 +28,7 @@ export function DraggableResourceItem({ resource, provider, category, icon }: Dr
         label: resource.name,
         provider,
         category,
-        resource,
-        imagePath: `/resources/${provider}/${category}/${resource.file}`
+        resource
       };
     }
     
@@ -38,10 +37,9 @@ export function DraggableResourceItem({ resource, provider, category, icon }: Dr
       label: resource.name,
       provider,
       category,
-      resource,
-      imagePath: `/resources/${provider}/${category}/${resource.file}`
+      resource
     };
-  }, [resource.name, provider, category, resource.file]);
+  }, [resource.name, resource.file, provider, category]);
 
   const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.DIAGRAM_NODE,
@@ -49,7 +47,7 @@ export function DraggableResourceItem({ resource, provider, category, icon }: Dr
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
-  }));
+  }), [item]);
 
   // Handle image loading errors
   const handleImageError = () => {

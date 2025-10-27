@@ -7,7 +7,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { AwsIcon } from "./aws-icon";
+import { ResourceIcon } from "./resource-icon";
 import type { DiagramNodeData } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { ItemTypes } from "../editor/draggable-item";
@@ -89,7 +89,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted }: D
                     isSelected ? "border-primary" : "group-hover:border-accent",
                     isTargetable && "border-dashed border-primary"
                     )}>
-                    <AwsIcon type={node.type} imagePath={node.imagePath} className="w-10 h-10" />
+                    <ResourceIcon type={node.type} imagePath={node.imagePath} className="w-10 h-10" />
                 </div>
                 <p className="mt-2 text-sm font-medium text-center text-foreground w-full px-1 break-words leading-tight">
                   {node.label}

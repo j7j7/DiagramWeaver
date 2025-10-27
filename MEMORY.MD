@@ -56,6 +56,9 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
 - **Bug Fixes**: Icon persistence, drag-drop preservation, scrollbar issues resolved
 - **Grid and Snap Enhancements**: Improved placement, collision prevention, and nested layouts
 - **Type System**: Updated types to preserve resource information during operations
+- **UI Fix**: Resolved React warning about mixing `border` and `borderImage` in `src/components/diagram/diagram-group.tsx` by replacing shorthand `border` with explicit `borderWidth`/`borderStyle`/`borderColor` and using `borderImageSource` + `borderImageSlice` for gradient borders.
+- **New** (2025-10-27): Added a floating "Resize to fit" button at the bottom-right of the canvas. Implemented `handleFitToView` in `src/components/editor/editor-canvas.tsx` to compute bounds of all elements and adjust `transform` so everything fits within the viewport with padding. Typecheck passed; ESLint currently errors due to a circular reference in `.eslintrc.json` (unchanged).
+- **Optimization** (2025-10-27): Removed redundant `imagePath` fields from diagram JSON files and drag/drop operations. The `ResourceIcon` component (renamed from `AwsIcon`) automatically derives icon paths from the `type` field for all providers (e.g., "generic.device.mobile" → "/resources/generic/device/mobile.png", "aws.database.dynamodb" → "/resources/aws/database/dynamodb.png"). The `imagePath` field is now truly optional and only needed for custom icon overrides. This reduces JSON file size, eliminates data duplication, and works seamlessly with all 18+ supported providers (AWS, Azure, GCP, Generic, K8s, Programming, etc.).
 
 ### Development Tools
 - **Scripts**: npm run dev, build, lint, typecheck, genkit

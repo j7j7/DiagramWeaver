@@ -3,12 +3,12 @@
 import React, { useState } from "react";
 import { Server, User } from "lucide-react";
 
-interface AwsIconProps extends React.SVGProps<SVGSVGElement> {
+interface ResourceIconProps extends React.SVGProps<SVGSVGElement> {
   type: string;
   imagePath?: string; // If provided, use this exact icon path
 }
 
-export function AwsIcon({ type, imagePath, ...props }: AwsIconProps) {
+export function ResourceIcon({ type, imagePath, ...props }: ResourceIconProps) {
   const [imageError, setImageError] = useState(false);
 
   // If an explicit imagePath is provided, prefer it for exact parity with browser
@@ -29,7 +29,7 @@ export function AwsIcon({ type, imagePath, ...props }: AwsIconProps) {
     );
   }
   
-  // Handle all provider resources by loading PNG files derived from type
+  // Handle all provider resources (AWS, Azure, GCP, etc.) by loading PNG files derived from type
   const parts = type.split('.');
   if (parts.length >= 3) {
     const provider = parts[0];
