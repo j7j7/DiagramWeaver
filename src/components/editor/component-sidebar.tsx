@@ -114,14 +114,14 @@ export function ComponentSidebar({ selectedItem, onItemUpdate, onConnect, onDisc
     const nodesById = new Map(diagramData.nodes.map(n => [n.id, n]));
     const groupsById = new Map((diagramData.groups || []).map(g => [g.id, g]));
 
-    const incoming = (diagramData.edges || [])
-      .filter(edge => edge.to === itemId)
-      .map(edge => nodesById.get(edge.from)?.label || groupsById.get(edge.from)?.label)
+    const incoming = (diagramData.connections || [])
+      .filter((edge: any) => edge.to === itemId)
+      .map((edge: any) => nodesById.get(edge.from)?.label || groupsById.get(edge.from)?.label)
       .filter(Boolean);
       
-    const outgoing = (diagramData.edges || [])
-      .filter(edge => edge.from === itemId)
-      .map(edge => nodesById.get(edge.to)?.label || groupsById.get(edge.to)?.label)
+    const outgoing = (diagramData.connections || [])
+      .filter((edge: any) => edge.from === itemId)
+      .map((edge: any) => nodesById.get(edge.to)?.label || groupsById.get(edge.to)?.label)
       .filter(Boolean);
 
     return { incoming, outgoing, parentGroup: parent };

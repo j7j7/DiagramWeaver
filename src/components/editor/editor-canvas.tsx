@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { useDrop } from 'react-dnd';
 import { DiagramNode } from "../diagram/diagram-node";
-import { DiagramEdge } from "../diagram/diagram-edge";
+import { DiagramConnection } from "../diagram/diagram-connection";
 import { DiagramGroup } from "../diagram/diagram-group";
 import type { DiagramData, DiagramNodeData, DiagramGroupData } from "@/lib/types";
 import { ItemTypes } from './draggable-item';
@@ -848,7 +848,7 @@ const [{ isOver, canDrop }, drop] = useDrop(() => ({
       setDiagramData(prev => ({
         ...prev,
         nodes: prev.nodes.filter(n => n.id !== itemId),
-        edges: prev.edges.filter(e => e.from !== itemId && e.to !== itemId),
+        connections: prev.connections.filter((e: any) => e.from !== itemId && e.to !== itemId),
         groups: prev.groups?.map(g => ({
           ...g,
           nodes: g.nodes.filter(n => n !== itemId)
@@ -973,7 +973,7 @@ const [{ isOver, canDrop }, drop] = useDrop(() => ({
                     <path d="M 0 0 L 10 5 L 0 10 z" className="fill-current text-muted-foreground" />
                     </marker>
                 </defs>
-                {(diagramData.edges || []).map((edge, index) => {
+                {(diagramData.connections || []).map((edge: any, index: any) => {
                     const fromItem = nodesById[edge.from] || groupsById[edge.from];
                     const toItem = nodesById[edge.to] || groupsById[edge.to];
                     if (!fromItem || !toItem) return null;
@@ -1020,11 +1020,11 @@ const [{ isOver, canDrop }, drop] = useDrop(() => ({
                       ...(toItem && 'type' in toItem && (toItem as any).type === 'group' ? [edge.to] : []),
                     ];
 
-                    const isEdgeHighlighted = selectedItemId === edge.from || selectedItemId === edge.to;
+                    const isConnectionHighlighted = selectedItemId === edge.from || selectedItemId === edge.to;
 
 return (
-                    <g key={`${edge.from}-${edge.to}-${index}`} className={cn(isEdgeHighlighted && 'drop-shadow-[0_0_6px_rgba(0,200,150,0.8)]')}>
-                      <DiagramEdge
+                    <g key={`${edge.from}-${edge.to}-${index}`} className={cn(isConnectionHighlighted && 'drop-shadow-[0_0_6px_rgba(0,200,150,0.8)]')}>
+                      <DiagramConnection
                         from={fromPos}
                         to={toPos}
                         allObstacles={allObstacles}
@@ -1035,7 +1035,7 @@ return (
                 })}
                 </svg>
                 {processedNodes.map((node) => {
-                  const isConnectedToSelected = !!selectedItemId && (diagramData.edges || []).some(e => e.from === selectedItemId && e.to === node.id || e.to === selectedItemId && e.from === node.id);
+                  const isConnectedToSelected = !!selectedItemId && (diagramData.connections || []).some((e: any) => e.from === selectedItemId && e.to === node.id || e.to === selectedItemId && e.from === node.id);
                   return (
                     <div key={node.id} onClick={(e) => handleNodeClick(e, node)} onContextMenu={(e) => handleNodeRightClick(e, node)}>
                       <DiagramNode 
@@ -1091,7 +1091,7 @@ return (
             // Remove all connections to/from this item
             setDiagramData(prev => ({
               ...prev,
-              edges: prev.edges.filter(e => e.from !== contextMenu.itemId && e.to !== contextMenu.itemId)
+              connections: prev.connections.filter((e: any) => e.from !== contextMenu.itemId && e.to !== contextMenu.itemId)
             }));
             toast({
               title: "Connections Disconnected",

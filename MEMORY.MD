@@ -11,7 +11,7 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
 - **Drag & Drop**: React DND for interactive elements
 - **AI Integration**: Google Genkit with Gemini 2.5 Flash for diagram generation
 - **Icons and Resources**: Custom PNG/SVG icons for 17+ providers
-- **Pathfinding**: Custom algorithm for orthogonal edge routing
+- **Pathfinding**: Custom algorithm for orthogonal connection routing
 - **State Management**: React hooks and context for diagram state
 
 ### Core Features
@@ -19,7 +19,7 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
 - **Drag-and-Drop Interface**: Drag resources from sidebar to canvas; supports nested groups and zones
 - **AI-Powered Generation**: Generate diagrams from natural language descriptions using AI
 - **Multi-Provider Support**: Icons and resources for AWS, Azure, GCP, OCI, Kubernetes, and more
-- **Advanced Pathfinding**: Orthogonal routing with anti-edge-hugging, buffer zones, and smart connection points
+- **Advanced Pathfinding**: Orthogonal routing with anti-connection-hugging, buffer zones, and smart connection points
 - **Group and Zone Management**: Create nested groups; intra-group reordering and hierarchical connections
 - **Resource Browser**: Searchable sidebar with categorized resources from all providers
 - **Export and Persistence**: JSON-based diagram storage and export capabilities
@@ -51,13 +51,13 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
 
 ### Recent Updates and Fixes
 - Resource JSON consolidation: Single source of truth under `public/resources/`; removed duplicate JSONs under `resources/`. Resource Browser now fetches the index at runtime, and the Canvas uses the same exact icon path via `imagePath` to ensure icon parity.
-- **Pathfinding Overhaul**: Revolutionary improvements for edge routing, anti-hugging, and smart connections
+- **Pathfinding Overhaul**: Revolutionary improvements for connection routing, anti-hugging, and smart connections
 - **Resource Reorganization**: Split into modular JSON files for better maintainability
 - **Bug Fixes**: Icon persistence, drag-drop preservation, scrollbar issues resolved
 - **Grid and Snap Enhancements**: Improved placement, collision prevention, and nested layouts
 - **Type System**: Updated types to preserve resource information during operations
 - **UI Fix**: Resolved React warning about mixing `border` and `borderImage` in `src/components/diagram/diagram-group.tsx` by replacing shorthand `border` with explicit `borderWidth`/`borderStyle`/`borderColor` and using `borderImageSource` + `borderImageSlice` for gradient borders.
-- **New** (2025-10-27): Added "Fit to view" and "Export PNG" buttons under the Show JSON toggle in the left sidebar (ComponentSidebar). EditorCanvas now exposes `fitToView` and `exportPng` via forwardRef. PNG export uses `html-to-image` to render the viewport and triggers a browser download (diagram.png). Fit-to-view computes bounds using dynamic node dimensions plus margins. Removed temporary console logs from edge rendering and DiagramGroup shadow debug. Typecheck passed; ESLint currently errors due to a circular reference in `.eslintrc.json` (unchanged).
+- **New** (2025-10-27): Added "Fit to view" and "Export PNG" buttons under the Show JSON toggle in the left sidebar (ComponentSidebar). EditorCanvas now exposes `fitToView` and `exportPng` via forwardRef. PNG export uses `html-to-image` to render the viewport and triggers a browser download (diagram.png). Fit-to-view computes bounds using dynamic node dimensions plus margins. Removed temporary console logs from connection rendering and DiagramGroup shadow debug. Typecheck passed; ESLint currently errors due to a circular reference in `.eslintrc.json` (unchanged).
 - Note: PNG export disables font embedding to avoid CSSStyleSheet SecurityError from cross-origin stylesheets.
 - Sidebar fix: resource icons now resolve by deriving standard file names first (e.g., "EC2 Instance" → `/resources/aws/compute/ec2-instance.png`) and fall back to the explicit `file` path, ensuring correct icons appear.
 - Policy: Do not persist `imagePath` in created nodes; icons are always resolved from `type` with provider-specific aliasing (e.g., Kubernetes `statefulset` → `sts.png`).

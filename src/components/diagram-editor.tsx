@@ -6,7 +6,7 @@ import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { ComponentSidebar } from './editor/component-sidebar';
 import { EditorCanvas, type EditorCanvasHandle } from './editor/editor-canvas';
 import { JsonEditorPanel } from './editor/json-editor-panel';
-import type { DiagramData, DiagramNodeData, DiagramGroupData, DiagramEdgeData } from '@/lib/types';
+import type { DiagramData, DiagramNodeData, DiagramGroupData, DiagramConnectionData } from '@/lib/types';
 import { generateSequentialId } from '@/lib/id-generator';
 import { useToast } from '@/hooks/use-toast';
 
@@ -27,7 +27,7 @@ export type SelectedItem = (DiagramNodeData | DiagramGroupData) & {
 };
 
 export default function DiagramEditor() {
-  const [diagramData, setDiagramData] = React.useState<DiagramData>({ nodes: [], edges: [], groups: [] });
+  const [diagramData, setDiagramData] = React.useState<DiagramData>({ nodes: [], connections: [], groups: [] });
   const editorRef = React.useRef<EditorCanvasHandle>(null);
   const [selectedItem, setSelectedItem] = React.useState<SelectedItem | null>(null);
   const [isConnectMode, setIsConnectMode] = React.useState<boolean>(false);
@@ -133,11 +133,11 @@ export default function DiagramEditor() {
     setDiagramData(prevData => {
       let newNodes = prevData.nodes;
       let newGroups = prevData.groups || [];
-      let newEdges = prevData.edges;
+      let newConnections = prevData.connections;
 
       if (itemToDelete.itemType === 'node') {
         newNodes = prevData.nodes.filter(n => n.id !== itemToDelete.id);
-        newEdges = prevData.edges.filter(e => e.from !== itemToDelete.id && e.to !== itemToDelete.id);
+        newConnections = prevData.connections.filter((e: any) => e.from !== itemToDelete.id && e.to !== itemToDelete.id);
       } else if (itemToDelete.itemType === 'group') {
         newGroups = newGroups.filter(g => g.id !== itemToDelete.id);
         // Also remove nodes that were inside the group if desired, or re-parent them.
@@ -150,7 +150,7 @@ export default function DiagramEditor() {
         nodes: g.nodes.filter(nodeId => nodeId !== itemToDelete.id)
       }));
 
-      return { ...prevData, nodes: newNodes, groups: newGroups, edges: newEdges };
+      return { ...prevData, nodes: newNodes, groups: newGroups, connections: newConnections };
     });
     setSelectedItem(null); // Deselect after deleting
   };
@@ -161,17 +161,17 @@ export default function DiagramEditor() {
       return;
     }
 
-    const newEdge: DiagramEdgeData = { from: selectedItem.id, to: targetItem.id };
+    const newConnection: DiagramConnectionData = { from: selectedItem.id, to: targetItem.id };
     
-    // Avoid creating duplicate edges
-    const edgeExists = diagramData.edges.some(
-      edge => (edge.from === newEdge.from && edge.to === newEdge.to)
+    // Avoid creating duplicate connections
+    const connectionExists = diagramData.connections.some(
+      (edge: any) => (edge.from === newConnection.from && edge.to === newConnection.to)
     );
 
-    if (!edgeExists) {
+    if (!connectionExists) {
       setDiagramData(prevData => ({
         ...prevData,
-        edges: [...prevData.edges, newEdge]
+        connections: [...prevData.connections, newConnection]
       }));
     }
     
@@ -190,7 +190,7 @@ export default function DiagramEditor() {
     const id = selectedItem.id;
     setDiagramData(prevData => ({
       ...prevData,
-      edges: prevData.edges.filter(e => e.from !== id && e.to !== id),
+      connections: prevData.connections.filter((e: any) => e.from !== id && e.to !== id),
     }));
     toast({ title: 'Disconnected', description: 'All connections to/from this item have been removed.' });
   };
@@ -250,7 +250,7 @@ export default function DiagramEditor() {
   };
 
   const handleNew = () => {
-    setDiagramData({ nodes: [], edges: [], groups: [] });
+    setDiagramData({ nodes: [], connections: [], groups: [] });
     setSelectedItem(null);
     toast({ title: 'New Diagram', description: 'Diagram has been cleared.' });
   };
@@ -356,7 +356,7 @@ export default function DiagramEditor() {
                             if (selectedItem) {
                                 setDiagramData(prevData => ({
                                     ...prevData,
-                                    edges: prevData.edges?.filter(e => e.from !== selectedItem.id && e.to !== selectedItem.id) || []
+                                    connections: prevData.connections?.filter((e: any) => e.from !== selectedItem.id && e.to !== selectedItem.id) || []
                                 }));
                                 toast({
                                     title: "Connections Disconnected",

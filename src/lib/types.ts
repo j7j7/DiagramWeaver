@@ -8,10 +8,10 @@ export interface DiagramNodeData {
   lineColor?: string; // Color for connections/borders
 }
 
-export interface DiagramEdgeData {
+export interface DiagramConnectionData {
   from: string;
   to: string;
-  color?: string; // Line color for this specific edge
+  color?: string; // Line color for this specific connection
 }
 
 export interface DiagramGroupData {
@@ -39,6 +39,6 @@ export interface DiagramGroupData {
 
 export interface DiagramData {
   nodes: DiagramNodeData[];
-  edges: DiagramEdgeData[];
+  connections: DiagramConnectionData[];
   groups?: DiagramGroupData[];
 }

@@ -95,7 +95,7 @@
       "y": 50
     }
   ],
-  "edges": [
+  "connections": [
     { "from": "k8s-source", "to": "worker1" },
     { "from": "k8s-source", "to": "worker2" },
     { "from": "k8s-source", "to": "worker3" },

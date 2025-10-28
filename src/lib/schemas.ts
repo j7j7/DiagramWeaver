@@ -12,11 +12,11 @@ export const DiagramNodeDataSchema = z.object({
   lineColor: z.string().optional(), // Color for connections/borders
 });
 
-// Schema for DiagramEdgeData 
-export const DiagramEdgeDataSchema = z.object({
+// Schema for DiagramConnectionData 
+export const DiagramConnectionDataSchema = z.object({
   from: z.string(),
   to: z.string(),
-  color: z.string().optional(), // Line color for this specific edge
+  color: z.string().optional(), // Line color for this specific connection
 });
 
 // Schema for DiagramGroupData
@@ -46,7 +46,7 @@ export const DiagramGroupDataSchema = z.object({
 // Main DiagramData schema
 export const DiagramDataSchema = z.object({
   nodes: z.array(DiagramNodeDataSchema).default([]),
-  edges: z.array(DiagramEdgeDataSchema).default([]),
+  connections: z.array(DiagramConnectionDataSchema).default([]),
   groups: z.array(DiagramGroupDataSchema).default([]),
 });
 

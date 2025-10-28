@@ -12,12 +12,12 @@ const CORNER_RADIUS = 12;
 
 type Positionable = (DiagramNodeData | DiagramGroupData) & { x: number; y: number; width: number; height: number; };
 
-interface DiagramEdgeProps {
+interface DiagramConnectionProps {
   from: Positionable & { lineColor?: string };
   to: Positionable & { lineColor?: string };
   allObstacles: Obstacle[];
   allowedOverlapIds?: string[]; // obstacles with these IDs are ignored when routing
-  edgeColor?: string; // Specific color for this edge
+  connectionColor?: string; // Specific color for this connection
 }
 
 function roundedPathData(points: {x: number; y: number}[], r: number): string {
@@ -731,17 +731,17 @@ function calculateConnectionScore(fromPoint: any, toPoint: any, from: any, to: a
   return calculateEnhancedConnectionScore(fromPoint, toPoint, from, to, dx, dy, Math.sqrt(dx * dx + dy * dy));
 }
 
-export function DiagramEdge({ from, to, allObstacles, allowedOverlapIds = [], edgeColor }: DiagramEdgeProps) {
+export function DiagramConnection({ from, to, allObstacles, allowedOverlapIds = [], connectionColor }: DiagramConnectionProps) {
   const connectionPoints = getGroupBoundaryConnection(from, to);
   const { fromX, fromY, toX, toY } = connectionPoints;
 
   // Determine grid dimensions
-  const maxX = Math.max(...allObstacles.map(e => e.x + e.width)) + CANVAS_PADDING * 2;
-  const maxY = Math.max(...allObstacles.map(e => e.y + e.height)) + CANVAS_PADDING * 2;
+  const maxX = Math.max(...allObstacles.map((e: any) => e.x + e.width)) + CANVAS_PADDING * 2;
+  const maxY = Math.max(...allObstacles.map((e: any) => e.y + e.height)) + CANVAS_PADDING * 2;
 
   // Exclude endpoints and any allowedOverlapIds (e.g., ancestor groups of endpoints) from obstacles
   const allowed = new Set<string>([from.id, to.id, ...allowedOverlapIds]);
-  const obstaclesForPath = allObstacles.filter(o => !allowed.has(o.id));
+  const obstaclesForPath = allObstacles.filter((o: any) => !allowed.has(o.id));
 
   const path = findPath(
     { x: fromX, y: fromY },
@@ -752,13 +752,13 @@ export function DiagramEdge({ from, to, allObstacles, allowedOverlapIds = [], ed
 
   const roundedPath = roundedPathData(path, CORNER_RADIUS);
 
-  // Use edge color first, then 'to' node, fallback to 'from' node, then default
-  const finalEdgeColor = edgeColor || to.lineColor || from.lineColor || '#6b7280';
+  // Use connection color first, then 'to' node, fallback to 'from' node, then default
+  const finalConnectionColor = connectionColor || to.lineColor || from.lineColor || '#6b7280';
 
   return (
     <path
       d={roundedPath}
-      stroke={finalEdgeColor}
+      stroke={finalConnectionColor}
       className="transition-all duration-300"
       strokeWidth="2.5"
       fill="none"
