@@ -1029,6 +1029,13 @@ return (
                         to={toPos}
                         allObstacles={allObstacles}
                         allowedOverlapIds={allowedOverlapIds}
+                        connectionColor={edge.color}
+                        connectionData={edge}
+                        onClick={(connection) => {
+                          // Handle connection click - you can add custom logic here
+                          console.log('Connection clicked:', connection);
+                          // For now, just log it - you can expand this to show a modal, edit text, etc.
+                        }}
                       />
                     </g>
                     );

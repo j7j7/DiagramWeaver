@@ -1,6 +1,6 @@
 "use client";
 
-import type { DiagramNodeData, DiagramGroupData } from "@/lib/types";
+import type { DiagramNodeData, DiagramGroupData, DiagramConnectionData } from "@/lib/types";
 import React from "react";
 import { findPath } from "@/lib/pathfinding";
 import type { Obstacle } from "@/lib/pathfinding";
@@ -18,6 +18,8 @@ interface DiagramConnectionProps {
   allObstacles: Obstacle[];
   allowedOverlapIds?: string[]; // obstacles with these IDs are ignored when routing
   connectionColor?: string; // Specific color for this connection
+  connectionData?: DiagramConnectionData; // Full connection data including text
+  onClick?: (connection: DiagramConnectionData) => void; // Click handler
 }
 
 function roundedPathData(points: {x: number; y: number}[], r: number): string {
@@ -731,7 +733,7 @@ function calculateConnectionScore(fromPoint: any, toPoint: any, from: any, to: a
   return calculateEnhancedConnectionScore(fromPoint, toPoint, from, to, dx, dy, Math.sqrt(dx * dx + dy * dy));
 }
 
-export function DiagramConnection({ from, to, allObstacles, allowedOverlapIds = [], connectionColor }: DiagramConnectionProps) {
+export function DiagramConnection({ from, to, allObstacles, allowedOverlapIds = [], connectionColor, connectionData, onClick }: DiagramConnectionProps) {
   const connectionPoints = getGroupBoundaryConnection(from, to);
   const { fromX, fromY, toX, toY } = connectionPoints;
 
@@ -755,13 +757,64 @@ export function DiagramConnection({ from, to, allObstacles, allowedOverlapIds = 
   // Use connection color first, then 'to' node, fallback to 'from' node, then default
   const finalConnectionColor = connectionColor || to.lineColor || from.lineColor || '#6b7280';
 
+  // Calculate midpoint for text placement
+  let textX, textY;
+  
+  if (path.length === 2) {
+    // For straight lines, calculate the exact midpoint
+    textX = (path[0].x + path[1].x) / 2;
+    textY = (path[0].y + path[1].y) / 2;
+  } else {
+    // For multi-segment paths, use the middle point
+    const midIndex = Math.floor(path.length / 2);
+    const midPoint = path[midIndex];
+    textX = midPoint.x;
+    textY = midPoint.y;
+  }
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onClick && connectionData) {
+      onClick(connectionData);
+    }
+  };
+
   return (
-    <path
-      d={roundedPath}
-      stroke={finalConnectionColor}
-      className="transition-all duration-300"
-      strokeWidth="2.5"
-      fill="none"
-    />
+    <g>
+      <path
+        d={roundedPath}
+        stroke={finalConnectionColor}
+        className="transition-all duration-300 cursor-pointer hover:stroke-opacity-80"
+        strokeWidth="2.5"
+        fill="none"
+        onClick={handleClick}
+      />
+      {connectionData?.text && (() => {
+        const text = connectionData.text;
+        const shouldSplit = text.length > 4;
+        const lines = shouldSplit ? [text.slice(0, Math.ceil(text.length / 2)), text.slice(Math.ceil(text.length / 2))] : [text];
+        const lineHeight = 14;
+        const startY = textY - ((lines.length - 1) * lineHeight) / 2;
+        
+        return lines.map((line, index) => (
+          <text
+            key={index}
+            x={textX}
+            y={startY + (index * lineHeight)}
+            fill={finalConnectionColor}
+            fontSize="12"
+            fontWeight="500"
+            textAnchor="middle"
+            dominantBaseline="middle"
+            className="pointer-events-none select-none"
+            style={{
+              textShadow: '0 0 3px rgba(255,255,255,1), 0 0 6px rgba(255,255,255,0.8), 1px 1px 4px rgba(255,255,255,1), -1px -1px 4px rgba(255,255,255,1), 1px -1px 4px rgba(255,255,255,1), -1px 1px 4px rgba(255,255,255,1)'
+            }}
+          >
+            {line}
+          </text>
+        ));
+      })()}
+    </g>
   );
 }

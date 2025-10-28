@@ -17,6 +17,7 @@ export const DiagramConnectionDataSchema = z.object({
   from: z.string(),
   to: z.string(),
   color: z.string().optional(), // Line color for this specific connection
+  text: z.string().optional(), // Optional text to display on the connection
 });
 
 // Schema for DiagramGroupData

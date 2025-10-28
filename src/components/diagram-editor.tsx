@@ -249,6 +249,17 @@ export default function DiagramEditor() {
     }
   };
 
+  const handleConnectionUpdate = (from: string, to: string, updates: { text?: string; color?: string }) => {
+    setDiagramData(prevData => ({
+      ...prevData,
+      connections: prevData.connections.map(conn => 
+        (conn.from === from && conn.to === to) 
+          ? { ...conn, ...updates }
+          : conn
+      )
+    }));
+  };
+
   const handleNew = () => {
     setDiagramData({ nodes: [], connections: [], groups: [] });
     setSelectedItem(null);
@@ -307,6 +318,7 @@ export default function DiagramEditor() {
           onExportPng={() => editorRef.current?.exportPng()}
           onToggleJsonPanel={toggleJsonPanel}
           jsonPanelOpen={jsonPanelOpen}
+          onConnectionUpdate={handleConnectionUpdate}
           onResourceSelect={(resource, provider, category) => {
             // NEVER add file or imagePath to node data
             // ResourceIcon will derive path from type and resource catalog

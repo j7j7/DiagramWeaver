@@ -12,6 +12,7 @@ export interface DiagramConnectionData {
   from: string;
   to: string;
   color?: string; // Line color for this specific connection
+  text?: string; // Optional text to display on the connection
 }
 
 export interface DiagramGroupData {

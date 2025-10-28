@@ -29,6 +29,7 @@ interface ComponentSidebarProps {
   jsonPanelOpen?: boolean;
   onFitToView?: () => void;
   onExportPng?: () => void;
+  onConnectionUpdate?: (from: string, to: string, updates: { text?: string; color?: string }) => void;
 }
 
 type FormValues = Omit<DiagramNodeData & DiagramGroupData, 'id' | 'type' | 'nodes'> & {
@@ -46,7 +47,7 @@ type FormValues = Omit<DiagramNodeData & DiagramGroupData, 'id' | 'type' | 'node
 };
 
 
-export function ComponentSidebar({ selectedItem, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onSave, onLoad, onNew, onResourceSelect, onToggleJsonPanel, jsonPanelOpen, onFitToView, onExportPng }: ComponentSidebarProps) {
+export function ComponentSidebar({ selectedItem, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onSave, onLoad, onNew, onResourceSelect, onToggleJsonPanel, jsonPanelOpen, onFitToView, onExportPng, onConnectionUpdate }: ComponentSidebarProps) {
   const { register, reset, getValues } = useForm<FormValues>();
 
   useEffect(() => {
@@ -116,13 +117,19 @@ export function ComponentSidebar({ selectedItem, onItemUpdate, onConnect, onDisc
 
     const incoming = (diagramData.connections || [])
       .filter((edge: any) => edge.to === itemId)
-      .map((edge: any) => nodesById.get(edge.from)?.label || groupsById.get(edge.from)?.label)
-      .filter(Boolean);
+      .map((edge: any) => ({
+        connection: edge,
+        label: nodesById.get(edge.from)?.label || groupsById.get(edge.from)?.label || edge.from
+      }))
+      .filter(item => item.label);
       
     const outgoing = (diagramData.connections || [])
       .filter((edge: any) => edge.from === itemId)
-      .map((edge: any) => nodesById.get(edge.to)?.label || groupsById.get(edge.to)?.label)
-      .filter(Boolean);
+      .map((edge: any) => ({
+        connection: edge,
+        label: nodesById.get(edge.to)?.label || groupsById.get(edge.to)?.label || edge.to
+      }))
+      .filter(item => item.label);
 
     return { incoming, outgoing, parentGroup: parent };
   }, [selectedItem, diagramData]);
@@ -447,17 +454,55 @@ return (
                 {(selectedItem.itemType === 'node' || selectedItem.itemType === 'group') && (
                   <div>
                     <h3 className="text-md font-semibold mt-4 mb-2">Connections</h3>
-                    <div className="text-sm space-y-2">
+                    <div className="text-sm space-y-4">
                       <div>
                         <h4 className="font-medium text-muted-foreground">Incoming ({incoming.length})</h4>
-                        <div className="pl-2 border-l-2 ml-1">
-                          {incoming.length > 0 ? incoming.map((label, i) => <p key={i}>{label}</p>) : <p className="text-xs text-muted-foreground">None</p>}
+                        <div className="space-y-2 mt-2">
+                          {incoming.length > 0 ? incoming.map((item, i) => (
+                            <div key={i} className="pl-2 border-l-2 ml-1">
+                              <div className="font-medium text-xs">{item.label}</div>
+                              <div className="mt-1">
+                                <Label htmlFor={`incoming-text-${i}`} className="text-xs text-muted-foreground">Connection Text</Label>
+                                <Input
+                                  id={`incoming-text-${i}`}
+                                  type="text"
+                                  placeholder="Add text..."
+                                  value={item.connection.text || ''}
+                                  onChange={(e) => {
+                                    if (onConnectionUpdate) {
+                                      onConnectionUpdate(item.connection.from, item.connection.to, { text: e.target.value });
+                                    }
+                                  }}
+                                  className="h-8 text-xs"
+                                />
+                              </div>
+                            </div>
+                          )) : <p className="text-xs text-muted-foreground pl-2">None</p>}
                         </div>
                       </div>
                       <div>
                         <h4 className="font-medium text-muted-foreground">Outgoing ({outgoing.length})</h4>
-                        <div className="pl-2 border-l-2 ml-1">
-                          {outgoing.length > 0 ? outgoing.map((label, i) => <p key={i}>{label}</p>) : <p className="text-xs text-muted-foreground">None</p>}
+                        <div className="space-y-2 mt-2">
+                          {outgoing.length > 0 ? outgoing.map((item, i) => (
+                            <div key={i} className="pl-2 border-l-2 ml-1">
+                              <div className="font-medium text-xs">{item.label}</div>
+                              <div className="mt-1">
+                                <Label htmlFor={`outgoing-text-${i}`} className="text-xs text-muted-foreground">Connection Text</Label>
+                                <Input
+                                  id={`outgoing-text-${i}`}
+                                  type="text"
+                                  placeholder="Add text..."
+                                  value={item.connection.text || ''}
+                                  onChange={(e) => {
+                                    if (onConnectionUpdate) {
+                                      onConnectionUpdate(item.connection.from, item.connection.to, { text: e.target.value });
+                                    }
+                                  }}
+                                  className="h-8 text-xs"
+                                />
+                              </div>
+                            </div>
+                          )) : <p className="text-xs text-muted-foreground pl-2">None</p>}
                         </div>
                       </div>
                     </div>
