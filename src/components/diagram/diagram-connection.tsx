@@ -22,6 +22,25 @@ interface DiagramConnectionProps {
   onClick?: (connection: DiagramConnectionData) => void; // Click handler
 }
 
+interface DiagramConnectionPathProps {
+  from: Positionable & { lineColor?: string };
+  to: Positionable & { lineColor?: string };
+  allObstacles: Obstacle[];
+  allowedOverlapIds?: string[]; // obstacles with these IDs are ignored when routing
+  connectionColor?: string; // Specific color for this connection
+  connectionData?: DiagramConnectionData; // Full connection data including text
+  onClick?: (connection: DiagramConnectionData) => void; // Click handler
+}
+
+interface DiagramConnectionTextProps {
+  connectionData?: DiagramConnectionData;
+  from?: Positionable & { lineColor?: string };
+  to?: Positionable & { lineColor?: string };
+  connectionColor?: string;
+  allObstacles?: Obstacle[];
+  allowedOverlapIds?: string[];
+}
+
 function roundedPathData(points: {x: number; y: number}[], r: number): string {
   if (!points.length) return '';
   if (points.length < 2) return `M${points[0].x} ${points[0].y}`;
@@ -754,30 +773,15 @@ export function DiagramConnection({ from, to, allObstacles, allowedOverlapIds = 
 
   const roundedPath = roundedPathData(path, CORNER_RADIUS);
 
-  // Use connection color first, then 'to' node, fallback to 'from' node, then default
-  const finalConnectionColor = connectionColor || to.lineColor || from.lineColor || '#6b7280';
-
-  // Calculate midpoint for text placement
-  let textX, textY;
-  
-  if (path.length === 2) {
-    // For straight lines, calculate the exact midpoint
-    textX = (path[0].x + path[1].x) / 2;
-    textY = (path[0].y + path[1].y) / 2;
-  } else {
-    // For multi-segment paths, use the middle point
-    const midIndex = Math.floor(path.length / 2);
-    const midPoint = path[midIndex];
-    textX = midPoint.x;
-    textY = midPoint.y;
-  }
-
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onClick && connectionData) {
       onClick(connectionData);
     }
   };
+
+  // Use connection color first, then 'to' node, fallback to 'from' node, then default
+  const finalConnectionColor = connectionColor || to.lineColor || from.lineColor || '#6b7280';
 
   return (
     <g>
@@ -789,32 +793,77 @@ export function DiagramConnection({ from, to, allObstacles, allowedOverlapIds = 
         fill="none"
         onClick={handleClick}
       />
-      {connectionData?.text && (() => {
-        const text = connectionData.text;
-        const shouldSplit = text.length > 4;
-        const lines = shouldSplit ? [text.slice(0, Math.ceil(text.length / 2)), text.slice(Math.ceil(text.length / 2))] : [text];
-        const lineHeight = 14;
-        const startY = textY - ((lines.length - 1) * lineHeight) / 2;
-        
-        return lines.map((line, index) => (
-          <text
-            key={index}
-            x={textX}
-            y={startY + (index * lineHeight)}
-            fill={finalConnectionColor}
-            fontSize="12"
-            fontWeight="500"
-            textAnchor="middle"
-            dominantBaseline="middle"
-            className="pointer-events-none select-none"
-            style={{
-              textShadow: '0 0 3px rgba(255,255,255,1), 0 0 6px rgba(255,255,255,0.8), 1px 1px 4px rgba(255,255,255,1), -1px -1px 4px rgba(255,255,255,1), 1px -1px 4px rgba(255,255,255,1), -1px 1px 4px rgba(255,255,255,1)'
-            }}
-          >
-            {line}
-          </text>
-        ));
-      })()}
     </g>
   );
+}
+
+// Helper function to render connection text separately
+export function DiagramConnectionText({ connectionData, from, to, connectionColor, allObstacles = [], allowedOverlapIds = [] }: DiagramConnectionTextProps) {
+  if (!connectionData?.text) return null;
+
+  // Calculate midpoint for text placement along the actual path
+  let textX = 0, textY = 0;
+
+  if (connectionData && from && to) {
+    // Use connection points from the original data
+    const connectionPoints = getGroupBoundaryConnection(from, to);
+    const { fromX, fromY, toX, toY } = connectionPoints;
+
+    // Determine grid dimensions
+    const maxX = Math.max(...allObstacles.map((e: any) => e.x + e.width)) + CANVAS_PADDING * 2;
+    const maxY = Math.max(...allObstacles.map((e: any) => e.y + e.height)) + CANVAS_PADDING * 2;
+
+    // Exclude endpoints and any allowedOverlapIds from obstacles
+    const allowed = new Set<string>([from.id, to.id, ...allowedOverlapIds]);
+    const obstaclesForPath = allObstacles.filter((o: any) => !allowed.has(o.id));
+
+    // Calculate the same path as the connection line
+    const path = findPath(
+      { x: fromX, y: fromY },
+      { x: toX, y: toY },
+      obstaclesForPath,
+      { width: maxX, height: maxY }
+    );
+
+    // Position text at the middle of the path
+    if (path.length === 2) {
+      // For straight lines, calculate the exact midpoint
+      textX = (path[0].x + path[1].x) / 2;
+      textY = (path[0].y + path[1].y) / 2;
+    } else {
+      // For multi-segment paths, use the middle point
+      const midIndex = Math.floor(path.length / 2);
+      const midPoint = path[midIndex];
+      textX = midPoint.x;
+      textY = midPoint.y;
+    }
+  }
+
+  // Use connection color first, then 'to' node, fallback to 'from' node, then default
+  const finalConnectionColor = connectionColor || to?.lineColor || from?.lineColor || '#6b7280';
+
+  const text = connectionData.text;
+  const shouldSplit = text.length > 4;
+  const lines = shouldSplit ? [text.slice(0, Math.ceil(text.length / 2)), text.slice(Math.ceil(text.length / 2))] : [text];
+  const lineHeight = 14;
+  const startY = textY - ((lines.length - 1) * lineHeight) / 2;
+
+  return lines.map((line, index) => (
+    <text
+      key={index}
+      x={textX}
+      y={startY + (index * lineHeight)}
+      fill={finalConnectionColor}
+      fontSize="12"
+      fontWeight="500"
+      textAnchor="middle"
+      dominantBaseline="middle"
+      className="pointer-events-none select-none"
+      style={{
+        textShadow: '0 0 3px rgba(255,255,255,1), 0 0 6px rgba(255,255,255,0.8), 1px 1px 4px rgba(255,255,255,1), -1px -1px 4px rgba(255,255,255,1), 1px -1px 4px rgba(255,255,255,1), -1px 1px 4px rgba(255,255,255,1)'
+      }}
+    >
+      {line}
+    </text>
+  ));
 }

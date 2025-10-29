@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { useDrop } from 'react-dnd';
 import { DiagramNode } from "../diagram/diagram-node";
-import { DiagramConnection } from "../diagram/diagram-connection";
+import { DiagramConnection, DiagramConnectionText } from "../diagram/diagram-connection";
 import { DiagramGroup } from "../diagram/diagram-group";
 import type { DiagramData, DiagramNodeData, DiagramGroupData } from "@/lib/types";
 import { ItemTypes } from './draggable-item';
@@ -988,36 +988,12 @@ const [, drop] = useDrop(() => ({
                   transformOrigin: '0 0',
                 }}
             >
-                {sortedRenderItems.map((item) => {
-                  if (item.itemType === 'group') {
-                    return (
-                      <div key={item.id} onClick={(e) => handleGroupClick(e, item)} onContextMenu={(e) => handleGroupRightClick(e, item)} style={{ zIndex: 2, overflow: 'visible' }}>
-                        <DiagramGroup 
-                          group={item}
-                          isSelected={selectedItemId === item.id && !isConnectMode}
-                          isDropTarget={hoveredGroupId === item.id}
-                          isTargetable={isConnectMode && selectedItemId !== item.id}
-                        />
-                      </div>
-                    );
-                  } else {
-                    const isConnectedToSelected = !!selectedItemId && (diagramData.connections || []).some((e: any) => e.from === selectedItemId && e.to === item.id || e.to === selectedItemId && e.from === item.id);
-                    return (
-                      <div key={item.id} onClick={(e) => handleNodeClick(e, item)} onContextMenu={(e) => handleNodeRightClick(e, item)}>
-                        <DiagramNode 
-                          node={item} 
-                          isSelected={selectedItemId === item.id && !isConnectMode}
-                          isTargetable={isConnectMode && selectedItemId !== item.id}
-                          isHighlighted={isConnectedToSelected}
-                        />
-                      </div>
-                    );
-                  }
-                })}
+                {/* SVG connections rendered first (behind nodes) */}
                 <svg
                 width={width}
                 height={height}
                 className="absolute top-0 left-0 overflow-visible pointer-events-none"
+                style={{ zIndex: 1 }}
                 >
                 <defs>
                     <marker
@@ -1097,6 +1073,98 @@ return (
                         }}
                       />
                     </g>
+                    );
+                })}
+                </svg>
+                
+                {/* Nodes and groups rendered on top of connections */}
+                {sortedRenderItems.map((item) => {
+                  if (item.itemType === 'group') {
+                    return (
+                      <div key={item.id} onClick={(e) => handleGroupClick(e, item)} onContextMenu={(e) => handleGroupRightClick(e, item)} style={{ zIndex: 0, overflow: 'visible' }}>
+                        <DiagramGroup 
+                          group={item}
+                          isSelected={selectedItemId === item.id && !isConnectMode}
+                          isDropTarget={hoveredGroupId === item.id}
+                          isTargetable={isConnectMode && selectedItemId !== item.id}
+                        />
+                      </div>
+                    );
+                  } else {
+                    const isConnectedToSelected = !!selectedItemId && (diagramData.connections || []).some((e: any) => e.from === selectedItemId && e.to === item.id || e.to === selectedItemId && e.from === item.id);
+                    return (
+                      <div key={item.id} onClick={(e) => handleNodeClick(e, item)} onContextMenu={(e) => handleNodeRightClick(e, item)} style={{ zIndex: 2, position: 'relative', transform: 'translateZ(0)' }}>
+                        <DiagramNode 
+                          node={item} 
+                          isSelected={selectedItemId === item.id && !isConnectMode}
+                          isTargetable={isConnectMode && selectedItemId !== item.id}
+                          isHighlighted={isConnectedToSelected}
+                        />
+                      </div>
+                    );
+                  }
+                })}
+                
+                {/* Connection text rendered on top of everything */}
+                <svg
+                width={width}
+                height={height}
+                className="absolute top-0 left-0 overflow-visible pointer-events-none"
+                style={{ zIndex: 3 }}
+                >
+                {(diagramData.connections || []).map((edge: any, index: any) => {
+                    const fromItem = nodesById[edge.from] || groupsById[edge.from];
+                    const toItem = nodesById[edge.to] || groupsById[edge.to];
+                    if (!fromItem || !toItem) return null;
+
+                    const fromPos: any = {
+                      ...fromItem,
+                      width: 'width' in fromItem ? (fromItem as any).width : NODE_WIDTH,
+                      height: 'height' in fromItem ? (fromItem as any).height : NODE_HEIGHT,
+                    };
+                    const toPos: any = {
+                      ...toItem,
+                      width: 'width' in toItem ? (toItem as any).width : NODE_WIDTH,
+                      height: 'height' in toItem ? (toItem as any).height : NODE_HEIGHT,
+                    };
+
+                    // Explicitly set lineColor after spreading to ensure it's not overwritten
+                    fromPos.lineColor = (fromItem as any).lineColor;
+                    toPos.lineColor = (toItem as any).lineColor;
+
+                    // Build parent map for groups to gather ancestor groups of endpoints
+                    const parentMap = new Map<string, string>();
+                    processedGroups.forEach(g => {
+                      g.children.forEach((id: string) => parentMap.set(id, g.id));
+                    });
+                    const ancestorsOf = (id: string): string[] => {
+                      const res: string[] = [];
+                      let cur = parentMap.get(id);
+                      const guard = new Set<string>();
+                      while (cur && !guard.has(cur)) {
+                        res.push(cur);
+                        guard.add(cur);
+                        cur = parentMap.get(cur);
+                      }
+                      return res;
+                    };
+
+                    const allowedOverlapIds = [
+                      ...ancestorsOf(edge.from),
+                      ...ancestorsOf(edge.to),
+                      ...(toItem && 'type' in toItem && (toItem as any).type === 'group' ? [edge.to] : []),
+                    ];
+
+                    return (
+                      <DiagramConnectionText
+                        key={`text-${edge.from}-${edge.to}-${index}`}
+                        connectionData={edge}
+                        from={fromPos}
+                        to={toPos}
+                        connectionColor={edge.color}
+                        allObstacles={allObstacles}
+                        allowedOverlapIds={allowedOverlapIds}
+                      />
                     );
                 })}
                 </svg>
