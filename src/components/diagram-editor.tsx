@@ -75,7 +75,7 @@ export default function DiagramEditor() {
                 
                 // Reset positions of child nodes
                 newNodes = prevData.nodes.map(node => {
-                    if (groupData.nodes.includes(node.id)) {
+                    if ((groupData.children || (groupData as any).nodes || []).includes(node.id)) {
                         return { ...node, x: undefined, y: undefined };
                     }
                     return node;
@@ -93,7 +93,7 @@ export default function DiagramEditor() {
                     // Recursively reset children of this group
                     const group = newGroups.find(g => g.id === groupId);
                     if (group) {
-                        group.nodes.forEach(childId => {
+                        (groupData.children || (groupData as any).nodes || []).forEach((childId: string) => {
                             const childGroup = newGroups.find(g => g.id === childId);
                             if (childGroup) {
                                 resetChildGroupPositions(childId);
@@ -102,7 +102,7 @@ export default function DiagramEditor() {
                     }
                 };
                 
-                groupData.nodes.forEach(nodeId => {
+                (groupData.children || (groupData as any).nodes || []).forEach((nodeId: string) => {
                     const childGroup = newGroups.find(g => g.id === nodeId);
                     if (childGroup) {
                         resetChildGroupPositions(nodeId);
@@ -147,7 +147,7 @@ export default function DiagramEditor() {
       // Also remove the deleted item from any group's node list
       newGroups = newGroups.map(g => ({
         ...g,
-        nodes: g.nodes.filter(nodeId => nodeId !== itemToDelete.id)
+        children: (g.children || (g as any).nodes || []).filter((nodeId: string) => nodeId !== itemToDelete.id)
       }));
 
       return { ...prevData, nodes: newNodes, groups: newGroups, connections: newConnections };

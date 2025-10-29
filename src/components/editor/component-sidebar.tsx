@@ -32,7 +32,7 @@ interface ComponentSidebarProps {
   onConnectionUpdate?: (from: string, to: string, updates: { text?: string; color?: string }) => void;
 }
 
-type FormValues = Omit<DiagramNodeData & DiagramGroupData, 'id' | 'type' | 'nodes'> & {
+type FormValues = Omit<DiagramNodeData & DiagramGroupData, 'id' | 'type' | 'children'> & {
   borderColor?: string;
   textColor?: string;
   backgroundColor?: string;
@@ -109,7 +109,7 @@ export function ComponentSidebar({ selectedItem, onItemUpdate, onConnect, onDisc
   const { incoming, outgoing, parentGroup } = useMemo(() => {
     if (!selectedItem || !diagramData) return { incoming: [], outgoing: [], parentGroup: null };
     
-    const parent = (diagramData.groups || []).find(g => g.nodes.includes(selectedItem.id));
+    const parent = (diagramData.groups || []).find(g => (g.children || (g as any).nodes || []).includes(selectedItem.id));
     
     const itemId = selectedItem.id;
     const nodesById = new Map(diagramData.nodes.map(n => [n.id, n]));

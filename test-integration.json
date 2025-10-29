@@ -1,0 +1,45 @@
+{
+  "groups": [
+    {
+      "id": "group-1",
+      "type": "group",
+      "label": "Main Group",
+      "info": "This is the main group containing nested items",
+      "children": [
+        {
+          "id": "node-1",
+          "type": "aws.compute.ec2",
+          "label": "EC2 Instance",
+          "info": "Web server instance"
+        },
+        {
+          "id": "group-2",
+          "type": "group",
+          "label": "Database Group",
+          "info": "Database cluster group",
+          "children": [
+            {
+              "id": "node-2",
+              "type": "aws.database.rds",
+              "label": "RDS Primary",
+              "info": "Primary database"
+            },
+            {
+              "id": "node-3",
+              "type": "aws.database.rds",
+              "label": "RDS Replica",
+              "info": "Read replica"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "from": "node-1",
+      "to": "node-2",
+      "color": "#3b82f6"
+    }
+  ]
+}

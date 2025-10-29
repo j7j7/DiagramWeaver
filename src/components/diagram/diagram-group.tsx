@@ -38,6 +38,24 @@ export function DiagramGroup({ group, isSelected, isDropTarget, isTargetable }: 
   }), [group]);
 
   const isZone = group.subType === 'zone';
+  const hasLabel = !!group.label && group.label.trim() !== '';
+  
+  // If no label, make group invisible (just a container)
+  if (!hasLabel) {
+    return (
+      <div
+        ref={drag as any}
+        className="absolute"
+        style={{
+          left: group.x,
+          top: group.y,
+          width: group.width,
+          height: group.height,
+          pointerEvents: 'none' // Let clicks pass through to children
+        }}
+      />
+    );
+  }
   
   // Use new color properties with fallbacks
   const textColor = group.textColor || '#374151';

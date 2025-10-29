@@ -1,0 +1,52 @@
+{
+  "groups": [
+    {
+      "id": "group-1",
+      "type": "group",
+      "label": "",
+      "children": [
+        {
+          "id": "node-1",
+          "type": "aws.compute.ec2",
+          "label": "EC2",
+          "info": "EC2 from aws"
+        }
+      ]
+    },
+    {
+      "id": "group-2",
+      "type": "group",
+      "label": "Group",
+      "info": "A new Group",
+      "children": [
+        {
+          "id": "node-2",
+          "type": "aws.compute.ec2",
+          "label": "EC2",
+          "info": "EC2 from aws"
+        },
+        {
+          "id": "group-3",
+          "type": "group",
+          "label": "Group",
+          "info": "A new Group",
+          "children": [
+            {
+              "id": "node-3",
+              "type": "aws.compute.ec2",
+              "label": "EC2",
+              "info": "EC2 from aws"
+            },
+            {
+              "id": "node-4",
+              "type": "aws.compute.ec2",
+              "label": "EC2",
+              "info": "EC2 from aws"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "connections": []
+}

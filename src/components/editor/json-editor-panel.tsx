@@ -5,10 +5,11 @@ import CodeMirror from '@uiw/react-codemirror';
 import { json } from '@codemirror/lang-json';
 import { lintGutter } from '@codemirror/lint';
 import { oneDark } from '@codemirror/theme-one-dark';
-import { DiagramDataSchema } from '@/lib/schemas';
+import { HierarchicalDiagramDataSchema } from '@/lib/schemas';
 import { debounce, stableStringify } from '@/lib/json-utils';
 import { expandResourceType } from '@/lib/type-matcher';
-import type { DiagramData } from '@/lib/types';
+import type { DiagramData, DiagramGroupData, HierarchicalDiagramData } from '@/lib/types';
+import { convertToNestedHierarchy, convertFromNestedHierarchy } from '@/lib/nested-hierarchy';
 
 type Props = {
   value: DiagramData;
@@ -33,10 +34,22 @@ export function JsonEditorPanel({
 
   // Sync from external value changes (e.g., canvas updates) when not actively editing
   React.useEffect(() => {
-    const next = stableStringify(value);
-    if (!changeFromEditorRef.current && next !== lastExternalJsonRef.current) {
-      lastExternalJsonRef.current = next;
-      setText(next);
+    try {
+      // Convert flat data to nested format for display in editor
+      const nestedData = convertToNestedHierarchy(value);
+      const next = stableStringify(nestedData);
+      if (!changeFromEditorRef.current && next !== lastExternalJsonRef.current) {
+        lastExternalJsonRef.current = next;
+        setText(next);
+      }
+    } catch (error) {
+      console.error('Error converting to nested hierarchy:', error);
+      // If conversion fails, try to display as-is
+      const fallback = stableStringify(value);
+      if (!changeFromEditorRef.current && fallback !== lastExternalJsonRef.current) {
+        lastExternalJsonRef.current = fallback;
+        setText(fallback);
+      }
     }
   }, [value]);
 
@@ -45,7 +58,7 @@ export function JsonEditorPanel({
     [onValidJsonChange]
   );
 
-  const handleChange = async (newText: string) => {
+const handleChange = async (newText: string) => {
     changeFromEditorRef.current = true;
     setText(newText);
     try {
@@ -54,19 +67,31 @@ export function JsonEditorPanel({
       // Expand abbreviated types in nodes before validation
       const expandedData = await expandAbbreviatedTypes(parsed);
       
-      const validationResult = DiagramDataSchema.safeParse(expandedData);
+      let finalData: DiagramData | null = null;
+      let validationError: any = null;
+
+      // Only validate as nested format
+      const validationResult = HierarchicalDiagramDataSchema.safeParse(expandedData);
+      
       if (validationResult.success) {
+        // Convert nested to flat for application
+        finalData = convertFromNestedHierarchy(expandedData);
+      } else {
+        validationError = validationResult.error;
+      }
+      
+      if (!validationError && finalData) {
         setError(null);
-        emitValid(validationResult.data);
+        emitValid(finalData);
         
-        // Update text with expanded types if any changes were made
-        const expandedText = stableStringify(expandedData);
-        if (expandedText !== newText) {
-          setText(expandedText);
+        // Keep the original nested format for display
+        const displayText = stableStringify(expandedData);
+        if (displayText !== newText) {
+          setText(displayText);
         }
       } else {
-        const errorMessage = validationResult.error.issues
-          .map(issue => `${issue.path.join('.')}: ${issue.message}`)
+        const errorMessage = validationError.issues
+          .map((issue: any) => `${issue.path.join('.')}: ${issue.message}`)
           .join(', ');
         setError(`Schema validation failed: ${errorMessage}`);
       }
@@ -80,11 +105,48 @@ export function JsonEditorPanel({
     }
   };
 
+  // Check if data is in nested format (has groups with nested children)
+  const isNestedFormat = (data: any): boolean => {
+    if (!data || !data.groups || !Array.isArray(data.groups)) return false;
+    
+    return data.groups.some((group: any) => {
+      if (!group.children || !Array.isArray(group.children)) return false;
+      return group.children.some((child: any) => 
+        child && typeof child === 'object' && child.type === 'group'
+      );
+    });
+  };
+
+  // Convert nested format to flat format for validation
+  const convertNestedToFlatForValidation = (data: any): any => {
+    if (!isNestedFormat(data)) return data;
+    
+    try {
+      const nestedData = data as HierarchicalDiagramData;
+      return convertFromNestedHierarchy(nestedData);
+    } catch (error) {
+      console.error('Error converting nested to flat format:', error);
+      return data;
+    }
+  };
+
   // Expand abbreviated types in diagram data
   const expandAbbreviatedTypes = async (data: any): Promise<any> => {
     if (!data || typeof data !== 'object') return data;
     
-    const result = { ...data };
+    // Convert nested to flat if needed for processing
+    const flatData = convertNestedToFlatForValidation(data);
+    const result = { ...flatData };
+    
+    // Ensure groups use children instead of nodes
+    if (Array.isArray(result.groups)) {
+      result.groups = result.groups.map((group: any) => {
+        if (group.nodes && !group.children) {
+          return { ...group, children: group.nodes, nodes: undefined };
+        }
+        return group;
+      });
+    }
     
     // Process nodes
     if (Array.isArray(result.nodes)) {
@@ -97,6 +159,21 @@ export function JsonEditorPanel({
             }
           }
           return node;
+        })
+      );
+    }
+    
+    // Process groups - migrate from nodes to children
+    if (Array.isArray(result.groups)) {
+      result.groups = await Promise.all(
+        result.groups.map(async (group: any) => {
+          const migratedGroup = { ...group };
+          // Migrate nodes to children if needed
+          if (group.nodes && !group.children) {
+            migratedGroup.children = group.nodes;
+            delete migratedGroup.nodes;
+          }
+          return migratedGroup;
         })
       );
     }
