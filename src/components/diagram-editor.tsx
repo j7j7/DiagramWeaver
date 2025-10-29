@@ -2,7 +2,7 @@
 import React from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
+import { Panel, PanelGroup } from 'react-resizable-panels';
 import { ComponentSidebar } from './editor/component-sidebar';
 import { EditorCanvas, type EditorCanvasHandle } from './editor/editor-canvas';
 import { JsonEditorPanel } from './editor/json-editor-panel';
@@ -75,14 +75,19 @@ export default function DiagramEditor() {
                 
                 // Reset positions of child nodes
                 newNodes = prevData.nodes.map(node => {
-                    if ((groupData.children || (groupData as any).nodes || []).includes(node.id)) {
+                    if ((groupData.children || []).includes(node.id)) {
                         return { ...node, x: undefined, y: undefined };
                     }
                     return node;
                 });
                 
                 // Reset positions of child groups recursively
-                const resetChildGroupPositions = (groupId: string) => {
+                const resetChildGroupPositions = (groupId: string, visited: Set<string> = new Set()) => {
+                    if (visited.has(groupId)) {
+                        return; // Prevent infinite recursion
+                    }
+                    visited.add(groupId);
+                    
                     newGroups = newGroups.map(g => {
                         if (g.id === groupId) {
                             return { ...g, x: undefined, y: undefined };
@@ -92,17 +97,17 @@ export default function DiagramEditor() {
                     
                     // Recursively reset children of this group
                     const group = newGroups.find(g => g.id === groupId);
-                    if (group) {
-                        (groupData.children || (groupData as any).nodes || []).forEach((childId: string) => {
+                    if (group && group.children) {
+                        group.children.forEach((childId: string) => {
                             const childGroup = newGroups.find(g => g.id === childId);
                             if (childGroup) {
-                                resetChildGroupPositions(childId);
+                                resetChildGroupPositions(childId, visited);
                             }
                         });
                     }
                 };
                 
-                (groupData.children || (groupData as any).nodes || []).forEach((nodeId: string) => {
+                (groupData.children || []).forEach((nodeId: string) => {
                     const childGroup = newGroups.find(g => g.id === nodeId);
                     if (childGroup) {
                         resetChildGroupPositions(nodeId);
@@ -147,7 +152,7 @@ export default function DiagramEditor() {
       // Also remove the deleted item from any group's node list
       newGroups = newGroups.map(g => ({
         ...g,
-        children: (g.children || (g as any).nodes || []).filter((nodeId: string) => nodeId !== itemToDelete.id)
+        children: (g.children || []).filter((nodeId: string) => nodeId !== itemToDelete.id)
       }));
 
       return { ...prevData, nodes: newNodes, groups: newGroups, connections: newConnections };
@@ -282,7 +287,7 @@ export default function DiagramEditor() {
   // Keyboard shortcut: Ctrl+Shift+J (or Cmd+Shift+J on Mac)
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const isMac = navigator.platform.toUpperCase().includes('MAC');
+      const isMac = navigator.userAgent.toUpperCase().includes('MAC');
       if ((isMac ? e.metaKey : e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'j') {
         e.preventDefault();
         toggleJsonPanel();

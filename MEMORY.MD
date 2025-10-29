@@ -50,18 +50,18 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
 - **Icon Persistence**: Fixes ensure icons remain visible after connections and selections
 
 ### Recent Updates and Fixes
-- Resource JSON consolidation: Single source of truth under `public/resources/`; removed duplicate JSONs under `resources/`. Resource Browser now fetches the index at runtime, and the Canvas uses the same exact icon path via `imagePath` to ensure icon parity.
+- Resource JSON consolidation: Single source of truth under `public/resources/`; removed duplicate JSONs under `resources/`. Resource Browser now fetches index at runtime, and Canvas uses the same exact icon path via `imagePath` to ensure icon parity.
 - **Pathfinding Overhaul**: Revolutionary improvements for connection routing, anti-hugging, and smart connections
 - **Resource Reorganization**: Split into modular JSON files for better maintainability
 - **Bug Fixes**: Icon persistence, drag-drop preservation, scrollbar issues resolved
 - **Grid and Snap Enhancements**: Improved placement, collision prevention, and nested layouts
 - **Type System**: Updated types to preserve resource information during operations
 - **UI Fix**: Resolved React warning about mixing `border` and `borderImage` in `src/components/diagram/diagram-group.tsx` by replacing shorthand `border` with explicit `borderWidth`/`borderStyle`/`borderColor` and using `borderImageSource` + `borderImageSlice` for gradient borders.
-- **New** (2025-10-27): Added "Fit to view" and "Export PNG" buttons under the Show JSON toggle in the left sidebar (ComponentSidebar). EditorCanvas now exposes `fitToView` and `exportPng` via forwardRef. PNG export uses `html-to-image` to render the viewport and triggers a browser download (diagram.png). Fit-to-view computes bounds using dynamic node dimensions plus margins. Removed temporary console logs from connection rendering and DiagramGroup shadow debug. Typecheck passed; ESLint currently errors due to a circular reference in `.eslintrc.json` (unchanged).
+- **New** (2025-10-27): Added "Fit to view" and "Export PNG" buttons under Show JSON toggle in left sidebar (ComponentSidebar). EditorCanvas now exposes `fitToView` and `exportPng` via forwardRef. PNG export uses `html-to-image` to render the viewport and triggers a browser download (diagram.png). Fit-to-view computes bounds using dynamic node dimensions plus margins. Removed temporary console logs from connection rendering and DiagramGroup shadow debug. Typecheck passed; ESLint currently errors due to a circular reference in `.eslintrc.json` (unchanged).
 - Note: PNG export disables font embedding to avoid CSSStyleSheet SecurityError from cross-origin stylesheets.
-- Sidebar fix: resource icons now resolve by deriving standard file names first (e.g., "EC2 Instance" → `/resources/aws/compute/ec2-instance.png`) and fall back to the explicit `file` path, ensuring correct icons appear.
+- Sidebar fix: resource icons now resolve by deriving standard file names first (e.g., "EC2 Instance" → `/resources/aws/compute/ec2-instance.png`) and fall back to explicit `file` path, ensuring correct icons appear.
 - Policy: Do not persist `imagePath` in created nodes; icons are always resolved from `type` with provider-specific aliasing (e.g., Kubernetes `statefulset` → `sts.png`).
-- **Optimization** (2025-10-27): Removed redundant `imagePath` fields from diagram JSON files and drag/drop operations. The `ResourceIcon` component (renamed from `AwsIcon`) automatically derives icon paths from the `type` field for all providers (e.g., "generic.device.mobile" → "/resources/generic/device/mobile.png", "aws.database.dynamodb" → "/resources/aws/database/dynamodb.png"). The `imagePath` field is now truly optional and only needed for custom icon overrides. This reduces JSON file size, eliminates data duplication, and works seamlessly with all 18+ supported providers (AWS, Azure, GCP, Generic, K8s, Programming, etc.).
+- **Optimization** (2025-10-27): Removed redundant `imagePath` fields from diagram JSON files and drag/drop operations. The `ResourceIcon` component (renamed from `AwsIcon`) automatically derives icon paths from `type` field for all providers (e.g., "generic.device.mobile" → "/resources/generic/device/mobile.png", "aws.database.dynamodb" → "/resources/aws/database/dynamodb.png"). The `imagePath` field is now truly optional and only needed for custom icon overrides. This reduces JSON file size, eliminates data duplication, and works seamlessly with all 18+ supported providers (AWS, Azure, GCP, Generic, K8s, Programming, etc.).
 - **NEW FEATURE** (2025-10-27): JSON Editor Panel - Added a collapsible JSON editor to the right side of the canvas with live sync capabilities. Features include:
   - **CodeMirror Editor**: Professional code editor with line numbers, syntax highlighting, bracket matching, and JSON linting
   - **Live Sync**: Real-time bidirectional updates between canvas and JSON - edit text changes reflect instantly on canvas, canvas changes update JSON
@@ -99,6 +99,21 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
   - **Universal Fix**: Works for ALL providers (AWS, Azure, GCP, Generic, K8s, etc.) - no more mixed working/broken icons
   - **Performance**: Icons load once from catalog, no retry loops or multiple failed requests
   - **Clean Fallback**: Only shows generic SVG icon if catalog lookup completely fails, no broken image attempts
+- **Hierarchical Rendering Fix** (2025-10-29): Fixed infinite recursion error when changing group orientation and implemented proper parent-first rendering:
+  - **Root Cause**: `resetChildGroupPositions` function had multiple issues causing stack overflow:
+    - Wrong variable reference: Using `groupData.children` instead of `group.children` in recursive calls
+    - No cycle protection: No visited set to prevent infinite recursion in circular references
+    - Mixed property names: Inconsistent use of `children` vs `nodes` properties
+  - **Cycle Protection**: Added `visited: Set<string>` parameter to track processed groups and prevent infinite loops
+  - **Fixed Variable References**: Corrected all recursive calls to use proper `group.children` instead of `groupData.children`
+  - **Type Consistency**: Updated all references to use `children` property consistently (removed fallback `(groupData as any).nodes`)
+  - **Hierarchical Rendering**: Implemented `sortedRenderItems` that sorts diagram elements by depth:
+    - Parents (depth 0) render before children (depth 1+)
+    - Maintains original order for items at same depth level
+    - Uses parent-child map to calculate depth and sort accordingly
+  - **Rendering Order Update**: Replaced separate group/node rendering loops with single sorted loop for proper visual layering
+  - **Testing**: Created comprehensive test suite (`test-recursion-fix.js`) covering normal hierarchy, circular references, and complex nested structures
+  - **Benefits**: No more stack overflow errors, proper visual hierarchy, correct z-index ordering, maintained drag-drop functionality
 
 ### Development Tools
 - **Scripts**: npm run dev, build, lint, typecheck, genkit

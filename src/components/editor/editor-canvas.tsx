@@ -14,8 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader, Maximize2 } from "lucide-react";
 import type { SelectedItem } from "../diagram-editor";
 import { cn } from "@/lib/utils";
-import { findPath } from "@/lib/pathfinding";
-import type { Obstacle } from "@/lib/pathfinding";
+
 import { ContextMenu } from "../ui/context-menu";
 import { generateGroupId, generateSequentialId } from "@/lib/id-generator";
 
@@ -90,15 +89,15 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     groups.forEach(item => allItems[item.id] = item);
     
     const layoutGroup = (group: DiagramGroupData): { width: number, height: number } => {
-        const childNodes = group.nodes
-            .map(id => allItems[id])
+        const childNodes = group.children
+            .map((id: string) => allItems[id])
             .filter(Boolean)
-            .filter(c => !c.type || c.type !== 'group') as DiagramNodeData[];
+            .filter((c: any) => !c.type || c.type !== 'group') as DiagramNodeData[];
         
-        const childGroups = group.nodes
-            .map(id => allItems[id])
+        const childGroups = group.children
+            .map((id: string) => allItems[id])
             .filter(Boolean)
-            .filter(c => c.type === 'group') as DiagramGroupData[];
+            .filter((c: any) => c.type === 'group') as DiagramGroupData[];
 
         let contentWidth = 0;
         let contentHeight = 0;
@@ -161,7 +160,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         return { width: groupWidth, height: groupHeight };
     };
 
-    const rootGroups = groups.filter(g => !groups.some(parent => parent.nodes.includes(g.id)));
+    const rootGroups = groups.filter(g => !groups.some(parent => parent.children.includes(g.id)));
     rootGroups.forEach(layoutGroup);
 
     // Set absolute positions
@@ -169,7 +168,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         group.x = (group.x ?? 0) + parentX;
         group.y = (group.y ?? 0) + parentY;
 
-        group.nodes.forEach(childId => {
+        group.children.forEach((childId: string) => {
             const child = allItems[childId];
             if (!child) return;
             
@@ -184,7 +183,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     
     // Position root groups and orphan nodes
     let currentX = 50;
-    const allChildIds = new Set(groups.flatMap(g => g.nodes));
+    const allChildIds = new Set(groups.flatMap(g => g.children));
     const orphanNodes = nodes.filter(n => !allChildIds.has(n.id));
     const topLevelItems = [...rootGroups, ...orphanNodes];
 
@@ -261,7 +260,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         const newGroup: DiagramGroupData = {
           id: generateGroupId(subType, prevData),
           label: itemLabel,
-          nodes: [],
+          children: [],
           type: 'group',
           subType,
           info: `A new ${itemLabel}`,
@@ -285,7 +284,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       if (targetGroupId) {
         newGroups = newGroups.map(g => {
           if (g.id === targetGroupId) {
-            return { ...g, nodes: [...g.nodes, newItemId] };
+            return { ...g, children: [...g.children, newItemId] };
           }
           return g;
         });
@@ -343,15 +342,15 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       let currentNodes = [...(prevData.nodes || [])];
       let currentGroups = [...(prevData.groups || [])];
       
-      const oldParentId = currentGroups.find(g => g.nodes.includes(item.id))?.id;
+      const oldParentId = currentGroups.find(g => g.children.includes(item.id))?.id;
 
       // Utility to compute insert index inside a group based on pointer position
       const computeInsertIndex = (groupId: string, drop: { x: number; y: number }) => {
         const pg = processedGroups.find(g => g.id === groupId);
         if (!pg) return 0;
-        const children = currentGroups.find(g => g.id === groupId)?.nodes.filter(id => id !== item.id) || [];
+        const children = currentGroups.find(g => g.id === groupId)?.children.filter((id: string) => id !== item.id) || [];
         const infos = children
-          .map(id => {
+          .map((id: string) => {
             const n = processedNodes.find(pn => pn.id === id);
             if (n) return { id, x: n.x, y: n.y, width: NODE_WIDTH, height: NODE_HEIGHT };
             const g = processedGroups.find(pg2 => pg2.id === id);
@@ -367,12 +366,12 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         }
         return infos.length;
       };
-  
+   
       // Handle re-parenting (remove from old, we'll insert into target with ordering below)
       if (oldParentId !== targetGroupId) {
         currentGroups = currentGroups.map(g => {
           if (g.id === oldParentId) { 
-            return { ...g, nodes: g.nodes.filter(nid => nid !== item.id) };
+            return { ...g, children: g.children.filter((nid: string) => nid !== item.id) };
           }
           if (g.id === targetGroupId) {
             // Can't drop a group into itself or its descendants
@@ -383,7 +382,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               visited.add(childId);
               const childGroup = currentGroups.find(g => g.id === childId);
               if (!childGroup) return false;
-              return childGroup.nodes.some(nid => isDescendant(nid, parentId));
+              return childGroup.children.some((nid: string) => isDescendant(nid, parentId));
             };
             if (item.type === ItemTypes.GROUP && isDescendant(g.id, item.id)) {
               return g;
@@ -399,10 +398,10 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       if (targetGroupId) {
         currentGroups = currentGroups.map(g => {
           if (g.id !== targetGroupId) return g;
-          const filtered = g.nodes.filter(nid => nid !== item.id);
+          const filtered = g.children.filter((nid: string) => nid !== item.id);
           const insertIndex = computeInsertIndex(targetGroupId, newPos);
           filtered.splice(insertIndex, 0, item.id);
-          return { ...g, nodes: filtered };
+          return { ...g, children: filtered };
         });
       }
   
@@ -435,7 +434,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               allChildIds.add(itemId);
               const group = currentGroups.find(g => g.id === itemId);
               if (!group) return;
-              group.nodes.forEach(childId => getChildrenRecursive(childId));
+              group.children.forEach((childId: string) => getChildrenRecursive(childId));
           };
           if (movingIsGroup) getChildrenRecursive(item.id);
 
@@ -494,7 +493,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     y?: number;
 };
 
-const [{ isOver, canDrop }, drop] = useDrop(() => ({
+const [, drop] = useDrop(() => ({
     accept: [ItemTypes.DIAGRAM_NODE, ItemTypes.CANVAS_NODE, ItemTypes.GROUP],
     hover: (item: DropItem, monitor) => {
         if (!canvasRef.current) return;
@@ -520,9 +519,9 @@ const [{ isOver, canDrop }, drop] = useDrop(() => ({
                     if (currentGroupId === group.id) return true;
                     const currentGroupData = processedGroups.find(g => g.id === currentGroupId);
                     if (!currentGroupData) return false;
-                    return currentGroupData.nodes.some(childId => {
+                    return currentGroupData.children.some((childId: string) => {
                         const childGroup = processedGroups.find(g => g.id === childId);
-                        return childGroup ? checkDescendants(childId) : false;
+                        return childGroup ? checkDescendants(childGroup.id) : false;
                     });
                 };
                 isAncestor = checkDescendants(item.id);
@@ -749,6 +748,50 @@ const [{ isOver, canDrop }, drop] = useDrop(() => ({
     exportPng,
   }), [handleFitToView, exportPng]);
 
+  // Sort items for proper hierarchical rendering: parent first, then children in order
+  const sortedRenderItems = useMemo(() => {
+    const parentMap = new Map<string, string>();
+    processedGroups.forEach(g => {
+      g.children.forEach((id: string) => parentMap.set(id, g.id));
+    });
+
+    const getDepth = (id: string): number => {
+      let depth = 0;
+      let current = parentMap.get(id);
+      while (current) {
+        depth++;
+        current = parentMap.get(current);
+      }
+      return depth;
+    };
+
+    // Combine all items and sort by depth (parents first), then by original order
+    const allItems = [
+      ...processedGroups.map(g => ({ ...g, itemType: 'group' as const })),
+      ...processedNodes.map(n => ({ ...n, itemType: 'node' as const }))
+    ];
+
+    return allItems.sort((a, b) => {
+      const depthA = getDepth(a.id);
+      const depthB = getDepth(b.id);
+      
+      // Parents first (lower depth)
+      if (depthA !== depthB) {
+        return depthA - depthB;
+      }
+      
+      // Same depth: maintain original order by using their position in the original arrays
+      const indexA = a.itemType === 'group' 
+        ? processedGroups.findIndex(g => g.id === a.id)
+        : processedNodes.findIndex(n => n.id === a.id);
+      const indexB = b.itemType === 'group'
+        ? processedGroups.findIndex(g => g.id === b.id)
+        : processedNodes.findIndex(n => n.id === b.id);
+      
+      return indexA - indexB;
+    });
+  }, [processedGroups, processedNodes]);
+
   const allObstacles = useMemo(() => {
     const nodeObstacles = processedNodes.map(n => {
       const dims = measureNodeDims(n);
@@ -851,7 +894,7 @@ const [{ isOver, canDrop }, drop] = useDrop(() => ({
         connections: prev.connections.filter((e: any) => e.from !== itemId && e.to !== itemId),
         groups: prev.groups?.map(g => ({
           ...g,
-          nodes: g.nodes.filter(n => n !== itemId)
+          children: g.children.filter((n: string) => n !== itemId)
         }))
       }));
     } else {
@@ -945,16 +988,32 @@ const [{ isOver, canDrop }, drop] = useDrop(() => ({
                   transformOrigin: '0 0',
                 }}
             >
-                {processedGroups.map((group) => (
-                    <div key={group.id} onClick={(e) => handleGroupClick(e, group)} onContextMenu={(e) => handleGroupRightClick(e, group)} style={{ zIndex: 2, overflow: 'visible' }}>
+                {sortedRenderItems.map((item) => {
+                  if (item.itemType === 'group') {
+                    return (
+                      <div key={item.id} onClick={(e) => handleGroupClick(e, item)} onContextMenu={(e) => handleGroupRightClick(e, item)} style={{ zIndex: 2, overflow: 'visible' }}>
                         <DiagramGroup 
-                            group={group}
-                            isSelected={selectedItemId === group.id && !isConnectMode}
-                            isDropTarget={hoveredGroupId === group.id}
-                            isTargetable={isConnectMode && selectedItemId !== group.id}
+                          group={item}
+                          isSelected={selectedItemId === item.id && !isConnectMode}
+                          isDropTarget={hoveredGroupId === item.id}
+                          isTargetable={isConnectMode && selectedItemId !== item.id}
                         />
-                    </div>
-                ))}
+                      </div>
+                    );
+                  } else {
+                    const isConnectedToSelected = !!selectedItemId && (diagramData.connections || []).some((e: any) => e.from === selectedItemId && e.to === item.id || e.to === selectedItemId && e.from === item.id);
+                    return (
+                      <div key={item.id} onClick={(e) => handleNodeClick(e, item)} onContextMenu={(e) => handleNodeRightClick(e, item)}>
+                        <DiagramNode 
+                          node={item} 
+                          isSelected={selectedItemId === item.id && !isConnectMode}
+                          isTargetable={isConnectMode && selectedItemId !== item.id}
+                          isHighlighted={isConnectedToSelected}
+                        />
+                      </div>
+                    );
+                  }
+                })}
                 <svg
                 width={width}
                 height={height}
@@ -1000,7 +1059,7 @@ const [{ isOver, canDrop }, drop] = useDrop(() => ({
                     // Build parent map for groups to gather ancestor groups of endpoints
                     const parentMap = new Map<string, string>();
                     processedGroups.forEach(g => {
-                      g.nodes.forEach(id => parentMap.set(id, g.id));
+                      g.children.forEach((id: string) => parentMap.set(id, g.id));
                     });
                     const ancestorsOf = (id: string): string[] => {
                       const res: string[] = [];
@@ -1041,19 +1100,6 @@ return (
                     );
                 })}
                 </svg>
-                {processedNodes.map((node) => {
-                  const isConnectedToSelected = !!selectedItemId && (diagramData.connections || []).some((e: any) => e.from === selectedItemId && e.to === node.id || e.to === selectedItemId && e.from === node.id);
-                  return (
-                    <div key={node.id} onClick={(e) => handleNodeClick(e, node)} onContextMenu={(e) => handleNodeRightClick(e, node)}>
-                      <DiagramNode 
-                        node={node} 
-                        isSelected={selectedItemId === node.id && !isConnectMode}
-                        isTargetable={isConnectMode && selectedItemId !== node.id}
-                        isHighlighted={isConnectedToSelected}
-                      />
-                    </div>
-                  );
-                })}
             </div>
         </div>
          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full max-w-2xl p-2">
