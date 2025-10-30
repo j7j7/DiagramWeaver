@@ -36,6 +36,8 @@ interface EditorCanvasProps {
   onNodeClickInConnectMode: (node: DiagramNodeData) => void;
   onConnect?: () => void;
   onDisconnect?: () => void;
+  externalTransform?: { x: number; y: number; k: number };
+  onTransformChange?: (transform: { x: number; y: number; k: number }) => void;
 }
 
 type PositionedNode = DiagramNodeData & { x: number; y: number; };
@@ -47,10 +49,18 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, selectedItemId, isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, selectedItemId, isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange }: EditorCanvasProps,
   ref
 ) {
-  const [transform, setTransform] = useState({ x: 0, y: 0, k: 1 });
+  const [internalTransform, setInternalTransform] = useState({ x: 0, y: 0, k: 1 });
+  const transform = externalTransform || internalTransform;
+  const setTransform = (newTransform: { x: number; y: number; k: number }) => {
+    if (onTransformChange) {
+      onTransformChange(newTransform);
+    } else {
+      setInternalTransform(newTransform);
+    }
+  };
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [touchStart, setTouchStart] = useState<{ x: number; y: number; distance: number } | null>(null);
@@ -655,7 +665,7 @@ const [, drop] = useDrop(() => ({
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isPanning) return;
-    setTransform(t => ({ ...t, x: e.clientX - panStart.x, y: e.clientY - panStart.y}));
+    setTransform({ ...transform, x: e.clientX - panStart.x, y: e.clientY - panStart.y });
   };
 
   const handleMouseUpOrLeave = () => {
@@ -711,7 +721,7 @@ const [, drop] = useDrop(() => ({
       // Single touch - pan
       e.preventDefault(); // Only prevent default for panning
       const touch = e.touches[0];
-      setTransform(t => ({ ...t, x: touch.clientX - panStart.x, y: touch.clientY - panStart.y }));
+      setTransform({ ...transform, x: touch.clientX - panStart.x, y: touch.clientY - panStart.y });
     } else if (e.touches.length === 2 && touchStart && lastTouchDistance !== null) {
       // Two touches - zoom
       e.preventDefault(); // Prevent page zoom
@@ -726,7 +736,7 @@ const [, drop] = useDrop(() => ({
       const newK = Math.max(0.1, Math.min(transform.k * scale, 3));
       
       // Keep the same center point for zoom
-      setTransform(t => ({ ...t, k: newK }));
+      setTransform({ ...transform, k: newK });
       setLastTouchDistance(currentDistance);
     }
   };

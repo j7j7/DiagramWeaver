@@ -35,8 +35,9 @@ export default function DiagramEditor() {
   const [isConnectMode, setIsConnectMode] = React.useState<boolean>(false);
   const [jsonPanelOpen, setJsonPanelOpen] = React.useState<boolean>(false);
   const [jsonPanelWidth, setJsonPanelWidth] = React.useState<number>(420);
-  const [isClient, setIsClient] = React.useState<boolean>(false);
-  const [sidebarOpen, setSidebarOpen] = React.useState<boolean>(true);
+const [isClient, setIsClient] = React.useState<boolean>(false);
+  const [sidebarOpen, setSidebarOpen] = React.useState<boolean>(false);
+  const [canvasTransform, setCanvasTransform] = React.useState<{ x: number; y: number; k: number }>({ x: 0, y: 0, k: 1 });
   const isMobile = useIsMobile();
 
   // Initialize client-side state after hydration
@@ -401,6 +402,8 @@ export default function DiagramEditor() {
           onConnectionUpdate={handleConnectionUpdate}
           onCloseSidebar={() => setSidebarOpen(false)}
           isMobile={isMobile}
+          transform={canvasTransform}
+          onTransformChange={setCanvasTransform}
           onResourceSelect={(resource, provider, category) => {
             // NEVER add file or imagePath to node data
             // ResourceIcon will derive path from type and resource catalog
@@ -476,6 +479,8 @@ export default function DiagramEditor() {
                                 });
                             }
                         }}
+                    externalTransform={canvasTransform}
+                    onTransformChange={setCanvasTransform}
                     />
                   </div>
                   

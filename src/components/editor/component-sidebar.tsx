@@ -32,6 +32,8 @@ interface ComponentSidebarProps {
   onConnectionUpdate?: (from: string, to: string, updates: { text?: string; color?: string }) => void;
   onCloseSidebar?: () => void;
   isMobile?: boolean;
+  transform?: { x: number; y: number; k: number };
+  onTransformChange?: (transform: { x: number; y: number; k: number }) => void;
 }
 
 type FormValues = Omit<DiagramNodeData & DiagramGroupData, 'id' | 'type' | 'children'> & {
@@ -49,7 +51,7 @@ type FormValues = Omit<DiagramNodeData & DiagramGroupData, 'id' | 'type' | 'chil
 };
 
 
-export function ComponentSidebar({ selectedItem, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onSave, onLoad, onNew, onResourceSelect, onToggleJsonPanel, jsonPanelOpen, onFitToView, onExportPng, onConnectionUpdate, onCloseSidebar, isMobile }: ComponentSidebarProps) {
+export function ComponentSidebar({ selectedItem, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onSave, onLoad, onNew, onResourceSelect, onToggleJsonPanel, jsonPanelOpen, onFitToView, onExportPng, onConnectionUpdate, onCloseSidebar, isMobile, transform, onTransformChange }: ComponentSidebarProps) {
   const { register, reset, getValues } = useForm<FormValues>();
 
   useEffect(() => {
@@ -192,9 +194,10 @@ return (
       
       <Tabs defaultValue="resources" className="flex-1 flex flex-col min-h-0">
         <div className="px-4 pt-2 flex-shrink-0">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="resources">Resources</TabsTrigger>
             <TabsTrigger value="details">Details</TabsTrigger>
+            <TabsTrigger value="canvas">Canvas</TabsTrigger>
           </TabsList>
         </div>
         
@@ -532,6 +535,92 @@ return (
               </div>
             )}
           </ScrollArea>
+        </TabsContent>
+        
+        <TabsContent value="canvas" className="flex-1 m-0 p-4 data-[state=active]:flex data-[state=active]:flex-col min-h-0 overflow-hidden">
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-md font-semibold mb-3">Canvas Transform</h3>
+              
+              <div className="space-y-3">
+                <div>
+                  <Label htmlFor="transform-x">X Position</Label>
+                  <Input
+                    id="transform-x"
+                    type="number"
+                    value={transform?.x || 0}
+                    onChange={(e) => onTransformChange?.({ 
+                      x: parseFloat(e.target.value) || 0,
+                      y: transform?.y || 0,
+                      k: transform?.k || 1
+                    })}
+                    className="w-full"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="transform-y">Y Position</Label>
+                  <Input
+                    id="transform-y"
+                    type="number"
+                    value={transform?.y || 0}
+                    onChange={(e) => onTransformChange?.({ 
+                      x: transform?.x || 0,
+                      y: parseFloat(e.target.value) || 0,
+                      k: transform?.k || 1
+                    })}
+                    className="w-full"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="transform-zoom">Zoom Level</Label>
+                  <Input
+                    id="transform-zoom"
+                    type="number"
+                    step="0.1"
+                    min="0.1"
+                    max="4"
+                    value={transform?.k || 1}
+                    onChange={(e) => onTransformChange?.({ 
+                      x: transform?.x || 0,
+                      y: transform?.y || 0,
+                      k: parseFloat(e.target.value) || 1
+                    })}
+                    className="w-full"
+                  />
+                </div>
+                
+                <div className="pt-2 space-y-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => onTransformChange?.({ x: 0, y: 0, k: 1 })}
+                    className="w-full"
+                  >
+                    Reset Transform
+                  </Button>
+                  
+                  {onFitToView && (
+                    <Button 
+                      variant="outline" 
+                      onClick={onFitToView}
+                      className="w-full"
+                    >
+                      <Maximize2 className="mr-2 h-4 w-4" />
+                      Fit to View
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p><strong>X:</strong> Horizontal pan position</p>
+              <p><strong>Y:</strong> Vertical pan position</p>
+              <p><strong>Zoom:</strong> Scale factor (1.0 = 100%)</p>
+              <p>Use these controls to manually adjust the canvas view and troubleshoot fit-to-view functionality.</p>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
     </aside>
