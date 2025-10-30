@@ -129,6 +129,17 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             itemsPerRow = group.maxItemsPerRow || Math.max(1, Math.floor(Math.sqrt(numItems) * 1.2));
         }
         
+        // For empty groups, ensure minimum size to accommodate one item
+        if (numItems === 0) {
+            const minGroupWidth = NODE_WIDTH + (GROUP_PADDING * 2);
+            const minGroupHeight = NODE_HEIGHT + (GROUP_PADDING * 2);
+            
+            (group as PositionedGroup).width = minGroupWidth;
+            (group as PositionedGroup).height = minGroupHeight;
+            
+            return { width: minGroupWidth, height: minGroupHeight };
+        }
+        
         let currentX = GROUP_PADDING;
         let currentY = GROUP_PADDING;
         let rowMaxHeight = 0;
