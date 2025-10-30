@@ -358,7 +358,7 @@ return (
                     <CollapsibleTrigger asChild>
                       <Button
                         variant="ghost"
-                        className="w-full justify-between p-2 h-auto hover:bg-accent/50 hover:text-accent-foreground"
+                        className="w-full justify-between p-3 h-auto hover:bg-accent/50 hover:text-accent-foreground touch-target"
                       >
                         <div className="flex items-center gap-2">
                           {expandedProviders.has(providerKey) ? (
@@ -387,7 +387,7 @@ return (
                                 <CollapsibleTrigger asChild>
                                   <Button
                                     variant="ghost"
-                                    className="w-full justify-between p-1 h-auto hover:bg-accent/40 hover:text-accent-foreground"
+                                    className="w-full justify-between p-2 h-auto hover:bg-accent/40 hover:text-accent-foreground touch-target"
                                   >
                                     <div className="flex items-center gap-1">
                                       {isExpanded ? (
@@ -404,7 +404,7 @@ return (
                                 </CollapsibleTrigger>
 
                                 <CollapsibleContent>
-                                  <div className="ml-4 grid grid-cols-2 gap-1 p-1">
+                                  <div className="ml-4 grid grid-cols-2 gap-2 p-2 touch-spacing">
                                     {category.resources.map((resource, index) => (
                                       <DraggableResourceItem
                                         key={index}

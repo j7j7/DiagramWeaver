@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { useDrag } from 'react-dnd';
 import type { DiagramGroupData } from '@/lib/types';
 import { ItemTypes } from '../editor/draggable-item';
@@ -18,13 +18,79 @@ interface DiagramGroupProps {
 
 
 export function DiagramGroup({ group, isSelected, isDropTarget, isTargetable }: DiagramGroupProps) {
-  const [{ isDragging }, drag] = useDrag(() => ({
+const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.GROUP,
     item: { ...group, type: ItemTypes.GROUP },
     collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
+      isDragging: !!monitor.isDragging(),
     }),
   }), [group]);
+
+  const [isTouchDragging, setIsTouchDragging] = useState(false);
+  const touchStartPos = useRef<{ x: number; y: number } | null>(null);
+
+  // Touch event handlers for mobile drag and drop
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchStartPos.current = { x: touch.clientX, y: touch.clientY };
+    setIsTouchDragging(true);
+    (e.currentTarget as HTMLElement).style.opacity = '0.5';
+    e.stopPropagation(); // Prevent canvas from handling this touch
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartPos.current) return;
+    
+    const touch = e.touches[0];
+    const deltaX = Math.abs(touch.clientX - touchStartPos.current.x);
+    const deltaY = Math.abs(touch.clientY - touchStartPos.current.y);
+    
+    // Only start dragging if moved enough to prevent accidental drags
+    if (deltaX > 10 || deltaY > 10) {
+      e.preventDefault(); // Prevent scrolling when dragging
+      e.stopPropagation(); // Prevent canvas from handling this touch
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStartPos.current) return;
+    
+    const touch = e.changedTouches[0];
+    const deltaX = Math.abs(touch.clientX - touchStartPos.current.x);
+    const deltaY = Math.abs(touch.clientY - touchStartPos.current.y);
+    
+    // Check if it was a significant drag (not just a tap)
+    if (deltaX > 10 || deltaY > 10) {
+      // Find the canvas element
+      const canvas = document.querySelector('[data-testid="editor-canvas"]') as HTMLElement;
+      if (canvas) {
+        const canvasRect = canvas.getBoundingClientRect();
+        
+        // Calculate position relative to canvas
+        const x = touch.clientX - canvasRect.left;
+        const y = touch.clientY - canvasRect.top;
+        
+        // Dispatch a custom event to the canvas for moving the group
+        const moveEvent = new CustomEvent('mobileMove', {
+          detail: { 
+            id: group.id, 
+            type: ItemTypes.GROUP, 
+            x, 
+            y,
+            originalX: group.x,
+            originalY: group.y
+          }
+        });
+        canvas.dispatchEvent(moveEvent);
+      }
+    }
+    
+    // Reset styles
+    (e.currentTarget as HTMLElement).style.opacity = '1';
+    setIsTouchDragging(false);
+    touchStartPos.current = null;
+    e.stopPropagation();
+  };
 
   const isZone = group.subType === 'zone';
   const hasLabel = !!group.label && group.label.trim() !== '';
@@ -33,7 +99,11 @@ export function DiagramGroup({ group, isSelected, isDropTarget, isTargetable }: 
   if (!hasLabel) {
     return (
       <div
-        ref={drag as any}
+        ref={(node) => {
+          if (node) {
+            drag(node);
+          }
+        }}
         className="absolute"
         style={{
           left: group.x,
@@ -61,11 +131,15 @@ export function DiagramGroup({ group, isSelected, isDropTarget, isTargetable }: 
 
   return (
     <div
-      ref={drag as any}
+      ref={(node) => {
+        if (node) {
+          drag(node);
+        }
+      }}
 className={cn(
         "absolute rounded-lg cursor-move",
         isZone ? "border-2 border-dashed" : "border-2",
-        isDragging && "opacity-50",
+        (isDragging || isTouchDragging) && "opacity-50",
         (isSelected || isDropTarget) && "ring-2 ring-primary ring-offset-2",
         isTargetable && "ring-2 ring-green-500 ring-offset-2 animate-pulse",
         group.shadow && "shadow-[0_10px_15px_-3px_rgba(239,68,68,0.3),0_4px_6px_-2px_rgba(239,68,68,0.2)]"
@@ -93,6 +167,9 @@ className={cn(
           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' // More prominent shadow
         })
       }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
       <Popover>
         <PopoverTrigger asChild>

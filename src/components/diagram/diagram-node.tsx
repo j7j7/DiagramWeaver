@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useDrag } from 'react-dnd';
 import {
   Popover,
@@ -51,14 +51,84 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted }: D
     }),
   }), [node.id, node.x, node.y]);
 
+  const [isTouchDragging, setIsTouchDragging] = useState(false);
+  const touchStartPos = useRef<{ x: number; y: number } | null>(null);
 
-  return (
+  // Touch event handlers for mobile drag and drop
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchStartPos.current = { x: touch.clientX, y: touch.clientY };
+    setIsTouchDragging(true);
+    (e.currentTarget as HTMLElement).style.opacity = '0.5';
+    e.stopPropagation(); // Prevent canvas from handling this touch
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartPos.current) return;
+    
+    const touch = e.touches[0];
+    const deltaX = Math.abs(touch.clientX - touchStartPos.current.x);
+    const deltaY = Math.abs(touch.clientY - touchStartPos.current.y);
+    
+    // Only start dragging if moved enough to prevent accidental drags
+    if (deltaX > 10 || deltaY > 10) {
+      e.preventDefault(); // Prevent scrolling when dragging
+      e.stopPropagation(); // Prevent canvas from handling this touch
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStartPos.current) return;
+    
+    const touch = e.changedTouches[0];
+    const deltaX = Math.abs(touch.clientX - touchStartPos.current.x);
+    const deltaY = Math.abs(touch.clientY - touchStartPos.current.y);
+    
+    // Check if it was a significant drag (not just a tap)
+    if (deltaX > 10 || deltaY > 10) {
+      // Find the canvas element
+      const canvas = document.querySelector('[data-testid="editor-canvas"]') as HTMLElement;
+      if (canvas) {
+        const canvasRect = canvas.getBoundingClientRect();
+        
+        // Calculate position relative to canvas
+        const x = touch.clientX - canvasRect.left;
+        const y = touch.clientY - canvasRect.top;
+        
+        // Dispatch a custom event to the canvas for moving the node
+        const moveEvent = new CustomEvent('mobileMove', {
+          detail: { 
+            id: node.id, 
+            type: ItemTypes.CANVAS_NODE, 
+            x, 
+            y,
+            originalX: node.x,
+            originalY: node.y
+          }
+        });
+        canvas.dispatchEvent(moveEvent);
+      }
+    }
+    
+    // Reset styles
+    (e.currentTarget as HTMLElement).style.opacity = '1';
+    setIsTouchDragging(false);
+    touchStartPos.current = null;
+    e.stopPropagation();
+  };
+
+
+return (
     <div
-      ref={drag as any}
+      ref={(node) => {
+        if (node) {
+          drag(node);
+        }
+      }}
       className={cn(
         "absolute group transition-transform duration-200 ease-in-out hover:scale-105",
         (isSelected || isHighlighted) && "ring-2 ring-accent ring-offset-2 rounded-lg drop-shadow-md",
-        isDragging && "opacity-50 cursor-grabbing",
+        (isDragging || isTouchDragging) && "opacity-50 cursor-grabbing",
         isTargetable && "cursor-crosshair opacity-70 hover:opacity-100"
         )}
       style={{
@@ -71,6 +141,9 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted }: D
       }}
       onMouseEnter={() => !isDragging && setIsOpen(true)}
       onMouseLeave={() => setIsOpen(false)}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
       <Popover open={isOpen && !isDragging} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>

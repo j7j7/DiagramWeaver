@@ -138,17 +138,17 @@ export function ComponentSidebar({ selectedItem, onItemUpdate, onConnect, onDisc
 return (
     <aside className="w-80 bg-card border-r flex flex-col h-full">
       <div className="p-4 border-b flex-shrink-0">
-        <div className="flex items-center gap-2 mb-4">
-            <Button variant="outline" onClick={onNew} className="flex-1"><Plus className="mr-2 h-4 w-4"/>New</Button>
-            <Button variant="outline" onClick={onSave} className="flex-1"><Download className="mr-2 h-4 w-4"/>Save</Button>
-            <Button variant="outline" onClick={onLoad} className="flex-1"><Upload className="mr-2 h-4 w-4"/>Load</Button>
+        <div className="flex items-center gap-2 mb-4 touch-spacing">
+            <Button variant="outline" onClick={onNew} className="flex-1 touch-target"><Plus className="mr-2 h-4 w-4"/>New</Button>
+            <Button variant="outline" onClick={onSave} className="flex-1 touch-target"><Download className="mr-2 h-4 w-4"/>Save</Button>
+            <Button variant="outline" onClick={onLoad} className="flex-1 touch-target"><Upload className="mr-2 h-4 w-4"/>Load</Button>
         </div>
         {onToggleJsonPanel && (
           <div className="mb-2">
             <Button 
               variant={jsonPanelOpen ? "default" : "outline"} 
               onClick={onToggleJsonPanel} 
-              className="w-full"
+              className="w-full touch-target"
             >
               <Code className="mr-2 h-4 w-4"/>
               {jsonPanelOpen ? 'Hide JSON' : 'Show JSON'}
@@ -157,7 +157,7 @@ return (
         )}
         {onFitToView && (
           <div className="mb-2">
-            <Button variant="outline" onClick={onFitToView} className="w-full">
+            <Button variant="outline" onClick={onFitToView} className="w-full touch-target">
               <Maximize2 className="mr-2 h-4 w-4" />
               Fit to view
             </Button>
@@ -165,7 +165,7 @@ return (
         )}
         {onExportPng && (
           <div className="mb-4">
-            <Button variant="outline" onClick={onExportPng} className="w-full">
+            <Button variant="outline" onClick={onExportPng} className="w-full touch-target">
               <ImageDown className="mr-2 h-4 w-4" />
               Export PNG
             </Button>

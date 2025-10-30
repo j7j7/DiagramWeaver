@@ -103,4 +103,35 @@
     z-index: 50;
     pointer-events: none;
   }
+
+  /* Mobile-specific styles */
+  @media (max-width: 768px) {
+    /* Increase touch targets for mobile */
+    .touch-target {
+      min-height: 44px;
+      min-width: 44px;
+    }
+    
+    /* Make sidebar items more touch-friendly */
+    .sidebar-item {
+      padding: 12px;
+      min-height: 48px;
+    }
+    
+    /* Increase button sizes for mobile */
+    button {
+      min-height: 44px;
+      min-width: 44px;
+    }
+    
+    /* Make text more readable on mobile */
+    .text-xs {
+      font-size: 0.75rem;
+    }
+    
+    /* Better spacing for touch interfaces */
+    .touch-spacing > * {
+      margin: 4px;
+    }
+  }
 }

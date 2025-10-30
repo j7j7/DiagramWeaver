@@ -53,6 +53,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   const [transform, setTransform] = useState({ x: 0, y: 0, k: 1 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number; distance: number } | null>(null);
+  const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null);
   const [description, setDescription] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null);
@@ -500,8 +502,9 @@ const [, drop] = useDrop(() => ({
         const clientOffset = monitor.getClientOffset();
         if (!clientOffset) return;
         
-        const x = (clientOffset.x - canvasRef.current.getBoundingClientRect().left - transform.x) / transform.k;
-        const y = (clientOffset.y - canvasRef.current.getBoundingClientRect().top - transform.y) / transform.k;
+        const rect = canvasRef.current.getBoundingClientRect();
+        const x = (clientOffset.x - rect.left - transform.x) / transform.k;
+        const y = (clientOffset.y - rect.top - transform.y) / transform.k;
 
         let targetGroupId: string | null = null;
         // Iterate backwards to check topmost groups first
@@ -561,6 +564,8 @@ const [, drop] = useDrop(() => ({
           x = initialX + delta.x / transform.k;
           y = initialY + delta.y / transform.k;
         }
+        
+        
         
         if (itemType === ItemTypes.DIAGRAM_NODE) { 
             // Pass the full item data to preserve resource information
@@ -645,6 +650,63 @@ const [, drop] = useDrop(() => ({
 
   const handleMouseUpOrLeave = () => {
     setIsPanning(false);
+  };
+
+  // Touch event handlers for mobile - simplified approach
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (isConnectMode) return;
+    const target = e.target as HTMLElement;
+    
+    // Check if touching an item (node or group) - let them handle their own touch events
+    if (target.closest('.absolute')) {
+      return; // Don't handle canvas pan/zoom when touching items
+    }
+    
+    if (e.touches.length === 1) {
+      // Single touch - start panning
+      const touch = e.touches[0];
+      setIsPanning(true);
+      setPanStart({ x: touch.clientX - transform.x, y: touch.clientY - transform.y });
+    } else if (e.touches.length === 2) {
+      // Two touches - prepare for zoom
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const distance = Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
+      setTouchStart({ x: (touch1.clientX + touch2.clientX) / 2, y: (touch1.clientY + touch2.clientY) / 2, distance });
+      setLastTouchDistance(distance);
+      setIsPanning(false);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 1 && isPanning) {
+      // Single touch - pan
+      e.preventDefault(); // Only prevent default for panning
+      const touch = e.touches[0];
+      setTransform(t => ({ ...t, x: touch.clientX - panStart.x, y: touch.clientY - panStart.y }));
+    } else if (e.touches.length === 2 && touchStart && lastTouchDistance !== null) {
+      // Two touches - zoom
+      e.preventDefault(); // Prevent page zoom
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const currentDistance = Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
+      
+      if (!canvasRef.current) return;
+      
+      // Calculate zoom
+      const scale = currentDistance / lastTouchDistance;
+      const newK = Math.max(0.1, Math.min(transform.k * scale, 3));
+      
+      // Keep the same center point for zoom
+      setTransform(t => ({ ...t, k: newK }));
+      setLastTouchDistance(currentDistance);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setIsPanning(false);
+    setTouchStart(null);
+    setLastTouchDistance(null);
   };
 
   const measureNodeDims = (n: PositionedNode) => {
@@ -867,6 +929,73 @@ const [, drop] = useDrop(() => ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [selectedItemId, clipboard]);
 
+  // Handle mobile drop events
+  useEffect(() => {
+    const handleMobileDrop = (event: CustomEvent) => {
+      const { item, x, y, itemType } = event.detail;
+      
+      // Calculate position accounting for transform
+      const adjustedX = (x - transform.x) / transform.k;
+      const adjustedY = (y - transform.y) / transform.k;
+      
+      // Check if dropping over a group
+      let targetGroupId: string | null = null;
+      for (let i = processedGroups.length - 1; i >= 0; i--) {
+        const group = processedGroups[i];
+        if (adjustedX > group.x && adjustedX < group.x + group.width && 
+            adjustedY > group.y && adjustedY < group.y + group.height) {
+          targetGroupId = group.id;
+          break;
+        }
+      }
+      
+      
+      
+      if (itemType === ItemTypes.DIAGRAM_NODE) {
+        addNode(item, { x: adjustedX, y: adjustedY }, targetGroupId);
+      }
+    };
+
+    const handleMobileMove = (event: CustomEvent) => {
+      const { id, type, x, y, originalX, originalY } = event.detail;
+      
+      // Calculate position accounting for transform
+      const adjustedX = (x - transform.x) / transform.k;
+      const adjustedY = (y - transform.y) / transform.k;
+      
+      // Check if dropping over a group
+      let targetGroupId: string | null = null;
+      for (let i = processedGroups.length - 1; i >= 0; i--) {
+        const group = processedGroups[i];
+        if (adjustedX > group.x && adjustedX < group.x + group.width && 
+            adjustedY > group.y && adjustedY < group.y + group.height) {
+          targetGroupId = group.id;
+          break;
+        }
+      }
+      
+      
+      
+      if (type === ItemTypes.CANVAS_NODE || type === ItemTypes.GROUP) {
+        moveItem({ id, type, x: originalX, y: originalY }, { x: adjustedX, y: adjustedY }, targetGroupId);
+      }
+    };
+
+    const canvas = canvasRef.current;
+    if (canvas) {
+      canvas.setAttribute('data-testid', 'editor-canvas');
+      canvas.addEventListener('mobileDrop', handleMobileDrop as EventListener);
+      canvas.addEventListener('mobileMove', handleMobileMove as EventListener);
+    }
+
+    return () => {
+      if (canvas) {
+        canvas.removeEventListener('mobileDrop', handleMobileDrop as EventListener);
+        canvas.removeEventListener('mobileMove', handleMobileMove as EventListener);
+      }
+    };
+  }, [transform, processedGroups, addNode, moveItem]);
+
   // Context menu handlers
   const handleContextMenu = (event: React.MouseEvent, itemId: string, itemType: 'node' | 'group') => {
     event.preventDefault();
@@ -977,6 +1106,9 @@ const [, drop] = useDrop(() => ({
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUpOrLeave}
             onMouseLeave={handleMouseUpOrLeave}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
             onClick={handleCanvasClick}
         >
             <div
