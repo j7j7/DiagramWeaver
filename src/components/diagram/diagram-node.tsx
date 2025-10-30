@@ -22,9 +22,11 @@ interface DiagramNodeProps {
   isSelected?: boolean;
   isTargetable?: boolean;
   isHighlighted?: boolean;
+  onClick?: (e: React.MouseEvent, node: DiagramNodeData) => void;
+  onContextMenu?: (e: React.MouseEvent, node: DiagramNodeData) => void;
 }
 
-export function DiagramNode({ node, isSelected, isTargetable, isHighlighted }: DiagramNodeProps) {
+export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, onClick, onContextMenu }: DiagramNodeProps) {
   const [isOpen, setIsOpen] = useState(false);
   
   // Calculate dynamic height based on label length and node type
@@ -61,6 +63,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted }: D
     setIsTouchDragging(true);
     (e.currentTarget as HTMLElement).style.opacity = '0.5';
     e.stopPropagation(); // Prevent canvas from handling this touch
+    e.preventDefault(); // Prevent any default touch behavior
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
@@ -108,6 +111,16 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted }: D
         });
         canvas.dispatchEvent(moveEvent);
       }
+    } else {
+      // This was a tap, not a drag - trigger click
+      if (onClick) {
+        const syntheticEvent = new MouseEvent('click', {
+          bubbles: true,
+          cancelable: true,
+          view: window
+        });
+        onClick(syntheticEvent as any, node);
+      }
     }
     
     // Reset styles
@@ -115,6 +128,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted }: D
     setIsTouchDragging(false);
     touchStartPos.current = null;
     e.stopPropagation();
+    e.preventDefault(); // Prevent any default touch behavior
   };
 
 
@@ -138,9 +152,12 @@ return (
         minWidth: isTextNode ? 80 : NODE_WIDTH,
         maxWidth: isTextNode ? 200 : NODE_WIDTH,
         height: nodeHeight,
+        touchAction: 'none'
       }}
       onMouseEnter={() => !isDragging && setIsOpen(true)}
       onMouseLeave={() => setIsOpen(false)}
+      onClick={(e) => onClick && onClick(e, node)}
+      onContextMenu={(e) => onContextMenu && onContextMenu(e, node)}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}

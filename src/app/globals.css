@@ -133,5 +133,46 @@
     .touch-spacing > * {
       margin: 4px;
     }
+    
+    /* Prevent horizontal scroll on mobile */
+    body {
+      overflow-x: hidden;
+    }
+    
+    /* Ensure mobile sidebar is above everything */
+    .mobile-sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100vh;
+      z-index: 9999;
+    }
+    
+    /* Smooth transitions for mobile sidebar */
+    .sidebar-transition {
+      transition: transform 0.3s ease-in-out;
+    }
+    
+    /* Canvas-specific touch handling */
+    .canvas-container {
+      touch-action: none;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+    
+    /* Draggable items touch handling */
+    .draggable-item {
+      touch-action: none;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+    
+    /* Prevent bounce scrolling on mobile */
+    html, body {
+      overscroll-behavior: none;
+      -webkit-overflow-scrolling: touch;
+    }
   }
 }

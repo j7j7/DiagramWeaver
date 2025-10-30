@@ -9,6 +9,7 @@ import { JsonEditorPanel } from './editor/json-editor-panel';
 import type { DiagramData, DiagramNodeData, DiagramGroupData, DiagramConnectionData } from '@/lib/types';
 import { generateSequentialId } from '@/lib/id-generator';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export type SelectedItem = (DiagramNodeData | DiagramGroupData) & { 
   itemType: 'node' | 'group', 
@@ -34,6 +35,8 @@ export default function DiagramEditor() {
   const [jsonPanelOpen, setJsonPanelOpen] = React.useState<boolean>(false);
   const [jsonPanelWidth, setJsonPanelWidth] = React.useState<number>(420);
   const [isClient, setIsClient] = React.useState<boolean>(false);
+  const [sidebarOpen, setSidebarOpen] = React.useState<boolean>(true);
+  const isMobile = useIsMobile();
 
   // Initialize client-side state after hydration
   React.useEffect(() => {
@@ -48,6 +51,21 @@ export default function DiagramEditor() {
       setJsonPanelWidth(parseInt(savedWidth, 10));
     }
   }, []);
+
+  // Handle body scroll lock when mobile sidebar is open
+  React.useEffect(() => {
+    if (isMobile) {
+      if (sidebarOpen) {
+        document.body.style.overflow = 'hidden';
+      } else {
+        document.body.style.overflow = '';
+      }
+      
+      return () => {
+        document.body.style.overflow = '';
+      };
+    }
+  }, [sidebarOpen, isMobile]);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -308,8 +326,18 @@ export default function DiagramEditor() {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="flex h-screen w-screen bg-background text-foreground font-body">
-        <ComponentSidebar
+      <div className="flex h-screen w-screen bg-background text-foreground font-body relative overflow-hidden">
+        {/* Mobile sidebar overlay */}
+        {isMobile && sidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-40 md:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+        
+        {/* Sidebar - fixed on mobile, normal on desktop */}
+        <div className={`${isMobile ? 'fixed left-0 top-0 h-full z-50 transform transition-transform duration-300 ease-in-out' : ''} ${isMobile && !sidebarOpen ? '-translate-x-full' : ''} ${isMobile ? 'w-80' : ''}`}>
+<ComponentSidebar
           selectedItem={selectedItem}
           onItemUpdate={handleItemUpdate}
           onConnect={startConnecting}
@@ -324,6 +352,8 @@ export default function DiagramEditor() {
           onToggleJsonPanel={toggleJsonPanel}
           jsonPanelOpen={jsonPanelOpen}
           onConnectionUpdate={handleConnectionUpdate}
+          onCloseSidebar={() => setSidebarOpen(false)}
+          isMobile={isMobile}
           onResourceSelect={(resource, provider, category) => {
             // NEVER add file or imagePath to node data
             // ResourceIcon will derive path from type and resource catalog
@@ -345,7 +375,25 @@ export default function DiagramEditor() {
             toast({ title: 'Resource Added', description: `${resource.name} has been added to the diagram.` });
           }}
         />
-        <main className="flex-1 flex flex-col">
+        </div>
+        
+        {/* Mobile menu toggle button */}
+        {isMobile && (
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="fixed left-4 top-4 z-30 p-3 bg-card border border-border rounded-md shadow-lg touch-target"
+            style={{ touchAction: 'manipulation' }}
+            aria-label="Toggle sidebar"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
+        )}
+        
+        <main className={`flex-1 flex flex-col ${isMobile ? 'w-full' : ''} ${isMobile && sidebarOpen ? 'pointer-events-none' : ''}`}>
             <header className="flex items-center justify-center p-4 border-b bg-card">
                 <h1 className="text-2xl font-headline font-bold text-primary">Diagram Weaver</h1>
                 <input

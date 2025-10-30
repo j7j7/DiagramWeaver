@@ -30,6 +30,8 @@ interface ComponentSidebarProps {
   onFitToView?: () => void;
   onExportPng?: () => void;
   onConnectionUpdate?: (from: string, to: string, updates: { text?: string; color?: string }) => void;
+  onCloseSidebar?: () => void;
+  isMobile?: boolean;
 }
 
 type FormValues = Omit<DiagramNodeData & DiagramGroupData, 'id' | 'type' | 'children'> & {
@@ -47,7 +49,7 @@ type FormValues = Omit<DiagramNodeData & DiagramGroupData, 'id' | 'type' | 'chil
 };
 
 
-export function ComponentSidebar({ selectedItem, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onSave, onLoad, onNew, onResourceSelect, onToggleJsonPanel, jsonPanelOpen, onFitToView, onExportPng, onConnectionUpdate }: ComponentSidebarProps) {
+export function ComponentSidebar({ selectedItem, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onSave, onLoad, onNew, onResourceSelect, onToggleJsonPanel, jsonPanelOpen, onFitToView, onExportPng, onConnectionUpdate, onCloseSidebar, isMobile }: ComponentSidebarProps) {
   const { register, reset, getValues } = useForm<FormValues>();
 
   useEffect(() => {
@@ -138,6 +140,21 @@ export function ComponentSidebar({ selectedItem, onItemUpdate, onConnect, onDisc
 return (
     <aside className="w-80 bg-card border-r flex flex-col h-full">
       <div className="p-4 border-b flex-shrink-0">
+        {/* Mobile close button */}
+        {isMobile && onCloseSidebar && (
+          <div className="flex justify-end mb-2 md:hidden">
+            <button
+              onClick={onCloseSidebar}
+              className="p-2 rounded-md hover:bg-muted touch-target"
+              aria-label="Close sidebar"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+        )}
         <div className="flex items-center gap-2 mb-4 touch-spacing">
             <Button variant="outline" onClick={onNew} className="flex-1 touch-target"><Plus className="mr-2 h-4 w-4"/>New</Button>
             <Button variant="outline" onClick={onSave} className="flex-1 touch-target"><Download className="mr-2 h-4 w-4"/>Save</Button>

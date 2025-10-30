@@ -652,14 +652,20 @@ const [, drop] = useDrop(() => ({
     setIsPanning(false);
   };
 
-  // Touch event handlers for mobile - simplified approach
+  // Touch event handlers for mobile - improved logic
   const handleTouchStart = (e: React.TouchEvent) => {
     if (isConnectMode) return;
     const target = e.target as HTMLElement;
     
-    // Check if touching an item (node or group) - let them handle their own touch events
-    if (target.closest('.absolute')) {
-      return; // Don't handle canvas pan/zoom when touching items
+    // Check if touching an interactive element - let them handle their own touch events
+    // This includes nodes, groups, buttons, inputs, etc.
+    if (target.closest('.absolute') || 
+        target.closest('button') || 
+        target.closest('input') || 
+        target.closest('textarea') ||
+        target.closest('[role="button"]') ||
+        target.closest('.cursor-move')) {
+      return; // Don't handle canvas pan/zoom when touching interactive elements
     }
     
     if (e.touches.length === 1) {
@@ -679,6 +685,18 @@ const [, drop] = useDrop(() => ({
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
+    const target = e.target as HTMLElement;
+    
+    // Don't handle if touching interactive elements
+    if (target.closest('.absolute') || 
+        target.closest('button') || 
+        target.closest('input') || 
+        target.closest('textarea') ||
+        target.closest('[role="button"]') ||
+        target.closest('.cursor-move')) {
+      return;
+    }
+    
     if (e.touches.length === 1 && isPanning) {
       // Single touch - pan
       e.preventDefault(); // Only prevent default for panning
@@ -1101,6 +1119,7 @@ const [, drop] = useDrop(() => ({
               !isConnectMode && "cursor-grab",
               isPanning && "cursor-grabbing"
             )}
+            style={{ touchAction: 'none' }}
             onWheel={handleWheel}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
@@ -1213,24 +1232,28 @@ return (
                 {sortedRenderItems.map((item) => {
                   if (item.itemType === 'group') {
                     return (
-                      <div key={item.id} onClick={(e) => handleGroupClick(e, item)} onContextMenu={(e) => handleGroupRightClick(e, item)} style={{ zIndex: 0, overflow: 'visible' }}>
+                      <div key={item.id} style={{ zIndex: 0, overflow: 'visible' }}>
                         <DiagramGroup 
                           group={item}
                           isSelected={selectedItemId === item.id && !isConnectMode}
                           isDropTarget={hoveredGroupId === item.id}
                           isTargetable={isConnectMode && selectedItemId !== item.id}
+                          onClick={handleGroupClick}
+                          onContextMenu={handleGroupRightClick}
                         />
                       </div>
                     );
                   } else {
                     const isConnectedToSelected = !!selectedItemId && (diagramData.connections || []).some((e: any) => e.from === selectedItemId && e.to === item.id || e.to === selectedItemId && e.from === item.id);
                     return (
-                      <div key={item.id} onClick={(e) => handleNodeClick(e, item)} onContextMenu={(e) => handleNodeRightClick(e, item)} style={{ zIndex: 2, position: 'relative', transform: 'translateZ(0)' }}>
+                      <div key={item.id} style={{ zIndex: 2, position: 'relative', transform: 'translateZ(0)' }}>
                         <DiagramNode 
                           node={item} 
                           isSelected={selectedItemId === item.id && !isConnectMode}
                           isTargetable={isConnectMode && selectedItemId !== item.id}
                           isHighlighted={isConnectedToSelected}
+                          onClick={handleNodeClick}
+                          onContextMenu={handleNodeRightClick}
                         />
                       </div>
                     );

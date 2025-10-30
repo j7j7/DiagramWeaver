@@ -12,12 +12,14 @@ interface DiagramGroupProps {
   isSelected?: boolean;
   isDropTarget?: boolean;
   isTargetable?: boolean;
+  onClick?: (e: React.MouseEvent, group: DiagramGroupData) => void;
+  onContextMenu?: (e: React.MouseEvent, group: DiagramGroupData) => void;
 }
 
 
 
 
-export function DiagramGroup({ group, isSelected, isDropTarget, isTargetable }: DiagramGroupProps) {
+export function DiagramGroup({ group, isSelected, isDropTarget, isTargetable, onClick, onContextMenu }: DiagramGroupProps) {
 const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.GROUP,
     item: { ...group, type: ItemTypes.GROUP },
@@ -36,6 +38,7 @@ const [{ isDragging }, drag] = useDrag(() => ({
     setIsTouchDragging(true);
     (e.currentTarget as HTMLElement).style.opacity = '0.5';
     e.stopPropagation(); // Prevent canvas from handling this touch
+    e.preventDefault(); // Prevent any default touch behavior
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
@@ -83,6 +86,16 @@ const [{ isDragging }, drag] = useDrag(() => ({
         });
         canvas.dispatchEvent(moveEvent);
       }
+    } else {
+      // This was a tap, not a drag - trigger click
+      if (onClick) {
+        const syntheticEvent = new MouseEvent('click', {
+          bubbles: true,
+          cancelable: true,
+          view: window
+        });
+        onClick(syntheticEvent as any, group);
+      }
     }
     
     // Reset styles
@@ -90,6 +103,7 @@ const [{ isDragging }, drag] = useDrag(() => ({
     setIsTouchDragging(false);
     touchStartPos.current = null;
     e.stopPropagation();
+    e.preventDefault(); // Prevent any default touch behavior
   };
 
   const isZone = group.subType === 'zone';
@@ -162,11 +176,14 @@ className={cn(
         borderImageSlice: borderStyle === 'gradient' ? 1 : undefined,
         color: textColor,
         margin: group.shadow ? 4 : 0, // Add margin when shadow is enabled to prevent clipping
+        touchAction: 'none',
         ...(group.shadow && { 
           transform: 'translateZ(0)',
           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' // More prominent shadow
         })
       }}
+      onClick={(e) => onClick && onClick(e, group)}
+      onContextMenu={(e) => onContextMenu && onContextMenu(e, group)}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
