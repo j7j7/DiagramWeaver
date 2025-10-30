@@ -10,6 +10,7 @@ import type { DiagramData, DiagramNodeData, DiagramGroupData, DiagramConnectionD
 import { generateSequentialId } from '@/lib/id-generator';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { convertFromNestedHierarchy, convertToNestedHierarchy } from '@/lib/nested-hierarchy';
 
 export type SelectedItem = (DiagramNodeData | DiagramGroupData) & { 
   itemType: 'node' | 'group', 
@@ -218,9 +219,32 @@ export default function DiagramEditor() {
     toast({ title: 'Disconnected', description: 'All connections to/from this item have been removed.' });
   };
   
-  const handleSave = () => {
-    const jsonString = JSON.stringify(diagramData, null, 2);
-    
+  const handleSave = async () => {
+    const nestedData = convertToNestedHierarchy(diagramData);
+    const jsonString = JSON.stringify(nestedData, null, 2);
+
+    // Try to use the File System Access API if available (Chromium browsers)
+    if ('showSaveFilePicker' in window) {
+      try {
+        const handle = await (window as any).showSaveFilePicker({
+          suggestedName: 'diagram.json',
+          types: [{
+            description: 'JSON Files',
+            accept: { 'application/json': ['.json'] }
+          }]
+        });
+        const writable = await handle.createWritable();
+        await writable.write(jsonString);
+        await writable.close();
+        toast({ title: 'Diagram Saved', description: 'Your diagram has been saved successfully.' });
+        return;
+      } catch (error) {
+        // User cancelled or API failed, fall back to download
+        console.log('File System Access API failed, falling back to download:', error);
+      }
+    }
+
+    // Fallback: automatic download
     const blob = new Blob([jsonString], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -230,7 +254,7 @@ export default function DiagramEditor() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast({ title: 'Diagram Saved', description: 'Your diagram has been saved as diagram.json.' });
+    toast({ title: 'Diagram Saved', description: 'Your diagram has been downloaded as diagram.json.' });
   };
 
   const handleLoadClick = () => {
@@ -245,23 +269,46 @@ export default function DiagramEditor() {
         try {
           const text = e.target?.result;
           if (typeof text === 'string') {
-            const jsonData = JSON.parse(text);
+            let jsonData = JSON.parse(text);
+
+            // Check if this is hierarchical format (has groups with nested children)
+            const isHierarchical = jsonData.groups && Array.isArray(jsonData.groups) &&
+              jsonData.groups.some((group: any) => group.children && Array.isArray(group.children) &&
+                group.children.some((child: any) => child && typeof child === 'object'));
+
+            if (isHierarchical) {
+              // Convert hierarchical to flat format
+              jsonData = convertFromNestedHierarchy(jsonData as any);
+            }
+
             // Add basic validation for the loaded data
-            if (jsonData.nodes && jsonData.edges) {
-              setDiagramData(jsonData);
-              setSelectedItem(null);
-              toast({ title: 'Diagram Loaded', description: 'Your diagram has been successfully loaded.' });
+            if (jsonData.nodes && jsonData.connections) {
+              // Ensure all required arrays are present
+              const completeData: DiagramData = {
+                nodes: jsonData.nodes || [],
+                connections: jsonData.connections || [],
+                groups: jsonData.groups || [],
+                rootGroupId: jsonData.rootGroupId
+              };
+              // Clear existing data first to ensure clean load
+              setDiagramData({ nodes: [], connections: [], groups: [] });
+              // Then set the loaded data
+              setTimeout(() => {
+                setDiagramData(completeData);
+                setSelectedItem(null);
+                toast({ title: 'Diagram Loaded', description: 'Your diagram has been successfully loaded. If the JSON editor doesn\'t update, try toggling it off and on.' });
+              }, 0);
             } else {
               throw new Error('Invalid diagram file format.');
             }
           }
         } catch (error) {
-            const message = error instanceof Error ? error.message : "An unknown error occurred";
-            toast({
-                variant: 'destructive',
-                title: 'Error Loading Diagram',
-                description: `Could not load or parse the file. ${message}`,
-            });
+          const message = error instanceof Error ? error.message : "An unknown error occurred";
+          toast({
+              variant: 'destructive',
+              title: 'Error Loading Diagram',
+              description: `Could not load or parse the file. ${message}`,
+          });
         }
       };
       reader.readAsText(file);

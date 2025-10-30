@@ -633,7 +633,6 @@ const [, drop] = useDrop(() => ({
   drop(canvasRef);
   
   const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
     if (!canvasRef.current) return;
     const { clientX, clientY, deltaY } = e;
     const rect = canvasRef.current.getBoundingClientRect();
@@ -754,21 +753,30 @@ const [, drop] = useDrop(() => ({
     const viewportWidth = canvasRef.current.clientWidth;
     const viewportHeight = canvasRef.current.clientHeight;
 
-    const nodeBounds = processedNodes.length
+    // Get ALL nodes and groups, using 0 as fallback for undefined positions (same as layout system)
+    const allNodes = processedNodes;
+    const allGroups = processedGroups;
+
+    console.log('All items before bounds calculation:', {
+      allNodes: allNodes.map(n => ({ id: n.id, x: n.x || 0, y: n.y || 0, label: n.label })),
+      allGroups: allGroups.map(g => ({ id: g.id, x: g.x || 0, y: g.y || 0, width: g.width, height: g.height, label: g.label }))
+    });
+
+    const nodeBounds = allNodes.length
       ? {
-          minX: Math.min(...processedNodes.map(n => n.x)),
-          minY: Math.min(...processedNodes.map(n => n.y)),
-          maxX: Math.max(...processedNodes.map(n => n.x + measureNodeDims(n).width)),
-          maxY: Math.max(...processedNodes.map(n => n.y + measureNodeDims(n).height)),
+          minX: Math.min(...allNodes.map(n => n.x || 0)),
+          minY: Math.min(...allNodes.map(n => n.y || 0)),
+          maxX: Math.max(...allNodes.map(n => (n.x || 0) + measureNodeDims(n).width)),
+          maxY: Math.max(...allNodes.map(n => (n.y || 0) + measureNodeDims(n).height)),
         }
       : null;
 
-    const groupBounds = processedGroups.length
+    const groupBounds = allGroups.length
       ? {
-          minX: Math.min(...processedGroups.map(g => g.x)),
-          minY: Math.min(...processedGroups.map(g => g.y)),
-          maxX: Math.max(...processedGroups.map(g => g.x + g.width)),
-          maxY: Math.max(...processedGroups.map(g => g.y + g.height)),
+          minX: Math.min(...allGroups.map(g => g.x || 0)),
+          minY: Math.min(...allGroups.map(g => g.y || 0)),
+          maxX: Math.max(...allGroups.map(g => (g.x || 0) + g.width)),
+          maxY: Math.max(...allGroups.map(g => (g.y || 0) + g.height)),
         }
       : null;
 
@@ -782,30 +790,58 @@ const [, drop] = useDrop(() => ({
     let maxX = Math.max(nodeBounds?.maxX ?? -Infinity, groupBounds?.maxX ?? -Infinity);
     let maxY = Math.max(nodeBounds?.maxY ?? -Infinity, groupBounds?.maxY ?? -Infinity);
 
-    // Add extra margin to account for edges/labels that can extend beyond shapes
-    const logicalPadding = 60;
-    const extraMargin = 80;
-    minX -= extraMargin;
-    minY -= extraMargin;
-    maxX += extraMargin;
-    maxY += extraMargin;
+    // Add padding to account for edges/labels that can extend beyond shapes
+    const padding = 100;
+    minX -= padding;
+    minY -= padding;
+    maxX += padding;
+    maxY += padding;
 
     const contentWidth = Math.max(1, maxX - minX);
     const contentHeight = Math.max(1, maxY - minY);
 
-    const scaleX = viewportWidth / (contentWidth + 2 * logicalPadding);
-    const scaleY = viewportHeight / (contentHeight + 2 * logicalPadding);
-    // Allow smaller scales so very large diagrams still fit; cap max zoom-in but allow tiny zoom-out
-    const k = Math.min(4, Math.min(scaleX, scaleY));
+    // Calculate scale needed to fit content within viewport
+    // If content is larger than viewport, scale < 1 (zoom out)
+    // If content is smaller than viewport, use scale 1 (no zoom in)
+    const scaleX = viewportWidth / contentWidth;
+    const scaleY = viewportHeight / contentHeight;
+    // Use the smaller scale to ensure everything fits, but don't zoom in if content already fits
+    const k = Math.min(1, Math.min(scaleX, scaleY));
+    
+    // Debug logging (remove in production)
+    console.log('Fit to view debug:', {
+      viewportWidth, viewportHeight,
+      contentWidth, contentHeight,
+      scaleX, scaleY, k,
+      bounds: { minX, minY, maxX, maxY },
+      nodesCount: allNodes.length,
+      groupsCount: allGroups.length,
+      sampleNodes: allNodes.slice(0, 3).map(n => ({ id: n.id, x: n.x, y: n.y, label: n.label })),
+      sampleGroups: allGroups.slice(0, 3).map(g => ({ id: g.id, x: g.x, y: g.y, width: g.width, height: g.height }))
+    });
 
-    const displayWidth = k * (contentWidth + 2 * logicalPadding);
-    const displayHeight = k * (contentHeight + 2 * logicalPadding);
+    const displayWidth = k * contentWidth;
+    const displayHeight = k * contentHeight;
 
-    const offsetX = (viewportWidth - displayWidth) / 2;
-    const offsetY = (viewportHeight - displayHeight) / 2;
+    // Calculate how much to shift the content to center it
+    // We want the center of the content bounds to be at the center of the viewport
+    const contentCenterX = (minX + maxX) / 2;
+    const contentCenterY = (minY + maxY) / 2;
+    const viewportCenterX = viewportWidth / 2;
+    const viewportCenterY = viewportHeight / 2;
 
-    const x = offsetX - k * (minX - logicalPadding);
-    const y = offsetY - k * (minY - logicalPadding);
+    // Transform to center the content
+    const x = viewportCenterX - k * contentCenterX;
+    const y = viewportCenterY - k * contentCenterY;
+    
+    // Debug the centering calculation
+    console.log('Centering debug:', {
+      contentBounds: { minX, minY, maxX, maxY },
+      contentCenter: { x: contentCenterX, y: contentCenterY },
+      viewportCenter: { x: viewportCenterX, y: viewportCenterY },
+      transform: { x, y, k },
+      scaledContentCenter: { x: k * contentCenterX, y: k * contentCenterY }
+    });
 
     setTransform({ x, y, k });
   }, [processedNodes, processedGroups]);
@@ -1025,6 +1061,31 @@ const [, drop] = useDrop(() => ({
     };
   }, [transform, processedGroups, addNode, moveItem]);
 
+  // Fix passive wheel event listener
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const handleWheelEvent = (e: WheelEvent) => {
+      e.preventDefault();
+      const { clientX, clientY, deltaY } = e;
+      const rect = canvas.getBoundingClientRect();
+      const s = Math.pow(0.99, deltaY);
+      const newK = Math.max(0.1, Math.min(transform.k * s, 3));
+      const mouseX = clientX - rect.left;
+      const mouseY = clientY - rect.top;
+      const newX = mouseX - (mouseX - transform.x) * s;
+      const newY = mouseY - (mouseY - transform.y) * s;
+      setTransform({ x: newX, y: newY, k: newK });
+    };
+
+    canvas.addEventListener('wheel', handleWheelEvent, { passive: false });
+    
+    return () => {
+      canvas.removeEventListener('wheel', handleWheelEvent);
+    };
+  }, [transform]);
+
   // Context menu handlers
   const handleContextMenu = (event: React.MouseEvent, itemId: string, itemType: 'node' | 'group') => {
     event.preventDefault();
@@ -1131,7 +1192,7 @@ const [, drop] = useDrop(() => ({
               isPanning && "cursor-grabbing"
             )}
             style={{ touchAction: 'none' }}
-            onWheel={handleWheel}
+            
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUpOrLeave}
