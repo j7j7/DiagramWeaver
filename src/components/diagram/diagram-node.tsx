@@ -132,6 +132,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, onC
   };
 
 
+
 return (
     <div
       ref={(node) => {

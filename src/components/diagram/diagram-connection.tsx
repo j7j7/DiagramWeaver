@@ -41,6 +41,35 @@ interface DiagramConnectionTextProps {
   allowedOverlapIds?: string[];
 }
 
+function getPreferredExitPoint(node: any, width: number, height: number, direction: 'top' | 'bottom' | 'left' | 'right'): { x: number; y: number } {
+  const centerX = node.x + width / 2;
+  const centerY = node.y + height / 2;
+  const GRID_SIZE = 20; // Match pathfinding grid size
+
+  switch (direction) {
+    case 'top':
+      return { x: centerX, y: node.y - GRID_SIZE };
+    case 'bottom':
+      return { x: centerX, y: node.y + height + GRID_SIZE };
+    case 'left':
+      return { x: node.x - GRID_SIZE, y: centerY };
+    case 'right':
+      return { x: node.x + width + GRID_SIZE, y: centerY };
+    default:
+      return { x: centerX, y: centerY };
+  }
+}
+
+function getOppositeDirection(direction: 'top' | 'bottom' | 'left' | 'right'): 'top' | 'bottom' | 'left' | 'right' {
+  switch (direction) {
+    case 'top': return 'bottom';
+    case 'bottom': return 'top';
+    case 'left': return 'right';
+    case 'right': return 'left';
+    default: return 'top';
+  }
+}
+
 function roundedPathData(points: {x: number; y: number}[], r: number): string {
   if (!points.length) return '';
   if (points.length < 2) return `M${points[0].x} ${points[0].y}`;
@@ -97,23 +126,43 @@ function getGroupBoundaryConnection(from: any, to: any): { fromX: number; fromY:
   const toCenterX = to.x + toWidth / 2;
   const toCenterY = to.y + toHeight / 2;
 
+  // Check for preferred exits first
+  let fromX = fromCenterX;
+  let fromY = fromCenterY;
+  let toX = toCenterX;
+  let toY = toCenterY;
+
+  // Apply preferred exit for 'from' node
+  if (from.preferredExit) {
+    const exitPoint = getPreferredExitPoint(from, fromWidth, fromHeight, from.preferredExit);
+    fromX = exitPoint.x;
+    fromY = exitPoint.y;
+  }
+
+  // Apply preferred exit for 'to' node (as an entry point)
+  if (to.preferredExit) {
+    const entryPoint = getPreferredExitPoint(to, toWidth, toHeight, getOppositeDirection(to.preferredExit));
+    toX = entryPoint.x;
+    toY = entryPoint.y;
+  }
+
   // Check if either object is a group or zone
   const isFromGroup = 'type' in from && from.type === 'group';
   const isToGroup = 'type' in to && to.type === 'group';
   const isFromZone = from.subType === 'zone';
   const isToZone = to.subType === 'zone';
 
-  // For connections involving groups or zones, calculate smart boundary points
-  if (isFromGroup || isToGroup || isFromZone || isToZone) {
+  // For connections involving groups or zones (but not with preferred exits), calculate smart boundary points
+  if ((isFromGroup || isToGroup || isFromZone || isToZone) && !from.preferredExit && !to.preferredExit) {
     return getSmartBoundaryConnection(from, to, fromCenterX, fromCenterY, toCenterX, toCenterY, fromWidth, fromHeight, toWidth, toHeight);
   }
 
-  // For node-to-node connections, use centers
+  // Return the calculated points (either preferred exits or centers)
   return {
-    fromX: fromCenterX,
-    fromY: fromCenterY,
-    toX: toCenterX,
-    toY: toCenterY
+    fromX,
+    fromY,
+    toX,
+    toY
   };
 }
 
@@ -764,11 +813,15 @@ export function DiagramConnection({ from, to, allObstacles, allowedOverlapIds = 
   const allowed = new Set<string>([from.id, to.id, ...allowedOverlapIds]);
   const obstaclesForPath = allObstacles.filter((o: any) => !allowed.has(o.id));
 
+  // Get preferred direction from source node
+  const preferredDirection = 'preferredExit' in from ? from.preferredExit : undefined;
+  
   const path = findPath(
     { x: fromX, y: fromY },
     { x: toX, y: toY },
     obstaclesForPath,
-    { width: maxX, height: maxY }
+    { width: maxX, height: maxY },
+    preferredDirection
   );
 
   const roundedPath = roundedPathData(path, CORNER_RADIUS);
@@ -782,18 +835,45 @@ export function DiagramConnection({ from, to, allObstacles, allowedOverlapIds = 
 
   // Use connection color first, then 'to' node, fallback to 'from' node, then default
   const finalConnectionColor = connectionColor || to.lineColor || from.lineColor || '#6b7280';
+  
+  // Check if source node has arrow enabled (only nodes have arrows, not groups)
+  const hasArrow = 'arrow' in from && from.arrow === true;
+  const markerId = hasArrow ? `arrowhead-${from.id}-${to.id}` : undefined;
 
   return (
-    <g>
-      <path
-        d={roundedPath}
-        stroke={finalConnectionColor}
-        className="transition-all duration-300 cursor-pointer hover:stroke-opacity-80"
-        strokeWidth="2.5"
-        fill="none"
-        onClick={handleClick}
-      />
-    </g>
+    <>
+      {/* Define arrowhead marker if needed - must be in a global defs */}
+      {hasArrow && (
+        <defs>
+          <marker
+            id={markerId}
+            markerWidth="10"
+            markerHeight="7"
+            refX="9"
+            refY="3.5"
+            orient="auto"
+            markerUnits="strokeWidth"
+          >
+            <polygon
+              points="0 0, 10 3.5, 0 7"
+              fill={finalConnectionColor}
+            />
+          </marker>
+        </defs>
+      )}
+      
+      <g>
+        <path
+          d={roundedPath}
+          stroke={finalConnectionColor}
+          className="transition-all duration-300 cursor-pointer hover:stroke-opacity-80"
+          strokeWidth="2.5"
+          fill="none"
+          onClick={handleClick}
+          markerEnd={hasArrow ? `url(#${markerId})` : undefined}
+        />
+      </g>
+    </>
   );
 }
 
@@ -817,12 +897,16 @@ export function DiagramConnectionText({ connectionData, from, to, connectionColo
     const allowed = new Set<string>([from.id, to.id, ...allowedOverlapIds]);
     const obstaclesForPath = allObstacles.filter((o: any) => !allowed.has(o.id));
 
+    // Get preferred direction from source node (same as main connection)
+    const preferredDirection = from && 'preferredExit' in from ? from.preferredExit : undefined;
+    
     // Calculate the same path as the connection line
     const path = findPath(
       { x: fromX, y: fromY },
       { x: toX, y: toY },
       obstaclesForPath,
-      { width: maxX, height: maxY }
+      { width: maxX, height: maxY },
+      preferredDirection
     );
 
     // Position text at the middle of the path

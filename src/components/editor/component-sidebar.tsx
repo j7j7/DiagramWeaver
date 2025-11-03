@@ -562,6 +562,54 @@ return (
                   </div>
                 )}
                 
+                {selectedItem.itemType === 'node' && (
+                  <>
+                    <div>
+                      <Label htmlFor="preferredExit">Preferred Exit</Label>
+                      <Select 
+                        value={('preferredExit' in selectedItem ? selectedItem.preferredExit : undefined) || 'none'}
+                        onValueChange={(value) => {
+                          onItemUpdate({
+                            ...selectedItem,
+                            preferredExit: value === 'none' ? undefined : value as 'top' | 'bottom' | 'left' | 'right'
+                          });
+                        }}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select preferred exit direction" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">None (Auto)</SelectItem>
+                          <SelectItem value="top">Top</SelectItem>
+                          <SelectItem value="bottom">Bottom</SelectItem>
+                          <SelectItem value="left">Left</SelectItem>
+                          <SelectItem value="right">Right</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground mt-1">Force connections to exit from this direction first</p>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      <input
+                        id="arrow"
+                        type="checkbox"
+                        checked={'arrow' in selectedItem ? selectedItem.arrow === true : false}
+                        onChange={(e) => {
+                          onItemUpdate({
+                            ...selectedItem,
+                            arrow: e.target.checked
+                          });
+                        }}
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                      />
+                      <Label htmlFor="arrow" className="text-sm font-medium">
+                        Show Arrow on Connections
+                      </Label>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Add arrowhead at the end of outgoing connection lines</p>
+                  </>
+                )}
+                
                 {parentGroup && (
                     <div>
                         <Label>Parent Group</Label>

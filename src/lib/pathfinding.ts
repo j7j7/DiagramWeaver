@@ -200,7 +200,184 @@ function reconstructPath(node: GridNode): Point[] {
     return path;
 }
 
-export function findPath(start: Point, end: Point, obstacles: Obstacle[], canvasSize: {width: number, height: number}): Point[] {
+function findPathWithPreferredDirection(
+  start: Point, 
+  end: Point, 
+  obstacles: Obstacle[], 
+  canvasSize: {width: number, height: number}, 
+  preferredDirection: 'top' | 'bottom' | 'left' | 'right',
+  grid: GridNode[][],
+  startNode: GridNode,
+  endNode: GridNode
+): Point[] {
+  // Calculate the direction vector for preferred direction
+  const directionMap = {
+    'top': { dx: 0, dy: -1 },
+    'bottom': { dx: 0, dy: 1 },
+    'left': { dx: -1, dy: 0 },
+    'right': { dx: 1, dy: 0 }
+  };
+  
+  const preferredDir = directionMap[preferredDirection];
+  
+  // Find the first valid node in the preferred direction
+  let forcedFirstNode: GridNode | null = null;
+  let steps = 1;
+  const maxSteps = 10; // Don't search too far
+  
+  while (steps <= maxSteps && !forcedFirstNode) {
+    const newX = startNode.x + (preferredDir.dx * steps);
+    const newY = startNode.y + (preferredDir.dy * steps);
+    
+    if (grid[newY] && grid[newY][newX] && !grid[newY][newX].isObstacle) {
+      forcedFirstNode = grid[newY][newX];
+      break;
+    }
+    steps++;
+  }
+  
+  // If we can't move in preferred direction, fall back to regular pathfinding
+  if (!forcedFirstNode) {
+    return findRegularPath(grid, startNode, endNode, obstacles);
+  }
+  
+  // Find path from the forced first node to the end
+  const pathFromForced = findRegularPath(grid, forcedFirstNode, endNode, obstacles);
+  
+  if (pathFromForced.length === 0) {
+    // If no path from forced node, try regular pathfinding
+    return findRegularPath(grid, startNode, endNode, obstacles);
+  }
+  
+  // Create proper orthogonal path with preferred direction
+  const startPoint = { x: start.x, y: start.y };
+  const forcedPoint = { x: forcedFirstNode.x * GRID_SIZE + GRID_SIZE / 2, y: forcedFirstNode.y * GRID_SIZE + GRID_SIZE / 2 };
+  
+  // Create an orthogonal intermediate point based on preferred direction
+  let orthogonalPath: Point[] = [startPoint];
+  
+  if (preferredDirection === 'top' || preferredDirection === 'bottom') {
+    // For vertical preferred directions, go vertically first, then horizontally
+    if (Math.abs(startPoint.y - forcedPoint.y) > 1) {
+      orthogonalPath.push({ x: startPoint.x, y: forcedPoint.y });
+    }
+    if (Math.abs(startPoint.x - forcedPoint.x) > 1) {
+      orthogonalPath.push(forcedPoint);
+    }
+  } else {
+    // For horizontal preferred directions, go horizontally first, then vertically
+    if (Math.abs(startPoint.x - forcedPoint.x) > 1) {
+      orthogonalPath.push({ x: forcedPoint.x, y: startPoint.y });
+    }
+    if (Math.abs(startPoint.y - forcedPoint.y) > 1) {
+      orthogonalPath.push(forcedPoint);
+    }
+  }
+  
+  // Ensure forced point is in the path if not already added
+  if (orthogonalPath[orthogonalPath.length - 1] !== forcedPoint) {
+    orthogonalPath.push(forcedPoint);
+  }
+  
+  // Remove the first point from pathFromForced since it's the same as forcedPoint
+  const remainingPath = pathFromForced.slice(1);
+  
+  // Combine the orthogonal path with the remaining path
+  const fullPath = [...orthogonalPath, ...remainingPath];
+  return postProcessPath(simplifyPath(fullPath), obstacles);
+}
+
+function findRegularPath(grid: GridNode[][], startNode: GridNode, endNode: GridNode, obstacles: Obstacle[]): Point[] {
+  // Reset all nodes for a fresh search
+  for (let y = 0; y < grid.length; y++) {
+    for (let x = 0; x < grid[y].length; x++) {
+      grid[y][x].f = 0;
+      grid[y][x].g = 0;
+      grid[y][x].h = 0;
+      grid[y][x].parent = null;
+    }
+  }
+  
+  const openSet: GridNode[] = [startNode];
+  const closedSet: GridNode[] = [];
+
+  while(openSet.length > 0) {
+    let lowestIndex = 0;
+    for(let i=0; i<openSet.length; i++) {
+      if(openSet[i].f < openSet[lowestIndex].f) {
+        lowestIndex = i;
+      }
+    }
+
+    const current = openSet[lowestIndex];
+
+    if (current === endNode) {
+      return reconstructPath(current);
+    }
+
+    openSet.splice(lowestIndex, 1);
+    closedSet.push(current);
+
+    const neighbors = getNeighbors(grid, current);
+    for (const neighbor of neighbors) {
+      if (!closedSet.includes(neighbor) && !neighbor.isObstacle) {
+        const baseCost = 1;
+        const edgePenalty = neighbor.edgeCost;
+        const proximityPenalty = neighbor.nearObstacle ? OBSTACLE_PROXIMITY_PENALTY : 0;
+        const zoneEdgePenalty = neighbor.nearZoneEdge ? ZONE_EDGE_PENALTY : 0;
+        
+        let distancePenalty = 0;
+        if (neighbor.obstacleDistance < PREFERRED_CLEARANCE) {
+          distancePenalty = Math.max(0, (PREFERRED_CLEARANCE - neighbor.obstacleDistance) / PREFERRED_CLEARANCE * 5);
+        }
+        
+        let directionPenalty = 0;
+        if (current.parent) {
+          const prevDirection = { x: current.x - current.parent.x, y: current.y - current.parent.y };
+          const newDirection = { x: neighbor.x - current.x, y: neighbor.y - current.y };
+          if (prevDirection.x !== newDirection.x && prevDirection.y !== newDirection.y) {
+            directionPenalty = 0.5;
+          }
+        }
+        
+        let edgeHuggingPenalty = 0;
+        if (neighbor.nearZoneEdge && current.parent && current.parent.nearZoneEdge) {
+          const prevDirection = { x: current.x - current.parent.x, y: current.y - current.parent.y };
+          const newDirection = { x: neighbor.x - current.x, y: neighbor.y - current.y };
+          
+          if (prevDirection.x === newDirection.x && prevDirection.y === newDirection.y) {
+            edgeHuggingPenalty = ZONE_EDGE_PENALTY * 5;
+          }
+        }
+        
+        const totalMoveCost = baseCost + edgePenalty + proximityPenalty + zoneEdgePenalty + distancePenalty + directionPenalty + edgeHuggingPenalty;
+        const tempG = current.g + totalMoveCost;
+
+        let newPath = false;
+        if (openSet.includes(neighbor)) {
+          if (tempG < neighbor.g) {
+            neighbor.g = tempG;
+            newPath = true;
+          }
+        } else {
+          neighbor.g = tempG;
+          newPath = true;
+          openSet.push(neighbor);
+        }
+
+        if (newPath) {
+          neighbor.h = heuristic(neighbor, endNode);
+          neighbor.f = neighbor.g + neighbor.h;
+          neighbor.parent = current;
+        }
+      }
+    }
+  }
+  
+  return []; // No path found
+}
+
+export function findPath(start: Point, end: Point, obstacles: Obstacle[], canvasSize: {width: number, height: number}, preferredDirection?: 'top' | 'bottom' | 'left' | 'right'): Point[] {
     const grid = createGrid(canvasSize.width, canvasSize.height, obstacles);
     const startNode = grid[Math.floor(start.y / GRID_SIZE)]?.[Math.floor(start.x / GRID_SIZE)];
     const endNode = grid[Math.floor(end.y / GRID_SIZE)]?.[Math.floor(end.x / GRID_SIZE)];
@@ -208,6 +385,11 @@ export function findPath(start: Point, end: Point, obstacles: Obstacle[], canvas
     // Enhanced fallback logic for invalid start/end positions
     if (!startNode || startNode.isObstacle || !endNode || endNode.isObstacle) {
       return createIntelligentFallbackPath(start, end, obstacles, grid);
+    }
+
+    // If preferred direction is specified, force first move in that direction
+    if (preferredDirection) {
+      return findPathWithPreferredDirection(start, end, obstacles, canvasSize, preferredDirection, grid, startNode, endNode);
     }
   
     const openSet: GridNode[] = [startNode];

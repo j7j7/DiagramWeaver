@@ -143,6 +143,20 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
   - **Result**: 2 nodes now position at ~33% and ~67% of the edge length instead of 0% and 100%
   - **Maintained**: Single node centering (50%) and 3+ node distribution remain unchanged
   - **Applies To**: Both horizontal (top/bottom) and vertical (left/right) edge distributions
+- **Preferred Exit & Connection Arrows** (2025-11-03): Added directional connection control and arrowhead indicators:
+  - **Preferred Exit Property**: Added `preferredExit?: 'top' | 'bottom' | 'left' | 'right'` to DiagramNodeData interface
+  - **Pathfinding Integration**: Modified connection boundary calculation to respect preferred exit directions
+  - **Edge-Based Connections**: When preferred exit is set, connections start 1 grid position (20px) outward from the specified edge
+  - **Connection Arrowheads**: Added `arrow?: boolean` property to enable/disable arrowheads on outgoing connections
+  - **SVG Arrowhead Markers**: Arrowheads render as traditional SVG markers at the end of connection lines
+  - **UI Controls**: Added dropdown for preferred exit and checkbox for arrow enable/disable in sidebar
+  - **Default Disabled**: Arrows are disabled by default and must be explicitly enabled per node
+  - **Pathfinding Logic**: Enhanced pathfinding algorithm to force first movement in preferred direction
+  - **Direction Enforcement**: Modified `findPath()` to accept preferred direction parameter and ensure first segment goes in that direction
+  - **Orthogonal Routing**: Ensures preferred direction paths maintain right-angle lines without diagonal segments
+  - **Type Updates**: Extended both DiagramNodeData and DiagramNodeItem interfaces with new properties
+  - **Visual Implementation**: Arrowheads use SVG markers with automatic orientation and color matching
+  - **Benefits**: Better control over connection routing, clearer data flow indication, enhanced diagram readability
 
 ### Development Tools
 - **Scripts**: npm run dev, build, lint, typecheck, genkit

@@ -7,6 +7,8 @@ export interface DiagramNodeData {
   y?: number;
   lineColor?: string; // Color for connections/borders
   edgePosition?: 'top' | 'bottom' | 'left' | 'right'; // Position node on edge of parent group
+  preferredExit?: 'top' | 'bottom' | 'left' | 'right'; // Preferred direction for outgoing connections
+  arrow?: boolean; // Enable arrow at end of outgoing connection lines
 }
 
 export interface DiagramConnectionData {
@@ -24,6 +26,8 @@ export interface DiagramNodeItem {
   x?: number;
   y?: number;
   lineColor?: string; // Color for connections/borders
+  preferredExit?: 'top' | 'bottom' | 'left' | 'right'; // Preferred direction for outgoing connections
+  arrow?: boolean; // Enable arrow at end of outgoing connection lines
 }
 
 export interface DiagramGroupItem {
