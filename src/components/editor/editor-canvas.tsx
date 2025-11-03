@@ -145,13 +145,72 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             itemsPerRow = group.maxItemsPerRow || Math.max(1, Math.floor(Math.sqrt(numItems) * 1.2));
         }
         
-        // For empty groups, ensure minimum size to accommodate one item
+        // For groups with no regular children, ensure minimum size to accommodate content
+        // Consider edge nodes when determining if group is truly empty
         if (numItems === 0) {
-            const minGroupWidth = NODE_WIDTH + (GROUP_PADDING * 2);
-            const minGroupHeight = NODE_HEIGHT + (GROUP_PADDING * 2);
+            let minGroupWidth = NODE_WIDTH + (GROUP_PADDING * 2);
+            let minGroupHeight = NODE_HEIGHT + (GROUP_PADDING * 2);
+            
+            // If we have edge nodes but no regular nodes, ensure adequate space for edge positioning
+            if (edgeNodes.length > 0) {
+                // Make sure we have enough width/height for proper edge node centering
+                minGroupWidth = Math.max(minGroupWidth, NODE_WIDTH * 2 + (GROUP_PADDING * 2));
+                minGroupHeight = Math.max(minGroupHeight, NODE_HEIGHT * 2 + (GROUP_PADDING * 2));
+            }
             
             (group as PositionedGroup).width = minGroupWidth;
             (group as PositionedGroup).height = minGroupHeight;
+            
+            // Position edge nodes even when there are no regular children
+            // Group nodes by edge position for even distribution
+            const nodesByEdge = {
+                top: edgeNodes.filter(n => n.edgePosition === 'top'),
+                bottom: edgeNodes.filter(n => n.edgePosition === 'bottom'),
+                left: edgeNodes.filter(n => n.edgePosition === 'left'),
+                right: edgeNodes.filter(n => n.edgePosition === 'right')
+            };
+            
+            // Position nodes evenly along each edge
+            Object.entries(nodesByEdge).forEach(([edge, nodes]) => {
+                if (nodes.length === 0) return;
+                
+                const nodeWidth = NODE_WIDTH;
+                const nodeHeight = NODE_HEIGHT;
+                
+                nodes.forEach((node, index) => {
+                    switch (edge) {
+                        case 'top':
+                        case 'bottom':
+                            // Distribute horizontally along top/bottom edges
+                            if (nodes.length === 1) {
+                                node.x = (minGroupWidth - nodeWidth) / 2;
+                            } else {
+                                const availableWidth = minGroupWidth - nodeWidth;
+                                const spacing = availableWidth / (nodes.length - 1);
+                                node.x = (nodeWidth / 2) + (index * spacing) - (nodeWidth / 2);
+                            }
+                            node.y = edge === 'top' 
+                                ? -nodeHeight / 2 + nodeHeight * 0.1
+                                : minGroupHeight - nodeHeight / 2 + nodeHeight * 0.1;
+                            break;
+                            
+                        case 'left':
+                        case 'right':
+                            // Distribute vertically along left/right edges
+                            node.x = edge === 'left'
+                                ? -nodeWidth / 2
+                                : minGroupWidth - nodeWidth / 2;
+                            if (nodes.length === 1) {
+                                node.y = (minGroupHeight - nodeHeight) / 2;
+                            } else {
+                                const availableHeight = minGroupHeight - nodeHeight;
+                                const spacing = availableHeight / (nodes.length - 1);
+                                node.y = (nodeHeight / 2) + (index * spacing) - (nodeHeight / 2);
+                            }
+                            break;
+                    }
+                });
+            });
             
             return { width: minGroupWidth, height: minGroupHeight };
         }
@@ -180,35 +239,71 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
 
         contentHeight = currentY + rowMaxHeight;
 
-        const groupWidth = contentWidth - GROUP_NODE_SPACING + GROUP_PADDING;
-        const groupHeight = contentHeight + GROUP_PADDING;
+        // Calculate group width: if we have items, remove the extra spacing from the last item
+        // If we have no items, contentWidth is 0, so we just add padding on both sides
+        let groupWidth = numItems > 0 ? contentWidth - GROUP_NODE_SPACING + GROUP_PADDING : GROUP_PADDING * 2;
+        let groupHeight = contentHeight + GROUP_PADDING;
+        
+        // If we have edge nodes, ensure minimum size for proper edge positioning
+        if (edgeNodes.length > 0) {
+            const minWidthForEdges = NODE_WIDTH * 2 + (GROUP_PADDING * 2);
+            const minHeightForEdges = NODE_HEIGHT * 2 + (GROUP_PADDING * 2);
+            groupWidth = Math.max(groupWidth, minWidthForEdges);
+            groupHeight = Math.max(groupHeight, minHeightForEdges);
+        }
         
         (group as PositionedGroup).width = groupWidth;
         (group as PositionedGroup).height = groupHeight;
 
         // Position edge nodes on the boundaries of the group
-        edgeNodes.forEach(node => {
+        // Group nodes by edge position for even distribution
+        const nodesByEdge = {
+            top: edgeNodes.filter(n => n.edgePosition === 'top'),
+            bottom: edgeNodes.filter(n => n.edgePosition === 'bottom'),
+            left: edgeNodes.filter(n => n.edgePosition === 'left'),
+            right: edgeNodes.filter(n => n.edgePosition === 'right')
+        };
+        
+        // Position nodes evenly along each edge
+        Object.entries(nodesByEdge).forEach(([edge, nodes]) => {
+            if (nodes.length === 0) return;
+            
             const nodeWidth = NODE_WIDTH;
             const nodeHeight = NODE_HEIGHT;
             
-            switch (node.edgePosition) {
-                case 'top':
-                    node.x = (groupWidth - nodeWidth) / 2;
-                    node.y = -nodeHeight / 2 + nodeHeight * 0.1; // Half outside, half inside, adjusted 10% lower
-                    break;
-                case 'bottom':
-                    node.x = (groupWidth - nodeWidth) / 2;
-                    node.y = groupHeight - nodeHeight / 2 + nodeHeight * 0.1; // Half outside, half inside, adjusted 10% lower
-                    break;
-                case 'left':
-                    node.x = -nodeWidth / 2; // Half outside, half inside
-                    node.y = (groupHeight - nodeHeight) / 2;
-                    break;
-                case 'right':
-                    node.x = groupWidth - nodeWidth / 2; // Half outside, half inside
-                    node.y = (groupHeight - nodeHeight) / 2;
-                    break;
-            }
+            nodes.forEach((node, index) => {
+                switch (edge) {
+                    case 'top':
+                    case 'bottom':
+                        // Distribute horizontally along top/bottom edges
+                        if (nodes.length === 1) {
+                            node.x = (groupWidth - nodeWidth) / 2;
+                        } else {
+                            const availableWidth = groupWidth - nodeWidth;
+                            const spacing = availableWidth / (nodes.length - 1);
+                            node.x = (nodeWidth / 2) + (index * spacing) - (nodeWidth / 2);
+                        }
+                        node.y = edge === 'top' 
+                            ? -nodeHeight / 2 + nodeHeight * 0.1
+                            : groupHeight - nodeHeight / 2 + nodeHeight * 0.1;
+                        break;
+                        
+                    case 'left':
+                    case 'right':
+                        // Distribute vertically along left/right edges
+                        node.x = edge === 'left'
+                            ? -nodeWidth / 2
+                            : groupWidth - nodeWidth / 2;
+                        if (nodes.length === 1) {
+                            node.y = (groupHeight - nodeHeight) / 2;
+                        } else {
+                            const availableHeight = groupHeight - nodeHeight;
+                            const spacing = availableHeight / (nodes.length - 1);
+                            node.y = (nodeHeight / 2) + (index * spacing) - (nodeHeight / 2);
+                        }
+                        break;
+                }
+            });
         });
 
         return { width: groupWidth, height: groupHeight };

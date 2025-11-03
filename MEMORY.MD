@@ -124,6 +124,18 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
   - **Schema Support**: Updated Zod schemas to validate edgePosition property
   - **Backward Compatible**: Nodes without edgePosition property continue to be positioned inside groups normally
   - **Preserved Capabilities**: All existing layout and positioning features remain functional
+- **Edge Node Alignment Fix** (2025-11-03): Fixed alignment issue where edge-positioned nodes were misaligned when they were the only node inside a group/zone:
+  - **Root Cause**: When a group contained only edge-positioned nodes (no regular nodes), the layout algorithm treated it as an "empty" group (`numItems === 0`) and used minimum sizing, but didn't position the edge nodes within that sizing logic
+  - **Issue**: Edge nodes were being positioned after group sizing was calculated, but the empty group path didn't account for their positioning needs
+  - **Solution**: Modified the empty group handling to:
+    1. Detect when edge nodes exist even with no regular children
+    2. Ensure adequate minimum group size for proper edge positioning (2x node dimensions)
+    3. Position edge nodes within the empty group logic path, not just in the regular layout path
+  - **Algorithm Update**: Edge node positioning now happens in both the empty group case and regular layout case
+  - **Consistent Sizing**: Groups with edge nodes now maintain adequate minimum size (2x node dimensions) in both empty and populated states
+  - **Even Distribution**: When multiple nodes are positioned on the same edge, they are distributed evenly across the available edge space
+  - **Distribution Logic**: Single nodes remain centered; multiple nodes spread from edge to edge with equal spacing between them
+  - **Result**: Edge nodes align perfectly whether single (centered) or multiple (evenly distributed), and groups maintain consistent size in all scenarios
 
 ### Development Tools
 - **Scripts**: npm run dev, build, lint, typecheck, genkit
