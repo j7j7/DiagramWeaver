@@ -136,6 +136,13 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
   - **Even Distribution**: When multiple nodes are positioned on the same edge, they are distributed evenly across the available edge space
   - **Distribution Logic**: Single nodes remain centered; multiple nodes spread from edge to edge with equal spacing between them
   - **Result**: Edge nodes align perfectly whether single (centered) or multiple (evenly distributed), and groups maintain consistent size in all scenarios
+- **Edge Distribution Enhancement** (2025-11-03): Fixed edge node distribution for 2-item case to avoid extreme positioning:
+  - **Issue**: With exactly 2 nodes on an edge, they were positioned at extreme ends (0% and 100%) rather than being evenly distributed
+  - **Root Cause**: Spacing calculation used `availableSpace / (count - 1)` which for 2 nodes resulted in positions at the very edges
+  - **Solution**: Changed to `availableSpace / (count + 1)` and position at `spacing * (index + 1)` for more even distribution
+  - **Result**: 2 nodes now position at ~33% and ~67% of the edge length instead of 0% and 100%
+  - **Maintained**: Single node centering (50%) and 3+ node distribution remain unchanged
+  - **Applies To**: Both horizontal (top/bottom) and vertical (left/right) edge distributions
 
 ### Development Tools
 - **Scripts**: npm run dev, build, lint, typecheck, genkit

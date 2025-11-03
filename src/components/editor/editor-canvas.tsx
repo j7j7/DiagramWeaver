@@ -181,14 +181,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     switch (edge) {
                         case 'top':
                         case 'bottom':
-                            // Distribute horizontally along top/bottom edges
-                            if (nodes.length === 1) {
-                                node.x = (minGroupWidth - nodeWidth) / 2;
-                            } else {
-                                const availableWidth = minGroupWidth - nodeWidth;
-                                const spacing = availableWidth / (nodes.length - 1);
-                                node.x = (nodeWidth / 2) + (index * spacing) - (nodeWidth / 2);
-                            }
+                        // Distribute horizontally along top/bottom edges
+                        if (nodes.length === 1) {
+                            node.x = (minGroupWidth - nodeWidth) / 2;
+                        } else {
+                            const spacing = minGroupWidth / (nodes.length + 1);
+                            node.x = spacing * (index + 1) - (nodeWidth / 2);
+                        }
                             node.y = edge === 'top' 
                                 ? -nodeHeight / 2 + nodeHeight * 0.1
                                 : minGroupHeight - nodeHeight / 2 + nodeHeight * 0.1;
@@ -203,9 +202,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                             if (nodes.length === 1) {
                                 node.y = (minGroupHeight - nodeHeight) / 2;
                             } else {
-                                const availableHeight = minGroupHeight - nodeHeight;
-                                const spacing = availableHeight / (nodes.length - 1);
-                                node.y = (nodeHeight / 2) + (index * spacing) - (nodeHeight / 2);
+                                const spacing = minGroupHeight / (nodes.length + 1);
+                                node.y = spacing * (index + 1) - (nodeHeight / 2);
                             }
                             break;
                     }
@@ -279,9 +277,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                         if (nodes.length === 1) {
                             node.x = (groupWidth - nodeWidth) / 2;
                         } else {
-                            const availableWidth = groupWidth - nodeWidth;
-                            const spacing = availableWidth / (nodes.length - 1);
-                            node.x = (nodeWidth / 2) + (index * spacing) - (nodeWidth / 2);
+                            const spacing = groupWidth / (nodes.length + 1);
+                            node.x = spacing * (index + 1) - (nodeWidth / 2);
                         }
                         node.y = edge === 'top' 
                             ? -nodeHeight / 2 + nodeHeight * 0.1
@@ -297,9 +294,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                         if (nodes.length === 1) {
                             node.y = (groupHeight - nodeHeight) / 2;
                         } else {
-                            const availableHeight = groupHeight - nodeHeight;
-                            const spacing = availableHeight / (nodes.length - 1);
-                            node.y = (nodeHeight / 2) + (index * spacing) - (nodeHeight / 2);
+                            const spacing = groupHeight / (nodes.length + 1);
+                            node.y = spacing * (index + 1) - (nodeHeight / 2);
                         }
                         break;
                 }
