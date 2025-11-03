@@ -143,20 +143,42 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
   - **Result**: 2 nodes now position at ~33% and ~67% of the edge length instead of 0% and 100%
   - **Maintained**: Single node centering (50%) and 3+ node distribution remain unchanged
   - **Applies To**: Both horizontal (top/bottom) and vertical (left/right) edge distributions
-- **Preferred Exit & Connection Arrows** (2025-11-03): Added directional connection control and arrowhead indicators:
-  - **Preferred Exit Property**: Added `preferredExit?: 'top' | 'bottom' | 'left' | 'right'` to DiagramNodeData interface
-  - **Pathfinding Integration**: Modified connection boundary calculation to respect preferred exit directions
+- **Preferred Exit & Connection Arrows** (2025-11-03): Added per-connection directional control and arrowhead indicators:
+  - **Per-Connection Preferred Exit**: Added `preferredExit?: 'top' | 'bottom' | 'left' | 'right'` to DiagramConnectionData interface
+  - **Per-Connection Arrow Control**: Added `arrow?: boolean` property to connections to enable/disable arrowheads per connection
+  - **Pathfinding Integration**: Modified connection boundary calculation to respect per-connection preferred exit directions
   - **Edge-Based Connections**: When preferred exit is set, connections start 1 grid position (20px) outward from the specified edge
-  - **Connection Arrowheads**: Added `arrow?: boolean` property to enable/disable arrowheads on outgoing connections
   - **SVG Arrowhead Markers**: Arrowheads render as traditional SVG markers at the end of connection lines
-  - **UI Controls**: Added dropdown for preferred exit and checkbox for arrow enable/disable in sidebar
-  - **Default Disabled**: Arrows are disabled by default and must be explicitly enabled per node
-  - **Pathfinding Logic**: Enhanced pathfinding algorithm to force first movement in preferred direction
+  - **UI Controls**: Added preferred exit dropdown and arrow checkbox per outgoing connection in sidebar
+  - **Node Edge Arrows**: Created NodeEdgeArrows component that renders arrows on specific node edges based on preferred exit direction
+  - **Connection-Specific Settings**: Each outgoing connection can have its own preferred exit direction
+  - **Pathfinding Logic**: Enhanced pathfinding algorithm to force first movement in preferred direction per connection
   - **Direction Enforcement**: Modified `findPath()` to accept preferred direction parameter and ensure first segment goes in that direction
   - **Orthogonal Routing**: Ensures preferred direction paths maintain right-angle lines without diagonal segments
-  - **Type Updates**: Extended both DiagramNodeData and DiagramNodeItem interfaces with new properties
+  - **Zone Entry Fix**: Special handling for connections to zones ensures straight-line entry without grid-snapping curves
+  - **Type Updates**: Extended DiagramConnectionData interface and updated sidebar connection controls
   - **Visual Implementation**: Arrowheads use SVG markers with automatic orientation and color matching
-  - **Benefits**: Better control over connection routing, clearer data flow indication, enhanced diagram readability
+- **Benefits**: Granular control over individual connection routing, clearer data flow indication, enhanced diagram readability
+- **Preferred Exit Positioning Fix** (2025-11-03): Fixed issue where preferred exit directions were not placing connection start points at the correct node edges:
+  - **Root Cause**: getGroupBoundaryConnection was looking for preferred exit on node objects instead of connection data
+  - **Data Location Fix**: Updated to read fromPreferredExit and toPreferredEntry from connection data (not from nodes)
+  - **Edge Calculation**: Modified getPreferredExitPoint to position connections directly at node edges (not offset by grid distance)
+  - **Proper Direction Support**: Added toPreferredEntry parameter to handle preferred entry directions for incoming connections
+  - **Pathfinding Enhancement**: Extended findPath function to support both preferred start and end directions simultaneously
+  - **Algorithm Update**: Enhanced pathfinding to ensure connections start in preferred direction and approach targets from preferred entry direction
+  - **UI Completion**: Added incoming connection controls for "Preferred Entry (To)" and "Show Arrow (To)" in sidebar
+  - **Result**: Preferred exit "bottom" now correctly places connection at bottom edge of node, same for all directions
+  - **Entry Direction Fix**: Fixed reversed preferred entry directions - "left" now correctly enters from left side instead of right
+  - **Logic Correction**: Removed incorrect getOppositeDirection() usage in target node entry point calculation
+  - **Consistent Behavior**: Both source preferred exits and target preferred entries now work intuitively
+- **Arrow Rendering Fix** (2025-11-03): Fixed arrow display to use SVG markers on connection lines instead of drawing separate lines:
+  - **Issue**: NodeEdgeArrows component was drawing separate arrow lines instead of using existing connection lines
+  - **Root Cause**: Duplicate rendering system - both SVG markers on connections and separate arrow lines were being drawn
+  - **Solution**: Removed NodeEdgeArrows component usage and enhanced DiagramConnection arrow logic
+  - **SVG Marker Integration**: Updated connection component to properly use fromArrow and toArrow properties with SVG markers
+  - **Backward Compatibility**: Maintained support for legacy 'arrow' property while adding new per-direction arrow support
+  - **Clean Rendering**: Arrows now appear as proper arrowheads on the connection lines, not as separate overlapping elements
+  - **Result**: "Show Arrow" checkboxes now correctly add arrowheads to the existing connection lines
 
 ### Development Tools
 - **Scripts**: npm run dev, build, lint, typecheck, genkit

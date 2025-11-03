@@ -208,7 +208,9 @@ function findPathWithPreferredDirection(
   preferredDirection: 'top' | 'bottom' | 'left' | 'right',
   grid: GridNode[][],
   startNode: GridNode,
-  endNode: GridNode
+  endNode: GridNode,
+  targetIsZone?: boolean,
+  preferredEndDirection?: 'top' | 'bottom' | 'left' | 'right'
 ): Point[] {
   // Calculate the direction vector for preferred direction
   const directionMap = {
@@ -253,29 +255,20 @@ function findPathWithPreferredDirection(
   const startPoint = { x: start.x, y: start.y };
   const forcedPoint = { x: forcedFirstNode.x * GRID_SIZE + GRID_SIZE / 2, y: forcedFirstNode.y * GRID_SIZE + GRID_SIZE / 2 };
   
-  // Create an orthogonal intermediate point based on preferred direction
+  // Create an intermediate point that ensures we exit in the preferred direction
   let orthogonalPath: Point[] = [startPoint];
   
-  if (preferredDirection === 'top' || preferredDirection === 'bottom') {
-    // For vertical preferred directions, go vertically first, then horizontally
-    if (Math.abs(startPoint.y - forcedPoint.y) > 1) {
-      orthogonalPath.push({ x: startPoint.x, y: forcedPoint.y });
-    }
-    if (Math.abs(startPoint.x - forcedPoint.x) > 1) {
-      orthogonalPath.push(forcedPoint);
-    }
-  } else {
-    // For horizontal preferred directions, go horizontally first, then vertically
-    if (Math.abs(startPoint.x - forcedPoint.x) > 1) {
-      orthogonalPath.push({ x: forcedPoint.x, y: startPoint.y });
-    }
-    if (Math.abs(startPoint.y - forcedPoint.y) > 1) {
-      orthogonalPath.push(forcedPoint);
-    }
-  }
+  // Calculate an intermediate point one grid step away in the preferred direction
+  const intermediatePoint = {
+    x: startPoint.x + (preferredDir.dx * GRID_SIZE),
+    y: startPoint.y + (preferredDir.dy * GRID_SIZE)
+  };
   
-  // Ensure forced point is in the path if not already added
-  if (orthogonalPath[orthogonalPath.length - 1] !== forcedPoint) {
+  // Add the intermediate point to ensure we exit in the preferred direction
+  orthogonalPath.push(intermediatePoint);
+  
+  // If the forced point is not the same as our intermediate point, add it
+  if (Math.abs(forcedPoint.x - intermediatePoint.x) > 5 || Math.abs(forcedPoint.y - intermediatePoint.y) > 5) {
     orthogonalPath.push(forcedPoint);
   }
   
@@ -283,7 +276,46 @@ function findPathWithPreferredDirection(
   const remainingPath = pathFromForced.slice(1);
   
   // Combine the orthogonal path with the remaining path
-  const fullPath = [...orthogonalPath, ...remainingPath];
+  let fullPath = [...orthogonalPath, ...remainingPath];
+  
+  // Handle preferred end direction
+  if (preferredEndDirection && fullPath.length >= 2) {
+    const endPoint = { x: end.x, y: end.y };
+    const endDirMap = {
+      'top': { dx: 0, dy: -1 },
+      'bottom': { dx: 0, dy: 1 },
+      'left': { dx: -1, dy: 0 },
+      'right': { dx: 1, dy: 0 }
+    };
+    const endDir = endDirMap[preferredEndDirection];
+    
+    // Create an approach point one grid step away in the opposite direction of preferred entry
+    const approachPoint = {
+      x: endPoint.x - (endDir.dx * GRID_SIZE),
+      y: endPoint.y - (endDir.dy * GRID_SIZE)
+    };
+    
+    // Modify the path to approach from the preferred direction
+    if (fullPath.length >= 2) {
+      fullPath[fullPath.length - 2] = approachPoint;
+      fullPath[fullPath.length - 1] = endPoint;
+    } else {
+      fullPath.push(approachPoint);
+      fullPath.push(endPoint);
+    }
+  } else if (targetIsZone && fullPath.length >= 2) {
+    // If target is a zone (but no preferred end direction), ensure the final segment is straight
+    const secondToLast = fullPath[fullPath.length - 2];
+    const last = fullPath[fullPath.length - 1];
+    
+    // Check if the final segment needs to be made straight
+    if (Math.abs(last.x - secondToLast.x) > 5 && Math.abs(last.y - secondToLast.y) > 5) {
+      // Make the final segment straight by aligning with the end point
+      const straightEndPoint = { x: end.x, y: end.y };
+      fullPath[fullPath.length - 1] = straightEndPoint;
+    }
+  }
+  
   return postProcessPath(simplifyPath(fullPath), obstacles);
 }
 
@@ -377,7 +409,58 @@ function findRegularPath(grid: GridNode[][], startNode: GridNode, endNode: GridN
   return []; // No path found
 }
 
-export function findPath(start: Point, end: Point, obstacles: Obstacle[], canvasSize: {width: number, height: number}, preferredDirection?: 'top' | 'bottom' | 'left' | 'right'): Point[] {
+function findPathWithStraightZoneEntry(
+  start: Point,
+  end: Point,
+  obstacles: Obstacle[],
+  canvasSize: {width: number, height: number},
+  grid: GridNode[][],
+  startNode: GridNode,
+  endNode: GridNode
+): Point[] {
+  // First, find a regular path
+  const regularPath = findRegularPath(grid, startNode, endNode, obstacles);
+  
+  if (regularPath.length < 2) {
+    return regularPath;
+  }
+  
+  // Ensure the final segment goes straight into the zone
+  const modifiedPath = [...regularPath];
+  
+  // If there are at least 2 points, make sure the last segment is orthogonal and straight
+  if (modifiedPath.length >= 2) {
+    const secondToLast = modifiedPath[modifiedPath.length - 2];
+    const actualEndPoint = { x: end.x, y: end.y };
+    
+    // Determine if we should approach horizontally or vertically
+    const dx = Math.abs(actualEndPoint.x - secondToLast.x);
+    const dy = Math.abs(actualEndPoint.y - secondToLast.y);
+    
+    // Create an intermediate point to ensure straight entry
+    if (dx > 5 && dy > 5) {
+      // Choose the shorter approach to minimize the turn
+      if (dx < dy) {
+        // Approach horizontally first, then vertically
+        const intermediatePoint = { x: actualEndPoint.x, y: secondToLast.y };
+        modifiedPath[modifiedPath.length - 1] = intermediatePoint;
+        modifiedPath.push(actualEndPoint);
+      } else {
+        // Approach vertically first, then horizontally  
+        const intermediatePoint = { x: secondToLast.x, y: actualEndPoint.y };
+        modifiedPath[modifiedPath.length - 1] = intermediatePoint;
+        modifiedPath.push(actualEndPoint);
+      }
+    } else {
+      // Already mostly aligned, just ensure exact end point
+      modifiedPath[modifiedPath.length - 1] = actualEndPoint;
+    }
+  }
+  
+  return postProcessPath(simplifyPath(modifiedPath), obstacles);
+}
+
+export function findPath(start: Point, end: Point, obstacles: Obstacle[], canvasSize: {width: number, height: number}, preferredStartDirection?: 'top' | 'bottom' | 'left' | 'right', targetIsZone?: boolean, preferredEndDirection?: 'top' | 'bottom' | 'left' | 'right'): Point[] {
     const grid = createGrid(canvasSize.width, canvasSize.height, obstacles);
     const startNode = grid[Math.floor(start.y / GRID_SIZE)]?.[Math.floor(start.x / GRID_SIZE)];
     const endNode = grid[Math.floor(end.y / GRID_SIZE)]?.[Math.floor(end.x / GRID_SIZE)];
@@ -387,9 +470,14 @@ export function findPath(start: Point, end: Point, obstacles: Obstacle[], canvas
       return createIntelligentFallbackPath(start, end, obstacles, grid);
     }
 
-    // If preferred direction is specified, force first move in that direction
-    if (preferredDirection) {
-      return findPathWithPreferredDirection(start, end, obstacles, canvasSize, preferredDirection, grid, startNode, endNode);
+    // If preferred start direction is specified, force first move in that direction
+    if (preferredStartDirection) {
+      return findPathWithPreferredDirection(start, end, obstacles, canvasSize, preferredStartDirection, grid, startNode, endNode, targetIsZone, preferredEndDirection);
+    }
+    
+    // If target is a zone, ensure clean straight-line entry
+    if (targetIsZone) {
+      return findPathWithStraightZoneEntry(start, end, obstacles, canvasSize, grid, startNode, endNode);
     }
   
     const openSet: GridNode[] = [startNode];

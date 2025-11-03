@@ -7,8 +7,6 @@ export interface DiagramNodeData {
   y?: number;
   lineColor?: string; // Color for connections/borders
   edgePosition?: 'top' | 'bottom' | 'left' | 'right'; // Position node on edge of parent group
-  preferredExit?: 'top' | 'bottom' | 'left' | 'right'; // Preferred direction for outgoing connections
-  arrow?: boolean; // Enable arrow at end of outgoing connection lines
 }
 
 export interface DiagramConnectionData {
@@ -16,6 +14,11 @@ export interface DiagramConnectionData {
   to: string;
   color?: string; // Line color for this specific connection
   text?: string; // Optional text to display on the connection
+  fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right'; // Preferred exit direction from source node
+  fromArrow?: boolean; // Enable arrow at source node edge
+  toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right'; // Preferred entry direction to target node
+  toArrow?: boolean; // Enable arrow at target node edge
+  arrow?: boolean; // Legacy arrow property - backward compatibility
 }
 
 export interface DiagramNodeItem {
@@ -26,8 +29,6 @@ export interface DiagramNodeItem {
   x?: number;
   y?: number;
   lineColor?: string; // Color for connections/borders
-  preferredExit?: 'top' | 'bottom' | 'left' | 'right'; // Preferred direction for outgoing connections
-  arrow?: boolean; // Enable arrow at end of outgoing connection lines
 }
 
 export interface DiagramGroupItem {

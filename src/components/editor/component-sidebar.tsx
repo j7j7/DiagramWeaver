@@ -30,7 +30,7 @@ interface ComponentSidebarProps {
   jsonPanelOpen?: boolean;
   onFitToView?: () => void;
   onExportPng?: () => void;
-  onConnectionUpdate?: (from: string, to: string, updates: { text?: string; color?: string }) => void;
+  onConnectionUpdate?: (from: string, to: string, updates: { text?: string; color?: string; preferredExit?: 'top' | 'bottom' | 'left' | 'right'; arrow?: boolean; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right'; toArrow?: boolean }) => void;
   onCloseSidebar?: () => void;
   isMobile?: boolean;
   transform?: { x: number; y: number; k: number };
@@ -562,53 +562,6 @@ return (
                   </div>
                 )}
                 
-                {selectedItem.itemType === 'node' && (
-                  <>
-                    <div>
-                      <Label htmlFor="preferredExit">Preferred Exit</Label>
-                      <Select 
-                        value={('preferredExit' in selectedItem ? selectedItem.preferredExit : undefined) || 'none'}
-                        onValueChange={(value) => {
-                          onItemUpdate({
-                            ...selectedItem,
-                            preferredExit: value === 'none' ? undefined : value as 'top' | 'bottom' | 'left' | 'right'
-                          });
-                        }}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select preferred exit direction" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">None (Auto)</SelectItem>
-                          <SelectItem value="top">Top</SelectItem>
-                          <SelectItem value="bottom">Bottom</SelectItem>
-                          <SelectItem value="left">Left</SelectItem>
-                          <SelectItem value="right">Right</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-muted-foreground mt-1">Force connections to exit from this direction first</p>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      <input
-                        id="arrow"
-                        type="checkbox"
-                        checked={'arrow' in selectedItem ? selectedItem.arrow === true : false}
-                        onChange={(e) => {
-                          onItemUpdate({
-                            ...selectedItem,
-                            arrow: e.target.checked
-                          });
-                        }}
-                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                      />
-                      <Label htmlFor="arrow" className="text-sm font-medium">
-                        Show Arrow on Connections
-                      </Label>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Add arrowhead at the end of outgoing connection lines</p>
-                  </>
-                )}
                 
                 {parentGroup && (
                     <div>
@@ -643,9 +596,9 @@ return (
                         <h4 className="font-medium text-muted-foreground">Incoming ({incoming.length})</h4>
                         <div className="space-y-2 mt-2">
                           {incoming.length > 0 ? incoming.map((item, i) => (
-                            <div key={i} className="pl-2 border-l-2 ml-1">
+                            <div key={i} className="pl-2 border-l-2 ml-1 space-y-2">
                               <div className="font-medium text-xs">{item.label}</div>
-                              <div className="mt-1">
+                              <div>
                                 <Label htmlFor={`incoming-text-${i}`} className="text-xs text-muted-foreground">Connection Text</Label>
                                 <Input
                                   id={`incoming-text-${i}`}
@@ -660,6 +613,48 @@ return (
                                   className="h-8 text-xs"
                                 />
                               </div>
+                              <div>
+                                <Label htmlFor={`incoming-entry-${i}`} className="text-xs text-muted-foreground">Preferred Entry (To)</Label>
+                                <Select 
+                                  value={item.connection.toPreferredEntry || 'none'}
+                                  onValueChange={(value) => {
+                                    if (onConnectionUpdate) {
+                                      onConnectionUpdate(item.connection.from, item.connection.to, { 
+                                        toPreferredEntry: value === 'none' ? undefined : value as 'top' | 'bottom' | 'left' | 'right'
+                                      });
+                                    }
+                                  }}
+                                >
+                                  <SelectTrigger className="w-full h-8">
+                                    <SelectValue placeholder="Select direction" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none">None (Auto)</SelectItem>
+                                    <SelectItem value="top">Top</SelectItem>
+                                    <SelectItem value="bottom">Bottom</SelectItem>
+                                    <SelectItem value="left">Left</SelectItem>
+                                    <SelectItem value="right">Right</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <input
+                                  id={`incoming-arrow-${i}`}
+                                  type="checkbox"
+                                  checked={item.connection.toArrow === true}
+                                  onChange={(e) => {
+                                    if (onConnectionUpdate) {
+                                      onConnectionUpdate(item.connection.from, item.connection.to, { 
+                                        toArrow: e.target.checked
+                                      });
+                                    }
+                                  }}
+                                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                />
+                                <Label htmlFor={`incoming-arrow-${i}`} className="text-xs text-muted-foreground">
+                                  Show Arrow (To)
+                                </Label>
+                              </div>
                             </div>
                           )) : <p className="text-xs text-muted-foreground pl-2">None</p>}
                         </div>
@@ -668,9 +663,9 @@ return (
                         <h4 className="font-medium text-muted-foreground">Outgoing ({outgoing.length})</h4>
                         <div className="space-y-2 mt-2">
                           {outgoing.length > 0 ? outgoing.map((item, i) => (
-                            <div key={i} className="pl-2 border-l-2 ml-1">
+                            <div key={i} className="pl-2 border-l-2 ml-1 space-y-2">
                               <div className="font-medium text-xs">{item.label}</div>
-                              <div className="mt-1">
+                              <div>
                                 <Label htmlFor={`outgoing-text-${i}`} className="text-xs text-muted-foreground">Connection Text</Label>
                                 <Input
                                   id={`outgoing-text-${i}`}
@@ -684,6 +679,48 @@ return (
                                   }}
                                   className="h-8 text-xs"
                                 />
+                              </div>
+                              <div>
+                                <Label htmlFor={`outgoing-exit-${i}`} className="text-xs text-muted-foreground">Preferred Exit (From)</Label>
+                                <Select 
+                                  value={item.connection.fromPreferredExit || 'none'}
+                                  onValueChange={(value) => {
+                                    if (onConnectionUpdate) {
+                                      onConnectionUpdate(item.connection.from, item.connection.to, { 
+                                        fromPreferredExit: value === 'none' ? undefined : value as 'top' | 'bottom' | 'left' | 'right'
+                                      });
+                                    }
+                                  }}
+                                >
+                                  <SelectTrigger className="w-full h-8">
+                                    <SelectValue placeholder="Select direction" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none">None (Auto)</SelectItem>
+                                    <SelectItem value="top">Top</SelectItem>
+                                    <SelectItem value="bottom">Bottom</SelectItem>
+                                    <SelectItem value="left">Left</SelectItem>
+                                    <SelectItem value="right">Right</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <input
+                                  id={`outgoing-arrow-${i}`}
+                                  type="checkbox"
+                                  checked={item.connection.fromArrow === true}
+                                  onChange={(e) => {
+                                    if (onConnectionUpdate) {
+                                      onConnectionUpdate(item.connection.from, item.connection.to, { 
+                                        fromArrow: e.target.checked
+                                      });
+                                    }
+                                  }}
+                                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                />
+                                <Label htmlFor={`outgoing-arrow-${i}`} className="text-xs text-muted-foreground">
+                                  Show Arrow (From)
+                                </Label>
                               </div>
                             </div>
                           )) : <p className="text-xs text-muted-foreground pl-2">None</p>}
