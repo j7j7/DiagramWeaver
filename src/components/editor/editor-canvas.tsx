@@ -101,7 +101,128 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     nodes.forEach(item => allItems[item.id] = item);
     groups.forEach(item => allItems[item.id] = item);
     
+    // Helper function to redistribute items within a custom-sized group
+    const redistributeItemsInCustomGroup = (group: DiagramGroupData, childNodes: DiagramNodeData[], childGroups: DiagramGroupData[]) => {
+        if (!group.width || !group.height) return;
+        
+        // Separate edge-positioned nodes from regular nodes
+        const regularNodes = childNodes.filter(n => !n.edgePosition);
+        const edgeNodes = childNodes.filter(n => n.edgePosition);
+        
+        // All regular children (nodes and groups)
+        const allChildren = [...regularNodes, ...childGroups];
+        const numItems = allChildren.length;
+        
+        if (numItems > 0) {
+            // Calculate available space for content
+            const availableWidth = group.width - (GROUP_PADDING * 2);
+            const availableHeight = group.height - (GROUP_PADDING * 2);
+            
+            // Determine items per row based on available space and orientation
+            let itemsPerRow: number;
+            if (group.orientation === 'vertical') {
+                itemsPerRow = 1;
+            } else if (group.orientation === 'horizontal') {
+                itemsPerRow = group.maxItemsPerRow || Math.max(1, Math.floor(availableWidth / (NODE_WIDTH + GROUP_NODE_SPACING)));
+            } else {
+                // Square or default: calculate based on available space
+                itemsPerRow = group.maxItemsPerRow || Math.max(1, Math.floor(Math.sqrt(numItems) * 1.2));
+            }
+            
+            let currentX = GROUP_PADDING;
+            let currentY = GROUP_PADDING;
+            let rowMaxHeight = 0;
+            
+            allChildren.forEach((child, index) => {
+                if (index > 0 && index % itemsPerRow === 0) {
+                    currentX = GROUP_PADDING;
+                    currentY += rowMaxHeight + GROUP_NODE_SPACING;
+                    rowMaxHeight = 0;
+                }
+                
+                const childWidth = (child as any).width || NODE_WIDTH;
+                const childHeight = (child as any).height || NODE_HEIGHT;
+                
+                child.x = currentX;
+                child.y = currentY;
+                
+                currentX += childWidth + GROUP_NODE_SPACING;
+                rowMaxHeight = Math.max(rowMaxHeight, childHeight);
+            });
+        }
+        
+        // Position edge nodes on the boundaries
+        if (edgeNodes.length > 0) {
+            const nodesByEdge = {
+                top: edgeNodes.filter(n => n.edgePosition === 'top'),
+                bottom: edgeNodes.filter(n => n.edgePosition === 'bottom'),
+                left: edgeNodes.filter(n => n.edgePosition === 'left'),
+                right: edgeNodes.filter(n => n.edgePosition === 'right')
+            };
+            
+            Object.entries(nodesByEdge).forEach(([edge, nodes]) => {
+                if (nodes.length === 0) return;
+                
+                nodes.forEach((node, index) => {
+                    switch (edge) {
+                        case 'top':
+                        case 'bottom':
+                            if (nodes.length === 1) {
+                                node.x = (group.width! - NODE_WIDTH) / 2;
+                            } else {
+                                const spacing = group.width! / (nodes.length + 1);
+                                node.x = spacing * (index + 1) - (NODE_WIDTH / 2);
+                            }
+                            node.y = edge === 'top' 
+                                ? -NODE_HEIGHT / 2 + NODE_HEIGHT * 0.1
+                                : group.height! - NODE_HEIGHT / 2 + NODE_HEIGHT * 0.1;
+                            break;
+                            
+                        case 'left':
+                        case 'right':
+                            node.x = edge === 'left'
+                                ? -NODE_WIDTH / 2
+                                : group.width! - NODE_WIDTH / 2;
+                            if (nodes.length === 1) {
+                                node.y = (group.height! - NODE_HEIGHT) / 2;
+                            } else {
+                                const spacing = group.height! / (nodes.length + 1);
+                                node.y = spacing * (index + 1) - (NODE_HEIGHT / 2);
+                            }
+                            break;
+                    }
+                });
+            });
+        }
+    };
+    
     const layoutGroup = (group: DiagramGroupData): { width: number, height: number } => {
+        // If group has custom sizing, use those dimensions and redistribute content within
+        if (group.sizeMode === 'custom' && group.width && group.height) {
+            const childNodes = group.children
+                .map((id: string) => allItems[id])
+                .filter(Boolean)
+                .filter((c: any) => !c.type || c.type !== 'group') as DiagramNodeData[];
+            
+            const childGroups = group.children
+                .map((id: string) => allItems[id])
+                .filter(Boolean)
+                .filter((c: any) => c.type === 'group') as DiagramGroupData[];
+                
+            // Layout child groups first
+            childGroups.forEach(cg => {
+                const dims = layoutGroup(cg);
+                (cg as any).width = dims.width;
+                (cg as any).height = dims.height;
+            });
+            
+            // Redistribute items within the custom size
+            redistributeItemsInCustomGroup(group, childNodes, childGroups);
+            
+            return { width: group.width, height: group.height };
+        }
+        
+        // Auto-sizing logic (existing)
         const childNodes = group.children
             .map((id: string) => allItems[id])
             .filter(Boolean)
@@ -410,6 +531,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           subType,
           info: `A new ${itemLabel}`,
           color: subType === 'group' ? '#e0e0e0' : undefined,
+          sizeMode: 'auto', // Default to auto-sizing
         };
         newGroups.push(newGroup);
         newItemId = newGroup.id;
@@ -481,6 +603,31 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       return { ...prevData, nodes: newNodes, groups: newGroups };
     });
   }, [setDiagramData]);
+
+  const resizeGroup = useCallback((groupId: string, newWidth: number, newHeight: number) => {
+    setDiagramData(prevData => {
+      const updatedGroups = prevData.groups?.map(group => {
+        if (group.id === groupId) {
+          // Calculate minimum size based on content
+          const autoSized = processedGroups.find(g => g.id === groupId);
+          const minWidth = autoSized?.width ? Math.min(autoSized.width, 200) : 200;
+          const minHeight = autoSized?.height ? Math.min(autoSized.height, 150) : 150;
+          
+          return {
+            ...group,
+            width: Math.max(minWidth, newWidth),
+            height: Math.max(minHeight, newHeight),
+            sizeMode: 'custom' as const,
+            minWidth,
+            minHeight
+          };
+        }
+        return group;
+      }) || [];
+      
+      return { ...prevData, groups: updatedGroups };
+    });
+  }, [setDiagramData, processedGroups]);
 
   const moveItem = useCallback((item: { id: string; type: string; x?: number, y?: number }, newPos: { x: number; y: number }, targetGroupId: string | null) => {
     setDiagramData(prevData => {
@@ -1522,6 +1669,7 @@ return (
                           isTargetable={isConnectMode && selectedItemId !== item.id}
                           onClick={handleGroupClick}
                           onContextMenu={handleGroupRightClick}
+                          onResize={resizeGroup}
                         />
                       </div>
                     );

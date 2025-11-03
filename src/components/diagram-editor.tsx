@@ -26,7 +26,12 @@ export type SelectedItem = ((DiagramNodeData | DiagramGroupData) & {
   lineColor?: string,
   maxItemsPerRow?: number,
   shadow?: boolean,
-  edgePosition?: 'top' | 'bottom' | 'left' | 'right'
+  edgePosition?: 'top' | 'bottom' | 'left' | 'right',
+  sizeMode?: 'auto' | 'custom',
+  width?: number,
+  height?: number,
+  minWidth?: number,
+  minHeight?: number
 }) | (DiagramConnectionData & { 
   itemType: 'edge',
   id: string // Add the missing id property for edges

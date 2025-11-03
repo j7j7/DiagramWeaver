@@ -7,6 +7,8 @@ import { ItemTypes } from '../editor/draggable-item';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 
+const GRID_SNAP = 20;
+
 interface DiagramGroupProps {
   group: DiagramGroupData & { x: number; y: number; width: number; height: number };
   isSelected?: boolean;
@@ -14,12 +16,13 @@ interface DiagramGroupProps {
   isTargetable?: boolean;
   onClick?: (e: React.MouseEvent, group: DiagramGroupData) => void;
   onContextMenu?: (e: React.MouseEvent, group: DiagramGroupData) => void;
+  onResize?: (groupId: string, newWidth: number, newHeight: number) => void;
 }
 
 
 
 
-export function DiagramGroup({ group, isSelected, isDropTarget, isTargetable, onClick, onContextMenu }: DiagramGroupProps) {
+export function DiagramGroup({ group, isSelected, isDropTarget, isTargetable, onClick, onContextMenu, onResize }: DiagramGroupProps) {
 const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.GROUP,
     item: { ...group, type: ItemTypes.GROUP },
@@ -30,6 +33,12 @@ const [{ isDragging }, drag] = useDrag(() => ({
 
   const [isTouchDragging, setIsTouchDragging] = useState(false);
   const touchStartPos = useRef<{ x: number; y: number } | null>(null);
+  
+  // Resize state
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeHandle, setResizeHandle] = useState<'right' | 'bottom' | null>(null);
+  const [isHovered, setIsHovered] = useState(false);
+  const resizeStartPos = useRef<{ x: number; y: number; startWidth: number; startHeight: number } | null>(null);
 
   // Touch event handlers for mobile drag and drop
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -106,6 +115,85 @@ const [{ isDragging }, drag] = useDrag(() => ({
     e.preventDefault(); // Prevent any default touch behavior
   };
 
+  // Resize handlers
+  const handleResizeStart = (e: React.MouseEvent, handle: 'right' | 'bottom') => {
+    e.stopPropagation();
+    e.preventDefault();
+    
+    setIsResizing(true);
+    setResizeHandle(handle);
+    resizeStartPos.current = {
+      x: e.clientX,
+      y: e.clientY,
+      startWidth: group.width,
+      startHeight: group.height
+    };
+  };
+
+  const handleResizeMove = (e: React.MouseEvent) => {
+    if (!isResizing || !resizeStartPos.current || !resizeHandle || !onResize) return;
+    
+    const deltaX = e.clientX - resizeStartPos.current.x;
+    const deltaY = e.clientY - resizeStartPos.current.y;
+    
+    let newWidth = resizeStartPos.current.startWidth;
+    let newHeight = resizeStartPos.current.startHeight;
+    
+    // Calculate minimum size based on content
+    const minWidth = group.minWidth || 200;
+    const minHeight = group.minHeight || 150;
+    
+    switch (resizeHandle) {
+      case 'right':
+        // Dragging right edge - increase width with positive deltaX
+        newWidth = Math.max(minWidth, resizeStartPos.current.startWidth + deltaX);
+        break;
+      case 'bottom':
+        // Dragging bottom edge - increase height with positive deltaY
+        newHeight = Math.max(minHeight, resizeStartPos.current.startHeight + deltaY);
+        break;
+    }
+    
+    // Snap to grid
+    newWidth = Math.round(newWidth / GRID_SNAP) * GRID_SNAP;
+    newHeight = Math.round(newHeight / GRID_SNAP) * GRID_SNAP;
+    
+    onResize(group.id, newWidth, newHeight);
+  };
+
+  const handleResizeEnd = () => {
+    setIsResizing(false);
+    setResizeHandle(null);
+    resizeStartPos.current = null;
+  };
+
+  // Global mouse events for resize
+  React.useEffect(() => {
+    if (isResizing) {
+      const handleMouseMove = (e: MouseEvent) => {
+        handleResizeMove(e as any);
+      };
+      const handleMouseUp = () => {
+        handleResizeEnd();
+      };
+      
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isResizing, resizeHandle, group.id, onResize]);
+  
+  const handleGroupMouseEnter = () => setIsHovered(true);
+  const handleGroupMouseLeave = () => {
+    if (!isResizing) {
+      setIsHovered(false);
+    }
+  };
+
   const isZone = group.subType === 'zone';
   const hasLabel = !!group.label && group.label.trim() !== '';
   
@@ -150,14 +238,15 @@ const [{ isDragging }, drag] = useDrag(() => ({
           drag(node);
         }
       }}
-className={cn(
+      className={cn(
         "absolute rounded-lg cursor-move",
         isZone ? "border-2 border-dashed" : "border-2",
-        (isDragging || isTouchDragging) && "opacity-50",
+        (isDragging || isTouchDragging || isResizing) && "opacity-50",
         (isSelected || isDropTarget) && "ring-2 ring-primary ring-offset-2",
         isTargetable && "ring-2 ring-green-500 ring-offset-2 animate-pulse",
-        group.shadow && "shadow-[0_10px_15px_-3px_rgba(239,68,68,0.3),0_4px_6px_-2px_rgba(239,68,68,0.2)]"
-        )}
+        group.shadow && "shadow-[0_10px_15px_-3px_rgba(239,68,68,0.3),0_4px_6px_-2px_rgba(239,68,68,0.2)]",
+        "group" // Add group class for CSS selectors
+      )}
       style={{
         left: group.x,
         top: group.y,
@@ -189,7 +278,26 @@ className={cn(
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      onMouseEnter={handleGroupMouseEnter}
+      onMouseLeave={handleGroupMouseLeave}
     >
+      {/* Resize handles - only show when hovered or resizing */}
+      {(isHovered || isResizing || isSelected) && group.sizeMode !== 'auto' && (
+        <>
+          {/* Right handle */}
+          <div
+            className="absolute top-0 right-0 w-2 h-full cursor-ew-resize hover:bg-primary/20 transition-colors"
+            style={{ marginRight: '-4px' }}
+            onMouseDown={(e) => handleResizeStart(e, 'right')}
+          />
+          {/* Bottom handle */}
+          <div
+            className="absolute bottom-0 left-0 w-full h-2 cursor-ns-resize hover:bg-primary/20 transition-colors"
+            style={{ marginBottom: '-4px' }}
+            onMouseDown={(e) => handleResizeStart(e, 'bottom')}
+          />
+        </>
+      )}
       <Popover>
         <PopoverTrigger asChild>
           <div className={cn(

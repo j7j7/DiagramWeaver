@@ -49,6 +49,11 @@ type FormValues = Omit<DiagramNodeData & DiagramGroupData, 'id' | 'type' | 'chil
   lineColor?: string;
   maxItemsPerRow?: number;
   shadow?: boolean;
+  sizeMode?: 'auto' | 'custom';
+  width?: number;
+  height?: number;
+  minWidth?: number;
+  minHeight?: number;
 };
 
 
@@ -259,6 +264,89 @@ return (
                         />
                       </div>
                     )}
+                    
+                    {/* Resize Controls */}
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="sizeMode">Sizing Mode</Label>
+                        <Select 
+                          value={selectedItem?.sizeMode || 'auto'} 
+                          onValueChange={(value) => {
+                            const updatedItem = { 
+                              ...selectedItem, 
+                              sizeMode: value as 'auto' | 'custom'
+                            };
+                            // If switching to custom, use current computed dimensions as starting point
+                            if (value === 'custom' && !selectedItem.width && !selectedItem.height) {
+                              // Try to find current computed dimensions from the canvas
+                              // This is a reasonable default - the user can adjust from here
+                              updatedItem.width = 300;
+                              updatedItem.height = 220;
+                            }
+                            onItemUpdate(updatedItem);
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select sizing mode" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="auto">Auto (Fit Content)</SelectItem>
+                            <SelectItem value="custom">Custom (Manual Resize)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Auto: Size calculated from content. Custom: Manual sizing with drag handles.
+                        </p>
+                      </div>
+                      
+                      {selectedItem?.sizeMode === 'custom' && (
+                        <>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <Label htmlFor="customWidth">Width (px)</Label>
+                              <Input 
+                                id="customWidth" 
+                                type="number" 
+                                min="100" 
+                                step="20"
+                                value={selectedItem?.width || 300}
+                                onChange={(e) => {
+                                  const newWidth = parseInt(e.target.value) || 300;
+                                  onItemUpdate({
+                                    ...selectedItem,
+                                    width: newWidth
+                                  });
+                                }}
+                                className="p-1 h-10"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="customHeight">Height (px)</Label>
+                              <Input 
+                                id="customHeight" 
+                                type="number" 
+                                min="100" 
+                                step="20"
+                                value={selectedItem?.height || 220}
+                                onChange={(e) => {
+                                  const newHeight = parseInt(e.target.value) || 220;
+                                  onItemUpdate({
+                                    ...selectedItem,
+                                    height: newHeight
+                                  });
+                                }}
+                                className="p-1 h-10"
+                              />
+                            </div>
+                          </div>
+                          <div className="text-xs text-muted-foreground space-y-1">
+                            <p>• Drag right or bottom edges of the group to resize</p>
+                            <p>• Values snap to 20px grid</p>
+                            <p>• Minimum size enforced based on content</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
                     
                     <div>
                       <Label htmlFor="borderStyle">Border Style</Label>

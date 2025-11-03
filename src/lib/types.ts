@@ -71,6 +71,13 @@ export interface DiagramGroupData {
   lineColor?: string; // Color for connections from this group
   shadow?: boolean; // Whether to show shadow around the group/zone
   parentId?: string; // Reference to parent group ID for hierarchy tracking
+  
+  // Custom sizing properties
+  width?: number; // Custom width - when set, overrides auto-calculated width
+  height?: number; // Custom height - when set, overrides auto-calculated height
+  sizeMode?: 'auto' | 'custom'; // Whether to use auto-calculated or custom dimensions
+  minWidth?: number; // Minimum width constraint (based on content)
+  minHeight?: number; // Minimum height constraint (based on content)
 }
 
 export interface DiagramData {
