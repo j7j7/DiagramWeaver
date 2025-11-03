@@ -10,6 +10,7 @@ export const DiagramNodeDataSchema = z.object({
   y: z.number().optional(),
   imagePath: z.string().optional(), // Override icon path
   lineColor: z.string().optional(), // Color for connections/borders
+  edgePosition: z.enum(['top', 'bottom', 'left', 'right']).optional(), // Position node on edge of parent group
 });
 
 // Schema for DiagramConnectionData 

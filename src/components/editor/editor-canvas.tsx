@@ -112,6 +112,10 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             .filter(Boolean)
             .filter((c: any) => c.type === 'group') as DiagramGroupData[];
 
+        // Separate edge-positioned nodes from regular nodes
+        const regularNodes = childNodes.filter(n => !n.edgePosition);
+        const edgeNodes = childNodes.filter(n => n.edgePosition);
+
         let contentWidth = 0;
         let contentHeight = 0;
 
@@ -123,8 +127,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             return cg; // IMPORTANT: return original reference so x/y set below apply to allItems
         });
 
-        // Grid layout for all children (nodes and groups) with orientation and maxItemsPerRow support
-        const allChildren = [...childNodes, ...laidOutChildGroups];
+        // Grid layout for regular children (nodes and groups) with orientation and maxItemsPerRow support
+        // Edge-positioned nodes are handled separately
+        const allChildren = [...regularNodes, ...laidOutChildGroups];
         const numItems = allChildren.length;
         
         // Determine items per row based on orientation and maxItemsPerRow
@@ -180,6 +185,31 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         
         (group as PositionedGroup).width = groupWidth;
         (group as PositionedGroup).height = groupHeight;
+
+        // Position edge nodes on the boundaries of the group
+        edgeNodes.forEach(node => {
+            const nodeWidth = NODE_WIDTH;
+            const nodeHeight = NODE_HEIGHT;
+            
+            switch (node.edgePosition) {
+                case 'top':
+                    node.x = (groupWidth - nodeWidth) / 2;
+                    node.y = -nodeHeight / 2; // Half outside, half inside
+                    break;
+                case 'bottom':
+                    node.x = (groupWidth - nodeWidth) / 2;
+                    node.y = groupHeight - nodeHeight / 2; // Half outside, half inside
+                    break;
+                case 'left':
+                    node.x = -nodeWidth / 2; // Half outside, half inside
+                    node.y = (groupHeight - nodeHeight) / 2;
+                    break;
+                case 'right':
+                    node.x = groupWidth - nodeWidth / 2; // Half outside, half inside
+                    node.y = (groupHeight - nodeHeight) / 2;
+                    break;
+            }
+        });
 
         return { width: groupWidth, height: groupHeight };
     };

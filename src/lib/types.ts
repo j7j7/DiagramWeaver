@@ -6,6 +6,7 @@ export interface DiagramNodeData {
   x?: number;
   y?: number;
   lineColor?: string; // Color for connections/borders
+  edgePosition?: 'top' | 'bottom' | 'left' | 'right'; // Position node on edge of parent group
 }
 
 export interface DiagramConnectionData {

@@ -56,7 +56,7 @@ export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, 
   const { register, reset, getValues } = useForm<FormValues>();
 
   useEffect(() => {
-    if (selectedItem) {
+    if (selectedItem && selectedItem.itemType !== 'edge') {
       // Initialize new gradient properties from legacy colors for backward compatibility
       const initializedItem = {
         ...selectedItem,
@@ -444,6 +444,33 @@ return (
                       className="p-1 h-10"
                       defaultValue={selectedItem.lineColor || '#6b7280'}
                     />
+                  </div>
+                )}
+                
+                {selectedItem.itemType === 'node' && parentGroup && (
+                  <div>
+                    <Label htmlFor="edgePosition">Edge Position</Label>
+                    <Select 
+                      value={selectedItem.edgePosition || 'none'}
+                      onValueChange={(value) => {
+                        onItemUpdate({
+                          ...selectedItem,
+                          edgePosition: value === 'none' ? undefined : value as 'top' | 'bottom' | 'left' | 'right'
+                        });
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Position within group" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Normal (Inside)</SelectItem>
+                        <SelectItem value="top">Top Edge</SelectItem>
+                        <SelectItem value="bottom">Bottom Edge</SelectItem>
+                        <SelectItem value="left">Left Edge</SelectItem>
+                        <SelectItem value="right">Right Edge</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">Position node on the edge of parent group</p>
                   </div>
                 )}
                 

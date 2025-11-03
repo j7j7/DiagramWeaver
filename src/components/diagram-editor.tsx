@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { convertFromNestedHierarchy, convertToNestedHierarchy } from '@/lib/nested-hierarchy';
 
-export type SelectedItem = (DiagramNodeData | DiagramGroupData) & { 
+export type SelectedItem = ((DiagramNodeData | DiagramGroupData) & { 
   itemType: 'node' | 'group', 
   subType?: 'zone' | 'group',
   borderColor?: string,
@@ -25,8 +25,12 @@ export type SelectedItem = (DiagramNodeData | DiagramGroupData) & {
   orientation?: 'horizontal' | 'vertical' | 'square',
   lineColor?: string,
   maxItemsPerRow?: number,
-  shadow?: boolean
-};
+  shadow?: boolean,
+  edgePosition?: 'top' | 'bottom' | 'left' | 'right'
+}) | (DiagramConnectionData & { 
+  itemType: 'edge',
+  id: string // Add the missing id property for edges
+});
 
 export default function DiagramEditor() {
   const [diagramData, setDiagramData] = React.useState<DiagramData>({ nodes: [], connections: [], groups: [] });

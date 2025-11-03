@@ -114,6 +114,16 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
   - **Rendering Order Update**: Replaced separate group/node rendering loops with single sorted loop for proper visual layering
   - **Testing**: Created comprehensive test suite (`test-recursion-fix.js`) covering normal hierarchy, circular references, and complex nested structures
   - **Benefits**: No more stack overflow errors, proper visual hierarchy, correct z-index ordering, maintained drag-drop functionality
+- **Edge Positioning for Group Children** (2025-11-03): Added ability to position nodes on the edges of their parent groups/zones:
+  - **Edge Position Property**: Added `edgePosition?: 'top' | 'bottom' | 'left' | 'right'` to DiagramNodeData type
+  - **Layout Algorithm**: Modified layoutGroup function to separate edge-positioned nodes from regular nodes
+  - **Positioning Logic**: Edge nodes are positioned at the center of their respective edges, half inside/half outside the group boundary
+  - **UI Control**: Added dropdown in sidebar (Details tab) to set edge position when node has a parent group
+  - **Options**: "Normal (Inside)", "Top Edge", "Bottom Edge", "Left Edge", "Right Edge"
+  - **Smart Centering**: Nodes positioned at midpoint of edge (horizontally centered on top/bottom, vertically centered on left/right)
+  - **Schema Support**: Updated Zod schemas to validate edgePosition property
+  - **Backward Compatible**: Nodes without edgePosition property continue to be positioned inside groups normally
+  - **Preserved Capabilities**: All existing layout and positioning features remain functional
 
 ### Development Tools
 - **Scripts**: npm run dev, build, lint, typecheck, genkit
