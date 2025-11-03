@@ -32,6 +32,7 @@ export default function DiagramEditor() {
   const [diagramData, setDiagramData] = React.useState<DiagramData>({ nodes: [], connections: [], groups: [] });
   const editorRef = React.useRef<EditorCanvasHandle>(null);
   const [selectedItem, setSelectedItem] = React.useState<SelectedItem | null>(null);
+  const [selectedItemIds, setSelectedItemIds] = React.useState<Set<string>>(new Set());
   const [isConnectMode, setIsConnectMode] = React.useState<boolean>(false);
   const [jsonPanelOpen, setJsonPanelOpen] = React.useState<boolean>(false);
   const [jsonPanelWidth, setJsonPanelWidth] = React.useState<number>(420);
@@ -72,12 +73,30 @@ const [isClient, setIsClient] = React.useState<boolean>(false);
   const { toast } = useToast();
 
 
-  const handleItemSelect = (item: SelectedItem | null) => {
+  const handleItemSelect = (item: SelectedItem | null, shiftKey = false) => {
     // If we click away while in connect mode, cancel it.
     if (isConnectMode && !item) {
       setIsConnectMode(false);
     }
-    setSelectedItem(item);
+    
+    if (shiftKey && item) {
+      // Multi-select with shift key
+      setSelectedItemIds(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(item.id)) {
+          newSet.delete(item.id);
+        } else {
+          newSet.add(item.id);
+        }
+        return newSet;
+      });
+      // Set the primary selected item to the most recently selected
+      setSelectedItem(item);
+    } else {
+      // Normal selection
+      setSelectedItem(item);
+      setSelectedItemIds(item ? new Set([item.id]) : new Set());
+    }
   };
   
   const handleItemUpdate = (updatedItem: SelectedItem) => {
@@ -387,6 +406,7 @@ const [isClient, setIsClient] = React.useState<boolean>(false);
         <div className={`${isMobile ? 'fixed left-0 top-0 h-full z-50 transform transition-transform duration-300 ease-in-out' : ''} ${isMobile && !sidebarOpen ? '-translate-x-full' : ''} ${isMobile ? 'w-80' : ''}`}>
 <ComponentSidebar
           selectedItem={selectedItem}
+          selectedItemIds={selectedItemIds}
           onItemUpdate={handleItemUpdate}
           onConnect={startConnecting}
           onDisconnect={disconnectSelected}

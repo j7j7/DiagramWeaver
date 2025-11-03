@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 
 interface ComponentSidebarProps {
   selectedItem: SelectedItem | null;
+  selectedItemIds?: Set<string>;
   onItemUpdate: (updatedItem: SelectedItem) => void;
   onConnect: () => void;
   onDisconnect: () => void;
@@ -51,7 +52,7 @@ type FormValues = Omit<DiagramNodeData & DiagramGroupData, 'id' | 'type' | 'chil
 };
 
 
-export function ComponentSidebar({ selectedItem, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onSave, onLoad, onNew, onResourceSelect, onToggleJsonPanel, jsonPanelOpen, onFitToView, onExportPng, onConnectionUpdate, onCloseSidebar, isMobile, transform, onTransformChange }: ComponentSidebarProps) {
+export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onSave, onLoad, onNew, onResourceSelect, onToggleJsonPanel, jsonPanelOpen, onFitToView, onExportPng, onConnectionUpdate, onCloseSidebar, isMobile, transform, onTransformChange }: ComponentSidebarProps) {
   const { register, reset, getValues } = useForm<FormValues>();
 
   useEffect(() => {
@@ -158,9 +159,9 @@ return (
           </div>
         )}
         <div className="flex items-center gap-2 mb-4 touch-spacing">
-            <Button variant="outline" onClick={onNew} className="flex-1 touch-target"><Plus className="mr-2 h-4 w-4"/>New</Button>
-            <Button variant="outline" onClick={onSave} className="flex-1 touch-target"><Download className="mr-2 h-4 w-4"/>Save</Button>
-            <Button variant="outline" onClick={onLoad} className="flex-1 touch-target"><Upload className="mr-2 h-4 w-4"/>Load</Button>
+            <Button variant="outline" size="sm" onClick={onNew} className="flex-1 touch-target"><Plus className="mr-2 h-4 w-4"/>New</Button>
+            <Button variant="outline" size="sm" onClick={onSave} className="flex-1 touch-target"><Download className="mr-2 h-4 w-4"/>Save</Button>
+            <Button variant="outline" size="sm" onClick={onLoad} className="flex-1 touch-target"><Upload className="mr-2 h-4 w-4"/>Load</Button>
         </div>
         {onToggleJsonPanel && (
           <div className="mb-2">
@@ -539,6 +540,67 @@ return (
         
         <TabsContent value="canvas" className="flex-1 m-0 p-4 data-[state=active]:flex data-[state=active]:flex-col min-h-0 overflow-hidden">
           <div className="space-y-4">
+            <div>
+              <h3 className="text-md font-semibold mb-3">Selected Items</h3>
+              
+              {selectedItemIds && selectedItemIds.size > 0 ? (
+                <div className="space-y-2 mb-4">
+                  <p className="text-sm text-muted-foreground">
+                    {selectedItemIds.size} item{selectedItemIds.size > 1 ? 's' : ''} selected (hold Shift to multi-select)
+                  </p>
+                  
+                  {/* Calculate and display bounds of selected items */}
+                  {(() => {
+                    const selectedItems = Array.from(selectedItemIds).map(id => {
+                      const node = diagramData.nodes.find(n => n.id === id);
+                      const group = diagramData.groups?.find(g => g.id === id);
+                      return node || group;
+                    }).filter(Boolean);
+                    
+                    if (selectedItems.length === 0) return null;
+                    
+                    const positions = selectedItems.map(item => ({
+                      id: item!.id,
+                      label: item!.label || 'Unnamed',
+                      x: item!.x || 0,
+                      y: item!.y || 0,
+                      width: item!.type === 'group' ? (item as any).width || 300 : 104,
+                      height: item!.type === 'group' ? (item as any).height || 220 : 100
+                    }));
+                    
+                    const minX = Math.min(...positions.map(p => p.x));
+                    const minY = Math.min(...positions.map(p => p.y));
+                    const maxX = Math.max(...positions.map(p => p.x + p.width));
+                    const maxY = Math.max(...positions.map(p => p.y + p.height));
+                    const centerX = (minX + maxX) / 2;
+                    const centerY = (minY + maxY) / 2;
+                    
+                    return (
+                      <div className="space-y-2">
+                        <div className="text-xs bg-muted p-2 rounded">
+                          <p><strong>Bounds:</strong> X:{minX.toFixed(0)} Y:{minY.toFixed(0)} → X:{maxX.toFixed(0)} Y:{maxY.toFixed(0)}</p>
+                          <p><strong>Center:</strong> X:{centerX.toFixed(0)} Y:{centerY.toFixed(0)}</p>
+                          <p><strong>Size:</strong> W:{(maxX - minX).toFixed(0)} H:{(maxY - minY).toFixed(0)}</p>
+                        </div>
+                        
+                        <div className="max-h-32 overflow-y-auto space-y-1">
+                          {positions.map(pos => (
+                            <div key={pos.id} className="text-xs p-1 bg-muted/50 rounded">
+                              <strong>{pos.label}</strong>: X:{pos.x.toFixed(0)} Y:{pos.y.toFixed(0)}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground mb-4">
+                  Click items to select (hold Shift to multi-select)
+                </p>
+              )}
+            </div>
+            
             <div>
               <h3 className="text-md font-semibold mb-3">Canvas Transform</h3>
               

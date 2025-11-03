@@ -166,14 +166,16 @@ className={cn(
         background: backgroundStyle === 'gradient' 
           ? `linear-gradient(135deg, ${backgroundColors[0]}, ${backgroundColors[1]})`
           : backgroundColor,
-        // Avoid mixing shorthand border with border-image to prevent React warnings
-        borderWidth: 2,
-        borderStyle: borderStyle === 'gradient' ? 'solid' : (isZone ? 'dashed' : 'solid'),
-        borderColor: borderStyle === 'gradient' ? 'transparent' : borderColor,
-        borderImageSource: borderStyle === 'gradient'
-          ? `linear-gradient(135deg, ${borderColors[0]}, ${borderColors[1]})`
-          : undefined,
-        borderImageSlice: borderStyle === 'gradient' ? 1 : undefined,
+        // Handle border styling
+        ...(borderStyle === 'gradient' ? {
+          border: isZone ? '2px dashed' : '2px solid',
+          borderImage: `linear-gradient(135deg, ${borderColors[0]}, ${borderColors[1]}) 1`,
+          borderColor: 'transparent'
+        } : {
+          borderWidth: 2,
+          borderStyle: isZone ? 'dashed' : 'solid',
+          borderColor: borderColor
+        }),
         color: textColor,
         margin: group.shadow ? 4 : 0, // Add margin when shadow is enabled to prevent clipping
         touchAction: 'none',

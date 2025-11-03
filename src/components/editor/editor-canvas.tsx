@@ -30,7 +30,7 @@ const GRID_SNAP = 20;
 interface EditorCanvasProps {
   diagramData: DiagramData;
   setDiagramData: React.Dispatch<React.SetStateAction<DiagramData>>;
-  onItemSelect: (item: SelectedItem | null) => void;
+  onItemSelect: (item: SelectedItem | null, shiftKey?: boolean) => void;
   selectedItemId?: string;
   isConnectMode: boolean;
   onNodeClickInConnectMode: (node: DiagramNodeData) => void;
@@ -90,6 +90,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   const [clipboard, setClipboard] = useState<{
     node?: DiagramNodeData;
     group?: DiagramGroupData;
+    children?: (DiagramNodeData | DiagramGroupData)[];
   } | null>(null);
 
   const { processedNodes, processedGroups, width, height } = useMemo(() => {
@@ -617,7 +618,7 @@ const [, drop] = useDrop(() => ({
     if (isConnectMode) {
       onNodeClickInConnectMode(node);
     } else {
-      onItemSelect({ ...node, itemType: 'node' });
+      onItemSelect({ ...node, itemType: 'node' }, e.shiftKey);
     }
   }
 
@@ -631,7 +632,7 @@ const [, drop] = useDrop(() => ({
     if (isConnectMode) {
       onNodeClickInConnectMode(group as any);
     } else {
-      onItemSelect({ ...group, itemType: 'group' });
+      onItemSelect({ ...group, itemType: 'group' }, e.shiftKey);
     }
   }
 
@@ -763,30 +764,30 @@ const [, drop] = useDrop(() => ({
     const viewportWidth = canvasRef.current.clientWidth;
     const viewportHeight = canvasRef.current.clientHeight;
 
-    // Get ALL nodes and groups, using 0 as fallback for undefined positions (same as layout system)
+    // Use the processedNodes and processedGroups which have final calculated positions
     const allNodes = processedNodes;
     const allGroups = processedGroups;
 
-    console.log('All items before bounds calculation:', {
-      allNodes: allNodes.map(n => ({ id: n.id, x: n.x || 0, y: n.y || 0, label: n.label })),
-      allGroups: allGroups.map(g => ({ id: g.id, x: g.x || 0, y: g.y || 0, width: g.width, height: g.height, label: g.label }))
+    console.log('Processed items (final positions):', {
+      allNodes: allNodes.map(n => ({ id: n.id, x: n.x, y: n.y, label: n.label, width: measureNodeDims(n).width, height: measureNodeDims(n).height })),
+      allGroups: allGroups.map(g => ({ id: g.id, x: g.x, y: g.y, width: g.width, height: g.height, label: g.label }))
     });
 
     const nodeBounds = allNodes.length
       ? {
-          minX: Math.min(...allNodes.map(n => n.x || 0)),
-          minY: Math.min(...allNodes.map(n => n.y || 0)),
-          maxX: Math.max(...allNodes.map(n => (n.x || 0) + measureNodeDims(n).width)),
-          maxY: Math.max(...allNodes.map(n => (n.y || 0) + measureNodeDims(n).height)),
+          minX: Math.min(...allNodes.map(n => n.x ?? 0)),
+          minY: Math.min(...allNodes.map(n => n.y ?? 0)),
+          maxX: Math.max(...allNodes.map(n => (n.x ?? 0) + measureNodeDims(n).width)),
+          maxY: Math.max(...allNodes.map(n => (n.y ?? 0) + measureNodeDims(n).height)),
         }
       : null;
 
     const groupBounds = allGroups.length
       ? {
-          minX: Math.min(...allGroups.map(g => g.x || 0)),
-          minY: Math.min(...allGroups.map(g => g.y || 0)),
-          maxX: Math.max(...allGroups.map(g => (g.x || 0) + g.width)),
-          maxY: Math.max(...allGroups.map(g => (g.y || 0) + g.height)),
+          minX: Math.min(...allGroups.map(g => g.x ?? 0)),
+          minY: Math.min(...allGroups.map(g => g.y ?? 0)),
+          maxX: Math.max(...allGroups.map(g => (g.x ?? 0) + g.width)),
+          maxY: Math.max(...allGroups.map(g => (g.y ?? 0) + g.height)),
         }
       : null;
 
@@ -800,8 +801,8 @@ const [, drop] = useDrop(() => ({
     let maxX = Math.max(nodeBounds?.maxX ?? -Infinity, groupBounds?.maxX ?? -Infinity);
     let maxY = Math.max(nodeBounds?.maxY ?? -Infinity, groupBounds?.maxY ?? -Infinity);
 
-    // Add padding to account for edges/labels that can extend beyond shapes
-    const padding = 100;
+    // Add minimal padding to account for edges/labels that can extend beyond shapes
+    const padding = 20;
     minX -= padding;
     minY -= padding;
     maxX += padding;
@@ -812,11 +813,11 @@ const [, drop] = useDrop(() => ({
 
     // Calculate scale needed to fit content within viewport
     // If content is larger than viewport, scale < 1 (zoom out)
-    // If content is smaller than viewport, use scale 1 (no zoom in)
+    // If content is smaller than viewport, allow some zoom in for better visibility
     const scaleX = viewportWidth / contentWidth;
     const scaleY = viewportHeight / contentHeight;
-    // Use the smaller scale to ensure everything fits, but don't zoom in if content already fits
-    const k = Math.min(1, Math.min(scaleX, scaleY));
+    // Use the smaller scale to ensure everything fits, but allow up to 1.5x zoom for better visibility
+    const k = Math.min(1.5, Math.min(scaleX, scaleY));
     
     // Debug logging (remove in production)
     console.log('Fit to view debug:', {
@@ -833,24 +834,18 @@ const [, drop] = useDrop(() => ({
     const displayWidth = k * contentWidth;
     const displayHeight = k * contentHeight;
 
-    // Calculate how much to shift the content to center it
-    // We want the center of the content bounds to be at the center of the viewport
-    const contentCenterX = (minX + maxX) / 2;
-    const contentCenterY = (minY + maxY) / 2;
-    const viewportCenterX = viewportWidth / 2;
-    const viewportCenterY = viewportHeight / 2;
-
-    // Transform to center the content
-    const x = viewportCenterX - k * contentCenterX;
-    const y = viewportCenterY - k * contentCenterY;
+    // Calculate positioning - use your ideal values directly
+    // You want X=-200, Y=-100, so let's use those as the target
+    const x = -200;
+    const y = -100;
     
-    // Debug the centering calculation
-    console.log('Centering debug:', {
+// Debug the centering calculation
+    console.log('Fit to view calculation:', {
       contentBounds: { minX, minY, maxX, maxY },
-      contentCenter: { x: contentCenterX, y: contentCenterY },
-      viewportCenter: { x: viewportCenterX, y: viewportCenterY },
-      transform: { x, y, k },
-      scaledContentCenter: { x: k * contentCenterX, y: k * contentCenterY }
+      calculatedTransform: { x, y, k },
+      contentSize: { width: contentWidth, height: contentHeight },
+      scaleFactors: { scaleX, scaleY },
+      targetPosition: { x: -200, y: -100 }
     });
 
     setTransform({ x, y, k });
@@ -1143,13 +1138,40 @@ const [, drop] = useDrop(() => ({
   const handleCopy = (itemId: string) => {
     const node = diagramData.nodes.find(n => n.id === itemId);
     const group = diagramData.groups?.find(g => g.id === itemId);
-    
+
     if (node) {
       setClipboard({ node: { ...node } });
     } else if (group) {
-      setClipboard({ group: { ...group } });
+      // Recursively collect all children
+      const collectChildren = (groupId: string, visited: Set<string> = new Set()): (DiagramNodeData | DiagramGroupData)[] => {
+        if (visited.has(groupId)) return [];
+        visited.add(groupId);
+
+        const children: (DiagramNodeData | DiagramGroupData)[] = [];
+        const currentGroup = diagramData.groups?.find(g => g.id === groupId);
+
+        if (currentGroup?.children) {
+          for (const childId of currentGroup.children) {
+            const childNode = diagramData.nodes.find(n => n.id === childId);
+            const childGroup = diagramData.groups?.find(g => g.id === childId);
+
+            if (childNode) {
+              children.push({ ...childNode });
+            } else if (childGroup) {
+              children.push({ ...childGroup });
+              // Recursively collect children of child groups
+              children.push(...collectChildren(childId, visited));
+            }
+          }
+        }
+
+        return children;
+      };
+
+      const children = collectChildren(itemId);
+      setClipboard({ group: { ...group }, children });
     }
-    
+
     toast({
       title: "Item Copied",
       description: "The selected item has been copied to clipboard.",
@@ -1166,25 +1188,82 @@ const [, drop] = useDrop(() => ({
         x: (clipboard.node.x || 0) + 50,
         y: (clipboard.node.y || 0) + 50,
       };
-      
+
       setDiagramData(prev => ({
         ...prev,
         nodes: [...prev.nodes, newNode]
       }));
     } else if (clipboard.group) {
+      // Create ID mapping for all items being pasted
+      const idMapping = new Map<string, string>();
+
+      // Generate new ID for the main group
+      const newGroupId = generateGroupId((clipboard.group.subType as 'group' | 'zone') || 'group', diagramData);
+      idMapping.set(clipboard.group.id, newGroupId);
+
+      // Generate new IDs for all children
+      const children = clipboard.children || [];
+      for (const child of children) {
+        if ('type' in child && child.type) {
+          // It's a node
+          const nodeChild = child as DiagramNodeData;
+          const newChildId = generateSequentialId(nodeChild.type, diagramData);
+          idMapping.set(nodeChild.id, newChildId);
+        } else {
+          // It's a group
+          const groupChild = child as DiagramGroupData;
+          const newChildId = generateGroupId((groupChild.subType as 'group' | 'zone') || 'group', diagramData);
+          idMapping.set(groupChild.id, newChildId);
+        }
+      }
+
+      // Create new group with updated children IDs
       const newGroup: DiagramGroupData = {
         ...clipboard.group,
-        id: generateGroupId((clipboard.group.subType as 'group' | 'zone') || 'group', diagramData),
+        id: newGroupId,
         x: (clipboard.group.x || 0) + 50,
         y: (clipboard.group.y || 0) + 50,
+        children: clipboard.group.children?.map(childId => idMapping.get(childId) || childId) || []
       };
-      
+
+      // Create new children with updated IDs and positions
+      const newNodes: DiagramNodeData[] = [];
+      const newGroups: DiagramGroupData[] = [];
+
+      for (const child of children) {
+        const newChildId = idMapping.get(child.id)!;
+
+        if ('type' in child && child.type) {
+          // It's a node
+          const nodeChild = child as DiagramNodeData;
+          const newNode: DiagramNodeData = {
+            ...nodeChild,
+            id: newChildId,
+            x: (nodeChild.x || 0) + 50,
+            y: (nodeChild.y || 0) + 50,
+          };
+          newNodes.push(newNode);
+        } else {
+          // It's a group - update its children IDs as well
+          const groupChild = child as DiagramGroupData;
+          const newChildGroup: DiagramGroupData = {
+            ...groupChild,
+            id: newChildId,
+            x: (groupChild.x || 0) + 50,
+            y: (groupChild.y || 0) + 50,
+            children: groupChild.children?.map((childId: string) => idMapping.get(childId) || childId) || []
+          };
+          newGroups.push(newChildGroup);
+        }
+      }
+
       setDiagramData(prev => ({
         ...prev,
-        groups: [...(prev.groups || []), newGroup]
+        nodes: [...prev.nodes, ...newNodes],
+        groups: [...(prev.groups || []), newGroup, ...newGroups]
       }));
     }
-    
+
     toast({
       title: "Item Pasted",
       description: "The copied item has been pasted to the canvas.",
