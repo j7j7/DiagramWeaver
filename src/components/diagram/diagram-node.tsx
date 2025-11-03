@@ -181,7 +181,7 @@ return (
                     )}>
                     <ResourceIcon type={node.type} className="w-10 h-10" />
                 </div>
-                <p className="mt-2 text-sm font-medium text-center text-foreground w-full px-1 break-words leading-tight">
+                <p className="mt-1 text-sm font-medium text-center text-foreground w-full px-1 break-words leading-tight">
                   {node.label || 'Untitled'}
                 </p>
               </>

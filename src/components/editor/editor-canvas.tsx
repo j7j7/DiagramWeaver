@@ -23,7 +23,7 @@ const NODE_WIDTH = 104;
 const NODE_HEIGHT = 100;
 const TEXT_NODE_HEIGHT = 40;
 const EXTRA_LINE_HEIGHT = 20;
-const GROUP_PADDING = 40;
+const GROUP_PADDING = 50; // Increased by 25% (was 40)
 const GROUP_NODE_SPACING = 30;
 const GRID_SNAP = 20;
 
@@ -194,11 +194,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             switch (node.edgePosition) {
                 case 'top':
                     node.x = (groupWidth - nodeWidth) / 2;
-                    node.y = -nodeHeight / 2; // Half outside, half inside
+                    node.y = -nodeHeight / 2 + nodeHeight * 0.1; // Half outside, half inside, adjusted 10% lower
                     break;
                 case 'bottom':
                     node.x = (groupWidth - nodeWidth) / 2;
-                    node.y = groupHeight - nodeHeight / 2; // Half outside, half inside
+                    node.y = groupHeight - nodeHeight / 2 + nodeHeight * 0.1; // Half outside, half inside, adjusted 10% lower
                     break;
                 case 'left':
                     node.x = -nodeWidth / 2; // Half outside, half inside
