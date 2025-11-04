@@ -197,6 +197,93 @@ const [{ isDragging }, drag] = useDrag(() => ({
   const isZone = group.subType === 'zone';
   const hasLabel = !!group.label && group.label.trim() !== '';
   
+  // Get text position with defaults
+  const getTextPosition = () => {
+    if (group.textPosition) return group.textPosition;
+    return isZone ? 'top-left' : 'bottom-right';
+  };
+  
+  const textPosition = getTextPosition();
+  
+  // Calculate text positioning classes and styles
+  const getTextPositioning = () => {
+    switch (textPosition) {
+      case 'top-left':
+        return {
+          className: "absolute px-2 text-sm font-semibold hover:text-primary cursor-pointer",
+          style: {
+            ...(isZone ? { top: '-12px', left: '4px' } : { top: '8px', left: '8px' }),
+            backgroundColor: isZone ? 'hsl(var(--background))' : 'transparent',
+            color: textColor,
+          }
+        };
+      case 'top-center':
+        return {
+          className: "absolute px-2 text-sm font-semibold hover:text-primary cursor-pointer",
+          style: {
+            ...(isZone ? { top: '-12px', left: '50%', transform: 'translateX(-50%)' } : { top: '8px', left: '50%', transform: 'translateX(-50%)' }),
+            backgroundColor: isZone ? 'hsl(var(--background))' : 'transparent',
+            color: textColor,
+          }
+        };
+      case 'top-right':
+        return {
+          className: "absolute px-2 text-sm font-semibold hover:text-primary cursor-pointer",
+          style: {
+            ...(isZone ? { top: '-12px', right: '4px' } : { top: '8px', right: '8px' }),
+            backgroundColor: isZone ? 'hsl(var(--background))' : 'transparent',
+            color: textColor,
+          }
+        };
+      case 'bottom-left':
+        return {
+          className: "absolute px-2 text-sm font-semibold hover:text-primary cursor-pointer",
+          style: {
+            ...(isZone ? { bottom: '-12px', left: '4px' } : { bottom: '8px', left: '8px' }),
+            backgroundColor: isZone ? 'hsl(var(--background))' : 'transparent',
+            color: textColor,
+          }
+        };
+      case 'bottom-center':
+        return {
+          className: "absolute px-2 text-sm font-semibold hover:text-primary cursor-pointer",
+          style: {
+            ...(isZone ? { bottom: '-12px', left: '50%', transform: 'translateX(-50%)' } : { bottom: '8px', left: '50%', transform: 'translateX(-50%)' }),
+            backgroundColor: isZone ? 'hsl(var(--background))' : 'transparent',
+            color: textColor,
+          }
+        };
+      case 'bottom-right':
+        return {
+          className: "absolute px-2 text-sm font-semibold hover:text-primary cursor-pointer",
+          style: {
+            ...(isZone ? { bottom: '-12px', right: '4px' } : { bottom: '8px', right: '8px' }),
+            backgroundColor: isZone ? 'hsl(var(--background))' : 'transparent',
+            color: textColor,
+          }
+        };
+      case 'inside':
+        return {
+          className: "absolute px-2 text-sm font-semibold hover:text-primary cursor-pointer",
+          style: {
+            bottom: '8px',
+            right: '8px',
+            backgroundColor: 'transparent',
+            color: textColor,
+          }
+        };
+      default:
+        return {
+          className: "absolute px-2 text-sm font-semibold hover:text-primary cursor-pointer",
+          style: {
+            ...(isZone ? { top: '-12px', left: '4px' } : { bottom: '8px', right: '8px' }),
+            backgroundColor: isZone ? 'hsl(var(--background))' : 'transparent',
+            color: textColor,
+          }
+        };
+    }
+  };
+  
   // If no label, make group invisible (just a container)
   if (!hasLabel) {
     return (
@@ -301,13 +388,9 @@ const [{ isDragging }, drag] = useDrag(() => ({
       <Popover>
         <PopoverTrigger asChild>
           <div className={cn(
-            "absolute px-2 text-sm font-semibold hover:text-primary cursor-pointer",
-            isZone ? "-top-3 left-4" : "bottom-1 right-2"
+            "absolute px-2 text-sm font-semibold hover:text-primary cursor-pointer"
           )}
-          style={{
-            backgroundColor: isZone ? 'hsl(var(--background))' : 'transparent',
-            color: textColor,
-          }}>
+          style={getTextPositioning().style}>
             {group.label || 'Untitled Group'}
           </div>
         </PopoverTrigger>

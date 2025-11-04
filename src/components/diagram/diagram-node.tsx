@@ -198,11 +198,27 @@ return (
         <PopoverTrigger asChild>
           <div className="flex flex-col items-center justify-center h-full w-full cursor-pointer">
             {node.type === 'generic.text.text' ? (
-              // Text-only node - just show the text without icon container
+              // Text-only node - just show text without icon container
               <div className="flex items-center justify-center h-full w-full px-2">
-                <p className="text-sm font-medium text-center text-foreground break-words leading-tight">
-                  {node.label || 'Untitled'}
-                </p>
+                {isEditingLabel ? (
+                  <input
+                    type="text"
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value)}
+                    onBlur={handleLabelSubmit}
+                    onKeyDown={handleLabelKeyDown}
+                    className="text-sm font-medium text-center bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
+                    autoFocus
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                ) : (
+                  <p 
+                    className="text-sm font-medium text-center text-foreground break-words leading-tight cursor-text hover:bg-background/50 rounded px-1 py-0.5 -mx-1 -my-0.5"
+                    onClick={handleLabelClick}
+                  >
+                    {node.label || 'Untitled'}
+                  </p>
+                )}
               </div>
             ) : node.type === 'generic.text.label' ? (
               // Label node - show text with curved rectangle background

@@ -37,28 +37,11 @@ interface ComponentSidebarProps {
   onTransformChange?: (transform: { x: number; y: number; k: number }) => void;
 }
 
-type FormValues = Omit<DiagramNodeData & DiagramGroupData, 'id' | 'type' | 'children'> & {
-  borderColor?: string;
-  textColor?: string;
-  backgroundColor?: string;
-  borderStyle?: 'solid' | 'gradient';
-  borderColors?: string[];
-  backgroundStyle?: 'solid' | 'gradient';
-  backgroundColors?: string[];
-  orientation?: 'horizontal' | 'vertical' | 'square';
-  lineColor?: string;
-  maxItemsPerRow?: number;
-  shadow?: boolean;
-  sizeMode?: 'auto' | 'custom';
-  width?: number;
-  height?: number;
-  minWidth?: number;
-  minHeight?: number;
-};
+
 
 
 export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onSave, onLoad, onNew, onResourceSelect, onToggleJsonPanel, jsonPanelOpen, onFitToView, onExportPng, onConnectionUpdate, onCloseSidebar, isMobile, transform, onTransformChange }: ComponentSidebarProps) {
-  const { register, reset, getValues } = useForm<FormValues>();
+  const { register, reset, getValues } = useForm();
 
   useEffect(() => {
     if (selectedItem && selectedItem.itemType !== 'edge') {
@@ -105,7 +88,7 @@ export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, 
         // Prevent infinite loop by checking for actual changes
         const hasChanged = Object.keys(currentValues).some(key => {
             const initialValue = selectedItem[key as keyof SelectedItem];
-            const currentValue = currentValues[key as keyof FormValues];
+            const currentValue = currentValues[key as string];
             return initialValue !== currentValue;
         });
 
@@ -221,6 +204,41 @@ return (
                   <Label htmlFor="label">Label</Label>
                   <Input id="label" {...register('label')} />
                 </div>
+                
+                {selectedItem.itemType === 'group' && (
+                  <div>
+                    <Label htmlFor="textPosition">Text Position</Label>
+                    <Select 
+                      value={selectedItem.textPosition || (selectedItem.subType === 'zone' ? 'top-left' : '')}
+                      onValueChange={(value) => {
+                        const updatedItem = {
+                          ...selectedItem,
+                          textPosition: value as 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right' | 'inside'
+                        };
+                        onItemUpdate(updatedItem as unknown as SelectedItem);
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder={selectedItem.subType === 'zone' ? 'Top Left (Default)' : 'Bottom Right (Default)'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="top-left">Top Left</SelectItem>
+                        <SelectItem value="top-center">Top Center</SelectItem>
+                        <SelectItem value="top-right">Top Right</SelectItem>
+                        <SelectItem value="bottom-left">Bottom Left</SelectItem>
+                        <SelectItem value="bottom-center">Bottom Center</SelectItem>
+                        <SelectItem value="bottom-right">Bottom Right</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {selectedItem.subType === 'zone' 
+                        ? 'Position text inline with zone border' 
+                        : 'Position text inside or outside the group'
+                      }
+                    </p>
+                  </div>
+                )}
+                
                 <div>
                     <Label htmlFor="info">Description</Label>
                     <Textarea id="info" {...register('info')} rows={5} />
@@ -600,10 +618,11 @@ return (
                               <Select 
                                 value={(selectedItem as any).textPosition || 'under'}
                                 onValueChange={(value) => {
-                                  onItemUpdate({
+                                  const updatedItem = {
                                     ...selectedItem,
                                     textPosition: value as 'above' | 'center' | 'under'
-                                  });
+                                  };
+                                  onItemUpdate(updatedItem as unknown as SelectedItem);
                                 }}
                               >
                                 <SelectTrigger className="w-full">

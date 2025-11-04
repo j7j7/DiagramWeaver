@@ -59,6 +59,9 @@ export interface DiagramGroupItem {
   maxItemsPerRow?: number; // Maximum items per row (for grid layouts)
   lineColor?: string; // Color for connections from this group
   shadow?: boolean; // Whether to show shadow around the group/zone
+  
+  // Text positioning properties
+  textPosition?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right' | 'inside';
 }
 
 export interface DiagramGroupData {
@@ -83,6 +86,9 @@ export interface DiagramGroupData {
   lineColor?: string; // Color for connections from this group
   shadow?: boolean; // Whether to show shadow around the group/zone
   parentId?: string; // Reference to parent group ID for hierarchy tracking
+  
+  // Text positioning properties
+  textPosition?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right' | 'inside';
   
   // Custom sizing properties
   width?: number; // Custom width - when set, overrides auto-calculated width
