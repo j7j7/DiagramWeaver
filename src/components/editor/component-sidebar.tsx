@@ -44,7 +44,7 @@ export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, 
   const { register, reset, getValues } = useForm();
   
   // State for default connection settings
-  const [defaultConnectionStyle, setDefaultConnectionStyle] = React.useState<'pathways' | 'bezier'>('pathways');
+  const [defaultConnectionStyle, setDefaultConnectionStyle] = React.useState<'pathways' | 'bezier'>('bezier');
   const [defaultCurvature, setDefaultCurvature] = React.useState<number>(0.5);
 
   // Handler for connect button with default options

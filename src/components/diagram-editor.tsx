@@ -234,7 +234,7 @@ const [isClient, setIsClient] = React.useState<boolean>(false);
     const newConnection: DiagramConnectionData = { 
       from: selectedItem.id, 
       to: targetItem.id,
-      style: connectionOptions.style || 'pathways',
+      style: connectionOptions.style || 'bezier',
       curvature: connectionOptions.style === 'bezier' ? (connectionOptions.curvature || 0.5) : undefined
     };
     
