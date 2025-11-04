@@ -523,16 +523,137 @@ return (
                 )}
 
                 {(selectedItem.itemType === 'node' || selectedItem.itemType === 'group') && (
-                  <div>
-                    <Label htmlFor="lineColor">Line Color</Label>
-                    <Input 
-                      id="lineColor" 
-                      type="color" 
-                      {...register('lineColor')} 
-                      className="p-1 h-10"
-                      defaultValue={selectedItem.lineColor || '#6b7280'}
-                    />
-                  </div>
+                  <>
+                    {(selectedItem.type === 'generic.text.label' || selectedItem.type === 'generic.text.text' || 
+                      selectedItem.type === 'generic.text.square' || selectedItem.type === 'generic.text.circle' || 
+                      selectedItem.type === 'generic.text.rectangle' || selectedItem.type === 'generic.text.triangle') && (
+                      <>
+                        {selectedItem.type === 'generic.text.label' && (
+                          <>
+                            <div>
+                              <Label htmlFor="borderColor">Border Color</Label>
+                              <Input 
+                                id="borderColor" 
+                                type="color" 
+                                value={(selectedItem as any).borderColor || '#d1d5db'}
+                                onChange={(e) => {
+                                  onItemUpdate({
+                                    ...selectedItem,
+                                    borderColor: e.target.value
+                                  });
+                                }}
+                                className="p-1 h-10"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="backgroundColor">Background Color</Label>
+                              <Input 
+                                id="backgroundColor" 
+                                type="color" 
+                                value={(selectedItem as any).backgroundColor || '#f3f4f6'}
+                                onChange={(e) => {
+                                  onItemUpdate({
+                                    ...selectedItem,
+                                    backgroundColor: e.target.value
+                                  });
+                                }}
+                                className="p-1 h-10"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="textColor">Text Color</Label>
+                              <Input 
+                                id="textColor" 
+                                type="color" 
+                                value={(selectedItem as any).textColor || '#374151'}
+                                onChange={(e) => {
+                                  onItemUpdate({
+                                    ...selectedItem,
+                                    textColor: e.target.value
+                                  });
+                                }}
+                                className="p-1 h-10"
+                              />
+                            </div>
+                          </>
+                        )}
+                        {(selectedItem.type === 'generic.text.square' || selectedItem.type === 'generic.text.circle' || 
+                          selectedItem.type === 'generic.text.rectangle' || selectedItem.type === 'generic.text.triangle') && (
+                          <>
+                            <div>
+                              <Label htmlFor="backgroundColor">Shape Color</Label>
+                              <Input 
+                                id="backgroundColor" 
+                                type="color" 
+                                value={(selectedItem as any).backgroundColor || '#6b7280'}
+                                onChange={(e) => {
+                                  onItemUpdate({
+                                    ...selectedItem,
+                                    backgroundColor: e.target.value
+                                  });
+                                }}
+                                className="p-1 h-10"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="textPosition">Text Position</Label>
+                              <Select 
+                                value={(selectedItem as any).textPosition || 'under'}
+                                onValueChange={(value) => {
+                                  onItemUpdate({
+                                    ...selectedItem,
+                                    textPosition: value as 'above' | 'center' | 'under'
+                                  });
+                                }}
+                              >
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Select text position" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="above">Above</SelectItem>
+                                  <SelectItem value="center">Center</SelectItem>
+                                  <SelectItem value="under">Under (Default)</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </>
+                        )}
+                        <div>
+                          <Label htmlFor="rotation">Rotation</Label>
+                          <Select 
+                            value={String((selectedItem as any).rotation || 0)}
+                            onValueChange={(value) => {
+                              onItemUpdate({
+                                ...selectedItem,
+                                rotation: parseInt(value)
+                              });
+                            }}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select rotation" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="0">0° (Default)</SelectItem>
+                              <SelectItem value="45">45°</SelectItem>
+                              <SelectItem value="-45">-45°</SelectItem>
+                              <SelectItem value="90">90°</SelectItem>
+                              <SelectItem value="-90">-90°</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </>
+                    )}
+                    <div>
+                      <Label htmlFor="lineColor">Line Color</Label>
+                      <Input 
+                        id="lineColor" 
+                        type="color" 
+                        {...register('lineColor')} 
+                        className="p-1 h-10"
+                        defaultValue={selectedItem.lineColor || '#6b7280'}
+                      />
+                    </div>
+                  </>
                 )}
                 
                 {selectedItem.itemType === 'node' && parentGroup && (

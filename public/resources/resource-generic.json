@@ -1,7 +1,7 @@
 {
   "name": "Generic",
   "icon": "generic.png",
-  "totalResources": 17,
+   "totalResources": 21,
   "categories": {
     "grouping": {
       "name": "Grouping",
@@ -11,18 +11,24 @@
          {"name": "Group", "file": "group.png", "type": "group"}
       ]
     },
-    "text": {
-      "name": "Text",
-      "path": "generic/text",
-      "resources": [
-         {"name": "Text", "file": "text.png", "type": "text"}
-      ]
-    },
+     "text": {
+       "name": "Object",
+       "path": "generic/text",
+       "resources": [
+          {"name": "Text", "file": "text.png", "type": "text"},
+          {"name": "Label", "file": "label.png", "type": "label"},
+          {"name": "Square", "file": "square.png", "type": "shape"},
+          {"name": "Circle", "file": "circle.png", "type": "shape"},
+          {"name": "Rectangle", "file": "rectangle.png", "type": "shape"},
+          {"name": "Triangle", "file": "triangle.png", "type": "shape"}
+       ]
+     },
     "user": {
       "name": "User",
       "path": "generic/user",
       "resources": [
-         {"name": "User", "file": "user.png", "type": "user"}
+         {"name": "User", "file": "user.png", "type": "user"},
+         {"name": "Users", "file": "users.png", "type": "user"}
       ]
     },
     "device": {
@@ -30,7 +36,8 @@
       "path": "generic/device",
       "resources": [
          {"name": "Mobile", "file": "mobile.png", "type": "device"},
-         {"name": "Tablet", "file": "tablet.png", "type": "device"},
+         {"name": "Tablet", "file": "tablet.png", "type": "device"},         
+         {"name": "Laptop", "file": "laptop.png", "type": "device"},
          {"name": "Desktop", "file": "desktop.png", "type": "device"}
       ]
     },

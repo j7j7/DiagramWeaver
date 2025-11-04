@@ -1,8 +1,38 @@
 {
   "name": "Amazon Web Services",
   "icon": "aws.png",
-  "totalResources": 64,
+  "totalResources": 86,
   "categories": {
+    "general": {
+      "name": "General",
+      "path": "aws/general",
+      "resources": [
+         {"name": "Client", "file": "client.png"},
+         {"name": "Disk", "file": "disk.png"},
+         {"name": "Forums", "file": "forums.png"},
+         {"name": "General", "file": "general.png"},
+         {"name": "Generic Database", "file": "generic-database.png"},
+         {"name": "Generic Firewall", "file": "generic-firewall.png"},
+         {"name": "Generic Office Building", "file": "generic-office-building.png"},
+         {"name": "Generic SAML Token", "file": "generic-saml-token.png"},
+         {"name": "Generic SDK", "file": "generic-sdk.png"},
+         {"name": "Internet Alt 1", "file": "internet-alt1.png"},
+         {"name": "Internet Alt 2", "file": "internet-alt2.png"},
+         {"name": "Internet Gateway", "file": "internet-gateway.png"},
+         {"name": "Marketplace", "file": "marketplace.png"},
+         {"name": "Mobile Client", "file": "mobile-client.png"},
+         {"name": "Multimedia", "file": "multimedia.png"},
+         {"name": "Office Building", "file": "office-building.png"},
+         {"name": "SAML Token", "file": "saml-token.png"},
+         {"name": "SDK", "file": "sdk.png"},
+         {"name": "SSL Padlock", "file": "ssl-padlock.png"},
+         {"name": "Tape Storage", "file": "tape-storage.png"},
+         {"name": "Toolkit", "file": "toolkit.png"},
+         {"name": "Traditional Server", "file": "traditional-server.png"},
+         {"name": "User", "file": "user.png"},
+         {"name": "Users", "file": "users.png"}
+      ]
+    },    
     "compute": {
       "name": "Compute",
       "path": "aws/compute",

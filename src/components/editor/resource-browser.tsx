@@ -1,5 +1,46 @@
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
+
+// Cookie helper functions
+const RESOURCE_BROWSER_COOKIE = 'resource-browser-state';
+
+interface ResourceBrowserState {
+  expandedProviders: string[];
+  expandedCategories: string[];
+}
+
+const getBrowserState = (): ResourceBrowserState => {
+  if (typeof window === 'undefined') return { expandedProviders: [], expandedCategories: [] };
+  
+  try {
+    const cookie = document.cookie
+      .split('; ')
+      .find(row => row.startsWith(RESOURCE_BROWSER_COOKIE));
+    
+    if (cookie) {
+      const decoded = decodeURIComponent(cookie.split('=')[1]);
+      return JSON.parse(decoded);
+    }
+  } catch (error) {
+    console.warn('Failed to parse resource browser state from cookie:', error);
+  }
+  
+  return { expandedProviders: [], expandedCategories: [] };
+};
+
+const setBrowserState = (state: ResourceBrowserState) => {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    const encoded = encodeURIComponent(JSON.stringify(state));
+    const expires = new Date();
+    expires.setFullYear(expires.getFullYear() + 1); // 1 year expiry
+    
+    document.cookie = `${RESOURCE_BROWSER_COOKIE}=${encoded}; expires=${expires.toUTCString()}; path=/; SameSite=Lax`;
+  } catch (error) {
+    console.warn('Failed to save resource browser state to cookie:', error);
+  }
+};
 import { ChevronDown, ChevronRight, Search, Package, Server, Database, Globe, Cloud, Cpu, Shield, BarChart3, Layers, Box, Network, Maximize2, Minimize2, Type } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
@@ -113,11 +154,18 @@ function ProviderIcon({ provider }: { provider: string }) {
 
 export function ResourceBrowser({ onResourceSelect }: ResourceBrowserProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [expandedProviders, setExpandedProviders] = useState<Set<string>>(new Set());
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [fullProviders, setFullProviders] = useState<Record<string, ResourceProvider>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [resourceIndex, setResourceIndex] = useState<ResourceIndex | null>(null);
+  
+  // Initialize state from cookies or defaults
+  const savedState = getBrowserState();
+  const [expandedProviders, setExpandedProviders] = useState<Set<string>>(
+    new Set(savedState.expandedProviders)
+  );
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
+    new Set(savedState.expandedCategories)
+  );
 
   useEffect(() => {
     const loadAll = async () => {
@@ -147,18 +195,29 @@ export function ResourceBrowser({ onResourceSelect }: ResourceBrowserProps) {
         }
         setFullProviders(providers);
 
-        // Auto-expand first provider and some categories
+        // Use saved state or default to Generic provider
         if (Object.keys(providers).length > 0) {
-          const firstProvider = Object.keys(providers)[0];
-          const newExpandedProviders = new Set([firstProvider]);
-          const newExpandedCategories = new Set<string>();
-
-          const providerData = providers[firstProvider];
-          if (providerData?.categories) {
-            const categoriesToExpand = ['grouping', 'compute', 'database', 'network'];
+          let defaultProvider = 'generic'; // Default to Generic
+          let newExpandedProviders = new Set<string>(savedState.expandedProviders);
+          let newExpandedCategories = new Set<string>(savedState.expandedCategories);
+          
+          // If no saved state or Generic not available, use first available provider
+          if (newExpandedProviders.size === 0 || !providers[defaultProvider]) {
+            if (providers[defaultProvider]) {
+              newExpandedProviders = new Set([defaultProvider]);
+            } else {
+              defaultProvider = Object.keys(providers)[0];
+              newExpandedProviders = new Set([defaultProvider]);
+            }
+          }
+          
+          // Auto-expand some categories for the default/first provider
+          const providerData = providers[Array.from(newExpandedProviders)[0]];
+          if (providerData?.categories && newExpandedCategories.size === 0) {
+            const categoriesToExpand = ['grouping', 'text', 'compute', 'database', 'network'];
             Object.keys(providerData.categories).forEach(categoryKey => {
               if (categoriesToExpand.includes(categoryKey)) {
-                newExpandedCategories.add(`${firstProvider}-${categoryKey}`);
+                newExpandedCategories.add(`${Array.from(newExpandedProviders)[0]}-${categoryKey}`);
               }
             });
           }
@@ -183,6 +242,13 @@ export function ResourceBrowser({ onResourceSelect }: ResourceBrowserProps) {
       newExpanded.add(provider);
     }
     setExpandedProviders(newExpanded);
+    
+    // Save to cookie
+    const currentState = getBrowserState();
+    setBrowserState({
+      ...currentState,
+      expandedProviders: Array.from(newExpanded)
+    });
   };
 
   const toggleCategory = (categoryKey: string) => {
@@ -193,6 +259,13 @@ export function ResourceBrowser({ onResourceSelect }: ResourceBrowserProps) {
       newExpanded.add(categoryKey);
     }
     setExpandedCategories(newExpanded);
+    
+    // Save to cookie
+    const currentState = getBrowserState();
+    setBrowserState({
+      ...currentState,
+      expandedCategories: Array.from(newExpanded)
+    });
   };
 
   const expandAll = () => {
@@ -207,11 +280,23 @@ export function ResourceBrowser({ onResourceSelect }: ResourceBrowserProps) {
     
     setExpandedProviders(allProviders);
     setExpandedCategories(allCategories);
+    
+    // Save to cookie
+    setBrowserState({
+      expandedProviders: Array.from(allProviders),
+      expandedCategories: Array.from(allCategories)
+    });
   };
 
   const collapseAll = () => {
     setExpandedProviders(new Set());
     setExpandedCategories(new Set());
+    
+    // Save to cookie
+    setBrowserState({
+      expandedProviders: [],
+      expandedCategories: []
+    });
   };
 
   const filteredProviders = useMemo(() => {

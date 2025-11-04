@@ -7,6 +7,12 @@ export interface DiagramNodeData {
   y?: number;
   lineColor?: string; // Color for connections/borders
   edgePosition?: 'top' | 'bottom' | 'left' | 'right'; // Position node on edge of parent group
+  // Label-specific styling properties
+  borderColor?: string; // Border color for label nodes
+  backgroundColor?: string; // Background color for label nodes
+  textColor?: string; // Text color for label nodes
+  rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
+  textPosition?: 'above' | 'center' | 'under'; // Text position for shape nodes
 }
 
 export interface DiagramConnectionData {

@@ -1017,7 +1017,7 @@ const [, drop] = useDrop(() => ({
   };
 
   const measureNodeDims = (n: PositionedNode) => {
-    const isText = n.type === 'generic.text.text';
+    const isText = n.type === 'generic.text.text' || n.type === 'generic.text.label';
     const label = (n.label || '').toString();
     const maxCharsPerLine = isText ? 20 : 12;
     const lines = Math.max(1, Math.ceil(label.length / maxCharsPerLine));

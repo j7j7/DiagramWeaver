@@ -43,7 +43,11 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, onC
   };
   
   const isTextNode = node.type === 'generic.text.text';
-  const nodeHeight = calculateNodeHeight(node.label || '', isTextNode);
+  const isLabelNode = node.type === 'generic.text.label';
+  const isShapeNode = node.type === 'generic.text.square' || node.type === 'generic.text.circle' || node.type === 'generic.text.rectangle' || node.type === 'generic.text.triangle';
+  const isRotatableNode = isTextNode || isLabelNode || isShapeNode;
+  const nodeHeight = calculateNodeHeight(node.label || '', isRotatableNode);
+  const rotation = (node as any).rotation || 0;
   
   const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.CANVAS_NODE,
@@ -149,11 +153,13 @@ return (
       style={{
         left: node.x,
         top: node.y,
-        width: isTextNode ? 'auto' : NODE_WIDTH,
-        minWidth: isTextNode ? 80 : NODE_WIDTH,
-        maxWidth: isTextNode ? 200 : NODE_WIDTH,
+        width: isRotatableNode ? 'auto' : NODE_WIDTH,
+        minWidth: isRotatableNode ? 80 : NODE_WIDTH,
+        maxWidth: isRotatableNode ? 200 : NODE_WIDTH,
         height: nodeHeight,
-        touchAction: 'none'
+        touchAction: 'none',
+        transform: isRotatableNode && rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
+        transformOrigin: 'center'
       }}
       onMouseEnter={() => !isDragging && setIsOpen(true)}
       onMouseLeave={() => setIsOpen(false)}
@@ -172,6 +178,111 @@ return (
                 <p className="text-sm font-medium text-center text-foreground break-words leading-tight">
                   {node.label || 'Untitled'}
                 </p>
+              </div>
+            ) : node.type === 'generic.text.label' ? (
+              // Label node - show text with curved rectangle background
+              <div 
+                className={cn(
+                  "flex items-center justify-center h-full w-full px-3 py-2 rounded-lg border-2 transition-colors",
+                  isSelected ? "border-primary" : "group-hover:border-accent",
+                  isTargetable && "border-dashed border-primary"
+                )}
+                style={{
+                  backgroundColor: (node as any).backgroundColor || '#f3f4f6',
+                  borderColor: (node as any).borderColor || '#d1d5db',
+                  color: (node as any).textColor || '#374151'
+                }}
+              >
+                <p className="text-sm font-medium text-center break-words leading-tight">
+                  {node.label || 'Label'}
+                </p>
+              </div>
+            ) : isShapeNode ? (
+              // Shape node - render pure shape with text in different positions
+              <div className="flex flex-col items-center justify-center h-full w-full relative">
+                <div className="flex items-center justify-center">
+                  {node.type === 'generic.text.square' && (
+                    <div 
+                      className="w-12 h-12 bg-foreground relative"
+                      style={{ backgroundColor: (node as any).backgroundColor || '#6b7280' }}
+                    >
+                      {/* Text inside square */}
+                      {(node as any).textPosition === 'center' && node.label && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <p className="text-xs font-medium text-center text-white break-words leading-tight px-1">
+                            {node.label}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {node.type === 'generic.text.circle' && (
+                    <div 
+                      className="w-12 h-12 rounded-full bg-foreground relative"
+                      style={{ backgroundColor: (node as any).backgroundColor || '#6b7280' }}
+                    >
+                      {/* Text inside circle */}
+                      {(node as any).textPosition === 'center' && node.label && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <p className="text-xs font-medium text-center text-white break-words leading-tight px-1">
+                            {node.label}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {node.type === 'generic.text.rectangle' && (
+                    <div 
+                      className="w-16 h-10 bg-foreground relative"
+                      style={{ backgroundColor: (node as any).backgroundColor || '#6b7280' }}
+                    >
+                      {/* Text inside rectangle */}
+                      {(node as any).textPosition === 'center' && node.label && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <p className="text-xs font-medium text-center text-white break-words leading-tight px-1">
+                            {node.label}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {node.type === 'generic.text.triangle' && (
+                    <div className="relative w-12 h-12">
+                      {/* Triangle using CSS clip-path */}
+                      <div 
+                        className="w-full h-full"
+                        style={{
+                          backgroundColor: (node as any).backgroundColor || '#6b7280',
+                          clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)'
+                        }}
+                      />
+                      {/* Text inside triangle - positioned in center */}
+                      {(node as any).textPosition === 'center' && node.label && (
+                        <div className="absolute inset-0 flex items-center justify-center pt-2">
+                          <p className="text-xs font-medium text-center text-white break-words leading-tight px-1">
+                            {node.label}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Text over shape */}
+                {(node as any).textPosition === 'above' && node.label && (
+                  <div className="absolute -top-6 left-1/2 transform -translate-x-1/2">
+                    <p className="text-sm font-medium text-center text-foreground break-words leading-tight px-2 bg-background/90 rounded">
+                      {node.label}
+                    </p>
+                  </div>
+                )}
+                
+                {/* Text under shape */}
+                {((node as any).textPosition === 'under' || !(node as any).textPosition) && node.label && (
+                  <p className="text-sm font-medium text-center text-foreground break-words leading-tight px-2 mt-1">
+                    {node.label}
+                  </p>
+                )}
               </div>
             ) : (
               <>
