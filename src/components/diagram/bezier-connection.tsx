@@ -120,7 +120,7 @@ function getOptimalConnectionPoints(from: any, to: any, fromWidth: number, fromH
   };
 }
 
-function calculateBezierPath(fromX: number, fromY: number, toX: number, toY: number, curvature: number = 0.3, fromAngle: number = 0, toAngle: number = 0): string {
+function calculateBezierPath(fromX: number, fromY: number, toX: number, toY: number, curvature: number = 0.6, fromAngle: number = 0, toAngle: number = 0): string {
   const dx = toX - fromX;
   const dy = toY - fromY;
   const distance = Math.sqrt(dx * dx + dy * dy);
@@ -192,7 +192,7 @@ export function BezierConnection({ from, to, connectionColor, connectionData, on
   const connectionPoints = getOptimalConnectionPoints(from, to, fromWidth, fromHeight, toWidth, toHeight, connectionData);
   const { fromX, fromY, toX, toY, fromAngle, toAngle } = connectionPoints;
 
-  const curvature = connectionData?.curvature || 0.3;
+  const curvature = connectionData?.curvature || 0.6;
   const pathData = calculateBezierPath(fromX, fromY, toX, toY, curvature, fromAngle, toAngle);
 
   const handleClick = (e: React.MouseEvent) => {
@@ -300,7 +300,7 @@ export function BezierConnectionText({ connectionData, from, to, connectionColor
     const connectionPoints = getOptimalConnectionPoints(from, to, fromWidth, fromHeight, toWidth, toHeight, connectionData);
     const { fromX, fromY, toX, toY, fromAngle, toAngle } = connectionPoints;
 
-    const curvature = connectionData?.curvature || 0.3;
+    const curvature = connectionData?.curvature || 0.6;
     const dx = toX - fromX;
     const dy = toY - fromY;
     const distance = Math.sqrt(dx * dx + dy * dy);

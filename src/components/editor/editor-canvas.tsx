@@ -1043,12 +1043,75 @@ const [, drop] = useDrop(() => ({
 
   const measureNodeDims = (n: PositionedNode) => {
     const isText = n.type === 'generic.text.text' || n.type === 'generic.text.label';
+    const isShapeNode = n.type === 'generic.text.square' || n.type === 'generic.text.circle' || n.type === 'generic.text.rectangle' || n.type === 'generic.text.triangle';
     const label = (n.label || '').toString();
-    const maxCharsPerLine = isText ? 20 : 12;
-    const lines = Math.max(1, Math.ceil(label.length / maxCharsPerLine));
-    const height = (isText ? TEXT_NODE_HEIGHT : NODE_HEIGHT) + (lines - 1) * EXTRA_LINE_HEIGHT;
-    const width = isText ? 200 : NODE_WIDTH; // conservative upper bound for text nodes
-    return { width, height };
+    
+    if (isText || isShapeNode) {
+      // Calculate more accurate width based on character count and padding
+      const avgCharWidth = 8; // Average width of a character in pixels
+      
+      let calculatedWidth, height;
+      
+      if (isText) {
+        // Text nodes (generic.text.text, generic.text.label)
+        const padding = 16; // Padding for text nodes
+        const minTextWidth = 80; // Minimum width for text nodes
+        const maxTextWidth = 200; // Maximum width for text nodes
+        
+        // Calculate width based on the longest line
+        const words = label.split(' ');
+        const maxCharsPerLine = 20;
+        const lines = [];
+        let currentLine = '';
+        
+        for (const word of words) {
+          if ((currentLine + ' ' + word).trim().length <= maxCharsPerLine) {
+            currentLine = (currentLine + ' ' + word).trim();
+          } else {
+            if (currentLine) lines.push(currentLine);
+            currentLine = word;
+          }
+        }
+        if (currentLine) lines.push(currentLine);
+        
+        const maxLineLength = Math.max(...lines.map(line => line.length), 1);
+        calculatedWidth = Math.max(minTextWidth, Math.min(maxTextWidth, maxLineLength * avgCharWidth + padding));
+        
+        // Calculate height for text nodes
+        const textLines = Math.max(1, Math.ceil(label.length / maxCharsPerLine));
+        height = TEXT_NODE_HEIGHT + (textLines - 1) * EXTRA_LINE_HEIGHT;
+        
+      } else {
+        // Shape nodes (square, circle, rectangle, triangle)
+        const shapeSize = 48; // Base shape size (w-12 h-12 = 48px)
+        const textPadding = 16; // Extra space for text outside shape
+        
+        // Check if text is positioned outside the shape
+        const textPosition = (n as any).textPosition || 'under';
+        
+        if (textPosition === 'center' && label) {
+          // Text inside shape - width is just the shape size
+          calculatedWidth = shapeSize;
+        } else if (textPosition === 'above' || textPosition === 'under') {
+          // Text above or below shape - width needs to accommodate both shape and text
+          const textWidth = Math.min(120, Math.max(40, label.length * avgCharWidth + textPadding));
+          calculatedWidth = Math.max(shapeSize, textWidth);
+        } else {
+          // Default or other positions - use shape size with some padding
+          calculatedWidth = Math.max(shapeSize, 80);
+        }
+        
+        // Calculate height for shape nodes
+        const maxCharsPerLine = 12;
+        const shapeLines = Math.max(1, Math.ceil(label.length / maxCharsPerLine));
+        height = NODE_HEIGHT + (shapeLines - 1) * EXTRA_LINE_HEIGHT;
+      }
+      
+      return { width: calculatedWidth, height };
+    } else {
+      // Regular nodes use static dimensions
+      return { width: NODE_WIDTH, height: NODE_HEIGHT };
+    }
   };
 
   const handleFitToView = useCallback(() => {
@@ -1642,18 +1705,23 @@ const [, drop] = useDrop(() => ({
                     const toItem = nodesById[edge.to] || groupsById[edge.to];
                     if (!fromItem || !toItem) return null;
 
-                    // 
-
+                    // Use measured dimensions for nodes to ensure proper connection alignment
+                    const fromItemDims = 'type' in fromItem ? measureNodeDims(fromItem as PositionedNode) : { width: (fromItem as any).width, height: (fromItem as any).height };
+                    const toItemDims = 'type' in toItem ? measureNodeDims(toItem as PositionedNode) : { width: (toItem as any).width, height: (toItem as any).height };
+                    
                     const fromPos: any = {
                       ...fromItem,
-                      width: 'width' in fromItem ? (fromItem as any).width : NODE_WIDTH,
-                      height: 'height' in fromItem ? (fromItem as any).height : NODE_HEIGHT,
+                      width: 'width' in fromItem ? (fromItem as any).width : fromItemDims.width,
+                      height: 'height' in fromItem ? (fromItem as any).height : fromItemDims.height,
                     };
                     const toPos: any = {
                       ...toItem,
-                      width: 'width' in toItem ? (toItem as any).width : NODE_WIDTH,
-                      height: 'height' in toItem ? (toItem as any).height : NODE_HEIGHT,
+                      width: 'width' in toItem ? (toItem as any).width : toItemDims.width,
+                      height: 'height' in toItem ? (toItem as any).height : toItemDims.height,
                     };
+
+                    // Debug log for connection dimensions
+                    console.log(`Connection ${edge.from} -> ${edge.to}: from=${fromPos.width}x${fromPos.height}, to=${toPos.width}x${toPos.height}`);
 
                     // Explicitly set lineColor after spreading to ensure it's not overwritten
                     fromPos.lineColor = (fromItem as any).lineColor;
@@ -1687,7 +1755,7 @@ const [, drop] = useDrop(() => ({
                     const isConnectionHighlighted = selectedItemId === edge.from || selectedItemId === edge.to;
 
 // Determine connection style - default to pathways for backward compatibility
-                    const connectionStyle = edge.style || 'pathways';
+                    const connectionStyle = edge.style || 'bezier';
                     
                     return (
                     <g key={`${edge.from}-${edge.to}-${index}`} className={cn(isConnectionHighlighted && 'drop-shadow-[0_0_6px_rgba(0,200,150,0.8)]')}>
@@ -1813,7 +1881,7 @@ const [, drop] = useDrop(() => ({
                     ];
 
                     // Determine connection style - default to pathways for backward compatibility
-                    const connectionStyle = edge.style || 'pathways';
+                    const connectionStyle = edge.style || 'bezier';
                     
                     return (
                       connectionStyle === 'bezier' ? (
