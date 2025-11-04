@@ -41,16 +41,60 @@ export type SelectedItem = ((DiagramNodeData | DiagramGroupData) & {
 
 export default function DiagramEditor() {
   const [diagramData, setDiagramData] = React.useState<DiagramData>({ nodes: [], connections: [], groups: [] });
+  const [history, setHistory] = React.useState<DiagramData[]>([{ nodes: [], connections: [], groups: [] }]);
+  const [historyIndex, setHistoryIndex] = React.useState<number>(0);
   const editorRef = React.useRef<EditorCanvasHandle>(null);
   const [selectedItem, setSelectedItem] = React.useState<SelectedItem | null>(null);
   const [selectedItemIds, setSelectedItemIds] = React.useState<Set<string>>(new Set());
   const [isConnectMode, setIsConnectMode] = React.useState<boolean>(false);
   const [jsonPanelOpen, setJsonPanelOpen] = React.useState<boolean>(false);
   const [jsonPanelWidth, setJsonPanelWidth] = React.useState<number>(420);
-const [isClient, setIsClient] = React.useState<boolean>(false);
+  const [isClient, setIsClient] = React.useState<boolean>(false);
   const [sidebarOpen, setSidebarOpen] = React.useState<boolean>(false);
   const [canvasTransform, setCanvasTransform] = React.useState<{ x: number; y: number; k: number }>({ x: 0, y: 0, k: 1 });
   const isMobile = useIsMobile();
+
+  // History management functions
+  const addToHistory = (newData: DiagramData) => {
+    setHistory(prevHistory => {
+      const newHistory = prevHistory.slice(0, historyIndex + 1);
+      newHistory.push(JSON.parse(JSON.stringify(newData)));
+      // Keep only last 10 states
+      if (newHistory.length > 10) {
+        newHistory.shift();
+        return newHistory;
+      }
+      return newHistory;
+    });
+    setHistoryIndex(prev => Math.min(prev + 1, 9));
+  };
+
+  const undo = () => {
+    if (historyIndex > 0) {
+      const newIndex = historyIndex - 1;
+      setHistoryIndex(newIndex);
+      setDiagramData(JSON.parse(JSON.stringify(history[newIndex])));
+      setSelectedItem(null);
+    }
+  };
+
+  const redo = () => {
+    if (historyIndex < history.length - 1) {
+      const newIndex = historyIndex + 1;
+      setHistoryIndex(newIndex);
+      setDiagramData(JSON.parse(JSON.stringify(history[newIndex])));
+      setSelectedItem(null);
+    }
+  };
+
+  // Wrapper function for setDiagramData that also manages history
+  const updateDiagramData = (newData: DiagramData | ((prev: DiagramData) => DiagramData)) => {
+    setDiagramData(prevData => {
+      const updatedData = typeof newData === 'function' ? newData(prevData) : newData;
+      addToHistory(updatedData);
+      return updatedData;
+    });
+  };
 
   // Initialize client-side state after hydration
   React.useEffect(() => {
@@ -112,7 +156,7 @@ const [isClient, setIsClient] = React.useState<boolean>(false);
   
   const handleItemUpdate = (updatedItem: SelectedItem) => {
     if (updatedItem.itemType === 'group') {
-        setDiagramData(prevData => {
+        updateDiagramData(prevData => {
             const currentGroup = (prevData.groups || []).find(g => g.id === updatedItem.id);
             const orientationChanged = currentGroup && currentGroup.orientation !== updatedItem.orientation;
             
@@ -172,7 +216,7 @@ const [isClient, setIsClient] = React.useState<boolean>(false);
             };
         });
     } else {
-        setDiagramData(prevData => ({
+        updateDiagramData(prevData => ({
             ...prevData,
             nodes: prevData.nodes.map(n => n.id === updatedItem.id ? (updatedItem as DiagramNodeData) : n)
         }));
@@ -185,7 +229,7 @@ const [isClient, setIsClient] = React.useState<boolean>(false);
   }
 
   const handleLabelUpdate = (nodeId: string, newLabel: string) => {
-    setDiagramData(prevData => ({
+    updateDiagramData(prevData => ({
       ...prevData,
       nodes: prevData.nodes.map(n => n.id === nodeId ? { ...n, label: newLabel } : n)
     }));
@@ -197,7 +241,7 @@ const [isClient, setIsClient] = React.useState<boolean>(false);
   }
 
   const handleItemDelete = (itemToDelete: SelectedItem) => {
-    setDiagramData(prevData => {
+    updateDiagramData(prevData => {
       let newNodes = prevData.nodes;
       let newGroups = prevData.groups || [];
       let newConnections = prevData.connections;
@@ -247,7 +291,7 @@ const [isClient, setIsClient] = React.useState<boolean>(false);
     );
 
     if (!connectionExists) {
-      setDiagramData(prevData => ({
+      updateDiagramData(prevData => ({
         ...prevData,
         connections: [...prevData.connections, newConnection]
       }));
@@ -268,7 +312,7 @@ const [isClient, setIsClient] = React.useState<boolean>(false);
   const disconnectSelected = () => {
     if (!selectedItem || (selectedItem.itemType !== 'node' && selectedItem.itemType !== 'group')) return;
     const id = selectedItem.id;
-    setDiagramData(prevData => ({
+    updateDiagramData(prevData => ({
       ...prevData,
       connections: prevData.connections.filter((e: any) => e.from !== id && e.to !== id),
     }));
@@ -346,14 +390,14 @@ const [isClient, setIsClient] = React.useState<boolean>(false);
                 groups: jsonData.groups || [],
                 rootGroupId: jsonData.rootGroupId
               };
-              // Clear existing data first to ensure clean load
-              setDiagramData({ nodes: [], connections: [], groups: [] });
-              // Then set the loaded data
-              setTimeout(() => {
-                setDiagramData(completeData);
-                setSelectedItem(null);
-                toast({ title: 'Diagram Loaded', description: 'Your diagram has been successfully loaded. If the JSON editor doesn\'t update, try toggling it off and on.' });
-              }, 0);
+               // Clear existing data first to ensure clean load
+               setDiagramData({ nodes: [], connections: [], groups: [] });
+               // Then set the loaded data
+               setTimeout(() => {
+                 updateDiagramData(completeData);
+                 setSelectedItem(null);
+                 toast({ title: 'Diagram Loaded', description: 'Your diagram has been successfully loaded. If the JSON editor doesn\'t update, try toggling it off and on.' });
+               }, 0);
             } else {
               throw new Error('Invalid diagram file format.');
             }
@@ -376,7 +420,7 @@ const [isClient, setIsClient] = React.useState<boolean>(false);
   };
 
   const handleConnectionUpdate = (from: string, to: string, updates: { text?: string; color?: string; style?: 'pathways' | 'bezier'; curvature?: number; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean }) => {
-    setDiagramData(prevData => ({
+    updateDiagramData(prevData => ({
       ...prevData,
       connections: prevData.connections.map(conn => 
         (conn.from === from && conn.to === to) 
@@ -387,13 +431,13 @@ const [isClient, setIsClient] = React.useState<boolean>(false);
   };
 
   const handleNew = () => {
-    setDiagramData({ nodes: [], connections: [], groups: [] });
+    updateDiagramData({ nodes: [], connections: [], groups: [] });
     setSelectedItem(null);
     toast({ title: 'New Diagram', description: 'Diagram has been cleared.' });
   };
 
   const handleJsonValidChange = (newDiagramData: DiagramData) => {
-    setDiagramData(newDiagramData);
+    updateDiagramData(newDiagramData);
     setSelectedItem(null); // Deselect to avoid stale references
   };
 
@@ -405,19 +449,39 @@ const [isClient, setIsClient] = React.useState<boolean>(false);
     }
   };
 
-  // Keyboard shortcut: Ctrl+Shift+J (or Cmd+Shift+J on Mac)
+  // Keyboard shortcuts
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isMac = navigator.userAgent.toUpperCase().includes('MAC');
+      
+      // Ctrl+Shift+J (or Cmd+Shift+J on Mac) - Toggle JSON Panel
       if ((isMac ? e.metaKey : e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'j') {
         e.preventDefault();
         toggleJsonPanel();
+      }
+      
+      // Ctrl+Z (or Cmd+Z on Mac) - Undo
+      if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      }
+      
+      // Ctrl+Shift+Z (or Cmd+Shift+Z on Mac) - Redo
+      if ((isMac ? e.metaKey : e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        redo();
+      }
+      
+      // Ctrl+Y (or Cmd+Y on Mac) - Redo (alternative)
+      if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        redo();
       }
     };
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [jsonPanelOpen]);
+  }, [jsonPanelOpen, historyIndex, history]);
 
   // Persist panel width
   React.useEffect(() => {
@@ -440,44 +504,48 @@ const [isClient, setIsClient] = React.useState<boolean>(false);
         
         {/* Sidebar - fixed on mobile, normal on desktop */}
         <div className={`${isMobile ? 'fixed left-0 top-0 h-full z-50 transform transition-transform duration-300 ease-in-out' : ''} ${isMobile && !sidebarOpen ? '-translate-x-full' : ''} ${isMobile ? 'w-80' : ''}`}>
-<ComponentSidebar
-          selectedItem={selectedItem}
-          selectedItemIds={selectedItemIds}
-          onItemUpdate={handleItemUpdate}
-          onConnect={startConnecting}
-          onDisconnect={disconnectSelected}
-          onItemDelete={handleItemDelete}
-          diagramData={diagramData}
-          onSave={handleSave}
-          onLoad={handleLoadClick}
-          onNew={handleNew}
-          onFitToView={() => editorRef.current?.fitToView()}
-          onExportPng={() => editorRef.current?.exportPng()}
-          onToggleJsonPanel={toggleJsonPanel}
-          jsonPanelOpen={jsonPanelOpen}
-          onConnectionUpdate={handleConnectionUpdate}
-          onCloseSidebar={() => setSidebarOpen(false)}
-          isMobile={isMobile}
-          transform={canvasTransform}
-          onTransformChange={setCanvasTransform}
+ <ComponentSidebar
+           selectedItem={selectedItem}
+           selectedItemIds={selectedItemIds}
+           onItemUpdate={handleItemUpdate}
+           onConnect={startConnecting}
+           onDisconnect={disconnectSelected}
+           onItemDelete={handleItemDelete}
+           diagramData={diagramData}
+           onSave={handleSave}
+           onLoad={handleLoadClick}
+           onNew={handleNew}
+           onFitToView={() => editorRef.current?.fitToView()}
+           onExportPng={() => editorRef.current?.exportPng()}
+           onToggleJsonPanel={toggleJsonPanel}
+           jsonPanelOpen={jsonPanelOpen}
+           onConnectionUpdate={handleConnectionUpdate}
+           onCloseSidebar={() => setSidebarOpen(false)}
+           isMobile={isMobile}
+           transform={canvasTransform}
+           onTransformChange={setCanvasTransform}
+           onUndo={undo}
+           onRedo={redo}
+           canUndo={historyIndex > 0}
+           canRedo={historyIndex < history.length - 1}
           onResourceSelect={(resource, provider, category) => {
             // NEVER add file or imagePath to node data
             // ResourceIcon will derive path from type and resource catalog
             const nodeType = `${provider}.${category}.${resource.name.replace(/\s+/g, '-').toLowerCase()}`;
-            setDiagramData(prevData => {
-              const newNode = {
-                id: generateSequentialId(nodeType, prevData),
-                type: nodeType,
-                label: resource.name,
-                info: `${resource.name} from ${provider}`,
-                x: 100 + Math.random() * 200,
-                y: 100 + Math.random() * 200,
-              };
-              return {
-                ...prevData,
-                nodes: [...prevData.nodes, newNode]
-              };
-            });
+             updateDiagramData(prevData => {
+               const newNode = {
+                 id: generateSequentialId(nodeType, prevData),
+                 type: nodeType,
+                 label: resource.name,
+                 info: `${resource.name} from ${provider}`,
+                 x: 100 + Math.random() * 200,
+                 y: 100 + Math.random() * 200,
+               };
+               return {
+                 ...prevData,
+                 nodes: [...prevData.nodes, newNode]
+               };
+             });
             toast({ title: 'Resource Added', description: `${resource.name} has been added to the diagram.` });
           }}
         />
@@ -523,17 +591,17 @@ const [isClient, setIsClient] = React.useState<boolean>(false);
                     onNodeClickInConnectMode={handleConnect}
                     onConnect={() => setIsConnectMode(true)}
                     onDisconnect={() => {
-                            // Remove all connections from selected item
-                            if (selectedItem) {
-                                setDiagramData(prevData => ({
-                                    ...prevData,
-                                    connections: prevData.connections?.filter((e: any) => e.from !== selectedItem.id && e.to !== selectedItem.id) || []
-                                }));
-                                toast({
-                                    title: "Connections Disconnected",
-                                    description: "All connections from the selected item have been removed.",
-                                });
-                            }
+                             // Remove all connections from selected item
+                             if (selectedItem) {
+                                 updateDiagramData(prevData => ({
+                                     ...prevData,
+                                     connections: prevData.connections?.filter((e: any) => e.from !== selectedItem.id && e.to !== selectedItem.id) || []
+                                 }));
+                                 toast({
+                                     title: "Connections Disconnected",
+                                     description: "All connections from the selected item have been removed.",
+                                 });
+                             }
                         }}
                     externalTransform={canvasTransform}
                     onTransformChange={setCanvasTransform}

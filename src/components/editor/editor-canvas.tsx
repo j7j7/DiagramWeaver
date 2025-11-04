@@ -417,6 +417,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             return { width: group.width, height: group.height };
         }
         
+        // Auto-sizing logic (only for non-custom groups)
+        
         // Auto-sizing logic (existing)
         const childNodes = group.children
             .map((id: string) => allItems[id])
@@ -770,6 +772,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
 
   // Helper function to recalculate group size based on its children
   const recalculateGroupSize = (group: DiagramGroupData, allNodes: DiagramNodeData[], allGroups: DiagramGroupData[]): DiagramGroupData => {
+    // If group is in custom sizing mode, don't resize it - just return as-is
+    if (group.sizeMode === 'custom') {
+      return group;
+    }
+    
     const childNodes = allNodes.filter(n => group.children.includes(n.id));
     const childGroups = allGroups.filter((g: DiagramGroupData) => group.children.includes(g.id));
     

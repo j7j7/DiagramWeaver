@@ -366,8 +366,37 @@ export function BezierConnectionText({ connectionData, from, to, connectionColor
   const finalConnectionColor = connectionColor || to?.lineColor || from?.lineColor || '#6b7280';
 
   const text = connectionData.text;
-  const shouldSplit = text.length > 4;
-  const lines = shouldSplit ? [text.slice(0, Math.ceil(text.length / 2)), text.slice(Math.ceil(text.length / 2))] : [text];
+  
+  // Split text by explicit line breaks (\n) and also handle long text
+  const explicitLines = text.split('\n');
+  const lines: string[] = [];
+  
+  explicitLines.forEach(line => {
+    if (line.length > 15) {
+      // For long lines without explicit breaks, split at word boundaries
+      const words = line.split(' ');
+      let currentLine = '';
+      
+      words.forEach(word => {
+        const testLine = currentLine ? `${currentLine} ${word}` : word;
+        if (testLine.length <= 15) {
+          currentLine = testLine;
+        } else {
+          if (currentLine) {
+            lines.push(currentLine);
+          }
+          currentLine = word;
+        }
+      });
+      
+      if (currentLine) {
+        lines.push(currentLine);
+      }
+    } else {
+      lines.push(line);
+    }
+  });
+  
   const lineHeight = 14;
   const startY = textY - ((lines.length - 1) * lineHeight) / 2;
 

@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { DraggableItem } from './draggable-item';
-import { Download, Upload, Plus, Code, Maximize2, ImageDown } from 'lucide-react';
+import { Download, Upload, Plus, Code, Maximize2, ImageDown, Undo, Redo } from 'lucide-react';
 import type { DiagramNodeData, DiagramGroupData, DiagramData } from '@/lib/types';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
@@ -35,12 +35,16 @@ interface ComponentSidebarProps {
   isMobile?: boolean;
   transform?: { x: number; y: number; k: number };
   onTransformChange?: (transform: { x: number; y: number; k: number }) => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
 }
 
 
 
 
-export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onSave, onLoad, onNew, onResourceSelect, onToggleJsonPanel, jsonPanelOpen, onFitToView, onExportPng, onConnectionUpdate, onCloseSidebar, isMobile, transform, onTransformChange }: ComponentSidebarProps) {
+export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onSave, onLoad, onNew, onResourceSelect, onToggleJsonPanel, jsonPanelOpen, onFitToView, onExportPng, onConnectionUpdate, onCloseSidebar, isMobile, transform, onTransformChange, onUndo, onRedo, canUndo, canRedo }: ComponentSidebarProps) {
   const { register, reset, getValues } = useForm();
   
   // State for default connection settings
@@ -184,11 +188,37 @@ return (
           </div>
         )}
         {onExportPng && (
-          <div className="mb-4">
+          <div className="mb-2">
             <Button variant="outline" onClick={onExportPng} className="w-full touch-target">
               <ImageDown className="mr-2 h-4 w-4" />
               Export PNG
             </Button>
+          </div>
+        )}
+        {(onUndo || onRedo) && (
+          <div className="mb-4 flex gap-2">
+            {onUndo && (
+              <Button 
+                variant="outline" 
+                onClick={onUndo} 
+                disabled={!canUndo}
+                className="flex-1 touch-target"
+              >
+                <Undo className="mr-2 h-4 w-4" />
+                Undo
+              </Button>
+            )}
+            {onRedo && (
+              <Button 
+                variant="outline" 
+                onClick={onRedo} 
+                disabled={!canRedo}
+                className="flex-1 touch-target"
+              >
+                <Redo className="mr-2 h-4 w-4" />
+                Redo
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -897,18 +927,18 @@ return (
                               <div className="font-medium text-xs">{item.label}</div>
 <div>
                                  <Label htmlFor={`incoming-text-${i}`} className="text-xs text-muted-foreground">Connection Text</Label>
-                                 <Input
-                                   id={`incoming-text-${i}`}
-                                   type="text"
-                                   placeholder="Add text..."
-                                   value={item.connection.text || ''}
-                                   onChange={(e) => {
-                                     if (onConnectionUpdate) {
-                                       onConnectionUpdate(item.connection.from, item.connection.to, { text: e.target.value });
-                                     }
-                                   }}
-                                   className="h-8 text-xs"
-                                 />
+                                 <Textarea
+                                    id={`incoming-text-${i}`}
+                                    placeholder="Add text... (Use Enter for new line)"
+                                    value={item.connection.text || ''}
+                                    onChange={(e) => {
+                                      if (onConnectionUpdate) {
+                                        onConnectionUpdate(item.connection.from, item.connection.to, { text: e.target.value });
+                                      }
+                                    }}
+                                    className="h-16 text-xs resize-none"
+                                    rows={2}
+                                  />
                                </div>
                                {item.connection.text && (
                                  <div>
@@ -988,18 +1018,18 @@ return (
                               <div className="font-medium text-xs">{item.label}</div>
 <div>
                                  <Label htmlFor={`outgoing-text-${i}`} className="text-xs text-muted-foreground">Connection Text</Label>
-                                 <Input
-                                   id={`outgoing-text-${i}`}
-                                   type="text"
-                                   placeholder="Add text..."
-                                   value={item.connection.text || ''}
-                                   onChange={(e) => {
-                                     if (onConnectionUpdate) {
-                                       onConnectionUpdate(item.connection.from, item.connection.to, { text: e.target.value });
-                                     }
-                                   }}
-                                   className="h-8 text-xs"
-                                 />
+                                  <Textarea
+                                    id={`outgoing-text-${i}`}
+                                    placeholder="Add text... (Use Enter for new line)"
+                                    value={item.connection.text || ''}
+                                    onChange={(e) => {
+                                      if (onConnectionUpdate) {
+                                        onConnectionUpdate(item.connection.from, item.connection.to, { text: e.target.value });
+                                      }
+                                    }}
+                                    className="h-16 text-xs resize-none"
+                                    rows={2}
+                                  />
                                </div>
                                {item.connection.text && (
                                  <div>
