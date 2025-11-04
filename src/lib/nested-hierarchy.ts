@@ -33,6 +33,9 @@ export function convertToNestedHierarchy(data: DiagramData): HierarchicalDiagram
   // Find orphan nodes (nodes not in any group) and create a group for them
   const allChildNodeIds = new Set<string>();
   data.groups.forEach(group => {
+    // Skip orphan-nodes groups when checking for children
+    if (group.id === 'orphan-nodes') return;
+    
     // Handle both children (new format) and nodes (old format)
     const childIds = group.children || (group as any).nodes || [];
     childIds.forEach((childId: string) => {
@@ -42,7 +45,7 @@ export function convertToNestedHierarchy(data: DiagramData): HierarchicalDiagram
     });
   });
   
-  const orphanNodes = data.nodes.filter(n => !allChildNodeIds.has(n.id));
+  const orphanNodes = data.nodes.filter(n => !allChildNodeIds.has(n.id) && n.type !== 'group');
   if (orphanNodes.length > 0) {
     const orphanGroup: DiagramGroupItem = {
       id: 'orphan-nodes',
@@ -55,7 +58,14 @@ export function convertToNestedHierarchy(data: DiagramData): HierarchicalDiagram
         info: node.info,
         x: node.x,
         y: node.y,
-        lineColor: node.lineColor
+        lineColor: node.lineColor,
+        edgePosition: node.edgePosition,
+        borderColor: node.borderColor,
+        backgroundColor: node.backgroundColor,
+        textColor: node.textColor,
+        rotation: node.rotation,
+        textPosition: node.textPosition,
+        freeflow: node.freeflow
       }))
     };
     nestedGroups.push(orphanGroup);
@@ -95,7 +105,14 @@ function convertGroupToNested(
         info: node.info,
         x: node.x,
         y: node.y,
-        lineColor: node.lineColor
+        lineColor: node.lineColor,
+        edgePosition: node.edgePosition,
+        borderColor: node.borderColor,
+        backgroundColor: node.backgroundColor,
+        textColor: node.textColor,
+        rotation: node.rotation,
+        textPosition: node.textPosition,
+        freeflow: node.freeflow
       });
     } else {
       // This is a nested group
@@ -124,7 +141,13 @@ function convertGroupToNested(
     orientation: group.orientation,
     maxItemsPerRow: group.maxItemsPerRow,
     lineColor: group.lineColor,
-    shadow: group.shadow
+    shadow: group.shadow,
+    textPosition: group.textPosition,
+    width: group.width,
+    height: group.height,
+    sizeMode: group.sizeMode,
+    minWidth: group.minWidth,
+    minHeight: group.minHeight
   };
 }
 
@@ -139,7 +162,33 @@ export function convertFromNestedHierarchy(nestedData: HierarchicalDiagramData):
   
   // Process all groups and collect nodes
   nestedData.groups.forEach(group => {
-    processNestedGroup(group, nodes, groups, nodeMap, groupMap, null);
+    // Special handling for orphan-nodes group - convert its children directly to nodes
+    if (group.id === 'orphan-nodes') {
+      group.children.forEach(child => {
+        if (child.type !== 'group') {
+          const nodeChild = child as DiagramNodeItem;
+          const node: DiagramNodeData = {
+            id: nodeChild.id,
+            type: nodeChild.type,
+            label: nodeChild.label,
+            info: nodeChild.info,
+            x: nodeChild.x,
+            y: nodeChild.y,
+            lineColor: nodeChild.lineColor,
+            edgePosition: nodeChild.edgePosition,
+            borderColor: nodeChild.borderColor,
+            backgroundColor: nodeChild.backgroundColor,
+            textColor: nodeChild.textColor,
+            rotation: nodeChild.rotation,
+            textPosition: nodeChild.textPosition,
+            freeflow: nodeChild.freeflow
+          };
+          nodes.push(node);
+        }
+      });
+    } else {
+      processNestedGroup(group, nodes, groups, nodeMap, groupMap, null);
+    }
   });
   
   return {
@@ -183,6 +232,12 @@ function processNestedGroup(
     maxItemsPerRow: group.maxItemsPerRow,
     lineColor: group.lineColor,
     shadow: group.shadow,
+    textPosition: group.textPosition,
+    width: group.width,
+    height: group.height,
+    sizeMode: group.sizeMode,
+    minWidth: group.minWidth,
+    minHeight: group.minHeight,
     parentId: parentId || undefined
   };
   
@@ -197,14 +252,22 @@ function processNestedGroup(
       flatGroup.children.push(child.id);
     } else {
       // This is a node
+      const nodeChild = child as DiagramNodeItem;
       const node: DiagramNodeData = {
-        id: child.id,
-        type: child.type,
-        label: child.label,
-        info: child.info,
-        x: child.x,
-        y: child.y,
-        lineColor: child.lineColor
+        id: nodeChild.id,
+        type: nodeChild.type,
+        label: nodeChild.label,
+        info: nodeChild.info,
+        x: nodeChild.x,
+        y: nodeChild.y,
+        lineColor: nodeChild.lineColor,
+        edgePosition: nodeChild.edgePosition,
+        borderColor: nodeChild.borderColor,
+        backgroundColor: nodeChild.backgroundColor,
+        textColor: nodeChild.textColor,
+        rotation: nodeChild.rotation,
+        textPosition: nodeChild.textPosition,
+        freeflow: nodeChild.freeflow
       };
       
       nodes.push(node);
@@ -325,10 +388,11 @@ export function flattenNestedHierarchy(
         // Only add node if not already processed
         if (!processedNodeIds.has(child.id)) {
           processedNodeIds.add(child.id);
+          const nodeChild = child as DiagramNodeItem;
           positionedNodes.push({
-            ...child,
-            x: (child.x || 0) + groupX,
-            y: (child.y || 0) + groupY
+            ...nodeChild,
+            x: (nodeChild.x || 0) + groupX,
+            y: (nodeChild.y || 0) + groupY
           });
         }
       }

@@ -41,6 +41,13 @@ export interface DiagramNodeItem {
   x?: number;
   y?: number;
   lineColor?: string; // Color for connections/borders
+  edgePosition?: 'top' | 'bottom' | 'left' | 'right'; // Position node on edge of parent group
+  borderColor?: string; // Border color for label nodes
+  backgroundColor?: string; // Background color for label nodes
+  textColor?: string; // Text color for label nodes
+  rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
+  textPosition?: 'above' | 'center' | 'under'; // Text position for shape nodes
+  freeflow?: boolean; // If true, node can be placed anywhere without joining groups/zones
 }
 
 export interface DiagramGroupItem {
@@ -67,6 +74,13 @@ export interface DiagramGroupItem {
   
   // Text positioning properties
   textPosition?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right' | 'inside';
+  
+  // Custom sizing properties
+  width?: number; // Custom width - when set, overrides auto-calculated width
+  height?: number; // Custom height - when set, overrides auto-calculated height
+  sizeMode?: 'auto' | 'custom'; // Whether to use auto-calculated or custom dimensions
+  minWidth?: number; // Minimum width constraint (based on content)
+  minHeight?: number; // Minimum height constraint (based on content)
 }
 
 export interface DiagramGroupData {
