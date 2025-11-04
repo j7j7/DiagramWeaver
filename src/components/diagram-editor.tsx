@@ -182,6 +182,18 @@ const [isClient, setIsClient] = React.useState<boolean>(false);
     }
   }
 
+  const handleLabelUpdate = (nodeId: string, newLabel: string) => {
+    setDiagramData(prevData => ({
+      ...prevData,
+      nodes: prevData.nodes.map(n => n.id === nodeId ? { ...n, label: newLabel } : n)
+    }));
+
+    // Also update the selected item if it's the one being edited
+    if (selectedItem?.id === nodeId && selectedItem.itemType === 'node') {
+      setSelectedItem({ ...selectedItem, label: newLabel });
+    }
+  }
+
   const handleItemDelete = (itemToDelete: SelectedItem) => {
     setDiagramData(prevData => {
       let newNodes = prevData.nodes;
@@ -510,6 +522,7 @@ const [isClient, setIsClient] = React.useState<boolean>(false);
                         }}
                     externalTransform={canvasTransform}
                     onTransformChange={setCanvasTransform}
+                    onLabelUpdate={handleLabelUpdate}
                     />
                   </div>
                   

@@ -16,6 +16,7 @@
        "path": "generic/text",
        "resources": [
           {"name": "Text", "file": "text.png", "type": "text"},
+          {"name": "Text", "file": "text.png", "type": "text"},
           {"name": "Label", "file": "label.png", "type": "label"},
           {"name": "Square", "file": "square.png", "type": "shape"},
           {"name": "Circle", "file": "circle.png", "type": "shape"},

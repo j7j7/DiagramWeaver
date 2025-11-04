@@ -38,6 +38,7 @@ interface EditorCanvasProps {
   onDisconnect?: () => void;
   externalTransform?: { x: number; y: number; k: number };
   onTransformChange?: (transform: { x: number; y: number; k: number }) => void;
+  onLabelUpdate?: (nodeId: string, newLabel: string) => void;
 }
 
 type PositionedNode = DiagramNodeData & { x: number; y: number; };
@@ -49,7 +50,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, selectedItemId, isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, selectedItemId, isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate }: EditorCanvasProps,
   ref
 ) {
   const [internalTransform, setInternalTransform] = useState({ x: 0, y: 0, k: 1 });
@@ -1684,6 +1685,7 @@ return (
                           isHighlighted={isConnectedToSelected}
                           onClick={handleNodeClick}
                           onContextMenu={handleNodeRightClick}
+                          onLabelUpdate={onLabelUpdate}
                         />
                       </div>
                     );

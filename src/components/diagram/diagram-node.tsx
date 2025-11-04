@@ -24,10 +24,35 @@ interface DiagramNodeProps {
   isHighlighted?: boolean;
   onClick?: (e: React.MouseEvent, node: DiagramNodeData) => void;
   onContextMenu?: (e: React.MouseEvent, node: DiagramNodeData) => void;
+  onLabelUpdate?: (nodeId: string, newLabel: string) => void;
 }
 
-export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, onClick, onContextMenu }: DiagramNodeProps) {
+export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, onClick, onContextMenu, onLabelUpdate }: DiagramNodeProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isEditingLabel, setIsEditingLabel] = useState(false);
+  const [editText, setEditText] = useState(node.label || '');
+
+  const handleLabelClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsEditingLabel(true);
+    setEditText(node.label || '');
+  };
+
+  const handleLabelSubmit = () => {
+    if (onLabelUpdate && editText.trim() !== node.label) {
+      onLabelUpdate(node.id, editText.trim());
+    }
+    setIsEditingLabel(false);
+  };
+
+  const handleLabelKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleLabelSubmit();
+    } else if (e.key === 'Escape') {
+      setIsEditingLabel(false);
+      setEditText(node.label || '');
+    }
+  };
   
   // Calculate dynamic height based on label length and node type
   const calculateNodeHeight = (label: string = '', isTextNode: boolean) => {
@@ -193,9 +218,25 @@ return (
                   color: (node as any).textColor || '#374151'
                 }}
               >
-                <p className="text-sm font-medium text-center break-words leading-tight">
-                  {node.label || 'Label'}
-                </p>
+                {isEditingLabel ? (
+                  <input
+                    type="text"
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value)}
+                    onBlur={handleLabelSubmit}
+                    onKeyDown={handleLabelKeyDown}
+                    className="text-sm font-medium text-center bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
+                    autoFocus
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                ) : (
+                  <p 
+                    className="text-sm font-medium text-center break-words leading-tight cursor-text hover:bg-background/50 rounded px-1 py-0.5 -mx-1 -my-0.5"
+                    onClick={handleLabelClick}
+                  >
+                    {node.label || 'Label'}
+                  </p>
+                )}
               </div>
             ) : isShapeNode ? (
               // Shape node - render pure shape with text in different positions
@@ -209,9 +250,25 @@ return (
                       {/* Text inside square */}
                       {(node as any).textPosition === 'center' && node.label && (
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <p className="text-xs font-medium text-center text-white break-words leading-tight px-1">
-                            {node.label}
-                          </p>
+                          {isEditingLabel ? (
+                            <input
+                              type="text"
+                              value={editText}
+                              onChange={(e) => setEditText(e.target.value)}
+                              onBlur={handleLabelSubmit}
+                              onKeyDown={handleLabelKeyDown}
+                              className="text-xs font-medium text-center bg-transparent border border-white rounded px-1 py-0.5 w-16 outline-none"
+                              autoFocus
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          ) : (
+                            <p 
+                              className="text-xs font-medium text-center text-white break-words leading-tight px-1 cursor-text"
+                              onClick={handleLabelClick}
+                            >
+                              {node.label}
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>
@@ -224,9 +281,25 @@ return (
                       {/* Text inside circle */}
                       {(node as any).textPosition === 'center' && node.label && (
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <p className="text-xs font-medium text-center text-white break-words leading-tight px-1">
-                            {node.label}
-                          </p>
+                          {isEditingLabel ? (
+                            <input
+                              type="text"
+                              value={editText}
+                              onChange={(e) => setEditText(e.target.value)}
+                              onBlur={handleLabelSubmit}
+                              onKeyDown={handleLabelKeyDown}
+                              className="text-xs font-medium text-center bg-transparent border border-white rounded px-1 py-0.5 w-16 outline-none"
+                              autoFocus
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          ) : (
+                            <p 
+                              className="text-xs font-medium text-center text-white break-words leading-tight px-1 cursor-text"
+                              onClick={handleLabelClick}
+                            >
+                              {node.label}
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>
@@ -239,9 +312,25 @@ return (
                       {/* Text inside rectangle */}
                       {(node as any).textPosition === 'center' && node.label && (
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <p className="text-xs font-medium text-center text-white break-words leading-tight px-1">
-                            {node.label}
-                          </p>
+                          {isEditingLabel ? (
+                            <input
+                              type="text"
+                              value={editText}
+                              onChange={(e) => setEditText(e.target.value)}
+                              onBlur={handleLabelSubmit}
+                              onKeyDown={handleLabelKeyDown}
+                              className="text-xs font-medium text-center bg-transparent border border-white rounded px-1 py-0.5 w-20 outline-none"
+                              autoFocus
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          ) : (
+                            <p 
+                              className="text-xs font-medium text-center text-white break-words leading-tight px-1 cursor-text"
+                              onClick={handleLabelClick}
+                            >
+                              {node.label}
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>
@@ -259,9 +348,25 @@ return (
                       {/* Text inside triangle - positioned in center */}
                       {(node as any).textPosition === 'center' && node.label && (
                         <div className="absolute inset-0 flex items-center justify-center pt-2">
-                          <p className="text-xs font-medium text-center text-white break-words leading-tight px-1">
-                            {node.label}
-                          </p>
+                          {isEditingLabel ? (
+                            <input
+                              type="text"
+                              value={editText}
+                              onChange={(e) => setEditText(e.target.value)}
+                              onBlur={handleLabelSubmit}
+                              onKeyDown={handleLabelKeyDown}
+                              className="text-xs font-medium text-center bg-transparent border border-white rounded px-1 py-0.5 w-16 outline-none"
+                              autoFocus
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          ) : (
+                            <p 
+                              className="text-xs font-medium text-center text-white break-words leading-tight px-1 cursor-text"
+                              onClick={handleLabelClick}
+                            >
+                              {node.label}
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>
@@ -271,17 +376,49 @@ return (
                 {/* Text over shape */}
                 {(node as any).textPosition === 'above' && node.label && (
                   <div className="absolute -top-6 left-1/2 transform -translate-x-1/2">
-                    <p className="text-sm font-medium text-center text-foreground break-words leading-tight px-2 bg-background/90 rounded">
-                      {node.label}
-                    </p>
+                    {isEditingLabel ? (
+                      <input
+                        type="text"
+                        value={editText}
+                        onChange={(e) => setEditText(e.target.value)}
+                        onBlur={handleLabelSubmit}
+                        onKeyDown={handleLabelKeyDown}
+                        className="text-sm font-medium text-center bg-background border border-primary rounded px-2 py-1 w-24 outline-none"
+                        autoFocus
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    ) : (
+                      <p 
+                        className="text-sm font-medium text-center text-foreground break-words leading-tight px-2 bg-background/90 rounded cursor-text hover:bg-background/95"
+                        onClick={handleLabelClick}
+                      >
+                        {node.label}
+                      </p>
+                    )}
                   </div>
                 )}
                 
                 {/* Text under shape */}
                 {((node as any).textPosition === 'under' || !(node as any).textPosition) && node.label && (
-                  <p className="text-sm font-medium text-center text-foreground break-words leading-tight px-2 mt-1">
-                    {node.label}
-                  </p>
+                  isEditingLabel ? (
+                    <input
+                      type="text"
+                      value={editText}
+                      onChange={(e) => setEditText(e.target.value)}
+                      onBlur={handleLabelSubmit}
+                      onKeyDown={handleLabelKeyDown}
+                      className="text-sm font-medium text-center bg-transparent border border-primary rounded px-2 py-1 w-24 outline-none mt-1"
+                      autoFocus
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  ) : (
+                    <p 
+                      className="text-sm font-medium text-center text-foreground break-words leading-tight px-2 mt-1 cursor-text hover:bg-background/50 rounded -mx-2 -my-1"
+                      onClick={handleLabelClick}
+                    >
+                      {node.label}
+                    </p>
+                  )
                 )}
               </div>
             ) : (
@@ -293,9 +430,25 @@ return (
                     )}>
                     <ResourceIcon type={node.type} className="w-10 h-10" />
                 </div>
-                <p className="mt-1 text-sm font-medium text-center text-foreground w-full px-1 break-words leading-tight">
-                  {node.label || 'Untitled'}
-                </p>
+                {isEditingLabel ? (
+                  <input
+                    type="text"
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value)}
+                    onBlur={handleLabelSubmit}
+                    onKeyDown={handleLabelKeyDown}
+                    className="mt-1 text-sm font-medium text-center bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
+                    autoFocus
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                ) : (
+                  <p 
+                    className="mt-1 text-sm font-medium text-center text-foreground w-full px-1 break-words leading-tight cursor-text hover:bg-background/50 rounded -mx-1 -my-0.5"
+                    onClick={handleLabelClick}
+                  >
+                    {node.label || 'Untitled'}
+                  </p>
+                )}
               </>
             )}
           </div>
