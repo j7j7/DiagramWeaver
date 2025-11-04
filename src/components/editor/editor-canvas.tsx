@@ -271,14 +271,23 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         // For groups with no regular children, ensure minimum size to accommodate content
         // Consider edge nodes when determining if group is truly empty
         if (numItems === 0) {
-            let minGroupWidth = NODE_WIDTH + (GROUP_PADDING * 2);
-            let minGroupHeight = NODE_HEIGHT + (GROUP_PADDING * 2);
+            // Calculate maximum dimensions among all nodes (including edge nodes) for proper group sizing
+            const allNodesInGroup = [...regularNodes, ...edgeNodes];
+            const maxNodeWidth = allNodesInGroup.length > 0 
+                ? Math.max(...allNodesInGroup.map(n => measureNodeDims(n as PositionedNode).width))
+                : NODE_WIDTH;
+            const maxNodeHeight = allNodesInGroup.length > 0 
+                ? Math.max(...allNodesInGroup.map(n => measureNodeDims(n as PositionedNode).height))
+                : NODE_HEIGHT;
+            
+            let minGroupWidth = maxNodeWidth + (GROUP_PADDING * 2);
+            let minGroupHeight = maxNodeHeight + (GROUP_PADDING * 2);
             
             // If we have edge nodes but no regular nodes, ensure adequate space for edge positioning
             if (edgeNodes.length > 0) {
                 // Make sure we have enough width/height for proper edge node centering
-                minGroupWidth = Math.max(minGroupWidth, NODE_WIDTH * 2 + (GROUP_PADDING * 2));
-                minGroupHeight = Math.max(minGroupHeight, NODE_HEIGHT * 2 + (GROUP_PADDING * 2));
+                minGroupWidth = Math.max(minGroupWidth, maxNodeWidth * 2 + (GROUP_PADDING * 2));
+                minGroupHeight = Math.max(minGroupHeight, maxNodeHeight * 2 + (GROUP_PADDING * 2));
             }
             
             (group as PositionedGroup).width = minGroupWidth;
@@ -297,8 +306,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             Object.entries(nodesByEdge).forEach(([edge, nodes]) => {
                 if (nodes.length === 0) return;
                 
-                const nodeWidth = NODE_WIDTH;
-                const nodeHeight = NODE_HEIGHT;
+                // Use actual node dimensions for edge positioning
+                const nodeWidth = nodes.length > 0 ? measureNodeDims(nodes[0] as PositionedNode).width : NODE_WIDTH;
+                const nodeHeight = nodes.length > 0 ? measureNodeDims(nodes[0] as PositionedNode).height : NODE_HEIGHT;
                 
                 nodes.forEach((node, index) => {
                     switch (edge) {
@@ -347,8 +357,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 rowMaxHeight = 0;
             }
             
-            const childWidth = (child as any).width || NODE_WIDTH;
-            const childHeight = (child as any).height || NODE_HEIGHT;
+            const childDims = measureNodeDims(child as PositionedNode);
+            const childWidth = childDims.width;
+            const childHeight = childDims.height;
             
             child.x = currentX;
             child.y = currentY;
@@ -389,8 +400,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         Object.entries(nodesByEdge).forEach(([edge, nodes]) => {
             if (nodes.length === 0) return;
             
-            const nodeWidth = NODE_WIDTH;
-            const nodeHeight = NODE_HEIGHT;
+            // Use actual node dimensions for edge positioning
+            const nodeWidth = nodes.length > 0 ? measureNodeDims(nodes[0] as PositionedNode).width : NODE_WIDTH;
+            const nodeHeight = nodes.length > 0 ? measureNodeDims(nodes[0] as PositionedNode).height : NODE_HEIGHT;
             
             nodes.forEach((node, index) => {
                 switch (edge) {
@@ -464,18 +476,21 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         if (item.type === 'group') {
           setAbsolutePositions(item as DiagramGroupData, 0, 0);
         }
-        currentX += ((item as any).width || NODE_WIDTH) + 50;
+        const itemWidth = item.type === 'group' 
+            ? (item as any).width || 300 
+            : measureNodeDims(item as PositionedNode).width;
+        currentX += itemWidth + 50;
     });
 
     const finalNodes = Object.values(allItems).filter(i => i.type !== 'group') as PositionedNode[];
     const finalGroups = Object.values(allItems).filter(i => i.type === 'group') as PositionedGroup[];
 
     const allElementsX = [
-        ...finalNodes.map(n => (n.x || 0) + NODE_WIDTH),
+        ...finalNodes.map(n => (n.x || 0) + measureNodeDims(n).width),
         ...finalGroups.map(g => (g.x || 0) + g.width)
     ];
     const allElementsY = [
-        ...finalNodes.map(n => (n.y || 0) + NODE_HEIGHT),
+        ...finalNodes.map(n => (n.y || 0) + measureNodeDims(n).height),
         ...finalGroups.map(g => (g.y || 0) + g.height)
     ];
 
@@ -513,6 +528,44 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     if (group) return { ...group, itemType: 'group' as const, subType: group.subType };
     return null;
   }, [selectedItemId, nodesById, groupsById]);
+
+  // Helper function to recalculate group size based on its children
+  const recalculateGroupSize = (group: DiagramGroupData, allNodes: DiagramNodeData[], allGroups: DiagramGroupData[]): DiagramGroupData => {
+    const childNodes = allNodes.filter(n => group.children.includes(n.id));
+    const childGroups = allGroups.filter((g: DiagramGroupData) => group.children.includes(g.id));
+    
+    if (childNodes.length === 0 && childGroups.length === 0) {
+      // Empty group - use minimum size
+      return {
+        ...group,
+        width: Math.max(NODE_WIDTH + GROUP_PADDING * 2, 200),
+        height: Math.max(NODE_HEIGHT + GROUP_PADDING * 2, 150)
+      };
+    }
+    
+    // Calculate maximum dimensions among all children
+    const allChildDims = [
+      ...childNodes.map(n => measureNodeDims(n as PositionedNode)),
+      ...childGroups.map(g => ({ width: g.width || 300, height: g.height || 220 }))
+    ];
+    
+    const maxChildWidth = Math.max(...allChildDims.map(d => d.width));
+    const maxChildHeight = Math.max(...allChildDims.map(d => d.height));
+    
+    // Calculate required group size based on layout
+    const numChildren = childNodes.length + childGroups.length;
+    const itemsPerRow = group.maxItemsPerRow || Math.max(1, Math.floor(Math.sqrt(numChildren) * 1.2));
+    const numRows = Math.ceil(numChildren / itemsPerRow);
+    
+    const requiredWidth = maxChildWidth * itemsPerRow + GROUP_PADDING * 2 + GROUP_NODE_SPACING * (itemsPerRow - 1);
+    const requiredHeight = maxChildHeight * numRows + GROUP_PADDING * 2 + GROUP_NODE_SPACING * (numRows - 1);
+    
+    return {
+      ...group,
+      width: Math.max(requiredWidth, maxChildWidth + GROUP_PADDING * 2),
+      height: Math.max(requiredHeight, maxChildHeight + GROUP_PADDING * 2)
+    };
+  };
 
   const addNode = useCallback((item: any, position: { x: number; y: number }, targetGroupId: string | null) => {
     setDiagramData((prevData) => {
@@ -553,7 +606,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       if (targetGroupId) {
         newGroups = newGroups.map(g => {
           if (g.id === targetGroupId) {
-            return { ...g, children: [...g.children, newItemId] };
+            const updatedGroup = { ...g, children: [...g.children, newItemId] };
+            // Recalculate group size based on new children including dynamic dimensions
+            return recalculateGroupSize(updatedGroup, newNodes, newGroups);
           }
           return g;
         });
@@ -564,15 +619,20 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         let posY = snap(position.y);
 
         const isOverlapAt = (x: number, y: number) => {
-          const width = (item.type === 'zone' || item.type === 'group') ? 300 : NODE_WIDTH;
-          const height = (item.type === 'zone' || item.type === 'group') ? 220 : NODE_HEIGHT;
+          const width = (item.type === 'zone' || item.type === 'group') ? 300 : 
+                      (item.type ? measureNodeDims(item as PositionedNode).width : NODE_WIDTH);
+          const height = (item.type === 'zone' || item.type === 'group') ? 220 : 
+                       (item.type ? measureNodeDims(item as PositionedNode).height : NODE_HEIGHT);
           const rectA = { x, y, width, height };
           // existing obstacles from processed nodes/groups at this render cycle are not available here,
           // so approximate using current prevData nodes/groups positions
           const obstacles: { x: number; y: number; width: number; height: number; id: string }[] = [];
           for (const n of newNodes) {
             const nn: any = n as any;
-            if (nn.x != null && nn.y != null) obstacles.push({ id: n.id, x: nn.x, y: nn.y, width: NODE_WIDTH, height: NODE_HEIGHT });
+            if (nn.x != null && nn.y != null) {
+              const dims = measureNodeDims(nn as PositionedNode);
+              obstacles.push({ id: n.id, x: nn.x, y: nn.y, width: dims.width, height: dims.height });
+            }
           }
           for (const g of newGroups) {
             const gg: any = g as any;
@@ -613,10 +673,23 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     setDiagramData(prevData => {
       const updatedGroups = prevData.groups?.map(group => {
         if (group.id === groupId) {
-          // Calculate minimum size based on content
-          const autoSized = processedGroups.find(g => g.id === groupId);
-          const minWidth = autoSized?.width ? Math.min(autoSized.width, 200) : 200;
-          const minHeight = autoSized?.height ? Math.min(autoSized.height, 150) : 150;
+          // Calculate minimum size based on content using dynamic dimensions
+          const currentGroup = processedGroups.find(g => g.id === groupId);
+          const groupNodes = processedNodes.filter(n => currentGroup?.children.includes(n.id));
+          
+          let minWidth = 200;
+          let minHeight = 150;
+          
+          if (groupNodes.length > 0) {
+            const maxNodeWidth = Math.max(...groupNodes.map(n => measureNodeDims(n).width));
+            const maxNodeHeight = Math.max(...groupNodes.map(n => measureNodeDims(n).height));
+            minWidth = Math.max(minWidth, maxNodeWidth + GROUP_PADDING * 2);
+            minHeight = Math.max(minHeight, maxNodeHeight + GROUP_PADDING * 2);
+          }
+          
+          // Use existing auto-sized dimensions as lower bound if available
+          if (currentGroup?.width) minWidth = Math.max(minWidth, currentGroup.width);
+          if (currentGroup?.height) minHeight = Math.max(minHeight, currentGroup.height);
           
           return {
             ...group,
@@ -649,7 +722,10 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         const infos = children
           .map((id: string) => {
             const n = processedNodes.find(pn => pn.id === id);
-            if (n) return { id, x: n.x, y: n.y, width: NODE_WIDTH, height: NODE_HEIGHT };
+            if (n) {
+              const dims = measureNodeDims(n);
+              return { id, x: n.x, y: n.y, width: dims.width, height: dims.height };
+            }
             const g = processedGroups.find(pg2 => pg2.id === id);
             if (g) return { id, x: g.x, y: g.y, width: g.width, height: g.height };
             return null;
@@ -730,7 +806,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 const g = processedGroups.find(pg => pg.id === item.id);
                 return { width: g?.width ?? 300, height: g?.height ?? 220 };
               })()
-            : { width: NODE_WIDTH, height: NODE_HEIGHT };
+            : (() => {
+                const n = processedNodes.find(pn => pn.id === item.id);
+                if (n) return measureNodeDims(n);
+                return { width: NODE_WIDTH, height: NODE_HEIGHT };
+              })();
 
           const allChildIds = new Set<string>();
           const getChildrenRecursive = (itemId: string) => {
@@ -746,7 +826,10 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             const rectA = { x, y, width: movingDims.width, height: movingDims.height };
             // obstacles: all processed nodes/groups except moving item and its descendants
             const obstacles: { x: number; y: number; width: number; height: number; id: string }[] = [
-              ...processedNodes.map(n => ({ id: n.id, x: n.x, y: n.y, width: NODE_WIDTH, height: NODE_HEIGHT })),
+              ...processedNodes.map(n => {
+                const dims = measureNodeDims(n);
+                return { id: n.id, x: n.x, y: n.y, width: dims.width, height: dims.height };
+              }),
               ...processedGroups.map(g => ({ id: g.id, x: g.x, y: g.y, width: g.width, height: g.height })),
             ].filter(o => o.id !== item.id && !allChildIds.has(o.id));
             return obstacles.some(o => !(x + rectA.width <= o.x || o.x + o.width <= x || y + rectA.height <= o.y || o.y + o.height <= y));
@@ -1175,7 +1258,7 @@ const [, drop] = useDrop(() => ({
       
       return { width: calculatedWidth, height };
     } else {
-      // Regular nodes use static dimensions
+      // Regular nodes use static dimensions (fallback for unknown types)
       return { width: NODE_WIDTH, height: NODE_HEIGHT };
     }
   };

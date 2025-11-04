@@ -1,0 +1,71 @@
+{
+  "nodes": [
+    {
+      "id": "textbox1",
+      "type": "generic.text.textbox",
+      "label": "This is a large textbox with multiple lines of text to test dynamic sizing. It should automatically resize to fit the content properly and connections should attach to the correct edges.",
+      "x": 50,
+      "y": 50
+    },
+    {
+      "id": "labelbox1", 
+      "type": "generic.text.labelbox",
+      "label": "Medium labelbox with text that should wrap appropriately",
+      "x": 400,
+      "y": 80
+    },
+    {
+      "id": "regular1",
+      "type": "aws.compute.ec2",
+      "label": "EC2 Instance",
+      "x": 200,
+      "y": 250
+    },
+    {
+      "id": "small-text",
+      "type": "generic.text.text",
+      "label": "Small text",
+      "x": 100,
+      "y": 350
+    }
+  ],
+  "groups": [
+    {
+      "id": "group1",
+      "type": "group",
+      "label": "Group with large nodes",
+      "x": 600,
+      "y": 100,
+      "width": 300,
+      "height": 200,
+      "children": ["textbox2", "labelbox2"],
+      "sizeMode": "auto"
+    }
+  ],
+  "connections": [
+    {
+      "from": "textbox1",
+      "to": "regular1",
+      "style": "bezier",
+      "curvature": 0.5
+    },
+    {
+      "from": "labelbox1", 
+      "to": "regular1",
+      "style": "bezier",
+      "curvature": 0.3
+    },
+    {
+      "from": "regular1",
+      "to": "small-text",
+      "style": "bezier",
+      "curvature": 0.4
+    },
+    {
+      "from": "textbox1",
+      "to": "group1",
+      "style": "bezier",
+      "curvature": 0.6
+    }
+  ]
+}

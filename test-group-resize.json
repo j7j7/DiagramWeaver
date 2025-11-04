@@ -1,0 +1,51 @@
+{
+  "nodes": [
+    {
+      "id": "large-textbox",
+      "type": "generic.text.textbox",
+      "label": "This is a very large textbox with lots of text content to test dynamic resizing when dragged into groups",
+      "x": 100,
+      "y": 100
+    },
+    {
+      "id": "medium-labelbox",
+      "type": "generic.text.labelbox", 
+      "label": "Medium labelbox with text that should cause group to resize",
+      "x": 200,
+      "y": 200
+    },
+    {
+      "id": "regular-node",
+      "type": "aws.compute.ec2",
+      "label": "EC2",
+      "x": 300,
+      "y": 150
+    }
+  ],
+  "groups": [
+    {
+      "id": "test-group",
+      "type": "group",
+      "label": "Test Group",
+      "x": 500,
+      "y": 100,
+      "width": 200,
+      "height": 150,
+      "children": [],
+      "sizeMode": "auto"
+    },
+    {
+      "id": "test-zone",
+      "type": "group",
+      "subType": "zone",
+      "label": "Test Zone", 
+      "x": 500,
+      "y": 300,
+      "width": 250,
+      "height": 180,
+      "children": [],
+      "sizeMode": "auto"
+    }
+  ],
+  "connections": []
+}
