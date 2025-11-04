@@ -41,8 +41,9 @@ export type SelectedItem = ((DiagramNodeData | DiagramGroupData) & {
 
 export default function DiagramEditor() {
   const [diagramData, setDiagramData] = React.useState<DiagramData>({ nodes: [], connections: [], groups: [] });
-  const [history, setHistory] = React.useState<DiagramData[]>([{ nodes: [], connections: [], groups: [] }]);
+  const [history, setHistory] = React.useState<string[]>([JSON.stringify({ nodes: [], connections: [], groups: [] })]);
   const [historyIndex, setHistoryIndex] = React.useState<number>(0);
+  const historyRef = React.useRef({ history: [JSON.stringify({ nodes: [], connections: [], groups: [] })], index: 0 });
   const editorRef = React.useRef<EditorCanvasHandle>(null);
   const [selectedItem, setSelectedItem] = React.useState<SelectedItem | null>(null);
   const [selectedItemIds, setSelectedItemIds] = React.useState<Set<string>>(new Set());
@@ -54,47 +55,62 @@ export default function DiagramEditor() {
   const [canvasTransform, setCanvasTransform] = React.useState<{ x: number; y: number; k: number }>({ x: 0, y: 0, k: 1 });
   const isMobile = useIsMobile();
 
-  // History management functions
-  const addToHistory = (newData: DiagramData) => {
-    setHistory(prevHistory => {
-      const newHistory = prevHistory.slice(0, historyIndex + 1);
-      newHistory.push(JSON.parse(JSON.stringify(newData)));
-      // Keep only last 10 states
-      if (newHistory.length > 10) {
-        newHistory.shift();
-        return newHistory;
-      }
-      return newHistory;
-    });
-    setHistoryIndex(prev => Math.min(prev + 1, 9));
-  };
+  // Watch diagramData changes and update history automatically
+  React.useEffect(() => {
+    const jsonString = JSON.stringify(diagramData);
+    
 
-  const undo = () => {
-    if (historyIndex > 0) {
-      const newIndex = historyIndex - 1;
+    
+    // Skip if this is the same as the last history entry (but not on initial load)
+    if (historyRef.current.history.length > 1 && historyRef.current.history[historyRef.current.index] === jsonString) {
+
+      return;
+    }
+    
+    // Update history using ref for immediate access
+    const currentHistory = historyRef.current.history.slice(0, historyRef.current.index + 1);
+    currentHistory.push(jsonString);
+    
+    // Keep only last 20 states
+    if (currentHistory.length > 20) {
+      currentHistory.shift();
+    }
+    
+    const newIndex = currentHistory.length - 1;
+    
+    // Update ref
+    historyRef.current = { history: currentHistory, index: newIndex };
+    
+    // Update state
+    setHistory(currentHistory);
+    setHistoryIndex(newIndex);
+    
+
+  }, [diagramData]);
+
+  const undo = React.useCallback(() => {
+    const { history: currentHistory, index: currentIndex } = historyRef.current;
+    
+    if (currentIndex > 0) {
+      const newIndex = currentIndex - 1;
+      historyRef.current.index = newIndex;
       setHistoryIndex(newIndex);
-      setDiagramData(JSON.parse(JSON.stringify(history[newIndex])));
+      setDiagramData(JSON.parse(currentHistory[newIndex]));
       setSelectedItem(null);
     }
-  };
+  }, []);
 
-  const redo = () => {
-    if (historyIndex < history.length - 1) {
-      const newIndex = historyIndex + 1;
+  const redo = React.useCallback(() => {
+    const { history: currentHistory, index: currentIndex } = historyRef.current;
+    
+    if (currentIndex < currentHistory.length - 1) {
+      const newIndex = currentIndex + 1;
+      historyRef.current.index = newIndex;
       setHistoryIndex(newIndex);
-      setDiagramData(JSON.parse(JSON.stringify(history[newIndex])));
+      setDiagramData(JSON.parse(currentHistory[newIndex]));
       setSelectedItem(null);
     }
-  };
-
-  // Wrapper function for setDiagramData that also manages history
-  const updateDiagramData = (newData: DiagramData | ((prev: DiagramData) => DiagramData)) => {
-    setDiagramData(prevData => {
-      const updatedData = typeof newData === 'function' ? newData(prevData) : newData;
-      addToHistory(updatedData);
-      return updatedData;
-    });
-  };
+  }, []);
 
   // Initialize client-side state after hydration
   React.useEffect(() => {
@@ -156,7 +172,7 @@ export default function DiagramEditor() {
   
   const handleItemUpdate = (updatedItem: SelectedItem) => {
     if (updatedItem.itemType === 'group') {
-        updateDiagramData(prevData => {
+        setDiagramData(prevData => {
             const currentGroup = (prevData.groups || []).find(g => g.id === updatedItem.id);
             const orientationChanged = currentGroup && currentGroup.orientation !== updatedItem.orientation;
             
@@ -216,7 +232,7 @@ export default function DiagramEditor() {
             };
         });
     } else {
-        updateDiagramData(prevData => ({
+        setDiagramData(prevData => ({
             ...prevData,
             nodes: prevData.nodes.map(n => n.id === updatedItem.id ? (updatedItem as DiagramNodeData) : n)
         }));
@@ -229,7 +245,7 @@ export default function DiagramEditor() {
   }
 
   const handleLabelUpdate = (nodeId: string, newLabel: string) => {
-    updateDiagramData(prevData => ({
+    setDiagramData(prevData => ({
       ...prevData,
       nodes: prevData.nodes.map(n => n.id === nodeId ? { ...n, label: newLabel } : n)
     }));
@@ -241,7 +257,7 @@ export default function DiagramEditor() {
   }
 
   const handleItemDelete = (itemToDelete: SelectedItem) => {
-    updateDiagramData(prevData => {
+    setDiagramData(prevData => {
       let newNodes = prevData.nodes;
       let newGroups = prevData.groups || [];
       let newConnections = prevData.connections;
@@ -291,7 +307,7 @@ export default function DiagramEditor() {
     );
 
     if (!connectionExists) {
-      updateDiagramData(prevData => ({
+      setDiagramData(prevData => ({
         ...prevData,
         connections: [...prevData.connections, newConnection]
       }));
@@ -312,7 +328,7 @@ export default function DiagramEditor() {
   const disconnectSelected = () => {
     if (!selectedItem || (selectedItem.itemType !== 'node' && selectedItem.itemType !== 'group')) return;
     const id = selectedItem.id;
-    updateDiagramData(prevData => ({
+    setDiagramData(prevData => ({
       ...prevData,
       connections: prevData.connections.filter((e: any) => e.from !== id && e.to !== id),
     }));
@@ -394,7 +410,7 @@ export default function DiagramEditor() {
                setDiagramData({ nodes: [], connections: [], groups: [] });
                // Then set the loaded data
                setTimeout(() => {
-                 updateDiagramData(completeData);
+                 setDiagramData(completeData);
                  setSelectedItem(null);
                  toast({ title: 'Diagram Loaded', description: 'Your diagram has been successfully loaded. If the JSON editor doesn\'t update, try toggling it off and on.' });
                }, 0);
@@ -420,7 +436,7 @@ export default function DiagramEditor() {
   };
 
   const handleConnectionUpdate = (from: string, to: string, updates: { text?: string; color?: string; style?: 'pathways' | 'bezier'; curvature?: number; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean }) => {
-    updateDiagramData(prevData => ({
+    setDiagramData(prevData => ({
       ...prevData,
       connections: prevData.connections.map(conn => 
         (conn.from === from && conn.to === to) 
@@ -431,13 +447,13 @@ export default function DiagramEditor() {
   };
 
   const handleNew = () => {
-    updateDiagramData({ nodes: [], connections: [], groups: [] });
+    setDiagramData({ nodes: [], connections: [], groups: [] });
     setSelectedItem(null);
     toast({ title: 'New Diagram', description: 'Diagram has been cleared.' });
   };
 
   const handleJsonValidChange = (newDiagramData: DiagramData) => {
-    updateDiagramData(newDiagramData);
+    setDiagramData(newDiagramData);
     setSelectedItem(null); // Deselect to avoid stale references
   };
 
@@ -532,7 +548,7 @@ export default function DiagramEditor() {
             // NEVER add file or imagePath to node data
             // ResourceIcon will derive path from type and resource catalog
             const nodeType = `${provider}.${category}.${resource.name.replace(/\s+/g, '-').toLowerCase()}`;
-             updateDiagramData(prevData => {
+             setDiagramData(prevData => {
                const newNode = {
                  id: generateSequentialId(nodeType, prevData),
                  type: nodeType,
@@ -593,7 +609,7 @@ export default function DiagramEditor() {
                     onDisconnect={() => {
                              // Remove all connections from selected item
                              if (selectedItem) {
-                                 updateDiagramData(prevData => ({
+                                 setDiagramData(prevData => ({
                                      ...prevData,
                                      connections: prevData.connections?.filter((e: any) => e.from !== selectedItem.id && e.to !== selectedItem.id) || []
                                  }));
