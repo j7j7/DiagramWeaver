@@ -5,8 +5,8 @@ import React from "react";
 import { findPath } from "@/lib/pathfinding";
 import type { Obstacle } from "@/lib/pathfinding";
 
-const NODE_WIDTH = 104;
-const NODE_HEIGHT = 100;
+const NODE_WIDTH = 80;
+const NODE_HEIGHT = 80;
 const CANVAS_PADDING = 20;
 const CORNER_RADIUS = 12;
 

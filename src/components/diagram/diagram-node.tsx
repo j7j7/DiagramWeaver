@@ -12,8 +12,8 @@ import type { DiagramNodeData } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { ItemTypes } from "../editor/draggable-item";
 
-const NODE_WIDTH = 104;
-const BASE_NODE_HEIGHT = 100;
+const NODE_WIDTH = 80;
+const BASE_NODE_HEIGHT = 80;
 const TEXT_NODE_HEIGHT = 40; // Height for text-only nodes
 const EXTRA_LINE_HEIGHT = 20; // Additional height per extra line of text
 
@@ -45,9 +45,19 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, onC
     setIsEditingLabel(false);
   };
 
-  const handleLabelKeyDown = (e: React.KeyboardEvent) => {
+  const handleLabelKeyDown = (e: React.KeyboardEvent, isMultiline: boolean = false) => {
     if (e.key === 'Enter') {
-      handleLabelSubmit();
+      if (isMultiline) {
+        // For multiline inputs, only submit on Ctrl+Enter or Cmd+Enter
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          handleLabelSubmit();
+        }
+        // Otherwise, allow Enter to create a new line (default textarea behavior)
+      } else {
+        // For single-line inputs, Enter submits
+        handleLabelSubmit();
+      }
     } else if (e.key === 'Escape') {
       setIsEditingLabel(false);
       setEditText(node.label || '');
@@ -55,8 +65,17 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, onC
   };
   
   // Calculate dynamic height based on label length and node type
-  const calculateNodeHeight = (label: string = '', isTextNode: boolean) => {
-    if (isTextNode) {
+  const calculateNodeHeight = (label: string = '', nodeType: string) => {
+    // Handle larger multi-line text boxes
+    if (nodeType === 'generic.text.textbox') {
+      const maxCharsPerLine = 30; // More characters fit in wider textbox
+      const lines = Math.max(3, Math.ceil(label.length / maxCharsPerLine)); // Minimum 3 lines
+      return 120 + ((lines - 3) * EXTRA_LINE_HEIGHT); // Start with 120px height
+    } else if (nodeType === 'generic.text.labelbox') {
+      const maxCharsPerLine = 25; // Characters fit in labelbox
+      const lines = Math.max(2, Math.ceil(label.length / maxCharsPerLine)); // Minimum 2 lines
+      return 100 + ((lines - 2) * EXTRA_LINE_HEIGHT); // Start with 100px height
+    } else if (nodeType === 'generic.text.text') {
       const maxCharsPerLine = 20; // More characters fit in text-only nodes
       const lines = Math.ceil(label.length / maxCharsPerLine);
       return TEXT_NODE_HEIGHT + ((lines - 1) * EXTRA_LINE_HEIGHT);
@@ -69,9 +88,11 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, onC
   
   const isTextNode = node.type === 'generic.text.text';
   const isLabelNode = node.type === 'generic.text.label';
+  const isTextboxNode = node.type === 'generic.text.textbox';
+  const isLabelboxNode = node.type === 'generic.text.labelbox';
   const isShapeNode = node.type === 'generic.text.square' || node.type === 'generic.text.circle' || node.type === 'generic.text.rectangle' || node.type === 'generic.text.triangle';
   const isRotatableNode = isTextNode || isLabelNode || isShapeNode;
-  const nodeHeight = calculateNodeHeight(node.label || '', isRotatableNode);
+  const nodeHeight = calculateNodeHeight(node.label || '', node.type);
   const rotation = (node as any).rotation || 0;
   
   const [{ isDragging }, drag] = useDrag(() => ({
@@ -178,9 +199,9 @@ return (
       style={{
         left: node.x,
         top: node.y,
-        width: isRotatableNode ? 'auto' : NODE_WIDTH,
-        minWidth: isRotatableNode ? 80 : NODE_WIDTH,
-        maxWidth: isRotatableNode ? 200 : NODE_WIDTH,
+        width: isRotatableNode || isTextboxNode || isLabelboxNode ? 'auto' : NODE_WIDTH,
+        minWidth: isTextboxNode ? 200 : isLabelboxNode ? 160 : isRotatableNode ? 80 : NODE_WIDTH,
+        maxWidth: isTextboxNode ? 400 : isLabelboxNode ? 300 : isRotatableNode ? 200 : NODE_WIDTH,
         height: nodeHeight,
         touchAction: 'none',
         transform: isRotatableNode && rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
@@ -206,7 +227,7 @@ return (
                     value={editText}
                     onChange={(e) => setEditText(e.target.value)}
                     onBlur={handleLabelSubmit}
-                    onKeyDown={handleLabelKeyDown}
+                    onKeyDown={(e) => handleLabelKeyDown(e, false)}
                     className="text-sm font-medium text-center bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
                     autoFocus
                     onClick={(e) => e.stopPropagation()}
@@ -240,7 +261,7 @@ return (
                     value={editText}
                     onChange={(e) => setEditText(e.target.value)}
                     onBlur={handleLabelSubmit}
-                    onKeyDown={handleLabelKeyDown}
+                    onKeyDown={(e) => handleLabelKeyDown(e, false)}
                     className="text-sm font-medium text-center bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
                     autoFocus
                     onClick={(e) => e.stopPropagation()}
@@ -251,6 +272,76 @@ return (
                     onClick={handleLabelClick}
                   >
                     {node.label || 'Label'}
+                  </p>
+                )}
+              </div>
+            ) : node.type === 'generic.text.textbox' ? (
+              // Textbox node - larger multi-line text box
+              <div 
+                className={cn(
+                  "flex items-center justify-center h-full w-full p-4 rounded-lg border-2 transition-colors",
+                  isSelected ? "border-primary" : "group-hover:border-accent",
+                  isTargetable && "border-dashed border-primary"
+                )}
+                style={{
+                  backgroundColor: (node as any).backgroundColor || '#ffffff',
+                  borderColor: (node as any).borderColor || '#d1d5db',
+                  color: (node as any).textColor || '#374151',
+                  minHeight: '120px'
+                }}
+              >
+                {isEditingLabel ? (
+                  <textarea
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value)}
+                    onBlur={handleLabelSubmit}
+                    onKeyDown={(e) => handleLabelKeyDown(e, true)}
+                    className="text-sm font-medium bg-transparent border border-primary rounded px-2 py-2 w-full h-full outline-none resize-none"
+                    autoFocus
+                    onClick={(e) => e.stopPropagation()}
+                    rows={4}
+                  />
+                ) : (
+                  <p 
+                    className="text-sm font-medium text-left break-words leading-normal cursor-text hover:bg-background/50 rounded px-2 py-2 -mx-2 -my-2 whitespace-pre-wrap"
+                    onClick={handleLabelClick}
+                  >
+                    {node.label || 'Enter text...'}
+                  </p>
+                )}
+              </div>
+            ) : node.type === 'generic.text.labelbox' ? (
+              // Labelbox node - larger multi-line label box with different styling
+              <div 
+                className={cn(
+                  "flex items-center justify-center h-full w-full p-3 rounded-lg border-2 transition-colors",
+                  isSelected ? "border-primary" : "group-hover:border-accent",
+                  isTargetable && "border-dashed border-primary"
+                )}
+                style={{
+                  backgroundColor: (node as any).backgroundColor || '#f0f9ff',
+                  borderColor: (node as any).borderColor || '#0ea5e9',
+                  color: (node as any).textColor || '#0c4a6e',
+                  minHeight: '100px'
+                }}
+              >
+                {isEditingLabel ? (
+                  <textarea
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value)}
+                    onBlur={handleLabelSubmit}
+                    onKeyDown={(e) => handleLabelKeyDown(e, true)}
+                    className="text-sm font-medium bg-transparent border border-primary rounded px-2 py-2 w-full h-full outline-none resize-none"
+                    autoFocus
+                    onClick={(e) => e.stopPropagation()}
+                    rows={3}
+                  />
+                ) : (
+                  <p 
+                    className="text-sm font-medium text-center break-words leading-normal cursor-text hover:bg-background/50 rounded px-2 py-2 -mx-2 -my-2 whitespace-pre-wrap"
+                    onClick={handleLabelClick}
+                  >
+                    {node.label || 'Enter label...'}
                   </p>
                 )}
               </div>
@@ -272,7 +363,7 @@ return (
                               value={editText}
                               onChange={(e) => setEditText(e.target.value)}
                               onBlur={handleLabelSubmit}
-                              onKeyDown={handleLabelKeyDown}
+                              onKeyDown={(e) => handleLabelKeyDown(e, false)}
                               className="text-xs font-medium text-center bg-transparent border border-white rounded px-1 py-0.5 w-16 outline-none"
                               autoFocus
                               onClick={(e) => e.stopPropagation()}
@@ -303,7 +394,7 @@ return (
                               value={editText}
                               onChange={(e) => setEditText(e.target.value)}
                               onBlur={handleLabelSubmit}
-                              onKeyDown={handleLabelKeyDown}
+                              onKeyDown={(e) => handleLabelKeyDown(e, false)}
                               className="text-xs font-medium text-center bg-transparent border border-white rounded px-1 py-0.5 w-16 outline-none"
                               autoFocus
                               onClick={(e) => e.stopPropagation()}
@@ -329,16 +420,16 @@ return (
                       {(node as any).textPosition === 'center' && node.label && (
                         <div className="absolute inset-0 flex items-center justify-center">
                           {isEditingLabel ? (
-                            <input
-                              type="text"
-                              value={editText}
-                              onChange={(e) => setEditText(e.target.value)}
-                              onBlur={handleLabelSubmit}
-                              onKeyDown={handleLabelKeyDown}
-                              className="text-xs font-medium text-center bg-transparent border border-white rounded px-1 py-0.5 w-20 outline-none"
-                              autoFocus
-                              onClick={(e) => e.stopPropagation()}
-                            />
+                  <input
+                    type="text"
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value)}
+                    onBlur={handleLabelSubmit}
+                    onKeyDown={(e) => handleLabelKeyDown(e, false)}
+                    className="text-sm font-medium text-center bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
+                    autoFocus
+                    onClick={(e) => e.stopPropagation()}
+                  />
                           ) : (
                             <p 
                               className="text-xs font-medium text-center text-white break-words leading-tight px-1 cursor-text"
@@ -370,7 +461,7 @@ return (
                               value={editText}
                               onChange={(e) => setEditText(e.target.value)}
                               onBlur={handleLabelSubmit}
-                              onKeyDown={handleLabelKeyDown}
+                              onKeyDown={(e) => handleLabelKeyDown(e, false)}
                               className="text-xs font-medium text-center bg-transparent border border-white rounded px-1 py-0.5 w-16 outline-none"
                               autoFocus
                               onClick={(e) => e.stopPropagation()}
@@ -398,7 +489,7 @@ return (
                         value={editText}
                         onChange={(e) => setEditText(e.target.value)}
                         onBlur={handleLabelSubmit}
-                        onKeyDown={handleLabelKeyDown}
+                        onKeyDown={(e) => handleLabelKeyDown(e, false)}
                         className="text-sm font-medium text-center bg-background border border-primary rounded px-2 py-1 w-24 outline-none"
                         autoFocus
                         onClick={(e) => e.stopPropagation()}
@@ -422,7 +513,7 @@ return (
                       value={editText}
                       onChange={(e) => setEditText(e.target.value)}
                       onBlur={handleLabelSubmit}
-                      onKeyDown={handleLabelKeyDown}
+                      onKeyDown={(e) => handleLabelKeyDown(e, false)}
                       className="text-sm font-medium text-center bg-transparent border border-primary rounded px-2 py-1 w-24 outline-none mt-1"
                       autoFocus
                       onClick={(e) => e.stopPropagation()}
@@ -452,7 +543,7 @@ return (
                     value={editText}
                     onChange={(e) => setEditText(e.target.value)}
                     onBlur={handleLabelSubmit}
-                    onKeyDown={handleLabelKeyDown}
+                    onKeyDown={(e) => handleLabelKeyDown(e, false)}
                     className="mt-1 text-sm font-medium text-center bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
                     autoFocus
                     onClick={(e) => e.stopPropagation()}

@@ -1,0 +1,39 @@
+{
+  "nodes": [
+    {
+      "id": "textbox1",
+      "type": "generic.text.textbox",
+      "label": "This is a multi-line textbox that can contain a lot more text than regular nodes. It should wrap text automatically and resize to fit the content properly.",
+      "x": 100,
+      "y": 100
+    },
+    {
+      "id": "labelbox1", 
+      "type": "generic.text.labelbox",
+      "label": "This is a labelbox with medium amount of text for testing purposes.",
+      "x": 400,
+      "y": 100
+    },
+    {
+      "id": "regular1",
+      "type": "aws.compute.ec2",
+      "label": "Regular Node",
+      "x": 250,
+      "y": 300
+    }
+  ],
+  "connections": [
+    {
+      "from": "textbox1",
+      "to": "regular1",
+      "style": "bezier",
+      "curvature": 0.5
+    },
+    {
+      "from": "labelbox1", 
+      "to": "regular1",
+      "style": "bezier",
+      "curvature": 0.5
+    }
+  ]
+}

@@ -3,8 +3,8 @@
 import type { DiagramNodeData, DiagramGroupData, DiagramConnectionData } from "@/lib/types";
 import React from "react";
 
-const NODE_WIDTH = 104;
-const NODE_HEIGHT = 100;
+const NODE_WIDTH = 80;
+const NODE_HEIGHT = 80;
 
 type Positionable = (DiagramNodeData | DiagramGroupData) & { x: number; y: number; width: number; height: number; };
 

@@ -20,8 +20,8 @@ import { ContextMenu } from "../ui/context-menu";
 import { generateGroupId, generateSequentialId } from "@/lib/id-generator";
 
 
-const NODE_WIDTH = 104;
-const NODE_HEIGHT = 100;
+const NODE_WIDTH = 80;
+const NODE_HEIGHT = 80;
 const TEXT_NODE_HEIGHT = 40;
 const EXTRA_LINE_HEIGHT = 20;
 const GROUP_PADDING = 50; // Increased by 25% (was 40)
@@ -1043,10 +1043,76 @@ const [, drop] = useDrop(() => ({
 
   const measureNodeDims = (n: PositionedNode) => {
     const isText = n.type === 'generic.text.text' || n.type === 'generic.text.label';
+    const isTextboxNode = n.type === 'generic.text.textbox';
+    const isLabelboxNode = n.type === 'generic.text.labelbox';
     const isShapeNode = n.type === 'generic.text.square' || n.type === 'generic.text.circle' || n.type === 'generic.text.rectangle' || n.type === 'generic.text.triangle';
     const label = (n.label || '').toString();
     
-    if (isText || isShapeNode) {
+    if (isTextboxNode) {
+      // Textbox nodes - larger multi-line text boxes
+      const avgCharWidth = 8;
+      const padding = 32; // More padding for textbox
+      const minWidth = 200; // Larger minimum width
+      const maxWidth = 400; // Larger maximum width
+      const minHeight = 120; // Minimum height
+      
+      // Calculate width based on the longest line
+      const words = label.split(' ');
+      const maxCharsPerLine = 30; // More characters per line for textbox
+      const lines = [];
+      let currentLine = '';
+      
+      for (const word of words) {
+        if ((currentLine + ' ' + word).trim().length <= maxCharsPerLine) {
+          currentLine = (currentLine + ' ' + word).trim();
+        } else {
+          if (currentLine) lines.push(currentLine);
+          currentLine = word;
+        }
+      }
+      if (currentLine) lines.push(currentLine);
+      
+      const maxLineLength = Math.max(...lines.map(line => line.length), 1);
+      const calculatedWidth = Math.max(minWidth, Math.min(maxWidth, maxLineLength * avgCharWidth + padding));
+      
+      // Calculate height for textbox
+      const textLines = Math.max(3, Math.ceil(label.length / maxCharsPerLine));
+      const height = minHeight + (textLines - 3) * EXTRA_LINE_HEIGHT;
+      
+      return { width: calculatedWidth, height };
+    } else if (isLabelboxNode) {
+      // Labelbox nodes - medium multi-line label boxes
+      const avgCharWidth = 8;
+      const padding = 24; // Padding for labelbox
+      const minWidth = 160; // Medium minimum width
+      const maxWidth = 300; // Medium maximum width
+      const minHeight = 100; // Minimum height
+      
+      // Calculate width based on the longest line
+      const words = label.split(' ');
+      const maxCharsPerLine = 25; // Characters per line for labelbox
+      const lines = [];
+      let currentLine = '';
+      
+      for (const word of words) {
+        if ((currentLine + ' ' + word).trim().length <= maxCharsPerLine) {
+          currentLine = (currentLine + ' ' + word).trim();
+        } else {
+          if (currentLine) lines.push(currentLine);
+          currentLine = word;
+        }
+      }
+      if (currentLine) lines.push(currentLine);
+      
+      const maxLineLength = Math.max(...lines.map(line => line.length), 1);
+      const calculatedWidth = Math.max(minWidth, Math.min(maxWidth, maxLineLength * avgCharWidth + padding));
+      
+      // Calculate height for labelbox
+      const textLines = Math.max(2, Math.ceil(label.length / maxCharsPerLine));
+      const height = minHeight + (textLines - 2) * EXTRA_LINE_HEIGHT;
+      
+      return { width: calculatedWidth, height };
+    } else if (isText || isShapeNode) {
       // Calculate more accurate width based on character count and padding
       const avgCharWidth = 8; // Average width of a character in pixels
       
