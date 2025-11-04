@@ -291,22 +291,53 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
 
             itemsPerRow = Math.max(1, Math.min(itemsPerRow, childLayouts.length));
 
-            let currentX = GROUP_PADDING;
+            // Use the same centering logic as the main layout function
             let currentY = GROUP_PADDING;
             let rowMaxHeight = 0;
+            const rows: Array<{ children: any[], rowWidth: number, rowHeight: number }> = [];
+            let currentRow: any[] = [];
 
+            // First pass: organize children into rows and calculate row dimensions
             childLayouts.forEach(({ child, dims }, index) => {
-                if (index > 0 && index % itemsPerRow === 0) {
-                    currentX = GROUP_PADDING;
-                    currentY += rowMaxHeight + GROUP_NODE_SPACING;
+                currentRow.push({ child, width: dims.width, height: dims.height });
+                rowMaxHeight = Math.max(rowMaxHeight, dims.height);
+                
+                // End of row
+                if (index === childLayouts.length - 1 || (index + 1) % itemsPerRow === 0) {
+                    const rowWidth = currentRow.reduce((sum, item) => sum + item.width + GROUP_NODE_SPACING, 0) - GROUP_NODE_SPACING;
+                    rows.push({
+                        children: currentRow,
+                        rowWidth: rowWidth,
+                        rowHeight: rowMaxHeight
+                    });
+                    currentRow = [];
                     rowMaxHeight = 0;
                 }
+            });
 
-                child.x = currentX;
-                child.y = currentY;
+            // Second pass: position children with centering within the custom-sized group
+            rows.forEach((row, rowIndex) => {
+                // Calculate horizontal offset to center the row within the group
+                const horizontalOffset = GROUP_PADDING + ((group.width || 0) - GROUP_PADDING * 2 - row.rowWidth) / 2;
+                
+                row.children.forEach((item, itemIndex) => {
+                    item.child.x = horizontalOffset + (itemIndex > 0 ? 
+                        row.children.slice(0, itemIndex).reduce((sum, prevItem) => sum + prevItem.width + GROUP_NODE_SPACING, 0) : 0);
+                    item.child.y = currentY;
+                });
+                
+                currentY += row.rowHeight + GROUP_NODE_SPACING;
+            });
 
-                currentX += dims.width + GROUP_NODE_SPACING;
-                rowMaxHeight = Math.max(rowMaxHeight, dims.height);
+            // Apply vertical centering for all rows within the custom-sized group
+            const totalContentHeight = currentY - GROUP_NODE_SPACING;
+            const verticalOffset = GROUP_PADDING + ((group.height || 0) - GROUP_PADDING * 2 - totalContentHeight) / 2;
+            
+            // Reposition all children with vertical offset
+            rows.forEach((row) => {
+                row.children.forEach((item) => {
+                    item.child.y += verticalOffset - GROUP_PADDING;
+                });
             });
         }
 
@@ -508,35 +539,78 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             return { width: minGroupWidth, height: minGroupHeight };
         }
         
-        let currentX = GROUP_PADDING;
         let currentY = GROUP_PADDING;
         let rowMaxHeight = 0;
+        const rows: Array<{ children: any[], rowWidth: number, rowHeight: number }> = [];
+        let currentRow: any[] = [];
 
+        // First pass: organize children into rows and calculate row dimensions
         allChildren.forEach((child, index) => {
-            if (index > 0 && index % itemsPerRow === 0) {
-                currentX = GROUP_PADDING;
-                currentY += rowMaxHeight + GROUP_NODE_SPACING;
-                rowMaxHeight = 0;
-            }
-            
             const childDims = measureNodeDims(child as PositionedNode);
             const childWidth = childDims.width;
             const childHeight = childDims.height;
             
-            child.x = currentX;
-            child.y = currentY;
-
-            currentX += childWidth + GROUP_NODE_SPACING;
+            currentRow.push({ child, width: childWidth, height: childHeight });
             rowMaxHeight = Math.max(rowMaxHeight, childHeight);
-            contentWidth = Math.max(contentWidth, currentX);
+            
+            // End of row
+            if (index === allChildren.length - 1 || (index + 1) % itemsPerRow === 0) {
+                const rowWidth = currentRow.reduce((sum, item) => sum + item.width + GROUP_NODE_SPACING, 0) - GROUP_NODE_SPACING;
+                rows.push({
+                    children: currentRow,
+                    rowWidth: rowWidth,
+                    rowHeight: rowMaxHeight
+                });
+                currentRow = [];
+                rowMaxHeight = 0;
+            }
         });
 
-        contentHeight = currentY + rowMaxHeight;
+        // Calculate total content width for auto-sized groups
+        const maxRowWidth = Math.max(...rows.map(row => row.rowWidth), 0);
+        const calculatedContentWidth = maxRowWidth;
 
-        // Calculate group width: if we have items, remove the extra spacing from the last item
-        // If we have no items, contentWidth is 0, so we just add padding on both sides
-        let groupWidth = numItems > 0 ? contentWidth - GROUP_NODE_SPACING + GROUP_PADDING * 2 : GROUP_PADDING * 2;
+        // Determine the actual group width to use for layout
+        const actualGroupWidth = group.sizeMode === 'custom' && group.width ? 
+                               group.width : 
+                               calculatedContentWidth + GROUP_PADDING * 2;
+
+        // Second pass: position children with centering
+        rows.forEach((row, rowIndex) => {
+            // Calculate horizontal offset to center the row within the group
+            const horizontalOffset = GROUP_PADDING + (actualGroupWidth - GROUP_PADDING * 2 - row.rowWidth) / 2;
+            
+            row.children.forEach((item, itemIndex) => {
+                item.child.x = horizontalOffset + (itemIndex > 0 ? 
+                    row.children.slice(0, itemIndex).reduce((sum, prevItem) => sum + prevItem.width + GROUP_NODE_SPACING, 0) : 0);
+                item.child.y = currentY;
+            });
+            
+            currentY += row.rowHeight + GROUP_NODE_SPACING;
+        });
+
+        contentHeight = currentY - GROUP_NODE_SPACING;
+        contentWidth = calculatedContentWidth;
+
+        // Calculate group dimensions
+        let groupWidth = actualGroupWidth;
         let groupHeight = contentHeight + GROUP_PADDING * 2;
+        
+        // For custom-sized groups, use the custom dimensions and apply vertical centering
+        if (group.sizeMode === 'custom') {
+            groupHeight = group.height || groupHeight;
+            
+            // Apply vertical centering for all rows within the custom-sized group
+            const totalContentHeight = contentHeight;
+            const verticalOffset = GROUP_PADDING + (groupHeight - GROUP_PADDING * 2 - totalContentHeight) / 2;
+            
+            // Reposition all children with vertical offset
+            rows.forEach((row) => {
+                row.children.forEach((item) => {
+                    item.child.y += verticalOffset - GROUP_PADDING;
+                });
+            });
+        }
         
         // If we have edge nodes, ensure minimum size for proper edge positioning using dynamic dimensions
         if (edgeNodes.length > 0) {
