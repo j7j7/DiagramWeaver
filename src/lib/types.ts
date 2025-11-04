@@ -14,6 +14,11 @@ export interface DiagramNodeData {
   rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
   textPosition?: 'above' | 'center' | 'under'; // Text position for shape nodes
   freeflow?: boolean; // If true, node can be placed anywhere without joining groups/zones
+  
+  // Custom sizing properties for textbox and labelbox nodes
+  width?: number; // Custom width - when set, overrides auto-calculated width
+  height?: number; // Custom height - when set, overrides auto-calculated height
+  sizeMode?: 'auto' | 'custom'; // Whether to use auto-calculated or custom dimensions
 }
 
 export interface DiagramConnectionData {

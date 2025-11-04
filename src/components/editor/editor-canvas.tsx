@@ -45,6 +45,145 @@ interface EditorCanvasProps {
 type PositionedNode = DiagramNodeData & { x: number; y: number; };
 type PositionedGroup = DiagramGroupData & { x: number; y: number; width: number; height: number; };
 
+const measureNodeDims = (n: PositionedNode) => {
+  const isText = n.type === 'generic.text.text' || n.type === 'generic.text.label';
+  const isTextboxNode = n.type === 'generic.text.textbox';
+  const isLabelboxNode = n.type === 'generic.text.labelbox';
+  const isShapeNode =
+    n.type === 'generic.text.square' ||
+    n.type === 'generic.text.circle' ||
+    n.type === 'generic.text.rectangle' ||
+    n.type === 'generic.text.triangle';
+  const label = (n.label || '').toString();
+
+  // Use custom dimensions if sizeMode is 'custom' and dimensions are provided
+  if ((isTextboxNode || isLabelboxNode) && n.sizeMode === 'custom' && n.width && n.height) {
+    return { width: n.width, height: n.height };
+  }
+
+  if (isTextboxNode) {
+    const avgCharWidth = 8;
+    const padding = 32;
+    const minWidth = 200;
+    const maxWidth = 400;
+    const minHeight = 120;
+
+    const words = label.split(' ');
+    const maxCharsPerLine = 30;
+    const lines: string[] = [];
+    let currentLine = '';
+
+    for (const word of words) {
+      if ((currentLine + ' ' + word).trim().length <= maxCharsPerLine) {
+        currentLine = (currentLine + ' ' + word).trim();
+      } else {
+        if (currentLine) lines.push(currentLine);
+        currentLine = word;
+      }
+    }
+    if (currentLine) lines.push(currentLine);
+
+    const maxLineLength = Math.max(...lines.map(line => line.length), 1);
+    const calculatedWidth = Math.max(
+      minWidth,
+      Math.min(maxWidth, maxLineLength * avgCharWidth + padding),
+    );
+
+    const textLines = Math.max(3, Math.ceil(label.length / maxCharsPerLine));
+    const height = minHeight + (textLines - 3) * EXTRA_LINE_HEIGHT;
+
+    return { width: calculatedWidth, height };
+  } else if (isLabelboxNode) {
+    const avgCharWidth = 8;
+    const padding = 24;
+    const minWidth = 160;
+    const maxWidth = 300;
+    const minHeight = 100;
+
+    const words = label.split(' ');
+    const maxCharsPerLine = 25;
+    const lines: string[] = [];
+    let currentLine = '';
+
+    for (const word of words) {
+      if ((currentLine + ' ' + word).trim().length <= maxCharsPerLine) {
+        currentLine = (currentLine + ' ' + word).trim();
+      } else {
+        if (currentLine) lines.push(currentLine);
+        currentLine = word;
+      }
+    }
+    if (currentLine) lines.push(currentLine);
+
+    const maxLineLength = Math.max(...lines.map(line => line.length), 1);
+    const calculatedWidth = Math.max(
+      minWidth,
+      Math.min(maxWidth, maxLineLength * avgCharWidth + padding),
+    );
+
+    const textLines = Math.max(2, Math.ceil(label.length / maxCharsPerLine));
+    const height = minHeight + (textLines - 2) * EXTRA_LINE_HEIGHT;
+
+    return { width: calculatedWidth, height };
+  } else if (isText || isShapeNode) {
+    const avgCharWidth = 8;
+
+    let calculatedWidth: number;
+    let height: number;
+
+    if (isText) {
+      const padding = 16;
+      const minTextWidth = 80;
+      const maxTextWidth = 200;
+
+      const words = label.split(' ');
+      const textMaxCharsPerLine = 20;
+      const lines: string[] = [];
+      let currentLine = '';
+
+      for (const word of words) {
+        if ((currentLine + ' ' + word).trim().length <= textMaxCharsPerLine) {
+          currentLine = (currentLine + ' ' + word).trim();
+        } else {
+          if (currentLine) lines.push(currentLine);
+          currentLine = word;
+        }
+      }
+      if (currentLine) lines.push(currentLine);
+
+      const maxLineLength = Math.max(...lines.map(line => line.length), 1);
+      calculatedWidth = Math.max(
+        minTextWidth,
+        Math.min(maxTextWidth, maxLineLength * avgCharWidth + padding),
+      );
+
+      const textLines = Math.max(1, Math.ceil(label.length / textMaxCharsPerLine));
+      height = TEXT_NODE_HEIGHT + (textLines - 1) * EXTRA_LINE_HEIGHT;
+    } else {
+      const shapeSize = 48;
+      const textPadding = 16;
+      const textPosition = (n as any).textPosition || 'under';
+
+      if (textPosition === 'center' && label) {
+        calculatedWidth = shapeSize;
+      } else if (textPosition === 'above' || textPosition === 'under') {
+        const textWidth = Math.min(120, Math.max(40, label.length * avgCharWidth + textPadding));
+        calculatedWidth = Math.max(shapeSize, textWidth);
+      } else {
+        calculatedWidth = Math.max(shapeSize, 80);
+      }
+
+      const maxCharsPerLine = 12;
+      const shapeLines = Math.max(1, Math.ceil(label.length / maxCharsPerLine));
+      height = NODE_HEIGHT + (shapeLines - 1) * EXTRA_LINE_HEIGHT;
+    }
+
+    return { width: calculatedWidth, height };
+  } else {
+    return { width: NODE_WIDTH, height: NODE_HEIGHT };
+  }
+};
+
 export type EditorCanvasHandle = {
   fitToView: () => void;
   exportPng: () => Promise<void>;
@@ -106,92 +245,115 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     // Helper function to redistribute items within a custom-sized group
     const redistributeItemsInCustomGroup = (group: DiagramGroupData, childNodes: DiagramNodeData[], childGroups: DiagramGroupData[]) => {
         if (!group.width || !group.height) return;
-        
+
+        // Cache node measurements so dynamic text nodes are consistent within this pass
+        const nodeDimsCache = new Map<string, { width: number; height: number }>();
+        const getNodeDims = (node: DiagramNodeData) => {
+            if (!nodeDimsCache.has(node.id)) {
+                nodeDimsCache.set(node.id, measureNodeDims(node as PositionedNode));
+            }
+            return nodeDimsCache.get(node.id)!;
+        };
+        const getChildDims = (child: DiagramNodeData | DiagramGroupData) => {
+            if ((child as DiagramGroupData).type === 'group') {
+                return {
+                    width: (child as PositionedGroup).width || 300,
+                    height: (child as PositionedGroup).height || 220,
+                };
+            }
+            return getNodeDims(child as DiagramNodeData);
+        };
+
         // Separate edge-positioned nodes from regular nodes
         const regularNodes = childNodes.filter(n => !n.edgePosition);
         const edgeNodes = childNodes.filter(n => n.edgePosition);
-        
+
         // All regular children (nodes and groups)
-        const allChildren = [...regularNodes, ...childGroups];
-        const numItems = allChildren.length;
-        
-        if (numItems > 0) {
-            // Calculate available space for content
-            const availableWidth = group.width - (GROUP_PADDING * 2);
-            const availableHeight = group.height - (GROUP_PADDING * 2);
-            
+        const regularChildren = [...regularNodes, ...childGroups];
+
+        if (regularChildren.length > 0) {
+            const childLayouts = regularChildren.map(child => ({ child, dims: getChildDims(child) }));
+            const availableWidth = Math.max(0, group.width - (GROUP_PADDING * 2));
+            const widestChildWidth = Math.max(...childLayouts.map(({ dims }) => dims.width), NODE_WIDTH);
+            const widthPerItem = widestChildWidth + GROUP_NODE_SPACING;
+            const widthBasedLimit = Math.max(1, Math.floor(availableWidth / Math.max(widthPerItem, 1))); // Ensure at least one per row
+
             // Determine items per row based on available space and orientation
             let itemsPerRow: number;
             if (group.orientation === 'vertical') {
                 itemsPerRow = 1;
             } else if (group.orientation === 'horizontal') {
-                itemsPerRow = group.maxItemsPerRow || Math.max(1, Math.floor(availableWidth / (NODE_WIDTH + GROUP_NODE_SPACING)));
+                itemsPerRow = group.maxItemsPerRow || widthBasedLimit;
             } else {
-                // Square or default: calculate based on available space
-                itemsPerRow = group.maxItemsPerRow || Math.max(1, Math.floor(Math.sqrt(numItems) * 1.2));
+                const approxSquare = Math.max(1, Math.floor(Math.sqrt(childLayouts.length) * 1.2));
+                itemsPerRow = group.maxItemsPerRow || Math.min(approxSquare, widthBasedLimit);
             }
-            
+
+            itemsPerRow = Math.max(1, Math.min(itemsPerRow, childLayouts.length));
+
             let currentX = GROUP_PADDING;
             let currentY = GROUP_PADDING;
             let rowMaxHeight = 0;
-            
-            allChildren.forEach((child, index) => {
+
+            childLayouts.forEach(({ child, dims }, index) => {
                 if (index > 0 && index % itemsPerRow === 0) {
                     currentX = GROUP_PADDING;
                     currentY += rowMaxHeight + GROUP_NODE_SPACING;
                     rowMaxHeight = 0;
                 }
-                
-                const childWidth = (child as any).width || NODE_WIDTH;
-                const childHeight = (child as any).height || NODE_HEIGHT;
-                
+
                 child.x = currentX;
                 child.y = currentY;
-                
-                currentX += childWidth + GROUP_NODE_SPACING;
-                rowMaxHeight = Math.max(rowMaxHeight, childHeight);
+
+                currentX += dims.width + GROUP_NODE_SPACING;
+                rowMaxHeight = Math.max(rowMaxHeight, dims.height);
             });
         }
-        
+
         // Position edge nodes on the boundaries
         if (edgeNodes.length > 0) {
             const nodesByEdge = {
                 top: edgeNodes.filter(n => n.edgePosition === 'top'),
                 bottom: edgeNodes.filter(n => n.edgePosition === 'bottom'),
                 left: edgeNodes.filter(n => n.edgePosition === 'left'),
-                right: edgeNodes.filter(n => n.edgePosition === 'right')
+                right: edgeNodes.filter(n => n.edgePosition === 'right'),
             };
-            
+
             Object.entries(nodesByEdge).forEach(([edge, nodes]) => {
                 if (nodes.length === 0) return;
-                
+
                 nodes.forEach((node, index) => {
+                    const dims = getNodeDims(node);
+
                     switch (edge) {
-                        case 'top':
-                        case 'bottom':
-                            if (nodes.length === 1) {
-                                node.x = (group.width! - NODE_WIDTH) / 2;
-                            } else {
-                                const spacing = group.width! / (nodes.length + 1);
-                                node.x = spacing * (index + 1) - (NODE_WIDTH / 2);
-                            }
-                            node.y = edge === 'top' 
-                                ? -NODE_HEIGHT / 2 + NODE_HEIGHT * 0.1
-                                : group.height! - NODE_HEIGHT / 2 + NODE_HEIGHT * 0.1;
+                        case 'top': {
+                            const segmentWidth = group.width! / nodes.length;
+                            const centerX = segmentWidth * index + segmentWidth / 2;
+                            node.x = centerX - dims.width / 2;
+                            node.y = -dims.height / 2 + dims.height * 0.1;
                             break;
-                            
-                        case 'left':
-                        case 'right':
-                            node.x = edge === 'left'
-                                ? -NODE_WIDTH / 2
-                                : group.width! - NODE_WIDTH / 2;
-                            if (nodes.length === 1) {
-                                node.y = (group.height! - NODE_HEIGHT) / 2;
-                            } else {
-                                const spacing = group.height! / (nodes.length + 1);
-                                node.y = spacing * (index + 1) - (NODE_HEIGHT / 2);
-                            }
+                        }
+                        case 'bottom': {
+                            const segmentWidth = group.width! / nodes.length;
+                            const centerX = segmentWidth * index + segmentWidth / 2;
+                            node.x = centerX - dims.width / 2;
+                            node.y = group.height! - dims.height / 2 + dims.height * 0.1;
                             break;
+                        }
+                        case 'left': {
+                            const segmentHeight = group.height! / nodes.length;
+                            const centerY = segmentHeight * index + segmentHeight / 2;
+                            node.x = -dims.width / 2;
+                            node.y = centerY - dims.height / 2;
+                            break;
+                        }
+                        case 'right': {
+                            const segmentHeight = group.height! / nodes.length;
+                            const centerY = segmentHeight * index + segmentHeight / 2;
+                            node.x = group.width! - dims.width / 2;
+                            node.y = centerY - dims.height / 2;
+                            break;
+                        }
                     }
                 });
             });
@@ -373,13 +535,16 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
 
         // Calculate group width: if we have items, remove the extra spacing from the last item
         // If we have no items, contentWidth is 0, so we just add padding on both sides
-        let groupWidth = numItems > 0 ? contentWidth - GROUP_NODE_SPACING + GROUP_PADDING : GROUP_PADDING * 2;
-        let groupHeight = contentHeight + GROUP_PADDING;
+        let groupWidth = numItems > 0 ? contentWidth - GROUP_NODE_SPACING + GROUP_PADDING * 2 : GROUP_PADDING * 2;
+        let groupHeight = contentHeight + GROUP_PADDING * 2;
         
-        // If we have edge nodes, ensure minimum size for proper edge positioning
+        // If we have edge nodes, ensure minimum size for proper edge positioning using dynamic dimensions
         if (edgeNodes.length > 0) {
-            const minWidthForEdges = NODE_WIDTH * 2 + (GROUP_PADDING * 2);
-            const minHeightForEdges = NODE_HEIGHT * 2 + (GROUP_PADDING * 2);
+            const edgeNodeDims = edgeNodes.map(n => measureNodeDims(n as PositionedNode));
+            const maxEdgeNodeWidth = Math.max(...edgeNodeDims.map(d => d.width));
+            const maxEdgeNodeHeight = Math.max(...edgeNodeDims.map(d => d.height));
+            const minWidthForEdges = maxEdgeNodeWidth * 2 + (GROUP_PADDING * 2);
+            const minHeightForEdges = maxEdgeNodeHeight * 2 + (GROUP_PADDING * 2);
             groupWidth = Math.max(groupWidth, minWidthForEdges);
             groupHeight = Math.max(groupHeight, minHeightForEdges);
         }
@@ -535,11 +700,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     const childGroups = allGroups.filter((g: DiagramGroupData) => group.children.includes(g.id));
     
     if (childNodes.length === 0 && childGroups.length === 0) {
-      // Empty group - use minimum size
+      // Empty group - use larger minimum size to accommodate potential textbox/labelbox nodes
       return {
         ...group,
-        width: Math.max(NODE_WIDTH + GROUP_PADDING * 2, 200),
-        height: Math.max(NODE_HEIGHT + GROUP_PADDING * 2, 150)
+        width: Math.max(NODE_WIDTH + GROUP_PADDING * 2, 300), // Larger minimum width
+        height: Math.max(NODE_HEIGHT + GROUP_PADDING * 2, 200) // Larger minimum height
       };
     }
     
@@ -552,13 +717,52 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     const maxChildWidth = Math.max(...allChildDims.map(d => d.width));
     const maxChildHeight = Math.max(...allChildDims.map(d => d.height));
     
-    // Calculate required group size based on layout
-    const numChildren = childNodes.length + childGroups.length;
+    // Calculate required group size based on actual grid layout
+    const allChildren = [...childNodes, ...childGroups];
+    const numChildren = allChildren.length;
     const itemsPerRow = group.maxItemsPerRow || Math.max(1, Math.floor(Math.sqrt(numChildren) * 1.2));
     const numRows = Math.ceil(numChildren / itemsPerRow);
     
-    const requiredWidth = maxChildWidth * itemsPerRow + GROUP_PADDING * 2 + GROUP_NODE_SPACING * (itemsPerRow - 1);
-    const requiredHeight = maxChildHeight * numRows + GROUP_PADDING * 2 + GROUP_NODE_SPACING * (numRows - 1);
+    // Calculate actual grid layout to determine proper dimensions
+    let totalWidth = 0;
+    let totalHeight = 0;
+    let maxRowWidth = 0;
+    let maxRowHeight = 0;
+    
+    for (let row = 0; row < numRows; row++) {
+      const startIndex = row * itemsPerRow;
+      const endIndex = Math.min(startIndex + itemsPerRow, numChildren);
+      const rowChildren = allChildren.slice(startIndex, endIndex);
+      
+      // Calculate dimensions for this row
+      let rowWidth = 0;
+      let rowHeight = 0;
+      
+      rowChildren.forEach(child => {
+        const dims = 'type' in child 
+          ? measureNodeDims(child as PositionedNode)
+          : { width: (child as DiagramGroupData).width || 300, height: (child as DiagramGroupData).height || 220 };
+        
+        rowWidth += dims.width;
+        rowHeight = Math.max(rowHeight, dims.height);
+      });
+      
+      // Add spacing between items in row
+      if (rowChildren.length > 1) {
+        rowWidth += GROUP_NODE_SPACING * (rowChildren.length - 1);
+      }
+      
+      maxRowWidth = Math.max(maxRowWidth, rowWidth);
+      totalHeight += rowHeight;
+      
+      // Add spacing between rows (except for last row)
+      if (row < numRows - 1) {
+        totalHeight += GROUP_NODE_SPACING;
+      }
+    }
+    
+    const requiredWidth = maxRowWidth + GROUP_PADDING * 2;
+    const requiredHeight = totalHeight + GROUP_PADDING * 2;
     
     return {
       ...group,
@@ -669,6 +873,36 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     });
   }, [setDiagramData]);
 
+  const resizeNode = useCallback((nodeId: string, newWidth: number, newHeight: number) => {
+    setDiagramData(prevData => {
+      const updatedNodes = prevData.nodes?.map(node => {
+        if (node.id === nodeId) {
+          // Calculate minimum size based on node type
+          let minWidth = 80;
+          let minHeight = 40;
+          
+          if (node.type === 'generic.text.textbox') {
+            minWidth = 200;
+            minHeight = 120;
+          } else if (node.type === 'generic.text.labelbox') {
+            minWidth = 160;
+            minHeight = 100;
+          }
+          
+          return {
+            ...node,
+            width: Math.max(minWidth, newWidth),
+            height: Math.max(minHeight, newHeight),
+            sizeMode: 'custom' as const
+          };
+        }
+        return node;
+      }) || [];
+      
+      return { ...prevData, nodes: updatedNodes };
+    });
+  }, [setDiagramData]);
+
   const resizeGroup = useCallback((groupId: string, newWidth: number, newHeight: number) => {
     setDiagramData(prevData => {
       const updatedGroups = prevData.groups?.map(group => {
@@ -686,10 +920,6 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             minWidth = Math.max(minWidth, maxNodeWidth + GROUP_PADDING * 2);
             minHeight = Math.max(minHeight, maxNodeHeight + GROUP_PADDING * 2);
           }
-          
-          // Use existing auto-sized dimensions as lower bound if available
-          if (currentGroup?.width) minWidth = Math.max(minWidth, currentGroup.width);
-          if (currentGroup?.height) minHeight = Math.max(minHeight, currentGroup.height);
           
           return {
             ...group,
@@ -1124,144 +1354,6 @@ const [, drop] = useDrop(() => ({
     setLastTouchDistance(null);
   };
 
-  const measureNodeDims = (n: PositionedNode) => {
-    const isText = n.type === 'generic.text.text' || n.type === 'generic.text.label';
-    const isTextboxNode = n.type === 'generic.text.textbox';
-    const isLabelboxNode = n.type === 'generic.text.labelbox';
-    const isShapeNode = n.type === 'generic.text.square' || n.type === 'generic.text.circle' || n.type === 'generic.text.rectangle' || n.type === 'generic.text.triangle';
-    const label = (n.label || '').toString();
-    
-    if (isTextboxNode) {
-      // Textbox nodes - larger multi-line text boxes
-      const avgCharWidth = 8;
-      const padding = 32; // More padding for textbox
-      const minWidth = 200; // Larger minimum width
-      const maxWidth = 400; // Larger maximum width
-      const minHeight = 120; // Minimum height
-      
-      // Calculate width based on the longest line
-      const words = label.split(' ');
-      const maxCharsPerLine = 30; // More characters per line for textbox
-      const lines = [];
-      let currentLine = '';
-      
-      for (const word of words) {
-        if ((currentLine + ' ' + word).trim().length <= maxCharsPerLine) {
-          currentLine = (currentLine + ' ' + word).trim();
-        } else {
-          if (currentLine) lines.push(currentLine);
-          currentLine = word;
-        }
-      }
-      if (currentLine) lines.push(currentLine);
-      
-      const maxLineLength = Math.max(...lines.map(line => line.length), 1);
-      const calculatedWidth = Math.max(minWidth, Math.min(maxWidth, maxLineLength * avgCharWidth + padding));
-      
-      // Calculate height for textbox
-      const textLines = Math.max(3, Math.ceil(label.length / maxCharsPerLine));
-      const height = minHeight + (textLines - 3) * EXTRA_LINE_HEIGHT;
-      
-      return { width: calculatedWidth, height };
-    } else if (isLabelboxNode) {
-      // Labelbox nodes - medium multi-line label boxes
-      const avgCharWidth = 8;
-      const padding = 24; // Padding for labelbox
-      const minWidth = 160; // Medium minimum width
-      const maxWidth = 300; // Medium maximum width
-      const minHeight = 100; // Minimum height
-      
-      // Calculate width based on the longest line
-      const words = label.split(' ');
-      const maxCharsPerLine = 25; // Characters per line for labelbox
-      const lines = [];
-      let currentLine = '';
-      
-      for (const word of words) {
-        if ((currentLine + ' ' + word).trim().length <= maxCharsPerLine) {
-          currentLine = (currentLine + ' ' + word).trim();
-        } else {
-          if (currentLine) lines.push(currentLine);
-          currentLine = word;
-        }
-      }
-      if (currentLine) lines.push(currentLine);
-      
-      const maxLineLength = Math.max(...lines.map(line => line.length), 1);
-      const calculatedWidth = Math.max(minWidth, Math.min(maxWidth, maxLineLength * avgCharWidth + padding));
-      
-      // Calculate height for labelbox
-      const textLines = Math.max(2, Math.ceil(label.length / maxCharsPerLine));
-      const height = minHeight + (textLines - 2) * EXTRA_LINE_HEIGHT;
-      
-      return { width: calculatedWidth, height };
-    } else if (isText || isShapeNode) {
-      // Calculate more accurate width based on character count and padding
-      const avgCharWidth = 8; // Average width of a character in pixels
-      
-      let calculatedWidth, height;
-      
-      if (isText) {
-        // Text nodes (generic.text.text, generic.text.label)
-        const padding = 16; // Padding for text nodes
-        const minTextWidth = 80; // Minimum width for text nodes
-        const maxTextWidth = 200; // Maximum width for text nodes
-        
-        // Calculate width based on the longest line
-        const words = label.split(' ');
-        const maxCharsPerLine = 20;
-        const lines = [];
-        let currentLine = '';
-        
-        for (const word of words) {
-          if ((currentLine + ' ' + word).trim().length <= maxCharsPerLine) {
-            currentLine = (currentLine + ' ' + word).trim();
-          } else {
-            if (currentLine) lines.push(currentLine);
-            currentLine = word;
-          }
-        }
-        if (currentLine) lines.push(currentLine);
-        
-        const maxLineLength = Math.max(...lines.map(line => line.length), 1);
-        calculatedWidth = Math.max(minTextWidth, Math.min(maxTextWidth, maxLineLength * avgCharWidth + padding));
-        
-        // Calculate height for text nodes
-        const textLines = Math.max(1, Math.ceil(label.length / maxCharsPerLine));
-        height = TEXT_NODE_HEIGHT + (textLines - 1) * EXTRA_LINE_HEIGHT;
-        
-      } else {
-        // Shape nodes (square, circle, rectangle, triangle)
-        const shapeSize = 48; // Base shape size (w-12 h-12 = 48px)
-        const textPadding = 16; // Extra space for text outside shape
-        
-        // Check if text is positioned outside the shape
-        const textPosition = (n as any).textPosition || 'under';
-        
-        if (textPosition === 'center' && label) {
-          // Text inside shape - width is just the shape size
-          calculatedWidth = shapeSize;
-        } else if (textPosition === 'above' || textPosition === 'under') {
-          // Text above or below shape - width needs to accommodate both shape and text
-          const textWidth = Math.min(120, Math.max(40, label.length * avgCharWidth + textPadding));
-          calculatedWidth = Math.max(shapeSize, textWidth);
-        } else {
-          // Default or other positions - use shape size with some padding
-          calculatedWidth = Math.max(shapeSize, 80);
-        }
-        
-        // Calculate height for shape nodes
-        const maxCharsPerLine = 12;
-        const shapeLines = Math.max(1, Math.ceil(label.length / maxCharsPerLine));
-        height = NODE_HEIGHT + (shapeLines - 1) * EXTRA_LINE_HEIGHT;
-      }
-      
-      return { width: calculatedWidth, height };
-    } else {
-      // Regular nodes use static dimensions (fallback for unknown types)
-      return { width: NODE_WIDTH, height: NODE_HEIGHT };
-    }
-  };
 
   const handleFitToView = useCallback(() => {
     if (!canvasRef.current) return;
@@ -1973,6 +2065,7 @@ const [, drop] = useDrop(() => ({
                           onClick={handleNodeClick}
                           onContextMenu={handleNodeRightClick}
                           onLabelUpdate={onLabelUpdate}
+                          onResize={resizeNode}
                         />
                       </div>
                     );

@@ -555,6 +555,7 @@ return (
                 {(selectedItem.itemType === 'node' || selectedItem.itemType === 'group') && (
                   <>
                     {(selectedItem.type === 'generic.text.label' || selectedItem.type === 'generic.text.text' || 
+                      selectedItem.type === 'generic.text.textbox' || selectedItem.type === 'generic.text.labelbox' ||
                       selectedItem.type === 'generic.text.square' || selectedItem.type === 'generic.text.circle' || 
                       selectedItem.type === 'generic.text.rectangle' || selectedItem.type === 'generic.text.triangle') && (
                       <>
@@ -607,6 +608,88 @@ return (
                             </div>
                           </>
                         )}
+                        {(selectedItem.type === 'generic.text.textbox' || selectedItem.type === 'generic.text.labelbox') && (
+                          <>
+                            <div>
+                              <Label htmlFor="sizeMode">Sizing Mode</Label>
+                              <Select 
+                                value={(selectedItem as any).sizeMode || 'auto'} 
+                                onValueChange={(value) => {
+                                  const updatedItem = { 
+                                    ...selectedItem, 
+                                    sizeMode: value as 'auto' | 'custom'
+                                  };
+                                  // If switching to custom, use current dimensions as starting point
+                                  if (value === 'custom' && !(selectedItem as any).width && !(selectedItem as any).height) {
+                                    // Try to find current computed dimensions - reasonable defaults
+                                    updatedItem.width = selectedItem.type === 'generic.text.textbox' ? 200 : 160;
+                                    updatedItem.height = selectedItem.type === 'generic.text.textbox' ? 120 : 100;
+                                  }
+                                  onItemUpdate(updatedItem as unknown as SelectedItem);
+                                }}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select sizing mode" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="auto">Auto (Fit Content)</SelectItem>
+                                  <SelectItem value="custom">Custom (Manual Size)</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Auto: Size based on text content. Custom: Manual width/height.
+                              </p>
+                            </div>
+                            
+                            {(selectedItem as any).sizeMode === 'custom' && (
+                              <>
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <Label htmlFor="customWidth">Width (px)</Label>
+                                    <Input 
+                                      id="customWidth" 
+                                      type="number" 
+                                      min="100" 
+                                      step="10"
+                                      value={(selectedItem as any).width || (selectedItem.type === 'generic.text.textbox' ? 200 : 160)}
+                                      onChange={(e) => {
+                                        const newWidth = parseInt(e.target.value) || (selectedItem.type === 'generic.text.textbox' ? 200 : 160);
+                                        onItemUpdate({
+                                          ...selectedItem,
+                                          width: newWidth
+                                        } as unknown as SelectedItem);
+                                      }}
+                                      className="p-1 h-10"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor="customHeight">Height (px)</Label>
+                                    <Input 
+                                      id="customHeight" 
+                                      type="number" 
+                                      min="80" 
+                                      step="10"
+                                      value={(selectedItem as any).height || (selectedItem.type === 'generic.text.textbox' ? 120 : 100)}
+                                      onChange={(e) => {
+                                        const newHeight = parseInt(e.target.value) || (selectedItem.type === 'generic.text.textbox' ? 120 : 100);
+                                        onItemUpdate({
+                                          ...selectedItem,
+                                          height: newHeight
+                                        } as unknown as SelectedItem);
+                                      }}
+                                      className="p-1 h-10"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="text-xs text-muted-foreground space-y-1">
+                                  <p>• Minimum: {selectedItem.type === 'generic.text.textbox' ? '200x120px' : '160x100px'}</p>
+                                  <p>• Values snap to 10px grid</p>
+                                </div>
+                              </>
+                            )}
+                          </>
+                        )}
+                        
                         {(selectedItem.type === 'generic.text.square' || selectedItem.type === 'generic.text.circle' || 
                           selectedItem.type === 'generic.text.rectangle' || selectedItem.type === 'generic.text.triangle') && (
                           <>

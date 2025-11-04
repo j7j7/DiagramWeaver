@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useDrag } from 'react-dnd';
 import {
   Popover,
@@ -25,12 +25,19 @@ interface DiagramNodeProps {
   onClick?: (e: React.MouseEvent, node: DiagramNodeData) => void;
   onContextMenu?: (e: React.MouseEvent, node: DiagramNodeData) => void;
   onLabelUpdate?: (nodeId: string, newLabel: string) => void;
+  onResize?: (nodeId: string, newWidth: number, newHeight: number) => void;
 }
 
-export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, onClick, onContextMenu, onLabelUpdate }: DiagramNodeProps) {
+export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, onClick, onContextMenu, onLabelUpdate, onResize }: DiagramNodeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [editText, setEditText] = useState(node.label || '');
+  
+  // Resize state
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeHandle, setResizeHandle] = useState<'right' | 'bottom' | null>(null);
+  const [isHovered, setIsHovered] = useState(false);
+  const resizeStartPos = useRef<{ x: number; y: number; startWidth: number; startHeight: number } | null>(null);
 
   const handleLabelClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -65,7 +72,12 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, onC
   };
   
   // Calculate dynamic height based on label length and node type
-  const calculateNodeHeight = (label: string = '', nodeType: string) => {
+  const calculateNodeHeight = (label: string = '', nodeType: string, sizeMode?: string, customHeight?: number) => {
+    // Use custom height if sizeMode is 'custom' and customHeight is provided
+    if (sizeMode === 'custom' && customHeight) {
+      return customHeight;
+    }
+    
     // Handle larger multi-line text boxes
     if (nodeType === 'generic.text.textbox') {
       const maxCharsPerLine = 30; // More characters fit in wider textbox
@@ -92,7 +104,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, onC
   const isLabelboxNode = node.type === 'generic.text.labelbox';
   const isShapeNode = node.type === 'generic.text.square' || node.type === 'generic.text.circle' || node.type === 'generic.text.rectangle' || node.type === 'generic.text.triangle';
   const isRotatableNode = isTextNode || isLabelNode || isShapeNode;
-  const nodeHeight = calculateNodeHeight(node.label || '', node.type);
+  const nodeHeight = calculateNodeHeight(node.label || '', node.type, node.sizeMode, node.height);
   const rotation = (node as any).rotation || 0;
   
   const [{ isDragging }, drag] = useDrag(() => ({
@@ -105,6 +117,77 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, onC
 
   const [isTouchDragging, setIsTouchDragging] = useState(false);
   const touchStartPos = useRef<{ x: number; y: number } | null>(null);
+  
+  // Resize handlers
+  const handleResizeStart = (e: React.MouseEvent, handle: 'right' | 'bottom') => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setIsResizing(true);
+    setResizeHandle(handle);
+    resizeStartPos.current = {
+      x: e.clientX,
+      y: e.clientY,
+      startWidth: node.width || (isTextboxNode ? 200 : isLabelboxNode ? 160 : 80),
+      startHeight: node.height || nodeHeight
+    };
+  };
+
+  const handleResizeMove = (e: React.MouseEvent) => {
+    if (!isResizing || !resizeStartPos.current || !resizeHandle || !onResize) return;
+    
+    const deltaX = e.clientX - resizeStartPos.current.x;
+    const deltaY = e.clientY - resizeStartPos.current.y;
+    
+    let newWidth = resizeStartPos.current.startWidth;
+    let newHeight = resizeStartPos.current.startHeight;
+    
+    // Calculate minimum size based on node type
+    const minWidth = isTextboxNode ? 200 : isLabelboxNode ? 160 : 80;
+    const minHeight = isTextboxNode ? 120 : isLabelboxNode ? 100 : 40;
+    
+    switch (resizeHandle) {
+      case 'right':
+        newWidth = Math.max(minWidth, resizeStartPos.current.startWidth + deltaX);
+        break;
+      case 'bottom':
+        newHeight = Math.max(minHeight, resizeStartPos.current.startHeight + deltaY);
+        break;
+    }
+    
+    // Snap to grid
+    newWidth = Math.round(newWidth / 20) * 20;
+    newHeight = Math.round(newHeight / 20) * 20;
+    
+    onResize(node.id, newWidth, newHeight);
+  };
+
+  const handleResizeEnd = () => {
+    setIsResizing(false);
+    setResizeHandle(null);
+    resizeStartPos.current = null;
+  };
+
+  // Global mouse events for resize
+  useEffect(() => {
+    if (isResizing) {
+      const handleGlobalMouseMove = (e: MouseEvent) => {
+        handleResizeMove(e as any);
+      };
+      
+      const handleGlobalMouseUp = () => {
+        handleResizeEnd();
+      };
+      
+      document.addEventListener('mousemove', handleGlobalMouseMove);
+      document.addEventListener('mouseup', handleGlobalMouseUp);
+      
+      return () => {
+        document.removeEventListener('mousemove', handleGlobalMouseMove);
+        document.removeEventListener('mouseup', handleGlobalMouseUp);
+      };
+    }
+  }, [isResizing, resizeHandle, node.id, onResize]);
 
   // Touch event handlers for mobile drag and drop
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -199,16 +282,21 @@ return (
       style={{
         left: node.x,
         top: node.y,
-        width: isRotatableNode || isTextboxNode || isLabelboxNode ? 'auto' : NODE_WIDTH,
-        minWidth: isTextboxNode ? 200 : isLabelboxNode ? 160 : isRotatableNode ? 80 : NODE_WIDTH,
-        maxWidth: isTextboxNode ? 400 : isLabelboxNode ? 300 : isRotatableNode ? 200 : NODE_WIDTH,
+        width: isRotatableNode || isTextboxNode || isLabelboxNode ? 
+          (node.sizeMode === 'custom' && node.width ? node.width : 'auto') : NODE_WIDTH,
+        minWidth: isTextboxNode ? (node.sizeMode === 'custom' && node.width ? node.width : 200) : 
+                  isLabelboxNode ? (node.sizeMode === 'custom' && node.width ? node.width : 160) : 
+                  isRotatableNode ? 80 : NODE_WIDTH,
+        maxWidth: isTextboxNode ? (node.sizeMode === 'custom' && node.width ? node.width : 400) : 
+                  isLabelboxNode ? (node.sizeMode === 'custom' && node.width ? node.width : 300) : 
+                  isRotatableNode ? 200 : NODE_WIDTH,
         height: nodeHeight,
         touchAction: 'none',
         transform: isRotatableNode && rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
         transformOrigin: 'center'
       }}
-      onMouseEnter={() => !isDragging && setIsOpen(true)}
-      onMouseLeave={() => setIsOpen(false)}
+      onMouseEnter={() => { if (!isDragging) { setIsOpen(true); setIsHovered(true); } }}
+      onMouseLeave={() => { setIsOpen(false); setIsHovered(false); }}
       onClick={(e) => onClick && onClick(e, node)}
       onContextMenu={(e) => onContextMenu && onContextMenu(e, node)}
       onTouchStart={handleTouchStart}
@@ -573,6 +661,26 @@ return (
           </PopoverContent>
         )}
       </Popover>
+      
+      {/* Resize handles - only show for textbox/labelbox in custom mode */}
+      {(isHovered || isResizing || isSelected) && 
+       (isTextboxNode || isLabelboxNode) && 
+       node.sizeMode === 'custom' && (
+        <>
+          {/* Right handle */}
+          <div
+            className="absolute top-0 right-0 w-2 h-full cursor-ew-resize hover:bg-primary/20 transition-colors"
+            style={{ marginRight: '-4px' }}
+            onMouseDown={(e) => handleResizeStart(e, 'right')}
+          />
+          {/* Bottom handle */}
+          <div
+            className="absolute bottom-0 left-0 w-full h-2 cursor-ns-resize hover:bg-primary/20 transition-colors"
+            style={{ marginBottom: '-4px' }}
+            onMouseDown={(e) => handleResizeStart(e, 'bottom')}
+          />
+        </>
+      )}
     </div>
   );
 }

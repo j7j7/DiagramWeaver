@@ -1,0 +1,72 @@
+{
+  "nodes": [
+    {
+      "id": "large-textbox-1",
+      "type": "generic.text.textbox",
+      "label": "This is a very large textbox with lots of text content to test proper group sizing and layout without overlapping",
+      "x": 50,
+      "y": 50
+    },
+    {
+      "id": "large-textbox-2",
+      "type": "generic.text.textbox",
+      "label": "Another large textbox that should be properly positioned in the group layout",
+      "x": 100,
+      "y": 100
+    },
+    {
+      "id": "medium-labelbox-1",
+      "type": "generic.text.labelbox", 
+      "label": "Medium labelbox with text that should fit properly in group layout",
+      "x": 150,
+      "y": 150
+    },
+    {
+      "id": "medium-labelbox-2",
+      "type": "generic.text.labelbox", 
+      "label": "Second labelbox to test multiple large nodes in same group",
+      "x": 200,
+      "y": 200
+    },
+    {
+      "id": "regular-node",
+      "type": "aws.compute.ec2",
+      "label": "EC2 Small",
+      "x": 300,
+      "y": 100
+    }
+  ],
+  "groups": [
+    {
+      "id": "test-group-large",
+      "type": "group",
+      "label": "Group with Large Nodes",
+      "x": 500,
+      "y": 100,
+      "width": 200,
+      "height": 150,
+      "children": [],
+      "sizeMode": "auto"
+    },
+    {
+      "id": "test-zone-large",
+      "type": "group",
+      "subType": "zone",
+      "label": "Zone for Large Nodes", 
+      "x": 500,
+      "y": 350,
+      "width": 250,
+      "height": 180,
+      "children": [],
+      "sizeMode": "auto"
+    }
+  ],
+  "connections": [
+    {
+      "from": "regular-node",
+      "to": "test-group-large",
+      "style": "bezier",
+      "curvature": 0.5
+    }
+  ]
+}
