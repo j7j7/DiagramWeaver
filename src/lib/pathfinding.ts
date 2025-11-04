@@ -205,25 +205,32 @@ function findPathWithPreferredDirection(
   end: Point, 
   obstacles: Obstacle[], 
   canvasSize: {width: number, height: number}, 
-  preferredDirection: 'top' | 'bottom' | 'left' | 'right',
+  preferredDirection: 'top' | 'bottom' | 'left' | 'right' | 'center',
   grid: GridNode[][],
   startNode: GridNode,
   endNode: GridNode,
   targetIsZone?: boolean,
-  preferredEndDirection?: 'top' | 'bottom' | 'left' | 'right'
+  preferredEndDirection?: 'top' | 'bottom' | 'left' | 'right' | 'center'
 ): Point[] {
   // Calculate the direction vector for preferred direction
   const directionMap = {
     'top': { dx: 0, dy: -1 },
     'bottom': { dx: 0, dy: 1 },
     'left': { dx: -1, dy: 0 },
-    'right': { dx: 1, dy: 0 }
+    'right': { dx: 1, dy: 0 },
+    'center': { dx: 0, dy: 0 }
   };
   
   const preferredDir = directionMap[preferredDirection];
   
   // Find the first valid node in the preferred direction
   let forcedFirstNode: GridNode | null = null;
+  
+  // Special handling for center direction - use regular pathfinding
+  if (preferredDirection === 'center') {
+    return findRegularPath(grid, startNode, endNode, obstacles);
+  }
+  
   let steps = 1;
   const maxSteps = 10; // Don't search too far
   
@@ -285,9 +292,15 @@ function findPathWithPreferredDirection(
       'top': { dx: 0, dy: -1 },
       'bottom': { dx: 0, dy: 1 },
       'left': { dx: -1, dy: 0 },
-      'right': { dx: 1, dy: 0 }
+      'right': { dx: 1, dy: 0 },
+      'center': { dx: 0, dy: 0 }
     };
     const endDir = endDirMap[preferredEndDirection];
+    
+    // Special handling for center direction - no approach point needed
+    if (preferredEndDirection === 'center') {
+      return fullPath;
+    }
     
     // Create an approach point one grid step away in the opposite direction of preferred entry
     const approachPoint = {
@@ -416,7 +429,8 @@ function findPathWithStraightZoneEntry(
   canvasSize: {width: number, height: number},
   grid: GridNode[][],
   startNode: GridNode,
-  endNode: GridNode
+  endNode: GridNode,
+  preferredEndDirection?: 'top' | 'bottom' | 'left' | 'right' | 'center'
 ): Point[] {
   // First, find a regular path
   const regularPath = findRegularPath(grid, startNode, endNode, obstacles);
@@ -460,7 +474,7 @@ function findPathWithStraightZoneEntry(
   return postProcessPath(simplifyPath(modifiedPath), obstacles);
 }
 
-export function findPath(start: Point, end: Point, obstacles: Obstacle[], canvasSize: {width: number, height: number}, preferredStartDirection?: 'top' | 'bottom' | 'left' | 'right', targetIsZone?: boolean, preferredEndDirection?: 'top' | 'bottom' | 'left' | 'right'): Point[] {
+export function findPath(start: Point, end: Point, obstacles: Obstacle[], canvasSize: {width: number, height: number}, preferredStartDirection?: 'top' | 'bottom' | 'left' | 'right' | 'center', targetIsZone?: boolean, preferredEndDirection?: 'top' | 'bottom' | 'left' | 'right' | 'center'): Point[] {
     const grid = createGrid(canvasSize.width, canvasSize.height, obstacles);
     const startNode = grid[Math.floor(start.y / GRID_SIZE)]?.[Math.floor(start.x / GRID_SIZE)];
     const endNode = grid[Math.floor(end.y / GRID_SIZE)]?.[Math.floor(end.x / GRID_SIZE)];
@@ -477,7 +491,7 @@ export function findPath(start: Point, end: Point, obstacles: Obstacle[], canvas
     
     // If target is a zone, ensure clean straight-line entry
     if (targetIsZone) {
-      return findPathWithStraightZoneEntry(start, end, obstacles, canvasSize, grid, startNode, endNode);
+      return findPathWithStraightZoneEntry(start, end, obstacles, canvasSize, grid, startNode, endNode, preferredEndDirection);
     }
   
     const openSet: GridNode[] = [startNode];

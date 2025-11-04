@@ -41,7 +41,7 @@ interface DiagramConnectionTextProps {
   allowedOverlapIds?: string[];
 }
 
-function getPreferredExitPoint(node: any, width: number, height: number, direction: 'top' | 'bottom' | 'left' | 'right'): { x: number; y: number } {
+function getPreferredExitPoint(node: any, width: number, height: number, direction: 'top' | 'bottom' | 'left' | 'right' | 'center'): { x: number; y: number } {
   const centerX = node.x + width / 2;
   const centerY = node.y + height / 2;
 
@@ -54,6 +54,8 @@ function getPreferredExitPoint(node: any, width: number, height: number, directi
       return { x: node.x, y: centerY }; // Left edge of the node
     case 'right':
       return { x: node.x + width, y: centerY }; // Right edge of the node
+    case 'center':
+      return { x: centerX, y: centerY }; // Center of the node
     default:
       return { x: centerX, y: centerY };
   }

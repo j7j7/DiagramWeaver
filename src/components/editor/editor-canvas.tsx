@@ -4,6 +4,7 @@ import React, { useState, useMemo, useRef, useCallback, useEffect } from "react"
 import { useDrop } from 'react-dnd';
 import { DiagramNode } from "../diagram/diagram-node";
 import { DiagramConnection, DiagramConnectionText } from "../diagram/diagram-connection";
+import { BezierConnection, BezierConnectionText } from "../diagram/bezier-connection";
 import { DiagramGroup } from "../diagram/diagram-group";
 import type { DiagramData, DiagramNodeData, DiagramGroupData } from "@/lib/types";
 import { ItemTypes } from './draggable-item';
@@ -1685,21 +1686,38 @@ const [, drop] = useDrop(() => ({
 
                     const isConnectionHighlighted = selectedItemId === edge.from || selectedItemId === edge.to;
 
-return (
+// Determine connection style - default to pathways for backward compatibility
+                    const connectionStyle = edge.style || 'pathways';
+                    
+                    return (
                     <g key={`${edge.from}-${edge.to}-${index}`} className={cn(isConnectionHighlighted && 'drop-shadow-[0_0_6px_rgba(0,200,150,0.8)]')}>
-                      <DiagramConnection
-                        from={fromPos}
-                        to={toPos}
-                        allObstacles={allObstacles}
-                        allowedOverlapIds={allowedOverlapIds}
-                        connectionColor={edge.color}
-                        connectionData={edge}
-                        onClick={(connection) => {
-                          // Handle connection click - you can add custom logic here
-                          console.log('Connection clicked:', connection);
-                          // For now, just log it - you can expand this to show a modal, edit text, etc.
-                        }}
-                      />
+                      {connectionStyle === 'bezier' ? (
+                        <BezierConnection
+                          from={fromPos}
+                          to={toPos}
+                          connectionColor={edge.color}
+                          connectionData={edge}
+                          onClick={(connection) => {
+                            // Handle connection click - you can add custom logic here
+                            console.log('Bezier connection clicked:', connection);
+                            // For now, just log it - you can expand this to show a modal, edit text, etc.
+                          }}
+                        />
+                      ) : (
+                        <DiagramConnection
+                          from={fromPos}
+                          to={toPos}
+                          allObstacles={allObstacles}
+                          allowedOverlapIds={allowedOverlapIds}
+                          connectionColor={edge.color}
+                          connectionData={edge}
+                          onClick={(connection) => {
+                            // Handle connection click - you can add custom logic here
+                            console.log('Pathway connection clicked:', connection);
+                            // For now, just log it - you can expand this to show a modal, edit text, etc.
+                          }}
+                        />
+                      )}
                     </g>
                     );
                 })}
@@ -1794,16 +1812,29 @@ return (
                       ...(toItem && 'type' in toItem && (toItem as any).type === 'group' ? [edge.to] : []),
                     ];
 
+                    // Determine connection style - default to pathways for backward compatibility
+                    const connectionStyle = edge.style || 'pathways';
+                    
                     return (
-                      <DiagramConnectionText
-                        key={`text-${edge.from}-${edge.to}-${index}`}
-                        connectionData={edge}
-                        from={fromPos}
-                        to={toPos}
-                        connectionColor={edge.color}
-                        allObstacles={allObstacles}
-                        allowedOverlapIds={allowedOverlapIds}
-                      />
+                      connectionStyle === 'bezier' ? (
+                        <BezierConnectionText
+                          key={`text-${edge.from}-${edge.to}-${index}`}
+                          connectionData={edge}
+                          from={fromPos}
+                          to={toPos}
+                          connectionColor={edge.color}
+                        />
+                      ) : (
+                        <DiagramConnectionText
+                          key={`text-${edge.from}-${edge.to}-${index}`}
+                          connectionData={edge}
+                          from={fromPos}
+                          to={toPos}
+                          connectionColor={edge.color}
+                          allObstacles={allObstacles}
+                          allowedOverlapIds={allowedOverlapIds}
+                        />
+                      )
                     );
                 })}
                 </svg>

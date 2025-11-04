@@ -1,0 +1,50 @@
+{
+  "nodes": [
+    {
+      "id": "node-1",
+      "type": "aws.compute.ec2",
+      "label": "EC2 Instance",
+      "x": 100,
+      "y": 100
+    },
+    {
+      "id": "node-2", 
+      "type": "aws.database.rds",
+      "label": "RDS Database",
+      "x": 300,
+      "y": 100
+    },
+    {
+      "id": "node-3",
+      "type": "aws.storage.s3",
+      "label": "S3 Bucket",
+      "x": 500,
+      "y": 100
+    }
+  ],
+  "connections": [
+    {
+      "from": "node-1",
+      "to": "node-2",
+      "style": "bezier",
+      "curvature": 0.5,
+      "text": "Bezier Connection"
+    },
+    {
+      "from": "node-2", 
+      "to": "node-3",
+      "style": "pathways",
+      "text": "Pathways Connection"
+    },
+    {
+      "from": "node-1",
+      "to": "node-3", 
+      "style": "bezier",
+      "curvature": 0.8,
+      "text": "High Curvature",
+      "fromArrow": true,
+      "toArrow": true
+    }
+  ],
+  "groups": []
+}

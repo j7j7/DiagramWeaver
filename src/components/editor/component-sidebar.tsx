@@ -18,7 +18,7 @@ interface ComponentSidebarProps {
   selectedItem: SelectedItem | null;
   selectedItemIds?: Set<string>;
   onItemUpdate: (updatedItem: SelectedItem) => void;
-  onConnect: () => void;
+  onConnect: (connectionOptions?: { style?: 'pathways' | 'bezier', curvature?: number }) => void;
   onDisconnect: () => void;
   onItemDelete: (itemToDelete: SelectedItem) => void;
   diagramData: DiagramData;
@@ -30,7 +30,7 @@ interface ComponentSidebarProps {
   jsonPanelOpen?: boolean;
   onFitToView?: () => void;
   onExportPng?: () => void;
-  onConnectionUpdate?: (from: string, to: string, updates: { text?: string; color?: string; preferredExit?: 'top' | 'bottom' | 'left' | 'right'; arrow?: boolean; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right'; toArrow?: boolean }) => void;
+  onConnectionUpdate?: (from: string, to: string, updates: { text?: string; textPosition?: number; color?: string; style?: 'pathways' | 'bezier'; curvature?: number; preferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; arrow?: boolean; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean }) => void;
   onCloseSidebar?: () => void;
   isMobile?: boolean;
   transform?: { x: number; y: number; k: number };
@@ -42,6 +42,18 @@ interface ComponentSidebarProps {
 
 export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onSave, onLoad, onNew, onResourceSelect, onToggleJsonPanel, jsonPanelOpen, onFitToView, onExportPng, onConnectionUpdate, onCloseSidebar, isMobile, transform, onTransformChange }: ComponentSidebarProps) {
   const { register, reset, getValues } = useForm();
+  
+  // State for default connection settings
+  const [defaultConnectionStyle, setDefaultConnectionStyle] = React.useState<'pathways' | 'bezier'>('pathways');
+  const [defaultCurvature, setDefaultCurvature] = React.useState<number>(0.5);
+
+  // Handler for connect button with default options
+  const handleConnectClick = () => {
+    onConnect({
+      style: defaultConnectionStyle,
+      curvature: defaultConnectionStyle === 'bezier' ? defaultCurvature : undefined
+    });
+  };
 
   useEffect(() => {
     if (selectedItem && selectedItem.itemType !== 'edge') {
@@ -734,10 +746,50 @@ return (
                 
                 <p className="text-sm text-muted-foreground break-words">ID: {selectedItem.id}</p>
                 
+                {/* Connection Options */}
+                {(selectedItem.itemType === 'node' || selectedItem.itemType === 'group') && (
+                  <div className="space-y-3">
+                    <div>
+                      <Label htmlFor="connectionStyle">Default Connection Style</Label>
+                      <Select 
+                        value={defaultConnectionStyle}
+                        onValueChange={(value) => setDefaultConnectionStyle(value as 'pathways' | 'bezier')}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select connection style" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pathways">Pathways (Angular)</SelectItem>
+                          <SelectItem value="bezier">Bezier (Curved)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {defaultConnectionStyle === 'bezier' && (
+                      <div>
+                        <Label htmlFor="defaultCurvature">Default Curve Intensity</Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id="defaultCurvature"
+                            type="range"
+                            min="0.1"
+                            max="1.0"
+                            step="0.1"
+                            value={defaultCurvature}
+                            onChange={(e) => setDefaultCurvature(parseFloat(e.target.value))}
+                            className="flex-1"
+                          />
+                          <span className="text-sm text-muted-foreground w-8">{defaultCurvature.toFixed(1)}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
                 <div className="flex gap-2">
                     {(selectedItem.itemType === 'node' || selectedItem.itemType === 'group') && (
                       <>
-                        <Button type="button" onClick={onConnect} className="w-full">
+                        <Button type="button" onClick={handleConnectClick} className="w-full">
                           Connect
                         </Button>
                         <Button type="button" variant="secondary" onClick={onDisconnect} className="w-full">
@@ -760,44 +812,68 @@ return (
                           {incoming.length > 0 ? incoming.map((item, i) => (
                             <div key={i} className="pl-2 border-l-2 ml-1 space-y-2">
                               <div className="font-medium text-xs">{item.label}</div>
-                              <div>
-                                <Label htmlFor={`incoming-text-${i}`} className="text-xs text-muted-foreground">Connection Text</Label>
-                                <Input
-                                  id={`incoming-text-${i}`}
-                                  type="text"
-                                  placeholder="Add text..."
-                                  value={item.connection.text || ''}
-                                  onChange={(e) => {
-                                    if (onConnectionUpdate) {
-                                      onConnectionUpdate(item.connection.from, item.connection.to, { text: e.target.value });
-                                    }
-                                  }}
-                                  className="h-8 text-xs"
-                                />
-                              </div>
+<div>
+                                 <Label htmlFor={`incoming-text-${i}`} className="text-xs text-muted-foreground">Connection Text</Label>
+                                 <Input
+                                   id={`incoming-text-${i}`}
+                                   type="text"
+                                   placeholder="Add text..."
+                                   value={item.connection.text || ''}
+                                   onChange={(e) => {
+                                     if (onConnectionUpdate) {
+                                       onConnectionUpdate(item.connection.from, item.connection.to, { text: e.target.value });
+                                     }
+                                   }}
+                                   className="h-8 text-xs"
+                                 />
+                               </div>
+                               {item.connection.text && (
+                                 <div>
+                                   <Label htmlFor={`incoming-text-position-${i}`} className="text-xs text-muted-foreground">Text Position</Label>
+                                   <div className="flex items-center gap-2">
+                                     <Input
+                                       id={`incoming-text-position-${i}`}
+                                       type="range"
+                                       min="0"
+                                       max="100"
+                                       value={item.connection.textPosition || 50}
+                                       onChange={(e) => {
+                                         if (onConnectionUpdate) {
+                                           onConnectionUpdate(item.connection.from, item.connection.to, { 
+                                             textPosition: parseInt(e.target.value)
+                                           });
+                                         }
+                                       }}
+                                       className="flex-1 h-8"
+                                     />
+                                     <span className="text-xs text-muted-foreground w-10">{item.connection.textPosition || 50}%</span>
+                                   </div>
+                                 </div>
+                               )}
                               <div>
                                 <Label htmlFor={`incoming-entry-${i}`} className="text-xs text-muted-foreground">Preferred Entry (To)</Label>
                                 <Select 
                                   value={item.connection.toPreferredEntry || 'none'}
-                                  onValueChange={(value) => {
-                                    if (onConnectionUpdate) {
-                                      onConnectionUpdate(item.connection.from, item.connection.to, { 
-                                        toPreferredEntry: value === 'none' ? undefined : value as 'top' | 'bottom' | 'left' | 'right'
-                                      });
-                                    }
-                                  }}
-                                >
-                                  <SelectTrigger className="w-full h-8">
-                                    <SelectValue placeholder="Select direction" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="none">None (Auto)</SelectItem>
-                                    <SelectItem value="top">Top</SelectItem>
-                                    <SelectItem value="bottom">Bottom</SelectItem>
-                                    <SelectItem value="left">Left</SelectItem>
-                                    <SelectItem value="right">Right</SelectItem>
-                                  </SelectContent>
-                                </Select>
+                                   onValueChange={(value) => {
+                                     if (onConnectionUpdate) {
+                                       onConnectionUpdate(item.connection.from, item.connection.to, { 
+                                         toPreferredEntry: value === 'none' ? undefined : value as 'top' | 'bottom' | 'left' | 'right' | 'center'
+                                       });
+                                     }
+                                   }}
+                                 >
+                                   <SelectTrigger className="w-full h-8">
+                                     <SelectValue placeholder="Select direction" />
+                                   </SelectTrigger>
+                                   <SelectContent>
+                                     <SelectItem value="none">None (Auto)</SelectItem>
+                                     <SelectItem value="top">Top</SelectItem>
+                                     <SelectItem value="bottom">Bottom</SelectItem>
+                                     <SelectItem value="left">Left</SelectItem>
+                                     <SelectItem value="right">Right</SelectItem>
+                                     <SelectItem value="center">Center</SelectItem>
+                                   </SelectContent>
+                                 </Select>
                               </div>
                               <div className="flex items-center space-x-2">
                                 <input
@@ -827,44 +903,68 @@ return (
                           {outgoing.length > 0 ? outgoing.map((item, i) => (
                             <div key={i} className="pl-2 border-l-2 ml-1 space-y-2">
                               <div className="font-medium text-xs">{item.label}</div>
-                              <div>
-                                <Label htmlFor={`outgoing-text-${i}`} className="text-xs text-muted-foreground">Connection Text</Label>
-                                <Input
-                                  id={`outgoing-text-${i}`}
-                                  type="text"
-                                  placeholder="Add text..."
-                                  value={item.connection.text || ''}
-                                  onChange={(e) => {
-                                    if (onConnectionUpdate) {
-                                      onConnectionUpdate(item.connection.from, item.connection.to, { text: e.target.value });
-                                    }
-                                  }}
-                                  className="h-8 text-xs"
-                                />
-                              </div>
+<div>
+                                 <Label htmlFor={`outgoing-text-${i}`} className="text-xs text-muted-foreground">Connection Text</Label>
+                                 <Input
+                                   id={`outgoing-text-${i}`}
+                                   type="text"
+                                   placeholder="Add text..."
+                                   value={item.connection.text || ''}
+                                   onChange={(e) => {
+                                     if (onConnectionUpdate) {
+                                       onConnectionUpdate(item.connection.from, item.connection.to, { text: e.target.value });
+                                     }
+                                   }}
+                                   className="h-8 text-xs"
+                                 />
+                               </div>
+                               {item.connection.text && (
+                                 <div>
+                                   <Label htmlFor={`outgoing-text-position-${i}`} className="text-xs text-muted-foreground">Text Position</Label>
+                                   <div className="flex items-center gap-2">
+                                     <Input
+                                       id={`outgoing-text-position-${i}`}
+                                       type="range"
+                                       min="0"
+                                       max="100"
+                                       value={item.connection.textPosition || 50}
+                                       onChange={(e) => {
+                                         if (onConnectionUpdate) {
+                                           onConnectionUpdate(item.connection.from, item.connection.to, { 
+                                             textPosition: parseInt(e.target.value)
+                                           });
+                                         }
+                                       }}
+                                       className="flex-1 h-8"
+                                     />
+                                     <span className="text-xs text-muted-foreground w-10">{item.connection.textPosition || 50}%</span>
+                                   </div>
+                                 </div>
+                               )}
                               <div>
                                 <Label htmlFor={`outgoing-exit-${i}`} className="text-xs text-muted-foreground">Preferred Exit (From)</Label>
                                 <Select 
                                   value={item.connection.fromPreferredExit || 'none'}
-                                  onValueChange={(value) => {
-                                    if (onConnectionUpdate) {
-                                      onConnectionUpdate(item.connection.from, item.connection.to, { 
-                                        fromPreferredExit: value === 'none' ? undefined : value as 'top' | 'bottom' | 'left' | 'right'
-                                      });
-                                    }
-                                  }}
-                                >
-                                  <SelectTrigger className="w-full h-8">
-                                    <SelectValue placeholder="Select direction" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="none">None (Auto)</SelectItem>
-                                    <SelectItem value="top">Top</SelectItem>
-                                    <SelectItem value="bottom">Bottom</SelectItem>
-                                    <SelectItem value="left">Left</SelectItem>
-                                    <SelectItem value="right">Right</SelectItem>
-                                  </SelectContent>
-                                </Select>
+                                   onValueChange={(value) => {
+                                     if (onConnectionUpdate) {
+                                       onConnectionUpdate(item.connection.from, item.connection.to, { 
+                                         fromPreferredExit: value === 'none' ? undefined : value as 'top' | 'bottom' | 'left' | 'right' | 'center'
+                                       });
+                                     }
+                                   }}
+                                 >
+                                   <SelectTrigger className="w-full h-8">
+                                     <SelectValue placeholder="Select direction" />
+                                   </SelectTrigger>
+                                   <SelectContent>
+                                     <SelectItem value="none">None (Auto)</SelectItem>
+                                     <SelectItem value="top">Top</SelectItem>
+                                     <SelectItem value="bottom">Bottom</SelectItem>
+                                     <SelectItem value="left">Left</SelectItem>
+                                     <SelectItem value="right">Right</SelectItem>
+                                     <SelectItem value="center">Center</SelectItem>
+                                   </SelectContent>
+                                 </Select>
                               </div>
                               <div className="flex items-center space-x-2">
                                 <input
@@ -883,14 +983,61 @@ return (
                                 <Label htmlFor={`outgoing-arrow-${i}`} className="text-xs text-muted-foreground">
                                   Show Arrow (From)
                                 </Label>
-                              </div>
-                            </div>
-                          )) : <p className="text-xs text-muted-foreground pl-2">None</p>}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                               </div>
+                               <div>
+                                 <Label htmlFor={`outgoing-style-${i}`} className="text-xs text-muted-foreground">Connection Style</Label>
+                                 <Select 
+                                   value={item.connection.style || 'pathways'}
+                                   onValueChange={(value) => {
+                                     if (onConnectionUpdate) {
+                                       onConnectionUpdate(item.connection.from, item.connection.to, { 
+                                         style: value as 'pathways' | 'bezier'
+                                       });
+                                     }
+                                   }}
+                                 >
+                                   <SelectTrigger className="w-full h-8">
+                                     <SelectValue placeholder="Select style" />
+                                   </SelectTrigger>
+                                   <SelectContent>
+                                     <SelectItem value="pathways">Pathways (Smart Routing)</SelectItem>
+                                     <SelectItem value="bezier">Bezier (Curved)</SelectItem>
+                                   </SelectContent>
+                                 </Select>
+                               </div>
+                               {item.connection.style === 'bezier' && (
+                                 <div>
+                                   <Label htmlFor={`outgoing-curvature-${i}`} className="text-xs text-muted-foreground">Curve Intensity</Label>
+                                   <Input
+                                     id={`outgoing-curvature-${i}`}
+                                     type="range"
+                                     min="0.1"
+                                     max="1.0"
+                                     step="0.1"
+                                     value={item.connection.curvature || 0.3}
+                                     onChange={(e) => {
+                                       if (onConnectionUpdate) {
+                                         onConnectionUpdate(item.connection.from, item.connection.to, { 
+                                           curvature: parseFloat(e.target.value)
+                                         });
+                                       }
+                                     }}
+                                     className="h-8 text-xs"
+                                   />
+                                   <div className="flex justify-between text-xs text-muted-foreground">
+                                     <span>Gentle</span>
+                                     <span>{(item.connection.curvature || 0.3).toFixed(1)}</span>
+                                     <span>Sharp</span>
+                                   </div>
+                                 </div>
+                               )}
+                             </div>
+                           )) : <p className="text-xs text-muted-foreground pl-2">None</p>}
+                         </div>
+                       </div>
+                     </div>
+                   </div>
+                 )}
               </form>
             ) : (
               <div className="flex items-center justify-center text-center h-full">

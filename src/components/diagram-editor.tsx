@@ -228,7 +228,18 @@ const [isClient, setIsClient] = React.useState<boolean>(false);
       return;
     }
 
-    const newConnection: DiagramConnectionData = { from: selectedItem.id, to: targetItem.id };
+    // Get connection options from window storage or use defaults
+    const connectionOptions = (window as any).pendingConnectionOptions || {};
+    
+    const newConnection: DiagramConnectionData = { 
+      from: selectedItem.id, 
+      to: targetItem.id,
+      style: connectionOptions.style || 'pathways',
+      curvature: connectionOptions.style === 'bezier' ? (connectionOptions.curvature || 0.5) : undefined
+    };
+    
+    // Clear stored connection options
+    delete (window as any).pendingConnectionOptions;
     
     // Avoid creating duplicate connections
     const connectionExists = diagramData.connections.some(
@@ -246,9 +257,11 @@ const [isClient, setIsClient] = React.useState<boolean>(false);
     setSelectedItem(null); // Deselect after connecting
   };
 
-  const startConnecting = () => {
+  const startConnecting = (connectionOptions?: { style?: 'pathways' | 'bezier', curvature?: number }) => {
     if (selectedItem && (selectedItem.itemType === 'node' || selectedItem.itemType === 'group')) {
       setIsConnectMode(true);
+      // Store connection options for use when connection is created
+      (window as any).pendingConnectionOptions = connectionOptions;
     }
   }
 
@@ -362,7 +375,7 @@ const [isClient, setIsClient] = React.useState<boolean>(false);
     }
   };
 
-  const handleConnectionUpdate = (from: string, to: string, updates: { text?: string; color?: string }) => {
+  const handleConnectionUpdate = (from: string, to: string, updates: { text?: string; color?: string; style?: 'pathways' | 'bezier'; curvature?: number; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean }) => {
     setDiagramData(prevData => ({
       ...prevData,
       connections: prevData.connections.map(conn => 

@@ -21,11 +21,16 @@ export interface DiagramConnectionData {
   to: string;
   color?: string; // Line color for this specific connection
   text?: string; // Optional text to display on the connection
-  fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right'; // Preferred exit direction from source node
+  textPosition?: number; // Text position along the line (0-100%, default 50%)
+  fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; // Preferred exit direction from source node
   fromArrow?: boolean; // Enable arrow at source node edge
-  toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right'; // Preferred entry direction to target node
+  toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; // Preferred entry direction to target node
   toArrow?: boolean; // Enable arrow at target node edge
   arrow?: boolean; // Legacy arrow property - backward compatibility
+  
+  // New connection style options
+  style?: 'pathways' | 'bezier'; // Connection rendering style
+  curvature?: number; // Bezier curve intensity (0.1 to 1.0)
 }
 
 export interface DiagramNodeItem {
