@@ -31,7 +31,8 @@ export type SelectedItem = ((DiagramNodeData | DiagramGroupData) & {
   width?: number,
   height?: number,
   minWidth?: number,
-  minHeight?: number
+  minHeight?: number,
+  freeflow?: boolean
 }) | (DiagramConnectionData & { 
   itemType: 'edge',
   id: string // Add the missing id property for edges

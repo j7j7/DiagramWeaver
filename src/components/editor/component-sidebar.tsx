@@ -643,6 +643,28 @@ return (
                         </div>
                       </>
                     )}
+                    
+                    {/* Freeflow option - only for nodes */}
+                    {selectedItem.itemType === 'node' && (
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="freeflow"
+                          checked={(selectedItem as any).freeflow || false}
+                          onChange={(e) => {
+                            onItemUpdate({
+                              ...selectedItem,
+                              freeflow: e.target.checked
+                            });
+                          }}
+                          className="rounded border-gray-300"
+                        />
+                        <Label htmlFor="freeflow" className="text-sm font-medium">
+                          Freeflow Mode
+                        </Label>
+                      </div>
+                    )}
+                    
                     <div>
                       <Label htmlFor="lineColor">Line Color</Label>
                       <Input 

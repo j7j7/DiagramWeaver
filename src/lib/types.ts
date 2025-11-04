@@ -13,6 +13,7 @@ export interface DiagramNodeData {
   textColor?: string; // Text color for label nodes
   rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
   textPosition?: 'above' | 'center' | 'under'; // Text position for shape nodes
+  freeflow?: boolean; // If true, node can be placed anywhere without joining groups/zones
 }
 
 export interface DiagramConnectionData {

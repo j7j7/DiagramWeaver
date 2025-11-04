@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { Copy, Trash2, Link, Link2Off } from 'lucide-react';
+import { Copy, Trash2, Link, Link2Off, Move3D } from 'lucide-react';
 
 interface ContextMenuProps {
   x: number;
@@ -14,6 +14,8 @@ interface ContextMenuProps {
   onConnect: () => void;
   onDisconnect: () => void;
   itemType?: 'node' | 'group';
+  onToggleFreeflow?: () => void;
+  isFreeflow?: boolean;
 }
 
 export function ContextMenu({ 
@@ -25,7 +27,9 @@ export function ContextMenu({
   onDelete, 
   onConnect, 
   onDisconnect,
-  itemType = 'node'
+  itemType = 'node',
+  onToggleFreeflow,
+  isFreeflow = false
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -88,6 +92,23 @@ export function ContextMenu({
         <Trash2 className="w-4 h-4" />
         Delete
       </button>
+
+      {itemType === 'node' && (
+        <>
+          <div className="border-t border-border my-1" />
+          
+          <button
+            className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+            onClick={() => {
+              onToggleFreeflow?.();
+              onClose();
+            }}
+          >
+            <Move3D className="w-4 h-4" />
+            {isFreeflow ? 'Disable Freeflow' : 'Enable Freeflow'}
+          </button>
+        </>
+      )}
 
       {(itemType === 'node' || itemType === 'group') && (
         <>

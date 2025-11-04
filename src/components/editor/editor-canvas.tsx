@@ -583,10 +583,14 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           return obstacles.some(o => !(x + rectA.width <= o.x || o.x + o.width <= x || y + rectA.height <= o.y || o.y + o.height <= y));
         };
 
-        // nudge search (spiral-ish) up to 50 attempts
+        // Check if the new node should be freeflow (skip overlap prevention)
+        const addedItem = newNodes.find(n => n.id === newItemId) || newGroups.find(g => g.id === newItemId);
+        const isFreeflowNewItem = (addedItem as any)?.freeflow;
+
+        // nudge search (spiral-ish) up to 50 attempts (skip for freeflow items)
         const dirs = [ [1,0],[0,1],[-1,0],[0,-1] ];
         let step = 1; let attempts = 0; let dirIdx = 0; let movesInDir = 0; let changes = 0;
-        while (isOverlapAt(posX, posY) && attempts < 50) {
+        while (!isFreeflowNewItem && isOverlapAt(posX, posY) && attempts < 50) {
           posX += dirs[dirIdx][0] * GRID_SNAP;
           posY += dirs[dirIdx][1] * GRID_SNAP;
           movesInDir++;
@@ -594,7 +598,6 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           attempts++;
         }
 
-        const addedItem = newNodes.find(n => n.id === newItemId) || newGroups.find(g => g.id === newItemId);
         if (addedItem) {
           (addedItem as any).x = posX;
           (addedItem as any).y = posY;
@@ -687,8 +690,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         });
       }
 
-      // If target is a group, set ordering within that group (reorder or insert)
-      if (targetGroupId) {
+      // Check if item is a freeflow node
+      const isFreeflowNode = currentNodes.find(n => n.id === item.id)?.freeflow;
+      
+      // If target is a group and item is NOT freeflow, set ordering within that group (reorder or insert)
+      if (targetGroupId && !isFreeflowNode) {
         currentGroups = currentGroups.map(g => {
           if (g.id !== targetGroupId) return g;
           const filtered = g.children.filter((nid: string) => nid !== item.id);
@@ -700,8 +706,12 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   
       // Handle positioning
       if (item.type === ItemTypes.CANVAS_NODE || item.type === ItemTypes.GROUP) {
-        // If the item is (now) a child, its position is auto-calculated, so remove explicit coords.
-        if (targetGroupId) {
+        // Check if item is a freeflow node
+        const isFreeflowNode = currentNodes.find(n => n.id === item.id)?.freeflow;
+        
+        // If item is (now) a child and NOT freeflow, its position is auto-calculated, so remove explicit coords.
+        // Freeflow nodes always maintain their coordinates even if dropped over a group.
+        if (targetGroupId && !isFreeflowNode) {
           if (item.type === ItemTypes.CANVAS_NODE) {
             currentNodes = currentNodes.map(n => n.id === item.id ? { ...n, x: undefined, y: undefined } : n);
           } else { 
@@ -741,7 +751,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             return obstacles.some(o => !(x + rectA.width <= o.x || o.x + o.width <= x || y + rectA.height <= o.y || o.y + o.height <= y));
           };
 
-          if (isOverlapAt(snappedX, snappedY)) {
+          // Skip overlap prevention for freeflow nodes
+          if (!isFreeflowNode && isOverlapAt(snappedX, snappedY)) {
             // Abort move if overlapping; user must choose a free grid cell
             return prevData;
           }
@@ -797,36 +808,44 @@ const [, drop] = useDrop(() => ({
         const x = (clientOffset.x - rect.left - transform.x) / transform.k;
         const y = (clientOffset.y - rect.top - transform.y) / transform.k;
 
-        let targetGroupId: string | null = null;
-        // Iterate backwards to check topmost groups first
-        for (let i = processedGroups.length - 1; i >= 0; i--) {
-            const group = processedGroups[i];
-            if (group.id === item.id) continue;
-            
-            // Check if the item being dragged is an ancestor of the potential target group
-            let isAncestor = false;
-            if (item.id) {
-                const visited = new Set<string>();
-                const checkDescendants = (currentGroupId: string): boolean => {
-                    if (visited.has(currentGroupId)) return false;
-                    visited.add(currentGroupId);
-                    if (currentGroupId === group.id) return true;
-                    const currentGroupData = processedGroups.find(g => g.id === currentGroupId);
-                    if (!currentGroupData) return false;
-                    return currentGroupData.children.some((childId: string) => {
-                        const childGroup = processedGroups.find(g => g.id === childId);
-                        return childGroup ? checkDescendants(childGroup.id) : false;
-                    });
-                };
-                isAncestor = checkDescendants(item.id);
-            }
-            if (isAncestor) continue;
+        // Check if item is a freeflow node
+        const isFreeflowNode = item.id && nodesById[item.id]?.freeflow;
 
-            if (x > group.x && x < group.x + group.width && y > group.y && y < group.y + group.height) {
-                targetGroupId = group.id;
-                break;
+        let targetGroupId: string | null = null;
+        
+        // Only check for group highlighting if item is NOT a freeflow node
+        if (!isFreeflowNode) {
+            // Iterate backwards to check topmost groups first
+            for (let i = processedGroups.length - 1; i >= 0; i--) {
+                const group = processedGroups[i];
+                if (group.id === item.id) continue;
+                
+                // Check if item being dragged is an ancestor of potential target group
+                let isAncestor = false;
+                if (item.id) {
+                    const visited = new Set<string>();
+                    const checkDescendants = (currentGroupId: string): boolean => {
+                        if (visited.has(currentGroupId)) return false;
+                        visited.add(currentGroupId);
+                        if (currentGroupId === group.id) return true;
+                        const currentGroupData = processedGroups.find(g => g.id === currentGroupId);
+                        if (!currentGroupData) return false;
+                        return currentGroupData.children.some((childId: string) => {
+                            const childGroup = processedGroups.find(g => g.id === childId);
+                            return childGroup ? checkDescendants(childGroup.id) : false;
+                        });
+                    };
+                    isAncestor = checkDescendants(item.id);
+                }
+                if (isAncestor) continue;
+
+                if (x > group.x && x < group.x + group.width && y > group.y && y < group.y + group.height) {
+                    targetGroupId = group.id;
+                    break;
+                }
             }
         }
+        
         setHoveredGroupId(targetGroupId);
     },
     drop: (item: DropItem, monitor) => {
@@ -858,11 +877,15 @@ const [, drop] = useDrop(() => ({
         
         
         
+        // Check if item is a freeflow node
+        const isFreeflowNode = item.id && nodesById[item.id]?.freeflow;
+        const targetGroupIdForFreeflow = isFreeflowNode ? null : hoveredGroupId;
+        
         if (itemType === ItemTypes.DIAGRAM_NODE) { 
-            // Pass the full item data to preserve resource information
-            addNode(item as any, { x, y }, hoveredGroupId);
+            // Pass full item data to preserve resource information
+            addNode(item as any, { x, y }, targetGroupIdForFreeflow);
         } else if (item.id && (itemType === ItemTypes.CANVAS_NODE || itemType === ItemTypes.GROUP)) {
-            moveItem({ id: item.id, type: item.type || '', x: item.x, y: item.y }, { x, y }, hoveredGroupId);
+            moveItem({ id: item.id, type: item.type || '', x: item.x, y: item.y }, { x, y }, targetGroupIdForFreeflow);
         }
         
         setHoveredGroupId(null);
@@ -1447,6 +1470,30 @@ const [, drop] = useDrop(() => ({
     });
   };
 
+  const handleToggleFreeflow = (itemId: string) => {
+    const node = diagramData.nodes.find(n => n.id === itemId);
+    if (node) {
+      const newFreeflowState = !(node.freeflow || false);
+      setDiagramData(prev => ({
+        ...prev,
+        nodes: prev.nodes.map(n => 
+          n.id === itemId ? { ...n, freeflow: newFreeflowState } : n
+        )
+      }));
+
+      // Update selected item if it's the one being toggled
+      const selectedItem = diagramData.nodes.find(n => n.id === itemId);
+      if (selectedItem) {
+        onItemSelect({ ...selectedItem, itemType: 'node', freeflow: newFreeflowState });
+      }
+
+      toast({
+        title: `Freeflow ${newFreeflowState ? 'Enabled' : 'Disabled'}`,
+        description: `The node can ${newFreeflowState ? 'now' : 'no longer'} be placed anywhere without joining groups.`,
+      });
+    }
+  };
+
   const handlePaste = () => {
     if (!clipboard) return;
 
@@ -1676,8 +1723,13 @@ return (
                     );
                   } else {
                     const isConnectedToSelected = !!selectedItemId && (diagramData.connections || []).some((e: any) => e.from === selectedItemId && e.to === item.id || e.to === selectedItemId && e.from === item.id);
+                    const isFreeflowNode = (item as any).freeflow;
                     return (
-                      <div key={item.id} style={{ zIndex: 2, position: 'relative', transform: 'translateZ(0)' }}>
+                      <div key={item.id} style={{ 
+                        zIndex: isFreeflowNode ? 10 : 2, 
+                        position: 'relative', 
+                        transform: 'translateZ(0)' 
+                      }}>
                         <DiagramNode 
                           node={item} 
                           isSelected={selectedItemId === item.id && !isConnectMode}
@@ -1808,6 +1860,8 @@ return (
             });
             onDisconnect?.();
           }}
+          onToggleFreeflow={() => handleToggleFreeflow(contextMenu.itemId)}
+          isFreeflow={diagramData.nodes.find(n => n.id === contextMenu.itemId)?.freeflow || false}
         />
 
         {/* Fit-to-view floating button */}
