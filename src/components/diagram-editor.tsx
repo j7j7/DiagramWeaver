@@ -53,10 +53,16 @@ export default function DiagramEditor() {
   const [isClient, setIsClient] = React.useState<boolean>(false);
   const [sidebarOpen, setSidebarOpen] = React.useState<boolean>(false);
   const [canvasTransform, setCanvasTransform] = React.useState<{ x: number; y: number; k: number }>({ x: 0, y: 0, k: 1 });
+  const [isDragging, setIsDragging] = React.useState<boolean>(false);
   const isMobile = useIsMobile();
 
   // Watch diagramData changes and update history automatically
   React.useEffect(() => {
+    // Skip history updates during dragging
+    if (isDragging) {
+      return;
+    }
+    
     const jsonString = JSON.stringify(diagramData);
     
     // Save to localStorage for persistence across browser refreshes
@@ -64,7 +70,7 @@ export default function DiagramEditor() {
       localStorage.setItem('dw:diagramData', jsonString);
     }
     
-    // Skip if this is the same as the last history entry (but not on initial load)
+    // Skip if this is the same as last history entry (but not on initial load)
     if (historyRef.current.history.length > 1 && historyRef.current.history[historyRef.current.index] === jsonString) {
 
       return;
@@ -99,7 +105,7 @@ export default function DiagramEditor() {
       }
     }
 
-  }, [diagramData, isClient]);
+  }, [diagramData, isClient, isDragging]);
 
   const undo = React.useCallback(() => {
     const { history: currentHistory, index: currentIndex } = historyRef.current;
@@ -570,6 +576,11 @@ export default function DiagramEditor() {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isMac = navigator.userAgent.toUpperCase().includes('MAC');
       
+      // Don't trigger shortcuts when typing in input fields
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      
       // Ctrl+Shift+J (or Cmd+Shift+J on Mac) - Toggle JSON Panel
       if ((isMac ? e.metaKey : e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'j') {
         e.preventDefault();
@@ -593,11 +604,54 @@ export default function DiagramEditor() {
         e.preventDefault();
         redo();
       }
+      
+      // Arrow keys - Move selected node by 20px grid
+      if ((e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') && selectedItem && selectedItem.itemType !== 'edge') {
+        e.preventDefault();
+        const gridSize = 20;
+        let newX = (selectedItem as any).x || 0;
+        let newY = (selectedItem as any).y || 0;
+        
+        switch (e.key) {
+          case 'ArrowUp':
+            newY -= gridSize;
+            break;
+          case 'ArrowDown':
+            newY += gridSize;
+            break;
+          case 'ArrowLeft':
+            newX -= gridSize;
+            break;
+          case 'ArrowRight':
+            newX += gridSize;
+            break;
+        }
+        
+        // Update node position through proper callback
+        if (selectedItem.itemType === 'node') {
+          setDiagramData(prevData => ({
+            ...prevData,
+            nodes: prevData.nodes.map(n => 
+              n.id === selectedItem.id ? { ...n, x: newX, y: newY } : n
+            )
+          }));
+        } else if (selectedItem.itemType === 'group') {
+          setDiagramData(prevData => ({
+            ...prevData,
+            groups: (prevData.groups || []).map(g => 
+              g.id === selectedItem.id ? { ...g, x: newX, y: newY } : g
+            )
+          }));
+        }
+        
+        // Update selected item state
+        setSelectedItem({ ...selectedItem, x: newX, y: newY } as any);
+      }
     };
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [jsonPanelOpen, historyIndex, history]);
+  }, [jsonPanelOpen, historyIndex, history, selectedItem]);
 
   // Persist panel width
   React.useEffect(() => {

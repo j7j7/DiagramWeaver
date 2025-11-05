@@ -26,9 +26,11 @@ interface DiagramNodeProps {
   onContextMenu?: (e: React.MouseEvent, node: DiagramNodeData) => void;
   onLabelUpdate?: (nodeId: string, newLabel: string) => void;
   onResize?: (nodeId: string, newWidth: number, newHeight: number) => void;
+  onPositionUpdate?: (nodeId: string, x: number, y: number) => void;
+  onDraggingChange?: (isDragging: boolean) => void;
 }
 
-export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, onClick, onContextMenu, onLabelUpdate, onResize }: DiagramNodeProps) {
+export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, onClick, onContextMenu, onLabelUpdate, onResize, onPositionUpdate, onDraggingChange }: DiagramNodeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [editText, setEditText] = useState(node.label || '');
@@ -68,6 +70,32 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, onC
     } else if (e.key === 'Escape') {
       setIsEditingLabel(false);
       setEditText(node.label || '');
+    } else if (!isEditingLabel && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+      // Handle keyboard navigation for selected nodes
+      e.preventDefault();
+      const gridSize = 20;
+      let newX = node.x || 0;
+      let newY = node.y || 0;
+      
+      switch (e.key) {
+        case 'ArrowUp':
+          newY -= gridSize;
+          break;
+        case 'ArrowDown':
+          newY += gridSize;
+          break;
+        case 'ArrowLeft':
+          newX -= gridSize;
+          break;
+        case 'ArrowRight':
+          newX += gridSize;
+          break;
+      }
+      
+      // Update node position through parent
+      if (onPositionUpdate) {
+        onPositionUpdate(node.id, newX, newY);
+      }
     }
   };
   
@@ -113,10 +141,19 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, onC
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
-  }), [node.id, node.x, node.y]);
+    onDragStart: () => {
+      onDraggingChange?.(true);
+    },
+    onDragEnd: () => {
+      onDraggingChange?.(false);
+    },
+  }), [node.id, node.x, node.y, onDraggingChange]);
 
   const [isTouchDragging, setIsTouchDragging] = useState(false);
   const touchStartPos = useRef<{ x: number; y: number } | null>(null);
+  
+  // Temporary position for dragging (doesn't update actual data until drop)
+  const [tempPosition, setTempPosition] = useState<{ x: number; y: number } | null>(null);
   
   // Resize handlers
   const handleResizeStart = (e: React.MouseEvent, handle: 'right' | 'bottom') => {
@@ -194,6 +231,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, onC
     const touch = e.touches[0];
     touchStartPos.current = { x: touch.clientX, y: touch.clientY };
     setIsTouchDragging(true);
+    onDraggingChange?.(true);
     (e.currentTarget as HTMLElement).style.opacity = '0.5';
     e.stopPropagation(); // Prevent canvas from handling this touch
     e.preventDefault(); // Prevent any default touch behavior
@@ -259,6 +297,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, onC
     // Reset styles
     (e.currentTarget as HTMLElement).style.opacity = '1';
     setIsTouchDragging(false);
+    onDraggingChange?.(false);
     touchStartPos.current = null;
     e.stopPropagation();
     e.preventDefault(); // Prevent any default touch behavior
@@ -274,14 +313,15 @@ return (
         }
       }}
       className={cn(
-        "absolute group transition-transform duration-200 ease-in-out hover:scale-105",
+        "absolute group transition-transform duration-200 ease-in-out",
+        !(isDragging || isTouchDragging) && "hover:scale-105",
         (isSelected || isHighlighted) && "ring-2 ring-accent ring-offset-2 rounded-lg drop-shadow-md",
         (isDragging || isTouchDragging) && "opacity-50 cursor-grabbing",
         isTargetable && "cursor-crosshair opacity-70 hover:opacity-100"
         )}
       style={{
-        left: node.x,
-        top: node.y,
+        left: isDragging ? (tempPosition?.x || node.x) : node.x,
+        top: isDragging ? (tempPosition?.y || node.y) : node.y,
         width: isRotatableNode || isTextboxNode || isLabelboxNode ? 
           (node.sizeMode === 'custom' && node.width ? node.width : 'auto') : NODE_WIDTH,
         minWidth: isTextboxNode ? (node.sizeMode === 'custom' && node.width ? node.width : 200) : 
@@ -334,7 +374,7 @@ return (
               <div 
                 className={cn(
                   "flex items-center justify-center h-full w-full px-3 py-2 rounded-lg border-2 transition-colors",
-                  isSelected ? "border-primary" : "group-hover:border-accent",
+                  isSelected ? "border-primary" : !(isDragging || isTouchDragging) && "group-hover:border-accent",
                   isTargetable && "border-dashed border-primary"
                 )}
                 style={{
@@ -368,7 +408,7 @@ return (
               <div 
                 className={cn(
                   "flex items-center justify-center h-full w-full p-4 rounded-lg border-2 transition-colors",
-                  isSelected ? "border-primary" : "group-hover:border-accent",
+                  isSelected ? "border-primary" : !(isDragging || isTouchDragging) && "group-hover:border-accent",
                   isTargetable && "border-dashed border-primary"
                 )}
                 style={{
@@ -403,7 +443,7 @@ return (
               <div 
                 className={cn(
                   "flex items-center justify-center h-full w-full p-3 rounded-lg border-2 transition-colors",
-                  isSelected ? "border-primary" : "group-hover:border-accent",
+                  isSelected ? "border-primary" : !(isDragging || isTouchDragging) && "group-hover:border-accent",
                   isTargetable && "border-dashed border-primary"
                 )}
                 style={{
@@ -621,7 +661,7 @@ return (
                 <div className={cn(
                     "flex items-center justify-center w-20 h-20 transition-colors flex-shrink-0",
                     (node as any).noIconBackground ? "" : "rounded-lg shadow-md border bg-card",
-                    isSelected ? "border-primary" : (node as any).noIconBackground ? "" : "group-hover:border-accent",
+                    isSelected ? "border-primary" : (node as any).noIconBackground || (isDragging || isTouchDragging) ? "" : "group-hover:border-accent",
                     isTargetable && "border-dashed border-primary"
                     )}>
                     <ResourceIcon type={node.type} width="70" height="70" className="w-[70px] h-[70px]" />

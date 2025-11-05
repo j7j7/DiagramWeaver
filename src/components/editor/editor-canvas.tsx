@@ -40,6 +40,7 @@ interface EditorCanvasProps {
   externalTransform?: { x: number; y: number; k: number };
   onTransformChange?: (transform: { x: number; y: number; k: number }) => void;
   onLabelUpdate?: (nodeId: string, newLabel: string) => void;
+  onDraggingChange?: (isDragging: boolean) => void;
 }
 
 type PositionedNode = DiagramNodeData & { x: number; y: number; };
@@ -190,7 +191,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, selectedItemId, isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, selectedItemId, isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange }: EditorCanvasProps,
   ref
 ) {
   const [internalTransform, setInternalTransform] = useState({ x: 0, y: 0, k: 1 });
@@ -2179,6 +2180,7 @@ const [, drop] = useDrop(() => ({
                           onContextMenu={handleNodeRightClick}
                           onLabelUpdate={onLabelUpdate}
                           onResize={resizeNode}
+                          onDraggingChange={onDraggingChange}
                         />
                       </div>
                     );
