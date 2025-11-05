@@ -290,7 +290,7 @@ return (
         maxWidth: isTextboxNode ? (node.sizeMode === 'custom' && node.width ? node.width : 400) : 
                   isLabelboxNode ? (node.sizeMode === 'custom' && node.width ? node.width : 300) : 
                   isRotatableNode ? 200 : NODE_WIDTH,
-        height: nodeHeight,
+        height: isRotatableNode || isTextboxNode || isLabelboxNode ? nodeHeight : 'auto',
         touchAction: 'none',
         transform: isRotatableNode && rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
         transformOrigin: 'center'
@@ -619,11 +619,11 @@ return (
             ) : (
               <>
                 <div className={cn(
-                    "flex items-center justify-center w-20 h-20 rounded-lg bg-card shadow-md border transition-colors",
+                    "flex items-center justify-center w-20 h-20 rounded-lg bg-card shadow-md border transition-colors flex-shrink-0",
                     isSelected ? "border-primary" : "group-hover:border-accent",
                     isTargetable && "border-dashed border-primary"
                     )}>
-                    <ResourceIcon type={node.type} className="w-10 h-10" />
+                    <ResourceIcon type={node.type} width="70" height="70" className="w-[70px] h-[70px]" />
                 </div>
                 {isEditingLabel ? (
                   <input
@@ -632,13 +632,13 @@ return (
                     onChange={(e) => setEditText(e.target.value)}
                     onBlur={handleLabelSubmit}
                     onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                    className="mt-1 text-sm font-medium text-center bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
+                    className="mt-1 text-xs font-medium text-center bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
                     autoFocus
                     onClick={(e) => e.stopPropagation()}
                   />
                 ) : (
                   <p 
-                    className="mt-1 text-sm font-medium text-center text-foreground w-full px-1 break-words leading-tight cursor-text hover:bg-background/50 rounded -mx-1 -my-0.5"
+                    className="mt-1 text-xs font-medium text-center text-foreground w-full px-1 break-words leading-tight cursor-text hover:bg-background/50 rounded -mx-1 -my-0.5"
                     onClick={handleLabelClick}
                   >
                     {node.label || 'Untitled'}
