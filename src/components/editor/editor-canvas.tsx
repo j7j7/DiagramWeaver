@@ -41,6 +41,7 @@ interface EditorCanvasProps {
   onTransformChange?: (transform: { x: number; y: number; k: number }) => void;
   onLabelUpdate?: (nodeId: string, newLabel: string) => void;
   onDraggingChange?: (isDragging: boolean) => void;
+  onClipboardChange?: (hasClipboard: boolean) => void;
 }
 
 type PositionedNode = DiagramNodeData & { x: number; y: number; };
@@ -188,10 +189,13 @@ const measureNodeDims = (n: PositionedNode) => {
 export type EditorCanvasHandle = {
   fitToView: () => void;
   exportPng: () => Promise<void>;
+  copy: () => void;
+  paste: () => void;
+  canPaste: () => boolean;
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, selectedItemId, isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, selectedItemId, isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange }: EditorCanvasProps,
   ref
 ) {
   const [internalTransform, setInternalTransform] = useState({ x: 0, y: 0, k: 1 });
@@ -1730,11 +1734,7 @@ const [, drop] = useDrop(() => ({
     }
   }, [toast]);
 
-  // Expose imperative API
-  React.useImperativeHandle(ref, () => ({
-    fitToView: handleFitToView,
-    exportPng,
-  }), [handleFitToView, exportPng]);
+  // Initial imperative API setup - will be updated after handleCopy/handlePaste are defined
 
   // Sort items for proper hierarchical rendering: parent first, then children in order
   const sortedRenderItems = useMemo(() => {
@@ -1976,6 +1976,7 @@ const [, drop] = useDrop(() => ({
 
     if (node) {
       setClipboard({ node: { ...node } });
+      onClipboardChange?.(true);
     } else if (group) {
       // Recursively collect all children
       const collectChildren = (groupId: string, visited: Set<string> = new Set()): (DiagramNodeData | DiagramGroupData)[] => {
@@ -2005,6 +2006,7 @@ const [, drop] = useDrop(() => ({
 
       const children = collectChildren(itemId);
       setClipboard({ group: { ...group }, children });
+      onClipboardChange?.(true);
     }
 
     toast({
@@ -2128,6 +2130,30 @@ const [, drop] = useDrop(() => ({
       description: "The copied item has been pasted to the canvas.",
     });
   };
+
+  // Wrap copy/paste handlers in useCallback for stable references
+  const copyHandler = useCallback(() => {
+    if (selectedItemId) {
+      handleCopy(selectedItemId);
+    }
+  }, [selectedItemId, diagramData]);
+
+  const pasteHandler = useCallback(() => {
+    handlePaste();
+  }, [clipboard, diagramData]);
+
+  const canPasteHandler = useCallback(() => {
+    return !!clipboard;
+  }, [clipboard]);
+
+  // Expose imperative API
+  React.useImperativeHandle(ref, () => ({
+    fitToView: handleFitToView,
+    exportPng,
+    copy: copyHandler,
+    paste: pasteHandler,
+    canPaste: canPasteHandler,
+  }), [handleFitToView, exportPng, copyHandler, pasteHandler, canPasteHandler]);
 
   return (
     <div className="relative w-full h-full">

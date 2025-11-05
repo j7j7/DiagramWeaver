@@ -6,6 +6,7 @@ import { Panel, PanelGroup } from 'react-resizable-panels';
 import { ComponentSidebar } from './editor/component-sidebar';
 import { EditorCanvas, type EditorCanvasHandle } from './editor/editor-canvas';
 import { JsonEditorPanel } from './editor/json-editor-panel';
+import { TopMenuBar } from './editor/top-menu-bar';
 import type { DiagramData, DiagramNodeData, DiagramGroupData, DiagramConnectionData } from '@/lib/types';
 import { generateSequentialId } from '@/lib/id-generator';
 import { useToast } from '@/hooks/use-toast';
@@ -54,6 +55,7 @@ export default function DiagramEditor() {
   const [sidebarOpen, setSidebarOpen] = React.useState<boolean>(false);
   const [canvasTransform, setCanvasTransform] = React.useState<{ x: number; y: number; k: number }>({ x: 0, y: 0, k: 1 });
   const [isDragging, setIsDragging] = React.useState<boolean>(false);
+  const [canPaste, setCanPaste] = React.useState<boolean>(false);
   const isMobile = useIsMobile();
 
   // Watch diagramData changes and update history automatically
@@ -587,6 +589,24 @@ export default function DiagramEditor() {
         toggleJsonPanel();
       }
       
+      // Ctrl+N (or Cmd+N on Mac) - New
+      if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === 'n' && !e.shiftKey) {
+        e.preventDefault();
+        handleNew();
+      }
+      
+      // Ctrl+O (or Cmd+O on Mac) - Load
+      if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === 'o' && !e.shiftKey) {
+        e.preventDefault();
+        handleLoadClick();
+      }
+      
+      // Ctrl+S (or Cmd+S on Mac) - Save
+      if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === 's' && !e.shiftKey) {
+        e.preventDefault();
+        handleSave();
+      }
+      
       // Ctrl+Z (or Cmd+Z on Mac) - Undo
       if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
         e.preventDefault();
@@ -682,11 +702,7 @@ export default function DiagramEditor() {
            onDisconnect={disconnectSelected}
            onItemDelete={handleItemDelete}
            diagramData={diagramData}
-           onSave={handleSave}
-           onLoad={handleLoadClick}
-           onNew={handleNew}
            onFitToView={() => editorRef.current?.fitToView()}
-           onExportPng={() => editorRef.current?.exportPng()}
            onToggleJsonPanel={toggleJsonPanel}
            jsonPanelOpen={jsonPanelOpen}
            onConnectionUpdate={handleConnectionUpdate}
@@ -694,10 +710,6 @@ export default function DiagramEditor() {
            isMobile={isMobile}
            transform={canvasTransform}
            onTransformChange={setCanvasTransform}
-           onUndo={undo}
-           onRedo={redo}
-           canUndo={historyIndex > 0}
-           canRedo={historyIndex < history.length - 1}
           onResourceSelect={(resource, provider, category) => {
             // NEVER add file or imagePath to node data
             // ResourceIcon will derive path from type and resource catalog
@@ -738,8 +750,23 @@ export default function DiagramEditor() {
         )}
         
         <main className={`flex-1 flex flex-col ${isMobile ? 'w-full' : ''} ${isMobile && sidebarOpen ? 'pointer-events-none' : ''}`}>
-            <header className="flex items-center justify-center p-4 border-b bg-card">
-                <h1 className="text-2xl font-headline font-bold text-primary">Diagram Weaver</h1>
+            <header className="flex flex-col border-b bg-card">
+                <div className="flex items-center justify-between px-4 py-2">
+                    <h1 className="text-2xl font-headline font-bold text-primary">Diagram Weaver</h1>
+                </div>
+                <TopMenuBar
+                    onNew={handleNew}
+                    onLoad={handleLoadClick}
+                    onSave={handleSave}
+                    onExportPng={() => editorRef.current?.exportPng()}
+                    onCopy={() => editorRef.current?.copy()}
+                    onPaste={() => editorRef.current?.paste()}
+                    canPaste={canPaste}
+                    onUndo={undo}
+                    onRedo={redo}
+                    canUndo={historyIndex > 0}
+                    canRedo={historyIndex < history.length - 1}
+                />
                 <input
                     type="file"
                     ref={fileInputRef}
@@ -776,6 +803,7 @@ export default function DiagramEditor() {
                     externalTransform={canvasTransform}
                     onTransformChange={setCanvasTransform}
                     onLabelUpdate={handleLabelUpdate}
+                    onClipboardChange={setCanPaste}
                     />
                   </div>
                   

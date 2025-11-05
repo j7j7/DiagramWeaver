@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { DraggableItem } from './draggable-item';
-import { Download, Upload, Plus, Code, Maximize2, ImageDown, Undo, Redo } from 'lucide-react';
+import { Code, Maximize2 } from 'lucide-react';
 import type { DiagramNodeData, DiagramGroupData, DiagramData } from '@/lib/types';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
@@ -22,29 +22,21 @@ interface ComponentSidebarProps {
   onDisconnect: () => void;
   onItemDelete: (itemToDelete: SelectedItem) => void;
   diagramData: DiagramData;
-  onSave: () => void;
-  onLoad: () => void;
-  onNew: () => void;
   onResourceSelect: (resource: { name: string; file: string; }, provider: string, category: string) => void;
   onToggleJsonPanel?: () => void;
   jsonPanelOpen?: boolean;
   onFitToView?: () => void;
-  onExportPng?: () => void;
   onConnectionUpdate?: (from: string, to: string, updates: { text?: string; textPosition?: number; color?: string; style?: 'bezier'; curvature?: number; preferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; arrow?: boolean; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean }) => void;
   onCloseSidebar?: () => void;
   isMobile?: boolean;
   transform?: { x: number; y: number; k: number };
   onTransformChange?: (transform: { x: number; y: number; k: number }) => void;
-  onUndo?: () => void;
-  onRedo?: () => void;
-  canUndo?: boolean;
-  canRedo?: boolean;
 }
 
 
 
 
-export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onSave, onLoad, onNew, onResourceSelect, onToggleJsonPanel, jsonPanelOpen, onFitToView, onExportPng, onConnectionUpdate, onCloseSidebar, isMobile, transform, onTransformChange, onUndo, onRedo, canUndo, canRedo }: ComponentSidebarProps) {
+export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onResourceSelect, onToggleJsonPanel, jsonPanelOpen, onFitToView, onConnectionUpdate, onCloseSidebar, isMobile, transform, onTransformChange }: ComponentSidebarProps) {
   const { register, reset, getValues } = useForm();
   
 
@@ -160,11 +152,6 @@ return (
             </button>
           </div>
         )}
-        <div className="flex items-center gap-2 mb-4 touch-spacing">
-            <Button variant="outline" size="sm" onClick={onNew} className="flex-1 touch-target"><Plus className="mr-2 h-4 w-4"/>New</Button>
-            <Button variant="outline" size="sm" onClick={onSave} className="flex-1 touch-target"><Download className="mr-2 h-4 w-4"/>Save</Button>
-            <Button variant="outline" size="sm" onClick={onLoad} className="flex-1 touch-target"><Upload className="mr-2 h-4 w-4"/>Load</Button>
-        </div>
         {onToggleJsonPanel && (
           <div className="mb-2">
             <Button 
@@ -185,14 +172,6 @@ return (
             </Button>
           </div>
         )}
-        {onExportPng && (
-          <div className="mb-2">
-            <Button variant="outline" onClick={onExportPng} className="w-full touch-target">
-              <ImageDown className="mr-2 h-4 w-4" />
-              Export PNG
-            </Button>
-          </div>
-        )}
         {/* Test button to manually trigger history change */}
 
 
@@ -200,32 +179,6 @@ return (
 
 
 
-        {(onUndo || onRedo) && (
-          <div className="mb-4 flex gap-2">
-            {onUndo && (
-              <Button 
-                variant="outline" 
-                onClick={onUndo} 
-                disabled={!canUndo}
-                className="flex-1 touch-target"
-              >
-                <Undo className="mr-2 h-4 w-4" />
-                Undo
-              </Button>
-            )}
-            {onRedo && (
-              <Button 
-                variant="outline" 
-                onClick={onRedo} 
-                disabled={!canRedo}
-                className="flex-1 touch-target"
-              >
-                <Redo className="mr-2 h-4 w-4" />
-                Redo
-              </Button>
-            )}
-          </div>
-        )}
       </div>
       
       <Tabs defaultValue="resources" className="flex-1 flex flex-col min-h-0">
