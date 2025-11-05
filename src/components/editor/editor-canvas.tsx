@@ -548,9 +548,20 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
 
         // First pass: organize children into rows and calculate row dimensions
         allChildren.forEach((child, index) => {
-            const childDims = measureNodeDims(child as PositionedNode);
-            const childWidth = childDims.width;
-            const childHeight = childDims.height;
+            // Use different dimension calculation for groups vs nodes
+            let childWidth: number;
+            let childHeight: number;
+            
+            if ((child as any).type === 'group') {
+                // For groups, use their calculated width and height from the recursive layout call
+                childWidth = (child as any).width || 300;
+                childHeight = (child as any).height || 220;
+            } else {
+                // For nodes, use the measureNodeDims function
+                const childDims = measureNodeDims(child as PositionedNode);
+                childWidth = childDims.width;
+                childHeight = childDims.height;
+            }
             
             currentRow.push({ child, width: childWidth, height: childHeight });
             rowMaxHeight = Math.max(rowMaxHeight, childHeight);
