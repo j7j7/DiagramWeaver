@@ -1188,6 +1188,30 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           }
           return g;
         });
+
+        // Clean up residual information when moving out of old group
+        if (oldParentId && item.type === ItemTypes.GROUP) {
+          // Remove parentId from the moved group and all its descendants
+          const cleanUpParentId = (groupId: string) => {
+            const group = currentGroups.find(g => g.id === groupId);
+            if (group) {
+              // Remove parentId reference
+              const groupIndex = currentGroups.findIndex(g => g.id === groupId);
+              if (groupIndex !== -1) {
+                currentGroups[groupIndex] = { ...group, parentId: undefined };
+              }
+              
+              // Recursively clean up all child groups
+              group.children.forEach(childId => {
+                const childGroup = currentGroups.find(g => g.id === childId);
+                if (childGroup) {
+                  cleanUpParentId(childId);
+                }
+              });
+            }
+          };
+          cleanUpParentId(item.id);
+        }
       }
 
       // Check if item is a freeflow node
@@ -1202,6 +1226,48 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           filtered.splice(insertIndex, 0, item.id);
           return { ...g, children: filtered };
         });
+
+        // Set parentId for groups that are moved into a new parent
+        if (item.type === ItemTypes.GROUP && targetGroupId) {
+          const setParentId = (groupId: string, parentId: string) => {
+            const group = currentGroups.find(g => g.id === groupId);
+            if (group) {
+              const groupIndex = currentGroups.findIndex(g => g.id === groupId);
+              if (groupIndex !== -1) {
+                currentGroups[groupIndex] = { ...group, parentId };
+              }
+              
+              // Recursively set parentId for all child groups
+              group.children.forEach(childId => {
+                const childGroup = currentGroups.find(g => g.id === childId);
+                if (childGroup) {
+                  setParentId(childId, groupId);
+                }
+              });
+            }
+          };
+          setParentId(item.id, targetGroupId);
+        }
+      } else if (!targetGroupId && item.type === ItemTypes.GROUP) {
+        // Group moved to canvas (orphaned) - clear parentId for moved group and all descendants
+        const clearParentId = (groupId: string) => {
+          const group = currentGroups.find(g => g.id === groupId);
+          if (group) {
+            const groupIndex = currentGroups.findIndex(g => g.id === groupId);
+            if (groupIndex !== -1) {
+              currentGroups[groupIndex] = { ...group, parentId: undefined };
+            }
+            
+            // Recursively clear parentId for all child groups
+            group.children.forEach(childId => {
+              const childGroup = currentGroups.find(g => g.id === childId);
+              if (childGroup) {
+                clearParentId(childId);
+              }
+            });
+          }
+        };
+        clearParentId(item.id);
       }
   
       // Handle positioning
