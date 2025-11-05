@@ -327,7 +327,8 @@ const [{ isDragging }, drag] = useDrag(() => ({
       }}
       className={cn(
         "absolute rounded-lg cursor-move",
-        isZone ? "border-2 border-dashed" : "border-2",
+        borderStyle !== 'none' && (isZone ? "border-2 border-dashed" : "border-2"),
+        borderStyle === 'none' && "border border-dashed border-gray-300 opacity-30 hover:opacity-60",
         (isDragging || isTouchDragging || isResizing) && "opacity-50",
         (isSelected || isDropTarget) && "ring-2 ring-primary ring-offset-2",
         isTargetable && "ring-2 ring-green-500 ring-offset-2 animate-pulse",
@@ -339,11 +340,15 @@ const [{ isDragging }, drag] = useDrag(() => ({
         top: group.y,
         width: group.width,
         height: group.height,
-        background: backgroundStyle === 'gradient' 
-          ? `linear-gradient(135deg, ${backgroundColors[0]}, ${backgroundColors[1]})`
-          : backgroundColor,
+        background: backgroundStyle === 'none' 
+          ? 'transparent'
+          : backgroundStyle === 'gradient' 
+            ? `linear-gradient(135deg, ${backgroundColors[0]}, ${backgroundColors[1]})`
+            : backgroundColor,
         // Handle border styling
-        ...(borderStyle === 'gradient' ? {
+        ...(borderStyle === 'none' ? {
+          // Border handled by CSS class for visibility
+        } : borderStyle === 'gradient' ? {
           border: isZone ? '2px dashed' : '2px solid',
           borderImage: `linear-gradient(135deg, ${borderColors[0]}, ${borderColors[1]}) 1`,
           borderColor: 'transparent'

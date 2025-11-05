@@ -428,13 +428,14 @@ return (
                           <SelectValue placeholder="Select border style" />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
                           <SelectItem value="solid">Solid</SelectItem>
                           <SelectItem value="gradient">Gradient</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
-                    {(selectedItem.borderStyle === 'solid' || !selectedItem.borderStyle) ? (
+                    {(selectedItem.borderStyle === 'solid' || (!selectedItem.borderStyle && selectedItem.borderStyle !== 'none')) ? (
                       <div>
                         <Label htmlFor="borderColor">Border Color</Label>
                         <Input 
@@ -513,6 +514,7 @@ return (
                           <SelectValue placeholder="Select background style" />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
                           <SelectItem value="solid">Solid</SelectItem>
                           <SelectItem value="gradient">Gradient</SelectItem>
                         </SelectContent>

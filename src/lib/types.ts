@@ -69,9 +69,9 @@ export interface DiagramGroupItem {
   borderColor?: string; // Border color (legacy, kept for compatibility)
   textColor?: string; // Text color
   backgroundColor?: string; // Background color (legacy, kept for compatibility)
-  borderStyle?: 'solid' | 'gradient'; // Border style
+  borderStyle?: 'solid' | 'gradient' | 'none'; // Border style
   borderColors?: string[]; // Border colors for gradient [startColor, endColor]
-  backgroundStyle?: 'solid' | 'gradient'; // Background style
+  backgroundStyle?: 'solid' | 'gradient' | 'none'; // Background style
   backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
   orientation?: 'horizontal' | 'vertical' | 'square'; // Group shape orientation
   maxItemsPerRow?: number; // Maximum items per row (for grid layouts)
@@ -102,9 +102,9 @@ export interface DiagramGroupData {
   borderColor?: string; // Border color (legacy, kept for compatibility)
   textColor?: string; // Text color
   backgroundColor?: string; // Background color (legacy, kept for compatibility)
-  borderStyle?: 'solid' | 'gradient'; // Border style
+  borderStyle?: 'solid' | 'gradient' | 'none'; // Border style
   borderColors?: string[]; // Border colors for gradient [startColor, endColor]
-  backgroundStyle?: 'solid' | 'gradient'; // Background style
+  backgroundStyle?: 'solid' | 'gradient' | 'none'; // Background style
   backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
   orientation?: 'horizontal' | 'vertical' | 'square'; // Group shape orientation
   maxItemsPerRow?: number; // Maximum items per row (for grid layouts)

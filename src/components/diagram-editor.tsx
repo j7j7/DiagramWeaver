@@ -18,9 +18,9 @@ export type SelectedItem = ((DiagramNodeData | DiagramGroupData) & {
   borderColor?: string,
   textColor?: string,
   backgroundColor?: string,
-  borderStyle?: 'solid' | 'gradient';
+  borderStyle?: 'solid' | 'gradient' | 'none';
   borderColors?: string[];
-  backgroundStyle?: 'solid' | 'gradient';
+  backgroundStyle?: 'solid' | 'gradient' | 'none';
   backgroundColors?: string[];
   orientation?: 'horizontal' | 'vertical' | 'square',
   lineColor?: string,
