@@ -527,7 +527,7 @@ export default function DiagramEditor() {
     }
   };
 
-  const handleConnectionUpdate = (from: string, to: string, updates: { text?: string; color?: string; style?: 'pathways' | 'bezier'; curvature?: number; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean }) => {
+  const handleConnectionUpdate = (from: string, to: string, updates: { text?: string; color?: string; style?: 'bezier'; curvature?: number; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean }) => {
     setDiagramData(prevData => ({
       ...prevData,
       connections: prevData.connections.map(conn => 

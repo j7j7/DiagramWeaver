@@ -18,7 +18,7 @@ interface ComponentSidebarProps {
   selectedItem: SelectedItem | null;
   selectedItemIds?: Set<string>;
   onItemUpdate: (updatedItem: SelectedItem) => void;
-  onConnect: (connectionOptions?: { style?: 'pathways' | 'bezier', curvature?: number }) => void;
+  onConnect: (connectionOptions?: { style?: 'bezier', curvature?: number }) => void;
   onDisconnect: () => void;
   onItemDelete: (itemToDelete: SelectedItem) => void;
   diagramData: DiagramData;
@@ -30,7 +30,7 @@ interface ComponentSidebarProps {
   jsonPanelOpen?: boolean;
   onFitToView?: () => void;
   onExportPng?: () => void;
-  onConnectionUpdate?: (from: string, to: string, updates: { text?: string; textPosition?: number; color?: string; style?: 'pathways' | 'bezier'; curvature?: number; preferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; arrow?: boolean; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean }) => void;
+  onConnectionUpdate?: (from: string, to: string, updates: { text?: string; textPosition?: number; color?: string; style?: 'bezier'; curvature?: number; preferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; arrow?: boolean; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean }) => void;
   onCloseSidebar?: () => void;
   isMobile?: boolean;
   transform?: { x: number; y: number; k: number };
@@ -49,15 +49,11 @@ export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, 
   
 
   
-  // State for default connection settings
-  const [defaultConnectionStyle, setDefaultConnectionStyle] = React.useState<'pathways' | 'bezier'>('bezier');
-  const [defaultCurvature, setDefaultCurvature] = React.useState<number>(0.5);
-
   // Handler for connect button with default options
   const handleConnectClick = () => {
     onConnect({
-      style: defaultConnectionStyle,
-      curvature: defaultConnectionStyle === 'bezier' ? defaultCurvature : undefined
+      style: 'bezier',
+      curvature: 0.6
     });
   };
 
@@ -292,7 +288,7 @@ return (
                 
                 <div>
                     <Label htmlFor="info">Description</Label>
-                    <Textarea id="info" {...register('info')} rows={5} />
+                    <Textarea id="info" {...register('info')} rows={2} />
                 </div>
   {selectedItem.itemType === 'group' && (
                   <>
@@ -881,52 +877,14 @@ return (
                 )}
                 
                 
-                {parentGroup && (
-                    <div>
-                        <Label>Parent Group</Label>
-                        <p className='text-sm text-muted-foreground p-2 bg-muted rounded-md'>{parentGroup.label}</p>
-                    </div>
-                )}
+                
                 
                 <p className="text-sm text-muted-foreground break-words">ID: {selectedItem.id}</p>
                 
                 {/* Connection Options */}
                 {(selectedItem.itemType === 'node' || selectedItem.itemType === 'group') && (
                   <div className="space-y-3">
-                    <div>
-                      <Label htmlFor="connectionStyle">Default Connection Style</Label>
-                      <Select 
-                        value={defaultConnectionStyle}
-                        onValueChange={(value) => setDefaultConnectionStyle(value as 'pathways' | 'bezier')}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select connection style" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pathways">Pathways (Angular)</SelectItem>
-                          <SelectItem value="bezier">Bezier (Curved)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
                     
-                    {defaultConnectionStyle === 'bezier' && (
-                      <div>
-                        <Label htmlFor="defaultCurvature">Default Curve Intensity</Label>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            id="defaultCurvature"
-                            type="range"
-                            min="0.1"
-                            max="1.0"
-                            step="0.1"
-                            value={defaultCurvature}
-                            onChange={(e) => setDefaultCurvature(parseFloat(e.target.value))}
-                            className="flex-1"
-                          />
-                          <span className="text-sm text-muted-foreground w-8">{defaultCurvature.toFixed(1)}</span>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
                 
@@ -1128,53 +1086,30 @@ return (
                                   Show Arrow (From)
                                 </Label>
                                </div>
-                               <div>
-                                 <Label htmlFor={`outgoing-style-${i}`} className="text-xs text-muted-foreground">Connection Style</Label>
-                                 <Select 
-                                   value={item.connection.style || 'pathways'}
-                                   onValueChange={(value) => {
-                                     if (onConnectionUpdate) {
-                                       onConnectionUpdate(item.connection.from, item.connection.to, { 
-                                         style: value as 'pathways' | 'bezier'
-                                       });
-                                     }
-                                   }}
-                                 >
-                                   <SelectTrigger className="w-full h-8">
-                                     <SelectValue placeholder="Select style" />
-                                   </SelectTrigger>
-                                   <SelectContent>
-                                     <SelectItem value="pathways">Pathways (Smart Routing)</SelectItem>
-                                     <SelectItem value="bezier">Bezier (Curved)</SelectItem>
-                                   </SelectContent>
-                                 </Select>
-                               </div>
-                               {item.connection.style === 'bezier' && (
-                                 <div>
-                                   <Label htmlFor={`outgoing-curvature-${i}`} className="text-xs text-muted-foreground">Curve Intensity</Label>
-                                   <Input
-                                     id={`outgoing-curvature-${i}`}
-                                     type="range"
-                                     min="0.1"
-                                     max="1.0"
-                                     step="0.1"
-                                     value={item.connection.curvature || 0.3}
-                                     onChange={(e) => {
-                                       if (onConnectionUpdate) {
-                                         onConnectionUpdate(item.connection.from, item.connection.to, { 
-                                           curvature: parseFloat(e.target.value)
-                                         });
-                                       }
-                                     }}
-                                     className="h-8 text-xs"
-                                   />
-                                   <div className="flex justify-between text-xs text-muted-foreground">
-                                     <span>Gentle</span>
-                                     <span>{(item.connection.curvature || 0.3).toFixed(1)}</span>
-                                     <span>Sharp</span>
-                                   </div>
-                                 </div>
-                               )}
+<div>
+                                    <Label htmlFor={`outgoing-curvature-${i}`} className="text-xs text-muted-foreground">Curve Intensity</Label>
+                                    <Input
+                                      id={`outgoing-curvature-${i}`}
+                                      type="range"
+                                      min="0.1"
+                                      max="1.0"
+                                      step="0.1"
+                                      value={item.connection.curvature || 0.3}
+                                      onChange={(e) => {
+                                        if (onConnectionUpdate) {
+                                          onConnectionUpdate(item.connection.from, item.connection.to, { 
+                                            curvature: parseFloat(e.target.value)
+                                          });
+                                        }
+                                      }}
+                                      className="h-8 text-xs"
+                                    />
+                                    <div className="flex justify-between text-xs text-muted-foreground">
+                                      <span>Gentle</span>
+                                      <span>{(item.connection.curvature || 0.3).toFixed(1)}</span>
+                                      <span>Sharp</span>
+                                    </div>
+                                  </div>
                              </div>
                            )) : <p className="text-xs text-muted-foreground pl-2">None</p>}
                          </div>

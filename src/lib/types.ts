@@ -34,8 +34,8 @@ export interface DiagramConnectionData {
   toArrow?: boolean; // Enable arrow at target node edge
   arrow?: boolean; // Legacy arrow property - backward compatibility
   
-  // New connection style options
-  style?: 'pathways' | 'bezier'; // Connection rendering style
+  // Connection style options
+  style?: 'bezier'; // Connection rendering style
   curvature?: number; // Bezier curve intensity (0.1 to 1.0)
 }
 

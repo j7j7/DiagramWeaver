@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { useDrop } from 'react-dnd';
 import { DiagramNode } from "../diagram/diagram-node";
-import { DiagramConnection, DiagramConnectionText } from "../diagram/diagram-connection";
+
 import { BezierConnection, BezierConnectionText } from "../diagram/bezier-connection";
 import { DiagramGroup } from "../diagram/diagram-group";
 import type { DiagramData, DiagramNodeData, DiagramGroupData } from "@/lib/types";
@@ -1635,28 +1635,7 @@ const [, drop] = useDrop(() => ({
     });
   }, [processedGroups, processedNodes]);
 
-  const allObstacles = useMemo(() => {
-    const nodeObstacles = processedNodes.map(n => {
-      const dims = measureNodeDims(n);
-      return ({
-        id: n.id,
-        x: n.x,
-        y: n.y,
-        width: dims.width,
-        height: dims.height,
-        isZone: false
-      });
-    });
-    const groupObstacles = processedGroups.map(g => ({
-      id: g.id,
-      x: g.x,
-      y: g.y,
-      width: g.width,
-      height: g.height,
-      isZone: g.subType === 'zone'
-    }));
-    return [...nodeObstacles, ...groupObstacles];
-  }, [processedNodes, processedGroups]);
+  
 
   const handleGenerateClick = async () => {
     setIsGenerating(true);
@@ -2084,63 +2063,21 @@ const [, drop] = useDrop(() => ({
 
                     // 
 
-                    // Build parent map for groups to gather ancestor groups of endpoints
-                    const parentMap = new Map<string, string>();
-                    processedGroups.forEach(g => {
-                      g.children.forEach((id: string) => parentMap.set(id, g.id));
-                    });
-                    const ancestorsOf = (id: string): string[] => {
-                      const res: string[] = [];
-                      let cur = parentMap.get(id);
-                      const guard = new Set<string>();
-                      while (cur && !guard.has(cur)) {
-                        res.push(cur);
-                        guard.add(cur);
-                        cur = parentMap.get(cur);
-                      }
-                      return res;
-                    };
+const isConnectionHighlighted = selectedItemId === edge.from || selectedItemId === edge.to;
 
-                    const allowedOverlapIds = [
-                      ...ancestorsOf(edge.from),
-                      ...ancestorsOf(edge.to),
-                      ...(toItem && 'type' in toItem && (toItem as any).type === 'group' ? [edge.to] : []),
-                    ];
-
-                    const isConnectionHighlighted = selectedItemId === edge.from || selectedItemId === edge.to;
-
-// Determine connection style - default to pathways for backward compatibility
-                    const connectionStyle = edge.style || 'bezier';
-                    
-                    return (
+return (
                     <g key={`${edge.from}-${edge.to}-${index}`} className={cn(isConnectionHighlighted && 'drop-shadow-[0_0_6px_rgba(0,200,150,0.8)]')}>
-                      {connectionStyle === 'bezier' ? (
-                        <BezierConnection
-                          from={fromPos}
-                          to={toPos}
-                          connectionColor={edge.color}
-                          connectionData={edge}
-                          onClick={(connection) => {
-                            // Handle connection click - you can add custom logic here
-                            console.log('Bezier connection clicked:', connection);
-                            // For now, just log it - you can expand this to show a modal, edit text, etc.
-                          }}
-                        />
-                      ) : (
-                        <DiagramConnection
-                          from={fromPos}
-                          to={toPos}
-                          allObstacles={allObstacles}
-                          allowedOverlapIds={allowedOverlapIds}
-                          connectionColor={edge.color}
-                          connectionData={edge}
-                          onClick={(connection) => {
-                            // Handle connection click - you can add custom logic here
-                            console.log('Pathway connection clicked:', connection);
-                            // For now, just log it - you can expand this to show a modal, edit text, etc.
-                          }}
-                        />
-                      )}
+                      <BezierConnection
+                        from={fromPos}
+                        to={toPos}
+                        connectionColor={edge.color}
+                        connectionData={edge}
+                        onClick={(connection) => {
+                          // Handle connection click - you can add custom logic here
+                          console.log('Connection clicked:', connection);
+                          // For now, just log it - you can expand this to show a modal, edit text, etc.
+                        }}
+                      />
                     </g>
                     );
                 })}
@@ -2219,47 +2156,15 @@ const [, drop] = useDrop(() => ({
                     processedGroups.forEach(g => {
                       g.children.forEach((id: string) => parentMap.set(id, g.id));
                     });
-                    const ancestorsOf = (id: string): string[] => {
-                      const res: string[] = [];
-                      let cur = parentMap.get(id);
-                      const guard = new Set<string>();
-                      while (cur && !guard.has(cur)) {
-                        res.push(cur);
-                        guard.add(cur);
-                        cur = parentMap.get(cur);
-                      }
-                      return res;
-                    };
-
-                    const allowedOverlapIds = [
-                      ...ancestorsOf(edge.from),
-                      ...ancestorsOf(edge.to),
-                      ...(toItem && 'type' in toItem && (toItem as any).type === 'group' ? [edge.to] : []),
-                    ];
-
-                    // Determine connection style - default to pathways for backward compatibility
-                    const connectionStyle = edge.style || 'bezier';
                     
                     return (
-                      connectionStyle === 'bezier' ? (
-                        <BezierConnectionText
-                          key={`text-${edge.from}-${edge.to}-${index}`}
-                          connectionData={edge}
-                          from={fromPos}
-                          to={toPos}
-                          connectionColor={edge.color}
-                        />
-                      ) : (
-                        <DiagramConnectionText
-                          key={`text-${edge.from}-${edge.to}-${index}`}
-                          connectionData={edge}
-                          from={fromPos}
-                          to={toPos}
-                          connectionColor={edge.color}
-                          allObstacles={allObstacles}
-                          allowedOverlapIds={allowedOverlapIds}
-                        />
-                      )
+                      <BezierConnectionText
+                        key={`text-${edge.from}-${edge.to}-${index}`}
+                        connectionData={edge}
+                        from={fromPos}
+                        to={toPos}
+                        connectionColor={edge.color}
+                      />
                     );
                 })}
                 </svg>
