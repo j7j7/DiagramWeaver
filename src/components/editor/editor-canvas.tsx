@@ -457,7 +457,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             // Vertical orientation: single column, but respect maxItemsPerRow for column height
             itemsPerRow = 1;
         } else if (group.orientation === 'horizontal') {
-            // Horizontal orientation: use maxItemsPerRow if specified, otherwise calculate
+            // Horizontal orientation: use a reasonable default to create multiple rows but maintain width
             itemsPerRow = group.maxItemsPerRow || Math.max(1, Math.floor(Math.sqrt(numItems) * 1.2));
         } else {
             // Square orientation: use maxItemsPerRow if specified, otherwise calculate
@@ -481,9 +481,20 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             
             // If we have edge nodes but no regular nodes, ensure adequate space for edge positioning
             if (edgeNodes.length > 0) {
-                // Make sure we have enough width/height for proper edge node centering
-                minGroupWidth = Math.max(minGroupWidth, maxNodeWidth * 2 + (GROUP_PADDING * 2));
-                minGroupHeight = Math.max(minGroupHeight, maxNodeHeight * 2 + (GROUP_PADDING * 2));
+                // Use orientation-specific minimum dimensions for edge nodes
+                if (group.orientation === 'vertical') {
+                    // Vertical: need enough width for edge nodes, but keep it tall and thin
+                    minGroupWidth = Math.max(minGroupWidth, maxNodeWidth + GROUP_PADDING * 1.5);
+                    minGroupHeight = Math.max(minGroupHeight, maxNodeHeight * 3 + GROUP_PADDING * 2);
+                } else if (group.orientation === 'horizontal') {
+                    // Horizontal: need enough height for edge nodes, but keep it wide and short
+                    minGroupWidth = Math.max(minGroupWidth, maxNodeWidth * 3 + GROUP_PADDING * 2);
+                    minGroupHeight = Math.max(minGroupHeight, maxNodeHeight + GROUP_PADDING * 1.5);
+                } else {
+                    // Square: use balanced dimensions
+                    minGroupWidth = Math.max(minGroupWidth, maxNodeWidth * 2 + GROUP_PADDING * 2);
+                    minGroupHeight = Math.max(minGroupHeight, maxNodeHeight * 2 + GROUP_PADDING * 2);
+                }
             }
             
             (group as PositionedGroup).width = minGroupWidth;
@@ -581,18 +592,40 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         });
 
         // Calculate total content width for auto-sized groups
-        const maxRowWidth = Math.max(...rows.map(row => row.rowWidth), 0);
-        const calculatedContentWidth = maxRowWidth;
+        let calculatedContentWidth: number;
+        if (group.orientation === 'horizontal') {
+            // For horizontal orientation, calculate width based on itemsPerRow to maintain consistent width
+            // Get the dimensions of the first few items to estimate width
+            const sampleItems = allChildren.slice(0, Math.min(itemsPerRow, allChildren.length));
+            const estimatedWidth = sampleItems.reduce((sum, child) => {
+                let childWidth: number;
+                if ((child as any).type === 'group') {
+                    childWidth = (child as any).width || 300;
+                } else {
+                    const childDims = measureNodeDims(child as PositionedNode);
+                    childWidth = childDims.width;
+                }
+                return sum + childWidth + GROUP_NODE_SPACING;
+            }, 0) - GROUP_NODE_SPACING;
+            calculatedContentWidth = estimatedWidth;
+        } else {
+            // For other orientations, use the maximum row width
+            calculatedContentWidth = Math.max(...rows.map(row => row.rowWidth), 0);
+        }
 
         // Determine the actual group width to use for layout
+        // Use reduced padding for both vertical and horizontal orientations to make them tighter
+        const horizontalPadding = group.orientation === 'vertical' ? GROUP_PADDING * 0.5 : 
+                                 group.orientation === 'horizontal' ? GROUP_PADDING * 0.5 : 
+                                 GROUP_PADDING;
         const actualGroupWidth = group.sizeMode === 'custom' && group.width ? 
                                group.width : 
-                               calculatedContentWidth + GROUP_PADDING * 2;
+                               calculatedContentWidth + horizontalPadding * 2;
 
         // Second pass: position children with centering
         rows.forEach((row, rowIndex) => {
             // Calculate horizontal offset to center the row within the group
-            const horizontalOffset = GROUP_PADDING + (actualGroupWidth - GROUP_PADDING * 2 - row.rowWidth) / 2;
+            const horizontalOffset = horizontalPadding + (actualGroupWidth - horizontalPadding * 2 - row.rowWidth) / 2;
             
             row.children.forEach((item, itemIndex) => {
                 item.child.x = horizontalOffset + (itemIndex > 0 ? 
@@ -608,21 +641,51 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
 
         // Calculate group dimensions
         let groupWidth = actualGroupWidth;
-        let groupHeight = contentHeight + GROUP_PADDING * 2;
+        // Use reduced padding for both vertical and horizontal orientations to make them tighter
+        const verticalPadding = group.orientation === 'vertical' ? GROUP_PADDING * 0.5 : 
+                               group.orientation === 'horizontal' ? GROUP_PADDING * 0.5 : 
+                               GROUP_PADDING;
+        let groupHeight = contentHeight + verticalPadding * 2;
         
-        // For auto-sized groups, enforce square aspect ratio by using the larger dimension
+        // For auto-sized groups, apply orientation-specific aspect ratios
         if (group.sizeMode !== 'custom') {
             const originalWidth = groupWidth;
             const originalHeight = groupHeight;
-            const maxDimension = Math.max(groupWidth, groupHeight);
-            groupWidth = maxDimension;
-            groupHeight = maxDimension;
             
-            // Re-center content within the square group
+            if (group.orientation === 'vertical') {
+                // Vertical orientation: keep width tight to content, only adjust height if needed
+                // Don't force aspect ratio - let content determine width, only ensure minimum height
+                groupWidth = originalWidth; // Keep width tight to content
+                // Only increase height if content is too tall for the width
+                const minHeightForVertical = originalWidth * 1.5; // Minimum 1.5:1 height:width ratio
+                if (originalHeight < minHeightForVertical) {
+                    groupHeight = minHeightForVertical;
+                } else {
+                    groupHeight = originalHeight;
+                }
+            } else if (group.orientation === 'horizontal') {
+                // Horizontal orientation: keep height tight to content, only adjust width if needed
+                // Don't force aspect ratio - let content determine height, only ensure minimum width
+                groupHeight = originalHeight; // Keep height tight to content
+                // Only increase width if content is too wide for the height
+                const minWidthForHorizontal = originalHeight * 1.8; // Minimum 1.8:1 width:height ratio
+                if (originalWidth < minWidthForHorizontal) {
+                    groupWidth = minWidthForHorizontal;
+                } else {
+                    groupWidth = originalWidth;
+                }
+            } else {
+                // Square orientation: enforce square aspect ratio by using the larger dimension
+                const maxDimension = Math.max(groupWidth, groupHeight);
+                groupWidth = maxDimension;
+                groupHeight = maxDimension;
+            }
+            
+            // Re-center content within the group
             const horizontalOffset = (groupWidth - originalWidth) / 2;
             const verticalOffset = (groupHeight - originalHeight) / 2;
             
-            // Reposition all children to center them in the square
+            // Reposition all children to center them in the group
             rows.forEach((row) => {
                 row.children.forEach((item) => {
                     item.child.x += horizontalOffset;
@@ -637,12 +700,12 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             
             // Apply vertical centering for all rows within the custom-sized group
             const totalContentHeight = contentHeight;
-            const verticalOffset = GROUP_PADDING + (groupHeight - GROUP_PADDING * 2 - totalContentHeight) / 2;
+            const verticalOffset = verticalPadding + (groupHeight - verticalPadding * 2 - totalContentHeight) / 2;
             
             // Reposition all children with vertical offset
             rows.forEach((row) => {
                 row.children.forEach((item) => {
-                    item.child.y += verticalOffset - GROUP_PADDING;
+                    item.child.y += verticalOffset - verticalPadding;
                 });
             });
         }
@@ -652,10 +715,26 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             const edgeNodeDims = edgeNodes.map(n => measureNodeDims(n as PositionedNode));
             const maxEdgeNodeWidth = Math.max(...edgeNodeDims.map(d => d.width));
             const maxEdgeNodeHeight = Math.max(...edgeNodeDims.map(d => d.height));
-            const minWidthForEdges = maxEdgeNodeWidth * 2 + (GROUP_PADDING * 2);
-            const minHeightForEdges = maxEdgeNodeHeight * 2 + (GROUP_PADDING * 2);
-            groupWidth = Math.max(groupWidth, minWidthForEdges);
-            groupHeight = Math.max(groupHeight, minHeightForEdges);
+            // Use orientation-specific minimum dimensions for edge nodes
+            if (group.orientation === 'vertical') {
+                // Vertical: need enough width for edge nodes, but keep it tall and thin
+                const minWidthForEdges = maxEdgeNodeWidth + GROUP_PADDING * 1.5;
+                const minHeightForEdges = maxEdgeNodeHeight * 3 + GROUP_PADDING * 2;
+                groupWidth = Math.max(groupWidth, minWidthForEdges);
+                groupHeight = Math.max(groupHeight, minHeightForEdges);
+            } else if (group.orientation === 'horizontal') {
+                // Horizontal: need enough height for edge nodes, but keep it wide and short
+                const minWidthForEdges = maxEdgeNodeWidth * 3 + GROUP_PADDING * 2;
+                const minHeightForEdges = maxEdgeNodeHeight + GROUP_PADDING * 1.5;
+                groupWidth = Math.max(groupWidth, minWidthForEdges);
+                groupHeight = Math.max(groupHeight, minHeightForEdges);
+            } else {
+                // Square: use balanced dimensions
+                const minWidthForEdges = maxEdgeNodeWidth * 2 + GROUP_PADDING * 2;
+                const minHeightForEdges = maxEdgeNodeHeight * 2 + GROUP_PADDING * 2;
+                groupWidth = Math.max(groupWidth, minWidthForEdges);
+                groupHeight = Math.max(groupHeight, minHeightForEdges);
+            }
         }
         
         (group as PositionedGroup).width = groupWidth;
