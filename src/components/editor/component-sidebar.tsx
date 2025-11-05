@@ -797,6 +797,28 @@ return (
                       </>
                     )}
                     
+                    {/* Icon background option - only for non-text nodes */}
+                    {selectedItem.itemType === 'node' && 
+                     !selectedItem.type?.startsWith('generic.text') && (
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="noIconBackground"
+                          checked={(selectedItem as any).noIconBackground || false}
+                          onChange={(e) => {
+                            onItemUpdate({
+                              ...selectedItem,
+                              noIconBackground: e.target.checked
+                            } as any);
+                          }}
+                          className="rounded border-gray-300"
+                        />
+                        <Label htmlFor="noIconBackground" className="text-sm font-medium">
+                          Remove Icon Background
+                        </Label>
+                      </div>
+                    )}
+                    
                     {/* Freeflow option - only for nodes */}
                     {selectedItem.itemType === 'node' && (
                       <div className="flex items-center space-x-2">

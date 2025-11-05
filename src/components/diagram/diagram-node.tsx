@@ -619,8 +619,9 @@ return (
             ) : (
               <>
                 <div className={cn(
-                    "flex items-center justify-center w-20 h-20 rounded-lg bg-card shadow-md border transition-colors flex-shrink-0",
-                    isSelected ? "border-primary" : "group-hover:border-accent",
+                    "flex items-center justify-center w-20 h-20 transition-colors flex-shrink-0",
+                    (node as any).noIconBackground ? "" : "rounded-lg shadow-md border bg-card",
+                    isSelected ? "border-primary" : (node as any).noIconBackground ? "" : "group-hover:border-accent",
                     isTargetable && "border-dashed border-primary"
                     )}>
                     <ResourceIcon type={node.type} width="70" height="70" className="w-[70px] h-[70px]" />

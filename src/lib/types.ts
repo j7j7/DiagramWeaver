@@ -19,6 +19,7 @@ export interface DiagramNodeData {
   width?: number; // Custom width - when set, overrides auto-calculated width
   height?: number; // Custom height - when set, overrides auto-calculated height
   sizeMode?: 'auto' | 'custom'; // Whether to use auto-calculated or custom dimensions
+  noIconBackground?: boolean; // If true, removes the white background from icon nodes
 }
 
 export interface DiagramConnectionData {
