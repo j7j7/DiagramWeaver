@@ -59,7 +59,10 @@ export default function DiagramEditor() {
   React.useEffect(() => {
     const jsonString = JSON.stringify(diagramData);
     
-
+    // Save to localStorage for persistence across browser refreshes
+    if (isClient) {
+      localStorage.setItem('dw:diagramData', jsonString);
+    }
     
     // Skip if this is the same as the last history entry (but not on initial load)
     if (historyRef.current.history.length > 1 && historyRef.current.history[historyRef.current.index] === jsonString) {
@@ -85,8 +88,18 @@ export default function DiagramEditor() {
     setHistory(currentHistory);
     setHistoryIndex(newIndex);
     
+    // Save history to localStorage for persistence
+    if (isClient) {
+      try {
+        localStorage.setItem('dw:diagramHistory', JSON.stringify(currentHistory));
+        localStorage.setItem('dw:diagramHistoryIndex', String(newIndex));
+      } catch (error) {
+        console.warn('Failed to save history to localStorage (possibly quota exceeded):', error);
+        // Continue without saving history - functionality still works, just not persisted
+      }
+    }
 
-  }, [diagramData]);
+  }, [diagramData, isClient]);
 
   const undo = React.useCallback(() => {
     const { history: currentHistory, index: currentIndex } = historyRef.current;
@@ -95,10 +108,21 @@ export default function DiagramEditor() {
       const newIndex = currentIndex - 1;
       historyRef.current.index = newIndex;
       setHistoryIndex(newIndex);
-      setDiagramData(JSON.parse(currentHistory[newIndex]));
+      const newDiagramData = JSON.parse(currentHistory[newIndex]);
+      setDiagramData(newDiagramData);
       setSelectedItem(null);
+      
+      // Save history state to localStorage
+      if (isClient) {
+        try {
+          localStorage.setItem('dw:diagramHistoryIndex', String(newIndex));
+          localStorage.setItem('dw:diagramData', currentHistory[newIndex]);
+        } catch (error) {
+          console.warn('Failed to save history state to localStorage:', error);
+        }
+      }
     }
-  }, []);
+  }, [isClient]);
 
   const redo = React.useCallback(() => {
     const { history: currentHistory, index: currentIndex } = historyRef.current;
@@ -107,22 +131,84 @@ export default function DiagramEditor() {
       const newIndex = currentIndex + 1;
       historyRef.current.index = newIndex;
       setHistoryIndex(newIndex);
-      setDiagramData(JSON.parse(currentHistory[newIndex]));
+      const newDiagramData = JSON.parse(currentHistory[newIndex]);
+      setDiagramData(newDiagramData);
       setSelectedItem(null);
+      
+      // Save history state to localStorage
+      if (isClient) {
+        try {
+          localStorage.setItem('dw:diagramHistoryIndex', String(newIndex));
+          localStorage.setItem('dw:diagramData', currentHistory[newIndex]);
+        } catch (error) {
+          console.warn('Failed to save history state to localStorage:', error);
+        }
+      }
     }
-  }, []);
+  }, [isClient]);
 
   // Initialize client-side state after hydration
   React.useEffect(() => {
     setIsClient(true);
     const savedOpen = localStorage.getItem('dw:jsonEditor:open');
     const savedWidth = localStorage.getItem('dw:jsonEditor:width');
+    const savedDiagramData = localStorage.getItem('dw:diagramData');
+    const savedHistory = localStorage.getItem('dw:diagramHistory');
+    const savedHistoryIndex = localStorage.getItem('dw:diagramHistoryIndex');
     
     if (savedOpen !== null) {
       setJsonPanelOpen(savedOpen === 'true');
     }
     if (savedWidth !== null) {
       setJsonPanelWidth(parseInt(savedWidth, 10));
+    }
+    
+    // Load history first, then diagram data
+    if (savedHistory && savedHistoryIndex) {
+      try {
+        const parsedHistory = JSON.parse(savedHistory);
+        const parsedIndex = parseInt(savedHistoryIndex, 10);
+        
+        if (Array.isArray(parsedHistory) && parsedIndex >= 0 && parsedIndex < parsedHistory.length) {
+          // Restore history
+          historyRef.current = { history: parsedHistory, index: parsedIndex };
+          setHistory(parsedHistory);
+          setHistoryIndex(parsedIndex);
+          
+          // Restore diagram data from history
+          const diagramDataFromHistory = JSON.parse(parsedHistory[parsedIndex]);
+          setDiagramData(diagramDataFromHistory);
+        } else {
+          throw new Error('Invalid history data');
+        }
+      } catch (error) {
+        console.warn('Failed to parse saved history:', error);
+        // Fallback to saved diagram data or default
+        if (savedDiagramData) {
+          try {
+            const parsedData = JSON.parse(savedDiagramData);
+            setDiagramData(parsedData);
+            const initialHistory = [JSON.stringify(parsedData)];
+            historyRef.current = { history: initialHistory, index: 0 };
+            setHistory(initialHistory);
+            setHistoryIndex(0);
+          } catch (dataError) {
+            console.warn('Failed to parse saved diagram data:', dataError);
+          }
+        }
+      }
+    } else if (savedDiagramData) {
+      // Fallback to just diagram data if no history
+      try {
+        const parsedData = JSON.parse(savedDiagramData);
+        setDiagramData(parsedData);
+        const initialHistory = [JSON.stringify(parsedData)];
+        historyRef.current = { history: initialHistory, index: 0 };
+        setHistory(initialHistory);
+        setHistoryIndex(0);
+      } catch (error) {
+        console.warn('Failed to parse saved diagram data:', error);
+      }
     }
   }, []);
 
@@ -447,8 +533,22 @@ export default function DiagramEditor() {
   };
 
   const handleNew = () => {
-    setDiagramData({ nodes: [], connections: [], groups: [] });
+    const emptyDiagram = { nodes: [], connections: [], groups: [] };
+    const emptyHistory = [JSON.stringify(emptyDiagram)];
+    
+    setDiagramData(emptyDiagram);
     setSelectedItem(null);
+    
+    // Reset history
+    historyRef.current = { history: emptyHistory, index: 0 };
+    setHistory(emptyHistory);
+    setHistoryIndex(0);
+    
+    if (isClient) {
+      localStorage.removeItem('dw:diagramData');
+      localStorage.removeItem('dw:diagramHistory');
+      localStorage.removeItem('dw:diagramHistoryIndex');
+    }
     toast({ title: 'New Diagram', description: 'Diagram has been cleared.' });
   };
 
