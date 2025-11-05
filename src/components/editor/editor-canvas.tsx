@@ -609,6 +609,27 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         let groupWidth = actualGroupWidth;
         let groupHeight = contentHeight + GROUP_PADDING * 2;
         
+        // For auto-sized groups, enforce square aspect ratio by using the larger dimension
+        if (group.sizeMode !== 'custom') {
+            const originalWidth = groupWidth;
+            const originalHeight = groupHeight;
+            const maxDimension = Math.max(groupWidth, groupHeight);
+            groupWidth = maxDimension;
+            groupHeight = maxDimension;
+            
+            // Re-center content within the square group
+            const horizontalOffset = (groupWidth - originalWidth) / 2;
+            const verticalOffset = (groupHeight - originalHeight) / 2;
+            
+            // Reposition all children to center them in the square
+            rows.forEach((row) => {
+                row.children.forEach((item) => {
+                    item.child.x += horizontalOffset;
+                    item.child.y += verticalOffset;
+                });
+            });
+        }
+        
         // For custom-sized groups, use the custom dimensions and apply vertical centering
         if (group.sizeMode === 'custom') {
             groupHeight = group.height || groupHeight;
