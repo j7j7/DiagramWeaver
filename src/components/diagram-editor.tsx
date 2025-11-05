@@ -751,14 +751,14 @@ export default function DiagramEditor() {
         
         <main className={`flex-1 flex flex-col ${isMobile ? 'w-full' : ''} ${isMobile && sidebarOpen ? 'pointer-events-none' : ''}`}>
             <header className="flex flex-col border-b bg-card">
-                <div className="flex items-center justify-between px-4 py-2">
-                    <h1 className="text-2xl font-headline font-bold text-primary">Diagram Weaver</h1>
-                </div>
                 <TopMenuBar
                     onNew={handleNew}
                     onLoad={handleLoadClick}
                     onSave={handleSave}
                     onExportPng={() => editorRef.current?.exportPng()}
+                    onToggleJsonPanel={toggleJsonPanel}
+                    jsonPanelOpen={jsonPanelOpen}
+                    onFitToView={() => editorRef.current?.fitToView()}
                     onCopy={() => editorRef.current?.copy()}
                     onPaste={() => editorRef.current?.paste()}
                     canPaste={canPaste}
@@ -766,6 +766,17 @@ export default function DiagramEditor() {
                     onRedo={redo}
                     canUndo={historyIndex > 0}
                     canRedo={historyIndex < history.length - 1}
+                    transform={canvasTransform}
+                    onTransformChange={setCanvasTransform}
+                    selectedItem={selectedItem}
+                    onItemUpdate={handleItemUpdate}
+                    onConnect={startConnecting}
+                    onDisconnect={disconnectSelected}
+                    onDelete={() => {
+                      if (selectedItem) {
+                        handleItemDelete(selectedItem);
+                      }
+                    }}
                 />
                 <input
                     type="file"

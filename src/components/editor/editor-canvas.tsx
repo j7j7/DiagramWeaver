@@ -2225,9 +2225,6 @@ const [, drop] = useDrop(() => ({
                       height: 'height' in toItem ? (toItem as any).height : toItemDims.height,
                     };
 
-                    // Debug log for connection dimensions
-                    console.log(`Connection ${edge.from} -> ${edge.to}: from=${fromPos.width}x${fromPos.height}, to=${toPos.width}x${toPos.height}`);
-
                     // Explicitly set lineColor after spreading to ensure it's not overwritten
                     fromPos.lineColor = (fromItem as any).lineColor;
                     toPos.lineColor = (toItem as any).lineColor;
@@ -2245,8 +2242,7 @@ return (
                         connectionData={edge}
                         onClick={(connection) => {
                           // Handle connection click - you can add custom logic here
-                          console.log('Connection clicked:', connection);
-                          // For now, just log it - you can expand this to show a modal, edit text, etc.
+                          // Connection click handler - can be expanded to show modal, edit text, etc.
                         }}
                       />
                     </g>
