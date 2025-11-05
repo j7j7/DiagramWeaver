@@ -435,57 +435,61 @@ return (
                       </Select>
                     </div>
 
-                    {(selectedItem.borderStyle === 'solid' || (!selectedItem.borderStyle && selectedItem.borderStyle !== 'none')) ? (
-                      <div>
-                        <Label htmlFor="borderColor">Border Color</Label>
-                        <Input 
-                          id="borderColor" 
-                          type="color" 
-                          value={selectedItem.borderColor || (selectedItem.subType === 'zone' ? '#6b7280' : '#3b82f6')}
-                          onChange={(e) => {
-                            onItemUpdate({
-                              ...selectedItem,
-                              borderColor: e.target.value
-                            });
-                          }}
-                          className="p-1 h-10"
-                        />
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <div>
-                          <Label htmlFor="borderColor1">Border Start Color</Label>
-                          <Input 
-                            id="borderColor1" 
-                            type="color" 
-                            value={selectedItem.borderColors?.[0] || '#6b7280'}
-                            onChange={(e) => {
-                              const currentColors = selectedItem.borderColors || ['#6b7280', '#3b82f6'];
-                              onItemUpdate({
-                                ...selectedItem,
-                                borderColors: [e.target.value, currentColors[1]]
-                              });
-                            }}
-                            className="p-1 h-10"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="borderColor2">Border End Color</Label>
-                          <Input 
-                            id="borderColor2" 
-                            type="color" 
-                            value={selectedItem.borderColors?.[1] || '#3b82f6'}
-                            onChange={(e) => {
-                              const currentColors = selectedItem.borderColors || ['#6b7280', '#3b82f6'];
-                              onItemUpdate({
-                                ...selectedItem,
-                                borderColors: [currentColors[0], e.target.value]
-                              });
-                            }}
-                            className="p-1 h-10"
-                          />
-                        </div>
-                      </div>
+                    {selectedItem.borderStyle !== 'none' && (
+                      <>
+                        {(selectedItem.borderStyle === 'solid' || (!selectedItem.borderStyle && selectedItem.borderStyle !== 'none')) ? (
+                          <div>
+                            <Label htmlFor="borderColor">Border Color</Label>
+                            <Input 
+                              id="borderColor" 
+                              type="color" 
+                              value={selectedItem.borderColor || (selectedItem.subType === 'zone' ? '#6b7280' : '#3b82f6')}
+                              onChange={(e) => {
+                                onItemUpdate({
+                                  ...selectedItem,
+                                  borderColor: e.target.value
+                                });
+                              }}
+                              className="p-1 h-10"
+                            />
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <div>
+                              <Label htmlFor="borderColor1">Border Start Color</Label>
+                              <Input 
+                                id="borderColor1" 
+                                type="color" 
+                                value={selectedItem.borderColors?.[0] || '#6b7280'}
+                                onChange={(e) => {
+                                  const currentColors = selectedItem.borderColors || ['#6b7280', '#3b82f6'];
+                                  onItemUpdate({
+                                    ...selectedItem,
+                                    borderColors: [e.target.value, currentColors[1]]
+                                  });
+                                }}
+                                className="p-1 h-10"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="borderColor2">Border End Color</Label>
+                              <Input 
+                                id="borderColor2" 
+                                type="color" 
+                                value={selectedItem.borderColors?.[1] || '#3b82f6'}
+                                onChange={(e) => {
+                                  const currentColors = selectedItem.borderColors || ['#6b7280', '#3b82f6'];
+                                  onItemUpdate({
+                                    ...selectedItem,
+                                    borderColors: [currentColors[0], e.target.value]
+                                  });
+                                }}
+                                className="p-1 h-10"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </>
                     )}
                     
                     <div>
@@ -521,57 +525,61 @@ return (
                       </Select>
                     </div>
 
-                    {(selectedItem.backgroundStyle === 'solid' || !selectedItem.backgroundStyle) ? (
-                      <div>
-                        <Label htmlFor="backgroundColor">Background Color</Label>
-                        <Input 
-                          id="backgroundColor" 
-                          type="color" 
-                          value={selectedItem.backgroundColor || (selectedItem.subType === 'zone' ? '#f3f4f6' : '#f3f4f6')}
-                          onChange={(e) => {
-                            onItemUpdate({
-                              ...selectedItem,
-                              backgroundColor: e.target.value
-                            });
-                          }}
-                          className="p-1 h-10"
-                        />
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <div>
-                          <Label htmlFor="backgroundColor1">Background Start Color</Label>
-                          <Input 
-                            id="backgroundColor1" 
-                            type="color" 
-                            value={selectedItem.backgroundColors?.[0] || '#f3f4f6'}
-                            onChange={(e) => {
-                              const currentColors = selectedItem.backgroundColors || ['#f3f4f6', '#e5e7eb'];
-                              onItemUpdate({
-                                ...selectedItem,
-                                backgroundColors: [e.target.value, currentColors[1]]
-                              });
-                            }}
-                            className="p-1 h-10"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="backgroundColor2">Background End Color</Label>
-                          <Input 
-                            id="backgroundColor2" 
-                            type="color" 
-                            value={selectedItem.backgroundColors?.[1] || '#e5e7eb'}
-                            onChange={(e) => {
-                              const currentColors = selectedItem.backgroundColors || ['#f3f4f6', '#e5e7eb'];
-                              onItemUpdate({
-                                ...selectedItem,
-                                backgroundColors: [currentColors[0], e.target.value]
-                              });
-                            }}
-                            className="p-1 h-10"
-                          />
-                        </div>
-                      </div>
+                    {selectedItem.backgroundStyle !== 'none' && (
+                      <>
+                        {(selectedItem.backgroundStyle === 'solid' || !selectedItem.backgroundStyle) ? (
+                          <div>
+                            <Label htmlFor="backgroundColor">Background Color</Label>
+                            <Input 
+                              id="backgroundColor" 
+                              type="color" 
+                              value={selectedItem.backgroundColor || (selectedItem.subType === 'zone' ? '#f3f4f6' : '#f3f4f6')}
+                              onChange={(e) => {
+                                onItemUpdate({
+                                  ...selectedItem,
+                                  backgroundColor: e.target.value
+                                });
+                              }}
+                              className="p-1 h-10"
+                            />
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <div>
+                              <Label htmlFor="backgroundColor1">Background Start Color</Label>
+                              <Input 
+                                id="backgroundColor1" 
+                                type="color" 
+                                value={selectedItem.backgroundColors?.[0] || '#f3f4f6'}
+                                onChange={(e) => {
+                                  const currentColors = selectedItem.backgroundColors || ['#f3f4f6', '#e5e7eb'];
+                                  onItemUpdate({
+                                    ...selectedItem,
+                                    backgroundColors: [e.target.value, currentColors[1]]
+                                  });
+                                }}
+                                className="p-1 h-10"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="backgroundColor2">Background End Color</Label>
+                              <Input 
+                                id="backgroundColor2" 
+                                type="color" 
+                                value={selectedItem.backgroundColors?.[1] || '#e5e7eb'}
+                                onChange={(e) => {
+                                  const currentColors = selectedItem.backgroundColors || ['#f3f4f6', '#e5e7eb'];
+                                  onItemUpdate({
+                                    ...selectedItem,
+                                    backgroundColors: [currentColors[0], e.target.value]
+                                  });
+                                }}
+                                className="p-1 h-10"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </>
                     )}
 
                     <div className="flex items-center space-x-2">
