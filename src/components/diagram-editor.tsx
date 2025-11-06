@@ -67,6 +67,7 @@ export default function DiagramEditor() {
   const [canPaste, setCanPaste] = React.useState<boolean>(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [mousePosition, setMousePosition] = React.useState<{ x: number; y: number } | null>(null);
+  const [selectionCoordinates, setSelectionCoordinates] = React.useState<{ start: { x: number; y: number } | null; end: { x: number; y: number } | null } | undefined>(undefined);
 
   // Tab management
   const {
@@ -578,9 +579,17 @@ export default function DiagramEditor() {
   };
 
   const handleExport = async (options: { backgroundColor: 'transparent' | 'white'; useSelection: boolean }) => {
-    setExportDialogOpen(false);
-    if (editorRef.current) {
-      await editorRef.current.startSelectionMode(options);
+    if (options.useSelection) {
+      // Keep dialog open during selection mode
+      if (editorRef.current) {
+        await editorRef.current.startSelectionMode(options);
+      }
+    } else {
+      // Close dialog and export immediately for full diagram
+      setExportDialogOpen(false);
+      if (editorRef.current) {
+        await editorRef.current.exportPng({ backgroundColor: options.backgroundColor });
+      }
     }
   };
 
@@ -891,6 +900,8 @@ export default function DiagramEditor() {
                     onLabelUpdate={handleLabelUpdate}
                     onClipboardChange={setCanPaste}
                     onMousePositionChange={setMousePosition}
+                    onSelectionChange={setSelectionCoordinates}
+                    onExportComplete={() => setExportDialogOpen(false)}
                     />
                   </div>
                   
@@ -908,6 +919,7 @@ export default function DiagramEditor() {
           open={exportDialogOpen}
           onOpenChange={setExportDialogOpen}
           onExport={handleExport}
+          selectionCoordinates={selectionCoordinates}
         />
         <AlertDialog open={closeTabDialogOpen} onOpenChange={setCloseTabDialogOpen}>
           <AlertDialogContent>

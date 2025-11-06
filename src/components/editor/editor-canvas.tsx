@@ -49,6 +49,8 @@ interface EditorCanvasProps {
   onDraggingChange?: (isDragging: boolean) => void;
   onClipboardChange?: (hasClipboard: boolean) => void;
   onMousePositionChange?: (position: { x: number; y: number } | null) => void;
+  onSelectionChange?: (selection: { start: { x: number; y: number } | null; end: { x: number; y: number } | null }) => void;
+  onExportComplete?: () => void;
 }
 
 type PositionedNode = DiagramNodeData & { x: number; y: number; };
@@ -217,7 +219,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, selectedItemId, isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, selectedItemId, isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete }: EditorCanvasProps,
   ref
 ) {
   const [internalTransform, setInternalTransform] = useState({ x: 0, y: 0, k: 1 });
@@ -1701,7 +1703,7 @@ const [, drop] = useDrop(() => ({
     setTransform({ ...transform, x: e.clientX - panStart.x, y: e.clientY - panStart.y });
   };
 
-  const handleMouseUpOrLeave = () => {
+  const handleMouseUpOrLeave = async () => {
     if (isSelectionMode && selectionStart && selectionEnd && pendingExportOptions) {
       // Complete selection and export
       // Selection coordinates are already in diagram space (relative to .dot-grid)
@@ -1714,11 +1716,24 @@ const [, drop] = useDrop(() => ({
         // Debug: log coordinates
         console.log('Export selection:', { x, y, width, height, transform });
         
-        // Pass coordinates directly in diagram space (they're relative to the .dot-grid div)
-        exportPng({
-          backgroundColor: pendingExportOptions.backgroundColor,
-          selectionArea: { x, y, width, height },
-        });
+        try {
+          // Pass coordinates directly in diagram space (they're relative to the .dot-grid div)
+          await exportPng({
+            backgroundColor: pendingExportOptions.backgroundColor,
+            selectionArea: { x, y, width, height },
+          });
+          
+          // Wait a bit to ensure transform is fully restored before resetting state
+          await new Promise(resolve => requestAnimationFrame(resolve));
+          
+          // Notify parent that export is complete
+          if (onExportComplete) {
+            onExportComplete();
+          }
+        } catch (error) {
+          console.error('Export failed:', error);
+          toast({ variant: 'destructive', title: 'Export failed', description: 'Export encountered an issue.' });
+        }
       }
       
       setIsSelectionMode(false);
@@ -1914,13 +1929,17 @@ const [, drop] = useDrop(() => ({
         return;
       }
 
+      // Store current transform from state (not DOM) to ensure we restore correctly
+      const currentTransform = transform;
+      const transformString = `translate(${currentTransform.x}px, ${currentTransform.y}px) scale(${currentTransform.k})`;
+
       // Temporarily hide grid by removing the class
       const hadGridClass = contentDiv.classList.contains('dot-grid');
       if (hadGridClass) {
         contentDiv.classList.remove('dot-grid');
       }
 
-      // Temporarily adjust transform for export if needed
+      // Store original inline styles (might be empty if React is controlling it)
       const originalTransform = contentDiv.style.transform;
       const originalTransformOrigin = contentDiv.style.transformOrigin;
       
@@ -1955,7 +1974,7 @@ const [, drop] = useDrop(() => ({
           console.log('Export with selection:', { 
             x, y, selectionWidth, selectionHeight,
             contentDivSize: { width, height },
-            transform: 'removed'
+            transform: currentTransform
           });
           
           // Coordinates are in diagram space (relative to contentDiv without transform)
@@ -2006,18 +2025,29 @@ const [, drop] = useDrop(() => ({
         document.body.removeChild(link);
         toast({ title: 'Exported', description: 'PNG exported successfully.' });
       } finally {
-        // Restore original state
+        // Restore original state - use the transform string from state, not from DOM
         if (hadGridClass) {
           contentDiv.classList.add('dot-grid');
         }
-        contentDiv.style.transform = originalTransform;
-        contentDiv.style.transformOrigin = originalTransformOrigin;
+        // Restore transform - use the state value, not the original DOM value
+        contentDiv.style.transform = transformString;
+        contentDiv.style.transformOrigin = originalTransformOrigin || '0 0';
+        
+        // Force a re-render to ensure React syncs with the DOM
+        // Use requestAnimationFrame to ensure DOM update happens before React re-renders
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        
+        // Ensure transform state is still correct (in case React tried to override)
+        // This is a safety check - the transform should already be correct from state
+        if (contentDiv.style.transform !== transformString) {
+          contentDiv.style.transform = transformString;
+        }
       }
     } catch (err) {
       console.error('Export failed:', err);
       toast({ variant: 'destructive', title: 'Export failed', description: 'Export encountered an issue.' });
     }
-  }, [toast, transform]);
+  }, [toast, transform, width, height]);
 
   const startSelectionMode = useCallback((options: { backgroundColor?: 'transparent' | 'white'; useSelection: boolean }) => {
     if (options.useSelection) {
@@ -2095,6 +2125,13 @@ const [, drop] = useDrop(() => ({
       });
     }
   };
+
+  // Notify parent of selection changes
+  useEffect(() => {
+    if (onSelectionChange) {
+      onSelectionChange({ start: selectionStart, end: selectionEnd });
+    }
+  }, [selectionStart, selectionEnd, onSelectionChange]);
 
   // Track canvas dimensions for rulers
   useEffect(() => {

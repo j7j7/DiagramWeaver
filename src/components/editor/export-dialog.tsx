@@ -16,9 +16,10 @@ interface ExportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onExport: (options: { backgroundColor: 'transparent' | 'white'; useSelection: boolean }) => Promise<void>;
+  selectionCoordinates?: { start: { x: number; y: number } | null; end: { x: number; y: number } | null };
 }
 
-export function ExportDialog({ open, onOpenChange, onExport }: ExportDialogProps) {
+export function ExportDialog({ open, onOpenChange, onExport, selectionCoordinates }: ExportDialogProps) {
   const [backgroundColor, setBackgroundColor] = useState<'transparent' | 'white'>('white');
   const [useSelection, setUseSelection] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -71,9 +72,22 @@ export function ExportDialog({ open, onOpenChange, onExport }: ExportDialogProps
               </div>
             </RadioGroup>
             {useSelection && (
-              <p className="text-sm text-muted-foreground ml-6">
-                After clicking Export, drag on the canvas to select the area you want to export.
-              </p>
+              <div className="ml-6 space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  After clicking Export, drag on the canvas to select the area you want to export.
+                </p>
+                {selectionCoordinates?.start && selectionCoordinates?.end && (
+                  <div className="text-sm font-mono bg-muted/50 p-2 rounded border">
+                    <div className="font-semibold mb-1">Selection Coordinates:</div>
+                    <div>Start: ({Math.round(selectionCoordinates.start.x)}, {Math.round(selectionCoordinates.start.y)})</div>
+                    <div>End: ({Math.round(selectionCoordinates.end.x)}, {Math.round(selectionCoordinates.end.y)})</div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      Width: {Math.round(Math.abs(selectionCoordinates.end.x - selectionCoordinates.start.x))}px, 
+                      Height: {Math.round(Math.abs(selectionCoordinates.end.y - selectionCoordinates.start.y))}px
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>
