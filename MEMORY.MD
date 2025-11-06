@@ -3,7 +3,7 @@
 ## DiagramWeaver - Latest Features and Functions (Updated 2025-10-27)
 
 ### Project Overview
-DiagramWeaver is a Next.js 15 application for creating interactive architecture diagrams. It supports drag-and-drop design, AI-powered generation from natural language descriptions, and integration with multiple cloud providers. Users can build, edit, and visualize complex system architectures with automatic pathfinding for connections.
+DiagramWeaver is a Next.js 15 application for creating interactive architecture diagrams. It supports drag-and-drop design, AI-powered generation from natural language descriptions, and integration with multiple cloud providers. Users can build, edit, and visualize complex system architectures with Bezier curve connections.
 
 ### Tech Stack
 - **Framework**: Next.js 15 with React 18
@@ -11,7 +11,6 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
 - **Drag & Drop**: React DND for interactive elements
 - **AI Integration**: Google Genkit with Gemini 2.5 Flash for diagram generation
 - **Icons and Resources**: Custom PNG/SVG icons for 17+ providers
-- **Pathfinding**: Custom algorithm for orthogonal connection routing
 - **State Management**: React hooks and context for diagram state
 
 ### Core Features
@@ -19,7 +18,7 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
 - **Drag-and-Drop Interface**: Drag resources from sidebar to canvas; supports nested groups and zones
 - **AI-Powered Generation**: Generate diagrams from natural language descriptions using AI
 - **Multi-Provider Support**: Icons and resources for AWS, Azure, GCP, OCI, Kubernetes, and more
-- **Advanced Pathfinding**: Orthogonal routing with anti-connection-hugging, buffer zones, and smart connection points
+- **Connection Routing**: Bezier curve connections between nodes with customizable styling
 - **Group and Zone Management**: Create nested groups; intra-group reordering and hierarchical connections
 - **Resource Browser**: Searchable sidebar with categorized resources from all providers
 - **Export and Persistence**: JSON-based diagram storage and export capabilities
@@ -51,7 +50,6 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
 
 ### Recent Updates and Fixes
 - Resource JSON consolidation: Single source of truth under `public/resources/`; removed duplicate JSONs under `resources/`. Resource Browser now fetches index at runtime, and Canvas uses the same exact icon path via `imagePath` to ensure icon parity.
-- **Pathfinding Overhaul**: Revolutionary improvements for connection routing, anti-hugging, and smart connections
 - **Resource Reorganization**: Split into modular JSON files for better maintainability
 - **Bug Fixes**: Icon persistence, drag-drop preservation, scrollbar issues resolved
 - **Grid and Snap Enhancements**: Improved placement, collision prevention, and nested layouts
@@ -146,26 +144,19 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
 - **Preferred Exit & Connection Arrows** (2025-11-03): Added per-connection directional control and arrowhead indicators:
   - **Per-Connection Preferred Exit**: Added `preferredExit?: 'top' | 'bottom' | 'left' | 'right'` to DiagramConnectionData interface
   - **Per-Connection Arrow Control**: Added `arrow?: boolean` property to connections to enable/disable arrowheads per connection
-  - **Pathfinding Integration**: Modified connection boundary calculation to respect per-connection preferred exit directions
-  - **Edge-Based Connections**: When preferred exit is set, connections start 1 grid position (20px) outward from the specified edge
+  - **Bezier Connections**: Connections use Bezier curves for smooth routing between nodes
   - **SVG Arrowhead Markers**: Arrowheads render as traditional SVG markers at the end of connection lines
   - **UI Controls**: Added preferred exit dropdown and arrow checkbox per outgoing connection in sidebar
-  - **Node Edge Arrows**: Created NodeEdgeArrows component that renders arrows on specific node edges based on preferred exit direction
   - **Connection-Specific Settings**: Each outgoing connection can have its own preferred exit direction
-  - **Pathfinding Logic**: Enhanced pathfinding algorithm to force first movement in preferred direction per connection
-  - **Direction Enforcement**: Modified `findPath()` to accept preferred direction parameter and ensure first segment goes in that direction
-  - **Orthogonal Routing**: Ensures preferred direction paths maintain right-angle lines without diagonal segments
-  - **Zone Entry Fix**: Special handling for connections to zones ensures straight-line entry without grid-snapping curves
   - **Type Updates**: Extended DiagramConnectionData interface and updated sidebar connection controls
   - **Visual Implementation**: Arrowheads use SVG markers with automatic orientation and color matching
 - **Benefits**: Granular control over individual connection routing, clearer data flow indication, enhanced diagram readability
 - **Preferred Exit Positioning Fix** (2025-11-03): Fixed issue where preferred exit directions were not placing connection start points at the correct node edges:
-  - **Root Cause**: getGroupBoundaryConnection was looking for preferred exit on node objects instead of connection data
+  - **Root Cause**: Connection positioning logic was looking for preferred exit on node objects instead of connection data
   - **Data Location Fix**: Updated to read fromPreferredExit and toPreferredEntry from connection data (not from nodes)
-  - **Edge Calculation**: Modified getPreferredExitPoint to position connections directly at node edges (not offset by grid distance)
+  - **Edge Calculation**: Modified connection point calculation to position connections directly at node edges
   - **Proper Direction Support**: Added toPreferredEntry parameter to handle preferred entry directions for incoming connections
-  - **Pathfinding Enhancement**: Extended findPath function to support both preferred start and end directions simultaneously
-  - **Algorithm Update**: Enhanced pathfinding to ensure connections start in preferred direction and approach targets from preferred entry direction
+  - **Bezier Routing**: Bezier curve connections respect preferred exit and entry directions for smooth routing
   - **UI Completion**: Added incoming connection controls for "Preferred Entry (To)" and "Show Arrow (To)" in sidebar
   - **Result**: Preferred exit "bottom" now correctly places connection at bottom edge of node, same for all directions
   - **Entry Direction Fix**: Fixed reversed preferred entry directions - "left" now correctly enters from left side instead of right

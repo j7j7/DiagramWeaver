@@ -99,7 +99,6 @@ DiagramWeaver/
 │       ├── id-generator.ts
 │       ├── json-utils.ts
 │       ├── nested-hierarchy.ts
-│       ├── pathfinding.ts
 │       ├── placeholder-images.json
 │       ├── placeholder-images.ts
 │       ├── pure-hierarchy.ts
