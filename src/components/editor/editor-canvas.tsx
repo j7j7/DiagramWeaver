@@ -55,11 +55,18 @@ const measureNodeDims = (n: PositionedNode) => {
     n.type === 'generic.text.square' ||
     n.type === 'generic.text.circle' ||
     n.type === 'generic.text.rectangle' ||
-    n.type === 'generic.text.triangle';
+    n.type === 'generic.text.triangle' ||
+    n.type === 'generic.text.star' ||
+    n.type === 'generic.text.cloud';
   const label = (n.label || '').toString();
 
   // Use custom dimensions if sizeMode is 'custom' and dimensions are provided
-  if ((isTextboxNode || isLabelboxNode) && n.sizeMode === 'custom' && n.width && n.height) {
+  if ((isTextboxNode || isLabelboxNode || isShapeNode) && n.sizeMode === 'custom' && n.width && n.height) {
+    return { width: n.width, height: n.height };
+  }
+  
+  // Shapes always use their custom width/height if set
+  if (isShapeNode && n.width && n.height) {
     return { width: n.width, height: n.height };
   }
 
@@ -984,6 +991,14 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       const itemType = item.type || '';
       const itemLabel = item.label || '';
       
+      // Check if this is a shape resource (needed for freeflow and group exclusion)
+      const isShapeResource = itemType === 'generic.text.square' || 
+                               itemType === 'generic.text.circle' || 
+                               itemType === 'generic.text.rectangle' || 
+                               itemType === 'generic.text.triangle' ||
+                               itemType === 'generic.text.star' ||
+                               itemType === 'generic.text.cloud';
+      
       if (itemType === 'zone' || itemType === 'group') {
         const subType = itemType === 'zone' ? 'zone' : 'group';
         const newGroup: DiagramGroupData = {
@@ -1001,17 +1016,26 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       } else {
         // For resource items from the sidebar, use type from drag item
         // NEVER store file in node - ResourceIcon looks up file from resource catalog
+        // Special handling for shape resources - make them resizable and freeflow
         const newNode: DiagramNodeData = {
           id: generateSequentialId(itemType, prevData),
           type: itemType,
           label: itemLabel,
           info: item.provider ? `${itemLabel} from ${item.provider}` : `A new ${itemLabel}`,
+          freeflow: isShapeResource ? true : undefined, // Shapes are always freeflow
+          sizeMode: isShapeResource ? 'custom' : undefined, // Shapes use custom sizing
+          width: isShapeResource ? (itemType === 'generic.text.rectangle' ? 80 : itemType === 'generic.text.cloud' ? 80 : 60) : undefined, // Initial width
+          height: isShapeResource ? (itemType === 'generic.text.rectangle' ? 50 : itemType === 'generic.text.cloud' ? 50 : 60) : undefined, // Initial height
         };
         newNodes.push(newNode);
         newItemId = newNode.id;
       }
       
-      if (targetGroupId) {
+      // Don't add freeflow shape nodes to groups
+      const addedItem = newNodes.find(n => n.id === newItemId) || newGroups.find(g => g.id === newItemId);
+      const isFreeflowShape = (addedItem as any)?.freeflow === true && isShapeResource;
+      
+      if (targetGroupId && !isFreeflowShape) {
         newGroups = newGroups.map(g => {
           if (g.id === targetGroupId) {
             const updatedGroup = { ...g, children: [...g.children, newItemId] };
@@ -1085,12 +1109,22 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           let minWidth = 80;
           let minHeight = 40;
           
+          const isShapeNode = node.type === 'generic.text.square' || 
+                             node.type === 'generic.text.circle' || 
+                             node.type === 'generic.text.rectangle' || 
+                             node.type === 'generic.text.triangle' ||
+                             node.type === 'generic.text.star' ||
+                             node.type === 'generic.text.cloud';
+          
           if (node.type === 'generic.text.textbox') {
             minWidth = 200;
             minHeight = 120;
           } else if (node.type === 'generic.text.labelbox') {
             minWidth = 160;
             minHeight = 100;
+          } else if (isShapeNode) {
+            minWidth = 20;
+            minHeight = 20;
           }
           
           return {
@@ -2316,15 +2350,19 @@ return (
                     const toItem = nodesById[edge.to] || groupsById[edge.to];
                     if (!fromItem || !toItem) return null;
 
+                    // Get actual dimensions for shapes using measureNodeDims
+                    const fromDims = measureNodeDims(fromItem as PositionedNode);
+                    const toDims = measureNodeDims(toItem as PositionedNode);
+                    
                     const fromPos: any = {
                       ...fromItem,
-                      width: 'width' in fromItem ? (fromItem as any).width : NODE_WIDTH,
-                      height: 'height' in fromItem ? (fromItem as any).height : NODE_HEIGHT,
+                      width: fromDims.width,
+                      height: fromDims.height,
                     };
                     const toPos: any = {
                       ...toItem,
-                      width: 'width' in toItem ? (toItem as any).width : NODE_WIDTH,
-                      height: 'height' in toItem ? (toItem as any).height : NODE_HEIGHT,
+                      width: toDims.width,
+                      height: toDims.height,
                     };
 
                     // Explicitly set lineColor after spreading to ensure it's not overwritten

@@ -136,7 +136,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, onC
   const isLabelNode = node.type === 'generic.text.label';
   const isTextboxNode = node.type === 'generic.text.textbox';
   const isLabelboxNode = node.type === 'generic.text.labelbox';
-  const isShapeNode = node.type === 'generic.text.square' || node.type === 'generic.text.circle' || node.type === 'generic.text.rectangle' || node.type === 'generic.text.triangle';
+  const isShapeNode = node.type === 'generic.text.square' || node.type === 'generic.text.circle' || node.type === 'generic.text.rectangle' || node.type === 'generic.text.triangle' || node.type === 'generic.text.star' || node.type === 'generic.text.cloud';
   const isRotatableNode = isTextNode || isLabelNode || isTextboxNode || isLabelboxNode || isShapeNode;
   const nodeHeight = calculateNodeHeight(node.label || '', node.type, node.sizeMode, node.height);
   const rotation = (node as any).rotation || 0;
@@ -186,8 +186,8 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, onC
     let newHeight = resizeStartPos.current.startHeight;
     
     // Calculate minimum size based on node type
-    const minWidth = isTextboxNode ? 200 : isLabelboxNode ? 160 : 80;
-    const minHeight = isTextboxNode ? 120 : isLabelboxNode ? 100 : 40;
+    const minWidth = isTextboxNode ? 200 : isLabelboxNode ? 160 : isShapeNode ? 20 : 80;
+    const minHeight = isTextboxNode ? 120 : isLabelboxNode ? 100 : isShapeNode ? 20 : 40;
     
     switch (resizeHandle) {
       case 'right':
@@ -328,15 +328,19 @@ return (
       style={{
         left: isDragging ? (tempPosition?.x || node.x) : node.x,
         top: isDragging ? (tempPosition?.y || node.y) : node.y,
-        width: isRotatableNode || isTextboxNode || isLabelboxNode ? 
-          (node.sizeMode === 'custom' && node.width ? node.width : 'auto') : NODE_WIDTH,
-        minWidth: isTextboxNode ? (node.sizeMode === 'custom' && node.width ? node.width : 200) : 
+        width: isShapeNode ? (node.width || 60) :
+               (isRotatableNode || isTextboxNode || isLabelboxNode ? 
+                (node.sizeMode === 'custom' && node.width ? node.width : 'auto') : NODE_WIDTH),
+        minWidth: isShapeNode ? (node.width || 60) :
+                  isTextboxNode ? (node.sizeMode === 'custom' && node.width ? node.width : 200) : 
                   isLabelboxNode ? (node.sizeMode === 'custom' && node.width ? node.width : 160) : 
                   isRotatableNode ? 80 : NODE_WIDTH,
-        maxWidth: isTextboxNode ? (node.sizeMode === 'custom' && node.width ? node.width : 400) : 
+        maxWidth: isShapeNode ? (node.width || 60) :
+                  isTextboxNode ? (node.sizeMode === 'custom' && node.width ? node.width : 400) : 
                   isLabelboxNode ? (node.sizeMode === 'custom' && node.width ? node.width : 300) : 
                   isRotatableNode ? 200 : NODE_WIDTH,
-        height: isRotatableNode || isTextboxNode || isLabelboxNode ? nodeHeight : 'auto',
+        height: isShapeNode ? (node.height || 60) :
+                (isRotatableNode || isTextboxNode || isLabelboxNode ? nodeHeight : 'auto'),
         touchAction: 'none',
         transform: rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
         transformOrigin: 'center'
@@ -540,13 +544,31 @@ return (
               );
               })()
             ) : isShapeNode ? (
-              // Shape node - render pure shape with text in different positions
+              // Shape node - render pure shape with text in different positions (resizable)
+              (() => {
+                const borderWidth = (node as any).borderWidth || 2;
+                const hasShadow = (node as any).shadow || false;
+                
+                return (
               <div className="flex flex-col items-center justify-center h-full w-full relative">
-                <div className="flex items-center justify-center">
+                <div className="flex items-center justify-center" style={{ width: '100%', height: '100%' }}>
                   {node.type === 'generic.text.square' && (
                     <div 
-                      className="w-12 h-12 bg-foreground relative"
-                      style={{ backgroundColor: (node as any).backgroundColor || '#6b7280' }}
+                      className="relative"
+                      style={{ 
+                        backgroundColor: (node as any).backgroundColor || '#6b7280',
+                        borderColor: (node as any).borderColor || '#6b7280',
+                        borderWidth: `${borderWidth}px`,
+                        borderStyle: 'solid',
+                        width: node.width || 60,
+                        height: node.height || 60,
+                        minWidth: node.width || 60,
+                        minHeight: node.height || 60,
+                        margin: hasShadow ? 4 : 0,
+                        ...(hasShadow && { 
+                          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                        })
+                      }}
                     >
                       {/* Text inside square */}
                       {(node as any).textPosition === 'center' && node.label && (
@@ -576,8 +598,21 @@ return (
                   )}
                   {node.type === 'generic.text.circle' && (
                     <div 
-                      className="w-12 h-12 rounded-full bg-foreground relative"
-                      style={{ backgroundColor: (node as any).backgroundColor || '#6b7280' }}
+                      className="rounded-full relative"
+                      style={{ 
+                        backgroundColor: (node as any).backgroundColor || '#6b7280',
+                        borderColor: (node as any).borderColor || '#6b7280',
+                        borderWidth: `${borderWidth}px`,
+                        borderStyle: 'solid',
+                        width: node.width || 60,
+                        height: node.height || 60,
+                        minWidth: node.width || 60,
+                        minHeight: node.height || 60,
+                        margin: hasShadow ? 4 : 0,
+                        ...(hasShadow && { 
+                          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                        })
+                      }}
                     >
                       {/* Text inside circle */}
                       {(node as any).textPosition === 'center' && node.label && (
@@ -607,8 +642,21 @@ return (
                   )}
                   {node.type === 'generic.text.rectangle' && (
                     <div 
-                      className="w-16 h-10 bg-foreground relative"
-                      style={{ backgroundColor: (node as any).backgroundColor || '#6b7280' }}
+                      className="relative"
+                      style={{ 
+                        backgroundColor: (node as any).backgroundColor || '#6b7280',
+                        borderColor: (node as any).borderColor || '#6b7280',
+                        borderWidth: `${borderWidth}px`,
+                        borderStyle: 'solid',
+                        width: node.width || 80,
+                        height: node.height || 50,
+                        minWidth: node.width || 80,
+                        minHeight: node.height || 50,
+                        margin: hasShadow ? 4 : 0,
+                        ...(hasShadow && { 
+                          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                        })
+                      }}
                     >
                       {/* Text inside rectangle */}
                       {(node as any).textPosition === 'center' && node.label && (
@@ -637,15 +685,31 @@ return (
                     </div>
                   )}
                   {node.type === 'generic.text.triangle' && (
-                    <div className="relative w-12 h-12">
-                      {/* Triangle using CSS clip-path */}
-                      <div 
-                        className="w-full h-full"
-                        style={{
-                          backgroundColor: (node as any).backgroundColor || '#6b7280',
-                          clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)'
-                        }}
-                      />
+                    <div 
+                      className="relative" 
+                      style={{ 
+                        width: node.width || 60, 
+                        height: node.height || 60, 
+                        minWidth: node.width || 60, 
+                        minHeight: node.height || 60,
+                        margin: hasShadow ? 4 : 0,
+                        ...(hasShadow && { 
+                          filter: 'drop-shadow(0 20px 25px rgba(0, 0, 0, 0.2)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.04))'
+                        })
+                      }}>
+                      {/* Triangle using SVG for proper border and shadow support */}
+                      <svg 
+                        width={node.width || 60} 
+                        height={node.height || 60}
+                        style={{ display: 'block' }}
+                      >
+                        <polygon
+                          points={`${(node.width || 60) / 2},${borderWidth / 2} ${borderWidth / 2},${(node.height || 60) - borderWidth / 2} ${(node.width || 60) - borderWidth / 2},${(node.height || 60) - borderWidth / 2}`}
+                          fill={(node as any).backgroundColor || '#6b7280'}
+                          stroke={(node as any).borderColor || '#6b7280'}
+                          strokeWidth={borderWidth}
+                        />
+                      </svg>
                       {/* Text inside triangle - positioned in center */}
                       {(node as any).textPosition === 'center' && node.label && (
                         <div className="absolute inset-0 flex items-center justify-center pt-2">
@@ -657,6 +721,132 @@ return (
                               onBlur={handleLabelSubmit}
                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
                               className="text-xs font-medium text-center bg-transparent border border-white rounded px-1 py-0.5 w-16 outline-none"
+                              autoFocus
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          ) : (
+                            <p 
+                              className="text-xs font-medium text-center text-white break-words leading-tight px-1 cursor-text"
+                              onClick={handleLabelClick}
+                            >
+                              {node.label}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {node.type === 'generic.text.star' && (
+                    <div 
+                      className="relative" 
+                      style={{ 
+                        width: node.width || 60, 
+                        height: node.height || 60, 
+                        minWidth: node.width || 60, 
+                        minHeight: node.height || 60,
+                        margin: hasShadow ? 4 : 0,
+                        ...(hasShadow && { 
+                          filter: 'drop-shadow(0 20px 25px rgba(0, 0, 0, 0.2)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.04))'
+                        })
+                      }}>
+                      {/* Star using SVG */}
+                      <svg 
+                        width={node.width || 60} 
+                        height={node.height || 60}
+                        style={{ display: 'block' }}
+                      >
+                        {/* 5-pointed star path */}
+                        <path
+                          d={`M ${(node.width || 60) / 2},${borderWidth / 2} 
+                              L ${(node.width || 60) * 0.61},${(node.height || 60) * 0.38} 
+                              L ${(node.width || 60) - borderWidth / 2},${(node.height || 60) * 0.38} 
+                              L ${(node.width || 60) * 0.68},${(node.height || 60) * 0.62} 
+                              L ${(node.width || 60) * 0.82},${(node.height || 60) - borderWidth / 2} 
+                              L ${(node.width || 60) / 2},${(node.height || 60) * 0.75} 
+                              L ${(node.width || 60) * 0.18},${(node.height || 60) - borderWidth / 2} 
+                              L ${(node.width || 60) * 0.32},${(node.height || 60) * 0.62} 
+                              L ${borderWidth / 2},${(node.height || 60) * 0.38} 
+                              L ${(node.width || 60) * 0.39},${(node.height || 60) * 0.38} Z`}
+                          fill={(node as any).backgroundColor || '#6b7280'}
+                          stroke={(node as any).borderColor || '#6b7280'}
+                          strokeWidth={borderWidth}
+                        />
+                      </svg>
+                      {/* Text inside star - positioned in center */}
+                      {(node as any).textPosition === 'center' && node.label && (
+                        <div className="absolute inset-0 flex items-center justify-center pt-2">
+                          {isEditingLabel ? (
+                            <input
+                              type="text"
+                              value={editText}
+                              onChange={(e) => setEditText(e.target.value)}
+                              onBlur={handleLabelSubmit}
+                              onKeyDown={(e) => handleLabelKeyDown(e, false)}
+                              className="text-xs font-medium text-center bg-transparent border border-white rounded px-1 py-0.5 w-16 outline-none"
+                              autoFocus
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          ) : (
+                            <p 
+                              className="text-xs font-medium text-center text-white break-words leading-tight px-1 cursor-text"
+                              onClick={handleLabelClick}
+                            >
+                              {node.label}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {node.type === 'generic.text.cloud' && (
+                    <div 
+                      className="relative" 
+                      style={{ 
+                        width: node.width || 80, 
+                        height: node.height || 50, 
+                        minWidth: node.width || 80, 
+                        minHeight: node.height || 50,
+                        margin: hasShadow ? 4 : 0,
+                        ...(hasShadow && { 
+                          filter: 'drop-shadow(0 20px 25px rgba(0, 0, 0, 0.2)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.04))'
+                        })
+                      }}>
+                      {/* Cloud using SVG */}
+                      <svg 
+                        width={node.width || 80} 
+                        height={node.height || 50}
+                        style={{ display: 'block' }}
+                      >
+                        {/* Cloud shape made of multiple circles */}
+                        <path
+                          d={`M ${(node.width || 80) * 0.2},${(node.height || 50) / 2} 
+                              Q ${borderWidth / 2},${(node.height || 50) * 0.3} ${(node.width || 80) * 0.15},${(node.height || 50) * 0.15} 
+                              Q ${(node.width || 80) * 0.1},${borderWidth / 2} ${(node.width || 80) * 0.25},${borderWidth / 2} 
+                              Q ${(node.width || 80) * 0.35},${borderWidth / 2} ${(node.width || 80) * 0.4},${(node.height || 50) * 0.2} 
+                              Q ${(node.width || 80) * 0.5},${borderWidth / 2} ${(node.width || 80) * 0.6},${(node.height || 50) * 0.15} 
+                              Q ${(node.width || 80) * 0.7},${borderWidth / 2} ${(node.width || 80) * 0.75},${(node.height || 50) * 0.25} 
+                              Q ${(node.width || 80) - borderWidth / 2},${(node.height || 50) * 0.25} ${(node.width || 80) * 0.85},${(node.height || 50) * 0.35} 
+                              Q ${(node.width || 80) - borderWidth / 2},${(node.height || 50) * 0.5} ${(node.width || 80) * 0.8},${(node.height || 50) * 0.65} 
+                              Q ${(node.width || 80) * 0.7},${(node.height || 50) - borderWidth / 2} ${(node.width || 80) * 0.55},${(node.height || 50) * 0.7} 
+                              Q ${(node.width || 80) * 0.45},${(node.height || 50) - borderWidth / 2} ${(node.width || 80) * 0.35},${(node.height || 50) * 0.65} 
+                              Q ${(node.width || 80) * 0.25},${(node.height || 50) - borderWidth / 2} ${(node.width || 80) * 0.15},${(node.height || 50) * 0.55} 
+                              Q ${borderWidth / 2},${(node.height || 50) * 0.55} ${(node.width || 80) * 0.18},${(node.height || 50) / 2} Z`}
+                          fill={(node as any).backgroundColor || '#6b7280'}
+                          stroke={(node as any).borderColor || '#6b7280'}
+                          strokeWidth={borderWidth}
+                        />
+                      </svg>
+                      {/* Text inside cloud - positioned in center */}
+                      {(node as any).textPosition === 'center' && node.label && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          {isEditingLabel ? (
+                            <input
+                              type="text"
+                              value={editText}
+                              onChange={(e) => setEditText(e.target.value)}
+                              onBlur={handleLabelSubmit}
+                              onKeyDown={(e) => handleLabelKeyDown(e, false)}
+                              className="text-xs font-medium text-center bg-transparent border border-white rounded px-1 py-0.5 w-20 outline-none"
                               autoFocus
                               onClick={(e) => e.stopPropagation()}
                             />
@@ -722,6 +912,8 @@ return (
                   )
                 )}
               </div>
+              );
+              })()
             ) : (
               <>
                 <div className={cn(
@@ -769,10 +961,9 @@ return (
         )}
       </Popover>
       
-      {/* Resize handles - only show for textbox/labelbox in custom mode */}
+      {/* Resize handles - show for textbox/labelbox in custom mode, or for shapes */}
       {(isHovered || isResizing || isSelected) && 
-       (isTextboxNode || isLabelboxNode) && 
-       node.sizeMode === 'custom' && (
+       ((isTextboxNode || isLabelboxNode) && node.sizeMode === 'custom' || isShapeNode) && (
         <>
           {/* Right handle */}
           <div

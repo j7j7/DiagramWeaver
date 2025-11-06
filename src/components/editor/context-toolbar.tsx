@@ -34,7 +34,8 @@ interface ContextToolbarProps {
   onConnect?: (connectionOptions?: { style?: 'bezier', curvature?: number }) => void;
   onDisconnect?: () => void;
   onDelete?: () => void;
-  onConnectionUpdate?: (from: string, to: string, updates: { arrow?: boolean; text?: string; textPosition?: number; color?: string; [key: string]: any }) => void;
+  onConnectionUpdate?: (from: string, to: string, updates: { arrow?: boolean; text?: string; textPosition?: number; color?: string; lineWidth?: number; shadow?: boolean; [key: string]: any }) => void;
+  onConnectionDisconnect?: (from: string, to: string) => void;
   diagramData?: DiagramData;
 }
 
@@ -45,6 +46,7 @@ export function ContextToolbar({
   onDisconnect,
   onDelete,
   onConnectionUpdate,
+  onConnectionDisconnect,
   diagramData,
 }: ContextToolbarProps) {
   const [labelOpen, setLabelOpen] = useState(false);
@@ -88,22 +90,6 @@ export function ContextToolbar({
             <TooltipContent>{hasArrow ? 'Hide Arrow' : 'Show Arrow'}</TooltipContent>
           </Tooltip>
 
-          {/* Delete Button */}
-          {onDelete && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-8 px-2 text-destructive hover:text-destructive"
-                  onClick={onDelete}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Delete Connection</TooltipContent>
-            </Tooltip>
-          )}
         </div>
       </TooltipProvider>
     );
@@ -219,6 +205,12 @@ export function ContextToolbar({
   const isLabelboxNode = isNode && selectedItem.type === 'generic.text.labelbox';
   const isTextboxNode = isNode && selectedItem.type === 'generic.text.textbox';
   const isPlainTextNode = isNode && selectedItem.type === 'generic.text.text';
+  const isShapeNode = isNode && (selectedItem.type === 'generic.text.square' || 
+                                 selectedItem.type === 'generic.text.circle' || 
+                                 selectedItem.type === 'generic.text.rectangle' || 
+                                 selectedItem.type === 'generic.text.triangle' ||
+                                 selectedItem.type === 'generic.text.star' ||
+                                 selectedItem.type === 'generic.text.cloud');
   const isLabelOrLabelbox = isLabelNode || isLabelboxNode;
   // Text type nodes that should hide certain controls
   const isTextTypeNode = isTextNode; // includes all generic.text.* nodes
@@ -324,17 +316,6 @@ export function ContextToolbar({
           </Tooltip>
         )}
 
-        {/* Disconnect Button */}
-        {(isNode || isGroup) && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 px-2" onClick={onDisconnect}>
-                <Unlink className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Disconnect</TooltipContent>
-          </Tooltip>
-        )}
 
         {/* Connections Arrow Toggle - Show if there are multiple connections */}
         {(isNode || isGroup) && getAllConnections.length > 0 && (
@@ -417,7 +398,7 @@ export function ContextToolbar({
                       return (
                         <div 
                           key={`${connInfo.connection.from}-${connInfo.connection.to}-${index}`}
-                          className="flex flex-col gap-2 p-2 rounded-md border border-border hover:bg-accent"
+                          className="flex flex-col gap-2 p-2 rounded-md border border-border hover:bg-accent/20"
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -491,6 +472,87 @@ export function ContextToolbar({
                               <span className="text-xs text-muted-foreground shrink-0">%</span>
                             </div>
                           </div>
+                          <div className="flex items-center gap-2 pt-1 border-t border-border/50">
+                            <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Line Thickness:</label>
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <Input
+                                type="number"
+                                min="1"
+                                max="10"
+                                value={(connInfo.connection.lineWidth || 2.5).toString()}
+                                onChange={(e) => {
+                                  const width = Math.max(1, Math.min(10, parseFloat(e.target.value) || 2.5));
+                                  if (onConnectionUpdate) {
+                                    onConnectionUpdate(
+                                      connInfo.connection.from,
+                                      connInfo.connection.to,
+                                      { lineWidth: width }
+                                    );
+                                  }
+                                }}
+                                className="h-7 w-20 text-xs text-center shrink-0"
+                                title="Line thickness (1-10 pixels)"
+                              />
+                              <span className="text-xs text-muted-foreground shrink-0">px</span>
+                            </div>
+                            <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0 ml-2">Shadow:</label>
+                            <Button
+                              variant={(connInfo.connection.shadow || false) ? "default" : "outline"}
+                              size="sm"
+                              className="h-7 px-2 shrink-0"
+                              onClick={() => {
+                                if (onConnectionUpdate) {
+                                  onConnectionUpdate(
+                                    connInfo.connection.from,
+                                    connInfo.connection.to,
+                                    { shadow: !(connInfo.connection.shadow || false) }
+                                  );
+                                }
+                              }}
+                            >
+                              <svg
+                                width="12"
+                                height="12"
+                                viewBox="0 0 12 12"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                              >
+                                <rect
+                                  x="2"
+                                  y="2"
+                                  width="6"
+                                  height="6"
+                                  rx="0.5"
+                                  fill="rgba(0, 0, 0, 0.15)"
+                                />
+                                <rect
+                                  x="0.5"
+                                  y="0.5"
+                                  width="6"
+                                  height="6"
+                                  rx="0.5"
+                                  fill={(connInfo.connection.shadow || false) ? "#22c55e" : "#9ca3af"}
+                                  stroke={(connInfo.connection.shadow || false) ? "#22c55e" : "#9ca3af"}
+                                  strokeWidth="0.3"
+                                />
+                              </svg>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-destructive hover:text-destructive shrink-0"
+                              onClick={() => {
+                                if (onConnectionDisconnect) {
+                                  onConnectionDisconnect(
+                                    connInfo.connection.from,
+                                    connInfo.connection.to
+                                  );
+                                }
+                              }}
+                            >
+                              <Unlink className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </div>
                       );
                     })
@@ -514,7 +576,7 @@ export function ContextToolbar({
               </TooltipTrigger>
               <TooltipContent>Border Style</TooltipContent>
             </Tooltip>
-            <PopoverContent className="w-48">
+            <PopoverContent className="w-64">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Border Style</label>
                 <Select 
@@ -530,6 +592,21 @@ export function ContextToolbar({
                     <SelectItem value="gradient">Gradient</SelectItem>
                   </SelectContent>
                 </Select>
+                <div className="pt-2 border-t border-border">
+                  <label className="text-sm font-medium">Border Thickness</label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={((selectedItem as any).borderWidth || 2).toString()}
+                    onChange={(e) => {
+                      const width = Math.max(1, Math.min(10, parseInt(e.target.value) || 2));
+                      onItemUpdate({ ...selectedItem, borderWidth: width } as SelectedItem);
+                    }}
+                    className="h-10"
+                  />
+                  <span className="text-xs text-muted-foreground">1-10 pixels</span>
+                </div>
               </div>
             </PopoverContent>
           </Popover>
@@ -884,6 +961,99 @@ export function ContextToolbar({
           </Popover>
         )}
 
+        {/* Border Color for Shapes */}
+        {isShapeNode && (
+          <Popover>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 px-2">
+                    <div 
+                      className="w-4 h-4 rounded border-2 border-border"
+                      style={{ 
+                        backgroundColor: selectedItem.borderColor || '#6b7280'
+                      }}
+                    />
+                  </Button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent>Border Color</TooltipContent>
+            </Tooltip>
+            <PopoverContent className="w-64">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Border Color</label>
+                <Input
+                  type="color"
+                  value={selectedItem.borderColor || '#6b7280'}
+                  onChange={(e) => handleColorChange('borderColor', e.target.value)}
+                  className="h-10"
+                />
+                <Input
+                  type="text"
+                  value={selectedItem.borderColor || '#6b7280'}
+                  onChange={(e) => handleColorChange('borderColor', e.target.value)}
+                  className="h-8 text-xs font-mono"
+                  placeholder="#6b7280"
+                />
+                <div className="pt-2 border-t border-border">
+                  <label className="text-sm font-medium">Border Thickness</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="20"
+                    value={(selectedItem as any).borderWidth || 2}
+                    onChange={(e) => {
+                      const width = Math.max(0, Math.min(20, parseInt(e.target.value) || 2));
+                      onItemUpdate({ ...selectedItem, borderWidth: width } as SelectedItem);
+                    }}
+                    className="h-10"
+                  />
+                  <span className="text-xs text-muted-foreground">0-20 pixels</span>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+
+        {/* Fill/Background Color for Shapes */}
+        {isShapeNode && (
+          <Popover>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 px-2">
+                    <div 
+                      className="w-4 h-4 rounded"
+                      style={{ 
+                        backgroundColor: selectedItem.backgroundColor || '#6b7280'
+                      }}
+                    />
+                  </Button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent>Fill Color</TooltipContent>
+            </Tooltip>
+            <PopoverContent className="w-64">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Fill Color</label>
+                <Input
+                  type="color"
+                  value={selectedItem.backgroundColor || '#6b7280'}
+                  onChange={(e) => handleColorChange('backgroundColor', e.target.value)}
+                  className="h-10"
+                />
+                <Input
+                  type="text"
+                  value={selectedItem.backgroundColor || '#6b7280'}
+                  onChange={(e) => handleColorChange('backgroundColor', e.target.value)}
+                  className="h-8 text-xs font-mono"
+                  placeholder="#6b7280"
+                />
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+
         {/* Orientation (Groups only) */}
         {isGroup && (
           <Popover>
@@ -1118,17 +1288,46 @@ export function ContextToolbar({
         )}
 
 
-        {/* Shadow Toggle (Groups and Label/Labelbox) */}
-        {(isGroup || isLabelOrLabelbox) && (
+        {/* Shadow Toggle (Groups, Label/Labelbox, and Shapes) */}
+        {(isGroup || isLabelOrLabelbox || isShapeNode) && (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button 
-                variant={(selectedItem as any).shadow ? "default" : "ghost"} 
+                variant="ghost" 
                 size="sm" 
                 className="h-8 px-2"
                 onClick={toggleShadow}
               >
-                <Layers className="h-4 w-4" />
+                {/* Custom shadow icon - square with shadow */}
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4"
+                >
+                  {/* Shadow */}
+                  <rect
+                    x="3"
+                    y="3"
+                    width="10"
+                    height="10"
+                    rx="1"
+                    fill="rgba(0, 0, 0, 0.15)"
+                  />
+                  {/* Square - green when enabled, grey when disabled */}
+                  <rect
+                    x="1"
+                    y="1"
+                    width="10"
+                    height="10"
+                    rx="1"
+                    fill={(selectedItem as any).shadow ? "#22c55e" : "#9ca3af"}
+                    stroke={(selectedItem as any).shadow ? "#22c55e" : "#9ca3af"}
+                    strokeWidth="0.5"
+                  />
+                </svg>
               </Button>
             </TooltipTrigger>
             <TooltipContent>Toggle Shadow</TooltipContent>

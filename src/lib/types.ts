@@ -19,6 +19,7 @@ export interface DiagramNodeData {
   rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
   textPosition?: 'above' | 'center' | 'under'; // Text position for shape nodes
   freeflow?: boolean; // If true, node can be placed anywhere without joining groups/zones
+  borderWidth?: number; // Border thickness for shapes
   
   // Custom sizing properties for textbox and labelbox nodes
   width?: number; // Custom width - when set, overrides auto-calculated width
@@ -42,6 +43,8 @@ export interface DiagramConnectionData {
   // Connection style options
   style?: 'bezier'; // Connection rendering style
   curvature?: number; // Bezier curve intensity (0.1 to 1.0)
+  lineWidth?: number; // Line thickness for the connection (default: 2.5)
+  shadow?: boolean; // Whether to show shadow around the connection line
 }
 
 export interface DiagramNodeItem {
@@ -93,6 +96,7 @@ export interface DiagramGroupItem {
   minWidth?: number; // Minimum width constraint (based on content)
   minHeight?: number; // Minimum height constraint (based on content)
   rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
+  borderWidth?: number; // Border thickness for groups/zones
 }
 
 export interface DiagramGroupData {
@@ -128,6 +132,7 @@ export interface DiagramGroupData {
   minWidth?: number; // Minimum width constraint (based on content)
   minHeight?: number; // Minimum height constraint (based on content)
   rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
+  borderWidth?: number; // Border thickness for groups/zones
 }
 
 export interface DiagramData {

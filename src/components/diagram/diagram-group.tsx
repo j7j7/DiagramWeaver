@@ -356,7 +356,7 @@ const [{ isDragging }, drag] = useDrag(() => ({
           borderImage: `linear-gradient(135deg, ${borderColors[0]}, ${borderColors[1]}) 1`,
           borderColor: 'transparent'
         } : {
-          borderWidth: 2,
+          borderWidth: (group as any).borderWidth || 2,
           borderStyle: isZone ? 'dashed' : 'solid',
           borderColor: borderColor
         }),

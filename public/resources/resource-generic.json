@@ -22,7 +22,9 @@
           {"name": "Square", "file": "square.png", "type": "shape"},
           {"name": "Circle", "file": "circle.png", "type": "shape"},
           {"name": "Rectangle", "file": "rectangle.png", "type": "shape"},
-          {"name": "Triangle", "file": "triangle.png", "type": "shape"}
+          {"name": "Triangle", "file": "triangle.png", "type": "shape"},
+          {"name": "Star", "file": "star.png", "type": "shape"},
+          {"name": "Cloud", "file": "cloud.png", "type": "shape"}
        ]
      },
     "user": {

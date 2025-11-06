@@ -184,10 +184,19 @@ function calculateBezierPath(fromX: number, fromY: number, toX: number, toY: num
 }
 
 export function BezierConnection({ from, to, connectionColor, connectionData, onClick }: BezierConnectionProps) {
-  const fromWidth = from.width || NODE_WIDTH;
-  const fromHeight = from.height || NODE_HEIGHT;
-  const toWidth = to.width || NODE_WIDTH;
-  const toHeight = to.height || NODE_HEIGHT;
+  // Use measureNodeDims-like logic for shapes to get actual dimensions
+  const isFromShape = (from.type === 'generic.text.square' || from.type === 'generic.text.circle' || 
+                       from.type === 'generic.text.rectangle' || from.type === 'generic.text.triangle' ||
+                       from.type === 'generic.text.star' || from.type === 'generic.text.cloud');
+  const isToShape = (to.type === 'generic.text.square' || to.type === 'generic.text.circle' || 
+                     to.type === 'generic.text.rectangle' || to.type === 'generic.text.triangle' ||
+                     to.type === 'generic.text.star' || to.type === 'generic.text.cloud');
+  
+  // For shapes, always use their custom width/height if available
+  const fromWidth = isFromShape && from.width ? from.width : (from.width || NODE_WIDTH);
+  const fromHeight = isFromShape && from.height ? from.height : (from.height || NODE_HEIGHT);
+  const toWidth = isToShape && to.width ? to.width : (to.width || NODE_WIDTH);
+  const toHeight = isToShape && to.height ? to.height : (to.height || NODE_HEIGHT);
 
   const connectionPoints = getOptimalConnectionPoints(from, to, fromWidth, fromHeight, toWidth, toHeight, connectionData);
   const { fromX, fromY, toX, toY, fromAngle, toAngle } = connectionPoints;
@@ -215,11 +224,26 @@ export function BezierConnection({ from, to, connectionColor, connectionData, on
   
   const startMarkerId = showStartArrow ? `arrowhead-start-${from.id}-${to.id}` : undefined;
   const endMarkerId = showEndArrow ? `arrowhead-end-${from.id}-${to.id}` : undefined;
+  const hasShadow = connectionData?.shadow || false;
+  const shadowFilterId = hasShadow ? `shadow-filter-${from.id}-${to.id}` : undefined;
 
   return (
     <>
-      {/* Define arrowhead markers */}
+      {/* Define arrowhead markers and shadow filter */}
       <defs>
+        {hasShadow && (
+          <filter id={shadowFilterId} x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+            <feOffset dx="0" dy="2" result="offsetblur"/>
+            <feComponentTransfer>
+              <feFuncA type="linear" slope="0.3"/>
+            </feComponentTransfer>
+            <feMerge> 
+              <feMergeNode/>
+              <feMergeNode in="SourceGraphic"/> 
+            </feMerge>
+          </filter>
+        )}
         {showStartArrow && (
           <marker
             id={startMarkerId}
@@ -259,11 +283,12 @@ export function BezierConnection({ from, to, connectionColor, connectionData, on
           d={pathData}
           stroke={finalConnectionColor}
           className="transition-all duration-300 cursor-pointer hover:stroke-opacity-80"
-          strokeWidth="2.5"
+          strokeWidth={connectionData?.lineWidth || 2.5}
           fill="none"
           onClick={handleClick}
           markerStart={showStartArrow ? `url(#${startMarkerId})` : undefined}
           markerEnd={showEndArrow ? `url(#${endMarkerId})` : undefined}
+          filter={hasShadow ? `url(#${shadowFilterId})` : undefined}
         />
       </g>
     </>

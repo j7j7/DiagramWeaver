@@ -41,6 +41,7 @@ interface TopMenuBarProps {
   onDisconnect?: () => void;
   onDelete?: () => void;
   onConnectionUpdate?: (from: string, to: string, updates: { arrow?: boolean; text?: string; textPosition?: number; color?: string; [key: string]: any }) => void;
+  onConnectionDisconnect?: (from: string, to: string) => void;
   diagramData?: DiagramData;
 }
 
@@ -67,6 +68,7 @@ export function TopMenuBar({
   onDisconnect,
   onDelete,
   onConnectionUpdate,
+  onConnectionDisconnect,
   diagramData,
 }: TopMenuBarProps) {
   return (
@@ -246,6 +248,7 @@ export function TopMenuBar({
             onDisconnect={onDisconnect}
             onDelete={onDelete}
             onConnectionUpdate={onConnectionUpdate}
+            onConnectionDisconnect={onConnectionDisconnect}
             diagramData={diagramData}
           />
         </>

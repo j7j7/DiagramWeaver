@@ -433,6 +433,18 @@ export default function DiagramEditor() {
     }));
     toast({ title: 'Disconnected', description: 'All connections to/from this item have been removed.' });
   };
+
+  const disconnectConnection = (from: string, to: string) => {
+    setDiagramData(prevData => ({
+      ...prevData,
+      connections: prevData.connections.filter((e: any) => !(e.from === from && e.to === to)),
+    }));
+    // If this connection was selected, deselect it
+    if (selectedItem && selectedItem.itemType === 'edge' && selectedItem.from === from && selectedItem.to === to) {
+      setSelectedItem(null);
+    }
+    toast({ title: 'Connection Disconnected', description: 'Connection has been removed.' });
+  };
   
   const handleSave = async () => {
     const nestedData = convertToNestedHierarchy(diagramData);
@@ -534,7 +546,7 @@ export default function DiagramEditor() {
     }
   };
 
-  const handleConnectionUpdate = (from: string, to: string, updates: { text?: string; color?: string; textPosition?: number; style?: 'bezier'; curvature?: number; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean; arrow?: boolean }) => {
+  const handleConnectionUpdate = (from: string, to: string, updates: { text?: string; color?: string; textPosition?: number; lineWidth?: number; shadow?: boolean; style?: 'bezier'; curvature?: number; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean; arrow?: boolean }) => {
     setDiagramData(prevData => ({
       ...prevData,
       connections: prevData.connections.map(conn => 
@@ -715,6 +727,7 @@ export default function DiagramEditor() {
            onToggleJsonPanel={toggleJsonPanel}
            jsonPanelOpen={jsonPanelOpen}
            onConnectionUpdate={handleConnectionUpdate}
+           onConnectionDisconnect={disconnectConnection}
            onCloseSidebar={() => setSidebarOpen(false)}
            isMobile={isMobile}
            transform={canvasTransform}
@@ -787,6 +800,7 @@ export default function DiagramEditor() {
                       }
                     }}
                     onConnectionUpdate={handleConnectionUpdate}
+           onConnectionDisconnect={disconnectConnection}
                     diagramData={diagramData}
                 />
                 <input
