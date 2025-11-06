@@ -12,6 +12,7 @@ import {
 import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
 import type { SelectedItem } from '../diagram-editor';
+import type { DiagramData } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -39,6 +40,8 @@ interface TopMenuBarProps {
   onConnect?: (connectionOptions?: { style?: 'bezier', curvature?: number }) => void;
   onDisconnect?: () => void;
   onDelete?: () => void;
+  onConnectionUpdate?: (from: string, to: string, updates: { arrow?: boolean; text?: string; textPosition?: number; color?: string; [key: string]: any }) => void;
+  diagramData?: DiagramData;
 }
 
 export function TopMenuBar({
@@ -63,6 +66,8 @@ export function TopMenuBar({
   onConnect,
   onDisconnect,
   onDelete,
+  onConnectionUpdate,
+  diagramData,
 }: TopMenuBarProps) {
   return (
     <div className="flex items-center border-b bg-card min-h-[2.5rem] overflow-x-auto">
@@ -231,7 +236,7 @@ export function TopMenuBar({
           </MenubarContent>
         </MenubarMenu>
       </Menubar>
-      {selectedItem && selectedItem.itemType !== 'edge' && onItemUpdate && onConnect && onDisconnect && onDelete && (
+      {selectedItem && ((selectedItem.itemType !== 'edge' && onItemUpdate && onConnect && onDisconnect && onDelete) || (selectedItem.itemType === 'edge' && onConnectionUpdate && onDelete)) && (
         <>
           <div className="h-6 w-px bg-border mx-2" />
           <ContextToolbar
@@ -240,6 +245,8 @@ export function TopMenuBar({
             onConnect={onConnect}
             onDisconnect={onDisconnect}
             onDelete={onDelete}
+            onConnectionUpdate={onConnectionUpdate}
+            diagramData={diagramData}
           />
         </>
       )}

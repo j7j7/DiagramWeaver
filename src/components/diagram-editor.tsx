@@ -363,6 +363,11 @@ export default function DiagramEditor() {
         newGroups = newGroups.filter(g => g.id !== itemToDelete.id);
         // Also remove nodes that were inside the group if desired, or re-parent them.
         // For simplicity, we'll just remove the group for now. Any nodes inside become "homeless".
+      } else if (itemToDelete.itemType === 'edge') {
+        // Delete the connection/edge
+        newConnections = prevData.connections.filter((e: any) => 
+          !(e.from === itemToDelete.from && e.to === itemToDelete.to)
+        );
       }
 
       // Also remove the deleted item from any group's node list
@@ -529,7 +534,7 @@ export default function DiagramEditor() {
     }
   };
 
-  const handleConnectionUpdate = (from: string, to: string, updates: { text?: string; color?: string; style?: 'bezier'; curvature?: number; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean }) => {
+  const handleConnectionUpdate = (from: string, to: string, updates: { text?: string; color?: string; textPosition?: number; style?: 'bezier'; curvature?: number; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean; arrow?: boolean }) => {
     setDiagramData(prevData => ({
       ...prevData,
       connections: prevData.connections.map(conn => 
@@ -538,6 +543,10 @@ export default function DiagramEditor() {
           : conn
       )
     }));
+    // Update selected item if it's the same connection
+    if (selectedItem && selectedItem.itemType === 'edge' && selectedItem.from === from && selectedItem.to === to) {
+      setSelectedItem({ ...selectedItem, ...updates });
+    }
   };
 
   const handleNew = () => {
@@ -777,6 +786,8 @@ export default function DiagramEditor() {
                         handleItemDelete(selectedItem);
                       }
                     }}
+                    onConnectionUpdate={handleConnectionUpdate}
+                    diagramData={diagramData}
                 />
                 <input
                     type="file"

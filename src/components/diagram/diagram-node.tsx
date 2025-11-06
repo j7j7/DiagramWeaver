@@ -119,6 +119,12 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, onC
       const maxCharsPerLine = 20; // More characters fit in text-only nodes
       const lines = Math.ceil(label.length / maxCharsPerLine);
       return TEXT_NODE_HEIGHT + ((lines - 1) * EXTRA_LINE_HEIGHT);
+    } else if (nodeType === 'generic.text.label') {
+      // Label nodes - height matches text exactly, no padding
+      const maxCharsPerLine = 20; // Characters fit in label nodes
+      const lines = Math.ceil(label.length / maxCharsPerLine);
+      const lineHeight = 20; // Approximate line height for text-sm font-medium
+      return lines * lineHeight;
     } else {
       const maxCharsPerLine = 12; // Approximate characters that fit in node width
       const lines = Math.ceil(label.length / maxCharsPerLine);
@@ -131,7 +137,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, onC
   const isTextboxNode = node.type === 'generic.text.textbox';
   const isLabelboxNode = node.type === 'generic.text.labelbox';
   const isShapeNode = node.type === 'generic.text.square' || node.type === 'generic.text.circle' || node.type === 'generic.text.rectangle' || node.type === 'generic.text.triangle';
-  const isRotatableNode = isTextNode || isLabelNode || isShapeNode;
+  const isRotatableNode = isTextNode || isLabelNode || isTextboxNode || isLabelboxNode || isShapeNode;
   const nodeHeight = calculateNodeHeight(node.label || '', node.type, node.sizeMode, node.height);
   const rotation = (node as any).rotation || 0;
   
@@ -332,7 +338,7 @@ return (
                   isRotatableNode ? 200 : NODE_WIDTH,
         height: isRotatableNode || isTextboxNode || isLabelboxNode ? nodeHeight : 'auto',
         touchAction: 'none',
-        transform: isRotatableNode && rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
+        transform: rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
         transformOrigin: 'center'
       }}
       onMouseEnter={() => { if (!isDragging) { setIsOpen(true); setIsHovered(true); } }}
@@ -370,17 +376,45 @@ return (
                 )}
               </div>
             ) : node.type === 'generic.text.label' ? (
-              // Label node - show text with curved rectangle background
+              // Label node - show text with curved rectangle background (no vertical padding)
+              (() => {
+                const borderStyle = (node as any).borderStyle || 'solid';
+                const borderColors = (node as any).borderColors || [(node as any).borderColor || '#d1d5db', (node as any).borderColor || '#d1d5db'];
+                const borderColor = (node as any).borderColor || '#d1d5db';
+                const backgroundStyle = (node as any).backgroundStyle || 'solid';
+                const backgroundColors = (node as any).backgroundColors || [(node as any).backgroundColor || '#f3f4f6', (node as any).backgroundColor || '#f3f4f6'];
+                const backgroundColor = (node as any).backgroundColor || '#f3f4f6';
+                const hasShadow = (node as any).shadow || false;
+                
+                return (
               <div 
                 className={cn(
-                  "flex items-center justify-center h-full w-full px-3 py-2 rounded-lg border-2 transition-colors",
-                  isSelected ? "border-primary" : !(isDragging || isTouchDragging) && "group-hover:border-accent",
-                  isTargetable && "border-dashed border-primary"
+                  "flex items-center justify-center h-full w-full px-3 rounded-lg transition-colors",
+                  borderStyle !== 'none' && "border-2",
+                  borderStyle === 'none' && (isSelected 
+                    ? "border border-dashed border-primary opacity-100" 
+                    : "border border-dashed border-gray-400 opacity-0 hover:opacity-100 hover:border-primary hover:bg-primary/5"),
+                  isSelected && borderStyle !== 'none' ? "border-primary" : !(isDragging || isTouchDragging) && borderStyle !== 'none' && "group-hover:border-accent",
+                  isTargetable && "border-dashed border-primary",
+                  hasShadow && "shadow-[0_10px_15px_-3px_rgba(239,68,68,0.3),0_4px_6px_-2px_rgba(239,68,68,0.2)]"
                 )}
                 style={{
-                  backgroundColor: (node as any).backgroundColor || '#f3f4f6',
-                  borderColor: (node as any).borderColor || '#d1d5db',
-                  color: (node as any).textColor || '#374151'
+                  background: backgroundStyle === 'none' 
+                    ? 'transparent'
+                    : backgroundStyle === 'gradient' 
+                      ? `linear-gradient(135deg, ${backgroundColors[0]}, ${backgroundColors[1]})`
+                      : backgroundColor,
+                  ...(borderStyle === 'none' ? {} : borderStyle === 'gradient' ? {
+                    borderImage: `linear-gradient(135deg, ${borderColors[0]}, ${borderColors[1]}) 1`,
+                    borderColor: 'transparent'
+                  } : {
+                    borderColor: borderColor
+                  }),
+                  color: (node as any).textColor || '#374151',
+                  margin: hasShadow ? 4 : 0,
+                  ...(hasShadow && { 
+                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                  })
                 }}
               >
                 {isEditingLabel ? (
@@ -390,19 +424,21 @@ return (
                     onChange={(e) => setEditText(e.target.value)}
                     onBlur={handleLabelSubmit}
                     onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                    className="text-sm font-medium text-center bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
+                    className="text-sm font-medium text-center bg-transparent border border-primary rounded px-1 w-full outline-none"
                     autoFocus
                     onClick={(e) => e.stopPropagation()}
                   />
                 ) : (
                   <p 
-                    className="text-sm font-medium text-center break-words leading-tight cursor-text hover:bg-background/50 rounded px-1 py-0.5 -mx-1 -my-0.5"
+                    className="text-sm font-medium text-center break-words leading-tight cursor-text hover:bg-background/50 rounded px-1 -mx-1"
                     onClick={handleLabelClick}
                   >
                     {node.label || 'Label'}
                   </p>
                 )}
               </div>
+              );
+              })()
             ) : node.type === 'generic.text.textbox' ? (
               // Textbox node - larger multi-line text box
               <div 
@@ -440,17 +476,45 @@ return (
               </div>
             ) : node.type === 'generic.text.labelbox' ? (
               // Labelbox node - larger multi-line label box with different styling
+              (() => {
+                const borderStyle = (node as any).borderStyle || 'solid';
+                const borderColors = (node as any).borderColors || [(node as any).borderColor || '#0ea5e9', (node as any).borderColor || '#0ea5e9'];
+                const borderColor = (node as any).borderColor || '#0ea5e9';
+                const backgroundStyle = (node as any).backgroundStyle || 'solid';
+                const backgroundColors = (node as any).backgroundColors || [(node as any).backgroundColor || '#f0f9ff', (node as any).backgroundColor || '#f0f9ff'];
+                const backgroundColor = (node as any).backgroundColor || '#f0f9ff';
+                const hasShadow = (node as any).shadow || false;
+                
+                return (
               <div 
                 className={cn(
-                  "flex items-center justify-center h-full w-full p-3 rounded-lg border-2 transition-colors",
-                  isSelected ? "border-primary" : !(isDragging || isTouchDragging) && "group-hover:border-accent",
-                  isTargetable && "border-dashed border-primary"
+                  "flex items-center justify-center h-full w-full p-3 rounded-lg transition-colors",
+                  borderStyle !== 'none' && "border-2",
+                  borderStyle === 'none' && (isSelected 
+                    ? "border border-dashed border-primary opacity-100" 
+                    : "border border-dashed border-gray-400 opacity-0 hover:opacity-100 hover:border-primary hover:bg-primary/5"),
+                  isSelected && borderStyle !== 'none' ? "border-primary" : !(isDragging || isTouchDragging) && borderStyle !== 'none' && "group-hover:border-accent",
+                  isTargetable && "border-dashed border-primary",
+                  hasShadow && "shadow-[0_10px_15px_-3px_rgba(239,68,68,0.3),0_4px_6px_-2px_rgba(239,68,68,0.2)]"
                 )}
                 style={{
-                  backgroundColor: (node as any).backgroundColor || '#f0f9ff',
-                  borderColor: (node as any).borderColor || '#0ea5e9',
+                  background: backgroundStyle === 'none' 
+                    ? 'transparent'
+                    : backgroundStyle === 'gradient' 
+                      ? `linear-gradient(135deg, ${backgroundColors[0]}, ${backgroundColors[1]})`
+                      : backgroundColor,
+                  ...(borderStyle === 'none' ? {} : borderStyle === 'gradient' ? {
+                    borderImage: `linear-gradient(135deg, ${borderColors[0]}, ${borderColors[1]}) 1`,
+                    borderColor: 'transparent'
+                  } : {
+                    borderColor: borderColor
+                  }),
                   color: (node as any).textColor || '#0c4a6e',
-                  minHeight: '100px'
+                  minHeight: '100px',
+                  margin: hasShadow ? 4 : 0,
+                  ...(hasShadow && { 
+                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                  })
                 }}
               >
                 {isEditingLabel ? (
@@ -473,6 +537,8 @@ return (
                   </p>
                 )}
               </div>
+              );
+              })()
             ) : isShapeNode ? (
               // Shape node - render pure shape with text in different positions
               <div className="flex flex-col items-center justify-center h-full w-full relative">

@@ -159,8 +159,15 @@ const measureNodeDims = (n: PositionedNode) => {
         Math.min(maxTextWidth, maxLineLength * avgCharWidth + padding),
       );
 
-      const textLines = Math.max(1, Math.ceil(label.length / textMaxCharsPerLine));
-      height = TEXT_NODE_HEIGHT + (textLines - 1) * EXTRA_LINE_HEIGHT;
+      // Check if it's a label node - use exact text height, no padding
+      if (n.type === 'generic.text.label') {
+        const textLines = Math.max(1, Math.ceil(label.length / textMaxCharsPerLine));
+        const lineHeight = 20; // Approximate line height for text-sm font-medium
+        height = textLines * lineHeight;
+      } else {
+        const textLines = Math.max(1, Math.ceil(label.length / textMaxCharsPerLine));
+        height = TEXT_NODE_HEIGHT + (textLines - 1) * EXTRA_LINE_HEIGHT;
+      }
     } else {
       const shapeSize = 48;
       const textPadding = 16;
@@ -2229,9 +2236,9 @@ const [, drop] = useDrop(() => ({
                     fromPos.lineColor = (fromItem as any).lineColor;
                     toPos.lineColor = (toItem as any).lineColor;
 
-                    // 
-
-const isConnectionHighlighted = selectedItemId === edge.from || selectedItemId === edge.to;
+                    // Check if this connection is selected
+                    const edgeId = `${edge.from}-${edge.to}`;
+                    const isConnectionHighlighted = selectedItemId === edge.from || selectedItemId === edge.to || selectedItemId === edgeId;
 
 return (
                     <g key={`${edge.from}-${edge.to}-${index}`} className={cn(isConnectionHighlighted && 'drop-shadow-[0_0_6px_rgba(0,200,150,0.8)]')}>
@@ -2241,8 +2248,14 @@ return (
                         connectionColor={edge.color}
                         connectionData={edge}
                         onClick={(connection) => {
-                          // Handle connection click - you can add custom logic here
-                          // Connection click handler - can be expanded to show modal, edit text, etc.
+                          // Select the connection when clicked
+                          if (onItemSelect) {
+                            onItemSelect({
+                              ...connection,
+                              itemType: 'edge',
+                              id: `${connection.from}-${connection.to}`
+                            });
+                          }
                         }}
                       />
                     </g>

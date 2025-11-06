@@ -317,6 +317,7 @@ const [{ isDragging }, drag] = useDrag(() => ({
   const backgroundStyle = group.backgroundStyle || 'solid';
   const backgroundColors = group.backgroundColors || [group.backgroundColor || (isZone ? '#f3f4f6' : '#f3f4f6'), group.backgroundColor || (isZone ? '#e5e7eb' : '#e5e7eb')];
   const backgroundColor = group.backgroundColor || (isZone ? 'transparent' : '#f3f4f6');
+  const rotation = group.rotation || 0;
 
   return (
     <div
@@ -362,8 +363,11 @@ const [{ isDragging }, drag] = useDrag(() => ({
         color: textColor,
         margin: group.shadow ? 4 : 0, // Add margin when shadow is enabled to prevent clipping
         touchAction: 'none',
+        transform: rotation !== 0 
+          ? `rotate(${rotation}deg)${group.shadow ? ' translateZ(0)' : ''}`
+          : (group.shadow ? 'translateZ(0)' : undefined),
+        transformOrigin: 'center',
         ...(group.shadow && { 
-          transform: 'translateZ(0)',
           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' // More prominent shadow
         })
       }}

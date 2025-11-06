@@ -11,6 +11,11 @@ export interface DiagramNodeData {
   borderColor?: string; // Border color for label nodes
   backgroundColor?: string; // Background color for label nodes
   textColor?: string; // Text color for label nodes
+  borderStyle?: 'solid' | 'gradient' | 'none'; // Border style for label/labelbox nodes
+  borderColors?: string[]; // Border colors for gradient [startColor, endColor]
+  backgroundStyle?: 'solid' | 'gradient' | 'none'; // Background style for label/labelbox nodes
+  backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
+  shadow?: boolean; // Whether to show shadow around label/labelbox nodes
   rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
   textPosition?: 'above' | 'center' | 'under'; // Text position for shape nodes
   freeflow?: boolean; // If true, node can be placed anywhere without joining groups/zones
@@ -87,6 +92,7 @@ export interface DiagramGroupItem {
   sizeMode?: 'auto' | 'custom'; // Whether to use auto-calculated or custom dimensions
   minWidth?: number; // Minimum width constraint (based on content)
   minHeight?: number; // Minimum height constraint (based on content)
+  rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
 }
 
 export interface DiagramGroupData {
@@ -121,6 +127,7 @@ export interface DiagramGroupData {
   sizeMode?: 'auto' | 'custom'; // Whether to use auto-calculated or custom dimensions
   minWidth?: number; // Minimum width constraint (based on content)
   minHeight?: number; // Minimum height constraint (based on content)
+  rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
 }
 
 export interface DiagramData {

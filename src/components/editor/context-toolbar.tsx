@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Type, 
   Info, 
@@ -16,7 +16,7 @@ import {
   Square,
   Grid3x3,
   Maximize2,
-  Minus
+  ArrowRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,14 +24,18 @@ import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Slider } from '@/components/ui/slider';
 import type { SelectedItem } from '../diagram-editor';
+import type { DiagramData } from '@/lib/types';
 
 interface ContextToolbarProps {
   selectedItem: SelectedItem | null;
-  onItemUpdate: (updatedItem: SelectedItem) => void;
-  onConnect: (connectionOptions?: { style?: 'bezier', curvature?: number }) => void;
-  onDisconnect: () => void;
-  onDelete: () => void;
+  onItemUpdate?: (updatedItem: SelectedItem) => void;
+  onConnect?: (connectionOptions?: { style?: 'bezier', curvature?: number }) => void;
+  onDisconnect?: () => void;
+  onDelete?: () => void;
+  onConnectionUpdate?: (from: string, to: string, updates: { arrow?: boolean; text?: string; textPosition?: number; color?: string; [key: string]: any }) => void;
+  diagramData?: DiagramData;
 }
 
 export function ContextToolbar({
@@ -40,12 +44,69 @@ export function ContextToolbar({
   onConnect,
   onDisconnect,
   onDelete,
+  onConnectionUpdate,
+  diagramData,
 }: ContextToolbarProps) {
   const [labelOpen, setLabelOpen] = useState(false);
   const [descriptionOpen, setDescriptionOpen] = useState(false);
+  const [connectionsOpen, setConnectionsOpen] = useState(false);
 
-  if (!selectedItem || selectedItem.itemType === 'edge') {
+  if (!selectedItem) {
     return null;
+  }
+
+  // Handle edge/connection selection
+  if (selectedItem.itemType === 'edge') {
+    const isEdge = selectedItem.itemType === 'edge';
+    const hasArrow = selectedItem.arrow === true || selectedItem.toArrow === true;
+
+    const handleArrowToggle = () => {
+      if (onConnectionUpdate && isEdge) {
+        // Toggle arrow - if arrow is true, set to false, otherwise set to true
+        onConnectionUpdate(selectedItem.from, selectedItem.to, {
+          arrow: !hasArrow,
+          toArrow: !hasArrow
+        });
+      }
+    };
+
+    return (
+      <TooltipProvider>
+        <div className="flex items-center gap-1 px-2 border-l border-border min-h-[2.5rem] shrink-0">
+          {/* Arrow Toggle Button */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant={hasArrow ? "default" : "ghost"} 
+                size="sm" 
+                className="h-8 px-2"
+                onClick={handleArrowToggle}
+              >
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{hasArrow ? 'Hide Arrow' : 'Show Arrow'}</TooltipContent>
+          </Tooltip>
+
+          {/* Delete Button */}
+          {onDelete && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 px-2 text-destructive hover:text-destructive"
+                  onClick={onDelete}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Delete Connection</TooltipContent>
+            </Tooltip>
+          )}
+        </div>
+      </TooltipProvider>
+    );
   }
 
   const handleLabelChange = (value: string) => {
@@ -154,6 +215,39 @@ export function ContextToolbar({
   const isGroup = selectedItem.itemType === 'group';
   const isNode = selectedItem.itemType === 'node';
   const isTextNode = isNode && selectedItem.type?.startsWith('generic.text');
+  const isLabelNode = isNode && selectedItem.type === 'generic.text.label';
+  const isLabelboxNode = isNode && selectedItem.type === 'generic.text.labelbox';
+  const isLabelOrLabelbox = isLabelNode || isLabelboxNode;
+
+  // Get all connections for the selected node/group
+  const getAllConnections = useMemo(() => {
+    if (!selectedItem || !diagramData || selectedItem.itemType === 'edge') {
+      return [];
+    }
+
+    const itemId = selectedItem.id;
+    const nodesById = new Map(diagramData.nodes.map(n => [n.id, n]));
+    const groupsById = new Map((diagramData.groups || []).map(g => [g.id, g]));
+
+    const allConnections = (diagramData.connections || []).filter((edge: any) => 
+      edge.from === itemId || edge.to === itemId
+    ).map((edge: any) => {
+      const isOutgoing = edge.from === itemId;
+      const targetId = isOutgoing ? edge.to : edge.from;
+      const targetItem = nodesById.get(targetId) || groupsById.get(targetId);
+      const targetLabel = targetItem?.label || targetId;
+      
+      return {
+        connection: edge,
+        targetId,
+        targetLabel,
+        isOutgoing,
+        direction: isOutgoing ? '→' : '←'
+      };
+    });
+
+    return allConnections;
+  }, [selectedItem, diagramData]);
 
   return (
     <TooltipProvider>
@@ -236,6 +330,171 @@ export function ContextToolbar({
             </TooltipTrigger>
             <TooltipContent>Disconnect</TooltipContent>
           </Tooltip>
+        )}
+
+        {/* Connections Arrow Toggle - Show if there are multiple connections */}
+        {(isNode || isGroup) && getAllConnections.length > 0 && (
+          <Popover open={connectionsOpen} onOpenChange={setConnectionsOpen}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 px-2">
+                    <ArrowRight className="h-4 w-4" />
+                    {getAllConnections.length > 1 && (
+                      <span className="ml-1 text-xs">({getAllConnections.length})</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent>Connection Settings</TooltipContent>
+            </Tooltip>
+            <PopoverContent className="w-96">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Connections</label>
+                <div className="max-h-64 overflow-y-auto space-y-2">
+                  {getAllConnections.length === 0 ? (
+                    <div className="text-sm text-muted-foreground py-2">No connections</div>
+                  ) : (
+                    getAllConnections.map((connInfo, index) => {
+                      const hasArrow = connInfo.connection.arrow === true || connInfo.connection.toArrow === true;
+                      const connectionColor = connInfo.connection.color || '#6b7280';
+                      const textPosition = connInfo.connection.textPosition ?? 50; // Default to 50%
+                      const connectionText = connInfo.connection.text || '';
+                      
+                      const handleConnectionArrowToggle = () => {
+                        if (onConnectionUpdate) {
+                          onConnectionUpdate(
+                            connInfo.connection.from,
+                            connInfo.connection.to,
+                            {
+                              arrow: !hasArrow,
+                              toArrow: !hasArrow
+                            }
+                          );
+                        }
+                      };
+
+                      const handleColorChange = (color: string) => {
+                        if (onConnectionUpdate) {
+                          onConnectionUpdate(
+                            connInfo.connection.from,
+                            connInfo.connection.to,
+                            {
+                              color: color
+                            }
+                          );
+                        }
+                      };
+
+                      const handleTextPositionChange = (value: number) => {
+                        if (onConnectionUpdate) {
+                          onConnectionUpdate(
+                            connInfo.connection.from,
+                            connInfo.connection.to,
+                            {
+                              textPosition: value
+                            }
+                          );
+                        }
+                      };
+
+                      const handleTextChange = (text: string) => {
+                        if (onConnectionUpdate) {
+                          onConnectionUpdate(
+                            connInfo.connection.from,
+                            connInfo.connection.to,
+                            {
+                              text: text
+                            }
+                          );
+                        }
+                      };
+
+                      return (
+                        <div 
+                          key={`${connInfo.connection.from}-${connInfo.connection.to}-${index}`}
+                          className="flex flex-col gap-2 p-2 rounded-md border border-border hover:bg-accent"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <span className="text-xs font-mono text-muted-foreground">
+                                {connInfo.isOutgoing ? '→' : '←'}
+                              </span>
+                              <span className="text-sm truncate" title={connInfo.targetLabel}>
+                                {connInfo.targetLabel || connInfo.targetId}
+                              </span>
+                            </div>
+                            <Button
+                              variant={hasArrow ? "default" : "outline"}
+                              size="sm"
+                              className="h-7 px-2 shrink-0"
+                              onClick={handleConnectionArrowToggle}
+                            >
+                              <ArrowRight className={`h-3 w-3 ${hasArrow ? '' : 'opacity-50'}`} />
+                            </Button>
+                          </div>
+                          <div className="flex flex-col gap-1 pt-1 border-t border-border/50">
+                            <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Text:</label>
+                            <Input
+                              type="text"
+                              value={connectionText}
+                              onChange={(e) => handleTextChange(e.target.value)}
+                              placeholder="Enter connection text..."
+                              className="h-7 text-sm"
+                              title="Text displayed on connection line"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2 pt-1 border-t border-border/50">
+                            <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Color:</label>
+                            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                              <Input
+                                type="color"
+                                value={connectionColor}
+                                onChange={(e) => handleColorChange(e.target.value)}
+                                className="h-7 w-12 p-1 cursor-pointer shrink-0"
+                                title="Pick color"
+                              />
+                              <Input
+                                type="text"
+                                value={connectionColor}
+                                onChange={(e) => handleColorChange(e.target.value)}
+                                className="h-7 flex-1 min-w-0 text-xs font-mono"
+                                placeholder="#6b7280"
+                                title="Hex color code"
+                              />
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 pt-1 border-t border-border/50">
+                            <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Text Position:</label>
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <Slider
+                                value={[textPosition]}
+                                onValueChange={(values) => handleTextPositionChange(values[0])}
+                                min={0}
+                                max={100}
+                                step={1}
+                                className="flex-1"
+                              />
+                              <Input
+                                type="number"
+                                value={textPosition}
+                                onChange={(e) => handleTextPositionChange(Math.max(0, Math.min(100, parseInt(e.target.value) || 50)))}
+                                className="h-7 w-16 text-xs text-center shrink-0"
+                                min={0}
+                                max={100}
+                                title="Text position percentage (0-100)"
+                              />
+                              <span className="text-xs text-muted-foreground shrink-0">%</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
         )}
 
         {/* Border Style */}
@@ -417,7 +676,7 @@ export function ContextToolbar({
         )}
 
         {/* Text Color */}
-        {isGroup && (
+        {(isGroup || isLabelOrLabelbox) && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -438,6 +697,184 @@ export function ContextToolbar({
                   onChange={(e) => handleColorChange('textColor', e.target.value)}
                   className="h-10"
                 />
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+
+        {/* Border Style for Label/Labelbox */}
+        {isLabelOrLabelbox && (
+          <Popover>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 px-2">
+                    <Square className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent>Border Style</TooltipContent>
+            </Tooltip>
+            <PopoverContent className="w-48">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Border Style</label>
+                <Select 
+                  value={(selectedItem as any).borderStyle || 'solid'} 
+                  onValueChange={handleBorderStyleChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="solid">Solid</SelectItem>
+                    <SelectItem value="gradient">Gradient</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+
+        {/* Border Color for Label/Labelbox */}
+        {isLabelOrLabelbox && (selectedItem as any).borderStyle && (selectedItem as any).borderStyle !== 'none' && (
+          <Popover>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 px-2">
+                    <div 
+                      className="w-4 h-4 rounded border-2 border-border"
+                      style={{ 
+                        backgroundColor: (selectedItem as any).borderStyle === 'gradient' 
+                          ? ((selectedItem as any).borderColors?.[0] || '#6b7280')
+                          : (selectedItem.borderColor || '#d1d5db')
+                      }}
+                    />
+                  </Button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent>Border Color</TooltipContent>
+            </Tooltip>
+            <PopoverContent className="w-64">
+              <div className="space-y-2">
+                {(selectedItem as any).borderStyle === 'gradient' ? (
+                  <>
+                    <label className="text-sm font-medium">Border Start Color</label>
+                    <Input
+                      type="color"
+                      value={((selectedItem as any).borderColors?.[0] || '#6b7280')}
+                      onChange={(e) => handleBorderColorChange(e.target.value, 0)}
+                      className="h-10"
+                    />
+                    <label className="text-sm font-medium">Border End Color</label>
+                    <Input
+                      type="color"
+                      value={((selectedItem as any).borderColors?.[1] || '#3b82f6')}
+                      onChange={(e) => handleBorderColorChange(e.target.value, 1)}
+                      className="h-10"
+                    />
+                  </>
+                ) : (
+                  <>
+                    <label className="text-sm font-medium">Border Color</label>
+                    <Input
+                      type="color"
+                      value={selectedItem.borderColor || '#d1d5db'}
+                      onChange={(e) => handleBorderColorChange(e.target.value)}
+                      className="h-10"
+                    />
+                  </>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+
+        {/* Background Style for Label/Labelbox */}
+        {isLabelOrLabelbox && (
+          <Popover>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 px-2">
+                    <Layers className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent>Background Style</TooltipContent>
+            </Tooltip>
+            <PopoverContent className="w-48">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Background Style</label>
+                <Select 
+                  value={(selectedItem as any).backgroundStyle || 'solid'} 
+                  onValueChange={handleBackgroundStyleChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="solid">Solid</SelectItem>
+                    <SelectItem value="gradient">Gradient</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+
+        {/* Background Color for Label/Labelbox */}
+        {isLabelOrLabelbox && (selectedItem as any).backgroundStyle && (selectedItem as any).backgroundStyle !== 'none' && (
+          <Popover>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 px-2">
+                    <div 
+                      className="w-4 h-4 rounded"
+                      style={{ 
+                        backgroundColor: (selectedItem as any).backgroundStyle === 'gradient' 
+                          ? ((selectedItem as any).backgroundColors?.[0] || '#f3f4f6')
+                          : (selectedItem.backgroundColor || (isLabelNode ? '#f3f4f6' : '#f0f9ff'))
+                      }}
+                    />
+                  </Button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent>Background Color</TooltipContent>
+            </Tooltip>
+            <PopoverContent className="w-64">
+              <div className="space-y-2">
+                {(selectedItem as any).backgroundStyle === 'gradient' ? (
+                  <>
+                    <label className="text-sm font-medium">Background Start Color</label>
+                    <Input
+                      type="color"
+                      value={((selectedItem as any).backgroundColors?.[0] || '#f3f4f6')}
+                      onChange={(e) => handleBackgroundColorChange(e.target.value, 0)}
+                      className="h-10"
+                    />
+                    <label className="text-sm font-medium">Background End Color</label>
+                    <Input
+                      type="color"
+                      value={((selectedItem as any).backgroundColors?.[1] || '#e5e7eb')}
+                      onChange={(e) => handleBackgroundColorChange(e.target.value, 1)}
+                      className="h-10"
+                    />
+                  </>
+                ) : (
+                  <>
+                    <label className="text-sm font-medium">Background Color</label>
+                    <Input
+                      type="color"
+                      value={selectedItem.backgroundColor || (isLabelNode ? '#f3f4f6' : '#f0f9ff')}
+                      onChange={(e) => handleBackgroundColorChange(e.target.value)}
+                      className="h-10"
+                    />
+                  </>
+                )}
               </div>
             </PopoverContent>
           </Popover>
@@ -638,32 +1075,6 @@ export function ContextToolbar({
           </Popover>
         )}
 
-        {/* Line Color (Nodes) */}
-        {isNode && (
-          <Popover>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 px-2">
-                    <Minus className="h-4 w-4" style={{ color: (selectedItem as any).lineColor || '#6b7280' }} />
-                  </Button>
-                </PopoverTrigger>
-              </TooltipTrigger>
-              <TooltipContent>Line Color</TooltipContent>
-            </Tooltip>
-            <PopoverContent className="w-64">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Line Color</label>
-                <Input
-                  type="color"
-                  value={(selectedItem as any).lineColor || '#6b7280'}
-                  onChange={(e) => handleColorChange('lineColor', e.target.value)}
-                  className="h-10"
-                />
-              </div>
-            </PopoverContent>
-          </Popover>
-        )}
 
         {/* Text Position for Text Nodes */}
         {isTextNode && (
@@ -699,8 +1110,8 @@ export function ContextToolbar({
           </Popover>
         )}
 
-        {/* Rotation (Text Nodes) */}
-        {isTextNode && (
+        {/* Rotation (All Nodes and Groups) */}
+        {(isNode || isGroup) && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -794,8 +1205,8 @@ export function ContextToolbar({
           </Popover>
         )}
 
-        {/* Shadow Toggle (Groups) */}
-        {isGroup && (
+        {/* Shadow Toggle (Groups and Label/Labelbox) */}
+        {(isGroup || isLabelOrLabelbox) && (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button 
