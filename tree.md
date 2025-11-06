@@ -41,15 +41,18 @@ DiagramWeaver/
 │   ├── components/
 │   │   ├── diagram/
 │   │   │   ├── aws-icon.tsx
+│   │   │   ├── bezier-connection.tsx
 │   │   │   ├── diagram-edge.tsx
 │   │   │   ├── diagram-group.tsx
 │   │   │   └── diagram-node.tsx
 │   │   ├── editor/
 │   │   │   ├── component-sidebar.tsx
+│   │   │   ├── context-toolbar.tsx
 │   │   │   ├── draggable-item.tsx
 │   │   │   ├── draggable-resource-item.tsx
 │   │   │   ├── editor-canvas.tsx
-│   │   │   └── resource-browser.tsx
+│   │   │   ├── resource-browser.tsx
+│   │   │   └── top-menu-bar.tsx
 │   │   ├── ui/
 │   │   │   ├── accordion.tsx
 │   │   │   ├── alert-dialog.tsx
@@ -92,10 +95,22 @@ DiagramWeaver/
 │   │   ├── use-mobile.tsx
 │   │   └── use-toast.ts
 │   └── lib/
+│       ├── group-hierarchy.ts
+│       ├── id-generator.ts
+│       ├── json-utils.ts
+│       ├── nested-hierarchy.ts
 │       ├── pathfinding.ts
 │       ├── placeholder-images.json
 │       ├── placeholder-images.ts
+│       ├── pure-hierarchy.ts
 │       ├── sample-diagram.json
+│       ├── schemas.ts
+│       ├── test-hierarchy.ts
+│       ├── test-json-output.ts
+│       ├── test-nested-hierarchy.ts
+│       ├── test-pure-hierarchy-example.ts
+│       ├── test-pure-hierarchy.ts
+│       ├── type-matcher.ts
 │       ├── types.ts
 │       └── utils.ts
 ├── .eslintrrc.json

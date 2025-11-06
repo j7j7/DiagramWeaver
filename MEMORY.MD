@@ -179,6 +179,54 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
   - **Backward Compatibility**: Maintained support for legacy 'arrow' property while adding new per-direction arrow support
   - **Clean Rendering**: Arrows now appear as proper arrowheads on the connection lines, not as separate overlapping elements
   - **Result**: "Show Arrow" checkboxes now correctly add arrowheads to the existing connection lines
+- **Connection Toolbar Controls** (2025-12): Enhanced toolbar with comprehensive connection management:
+  - **Context-Aware Arrow Toggle**: Arrow enable/disable option appears only when a connection is selected
+  - **Connections Dropdown**: When a node/group is selected, displays all associated connections in a scrollable dropdown
+  - **Per-Connection Controls**: Each connection in the dropdown has individual controls:
+    - **Arrow Toggle**: Enable/disable arrowhead per connection
+    - **Color Picker**: Change line color with both color picker and hex input
+    - **Text Input**: Update text displayed on connection line
+    - **Text Position Slider**: Adjust text position percentage (0-100%) along the connection line with slider and number input
+  - **Connection Selection**: Clicking a connection selects it and shows arrow toggle and delete button in toolbar
+  - **Multiple Connection Indicator**: Connection button shows count when node/group has multiple connections
+  - **Visual Direction Indicators**: Each connection shows direction arrow (→ outgoing, ← incoming) and target label
+  - **Type Updates**: Extended `onConnectionUpdate` handler to support `text`, `textPosition`, and `color` properties
+  - **Implementation**: New `getAllConnections` useMemo hook filters connections related to selected item
+  - **UI Components**: Uses Popover, Slider, Input, and Button components for intuitive controls
+- **Rotation Support Extended** (2025-12): Added rotation capability to all node types and groups/zones:
+  - **Universal Rotation**: All nodes (text, textbox, label, labelbox, shape, icon) now support rotation
+  - **Group/Zone Rotation**: Groups and zones can be rotated using the same rotation controls
+  - **Rotation Options**: 0°, 45°, -45°, 90°, -90° available via dropdown in toolbar
+  - **CSS Transform**: Rotation applied using `rotate(Xdeg)` CSS transform with `transformOrigin: center`
+  - **Type Updates**: Added `rotation?: number` to `DiagramGroupItem` and `DiagramGroupData` interfaces
+  - **Rendering**: Updated `DiagramNode` and `DiagramGroup` components to apply rotation transforms
+  - **UI Controls**: Rotation option appears in toolbar for all nodes and groups (not just text nodes)
+  - **Shadow Compatibility**: Rotation works correctly with shadow effects (uses `translateZ(0)` for proper rendering)
+- **Label Node Styling** (2025-12): Enhanced label nodes with styling controls matching groups/zones:
+  - **Height Fix**: Label nodes now have horizontal height matching text exactly (removed vertical padding)
+  - **Labelbox Unchanged**: Labelbox nodes maintain their padding and styling
+  - **Height Calculation**: Label nodes calculate height as `lines * lineHeight` (20px) with no base padding
+  - **Styling Controls**: Added comprehensive styling toolbar controls for label/labelbox nodes:
+    - **Border Style**: None, Solid, or Gradient options
+    - **Border Color**: Color picker supporting solid or gradient (2 colors)
+    - **Background Style**: None, Solid, or Gradient options
+    - **Background Color**: Color picker supporting solid or gradient (2 colors)
+    - **Text Color**: Color picker for text color
+    - **Shadow Toggle**: Enable/disable shadow effect
+  - **Rendering**: Updated label/labelbox rendering to support gradient borders/backgrounds and shadow
+  - **Type Updates**: Added `borderStyle`, `borderColors`, `backgroundStyle`, `backgroundColors`, and `shadow` to `DiagramNodeData`
+  - **Visual Consistency**: Label/labelbox nodes now have same styling capabilities as groups/zones
+  - **Implementation**: Uses IIFE pattern in rendering to extract styling variables, supports gradient borders via `borderImage`, gradient backgrounds via `linear-gradient`
+- **Toolbar UI Improvements** (2025-12): Refined toolbar display and controls:
+  - **Selected Item Label Display**: Toolbar now shows the label/name of selected node/group instead of just "Selected: node/group"
+  - **Connection Display**: Selected connections show as "Connection {from} → {to}"
+  - **Control Hiding**: Hidden unnecessary controls for text type nodes:
+    - **Text Position**: Hidden for text/textbox/label/labelbox nodes (only applies to shape nodes)
+    - **Edge Position**: Hidden for text/textbox/label/labelbox nodes (only applies to icon/resource nodes in groups)
+    - **Size Mode**: Hidden for text/textbox/label/labelbox nodes (size is auto-calculated)
+  - **Context Awareness**: Controls dynamically show/hide based on selected item type
+  - **Type Detection**: Added `isTextTypeNode` helper to identify all text-related node types
+  - **Cleaner UI**: Removed redundant controls, making toolbar more focused and intuitive
 
 ### Development Tools
 - **Scripts**: npm run dev, build, lint, typecheck, genkit
