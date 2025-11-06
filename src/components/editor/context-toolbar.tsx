@@ -217,7 +217,11 @@ export function ContextToolbar({
   const isTextNode = isNode && selectedItem.type?.startsWith('generic.text');
   const isLabelNode = isNode && selectedItem.type === 'generic.text.label';
   const isLabelboxNode = isNode && selectedItem.type === 'generic.text.labelbox';
+  const isTextboxNode = isNode && selectedItem.type === 'generic.text.textbox';
+  const isPlainTextNode = isNode && selectedItem.type === 'generic.text.text';
   const isLabelOrLabelbox = isLabelNode || isLabelboxNode;
+  // Text type nodes that should hide certain controls
+  const isTextTypeNode = isTextNode; // includes all generic.text.* nodes
 
   // Get all connections for the selected node/group
   const getAllConnections = useMemo(() => {
@@ -952,7 +956,7 @@ export function ContextToolbar({
         )}
 
         {/* Edge Position (Nodes in groups) */}
-        {isNode && (
+        {isNode && !isTextTypeNode && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -1076,39 +1080,6 @@ export function ContextToolbar({
         )}
 
 
-        {/* Text Position for Text Nodes */}
-        {isTextNode && (
-          <Popover>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 px-2">
-                    <AlignLeft className="h-4 w-4" />
-                  </Button>
-                </PopoverTrigger>
-              </TooltipTrigger>
-              <TooltipContent>Text Position</TooltipContent>
-            </Tooltip>
-            <PopoverContent className="w-48">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Text Position</label>
-                <Select 
-                  value={(selectedItem as any).textPosition || 'under'} 
-                  onValueChange={handleTextPositionChange}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="above">Above</SelectItem>
-                    <SelectItem value="center">Center</SelectItem>
-                    <SelectItem value="under">Under (Default)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </PopoverContent>
-          </Popover>
-        )}
 
         {/* Rotation (All Nodes and Groups) */}
         {(isNode || isGroup) && (
@@ -1146,64 +1117,6 @@ export function ContextToolbar({
           </Popover>
         )}
 
-        {/* Size Mode for Text Nodes */}
-        {isTextNode && (
-          <Popover>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 px-2">
-                    <Maximize2 className="h-4 w-4" />
-                  </Button>
-                </PopoverTrigger>
-              </TooltipTrigger>
-              <TooltipContent>Size Mode</TooltipContent>
-            </Tooltip>
-            <PopoverContent className="w-48">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Sizing Mode</label>
-                <Select 
-                  value={(selectedItem as any).sizeMode || 'auto'} 
-                  onValueChange={handleSizeModeChange}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="auto">Auto (Fit Content)</SelectItem>
-                    <SelectItem value="custom">Custom (Manual Resize)</SelectItem>
-                  </SelectContent>
-                </Select>
-                {(selectedItem as any).sizeMode === 'custom' && (
-                  <div className="grid grid-cols-2 gap-2 pt-2">
-                    <div>
-                      <label className="text-xs text-muted-foreground">Width (px)</label>
-                      <Input
-                        type="number"
-                        min={selectedItem.type === 'generic.text.textbox' ? 200 : 160}
-                        step="10"
-                        value={(selectedItem as any).width || (selectedItem.type === 'generic.text.textbox' ? 200 : 160)}
-                        onChange={(e) => handleWidthChange(parseInt(e.target.value) || (selectedItem.type === 'generic.text.textbox' ? 200 : 160))}
-                        className="h-8 text-xs"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-muted-foreground">Height (px)</label>
-                      <Input
-                        type="number"
-                        min={selectedItem.type === 'generic.text.textbox' ? 120 : 100}
-                        step="10"
-                        value={(selectedItem as any).height || (selectedItem.type === 'generic.text.textbox' ? 120 : 100)}
-                        onChange={(e) => handleHeightChange(parseInt(e.target.value) || (selectedItem.type === 'generic.text.textbox' ? 120 : 100))}
-                        className="h-8 text-xs"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </PopoverContent>
-          </Popover>
-        )}
 
         {/* Shadow Toggle (Groups and Label/Labelbox) */}
         {(isGroup || isLabelOrLabelbox) && (

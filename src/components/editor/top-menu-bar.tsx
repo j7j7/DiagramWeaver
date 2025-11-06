@@ -250,10 +250,12 @@ export function TopMenuBar({
           />
         </>
       )}
-      {/* Debug: Remove this after testing */}
-      {process.env.NODE_ENV === 'development' && (
+      {selectedItem && (
         <div className="text-xs text-muted-foreground px-2">
-          {selectedItem ? `Selected: ${selectedItem.itemType}` : 'No selection'}
+          {selectedItem.itemType === 'edge' 
+            ? `Selected: Connection ${selectedItem.from} → ${selectedItem.to}`
+            : `Selected: ${selectedItem.label || selectedItem.id || 'Item'}`
+          }
         </div>
       )}
       <div className="ml-auto px-4">
