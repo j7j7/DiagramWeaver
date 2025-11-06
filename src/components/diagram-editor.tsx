@@ -7,10 +7,23 @@ import { ComponentSidebar } from './editor/component-sidebar';
 import { EditorCanvas, type EditorCanvasHandle } from './editor/editor-canvas';
 import { JsonEditorPanel } from './editor/json-editor-panel';
 import { TopMenuBar } from './editor/top-menu-bar';
+import { TabBar } from './editor/tab-bar';
+import { ExportDialog } from './editor/export-dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import type { DiagramData, DiagramNodeData, DiagramGroupData, DiagramConnectionData } from '@/lib/types';
 import { generateSequentialId } from '@/lib/id-generator';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useDiagramTabs } from '@/hooks/use-diagram-tabs';
 import { convertFromNestedHierarchy, convertToNestedHierarchy } from '@/lib/nested-hierarchy';
 
 export type SelectedItem = ((DiagramNodeData | DiagramGroupData) & { 
@@ -41,25 +54,108 @@ export type SelectedItem = ((DiagramNodeData | DiagramGroupData) & {
 });
 
 export default function DiagramEditor() {
-  const [diagramData, setDiagramData] = React.useState<DiagramData>({ nodes: [], connections: [], groups: [] });
-  const [history, setHistory] = React.useState<string[]>([JSON.stringify({ nodes: [], connections: [], groups: [] })]);
-  const [historyIndex, setHistoryIndex] = React.useState<number>(0);
-  const historyRef = React.useRef({ history: [JSON.stringify({ nodes: [], connections: [], groups: [] })], index: 0 });
-  const editorRef = React.useRef<EditorCanvasHandle>(null);
-  const [selectedItem, setSelectedItem] = React.useState<SelectedItem | null>(null);
-  const [selectedItemIds, setSelectedItemIds] = React.useState<Set<string>>(new Set());
-  const [isConnectMode, setIsConnectMode] = React.useState<boolean>(false);
-  const [jsonPanelOpen, setJsonPanelOpen] = React.useState<boolean>(false);
-  const [jsonPanelWidth, setJsonPanelWidth] = React.useState<number>(420);
   const [isClient, setIsClient] = React.useState<boolean>(false);
+  const { toast } = useToast();
+  const isMobile = useIsMobile();
+  const editorRef = React.useRef<EditorCanvasHandle>(null);
+  const [exportDialogOpen, setExportDialogOpen] = React.useState(false);
+  const [closeTabDialogOpen, setCloseTabDialogOpen] = React.useState(false);
+  const [pendingCloseTabId, setPendingCloseTabId] = React.useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = React.useState<boolean>(false);
-  const [canvasTransform, setCanvasTransform] = React.useState<{ x: number; y: number; k: number }>({ x: 0, y: 0, k: 1 });
+  const [jsonPanelWidth, setJsonPanelWidth] = React.useState<number>(420);
   const [isDragging, setIsDragging] = React.useState<boolean>(false);
   const [canPaste, setCanPaste] = React.useState<boolean>(false);
-  const isMobile = useIsMobile();
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [mousePosition, setMousePosition] = React.useState<{ x: number; y: number } | null>(null);
+
+  // Tab management
+  const {
+    tabs,
+    activeTabId,
+    activeTab,
+    createTab,
+    switchTab,
+    closeTab,
+    updateActiveTab,
+    markTabAsSaved,
+    getHistoryRef,
+    setHistoryRef,
+  } = useDiagramTabs({
+    isClient,
+    onToast: toast,
+  });
+
+  // Sync active tab state to local state for component use
+  const diagramData = activeTab?.diagramData || { nodes: [], connections: [], groups: [] };
+  const history = activeTab?.history || [JSON.stringify({ nodes: [], connections: [], groups: [] })];
+  const historyIndex = activeTab?.historyIndex || 0;
+  const historyRef = React.useRef(getHistoryRef(activeTabId || '') || { history: [], index: 0 });
+  const selectedItem = activeTab?.selectedItem || null;
+  const selectedItemIds = activeTab?.selectedItemIds || new Set();
+  const isConnectMode = activeTab?.isConnectMode || false;
+  const jsonPanelOpen = activeTab?.jsonPanelOpen || false;
+  const canvasTransform = activeTab?.canvasTransform || { x: 0, y: 0, k: 1 };
+
+  // Helper functions to update active tab
+  const setDiagramData = React.useCallback((updater: DiagramData | ((prev: DiagramData) => DiagramData)) => {
+    if (!activeTabId) return;
+    const newData = typeof updater === 'function' ? updater(diagramData) : updater;
+    updateActiveTab({ diagramData: newData });
+  }, [activeTabId, diagramData, updateActiveTab]);
+
+  const setSelectedItem = React.useCallback((item: SelectedItem | null) => {
+    if (!activeTabId) return;
+    updateActiveTab({ selectedItem: item });
+  }, [activeTabId, updateActiveTab]);
+
+  const setSelectedItemIds = React.useCallback((updater: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+    if (!activeTabId) return;
+    const newIds = typeof updater === 'function' ? updater(selectedItemIds) : updater;
+    updateActiveTab({ selectedItemIds: newIds });
+  }, [activeTabId, selectedItemIds, updateActiveTab]);
+
+  const setIsConnectMode = React.useCallback((mode: boolean) => {
+    if (!activeTabId) return;
+    updateActiveTab({ isConnectMode: mode });
+  }, [activeTabId, updateActiveTab]);
+
+  const setJsonPanelOpen = React.useCallback((open: boolean) => {
+    if (!activeTabId) return;
+    updateActiveTab({ jsonPanelOpen: open });
+    if (isClient) {
+      localStorage.setItem('dw:jsonEditor:open', String(open));
+    }
+  }, [activeTabId, updateActiveTab, isClient]);
+
+  const setCanvasTransform = React.useCallback((transform: { x: number; y: number; k: number }) => {
+    if (!activeTabId) return;
+    updateActiveTab({ canvasTransform: transform });
+  }, [activeTabId, updateActiveTab]);
+
+  const setHistory = React.useCallback((newHistory: string[]) => {
+    if (!activeTabId) return;
+    updateActiveTab({ history: newHistory });
+    setHistoryRef(activeTabId, { history: newHistory, index: historyIndex });
+  }, [activeTabId, historyIndex, updateActiveTab, setHistoryRef]);
+
+  const setHistoryIndex = React.useCallback((index: number) => {
+    if (!activeTabId) return;
+    updateActiveTab({ historyIndex: index });
+    const currentHistory = historyRef.current.history;
+    setHistoryRef(activeTabId, { history: currentHistory, index });
+  }, [activeTabId, updateActiveTab, setHistoryRef]);
+
+  // Update historyRef when active tab changes
+  React.useEffect(() => {
+    if (activeTabId && activeTab) {
+      historyRef.current = getHistoryRef(activeTabId) || { history: activeTab.history, index: activeTab.historyIndex };
+    }
+  }, [activeTabId, activeTab, getHistoryRef]);
 
   // Watch diagramData changes and update history automatically
   React.useEffect(() => {
+    if (!activeTabId || !activeTab) return;
+    
     // Skip history updates during dragging
     if (isDragging) {
       return;
@@ -67,14 +163,8 @@ export default function DiagramEditor() {
     
     const jsonString = JSON.stringify(diagramData);
     
-    // Save to localStorage for persistence across browser refreshes
-    if (isClient) {
-      localStorage.setItem('dw:diagramData', jsonString);
-    }
-    
     // Skip if this is the same as last history entry (but not on initial load)
     if (historyRef.current.history.length > 1 && historyRef.current.history[historyRef.current.index] === jsonString) {
-
       return;
     }
     
@@ -92,24 +182,13 @@ export default function DiagramEditor() {
     // Update ref
     historyRef.current = { history: currentHistory, index: newIndex };
     
-    // Update state
-    setHistory(currentHistory);
-    setHistoryIndex(newIndex);
-    
-    // Save history to localStorage for persistence
-    if (isClient) {
-      try {
-        localStorage.setItem('dw:diagramHistory', JSON.stringify(currentHistory));
-        localStorage.setItem('dw:diagramHistoryIndex', String(newIndex));
-      } catch (error) {
-        console.warn('Failed to save history to localStorage (possibly quota exceeded):', error);
-        // Continue without saving history - functionality still works, just not persisted
-      }
-    }
-
-  }, [diagramData, isClient, isDragging]);
+    // Update tab state
+    updateActiveTab({ history: currentHistory, historyIndex: newIndex });
+    setHistoryRef(activeTabId, historyRef.current);
+  }, [diagramData, isDragging, activeTabId, activeTab, updateActiveTab, setHistoryRef]);
 
   const undo = React.useCallback(() => {
+    if (!activeTabId) return;
     const { history: currentHistory, index: currentIndex } = historyRef.current;
     
     if (currentIndex > 0) {
@@ -119,20 +198,12 @@ export default function DiagramEditor() {
       const newDiagramData = JSON.parse(currentHistory[newIndex]);
       setDiagramData(newDiagramData);
       setSelectedItem(null);
-      
-      // Save history state to localStorage
-      if (isClient) {
-        try {
-          localStorage.setItem('dw:diagramHistoryIndex', String(newIndex));
-          localStorage.setItem('dw:diagramData', currentHistory[newIndex]);
-        } catch (error) {
-          console.warn('Failed to save history state to localStorage:', error);
-        }
-      }
+      setHistoryRef(activeTabId, historyRef.current);
     }
-  }, [isClient]);
+  }, [activeTabId, setHistoryIndex, setDiagramData, setSelectedItem, setHistoryRef]);
 
   const redo = React.useCallback(() => {
+    if (!activeTabId) return;
     const { history: currentHistory, index: currentIndex } = historyRef.current;
     
     if (currentIndex < currentHistory.length - 1) {
@@ -142,81 +213,16 @@ export default function DiagramEditor() {
       const newDiagramData = JSON.parse(currentHistory[newIndex]);
       setDiagramData(newDiagramData);
       setSelectedItem(null);
-      
-      // Save history state to localStorage
-      if (isClient) {
-        try {
-          localStorage.setItem('dw:diagramHistoryIndex', String(newIndex));
-          localStorage.setItem('dw:diagramData', currentHistory[newIndex]);
-        } catch (error) {
-          console.warn('Failed to save history state to localStorage:', error);
-        }
-      }
+      setHistoryRef(activeTabId, historyRef.current);
     }
-  }, [isClient]);
+  }, [activeTabId, setHistoryIndex, setDiagramData, setSelectedItem, setHistoryRef]);
 
   // Initialize client-side state after hydration
   React.useEffect(() => {
     setIsClient(true);
-    const savedOpen = localStorage.getItem('dw:jsonEditor:open');
     const savedWidth = localStorage.getItem('dw:jsonEditor:width');
-    const savedDiagramData = localStorage.getItem('dw:diagramData');
-    const savedHistory = localStorage.getItem('dw:diagramHistory');
-    const savedHistoryIndex = localStorage.getItem('dw:diagramHistoryIndex');
-    
-    if (savedOpen !== null) {
-      setJsonPanelOpen(savedOpen === 'true');
-    }
     if (savedWidth !== null) {
       setJsonPanelWidth(parseInt(savedWidth, 10));
-    }
-    
-    // Load history first, then diagram data
-    if (savedHistory && savedHistoryIndex) {
-      try {
-        const parsedHistory = JSON.parse(savedHistory);
-        const parsedIndex = parseInt(savedHistoryIndex, 10);
-        
-        if (Array.isArray(parsedHistory) && parsedIndex >= 0 && parsedIndex < parsedHistory.length) {
-          // Restore history
-          historyRef.current = { history: parsedHistory, index: parsedIndex };
-          setHistory(parsedHistory);
-          setHistoryIndex(parsedIndex);
-          
-          // Restore diagram data from history
-          const diagramDataFromHistory = JSON.parse(parsedHistory[parsedIndex]);
-          setDiagramData(diagramDataFromHistory);
-        } else {
-          throw new Error('Invalid history data');
-        }
-      } catch (error) {
-        console.warn('Failed to parse saved history:', error);
-        // Fallback to saved diagram data or default
-        if (savedDiagramData) {
-          try {
-            const parsedData = JSON.parse(savedDiagramData);
-            setDiagramData(parsedData);
-            const initialHistory = [JSON.stringify(parsedData)];
-            historyRef.current = { history: initialHistory, index: 0 };
-            setHistory(initialHistory);
-            setHistoryIndex(0);
-          } catch (dataError) {
-            console.warn('Failed to parse saved diagram data:', dataError);
-          }
-        }
-      }
-    } else if (savedDiagramData) {
-      // Fallback to just diagram data if no history
-      try {
-        const parsedData = JSON.parse(savedDiagramData);
-        setDiagramData(parsedData);
-        const initialHistory = [JSON.stringify(parsedData)];
-        historyRef.current = { history: initialHistory, index: 0 };
-        setHistory(initialHistory);
-        setHistoryIndex(0);
-      } catch (error) {
-        console.warn('Failed to parse saved diagram data:', error);
-      }
     }
   }, []);
 
@@ -234,9 +240,6 @@ export default function DiagramEditor() {
       };
     }
   }, [sidebarOpen, isMobile]);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const { toast } = useToast();
-
 
   const handleItemSelect = (item: SelectedItem | null, shiftKey = false) => {
     // If we click away while in connect mode, cancel it.
@@ -447,6 +450,7 @@ export default function DiagramEditor() {
   };
   
   const handleSave = async () => {
+    if (!activeTabId || !activeTab) return;
     const nestedData = convertToNestedHierarchy(diagramData);
     const jsonString = JSON.stringify(nestedData, null, 2);
 
@@ -454,7 +458,7 @@ export default function DiagramEditor() {
     if ('showSaveFilePicker' in window) {
       try {
         const handle = await (window as any).showSaveFilePicker({
-          suggestedName: 'diagram.json',
+          suggestedName: `${activeTab.name.replace(/\s+/g, '-').toLowerCase()}.json`,
           types: [{
             description: 'JSON Files',
             accept: { 'application/json': ['.json'] }
@@ -463,11 +467,14 @@ export default function DiagramEditor() {
         const writable = await handle.createWritable();
         await writable.write(jsonString);
         await writable.close();
+        markTabAsSaved();
         toast({ title: 'Diagram Saved', description: 'Your diagram has been saved successfully.' });
         return;
-      } catch (error) {
+      } catch (error: any) {
         // User cancelled or API failed, fall back to download
-        console.log('File System Access API failed, falling back to download:', error);
+        if (error.name !== 'AbortError') {
+          console.log('File System Access API failed, falling back to download:', error);
+        }
       }
     }
 
@@ -476,12 +483,13 @@ export default function DiagramEditor() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'diagram.json';
+    a.download = `${activeTab.name.replace(/\s+/g, '-').toLowerCase()}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast({ title: 'Diagram Saved', description: 'Your diagram has been downloaded as diagram.json.' });
+    markTabAsSaved();
+    toast({ title: 'Diagram Saved', description: 'Your diagram has been downloaded.' });
   };
 
   const handleLoadClick = () => {
@@ -562,23 +570,42 @@ export default function DiagramEditor() {
   };
 
   const handleNew = () => {
-    const emptyDiagram = { nodes: [], connections: [], groups: [] };
-    const emptyHistory = [JSON.stringify(emptyDiagram)];
-    
-    setDiagramData(emptyDiagram);
-    setSelectedItem(null);
-    
-    // Reset history
-    historyRef.current = { history: emptyHistory, index: 0 };
-    setHistory(emptyHistory);
-    setHistoryIndex(0);
-    
-    if (isClient) {
-      localStorage.removeItem('dw:diagramData');
-      localStorage.removeItem('dw:diagramHistory');
-      localStorage.removeItem('dw:diagramHistoryIndex');
+    createTab();
+  };
+
+  const handleExportSvg = async () => {
+    setExportDialogOpen(true);
+  };
+
+  const handleExport = async (options: { backgroundColor: 'transparent' | 'white'; useSelection: boolean }) => {
+    setExportDialogOpen(false);
+    if (editorRef.current) {
+      await editorRef.current.startSelectionMode(options);
     }
-    toast({ title: 'New Diagram', description: 'Diagram has been cleared.' });
+  };
+
+  const handleTabClose = async (tabId: string) => {
+    const tab = tabs.find(t => t.id === tabId);
+    if (!tab) return;
+
+    // Check for unsaved changes
+    const currentDataHash = JSON.stringify(activeTab?.diagramData);
+    const hasUnsavedChanges = tab.isModified;
+
+    if (hasUnsavedChanges) {
+      setPendingCloseTabId(tabId);
+      setCloseTabDialogOpen(true);
+    } else {
+      await closeTab(tabId, true);
+    }
+  };
+
+  const handleCloseTabConfirm = async () => {
+    if (pendingCloseTabId) {
+      await closeTab(pendingCloseTabId, true);
+      setPendingCloseTabId(null);
+    }
+    setCloseTabDialogOpen(false);
   };
 
   const handleJsonValidChange = (newDiagramData: DiagramData) => {
@@ -646,10 +673,19 @@ export default function DiagramEditor() {
         redo();
       }
       
-      // Arrow keys - Move selected node by 20px grid
+      // Arrow keys - Move selected node by 10px grid (up to 150), then 30px increments
       if ((e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') && selectedItem && selectedItem.itemType !== 'edge') {
         e.preventDefault();
-        const gridSize = 20;
+        // Custom snap function: snaps to 10px increments up to 150, then 30px increments (150, 180, 210, etc.)
+        const snapToGrid = (v: number): number => {
+          if (v <= 150) {
+            return Math.round(v / 10) * 10;
+          } else {
+            return Math.round((v - 150) / 30) * 30 + 150;
+          }
+        };
+        
+        const gridSize = 10; // Use 10px for arrow key movement
         let newX = (selectedItem as any).x || 0;
         let newY = (selectedItem as any).y || 0;
         
@@ -667,6 +703,10 @@ export default function DiagramEditor() {
             newX += gridSize;
             break;
         }
+        
+        // Snap to grid after movement
+        newX = snapToGrid(newX);
+        newY = snapToGrid(newY);
         
         // Update node position through proper callback
         if (selectedItem.itemType === 'node') {
@@ -777,7 +817,8 @@ export default function DiagramEditor() {
                     onNew={handleNew}
                     onLoad={handleLoadClick}
                     onSave={handleSave}
-                    onExportPng={() => editorRef.current?.exportPng()}
+                    onNewTab={createTab}
+                    onExportSvg={handleExportSvg}
                     onToggleJsonPanel={toggleJsonPanel}
                     jsonPanelOpen={jsonPanelOpen}
                     onFitToView={() => editorRef.current?.fitToView()}
@@ -800,9 +841,18 @@ export default function DiagramEditor() {
                       }
                     }}
                     onConnectionUpdate={handleConnectionUpdate}
-           onConnectionDisconnect={disconnectConnection}
+                    onConnectionDisconnect={disconnectConnection}
                     diagramData={diagramData}
+                    mousePosition={mousePosition}
                 />
+                {activeTabId && (
+                  <TabBar
+                    tabs={tabs}
+                    activeTabId={activeTabId}
+                    onTabSelect={switchTab}
+                    onTabClose={handleTabClose}
+                  />
+                )}
                 <input
                     type="file"
                     ref={fileInputRef}
@@ -840,6 +890,7 @@ export default function DiagramEditor() {
                     onTransformChange={setCanvasTransform}
                     onLabelUpdate={handleLabelUpdate}
                     onClipboardChange={setCanPaste}
+                    onMousePositionChange={setMousePosition}
                     />
                   </div>
                   
@@ -853,6 +904,28 @@ export default function DiagramEditor() {
                 </div>
             </div>
         </main>
+        <ExportDialog
+          open={exportDialogOpen}
+          onOpenChange={setExportDialogOpen}
+          onExport={handleExport}
+        />
+        <AlertDialog open={closeTabDialogOpen} onOpenChange={setCloseTabDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+              <AlertDialogDescription>
+                This tab has unsaved changes. Are you sure you want to close it? Your changes will be lost.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => {
+                setPendingCloseTabId(null);
+                setCloseTabDialogOpen(false);
+              }}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleCloseTabConfirm}>Close Tab</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DndProvider>
   );

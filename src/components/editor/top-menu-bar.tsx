@@ -22,6 +22,8 @@ interface TopMenuBarProps {
   onNew: () => void;
   onLoad: () => void;
   onSave: () => void;
+  onNewTab?: () => void;
+  onExportSvg?: () => void;
   onExportPng?: () => void;
   onToggleJsonPanel?: () => void;
   jsonPanelOpen?: boolean;
@@ -43,12 +45,15 @@ interface TopMenuBarProps {
   onConnectionUpdate?: (from: string, to: string, updates: { arrow?: boolean; text?: string; textPosition?: number; color?: string; [key: string]: any }) => void;
   onConnectionDisconnect?: (from: string, to: string) => void;
   diagramData?: DiagramData;
+  mousePosition?: { x: number; y: number } | null;
 }
 
 export function TopMenuBar({
   onNew,
   onLoad,
   onSave,
+  onNewTab,
+  onExportSvg,
   onExportPng,
   onToggleJsonPanel,
   jsonPanelOpen,
@@ -70,6 +75,7 @@ export function TopMenuBar({
   onConnectionUpdate,
   onConnectionDisconnect,
   diagramData,
+  mousePosition,
 }: TopMenuBarProps) {
   return (
     <div className="flex items-center border-b bg-card min-h-[2.5rem] overflow-x-auto">
@@ -92,13 +98,30 @@ export function TopMenuBar({
               Save
               <MenubarShortcut>Ctrl+S</MenubarShortcut>
             </MenubarItem>
-            {onExportPng && (
+            {onNewTab && (
               <>
                 <MenubarSeparator />
-                <MenubarItem onClick={onExportPng}>
-                  <ImageDown className="mr-2 h-4 w-4" />
-                  Export PNG
+                <MenubarItem onClick={onNewTab}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  + Tab
                 </MenubarItem>
+              </>
+            )}
+            {(onExportSvg || onExportPng) && (
+              <>
+                <MenubarSeparator />
+                {onExportSvg && (
+                  <MenubarItem onClick={onExportSvg}>
+                    <ImageDown className="mr-2 h-4 w-4" />
+                    Export SVG
+                  </MenubarItem>
+                )}
+                {onExportPng && (
+                  <MenubarItem onClick={onExportPng}>
+                    <ImageDown className="mr-2 h-4 w-4" />
+                    Export PNG
+                  </MenubarItem>
+                )}
               </>
             )}
             {onToggleJsonPanel && (
@@ -259,6 +282,11 @@ export function TopMenuBar({
             ? `Selected: Connection ${selectedItem.from} → ${selectedItem.to}`
             : `Selected: ${selectedItem.label || selectedItem.id || 'Item'}`
           }
+        </div>
+      )}
+      {mousePosition && (
+        <div className="text-xs text-muted-foreground px-2 border-l border-border">
+          Position: X: {mousePosition.x}, Y: {mousePosition.y}
         </div>
       )}
       <div className="ml-auto px-4">

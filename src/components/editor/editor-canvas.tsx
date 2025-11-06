@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 
 import { ContextMenu } from "../ui/context-menu";
 import { generateGroupId, generateSequentialId } from "@/lib/id-generator";
+import { CanvasRulers } from "./canvas-rulers";
 
 
 const NODE_WIDTH = 80;
@@ -27,6 +28,11 @@ const EXTRA_LINE_HEIGHT = 20;
 const GROUP_PADDING = 50; // Increased by 25% (was 40)
 const GROUP_NODE_SPACING = 30;
 const GRID_SNAP = 20;
+
+// Custom snap function: snaps to 10px increments
+const snapToGrid = (v: number): number => {
+  return Math.round(v / 10) * 10;
+};
 
 interface EditorCanvasProps {
   diagramData: DiagramData;
@@ -42,6 +48,7 @@ interface EditorCanvasProps {
   onLabelUpdate?: (nodeId: string, newLabel: string) => void;
   onDraggingChange?: (isDragging: boolean) => void;
   onClipboardChange?: (hasClipboard: boolean) => void;
+  onMousePositionChange?: (position: { x: number; y: number } | null) => void;
 }
 
 type PositionedNode = DiagramNodeData & { x: number; y: number; };
@@ -202,14 +209,15 @@ const measureNodeDims = (n: PositionedNode) => {
 
 export type EditorCanvasHandle = {
   fitToView: () => void;
-  exportPng: () => Promise<void>;
+  exportPng: (options?: { backgroundColor?: 'transparent' | 'white'; selectionArea?: { x: number; y: number; width: number; height: number } }) => Promise<void>;
+  startSelectionMode: () => void;
   copy: () => void;
   paste: () => void;
   canPaste: () => boolean;
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, selectedItemId, isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, selectedItemId, isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange }: EditorCanvasProps,
   ref
 ) {
   const [internalTransform, setInternalTransform] = useState({ x: 0, y: 0, k: 1 });
@@ -228,8 +236,15 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   const [description, setDescription] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectionStart, setSelectionStart] = useState<{ x: number; y: number } | null>(null);
+  const [selectionEnd, setSelectionEnd] = useState<{ x: number; y: number } | null>(null);
+  const [pendingExportOptions, setPendingExportOptions] = useState<{ backgroundColor?: 'transparent' | 'white'; useSelection: boolean } | null>(null);
   const { toast } = useToast();
   const canvasRef = useRef<HTMLDivElement>(null);
+  const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 });
+  const [dragPosition, setDragPosition] = useState<{ x: number; y: number; itemId?: string } | null>(null);
+  const isDraggingRef = useRef(false);
   
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{
@@ -1046,7 +1061,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         });
       } else {
         // Top-level placement: snap to grid and avoid overlap by nudging to nearest free slot
-        const snap = (v: number) => Math.round(v / GRID_SNAP) * GRID_SNAP;
+        const snap = snapToGrid;
         let posX = snap(position.x);
         let posY = snap(position.y);
 
@@ -1084,8 +1099,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         const dirs = [ [1,0],[0,1],[-1,0],[0,-1] ];
         let step = 1; let attempts = 0; let dirIdx = 0; let movesInDir = 0; let changes = 0;
         while (!isFreeflowNewItem && isOverlapAt(posX, posY) && attempts < 50) {
-          posX += dirs[dirIdx][0] * GRID_SNAP;
-          posY += dirs[dirIdx][1] * GRID_SNAP;
+          // Use 10px increments for nudging (smaller step size)
+          const nudgeStep = 10;
+          posX += dirs[dirIdx][0] * nudgeStep;
+          posY += dirs[dirIdx][1] * nudgeStep;
+          // Snap after nudging
+          posX = snap(posX);
+          posY = snap(posY);
           movesInDir++;
           if (movesInDir === step) { dirIdx = (dirIdx + 1) % 4; movesInDir = 0; changes++; if (changes % 2 === 0) step++; }
           attempts++;
@@ -1330,7 +1350,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           }
         } else {
           // Top-level: snap and prevent overlap
-          const snap = (v: number) => Math.round(v / GRID_SNAP) * GRID_SNAP;
+          const snap = snapToGrid;
           const snappedX = snap(newPos.x);
           const snappedY = snap(newPos.y);
 
@@ -1426,6 +1446,34 @@ const [, drop] = useDrop(() => ({
         const x = (clientOffset.x - rect.left - transform.x) / transform.k;
         const y = (clientOffset.y - rect.top - transform.y) / transform.k;
 
+        // Update drag position for real-time display
+        // hover is only called during drag, so we always update
+        let itemX = x;
+        let itemY = y;
+        
+        if (item.id && (monitor.getItemType() === ItemTypes.CANVAS_NODE || monitor.getItemType() === ItemTypes.GROUP)) {
+          // For existing items, calculate based on initial position and delta
+          const initialCanvasPos = monitor.getInitialSourceClientOffset();
+          const delta = monitor.getDifferenceFromInitialOffset();
+          if (initialCanvasPos && delta) {
+            const originalItem = nodesById[item.id] || groupsById[item.id];
+            if (originalItem) {
+              const initialX = originalItem.x ?? 0;
+              const initialY = originalItem.y ?? 0;
+              itemX = initialX + delta.x / transform.k;
+              itemY = initialY + delta.y / transform.k;
+            }
+          }
+        }
+        
+        // Snap to grid for display
+        const snap = snapToGrid;
+        itemX = snap(itemX);
+        itemY = snap(itemY);
+        
+        setDragPosition({ x: itemX, y: itemY, itemId: item.id });
+        isDraggingRef.current = true;
+
         // Check if item is a freeflow node
         const isFreeflowNode = item.id && nodesById[item.id]?.freeflow;
 
@@ -1484,16 +1532,23 @@ const [, drop] = useDrop(() => ({
           // This is an existing item being moved
           const initialCanvasPos = monitor.getInitialSourceClientOffset();
           const delta = monitor.getDifferenceFromInitialOffset();
-          if (!initialCanvasPos || !delta) return;
-
-          const originalItem = nodesById[item.id!] || groupsById[item.id!];
-          const initialX = originalItem?.x ?? 0;
-          const initialY = originalItem?.y ?? 0;
-          x = initialX + delta.x / transform.k;
-          y = initialY + delta.y / transform.k;
+          if (!initialCanvasPos || !delta) {
+            // If delta isn't available, use client offset as fallback
+            x = (currentPos.x - canvasRect.left - transform.x) / transform.k;
+            y = (currentPos.y - canvasRect.top - transform.y) / transform.k;
+          } else {
+            const originalItem = nodesById[item.id!] || groupsById[item.id!];
+            const initialX = originalItem?.x ?? 0;
+            const initialY = originalItem?.y ?? 0;
+            x = initialX + delta.x / transform.k;
+            y = initialY + delta.y / transform.k;
+          }
         }
         
-        
+        // Snap to grid before dropping
+        const snap = snapToGrid;
+        x = snap(x);
+        y = snap(y);
         
         // Check if item is a freeflow node
         const isFreeflowNode = item.id && nodesById[item.id]?.freeflow;
@@ -1506,6 +1561,9 @@ const [, drop] = useDrop(() => ({
             moveItem({ id: item.id, type: item.type || '', x: item.x, y: item.y }, { x, y }, targetGroupIdForFreeflow);
         }
         
+        // Clear drag position display after drop
+        setDragPosition(null);
+        isDraggingRef.current = false;
         setHoveredGroupId(null);
     },
     collect: (monitor) => ({
@@ -1569,19 +1627,110 @@ const [, drop] = useDrop(() => ({
   const handleMouseDown = (e: React.MouseEvent) => {
     if (isConnectMode) return;
     const target = e.target as HTMLElement;
+    
+    // Handle selection mode
+    if (isSelectionMode && e.button === 0) {
+      if (!canvasRef.current) return;
+      const contentDiv = canvasRef.current.querySelector('.dot-grid') as HTMLElement;
+      if (!contentDiv) return;
+      
+      // Get bounding rects - we need both to calculate accurate coordinates
+      const contentRect = contentDiv.getBoundingClientRect();
+      const canvasRect = canvasRef.current.getBoundingClientRect();
+      
+      // The content div's position in screen space (accounting for transform)
+      // We need to convert mouse position to coordinates relative to the untransformed div
+      // The div has transform: translate(transform.x, transform.y) scale(transform.k)
+      // So: mousePos - canvasPos = canvasSpace coordinates
+      // Then: (canvasSpace - transform.x) / transform.k = diagramSpace coordinates
+      const mouseX = e.clientX;
+      const mouseY = e.clientY;
+      
+      // Mouse position relative to canvas
+      const canvasX = mouseX - canvasRect.left;
+      const canvasY = mouseY - canvasRect.top;
+      
+      // Convert to diagram space (coordinates relative to untransformed .dot-grid div)
+      const diagramX = (canvasX - transform.x) / transform.k;
+      const diagramY = (canvasY - transform.y) / transform.k;
+      
+      setSelectionStart({ x: diagramX, y: diagramY });
+      setSelectionEnd({ x: diagramX, y: diagramY });
+      return;
+    }
+    
     if (e.button !== 0 || target.closest('.absolute')) return;
     setIsPanning(true);
     setPanStart({ x: e.clientX - transform.x, y: e.clientY - transform.y });
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    // Track mouse position for display
+    if (canvasRef.current && onMousePositionChange) {
+      const canvasRect = canvasRef.current.getBoundingClientRect();
+      const canvasX = e.clientX - canvasRect.left;
+      const canvasY = e.clientY - canvasRect.top;
+      
+      // Convert to diagram space (coordinates relative to untransformed .dot-grid div)
+      const diagramX = (canvasX - transform.x) / transform.k;
+      const diagramY = (canvasY - transform.y) / transform.k;
+      
+      // Snap to grid for display consistency
+      const snap = snapToGrid;
+      onMousePositionChange({ x: snap(diagramX), y: snap(diagramY) });
+    }
+    
+    if (isSelectionMode && selectionStart) {
+      if (!canvasRef.current) return;
+      const contentDiv = canvasRef.current.querySelector('.dot-grid') as HTMLElement;
+      if (!contentDiv) return;
+      
+      const canvasRect = canvasRef.current.getBoundingClientRect();
+      const canvasX = e.clientX - canvasRect.left;
+      const canvasY = e.clientY - canvasRect.top;
+      
+      // Convert to coordinates relative to the untransformed .dot-grid div
+      const diagramX = (canvasX - transform.x) / transform.k;
+      const diagramY = (canvasY - transform.y) / transform.k;
+      
+      setSelectionEnd({ x: diagramX, y: diagramY });
+      return;
+    }
+    
     if (!isPanning) return;
     setTransform({ ...transform, x: e.clientX - panStart.x, y: e.clientY - panStart.y });
   };
 
   const handleMouseUpOrLeave = () => {
+    if (isSelectionMode && selectionStart && selectionEnd && pendingExportOptions) {
+      // Complete selection and export
+      // Selection coordinates are already in diagram space (relative to .dot-grid)
+      const x = Math.min(selectionStart.x, selectionEnd.x);
+      const y = Math.min(selectionStart.y, selectionEnd.y);
+      const width = Math.abs(selectionEnd.x - selectionStart.x);
+      const height = Math.abs(selectionEnd.y - selectionStart.y);
+      
+      if (width > 10 && height > 10) {
+        // Debug: log coordinates
+        console.log('Export selection:', { x, y, width, height, transform });
+        
+        // Pass coordinates directly in diagram space (they're relative to the .dot-grid div)
+        exportPng({
+          backgroundColor: pendingExportOptions.backgroundColor,
+          selectionArea: { x, y, width, height },
+        });
+      }
+      
+      setIsSelectionMode(false);
+      setSelectionStart(null);
+      setSelectionEnd(null);
+      setPendingExportOptions(null);
+      return;
+    }
+    
     setIsPanning(false);
   };
+
 
   // Touch event handlers for mobile - improved logic
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -1752,28 +1901,133 @@ const [, drop] = useDrop(() => ({
     setTransform({ x, y, k });
   }, [processedNodes, processedGroups]);
 
-  const exportPng = useCallback(async () => {
+  const exportPng = useCallback(async (options?: { backgroundColor?: 'transparent' | 'white'; selectionArea?: { x: number; y: number; width: number; height: number } }) => {
     if (!canvasRef.current) return;
+    
     try {
       const { toPng } = await import('html-to-image');
-      const dataUrl = await toPng(canvasRef.current, {
-        pixelRatio: Math.min(3, window.devicePixelRatio || 1) * 2,
-        cacheBust: true,
-        backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--background') || '#ffffff',
-        skipFonts: true,
-      });
-      const link = document.createElement('a');
-      link.download = 'diagram.png';
-      link.href = dataUrl;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      toast({ title: 'Exported', description: 'PNG exported successfully.' });
+      
+      // Find the actual content div (the one with dot-grid class)
+      const contentDiv = canvasRef.current.querySelector('.dot-grid') as HTMLElement;
+      if (!contentDiv) {
+        toast({ variant: 'destructive', title: 'Export failed', description: 'Could not find diagram content.' });
+        return;
+      }
+
+      // Temporarily hide grid by removing the class
+      const hadGridClass = contentDiv.classList.contains('dot-grid');
+      if (hadGridClass) {
+        contentDiv.classList.remove('dot-grid');
+      }
+
+      // Temporarily adjust transform for export if needed
+      const originalTransform = contentDiv.style.transform;
+      const originalTransformOrigin = contentDiv.style.transformOrigin;
+      
+      // Remove transform temporarily for accurate coordinate mapping
+      contentDiv.style.transform = 'none';
+      contentDiv.style.transformOrigin = '0 0';
+      
+      // Wait for browser to re-render with new transform
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      
+      // For full export, we can work with the element as-is
+      // For selection export, we need to adjust coordinates
+      let exportElement = contentDiv;
+
+      try {
+        const backgroundColor = options?.backgroundColor === 'transparent' ? 'transparent' : 
+                               options?.backgroundColor === 'white' ? '#ffffff' :
+                               getComputedStyle(document.documentElement).getPropertyValue('--background') || '#ffffff';
+
+        let exportOptions: any = {
+          pixelRatio: Math.min(3, window.devicePixelRatio || 1) * 2,
+          cacheBust: true,
+          backgroundColor: backgroundColor === 'transparent' ? undefined : backgroundColor,
+          skipFonts: true,
+        };
+
+        // If selection area is provided, crop to that area
+        if (options?.selectionArea) {
+          const { x, y, width: selectionWidth, height: selectionHeight } = options.selectionArea;
+          
+          // Debug: log before export
+          console.log('Export with selection:', { 
+            x, y, selectionWidth, selectionHeight,
+            contentDivSize: { width, height },
+            transform: 'removed'
+          });
+          
+          // Coordinates are in diagram space (relative to contentDiv without transform)
+          // html-to-image expects coordinates relative to the element's coordinate system
+          exportOptions = {
+            ...exportOptions,
+            x: Math.max(0, x),
+            y: Math.max(0, y),
+            width: Math.max(1, Math.min(selectionWidth, width - x)), // Don't exceed content bounds
+            height: Math.max(1, Math.min(selectionHeight, height - y)), // Don't exceed content bounds
+          };
+          
+          console.log('Final export options:', exportOptions);
+        }
+
+        const dataUrl = await toPng(exportElement, exportOptions);
+
+        // Use File System Access API if available
+        if ('showSaveFilePicker' in window) {
+          try {
+            const handle = await (window as any).showSaveFilePicker({
+              suggestedName: 'diagram.png',
+              types: [{
+                description: 'PNG Images',
+                accept: { 'image/png': ['.png'] }
+              }]
+            });
+            const blob = await (await fetch(dataUrl)).blob();
+            const writable = await handle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+            toast({ title: 'Exported', description: 'PNG exported successfully.' });
+            return;
+          } catch (error: any) {
+            // User cancelled or API failed, fall back to download
+            if (error.name !== 'AbortError') {
+              console.log('File System Access API failed, falling back to download:', error);
+            }
+          }
+        }
+
+        // Fallback: automatic download
+        const link = document.createElement('a');
+        link.download = 'diagram.png';
+        link.href = dataUrl;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast({ title: 'Exported', description: 'PNG exported successfully.' });
+      } finally {
+        // Restore original state
+        if (hadGridClass) {
+          contentDiv.classList.add('dot-grid');
+        }
+        contentDiv.style.transform = originalTransform;
+        contentDiv.style.transformOrigin = originalTransformOrigin;
+      }
     } catch (err) {
-      // Swallow known SecurityError from cross-origin styles when fonts are parsed; we already set skipFonts
+      console.error('Export failed:', err);
       toast({ variant: 'destructive', title: 'Export failed', description: 'Export encountered an issue.' });
     }
-  }, [toast]);
+  }, [toast, transform]);
+
+  const startSelectionMode = useCallback((options: { backgroundColor?: 'transparent' | 'white'; useSelection: boolean }) => {
+    if (options.useSelection) {
+      setIsSelectionMode(true);
+      setPendingExportOptions(options);
+      toast({ title: 'Selection Mode', description: 'Drag to select the area to export.' });
+    } else {
+      exportPng({ backgroundColor: options.backgroundColor });
+    }
+  }, [exportPng, toast]);
 
   // Initial imperative API setup - will be updated after handleCopy/handlePaste are defined
 
@@ -1841,6 +2095,31 @@ const [, drop] = useDrop(() => ({
       });
     }
   };
+
+  // Track canvas dimensions for rulers
+  useEffect(() => {
+    if (!canvasRef.current) return;
+
+    const updateDimensions = () => {
+      if (canvasRef.current) {
+        setCanvasDimensions({
+          width: canvasRef.current.clientWidth,
+          height: canvasRef.current.clientHeight,
+        });
+      }
+    };
+
+    // Initial measurement
+    updateDimensions();
+
+    // Use ResizeObserver for efficient dimension tracking
+    const resizeObserver = new ResizeObserver(updateDimensions);
+    resizeObserver.observe(canvasRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -2190,14 +2469,27 @@ const [, drop] = useDrop(() => ({
   // Expose imperative API
   React.useImperativeHandle(ref, () => ({
     fitToView: handleFitToView,
-    exportPng,
+    exportPng: (options?: { backgroundColor?: 'transparent' | 'white'; selectionArea?: { x: number; y: number; width: number; height: number } }) => exportPng(options),
+    startSelectionMode: (options: { backgroundColor?: 'transparent' | 'white'; useSelection: boolean }) => startSelectionMode(options),
     copy: copyHandler,
     paste: pasteHandler,
     canPaste: canPasteHandler,
-  }), [handleFitToView, exportPng, copyHandler, pasteHandler, canPasteHandler]);
+  }), [handleFitToView, exportPng, startSelectionMode, copyHandler, pasteHandler, canPasteHandler]);
+
+  const RULER_SIZE = 24;
 
   return (
     <div className="relative w-full h-full">
+        {/* Canvas Rulers */}
+        {canvasDimensions.width > 0 && canvasDimensions.height > 0 && (
+          <CanvasRulers
+            transform={transform}
+            canvasWidth={canvasDimensions.width}
+            canvasHeight={canvasDimensions.height}
+            rulerSize={RULER_SIZE}
+          />
+        )}
+        
         <div
             ref={canvasRef}
             className={cn(
@@ -2206,12 +2498,20 @@ const [, drop] = useDrop(() => ({
               !isConnectMode && "cursor-grab",
               isPanning && "cursor-grabbing"
             )}
-            style={{ touchAction: 'none' }}
+            style={{ 
+              touchAction: 'none',
+              cursor: isSelectionMode ? 'crosshair' : (isConnectMode ? 'crosshair' : (!isConnectMode && !isPanning ? 'grab' : 'grabbing'))
+            }}
             
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUpOrLeave}
-            onMouseLeave={handleMouseUpOrLeave}
+            onMouseLeave={() => {
+              if (onMousePositionChange) {
+                onMousePositionChange(null);
+              }
+              handleMouseUpOrLeave();
+            }}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
@@ -2443,6 +2743,19 @@ return (
           isFreeflow={diagramData.nodes.find(n => n.id === contextMenu.itemId)?.freeflow || false}
         />
 
+        {/* Selection rectangle overlay */}
+        {isSelectionMode && selectionStart && selectionEnd && (
+          <div
+            className="absolute border-2 border-blue-500 bg-blue-200/20 pointer-events-none z-[100]"
+            style={{
+              left: `${Math.min(selectionStart.x, selectionEnd.x) * transform.k + transform.x}px`,
+              top: `${Math.min(selectionStart.y, selectionEnd.y) * transform.k + transform.y}px`,
+              width: `${Math.abs(selectionEnd.x - selectionStart.x) * transform.k}px`,
+              height: `${Math.abs(selectionEnd.y - selectionStart.y) * transform.k}px`,
+            }}
+          />
+        )}
+
         {/* Fit-to-view floating button */}
         <div className="absolute bottom-4 right-4 z-50">
           <Button variant="secondary" size="icon" onClick={handleFitToView} className="rounded-full shadow-md">
@@ -2450,6 +2763,22 @@ return (
             <span className="sr-only">Resize to fit</span>
           </Button>
         </div>
+
+        {/* Drag position indicator */}
+        {dragPosition && (
+          <div
+            className="absolute bg-card/95 backdrop-blur-sm border border-border rounded-md px-3 py-1.5 shadow-lg z-[60] pointer-events-none"
+            style={{
+              left: `${dragPosition.x * transform.k + transform.x + 20}px`,
+              top: `${dragPosition.y * transform.k + transform.y - 30}px`,
+              fontSize: '12px',
+              fontFamily: 'monospace',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            X: {Math.round(dragPosition.x)} Y: {Math.round(dragPosition.y)}
+          </div>
+        )}
     </div>
   );
 });
