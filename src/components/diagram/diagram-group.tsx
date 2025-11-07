@@ -17,12 +17,13 @@ interface DiagramGroupProps {
   onClick?: (e: React.MouseEvent, group: DiagramGroupData) => void;
   onContextMenu?: (e: React.MouseEvent, group: DiagramGroupData) => void;
   onResize?: (groupId: string, newWidth: number, newHeight: number) => void;
+  onLabelChange?: (groupId: string, newLabel: string) => void;
 }
 
 
 
 
-export function DiagramGroup({ group, isSelected, isDropTarget, isTargetable, onClick, onContextMenu, onResize }: DiagramGroupProps) {
+export function DiagramGroup({ group, isSelected, isDropTarget, isTargetable, onClick, onContextMenu, onResize, onLabelChange }: DiagramGroupProps) {
 const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.GROUP,
     item: { ...group, type: ItemTypes.GROUP },
@@ -38,7 +39,10 @@ const [{ isDragging }, drag] = useDrag(() => ({
   const [isResizing, setIsResizing] = useState(false);
   const [resizeHandle, setResizeHandle] = useState<'right' | 'bottom' | null>(null);
   const [isHovered, setIsHovered] = useState(false);
+  const [isEditingLabel, setIsEditingLabel] = useState(false);
+  const [editValue, setEditValue] = useState('');
   const resizeStartPos = useRef<{ x: number; y: number; startWidth: number; startHeight: number } | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Touch event handlers for mobile drag and drop
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -192,6 +196,42 @@ const [{ isDragging }, drag] = useDrag(() => ({
     if (!isResizing) {
       setIsHovered(false);
     }
+  };
+
+  // Label editing handlers
+  const handleLabelStartEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsEditingLabel(true);
+    setEditValue(group.label || '');
+    setTimeout(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }, 0);
+  };
+
+  const handleLabelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEditValue(e.target.value);
+  };
+
+  const handleLabelSubmit = () => {
+    if (onLabelChange) {
+      onLabelChange(group.id, editValue.trim());
+    }
+    setIsEditingLabel(false);
+    setEditValue('');
+  };
+
+  const handleLabelKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleLabelSubmit();
+    } else if (e.key === 'Escape') {
+      setIsEditingLabel(false);
+      setEditValue('');
+    }
+  };
+
+  const handleLabelBlur = () => {
+    handleLabelSubmit();
   };
 
   const isZone = group.subType === 'zone';
@@ -396,28 +436,48 @@ const [{ isDragging }, drag] = useDrag(() => ({
           />
         </>
       )}
-      <Popover>
-        <PopoverTrigger asChild>
-          <div className={cn(
-            "absolute px-2 text-sm font-semibold hover:text-primary cursor-pointer"
+      {/* Label display/edit */}
+      {isEditingLabel ? (
+        <input
+          ref={inputRef}
+          type="text"
+          value={editValue}
+          onChange={handleLabelChange}
+          onKeyDown={handleLabelKeyDown}
+          onBlur={handleLabelBlur}
+          className={cn(
+            "absolute px-2 text-sm font-semibold bg-background border border-primary rounded outline-none",
+            "focus:ring-2 focus:ring-primary focus:ring-offset-1"
           )}
-          style={getTextPositioning().style}>
-            {group.label || 'Untitled Group'}
-          </div>
-        </PopoverTrigger>
-        {group.info && (
-          <PopoverContent
-            side="top"
-            align="start"
-            className="w-80 bg-popover text-popover-foreground shadow-xl border-accent"
-          >
-            <div className="space-y-2">
-              <h4 className="font-semibold font-headline text-primary">{group.label || 'Untitled Group'}</h4>
-              <p className="text-sm">{group.info}</p>
+          style={getTextPositioning().style}
+        />
+      ) : (
+        <Popover>
+          <PopoverTrigger asChild>
+            <div 
+              className={cn(
+                "absolute px-2 text-sm font-semibold hover:text-primary cursor-pointer"
+              )}
+              style={getTextPositioning().style}
+              onDoubleClick={handleLabelStartEdit}
+            >
+              {group.label || 'Untitled Group'}
             </div>
-          </PopoverContent>
-        )}
-      </Popover>
+          </PopoverTrigger>
+          {group.info && (
+            <PopoverContent
+              side="top"
+              align="start"
+              className="w-80 bg-popover text-popover-foreground shadow-xl border-accent"
+            >
+              <div className="space-y-2">
+                <h4 className="font-semibold font-headline text-primary">{group.label || 'Untitled Group'}</h4>
+                <p className="text-sm">{group.info}</p>
+              </div>
+            </PopoverContent>
+          )}
+        </Popover>
+      )}
     </div>
   );
 }

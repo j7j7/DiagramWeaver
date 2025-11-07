@@ -1197,6 +1197,22 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     });
   }, [setDiagramData, processedGroups]);
 
+  const updateGroupLabel = useCallback((groupId: string, newLabel: string) => {
+    setDiagramData(prevData => {
+      const updatedGroups = prevData.groups?.map(group => {
+        if (group.id === groupId) {
+          return {
+            ...group,
+            label: newLabel
+          };
+        }
+        return group;
+      }) || [];
+      
+      return { ...prevData, groups: updatedGroups };
+    });
+  }, [setDiagramData]);
+
   const moveItem = useCallback((item: { id: string; type: string; x?: number, y?: number }, newPos: { x: number; y: number }, targetGroupId: string | null) => {
     setDiagramData(prevData => {
       let currentNodes = [...(prevData.nodes || [])];
@@ -2647,6 +2663,7 @@ return (
                           onClick={handleGroupClick}
                           onContextMenu={handleGroupRightClick}
                           onResize={resizeGroup}
+                          onLabelChange={updateGroupLabel}
                         />
                       </div>
                     );
