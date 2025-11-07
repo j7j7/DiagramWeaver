@@ -1,0 +1,42 @@
+{
+  "nodes": [
+    {
+      "id": "text-1",
+      "type": "generic.text.text",
+      "label": "Text Node",
+      "x": 50,
+      "y": 50,
+      "width": 80,
+      "height": 40
+    },
+    {
+      "id": "label-1", 
+      "type": "generic.text.label",
+      "label": "Label Node",
+      "x": 150,
+      "y": 50,
+      "width": 80,
+      "height": 20
+    },
+    {
+      "id": "textbox-1",
+      "type": "generic.text.textbox", 
+      "label": "This is a textbox with multiple lines of text for testing",
+      "x": 250,
+      "y": 50,
+      "width": 200,
+      "height": 120
+    },
+    {
+      "id": "labelbox-1",
+      "type": "generic.text.labelbox",
+      "label": "Labelbox with text content",
+      "x": 50,
+      "y": 200,
+      "width": 160,
+      "height": 100
+    }
+  ],
+  "connections": [],
+  "groups": []
+}

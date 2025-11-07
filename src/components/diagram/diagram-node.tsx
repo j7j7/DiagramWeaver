@@ -40,11 +40,20 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, onC
   const [resizeHandle, setResizeHandle] = useState<'right' | 'bottom' | null>(null);
   const [isHovered, setIsHovered] = useState(false);
   const resizeStartPos = useRef<{ x: number; y: number; startWidth: number; startHeight: number } | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleLabelClick = (e: React.MouseEvent) => {
+  const handleLabelDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsEditingLabel(true);
     setEditText(node.label || '');
+    setTimeout(() => {
+      const ref = isTextboxNode || isLabelboxNode ? textareaRef.current : inputRef.current;
+      if (ref) {
+        ref.focus();
+        ref.select();
+      }
+    }, 0);
   };
 
   const handleLabelSubmit = () => {
@@ -361,19 +370,20 @@ return (
               <div className="flex items-center justify-center h-full w-full px-2">
                 {isEditingLabel ? (
                   <input
+                    ref={inputRef}
+                    id={`node-input-${node.id}`}
                     type="text"
                     value={editText}
                     onChange={(e) => setEditText(e.target.value)}
                     onBlur={handleLabelSubmit}
                     onKeyDown={(e) => handleLabelKeyDown(e, false)}
                     className="text-sm font-medium text-center bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
-                    autoFocus
                     onClick={(e) => e.stopPropagation()}
                   />
                 ) : (
                   <p 
                     className="text-sm font-medium text-center text-foreground break-words leading-tight cursor-text hover:bg-background/50 rounded px-1 py-0.5 -mx-1 -my-0.5"
-                    onClick={handleLabelClick}
+                    onDoubleClick={handleLabelDoubleClick}
                   >
                     {node.label || 'Untitled'}
                   </p>
@@ -423,19 +433,20 @@ return (
               >
                 {isEditingLabel ? (
                   <input
+                    ref={inputRef}
+                    id={`node-input-${node.id}`}
                     type="text"
                     value={editText}
                     onChange={(e) => setEditText(e.target.value)}
                     onBlur={handleLabelSubmit}
                     onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                    className="text-sm font-medium text-center bg-transparent border border-primary rounded px-1 w-full outline-none"
-                    autoFocus
+                    className="text-sm font-medium text-center bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
                     onClick={(e) => e.stopPropagation()}
                   />
                 ) : (
                   <p 
                     className="text-sm font-medium text-center break-words leading-tight cursor-text hover:bg-background/50 rounded px-1 -mx-1"
-                    onClick={handleLabelClick}
+                    onDoubleClick={handleLabelDoubleClick}
                   >
                     {node.label || 'Label'}
                   </p>
@@ -460,19 +471,20 @@ return (
               >
                 {isEditingLabel ? (
                   <textarea
+                    ref={textareaRef}
+                    id={`node-input-${node.id}`}
                     value={editText}
                     onChange={(e) => setEditText(e.target.value)}
                     onBlur={handleLabelSubmit}
                     onKeyDown={(e) => handleLabelKeyDown(e, true)}
                     className="text-sm font-medium bg-transparent border border-primary rounded px-2 py-2 w-full h-full outline-none resize-none"
-                    autoFocus
                     onClick={(e) => e.stopPropagation()}
                     rows={4}
                   />
                 ) : (
                   <p 
                     className="text-sm font-medium text-left break-words leading-normal cursor-text hover:bg-background/50 rounded px-2 py-2 -mx-2 -my-2 whitespace-pre-wrap"
-                    onClick={handleLabelClick}
+                    onDoubleClick={handleLabelDoubleClick}
                   >
                     {node.label || 'Enter text...'}
                   </p>
@@ -523,19 +535,20 @@ return (
               >
                 {isEditingLabel ? (
                   <textarea
+                    ref={textareaRef}
+                    id={`node-input-${node.id}`}
                     value={editText}
                     onChange={(e) => setEditText(e.target.value)}
                     onBlur={handleLabelSubmit}
                     onKeyDown={(e) => handleLabelKeyDown(e, true)}
                     className="text-sm font-medium bg-transparent border border-primary rounded px-2 py-2 w-full h-full outline-none resize-none"
-                    autoFocus
                     onClick={(e) => e.stopPropagation()}
                     rows={3}
                   />
                 ) : (
                   <p 
                     className="text-sm font-medium text-center break-words leading-normal cursor-text hover:bg-background/50 rounded px-2 py-2 -mx-2 -my-2 whitespace-pre-wrap"
-                    onClick={handleLabelClick}
+                    onDoubleClick={handleLabelDoubleClick}
                   >
                     {node.label || 'Enter label...'}
                   </p>
@@ -575,19 +588,20 @@ return (
                         <div className="absolute inset-0 flex items-center justify-center">
                           {isEditingLabel ? (
                             <input
-                              type="text"
+                              ref={inputRef}
+                    id={`node-input-${node.id}`}
+                    type="text"
                               value={editText}
                               onChange={(e) => setEditText(e.target.value)}
                               onBlur={handleLabelSubmit}
                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
                               className="text-xs font-medium text-center bg-transparent border border-white rounded px-1 py-0.5 w-16 outline-none"
-                              autoFocus
                               onClick={(e) => e.stopPropagation()}
                             />
                           ) : (
                             <p 
                               className="text-xs font-medium text-center text-white break-words leading-tight px-1 cursor-text"
-                              onClick={handleLabelClick}
+                              onDoubleClick={handleLabelDoubleClick}
                             >
                               {node.label}
                             </p>
@@ -619,19 +633,20 @@ return (
                         <div className="absolute inset-0 flex items-center justify-center">
                           {isEditingLabel ? (
                             <input
-                              type="text"
+                              ref={inputRef}
+                    id={`node-input-${node.id}`}
+                    type="text"
                               value={editText}
                               onChange={(e) => setEditText(e.target.value)}
                               onBlur={handleLabelSubmit}
                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
                               className="text-xs font-medium text-center bg-transparent border border-white rounded px-1 py-0.5 w-16 outline-none"
-                              autoFocus
                               onClick={(e) => e.stopPropagation()}
                             />
                           ) : (
                             <p 
                               className="text-xs font-medium text-center text-white break-words leading-tight px-1 cursor-text"
-                              onClick={handleLabelClick}
+                              onDoubleClick={handleLabelDoubleClick}
                             >
                               {node.label}
                             </p>
@@ -663,19 +678,20 @@ return (
                         <div className="absolute inset-0 flex items-center justify-center">
                           {isEditingLabel ? (
                   <input
+                    ref={inputRef}
+                    id={`node-input-${node.id}`}
                     type="text"
                     value={editText}
                     onChange={(e) => setEditText(e.target.value)}
                     onBlur={handleLabelSubmit}
                     onKeyDown={(e) => handleLabelKeyDown(e, false)}
                     className="text-sm font-medium text-center bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
-                    autoFocus
                     onClick={(e) => e.stopPropagation()}
                   />
                           ) : (
                             <p 
                               className="text-xs font-medium text-center text-white break-words leading-tight px-1 cursor-text"
-                              onClick={handleLabelClick}
+                              onDoubleClick={handleLabelDoubleClick}
                             >
                               {node.label}
                             </p>
@@ -715,19 +731,20 @@ return (
                         <div className="absolute inset-0 flex items-center justify-center pt-2">
                           {isEditingLabel ? (
                             <input
-                              type="text"
+                              ref={inputRef}
+                    id={`node-input-${node.id}`}
+                    type="text"
                               value={editText}
                               onChange={(e) => setEditText(e.target.value)}
                               onBlur={handleLabelSubmit}
                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
                               className="text-xs font-medium text-center bg-transparent border border-white rounded px-1 py-0.5 w-16 outline-none"
-                              autoFocus
                               onClick={(e) => e.stopPropagation()}
                             />
                           ) : (
                             <p 
                               className="text-xs font-medium text-center text-white break-words leading-tight px-1 cursor-text"
-                              onClick={handleLabelClick}
+                              onDoubleClick={handleLabelDoubleClick}
                             >
                               {node.label}
                             </p>
@@ -777,19 +794,20 @@ return (
                         <div className="absolute inset-0 flex items-center justify-center pt-2">
                           {isEditingLabel ? (
                             <input
-                              type="text"
+                              ref={inputRef}
+                    id={`node-input-${node.id}`}
+                    type="text"
                               value={editText}
                               onChange={(e) => setEditText(e.target.value)}
                               onBlur={handleLabelSubmit}
                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
                               className="text-xs font-medium text-center bg-transparent border border-white rounded px-1 py-0.5 w-16 outline-none"
-                              autoFocus
                               onClick={(e) => e.stopPropagation()}
                             />
                           ) : (
                             <p 
                               className="text-xs font-medium text-center text-white break-words leading-tight px-1 cursor-text"
-                              onClick={handleLabelClick}
+                              onDoubleClick={handleLabelDoubleClick}
                             >
                               {node.label}
                             </p>
@@ -841,19 +859,20 @@ return (
                         <div className="absolute inset-0 flex items-center justify-center">
                           {isEditingLabel ? (
                             <input
-                              type="text"
+                              ref={inputRef}
+                    id={`node-input-${node.id}`}
+                    type="text"
                               value={editText}
                               onChange={(e) => setEditText(e.target.value)}
                               onBlur={handleLabelSubmit}
                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
                               className="text-xs font-medium text-center bg-transparent border border-white rounded px-1 py-0.5 w-20 outline-none"
-                              autoFocus
                               onClick={(e) => e.stopPropagation()}
                             />
                           ) : (
                             <p 
                               className="text-xs font-medium text-center text-white break-words leading-tight px-1 cursor-text"
-                              onClick={handleLabelClick}
+                              onDoubleClick={handleLabelDoubleClick}
                             >
                               {node.label}
                             </p>
@@ -869,19 +888,20 @@ return (
                   <div className="absolute -top-6 left-1/2 transform -translate-x-1/2">
                     {isEditingLabel ? (
                       <input
-                        type="text"
+                        ref={inputRef}
+                    id={`node-input-${node.id}`}
+                    type="text"
                         value={editText}
                         onChange={(e) => setEditText(e.target.value)}
                         onBlur={handleLabelSubmit}
                         onKeyDown={(e) => handleLabelKeyDown(e, false)}
                         className="text-sm font-medium text-center bg-background border border-primary rounded px-2 py-1 w-24 outline-none"
-                        autoFocus
                         onClick={(e) => e.stopPropagation()}
                       />
                     ) : (
                       <p 
                         className="text-sm font-medium text-center text-foreground break-words leading-tight px-2 bg-background/90 rounded cursor-text hover:bg-background/95"
-                        onClick={handleLabelClick}
+                        onDoubleClick={handleLabelDoubleClick}
                       >
                         {node.label}
                       </p>
@@ -893,19 +913,20 @@ return (
                 {((node as any).textPosition === 'under' || !(node as any).textPosition) && node.label && (
                   isEditingLabel ? (
                     <input
-                      type="text"
+                      ref={inputRef}
+                    id={`node-input-${node.id}`}
+                    type="text"
                       value={editText}
                       onChange={(e) => setEditText(e.target.value)}
                       onBlur={handleLabelSubmit}
                       onKeyDown={(e) => handleLabelKeyDown(e, false)}
                       className="text-sm font-medium text-center bg-transparent border border-primary rounded px-2 py-1 w-24 outline-none mt-1"
-                      autoFocus
                       onClick={(e) => e.stopPropagation()}
                     />
                   ) : (
                     <p 
                       className="text-sm font-medium text-center text-foreground break-words leading-tight px-2 mt-1 cursor-text hover:bg-background/50 rounded -mx-2 -my-1"
-                      onClick={handleLabelClick}
+                      onDoubleClick={handleLabelDoubleClick}
                     >
                       {node.label}
                     </p>
@@ -926,19 +947,20 @@ return (
                 </div>
                 {isEditingLabel ? (
                   <input
+                    ref={inputRef}
+                    id={`node-input-${node.id}`}
                     type="text"
                     value={editText}
                     onChange={(e) => setEditText(e.target.value)}
                     onBlur={handleLabelSubmit}
                     onKeyDown={(e) => handleLabelKeyDown(e, false)}
                     className="mt-1 text-xs font-medium text-center bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
-                    autoFocus
                     onClick={(e) => e.stopPropagation()}
                   />
                 ) : (
                   <p 
                     className="mt-1 text-xs font-medium text-center text-foreground w-full px-1 break-words leading-tight cursor-text hover:bg-background/50 rounded -mx-1 -my-0.5"
-                    onClick={handleLabelClick}
+                    onDoubleClick={handleLabelDoubleClick}
                   >
                     {node.label || 'Untitled'}
                   </p>
