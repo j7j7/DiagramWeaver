@@ -28,9 +28,10 @@ interface DiagramNodeProps {
   onResize?: (nodeId: string, newWidth: number, newHeight: number) => void;
   onPositionUpdate?: (nodeId: string, x: number, y: number) => void;
   onDraggingChange?: (isDragging: boolean) => void;
+  hoverEnabled?: boolean;
 }
 
-export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, onClick, onContextMenu, onLabelUpdate, onResize, onPositionUpdate, onDraggingChange }: DiagramNodeProps) {
+export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, onClick, onContextMenu, onLabelUpdate, onResize, onPositionUpdate, onDraggingChange, hoverEnabled = true }: DiagramNodeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [editText, setEditText] = useState(node.label || '');
@@ -354,8 +355,8 @@ return (
         transform: rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
         transformOrigin: 'center'
       }}
-      onMouseEnter={() => { if (!isDragging) { setIsOpen(true); setIsHovered(true); } }}
-      onMouseLeave={() => { setIsOpen(false); setIsHovered(false); }}
+      onMouseEnter={() => { if (!isDragging) { setIsOpen(hoverEnabled); setIsHovered(true); } }}
+      onMouseLeave={() => { setIsOpen(false); setIsHovered(false); } }
       onClick={(e) => onClick && onClick(e, node)}
       onContextMenu={(e) => onContextMenu && onContextMenu(e, node)}
       onTouchStart={handleTouchStart}

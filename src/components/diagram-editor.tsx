@@ -68,6 +68,7 @@ export default function DiagramEditor() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [mousePosition, setMousePosition] = React.useState<{ x: number; y: number } | null>(null);
   const [selectionCoordinates, setSelectionCoordinates] = React.useState<{ start: { x: number; y: number } | null; end: { x: number; y: number } | null } | undefined>(undefined);
+  const [hoverEnabled, setHoverEnabled] = React.useState<boolean>(true);
 
   // Tab management
   const {
@@ -853,6 +854,8 @@ export default function DiagramEditor() {
                     onConnectionDisconnect={disconnectConnection}
                     diagramData={diagramData}
                     mousePosition={mousePosition}
+                    hoverEnabled={hoverEnabled}
+                    onToggleHover={() => setHoverEnabled(!hoverEnabled)}
                 />
                 {activeTabId && (
                   <TabBar
@@ -902,6 +905,7 @@ export default function DiagramEditor() {
                     onMousePositionChange={setMousePosition}
                     onSelectionChange={setSelectionCoordinates}
                     onExportComplete={() => setExportDialogOpen(false)}
+                    hoverEnabled={hoverEnabled}
                     />
                   </div>
                   

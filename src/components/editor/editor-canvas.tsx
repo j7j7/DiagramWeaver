@@ -51,6 +51,7 @@ interface EditorCanvasProps {
   onMousePositionChange?: (position: { x: number; y: number } | null) => void;
   onSelectionChange?: (selection: { start: { x: number; y: number } | null; end: { x: number; y: number } | null }) => void;
   onExportComplete?: () => void;
+  hoverEnabled?: boolean;
 }
 
 type PositionedNode = DiagramNodeData & { x: number; y: number; };
@@ -212,14 +213,14 @@ const measureNodeDims = (n: PositionedNode) => {
 export type EditorCanvasHandle = {
   fitToView: () => void;
   exportPng: (options?: { backgroundColor?: 'transparent' | 'white'; selectionArea?: { x: number; y: number; width: number; height: number } }) => Promise<void>;
-  startSelectionMode: () => void;
+  startSelectionMode: (options: { backgroundColor: 'transparent' | 'white'; useSelection: boolean }) => void;
   copy: () => void;
   paste: () => void;
   canPaste: () => boolean;
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, selectedItemId, isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, selectedItemId, isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true }: EditorCanvasProps,
   ref
 ) {
   const [internalTransform, setInternalTransform] = useState({ x: 0, y: 0, k: 1 });
@@ -2065,7 +2066,7 @@ const [, drop] = useDrop(() => ({
     }
   }, [toast, transform, width, height]);
 
-  const startSelectionMode = useCallback((options: { backgroundColor?: 'transparent' | 'white'; useSelection: boolean }) => {
+  const startSelectionMode = useCallback((options: { backgroundColor: 'transparent' | 'white'; useSelection: boolean }) => {
     if (options.useSelection) {
       setIsSelectionMode(true);
       setPendingExportOptions(options);
@@ -2523,7 +2524,7 @@ const [, drop] = useDrop(() => ({
   React.useImperativeHandle(ref, () => ({
     fitToView: handleFitToView,
     exportPng: (options?: { backgroundColor?: 'transparent' | 'white'; selectionArea?: { x: number; y: number; width: number; height: number } }) => exportPng(options),
-    startSelectionMode: (options: { backgroundColor?: 'transparent' | 'white'; useSelection: boolean }) => startSelectionMode(options),
+    startSelectionMode: (options: { backgroundColor: 'transparent' | 'white'; useSelection: boolean }) => startSelectionMode(options),
     copy: copyHandler,
     paste: pasteHandler,
     canPaste: canPasteHandler,
@@ -2686,6 +2687,7 @@ return (
                           onLabelUpdate={onLabelUpdate}
                           onResize={resizeNode}
                           onDraggingChange={onDraggingChange}
+                          hoverEnabled={hoverEnabled}
                         />
                       </div>
                     );

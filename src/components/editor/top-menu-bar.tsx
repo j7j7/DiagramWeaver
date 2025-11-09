@@ -9,7 +9,7 @@ import {
   MenubarShortcut,
   MenubarTrigger,
 } from '@/components/ui/menubar';
-import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move } from 'lucide-react';
+import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
 import type { SelectedItem } from '../diagram-editor';
 import type { DiagramData } from '@/lib/types';
@@ -46,6 +46,8 @@ interface TopMenuBarProps {
   onConnectionDisconnect?: (from: string, to: string) => void;
   diagramData?: DiagramData;
   mousePosition?: { x: number; y: number } | null;
+  hoverEnabled?: boolean;
+  onToggleHover?: () => void;
 }
 
 export function TopMenuBar({
@@ -76,6 +78,8 @@ export function TopMenuBar({
   onConnectionDisconnect,
   diagramData,
   mousePosition,
+  hoverEnabled,
+  onToggleHover,
 }: TopMenuBarProps) {
   return (
     <div className="flex items-center border-b bg-card min-h-[2.5rem] overflow-x-auto">
@@ -175,6 +179,24 @@ export function TopMenuBar({
                 <MenubarItem onClick={onFitToView}>
                   <Maximize2 className="mr-2 h-4 w-4" />
                   Fit to View
+                </MenubarItem>
+              </>
+            )}
+            {onToggleHover !== undefined && (
+              <>
+                {(onUndo || onRedo || onFitToView) && <MenubarSeparator />}
+                <MenubarItem onClick={onToggleHover}>
+                  {hoverEnabled ? (
+                    <>
+                      <Eye className="mr-2 h-4 w-4" />
+                      Hide Hover Text
+                    </>
+                  ) : (
+                    <>
+                      <EyeOff className="mr-2 h-4 w-4" />
+                      Show Hover Text
+                    </>
+                  )}
                 </MenubarItem>
               </>
             )}

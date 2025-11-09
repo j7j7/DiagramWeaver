@@ -26,6 +26,7 @@ interface ComponentSidebarProps {
   jsonPanelOpen?: boolean;
   onFitToView?: () => void;
   onConnectionUpdate?: (from: string, to: string, updates: { text?: string; textPosition?: number; color?: string; style?: 'bezier'; curvature?: number; preferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; arrow?: boolean; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean }) => void;
+  onConnectionDisconnect?: (from: string, to: string) => void;
   onCloseSidebar?: () => void;
   isMobile?: boolean;
   transform?: { x: number; y: number; k: number };
@@ -35,7 +36,7 @@ interface ComponentSidebarProps {
 
 
 
-export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onResourceSelect, onToggleJsonPanel, jsonPanelOpen, onFitToView, onConnectionUpdate, onCloseSidebar, isMobile, transform, onTransformChange }: ComponentSidebarProps) {
+export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onResourceSelect, onToggleJsonPanel, jsonPanelOpen, onFitToView, onConnectionUpdate, onConnectionDisconnect, onCloseSidebar, isMobile, transform, onTransformChange }: ComponentSidebarProps) {
   const { register, reset, getValues } = useForm();
   
 
