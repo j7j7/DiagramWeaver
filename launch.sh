@@ -104,8 +104,8 @@ cleanup() {
   [[ -n "$GENKIT_PID" ]] && kill "$GENKIT_PID" 2>/dev/null || true
 }
 
-# Only set up cleanup trap if not in detach mode
-if [[ "$DETACH" -eq 0 ]]; then
+# Only set up cleanup trap if not in detach mode or if in build mode (need to wait for build first)
+if [[ "$DETACH" -eq 0 ]] || [[ "$MODE" == "build" ]]; then
   trap cleanup EXIT INT TERM
 fi
 
@@ -171,12 +171,20 @@ fi
 echo "[logs] Next.js PID: $NEXT_PID${GENKIT_PID:+ | Genkit PID: $GENKIT_PID}"
 
 if [[ "$DETACH" -eq 1 ]]; then
-  echo "[detach] Server started successfully. Detaching process..."
-  # Disown the processes so they continue running after terminal exit
-  [[ -n "$NEXT_PID" ]] && disown "$NEXT_PID" 2>/dev/null || true
-  [[ -n "$GENKIT_PID" ]] && disown "$GENKIT_PID" 2>/dev/null || true
-  echo "[detach] Running in background. Use 'pkill -f \"launch.sh.*--detach\"' to stop."
-  exit 0
+  if [[ "$MODE" == "build" ]]; then
+    echo "[detach] Production server started successfully. Detaching process..."
+    # Disown only the Next.js process for build mode
+    [[ -n "$NEXT_PID" ]] && disown "$NEXT_PID" 2>/dev/null || true
+    echo "[detach] Production server running in background. Use 'pkill -f \"launch.sh.*--detach\"' to stop."
+    exit 0
+  else
+    echo "[detach] Dev server started successfully. Detaching process..."
+    # Disown both processes for dev mode
+    [[ -n "$NEXT_PID" ]] && disown "$NEXT_PID" 2>/dev/null || true
+    [[ -n "$GENKIT_PID" ]] && disown "$GENKIT_PID" 2>/dev/null || true
+    echo "[detach] Running in background. Use 'pkill -f \"launch.sh.*--detach\"' to stop."
+    exit 0
+  fi
 else
   echo "Press Ctrl-C to stop."
   # Keep script in foreground to keep background processes alive
