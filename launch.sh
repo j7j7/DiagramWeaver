@@ -6,6 +6,7 @@
 #   ./launch.sh --build         # build and run production server
 #   ./launch.sh --no-open       # do not open browser automatically
 #   ./launch.sh --fresh-install # force clean install (npm ci)
+#   ./launch.sh --detach        # run in background and survive terminal exit
 
 set -euo pipefail
 
@@ -17,6 +18,7 @@ MODE="dev"           # dev | build
 OPEN_BROWSER=1
 START_GENKIT=0
 FORCE_CI=0
+DETACH=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -24,6 +26,7 @@ while [[ $# -gt 0 ]]; do
     --no-open) OPEN_BROWSER=0 ; shift ;;
     --genkit) START_GENKIT=1 ; shift ;;
     --fresh-install) FORCE_CI=1 ; shift ;;
+    --detach) DETACH=1 ; shift ;;
     *) echo "Unknown option: $1" ; exit 1 ;;
   esac
 done
@@ -70,6 +73,22 @@ kill_port() {
   fi
 }
 
+# Kill existing background DiagramWeaver processes
+kill_existing_background() {
+  local pids
+  pids=$(pgrep -f "launch.sh.*--detach" 2>/dev/null || true)
+  if [[ -n "$pids" ]]; then
+    echo "[cleanup] Terminating existing background DiagramWeaver processes: $pids"
+    echo "$pids" | xargs kill 2>/dev/null || true
+    sleep 1
+    # Force kill if still running
+    pids=$(pgrep -f "launch.sh.*--detach" 2>/dev/null || true)
+    if [[ -n "$pids" ]]; then
+      echo "$pids" | xargs kill -9 2>/dev/null || true
+    fi
+  fi
+}
+
 NEXT_PID=""
 GENKIT_PID=""
 cleanup() {
@@ -77,7 +96,11 @@ cleanup() {
   [[ -n "$NEXT_PID" ]] && kill "$NEXT_PID" 2>/dev/null || true
   [[ -n "$GENKIT_PID" ]] && kill "$GENKIT_PID" 2>/dev/null || true
 }
-trap cleanup EXIT INT TERM
+
+# Only set up cleanup trap if not in detach mode
+if [[ "$DETACH" -eq 0 ]]; then
+  trap cleanup EXIT INT TERM
+fi
 
 wait_for_http() {
   local url="$1"; local timeout="${2:-60}"; local t=0
@@ -89,6 +112,11 @@ wait_for_http() {
     fi
   done
 }
+
+# Handle detach mode - kill existing background processes first
+if [[ "$DETACH" -eq 1 ]]; then
+  kill_existing_background
+fi
 
 if [[ "$MODE" == "build" ]]; then
   echo "[build] npm run build"
@@ -133,7 +161,15 @@ if [[ "$OPEN_BROWSER" -eq 1 ]]; then
 fi
 
 echo "[logs] Next.js PID: $NEXT_PID${GENKIT_PID:+ | Genkit PID: $GENKIT_PID}"
-echo "Press Ctrl-C to stop."
 
-# Keep script in foreground to keep background processes alive
-wait "$NEXT_PID" || true
+if [[ "$DETACH" -eq 1 ]]; then
+  echo "[detach] Running in background. Use 'pkill -f \"launch.sh.*--detach\"' to stop."
+  # Disown the processes so they continue running after terminal exit
+  [[ -n "$NEXT_PID" ]] && disown "$NEXT_PID" 2>/dev/null || true
+  [[ -n "$GENKIT_PID" ]] && disown "$GENKIT_PID" 2>/dev/null || true
+  exit 0
+else
+  echo "Press Ctrl-C to stop."
+  # Keep script in foreground to keep background processes alive
+  wait "$NEXT_PID" || true
+fi
