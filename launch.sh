@@ -73,6 +73,13 @@ kill_port() {
   fi
 }
 
+# Kill processes on both ports 9002 and 3000
+kill_all_ports() {
+  echo "[port] Checking for processes on ports 9002 and 3000..."
+  kill_port 9002
+  kill_port 3000
+}
+
 # Kill existing background DiagramWeaver processes
 kill_existing_background() {
   local pids
@@ -118,6 +125,9 @@ if [[ "$DETACH" -eq 1 ]]; then
   kill_existing_background
 fi
 
+# Kill processes on both ports before starting
+kill_all_ports
+
 if [[ "$MODE" == "build" ]]; then
   echo "[build] npm run build"
   npm run build
@@ -129,8 +139,6 @@ if [[ "$MODE" == "build" ]]; then
   echo "[wait] Waiting for $APP_URL"
   wait_for_http "$APP_URL" 60 || true
 else
-  echo "[dev] Ensuring :$PORT is free"
-  kill_port "$PORT"
   echo "[dev] npm run dev (port $PORT)"
   npm run dev &
   NEXT_PID=$!
@@ -163,10 +171,11 @@ fi
 echo "[logs] Next.js PID: $NEXT_PID${GENKIT_PID:+ | Genkit PID: $GENKIT_PID}"
 
 if [[ "$DETACH" -eq 1 ]]; then
-  echo "[detach] Running in background. Use 'pkill -f \"launch.sh.*--detach\"' to stop."
+  echo "[detach] Server started successfully. Detaching process..."
   # Disown the processes so they continue running after terminal exit
   [[ -n "$NEXT_PID" ]] && disown "$NEXT_PID" 2>/dev/null || true
   [[ -n "$GENKIT_PID" ]] && disown "$GENKIT_PID" 2>/dev/null || true
+  echo "[detach] Running in background. Use 'pkill -f \"launch.sh.*--detach\"' to stop."
   exit 0
 else
   echo "Press Ctrl-C to stop."
