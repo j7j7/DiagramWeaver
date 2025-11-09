@@ -83,13 +83,13 @@ kill_all_ports() {
 # Kill existing background DiagramWeaver processes
 kill_existing_background() {
   local pids
-  pids=$(pgrep -f "launch.sh.*--detach" 2>/dev/null || true)
+  pids=$(pgrep -f "launch.sh.*--detach" 2>/dev/null | grep -v "^$$$" || true)
   if [[ -n "$pids" ]]; then
     echo "[cleanup] Terminating existing background DiagramWeaver processes: $pids"
     echo "$pids" | xargs kill 2>/dev/null || true
     sleep 1
     # Force kill if still running
-    pids=$(pgrep -f "launch.sh.*--detach" 2>/dev/null || true)
+    pids=$(pgrep -f "launch.sh.*--detach" 2>/dev/null | grep -v "^$$$" || true)
     if [[ -n "$pids" ]]; then
       echo "$pids" | xargs kill -9 2>/dev/null || true
     fi
@@ -104,8 +104,8 @@ cleanup() {
   [[ -n "$GENKIT_PID" ]] && kill "$GENKIT_PID" 2>/dev/null || true
 }
 
-# Only set up cleanup trap if not in detach mode or if in build mode (need to wait for build first)
-if [[ "$DETACH" -eq 0 ]] || [[ "$MODE" == "build" ]]; then
+# Only set up cleanup trap if not in detach mode
+if [[ "$DETACH" -eq 0 ]]; then
   trap cleanup EXIT INT TERM
 fi
 
