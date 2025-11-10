@@ -630,7 +630,7 @@ export default function DiagramEditor() {
     setSelectedItem(null); // Deselect to avoid stale references
   };
 
-  const handleAlignObjects = (alignment: 'top' | 'center' | 'bottom' | 'left' | 'h-center' | 'right') => {
+  const handleAlignObjects = (alignment: 'top' | 'center' | 'bottom' | 'v-middle' | 'left' | 'h-center' | 'right' | 'distribute-v' | 'distribute-h') => {
     if (!selectedItem || selectedItemIds.size < 2) return;
 
     // Get the reference item (first selected item) and store it permanently
@@ -703,7 +703,7 @@ export default function DiagramEditor() {
       case 'top':
         referenceY = refY;
         break;
-      case 'center':
+      case 'v-middle':
         referenceY = refY + (refDims.height / 2);
         break;
       case 'bottom':
@@ -732,6 +732,132 @@ export default function DiagramEditor() {
         break;
     }
 
+    // Handle distribute operations
+    if (alignment === 'distribute-v' || alignment === 'distribute-h') {
+      // Get all selected items with their positions and dimensions
+      const selectedItems: Array<{id: string, x: number, y: number, width: number, height: number, itemType: 'node' | 'group', index: number}> = [];
+      
+      selectedItemIds.forEach(id => {
+        const node = diagramData.nodes.find(n => n.id === id);
+        if (node) {
+          const dims = getObjectDimensions({ ...node, itemType: 'node' } as SelectedItem);
+          selectedItems.push({
+            id,
+            x: node.x || 0,
+            y: node.y || 0,
+            width: dims.width,
+            height: dims.height,
+            itemType: 'node',
+            index: diagramData.nodes.findIndex(n => n.id === id)
+          });
+        }
+        
+        const group = diagramData.groups?.find(g => g.id === id);
+        if (group) {
+          const dims = getObjectDimensions({ ...group, itemType: 'group' } as SelectedItem);
+          selectedItems.push({
+            id,
+            x: group.x || 0,
+            y: group.y || 0,
+            width: dims.width,
+            height: dims.height,
+            itemType: 'group',
+            index: (diagramData.groups || []).findIndex(g => g.id === id)
+          });
+        }
+      });
+
+      if (selectedItems.length < 3) return; // Need at least 3 items to distribute
+
+      // Sort items by position
+      if (alignment === 'distribute-v') {
+        selectedItems.sort((a, b) => a.y - b.y);
+      } else {
+        selectedItems.sort((a, b) => a.x - b.x);
+      }
+
+      // Calculate distribution
+      const firstItem = selectedItems[0];
+      const lastItem = selectedItems[selectedItems.length - 1];
+      
+      let newPositions: Array<{id: string, x?: number, y?: number}> = [];
+
+      if (alignment === 'distribute-v') {
+        // Vertical distribution
+        const totalHeight = lastItem.y + lastItem.height - firstItem.y;
+        const totalItemHeight = selectedItems.reduce((sum, item) => sum + item.height, 0);
+        const totalSpacing = totalHeight - totalItemHeight;
+        const spacing = totalSpacing / (selectedItems.length - 1);
+        
+        let currentY = firstItem.y;
+        selectedItems.forEach(item => {
+          newPositions.push({ id: item.id, y: currentY });
+          currentY += item.height + spacing;
+        });
+      } else {
+        // Horizontal distribution
+        const totalWidth = lastItem.x + lastItem.width - firstItem.x;
+        const totalItemWidth = selectedItems.reduce((sum, item) => sum + item.width, 0);
+        const totalSpacing = totalWidth - totalItemWidth;
+        const spacing = totalSpacing / (selectedItems.length - 1);
+        
+        let currentX = firstItem.x;
+        selectedItems.forEach(item => {
+          newPositions.push({ id: item.id, x: currentX });
+          currentX += item.width + spacing;
+        });
+      }
+
+      // Apply the new positions
+      setDiagramData(prevData => {
+        const newNodes = [...prevData.nodes];
+        const newGroups = [...(prevData.groups || [])];
+
+        newPositions.forEach(pos => {
+          // Update nodes
+          const nodeIndex = newNodes.findIndex(n => n.id === pos.id);
+          if (nodeIndex !== -1) {
+            newNodes[nodeIndex] = { ...newNodes[nodeIndex], ...pos };
+          }
+
+          // Update groups
+          const groupIndex = newGroups.findIndex(g => g.id === pos.id);
+          if (groupIndex !== -1) {
+            newGroups[groupIndex] = { ...newGroups[groupIndex], ...pos };
+          }
+        });
+
+        return {
+          ...prevData,
+          nodes: newNodes,
+          groups: newGroups
+        };
+      });
+
+      // Update selected item states
+      const updatedSelectedItems: SelectedItem[] = [];
+      selectedItemIds.forEach(id => {
+        const updatedNode = diagramData.nodes.find(n => n.id === id);
+        const updatedGroup = diagramData.groups?.find(g => g.id === id);
+        
+        if (updatedNode) {
+          updatedSelectedItems.push({ ...updatedNode, itemType: 'node' } as SelectedItem);
+        } else if (updatedGroup) {
+          updatedSelectedItems.push({ ...updatedGroup, itemType: 'group' } as SelectedItem);
+        }
+      });
+
+      // Update the primary selected item if it was distributed
+      if (selectedItem && selectedItem.id !== firstSelectedId) {
+        const updatedPrimary = updatedSelectedItems.find(item => item.id === selectedItem.id);
+        if (updatedPrimary) {
+          setSelectedItem(updatedPrimary);
+        }
+      }
+
+      return;
+    }
+
     // Align all selected items
     setDiagramData(prevData => {
       const newNodes = [...prevData.nodes];
@@ -754,7 +880,7 @@ export default function DiagramEditor() {
             case 'top':
               newY = referenceY;
               break;
-            case 'center':
+            case 'v-middle':
               newY = referenceY - (nodeDims.height / 2);
               break;
             case 'bottom':
@@ -797,7 +923,7 @@ export default function DiagramEditor() {
             case 'top':
               newY = referenceY;
               break;
-            case 'center':
+            case 'v-middle':
               newY = referenceY - (groupDims.height / 2);
               break;
             case 'bottom':

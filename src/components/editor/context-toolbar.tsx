@@ -45,7 +45,7 @@ interface ContextToolbarProps {
   onConnectionUpdate?: (from: string, to: string, updates: { arrow?: boolean; text?: string; textPosition?: number; color?: string; lineWidth?: number; shadow?: boolean; [key: string]: any }) => void;
   onConnectionDisconnect?: (from: string, to: string) => void;
   diagramData?: DiagramData;
-  onAlignObjects?: (alignment: 'top' | 'center' | 'bottom' | 'left' | 'h-center' | 'right') => void;
+  onAlignObjects?: (alignment: 'top' | 'center' | 'bottom' | 'v-middle' | 'left' | 'h-center' | 'right' | 'distribute-v' | 'distribute-h') => void;
 }
 
 export function ContextToolbar({
@@ -1684,10 +1684,10 @@ export function ContextToolbar({
                     variant="ghost"
                     size="sm"
                     className="w-full justify-start h-8 px-2"
-                    onClick={() => onAlignObjects?.('center')}
+                    onClick={() => onAlignObjects?.('v-middle')}
                   >
                     <AlignVerticalJustifyCenter className="h-4 w-4 mr-2" />
-                    Align Center
+                    Align Middle
                   </Button>
                   <Button
                     variant="ghost"
@@ -1727,6 +1727,27 @@ export function ContextToolbar({
                   >
                     <AlignRight className="h-4 w-4 mr-2" />
                     Align Right
+                  </Button>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Distribute</label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start h-8 px-2"
+                    onClick={() => onAlignObjects?.('distribute-v')}
+                  >
+                    <AlignVerticalJustifyCenter className="h-4 w-4 mr-2" />
+                    Distribute Vertically
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start h-8 px-2"
+                    onClick={() => onAlignObjects?.('distribute-h')}
+                  >
+                    <AlignCenter className="h-4 w-4 mr-2" />
+                    Distribute Horizontally
                   </Button>
                 </div>
               </div>
