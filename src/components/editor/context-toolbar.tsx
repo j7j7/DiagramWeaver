@@ -635,26 +635,28 @@ export function ContextToolbar({
         )}
 
         {/* Border Color */}
-        {isGroup && ((selectedItem as any).borderStyle === 'solid' || (selectedItem as any).borderStyle === 'gradient' || !selectedItem.borderStyle) && (
+        {isGroup && ((selectedItem as any).backgroundStyle === 'solid' || (selectedItem as any).backgroundStyle === 'gradient' || !(selectedItem as any).backgroundStyle) && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 px-2">
-                  <div 
-                    className="w-4 h-4 rounded border-2 border-border"
-                    style={{ 
-                      backgroundColor: selectedItem.borderStyle === 'gradient' 
-                        ? ((selectedItem as any).borderColors?.[0] || '#6b7280')
-                        : (selectedItem.borderColor || '#3b82f6')
-                    }}
-                  />
-                </Button>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 px-2">
+                    <div 
+                      className="w-4 h-4 rounded border-2 border-border"
+                        style={{ 
+                          backgroundColor: (selectedItem as any).backgroundStyle === 'gradient' 
+                            ? ((selectedItem as any).borderColors?.[0] || '#6b7280')
+                            : (selectedItem.borderColor || '#3b82f6')
+                        }}
+                    />
+                  </Button>
+                </PopoverTrigger>
               </TooltipTrigger>
               <TooltipContent>Border Color</TooltipContent>
             </Tooltip>
             <PopoverContent className="w-64">
               <div className="space-y-2">
-                {selectedItem.borderStyle === 'gradient' ? (
+                {(selectedItem as any).backgroundStyle === 'gradient' ? (
                   <>
                     <label className="text-sm font-medium">Border Start Color</label>
                     <Input
