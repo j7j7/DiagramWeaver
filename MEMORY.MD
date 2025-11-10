@@ -208,16 +208,44 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
   - **Type Updates**: Added `borderStyle`, `borderColors`, `backgroundStyle`, `backgroundColors`, and `shadow` to `DiagramNodeData`
   - **Visual Consistency**: Label/labelbox nodes now have same styling capabilities as groups/zones
   - **Implementation**: Uses IIFE pattern in rendering to extract styling variables, supports gradient borders via `borderImage`, gradient backgrounds via `linear-gradient`
-- **Toolbar UI Improvements** (2025-12): Refined toolbar display and controls:
-  - **Selected Item Label Display**: Toolbar now shows the label/name of selected node/group instead of just "Selected: node/group"
-  - **Connection Display**: Selected connections show as "Connection {from} → {to}"
-  - **Control Hiding**: Hidden unnecessary controls for text type nodes:
-    - **Text Position**: Hidden for text/textbox/label/labelbox nodes (only applies to shape nodes)
-    - **Edge Position**: Hidden for text/textbox/label/labelbox nodes (only applies to icon/resource nodes in groups)
-    - **Size Mode**: Hidden for text/textbox/label/labelbox nodes (size is auto-calculated)
-  - **Context Awareness**: Controls dynamically show/hide based on selected item type
-  - **Type Detection**: Added `isTextTypeNode` helper to identify all text-related node types
-  - **Cleaner UI**: Removed redundant controls, making toolbar more focused and intuitive
+ - **Toolbar UI Improvements** (2025-12): Refined toolbar display and controls:
+   - **Selected Item Label Display**: Toolbar now shows the label/name of selected node/group instead of just "Selected: node/group"
+   - **Connection Display**: Selected connections show as "Connection {from} → {to}"
+   - **Control Hiding**: Hidden unnecessary controls for text type nodes:
+     - **Text Position**: Hidden for text/textbox/label/labelbox nodes (only applies to shape nodes)
+     - **Edge Position**: Hidden for text/textbox/label/labelbox nodes (only applies to icon/resource nodes in groups)
+     - **Size Mode**: Hidden for text/textbox/label/labelbox nodes (size is auto-calculated)
+   - **Context Awareness**: Controls dynamically show/hide based on selected item type
+   - **Type Detection**: Added `isTextTypeNode` helper to identify all text-related node types
+   - **Cleaner UI**: Removed redundant controls, making toolbar more focused and intuitive
+ - **Multi-Select Functionality** (2025-11-10): Added comprehensive multi-select and group movement capabilities:
+   - **Shift+Click Selection**: Hold shift and click on elements to add/remove them from selection
+   - **Visual Highlighting**: All selected elements show a blue ring highlight for clear visual feedback
+   - **Group Movement**: Drag multiple selected elements together while maintaining their relative spacing and positions
+   - **Visual Feedback During Drag**:
+     - Drag position indicator shows count of selected items: "X: 100 Y: 200 (3 items)"
+     - Blue dots show positions of all selected items during multi-drag operations
+     - Real-time position updates for all selected elements during drag
+   - **Top Menu Bar Display**: Shows selection count in the interface:
+     - Single selection: "Selected: Item Name" or "Selected: Connection from → to"
+     - Multi-selection: "3 items selected" (shows actual count)
+   - **Keyboard Support**: Press Escape key to clear multi-selection and return to single-select mode
+   - **Batch Movement System**: Implemented `moveMultipleItems` function for efficient simultaneous updates:
+     - Maintains relative spacing between all selected items
+     - Applies grid snapping to all elements during movement
+     - Handles re-parenting (moving items between groups) for multiple items at once
+     - Preserves all existing functionality while adding multi-select capabilities
+   - **Component Updates**:
+     - **DiagramNode**: Added `isMultiSelected` prop with blue ring styling
+     - **DiagramGroup**: Added `isMultiSelected` prop with blue ring styling
+     - **EditorCanvas**: Enhanced drag-and-drop system to track and move multiple items
+     - **TopMenuBar**: Added selection count display logic
+     - **DiagramEditor**: Enhanced selection state management with `selectedItemIds` Set
+   - **Technical Implementation**:
+     - Uses React Set for efficient selection tracking
+     - Maintains backward compatibility with single-select operations
+     - Preserves all existing drag-drop, connection, and grouping features
+     - Implements proper cleanup and state management for multi-drag operations
 
 ### Development Tools
 - **Scripts**: npm run dev, build, lint, typecheck, genkit

@@ -14,6 +14,7 @@ interface DiagramGroupProps {
   isSelected?: boolean;
   isDropTarget?: boolean;
   isTargetable?: boolean;
+  isMultiSelected?: boolean;
   onClick?: (e: React.MouseEvent, group: DiagramGroupData) => void;
   onContextMenu?: (e: React.MouseEvent, group: DiagramGroupData) => void;
   onResize?: (groupId: string, newWidth: number, newHeight: number) => void;
@@ -23,7 +24,7 @@ interface DiagramGroupProps {
 
 
 
-export function DiagramGroup({ group, isSelected, isDropTarget, isTargetable, onClick, onContextMenu, onResize, onLabelChange }: DiagramGroupProps) {
+export function DiagramGroup({ group, isSelected, isDropTarget, isTargetable, isMultiSelected, onClick, onContextMenu, onResize, onLabelChange }: DiagramGroupProps) {
 const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.GROUP,
     item: { ...group, type: ItemTypes.GROUP },
@@ -373,7 +374,7 @@ const [{ isDragging }, drag] = useDrag(() => ({
           ? "border border-dashed border-primary opacity-100" 
           : "border border-dashed border-gray-400 opacity-0 hover:opacity-100 hover:border-primary hover:bg-primary/5"),
         (isDragging || isTouchDragging || isResizing) && "opacity-50",
-        (isSelected || isDropTarget) && "ring-2 ring-primary ring-offset-2",
+        (isSelected || isDropTarget || isMultiSelected) && "ring-2 ring-primary ring-offset-2",
         isTargetable && "ring-2 ring-green-500 ring-offset-2 animate-pulse",
         group.shadow && "shadow-[0_10px_15px_-3px_rgba(239,68,68,0.3),0_4px_6px_-2px_rgba(239,68,68,0.2)]",
         "group" // Add group class for CSS selectors

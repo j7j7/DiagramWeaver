@@ -683,6 +683,13 @@ export default function DiagramEditor() {
         redo();
       }
       
+      // Escape key - Clear multi-selection
+      if (e.key === 'Escape' && selectedItemIds.size > 1) {
+        e.preventDefault();
+        setSelectedItemIds(new Set());
+        return;
+      }
+      
       // Arrow keys - Move selected node by 10px grid (up to 150), then 30px increments
       if ((e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') && selectedItem && selectedItem.itemType !== 'edge') {
         e.preventDefault();
@@ -842,6 +849,7 @@ export default function DiagramEditor() {
                     transform={canvasTransform}
                     onTransformChange={setCanvasTransform}
                     selectedItem={selectedItem}
+                    selectedItemIds={selectedItemIds}
                     onItemUpdate={handleItemUpdate}
                     onConnect={startConnecting}
                     onDisconnect={disconnectSelected}
@@ -882,6 +890,7 @@ export default function DiagramEditor() {
                     setDiagramData={setDiagramData}
                     onItemSelect={handleItemSelect}
                     selectedItemId={selectedItem?.id}
+                    selectedItemIds={selectedItemIds}
                     isConnectMode={isConnectMode}
                     onNodeClickInConnectMode={handleConnect}
                     onConnect={() => setIsConnectMode(true)}

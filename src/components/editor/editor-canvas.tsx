@@ -39,6 +39,7 @@ interface EditorCanvasProps {
   setDiagramData: React.Dispatch<React.SetStateAction<DiagramData>>;
   onItemSelect: (item: SelectedItem | null, shiftKey?: boolean) => void;
   selectedItemId?: string;
+  selectedItemIds?: Set<string>;
   isConnectMode: boolean;
   onNodeClickInConnectMode: (node: DiagramNodeData) => void;
   onConnect?: () => void;
@@ -220,7 +221,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, selectedItemId, isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true }: EditorCanvasProps,
   ref
 ) {
   const [internalTransform, setInternalTransform] = useState({ x: 0, y: 0, k: 1 });
@@ -247,7 +248,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   const canvasRef = useRef<HTMLDivElement>(null);
   const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 });
   const [dragPosition, setDragPosition] = useState<{ x: number; y: number; itemId?: string } | null>(null);
+  const [multiDragPositions, setMultiDragPositions] = useState<{ [itemId: string]: { x: number; y: number } } | null>(null);
   const isDraggingRef = useRef(false);
+  const multiDragStartPositions = useRef<{ [itemId: string]: { x: number; y: number } } | null>(null);
   
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{
@@ -1214,6 +1217,58 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     });
   }, [setDiagramData]);
 
+  const moveMultipleItems = useCallback((items: Array<{ id: string; type: string; x?: number, y?: number }>, newPositions: Array<{ x: number; y: number }>, targetGroupId: string | null) => {
+    setDiagramData(prevData => {
+      let currentNodes = [...(prevData.nodes || [])];
+      let currentGroups = [...(prevData.groups || [])];
+      
+      items.forEach((item, index) => {
+        const newPos = newPositions[index];
+        if (!newPos) return;
+        
+        const oldParentId = currentGroups.find(g => g.children.includes(item.id))?.id;
+        const isFreeflowNode = currentNodes.find(n => n.id === item.id)?.freeflow;
+
+        // Handle re-parenting
+        if (oldParentId !== targetGroupId) {
+          currentGroups = currentGroups.map(g => {
+            if (g.id === oldParentId) { 
+              return { ...g, children: g.children.filter((nid: string) => nid !== item.id) };
+            }
+            if (g.id === targetGroupId) {
+              const filtered = g.children.filter((nid: string) => nid !== item.id);
+              filtered.push(item.id);
+              return { ...g, children: filtered };
+            }
+            return g;
+          });
+        }
+
+        // Handle positioning
+        if (targetGroupId && !isFreeflowNode) {
+          // Item is now a child - remove explicit coords
+          if (item.type === ItemTypes.CANVAS_NODE) {
+            currentNodes = currentNodes.map(n => n.id === item.id ? { ...n, x: undefined, y: undefined } : n);
+          } else { 
+            currentGroups = currentGroups.map(g => g.id === item.id ? { ...g, x: undefined, y: undefined } : g);
+          }
+        } else {
+          // Top-level - update coordinates
+          const snappedX = snapToGrid(newPos.x);
+          const snappedY = snapToGrid(newPos.y);
+          
+          if (item.type === ItemTypes.CANVAS_NODE) {
+            currentNodes = currentNodes.map(n => n.id === item.id ? { ...n, x: snappedX, y: snappedY } : n);
+          } else { 
+            currentGroups = currentGroups.map(g => g.id === item.id ? { ...g, x: snappedX, y: snappedY } : g);
+          }
+        }
+      });
+
+      return { ...prevData, nodes: currentNodes, groups: currentGroups };
+    });
+  }, [setDiagramData]);
+
   const moveItem = useCallback((item: { id: string; type: string; x?: number, y?: number }, newPos: { x: number; y: number }, targetGroupId: string | null) => {
     setDiagramData(prevData => {
       let currentNodes = [...(prevData.nodes || [])];
@@ -1469,6 +1524,8 @@ const [, drop] = useDrop(() => ({
         // hover is only called during drag, so we always update
         let itemX = x;
         let itemY = y;
+        let deltaX = 0;
+        let deltaY = 0;
         
         if (item.id && (monitor.getItemType() === ItemTypes.CANVAS_NODE || monitor.getItemType() === ItemTypes.GROUP)) {
           // For existing items, calculate based on initial position and delta
@@ -1481,6 +1538,8 @@ const [, drop] = useDrop(() => ({
               const initialY = originalItem.y ?? 0;
               itemX = initialX + delta.x / transform.k;
               itemY = initialY + delta.y / transform.k;
+              deltaX = delta.x / transform.k;
+              deltaY = delta.y / transform.k;
             }
           }
         }
@@ -1489,6 +1548,38 @@ const [, drop] = useDrop(() => ({
         const snap = snapToGrid;
         itemX = snap(itemX);
         itemY = snap(itemY);
+        
+        // Handle multi-select dragging
+        if (item.id && selectedItemIds.has(item.id) && selectedItemIds.size > 1) {
+          // Initialize start positions if not already done
+          if (!multiDragStartPositions.current) {
+            multiDragStartPositions.current = {};
+            selectedItemIds.forEach(id => {
+              const node = nodesById[id] || groupsById[id];
+              if (node) {
+                multiDragStartPositions.current![id] = { x: node.x ?? 0, y: node.y ?? 0 };
+              }
+            });
+          }
+          
+          // Calculate positions for all selected items
+          const newPositions: { [itemId: string]: { x: number; y: number } } = {};
+          selectedItemIds.forEach(id => {
+            const startPos = multiDragStartPositions.current![id];
+            if (startPos) {
+              newPositions[id] = {
+                x: snap(startPos.x + deltaX),
+                y: snap(startPos.y + deltaY)
+              };
+            }
+          });
+          
+          setMultiDragPositions(newPositions);
+        } else {
+          // Single item drag
+          setMultiDragPositions(null);
+          multiDragStartPositions.current = null;
+        }
         
         setDragPosition({ x: itemX, y: itemY, itemId: item.id });
         isDraggingRef.current = true;
@@ -1577,11 +1668,45 @@ const [, drop] = useDrop(() => ({
             // Pass full item data to preserve resource information
             addNode(item as any, { x, y }, targetGroupIdForFreeflow);
         } else if (item.id && (itemType === ItemTypes.CANVAS_NODE || itemType === ItemTypes.GROUP)) {
-            moveItem({ id: item.id, type: item.type || '', x: item.x, y: item.y }, { x, y }, targetGroupIdForFreeflow);
+            // Handle multi-select movement
+            if (selectedItemIds.has(item.id) && selectedItemIds.size > 1 && multiDragStartPositions.current) {
+                // Move all selected items maintaining relative spacing
+                const initialCanvasPos = monitor.getInitialSourceClientOffset();
+                const delta = monitor.getDifferenceFromInitialOffset();
+                let deltaX = 0, deltaY = 0;
+                
+                if (initialCanvasPos && delta) {
+                    deltaX = delta.x / transform.k;
+                    deltaY = delta.y / transform.k;
+                }
+                
+                const itemsToMove: Array<{ id: string; type: string; x?: number, y?: number }> = [];
+                const newPositions: Array<{ x: number; y: number }> = [];
+                
+                selectedItemIds.forEach(id => {
+                    const startPos = multiDragStartPositions.current![id];
+                    if (startPos) {
+                        const newX = snap(startPos.x + deltaX);
+                        const newY = snap(startPos.y + deltaY);
+                        const itemType = nodesById[id] ? ItemTypes.CANVAS_NODE : ItemTypes.GROUP;
+                        itemsToMove.push({ id, type: itemType, x: startPos.x, y: startPos.y });
+                        newPositions.push({ x: newX, y: newY });
+                    }
+                });
+                
+                if (itemsToMove.length > 0) {
+                    moveMultipleItems(itemsToMove, newPositions, targetGroupIdForFreeflow);
+                }
+            } else {
+                // Single item movement
+                moveItem({ id: item.id, type: item.type || '', x: item.x, y: item.y }, { x, y }, targetGroupIdForFreeflow);
+            }
         }
         
         // Clear drag position display after drop
         setDragPosition(null);
+        setMultiDragPositions(null);
+        multiDragStartPositions.current = null;
         isDraggingRef.current = false;
         setHoveredGroupId(null);
     },
@@ -1589,7 +1714,20 @@ const [, drop] = useDrop(() => ({
       isOver: monitor.isOver(),
       canDrop: monitor.canDrop(),
     }),
-  }), [transform, processedGroups, diagramData, hoveredGroupId, moveItem, addNode, nodesById, groupsById]);
+  }), [transform, processedGroups, diagramData, hoveredGroupId, moveItem, moveMultipleItems, addNode, nodesById, groupsById, selectedItemIds]);
+
+  // Cleanup multi-drag state when drag ends outside of drop
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (isDraggingRef.current) {
+        setMultiDragPositions(null);
+        multiDragStartPositions.current = null;
+      }
+    };
+    
+    document.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => document.removeEventListener('mouseup', handleGlobalMouseUp);
+  }, []);
 
 
   
@@ -2659,6 +2797,7 @@ return (
                         <DiagramGroup 
                           group={item}
                           isSelected={selectedItemId === item.id && !isConnectMode}
+                          isMultiSelected={selectedItemIds.has(item.id) && !isConnectMode}
                           isDropTarget={hoveredGroupId === item.id}
                           isTargetable={isConnectMode && selectedItemId !== item.id}
                           onClick={handleGroupClick}
@@ -2680,6 +2819,7 @@ return (
                         <DiagramNode 
                           node={item} 
                           isSelected={selectedItemId === item.id && !isConnectMode}
+                          isMultiSelected={selectedItemIds.has(item.id) && !isConnectMode}
                           isTargetable={isConnectMode && selectedItemId !== item.id}
                           isHighlighted={isConnectedToSelected}
                           onClick={handleNodeClick}
@@ -2833,8 +2973,21 @@ return (
             }}
           >
             X: {Math.round(dragPosition.x)} Y: {Math.round(dragPosition.y)}
+            {selectedItemIds.size > 1 && ` (${selectedItemIds.size} items)`}
           </div>
         )}
+        
+        {/* Multi-drag position indicators */}
+        {multiDragPositions && Object.entries(multiDragPositions).map(([id, pos]) => (
+          <div
+            key={id}
+            className="absolute w-4 h-4 bg-primary/30 border-2 border-primary rounded-full z-[55] pointer-events-none"
+            style={{
+              left: `${pos.x * transform.k + transform.x - 8}px`,
+              top: `${pos.y * transform.k + transform.y - 8}px`,
+            }}
+          />
+        ))}
     </div>
   );
 });

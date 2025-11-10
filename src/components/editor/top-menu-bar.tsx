@@ -38,6 +38,7 @@ interface TopMenuBarProps {
   transform?: { x: number; y: number; k: number };
   onTransformChange?: (transform: { x: number; y: number; k: number }) => void;
   selectedItem?: SelectedItem | null;
+  selectedItemIds?: Set<string>;
   onItemUpdate?: (updatedItem: SelectedItem) => void;
   onConnect?: (connectionOptions?: { style?: 'bezier', curvature?: number }) => void;
   onDisconnect?: () => void;
@@ -70,6 +71,7 @@ export function TopMenuBar({
   transform,
   onTransformChange,
   selectedItem,
+  selectedItemIds = new Set(),
   onItemUpdate,
   onConnect,
   onDisconnect,
@@ -298,11 +300,13 @@ export function TopMenuBar({
           />
         </>
       )}
-      {selectedItem && (
+      {(selectedItem || selectedItemIds.size > 0) && (
         <div className="text-xs text-muted-foreground px-2">
-          {selectedItem.itemType === 'edge' 
-            ? `Selected: Connection ${selectedItem.from} → ${selectedItem.to}`
-            : `Selected: ${selectedItem.label || selectedItem.id || 'Item'}`
+          {selectedItemIds.size > 1 
+            ? `${selectedItemIds.size} items selected`
+            : selectedItem?.itemType === 'edge' 
+              ? `Selected: Connection ${selectedItem.from} → ${selectedItem.to}`
+              : `Selected: ${selectedItem?.label || selectedItem?.id || 'Item'}`
           }
         </div>
       )}
