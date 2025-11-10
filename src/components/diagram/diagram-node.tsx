@@ -541,36 +541,42 @@ return (
                 const backgroundColors = (node as any).backgroundColors || [(node as any).backgroundColor || '#ffffff', (node as any).backgroundColor || '#ffffff'];
                 const backgroundColor = (node as any).backgroundColor || '#ffffff';
                 const gradientAngle = (node as any).gradientAngle || 135;
+                const hasShadow = (node as any).shadow || false;
                 
                 return (
               <div 
-                 className={cn(
-                   "flex items-center justify-center h-full w-full rounded-lg transition-colors",
-                   node.sizeMode === 'custom' ? "p-1" : "p-4",
-                  borderStyle !== 'none' && "border-2",
-                  borderStyle === 'none' && (isSelected 
-                    ? "border border-dashed border-primary opacity-100" 
-                    : "border border-dashed border-gray-400 opacity-0 hover:opacity-100 hover:border-primary hover:bg-primary/5"),
-                  isSelected && borderStyle !== 'none' ? "border-primary" : !(isDragging || isTouchDragging) && borderStyle !== 'none' && "group-hover:border-accent",
-                  isTargetable && "border-dashed border-primary"
-                )}
-                style={{
-                  background: backgroundStyle === 'none' 
-                    ? 'transparent'
-                    : backgroundStyle === 'gradient' 
-                      ? `linear-gradient(${gradientAngle}deg, ${backgroundColors[0]}, ${backgroundColors[1]})`
-                      : backgroundColor,
-                  ...(borderStyle === 'none' ? {} : borderStyle === 'gradient' ? {
-                    borderImage: `${getGradientWithAngle(borderColors, gradientAngle)} 1`,
-                    borderColor: 'transparent'
-                  } : borderStyle === 'dotted' ? {
-                    borderColor: borderColor,
-                    borderStyle: 'dotted'
-                  } : {
-                    borderColor: borderColor
-                  }),
-                   color: (node as any).textColor || '#374151',
-                   ...(node.sizeMode === 'custom' ? {} : { minHeight: '120px' })
+                  className={cn(
+                    "flex items-center justify-center h-full w-full rounded-lg transition-colors",
+                    node.sizeMode === 'custom' ? "p-1" : "p-4",
+                   borderStyle !== 'none' && "border-2",
+                   borderStyle === 'none' && (isSelected 
+                     ? "border border-dashed border-primary opacity-100" 
+                     : "border border-dashed border-gray-400 opacity-0 hover:opacity-100 hover:border-primary hover:bg-primary/5"),
+                   isSelected && borderStyle !== 'none' ? "border-primary" : !(isDragging || isTouchDragging) && borderStyle !== 'none' && "group-hover:border-accent",
+                   isTargetable && "border-dashed border-primary",
+                   hasShadow && "shadow-[0_10px_15px_-3px_rgba(239,68,68,0.3),0_4px_6px_-2px_rgba(239,68,68,0.2)]"
+                 )}
+                 style={{
+                   background: backgroundStyle === 'none' 
+                     ? 'transparent'
+                     : backgroundStyle === 'gradient' 
+                       ? `linear-gradient(${gradientAngle}deg, ${backgroundColors[0]}, ${backgroundColors[1]})`
+                       : backgroundColor,
+                   ...(borderStyle === 'none' ? {} : borderStyle === 'gradient' ? {
+                     borderImage: `${getGradientWithAngle(borderColors, gradientAngle)} 1`,
+                     borderColor: 'transparent'
+                   } : borderStyle === 'dotted' ? {
+                     borderColor: borderColor,
+                     borderStyle: 'dotted'
+                   } : {
+                     borderColor: borderColor
+                   }),
+                    color: (node as any).textColor || '#374151',
+                    ...(node.sizeMode === 'custom' ? {} : { minHeight: '120px' }),
+                    margin: hasShadow ? 4 : 0,
+                   ...(hasShadow && { 
+                     boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                   })
                  }}
               >
                 {isEditingLabel ? (

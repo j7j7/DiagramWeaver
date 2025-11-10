@@ -813,7 +813,7 @@ export function ContextToolbar({
         )}
 
         {/* Text Color */}
-        {(isGroup || isLabelOrLabelbox) && (
+        {(isGroup || isLabelOrLabelbox || isTextboxNode) && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -898,8 +898,8 @@ export function ContextToolbar({
           </Popover>
         )}
 
-        {/* Border Style for Label/Labelbox */}
-        {isLabelOrLabelbox && (
+        {/* Border Style for Label/Labelbox/Textbox */}
+        {(isLabelOrLabelbox || isTextboxNode) && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -924,7 +924,7 @@ export function ContextToolbar({
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
                     <SelectItem value="solid">Solid</SelectItem>
-                    <SelectItem value="dotted">Dotted</SelectItem>
+
                     <SelectItem value="gradient">Gradient</SelectItem>
                   </SelectContent>
                 </Select>
@@ -933,8 +933,8 @@ export function ContextToolbar({
           </Popover>
         )}
 
-        {/* Border Color for Label/Labelbox */}
-        {isLabelOrLabelbox && ((selectedItem as any).borderStyle === 'solid' || (selectedItem as any).borderStyle === 'gradient' || !(selectedItem as any).borderStyle) && (
+        {/* Border Color for Label/Labelbox/Textbox */}
+        {(isLabelOrLabelbox || isTextboxNode) && ((selectedItem as any).borderStyle === 'solid' || (selectedItem as any).borderStyle === 'gradient' || !(selectedItem as any).borderStyle) && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -988,8 +988,8 @@ export function ContextToolbar({
           </Popover>
         )}
 
-        {/* Background Style for Label/Labelbox */}
-        {isLabelOrLabelbox && (
+        {/* Background Style for Label/Labelbox/Textbox */}
+        {(isLabelOrLabelbox || isTextboxNode) && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -1014,7 +1014,7 @@ export function ContextToolbar({
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
                     <SelectItem value="solid">Solid</SelectItem>
-                    <SelectItem value="dotted">Dotted</SelectItem>
+
                     <SelectItem value="gradient">Gradient</SelectItem>
                   </SelectContent>
                 </Select>
@@ -1023,8 +1023,8 @@ export function ContextToolbar({
           </Popover>
         )}
 
-        {/* Background Color for Label/Labelbox */}
-        {isLabelOrLabelbox && (selectedItem as any).backgroundStyle && (selectedItem as any).backgroundStyle !== 'none' && (
+        {/* Background Color for Label/Labelbox/Textbox */}
+        {(isLabelOrLabelbox || isTextboxNode) && (selectedItem as any).backgroundStyle && (selectedItem as any).backgroundStyle !== 'none' && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -1121,7 +1121,7 @@ export function ContextToolbar({
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
                     <SelectItem value="solid">Solid</SelectItem>
-                    <SelectItem value="dotted">Dotted</SelectItem>
+
                     <SelectItem value="gradient">Gradient</SelectItem>
                   </SelectContent>
                 </Select>
@@ -1575,8 +1575,8 @@ export function ContextToolbar({
         )}
 
 
-        {/* Shadow Toggle (Groups, Label/Labelbox, and Shapes) */}
-        {(isGroup || isLabelOrLabelbox || isShapeNode) && (
+        {/* Shadow Toggle (Groups, Label/Labelbox, Textbox, and Shapes) */}
+        {(isGroup || isLabelOrLabelbox || isTextboxNode || isShapeNode) && (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button 

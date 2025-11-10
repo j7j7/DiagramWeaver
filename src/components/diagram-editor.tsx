@@ -68,7 +68,7 @@ export default function DiagramEditor() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [mousePosition, setMousePosition] = React.useState<{ x: number; y: number } | null>(null);
   const [selectionCoordinates, setSelectionCoordinates] = React.useState<{ start: { x: number; y: number } | null; end: { x: number; y: number } | null } | undefined>(undefined);
-  const [hoverEnabled, setHoverEnabled] = React.useState<boolean>(true);
+  const [hoverEnabled, setHoverEnabled] = React.useState<boolean>(false);
 
   // Tab management
   const {

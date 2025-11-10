@@ -1,0 +1,34 @@
+{
+  "nodes": [
+    {
+      "id": "textbox-1",
+      "type": "generic.text.textbox",
+      "label": "Test Textbox\nWith Shadow\nAnd Styling",
+      "position": { "x": 100, "y": 100 },
+      "size": { "width": 200, "height": 120 },
+      "borderStyle": "solid",
+      "borderColor": "#d1d5db",
+      "backgroundStyle": "solid",
+      "backgroundColor": "#ffffff",
+      "textColor": "#374151",
+      "shadow": true,
+      "textJustify": "center"
+    },
+    {
+      "id": "labelbox-1", 
+      "type": "generic.text.labelbox",
+      "label": "Test Labelbox\nWith Shadow\nAnd Styling",
+      "position": { "x": 350, "y": 100 },
+      "size": { "width": 200, "height": 120 },
+      "borderStyle": "solid",
+      "borderColor": "#0ea5e9",
+      "backgroundStyle": "solid", 
+      "backgroundColor": "#f0f9ff",
+      "textColor": "#0c4a6e",
+      "shadow": true,
+      "textJustify": "center"
+    }
+  ],
+  "connections": [],
+  "groups": []
+}
