@@ -27,6 +27,8 @@ export interface DiagramNodeData {
   height?: number; // Custom height - when set, overrides auto-calculated height
   sizeMode?: 'auto' | 'custom'; // Whether to use auto-calculated or custom dimensions
   noIconBackground?: boolean; // If true, removes the white background from icon nodes
+  // Text justification for text resources
+  textJustify?: 'left' | 'center' | 'right' | 'full'; // Text justification for text/label/textbox/labelbox nodes
 }
 
 export interface DiagramConnectionData {
@@ -76,6 +78,8 @@ export interface DiagramNodeItem {
   height?: number; // Custom height - when set, overrides auto-calculated height
   sizeMode?: 'auto' | 'custom'; // Whether to use auto-calculated or custom dimensions
   noIconBackground?: boolean; // If true, removes the white background from icon nodes
+  // Text justification for text resources
+  textJustify?: 'left' | 'center' | 'right' | 'full'; // Text justification for text/label/textbox/labelbox nodes
 }
 
 export interface DiagramGroupItem {

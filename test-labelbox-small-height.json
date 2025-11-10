@@ -1,0 +1,107 @@
+{
+  "nodes": [
+    {
+      "id": "labelbox-30px",
+      "type": "generic.text.labelbox",
+      "label": "Tiny",
+      "x": 50,
+      "y": 50,
+      "textJustify": "center",
+      "sizeMode": "custom",
+      "width": 80,
+      "height": 30,
+      "backgroundColor": "#ff6b6b",
+      "borderColor": "#c92a2a"
+    },
+    {
+      "id": "labelbox-40px",
+      "type": "generic.text.labelbox",
+      "label": "Small height",
+      "x": 180,
+      "y": 50,
+      "textJustify": "center",
+      "sizeMode": "custom",
+      "width": 120,
+      "height": 40,
+      "backgroundColor": "#4ecdc4",
+      "borderColor": "#0b7285"
+    },
+    {
+      "id": "labelbox-50px",
+      "type": "generic.text.labelbox",
+      "label": "Medium height",
+      "x": 330,
+      "y": 50,
+      "textJustify": "center",
+      "sizeMode": "custom",
+      "width": 140,
+      "height": 50,
+      "backgroundColor": "#45b7d1",
+      "borderColor": "#2d6a4f"
+    },
+    {
+      "id": "labelbox-60px",
+      "type": "generic.text.labelbox",
+      "label": "60px height test",
+      "x": 50,
+      "y": 120,
+      "textJustify": "center",
+      "sizeMode": "custom",
+      "width": 160,
+      "height": 60,
+      "backgroundColor": "#96ceb4",
+      "borderColor": "#2c3e50"
+    },
+    {
+      "id": "labelbox-80px",
+      "type": "generic.text.labelbox",
+      "label": "80px height test",
+      "x": 240,
+      "y": 120,
+      "textJustify": "center",
+      "sizeMode": "custom",
+      "width": 180,
+      "height": 80,
+      "backgroundColor": "#dda0dd",
+      "borderColor": "#86198f"
+    },
+    {
+      "id": "labelbox-100px",
+      "type": "generic.text.labelbox",
+      "label": "100px height",
+      "x": 450,
+      "y": 120,
+      "textJustify": "center",
+      "sizeMode": "custom",
+      "width": 200,
+      "height": 100,
+      "backgroundColor": "#ffeaa7",
+      "borderColor": "#d63031"
+    },
+    {
+      "id": "textbox-comparison",
+      "type": "generic.text.textbox",
+      "label": "Textbox 40px",
+      "x": 50,
+      "y": 220,
+      "textJustify": "center",
+      "sizeMode": "custom",
+      "width": 150,
+      "height": 40,
+      "backgroundColor": "#74b9ff",
+      "borderColor": "#0984e3"
+    },
+    {
+      "id": "label-auto-comparison",
+      "type": "generic.text.labelbox",
+      "label": "Auto mode (100px min)",
+      "x": 220,
+      "y": 220,
+      "textJustify": "center",
+      "backgroundColor": "#a29bfe",
+      "borderColor": "#6c5ce7"
+    }
+  ],
+  "connections": [],
+  "groups": []
+}

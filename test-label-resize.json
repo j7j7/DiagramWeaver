@@ -1,0 +1,42 @@
+{
+  "nodes": [
+    {
+      "id": "label-resize-test",
+      "type": "generic.text.label",
+      "label": "Label with custom sizing - try to resize me horizontally",
+      "x": 100,
+      "y": 100,
+      "textJustify": "center",
+      "sizeMode": "custom",
+      "width": 200,
+      "height": 40,
+      "backgroundColor": "#f3f4f6",
+      "borderColor": "#d1d5db"
+    },
+    {
+      "id": "label-auto-test",
+      "type": "generic.text.label",
+      "label": "Auto-sized label for comparison",
+      "x": 100,
+      "y": 200,
+      "textJustify": "center",
+      "backgroundColor": "#fef3c7",
+      "borderColor": "#f59e0b"
+    },
+    {
+      "id": "textbox-resize-test",
+      "type": "generic.text.textbox",
+      "label": "Textbox with custom sizing - should be resizable",
+      "x": 400,
+      "y": 100,
+      "textJustify": "left",
+      "sizeMode": "custom",
+      "width": 250,
+      "height": 80,
+      "backgroundColor": "#dbeafe",
+      "borderColor": "#3b82f6"
+    }
+  ],
+  "connections": [],
+  "groups": []
+}

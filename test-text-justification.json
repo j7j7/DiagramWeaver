@@ -1,0 +1,72 @@
+{
+  "nodes": [
+    {
+      "id": "text-1",
+      "type": "generic.text.text",
+      "label": "Left aligned text",
+      "x": 100,
+      "y": 100,
+      "textJustify": "left",
+      "sizeMode": "custom",
+      "width": 200,
+      "height": 60
+    },
+    {
+      "id": "text-2", 
+      "type": "generic.text.text",
+      "label": "Center aligned text",
+      "x": 350,
+      "y": 100,
+      "textJustify": "center",
+      "sizeMode": "custom",
+      "width": 200,
+      "height": 60
+    },
+    {
+      "id": "text-3",
+      "type": "generic.text.text", 
+      "label": "Right aligned text",
+      "x": 600,
+      "y": 100,
+      "textJustify": "right",
+      "sizeMode": "custom",
+      "width": 200,
+      "height": 60
+    },
+    {
+      "id": "label-1",
+      "type": "generic.text.label",
+      "label": "Full justified label text example",
+      "x": 100,
+      "y": 200,
+      "textJustify": "full",
+      "sizeMode": "custom",
+      "width": 250,
+      "height": 50
+    },
+    {
+      "id": "textbox-1",
+      "type": "generic.text.textbox",
+      "label": "This is a textbox with left alignment and custom sizing. It should show multiple lines of text properly aligned.",
+      "x": 400,
+      "y": 200,
+      "textJustify": "left",
+      "sizeMode": "custom",
+      "width": 300,
+      "height": 120
+    },
+    {
+      "id": "labelbox-1",
+      "type": "generic.text.labelbox",
+      "label": "Labelbox with center alignment and dynamic resizing capabilities",
+      "x": 100,
+      "y": 300,
+      "textJustify": "center",
+      "sizeMode": "custom",
+      "width": 280,
+      "height": 80
+    }
+  ],
+  "connections": [],
+  "groups": []
+}

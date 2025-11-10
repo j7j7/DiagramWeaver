@@ -1,0 +1,78 @@
+{
+  "nodes": [
+    {
+      "id": "text-custom-1",
+      "type": "generic.text.text",
+      "label": "Custom sized text with minimal padding",
+      "x": 50,
+      "y": 50,
+      "textJustify": "left",
+      "sizeMode": "custom",
+      "width": 250,
+      "height": 40,
+      "backgroundColor": "#f3f4f6",
+      "borderColor": "#d1d5db"
+    },
+    {
+      "id": "label-custom-1",
+      "type": "generic.text.label",
+      "label": "Label with custom sizing and full space usage",
+      "x": 350,
+      "y": 50,
+      "textJustify": "center",
+      "sizeMode": "custom",
+      "width": 280,
+      "height": 45,
+      "backgroundColor": "#fef3c7",
+      "borderColor": "#f59e0b"
+    },
+    {
+      "id": "textbox-custom-1",
+      "type": "generic.text.textbox",
+      "label": "This textbox should use the full custom dimensions with minimal padding around the text content. The text should fill the entire available space properly.",
+      "x": 50,
+      "y": 150,
+      "textJustify": "left",
+      "sizeMode": "custom",
+      "width": 400,
+      "height": 100,
+      "backgroundColor": "#dbeafe",
+      "borderColor": "#3b82f6"
+    },
+    {
+      "id": "labelbox-custom-1",
+      "type": "generic.text.labelbox",
+      "label": "Labelbox with custom sizing that maximizes text area usage while maintaining proper visual boundaries",
+      "x": 500,
+      "y": 150,
+      "textJustify": "center",
+      "sizeMode": "custom",
+      "width": 350,
+      "height": 90,
+      "backgroundColor": "#dcfce7",
+      "borderColor": "#22c55e"
+    },
+    {
+      "id": "text-auto-1",
+      "type": "generic.text.text",
+      "label": "Auto-sized text for comparison",
+      "x": 50,
+      "y": 300,
+      "textJustify": "center",
+      "backgroundColor": "#fce7f3",
+      "borderColor": "#ec4899"
+    },
+    {
+      "id": "label-auto-1",
+      "type": "generic.text.label",
+      "label": "Auto-sized label",
+      "x": 250,
+      "y": 300,
+      "textJustify": "right",
+      "backgroundColor": "#f3e8ff",
+      "borderColor": "#a855f7"
+    }
+  ],
+  "connections": [],
+  "groups": []
+}

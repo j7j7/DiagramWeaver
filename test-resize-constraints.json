@@ -1,0 +1,27 @@
+{
+  "nodes": [
+    {
+      "id": "test-small",
+      "type": "generic.text.labelbox",
+      "x": 100,
+      "y": 100,
+      "width": 40,
+      "height": 40,
+      "label": "A",
+      "sizeMode": "custom",
+      "textJustify": "center"
+    },
+    {
+      "id": "test-large", 
+      "type": "generic.text.labelbox",
+      "x": 200,
+      "y": 100,
+      "width": 160,
+      "height": 40,
+      "label": "Test Large",
+      "sizeMode": "custom",
+      "textJustify": "center"
+    }
+  ],
+  "connections": []
+}

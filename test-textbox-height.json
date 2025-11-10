@@ -1,0 +1,16 @@
+{
+  "nodes": [
+    {
+      "id": "textbox-test",
+      "type": "generic.text.textbox",
+      "x": 100,
+      "y": 100,
+      "width": 40,
+      "height": 40,
+      "label": "Test",
+      "sizeMode": "custom",
+      "textJustify": "center"
+    }
+  ],
+  "connections": []
+}

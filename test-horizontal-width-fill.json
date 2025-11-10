@@ -1,0 +1,84 @@
+{
+  "nodes": [
+    {
+      "id": "textbox-wide-1",
+      "type": "generic.text.textbox",
+      "label": "This textbox should fill the entire horizontal space. When you resize the width horizontally, the text should expand to use the full width available.",
+      "x": 50,
+      "y": 50,
+      "textJustify": "left",
+      "sizeMode": "custom",
+      "width": 500,
+      "height": 80,
+      "backgroundColor": "#dbeafe",
+      "borderColor": "#3b82f6"
+    },
+    {
+      "id": "textbox-wide-2",
+      "type": "generic.text.textbox",
+      "label": "Center aligned text that should expand horizontally when container width increases",
+      "x": 50,
+      "y": 180,
+      "textJustify": "center",
+      "sizeMode": "custom",
+      "width": 450,
+      "height": 60,
+      "backgroundColor": "#dcfce7",
+      "borderColor": "#22c55e"
+    },
+    {
+      "id": "labelbox-wide-1",
+      "type": "generic.text.labelbox",
+      "label": "Labelbox with full horizontal width usage. The text should expand to fill container width completely.",
+      "x": 50,
+      "y": 290,
+      "textJustify": "full",
+      "sizeMode": "custom",
+      "width": 600,
+      "height": 70,
+      "backgroundColor": "#fef3c7",
+      "borderColor": "#f59e0b"
+    },
+    {
+      "id": "labelbox-wide-2",
+      "type": "generic.text.labelbox",
+      "label": "Right aligned labelbox text that uses full horizontal space",
+      "x": 50,
+      "y": 400,
+      "textJustify": "right",
+      "sizeMode": "custom",
+      "width": 400,
+      "height": 50,
+      "backgroundColor": "#fce7f3",
+      "borderColor": "#ec4899"
+    },
+    {
+      "id": "text-custom-wide",
+      "type": "generic.text.text",
+      "label": "Text node with custom width that should fill horizontally",
+      "x": 50,
+      "y": 500,
+      "textJustify": "center",
+      "sizeMode": "custom",
+      "width": 350,
+      "height": 40,
+      "backgroundColor": "#f3e8ff",
+      "borderColor": "#a855f7"
+    },
+    {
+      "id": "label-custom-wide",
+      "type": "generic.text.label",
+      "label": "Label with custom horizontal width",
+      "x": 450,
+      "y": 500,
+      "textJustify": "left",
+      "sizeMode": "custom",
+      "width": 300,
+      "height": 35,
+      "backgroundColor": "#e0e7ff",
+      "borderColor": "#6366f1"
+    }
+  ],
+  "connections": [],
+  "groups": []
+}

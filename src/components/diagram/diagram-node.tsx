@@ -170,12 +170,12 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
     // Handle larger multi-line text boxes
     if (nodeType === 'generic.text.textbox') {
       const maxCharsPerLine = 30; // More characters fit in wider textbox
-      const lines = Math.max(3, Math.ceil(label.length / maxCharsPerLine)); // Minimum 3 lines
-      return 120 + ((lines - 3) * EXTRA_LINE_HEIGHT); // Start with 120px height
+      const lines = Math.max(1, Math.ceil(label.length / maxCharsPerLine)); // Minimum 1 line
+      return 40 + ((lines - 1) * EXTRA_LINE_HEIGHT); // Start with 40px height
     } else if (nodeType === 'generic.text.labelbox') {
       const maxCharsPerLine = 25; // Characters fit in labelbox
-      const lines = Math.max(2, Math.ceil(label.length / maxCharsPerLine)); // Minimum 2 lines
-      return 100 + ((lines - 2) * EXTRA_LINE_HEIGHT); // Start with 100px height
+      const lines = Math.max(1, Math.ceil(label.length / maxCharsPerLine)); // Minimum 1 line for custom sizing
+      return 100 + ((lines - 1) * EXTRA_LINE_HEIGHT); // Start with 100px height
     } else if (nodeType === 'generic.text.text') {
       const maxCharsPerLine = 20; // More characters fit in text-only nodes
       const lines = Math.ceil(label.length / maxCharsPerLine);
@@ -191,6 +191,22 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
       const maxCharsPerLine = 12; // Approximate characters that fit in node width
       const lines = Math.ceil(label.length / maxCharsPerLine);
       return BASE_NODE_HEIGHT + ((lines - 1) * EXTRA_LINE_HEIGHT);
+    }
+  };
+  
+  // Helper function to get text justification class
+  const getTextJustifyClass = (justify?: string) => {
+    switch (justify) {
+      case 'left':
+        return 'text-left';
+      case 'center':
+        return 'text-center';
+      case 'right':
+        return 'text-right';
+      case 'full':
+        return 'text-justify';
+      default:
+        return 'text-center';
     }
   };
   
@@ -234,7 +250,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
     resizeStartPos.current = {
       x: e.clientX,
       y: e.clientY,
-      startWidth: node.width || (isTextboxNode ? 200 : isLabelboxNode ? 160 : 80),
+      startWidth: node.width || (isTextboxNode ? 40 : isLabelboxNode ? 40 : 80),
       startHeight: node.height || nodeHeight
     };
   };
@@ -249,21 +265,25 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
     let newHeight = resizeStartPos.current.startHeight;
     
     // Calculate minimum size based on node type
-    const minWidth = isTextboxNode ? 200 : isLabelboxNode ? 160 : isShapeNode ? 20 : 80;
-    const minHeight = isTextboxNode ? 120 : isLabelboxNode ? 100 : isShapeNode ? 20 : 40;
+    const minWidth = isTextboxNode ? 40 : isLabelboxNode ? 40 : isShapeNode ? 20 : 80;
+    const minHeight = isTextboxNode ? 40 : isLabelboxNode ? 40 : isShapeNode ? 20 : 40;
     
     switch (resizeHandle) {
       case 'right':
-        newWidth = Math.max(minWidth, resizeStartPos.current.startWidth + deltaX);
+        newWidth = resizeStartPos.current.startWidth + deltaX;
         break;
       case 'bottom':
-        newHeight = Math.max(minHeight, resizeStartPos.current.startHeight + deltaY);
+        newHeight = resizeStartPos.current.startHeight + deltaY;
         break;
     }
     
-    // Snap to grid
+    // Snap to grid first
     newWidth = Math.round(newWidth / 20) * 20;
     newHeight = Math.round(newHeight / 20) * 20;
+    
+    // Then apply minimum constraints (after grid snapping)
+    newWidth = Math.max(minWidth, newWidth);
+    newHeight = Math.max(minHeight, newHeight);
     
     onResize(node.id, newWidth, newHeight);
   };
@@ -394,16 +414,17 @@ return (
         width: isShapeNode ? (node.width || 60) :
                (isRotatableNode || isTextboxNode || isLabelboxNode ? 
                 (node.sizeMode === 'custom' && node.width ? node.width : 'auto') : NODE_WIDTH),
-        minWidth: isShapeNode ? (node.width || 60) :
-                  isTextboxNode ? (node.sizeMode === 'custom' && node.width ? node.width : 200) : 
-                  isLabelboxNode ? (node.sizeMode === 'custom' && node.width ? node.width : 160) : 
-                  isRotatableNode ? 80 : NODE_WIDTH,
+         minWidth: isShapeNode ? (node.width || 60) :
+                    isTextboxNode ? 40 : 
+                    isLabelboxNode ? 40 :
+                   isRotatableNode ? 80 : NODE_WIDTH,
         maxWidth: isShapeNode ? (node.width || 60) :
-                  isTextboxNode ? (node.sizeMode === 'custom' && node.width ? node.width : 400) : 
-                  isLabelboxNode ? (node.sizeMode === 'custom' && node.width ? node.width : 300) : 
-                  isRotatableNode ? 200 : NODE_WIDTH,
+                   (isTextboxNode || isLabelboxNode) ? (node.sizeMode === 'custom' ? 'none' : (isTextboxNode ? 400 : 300)) :
+                   isRotatableNode ? 200 : NODE_WIDTH,
         height: isShapeNode ? (node.height || 60) :
-                (isRotatableNode || isTextboxNode || isLabelboxNode ? nodeHeight : 'auto'),
+                isLabelboxNode && node.sizeMode === 'custom' ? (node.height || 40) :
+                isTextboxNode && node.sizeMode === 'custom' ? (node.height || 40) :
+                (isRotatableNode || isTextboxNode || isLabelboxNode) ? nodeHeight : 'auto',
         touchAction: 'none',
         transform: rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
         transformOrigin: 'center'
@@ -435,8 +456,8 @@ return (
                     onClick={(e) => e.stopPropagation()}
                   />
                  ) : node.label ? (
-                   <p 
-                     className="text-sm font-medium text-center text-foreground break-words leading-tight cursor-text hover:bg-background/50 rounded px-1 py-0.5 -mx-1 -my-0.5"
+                    <p 
+                      className={`text-sm font-medium ${getTextJustifyClass((node as any).textJustify)} text-foreground break-words leading-tight cursor-text hover:bg-background/50 rounded ${node.sizeMode === 'custom' ? 'w-full px-1 py-0.5' : 'px-1 py-0.5 -mx-1 -my-0.5'}`}
                      onDoubleClick={handleLabelDoubleClick}
                    >
                      {node.label}
@@ -457,8 +478,9 @@ return (
                 
                 return (
               <div 
-                className={cn(
-                  "flex items-center justify-center h-full w-full px-3 py-1 rounded-lg transition-colors",
+                  className={cn(
+                    `flex items-center justify-center rounded-lg transition-colors ${node.sizeMode === 'custom' && node.height && node.height < 50 ? 'items-start' : ''}`,
+                    node.sizeMode === 'custom' ? "px-1 py-0.5" : "px-3 py-1",
                   borderStyle !== 'none' && "border-2",
                   borderStyle === 'none' && (isSelected 
                     ? "border border-dashed border-primary opacity-100" 
@@ -500,7 +522,7 @@ return (
                   />
                  ) : node.label ? (
                     <p 
-                      className="text-xs font-medium text-center text-foreground w-full px-1 break-words leading-tight cursor-text hover:bg-background/50 rounded -mx-1 -my-0.5"
+                      className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} text-foreground w-full px-1 break-words leading-tight cursor-text hover:bg-background/50 rounded ${node.sizeMode === 'custom' ? '' : '-mx-1 -my-0.5'}`}
                       onDoubleClick={handleLabelDoubleClick}
                     >
                      {node.label}
@@ -522,8 +544,9 @@ return (
                 
                 return (
               <div 
-                className={cn(
-                  "flex items-center justify-center h-full w-full p-4 rounded-lg transition-colors",
+                 className={cn(
+                   "flex items-center justify-center h-full w-full rounded-lg transition-colors",
+                   node.sizeMode === 'custom' ? "p-1" : "p-4",
                   borderStyle !== 'none' && "border-2",
                   borderStyle === 'none' && (isSelected 
                     ? "border border-dashed border-primary opacity-100" 
@@ -546,9 +569,9 @@ return (
                   } : {
                     borderColor: borderColor
                   }),
-                  color: (node as any).textColor || '#374151',
-                  minHeight: '120px'
-                }}
+                   color: (node as any).textColor || '#374151',
+                   ...(node.sizeMode === 'custom' ? {} : { minHeight: '120px' })
+                 }}
               >
                 {isEditingLabel ? (
                   <textarea
@@ -563,8 +586,8 @@ return (
                     rows={4}
                   />
                 ) : (
-                  <p 
-                    className="text-sm font-medium text-left break-words leading-normal cursor-text hover:bg-background/50 rounded px-2 py-2 -mx-2 -my-2 whitespace-pre-wrap"
+                   <p 
+                     className={`text-sm font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-normal cursor-text hover:bg-background/50 rounded whitespace-pre-wrap ${node.sizeMode === 'custom' ? 'w-full px-1 py-0.5' : 'px-2 py-2 -mx-2 -my-2'}`}
                     onDoubleClick={handleLabelDoubleClick}
                   >
                     {node.label || 'Enter text...'}
@@ -587,8 +610,9 @@ return (
                 
                 return (
               <div 
-                className={cn(
-                  "flex items-center justify-center h-full w-full p-3 rounded-lg transition-colors",
+                 className={cn(
+                   "flex items-center justify-center h-full w-full rounded-lg transition-colors",
+                    node.sizeMode === 'custom' ? (node.height && node.height < 50 ? "py-0 px-1" : "py-0.5 px-1") : "p-3",
                   borderStyle !== 'none' && "border-2",
                   borderStyle === 'none' && (isSelected 
                     ? "border border-dashed border-primary opacity-100" 
@@ -609,9 +633,9 @@ return (
                    } : {
                      borderColor: borderColor
                    }),
-                   color: (node as any).textColor || '#0c4a6e',
-                  minHeight: '100px',
-                  margin: hasShadow ? 4 : 0,
+                    color: (node as any).textColor || '#0c4a6e',
+                    ...(node.sizeMode === 'custom' ? {} : { minHeight: '40px' }),
+                   margin: hasShadow ? 4 : 0,
                   ...(hasShadow && { 
                     boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
                   })
@@ -625,13 +649,13 @@ return (
                     onChange={(e) => setEditText(e.target.value)}
                     onBlur={handleLabelSubmit}
                     onKeyDown={(e) => handleLabelKeyDown(e, true)}
-                    className="text-sm font-medium bg-transparent border border-primary rounded px-2 py-2 w-full h-full outline-none resize-none"
-                    onClick={(e) => e.stopPropagation()}
-                    rows={3}
+                      className={`text-sm font-medium bg-transparent border border-primary rounded w-full h-full outline-none resize-none ${node.sizeMode === 'custom' ? 'px-1 py-0.5' : 'px-2 py-2'}`}
+                     onClick={(e) => e.stopPropagation()}
+                     rows={3}
                   />
                 ) : (
                   <p 
-                    className="text-sm font-medium text-center break-words leading-normal cursor-text hover:bg-background/50 rounded px-2 py-2 -mx-2 -my-2 whitespace-pre-wrap"
+                    className={`text-sm font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-normal cursor-text hover:bg-background/50 rounded whitespace-pre-wrap ${node.sizeMode === 'custom' ? 'w-full px-1 py-1' : 'px-2 py-2 -mx-2 -my-2'}`}
                     onDoubleClick={handleLabelDoubleClick}
                   >
                     {node.label || 'Enter label...'}
@@ -1133,11 +1157,11 @@ return (
                     value={editText}
                     onChange={(e) => setEditText(e.target.value)}
                     onBlur={handleLabelSubmit}
-                    onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                    className="mt-1 text-xs font-medium text-center bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                ) : node.label ? (
+                     onKeyDown={(e) => handleLabelKeyDown(e, false)}
+                     className={`text-sm font-medium text-center bg-transparent border border-primary rounded w-full outline-none ${node.sizeMode === 'custom' ? 'px-1 py-0.5' : 'px-1 py-0.5'}`}
+                     onClick={(e) => e.stopPropagation()}
+                   />
+                  ) : node.label ? (
                   <p 
                     className="text-sm font-medium text-center text-foreground break-words leading-tight cursor-text hover:bg-background/50 rounded px-1 py-0.5 -mx-1 -my-0.5"
                     onDoubleClick={handleLabelDoubleClick}
@@ -1163,21 +1187,29 @@ return (
         )}
       </Popover>
       
-      {/* Resize handles - show for textbox/labelbox in custom mode, or for shapes */}
+      {/* Resize handles - show for text resources in custom mode, or for shapes */}
       {(isHovered || isResizing || isSelected) && 
-       ((isTextboxNode || isLabelboxNode) && node.sizeMode === 'custom' || isShapeNode) && (
+       ((isTextNode || isLabelNode || isTextboxNode || isLabelboxNode) && node.sizeMode === 'custom' || isShapeNode) && (
         <>
           {/* Right handle */}
           <div
-            className="absolute top-0 right-0 w-2 h-full cursor-ew-resize hover:bg-primary/20 transition-colors"
+            className="absolute top-0 right-0 w-2 h-full cursor-ew-resize hover:bg-primary/20 transition-colors z-50"
             style={{ marginRight: '-4px' }}
-            onMouseDown={(e) => handleResizeStart(e, 'right')}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              handleResizeStart(e, 'right');
+            }}
           />
           {/* Bottom handle */}
           <div
-            className="absolute bottom-0 left-0 w-full h-2 cursor-ns-resize hover:bg-primary/20 transition-colors"
+            className="absolute bottom-0 left-0 w-full h-2 cursor-ns-resize hover:bg-primary/20 transition-colors z-50"
             style={{ marginBottom: '-4px' }}
-            onMouseDown={(e) => handleResizeStart(e, 'bottom')}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              handleResizeStart(e, 'bottom');
+            }}
           />
         </>
       )}

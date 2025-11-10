@@ -30,6 +30,8 @@ export const DiagramNodeDataSchema = z.object({
   height: z.number().optional(), // Custom height - when set, overrides auto-calculated height
   sizeMode: z.enum(['auto', 'custom']).optional(), // Whether to use auto-calculated or custom dimensions
   noIconBackground: z.boolean().optional(), // If true, removes the white background from icon nodes
+  // Text justification for text resources
+  textJustify: z.enum(['left', 'center', 'right', 'full']).optional(), // Text justification for text/label/textbox/labelbox nodes
 });
 
 // Schema for DiagramConnectionData 
@@ -115,6 +117,8 @@ export const DiagramNodeItemSchema = z.object({
   height: z.number().optional(), // Custom height - when set, overrides auto-calculated height
   sizeMode: z.enum(['auto', 'custom']).optional(), // Whether to use auto-calculated or custom dimensions
   noIconBackground: z.boolean().optional(), // If true, removes the white background from icon nodes
+  // Text justification for text resources
+  textJustify: z.enum(['left', 'center', 'right', 'full']).optional(), // Text justification for text/label/textbox/labelbox nodes
 });
 
 // Schema for nested group items (recursive)

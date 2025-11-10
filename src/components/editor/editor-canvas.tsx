@@ -57,7 +57,8 @@ type PositionedNode = DiagramNodeData & { x: number; y: number; };
 type PositionedGroup = DiagramGroupData & { x: number; y: number; width: number; height: number; };
 
 const measureNodeDims = (n: PositionedNode) => {
-  const isText = n.type === 'generic.text.text' || n.type === 'generic.text.label';
+  const isTextNode = n.type === 'generic.text.text';
+  const isLabelNode = n.type === 'generic.text.label';
   const isTextboxNode = n.type === 'generic.text.textbox';
   const isLabelboxNode = n.type === 'generic.text.labelbox';
   const isShapeNode =
@@ -76,7 +77,7 @@ const measureNodeDims = (n: PositionedNode) => {
   const label = (n.label || '').toString();
 
   // Use custom dimensions if sizeMode is 'custom' and dimensions are provided
-  if ((isTextboxNode || isLabelboxNode || isShapeNode) && n.sizeMode === 'custom' && n.width && n.height) {
+  if ((isTextNode || isLabelNode || isTextboxNode || isLabelboxNode || isShapeNode) && n.sizeMode === 'custom' && n.width && n.height) {
     return { width: n.width, height: n.height };
   }
   
@@ -88,9 +89,9 @@ const measureNodeDims = (n: PositionedNode) => {
   if (isTextboxNode) {
     const avgCharWidth = 8;
     const padding = 32;
-    const minWidth = 200;
+    const minWidth = 40;
     const maxWidth = 400;
-    const minHeight = 120;
+    const minHeight = 40;
 
     const words = label.split(' ');
     const maxCharsPerLine = 30;
@@ -113,16 +114,16 @@ const measureNodeDims = (n: PositionedNode) => {
       Math.min(maxWidth, maxLineLength * avgCharWidth + padding),
     );
 
-    const textLines = Math.max(3, Math.ceil(label.length / maxCharsPerLine));
-    const height = minHeight + (textLines - 3) * EXTRA_LINE_HEIGHT;
+    const textLines = Math.max(1, Math.ceil(label.length / maxCharsPerLine));
+    const height = minHeight + (textLines - 1) * EXTRA_LINE_HEIGHT;
 
     return { width: calculatedWidth, height };
   } else if (isLabelboxNode) {
     const avgCharWidth = 8;
     const padding = 24;
-    const minWidth = 160;
+    const minWidth = 40;
     const maxWidth = 300;
-    const minHeight = 100;
+    const minHeight = n.sizeMode === 'custom' ? 40 : 60; // Allow smaller height in custom mode
 
     const words = label.split(' ');
     const maxCharsPerLine = 25;
@@ -145,17 +146,17 @@ const measureNodeDims = (n: PositionedNode) => {
       Math.min(maxWidth, maxLineLength * avgCharWidth + padding),
     );
 
-    const textLines = Math.max(2, Math.ceil(label.length / maxCharsPerLine));
-    const height = minHeight + (textLines - 2) * EXTRA_LINE_HEIGHT;
+    const textLines = Math.max(1, Math.ceil(label.length / maxCharsPerLine));
+    const height = minHeight + (textLines - 1) * EXTRA_LINE_HEIGHT;
 
     return { width: calculatedWidth, height };
-  } else if (isText || isShapeNode) {
+  } else if (isTextNode || isLabelNode || isShapeNode) {
     const avgCharWidth = 8;
 
     let calculatedWidth: number;
     let height: number;
 
-    if (isText) {
+    if (isTextNode || isLabelNode) {
       const padding = 16;
       const minTextWidth = 80;
       const maxTextWidth = 200;
@@ -1158,11 +1159,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                              node.type?.endsWith('.cloud');
           
           if (node.type === 'generic.text.textbox') {
-            minWidth = 200;
-            minHeight = 120;
+            minWidth = 40;
+            minHeight = 40;
           } else if (node.type === 'generic.text.labelbox') {
-            minWidth = 160;
-            minHeight = 100;
+            minWidth = 40;
+            minHeight = 40;
           } else if (isShapeNode) {
             minWidth = 20;
             minHeight = 20;

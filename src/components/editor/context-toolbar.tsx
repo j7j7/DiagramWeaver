@@ -9,6 +9,8 @@ import {
   Layout, 
   AlignLeft, 
   AlignCenter,
+  AlignRight,
+  AlignJustify,
   AlignVerticalJustifyStart,
   AlignVerticalJustifyCenter,
   AlignVerticalJustifyEnd,
@@ -144,8 +146,8 @@ export function ContextToolbar({
     const isGroup = selectedItem.itemType === 'group';
     const updatedItem = { ...selectedItem, sizeMode: value } as SelectedItem;
     if (value === 'custom' && !(selectedItem as any).width && !(selectedItem as any).height) {
-      (updatedItem as any).width = isGroup ? 300 : 200;
-      (updatedItem as any).height = isGroup ? 220 : 120;
+      (updatedItem as any).width = isGroup ? 300 : 40;
+      (updatedItem as any).height = isGroup ? 220 : 40;
     }
     onItemUpdate(updatedItem);
   };
@@ -835,6 +837,65 @@ export function ContextToolbar({
           </Popover>
         )}
 
+        {/* Text Justification for Text Resources */}
+        {(isTextNode || isLabelNode || isTextboxNode || isLabelboxNode) && (
+          <Popover>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 px-2">
+                    <AlignLeft className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent>Text Justification</TooltipContent>
+            </Tooltip>
+            <PopoverContent className="w-48">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Text Justification</label>
+                <Select
+                  value={(selectedItem.itemType === 'node' ? (selectedItem as any).textJustify : undefined) || 'center'}
+                  onValueChange={(value) => {
+                    if (onItemUpdate && selectedItem.itemType === 'node') {
+                      onItemUpdate({ ...selectedItem, textJustify: value as 'left' | 'center' | 'right' | 'full' });
+                    }
+                  }}
+                >
+                  <SelectTrigger className="h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="left">
+                      <div className="flex items-center gap-2">
+                        <AlignLeft className="h-4 w-4" />
+                        <span>Left</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="center">
+                      <div className="flex items-center gap-2">
+                        <AlignCenter className="h-4 w-4" />
+                        <span>Center</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="right">
+                      <div className="flex items-center gap-2">
+                        <AlignRight className="h-4 w-4" />
+                        <span>Right</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="full">
+                      <div className="flex items-center gap-2">
+                        <AlignJustify className="h-4 w-4" />
+                        <span>Full</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+
         {/* Border Style for Label/Labelbox */}
         {isLabelOrLabelbox && (
           <Popover>
@@ -1414,8 +1475,8 @@ export function ContextToolbar({
           </Popover>
         )}
 
-        {/* Size Mode (Groups) */}
-        {isGroup && (
+        {/* Size Mode (Groups and Text Resources) */}
+        {(isGroup || isTextNode || isLabelNode || isTextboxNode || isLabelboxNode) && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -1448,10 +1509,10 @@ export function ContextToolbar({
                       <label className="text-xs text-muted-foreground">Width (px)</label>
                       <Input
                         type="number"
-                        min="100"
+                        min="40"
                         step="20"
-                        value={(selectedItem as any).width || 300}
-                        onChange={(e) => handleWidthChange(parseInt(e.target.value) || 300)}
+                        value={(selectedItem as any).width || 40}
+                        onChange={(e) => handleWidthChange(parseInt(e.target.value) || 40)}
                         className="h-8 text-xs"
                       />
                     </div>
@@ -1459,10 +1520,10 @@ export function ContextToolbar({
                       <label className="text-xs text-muted-foreground">Height (px)</label>
                       <Input
                         type="number"
-                        min="100"
+                        min="40"
                         step="20"
-                        value={(selectedItem as any).height || 220}
-                        onChange={(e) => handleHeightChange(parseInt(e.target.value) || 220)}
+                        value={(selectedItem as any).height || 40}
+                        onChange={(e) => handleHeightChange(parseInt(e.target.value) || 40)}
                         className="h-8 text-xs"
                       />
                     </div>
