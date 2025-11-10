@@ -53,6 +53,7 @@ import { DraggableResourceItem } from './draggable-resource-item';
 import { generateDiagram } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Loader } from 'lucide-react';
+import { ollamaConfig } from '@/lib/ollama-config';
 
 // Resource index is fetched at runtime from public/resources
 // This avoids duplicate JSON sources and keeps a single source of truth.
@@ -169,6 +170,10 @@ export function ResourceBrowser({ onResourceSelect, onDiagramGenerated }: Resour
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<{ success: boolean; message: string } | null>(null);
   const { toast } = useToast();
+  
+  // Config state
+  const [config, setConfig] = useState(ollamaConfig.get());
+  const [isEditingConfig, setIsEditingConfig] = useState(false);
   
   // Initialize state from cookies or defaults
   const savedState = getBrowserState();
@@ -487,6 +492,83 @@ return (
                 connectionStatus.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
               }`}>
                 {connectionStatus.message}
+              </div>
+            )}
+          </div>
+          
+          {/* Config Editor */}
+          <div className="mt-3">
+            <Button 
+              onClick={() => setIsEditingConfig(!isEditingConfig)}
+              size="sm"
+              variant="ghost"
+              className="px-2 py-1 h-auto text-xs text-muted-foreground"
+            >
+              {isEditingConfig ? 'Hide Config' : 'Show Config'}
+            </Button>
+            {isEditingConfig && (
+              <div className="mt-2 p-3 border rounded-md bg-muted/30 space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs font-medium">Base URL</label>
+                    <Input
+                      value={config.baseUrl}
+                      onChange={(e) => setConfig({...config, baseUrl: e.target.value})}
+                      className="h-8 text-xs"
+                      placeholder="http://localhost:11434"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium">Model</label>
+                    <Input
+                      value={config.model}
+                      onChange={(e) => setConfig({...config, model: e.target.value})}
+                      className="h-8 text-xs"
+                      placeholder="llama3.2"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={() => {
+                      ollamaConfig.update(config);
+                      toast({
+                        title: "Config Updated",
+                        description: "Ollama configuration has been updated",
+                      });
+                    }}
+                    size="sm"
+                    className="px-2 py-1 h-auto text-xs"
+                  >
+                    Save
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      setConfig(ollamaConfig.get());
+                      setIsEditingConfig(false);
+                    }}
+                    size="sm"
+                    variant="outline"
+                    className="px-2 py-1 h-auto text-xs"
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      ollamaConfig.reset();
+                      setConfig(ollamaConfig.get());
+                      toast({
+                        title: "Config Reset",
+                        description: "Configuration reset to defaults",
+                      });
+                    }}
+                    size="sm"
+                    variant="outline"
+                    className="px-2 py-1 h-auto text-xs"
+                  >
+                    Reset
+                  </Button>
+                </div>
               </div>
             )}
           </div>

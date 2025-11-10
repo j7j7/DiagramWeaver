@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { ollamaConfig } from '@/lib/ollama-config';
 
 export async function POST(request: NextRequest) {
   try {
-    // Get Ollama configuration from environment variables
-    const baseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-    const model = process.env.OLLAMA_MODEL || 'deepseek-v3.1:671b-cloud';
+    // Get Ollama configuration from centralized config
+    const config = ollamaConfig.get();
+    const baseUrl = config.baseUrl;
+    const model = config.model;
     
     // Test connection with a simple "hello" prompt
     const response = await fetch(`${baseUrl}/api/generate`, {
