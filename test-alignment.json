@@ -1,0 +1,27 @@
+{
+  "nodes": [
+    {
+      "id": "node1",
+      "type": "aws.compute.ec2",
+      "label": "EC2 Instance",
+      "x": 100,
+      "y": 100
+    },
+    {
+      "id": "node2", 
+      "type": "aws.compute.ec2",
+      "label": "EC2 Instance 2",
+      "x": 200,
+      "y": 150
+    },
+    {
+      "id": "node3",
+      "type": "aws.compute.ec2", 
+      "label": "EC2 Instance 3",
+      "x": 300,
+      "y": 200
+    }
+  ],
+  "connections": [],
+  "groups": []
+}

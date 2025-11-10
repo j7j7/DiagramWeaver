@@ -623,6 +623,167 @@ export default function DiagramEditor() {
     setSelectedItem(null); // Deselect to avoid stale references
   };
 
+  const handleAlignObjects = (alignment: 'top' | 'center' | 'bottom') => {
+    if (!selectedItem || selectedItemIds.size < 2) return;
+
+    // Get the reference item (first selected item) and store it permanently
+    // We need to find the actual first selected item from the diagram data
+    const firstSelectedId = Array.from(selectedItemIds)[0];
+    const referenceNode = diagramData.nodes.find(n => n.id === firstSelectedId);
+    const referenceGroup = diagramData.groups?.find(g => g.id === firstSelectedId);
+    
+    if (!referenceNode && !referenceGroup) return;
+    
+    const referenceItem = referenceNode 
+      ? { ...referenceNode, itemType: 'node' } as SelectedItem
+      : { ...referenceGroup!, itemType: 'group' } as SelectedItem;
+    
+    // Helper function to get object dimensions
+    const getObjectDimensions = (item: SelectedItem): { width: number; height: number } => {
+      if (item.itemType === 'node') {
+        const node = item as any;
+        
+        // Check if it's a shape node
+        const isShapeNode = node.type === 'generic.text.square' || 
+                           node.type === 'generic.text.circle' || 
+                           node.type === 'generic.text.rectangle' || 
+                           node.type === 'generic.text.triangle' ||
+                           node.type === 'generic.text.star' ||
+                           node.type === 'generic.text.cloud';
+        
+        // Check if it's a textbox or labelbox node
+        const isTextboxNode = node.type === 'generic.text.textbox';
+        const isLabelboxNode = node.type === 'generic.text.labelbox';
+        
+        // Use custom dimensions if sizeMode is 'custom' and dimensions are provided
+        if ((isTextboxNode || isLabelboxNode || isShapeNode) && node.sizeMode === 'custom' && node.width && node.height) {
+          return { width: node.width, height: node.height };
+        }
+        
+        // Shapes always use their custom width/height if set
+        if (isShapeNode && node.width && node.height) {
+          return { width: node.width, height: node.height };
+        }
+        
+        // Default dimensions based on node type
+        if (node.type?.startsWith('generic.text')) {
+          if (node.type === 'generic.text.textbox' || node.type === 'generic.text.labelbox') {
+            return { width: 120, height: 60 };
+          }
+          return { width: 100, height: 40 };
+        }
+        
+        // Default for icon nodes
+        return { width: 80, height: 50 };
+      } else if (item.itemType === 'group') {
+        return { 
+          width: (item as any).width || 300, 
+          height: (item as any).height || 220 
+        };
+      }
+      return { width: 80, height: 50 };
+    };
+
+    // Calculate reference Y position based on alignment
+    const refDims = getObjectDimensions(referenceItem);
+    const refY = (referenceItem as any).y || 0;
+    let referenceY: number;
+
+    switch (alignment) {
+      case 'top':
+        referenceY = refY;
+        break;
+      case 'center':
+        referenceY = refY + (refDims.height / 2);
+        break;
+      case 'bottom':
+        referenceY = refY + refDims.height;
+        break;
+    }
+
+    // Align all selected items
+    setDiagramData(prevData => {
+      const newNodes = [...prevData.nodes];
+      const newGroups = [...(prevData.groups || [])];
+
+      selectedItemIds.forEach(id => {
+        if (id === firstSelectedId) return; // Skip reference item
+
+        // Find and update node
+        const nodeIndex = newNodes.findIndex(n => n.id === id);
+        if (nodeIndex !== -1) {
+          const node = newNodes[nodeIndex];
+          const nodeDims = getObjectDimensions({ ...node, itemType: 'node' } as SelectedItem);
+          
+          let newY: number;
+          switch (alignment) {
+            case 'top':
+              newY = referenceY;
+              break;
+            case 'center':
+              newY = referenceY - (nodeDims.height / 2);
+              break;
+            case 'bottom':
+              newY = referenceY - nodeDims.height;
+              break;
+          }
+          
+          newNodes[nodeIndex] = { ...node, y: newY };
+          return;
+        }
+
+        // Find and update group
+        const groupIndex = newGroups.findIndex(g => g.id === id);
+        if (groupIndex !== -1) {
+          const group = newGroups[groupIndex];
+          const groupDims = getObjectDimensions({ ...group, itemType: 'group' } as SelectedItem);
+          
+          let newY: number;
+          switch (alignment) {
+            case 'top':
+              newY = referenceY;
+              break;
+            case 'center':
+              newY = referenceY - (groupDims.height / 2);
+              break;
+            case 'bottom':
+              newY = referenceY - groupDims.height;
+              break;
+          }
+          
+          newGroups[groupIndex] = { ...group, y: newY };
+        }
+      });
+
+      return {
+        ...prevData,
+        nodes: newNodes,
+        groups: newGroups
+      };
+    });
+
+    // Update selected item states to reflect new positions
+    const updatedSelectedItems: SelectedItem[] = [];
+    selectedItemIds.forEach(id => {
+      const updatedNode = diagramData.nodes.find(n => n.id === id);
+      const updatedGroup = diagramData.groups?.find(g => g.id === id);
+      
+      if (updatedNode) {
+        updatedSelectedItems.push({ ...updatedNode, itemType: 'node' } as SelectedItem);
+      } else if (updatedGroup) {
+        updatedSelectedItems.push({ ...updatedGroup, itemType: 'group' } as SelectedItem);
+      }
+    });
+
+    // Update the primary selected item if it was aligned
+    if (selectedItem && selectedItem.id !== referenceItem.id) {
+      const updatedPrimary = updatedSelectedItems.find(item => item.id === selectedItem.id);
+      if (updatedPrimary) {
+        setSelectedItem(updatedPrimary);
+      }
+    }
+  };
+
   const toggleJsonPanel = () => {
     const newState = !jsonPanelOpen;
     setJsonPanelOpen(newState);
@@ -864,6 +1025,7 @@ export default function DiagramEditor() {
                     mousePosition={mousePosition}
                     hoverEnabled={hoverEnabled}
                     onToggleHover={() => setHoverEnabled(!hoverEnabled)}
+                    onAlignObjects={handleAlignObjects}
                 />
                 {activeTabId && (
                   <TabBar

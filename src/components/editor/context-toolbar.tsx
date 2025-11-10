@@ -8,6 +8,10 @@ import {
   Unlink, 
   Layout, 
   AlignLeft, 
+  AlignCenter,
+  AlignVerticalJustifyStart,
+  AlignVerticalJustifyCenter,
+  AlignVerticalJustifyEnd,
   Move3D, 
   Image as ImageIcon,
   RotateCw,
@@ -16,7 +20,8 @@ import {
   Square,
   Grid3x3,
   Maximize2,
-  ArrowRight
+  ArrowRight,
+  ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +35,7 @@ import type { DiagramData } from '@/lib/types';
 
 interface ContextToolbarProps {
   selectedItem: SelectedItem | null;
+  selectedItemIds?: Set<string>;
   onItemUpdate?: (updatedItem: SelectedItem) => void;
   onConnect?: (connectionOptions?: { style?: 'bezier', curvature?: number }) => void;
   onDisconnect?: () => void;
@@ -37,10 +43,12 @@ interface ContextToolbarProps {
   onConnectionUpdate?: (from: string, to: string, updates: { arrow?: boolean; text?: string; textPosition?: number; color?: string; lineWidth?: number; shadow?: boolean; [key: string]: any }) => void;
   onConnectionDisconnect?: (from: string, to: string) => void;
   diagramData?: DiagramData;
+  onAlignObjects?: (alignment: 'top' | 'center' | 'bottom') => void;
 }
 
 export function ContextToolbar({
   selectedItem,
+  selectedItemIds,
   onItemUpdate,
   onConnect,
   onDisconnect,
@@ -48,6 +56,7 @@ export function ContextToolbar({
   onConnectionUpdate,
   onConnectionDisconnect,
   diagramData,
+  onAlignObjects,
 }: ContextToolbarProps) {
   const [labelOpen, setLabelOpen] = useState(false);
   const [descriptionOpen, setDescriptionOpen] = useState(false);
@@ -1366,6 +1375,55 @@ export function ContextToolbar({
             </TooltipTrigger>
             <TooltipContent>Remove Icon Background</TooltipContent>
           </Tooltip>
+        )}
+
+        {/* Align Objects Button - Show when multiple items are selected */}
+        {selectedItemIds && selectedItemIds.size > 1 && (
+          <Popover>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 px-2">
+                    <AlignCenter className="h-4 w-4" />
+                    <ChevronDown className="h-3 w-3 ml-1" />
+                  </Button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent>Align Objects</TooltipContent>
+            </Tooltip>
+            <PopoverContent className="w-48">
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Vertical Alignment</label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start h-8 px-2"
+                  onClick={() => onAlignObjects?.('top')}
+                >
+                  <AlignVerticalJustifyStart className="h-4 w-4 mr-2" />
+                  Align Top
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start h-8 px-2"
+                  onClick={() => onAlignObjects?.('center')}
+                >
+                  <AlignVerticalJustifyCenter className="h-4 w-4 mr-2" />
+                  Align Center
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start h-8 px-2"
+                  onClick={() => onAlignObjects?.('bottom')}
+                >
+                  <AlignVerticalJustifyEnd className="h-4 w-4 mr-2" />
+                  Align Bottom
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
         )}
 
         {/* Delete Button */}

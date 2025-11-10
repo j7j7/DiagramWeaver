@@ -59,9 +59,21 @@ export interface DiagramNodeItem {
   borderColor?: string; // Border color for label nodes
   backgroundColor?: string; // Background color for label nodes
   textColor?: string; // Text color for label nodes
+  borderStyle?: 'solid' | 'gradient' | 'none'; // Border style for label/labelbox nodes
+  borderColors?: string[]; // Border colors for gradient [startColor, endColor]
+  backgroundStyle?: 'solid' | 'gradient' | 'none'; // Background style for label/labelbox nodes
+  backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
+  shadow?: boolean; // Whether to show shadow around label/labelbox nodes
   rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
   textPosition?: 'above' | 'center' | 'under'; // Text position for shape nodes
   freeflow?: boolean; // If true, node can be placed anywhere without joining groups/zones
+  borderWidth?: number; // Border thickness for shapes
+  
+  // Custom sizing properties for textbox and labelbox nodes
+  width?: number; // Custom width - when set, overrides auto-calculated width
+  height?: number; // Custom height - when set, overrides auto-calculated height
+  sizeMode?: 'auto' | 'custom'; // Whether to use auto-calculated or custom dimensions
+  noIconBackground?: boolean; // If true, removes the white background from icon nodes
 }
 
 export interface DiagramGroupItem {

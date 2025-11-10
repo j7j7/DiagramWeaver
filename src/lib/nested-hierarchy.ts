@@ -63,9 +63,19 @@ export function convertToNestedHierarchy(data: DiagramData): HierarchicalDiagram
         borderColor: node.borderColor,
         backgroundColor: node.backgroundColor,
         textColor: node.textColor,
+        borderStyle: node.borderStyle,
+        borderColors: node.borderColors,
+        backgroundStyle: node.backgroundStyle,
+        backgroundColors: node.backgroundColors,
+        shadow: node.shadow,
         rotation: node.rotation,
         textPosition: node.textPosition,
-        freeflow: node.freeflow
+        freeflow: node.freeflow,
+        borderWidth: node.borderWidth,
+        width: node.width,
+        height: node.height,
+        sizeMode: node.sizeMode,
+        noIconBackground: node.noIconBackground
       }))
     };
     nestedGroups.push(orphanGroup);
@@ -110,9 +120,19 @@ function convertGroupToNested(
         borderColor: node.borderColor,
         backgroundColor: node.backgroundColor,
         textColor: node.textColor,
+        borderStyle: node.borderStyle,
+        borderColors: node.borderColors,
+        backgroundStyle: node.backgroundStyle,
+        backgroundColors: node.backgroundColors,
+        shadow: node.shadow,
         rotation: node.rotation,
         textPosition: node.textPosition,
-        freeflow: node.freeflow
+        freeflow: node.freeflow,
+        borderWidth: node.borderWidth,
+        width: node.width,
+        height: node.height,
+        sizeMode: node.sizeMode,
+        noIconBackground: node.noIconBackground
       });
     } else {
       // This is a nested group
@@ -179,9 +199,19 @@ export function convertFromNestedHierarchy(nestedData: HierarchicalDiagramData):
             borderColor: nodeChild.borderColor,
             backgroundColor: nodeChild.backgroundColor,
             textColor: nodeChild.textColor,
+            borderStyle: nodeChild.borderStyle,
+            borderColors: nodeChild.borderColors,
+            backgroundStyle: nodeChild.backgroundStyle,
+            backgroundColors: nodeChild.backgroundColors,
+            shadow: nodeChild.shadow,
             rotation: nodeChild.rotation,
             textPosition: nodeChild.textPosition,
-            freeflow: nodeChild.freeflow
+            freeflow: nodeChild.freeflow,
+            borderWidth: nodeChild.borderWidth,
+            width: nodeChild.width,
+            height: nodeChild.height,
+            sizeMode: nodeChild.sizeMode,
+            noIconBackground: nodeChild.noIconBackground
           };
           nodes.push(node);
         }
@@ -253,22 +283,32 @@ function processNestedGroup(
     } else {
       // This is a node
       const nodeChild = child as DiagramNodeItem;
-      const node: DiagramNodeData = {
-        id: nodeChild.id,
-        type: nodeChild.type,
-        label: nodeChild.label,
-        info: nodeChild.info,
-        x: nodeChild.x,
-        y: nodeChild.y,
-        lineColor: nodeChild.lineColor,
-        edgePosition: nodeChild.edgePosition,
-        borderColor: nodeChild.borderColor,
-        backgroundColor: nodeChild.backgroundColor,
-        textColor: nodeChild.textColor,
-        rotation: nodeChild.rotation,
-        textPosition: nodeChild.textPosition,
-        freeflow: nodeChild.freeflow
-      };
+          const node: DiagramNodeData = {
+            id: nodeChild.id,
+            type: nodeChild.type,
+            label: nodeChild.label,
+            info: nodeChild.info,
+            x: nodeChild.x,
+            y: nodeChild.y,
+            lineColor: nodeChild.lineColor,
+            edgePosition: nodeChild.edgePosition,
+            borderColor: nodeChild.borderColor,
+            backgroundColor: nodeChild.backgroundColor,
+            textColor: nodeChild.textColor,
+            borderStyle: nodeChild.borderStyle,
+            borderColors: nodeChild.borderColors,
+            backgroundStyle: nodeChild.backgroundStyle,
+            backgroundColors: nodeChild.backgroundColors,
+            shadow: nodeChild.shadow,
+            rotation: nodeChild.rotation,
+            textPosition: nodeChild.textPosition,
+            freeflow: nodeChild.freeflow,
+            borderWidth: nodeChild.borderWidth,
+            width: nodeChild.width,
+            height: nodeChild.height,
+            sizeMode: nodeChild.sizeMode,
+            noIconBackground: nodeChild.noIconBackground
+          };
       
       nodes.push(node);
       nodeMap.set(child.id, node);

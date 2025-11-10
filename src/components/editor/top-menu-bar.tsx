@@ -49,6 +49,7 @@ interface TopMenuBarProps {
   mousePosition?: { x: number; y: number } | null;
   hoverEnabled?: boolean;
   onToggleHover?: () => void;
+  onAlignObjects?: (alignment: 'top' | 'center' | 'bottom') => void;
 }
 
 export function TopMenuBar({
@@ -82,6 +83,7 @@ export function TopMenuBar({
   mousePosition,
   hoverEnabled,
   onToggleHover,
+  onAlignObjects,
 }: TopMenuBarProps) {
   return (
     <div className="flex items-center border-b bg-card min-h-[2.5rem] overflow-x-auto">
@@ -290,6 +292,7 @@ export function TopMenuBar({
           <div className="h-6 w-px bg-border mx-2" />
           <ContextToolbar
             selectedItem={selectedItem}
+            selectedItemIds={selectedItemIds}
             onItemUpdate={onItemUpdate}
             onConnect={onConnect}
             onDisconnect={onDisconnect}
@@ -297,6 +300,7 @@ export function TopMenuBar({
             onConnectionUpdate={onConnectionUpdate}
             onConnectionDisconnect={onConnectionDisconnect}
             diagramData={diagramData}
+            onAlignObjects={onAlignObjects}
           />
         </>
       )}
