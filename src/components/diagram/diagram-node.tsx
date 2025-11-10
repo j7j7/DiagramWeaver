@@ -1187,9 +1187,9 @@ return (
         )}
       </Popover>
       
-      {/* Resize handles - show for text resources in custom mode, or for shapes */}
+      {/* Resize handles - show for text resources (textbox/labelbox always, others only in custom mode), or for shapes */}
       {(isHovered || isResizing || isSelected) && 
-       ((isTextNode || isLabelNode || isTextboxNode || isLabelboxNode) && node.sizeMode === 'custom' || isShapeNode) && (
+       ((isTextboxNode || isLabelboxNode) || ((isTextNode || isLabelNode) && node.sizeMode === 'custom') || isShapeNode) && (
         <>
           {/* Right handle */}
           <div

@@ -45,7 +45,7 @@ interface ContextToolbarProps {
   onConnectionUpdate?: (from: string, to: string, updates: { arrow?: boolean; text?: string; textPosition?: number; color?: string; lineWidth?: number; shadow?: boolean; [key: string]: any }) => void;
   onConnectionDisconnect?: (from: string, to: string) => void;
   diagramData?: DiagramData;
-  onAlignObjects?: (alignment: 'top' | 'center' | 'bottom') => void;
+  onAlignObjects?: (alignment: 'top' | 'center' | 'bottom' | 'left' | 'h-center' | 'right') => void;
 }
 
 export function ContextToolbar({
@@ -635,7 +635,7 @@ export function ContextToolbar({
         )}
 
         {/* Border Color */}
-        {isGroup && selectedItem.borderStyle && selectedItem.borderStyle !== 'none' && (
+        {isGroup && ((selectedItem as any).borderStyle === 'solid' || (selectedItem as any).borderStyle === 'gradient' || !selectedItem.borderStyle) && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -932,7 +932,7 @@ export function ContextToolbar({
         )}
 
         {/* Border Color for Label/Labelbox */}
-        {isLabelOrLabelbox && (selectedItem as any).borderStyle && (selectedItem as any).borderStyle !== 'none' && (
+        {isLabelOrLabelbox && ((selectedItem as any).borderStyle === 'solid' || (selectedItem as any).borderStyle === 'gradient' || !(selectedItem as any).borderStyle) && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -1144,7 +1144,7 @@ export function ContextToolbar({
         )}
 
         {/* Border Color for Shapes */}
-        {isShapeNode && (selectedItem as any).borderStyle && (selectedItem as any).borderStyle !== 'none' && (
+        {isShapeNode && ((selectedItem as any).borderStyle === 'solid' || (selectedItem as any).borderStyle === 'gradient' || !(selectedItem as any).borderStyle) && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -1668,35 +1668,67 @@ export function ContextToolbar({
               <TooltipContent>Align Objects</TooltipContent>
             </Tooltip>
             <PopoverContent className="w-48">
-              <div className="space-y-1">
-                <label className="text-sm font-medium">Vertical Alignment</label>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full justify-start h-8 px-2"
-                  onClick={() => onAlignObjects?.('top')}
-                >
-                  <AlignVerticalJustifyStart className="h-4 w-4 mr-2" />
-                  Align Top
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full justify-start h-8 px-2"
-                  onClick={() => onAlignObjects?.('center')}
-                >
-                  <AlignVerticalJustifyCenter className="h-4 w-4 mr-2" />
-                  Align Center
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full justify-start h-8 px-2"
-                  onClick={() => onAlignObjects?.('bottom')}
-                >
-                  <AlignVerticalJustifyEnd className="h-4 w-4 mr-2" />
-                  Align Bottom
-                </Button>
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Vertical Alignment</label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start h-8 px-2"
+                    onClick={() => onAlignObjects?.('top')}
+                  >
+                    <AlignVerticalJustifyStart className="h-4 w-4 mr-2" />
+                    Align Top
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start h-8 px-2"
+                    onClick={() => onAlignObjects?.('center')}
+                  >
+                    <AlignVerticalJustifyCenter className="h-4 w-4 mr-2" />
+                    Align Center
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start h-8 px-2"
+                    onClick={() => onAlignObjects?.('bottom')}
+                  >
+                    <AlignVerticalJustifyEnd className="h-4 w-4 mr-2" />
+                    Align Bottom
+                  </Button>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Horizontal Alignment</label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start h-8 px-2"
+                    onClick={() => onAlignObjects?.('left')}
+                  >
+                    <AlignLeft className="h-4 w-4 mr-2" />
+                    Align Left
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start h-8 px-2"
+                    onClick={() => onAlignObjects?.('h-center')}
+                  >
+                    <AlignCenter className="h-4 w-4 mr-2" />
+                    Align Center
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start h-8 px-2"
+                    onClick={() => onAlignObjects?.('right')}
+                  >
+                    <AlignRight className="h-4 w-4 mr-2" />
+                    Align Right
+                  </Button>
+                </div>
               </div>
             </PopoverContent>
           </Popover>

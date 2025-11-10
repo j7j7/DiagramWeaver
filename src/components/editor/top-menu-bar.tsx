@@ -49,7 +49,7 @@ interface TopMenuBarProps {
   mousePosition?: { x: number; y: number } | null;
   hoverEnabled?: boolean;
   onToggleHover?: () => void;
-  onAlignObjects?: (alignment: 'top' | 'center' | 'bottom') => void;
+  onAlignObjects?: (alignment: 'top' | 'center' | 'bottom' | 'left' | 'h-center' | 'right') => void;
 }
 
 export function TopMenuBar({

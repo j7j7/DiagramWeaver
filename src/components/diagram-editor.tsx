@@ -630,7 +630,7 @@ export default function DiagramEditor() {
     setSelectedItem(null); // Deselect to avoid stale references
   };
 
-  const handleAlignObjects = (alignment: 'top' | 'center' | 'bottom') => {
+  const handleAlignObjects = (alignment: 'top' | 'center' | 'bottom' | 'left' | 'h-center' | 'right') => {
     if (!selectedItem || selectedItemIds.size < 2) return;
 
     // Get the reference item (first selected item) and store it permanently
@@ -691,11 +691,14 @@ export default function DiagramEditor() {
       return { width: 80, height: 50 };
     };
 
-    // Calculate reference Y position based on alignment
+    // Calculate reference position based on alignment
     const refDims = getObjectDimensions(referenceItem);
+    const refX = (referenceItem as any).x || 0;
     const refY = (referenceItem as any).y || 0;
+    let referenceX: number;
     let referenceY: number;
 
+    // Handle vertical alignment
     switch (alignment) {
       case 'top':
         referenceY = refY;
@@ -705,6 +708,27 @@ export default function DiagramEditor() {
         break;
       case 'bottom':
         referenceY = refY + refDims.height;
+        break;
+      default:
+        // For horizontal alignment, use center Y as default
+        referenceY = refY + (refDims.height / 2);
+        break;
+    }
+
+    // Handle horizontal alignment
+    switch (alignment) {
+      case 'left':
+        referenceX = refX;
+        break;
+      case 'h-center':
+        referenceX = refX + (refDims.width / 2);
+        break;
+      case 'right':
+        referenceX = refX + refDims.width;
+        break;
+      default:
+        // For vertical alignment, use center X as default
+        referenceX = refX + (refDims.width / 2);
         break;
     }
 
@@ -722,7 +746,10 @@ export default function DiagramEditor() {
           const node = newNodes[nodeIndex];
           const nodeDims = getObjectDimensions({ ...node, itemType: 'node' } as SelectedItem);
           
-          let newY: number;
+          let newX = node.x;
+          let newY = node.y;
+          
+          // Handle vertical alignment
           switch (alignment) {
             case 'top':
               newY = referenceY;
@@ -735,7 +762,24 @@ export default function DiagramEditor() {
               break;
           }
           
-          newNodes[nodeIndex] = { ...node, y: newY };
+          // Handle horizontal alignment
+          switch (alignment) {
+            case 'left':
+              newX = referenceX;
+              break;
+            case 'h-center':
+              newX = referenceX - (nodeDims.width / 2);
+              break;
+            case 'right':
+              newX = referenceX - nodeDims.width;
+              break;
+            case 'center':
+              // For vertical center alignment, align X to center
+              newX = referenceX - (nodeDims.width / 2);
+              break;
+          }
+          
+          newNodes[nodeIndex] = { ...node, x: newX, y: newY };
           return;
         }
 
@@ -745,7 +789,10 @@ export default function DiagramEditor() {
           const group = newGroups[groupIndex];
           const groupDims = getObjectDimensions({ ...group, itemType: 'group' } as SelectedItem);
           
-          let newY: number;
+          let newX = group.x;
+          let newY = group.y;
+          
+          // Handle vertical alignment
           switch (alignment) {
             case 'top':
               newY = referenceY;
@@ -758,7 +805,24 @@ export default function DiagramEditor() {
               break;
           }
           
-          newGroups[groupIndex] = { ...group, y: newY };
+          // Handle horizontal alignment
+          switch (alignment) {
+            case 'left':
+              newX = referenceX;
+              break;
+            case 'h-center':
+              newX = referenceX - (groupDims.width / 2);
+              break;
+            case 'right':
+              newX = referenceX - groupDims.width;
+              break;
+            case 'center':
+              // For vertical center alignment, align X to center
+              newX = referenceX - (groupDims.width / 2);
+              break;
+          }
+          
+          newGroups[groupIndex] = { ...group, x: newX, y: newY };
         }
       });
 
