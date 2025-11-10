@@ -65,10 +65,19 @@ kill_port() {
   local p
   if p=$(lsof -ti tcp:"$1" 2>/dev/null); then
     echo "[port] Killing processes on :$1 ($p)"
-    kill $p 2>/dev/null || true
-    sleep 0.5
-    if lsof -ti tcp:"$1" >/dev/null; then
-      kill -9 $p 2>/dev/null || true
+    # Try graceful kill first
+    echo "$p" | xargs kill 2>/dev/null || true
+    sleep 1
+    # Force kill if still running
+    if lsof -ti tcp:"$1" >/dev/null 2>&1; then
+      echo "[port] Force killing remaining processes on :$1"
+      echo "$p" | xargs kill -9 2>/dev/null || true
+      sleep 0.5
+    fi
+    # Final check and force kill any remaining processes
+    if lsof -ti tcp:"$1" >/dev/null 2>&1; then
+      echo "[port] Final force kill on :$1"
+      lsof -ti tcp:"$1" | xargs -r kill -9 2>/dev/null || true
     fi
   fi
 }
@@ -126,7 +135,25 @@ if [[ "$DETACH" -eq 1 ]]; then
 fi
 
 # Kill processes on both ports before starting
+echo "[port] Aggressively killing processes on ports 9002 and 3000..."
 kill_all_ports
+
+# Additional aggressive kill for any remaining processes
+echo "[port] Double-checking for remaining processes..."
+for port in 9002 3000; do
+  if lsof -ti tcp:"$port" >/dev/null 2>&1; then
+    echo "[port] Force killing remaining processes on :$port"
+    lsof -ti tcp:"$port" | xargs -r kill -9 2>/dev/null || true
+    sleep 1
+  fi
+done
+
+# Kill any npm/Node processes that might be using these ports
+echo "[port] Killing any npm/Node processes on target ports..."
+pkill -f "npm.*run.*dev" 2>/dev/null || true
+pkill -f "next.*dev" 2>/dev/null || true
+pkill -f "node.*next" 2>/dev/null || true
+sleep 1
 
 if [[ "$MODE" == "build" ]]; then
   echo "[build] npm run build"
