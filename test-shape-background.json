@@ -1,0 +1,18 @@
+{
+  "nodes": [
+    {
+      "id": "test-square",
+      "type": "generic.text.square",
+      "label": "Test Square",
+      "x": 200,
+      "y": 200,
+      "backgroundStyle": "gradient",
+      "backgroundColors": ["#ff6b6b", "#4ecdc4"],
+      "gradientAngle": 45,
+      "borderStyle": "solid",
+      "borderColor": "#2d3748",
+      "borderWidth": 3
+    }
+  ],
+  "connections": []
+}

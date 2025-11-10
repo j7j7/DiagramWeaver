@@ -32,7 +32,7 @@ export type SelectedItem = ((DiagramNodeData | DiagramGroupData) & {
   borderColor?: string,
   textColor?: string,
   backgroundColor?: string,
-  borderStyle?: 'solid' | 'gradient' | 'none';
+  borderStyle?: 'solid' | 'dotted' | 'gradient' | 'none';
   borderColors?: string[];
   backgroundStyle?: 'solid' | 'gradient' | 'none';
   backgroundColors?: string[];
@@ -354,6 +354,13 @@ export default function DiagramEditor() {
       setSelectedItem({ ...selectedItem, label: newLabel });
     }
   }
+
+  const handleResourceSelect = (resource: { name: string; file: string; }, provider: string, category: string) => {
+    // This function would typically handle adding a resource to the diagram
+    // For now, we can just log it or implement the logic to add the resource
+    console.log('Resource selected:', { resource, provider, category });
+    // TODO: Implement adding resource to diagram at center position
+  };
 
   const handleItemDelete = (itemToDelete: SelectedItem) => {
     setDiagramData(prevData => {
@@ -934,43 +941,25 @@ export default function DiagramEditor() {
         {/* Sidebar - fixed on mobile, normal on desktop */}
         <div className={`${isMobile ? 'fixed left-0 top-0 h-full z-50 transform transition-transform duration-300 ease-in-out' : ''} ${isMobile && !sidebarOpen ? '-translate-x-full' : ''} ${isMobile ? 'w-80' : ''}`}>
  <ComponentSidebar
-           selectedItem={selectedItem}
-           selectedItemIds={selectedItemIds}
-           onItemUpdate={handleItemUpdate}
-           onConnect={startConnecting}
-           onDisconnect={disconnectSelected}
-           onItemDelete={handleItemDelete}
-           diagramData={diagramData}
-           onFitToView={() => editorRef.current?.fitToView()}
-           onToggleJsonPanel={toggleJsonPanel}
-           jsonPanelOpen={jsonPanelOpen}
-           onConnectionUpdate={handleConnectionUpdate}
-           onConnectionDisconnect={disconnectConnection}
-           onCloseSidebar={() => setSidebarOpen(false)}
-           isMobile={isMobile}
-           transform={canvasTransform}
-           onTransformChange={setCanvasTransform}
-          onResourceSelect={(resource, provider, category) => {
-            // NEVER add file or imagePath to node data
-            // ResourceIcon will derive path from type and resource catalog
-            const nodeType = `${provider}.${category}.${resource.name.replace(/\s+/g, '-').toLowerCase()}`;
-             setDiagramData(prevData => {
-               const newNode = {
-                 id: generateSequentialId(nodeType, prevData),
-                 type: nodeType,
-                 label: resource.name,
-                 info: `${resource.name} from ${provider}`,
-                 x: 100 + Math.random() * 200,
-                 y: 100 + Math.random() * 200,
-               };
-               return {
-                 ...prevData,
-                 nodes: [...prevData.nodes, newNode]
-               };
-             });
-            toast({ title: 'Resource Added', description: `${resource.name} has been added to the diagram.` });
-          }}
-        />
+    selectedItem={selectedItem}
+    selectedItemIds={selectedItemIds}
+    onItemUpdate={handleItemUpdate}
+    onConnect={startConnecting}
+    onDisconnect={disconnectSelected}
+    onItemDelete={handleItemDelete}
+    diagramData={diagramData}
+    onResourceSelect={handleResourceSelect}
+    onToggleJsonPanel={toggleJsonPanel}
+    jsonPanelOpen={jsonPanelOpen}
+    onFitToView={() => editorRef.current?.fitToView()}
+    onConnectionUpdate={handleConnectionUpdate}
+    onConnectionDisconnect={disconnectConnection}
+    onCloseSidebar={() => setSidebarOpen(false)}
+    isMobile={isMobile}
+    transform={canvasTransform}
+    onTransformChange={setCanvasTransform}
+    onDiagramGenerated={setDiagramData}
+  />
         </div>
         
         {/* Mobile menu toggle button */}

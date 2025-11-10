@@ -17,6 +17,56 @@ const BASE_NODE_HEIGHT = 80;
 const TEXT_NODE_HEIGHT = 40; // Height for text-only nodes
 const EXTRA_LINE_HEIGHT = 20; // Additional height per extra line of text
 
+// Helper function to get gradient CSS with angle
+const getGradientWithAngle = (colors: string[], angle: number = 135) => {
+  // Convert angle to CSS gradient direction
+  let gradientDirection = '';
+  switch (angle) {
+    case 0:
+      gradientDirection = 'to right';
+      break;
+    case 45:
+      gradientDirection = 'to bottom right';
+      break;
+    case -45:
+      gradientDirection = 'to top right';
+      break;
+    case 90:
+      gradientDirection = 'to bottom';
+      break;
+    case 180:
+      gradientDirection = 'to left';
+      break;
+    default:
+      gradientDirection = `${angle}deg`;
+  }
+  // Ensure unique string by including angle in all cases
+  const gradient = `linear-gradient(${gradientDirection}, ${colors[0]}, ${colors[1]})`;
+  return gradient;
+};
+
+// Helper function to convert gradient angle to SVG coordinates
+const getGradientCoordinates = (angle: number = 135) => {
+  // CSS gradient angles: 0° = to right, 90° = to bottom, -45° = to top right
+  // Convert CSS angle to SVG coordinates (where 0° points right)
+  const radians = (angle * Math.PI) / 180;
+  
+  // Calculate end point coordinates
+  const x2 = 50 + 50 * Math.cos(radians);
+  const y2 = 50 + 50 * Math.sin(radians);
+  
+  // Calculate start point (opposite direction)
+  const x1 = 50 - 50 * Math.cos(radians);
+  const y1 = 50 - 50 * Math.sin(radians);
+  
+  return {
+    x1: `${x1}%`,
+    y1: `${y1}%`,
+    x2: `${x2}%`,
+    y2: `${y2}%`
+  };
+};
+
 interface DiagramNodeProps {
   node: DiagramNodeData & { x: number; y: number };
   isSelected?: boolean;
@@ -147,7 +197,8 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
   const isLabelNode = node.type === 'generic.text.label';
   const isTextboxNode = node.type === 'generic.text.textbox';
   const isLabelboxNode = node.type === 'generic.text.labelbox';
-  const isShapeNode = node.type === 'generic.text.square' || node.type === 'generic.text.circle' || node.type === 'generic.text.rectangle' || node.type === 'generic.text.triangle' || node.type === 'generic.text.star' || node.type === 'generic.text.cloud';
+  const isShapeNode = node.type === 'generic.text.square' || node.type === 'generic.text.circle' || node.type === 'generic.text.rectangle' || node.type === 'generic.text.triangle' || node.type === 'generic.text.star' || node.type === 'generic.text.cloud' ||
+                      node.type?.endsWith('.square') || node.type?.endsWith('.circle') || node.type?.endsWith('.rectangle') || node.type?.endsWith('.triangle') || node.type?.endsWith('.star') || node.type?.endsWith('.cloud');
   const isRotatableNode = isTextNode || isLabelNode || isTextboxNode || isLabelboxNode || isShapeNode;
   const nodeHeight = calculateNodeHeight(node.label || '', node.type, node.sizeMode, node.height);
   const rotation = (node as any).rotation || 0;
@@ -400,6 +451,7 @@ return (
                 const backgroundStyle = (node as any).backgroundStyle || 'solid';
                 const backgroundColors = (node as any).backgroundColors || [(node as any).backgroundColor || '#f3f4f6', (node as any).backgroundColor || '#f3f4f6'];
                 const backgroundColor = (node as any).backgroundColor || '#f3f4f6';
+                const gradientAngle = (node as any).gradientAngle || 135;
                 const hasShadow = (node as any).shadow || false;
                 
                 return (
@@ -458,15 +510,41 @@ return (
               })()
             ) : node.type === 'generic.text.textbox' ? (
               // Textbox node - larger multi-line text box
+              (() => {
+                const borderStyle = (node as any).borderStyle || 'solid';
+                const borderColors = (node as any).borderColors || [(node as any).borderColor || '#d1d5db', (node as any).borderColor || '#d1d5db'];
+                const borderColor = (node as any).borderColor || '#d1d5db';
+                const backgroundStyle = (node as any).backgroundStyle || 'solid';
+                const backgroundColors = (node as any).backgroundColors || [(node as any).backgroundColor || '#ffffff', (node as any).backgroundColor || '#ffffff'];
+                const backgroundColor = (node as any).backgroundColor || '#ffffff';
+                const gradientAngle = (node as any).gradientAngle || 135;
+                
+                return (
               <div 
                 className={cn(
-                  "flex items-center justify-center h-full w-full p-4 rounded-lg border-2 transition-colors",
-                  isSelected ? "border-primary" : !(isDragging || isTouchDragging) && "group-hover:border-accent",
+                  "flex items-center justify-center h-full w-full p-4 rounded-lg transition-colors",
+                  borderStyle !== 'none' && "border-2",
+                  borderStyle === 'none' && (isSelected 
+                    ? "border border-dashed border-primary opacity-100" 
+                    : "border border-dashed border-gray-400 opacity-0 hover:opacity-100 hover:border-primary hover:bg-primary/5"),
+                  isSelected && borderStyle !== 'none' ? "border-primary" : !(isDragging || isTouchDragging) && borderStyle !== 'none' && "group-hover:border-accent",
                   isTargetable && "border-dashed border-primary"
                 )}
                 style={{
-                  backgroundColor: (node as any).backgroundColor || '#ffffff',
-                  borderColor: (node as any).borderColor || '#d1d5db',
+                  background: backgroundStyle === 'none' 
+                    ? 'transparent'
+                    : backgroundStyle === 'gradient' 
+                      ? `linear-gradient(${gradientAngle}deg, ${backgroundColors[0]}, ${backgroundColors[1]})`
+                      : backgroundColor,
+                  ...(borderStyle === 'none' ? {} : borderStyle === 'gradient' ? {
+                    borderImage: `${getGradientWithAngle(borderColors, gradientAngle)} 1`,
+                    borderColor: 'transparent'
+                  } : borderStyle === 'dotted' ? {
+                    borderColor: borderColor,
+                    borderStyle: 'dotted'
+                  } : {
+                    borderColor: borderColor
+                  }),
                   color: (node as any).textColor || '#374151',
                   minHeight: '120px'
                 }}
@@ -490,18 +568,21 @@ return (
                   >
                     {node.label || 'Enter text...'}
                   </p>
-                )}
-              </div>
-            ) : node.type === 'generic.text.labelbox' ? (
+                 )}
+               </div>
+               );
+               })()
+             ) : node.type === 'generic.text.labelbox' ? (
               // Labelbox node - larger multi-line label box with different styling
               (() => {
-                const borderStyle = (node as any).borderStyle || 'solid';
-                const borderColors = (node as any).borderColors || [(node as any).borderColor || '#0ea5e9', (node as any).borderColor || '#0ea5e9'];
-                const borderColor = (node as any).borderColor || '#0ea5e9';
-                const backgroundStyle = (node as any).backgroundStyle || 'solid';
-                const backgroundColors = (node as any).backgroundColors || [(node as any).backgroundColor || '#f0f9ff', (node as any).backgroundColor || '#f0f9ff'];
-                const backgroundColor = (node as any).backgroundColor || '#f0f9ff';
-                const hasShadow = (node as any).shadow || false;
+                 const borderStyle = (node as any).borderStyle || 'solid';
+                 const borderColors = (node as any).borderColors || [(node as any).borderColor || '#0ea5e9', (node as any).borderColor || '#0ea5e9'];
+                 const borderColor = (node as any).borderColor || '#0ea5e9';
+                 const backgroundStyle = (node as any).backgroundStyle || 'solid';
+                 const backgroundColors = (node as any).backgroundColors || [(node as any).backgroundColor || '#f0f9ff', (node as any).backgroundColor || '#f0f9ff'];
+                 const backgroundColor = (node as any).backgroundColor || '#f0f9ff';
+                const gradientAngle = (node as any).gradientAngle || 135;
+                 const hasShadow = (node as any).shadow || false;
                 
                 return (
               <div 
@@ -515,19 +596,19 @@ return (
                   isTargetable && "border-dashed border-primary",
                   hasShadow && "shadow-[0_10px_15px_-3px_rgba(239,68,68,0.3),0_4px_6px_-2px_rgba(239,68,68,0.2)]"
                 )}
-                style={{
-                  background: backgroundStyle === 'none' 
-                    ? 'transparent'
-                    : backgroundStyle === 'gradient' 
-                      ? `linear-gradient(135deg, ${backgroundColors[0]}, ${backgroundColors[1]})`
-                      : backgroundColor,
-                  ...(borderStyle === 'none' ? {} : borderStyle === 'gradient' ? {
-                    borderImage: `linear-gradient(135deg, ${borderColors[0]}, ${borderColors[1]}) 1`,
-                    borderColor: 'transparent'
-                  } : {
-                    borderColor: borderColor
-                  }),
-                  color: (node as any).textColor || '#0c4a6e',
+                 style={{
+                   background: backgroundStyle === 'none' 
+                     ? 'transparent'
+                     : backgroundStyle === 'gradient' 
+                       ? `linear-gradient(${gradientAngle}deg, ${backgroundColors[0]}, ${backgroundColors[1]})`
+                       : backgroundColor,
+                   ...(borderStyle === 'none' ? {} : borderStyle === 'gradient' ? {
+                     borderImage: `linear-gradient(${gradientAngle}deg, ${borderColors[0]}, ${borderColors[1]}) 1`,
+                     borderColor: 'transparent'
+                   } : {
+                     borderColor: borderColor
+                   }),
+                   color: (node as any).textColor || '#0c4a6e',
                   minHeight: '100px',
                   margin: hasShadow ? 4 : 0,
                   ...(hasShadow && { 
@@ -563,23 +644,51 @@ return (
               (() => {
                 const borderWidth = (node as any).borderWidth || 2;
                 const hasShadow = (node as any).shadow || false;
+                const borderStyle = (node as any).borderStyle || 'solid';
+                const borderColors = (node as any).borderColors || [(node as any).borderColor || '#6b7280', (node as any).borderColor || '#6b7280'];
+                const borderColor = (node as any).borderColor || '#6b7280';
+                const backgroundStyle = (node as any).backgroundStyle || 'solid';
+                const backgroundColors = (node as any).backgroundColors || [(node as any).backgroundColor || '#6b7280', (node as any).backgroundColor || '#6b7280'];
+                const backgroundColor = (node as any).backgroundColor || '#6b7280';
+                const gradientAngle = (node as any).gradientAngle || 135;
+                
+                // Generate background style
+                const getBackgroundStyle = () => {
+                  if (backgroundStyle === 'none') return 'transparent';
+                  if (backgroundStyle === 'gradient') return getGradientWithAngle(backgroundColors, gradientAngle);
+                  return backgroundColor;
+                };
+                
+                // Generate border style
+                const getBorderStyle = () => {
+                  if (borderStyle === 'none') return 'none';
+                  if (borderStyle === 'dotted') return 'dotted';
+                  if (borderStyle === 'gradient') {
+                    return {
+                      borderImage: `linear-gradient(${gradientAngle}deg, ${borderColors[0]}, ${borderColors[1]}) 1`,
+                      borderColor: 'transparent'
+                    };
+                  }
+                  return borderColor;
+                };
                 
                 return (
               <div className="flex flex-col items-center justify-center h-full w-full relative">
                 <div className="flex items-center justify-center" style={{ width: '100%', height: '100%' }}>
-                  {node.type === 'generic.text.square' && (
+                  {(node.type === 'generic.text.square' || node.type?.endsWith('.square')) && (
                     <div 
+                      key={`gradient-${gradientAngle}`}
                       className="relative"
                       style={{ 
-                        backgroundColor: (node as any).backgroundColor || '#6b7280',
-                        borderColor: (node as any).borderColor || '#6b7280',
-                        borderWidth: `${borderWidth}px`,
-                        borderStyle: 'solid',
+                        background: getBackgroundStyle(),
+                        borderWidth: borderStyle === 'none' ? '0' : `${borderWidth}px`,
+                        borderStyle: borderStyle === 'gradient' ? 'solid' : borderStyle,
                         width: node.width || 60,
                         height: node.height || 60,
                         minWidth: node.width || 60,
                         minHeight: node.height || 60,
                         margin: hasShadow ? 4 : 0,
+                        ...(borderStyle === 'gradient' ? getBorderStyle() : { borderColor: getBorderStyle() }),
                         ...(hasShadow && { 
                           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
                         })
@@ -612,19 +721,20 @@ return (
                       )}
                     </div>
                   )}
-                  {node.type === 'generic.text.circle' && (
+                  {(node.type === 'generic.text.circle' || node.type?.endsWith('.circle')) && (
                     <div 
+                      key={`gradient-${gradientAngle}`}
                       className="rounded-full relative"
                       style={{ 
-                        backgroundColor: (node as any).backgroundColor || '#6b7280',
-                        borderColor: (node as any).borderColor || '#6b7280',
-                        borderWidth: `${borderWidth}px`,
-                        borderStyle: 'solid',
+                        background: getBackgroundStyle(),
+                        borderWidth: borderStyle === 'none' ? '0' : `${borderWidth}px`,
+                        borderStyle: borderStyle === 'gradient' ? 'solid' : borderStyle,
                         width: node.width || 60,
                         height: node.height || 60,
                         minWidth: node.width || 60,
                         minHeight: node.height || 60,
                         margin: hasShadow ? 4 : 0,
+                        ...(borderStyle === 'gradient' ? getBorderStyle() : { borderColor: getBorderStyle() }),
                         ...(hasShadow && { 
                           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
                         })
@@ -657,19 +767,20 @@ return (
                       )}
                     </div>
                   )}
-                  {node.type === 'generic.text.rectangle' && (
+                  {(node.type === 'generic.text.rectangle' || node.type?.endsWith('.rectangle')) && (
                     <div 
+                      key={`gradient-${gradientAngle}`}
                       className="relative"
                       style={{ 
-                        backgroundColor: (node as any).backgroundColor || '#6b7280',
-                        borderColor: (node as any).borderColor || '#6b7280',
-                        borderWidth: `${borderWidth}px`,
-                        borderStyle: 'solid',
+                        background: getBackgroundStyle(),
+                        borderWidth: borderStyle === 'none' ? '0' : `${borderWidth}px`,
+                        borderStyle: borderStyle === 'gradient' ? 'solid' : borderStyle,
                         width: node.width || 80,
                         height: node.height || 50,
                         minWidth: node.width || 80,
                         minHeight: node.height || 50,
                         margin: hasShadow ? 4 : 0,
+                        ...(borderStyle === 'gradient' ? getBorderStyle() : { borderColor: getBorderStyle() }),
                         ...(hasShadow && { 
                           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
                         })
@@ -702,8 +813,9 @@ return (
                       )}
                     </div>
                   )}
-                  {node.type === 'generic.text.triangle' && (
+                  {(node.type === 'generic.text.triangle' || node.type?.endsWith('.triangle')) && (
                     <div 
+                      key={`gradient-${gradientAngle}`}
                       className="relative" 
                       style={{ 
                         width: node.width || 60, 
@@ -721,11 +833,32 @@ return (
                         height={node.height || 60}
                         style={{ display: 'block' }}
                       >
+                        <defs>
+                          {backgroundStyle === 'gradient' && (() => {
+                            const coords = getGradientCoordinates(gradientAngle);
+                            return (
+                              <linearGradient id={`triangle-bg-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                                <stop offset="0%" stopColor={backgroundColors[0]} />
+                                <stop offset="100%" stopColor={backgroundColors[1]} />
+                              </linearGradient>
+                            );
+                          })()}
+                          {borderStyle === 'gradient' && (() => {
+                            const coords = getGradientCoordinates(gradientAngle);
+                            return (
+                              <linearGradient id={`triangle-border-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                                <stop offset="0%" stopColor={borderColors[0]} />
+                                <stop offset="100%" stopColor={borderColors[1]} />
+                              </linearGradient>
+                            );
+                          })()}
+                        </defs>
                         <polygon
                           points={`${(node.width || 60) / 2},${borderWidth / 2} ${borderWidth / 2},${(node.height || 60) - borderWidth / 2} ${(node.width || 60) - borderWidth / 2},${(node.height || 60) - borderWidth / 2}`}
-                          fill={(node as any).backgroundColor || '#6b7280'}
-                          stroke={(node as any).borderColor || '#6b7280'}
-                          strokeWidth={borderWidth}
+                          fill={backgroundStyle === 'gradient' ? `url(#triangle-bg-${node.id})` : backgroundStyle === 'none' ? 'transparent' : backgroundColor}
+                          stroke={borderStyle === 'gradient' ? `url(#triangle-border-${node.id})` : borderStyle === 'none' ? 'transparent' : borderColor}
+                          strokeWidth={borderStyle === 'none' ? 0 : borderWidth}
+                          strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
                         />
                       </svg>
                       {/* Text inside triangle - positioned in center */}
@@ -755,8 +888,9 @@ return (
                       )}
                     </div>
                   )}
-                  {node.type === 'generic.text.star' && (
+                  {(node.type === 'generic.text.star' || node.type?.endsWith('.star')) && (
                     <div 
+                      key={`gradient-${gradientAngle}`}
                       className="relative" 
                       style={{ 
                         width: node.width || 60, 
@@ -774,6 +908,26 @@ return (
                         height={node.height || 60}
                         style={{ display: 'block' }}
                       >
+                        <defs>
+                            {backgroundStyle === 'gradient' && (() => {
+                              const coords = getGradientCoordinates(gradientAngle);
+                              return (
+                                <linearGradient id={`star-bg-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                                  <stop offset="0%" stopColor={backgroundColors[0]} />
+                                  <stop offset="100%" stopColor={backgroundColors[1]} />
+                                </linearGradient>
+                              );
+                            })()}
+                            {borderStyle === 'gradient' && (() => {
+                              const coords = getGradientCoordinates(gradientAngle);
+                              return (
+                                <linearGradient id={`star-border-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                                  <stop offset="0%" stopColor={borderColors[0]} />
+                                  <stop offset="100%" stopColor={borderColors[1]} />
+                                </linearGradient>
+                              );
+                            })()}
+                        </defs>
                         {/* 5-pointed star path */}
                         <path
                           d={`M ${(node.width || 60) / 2},${borderWidth / 2} 
@@ -786,9 +940,10 @@ return (
                               L ${(node.width || 60) * 0.32},${(node.height || 60) * 0.62} 
                               L ${borderWidth / 2},${(node.height || 60) * 0.38} 
                               L ${(node.width || 60) * 0.39},${(node.height || 60) * 0.38} Z`}
-                          fill={(node as any).backgroundColor || '#6b7280'}
-                          stroke={(node as any).borderColor || '#6b7280'}
-                          strokeWidth={borderWidth}
+                          fill={backgroundStyle === 'gradient' ? `url(#star-bg-${node.id})` : backgroundStyle === 'none' ? 'transparent' : backgroundColor}
+                          stroke={borderStyle === 'gradient' ? `url(#star-border-${node.id})` : borderStyle === 'none' ? 'transparent' : borderColor}
+                          strokeWidth={borderStyle === 'none' ? 0 : borderWidth}
+                          strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
                         />
                       </svg>
                       {/* Text inside star - positioned in center */}
@@ -818,8 +973,9 @@ return (
                       )}
                     </div>
                   )}
-                  {node.type === 'generic.text.cloud' && (
+                  {(node.type === 'generic.text.cloud' || node.type?.endsWith('.cloud')) && (
                     <div 
+                      key={`gradient-${gradientAngle}`}
                       className="relative" 
                       style={{ 
                         width: node.width || 80, 
@@ -837,6 +993,26 @@ return (
                         height={node.height || 50}
                         style={{ display: 'block' }}
                       >
+                        <defs>
+                            {backgroundStyle === 'gradient' && (() => {
+                              const coords = getGradientCoordinates(gradientAngle);
+                              return (
+                                <linearGradient id={`cloud-bg-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                                  <stop offset="0%" stopColor={backgroundColors[0]} />
+                                  <stop offset="100%" stopColor={backgroundColors[1]} />
+                                </linearGradient>
+                              );
+                            })()}
+                            {borderStyle === 'gradient' && (() => {
+                              const coords = getGradientCoordinates(gradientAngle);
+                              return (
+                                <linearGradient id={`cloud-border-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                                  <stop offset="0%" stopColor={borderColors[0]} />
+                                  <stop offset="100%" stopColor={borderColors[1]} />
+                                </linearGradient>
+                              );
+                            })()}
+                        </defs>
                         {/* Cloud shape made of multiple circles */}
                         <path
                           d={`M ${(node.width || 80) * 0.2},${(node.height || 50) / 2} 
@@ -851,9 +1027,10 @@ return (
                               Q ${(node.width || 80) * 0.45},${(node.height || 50) - borderWidth / 2} ${(node.width || 80) * 0.35},${(node.height || 50) * 0.65} 
                               Q ${(node.width || 80) * 0.25},${(node.height || 50) - borderWidth / 2} ${(node.width || 80) * 0.15},${(node.height || 50) * 0.55} 
                               Q ${borderWidth / 2},${(node.height || 50) * 0.55} ${(node.width || 80) * 0.18},${(node.height || 50) / 2} Z`}
-                          fill={(node as any).backgroundColor || '#6b7280'}
-                          stroke={(node as any).borderColor || '#6b7280'}
-                          strokeWidth={borderWidth}
+                          fill={backgroundStyle === 'gradient' ? `url(#cloud-bg-${node.id})` : backgroundStyle === 'none' ? 'transparent' : backgroundColor}
+                          stroke={borderStyle === 'gradient' ? `url(#cloud-border-${node.id})` : borderStyle === 'none' ? 'transparent' : borderColor}
+                          strokeWidth={borderStyle === 'none' ? 0 : borderWidth}
+                          strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
                         />
                       </svg>
                       {/* Text inside cloud - positioned in center */}

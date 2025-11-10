@@ -67,6 +67,7 @@ export function convertToNestedHierarchy(data: DiagramData): HierarchicalDiagram
         borderColors: node.borderColors,
         backgroundStyle: node.backgroundStyle,
         backgroundColors: node.backgroundColors,
+        gradientAngle: node.gradientAngle,
         shadow: node.shadow,
         rotation: node.rotation,
         textPosition: node.textPosition,
@@ -124,6 +125,7 @@ function convertGroupToNested(
         borderColors: node.borderColors,
         backgroundStyle: node.backgroundStyle,
         backgroundColors: node.backgroundColors,
+        gradientAngle: node.gradientAngle,
         shadow: node.shadow,
         rotation: node.rotation,
         textPosition: node.textPosition,
@@ -158,6 +160,7 @@ function convertGroupToNested(
     borderColors: group.borderColors,
     backgroundStyle: group.backgroundStyle,
     backgroundColors: group.backgroundColors,
+    gradientAngle: group.gradientAngle,
     orientation: group.orientation,
     maxItemsPerRow: group.maxItemsPerRow,
     lineColor: group.lineColor,
@@ -167,7 +170,9 @@ function convertGroupToNested(
     height: group.height,
     sizeMode: group.sizeMode,
     minWidth: group.minWidth,
-    minHeight: group.minHeight
+    minHeight: group.minHeight,
+    rotation: group.rotation,
+    borderWidth: group.borderWidth
   };
 }
 
@@ -203,6 +208,7 @@ export function convertFromNestedHierarchy(nestedData: HierarchicalDiagramData):
             borderColors: nodeChild.borderColors,
             backgroundStyle: nodeChild.backgroundStyle,
             backgroundColors: nodeChild.backgroundColors,
+            gradientAngle: nodeChild.gradientAngle,
             shadow: nodeChild.shadow,
             rotation: nodeChild.rotation,
             textPosition: nodeChild.textPosition,
@@ -258,6 +264,7 @@ function processNestedGroup(
     borderColors: group.borderColors,
     backgroundStyle: group.backgroundStyle,
     backgroundColors: group.backgroundColors,
+    gradientAngle: group.gradientAngle,
     orientation: group.orientation,
     maxItemsPerRow: group.maxItemsPerRow,
     lineColor: group.lineColor,
@@ -268,6 +275,8 @@ function processNestedGroup(
     sizeMode: group.sizeMode,
     minWidth: group.minWidth,
     minHeight: group.minHeight,
+    rotation: group.rotation,
+    borderWidth: group.borderWidth,
     parentId: parentId || undefined
   };
   
@@ -299,6 +308,7 @@ function processNestedGroup(
             borderColors: nodeChild.borderColors,
             backgroundStyle: nodeChild.backgroundStyle,
             backgroundColors: nodeChild.backgroundColors,
+            gradientAngle: nodeChild.gradientAngle,
             shadow: nodeChild.shadow,
             rotation: nodeChild.rotation,
             textPosition: nodeChild.textPosition,

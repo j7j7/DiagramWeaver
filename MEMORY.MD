@@ -1,6 +1,6 @@
 # MEMORY.MD
 
-## DiagramWeaver - Latest Features and Functions (Updated 2025-10-27)
+## DiagramWeaver - Latest Features and Functions (Updated 2025-11-10)
 
 ### Project Overview
 DiagramWeaver is a Next.js 15 application for creating interactive architecture diagrams. It supports drag-and-drop design, AI-powered generation from natural language descriptions, and integration with multiple cloud providers. Users can build, edit, and visualize complex system architectures with Bezier curve connections.
@@ -9,14 +9,14 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
 - **Framework**: Next.js 15 with React 18
 - **UI Library**: Radix UI components with TailwindCSS for styling
 - **Drag & Drop**: React DND for interactive elements
-- **AI Integration**: Google Genkit with Gemini 2.5 Flash for diagram generation
+- **AI Integration**: Ollama with Llama 3.2/Gemma 3 models for local diagram generation
 - **Icons and Resources**: Custom PNG/SVG icons for 17+ providers
 - **State Management**: React hooks and context for diagram state
 
 ### Core Features
 - **Interactive Diagram Editor**: Canvas-based editor with zoom, pan, and grid snap
 - **Drag-and-Drop Interface**: Drag resources from sidebar to canvas; supports nested groups and zones
-- **AI-Powered Generation**: Generate diagrams from natural language descriptions using AI
+- **AI-Powered Generation**: Generate diagrams from natural language descriptions using local Ollama AI
 - **Multi-Provider Support**: Icons and resources for AWS, Azure, GCP, OCI, Kubernetes, and more
 - **Connection Routing**: Bezier curve connections between nodes with customizable styling
 - **Group and Zone Management**: Create nested groups; intra-group reordering and hierarchical connections
@@ -37,8 +37,10 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
 
 ### AI Features
 - **Natural Language Input**: Describe diagrams in plain English; AI generates JSON structure
-- **Gemini Integration**: Uses Google Genkit for prompt engineering and code generation
-- **Flow Support**: AI flows in `src/ai/flows/` for diagram code generation from descriptions
+- **Ollama Integration**: Uses Ollama API with Llama 3.2/Gemma 3 models for local diagram generation
+- **Simple Architecture**: Direct API calls to Ollama server at https://ub for fast, local AI processing
+- **Configurable Models**: Supports llama3.2:latest and gemma3 models via environment variables
+- **Environment Configuration**: Uses OLLAMA_BASE_URL (default: https://ub) and OLLAMA_MODEL (default: llama3.2:latest)
 
 ### UI/UX Features
 - **Component Sidebar**: Draggable items with search and categorization
@@ -47,6 +49,16 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
 - **Responsive Layout**: Adaptive design with proper scrolling in sidebars
 - **Dark Mode Support**: Some providers (e.g., OCI) have white variants for dark themes
 - **Icon Persistence**: Fixes ensure icons remain visible after connections and selections
+
+### AI Architecture Changes (2025-11-10)
+- **Removed Google Genkit**: Eliminated complex Genkit flows and dependencies for simpler architecture
+- **Direct Ollama Integration**: Implemented custom OllamaService class using fetch API calls to localhost:11434
+- **Simplified Flow**: Replaced Genkit flows with direct API calls for better maintainability
+- **UI Enhancement**: Moved AI prompt box from canvas bottom to left sidebar top for better visibility
+- **Dependency Cleanup**: Removed genkit, @genkit-ai/google-genai, @genkit-ai/next packages
+- **Model Support**: Configured for deepseek-v3.1:671b-cloud model (available locally) with environment variable overrides
+- **Connection Testing**: Added API endpoint `/api/test-ollama-connection` and UI button to test Ollama connectivity
+- **Environment Configuration**: Uses OLLAMA_BASE_URL (default: http://localhost:11434) and OLLAMA_MODEL (default: deepseek-v3.1:671b-cloud)
 
 ### Recent Updates and Fixes
 - Resource JSON consolidation: Single source of truth under `public/resources/`; removed duplicate JSONs under `resources/`. Resource Browser now fetches index at runtime, and Canvas uses the same exact icon path via `imagePath` to ensure icon parity.

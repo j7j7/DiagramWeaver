@@ -11,10 +11,11 @@ export interface DiagramNodeData {
   borderColor?: string; // Border color for label nodes
   backgroundColor?: string; // Background color for label nodes
   textColor?: string; // Text color for label nodes
-  borderStyle?: 'solid' | 'gradient' | 'none'; // Border style for label/labelbox nodes
+  borderStyle?: 'solid' | 'dotted' | 'gradient' | 'none'; // Border style for label/labelbox/shape nodes
   borderColors?: string[]; // Border colors for gradient [startColor, endColor]
-  backgroundStyle?: 'solid' | 'gradient' | 'none'; // Background style for label/labelbox nodes
+  backgroundStyle?: 'solid' | 'gradient' | 'none'; // Background style for label/labelbox/shape nodes
   backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
+  gradientAngle?: number; // Gradient angle in degrees (0, 45, -45, 90, 180)
   shadow?: boolean; // Whether to show shadow around label/labelbox nodes
   rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
   textPosition?: 'above' | 'center' | 'under'; // Text position for shape nodes
@@ -59,10 +60,11 @@ export interface DiagramNodeItem {
   borderColor?: string; // Border color for label nodes
   backgroundColor?: string; // Background color for label nodes
   textColor?: string; // Text color for label nodes
-  borderStyle?: 'solid' | 'gradient' | 'none'; // Border style for label/labelbox nodes
+  borderStyle?: 'solid' | 'dotted' | 'gradient' | 'none'; // Border style for label/labelbox/shape nodes
   borderColors?: string[]; // Border colors for gradient [startColor, endColor]
-  backgroundStyle?: 'solid' | 'gradient' | 'none'; // Background style for label/labelbox nodes
+  backgroundStyle?: 'solid' | 'gradient' | 'none'; // Background style for label/labelbox/shape nodes
   backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
+  gradientAngle?: number; // Gradient angle in degrees (0, 45, -45, 90, 180)
   shadow?: boolean; // Whether to show shadow around label/labelbox nodes
   rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
   textPosition?: 'above' | 'center' | 'under'; // Text position for shape nodes
@@ -89,10 +91,11 @@ export interface DiagramGroupItem {
   borderColor?: string; // Border color (legacy, kept for compatibility)
   textColor?: string; // Text color
   backgroundColor?: string; // Background color (legacy, kept for compatibility)
-  borderStyle?: 'solid' | 'gradient' | 'none'; // Border style
+  borderStyle?: 'solid' | 'dotted' | 'gradient' | 'none'; // Border style
   borderColors?: string[]; // Border colors for gradient [startColor, endColor]
   backgroundStyle?: 'solid' | 'gradient' | 'none'; // Background style
   backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
+  gradientAngle?: number; // Gradient angle in degrees (0, 45, -45, 90, 180)
   orientation?: 'horizontal' | 'vertical' | 'square'; // Group shape orientation
   maxItemsPerRow?: number; // Maximum items per row (for grid layouts)
   lineColor?: string; // Color for connections from this group
@@ -124,10 +127,11 @@ export interface DiagramGroupData {
   borderColor?: string; // Border color (legacy, kept for compatibility)
   textColor?: string; // Text color
   backgroundColor?: string; // Background color (legacy, kept for compatibility)
-  borderStyle?: 'solid' | 'gradient' | 'none'; // Border style
+  borderStyle?: 'solid' | 'dotted' | 'gradient' | 'none'; // Border style
   borderColors?: string[]; // Border colors for gradient [startColor, endColor]
   backgroundStyle?: 'solid' | 'gradient' | 'none'; // Background style
   backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
+  gradientAngle?: number; // Gradient angle in degrees (0, 45, -45, 90, 180)
   orientation?: 'horizontal' | 'vertical' | 'square'; // Group shape orientation
   maxItemsPerRow?: number; // Maximum items per row (for grid layouts)
   lineColor?: string; // Color for connections from this group

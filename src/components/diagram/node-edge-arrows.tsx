@@ -32,7 +32,10 @@ export function NodeEdgeArrows({ node, connections, width, height }: NodeEdgeArr
   const isTextNode = node.type === 'generic.text.text' || node.type === 'generic.text.label' || 
                      node.type === 'generic.text.square' || node.type === 'generic.text.circle' || 
                      node.type === 'generic.text.rectangle' || node.type === 'generic.text.triangle' ||
-                     node.type === 'generic.text.star' || node.type === 'generic.text.cloud';
+                     node.type === 'generic.text.star' || node.type === 'generic.text.cloud' ||
+                     node.type?.endsWith('.square') || node.type?.endsWith('.circle') ||
+                     node.type?.endsWith('.rectangle') || node.type?.endsWith('.triangle') ||
+                     node.type?.endsWith('.star') || node.type?.endsWith('.cloud');
   const nodeHeight = calculateNodeHeight(node.label || '', isTextNode);
   const nodeWidth = isTextNode ? 90 : NODE_WIDTH; // Approximate width for text nodes
   const rotation = (node as any).rotation || 0;

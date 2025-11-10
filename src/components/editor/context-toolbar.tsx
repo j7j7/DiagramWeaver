@@ -82,25 +82,23 @@ export function ContextToolbar({
     };
 
     return (
-      <TooltipProvider>
-        <div className="flex items-center gap-1 px-2 border-l border-border min-h-[2.5rem] shrink-0">
-          {/* Arrow Toggle Button */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                variant={hasArrow ? "default" : "ghost"} 
-                size="sm" 
-                className="h-8 px-2"
-                onClick={handleArrowToggle}
-              >
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{hasArrow ? 'Hide Arrow' : 'Show Arrow'}</TooltipContent>
-          </Tooltip>
+      <div className="flex items-center gap-1 px-2 border-l border-border min-h-[2.5rem] shrink-0">
+        {/* Arrow Toggle Button */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button 
+              variant={hasArrow ? "default" : "ghost"} 
+              size="sm" 
+              className="h-8 px-2"
+              onClick={handleArrowToggle}
+            >
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{hasArrow ? 'Hide Arrow' : 'Show Arrow'}</TooltipContent>
+        </Tooltip>
 
-        </div>
-      </TooltipProvider>
+      </div>
     );
   }
 
@@ -164,7 +162,7 @@ export function ContextToolbar({
     onItemUpdate({ ...selectedItem, rotation: parseInt(value) } as SelectedItem);
   };
 
-  const handleBorderStyleChange = (value: 'solid' | 'gradient' | 'none') => {
+  const handleBorderStyleChange = (value: 'solid' | 'dotted' | 'gradient' | 'none') => {
     if (value === 'none') {
       onItemUpdate({ ...selectedItem, borderStyle: 'none' } as SelectedItem);
     } else {
@@ -178,6 +176,10 @@ export function ContextToolbar({
     } else {
       onItemUpdate({ ...selectedItem, backgroundStyle: value } as SelectedItem);
     }
+  };
+
+  const handleGradientAngleChange = (value: number) => {
+    onItemUpdate({ ...selectedItem, gradientAngle: value } as SelectedItem);
   };
 
   const handleOrientationChange = (value: 'square' | 'horizontal' | 'vertical') => {
@@ -219,7 +221,16 @@ export function ContextToolbar({
                                  selectedItem.type === 'generic.text.rectangle' || 
                                  selectedItem.type === 'generic.text.triangle' ||
                                  selectedItem.type === 'generic.text.star' ||
-                                 selectedItem.type === 'generic.text.cloud');
+                                 selectedItem.type === 'generic.text.cloud' ||
+                                 // Also check for alternative type format
+                                 selectedItem.type?.endsWith('.square') ||
+                                 selectedItem.type?.endsWith('.circle') ||
+                                 selectedItem.type?.endsWith('.rectangle') ||
+                                 selectedItem.type?.endsWith('.triangle') ||
+                                 selectedItem.type?.endsWith('.star') ||
+                                 selectedItem.type?.endsWith('.cloud'));
+  
+
   const isLabelOrLabelbox = isLabelNode || isLabelboxNode;
   // Text type nodes that should hide certain controls
   const isTextTypeNode = isTextNode; // includes all generic.text.* nodes
@@ -589,8 +600,8 @@ export function ContextToolbar({
               <div className="space-y-2">
                 <label className="text-sm font-medium">Border Style</label>
                 <Select 
-                  value={selectedItem.borderStyle || 'solid'} 
-                  onValueChange={handleBorderStyleChange}
+                  value={(selectedItem as any).backgroundStyle || 'solid'} 
+                  onValueChange={handleBackgroundStyleChange}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -626,18 +637,16 @@ export function ContextToolbar({
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 px-2">
-                    <div 
-                      className="w-4 h-4 rounded border-2 border-border"
-                      style={{ 
-                        backgroundColor: selectedItem.borderStyle === 'gradient' 
-                          ? ((selectedItem as any).borderColors?.[0] || '#6b7280')
-                          : (selectedItem.borderColor || '#3b82f6')
-                      }}
-                    />
-                  </Button>
-                </PopoverTrigger>
+                <Button variant="ghost" size="sm" className="h-8 px-2">
+                  <div 
+                    className="w-4 h-4 rounded border-2 border-border"
+                    style={{ 
+                      backgroundColor: selectedItem.borderStyle === 'gradient' 
+                        ? ((selectedItem as any).borderColors?.[0] || '#6b7280')
+                        : (selectedItem.borderColor || '#3b82f6')
+                    }}
+                  />
+                </Button>
               </TooltipTrigger>
               <TooltipContent>Border Color</TooltipContent>
             </Tooltip>
@@ -659,6 +668,23 @@ export function ContextToolbar({
                       onChange={(e) => handleBorderColorChange(e.target.value, 1)}
                       className="h-10"
                     />
+                    <div className="pt-2 border-t border-border">
+                      <label className="text-sm font-medium">Gradient Angle</label>
+                      <Select 
+                        value={String((selectedItem as any).gradientAngle || 135)} 
+                        onValueChange={(value) => handleGradientAngleChange(parseInt(value))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="-45">Alt Diagonal ↗</SelectItem>
+                          <SelectItem value="90">Down</SelectItem>
+                          <SelectItem value="135">Diagonal ↘</SelectItem>
+                          <SelectItem value="180">Side</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </>
                 ) : (
                   <>
@@ -677,7 +703,7 @@ export function ContextToolbar({
         )}
 
         {/* Background Style */}
-        {isGroup && (
+        {(isGroup || isShapeNode) && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -711,7 +737,7 @@ export function ContextToolbar({
         )}
 
         {/* Background Color */}
-        {isGroup && selectedItem.backgroundStyle && selectedItem.backgroundStyle !== 'none' && (
+        {(isGroup || isShapeNode) && selectedItem.backgroundStyle && selectedItem.backgroundStyle !== 'none' && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -748,6 +774,23 @@ export function ContextToolbar({
                       onChange={(e) => handleBackgroundColorChange(e.target.value, 1)}
                       className="h-10"
                     />
+                    <div className="pt-2 border-t border-border">
+                      <label className="text-sm font-medium">Gradient Angle</label>
+                      <Select 
+                        value={String((selectedItem as any).gradientAngle || 135)} 
+                        onValueChange={(value) => handleGradientAngleChange(parseInt(value))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="-45">Alt Diagonal ↗</SelectItem>
+                          <SelectItem value="90">Down</SelectItem>
+                          <SelectItem value="135">Diagonal ↘</SelectItem>
+                          <SelectItem value="180">Side</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </>
                 ) : (
                   <>
@@ -818,6 +861,7 @@ export function ContextToolbar({
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
                     <SelectItem value="solid">Solid</SelectItem>
+                    <SelectItem value="dotted">Dotted</SelectItem>
                     <SelectItem value="gradient">Gradient</SelectItem>
                   </SelectContent>
                 </Select>
@@ -907,6 +951,7 @@ export function ContextToolbar({
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
                     <SelectItem value="solid">Solid</SelectItem>
+                    <SelectItem value="dotted">Dotted</SelectItem>
                     <SelectItem value="gradient">Gradient</SelectItem>
                   </SelectContent>
                 </Select>
@@ -946,13 +991,30 @@ export function ContextToolbar({
                       onChange={(e) => handleBackgroundColorChange(e.target.value, 0)}
                       className="h-10"
                     />
-                    <label className="text-sm font-medium">Background End Color</label>
+                     <label className="text-sm font-medium">Background End Color</label>
                     <Input
                       type="color"
                       value={((selectedItem as any).backgroundColors?.[1] || '#e5e7eb')}
                       onChange={(e) => handleBackgroundColorChange(e.target.value, 1)}
                       className="h-10"
                     />
+                    <div className="pt-2 border-t border-border">
+                      <label className="text-sm font-medium">Gradient Angle</label>
+                      <Select 
+                        value={String((selectedItem as any).gradientAngle || 135)} 
+                        onValueChange={(value) => handleGradientAngleChange(parseInt(value))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="-45">Alt Diagonal ↗</SelectItem>
+                          <SelectItem value="90">Down</SelectItem>
+                          <SelectItem value="135">Diagonal ↘</SelectItem>
+                          <SelectItem value="180">Side</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </>
                 ) : (
                   <>
@@ -970,40 +1032,36 @@ export function ContextToolbar({
           </Popover>
         )}
 
-        {/* Border Color for Shapes */}
+        {/* Border Style for Shapes */}
         {isShapeNode && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
                 <PopoverTrigger asChild>
                   <Button variant="ghost" size="sm" className="h-8 px-2">
-                    <div 
-                      className="w-4 h-4 rounded border-2 border-border"
-                      style={{ 
-                        backgroundColor: selectedItem.borderColor || '#6b7280'
-                      }}
-                    />
+                    <Square className="h-4 w-4" />
                   </Button>
                 </PopoverTrigger>
               </TooltipTrigger>
-              <TooltipContent>Border Color</TooltipContent>
+              <TooltipContent>Border Style</TooltipContent>
             </Tooltip>
-            <PopoverContent className="w-64">
+            <PopoverContent className="w-48">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Border Color</label>
-                <Input
-                  type="color"
-                  value={selectedItem.borderColor || '#6b7280'}
-                  onChange={(e) => handleColorChange('borderColor', e.target.value)}
-                  className="h-10"
-                />
-                <Input
-                  type="text"
-                  value={selectedItem.borderColor || '#6b7280'}
-                  onChange={(e) => handleColorChange('borderColor', e.target.value)}
-                  className="h-8 text-xs font-mono"
-                  placeholder="#6b7280"
-                />
+                <label className="text-sm font-medium">Border Style</label>
+                <Select 
+                  value={(selectedItem as any).borderStyle || 'solid'} 
+                  onValueChange={handleBorderStyleChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="solid">Solid</SelectItem>
+                    <SelectItem value="dotted">Dotted</SelectItem>
+                    <SelectItem value="gradient">Gradient</SelectItem>
+                  </SelectContent>
+                </Select>
                 <div className="pt-2 border-t border-border">
                   <label className="text-sm font-medium">Border Thickness</label>
                   <Input
@@ -1024,17 +1082,136 @@ export function ContextToolbar({
           </Popover>
         )}
 
-        {/* Fill/Background Color for Shapes */}
-        {isShapeNode && (
+        {/* Border Color for Shapes */}
+        {isShapeNode && (selectedItem as any).borderStyle && (selectedItem as any).borderStyle !== 'none' && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
                 <PopoverTrigger asChild>
                   <Button variant="ghost" size="sm" className="h-8 px-2">
                     <div 
+                      className="w-4 h-4 rounded border-2 border-border"
+                      style={{ 
+                        backgroundColor: (selectedItem as any).borderStyle === 'gradient' 
+                          ? ((selectedItem as any).borderColors?.[0] || '#6b7280')
+                          : (selectedItem.borderColor || '#6b7280')
+                      }}
+                    />
+                  </Button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent>Border Color</TooltipContent>
+            </Tooltip>
+            <PopoverContent className="w-64">
+              <div className="space-y-2">
+                {(selectedItem as any).borderStyle === 'gradient' ? (
+                  <>
+                    <label className="text-sm font-medium">Border Start Color</label>
+                    <Input
+                      type="color"
+                      value={((selectedItem as any).borderColors?.[0] || '#6b7280')}
+                      onChange={(e) => handleBorderColorChange(e.target.value, 0)}
+                      className="h-10"
+                    />
+                    <label className="text-sm font-medium">Border End Color</label>
+                    <Input
+                      type="color"
+                      value={((selectedItem as any).borderColors?.[1] || '#3b82f6')}
+                      onChange={(e) => handleBorderColorChange(e.target.value, 1)}
+                      className="h-10"
+                    />
+                    <div className="pt-2 border-t border-border">
+                      <label className="text-sm font-medium">Gradient Angle</label>
+                      <Select 
+                        value={String((selectedItem as any).gradientAngle || 135)} 
+                        onValueChange={(value) => handleGradientAngleChange(parseInt(value))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="-45">Alt Diagonal ↗</SelectItem>
+                          <SelectItem value="90">Down</SelectItem>
+                          <SelectItem value="135">Diagonal ↘</SelectItem>
+                          <SelectItem value="180">Side</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <label className="text-sm font-medium">Border Color</label>
+                    <Input
+                      type="color"
+                      value={selectedItem.borderColor || '#6b7280'}
+                      onChange={(e) => handleColorChange('borderColor', e.target.value)}
+                      className="h-10"
+                    />
+                    <Input
+                      type="text"
+                      value={selectedItem.borderColor || '#6b7280'}
+                      onChange={(e) => handleColorChange('borderColor', e.target.value)}
+                      className="h-8 text-xs font-mono"
+                      placeholder="#6b7280"
+                    />
+                  </>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+
+        {/* Background Style for Shapes */}
+        {isShapeNode && (
+          <Popover>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 px-2">
+                    <Layers className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent>Background Style</TooltipContent>
+            </Tooltip>
+            <PopoverContent className="w-48">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Background Style</label>
+                <Select 
+                  value={(selectedItem as any).backgroundStyle || 'solid'} 
+                  onValueChange={handleBackgroundStyleChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="solid">Solid</SelectItem>
+                    <SelectItem value="gradient">Gradient</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+
+        {/* Fill/Background Color for Shapes */}
+        {isShapeNode && ((selectedItem as any).backgroundStyle !== 'none') && (
+          <Popover>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-8 px-2"
+                  >
+                    <div 
                       className="w-4 h-4 rounded"
                       style={{ 
-                        backgroundColor: selectedItem.backgroundColor || '#6b7280'
+                        backgroundColor: (selectedItem as any).backgroundStyle === 'gradient' 
+                          ? ((selectedItem as any).backgroundColors?.[0] || '#6b7280')
+                          : (selectedItem.backgroundColor || '#6b7280')
                       }}
                     />
                   </Button>
@@ -1044,20 +1221,58 @@ export function ContextToolbar({
             </Tooltip>
             <PopoverContent className="w-64">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Fill Color</label>
-                <Input
-                  type="color"
-                  value={selectedItem.backgroundColor || '#6b7280'}
-                  onChange={(e) => handleColorChange('backgroundColor', e.target.value)}
-                  className="h-10"
-                />
-                <Input
-                  type="text"
-                  value={selectedItem.backgroundColor || '#6b7280'}
-                  onChange={(e) => handleColorChange('backgroundColor', e.target.value)}
-                  className="h-8 text-xs font-mono"
-                  placeholder="#6b7280"
-                />
+                {(selectedItem as any).backgroundStyle === 'gradient' ? (
+                  <>
+                    <label className="text-sm font-medium">Background Start Color</label>
+                    <Input
+                      type="color"
+                      value={((selectedItem as any).backgroundColors?.[0] || '#6b7280')}
+                      onChange={(e) => handleBackgroundColorChange(e.target.value, 0)}
+                      className="h-10"
+                    />
+                    <label className="text-sm font-medium">Background End Color</label>
+                    <Input
+                      type="color"
+                      value={((selectedItem as any).backgroundColors?.[1] || '#3b82f6')}
+                      onChange={(e) => handleBackgroundColorChange(e.target.value, 1)}
+                      className="h-10"
+                    />
+                    <div className="pt-2 border-t border-border">
+                      <label className="text-sm font-medium">Gradient Angle</label>
+                      <Select 
+                        value={String((selectedItem as any).gradientAngle || 135)} 
+                        onValueChange={(value) => handleGradientAngleChange(parseInt(value))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="-45">Alt Diagonal ↗</SelectItem>
+                          <SelectItem value="90">Down</SelectItem>
+                          <SelectItem value="135">Diagonal ↘</SelectItem>
+                          <SelectItem value="180">Side</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <label className="text-sm font-medium">Fill Color</label>
+                    <Input
+                      type="color"
+                      value={selectedItem.backgroundColor || '#6b7280'}
+                      onChange={(e) => handleBackgroundColorChange(e.target.value)}
+                      className="h-10"
+                    />
+                    <Input
+                      type="text"
+                      value={selectedItem.backgroundColor || '#6b7280'}
+                      onChange={(e) => handleBackgroundColorChange(e.target.value)}
+                      className="h-8 text-xs font-mono"
+                      placeholder="#6b7280"
+                    />
+                  </>
+                )}
               </div>
             </PopoverContent>
           </Popover>

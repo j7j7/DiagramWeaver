@@ -187,10 +187,16 @@ export function BezierConnection({ from, to, connectionColor, connectionData, on
   // Use measureNodeDims-like logic for shapes to get actual dimensions
   const isFromShape = (from.type === 'generic.text.square' || from.type === 'generic.text.circle' || 
                        from.type === 'generic.text.rectangle' || from.type === 'generic.text.triangle' ||
-                       from.type === 'generic.text.star' || from.type === 'generic.text.cloud');
+                       from.type === 'generic.text.star' || from.type === 'generic.text.cloud' ||
+                       from.type?.endsWith('.square') || from.type?.endsWith('.circle') ||
+                       from.type?.endsWith('.rectangle') || from.type?.endsWith('.triangle') ||
+                       from.type?.endsWith('.star') || from.type?.endsWith('.cloud'));
   const isToShape = (to.type === 'generic.text.square' || to.type === 'generic.text.circle' || 
                      to.type === 'generic.text.rectangle' || to.type === 'generic.text.triangle' ||
-                     to.type === 'generic.text.star' || to.type === 'generic.text.cloud');
+                     to.type === 'generic.text.star' || to.type === 'generic.text.cloud' ||
+                     to.type?.endsWith('.square') || to.type?.endsWith('.circle') ||
+                     to.type?.endsWith('.rectangle') || to.type?.endsWith('.triangle') ||
+                     to.type?.endsWith('.star') || to.type?.endsWith('.cloud'));
   
   // For shapes, always use their custom width/height if available
   const fromWidth = isFromShape && from.width ? from.width : (from.width || NODE_WIDTH);

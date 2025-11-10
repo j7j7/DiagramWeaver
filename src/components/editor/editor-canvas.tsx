@@ -8,11 +8,9 @@ import { BezierConnection, BezierConnectionText } from "../diagram/bezier-connec
 import { DiagramGroup } from "../diagram/diagram-group";
 import type { DiagramData, DiagramNodeData, DiagramGroupData } from "@/lib/types";
 import { ItemTypes } from './draggable-item';
-import { generateDiagram } from "@/app/actions";
-import { Textarea } from "../ui/textarea";
-import { Button } from "../ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Loader, Maximize2 } from "lucide-react";
+import { Button } from "../ui/button";
+import { Maximize2 } from "lucide-react";
 import type { SelectedItem } from "../diagram-editor";
 import { cn } from "@/lib/utils";
 
@@ -68,7 +66,13 @@ const measureNodeDims = (n: PositionedNode) => {
     n.type === 'generic.text.rectangle' ||
     n.type === 'generic.text.triangle' ||
     n.type === 'generic.text.star' ||
-    n.type === 'generic.text.cloud';
+    n.type === 'generic.text.cloud' ||
+    n.type?.endsWith('.square') ||
+    n.type?.endsWith('.circle') ||
+    n.type?.endsWith('.rectangle') ||
+    n.type?.endsWith('.triangle') ||
+    n.type?.endsWith('.star') ||
+    n.type?.endsWith('.cloud');
   const label = (n.label || '').toString();
 
   // Use custom dimensions if sizeMode is 'custom' and dimensions are provided
@@ -237,8 +241,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [touchStart, setTouchStart] = useState<{ x: number; y: number; distance: number } | null>(null);
   const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null);
-  const [description, setDescription] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
+
   const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectionStart, setSelectionStart] = useState<{ x: number; y: number } | null>(null);
@@ -1018,7 +1021,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                                itemType === 'generic.text.rectangle' || 
                                itemType === 'generic.text.triangle' ||
                                itemType === 'generic.text.star' ||
-                               itemType === 'generic.text.cloud';
+                               itemType === 'generic.text.cloud' ||
+                               itemType?.endsWith('.square') ||
+                               itemType?.endsWith('.circle') ||
+                               itemType?.endsWith('.rectangle') ||
+                               itemType?.endsWith('.triangle') ||
+                               itemType?.endsWith('.star') ||
+                               itemType?.endsWith('.cloud');
       
       if (itemType === 'zone' || itemType === 'group') {
         const subType = itemType === 'zone' ? 'zone' : 'group';
@@ -1140,7 +1149,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                              node.type === 'generic.text.rectangle' || 
                              node.type === 'generic.text.triangle' ||
                              node.type === 'generic.text.star' ||
-                             node.type === 'generic.text.cloud';
+                             node.type === 'generic.text.cloud' ||
+                             node.type?.endsWith('.square') ||
+                             node.type?.endsWith('.circle') ||
+                             node.type?.endsWith('.rectangle') ||
+                             node.type?.endsWith('.triangle') ||
+                             node.type?.endsWith('.star') ||
+                             node.type?.endsWith('.cloud');
           
           if (node.type === 'generic.text.textbox') {
             minWidth = 200;
@@ -2262,24 +2277,7 @@ const [, drop] = useDrop(() => ({
 
   
 
-  const handleGenerateClick = async () => {
-    setIsGenerating(true);
-    const { data, error } = await generateDiagram(description);
-    setIsGenerating(false);
-    if (error || !data) {
-      toast({
-        variant: "destructive",
-        title: "Error Generating Diagram",
-        description: error || "An unknown error occurred.",
-      });
-    } else {
-      setDiagramData(data);
-      toast({
-        title: "Diagram Generated",
-        description: "The diagram has been successfully generated from your description.",
-      });
-    }
-  };
+
 
   // Notify parent of selection changes
   useEffect(() => {
@@ -2321,8 +2319,8 @@ const [, drop] = useDrop(() => ({
         return;
       }
 
-      // Delete key - delete selected item
-      if (event.key === 'Delete' && selectedItemId) {
+      // Delete or Backspace key - delete selected item
+      if ((event.key === 'Delete' || event.key === 'Backspace') && selectedItemId) {
         handleDelete(selectedItemId);
         return;
       }
@@ -2885,26 +2883,7 @@ return (
                 
             </div>
         </div>
-         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full max-w-2xl p-2">
-            {isConnectMode && selectedItem && (
-              <div className="bg-primary/90 text-primary-foreground backdrop-blur-sm shadow-lg rounded-lg p-3 mb-2 text-center font-medium">
-                Connect Mode: Click a target to connect from "{selectedItem.label}".
-              </div>
-            )}
-            <div className="bg-card/80 backdrop-blur-sm shadow-lg rounded-lg p-4 flex gap-2">
-                <Textarea
-                    placeholder="Describe your diagram in plain English... e.g., 'A user connects to a web server through a load balancer.'"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    className="flex-1 text-base"
-                    rows={2}
-                />
-                <Button onClick={handleGenerateClick} disabled={isGenerating || !description}>
-                    {isGenerating ? <Loader className="animate-spin" /> : "Generate"}
-                    <span className="sr-only">Generate Diagram</span>
-                </Button>
-            </div>
-        </div>
+
         
         {/* Context Menu */}
         <ContextMenu

@@ -44,11 +44,15 @@ const setBrowserState = (state: ResourceBrowserState) => {
 import { ChevronDown, ChevronRight, Search, Package, Server, Database, Globe, Cloud, Cpu, Shield, BarChart3, Layers, Box, Network, Maximize2, Minimize2, Type } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
+import { Textarea } from '../ui/textarea';
 import { ScrollArea } from '../ui/scroll-area';
 import { Card, CardContent } from '../ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
 import { Badge } from '../ui/badge';
 import { DraggableResourceItem } from './draggable-resource-item';
+import { generateDiagram } from '@/app/actions';
+import { useToast } from '@/hooks/use-toast';
+import { Loader } from 'lucide-react';
 
 // Resource index is fetched at runtime from public/resources
 // This avoids duplicate JSON sources and keeps a single source of truth.
@@ -91,6 +95,7 @@ interface ResourceIndex {
 
 interface ResourceBrowserProps {
   onResourceSelect: (resource: { name: string; file: string; }, provider: string, category: string) => void;
+  onDiagramGenerated?: (data: any) => void;
 }
 
 // Icon mapping for different resource types
@@ -152,11 +157,18 @@ function ProviderIcon({ provider }: { provider: string }) {
   );
 }
 
-export function ResourceBrowser({ onResourceSelect }: ResourceBrowserProps) {
+export function ResourceBrowser({ onResourceSelect, onDiagramGenerated }: ResourceBrowserProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [fullProviders, setFullProviders] = useState<Record<string, ResourceProvider>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [resourceIndex, setResourceIndex] = useState<ResourceIndex | null>(null);
+  
+  // AI Generation state
+  const [description, setDescription] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<{ success: boolean; message: string } | null>(null);
+  const { toast } = useToast();
   
   // Initialize state from cookies or defaults
   const savedState = getBrowserState();
@@ -356,6 +368,78 @@ export function ResourceBrowser({ onResourceSelect }: ResourceBrowserProps) {
     return filtered;
   }, [searchTerm, fullProviders, isLoading]);
 
+  // AI Generation handler
+  const handleGenerateClick = async () => {
+    setIsGenerating(true);
+    const { data, error } = await generateDiagram(description);
+    setIsGenerating(false);
+    if (error || !data) {
+      toast({
+        variant: "destructive",
+        title: "Error Generating Diagram",
+        description: error || "An unknown error occurred.",
+      });
+    } else {
+      onDiagramGenerated?.(data);
+      setDescription('');
+      toast({
+        title: "Diagram Generated",
+        description: "The diagram has been successfully generated from your description.",
+      });
+    }
+  };
+
+  // Connection test handler
+  const handleTestConnection = async () => {
+    setIsTestingConnection(true);
+    setConnectionStatus(null);
+    
+    try {
+      const response = await fetch('/api/test-ollama-connection', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok && result.success) {
+        setConnectionStatus({
+          success: true,
+          message: 'Connection successful'
+        });
+        toast({
+          title: "Connection Test",
+          description: "Successfully connected to Ollama server",
+        });
+      } else {
+        setConnectionStatus({
+          success: false,
+          message: result.error || 'Connection failed'
+        });
+        toast({
+          variant: "destructive",
+          title: "Connection Test Failed",
+          description: result.error || "Failed to connect to Ollama server",
+        });
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setConnectionStatus({
+        success: false,
+        message: errorMessage
+      });
+      toast({
+        variant: "destructive",
+        title: "Connection Test Failed",
+        description: errorMessage,
+      });
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
+
   const getResourceIcon = (resource: ResourceItem) => {
     // Return generic box icon (icon will be loaded from file)
     return <Box className="w-6 h-6" />;
@@ -367,6 +451,48 @@ export function ResourceBrowser({ onResourceSelect }: ResourceBrowserProps) {
 
 return (
     <div className="flex flex-col h-full overflow-hidden">
+      {/* AI Generation */}
+      <div className="p-4 border-b flex-shrink-0 bg-muted/30">
+        <div className="space-y-3">
+          <div className="text-sm font-medium text-foreground">AI Diagram Generation</div>
+          <div className="flex gap-2">
+            <textarea
+              placeholder="Describe your diagram... e.g., 'A web server behind a load balancer with a database'"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="flex-1 min-h-[60px] px-3 py-2 text-sm border border-border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-background"
+              rows={2}
+            />
+            <Button 
+              onClick={handleGenerateClick} 
+              disabled={isGenerating || !description.trim()}
+              size="sm"
+              className="px-3 py-2 h-auto whitespace-nowrap"
+            >
+              {isGenerating ? <Loader className="w-4 h-4 animate-spin" /> : "Generate"}
+            </Button>
+          </div>
+          <div className="flex gap-2 mt-2">
+            <Button 
+              onClick={handleTestConnection} 
+              disabled={isTestingConnection}
+              size="sm"
+              variant="outline"
+              className="px-3 py-2 h-auto whitespace-nowrap"
+            >
+              {isTestingConnection ? <Loader className="w-4 h-4 animate-spin" /> : "Test Connection"}
+            </Button>
+            {connectionStatus && (
+              <div className={`text-xs px-2 py-1 rounded ${
+                connectionStatus.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+              }`}>
+                {connectionStatus.message}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      
       {/* Search Bar */}
       <div className="p-4 border-b flex-shrink-0">
         <div className="relative">
