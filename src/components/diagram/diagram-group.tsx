@@ -462,7 +462,7 @@ const [{ isDragging }, drag] = useDrag(() => ({
               style={getTextPositioning().style}
               onDoubleClick={handleLabelStartEdit}
             >
-              {group.label || 'Untitled Group'}
+               {group.label}
             </div>
           </PopoverTrigger>
           {group.info && (
@@ -472,7 +472,7 @@ const [{ isDragging }, drag] = useDrag(() => ({
               className="w-80 bg-popover text-popover-foreground shadow-xl border-accent"
             >
               <div className="space-y-2">
-                <h4 className="font-semibold font-headline text-primary">{group.label || 'Untitled Group'}</h4>
+                {group.label && <h4 className="font-semibold font-headline text-primary">{group.label}</h4>}
                 <p className="text-sm">{group.info}</p>
               </div>
             </PopoverContent>

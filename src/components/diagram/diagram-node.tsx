@@ -181,11 +181,12 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
       const lines = Math.ceil(label.length / maxCharsPerLine);
       return TEXT_NODE_HEIGHT + ((lines - 1) * EXTRA_LINE_HEIGHT);
     } else if (nodeType === 'generic.text.label') {
-      // Label nodes - height matches text exactly, no padding
+      // Label nodes - height with padding for better vertical centering
       const maxCharsPerLine = 20; // Characters fit in label nodes
       const lines = Math.ceil(label.length / maxCharsPerLine);
       const lineHeight = 20; // Approximate line height for text-sm font-medium
-      return lines * lineHeight;
+      const padding = 12; // Top and bottom padding for better centering
+      return (lines * lineHeight) + padding;
     } else {
       const maxCharsPerLine = 12; // Approximate characters that fit in node width
       const lines = Math.ceil(label.length / maxCharsPerLine);
@@ -433,14 +434,14 @@ return (
                     className="text-sm font-medium text-center bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
                     onClick={(e) => e.stopPropagation()}
                   />
-                ) : (
-                  <p 
-                    className="text-sm font-medium text-center text-foreground break-words leading-tight cursor-text hover:bg-background/50 rounded px-1 py-0.5 -mx-1 -my-0.5"
-                    onDoubleClick={handleLabelDoubleClick}
-                  >
-                    {node.label || 'Untitled'}
-                  </p>
-                )}
+                 ) : node.label ? (
+                   <p 
+                     className="text-sm font-medium text-center text-foreground break-words leading-tight cursor-text hover:bg-background/50 rounded px-1 py-0.5 -mx-1 -my-0.5"
+                     onDoubleClick={handleLabelDoubleClick}
+                   >
+                     {node.label}
+                   </p>
+                 ) : null}
               </div>
             ) : node.type === 'generic.text.label' ? (
               // Label node - show text with curved rectangle background (no vertical padding)
@@ -457,7 +458,7 @@ return (
                 return (
               <div 
                 className={cn(
-                  "flex items-center justify-center h-full w-full px-3 rounded-lg transition-colors",
+                  "flex items-center justify-center h-full w-full px-3 py-1 rounded-lg transition-colors",
                   borderStyle !== 'none' && "border-2",
                   borderStyle === 'none' && (isSelected 
                     ? "border border-dashed border-primary opacity-100" 
@@ -497,14 +498,14 @@ return (
                     className="text-sm font-medium text-center bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
                     onClick={(e) => e.stopPropagation()}
                   />
-                ) : (
-                  <p 
-                    className="text-sm font-medium text-center break-words leading-tight cursor-text hover:bg-background/50 rounded px-1 -mx-1"
-                    onDoubleClick={handleLabelDoubleClick}
-                  >
-                    {node.label || 'Label'}
-                  </p>
-                )}
+                 ) : node.label ? (
+                    <p 
+                      className="text-xs font-medium text-center text-foreground w-full px-1 break-words leading-tight cursor-text hover:bg-background/50 rounded -mx-1 -my-0.5"
+                      onDoubleClick={handleLabelDoubleClick}
+                    >
+                     {node.label}
+                   </p>
+                 ) : null}
               </div>
               );
               })()
@@ -1136,14 +1137,14 @@ return (
                     className="mt-1 text-xs font-medium text-center bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
                     onClick={(e) => e.stopPropagation()}
                   />
-                ) : (
+                ) : node.label ? (
                   <p 
-                    className="mt-1 text-xs font-medium text-center text-foreground w-full px-1 break-words leading-tight cursor-text hover:bg-background/50 rounded -mx-1 -my-0.5"
+                    className="text-sm font-medium text-center text-foreground break-words leading-tight cursor-text hover:bg-background/50 rounded px-1 py-0.5 -mx-1 -my-0.5"
                     onDoubleClick={handleLabelDoubleClick}
                   >
-                    {node.label || 'Untitled'}
+                    {node.label}
                   </p>
-                )}
+                ) : null}
               </>
             )}
           </div>
@@ -1155,7 +1156,7 @@ return (
             className="w-64 bg-popover text-popover-foreground shadow-xl border-accent"
           >
             <div className="space-y-2">
-              <h4 className="font-semibold font-headline text-primary">{node.label || 'Untitled'}</h4>
+               {node.label && <h4 className="font-semibold font-headline text-primary">{node.label}</h4>}
               {node.info && <p className="text-sm">{node.info}</p>}
             </div>
           </PopoverContent>

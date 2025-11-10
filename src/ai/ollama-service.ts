@@ -132,9 +132,23 @@ ${prompt}
 **Data Pipeline:** Data Source → Processing → Storage → Analytics
 **Serverless:** Events → Lambda Functions → Databases/Storage
 
+## AI GENERATION STRATEGY:
+**USE GENERIC TERMS** - The system will automatically substitute generic terms with specific cloud services:
+- Instead of "aws.compute.ec2", use "server" or "virtual machine"
+- Instead of "aws.database.rds", use "database" or "sql database"  
+- Instead of "aws.storage.s3", use "storage" or "object storage"
+- Instead of "aws.network.vpc", use "network" or "vpc"
+- Instead of "aws.security.iam", use "identity" or "authentication"
+
+**EXAMPLES:**
+- "web server" → will become "aws.compute.ec2" (for AWS)
+- "database" → will become "aws.database.rds" (for AWS)
+- "storage bucket" → will become "aws.storage.s3" (for AWS)
+- "load balancer" → will become "aws.network.elb" (for AWS)
+
 ## REQUIREMENTS:
 1. Generate VALID JSON only - no markdown, no explanations, no code blocks
-2. Use exact type strings from schema above
+2. Use GENERIC TERMS for services (server, database, storage, network, etc.) - system will substitute automatically
 3. Include proper positioning (x, y coordinates) - space nodes 150-200px apart
 4. Add meaningful labels for all nodes
 5. Create logical connections between related nodes with arrows

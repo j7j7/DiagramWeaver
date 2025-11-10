@@ -1,6 +1,7 @@
 "use server";
 
 import { generateDiagramCodeFromDescription } from "@/ai/flows/generate-diagram-code-from-description";
+import { substituteServices, detectProvider } from "@/ai/service-substitution";
 import type { DiagramData } from "@/lib/types";
 
 export async function generateDiagram(
@@ -29,7 +30,16 @@ export async function generateDiagram(
         throw new Error(`Invalid diagram structure returned by AI. Expected 'nodes' and 'connections' arrays, got: ${Object.keys(diagramCode).join(', ')}`);
     }
 
-    return { data: diagramCode, error: null };
+    // Apply service substitution to convert generic terms to specific services
+    const detectedProvider = detectProvider(diagramCode.nodes);
+    console.log("Detected provider:", detectedProvider);
+    
+    // Only apply substitution if a specific provider is detected
+    const finalProvider = detectedProvider === 'generic' ? 'aws' : detectedProvider;
+    const substitutedDiagram = substituteServices(diagramCode, finalProvider);
+    console.log("After substitution:", JSON.stringify(substitutedDiagram, null, 2));
+
+    return { data: substitutedDiagram, error: null };
   } catch (e) {
     console.error("Failed to generate or parse diagram:", e);
     const errorMessage = e instanceof Error ? e.message : "An unknown error occurred.";

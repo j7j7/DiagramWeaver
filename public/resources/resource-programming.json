@@ -1,7 +1,7 @@
 {
   "name": "Programming",
   "icon": "programming.png",
-  "totalResources": 75,
+  "totalResources": 76,
   "categories": {
     "language": {
       "name": "Programming Languages",
@@ -69,8 +69,9 @@
       "resources": [
          {"name": "Start/End", "file": "start-end.png", "type": "flowchart"},
          {"name": "Process", "file": "process.png", "type": "flowchart"},
-         {"name": "Decision", "file": "decision.png", "type": "flowchart"},
-         {"name": "Input/Output", "file": "input-output.png", "type": "flowchart"},
+          {"name": "Decision", "file": "decision.png", "type": "flowchart"},
+          {"name": "Pyramid", "file": "pyramid.png", "type": "flowchart"},
+          {"name": "Input/Output", "file": "input-output.png", "type": "flowchart"},
          {"name": "Subroutine", "file": "subroutine.png", "type": "flowchart"},
          {"name": "Loop", "file": "loop.png", "type": "flowchart"},
          {"name": "Connector", "file": "connector.png", "type": "flowchart"},
