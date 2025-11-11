@@ -5,6 +5,43 @@ import React from "react";
 
 const NODE_WIDTH = 80;
 const NODE_HEIGHT = 80;
+const BASE_NODE_HEIGHT = 80;
+const TEXT_NODE_HEIGHT = 40;
+const EXTRA_LINE_HEIGHT = 20;
+
+// Helper function to calculate dynamic height based on label length and node type
+const calculateNodeHeight = (label: string = '', nodeType: string, sizeMode?: string, customHeight?: number) => {
+  // Use custom height if sizeMode is 'custom' and customHeight is provided
+  if (sizeMode === 'custom' && customHeight) {
+    return customHeight;
+  }
+  
+  // Handle larger multi-line text boxes
+  if (nodeType === 'generic.text.textbox') {
+    const maxCharsPerLine = 30; // More characters fit in wider textbox
+    const lines = Math.max(1, Math.ceil(label.length / maxCharsPerLine)); // Minimum 1 line
+    return 40 + ((lines - 1) * EXTRA_LINE_HEIGHT); // Start with 40px height
+  } else if (nodeType === 'generic.text.labelbox') {
+    const maxCharsPerLine = 25; // Characters fit in labelbox
+    const lines = Math.max(1, Math.ceil(label.length / maxCharsPerLine)); // Minimum 1 line for custom sizing
+    return 100 + ((lines - 1) * EXTRA_LINE_HEIGHT); // Start with 100px height
+  } else if (nodeType === 'generic.text.text') {
+    const maxCharsPerLine = 20; // More characters fit in text-only nodes
+    const lines = Math.ceil(label.length / maxCharsPerLine);
+    return TEXT_NODE_HEIGHT + ((lines - 1) * EXTRA_LINE_HEIGHT);
+  } else if (nodeType === 'generic.text.label') {
+    // Label nodes - height with padding for better vertical centering
+    const maxCharsPerLine = 20; // Characters fit in label nodes
+    const lines = Math.ceil(label.length / maxCharsPerLine);
+    const lineHeight = 20; // Approximate line height for text-sm font-medium
+    const padding = 12; // Top and bottom padding for better centering
+    return (lines * lineHeight) + padding;
+  } else {
+    const maxCharsPerLine = 12; // Approximate characters that fit in node width
+    const lines = Math.ceil(label.length / maxCharsPerLine);
+    return BASE_NODE_HEIGHT + ((lines - 1) * EXTRA_LINE_HEIGHT);
+  }
+};
 
 type Positionable = (DiagramNodeData | DiagramGroupData) & { x: number; y: number; width: number; height: number; };
 
@@ -198,11 +235,49 @@ export function BezierConnection({ from, to, connectionColor, connectionData, on
                      to.type?.endsWith('.rectangle') || to.type?.endsWith('.triangle') ||
                      to.type?.endsWith('.star') || to.type?.endsWith('.cloud'));
   
+  // Calculate dynamic heights for text nodes to account for multi-line text
+  const fromCalculatedHeight = calculateNodeHeight(from.label || '', from.type, from.sizeMode, from.height);
+  const toCalculatedHeight = calculateNodeHeight(to.label || '', to.type, to.sizeMode, to.height);
+  
+  // For shapes with text underneath, add extra space for the text
+  let fromTextUnderHeight = 20;
+  let toTextUnderHeight = 0;
+  
+  if (isFromShape && from.label && (from.textPosition === 'under' || !from.textPosition)) {
+    const maxCharsPerLine = 16;
+    const lines = Math.ceil(from.label.length / maxCharsPerLine);
+    fromTextUnderHeight = lines * 20; // Approximate line height for shape labels
+  }
+  
+  if (isToShape && to.label && (to.textPosition === 'under' || !to.textPosition)) {
+    const maxCharsPerLine = 16;
+    const lines = Math.ceil(to.label.length / maxCharsPerLine);
+    toTextUnderHeight = lines * 20; // Approximate line height for shape labels
+  }
+  
+  // For regular resource nodes with labels (not text/label/textbox/labelbox nodes), add space for the label text
+  const isFromTextType = from.type === 'generic.text.text' || from.type === 'generic.text.label' || 
+                         from.type === 'generic.text.textbox' || from.type === 'generic.text.labelbox';
+  const isToTextType = to.type === 'generic.text.text' || to.type === 'generic.text.label' || 
+                       to.type === 'generic.text.textbox' || to.type === 'generic.text.labelbox';
+  
+  if (!isFromShape && !isFromTextType && from.label && from.label.trim().length > 0) {
+    const maxCharsPerLine = 16;
+    const lines = Math.ceil(from.label.length / maxCharsPerLine);
+    fromTextUnderHeight = 20 + ((lines - 1) * 8); // First line: 20px, then +15px for each additional line
+  }
+  
+  if (!isToShape && !isToTextType && to.label && to.label.trim().length > 0) {
+    const maxCharsPerLine = 16;
+    const lines = Math.ceil(to.label.length / maxCharsPerLine);
+    toTextUnderHeight = 20 + ((lines - 1) * 8); // First line: 20px, then +15px for each additional line
+  }
+  
   // For shapes, always use their custom width/height if available
   const fromWidth = isFromShape && from.width ? from.width : (from.width || NODE_WIDTH);
-  const fromHeight = isFromShape && from.height ? from.height : (from.height || NODE_HEIGHT);
+  const fromHeight = isFromShape && from.height ? from.height : (fromCalculatedHeight + fromTextUnderHeight);
   const toWidth = isToShape && to.width ? to.width : (to.width || NODE_WIDTH);
-  const toHeight = isToShape && to.height ? to.height : (to.height || NODE_HEIGHT);
+  const toHeight = isToShape && to.height ? to.height : (toCalculatedHeight + toTextUnderHeight);
 
   const connectionPoints = getOptimalConnectionPoints(from, to, fromWidth, fromHeight, toWidth, toHeight, connectionData);
   const { fromX, fromY, toX, toY, fromAngle, toAngle } = connectionPoints;
