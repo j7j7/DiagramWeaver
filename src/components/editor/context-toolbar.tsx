@@ -197,6 +197,10 @@ export function ContextToolbar({
     onItemUpdate({ ...selectedItem, textPosition: value as any } as SelectedItem);
   };
 
+  const handleShapeTextPlacementChange = (value: 'above' | 'center' | 'under') => {
+    onItemUpdate({ ...selectedItem, textPosition: value } as SelectedItem);
+  };
+
   const handleEdgePositionChange = (value: string) => {
     onItemUpdate({ 
       ...selectedItem, 
@@ -229,7 +233,6 @@ export function ContextToolbar({
                                  selectedItem.type === 'generic.text.triangle' ||
                                  selectedItem.type === 'generic.text.star' ||
                                  selectedItem.type === 'generic.text.cloud' ||
-                                 // Also check for alternative type format
                                  selectedItem.type?.endsWith('.square') ||
                                  selectedItem.type?.endsWith('.circle') ||
                                  selectedItem.type?.endsWith('.rectangle') ||
@@ -818,7 +821,7 @@ export function ContextToolbar({
         )}
 
         {/* Text Color */}
-        {(isGroup || isLabelOrLabelbox || isTextboxNode) && (
+        {(isGroup || isLabelOrLabelbox || isTextboxNode || isShapeNode) && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -839,6 +842,58 @@ export function ContextToolbar({
                   onChange={(e) => handleColorChange('textColor', e.target.value)}
                   className="h-10"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Leave default for auto color (dark/light based on background)
+                </p>
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+
+        {/* Text Placement for Shapes */}
+        {isShapeNode && (
+          <Popover>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 px-2">
+                    <AlignVerticalJustifyCenter className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent>Text Placement</TooltipContent>
+            </Tooltip>
+            <PopoverContent className="w-48">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Text Placement</label>
+                <Select
+                  value={(selectedItem as any).textPosition || 'under'}
+                  onValueChange={handleShapeTextPlacementChange}
+                >
+                  <SelectTrigger className="h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="above">
+                      <div className="flex items-center gap-2">
+                        <AlignVerticalJustifyStart className="h-4 w-4" />
+                        <span>Above</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="center">
+                      <div className="flex items-center gap-2">
+                        <AlignVerticalJustifyCenter className="h-4 w-4" />
+                        <span>Middle</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="under">
+                      <div className="flex items-center gap-2">
+                        <AlignVerticalJustifyEnd className="h-4 w-4" />
+                        <span>Below</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </PopoverContent>
           </Popover>

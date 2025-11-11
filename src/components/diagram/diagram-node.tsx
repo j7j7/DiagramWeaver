@@ -67,6 +67,44 @@ const getGradientCoordinates = (angle: number = 135) => {
   };
 };
 
+// Helper function to determine if a color is dark or light
+const isColorDark = (color: string): boolean => {
+  // Convert hex to RGB
+  let r = 0, g = 0, b = 0;
+  
+  if (color.startsWith('#')) {
+    const hex = color.replace('#', '');
+    if (hex.length === 3) {
+      r = parseInt(hex[0] + hex[0], 16);
+      g = parseInt(hex[1] + hex[1], 16);
+      b = parseInt(hex[2] + hex[2], 16);
+    } else {
+      r = parseInt(hex.substring(0, 2), 16);
+      g = parseInt(hex.substring(2, 4), 16);
+      b = parseInt(hex.substring(4, 6), 16);
+    }
+  } else if (color.startsWith('rgb')) {
+    const matches = color.match(/\d+/g);
+    if (matches) {
+      r = parseInt(matches[0]);
+      g = parseInt(matches[1]);
+      b = parseInt(matches[2]);
+    }
+  }
+  
+  // Calculate relative luminance (perceived brightness)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  
+  // Return true if dark (luminance < 0.5)
+  return luminance < 0.5;
+};
+
+// Helper function to get text color based on background
+const getTextColorForBackground = (backgroundColor: string, customTextColor?: string): string => {
+  if (customTextColor) return customTextColor;
+  return isColorDark(backgroundColor) ? '#ffffff' : '#000000';
+};
+
 interface DiagramNodeProps {
   node: DiagramNodeData & { x: number; y: number };
   isSelected?: boolean;
@@ -690,6 +728,10 @@ return (
                   return backgroundColor;
                 };
                 
+                // Get the effective background color for text color calculation
+                const effectiveBgColor = backgroundStyle === 'gradient' ? backgroundColors[0] : backgroundColor;
+                const textColorForShape = getTextColorForBackground(effectiveBgColor, (node as any).textColor);
+                
                 // Generate border style
                 const getBorderStyle = () => {
                   if (borderStyle === 'none') return 'none';
@@ -731,18 +773,20 @@ return (
                           {isEditingLabel ? (
                             <input
                               ref={inputRef}
-                    id={`node-input-${node.id}`}
-                    type="text"
+                              id={`node-input-${node.id}`}
+                              type="text"
                               value={editText}
                               onChange={(e) => setEditText(e.target.value)}
                               onBlur={handleLabelSubmit}
                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
                               className="text-xs font-medium text-center bg-transparent border border-white rounded px-1 py-0.5 w-16 outline-none"
+                              style={{ color: textColorForShape }}
                               onClick={(e) => e.stopPropagation()}
                             />
                           ) : (
                             <p 
-                              className="text-xs font-medium text-center text-white break-words leading-tight px-1 cursor-text"
+                              className="text-xs font-medium text-center break-words leading-tight px-1 cursor-text"
+                              style={{ color: textColorForShape }}
                               onDoubleClick={handleLabelDoubleClick}
                             >
                               {node.label}
@@ -777,18 +821,20 @@ return (
                           {isEditingLabel ? (
                             <input
                               ref={inputRef}
-                    id={`node-input-${node.id}`}
-                    type="text"
+                              id={`node-input-${node.id}`}
+                              type="text"
                               value={editText}
                               onChange={(e) => setEditText(e.target.value)}
                               onBlur={handleLabelSubmit}
                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
                               className="text-xs font-medium text-center bg-transparent border border-white rounded px-1 py-0.5 w-16 outline-none"
+                              style={{ color: textColorForShape }}
                               onClick={(e) => e.stopPropagation()}
                             />
                           ) : (
                             <p 
-                              className="text-xs font-medium text-center text-white break-words leading-tight px-1 cursor-text"
+                              className="text-xs font-medium text-center break-words leading-tight px-1 cursor-text"
+                              style={{ color: textColorForShape }}
                               onDoubleClick={handleLabelDoubleClick}
                             >
                               {node.label}
@@ -821,20 +867,22 @@ return (
                       {(node as any).textPosition === 'center' && node.label && (
                         <div className="absolute inset-0 flex items-center justify-center">
                           {isEditingLabel ? (
-                  <input
-                    ref={inputRef}
-                    id={`node-input-${node.id}`}
-                    type="text"
-                    value={editText}
-                    onChange={(e) => setEditText(e.target.value)}
-                    onBlur={handleLabelSubmit}
-                    onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                    className="text-sm font-medium text-center bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
-                    onClick={(e) => e.stopPropagation()}
-                  />
+                            <input
+                              ref={inputRef}
+                              id={`node-input-${node.id}`}
+                              type="text"
+                              value={editText}
+                              onChange={(e) => setEditText(e.target.value)}
+                              onBlur={handleLabelSubmit}
+                              onKeyDown={(e) => handleLabelKeyDown(e, false)}
+                              className="text-sm font-medium text-center bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
+                              style={{ color: textColorForShape }}
+                              onClick={(e) => e.stopPropagation()}
+                            />
                           ) : (
                             <p 
-                              className="text-xs font-medium text-center text-white break-words leading-tight px-1 cursor-text"
+                              className="text-xs font-medium text-center break-words leading-tight px-1 cursor-text"
+                              style={{ color: textColorForShape }}
                               onDoubleClick={handleLabelDoubleClick}
                             >
                               {node.label}
@@ -898,18 +946,20 @@ return (
                           {isEditingLabel ? (
                             <input
                               ref={inputRef}
-                    id={`node-input-${node.id}`}
-                    type="text"
+                              id={`node-input-${node.id}`}
+                              type="text"
                               value={editText}
                               onChange={(e) => setEditText(e.target.value)}
                               onBlur={handleLabelSubmit}
                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
                               className="text-xs font-medium text-center bg-transparent border border-white rounded px-1 py-0.5 w-16 outline-none"
+                              style={{ color: textColorForShape }}
                               onClick={(e) => e.stopPropagation()}
                             />
                           ) : (
                             <p 
-                              className="text-xs font-medium text-center text-white break-words leading-tight px-1 cursor-text"
+                              className="text-xs font-medium text-center break-words leading-tight px-1 cursor-text"
+                              style={{ color: textColorForShape }}
                               onDoubleClick={handleLabelDoubleClick}
                             >
                               {node.label}
@@ -983,18 +1033,20 @@ return (
                           {isEditingLabel ? (
                             <input
                               ref={inputRef}
-                    id={`node-input-${node.id}`}
-                    type="text"
+                              id={`node-input-${node.id}`}
+                              type="text"
                               value={editText}
                               onChange={(e) => setEditText(e.target.value)}
                               onBlur={handleLabelSubmit}
                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
                               className="text-xs font-medium text-center bg-transparent border border-white rounded px-1 py-0.5 w-16 outline-none"
+                              style={{ color: textColorForShape }}
                               onClick={(e) => e.stopPropagation()}
                             />
                           ) : (
                             <p 
-                              className="text-xs font-medium text-center text-white break-words leading-tight px-1 cursor-text"
+                              className="text-xs font-medium text-center break-words leading-tight px-1 cursor-text"
+                              style={{ color: textColorForShape }}
                               onDoubleClick={handleLabelDoubleClick}
                             >
                               {node.label}
@@ -1070,18 +1122,20 @@ return (
                           {isEditingLabel ? (
                             <input
                               ref={inputRef}
-                    id={`node-input-${node.id}`}
-                    type="text"
+                              id={`node-input-${node.id}`}
+                              type="text"
                               value={editText}
                               onChange={(e) => setEditText(e.target.value)}
                               onBlur={handleLabelSubmit}
                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
                               className="text-xs font-medium text-center bg-transparent border border-white rounded px-1 py-0.5 w-20 outline-none"
+                              style={{ color: textColorForShape }}
                               onClick={(e) => e.stopPropagation()}
                             />
                           ) : (
                             <p 
-                              className="text-xs font-medium text-center text-white break-words leading-tight px-1 cursor-text"
+                              className="text-xs font-medium text-center break-words leading-tight px-1 cursor-text"
+                              style={{ color: textColorForShape }}
                               onDoubleClick={handleLabelDoubleClick}
                             >
                               {node.label}
@@ -1093,54 +1147,78 @@ return (
                   )}
                 </div>
                 
-                {/* Text over shape */}
-                {(node as any).textPosition === 'above' && node.label && (
-                  <div className="absolute -top-6 left-1/2 transform -translate-x-1/2">
+                {/* Text above shape */}
+                {(node as any).textPosition === 'above' && node.label && (() => {
+                  const shapeWidth = node.width || 60;
+                  const charsPerLine = Math.floor(shapeWidth / 7);
+                  const estimatedLines = Math.ceil((node.label?.length || 0) / charsPerLine);
+                  const lineHeight = 1.25;
+                  const textHeight = estimatedLines * lineHeight;
+                  const topOffset = -(textHeight + 0.5);
+                  
+                  return (
+                    <div 
+                      className="absolute left-0 flex items-center justify-center"
+                      style={{ 
+                        top: `${topOffset}rem`,
+                        width: shapeWidth,
+                        minWidth: shapeWidth
+                      }}
+                    >
+                      {isEditingLabel ? (
+                        <input
+                          ref={inputRef}
+                          id={`node-input-${node.id}`}
+                          type="text"
+                          value={editText}
+                          onChange={(e) => setEditText(e.target.value)}
+                          onBlur={handleLabelSubmit}
+                          onKeyDown={(e) => handleLabelKeyDown(e, false)}
+                          className="text-sm font-medium text-center bg-background border border-primary rounded px-2 py-1 w-full outline-none"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      ) : (
+                        <p 
+                          className="text-sm font-medium text-center text-foreground break-words leading-tight px-2 py-1 bg-background/90 rounded cursor-text hover:bg-background/95 w-full"
+                          onDoubleClick={handleLabelDoubleClick}
+                        >
+                          {node.label}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
+                
+                {/* Text under shape */}
+                {((node as any).textPosition === 'under' || !(node as any).textPosition) && node.label && (
+                  <div 
+                    className="flex items-center justify-center"
+                    style={{ 
+                      width: node.width || 60,
+                      minWidth: node.width || 60
+                    }}
+                  >
                     {isEditingLabel ? (
                       <input
                         ref={inputRef}
-                    id={`node-input-${node.id}`}
-                    type="text"
+                        id={`node-input-${node.id}`}
+                        type="text"
                         value={editText}
                         onChange={(e) => setEditText(e.target.value)}
                         onBlur={handleLabelSubmit}
                         onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                        className="text-sm font-medium text-center bg-background border border-primary rounded px-2 py-1 w-24 outline-none"
+                        className="text-sm font-medium text-center bg-transparent border border-primary rounded px-2 py-1 w-full outline-none mt-1"
                         onClick={(e) => e.stopPropagation()}
                       />
                     ) : (
                       <p 
-                        className="text-sm font-medium text-center text-foreground break-words leading-tight px-2 bg-background/90 rounded cursor-text hover:bg-background/95"
+                        className="text-sm font-medium text-center text-foreground break-words leading-tight px-2 mt-1 cursor-text hover:bg-background/50 rounded w-full"
                         onDoubleClick={handleLabelDoubleClick}
                       >
                         {node.label}
                       </p>
                     )}
                   </div>
-                )}
-                
-                {/* Text under shape */}
-                {((node as any).textPosition === 'under' || !(node as any).textPosition) && node.label && (
-                  isEditingLabel ? (
-                    <input
-                      ref={inputRef}
-                    id={`node-input-${node.id}`}
-                    type="text"
-                      value={editText}
-                      onChange={(e) => setEditText(e.target.value)}
-                      onBlur={handleLabelSubmit}
-                      onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                      className="text-sm font-medium text-center bg-transparent border border-primary rounded px-2 py-1 w-24 outline-none mt-1"
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  ) : (
-                    <p 
-                      className="text-sm font-medium text-center text-foreground break-words leading-tight px-2 mt-1 cursor-text hover:bg-background/50 rounded -mx-2 -my-1"
-                      onDoubleClick={handleLabelDoubleClick}
-                    >
-                      {node.label}
-                    </p>
-                  )
                 )}
               </div>
               );
