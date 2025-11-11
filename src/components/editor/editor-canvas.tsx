@@ -1788,13 +1788,21 @@ const [, drop] = useDrop(() => ({
     if (!canvasRef.current) return;
     const { clientX, clientY, deltaY } = e;
     const rect = canvasRef.current.getBoundingClientRect();
-    const s = Math.pow(0.99, deltaY);
-    const newK = Math.max(0.1, Math.min(transform.k * s, 3));
-    const mouseX = clientX - rect.left;
-    const mouseY = clientY - rect.top;
-    const newX = mouseX - (mouseX - transform.x) * s;
-    const newY = mouseY - (mouseY - transform.y) * s;
-    setTransform({ x: newX, y: newY, k: newK });
+    const s = Math.pow(0.995, deltaY); // Less sensitive zoom (changed from 0.99 to 0.995)
+    
+    const newK = Math.max(0.1, Math.min(transform.k * s, 2.5)); // Max zoom set to 250% (2.5x)
+    
+    // Only update position if zoom actually changed (not at limit)
+    if (newK !== transform.k) {
+      const mouseX = clientX - rect.left;
+      const mouseY = clientY - rect.top;
+      // Use the actual zoom ratio, not the raw scaling factor
+      const actualZoomRatio = newK / transform.k;
+      const newX = mouseX - (mouseX - transform.x) * actualZoomRatio;
+      const newY = mouseY - (mouseY - transform.y) * actualZoomRatio;
+      setTransform({ x: newX, y: newY, k: newK });
+    }
+    // If zoom didn't change (at limit), do nothing - no position updates
   };
   
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -1979,7 +1987,7 @@ const [, drop] = useDrop(() => ({
       
       // Calculate zoom
       const scale = currentDistance / lastTouchDistance;
-      const newK = Math.max(0.1, Math.min(transform.k * scale, 3));
+      const newK = Math.max(0.1, Math.min(transform.k * scale, 2.5));
       
       // Keep the same center point for zoom
       setTransform({ ...transform, k: newK });
@@ -2422,12 +2430,20 @@ const [, drop] = useDrop(() => ({
       const { clientX, clientY, deltaY } = e;
       const rect = canvas.getBoundingClientRect();
       const s = Math.pow(0.99, deltaY);
-      const newK = Math.max(0.1, Math.min(transform.k * s, 3));
-      const mouseX = clientX - rect.left;
-      const mouseY = clientY - rect.top;
-      const newX = mouseX - (mouseX - transform.x) * s;
-      const newY = mouseY - (mouseY - transform.y) * s;
-      setTransform({ x: newX, y: newY, k: newK });
+      
+      const newK = Math.max(0.1, Math.min(transform.k * s, 2.5));
+      
+      // Only update position if zoom actually changed (not at limit)
+      if (newK !== transform.k) {
+        const mouseX = clientX - rect.left;
+        const mouseY = clientY - rect.top;
+        // Use the actual zoom ratio, not the raw scaling factor
+        const actualZoomRatio = newK / transform.k;
+        const newX = mouseX - (mouseX - transform.x) * actualZoomRatio;
+        const newY = mouseY - (mouseY - transform.y) * actualZoomRatio;
+        setTransform({ x: newX, y: newY, k: newK });
+      }
+      // If zoom didn't change (at limit), do nothing - no position updates
     };
 
     canvas.addEventListener('wheel', handleWheelEvent, { passive: false });

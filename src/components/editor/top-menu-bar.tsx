@@ -265,7 +265,7 @@ export function TopMenuBar({
                           type="number"
                           step="0.1"
                           min="0.1"
-                          max="4"
+                          max="2.5"
                           value={transform?.k || 1}
                           onChange={(e) => onTransformChange({ 
                             x: transform?.x || 0,
@@ -330,6 +330,11 @@ export function TopMenuBar({
       {mousePosition && (
         <div className="text-xs text-muted-foreground px-2 border-l border-border">
           Position: X: {mousePosition.x}, Y: {mousePosition.y}
+        </div>
+      )}
+      {transform && (
+        <div className="text-xs text-muted-foreground px-2 border-l border-border">
+          Zoom: {(transform.k * 100).toFixed(0)}%
         </div>
       )}
       <div className="ml-auto px-4">
