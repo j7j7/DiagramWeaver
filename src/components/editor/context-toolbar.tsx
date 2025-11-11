@@ -363,29 +363,6 @@ export function ContextToolbar({
           </PopoverContent>
         </Popover>
 
-        {/* Text Styling Button */}
-        {selectedItem && (isNode || isGroup) && (
-          <Popover open={textStylingOpen} onOpenChange={setTextStylingOpen}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 px-2">
-                    <Palette className="h-4 w-4" />
-                  </Button>
-                </PopoverTrigger>
-              </TooltipTrigger>
-              <TooltipContent>Text Styling</TooltipContent>
-            </Tooltip>
-            <PopoverContent className="w-80 p-0" align="start">
-              <TextStylingPanel
-                styling={getCurrentTextStyling}
-                onStylingChange={handleTextStylingChange}
-                onReset={handleTextStylingReset}
-              />
-            </PopoverContent>
-          </Popover>
-        )}
-
         {/* Connect Button */}
         {(isNode || isGroup) && (
           <Tooltip>
@@ -877,35 +854,30 @@ export function ContextToolbar({
           </Popover>
         )}
 
-        {/* Text Color */}
-        {(isGroup || isLabelOrLabelbox || isTextboxNode || isShapeNode) && (
-          <Popover>
+        {/* Text Styling Button */}
+        {selectedItem && (isNode || isGroup) && (
+          <Popover open={textStylingOpen} onOpenChange={setTextStylingOpen}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <PopoverTrigger asChild>
                   <Button variant="ghost" size="sm" className="h-8 px-2">
-                    <Type className="h-4 w-4" style={{ color: selectedItem.textColor || '#374151' }} />
+                    <Palette className="h-4 w-4" />
                   </Button>
                 </PopoverTrigger>
               </TooltipTrigger>
-              <TooltipContent>Text Color</TooltipContent>
+              <TooltipContent>Text Styling</TooltipContent>
             </Tooltip>
-            <PopoverContent className="w-64">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Text Color</label>
-                <Input
-                  type="color"
-                  value={selectedItem.textColor || '#374151'}
-                  onChange={(e) => handleColorChange('textColor', e.target.value)}
-                  className="h-10"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Leave default for auto color (dark/light based on background)
-                </p>
-              </div>
+            <PopoverContent className="w-80 p-0" align="start">
+              <TextStylingPanel
+                styling={getCurrentTextStyling}
+                onStylingChange={handleTextStylingChange}
+                onReset={handleTextStylingReset}
+              />
             </PopoverContent>
           </Popover>
         )}
+
+
 
         {/* Text Placement for Shapes */}
         {isShapeNode && (

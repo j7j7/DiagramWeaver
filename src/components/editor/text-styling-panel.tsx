@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TextStyling, COMMON_FONT_FAMILIES, FONT_WEIGHT_OPTIONS } from "@/lib/text-styling";
-import { Type, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, RotateCcw } from "lucide-react";
+import { Type, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, RotateCcw } from "lucide-react";
 
 interface TextStylingPanelProps {
   styling: Partial<TextStyling>;
@@ -89,50 +89,28 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
           />
         </div>
 
-        {/* Font Weight */}
-        <div className="space-y-2">
-          <Label htmlFor="font-weight" className="text-xs font-medium">Font Weight</Label>
-          <Select
-            value={styling.fontWeight || 'normal'}
-            onValueChange={(value) => handlePropertyChange('fontWeight', value as any)}
-          >
-            <SelectTrigger id="font-weight" className="h-8 text-xs">
-              <SelectValue placeholder="Select font weight" />
-            </SelectTrigger>
-            <SelectContent>
-              {FONT_WEIGHT_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value} className="text-xs">
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
         <Separator />
 
         {/* Font Style */}
         <div className="space-y-2">
-          <Label htmlFor="font-style" className="text-xs font-medium">Font Style</Label>
-          <Select
-            value={styling.fontStyle || 'normal'}
-            onValueChange={(value) => handlePropertyChange('fontStyle', value as any)}
-          >
-            <SelectTrigger id="font-style" className="h-8 text-xs">
-              <SelectValue placeholder="Select font style" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="normal" className="text-xs">Normal</SelectItem>
-              <SelectItem value="italic" className="text-xs">Italic</SelectItem>
-              <SelectItem value="oblique" className="text-xs">Oblique</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Text Decoration */}
-        <div className="space-y-2">
-          <Label className="text-xs font-medium">Text Decoration</Label>
+          <Label className="text-xs font-medium">Font Style</Label>
           <div className="flex gap-2">
+            <Button
+              variant={styling.fontWeight === 'bold' || styling.fontWeight === '700' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => handlePropertyChange('fontWeight', (styling.fontWeight === 'bold' || styling.fontWeight === '700') ? 'normal' : 'bold')}
+              className="h-8 px-2"
+            >
+              <Bold className="w-3 h-3" />
+            </Button>
+            <Button
+              variant={styling.fontStyle === 'italic' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => handlePropertyChange('fontStyle', styling.fontStyle === 'italic' ? 'normal' : 'italic')}
+              className="h-8 px-2"
+            >
+              <Italic className="w-3 h-3" />
+            </Button>
             <Button
               variant={styling.textDecoration === 'underline' ? 'default' : 'outline'}
               size="sm"
@@ -140,22 +118,6 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
               className="h-8 px-2"
             >
               <Underline className="w-3 h-3" />
-            </Button>
-            <Button
-              variant={styling.textDecoration === 'line-through' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => handlePropertyChange('textDecoration', styling.textDecoration === 'line-through' ? 'none' : 'line-through')}
-              className="h-8 px-2"
-            >
-              <span className="line-through text-xs">T</span>
-            </Button>
-            <Button
-              variant={styling.textDecoration === 'overline' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => handlePropertyChange('textDecoration', styling.textDecoration === 'overline' ? 'none' : 'overline')}
-              className="h-8 px-2"
-            >
-              <span className="overline text-xs">T</span>
             </Button>
           </div>
         </div>
