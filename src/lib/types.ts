@@ -21,6 +21,7 @@ export interface DiagramNodeData {
   textPosition?: 'above' | 'center' | 'under'; // Text position for shape nodes
   freeflow?: boolean; // If true, node can be placed anywhere without joining groups/zones
   borderWidth?: number; // Border thickness for shapes
+  objectStyle?: string; // Predefined visual style key (e.g., 'solid', 'gradient', 'modern', etc.)
   
   // Custom sizing properties for textbox and labelbox nodes
   width?: number; // Custom width - when set, overrides auto-calculated width
@@ -83,6 +84,7 @@ export interface DiagramNodeItem {
   textPosition?: 'above' | 'center' | 'under'; // Text position for shape nodes
   freeflow?: boolean; // If true, node can be placed anywhere without joining groups/zones
   borderWidth?: number; // Border thickness for shapes
+  objectStyle?: string; // Predefined visual style key (e.g., 'solid', 'gradient', 'modern', etc.)
   
   // Custom sizing properties for textbox and labelbox nodes
   width?: number; // Custom width - when set, overrides auto-calculated width
@@ -126,6 +128,7 @@ export interface DiagramGroupItem {
   maxItemsPerRow?: number; // Maximum items per row (for grid layouts)
   lineColor?: string; // Color for connections from this group
   shadow?: boolean; // Whether to show shadow around the group/zone
+  objectStyle?: string; // Predefined visual style key (e.g., 'solid', 'gradient', 'modern', etc.)
   
    // Text positioning properties
    textPosition?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right' | 'inside';
@@ -174,7 +177,8 @@ export interface DiagramGroupData {
   lineColor?: string; // Color for connections from this group
   shadow?: boolean; // Whether to show shadow around the group/zone
   parentId?: string; // Reference to parent group ID for hierarchy tracking
-  
+  objectStyle?: string; // Predefined visual style key (e.g., 'solid', 'gradient', 'modern', etc.)
+   
    // Text positioning properties
    textPosition?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right' | 'inside';
    
