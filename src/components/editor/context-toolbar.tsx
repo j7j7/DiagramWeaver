@@ -23,7 +23,8 @@ import {
   Grid3x3,
   Maximize2,
   ArrowRight,
-  ChevronDown
+  ChevronDown,
+  Palette
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,10 +34,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Slider } from '@/components/ui/slider';
 import { ThemeSelector } from './theme-selector';
+import { TextStylingPanel } from './text-styling-panel';
 import type { SelectedItem } from '../diagram-editor';
 import type { DiagramData } from '@/lib/types';
 import { DiagramTheme } from '@/lib/theme-types';
 import { themeManager } from '@/lib/theme-manager';
+import { extractTextStylingFromNode, extractTextStylingFromGroup } from '@/lib/text-styling';
 
 interface ContextToolbarProps {
   selectedItem: SelectedItem | null;
@@ -68,6 +71,7 @@ export function ContextToolbar({
   const [labelOpen, setLabelOpen] = useState(false);
   const [descriptionOpen, setDescriptionOpen] = useState(false);
   const [connectionsOpen, setConnectionsOpen] = useState(false);
+  const [textStylingOpen, setTextStylingOpen] = useState(false);
 
   if (!selectedItem) {
     return null;
@@ -110,15 +114,15 @@ export function ContextToolbar({
   }
 
   const handleLabelChange = (value: string) => {
-    onItemUpdate({ ...selectedItem, label: value } as SelectedItem);
+    onItemUpdate?.({ ...selectedItem, label: value } as SelectedItem);
   };
 
   const handleInfoChange = (value: string) => {
-    onItemUpdate({ ...selectedItem, info: value } as SelectedItem);
+    onItemUpdate?.({ ...selectedItem, info: value } as SelectedItem);
   };
 
   const handleColorChange = (property: 'borderColor' | 'backgroundColor' | 'textColor' | 'lineColor', value: string) => {
-    onItemUpdate({ ...selectedItem, [property]: value } as SelectedItem);
+    onItemUpdate?.({ ...selectedItem, [property]: value } as SelectedItem);
   };
 
   const handleBorderColorChange = (value: string, index?: number) => {
@@ -126,9 +130,9 @@ export function ContextToolbar({
       const currentColors = (selectedItem as any).borderColors || ['#6b7280', '#3b82f6'];
       const newColors = [...currentColors];
       newColors[index] = value;
-      onItemUpdate({ ...selectedItem, borderColors: newColors } as SelectedItem);
+      onItemUpdate?.({ ...selectedItem, borderColors: newColors } as SelectedItem);
     } else {
-      onItemUpdate({ ...selectedItem, borderColor: value } as SelectedItem);
+      onItemUpdate?.({ ...selectedItem, borderColor: value } as SelectedItem);
     }
   };
 
@@ -137,14 +141,14 @@ export function ContextToolbar({
       const currentColors = (selectedItem as any).backgroundColors || ['#f3f4f6', '#e5e7eb'];
       const newColors = [...currentColors];
       newColors[index] = value;
-      onItemUpdate({ ...selectedItem, backgroundColors: newColors } as SelectedItem);
+      onItemUpdate?.({ ...selectedItem, backgroundColors: newColors } as SelectedItem);
     } else {
-      onItemUpdate({ ...selectedItem, backgroundColor: value } as SelectedItem);
+      onItemUpdate?.({ ...selectedItem, backgroundColor: value } as SelectedItem);
     }
   };
 
   const handleMaxItemsPerRowChange = (value: number) => {
-    onItemUpdate({ ...selectedItem, maxItemsPerRow: value } as SelectedItem);
+    onItemUpdate?.({ ...selectedItem, maxItemsPerRow: value } as SelectedItem);
   };
 
   const handleSizeModeChange = (value: 'auto' | 'custom') => {
@@ -154,74 +158,104 @@ export function ContextToolbar({
       (updatedItem as any).width = isGroup ? 300 : 40;
       (updatedItem as any).height = isGroup ? 220 : 40;
     }
-    onItemUpdate(updatedItem);
+    onItemUpdate?.(updatedItem);
   };
 
   const handleWidthChange = (value: number) => {
-    onItemUpdate({ ...selectedItem, width: value } as SelectedItem);
+    onItemUpdate?.({ ...selectedItem, width: value } as SelectedItem);
   };
 
   const handleHeightChange = (value: number) => {
-    onItemUpdate({ ...selectedItem, height: value } as SelectedItem);
+    onItemUpdate?.({ ...selectedItem, height: value } as SelectedItem);
   };
 
   const handleRotationChange = (value: string) => {
-    onItemUpdate({ ...selectedItem, rotation: parseInt(value) } as SelectedItem);
+    onItemUpdate?.({ ...selectedItem, rotation: parseInt(value) } as SelectedItem);
   };
 
   const handleBorderStyleChange = (value: 'solid' | 'dotted' | 'gradient' | 'none') => {
     if (value === 'none') {
-      onItemUpdate({ ...selectedItem, borderStyle: 'none' } as SelectedItem);
+      onItemUpdate?.({ ...selectedItem, borderStyle: 'none' } as SelectedItem);
     } else {
-      onItemUpdate({ ...selectedItem, borderStyle: value } as SelectedItem);
+      onItemUpdate?.({ ...selectedItem, borderStyle: value } as SelectedItem);
     }
   };
 
   const handleBackgroundStyleChange = (value: 'solid' | 'gradient' | 'none') => {
     if (value === 'none') {
-      onItemUpdate({ ...selectedItem, backgroundStyle: 'none' } as SelectedItem);
+      onItemUpdate?.({ ...selectedItem, backgroundStyle: 'none' } as SelectedItem);
     } else {
-      onItemUpdate({ ...selectedItem, backgroundStyle: value } as SelectedItem);
+      onItemUpdate?.({ ...selectedItem, backgroundStyle: value } as SelectedItem);
     }
   };
 
   const handleGradientAngleChange = (value: number) => {
-    onItemUpdate({ ...selectedItem, gradientAngle: value } as SelectedItem);
+    onItemUpdate?.({ ...selectedItem, gradientAngle: value } as SelectedItem);
   };
 
   const handleOrientationChange = (value: 'square' | 'horizontal' | 'vertical') => {
-    onItemUpdate({ ...selectedItem, orientation: value } as SelectedItem);
+    onItemUpdate?.({ ...selectedItem, orientation: value } as SelectedItem);
   };
 
   const handleTextPositionChange = (value: string) => {
-    onItemUpdate({ ...selectedItem, textPosition: value as any } as SelectedItem);
+    onItemUpdate?.({ ...selectedItem, textPosition: value as any } as SelectedItem);
   };
 
   const handleShapeTextPlacementChange = (value: 'above' | 'center' | 'under') => {
-    onItemUpdate({ ...selectedItem, textPosition: value } as SelectedItem);
+    onItemUpdate?.({ ...selectedItem, textPosition: value } as SelectedItem);
   };
 
   const handleEdgePositionChange = (value: string) => {
-    onItemUpdate({ 
+    onItemUpdate?.({ 
       ...selectedItem, 
       edgePosition: value === 'none' ? undefined : value as 'top' | 'bottom' | 'left' | 'right'
     } as SelectedItem);
   };
 
   const toggleShadow = () => {
-    onItemUpdate({ ...selectedItem, shadow: !selectedItem.shadow } as SelectedItem);
+    onItemUpdate?.({ ...selectedItem, shadow: !selectedItem.shadow } as SelectedItem);
   };
 
   const toggleFreeflow = () => {
-    onItemUpdate({ ...selectedItem, freeflow: !selectedItem.freeflow } as SelectedItem);
+    onItemUpdate?.({ ...selectedItem, freeflow: !selectedItem.freeflow } as SelectedItem);
   };
 
   const toggleNoIconBackground = () => {
-    onItemUpdate({ ...selectedItem, noIconBackground: !(selectedItem as any).noIconBackground } as any);
+    onItemUpdate?.({ ...selectedItem, noIconBackground: !(selectedItem as any).noIconBackground } as any);
+  };
+
+  const handleTextStylingChange = (styling: any) => {
+    onItemUpdate?.({ ...selectedItem, ...styling } as SelectedItem);
+  };
+
+  const handleTextStylingReset = () => {
+    // Reset to default text styling
+    const defaultStyling = {
+      fontFamily: undefined,
+      fontSize: undefined,
+      fontWeight: undefined,
+      fontStyle: undefined,
+      textDecoration: undefined,
+      textTransform: undefined,
+      letterSpacing: undefined,
+      lineHeight: undefined,
+      textOpacity: undefined,
+      textColor: undefined
+    };
+    onItemUpdate?.({ ...selectedItem, ...defaultStyling } as SelectedItem);
   };
 
   const isGroup = selectedItem.itemType === 'group';
   const isNode = selectedItem.itemType === 'node';
+
+  const getCurrentTextStyling = useMemo(() => {
+    if (isNode) {
+      return extractTextStylingFromNode(selectedItem as any);
+    } else if (isGroup) {
+      return extractTextStylingFromGroup(selectedItem as any);
+    }
+    return {};
+  }, [selectedItem, isNode, isGroup]);
   const isTextNode = isNode && selectedItem.type?.startsWith('generic.text');
   const isLabelNode = isNode && selectedItem.type === 'generic.text.label';
   const isLabelboxNode = isNode && selectedItem.type === 'generic.text.labelbox';
@@ -247,7 +281,7 @@ export function ContextToolbar({
 
   // Get all connections for the selected node/group
   const getAllConnections = useMemo(() => {
-    if (!selectedItem || !diagramData || selectedItem.itemType === 'edge') {
+    if (!selectedItem || !diagramData) {
       return [];
     }
 
@@ -329,6 +363,29 @@ export function ContextToolbar({
           </PopoverContent>
         </Popover>
 
+        {/* Text Styling Button */}
+        {selectedItem && (isNode || isGroup) && (
+          <Popover open={textStylingOpen} onOpenChange={setTextStylingOpen}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 px-2">
+                    <Palette className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent>Text Styling</TooltipContent>
+            </Tooltip>
+            <PopoverContent className="w-80 p-0" align="start">
+              <TextStylingPanel
+                styling={getCurrentTextStyling}
+                onStylingChange={handleTextStylingChange}
+                onReset={handleTextStylingReset}
+              />
+            </PopoverContent>
+          </Popover>
+        )}
+
         {/* Connect Button */}
         {(isNode || isGroup) && (
           <Tooltip>
@@ -337,7 +394,7 @@ export function ContextToolbar({
                 variant="ghost" 
                 size="sm" 
                 className="h-8 px-2" 
-                onClick={() => onConnect({ style: 'bezier', curvature: 0.6 })}
+                onClick={() => onConnect?.({ style: 'bezier', curvature: 0.6 })}
               >
                 <Link className="h-4 w-4" />
               </Button>
@@ -631,7 +688,7 @@ export function ContextToolbar({
                     value={((selectedItem as any).borderWidth || 2).toString()}
                     onChange={(e) => {
                       const width = Math.max(1, Math.min(10, parseInt(e.target.value) || 2));
-                      onItemUpdate({ ...selectedItem, borderWidth: width } as SelectedItem);
+                      onItemUpdate?.({ ...selectedItem, borderWidth: width } as SelectedItem);
                     }}
                     className="h-10"
                   />
@@ -919,7 +976,7 @@ export function ContextToolbar({
                   value={(selectedItem.itemType === 'node' ? (selectedItem as any).textJustify : undefined) || 'center'}
                   onValueChange={(value) => {
                     if (onItemUpdate && selectedItem.itemType === 'node') {
-                      onItemUpdate({ ...selectedItem, textJustify: value as 'left' | 'center' | 'right' | 'full' });
+                      onItemUpdate?.({ ...selectedItem, textJustify: value as 'left' | 'center' | 'right' | 'full' });
                     }
                   }}
                 >
@@ -1194,7 +1251,7 @@ export function ContextToolbar({
                     value={(selectedItem as any).borderWidth || 2}
                     onChange={(e) => {
                       const width = Math.max(0, Math.min(20, parseInt(e.target.value) || 2));
-                      onItemUpdate({ ...selectedItem, borderWidth: width } as SelectedItem);
+                      onItemUpdate?.({ ...selectedItem, borderWidth: width } as SelectedItem);
                     }}
                     className="h-10"
                   />
@@ -1818,7 +1875,7 @@ export function ContextToolbar({
         )}
 
         {/* Theme Selector */}
-        {selectedItem && selectedItem.itemType !== 'edge' && onThemeApplyToSelected && (
+        {selectedItem && onThemeApplyToSelected && (
           <ThemeSelector
             onThemeApply={onThemeApplyToSelected}
             selectedCount={selectedItemIds?.size || 1}

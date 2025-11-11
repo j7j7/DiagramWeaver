@@ -26,6 +26,14 @@ export interface ThemeProperties {
   // Text properties
   textColor?: string;
   textOpacity?: number; // 0-1
+  fontFamily?: string; // Font family (e.g., 'Arial', 'Helvetica', 'Times New Roman')
+  fontSize?: number; // Font size in pixels
+  fontWeight?: 'normal' | 'bold' | '100' | '200' | '300' | '400' | '500' | '600' | '700' | '800' | '900'; // Font weight
+  fontStyle?: 'normal' | 'italic' | 'oblique'; // Font style
+  textDecoration?: 'none' | 'underline' | 'overline' | 'line-through'; // Text decoration
+  textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize'; // Text transformation
+  letterSpacing?: number; // Letter spacing in pixels
+  lineHeight?: number; // Line height as a multiplier (e.g., 1.2, 1.5)
   
   // Gradient properties
   gradientAngle?: number;

@@ -32,6 +32,17 @@ export const DiagramNodeDataSchema = z.object({
   noIconBackground: z.boolean().optional(), // If true, removes the white background from icon nodes
   // Text justification for text resources
   textJustify: z.enum(['left', 'center', 'right', 'full']).optional(), // Text justification for text/label/textbox/labelbox nodes
+  
+  // Text styling properties
+  fontFamily: z.string().optional(), // Font family (e.g., 'Arial', 'Helvetica', 'Times New Roman')
+  fontSize: z.number().optional(), // Font size in pixels
+  fontWeight: z.enum(['normal', 'bold', '100', '200', '300', '400', '500', '600', '700', '800', '900']).optional(), // Font weight
+  fontStyle: z.enum(['normal', 'italic', 'oblique']).optional(), // Font style
+  textDecoration: z.enum(['none', 'underline', 'overline', 'line-through']).optional(), // Text decoration
+  textTransform: z.enum(['none', 'uppercase', 'lowercase', 'capitalize']).optional(), // Text transformation
+  letterSpacing: z.number().optional(), // Letter spacing in pixels
+  lineHeight: z.number().optional(), // Line height as a multiplier (e.g., 1.2, 1.5)
+  textOpacity: z.number().optional(), // Text opacity (0-1)
 });
 
 // Schema for DiagramConnectionData 
@@ -77,6 +88,20 @@ export const DiagramGroupDataSchema = z.object({
   lineColor: z.string().optional(),
   shadow: z.boolean().optional(),
   parentId: z.string().optional(),
+  
+  // Text positioning properties
+  textPosition: z.enum(['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right', 'inside']).optional(),
+  
+  // Text styling properties
+  fontFamily: z.string().optional(), // Font family (e.g., 'Arial', 'Helvetica', 'Times New Roman')
+  fontSize: z.number().optional(), // Font size in pixels
+  fontWeight: z.enum(['normal', 'bold', '100', '200', '300', '400', '500', '600', '700', '800', '900']).optional(), // Font weight
+  fontStyle: z.enum(['normal', 'italic', 'oblique']).optional(), // Font style
+  textDecoration: z.enum(['none', 'underline', 'overline', 'line-through']).optional(), // Text decoration
+  textTransform: z.enum(['none', 'uppercase', 'lowercase', 'capitalize']).optional(), // Text transformation
+  letterSpacing: z.number().optional(), // Letter spacing in pixels
+  lineHeight: z.number().optional(), // Line height as a multiplier (e.g., 1.2, 1.5)
+  textOpacity: z.number().optional(), // Text opacity (0-1)
 });
 
 // Main DiagramData schema
@@ -119,6 +144,17 @@ export const DiagramNodeItemSchema = z.object({
   noIconBackground: z.boolean().optional(), // If true, removes the white background from icon nodes
   // Text justification for text resources
   textJustify: z.enum(['left', 'center', 'right', 'full']).optional(), // Text justification for text/label/textbox/labelbox nodes
+  
+  // Text styling properties
+  fontFamily: z.string().optional(), // Font family (e.g., 'Arial', 'Helvetica', 'Times New Roman')
+  fontSize: z.number().optional(), // Font size in pixels
+  fontWeight: z.enum(['normal', 'bold', '100', '200', '300', '400', '500', '600', '700', '800', '900']).optional(), // Font weight
+  fontStyle: z.enum(['normal', 'italic', 'oblique']).optional(), // Font style
+  textDecoration: z.enum(['none', 'underline', 'overline', 'line-through']).optional(), // Text decoration
+  textTransform: z.enum(['none', 'uppercase', 'lowercase', 'capitalize']).optional(), // Text transformation
+  letterSpacing: z.number().optional(), // Letter spacing in pixels
+  lineHeight: z.number().optional(), // Line height as a multiplier (e.g., 1.2, 1.5)
+  textOpacity: z.number().optional(), // Text opacity (0-1)
 });
 
 // Schema for nested group items (recursive)
@@ -145,18 +181,29 @@ export const DiagramGroupItemSchema: z.ZodType<any> = z.object({
   lineColor: z.string().optional(), // Color for connections from this group
   shadow: z.boolean().optional(), // Whether to show shadow around the group/zone
   
-  // Text positioning properties
-  textPosition: z.enum(['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right', 'inside']).optional(),
-  
-  // Custom sizing properties
-  width: z.number().optional(), // Custom width - when set, overrides auto-calculated width
-  height: z.number().optional(), // Custom height - when set, overrides auto-calculated height
-  sizeMode: z.enum(['auto', 'custom']).optional(), // Whether to use auto-calculated or custom dimensions
-  minWidth: z.number().optional(), // Minimum width constraint (based on content)
-  minHeight: z.number().optional(), // Minimum height constraint (based on content)
-  rotation: z.number().optional(), // Rotation angle in degrees (0, 45, -45, 90, -90)
-  borderWidth: z.number().optional(), // Border thickness for groups/zones
-});
+   // Text positioning properties
+   textPosition: z.enum(['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right', 'inside']).optional(),
+   
+   // Text styling properties
+   fontFamily: z.string().optional(), // Font family (e.g., 'Arial', 'Helvetica', 'Times New Roman')
+   fontSize: z.number().optional(), // Font size in pixels
+   fontWeight: z.enum(['normal', 'bold', '100', '200', '300', '400', '500', '600', '700', '800', '900']).optional(), // Font weight
+   fontStyle: z.enum(['normal', 'italic', 'oblique']).optional(), // Font style
+   textDecoration: z.enum(['none', 'underline', 'overline', 'line-through']).optional(), // Text decoration
+   textTransform: z.enum(['none', 'uppercase', 'lowercase', 'capitalize']).optional(), // Text transformation
+   letterSpacing: z.number().optional(), // Letter spacing in pixels
+   lineHeight: z.number().optional(), // Line height as a multiplier (e.g., 1.2, 1.5)
+   textOpacity: z.number().optional(), // Text opacity (0-1)
+   
+   // Custom sizing properties
+   width: z.number().optional(), // Custom width - when set, overrides auto-calculated width
+   height: z.number().optional(), // Custom height - when set, overrides auto-calculated height
+   sizeMode: z.enum(['auto', 'custom']).optional(), // Whether to use auto-calculated or custom dimensions
+   minWidth: z.number().optional(), // Minimum width constraint (based on content)
+   minHeight: z.number().optional(), // Minimum height constraint (based on content)
+   rotation: z.number().optional(), // Rotation angle in degrees (0, 45, -45, 90, -90)
+   borderWidth: z.number().optional(), // Border thickness for groups/zones
+ });
 
 // Schema for nested hierarchical diagram data
 export const HierarchicalDiagramDataSchema = z.object({

@@ -11,6 +11,7 @@ import { ResourceIcon } from "./resource-icon";
 import type { DiagramNodeData } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { ItemTypes } from "../editor/draggable-item";
+import { getTextStylingCSS, extractTextStylingFromNode } from "@/lib/text-styling";
 
 const NODE_WIDTH = 80;
 const BASE_NODE_HEIGHT = 80;
@@ -103,6 +104,12 @@ const isColorDark = (color: string): boolean => {
 const getTextColorForBackground = (backgroundColor: string, customTextColor?: string): string => {
   if (customTextColor) return customTextColor;
   return isColorDark(backgroundColor) ? '#ffffff' : '#000000';
+};
+
+// Helper function to get text styling CSS for a node
+const getTextStylingForNode = (node: DiagramNodeData) => {
+  const textStyling = extractTextStylingFromNode(node);
+  return getTextStylingCSS(textStyling);
 };
 
 interface DiagramNodeProps {
@@ -480,7 +487,12 @@ return (
           <div className="flex flex-col items-center justify-center h-full w-full cursor-pointer">
             {node.type === 'generic.text.text' ? (
               // Text-only node - just show text without icon container
-              <div className="flex items-center justify-center h-full w-full px-2">
+              (() => {
+                // For text nodes, use transparent background
+                const effectiveBgColor = 'transparent';
+                
+                return (
+                  <div className="flex items-center justify-center h-full w-full px-2">
                 {isEditingLabel ? (
                   <input
                     ref={inputRef}
@@ -494,14 +506,20 @@ return (
                     onClick={(e) => e.stopPropagation()}
                   />
                  ) : node.label ? (
-                    <p 
-                      className={`text-sm font-medium ${getTextJustifyClass((node as any).textJustify)} text-foreground break-words leading-tight cursor-text hover:bg-background/50 rounded ${node.sizeMode === 'custom' ? 'w-full px-1 py-0.5' : 'px-1 py-0.5 -mx-1 -my-0.5'}`}
-                     onDoubleClick={handleLabelDoubleClick}
-                   >
-                     {node.label}
-                   </p>
-                 ) : null}
-              </div>
+                             <p 
+                               className="text-center break-words leading-tight px-1 cursor-text"
+                               style={{ 
+                                 color: getTextColorForBackground(effectiveBgColor, (node as any).textColor),
+                                 ...getTextStylingForNode(node) 
+                               }}
+                               onDoubleClick={handleLabelDoubleClick}
+                             >
+                               {node.label}
+                              </p>
+                  ) : null}
+                  </div>
+                );
+              })()
             ) : node.type === 'generic.text.label' ? (
               // Label node - show text with curved rectangle background (no vertical padding)
               (() => {
@@ -510,11 +528,14 @@ return (
                 const borderColor = (node as any).borderColor || '#d1d5db';
                 const backgroundStyle = (node as any).backgroundStyle || 'solid';
                 const backgroundColors = (node as any).backgroundColors || [(node as any).backgroundColor || '#f3f4f6', (node as any).backgroundColor || '#f3f4f6'];
-                const backgroundColor = (node as any).backgroundColor || '#f3f4f6';
-                const gradientAngle = (node as any).gradientAngle || 135;
-                const hasShadow = (node as any).shadow || false;
-                
-                return (
+                 const backgroundColor = (node as any).backgroundColor || '#f3f4f6';
+                 const gradientAngle = (node as any).gradientAngle || 135;
+                 const hasShadow = (node as any).shadow || false;
+                 
+                 // Get the effective background color for text color calculation
+                 const effectiveBgColor = backgroundStyle === 'gradient' ? backgroundColors[0] : backgroundColor;
+                 
+                 return (
               <div 
                   className={cn(
                     `flex items-center justify-center rounded-lg transition-colors ${node.sizeMode === 'custom' && node.height && node.height < 50 ? 'items-start' : ''}`,
@@ -559,12 +580,13 @@ return (
                     onClick={(e) => e.stopPropagation()}
                   />
                  ) : node.label ? (
-                    <p 
-                      className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} text-foreground w-full px-1 break-words leading-tight cursor-text hover:bg-background/50 rounded ${node.sizeMode === 'custom' ? '' : '-mx-1 -my-0.5'}`}
-                      onDoubleClick={handleLabelDoubleClick}
-                    >
-                     {node.label}
-                   </p>
+                     <p 
+                       className={`${getTextJustifyClass((node as any).textJustify)} text-foreground w-full px-1 break-words leading-tight cursor-text hover:bg-background/50 rounded ${node.sizeMode === 'custom' ? '' : '-mx-1 -my-0.5'}`}
+                       style={getTextStylingForNode(node)}
+                       onDoubleClick={handleLabelDoubleClick}
+                     >
+                      {node.label}
+                    </p>
                  ) : null}
               </div>
               );
@@ -630,12 +652,13 @@ return (
                     rows={4}
                   />
                 ) : (
-                   <p 
-                     className={`text-sm font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-normal cursor-text hover:bg-background/50 rounded whitespace-pre-wrap ${node.sizeMode === 'custom' ? 'w-full px-1 py-0.5' : 'px-2 py-2 -mx-2 -my-2'}`}
-                    onDoubleClick={handleLabelDoubleClick}
-                  >
-                    {node.label || 'Enter text...'}
-                  </p>
+                    <p 
+                      className={`${getTextJustifyClass((node as any).textJustify)} break-words leading-normal cursor-text hover:bg-background/50 rounded whitespace-pre-wrap ${node.sizeMode === 'custom' ? 'w-full px-1 py-0.5' : 'px-2 py-2 -mx-2 -my-2'}`}
+                      style={getTextStylingForNode(node)}
+                     onDoubleClick={handleLabelDoubleClick}
+                   >
+                     {node.label || 'Enter text...'}
+                   </p>
                  )}
                </div>
                );
@@ -698,12 +721,13 @@ return (
                      rows={3}
                   />
                 ) : (
-                  <p 
-                    className={`text-sm font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-normal cursor-text hover:bg-background/50 rounded whitespace-pre-wrap ${node.sizeMode === 'custom' ? 'w-full px-1 py-1' : 'px-2 py-2 -mx-2 -my-2'}`}
-                    onDoubleClick={handleLabelDoubleClick}
-                  >
-                    {node.label || 'Enter label...'}
-                  </p>
+                   <p 
+                     className={`${getTextJustifyClass((node as any).textJustify)} break-words leading-normal cursor-text hover:bg-background/50 rounded whitespace-pre-wrap ${node.sizeMode === 'custom' ? 'w-full px-1 py-1' : 'px-2 py-2 -mx-2 -my-2'}`}
+                     style={getTextStylingForNode(node)}
+                     onDoubleClick={handleLabelDoubleClick}
+                   >
+                     {node.label || 'Enter label...'}
+                   </p>
                 )}
               </div>
               );
@@ -728,11 +752,13 @@ return (
                   return backgroundColor;
                 };
                 
-                // Get the effective background color for text color calculation
-                const effectiveBgColor = backgroundStyle === 'gradient' ? backgroundColors[0] : backgroundColor;
-                const textColorForShape = getTextColorForBackground(effectiveBgColor, (node as any).textColor);
-                
-                // Generate border style
+                 // Get the effective background color for text color calculation
+                 const effectiveBgColor = backgroundStyle === 'gradient' ? backgroundColors[0] : backgroundColor;
+                 
+                 // Helper function to get text color for shapes
+                 const getShapeTextColor = () => getTextColorForBackground(effectiveBgColor, (node as any).textColor);
+                 
+                 // Generate border style
                 const getBorderStyle = () => {
                   if (borderStyle === 'none') return 'none';
                   if (borderStyle === 'dotted') return 'dotted';
@@ -780,13 +806,13 @@ return (
                               onBlur={handleLabelSubmit}
                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
                               className="text-xs font-medium text-center bg-transparent border border-white rounded px-1 py-0.5 w-16 outline-none"
-                              style={{ color: textColorForShape }}
+                               style={{ color: getShapeTextColor() }}
                               onClick={(e) => e.stopPropagation()}
                             />
                           ) : (
                             <p 
                               className="text-xs font-medium text-center break-words leading-tight px-1 cursor-text"
-                              style={{ color: textColorForShape }}
+                               style={{ color: getShapeTextColor() }}
                               onDoubleClick={handleLabelDoubleClick}
                             >
                               {node.label}
@@ -828,13 +854,13 @@ return (
                               onBlur={handleLabelSubmit}
                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
                               className="text-xs font-medium text-center bg-transparent border border-white rounded px-1 py-0.5 w-16 outline-none"
-                              style={{ color: textColorForShape }}
+                               style={{ color: getShapeTextColor() }}
                               onClick={(e) => e.stopPropagation()}
                             />
                           ) : (
                             <p 
                               className="text-xs font-medium text-center break-words leading-tight px-1 cursor-text"
-                              style={{ color: textColorForShape }}
+                               style={{ color: getShapeTextColor() }}
                               onDoubleClick={handleLabelDoubleClick}
                             >
                               {node.label}
@@ -876,13 +902,13 @@ return (
                               onBlur={handleLabelSubmit}
                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
                               className="text-sm font-medium text-center bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
-                              style={{ color: textColorForShape }}
+                               style={{ color: getShapeTextColor() }}
                               onClick={(e) => e.stopPropagation()}
                             />
                           ) : (
                             <p 
                               className="text-xs font-medium text-center break-words leading-tight px-1 cursor-text"
-                              style={{ color: textColorForShape }}
+                               style={{ color: getShapeTextColor() }}
                               onDoubleClick={handleLabelDoubleClick}
                             >
                               {node.label}
@@ -953,13 +979,13 @@ return (
                               onBlur={handleLabelSubmit}
                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
                               className="text-xs font-medium text-center bg-transparent border border-white rounded px-1 py-0.5 w-16 outline-none"
-                              style={{ color: textColorForShape }}
+                               style={{ color: getShapeTextColor() }}
                               onClick={(e) => e.stopPropagation()}
                             />
                           ) : (
                             <p 
                               className="text-xs font-medium text-center break-words leading-tight px-1 cursor-text"
-                              style={{ color: textColorForShape }}
+                               style={{ color: getShapeTextColor() }}
                               onDoubleClick={handleLabelDoubleClick}
                             >
                               {node.label}
@@ -1040,13 +1066,13 @@ return (
                               onBlur={handleLabelSubmit}
                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
                               className="text-xs font-medium text-center bg-transparent border border-white rounded px-1 py-0.5 w-16 outline-none"
-                              style={{ color: textColorForShape }}
+                               style={{ color: getShapeTextColor() }}
                               onClick={(e) => e.stopPropagation()}
                             />
                           ) : (
                             <p 
                               className="text-xs font-medium text-center break-words leading-tight px-1 cursor-text"
-                              style={{ color: textColorForShape }}
+                               style={{ color: getShapeTextColor() }}
                               onDoubleClick={handleLabelDoubleClick}
                             >
                               {node.label}
@@ -1129,13 +1155,13 @@ return (
                               onBlur={handleLabelSubmit}
                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
                               className="text-xs font-medium text-center bg-transparent border border-white rounded px-1 py-0.5 w-20 outline-none"
-                              style={{ color: textColorForShape }}
+                               style={{ color: getShapeTextColor() }}
                               onClick={(e) => e.stopPropagation()}
                             />
                           ) : (
                             <p 
                               className="text-xs font-medium text-center break-words leading-tight px-1 cursor-text"
-                              style={{ color: textColorForShape }}
+                               style={{ color: getShapeTextColor() }}
                               onDoubleClick={handleLabelDoubleClick}
                             >
                               {node.label}
@@ -1178,12 +1204,13 @@ return (
                           onClick={(e) => e.stopPropagation()}
                         />
                       ) : (
-                        <p 
-                          className="text-sm font-medium text-center text-foreground break-words leading-tight px-2 py-1 bg-background/90 rounded cursor-text hover:bg-background/95 w-full"
-                          onDoubleClick={handleLabelDoubleClick}
-                        >
-                          {node.label}
-                        </p>
+                         <p 
+                           className="text-center text-foreground break-words leading-tight px-2 py-1 bg-background/90 rounded cursor-text hover:bg-background/95 w-full"
+                           style={getTextStylingForNode(node)}
+                           onDoubleClick={handleLabelDoubleClick}
+                         >
+                           {node.label}
+                         </p>
                       )}
                     </div>
                   );
@@ -1211,12 +1238,13 @@ return (
                         onClick={(e) => e.stopPropagation()}
                       />
                     ) : (
-                      <p 
-                        className="text-sm font-medium text-center text-foreground break-words leading-tight px-2 mt-1 cursor-text hover:bg-background/50 rounded w-full"
-                        onDoubleClick={handleLabelDoubleClick}
-                      >
-                        {node.label}
-                      </p>
+                       <p 
+                         className="text-center text-foreground break-words leading-tight px-2 mt-1 cursor-text hover:bg-background/50 rounded w-full"
+                         style={getTextStylingForNode(node)}
+                         onDoubleClick={handleLabelDoubleClick}
+                       >
+                         {node.label}
+                       </p>
                     )}
                   </div>
                 )}
@@ -1246,12 +1274,13 @@ return (
                      onClick={(e) => e.stopPropagation()}
                    />
                   ) : node.label ? (
-                  <p 
-                    className="text-sm font-medium text-center text-foreground break-words leading-tight cursor-text hover:bg-background/50 rounded px-1 py-0.5 -mx-1 -my-0.5"
-                    onDoubleClick={handleLabelDoubleClick}
-                  >
-                    {node.label}
-                  </p>
+                   <p 
+                     className="text-center text-foreground break-words leading-tight cursor-text hover:bg-background/50 rounded px-1 py-0.5 -mx-1 -my-0.5"
+                     style={getTextStylingForNode(node)}
+                     onDoubleClick={handleLabelDoubleClick}
+                   >
+                     {node.label}
+                   </p>
                 ) : null}
               </>
             )}

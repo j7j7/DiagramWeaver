@@ -634,9 +634,9 @@ export default function DiagramEditor() {
   const handleThemeApplyToSelected = (theme: DiagramTheme) => {
     if (!selectedItemIds || selectedItemIds.size === 0) {
       // Apply to single selected item
-      if (selectedItem && onItemUpdate) {
+      if (selectedItem) {
         const updatedItem = themeManager.applyThemeToItem(selectedItem, theme);
-        onItemUpdate(updatedItem as any);
+        handleItemUpdate(updatedItem as any);
       }
     } else {
       // Apply to multiple selected items

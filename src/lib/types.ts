@@ -29,6 +29,17 @@ export interface DiagramNodeData {
   noIconBackground?: boolean; // If true, removes the white background from icon nodes
   // Text justification for text resources
   textJustify?: 'left' | 'center' | 'right' | 'full'; // Text justification for text/label/textbox/labelbox nodes
+  
+  // Text styling properties
+  fontFamily?: string; // Font family (e.g., 'Arial', 'Helvetica', 'Times New Roman')
+  fontSize?: number; // Font size in pixels
+  fontWeight?: 'normal' | 'bold' | '100' | '200' | '300' | '400' | '500' | '600' | '700' | '800' | '900'; // Font weight
+  fontStyle?: 'normal' | 'italic' | 'oblique'; // Font style
+  textDecoration?: 'none' | 'underline' | 'overline' | 'line-through'; // Text decoration
+  textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize'; // Text transformation
+  letterSpacing?: number; // Letter spacing in pixels
+  lineHeight?: number; // Line height as a multiplier (e.g., 1.2, 1.5)
+  textOpacity?: number; // Text opacity (0-1)
 }
 
 export interface DiagramConnectionData {
@@ -80,6 +91,17 @@ export interface DiagramNodeItem {
   noIconBackground?: boolean; // If true, removes the white background from icon nodes
   // Text justification for text resources
   textJustify?: 'left' | 'center' | 'right' | 'full'; // Text justification for text/label/textbox/labelbox nodes
+  
+  // Text styling properties
+  fontFamily?: string; // Font family (e.g., 'Arial', 'Helvetica', 'Times New Roman')
+  fontSize?: number; // Font size in pixels
+  fontWeight?: 'normal' | 'bold' | '100' | '200' | '300' | '400' | '500' | '600' | '700' | '800' | '900'; // Font weight
+  fontStyle?: 'normal' | 'italic' | 'oblique'; // Font style
+  textDecoration?: 'none' | 'underline' | 'overline' | 'line-through'; // Text decoration
+  textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize'; // Text transformation
+  letterSpacing?: number; // Letter spacing in pixels
+  lineHeight?: number; // Line height as a multiplier (e.g., 1.2, 1.5)
+  textOpacity?: number; // Text opacity (0-1)
 }
 
 export interface DiagramGroupItem {
@@ -105,18 +127,29 @@ export interface DiagramGroupItem {
   lineColor?: string; // Color for connections from this group
   shadow?: boolean; // Whether to show shadow around the group/zone
   
-  // Text positioning properties
-  textPosition?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right' | 'inside';
-  
-  // Custom sizing properties
-  width?: number; // Custom width - when set, overrides auto-calculated width
-  height?: number; // Custom height - when set, overrides auto-calculated height
-  sizeMode?: 'auto' | 'custom'; // Whether to use auto-calculated or custom dimensions
-  minWidth?: number; // Minimum width constraint (based on content)
-  minHeight?: number; // Minimum height constraint (based on content)
-  rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
-  borderWidth?: number; // Border thickness for groups/zones
-}
+   // Text positioning properties
+   textPosition?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right' | 'inside';
+   
+   // Text styling properties
+   fontFamily?: string; // Font family (e.g., 'Arial', 'Helvetica', 'Times New Roman')
+   fontSize?: number; // Font size in pixels
+   fontWeight?: 'normal' | 'bold' | '100' | '200' | '300' | '400' | '500' | '600' | '700' | '800' | '900'; // Font weight
+   fontStyle?: 'normal' | 'italic' | 'oblique'; // Font style
+   textDecoration?: 'none' | 'underline' | 'overline' | 'line-through'; // Text decoration
+   textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize'; // Text transformation
+   letterSpacing?: number; // Letter spacing in pixels
+   lineHeight?: number; // Line height as a multiplier (e.g., 1.2, 1.5)
+   textOpacity?: number; // Text opacity (0-1)
+   
+   // Custom sizing properties
+   width?: number; // Custom width - when set, overrides auto-calculated width
+   height?: number; // Custom height - when set, overrides auto-calculated height
+   sizeMode?: 'auto' | 'custom'; // Whether to use auto-calculated or custom dimensions
+   minWidth?: number; // Minimum width constraint (based on content)
+   minHeight?: number; // Minimum height constraint (based on content)
+   rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
+   borderWidth?: number; // Border thickness for groups/zones
+ }
 
 export interface DiagramGroupData {
   id: string;
@@ -142,18 +175,29 @@ export interface DiagramGroupData {
   shadow?: boolean; // Whether to show shadow around the group/zone
   parentId?: string; // Reference to parent group ID for hierarchy tracking
   
-  // Text positioning properties
-  textPosition?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right' | 'inside';
-  
-  // Custom sizing properties
-  width?: number; // Custom width - when set, overrides auto-calculated width
-  height?: number; // Custom height - when set, overrides auto-calculated height
-  sizeMode?: 'auto' | 'custom'; // Whether to use auto-calculated or custom dimensions
-  minWidth?: number; // Minimum width constraint (based on content)
-  minHeight?: number; // Minimum height constraint (based on content)
-  rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
-  borderWidth?: number; // Border thickness for groups/zones
-}
+   // Text positioning properties
+   textPosition?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right' | 'inside';
+   
+   // Text styling properties
+   fontFamily?: string; // Font family (e.g., 'Arial', 'Helvetica', 'Times New Roman')
+   fontSize?: number; // Font size in pixels
+   fontWeight?: 'normal' | 'bold' | '100' | '200' | '300' | '400' | '500' | '600' | '700' | '800' | '900'; // Font weight
+   fontStyle?: 'normal' | 'italic' | 'oblique'; // Font style
+   textDecoration?: 'none' | 'underline' | 'overline' | 'line-through'; // Text decoration
+   textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize'; // Text transformation
+   letterSpacing?: number; // Letter spacing in pixels
+   lineHeight?: number; // Line height as a multiplier (e.g., 1.2, 1.5)
+   textOpacity?: number; // Text opacity (0-1)
+   
+   // Custom sizing properties
+   width?: number; // Custom width - when set, overrides auto-calculated width
+   height?: number; // Custom height - when set, overrides auto-calculated height
+   sizeMode?: 'auto' | 'custom'; // Whether to use auto-calculated or custom dimensions
+   minWidth?: number; // Minimum width constraint (based on content)
+   minHeight?: number; // Minimum height constraint (based on content)
+   rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
+   borderWidth?: number; // Border thickness for groups/zones
+ }
 
 export interface DiagramData {
   nodes: DiagramNodeData[];
