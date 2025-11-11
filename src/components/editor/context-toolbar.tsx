@@ -32,8 +32,11 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Slider } from '@/components/ui/slider';
+import { ThemeSelector } from './theme-selector';
 import type { SelectedItem } from '../diagram-editor';
 import type { DiagramData } from '@/lib/types';
+import { DiagramTheme } from '@/lib/theme-types';
+import { themeManager } from '@/lib/theme-manager';
 
 interface ContextToolbarProps {
   selectedItem: SelectedItem | null;
@@ -46,6 +49,7 @@ interface ContextToolbarProps {
   onConnectionDisconnect?: (from: string, to: string) => void;
   diagramData?: DiagramData;
   onAlignObjects?: (alignment: 'top' | 'center' | 'bottom' | 'v-middle' | 'left' | 'h-center' | 'right' | 'distribute-v' | 'distribute-h') => void;
+  onThemeApplyToSelected?: (theme: DiagramTheme) => void;
 }
 
 export function ContextToolbar({
@@ -59,6 +63,7 @@ export function ContextToolbar({
   onConnectionDisconnect,
   diagramData,
   onAlignObjects,
+  onThemeApplyToSelected,
 }: ContextToolbarProps) {
   const [labelOpen, setLabelOpen] = useState(false);
   const [descriptionOpen, setDescriptionOpen] = useState(false);
@@ -1755,6 +1760,14 @@ export function ContextToolbar({
               </div>
             </PopoverContent>
           </Popover>
+        )}
+
+        {/* Theme Selector */}
+        {selectedItem && selectedItem.itemType !== 'edge' && onThemeApplyToSelected && (
+          <ThemeSelector
+            onThemeApply={onThemeApplyToSelected}
+            selectedCount={selectedItemIds?.size || 1}
+          />
         )}
 
         {/* Delete Button */}

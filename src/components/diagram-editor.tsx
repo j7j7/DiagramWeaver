@@ -25,6 +25,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useDiagramTabs } from '@/hooks/use-diagram-tabs';
 import { convertFromNestedHierarchy, convertToNestedHierarchy } from '@/lib/nested-hierarchy';
+import { themeManager } from '@/lib/theme-manager';
+import { DiagramTheme } from '@/lib/theme-types';
 
 export type SelectedItem = ((DiagramNodeData | DiagramGroupData) & { 
   itemType: 'node' | 'group', 
@@ -627,7 +629,52 @@ export default function DiagramEditor() {
 
   const handleJsonValidChange = (newDiagramData: DiagramData) => {
     setDiagramData(newDiagramData);
-    setSelectedItem(null); // Deselect to avoid stale references
+  };
+
+  const handleThemeApplyToSelected = (theme: DiagramTheme) => {
+    if (!selectedItemIds || selectedItemIds.size === 0) {
+      // Apply to single selected item
+      if (selectedItem && onItemUpdate) {
+        const updatedItem = themeManager.applyThemeToItem(selectedItem, theme);
+        onItemUpdate(updatedItem as any);
+      }
+    } else {
+      // Apply to multiple selected items
+      const updatedDiagramData = { ...diagramData };
+      
+      // Update nodes
+      updatedDiagramData.nodes = updatedDiagramData.nodes.map(node => {
+        if (selectedItemIds.has(node.id)) {
+          return themeManager.applyThemeToItem(node, theme) as DiagramNodeData;
+        }
+        return node;
+      });
+      
+      // Update groups
+      updatedDiagramData.groups = updatedDiagramData.groups.map(group => {
+        if (selectedItemIds.has(group.id)) {
+          return themeManager.applyThemeToItem(group, theme) as DiagramGroupData;
+        }
+        return group;
+      });
+      
+      // Update connections
+      updatedDiagramData.connections = updatedDiagramData.connections.map(connection => {
+        const connectionId = `${connection.from}-${connection.to}`;
+        if (selectedItemIds.has(connectionId)) {
+          return themeManager.applyThemeToItem(connection, theme) as DiagramConnectionData;
+        }
+        return connection;
+      });
+      
+      setDiagramData(updatedDiagramData);
+      
+      const count = selectedItemIds.size;
+      toast({ 
+        title: 'Theme Applied', 
+        description: `Applied "${theme.name}" theme to ${count} item${count > 1 ? 's' : ''}.` 
+      });
+    }
   };
 
   const handleAlignObjects = (alignment: 'top' | 'center' | 'bottom' | 'v-middle' | 'left' | 'h-center' | 'right' | 'distribute-v' | 'distribute-h') => {
@@ -1205,6 +1252,7 @@ export default function DiagramEditor() {
                     hoverEnabled={hoverEnabled}
                     onToggleHover={() => setHoverEnabled(!hoverEnabled)}
                     onAlignObjects={handleAlignObjects}
+                    onThemeApplyToSelected={handleThemeApplyToSelected}
                 />
                 {activeTabId && (
                   <TabBar

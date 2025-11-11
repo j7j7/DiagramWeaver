@@ -9,14 +9,16 @@ import {
   MenubarShortcut,
   MenubarTrigger,
 } from '@/components/ui/menubar';
-import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff } from 'lucide-react';
+import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
+import { ThemeEditor } from './theme-editor';
 import type { SelectedItem } from '../diagram-editor';
 import type { DiagramData } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { DiagramTheme } from '@/lib/theme-types';
 
 interface TopMenuBarProps {
   onNew: () => void;
@@ -50,6 +52,7 @@ interface TopMenuBarProps {
   hoverEnabled?: boolean;
   onToggleHover?: () => void;
   onAlignObjects?: (alignment: 'top' | 'center' | 'bottom' | 'v-middle' | 'left' | 'h-center' | 'right' | 'distribute-v' | 'distribute-h') => void;
+  onThemeApplyToSelected?: (theme: DiagramTheme) => void;
 }
 
 export function TopMenuBar({
@@ -84,7 +87,9 @@ export function TopMenuBar({
   hoverEnabled,
   onToggleHover,
   onAlignObjects,
+  onThemeApplyToSelected,
 }: TopMenuBarProps) {
+  const [themeEditorOpen, setThemeEditorOpen] = React.useState(false);
   return (
     <div className="flex items-center border-b bg-card min-h-[2.5rem] overflow-x-auto">
       <Menubar className="rounded-none border-0 border-b-0 border-l-0 border-r-0 border-t-0 h-auto shrink-0">
@@ -204,6 +209,13 @@ export function TopMenuBar({
                 </MenubarItem>
               </>
             )}
+            <>
+              {(onUndo || onRedo || onFitToView || onToggleHover) && <MenubarSeparator />}
+              <MenubarItem onClick={() => setThemeEditorOpen(true)}>
+                <Palette className="mr-2 h-4 w-4" />
+                Themes
+              </MenubarItem>
+            </>
             {onTransformChange && (
               <>
                 {(onUndo || onRedo || onFitToView) && <MenubarSeparator />}
@@ -301,6 +313,7 @@ export function TopMenuBar({
             onConnectionDisconnect={onConnectionDisconnect}
             diagramData={diagramData}
             onAlignObjects={onAlignObjects}
+            onThemeApplyToSelected={onThemeApplyToSelected}
           />
         </>
       )}
@@ -322,6 +335,13 @@ export function TopMenuBar({
       <div className="ml-auto px-4">
         <h1 className="text-2xl font-headline font-bold text-primary">Diagram Weaver</h1>
       </div>
+      
+      {/* Theme Editor Dialog */}
+      <ThemeEditor 
+        open={themeEditorOpen}
+        onOpenChange={setThemeEditorOpen}
+        onThemeSelect={onThemeApplyToSelected}
+      />
     </div>
   );
 }
