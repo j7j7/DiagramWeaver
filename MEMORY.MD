@@ -281,6 +281,43 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
      - Maintains backward compatibility with single-select operations
      - Preserves all existing drag-drop, connection, and grouping features
      - Implements proper cleanup and state management for multi-drag operations
+- **Text Styling System Enhancement** (2025-01-XX): Fixed text justification and vertical positioning for textboxes and shapes:
+  - **Text Justification**: Horizontal text alignment (left, center, right, full) now works correctly for both textboxes and shapes:
+    - **Textboxes**: Text justification classes applied to text elements with full width (`w-full`) for proper alignment
+    - **Shapes**: Text justification works for text inside shapes (when `textVerticalPosition === 'middle'`) and outside shapes (when `textVerticalPosition === 'top'` or `'bottom'`)
+    - **Implementation**: Uses `getTextJustifyClass()` helper function that returns Tailwind classes (`text-left`, `text-center`, `text-right`, `text-justify`)
+    - **Text Elements**: All text elements use `display: 'block'` and `w-full` to ensure text-align CSS properties work correctly
+  - **Vertical Position Control**: Vertical text positioning (top, middle, bottom) now works correctly:
+    - **Textboxes**: Uses flexbox with `flex-col` and `items-start/center/end` for container alignment, plus inner wrapper with `justify-start/center/end` for content positioning
+    - **Shapes**: `textVerticalPosition` controls both inside/outside placement AND vertical alignment:
+      - `textVerticalPosition: "top"` → Text appears OUTSIDE above the shape
+      - `textVerticalPosition: "bottom"` → Text appears OUTSIDE below the shape
+      - `textVerticalPosition: "middle"` → Text appears INSIDE the shape (vertically centered)
+    - **Helper Functions**: 
+      - `getVerticalPositionClass()`: Returns `items-start/center/end` for flex container alignment
+      - `getVerticalJustifyClass()`: Returns `justify-start/center/end` for content positioning within flex containers
+  - **Shape Text Positioning**: Text outside shapes is absolutely positioned to prevent shape movement:
+    - **Text Above**: Positioned absolutely with negative `top` offset, doesn't affect shape position
+    - **Text Below**: Positioned absolutely with positive `top` offset (shape height + spacing), doesn't affect shape position
+    - **Container**: Shape container uses `relative` positioning to allow absolute positioning of outside text
+    - **Result**: Shape position remains stable when changing `textVerticalPosition` between top, middle, and bottom
+  - **Text Outside Shapes**: Horizontal text justification works correctly for text above/below shapes:
+    - **Removed `justify-center`**: Flex containers no longer use `justify-center` which was overriding text-align
+    - **Block Display**: Text elements use `display: 'block'` to ensure text-align CSS properties work
+    - **Full Width**: Text elements use `w-full` to fill container width for proper alignment
+  - **Implementation Details**:
+    - **Textbox Structure**: Container (`flex flex-col`) → Inner wrapper (`flex flex-col` with `justify-*`) → Text element (with `text-*` classes)
+    - **Shape Inside Text**: Container (`flex flex-col` with `items-*`) → Inner wrapper (`flex flex-col` with `justify-*`) → Text element (with `text-*` classes)
+    - **Shape Outside Text**: Absolutely positioned divs with proper width matching shape width
+    - **All Shape Types**: Applied to square, circle, point, rectangle, triangle, star, and cloud shapes
+  - **Backward Compatibility**: 
+    - `textPosition` property still works (`'above'`, `'center'`, `'under'`) for explicit control
+    - `textVerticalPosition` takes precedence when set, providing unified control over text placement
+  - **Benefits**: 
+    - Consistent text styling across all node types (textboxes, shapes, labels)
+    - Proper vertical and horizontal alignment working as expected
+    - Shape positions remain stable regardless of text placement
+    - Full control over text positioning with intuitive property names
 
 ### Development Tools
 - **Scripts**: npm run dev, build, lint, typecheck, genkit
