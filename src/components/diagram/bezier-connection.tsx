@@ -49,15 +49,19 @@ interface BezierConnectionTextProps {
   connectionColor?: string;
 }
 
-function getConnectionPoint(obj: any, width: number, height: number, point: 'top' | 'bottom' | 'left' | 'right' | 'center'): { x: number; y: number } {
+function getConnectionPoint(obj: any, width: number, height: number, point: 'top' | 'bottom' | 'left' | 'right' | 'center', iconHeight?: number): { x: number; y: number } {
   const centerX = obj.x + width / 2;
-  const centerY = obj.y + height / 2;
+  // Use icon height for Y center calculation if provided (for nodes with text labels)
+  // This ensures connections attach to the icon center, not the overall node center
+  const centerY = iconHeight ? obj.y + iconHeight / 2 : obj.y + height / 2;
 
   switch (point) {
     case 'top':
       return { x: centerX, y: obj.y };
     case 'bottom':
-      return { x: centerX, y: obj.y + height };
+      // For bottom, use icon height if provided (icon is at top, so bottom of icon)
+      const bottomY = iconHeight ? obj.y + iconHeight : obj.y + height;
+      return { x: centerX, y: bottomY };
     case 'left':
       return { x: obj.x, y: centerY };
     case 'right':
@@ -80,21 +84,22 @@ function getExitAngle(exitPoint: 'top' | 'bottom' | 'left' | 'right' | 'center')
   }
 }
 
-function getOptimalConnectionPoints(from: any, to: any, fromWidth: number, fromHeight: number, toWidth: number, toHeight: number, connectionData?: DiagramConnectionData): { fromX: number; fromY: number; toX: number; toY: number; fromAngle: number; toAngle: number } {
+function getOptimalConnectionPoints(from: any, to: any, fromWidth: number, fromHeight: number, toWidth: number, toHeight: number, connectionData?: DiagramConnectionData, fromIconHeight?: number, toIconHeight?: number): { fromX: number; fromY: number; toX: number; toY: number; fromAngle: number; toAngle: number } {
   // Use specified connection points if provided
   if (connectionData?.fromPreferredExit && connectionData?.toPreferredEntry) {
-    const fromPoint = getConnectionPoint(from, fromWidth, fromHeight, connectionData.fromPreferredExit);
-    const toPoint = getConnectionPoint(to, toWidth, toHeight, connectionData.toPreferredEntry);
+    const fromPoint = getConnectionPoint(from, fromWidth, fromHeight, connectionData.fromPreferredExit, fromIconHeight);
+    const toPoint = getConnectionPoint(to, toWidth, toHeight, connectionData.toPreferredEntry, toIconHeight);
     const fromAngle = getExitAngle(connectionData.fromPreferredExit);
     const toAngle = getExitAngle(connectionData.toPreferredEntry);
     return { fromX: fromPoint.x, fromY: fromPoint.y, toX: toPoint.x, toY: toPoint.y, fromAngle, toAngle };
   }
 
   // Auto-determine optimal connection points
+  // Use icon height for center calculation if provided (for nodes with text labels)
   const fromCenterX = from.x + fromWidth / 2;
-  const fromCenterY = from.y + fromHeight / 2;
+  const fromCenterY = fromIconHeight ? from.y + fromIconHeight / 2 : from.y + fromHeight / 2;
   const toCenterX = to.x + toWidth / 2;
-  const toCenterY = to.y + toHeight / 2;
+  const toCenterY = toIconHeight ? to.y + toIconHeight / 2 : to.y + toHeight / 2;
 
   const dx = toCenterX - fromCenterX;
   const dy = toCenterY - fromCenterY;
@@ -130,8 +135,8 @@ function getOptimalConnectionPoints(from: any, to: any, fromWidth: number, fromH
   const finalFromPoint = connectionData?.fromPreferredExit || fromPoint;
   const finalToPoint = connectionData?.toPreferredEntry || toPoint;
   
-  const fromConnectionPoint = getConnectionPoint(from, fromWidth, fromHeight, finalFromPoint);
-  const toConnectionPoint = getConnectionPoint(to, toWidth, toHeight, finalToPoint);
+  const fromConnectionPoint = getConnectionPoint(from, fromWidth, fromHeight, finalFromPoint, fromIconHeight);
+  const toConnectionPoint = getConnectionPoint(to, toWidth, toHeight, finalToPoint, toIconHeight);
   
   const fromAngle = getExitAngle(finalFromPoint);
   const toAngle = getExitAngle(finalToPoint);
@@ -268,7 +273,47 @@ export function BezierConnection({ from, to, connectionColor, connectionData, on
   const toWidth = isToShape && to.width ? to.width : (to.width || NODE_WIDTH);
   const toHeight = isToShape && to.height ? to.height : (toCalculatedHeight + toTextUnderHeight);
 
-  const connectionPoints = getOptimalConnectionPoints(from, to, fromWidth, fromHeight, toWidth, toHeight, connectionData);
+  // Check if nodes are groups/zones (should use full height, not icon height)
+  const isFromGroup = from.type === 'group' || from.subType === 'zone';
+  const isToGroup = to.type === 'group' || to.subType === 'zone';
+  
+  // Calculate icon-only heights (excluding text labels) for connection point calculations
+  // This ensures connections attach to the icon center, not the overall node center
+  // BUT: Groups/zones should use full height, not icon height
+  let fromIconHeight: number | undefined;
+  let toIconHeight: number | undefined;
+  
+  if (!isFromGroup) {
+    if (isFromShape) {
+      // For shapes, use the shape size (48px) or custom height if set
+      fromIconHeight = from.height || 48;
+    } else if (isFromTextType) {
+      // For text nodes, use the full calculated height (no separate icon)
+      fromIconHeight = fromCalculatedHeight;
+    } else {
+      // For regular resource nodes, use BASE_NODE_HEIGHT (icon only, ignore text)
+      fromIconHeight = BASE_NODE_HEIGHT;
+    }
+  }
+  // If isFromGroup, fromIconHeight remains undefined, so full height will be used
+  
+  if (!isToGroup) {
+    if (isToShape) {
+      // For shapes, use the shape size (48px) or custom height if set
+      toIconHeight = to.height || 48;
+    } else if (isToTextType) {
+      // For text nodes, use the full calculated height (no separate icon)
+      toIconHeight = toCalculatedHeight;
+    } else {
+      // For regular resource nodes, use BASE_NODE_HEIGHT (icon only, ignore text)
+      toIconHeight = BASE_NODE_HEIGHT;
+    }
+  }
+  // If isToGroup, toIconHeight remains undefined, so full height will be used
+
+  // Use icon-only heights for connection point calculations (undefined for groups/zones = use full height)
+  // Pass full heights for width calculations, but icon heights for Y positioning
+  const connectionPoints = getOptimalConnectionPoints(from, to, fromWidth, fromHeight, toWidth, toHeight, connectionData, fromIconHeight, toIconHeight);
   const { fromX, fromY, toX, toY, fromAngle, toAngle } = connectionPoints;
 
   const curvature = connectionData?.curvature || 0.6;
@@ -392,7 +437,41 @@ export function BezierConnectionText({ connectionData, from, to, connectionColor
     const toWidth = to.width || NODE_WIDTH;
     const toHeight = to.height || NODE_HEIGHT;
 
-    const connectionPoints = getOptimalConnectionPoints(from, to, fromWidth, fromHeight, toWidth, toHeight, connectionData);
+    // Check if nodes are groups/zones (should use full height, not icon height)
+    const isFromGroup = from.type === 'group' || from.subType === 'zone';
+    const isToGroup = to.type === 'group' || to.subType === 'zone';
+    
+    // Calculate icon-only heights for connection text positioning (same logic as main connection)
+    // BUT: Groups/zones should use full height, not icon height
+    const isFromShape = (from.type === 'generic.object.square' || from.type === 'generic.object.circle' || 
+                          from.type === 'generic.object.point' || from.type === 'generic.object.rectangle' || from.type === 'generic.object.triangle' ||
+                          from.type === 'generic.object.star' || from.type === 'generic.object.cloud' ||
+                          from.type?.endsWith('.square') || from.type?.endsWith('.circle') ||
+                          from.type?.endsWith('.point') || from.type?.endsWith('.rectangle') || from.type?.endsWith('.triangle') ||
+                          from.type?.endsWith('.star') || from.type?.endsWith('.cloud'));
+    const isToShape = (to.type === 'generic.object.square' || to.type === 'generic.object.circle' || 
+                       to.type === 'generic.object.point' || to.type === 'generic.object.rectangle' || to.type === 'generic.object.triangle' ||
+                       to.type === 'generic.object.star' || to.type === 'generic.object.cloud' ||
+                       to.type?.endsWith('.square') || to.type?.endsWith('.circle') ||
+                       to.type?.endsWith('.point') || to.type?.endsWith('.rectangle') || to.type?.endsWith('.triangle') ||
+                       to.type?.endsWith('.star') || to.type?.endsWith('.cloud'));
+    const isFromTextType = from.type === 'generic.text.text' || from.type === 'generic.text.textbox';
+    const isToTextType = to.type === 'generic.text.text' || to.type === 'generic.text.textbox';
+    
+    let fromIconHeight: number | undefined;
+    let toIconHeight: number | undefined;
+    
+    if (!isFromGroup) {
+      fromIconHeight = isFromShape ? (from.height || 48) : (isFromTextType ? fromHeight : BASE_NODE_HEIGHT);
+    }
+    // If isFromGroup, fromIconHeight remains undefined, so full height will be used
+    
+    if (!isToGroup) {
+      toIconHeight = isToShape ? (to.height || 48) : (isToTextType ? toHeight : BASE_NODE_HEIGHT);
+    }
+    // If isToGroup, toIconHeight remains undefined, so full height will be used
+    
+    const connectionPoints = getOptimalConnectionPoints(from, to, fromWidth, fromHeight, toWidth, toHeight, connectionData, fromIconHeight, toIconHeight);
     const { fromX, fromY, toX, toY, fromAngle, toAngle } = connectionPoints;
 
     const curvature = connectionData?.curvature || 0.6;
