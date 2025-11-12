@@ -29,7 +29,7 @@ function calculateNodeHeight(label: string = '', isTextNode: boolean) {
 }
 
 export function NodeEdgeArrows({ node, connections, width, height }: NodeEdgeArrowsProps) {
-  const isTextNode = node.type === 'generic.text.text' || node.type === 'generic.text.label' || 
+  const isTextNode = node.type === 'generic.text.text'  || 
                      node.type === 'generic.object.square' || node.type === 'generic.object.circle' || 
                      node.type === 'generic.object.point' || node.type === 'generic.object.rectangle' || node.type === 'generic.object.triangle' ||
                      node.type === 'generic.object.star' || node.type === 'generic.object.cloud' ||

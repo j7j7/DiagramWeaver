@@ -9,7 +9,7 @@
     },
     {
       "id": "labelbox1", 
-      "type": "generic.text.labelbox",
+      "type": "generic.text.textbox",
       "label": "Medium labelbox with text that should wrap appropriately",
       "x": 400,
       "y": 80

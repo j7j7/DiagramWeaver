@@ -2,7 +2,7 @@
   "nodes": [
     {
       "id": "label-resize-test",
-      "type": "generic.text.label",
+      "type": "generic.text.textbox",
       "label": "Label with custom sizing - try to resize me horizontally",
       "x": 100,
       "y": 100,
@@ -15,7 +15,7 @@
     },
     {
       "id": "label-auto-test",
-      "type": "generic.text.label",
+      "type": "generic.text.textbox",
       "label": "Auto-sized label for comparison",
       "x": 100,
       "y": 200,

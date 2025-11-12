@@ -2,7 +2,7 @@
   "nodes": [
     {
       "id": "labelbox-test",
-      "type": "generic.text.labelbox",
+      "type": "generic.text.textbox",
       "x": 100,
       "y": 100,
       "width": 40,

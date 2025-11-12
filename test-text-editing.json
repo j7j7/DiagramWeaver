@@ -11,7 +11,7 @@
     },
     {
       "id": "label-1", 
-      "type": "generic.text.label",
+      "type": "generic.text.textbox",
       "label": "Label Node",
       "x": 150,
       "y": 50,
@@ -29,7 +29,7 @@
     },
     {
       "id": "labelbox-1",
-      "type": "generic.text.labelbox",
+      "type": "generic.text.textbox",
       "label": "Labelbox with text content",
       "x": 50,
       "y": 200,

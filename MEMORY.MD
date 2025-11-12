@@ -63,7 +63,7 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
 ### Recent Updates and Fixes
 - **Generic Shape Type Refactoring** (2025-11-12): Renamed generic shape types from `generic.text.*` to `generic.object.*` for better semantic clarity:
   - **Renamed Types**: `generic.text.square`, `generic.text.rectangle`, `generic.text.circle`, `generic.text.point`, `generic.text.triangle`, `generic.text.star`, `generic.text.cloud` → `generic.object.*`
-  - **Configuration Updates**: Updated `resource-generic.json` to separate text resources (text, textbox, label, labelbox) from object resources (shapes)
+   - **Configuration Updates**: Updated `resource-generic.json` to separate text resources (text, textbox, label) from object resources (shapes)
   - **File Structure**: Created new `/public/resources/generic/object/` directory and copied shape images from text directory
   - **Code Updates**: Updated all TypeScript/JavaScript files to use new `generic.object.*` naming:
     - `src/components/editor/editor-canvas.tsx` - Shape detection and sizing logic
@@ -74,7 +74,7 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
     - `src/components/diagram/diagram-node.tsx` - Shape rendering logic
   - **Documentation Updates**: Updated AI schema documentation and Ollama service prompts
   - **Test Files**: Updated test JSON files to use new naming convention
-  - **Backward Compatibility**: Preserved `generic.text.textbox` and `generic.text.labelbox` types unchanged as requested
+   - **Backward Compatibility**: Preserved `generic.text.textbox` type unchanged as requested
   - **Build Verification**: Confirmed successful compilation with no breaking changes
   - **Benefits**: Clearer semantic distinction between text elements and geometric shapes, improved code organization
 - Resource JSON consolidation: Single source of truth under `public/resources/`; removed duplicate JSONs under `resources/`. Resource Browser now fetches index at runtime, and Canvas uses the same exact icon path via `imagePath` to ensure icon parity.
@@ -213,7 +213,7 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
   - **Implementation**: New `getAllConnections` useMemo hook filters connections related to selected item
   - **UI Components**: Uses Popover, Slider, Input, and Button components for intuitive controls
 - **Rotation Support Extended** (2025-12): Added rotation capability to all node types and groups/zones:
-  - **Universal Rotation**: All nodes (text, textbox, label, labelbox, shape, icon) now support rotation
+  - **Universal Rotation**: All nodes (text, textbox, label, shape, icon) now support rotation
   - **Group/Zone Rotation**: Groups and zones can be rotated using the same rotation controls
   - **Rotation Options**: 0°, 45°, -45°, 90°, -90° available via dropdown in toolbar
   - **CSS Transform**: Rotation applied using `rotate(Xdeg)` CSS transform with `transformOrigin: center`
@@ -225,24 +225,24 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
   - **Height Fix**: Label nodes now have horizontal height matching text exactly (removed vertical padding)
   - **Labelbox Unchanged**: Labelbox nodes maintain their padding and styling
   - **Height Calculation**: Label nodes calculate height as `lines * lineHeight` (20px) with no base padding
-  - **Styling Controls**: Added comprehensive styling toolbar controls for label/labelbox nodes:
+  - **Styling Controls**: Added comprehensive styling toolbar controls for label/textbox nodes:
     - **Border Style**: None, Solid, or Gradient options
     - **Border Color**: Color picker supporting solid or gradient (2 colors)
     - **Background Style**: None, Solid, or Gradient options
     - **Background Color**: Color picker supporting solid or gradient (2 colors)
     - **Text Color**: Color picker for text color
     - **Shadow Toggle**: Enable/disable shadow effect
-  - **Rendering**: Updated label/labelbox rendering to support gradient borders/backgrounds and shadow
+  - **Rendering**: Updated label/textbox rendering to support gradient borders/backgrounds and shadow
   - **Type Updates**: Added `borderStyle`, `borderColors`, `backgroundStyle`, `backgroundColors`, and `shadow` to `DiagramNodeData`
-  - **Visual Consistency**: Label/labelbox nodes now have same styling capabilities as groups/zones
+  - **Visual Consistency**: Label/textbox nodes now have same styling capabilities as groups/zones
   - **Implementation**: Uses IIFE pattern in rendering to extract styling variables, supports gradient borders via `borderImage`, gradient backgrounds via `linear-gradient`
  - **Toolbar UI Improvements** (2025-12): Refined toolbar display and controls:
    - **Selected Item Label Display**: Toolbar now shows the label/name of selected node/group instead of just "Selected: node/group"
    - **Connection Display**: Selected connections show as "Connection {from} → {to}"
    - **Control Hiding**: Hidden unnecessary controls for text type nodes:
-     - **Text Position**: Hidden for text/textbox/label/labelbox nodes (only applies to shape nodes)
-     - **Edge Position**: Hidden for text/textbox/label/labelbox nodes (only applies to icon/resource nodes in groups)
-     - **Size Mode**: Hidden for text/textbox/label/labelbox nodes (size is auto-calculated)
+     - **Text Position**: Hidden for text/textbox/label nodes (only applies to shape nodes)
+     - **Edge Position**: Hidden for text/textbox/label nodes (only applies to icon/resource nodes in groups)
+     - **Size Mode**: Hidden for text/textbox/label nodes (size is auto-calculated)
    - **Context Awareness**: Controls dynamically show/hide based on selected item type
    - **Type Detection**: Added `isTextTypeNode` helper to identify all text-related node types
    - **Cleaner UI**: Removed redundant controls, making toolbar more focused and intuitive

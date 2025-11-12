@@ -2,7 +2,7 @@
   "nodes": [
     {
       "id": "labelbox-30px",
-      "type": "generic.text.labelbox",
+      "type": "generic.text.textbox",
       "label": "Tiny",
       "x": 50,
       "y": 50,
@@ -15,7 +15,7 @@
     },
     {
       "id": "labelbox-40px",
-      "type": "generic.text.labelbox",
+      "type": "generic.text.textbox",
       "label": "Small height",
       "x": 180,
       "y": 50,
@@ -28,7 +28,7 @@
     },
     {
       "id": "labelbox-50px",
-      "type": "generic.text.labelbox",
+      "type": "generic.text.textbox",
       "label": "Medium height",
       "x": 330,
       "y": 50,
@@ -41,7 +41,7 @@
     },
     {
       "id": "labelbox-60px",
-      "type": "generic.text.labelbox",
+      "type": "generic.text.textbox",
       "label": "60px height test",
       "x": 50,
       "y": 120,
@@ -54,7 +54,7 @@
     },
     {
       "id": "labelbox-80px",
-      "type": "generic.text.labelbox",
+      "type": "generic.text.textbox",
       "label": "80px height test",
       "x": 240,
       "y": 120,
@@ -67,7 +67,7 @@
     },
     {
       "id": "labelbox-100px",
-      "type": "generic.text.labelbox",
+      "type": "generic.text.textbox",
       "label": "100px height",
       "x": 450,
       "y": 120,
@@ -93,7 +93,7 @@
     },
     {
       "id": "label-auto-comparison",
-      "type": "generic.text.labelbox",
+      "type": "generic.text.textbox",
       "label": "Auto mode (100px min)",
       "x": 220,
       "y": 220,

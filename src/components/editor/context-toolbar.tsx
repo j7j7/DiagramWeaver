@@ -249,8 +249,6 @@ export function ContextToolbar({
     return {};
   }, [selectedItem, isNode, isGroup]);
   const isTextNode = isNode && selectedItem.type?.startsWith('generic.text');
-  const isLabelNode = isNode && selectedItem.type === 'generic.text.label';
-  const isLabelboxNode = isNode && selectedItem.type === 'generic.text.labelbox';
   const isTextboxNode = isNode && selectedItem.type === 'generic.text.textbox';
   const isPlainTextNode = isNode && selectedItem.type === 'generic.text.text';
   const isShapeNode = isNode && (selectedItem.type === 'generic.object.square' || 
@@ -269,9 +267,9 @@ export function ContextToolbar({
                                  selectedItem.type?.endsWith('.cloud'));
   
 
-  const isLabelOrLabelbox = isLabelNode || isLabelboxNode;
+  const isLabelOrTextbox = isTextboxNode;
   // Text type nodes that should hide certain controls
-  const isTextTypeNode = isTextNode; // includes all generic.text.* nodes
+  const isTextTypeNode = isTextNode; // includes all generic.text nodes
 
   // Get all connections for the selected node/group
   const getAllConnections = useMemo(() => {
@@ -721,7 +719,7 @@ export function ContextToolbar({
         )}
 
         {/* Text Justification for Text Resources */}
-        {(isTextNode || isLabelNode || isTextboxNode || isLabelboxNode) && (
+        {(isTextNode  || isTextboxNode) && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -922,7 +920,7 @@ export function ContextToolbar({
         )}
 
         {/* Size Mode (Groups and Text Resources) */}
-        {(isGroup || isTextNode || isLabelNode || isTextboxNode || isLabelboxNode) && (
+        {(isGroup || isTextNode  || isTextboxNode) && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>

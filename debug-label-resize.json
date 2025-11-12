@@ -2,7 +2,7 @@
   "nodes": [
     {
       "id": "label-debug-1",
-      "type": "generic.text.label",
+      "type": "generic.text.textbox",
       "label": "LABEL RESIZE TEST - Custom Mode",
       "x": 50,
       "y": 50,
@@ -16,7 +16,7 @@
     },
     {
       "id": "label-debug-2",
-      "type": "generic.text.label",
+      "type": "generic.text.textbox",
       "label": "Try resizing me horizontally",
       "x": 400,
       "y": 50,
@@ -58,7 +58,7 @@
     },
     {
       "id": "label-auto-debug",
-      "type": "generic.text.label",
+      "type": "generic.text.textbox",
       "label": "Auto mode - no resize handles",
       "x": 50,
       "y": 250,

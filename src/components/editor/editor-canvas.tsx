@@ -59,9 +59,7 @@ type PositionedGroup = DiagramGroupData & { x: number; y: number; width: number;
 
 const measureNodeDims = (n: PositionedNode) => {
   const isTextNode = n.type === 'generic.text.text';
-  const isLabelNode = n.type === 'generic.text.label';
   const isTextboxNode = n.type === 'generic.text.textbox';
-  const isLabelboxNode = n.type === 'generic.text.labelbox';
   const isShapeNode =
     n.type === 'generic.object.square' ||
     n.type === 'generic.object.circle' ||
@@ -80,7 +78,7 @@ const measureNodeDims = (n: PositionedNode) => {
   const label = (n.label || '').toString();
 
   // Use custom dimensions if sizeMode is 'custom' and dimensions are provided
-  if ((isTextNode || isLabelNode || isTextboxNode || isLabelboxNode || isShapeNode) && n.sizeMode === 'custom' && n.width && n.height) {
+  if ((isTextNode  || isTextboxNode || isShapeNode) && n.sizeMode === 'custom' && n.width && n.height) {
     return { width: n.width, height: n.height };
   }
   
@@ -121,7 +119,7 @@ const measureNodeDims = (n: PositionedNode) => {
     const height = minHeight + (textLines - 1) * EXTRA_LINE_HEIGHT;
 
     return { width: calculatedWidth, height };
-  } else if (isLabelboxNode) {
+  } else if (isTextboxNode) {
     const avgCharWidth = 8;
     const padding = 24;
     const minWidth = 40;
@@ -153,13 +151,13 @@ const measureNodeDims = (n: PositionedNode) => {
     const height = minHeight + (textLines - 1) * EXTRA_LINE_HEIGHT;
 
     return { width: calculatedWidth, height };
-  } else if (isTextNode || isLabelNode || isShapeNode) {
+  } else if (isTextNode  || isShapeNode) {
     const avgCharWidth = 8;
 
     let calculatedWidth: number;
     let height: number;
 
-    if (isTextNode || isLabelNode) {
+    if (isTextNode ) {
       const padding = 16;
       const minTextWidth = 80;
       const maxTextWidth = 200;
@@ -185,15 +183,9 @@ const measureNodeDims = (n: PositionedNode) => {
         Math.min(maxTextWidth, maxLineLength * avgCharWidth + padding),
       );
 
-      // Check if it's a label node - use exact text height, no padding
-      if (n.type === 'generic.text.label') {
-        const textLines = Math.max(1, Math.ceil(label.length / textMaxCharsPerLine));
-        const lineHeight = 20; // Approximate line height for text-sm font-medium
-        height = textLines * lineHeight;
-      } else {
-        const textLines = Math.max(1, Math.ceil(label.length / textMaxCharsPerLine));
-        height = TEXT_NODE_HEIGHT + (textLines - 1) * EXTRA_LINE_HEIGHT;
-      }
+      // Text nodes - use standard text height calculation
+      const textLines = Math.max(1, Math.ceil(label.length / textMaxCharsPerLine));
+      height = TEXT_NODE_HEIGHT + (textLines - 1) * EXTRA_LINE_HEIGHT;
     } else {
       const shapeSize = 48;
       const textPadding = 16;
@@ -943,7 +935,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     const childGroups = allGroups.filter((g: DiagramGroupData) => group.children.includes(g.id));
     
     if (childNodes.length === 0 && childGroups.length === 0) {
-      // Empty group - use larger minimum size to accommodate potential textbox/labelbox nodes
+      // Empty group - use larger minimum size to accommodate potential textbox nodes
       return {
         ...group,
         width: Math.max(NODE_WIDTH + GROUP_PADDING * 2, 300), // Larger minimum width
@@ -1178,7 +1170,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           if (node.type === 'generic.text.textbox') {
             minWidth = 40;
             minHeight = 40;
-          } else if (node.type === 'generic.text.labelbox') {
+          } else if (node.type === 'generic.text.textbox') {
             minWidth = 40;
             minHeight = 40;
           } else if (isShapeNode) {

@@ -15,7 +15,7 @@
     },
     {
       "id": "label-custom-1",
-      "type": "generic.text.label",
+      "type": "generic.text.textbox",
       "label": "Label with custom sizing and full space usage",
       "x": 350,
       "y": 50,
@@ -41,7 +41,7 @@
     },
     {
       "id": "labelbox-custom-1",
-      "type": "generic.text.labelbox",
+      "type": "generic.text.textbox",
       "label": "Labelbox with custom sizing that maximizes text area usage while maintaining proper visual boundaries",
       "x": 500,
       "y": 150,
@@ -64,7 +64,7 @@
     },
     {
       "id": "label-auto-1",
-      "type": "generic.text.label",
+      "type": "generic.text.textbox",
       "label": "Auto-sized label",
       "x": 250,
       "y": 300,

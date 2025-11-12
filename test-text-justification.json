@@ -35,7 +35,7 @@
     },
     {
       "id": "label-1",
-      "type": "generic.text.label",
+      "type": "generic.text.textbox",
       "label": "Full justified label text example",
       "x": 100,
       "y": 200,
@@ -57,7 +57,7 @@
     },
     {
       "id": "labelbox-1",
-      "type": "generic.text.labelbox",
+      "type": "generic.text.textbox",
       "label": "Labelbox with center alignment and dynamic resizing capabilities",
       "x": 100,
       "y": 300,

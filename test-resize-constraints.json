@@ -2,7 +2,7 @@
   "nodes": [
     {
       "id": "test-small",
-      "type": "generic.text.labelbox",
+      "type": "generic.text.textbox",
       "x": 100,
       "y": 100,
       "width": 40,
@@ -13,7 +13,7 @@
     },
     {
       "id": "test-large", 
-      "type": "generic.text.labelbox",
+      "type": "generic.text.textbox",
       "x": 200,
       "y": 100,
       "width": 160,

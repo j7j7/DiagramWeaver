@@ -21,21 +21,10 @@ const calculateNodeHeight = (label: string = '', nodeType: string, sizeMode?: st
     const maxCharsPerLine = 30; // More characters fit in wider textbox
     const lines = Math.max(1, Math.ceil(label.length / maxCharsPerLine)); // Minimum 1 line
     return 40 + ((lines - 1) * EXTRA_LINE_HEIGHT); // Start with 40px height
-  } else if (nodeType === 'generic.text.labelbox') {
-    const maxCharsPerLine = 25; // Characters fit in labelbox
-    const lines = Math.max(1, Math.ceil(label.length / maxCharsPerLine)); // Minimum 1 line for custom sizing
-    return 100 + ((lines - 1) * EXTRA_LINE_HEIGHT); // Start with 100px height
   } else if (nodeType === 'generic.text.text') {
     const maxCharsPerLine = 20; // More characters fit in text-only nodes
     const lines = Math.ceil(label.length / maxCharsPerLine);
     return TEXT_NODE_HEIGHT + ((lines - 1) * EXTRA_LINE_HEIGHT);
-  } else if (nodeType === 'generic.text.label') {
-    // Label nodes - height with padding for better vertical centering
-    const maxCharsPerLine = 20; // Characters fit in label nodes
-    const lines = Math.ceil(label.length / maxCharsPerLine);
-    const lineHeight = 20; // Approximate line height for text-sm font-medium
-    const padding = 12; // Top and bottom padding for better centering
-    return (lines * lineHeight) + padding;
   } else {
     const maxCharsPerLine = 12; // Approximate characters that fit in node width
     const lines = Math.ceil(label.length / maxCharsPerLine);
@@ -255,11 +244,11 @@ export function BezierConnection({ from, to, connectionColor, connectionData, on
     toTextUnderHeight = lines * 20; // Approximate line height for shape labels
   }
   
-  // For regular resource nodes with labels (not text/label/textbox/labelbox nodes), add space for the label text
-  const isFromTextType = from.type === 'generic.text.text' || from.type === 'generic.text.label' || 
-                         from.type === 'generic.text.textbox' || from.type === 'generic.text.labelbox';
-  const isToTextType = to.type === 'generic.text.text' || to.type === 'generic.text.label' || 
-                       to.type === 'generic.text.textbox' || to.type === 'generic.text.labelbox';
+  // For regular resource nodes with labels (not text/label/textbox nodes), add space for the label text
+  const isFromTextType = from.type === 'generic.text.text'  || 
+                          from.type === 'generic.text.textbox';
+  const isToTextType = to.type === 'generic.text.text'  || 
+                         to.type === 'generic.text.textbox';
   
   if (!isFromShape && !isFromTextType && from.label && from.label.trim().length > 0) {
     const maxCharsPerLine = 16;

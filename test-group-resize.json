@@ -9,7 +9,7 @@
     },
     {
       "id": "medium-labelbox",
-      "type": "generic.text.labelbox", 
+      "type": "generic.text.textbox", 
       "label": "Medium labelbox with text that should cause group to resize",
       "x": 200,
       "y": 200

@@ -145,7 +145,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
     setIsEditingLabel(true);
     setEditText(node.label || '');
     setTimeout(() => {
-      const ref = isTextboxNode || isLabelboxNode ? textareaRef.current : inputRef.current;
+      const ref = isTextboxNode ? textareaRef.current : inputRef.current;
       if (ref) {
         ref.focus();
         ref.select();
@@ -217,21 +217,14 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
       const maxCharsPerLine = 30; // More characters fit in wider textbox
       const lines = Math.max(1, Math.ceil(label.length / maxCharsPerLine)); // Minimum 1 line
       return 40 + ((lines - 1) * EXTRA_LINE_HEIGHT); // Start with 40px height
-    } else if (nodeType === 'generic.text.labelbox') {
-      const maxCharsPerLine = 25; // Characters fit in labelbox
+    } else if (nodeType === 'generic.text.textbox') {
+      const maxCharsPerLine = 25; // Characters fit in textbox
       const lines = Math.max(1, Math.ceil(label.length / maxCharsPerLine)); // Minimum 1 line for custom sizing
       return 100 + ((lines - 1) * EXTRA_LINE_HEIGHT); // Start with 100px height
     } else if (nodeType === 'generic.text.text') {
       const maxCharsPerLine = 20; // More characters fit in text-only nodes
       const lines = Math.ceil(label.length / maxCharsPerLine);
       return TEXT_NODE_HEIGHT + ((lines - 1) * EXTRA_LINE_HEIGHT);
-    } else if (nodeType === 'generic.text.label') {
-      // Label nodes - height with padding for better vertical centering
-      const maxCharsPerLine = 20; // Characters fit in label nodes
-      const lines = Math.ceil(label.length / maxCharsPerLine);
-      const lineHeight = 20; // Approximate line height for text-sm font-medium
-      const padding = 12; // Top and bottom padding for better centering
-      return (lines * lineHeight) + padding;
     } else {
       const maxCharsPerLine = 12; // Approximate characters that fit in node width
       const lines = Math.ceil(label.length / maxCharsPerLine);
@@ -256,12 +249,10 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
   };
   
   const isTextNode = node.type === 'generic.text.text';
-  const isLabelNode = node.type === 'generic.text.label';
   const isTextboxNode = node.type === 'generic.text.textbox';
-  const isLabelboxNode = node.type === 'generic.text.labelbox';
   const isShapeNode = node.type === 'generic.object.square' || node.type === 'generic.object.circle' || node.type === 'generic.object.point' || node.type === 'generic.object.rectangle' || node.type === 'generic.object.triangle' || node.type === 'generic.object.star' || node.type === 'generic.object.cloud' ||
                       node.type?.endsWith('.square') || node.type?.endsWith('.circle') || node.type?.endsWith('.point') || node.type?.endsWith('.rectangle') || node.type?.endsWith('.triangle') || node.type?.endsWith('.star') || node.type?.endsWith('.cloud');
-  const isRotatableNode = isTextNode || isLabelNode || isTextboxNode || isLabelboxNode || isShapeNode;
+  const isRotatableNode = isTextNode  || isTextboxNode || isShapeNode;
   const nodeHeight = calculateNodeHeight(node.label || '', node.type, node.sizeMode, node.height);
   const rotation = (node as any).rotation || 0;
   
@@ -295,7 +286,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
     resizeStartPos.current = {
       x: e.clientX,
       y: e.clientY,
-      startWidth: node.width || (isTextboxNode ? 40 : isLabelboxNode ? 40 : 80),
+      startWidth: node.width || (isTextboxNode ? 40 : 80),
       startHeight: node.height || nodeHeight
     };
   };
@@ -310,8 +301,8 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
     let newHeight = resizeStartPos.current.startHeight;
     
     // Calculate minimum size based on node type
-    const minWidth = isTextboxNode ? 40 : isLabelboxNode ? 40 : isShapeNode ? 20 : 80;
-    const minHeight = isTextboxNode ? 40 : isLabelboxNode ? 40 : isShapeNode ? 20 : 40;
+    const minWidth = isTextboxNode ? 40 : isShapeNode ? 20 : 80;
+    const minHeight = isTextboxNode ? 40 : isShapeNode ? 20 : 40;
     
     switch (resizeHandle) {
       case 'right':
@@ -456,20 +447,18 @@ return (
       style={{
         left: isDragging ? (tempPosition?.x || node.x) : node.x,
         top: isDragging ? (tempPosition?.y || node.y) : node.y,
-        width: isShapeNode ? (node.width || 60) :
-               (isRotatableNode || isTextboxNode || isLabelboxNode ? 
-                (node.sizeMode === 'custom' && node.width ? node.width : 'auto') : NODE_WIDTH),
+         width: isShapeNode ? (node.width || 60) :
+                (isRotatableNode || isTextboxNode ? 
+                 (node.sizeMode === 'custom' && node.width ? node.width : 'auto') : NODE_WIDTH),
          minWidth: isShapeNode ? (node.width || 60) :
-                    isTextboxNode ? 40 : 
-                    isLabelboxNode ? 40 :
+                    isTextboxNode ? 40 :
                    isRotatableNode ? 80 : NODE_WIDTH,
-        maxWidth: isShapeNode ? (node.width || 60) :
-                   (isTextboxNode || isLabelboxNode) ? (node.sizeMode === 'custom' ? 'none' : (isTextboxNode ? 400 : 300)) :
+         maxWidth: isShapeNode ? (node.width || 60) :
+                    isTextboxNode ? (node.sizeMode === 'custom' ? 'none' : 400) :
                    isRotatableNode ? 200 : NODE_WIDTH,
-        height: isShapeNode ? (node.height || 60) :
-                isLabelboxNode && node.sizeMode === 'custom' ? (node.height || 40) :
-                isTextboxNode && node.sizeMode === 'custom' ? (node.height || 40) :
-                (isRotatableNode || isTextboxNode || isLabelboxNode) ? nodeHeight : 'auto',
+         height: isShapeNode ? (node.height || 60) :
+                 isTextboxNode && node.sizeMode === 'custom' ? (node.height || 40) :
+                 (isRotatableNode || isTextboxNode) ? nodeHeight : 'auto',
         touchAction: 'none',
         transform: rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
         transformOrigin: 'center'
@@ -519,77 +508,6 @@ return (
                   ) : null}
                   </div>
                 );
-              })()
-            ) : node.type === 'generic.text.label' ? (
-              // Label node - show text with curved rectangle background (no vertical padding)
-              (() => {
-                const borderStyle = (node as any).borderStyle || 'solid';
-                const borderColors = (node as any).borderColors || [(node as any).borderColor || '#d1d5db', (node as any).borderColor || '#d1d5db'];
-                const borderColor = (node as any).borderColor || '#d1d5db';
-                const backgroundStyle = (node as any).backgroundStyle || 'solid';
-                const backgroundColors = (node as any).backgroundColors || [(node as any).backgroundColor || '#f3f4f6', (node as any).backgroundColor || '#f3f4f6'];
-                 const backgroundColor = (node as any).backgroundColor || '#f3f4f6';
-                 const gradientAngle = (node as any).gradientAngle || 135;
-                 const hasShadow = (node as any).shadow || false;
-                 
-                 // Get the effective background color for text color calculation
-                 const effectiveBgColor = backgroundStyle === 'gradient' ? backgroundColors[0] : backgroundColor;
-                 
-                 return (
-              <div 
-                  className={cn(
-                    `flex items-center justify-center rounded-lg transition-colors ${node.sizeMode === 'custom' && node.height && node.height < 50 ? 'items-start' : ''}`,
-                    node.sizeMode === 'custom' ? "px-1 py-0.5" : "px-3 py-1",
-                  borderStyle !== 'none' && "border-2",
-                  borderStyle === 'none' && (isSelected 
-                    ? "border border-dashed border-primary opacity-100" 
-                    : "border border-dashed border-gray-400 opacity-0 hover:opacity-100 hover:border-primary hover:bg-primary/5"),
-                  isSelected && borderStyle !== 'none' ? "border-primary" : !(isDragging || isTouchDragging) && borderStyle !== 'none' && "group-hover:border-accent",
-                  isTargetable && "border-dashed border-primary",
-                  hasShadow && "shadow-[0_10px_15px_-3px_rgba(239,68,68,0.3),0_4px_6px_-2px_rgba(239,68,68,0.2)]"
-                )}
-                style={{
-                  background: backgroundStyle === 'none' 
-                    ? 'transparent'
-                    : backgroundStyle === 'gradient' 
-                      ? `linear-gradient(135deg, ${backgroundColors[0]}, ${backgroundColors[1]})`
-                      : backgroundColor,
-                  ...(borderStyle === 'none' ? {} : borderStyle === 'gradient' ? {
-                    borderImage: `linear-gradient(135deg, ${borderColors[0]}, ${borderColors[1]}) 1`,
-                    borderColor: 'transparent'
-                  } : {
-                    borderColor: borderColor
-                  }),
-                  color: (node as any).textColor || '#374151',
-                  margin: hasShadow ? 4 : 0,
-                  ...(hasShadow && { 
-                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
-                  })
-                }}
-              >
-                {isEditingLabel ? (
-                  <input
-                    ref={inputRef}
-                    id={`node-input-${node.id}`}
-                    type="text"
-                    value={editText}
-                    onChange={(e) => setEditText(e.target.value)}
-                    onBlur={handleLabelSubmit}
-                    onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                    className="text-sm font-medium text-center bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                 ) : node.label ? (
-                      <p 
-                        className={`${getTextJustifyClass((node as any).textJustify)} w-full px-1 break-words leading-tight cursor-text hover:bg-background/50 rounded ${node.sizeMode === 'custom' ? '' : '-mx-1 -my-0.5'}`}
-                        style={getTextStylingForNode(node)}
-                        onDoubleClick={handleLabelDoubleClick}
-                      >
-                      {node.label}
-                    </p>
-                 ) : null}
-              </div>
-              );
               })()
             ) : node.type === 'generic.text.textbox' ? (
               // Textbox node - larger multi-line text box
@@ -662,77 +580,8 @@ return (
                  )}
                </div>
                );
-               })()
-             ) : node.type === 'generic.text.labelbox' ? (
-              // Labelbox node - larger multi-line label box with different styling
-              (() => {
-                 const borderStyle = (node as any).borderStyle || 'solid';
-                 const borderColors = (node as any).borderColors || [(node as any).borderColor || '#0ea5e9', (node as any).borderColor || '#0ea5e9'];
-                 const borderColor = (node as any).borderColor || '#0ea5e9';
-                 const backgroundStyle = (node as any).backgroundStyle || 'solid';
-                 const backgroundColors = (node as any).backgroundColors || [(node as any).backgroundColor || '#f0f9ff', (node as any).backgroundColor || '#f0f9ff'];
-                 const backgroundColor = (node as any).backgroundColor || '#f0f9ff';
-                const gradientAngle = (node as any).gradientAngle || 135;
-                 const hasShadow = (node as any).shadow || false;
-                
-                return (
-              <div 
-                 className={cn(
-                   "flex items-center justify-center h-full w-full rounded-lg transition-colors",
-                    node.sizeMode === 'custom' ? (node.height && node.height < 50 ? "py-0 px-1" : "py-0.5 px-1") : "p-3",
-                  borderStyle !== 'none' && "border-2",
-                  borderStyle === 'none' && (isSelected 
-                    ? "border border-dashed border-primary opacity-100" 
-                    : "border border-dashed border-gray-400 opacity-0 hover:opacity-100 hover:border-primary hover:bg-primary/5"),
-                  isSelected && borderStyle !== 'none' ? "border-primary" : !(isDragging || isTouchDragging) && borderStyle !== 'none' && "group-hover:border-accent",
-                  isTargetable && "border-dashed border-primary",
-                  hasShadow && "shadow-[0_10px_15px_-3px_rgba(239,68,68,0.3),0_4px_6px_-2px_rgba(239,68,68,0.2)]"
-                )}
-                 style={{
-                   background: backgroundStyle === 'none' 
-                     ? 'transparent'
-                     : backgroundStyle === 'gradient' 
-                       ? `linear-gradient(${gradientAngle}deg, ${backgroundColors[0]}, ${backgroundColors[1]})`
-                       : backgroundColor,
-                   ...(borderStyle === 'none' ? {} : borderStyle === 'gradient' ? {
-                     borderImage: `linear-gradient(${gradientAngle}deg, ${borderColors[0]}, ${borderColors[1]}) 1`,
-                     borderColor: 'transparent'
-                   } : {
-                     borderColor: borderColor
-                   }),
-                    color: (node as any).textColor || '#0c4a6e',
-                    ...(node.sizeMode === 'custom' ? {} : { minHeight: '40px' }),
-                   margin: hasShadow ? 4 : 0,
-                  ...(hasShadow && { 
-                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
-                  })
-                }}
-              >
-                {isEditingLabel ? (
-                  <textarea
-                    ref={textareaRef}
-                    id={`node-input-${node.id}`}
-                    value={editText}
-                    onChange={(e) => setEditText(e.target.value)}
-                    onBlur={handleLabelSubmit}
-                    onKeyDown={(e) => handleLabelKeyDown(e, true)}
-                      className={`text-sm font-medium bg-transparent border border-primary rounded w-full h-full outline-none resize-none ${node.sizeMode === 'custom' ? 'px-1 py-0.5' : 'px-2 py-2'}`}
-                     onClick={(e) => e.stopPropagation()}
-                     rows={3}
-                  />
-                ) : (
-                   <p 
-                     className={`${getTextJustifyClass((node as any).textJustify)} break-words leading-normal cursor-text hover:bg-background/50 rounded whitespace-pre-wrap ${node.sizeMode === 'custom' ? 'w-full px-1 py-1' : 'px-2 py-2 -mx-2 -my-2'}`}
-                     style={getTextStylingForNode(node)}
-                     onDoubleClick={handleLabelDoubleClick}
-                   >
-                     {node.label || 'Enter label...'}
-                   </p>
-                )}
-              </div>
-              );
-              })()
-            ) : isShapeNode ? (
+                })()
+             ) : isShapeNode ? (
               // Shape node - render pure shape with text in different positions (resizable)
               (() => {
                 const borderWidth = (node as any).borderWidth || 2;
@@ -1348,9 +1197,9 @@ return (
         )}
       </Popover>
       
-      {/* Resize handles - show for text resources (textbox/labelbox always, others only in custom mode), or for shapes */}
-      {(isHovered || isResizing || isSelected) && 
-       ((isTextboxNode || isLabelboxNode) || ((isTextNode || isLabelNode) && node.sizeMode === 'custom') || isShapeNode) && (
+      {/* Resize handles - show for text resources (textbox always, others only in custom mode), or for shapes */}
+       {(isHovered || isResizing || isSelected) && 
+        (isTextboxNode || ((isTextNode ) && node.sizeMode === 'custom') || isShapeNode) && (
         <>
           {/* Right handle */}
           <div

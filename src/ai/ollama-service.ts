@@ -63,10 +63,9 @@ export class OllamaService {
 }
 
 ### Node Types:
-**Text/Label Nodes:**
-- generic.text.label - Simple text label
+**Text Nodes:**
+- generic.text.text - Simple text
 - generic.text.textbox - Text with editable box background
-- generic.text.labelbox - Label with background box
 
 **Shape Nodes:**
 - generic.object.square - Square shape

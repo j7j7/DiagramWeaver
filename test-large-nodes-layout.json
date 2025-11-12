@@ -16,14 +16,14 @@
     },
     {
       "id": "medium-labelbox-1",
-      "type": "generic.text.labelbox", 
+      "type": "generic.text.textbox", 
       "label": "Medium labelbox with text that should fit properly in group layout",
       "x": 150,
       "y": 150
     },
     {
       "id": "medium-labelbox-2",
-      "type": "generic.text.labelbox", 
+      "type": "generic.text.textbox", 
       "label": "Second labelbox to test multiple large nodes in same group",
       "x": 200,
       "y": 200

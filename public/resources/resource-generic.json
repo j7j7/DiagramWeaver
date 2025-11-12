@@ -1,7 +1,7 @@
 {
   "name": "Generic",
   "icon": "generic.png",
-   "totalResources": 21,
+   "totalResources": 19,
   "categories": {
     "grouping": {
       "name": "Grouping",
@@ -14,12 +14,10 @@
       "text": {
         "name": "Text",
         "path": "generic/text",
-        "resources": [
-           {"name": "Text", "file": "text.png", "type": "text"},
-           {"name": "Textbox", "file": "textbox.png", "type": "textbox"},
-           {"name": "Label", "file": "label.png", "type": "label"},
-           {"name": "Labelbox", "file": "labelbox.png", "type": "labelbox"}
-        ]
+         "resources": [
+            {"name": "Text", "file": "text.png", "type": "text"},
+            {"name": "Textbox", "file": "textbox.png", "type": "textbox"}
+         ]
       },
       "object": {
         "name": "Object",

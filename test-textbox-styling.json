@@ -16,7 +16,7 @@
     },
     {
       "id": "labelbox-1", 
-      "type": "generic.text.labelbox",
+      "type": "generic.text.textbox",
       "label": "Test Labelbox\nWith Shadow\nAnd Styling",
       "position": { "x": 350, "y": 100 },
       "size": { "width": 200, "height": 120 },

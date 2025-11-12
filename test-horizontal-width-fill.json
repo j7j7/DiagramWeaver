@@ -28,7 +28,7 @@
     },
     {
       "id": "labelbox-wide-1",
-      "type": "generic.text.labelbox",
+      "type": "generic.text.textbox",
       "label": "Labelbox with full horizontal width usage. The text should expand to fill container width completely.",
       "x": 50,
       "y": 290,
@@ -41,7 +41,7 @@
     },
     {
       "id": "labelbox-wide-2",
-      "type": "generic.text.labelbox",
+      "type": "generic.text.textbox",
       "label": "Right aligned labelbox text that uses full horizontal space",
       "x": 50,
       "y": 400,
@@ -67,7 +67,7 @@
     },
     {
       "id": "label-custom-wide",
-      "type": "generic.text.label",
+      "type": "generic.text.textbox",
       "label": "Label with custom horizontal width",
       "x": 450,
       "y": 500,

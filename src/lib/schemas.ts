@@ -15,23 +15,23 @@ export const DiagramNodeDataSchema = z.object({
   borderColor: z.string().optional(), // Border color for label nodes
   backgroundColor: z.string().optional(), // Background color for label nodes
   textColor: z.string().optional(), // Text color for label nodes
-  borderStyle: z.enum(['solid', 'dotted', 'gradient', 'none']).optional(), // Border style for label/labelbox/shape nodes
+  borderStyle: z.enum(['solid', 'dotted', 'gradient', 'none']).optional(), // Border style for label/textbox/shape nodes
   borderColors: z.array(z.string()).optional(), // Border colors for gradient [startColor, endColor]
-  backgroundStyle: z.enum(['solid', 'gradient', 'none']).optional(), // Background style for label/labelbox/shape nodes
+  backgroundStyle: z.enum(['solid', 'gradient', 'none']).optional(), // Background style for label/textbox/shape nodes
   backgroundColors: z.array(z.string()).optional(), // Background colors for gradient [startColor, endColor]
   gradientAngle: z.number().optional(), // Gradient angle in degrees (0, 45, -45, 90, 180)
-  shadow: z.boolean().optional(), // Whether to show shadow around label/labelbox nodes
+  shadow: z.boolean().optional(), // Whether to show shadow around label/textbox nodes
   rotation: z.number().optional(), // Rotation angle in degrees (0, 45, -45, 90, -90)
   textPosition: z.enum(['above', 'center', 'under']).optional(), // Text position for shape nodes
   freeflow: z.boolean().optional(), // If true, node can be placed anywhere without joining groups/zones
   borderWidth: z.number().optional(), // Border thickness for shapes
-  // Custom sizing properties for textbox and labelbox nodes
+  // Custom sizing properties for textbox nodes
   width: z.number().optional(), // Custom width - when set, overrides auto-calculated width
   height: z.number().optional(), // Custom height - when set, overrides auto-calculated height
   sizeMode: z.enum(['auto', 'custom']).optional(), // Whether to use auto-calculated or custom dimensions
   noIconBackground: z.boolean().optional(), // If true, removes the white background from icon nodes
   // Text justification for text resources
-  textJustify: z.enum(['left', 'center', 'right', 'full']).optional(), // Text justification for text/label/textbox/labelbox nodes
+  textJustify: z.enum(['left', 'center', 'right', 'full']).optional(), // Text justification for text/textbox nodes
   
   // Text styling properties
   fontFamily: z.string().optional(), // Font family (e.g., 'Arial', 'Helvetica', 'Times New Roman')
@@ -127,23 +127,23 @@ export const DiagramNodeItemSchema = z.object({
   borderColor: z.string().optional(), // Border color for label nodes
   backgroundColor: z.string().optional(), // Background color for label nodes
   textColor: z.string().optional(), // Text color for label nodes
-  borderStyle: z.enum(['solid', 'dotted', 'gradient', 'none']).optional(), // Border style for label/labelbox/shape nodes
+  borderStyle: z.enum(['solid', 'dotted', 'gradient', 'none']).optional(), // Border style for label/textbox/shape nodes
   borderColors: z.array(z.string()).optional(), // Border colors for gradient [startColor, endColor]
-  backgroundStyle: z.enum(['solid', 'gradient', 'none']).optional(), // Background style for label/labelbox/shape nodes
+  backgroundStyle: z.enum(['solid', 'gradient', 'none']).optional(), // Background style for label/textbox/shape nodes
   backgroundColors: z.array(z.string()).optional(), // Background colors for gradient [startColor, endColor]
   gradientAngle: z.number().optional(), // Gradient angle in degrees (0, 45, -45, 90, 180)
-  shadow: z.boolean().optional(), // Whether to show shadow around label/labelbox nodes
+  shadow: z.boolean().optional(), // Whether to show shadow around label/textbox nodes
   rotation: z.number().optional(), // Rotation angle in degrees (0, 45, -45, 90, -90)
   textPosition: z.enum(['above', 'center', 'under']).optional(), // Text position for shape nodes
   freeflow: z.boolean().optional(), // If true, node can be placed anywhere without joining groups/zones
   borderWidth: z.number().optional(), // Border thickness for shapes
-  // Custom sizing properties for textbox and labelbox nodes
+  // Custom sizing properties for textbox nodes
   width: z.number().optional(), // Custom width - when set, overrides auto-calculated width
   height: z.number().optional(), // Custom height - when set, overrides auto-calculated height
   sizeMode: z.enum(['auto', 'custom']).optional(), // Whether to use auto-calculated or custom dimensions
   noIconBackground: z.boolean().optional(), // If true, removes the white background from icon nodes
   // Text justification for text resources
-  textJustify: z.enum(['left', 'center', 'right', 'full']).optional(), // Text justification for text/label/textbox/labelbox nodes
+  textJustify: z.enum(['left', 'center', 'right', 'full']).optional(), // Text justification for text/textbox nodes
   
   // Text styling properties
   fontFamily: z.string().optional(), // Font family (e.g., 'Arial', 'Helvetica', 'Times New Roman')

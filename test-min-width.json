@@ -12,7 +12,7 @@
     },
     {
       "id": "labelbox-test", 
-      "type": "generic.text.labelbox",
+      "type": "generic.text.textbox",
       "x": 200,
       "y": 100,
       "label": "Test Labelbox",
