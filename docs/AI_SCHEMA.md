@@ -106,12 +106,12 @@ DiagramWeaver uses a JSON structure with three main components:
 - `generic.text.labelbox` - Label with background box
 
 ### Shape Nodes
-- `generic.text.square` - Square shape
-- `generic.text.rectangle` - Rectangle shape
-- `generic.text.circle` - Circle shape
-- `generic.text.triangle` - Triangle shape
-- `generic.text.star` - Star shape
-- `generic.text.cloud` - Cloud shape
+- `generic.object.square` - Square shape
+- `generic.object.rectangle` - Rectangle shape
+- `generic.object.circle` - Circle shape
+- `generic.object.triangle` - Triangle shape
+- `generic.object.star` - Star shape
+- `generic.object.cloud` - Cloud shape
 
 ### Resource Nodes
 Resource nodes follow the pattern: `{provider}.{category}.{resource}`
@@ -304,7 +304,7 @@ Resource nodes follow the pattern: `{provider}.{category}.{resource}`
   "nodes": [
     {
       "id": "frontend",
-      "type": "generic.text.rectangle",
+      "type": "generic.object.rectangle",
       "label": "Frontend",
       "x": 50,
       "y": 50,
@@ -317,7 +317,7 @@ Resource nodes follow the pattern: `{provider}.{category}.{resource}`
     },
     {
       "id": "backend",
-      "type": "generic.text.rectangle",
+      "type": "generic.object.rectangle",
       "label": "Backend",
       "x": 250,
       "y": 50,

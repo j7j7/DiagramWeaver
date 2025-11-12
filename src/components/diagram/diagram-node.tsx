@@ -259,7 +259,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
   const isLabelNode = node.type === 'generic.text.label';
   const isTextboxNode = node.type === 'generic.text.textbox';
   const isLabelboxNode = node.type === 'generic.text.labelbox';
-  const isShapeNode = node.type === 'generic.text.square' || node.type === 'generic.text.circle' || node.type === 'generic.text.point' || node.type === 'generic.text.rectangle' || node.type === 'generic.text.triangle' || node.type === 'generic.text.star' || node.type === 'generic.text.cloud' ||
+  const isShapeNode = node.type === 'generic.object.square' || node.type === 'generic.object.circle' || node.type === 'generic.object.point' || node.type === 'generic.object.rectangle' || node.type === 'generic.object.triangle' || node.type === 'generic.object.star' || node.type === 'generic.object.cloud' ||
                       node.type?.endsWith('.square') || node.type?.endsWith('.circle') || node.type?.endsWith('.point') || node.type?.endsWith('.rectangle') || node.type?.endsWith('.triangle') || node.type?.endsWith('.star') || node.type?.endsWith('.cloud');
   const isRotatableNode = isTextNode || isLabelNode || isTextboxNode || isLabelboxNode || isShapeNode;
   const nodeHeight = calculateNodeHeight(node.label || '', node.type, node.sizeMode, node.height);
@@ -774,7 +774,7 @@ return (
                 return (
               <div className="flex flex-col items-center justify-center h-full w-full relative">
                 <div className="flex items-center justify-center" style={{ width: '100%', height: '100%' }}>
-                  {(node.type === 'generic.text.square' || node.type?.endsWith('.square')) && (
+                  {(node.type === 'generic.object.square' || node.type?.endsWith('.square')) && (
                     <div 
                       key={`gradient-${gradientAngle}`}
                       className="relative"
@@ -822,7 +822,7 @@ return (
                       )}
                     </div>
                   )}
-                  {(node.type === 'generic.text.circle' || node.type?.endsWith('.circle')) && (
+                  {(node.type === 'generic.object.circle' || node.type?.endsWith('.circle')) && (
                     <div 
                       key={`gradient-${gradientAngle}`}
                       className="rounded-full relative"
@@ -870,7 +870,7 @@ return (
                       )}
                     </div>
                   )}
-                  {(node.type === 'generic.text.point' || node.type?.endsWith('.point')) && (
+                  {(node.type === 'generic.object.point' || node.type?.endsWith('.point')) && (
                     <div 
                       key={`gradient-${gradientAngle}`}
                       className="rounded-full relative"
@@ -918,7 +918,7 @@ return (
                       )}
                     </div>
                   )}
-                  {(node.type === 'generic.text.rectangle' || node.type?.endsWith('.rectangle')) && (
+                  {(node.type === 'generic.object.rectangle' || node.type?.endsWith('.rectangle')) && (
                     <div 
                       key={`gradient-${gradientAngle}`}
                       className="relative"
@@ -966,7 +966,7 @@ return (
                       )}
                     </div>
                   )}
-                  {(node.type === 'generic.text.triangle' || node.type?.endsWith('.triangle')) && (
+                  {(node.type === 'generic.object.triangle' || node.type?.endsWith('.triangle')) && (
                     <div 
                       key={`gradient-${gradientAngle}`}
                       className="relative" 
@@ -1043,7 +1043,7 @@ return (
                       )}
                     </div>
                   )}
-                  {(node.type === 'generic.text.star' || node.type?.endsWith('.star')) && (
+                  {(node.type === 'generic.object.star' || node.type?.endsWith('.star')) && (
                     <div 
                       key={`gradient-${gradientAngle}`}
                       className="relative" 
@@ -1130,7 +1130,7 @@ return (
                       )}
                     </div>
                   )}
-                  {(node.type === 'generic.text.cloud' || node.type?.endsWith('.cloud')) && (
+                  {(node.type === 'generic.object.cloud' || node.type?.endsWith('.cloud')) && (
                     <div 
                       key={`gradient-${gradientAngle}`}
                       className="relative" 

@@ -2,7 +2,7 @@
   "nodes": [
     {
       "id": "test-square",
-      "type": "generic.text.square",
+      "type": "generic.object.square",
       "label": "Test Square",
       "x": 200,
       "y": 200,

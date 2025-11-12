@@ -743,13 +743,13 @@ export default function DiagramEditor() {
         const node = item as any;
         
         // Check if it's a shape node
-        const isShapeNode = node.type === 'generic.text.square' || 
-                           node.type === 'generic.text.circle' || 
-                           node.type === 'generic.text.point' || 
-                           node.type === 'generic.text.rectangle' || 
-                           node.type === 'generic.text.triangle' ||
-                           node.type === 'generic.text.star' ||
-                           node.type === 'generic.text.cloud';
+        const isShapeNode = node.type === 'generic.object.square' || 
+                           node.type === 'generic.object.circle' || 
+                           node.type === 'generic.object.point' || 
+                           node.type === 'generic.object.rectangle' || 
+                           node.type === 'generic.object.triangle' ||
+                           node.type === 'generic.object.star' ||
+                           node.type === 'generic.object.cloud';
         
         // Check if it's a textbox or labelbox node
         const isTextboxNode = node.type === 'generic.text.textbox';

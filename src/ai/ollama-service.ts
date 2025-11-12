@@ -69,13 +69,13 @@ export class OllamaService {
 - generic.text.labelbox - Label with background box
 
 **Shape Nodes:**
-- generic.text.square - Square shape
-- generic.text.rectangle - Rectangle shape
-- generic.text.circle - Circle shape
-- generic.text.point - Point shape (small grey point, no outline, no label, freeflow mode)
-- generic.text.triangle - Triangle shape
-- generic.text.star - Star shape
-- generic.text.cloud - Cloud shape
+- generic.object.square - Square shape
+- generic.object.rectangle - Rectangle shape
+- generic.object.circle - Circle shape
+- generic.object.point - Point shape (small grey point, no outline, no label, freeflow mode)
+- generic.object.triangle - Triangle shape
+- generic.object.star - Star shape
+- generic.object.cloud - Cloud shape
 
 **Resource Nodes (format: {provider}.{category}.{resource}):**
 

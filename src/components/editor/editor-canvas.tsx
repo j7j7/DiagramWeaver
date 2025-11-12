@@ -63,13 +63,13 @@ const measureNodeDims = (n: PositionedNode) => {
   const isTextboxNode = n.type === 'generic.text.textbox';
   const isLabelboxNode = n.type === 'generic.text.labelbox';
   const isShapeNode =
-    n.type === 'generic.text.square' ||
-    n.type === 'generic.text.circle' ||
-    n.type === 'generic.text.point' ||
-    n.type === 'generic.text.rectangle' ||
-    n.type === 'generic.text.triangle' ||
-    n.type === 'generic.text.star' ||
-    n.type === 'generic.text.cloud' ||
+    n.type === 'generic.object.square' ||
+    n.type === 'generic.object.circle' ||
+    n.type === 'generic.object.point' ||
+    n.type === 'generic.object.rectangle' ||
+    n.type === 'generic.object.triangle' ||
+    n.type === 'generic.object.star' ||
+    n.type === 'generic.object.cloud' ||
     n.type?.endsWith('.square') ||
     n.type?.endsWith('.circle') ||
     n.type?.endsWith('.point') ||
@@ -1024,13 +1024,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       const itemLabel = item.label || '';
       
       // Check if this is a shape resource (needed for freeflow and group exclusion)
-      const isShapeResource = itemType === 'generic.text.square' || 
-                               itemType === 'generic.text.circle' || 
-                               itemType === 'generic.text.point' || 
-                               itemType === 'generic.text.rectangle' || 
-                               itemType === 'generic.text.triangle' ||
-                               itemType === 'generic.text.star' ||
-                               itemType === 'generic.text.cloud' ||
+       const isShapeResource = itemType === 'generic.object.square' || 
+                                itemType === 'generic.object.circle' || 
+                                itemType === 'generic.object.point' || 
+                                itemType === 'generic.object.rectangle' || 
+                                itemType === 'generic.object.triangle' ||
+                                itemType === 'generic.object.star' ||
+                                itemType === 'generic.object.cloud' ||
                                itemType?.endsWith('.square') ||
                                itemType?.endsWith('.circle') ||
                                itemType?.endsWith('.point') ||
@@ -1064,10 +1064,10 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           info: item.provider ? `${itemLabel} from ${item.provider}` : `A new ${itemLabel}`,
           freeflow: isShapeResource ? true : undefined, // Shapes are always freeflow
           sizeMode: isShapeResource ? 'custom' : undefined, // Shapes use custom sizing
-          width: isShapeResource ? (itemType === 'generic.text.point' ? 20 : itemType === 'generic.text.rectangle' ? 80 : itemType === 'generic.text.cloud' ? 80 : 60) : undefined, // Initial width
-          height: isShapeResource ? (itemType === 'generic.text.point' ? 20 : itemType === 'generic.text.rectangle' ? 50 : itemType === 'generic.text.cloud' ? 50 : 60) : undefined, // Initial height
+          width: isShapeResource ? (itemType === 'generic.object.point' ? 20 : itemType === 'generic.object.rectangle' ? 80 : itemType === 'generic.object.cloud' ? 80 : 60) : undefined, // Initial width
+          height: isShapeResource ? (itemType === 'generic.object.point' ? 20 : itemType === 'generic.object.rectangle' ? 50 : itemType === 'generic.object.cloud' ? 50 : 60) : undefined, // Initial height
           // Special defaults for point shape
-          ...(itemType === 'generic.text.point' && {
+          ...(itemType === 'generic.object.point' && {
             label: '', // No label by default
             borderStyle: 'none', // No outline by default
             backgroundColor: '#808080' // Grey color by default
@@ -1160,13 +1160,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           let minWidth = 80;
           let minHeight = 40;
           
-          const isShapeNode = node.type === 'generic.text.square' || 
-                             node.type === 'generic.text.circle' || 
-                             node.type === 'generic.text.point' || 
-                             node.type === 'generic.text.rectangle' || 
-                             node.type === 'generic.text.triangle' ||
-                             node.type === 'generic.text.star' ||
-                             node.type === 'generic.text.cloud' ||
+          const isShapeNode = node.type === 'generic.object.square' || 
+                             node.type === 'generic.object.circle' || 
+                             node.type === 'generic.object.point' || 
+                             node.type === 'generic.object.rectangle' || 
+                             node.type === 'generic.object.triangle' ||
+                             node.type === 'generic.object.star' ||
+                             node.type === 'generic.object.cloud' ||
                              node.type?.endsWith('.square') ||
                              node.type?.endsWith('.circle') ||
                              node.type?.endsWith('.point') ||

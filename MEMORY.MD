@@ -61,6 +61,22 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
 - **Environment Configuration**: Uses OLLAMA_BASE_URL (default: http://localhost:11434) and OLLAMA_MODEL (default: deepseek-v3.1:671b-cloud)
 
 ### Recent Updates and Fixes
+- **Generic Shape Type Refactoring** (2025-11-12): Renamed generic shape types from `generic.text.*` to `generic.object.*` for better semantic clarity:
+  - **Renamed Types**: `generic.text.square`, `generic.text.rectangle`, `generic.text.circle`, `generic.text.point`, `generic.text.triangle`, `generic.text.star`, `generic.text.cloud` → `generic.object.*`
+  - **Configuration Updates**: Updated `resource-generic.json` to separate text resources (text, textbox, label, labelbox) from object resources (shapes)
+  - **File Structure**: Created new `/public/resources/generic/object/` directory and copied shape images from text directory
+  - **Code Updates**: Updated all TypeScript/JavaScript files to use new `generic.object.*` naming:
+    - `src/components/editor/editor-canvas.tsx` - Shape detection and sizing logic
+    - `src/components/diagram/node-edge-arrows.tsx` - Node type detection
+    - `src/components/diagram/bezier-connection.tsx` - Connection routing logic
+    - `src/components/editor/context-toolbar.tsx` - Toolbar shape detection
+    - `src/components/diagram-editor.tsx` - Shape node detection
+    - `src/components/diagram/diagram-node.tsx` - Shape rendering logic
+  - **Documentation Updates**: Updated AI schema documentation and Ollama service prompts
+  - **Test Files**: Updated test JSON files to use new naming convention
+  - **Backward Compatibility**: Preserved `generic.text.textbox` and `generic.text.labelbox` types unchanged as requested
+  - **Build Verification**: Confirmed successful compilation with no breaking changes
+  - **Benefits**: Clearer semantic distinction between text elements and geometric shapes, improved code organization
 - Resource JSON consolidation: Single source of truth under `public/resources/`; removed duplicate JSONs under `resources/`. Resource Browser now fetches index at runtime, and Canvas uses the same exact icon path via `imagePath` to ensure icon parity.
 - **Resource Reorganization**: Split into modular JSON files for better maintainability
 - **Bug Fixes**: Icon persistence, drag-drop preservation, scrollbar issues resolved
