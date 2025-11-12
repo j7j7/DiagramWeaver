@@ -223,16 +223,16 @@ function calculateBezierPath(fromX: number, fromY: number, toX: number, toY: num
 export function BezierConnection({ from, to, connectionColor, connectionData, onClick }: BezierConnectionProps) {
   // Use measureNodeDims-like logic for shapes to get actual dimensions
   const isFromShape = (from.type === 'generic.text.square' || from.type === 'generic.text.circle' || 
-                       from.type === 'generic.text.rectangle' || from.type === 'generic.text.triangle' ||
+                       from.type === 'generic.text.point' || from.type === 'generic.text.rectangle' || from.type === 'generic.text.triangle' ||
                        from.type === 'generic.text.star' || from.type === 'generic.text.cloud' ||
                        from.type?.endsWith('.square') || from.type?.endsWith('.circle') ||
-                       from.type?.endsWith('.rectangle') || from.type?.endsWith('.triangle') ||
+                       from.type?.endsWith('.point') || from.type?.endsWith('.rectangle') || from.type?.endsWith('.triangle') ||
                        from.type?.endsWith('.star') || from.type?.endsWith('.cloud'));
   const isToShape = (to.type === 'generic.text.square' || to.type === 'generic.text.circle' || 
-                     to.type === 'generic.text.rectangle' || to.type === 'generic.text.triangle' ||
+                     to.type === 'generic.text.point' || to.type === 'generic.text.rectangle' || to.type === 'generic.text.triangle' ||
                      to.type === 'generic.text.star' || to.type === 'generic.text.cloud' ||
                      to.type?.endsWith('.square') || to.type?.endsWith('.circle') ||
-                     to.type?.endsWith('.rectangle') || to.type?.endsWith('.triangle') ||
+                     to.type?.endsWith('.point') || to.type?.endsWith('.rectangle') || to.type?.endsWith('.triangle') ||
                      to.type?.endsWith('.star') || to.type?.endsWith('.cloud'));
   
   // Calculate dynamic heights for text nodes to account for multi-line text

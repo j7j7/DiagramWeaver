@@ -745,6 +745,7 @@ export default function DiagramEditor() {
         // Check if it's a shape node
         const isShapeNode = node.type === 'generic.text.square' || 
                            node.type === 'generic.text.circle' || 
+                           node.type === 'generic.text.point' || 
                            node.type === 'generic.text.rectangle' || 
                            node.type === 'generic.text.triangle' ||
                            node.type === 'generic.text.star' ||

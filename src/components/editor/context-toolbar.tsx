@@ -255,12 +255,14 @@ export function ContextToolbar({
   const isPlainTextNode = isNode && selectedItem.type === 'generic.text.text';
   const isShapeNode = isNode && (selectedItem.type === 'generic.text.square' || 
                                  selectedItem.type === 'generic.text.circle' || 
+                                 selectedItem.type === 'generic.text.point' || 
                                  selectedItem.type === 'generic.text.rectangle' || 
                                  selectedItem.type === 'generic.text.triangle' ||
                                  selectedItem.type === 'generic.text.star' ||
                                  selectedItem.type === 'generic.text.cloud' ||
                                  selectedItem.type?.endsWith('.square') ||
                                  selectedItem.type?.endsWith('.circle') ||
+                                 selectedItem.type?.endsWith('.point') ||
                                  selectedItem.type?.endsWith('.rectangle') ||
                                  selectedItem.type?.endsWith('.triangle') ||
                                  selectedItem.type?.endsWith('.star') ||

@@ -65,12 +65,14 @@ const measureNodeDims = (n: PositionedNode) => {
   const isShapeNode =
     n.type === 'generic.text.square' ||
     n.type === 'generic.text.circle' ||
+    n.type === 'generic.text.point' ||
     n.type === 'generic.text.rectangle' ||
     n.type === 'generic.text.triangle' ||
     n.type === 'generic.text.star' ||
     n.type === 'generic.text.cloud' ||
     n.type?.endsWith('.square') ||
     n.type?.endsWith('.circle') ||
+    n.type?.endsWith('.point') ||
     n.type?.endsWith('.rectangle') ||
     n.type?.endsWith('.triangle') ||
     n.type?.endsWith('.star') ||
@@ -1024,12 +1026,14 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       // Check if this is a shape resource (needed for freeflow and group exclusion)
       const isShapeResource = itemType === 'generic.text.square' || 
                                itemType === 'generic.text.circle' || 
+                               itemType === 'generic.text.point' || 
                                itemType === 'generic.text.rectangle' || 
                                itemType === 'generic.text.triangle' ||
                                itemType === 'generic.text.star' ||
                                itemType === 'generic.text.cloud' ||
                                itemType?.endsWith('.square') ||
                                itemType?.endsWith('.circle') ||
+                               itemType?.endsWith('.point') ||
                                itemType?.endsWith('.rectangle') ||
                                itemType?.endsWith('.triangle') ||
                                itemType?.endsWith('.star') ||
@@ -1060,8 +1064,14 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           info: item.provider ? `${itemLabel} from ${item.provider}` : `A new ${itemLabel}`,
           freeflow: isShapeResource ? true : undefined, // Shapes are always freeflow
           sizeMode: isShapeResource ? 'custom' : undefined, // Shapes use custom sizing
-          width: isShapeResource ? (itemType === 'generic.text.rectangle' ? 80 : itemType === 'generic.text.cloud' ? 80 : 60) : undefined, // Initial width
-          height: isShapeResource ? (itemType === 'generic.text.rectangle' ? 50 : itemType === 'generic.text.cloud' ? 50 : 60) : undefined, // Initial height
+          width: isShapeResource ? (itemType === 'generic.text.point' ? 20 : itemType === 'generic.text.rectangle' ? 80 : itemType === 'generic.text.cloud' ? 80 : 60) : undefined, // Initial width
+          height: isShapeResource ? (itemType === 'generic.text.point' ? 20 : itemType === 'generic.text.rectangle' ? 50 : itemType === 'generic.text.cloud' ? 50 : 60) : undefined, // Initial height
+          // Special defaults for point shape
+          ...(itemType === 'generic.text.point' && {
+            label: '', // No label by default
+            borderStyle: 'none', // No outline by default
+            backgroundColor: '#808080' // Grey color by default
+          })
         };
         newNodes.push(newNode);
         newItemId = newNode.id;
@@ -1152,12 +1162,14 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           
           const isShapeNode = node.type === 'generic.text.square' || 
                              node.type === 'generic.text.circle' || 
+                             node.type === 'generic.text.point' || 
                              node.type === 'generic.text.rectangle' || 
                              node.type === 'generic.text.triangle' ||
                              node.type === 'generic.text.star' ||
                              node.type === 'generic.text.cloud' ||
                              node.type?.endsWith('.square') ||
                              node.type?.endsWith('.circle') ||
+                             node.type?.endsWith('.point') ||
                              node.type?.endsWith('.rectangle') ||
                              node.type?.endsWith('.triangle') ||
                              node.type?.endsWith('.star') ||

@@ -259,8 +259,8 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
   const isLabelNode = node.type === 'generic.text.label';
   const isTextboxNode = node.type === 'generic.text.textbox';
   const isLabelboxNode = node.type === 'generic.text.labelbox';
-  const isShapeNode = node.type === 'generic.text.square' || node.type === 'generic.text.circle' || node.type === 'generic.text.rectangle' || node.type === 'generic.text.triangle' || node.type === 'generic.text.star' || node.type === 'generic.text.cloud' ||
-                      node.type?.endsWith('.square') || node.type?.endsWith('.circle') || node.type?.endsWith('.rectangle') || node.type?.endsWith('.triangle') || node.type?.endsWith('.star') || node.type?.endsWith('.cloud');
+  const isShapeNode = node.type === 'generic.text.square' || node.type === 'generic.text.circle' || node.type === 'generic.text.point' || node.type === 'generic.text.rectangle' || node.type === 'generic.text.triangle' || node.type === 'generic.text.star' || node.type === 'generic.text.cloud' ||
+                      node.type?.endsWith('.square') || node.type?.endsWith('.circle') || node.type?.endsWith('.point') || node.type?.endsWith('.rectangle') || node.type?.endsWith('.triangle') || node.type?.endsWith('.star') || node.type?.endsWith('.cloud');
   const isRotatableNode = isTextNode || isLabelNode || isTextboxNode || isLabelboxNode || isShapeNode;
   const nodeHeight = calculateNodeHeight(node.label || '', node.type, node.sizeMode, node.height);
   const rotation = (node as any).rotation || 0;
@@ -863,6 +863,54 @@ return (
                                style={{ color: getShapeTextColor() }}
                               onDoubleClick={handleLabelDoubleClick}
                             >
+                              {node.label}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {(node.type === 'generic.text.point' || node.type?.endsWith('.point')) && (
+                    <div 
+                      key={`gradient-${gradientAngle}`}
+                      className="rounded-full relative"
+                      style={{ 
+                        background: getBackgroundStyle(),
+                        borderWidth: borderStyle === 'none' ? '0' : `${borderWidth}px`,
+                        borderStyle: borderStyle === 'gradient' ? 'solid' : borderStyle,
+                        width: node.width || 20,
+                        height: node.height || 20,
+                        minWidth: node.width || 20,
+                        minHeight: node.height || 20,
+                        margin: hasShadow ? 4 : 0,
+                        ...(borderStyle === 'gradient' ? getBorderStyle() : { borderColor: getBorderStyle() }),
+                        ...(hasShadow && { 
+                          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                        })
+                      }}
+                    >
+                      {/* Text inside point - typically empty */}
+                      {(node as any).textPosition === 'center' && node.label && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          {isEditingLabel ? (
+                             <input
+                               ref={inputRef}
+                               id={`node-input-${node.id}`}
+                               type="text"
+                               value={editText}
+                               onChange={(e) => setEditText(e.target.value)}
+                               onBlur={handleLabelSubmit}
+                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
+                               className="text-xs text-center bg-transparent border border-white rounded px-1 py-0.5 w-16 outline-none"
+                                style={getTextStylingForNode(node)}
+                               onClick={(e) => e.stopPropagation()}
+                             />
+                           ) : (
+                             <p 
+                               className="text-xs text-center break-words leading-tight px-1 cursor-text"
+                                style={getTextStylingForNode(node)}
+                               onDoubleClick={handleLabelDoubleClick}
+                             >
                               {node.label}
                             </p>
                           )}

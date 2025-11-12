@@ -72,6 +72,7 @@ export class OllamaService {
 - generic.text.square - Square shape
 - generic.text.rectangle - Rectangle shape
 - generic.text.circle - Circle shape
+- generic.text.point - Point shape (small grey point, no outline, no label, freeflow mode)
 - generic.text.triangle - Triangle shape
 - generic.text.star - Star shape
 - generic.text.cloud - Cloud shape
