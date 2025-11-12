@@ -65,6 +65,42 @@
       "sizeMode": "custom",
       "width": 280,
       "height": 80
+    },
+    {
+      "id": "vertical-top",
+      "type": "generic.text.textbox",
+      "label": "Top positioned text",
+      "x": 450,
+      "y": 350,
+      "textJustify": "center",
+      "textVerticalPosition": "top",
+      "sizeMode": "custom",
+      "width": 200,
+      "height": 120
+    },
+    {
+      "id": "vertical-middle",
+      "type": "generic.text.textbox",
+      "label": "Middle positioned text",
+      "x": 700,
+      "y": 350,
+      "textJustify": "center",
+      "textVerticalPosition": "middle",
+      "sizeMode": "custom",
+      "width": 200,
+      "height": 120
+    },
+    {
+      "id": "vertical-bottom",
+      "type": "generic.text.textbox",
+      "label": "Bottom positioned text",
+      "x": 950,
+      "y": 350,
+      "textJustify": "center",
+      "textVerticalPosition": "bottom",
+      "sizeMode": "custom",
+      "width": 200,
+      "height": 120
     }
   ],
   "connections": [],

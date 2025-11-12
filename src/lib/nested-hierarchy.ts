@@ -51,7 +51,7 @@ export function convertToNestedHierarchy(data: DiagramData): HierarchicalDiagram
       id: 'orphan-nodes',
       type: 'group',
       label: '', // Invisible container
-      children: orphanNodes.map(node => ({
+        children: orphanNodes.map(node => ({
         id: node.id,
         type: node.type,
         label: node.label,
@@ -76,7 +76,9 @@ export function convertToNestedHierarchy(data: DiagramData): HierarchicalDiagram
         width: node.width,
         height: node.height,
         sizeMode: node.sizeMode,
-        noIconBackground: node.noIconBackground
+        noIconBackground: node.noIconBackground,
+        textJustify: node.textJustify,
+        textVerticalPosition: node.textVerticalPosition
       }))
     };
     nestedGroups.push(orphanGroup);
@@ -134,7 +136,9 @@ function convertGroupToNested(
         width: node.width,
         height: node.height,
         sizeMode: node.sizeMode,
-        noIconBackground: node.noIconBackground
+        noIconBackground: node.noIconBackground,
+        textJustify: node.textJustify,
+        textVerticalPosition: node.textVerticalPosition
       });
     } else {
       // This is a nested group
@@ -172,7 +176,9 @@ function convertGroupToNested(
     minWidth: group.minWidth,
     minHeight: group.minHeight,
     rotation: group.rotation,
-    borderWidth: group.borderWidth
+    borderWidth: group.borderWidth,
+    textJustify: group.textJustify,
+    textVerticalPosition: group.textVerticalPosition
   };
 }
 
@@ -217,7 +223,9 @@ export function convertFromNestedHierarchy(nestedData: HierarchicalDiagramData):
             width: nodeChild.width,
             height: nodeChild.height,
             sizeMode: nodeChild.sizeMode,
-            noIconBackground: nodeChild.noIconBackground
+            noIconBackground: nodeChild.noIconBackground,
+            textJustify: nodeChild.textJustify,
+            textVerticalPosition: nodeChild.textVerticalPosition
           };
           nodes.push(node);
         }
@@ -277,7 +285,9 @@ function processNestedGroup(
     minHeight: group.minHeight,
     rotation: group.rotation,
     borderWidth: group.borderWidth,
-    parentId: parentId || undefined
+    parentId: parentId || undefined,
+    textJustify: group.textJustify,
+    textVerticalPosition: group.textVerticalPosition
   };
   
   groups.push(flatGroup);
@@ -314,12 +324,14 @@ function processNestedGroup(
             textPosition: nodeChild.textPosition,
             freeflow: nodeChild.freeflow,
             borderWidth: nodeChild.borderWidth,
-            width: nodeChild.width,
-            height: nodeChild.height,
-            sizeMode: nodeChild.sizeMode,
-            noIconBackground: nodeChild.noIconBackground
-          };
-      
+          width: nodeChild.width,
+          height: nodeChild.height,
+          sizeMode: nodeChild.sizeMode,
+          noIconBackground: nodeChild.noIconBackground,
+          textJustify: nodeChild.textJustify,
+          textVerticalPosition: nodeChild.textVerticalPosition
+        };
+    
       nodes.push(node);
       nodeMap.set(child.id, node);
       flatGroup.children.push(child.id);

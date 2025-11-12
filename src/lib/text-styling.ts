@@ -13,6 +13,8 @@ export interface TextStyling {
   lineHeight?: number;
   textOpacity?: number;
   textColor?: string;
+  textJustify?: 'left' | 'center' | 'right' | 'full';
+  textVerticalPosition?: 'top' | 'middle' | 'bottom';
 }
 
 /**
@@ -32,7 +34,9 @@ export function getTextStyling(
     letterSpacing: node?.letterSpacing || theme?.letterSpacing,
     lineHeight: node?.lineHeight || theme?.lineHeight,
     textOpacity: node?.textOpacity || theme?.textOpacity,
-    textColor: node?.textColor || theme?.textColor
+    textColor: node?.textColor || theme?.textColor,
+    textJustify: node?.textJustify || 'center',
+    textVerticalPosition: node?.textVerticalPosition || 'middle'
   };
 }
 
@@ -52,6 +56,8 @@ export function getTextStylingCSS(styling: TextStyling): React.CSSProperties {
   if (styling.lineHeight) css.lineHeight = styling.lineHeight;
   if (styling.textOpacity !== undefined) css.opacity = styling.textOpacity;
   if (styling.textColor) css.color = styling.textColor;
+  if (styling.textJustify) css.textAlign = styling.textJustify === 'full' ? 'justify' : styling.textJustify;
+  if (styling.textVerticalPosition) css.display = 'flex';
   
   return css;
 }
@@ -70,7 +76,9 @@ export function extractTextStylingFromNode(node: DiagramNodeData | DiagramNodeIt
     letterSpacing: node.letterSpacing,
     lineHeight: node.lineHeight,
     textOpacity: node.textOpacity,
-    textColor: node.textColor
+    textColor: node.textColor,
+    textJustify: node.textJustify,
+    textVerticalPosition: node.textVerticalPosition
   };
 }
 
@@ -88,7 +96,9 @@ export function extractTextStylingFromGroup(group: DiagramGroupData | DiagramGro
     letterSpacing: group.letterSpacing,
     lineHeight: group.lineHeight,
     textOpacity: group.textOpacity,
-    textColor: group.textColor
+    textColor: group.textColor,
+    textJustify: group.textJustify,
+    textVerticalPosition: group.textVerticalPosition
   };
 }
 
@@ -110,7 +120,9 @@ export function applyTextStylingToNode(
     letterSpacing: styling.letterSpacing ?? node.letterSpacing,
     lineHeight: styling.lineHeight ?? node.lineHeight,
     textOpacity: styling.textOpacity ?? node.textOpacity,
-    textColor: styling.textColor ?? node.textColor
+    textColor: styling.textColor ?? node.textColor,
+    textJustify: styling.textJustify ?? node.textJustify,
+    textVerticalPosition: styling.textVerticalPosition ?? node.textVerticalPosition
   };
 }
 
@@ -132,7 +144,9 @@ export function applyTextStylingToGroup(
     letterSpacing: styling.letterSpacing ?? group.letterSpacing,
     lineHeight: styling.lineHeight ?? group.lineHeight,
     textOpacity: styling.textOpacity ?? group.textOpacity,
-    textColor: styling.textColor ?? group.textColor
+    textColor: styling.textColor ?? group.textColor,
+    textJustify: styling.textJustify ?? group.textJustify,
+    textVerticalPosition: styling.textVerticalPosition ?? group.textVerticalPosition
   };
 }
 
@@ -149,7 +163,9 @@ export const DEFAULT_TEXT_STYLING: TextStyling = {
   letterSpacing: 0,
   lineHeight: 1.4,
   textOpacity: 1,
-  textColor: '#374151'
+  textColor: '#374151',
+  textJustify: 'center',
+  textVerticalPosition: 'middle'
 };
 
 /**

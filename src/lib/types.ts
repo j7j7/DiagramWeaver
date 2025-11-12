@@ -30,6 +30,7 @@ export interface DiagramNodeData {
   noIconBackground?: boolean; // If true, removes the white background from icon nodes
   // Text justification for text resources
   textJustify?: 'left' | 'center' | 'right' | 'full'; // Text justification for text/textbox nodes
+  textVerticalPosition?: 'top' | 'middle' | 'bottom'; // Vertical position of text in textbox nodes
   
   // Text styling properties
   fontFamily?: string; // Font family (e.g., 'Arial', 'Helvetica', 'Times New Roman')
@@ -93,6 +94,7 @@ export interface DiagramNodeItem {
   noIconBackground?: boolean; // If true, removes the white background from icon nodes
   // Text justification for text resources
   textJustify?: 'left' | 'center' | 'right' | 'full'; // Text justification for text/textbox nodes
+  textVerticalPosition?: 'top' | 'middle' | 'bottom'; // Vertical position of text in textbox nodes
   
   // Text styling properties
   fontFamily?: string; // Font family (e.g., 'Arial', 'Helvetica', 'Times New Roman')
@@ -132,7 +134,11 @@ export interface DiagramGroupItem {
   
    // Text positioning properties
    textPosition?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right' | 'inside';
-   
+    
+   // Text justification properties
+   textJustify?: 'left' | 'center' | 'right' | 'full'; // Text justification for text/textbox nodes
+   textVerticalPosition?: 'top' | 'middle' | 'bottom'; // Vertical position of text in textbox nodes
+    
    // Text styling properties
    fontFamily?: string; // Font family (e.g., 'Arial', 'Helvetica', 'Times New Roman')
    fontSize?: number; // Font size in pixels
@@ -181,7 +187,11 @@ export interface DiagramGroupData {
    
    // Text positioning properties
    textPosition?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right' | 'inside';
-   
+    
+   // Text justification properties
+   textJustify?: 'left' | 'center' | 'right' | 'full'; // Text justification for text/textbox nodes
+   textVerticalPosition?: 'top' | 'middle' | 'bottom'; // Vertical position of text in textbox nodes
+    
    // Text styling properties
    fontFamily?: string; // Font family (e.g., 'Arial', 'Helvetica', 'Times New Roman')
    fontSize?: number; // Font size in pixels

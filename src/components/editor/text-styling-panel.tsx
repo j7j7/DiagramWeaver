@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TextStyling, COMMON_FONT_FAMILIES, FONT_WEIGHT_OPTIONS } from "@/lib/text-styling";
-import { Type, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, RotateCcw } from "lucide-react";
+import { Type, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, ArrowUp, Circle, ArrowDown, RotateCcw } from "lucide-react";
 
 interface TextStylingPanelProps {
   styling: Partial<TextStyling>;
@@ -89,38 +89,84 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
           />
         </div>
 
-        <Separator />
-
-        {/* Font Style */}
+        {/* Text Justification */}
         <div className="space-y-2">
-          <Label className="text-xs font-medium">Font Style</Label>
-          <div className="flex gap-2">
+          <Label className="text-xs font-medium">Text Justification</Label>
+          <div className="flex gap-1">
             <Button
-              variant={styling.fontWeight === 'bold' || styling.fontWeight === '700' ? 'default' : 'outline'}
+              variant={styling.textJustify === 'left' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => handlePropertyChange('fontWeight', (styling.fontWeight === 'bold' || styling.fontWeight === '700') ? 'normal' : 'bold')}
+              onClick={() => handlePropertyChange('textJustify', styling.textJustify === 'left' ? 'center' : 'left')}
               className="h-8 px-2"
+              title="Align Left"
             >
-              <Bold className="w-3 h-3" />
+              <AlignLeft className="w-3 h-3" />
             </Button>
             <Button
-              variant={styling.fontStyle === 'italic' ? 'default' : 'outline'}
+              variant={styling.textJustify === 'center' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => handlePropertyChange('fontStyle', styling.fontStyle === 'italic' ? 'normal' : 'italic')}
+              onClick={() => handlePropertyChange('textJustify', 'center')}
               className="h-8 px-2"
+              title="Align Center"
             >
-              <Italic className="w-3 h-3" />
+              <AlignCenter className="w-3 h-3" />
             </Button>
             <Button
-              variant={styling.textDecoration === 'underline' ? 'default' : 'outline'}
+              variant={styling.textJustify === 'right' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => handlePropertyChange('textDecoration', styling.textDecoration === 'underline' ? 'none' : 'underline')}
+              onClick={() => handlePropertyChange('textJustify', styling.textJustify === 'right' ? 'center' : 'right')}
               className="h-8 px-2"
+              title="Align Right"
             >
-              <Underline className="w-3 h-3" />
+              <AlignRight className="w-3 h-3" />
+            </Button>
+            <Button
+              variant={styling.textJustify === 'full' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => handlePropertyChange('textJustify', styling.textJustify === 'full' ? 'center' : 'full')}
+              className="h-8 px-2"
+              title="Justify"
+            >
+              <AlignJustify className="w-3 h-3" />
             </Button>
           </div>
         </div>
+
+        {/* Text Vertical Position */}
+        <div className="space-y-2">
+          <Label className="text-xs font-medium">Vertical Position</Label>
+          <div className="flex gap-1">
+            <Button
+              variant={styling.textVerticalPosition === 'top' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => handlePropertyChange('textVerticalPosition', styling.textVerticalPosition === 'top' ? 'middle' : 'top')}
+              className="h-8 px-2"
+              title="Align Top"
+            >
+              <ArrowUp className="w-3 h-3" />
+            </Button>
+            <Button
+              variant={styling.textVerticalPosition === 'middle' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => handlePropertyChange('textVerticalPosition', 'middle')}
+              className="h-8 px-2"
+              title="Align Middle"
+            >
+              <Circle className="w-3 h-3" />
+            </Button>
+            <Button
+              variant={styling.textVerticalPosition === 'bottom' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => handlePropertyChange('textVerticalPosition', styling.textVerticalPosition === 'bottom' ? 'middle' : 'bottom')}
+              className="h-8 px-2"
+              title="Align Bottom"
+            >
+              <ArrowDown className="w-3 h-3" />
+            </Button>
+          </div>
+        </div>
+
+        <Separator />
 
         {/* Text Transform */}
         <div className="space-y-2">

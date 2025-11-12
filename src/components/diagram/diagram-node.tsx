@@ -232,21 +232,35 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
     }
   };
   
-  // Helper function to get text justification class
-  const getTextJustifyClass = (justify?: string) => {
-    switch (justify) {
-      case 'left':
-        return 'text-left';
-      case 'center':
-        return 'text-center';
-      case 'right':
-        return 'text-right';
-      case 'full':
-        return 'text-justify';
-      default:
-        return 'text-center';
-    }
-  };
+   // Helper function to get text justification class
+   const getTextJustifyClass = (justify?: string) => {
+     switch (justify) {
+       case 'left':
+         return 'text-left';
+       case 'center':
+         return 'text-center';
+       case 'right':
+         return 'text-right';
+       case 'full':
+         return 'text-justify';
+       default:
+         return 'text-center';
+     }
+   };
+   
+   // Helper function to get vertical positioning class
+   const getVerticalPositionClass = (position?: string) => {
+     switch (position) {
+       case 'top':
+         return 'items-start';
+       case 'middle':
+         return 'items-center';
+       case 'bottom':
+         return 'items-end';
+       default:
+         return 'items-center';
+     }
+   };
   
   const isTextNode = node.type === 'generic.text.text';
   const isTextboxNode = node.type === 'generic.text.textbox';
@@ -524,7 +538,9 @@ return (
                 return (
               <div 
                   className={cn(
-                    "flex items-center justify-center h-full w-full rounded-lg transition-colors",
+                    "flex h-full w-full rounded-lg transition-colors",
+                    getVerticalPositionClass((node as any).textVerticalPosition),
+                    "justify-center",
                     node.sizeMode === 'custom' ? "p-1" : "p-4",
                    borderStyle !== 'none' && "border-2",
                    borderStyle === 'none' && (isSelected 
