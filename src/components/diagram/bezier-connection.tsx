@@ -54,18 +54,28 @@ function getConnectionPoint(obj: any, width: number, height: number, point: 'top
   // Use icon height for Y center calculation if provided (for nodes with text labels)
   // This ensures connections attach to the icon center, not the overall node center
   const centerY = iconHeight ? obj.y + iconHeight / 2 : obj.y + height / 2;
+  
+  // For groups/zones, always use full height for edge center calculations
+  const isGroup = obj.type === 'group' || obj.subType === 'zone';
+  const edgeCenterY = isGroup ? obj.y + height / 2 : centerY;
 
   switch (point) {
     case 'top':
+      // For top edge, always use horizontal center and top Y
       return { x: centerX, y: obj.y };
     case 'bottom':
-      // For bottom, use icon height if provided (icon is at top, so bottom of icon)
-      const bottomY = iconHeight ? obj.y + iconHeight : obj.y + height;
+      // For bottom edge, always use horizontal center and bottom Y
+      // For groups/zones, use full height; for nodes with icons, use icon height
+      const bottomY = isGroup ? obj.y + height : (iconHeight ? obj.y + iconHeight : obj.y + height);
       return { x: centerX, y: bottomY };
     case 'left':
-      return { x: obj.x, y: centerY };
+      // For left edge, always use left X and vertical center
+      // For groups/zones, use full height center; for nodes, use icon center if provided
+      return { x: obj.x, y: edgeCenterY };
     case 'right':
-      return { x: obj.x + width, y: centerY };
+      // For right edge, always use right X and vertical center
+      // For groups/zones, use full height center; for nodes, use icon center if provided
+      return { x: obj.x + width, y: edgeCenterY };
     case 'center':
       return { x: centerX, y: centerY };
     default:
@@ -124,22 +134,43 @@ function getOptimalConnectionPoints(from: any, to: any, fromWidth: number, fromH
   const isFromGroup = from.type === 'group' || from.subType === 'zone';
   const isToGroup = to.type === 'group' || to.subType === 'zone';
 
-  // For groups/zones, prefer edge connections unless center is specified
-  if (isFromGroup && !connectionData?.fromPreferredExit) {
-    fromPoint = isHorizontal ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'bottom' : 'top');
+  // For groups/zones, ALWAYS use edge connections (never center) unless explicitly overridden with a non-center point
+  if (isFromGroup) {
+    // Only use preferred exit if it's explicitly set AND it's not 'center'
+    if (connectionData?.fromPreferredExit && connectionData.fromPreferredExit !== 'center') {
+      fromPoint = connectionData.fromPreferredExit;
+    } else {
+      // Force edge connection based on direction
+      fromPoint = isHorizontal ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'bottom' : 'top');
+    }
   }
-  if (isToGroup && !connectionData?.toPreferredEntry) {
-    toPoint = isHorizontal ? (dx > 0 ? 'left' : 'right') : (dy > 0 ? 'top' : 'bottom');
+  
+  if (isToGroup) {
+    // Only use preferred entry if it's explicitly set AND it's not 'center'
+    if (connectionData?.toPreferredEntry && connectionData.toPreferredEntry !== 'center') {
+      toPoint = connectionData.toPreferredEntry;
+    } else {
+      // Force edge connection based on direction
+      toPoint = isHorizontal ? (dx > 0 ? 'left' : 'right') : (dy > 0 ? 'top' : 'bottom');
+    }
   }
 
   const finalFromPoint = connectionData?.fromPreferredExit || fromPoint;
   const finalToPoint = connectionData?.toPreferredEntry || toPoint;
   
-  const fromConnectionPoint = getConnectionPoint(from, fromWidth, fromHeight, finalFromPoint, fromIconHeight);
-  const toConnectionPoint = getConnectionPoint(to, toWidth, toHeight, finalToPoint, toIconHeight);
+  // Final safety check: never allow 'center' for groups/zones
+  const safeFromPoint = (isFromGroup && finalFromPoint === 'center') 
+    ? (isHorizontal ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'bottom' : 'top'))
+    : finalFromPoint;
+  const safeToPoint = (isToGroup && finalToPoint === 'center')
+    ? (isHorizontal ? (dx > 0 ? 'left' : 'right') : (dy > 0 ? 'top' : 'bottom'))
+    : finalToPoint;
   
-  const fromAngle = getExitAngle(finalFromPoint);
-  const toAngle = getExitAngle(finalToPoint);
+  const fromConnectionPoint = getConnectionPoint(from, fromWidth, fromHeight, safeFromPoint, fromIconHeight);
+  const toConnectionPoint = getConnectionPoint(to, toWidth, toHeight, safeToPoint, toIconHeight);
+  
+  const fromAngle = getExitAngle(safeFromPoint);
+  const toAngle = getExitAngle(safeToPoint);
 
   return {
     fromX: fromConnectionPoint.x,
@@ -267,15 +298,24 @@ export function BezierConnection({ from, to, connectionColor, connectionData, on
     toTextUnderHeight = 20 + ((lines - 1) * 8); // First line: 20px, then +15px for each additional line
   }
   
-  // For shapes, always use their custom width/height if available
-  const fromWidth = isFromShape && from.width ? from.width : (from.width || NODE_WIDTH);
-  const fromHeight = isFromShape && from.height ? from.height : (fromCalculatedHeight + fromTextUnderHeight);
-  const toWidth = isToShape && to.width ? to.width : (to.width || NODE_WIDTH);
-  const toHeight = isToShape && to.height ? to.height : (toCalculatedHeight + toTextUnderHeight);
-
   // Check if nodes are groups/zones (should use full height, not icon height)
   const isFromGroup = from.type === 'group' || from.subType === 'zone';
   const isToGroup = to.type === 'group' || to.subType === 'zone';
+  
+  // For groups/zones, ensure we use the calculated width/height (important for auto-fit groups)
+  // For auto-fit groups, width/height should be calculated and set, but fallback to defaults if not
+  const fromWidth = isFromGroup 
+    ? (from.width || 300)  // Use calculated width for groups/zones, fallback to 300
+    : (isFromShape && from.width ? from.width : (from.width || NODE_WIDTH));
+  const fromHeight = isFromGroup
+    ? (from.height || 220)  // Use calculated height for groups/zones, fallback to 220
+    : (isFromShape && from.height ? from.height : (fromCalculatedHeight + fromTextUnderHeight));
+  const toWidth = isToGroup
+    ? (to.width || 300)  // Use calculated width for groups/zones, fallback to 300
+    : (isToShape && to.width ? to.width : (to.width || NODE_WIDTH));
+  const toHeight = isToGroup
+    ? (to.height || 220)  // Use calculated height for groups/zones, fallback to 220
+    : (isToShape && to.height ? to.height : (toCalculatedHeight + toTextUnderHeight));
   
   // Calculate icon-only heights (excluding text labels) for connection point calculations
   // This ensures connections attach to the icon center, not the overall node center
@@ -432,14 +472,15 @@ export function BezierConnectionText({ connectionData, from, to, connectionColor
   let textX = 0, textY = 0;
 
   if (connectionData && from && to) {
-    const fromWidth = from.width || NODE_WIDTH;
-    const fromHeight = from.height || NODE_HEIGHT;
-    const toWidth = to.width || NODE_WIDTH;
-    const toHeight = to.height || NODE_HEIGHT;
-
     // Check if nodes are groups/zones (should use full height, not icon height)
     const isFromGroup = from.type === 'group' || from.subType === 'zone';
     const isToGroup = to.type === 'group' || to.subType === 'zone';
+    
+    // For groups/zones, ensure we use the calculated width/height (important for auto-fit groups)
+    const fromWidth = isFromGroup ? (from.width || 300) : (from.width || NODE_WIDTH);
+    const fromHeight = isFromGroup ? (from.height || 220) : (from.height || NODE_HEIGHT);
+    const toWidth = isToGroup ? (to.width || 300) : (to.width || NODE_WIDTH);
+    const toHeight = isToGroup ? (to.height || 220) : (to.height || NODE_HEIGHT);
     
     // Calculate icon-only heights for connection text positioning (same logic as main connection)
     // BUT: Groups/zones should use full height, not icon height
