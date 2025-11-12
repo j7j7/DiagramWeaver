@@ -1176,12 +1176,22 @@ return (
                 })()}
                 
                 {/* Text under shape */}
-                {((node as any).textVerticalPosition === 'bottom' || (node as any).textPosition === 'under') && node.label && (
+                {((node as any).textVerticalPosition === 'bottom' || (node as any).textPosition === 'under') && node.label && (() => {
+                  const shapeHeight = node.height || 60;
+                  const shapeWidth = node.width || 60;
+                  const charsPerLine = Math.floor(shapeWidth / 7);
+                  const estimatedLines = Math.ceil((node.label?.length || 0) / charsPerLine);
+                  const lineHeight = 1.25;
+                  const textHeight = estimatedLines * lineHeight;
+                  const bottomOffset = shapeHeight + 0.5;
+                  
+                  return (
                   <div 
-                    className="flex items-center"
+                    className="absolute left-0 flex items-center"
                     style={{ 
-                      width: node.width || 60,
-                      minWidth: node.width || 60
+                      top: `${bottomOffset}px`,
+                      width: shapeWidth,
+                      minWidth: shapeWidth
                     }}
                   >
                     {isEditingLabel ? (
@@ -1193,13 +1203,13 @@ return (
                         onChange={(e) => setEditText(e.target.value)}
                         onBlur={handleLabelSubmit}
                         onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                        className={`text-sm ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-primary rounded px-2 py-1 w-full outline-none mt-1`}
+                        className={`text-sm ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-primary rounded px-2 py-1 w-full outline-none`}
                         style={getTextStylingForNode(node)}
                         onClick={(e) => e.stopPropagation()}
                       />
                     ) : (
                         <p 
-                          className={`${getTextJustifyClass((node as any).textJustify)} break-words leading-tight px-2 mt-1 cursor-text hover:bg-background/50 rounded w-full`}
+                          className={`${getTextJustifyClass((node as any).textJustify)} break-words leading-tight px-2 py-1 cursor-text hover:bg-background/50 rounded w-full`}
                           style={{ ...getTextStylingForNode(node), display: 'block' }}
                           onDoubleClick={handleLabelDoubleClick}
                         >
@@ -1207,7 +1217,8 @@ return (
                        </p>
                     )}
                   </div>
-                )}
+                  );
+                })()}
               </div>
               );
               })()
