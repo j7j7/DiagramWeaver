@@ -58,24 +58,28 @@ function getConnectionPoint(obj: any, width: number, height: number, point: 'top
   // For groups/zones, always use full height for edge center calculations
   const isGroup = obj.type === 'group' || obj.subType === 'zone';
   const edgeCenterY = isGroup ? obj.y + height / 2 : centerY;
+  
+  // For groups/zones, add 4px offset outward from the edge (applies to both auto-fit and custom size)
+  const edgeOffset = isGroup ? 4 : 0;
 
   switch (point) {
     case 'top':
       // For top edge, always use horizontal center and top Y
-      return { x: centerX, y: obj.y };
+      // For groups/zones, offset 4px upward (outward)
+      return { x: centerX, y: obj.y - edgeOffset };
     case 'bottom':
       // For bottom edge, always use horizontal center and bottom Y
-      // For groups/zones, use full height; for nodes with icons, use icon height
+      // For groups/zones, use full height and offset 4px downward (outward)
       const bottomY = isGroup ? obj.y + height : (iconHeight ? obj.y + iconHeight : obj.y + height);
-      return { x: centerX, y: bottomY };
+      return { x: centerX, y: bottomY + edgeOffset };
     case 'left':
       // For left edge, always use left X and vertical center
-      // For groups/zones, use full height center; for nodes, use icon center if provided
-      return { x: obj.x, y: edgeCenterY };
+      // For groups/zones, use full height center and offset 4px leftward (outward)
+      return { x: obj.x - edgeOffset, y: edgeCenterY };
     case 'right':
       // For right edge, always use right X and vertical center
-      // For groups/zones, use full height center; for nodes, use icon center if provided
-      return { x: obj.x + width, y: edgeCenterY };
+      // For groups/zones, use full height center and offset 4px rightward (outward)
+      return { x: obj.x + width + edgeOffset, y: edgeCenterY };
     case 'center':
       return { x: centerX, y: centerY };
     default:
