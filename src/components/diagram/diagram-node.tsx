@@ -134,7 +134,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
   
   // Resize state
   const [isResizing, setIsResizing] = useState(false);
-  const [resizeHandle, setResizeHandle] = useState<'right' | 'bottom' | null>(null);
+  const [resizeHandle, setResizeHandle] = useState<'right' | 'bottom' | 'bottom-right' | null>(null);
   const [isHovered, setIsHovered] = useState(false);
   const resizeStartPos = useRef<{ x: number; y: number; startWidth: number; startHeight: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -248,7 +248,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
      }
    };
    
-   // Helper function to get vertical positioning class
+   // Helper function to get vertical positioning class (for flex containers with flex-col)
    const getVerticalPositionClass = (position?: string) => {
      switch (position) {
        case 'top':
@@ -259,6 +259,20 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
          return 'items-end';
        default:
          return 'items-center';
+     }
+   };
+   
+   // Helper function to get vertical justification class (for flex containers with flex-col to position content)
+   const getVerticalJustifyClass = (position?: string) => {
+     switch (position) {
+       case 'top':
+         return 'justify-start';
+       case 'middle':
+         return 'justify-center';
+       case 'bottom':
+         return 'justify-end';
+       default:
+         return 'justify-center';
      }
    };
   
@@ -292,7 +306,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
   const [tempPosition] = useState<{ x: number; y: number } | null>(null);
   
   // Resize handlers
-  const handleResizeStart = (e: React.MouseEvent, handle: 'right' | 'bottom') => {
+  const handleResizeStart = (e: React.MouseEvent, handle: 'right' | 'bottom' | 'bottom-right') => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -324,6 +338,11 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
         newWidth = resizeStartPos.current.startWidth + deltaX;
         break;
       case 'bottom':
+        newHeight = resizeStartPos.current.startHeight + deltaY;
+        break;
+      case 'bottom-right':
+        // Dragging bottom-right corner - increase both width and height
+        newWidth = resizeStartPos.current.startWidth + deltaX;
         newHeight = resizeStartPos.current.startHeight + deltaY;
         break;
     }
@@ -539,9 +558,8 @@ return (
                 return (
               <div 
                   className={cn(
-                    "flex h-full w-full rounded-lg transition-colors",
+                    "flex flex-col h-full w-full rounded-lg transition-colors",
                     getVerticalPositionClass((node as any).textVerticalPosition),
-                    "justify-center",
                     node.sizeMode === 'custom' ? "p-1" : "p-4",
                    borderStyle !== 'none' && "border-2",
                    borderStyle === 'none' && (isSelected 
@@ -587,13 +605,17 @@ return (
                     rows={4}
                   />
                 ) : (
-                    <p 
-                      className={`${getTextJustifyClass((node as any).textJustify)} break-words leading-normal cursor-text hover:bg-background/50 rounded whitespace-pre-wrap ${node.sizeMode === 'custom' ? 'w-full px-1 py-0.5' : 'px-2 py-2 -mx-2 -my-2'}`}
-                      style={getTextStylingForNode(node)}
-                     onDoubleClick={handleLabelDoubleClick}
-                   >
-                     {node.label || 'Enter text...'}
-                   </p>
+                    <div 
+                      className={`w-full flex-1 flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} ${node.sizeMode === 'custom' ? 'px-1 py-0.5' : 'px-2 py-2'}`}
+                    >
+                      <p 
+                        className={`${getTextJustifyClass((node as any).textJustify)} break-words leading-normal cursor-text hover:bg-background/50 rounded whitespace-pre-wrap w-full`}
+                        style={{ ...getTextStylingForNode(node), display: 'block' }}
+                        onDoubleClick={handleLabelDoubleClick}
+                      >
+                        {node.label || 'Enter text...'}
+                      </p>
+                    </div>
                  )}
                </div>
                );
@@ -660,29 +682,33 @@ return (
                       }}
                     >
                       {/* Text inside square */}
-                      {(node as any).textPosition === 'center' && node.label && (
-                        <div className="absolute inset-0 flex items-center justify-center">
+                      {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
+                        <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)}`}>
                           {isEditingLabel ? (
-                            <input
-                              ref={inputRef}
-                              id={`node-input-${node.id}`}
-                              type="text"
-                              value={editText}
-                              onChange={(e) => setEditText(e.target.value)}
-                              onBlur={handleLabelSubmit}
-                              onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                              className="text-xs font-medium text-center bg-transparent border border-white rounded px-1 py-0.5 w-16 outline-none"
-                               style={{ color: getShapeTextColor() }}
-                              onClick={(e) => e.stopPropagation()}
-                            />
+                            <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
+                              <input
+                                ref={inputRef}
+                                id={`node-input-${node.id}`}
+                                type="text"
+                                value={editText}
+                                onChange={(e) => setEditText(e.target.value)}
+                                onBlur={handleLabelSubmit}
+                                onKeyDown={(e) => handleLabelKeyDown(e, false)}
+                                className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none`}
+                                style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </div>
                           ) : (
-                            <p 
-                              className="text-xs font-medium text-center break-words leading-tight px-1 cursor-text"
-                               style={{ color: getShapeTextColor() }}
-                              onDoubleClick={handleLabelDoubleClick}
-                            >
-                              {node.label}
-                            </p>
+                            <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
+                              <p 
+                                className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
+                                style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
+                                onDoubleClick={handleLabelDoubleClick}
+                              >
+                                {node.label}
+                              </p>
+                            </div>
                           )}
                         </div>
                       )}
@@ -708,29 +734,33 @@ return (
                       }}
                     >
                       {/* Text inside circle */}
-                      {(node as any).textPosition === 'center' && node.label && (
-                        <div className="absolute inset-0 flex items-center justify-center">
+                      {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
+                        <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)}`}>
                           {isEditingLabel ? (
-                            <input
-                              ref={inputRef}
-                              id={`node-input-${node.id}`}
-                              type="text"
-                              value={editText}
-                              onChange={(e) => setEditText(e.target.value)}
-                              onBlur={handleLabelSubmit}
-                              onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                              className="text-xs font-medium text-center bg-transparent border border-white rounded px-1 py-0.5 w-16 outline-none"
-                               style={{ color: getShapeTextColor() }}
-                              onClick={(e) => e.stopPropagation()}
-                            />
+                            <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
+                              <input
+                                ref={inputRef}
+                                id={`node-input-${node.id}`}
+                                type="text"
+                                value={editText}
+                                onChange={(e) => setEditText(e.target.value)}
+                                onBlur={handleLabelSubmit}
+                                onKeyDown={(e) => handleLabelKeyDown(e, false)}
+                                className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none`}
+                                style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </div>
                           ) : (
-                            <p 
-                              className="text-xs font-medium text-center break-words leading-tight px-1 cursor-text"
-                               style={{ color: getShapeTextColor() }}
-                              onDoubleClick={handleLabelDoubleClick}
-                            >
-                              {node.label}
-                            </p>
+                            <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
+                              <p 
+                                className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
+                                style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
+                                onDoubleClick={handleLabelDoubleClick}
+                              >
+                                {node.label}
+                              </p>
+                            </div>
                           )}
                         </div>
                       )}
@@ -756,8 +786,8 @@ return (
                       }}
                     >
                       {/* Text inside point - typically empty */}
-                      {(node as any).textPosition === 'center' && node.label && (
-                        <div className="absolute inset-0 flex items-center justify-center">
+                      {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
+                        <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)}`}>
                           {isEditingLabel ? (
                              <input
                                ref={inputRef}
@@ -767,18 +797,20 @@ return (
                                onChange={(e) => setEditText(e.target.value)}
                                onBlur={handleLabelSubmit}
                                onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                               className="text-xs text-center bg-transparent border border-white rounded px-1 py-0.5 w-16 outline-none"
-                                style={getTextStylingForNode(node)}
+                               className={`text-xs ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none`}
+                                style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
                                onClick={(e) => e.stopPropagation()}
                              />
                            ) : (
-                             <p 
-                               className="text-xs text-center break-words leading-tight px-1 cursor-text"
-                                style={getTextStylingForNode(node)}
-                               onDoubleClick={handleLabelDoubleClick}
-                             >
-                              {node.label}
-                            </p>
+                             <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
+                               <p 
+                                 className={`text-xs ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
+                                 style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
+                                 onDoubleClick={handleLabelDoubleClick}
+                               >
+                                 {node.label}
+                               </p>
+                             </div>
                           )}
                         </div>
                       )}
@@ -804,8 +836,8 @@ return (
                       }}
                     >
                       {/* Text inside rectangle */}
-                      {(node as any).textPosition === 'center' && node.label && (
-                        <div className="absolute inset-0 flex items-center justify-center">
+                      {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
+                        <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)}`}>
                           {isEditingLabel ? (
                              <input
                                ref={inputRef}
@@ -815,18 +847,20 @@ return (
                                onChange={(e) => setEditText(e.target.value)}
                                onBlur={handleLabelSubmit}
                                onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                               className="text-xs text-center bg-transparent border border-white rounded px-1 py-0.5 w-16 outline-none"
-                                style={getTextStylingForNode(node)}
+                               className={`text-xs ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none`}
+                                style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
                                onClick={(e) => e.stopPropagation()}
                              />
                            ) : (
-                             <p 
-                               className="text-xs text-center break-words leading-tight px-1 cursor-text"
-                                style={getTextStylingForNode(node)}
-                               onDoubleClick={handleLabelDoubleClick}
-                             >
-                              {node.label}
-                            </p>
+                             <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
+                               <p 
+                                 className={`text-xs ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
+                                 style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
+                                 onDoubleClick={handleLabelDoubleClick}
+                               >
+                                 {node.label}
+                               </p>
+                             </div>
                           )}
                         </div>
                       )}
@@ -881,29 +915,33 @@ return (
                         />
                       </svg>
                       {/* Text inside triangle - positioned in center */}
-                      {(node as any).textPosition === 'center' && node.label && (
-                        <div className="absolute inset-0 flex items-center justify-center pt-2">
+                      {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
+                        <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)} pt-2`}>
                           {isEditingLabel ? (
-                            <input
-                              ref={inputRef}
-                              id={`node-input-${node.id}`}
-                              type="text"
-                              value={editText}
-                              onChange={(e) => setEditText(e.target.value)}
-                              onBlur={handleLabelSubmit}
-                              onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                              className="text-xs font-medium text-center bg-transparent border border-white rounded px-1 py-0.5 w-16 outline-none"
-                               style={{ color: getShapeTextColor() }}
-                              onClick={(e) => e.stopPropagation()}
-                            />
+                            <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
+                              <input
+                                ref={inputRef}
+                                id={`node-input-${node.id}`}
+                                type="text"
+                                value={editText}
+                                onChange={(e) => setEditText(e.target.value)}
+                                onBlur={handleLabelSubmit}
+                                onKeyDown={(e) => handleLabelKeyDown(e, false)}
+                                className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none`}
+                                style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </div>
                           ) : (
-                            <p 
-                              className="text-xs font-medium text-center break-words leading-tight px-1 cursor-text"
-                               style={{ color: getShapeTextColor() }}
-                              onDoubleClick={handleLabelDoubleClick}
-                            >
-                              {node.label}
-                            </p>
+                            <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
+                              <p 
+                                className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
+                                style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
+                                onDoubleClick={handleLabelDoubleClick}
+                              >
+                                {node.label}
+                              </p>
+                            </div>
                           )}
                         </div>
                       )}
@@ -968,29 +1006,33 @@ return (
                         />
                       </svg>
                       {/* Text inside star - positioned in center */}
-                      {(node as any).textPosition === 'center' && node.label && (
-                        <div className="absolute inset-0 flex items-center justify-center pt-2">
+                      {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
+                        <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)} pt-2`}>
                           {isEditingLabel ? (
-                            <input
-                              ref={inputRef}
-                              id={`node-input-${node.id}`}
-                              type="text"
-                              value={editText}
-                              onChange={(e) => setEditText(e.target.value)}
-                              onBlur={handleLabelSubmit}
-                              onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                              className="text-xs font-medium text-center bg-transparent border border-white rounded px-1 py-0.5 w-16 outline-none"
-                               style={{ color: getShapeTextColor() }}
-                              onClick={(e) => e.stopPropagation()}
-                            />
+                            <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
+                              <input
+                                ref={inputRef}
+                                id={`node-input-${node.id}`}
+                                type="text"
+                                value={editText}
+                                onChange={(e) => setEditText(e.target.value)}
+                                onBlur={handleLabelSubmit}
+                                onKeyDown={(e) => handleLabelKeyDown(e, false)}
+                                className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none`}
+                                style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </div>
                           ) : (
-                            <p 
-                              className="text-xs font-medium text-center break-words leading-tight px-1 cursor-text"
-                               style={{ color: getShapeTextColor() }}
-                              onDoubleClick={handleLabelDoubleClick}
-                            >
-                              {node.label}
-                            </p>
+                            <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
+                              <p 
+                                className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
+                                style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
+                                onDoubleClick={handleLabelDoubleClick}
+                              >
+                                {node.label}
+                              </p>
+                            </div>
                           )}
                         </div>
                       )}
@@ -1057,8 +1099,8 @@ return (
                         />
                       </svg>
                       {/* Text inside cloud - positioned in center */}
-                      {(node as any).textPosition === 'center' && node.label && (
-                        <div className="absolute inset-0 flex items-center justify-center">
+                      {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
+                        <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)}`}>
                           {isEditingLabel ? (
                              <input
                                ref={inputRef}
@@ -1068,18 +1110,20 @@ return (
                                onChange={(e) => setEditText(e.target.value)}
                                onBlur={handleLabelSubmit}
                                onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                               className="text-xs text-center bg-transparent border border-white rounded px-1 py-0.5 w-20 outline-none"
-                                style={getTextStylingForNode(node)}
+                               className={`text-xs ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none`}
+                                style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
                                onClick={(e) => e.stopPropagation()}
                              />
                            ) : (
-                             <p 
-                               className="text-xs text-center break-words leading-tight px-1 cursor-text"
-                                style={getTextStylingForNode(node)}
-                               onDoubleClick={handleLabelDoubleClick}
-                             >
-                              {node.label}
-                            </p>
+                             <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
+                               <p 
+                                 className={`text-xs ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
+                                 style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
+                                 onDoubleClick={handleLabelDoubleClick}
+                               >
+                                 {node.label}
+                               </p>
+                             </div>
                           )}
                         </div>
                       )}
@@ -1088,7 +1132,7 @@ return (
                 </div>
                 
                 {/* Text above shape */}
-                {(node as any).textPosition === 'above' && node.label && (() => {
+                {((node as any).textVerticalPosition === 'top' || (node as any).textPosition === 'above') && node.label && (() => {
                   const shapeWidth = node.width || 60;
                   const charsPerLine = Math.floor(shapeWidth / 7);
                   const estimatedLines = Math.ceil((node.label?.length || 0) / charsPerLine);
@@ -1098,7 +1142,7 @@ return (
                   
                   return (
                     <div 
-                      className="absolute left-0 flex items-center justify-center"
+                      className="absolute left-0 flex items-center"
                       style={{ 
                         top: `${topOffset}rem`,
                         width: shapeWidth,
@@ -1114,13 +1158,14 @@ return (
                           onChange={(e) => setEditText(e.target.value)}
                           onBlur={handleLabelSubmit}
                           onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                          className="text-sm text-center bg-background border border-primary rounded px-2 py-1 w-full outline-none"
+                          className={`text-sm ${getTextJustifyClass((node as any).textJustify)} bg-background border border-primary rounded px-2 py-1 w-full outline-none`}
+                          style={getTextStylingForNode(node)}
                           onClick={(e) => e.stopPropagation()}
                         />
                       ) : (
                          <p 
-                           className="text-center break-words leading-tight px-2 py-1 bg-background/90 rounded cursor-text hover:bg-background/95 w-full"
-                           style={getTextStylingForNode(node)}
+                           className={`${getTextJustifyClass((node as any).textJustify)} break-words leading-tight px-2 py-1 bg-background/90 rounded cursor-text hover:bg-background/95 w-full`}
+                           style={{ ...getTextStylingForNode(node), display: 'block' }}
                            onDoubleClick={handleLabelDoubleClick}
                          >
                            {node.label}
@@ -1131,9 +1176,9 @@ return (
                 })()}
                 
                 {/* Text under shape */}
-                {((node as any).textPosition === 'under' || !(node as any).textPosition) && node.label && (
+                {((node as any).textVerticalPosition === 'bottom' || (node as any).textPosition === 'under') && node.label && (
                   <div 
-                    className="flex items-center justify-center"
+                    className="flex items-center"
                     style={{ 
                       width: node.width || 60,
                       minWidth: node.width || 60
@@ -1148,13 +1193,14 @@ return (
                         onChange={(e) => setEditText(e.target.value)}
                         onBlur={handleLabelSubmit}
                         onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                        className="text-sm text-center bg-transparent border border-primary rounded px-2 py-1 w-full outline-none mt-1"
+                        className={`text-sm ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-primary rounded px-2 py-1 w-full outline-none mt-1`}
+                        style={getTextStylingForNode(node)}
                         onClick={(e) => e.stopPropagation()}
                       />
                     ) : (
                         <p 
-                          className="text-center break-words leading-tight px-2 mt-1 cursor-text hover:bg-background/50 rounded w-full"
-                          style={getTextStylingForNode(node)}
+                          className={`${getTextJustifyClass((node as any).textJustify)} break-words leading-tight px-2 mt-1 cursor-text hover:bg-background/50 rounded w-full`}
+                          style={{ ...getTextStylingForNode(node), display: 'block' }}
                           onDoubleClick={handleLabelDoubleClick}
                         >
                          {node.label}
@@ -1236,6 +1282,16 @@ return (
               e.stopPropagation();
               e.preventDefault();
               handleResizeStart(e, 'bottom');
+            }}
+          />
+          {/* Bottom-right corner handle */}
+          <div
+            className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize hover:bg-primary/30 transition-colors z-50"
+            style={{ marginBottom: '-4px', marginRight: '-4px' }}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              handleResizeStart(e, 'bottom-right');
             }}
           />
         </>

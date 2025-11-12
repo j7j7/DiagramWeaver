@@ -246,6 +246,13 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
    - **Context Awareness**: Controls dynamically show/hide based on selected item type
    - **Type Detection**: Added `isTextTypeNode` helper to identify all text-related node types
    - **Cleaner UI**: Removed redundant controls, making toolbar more focused and intuitive
+ - **Corner Resize Handles** (2025-12): Added bottom-right corner resize handles for groups, zones, and shapes:
+   - **Dual-Dimension Resize**: Corner handle allows simultaneous width and height adjustment when dragging
+   - **Visual Feedback**: Corner handle uses `cursor-nwse-resize` and `hover:bg-primary/30` for clear indication
+   - **Implementation**: Added `'bottom-right'` to resize handle types in both `DiagramGroup` and `DiagramNode` components
+   - **Consistent Behavior**: Corner resize maintains minimum size constraints and grid snapping like edge handles
+   - **Handle Size**: Corner handle is 4x4 pixels (larger than 2px edge handles) for easier grabbing
+   - **Applies To**: Groups, zones, textboxes, text nodes (in custom mode), and all shape nodes (except points)
  - **Multi-Select Functionality** (2025-11-10): Added comprehensive multi-select and group movement capabilities:
    - **Shift+Click Selection**: Hold shift and click on elements to add/remove them from selection
    - **Visual Highlighting**: All selected elements show a blue ring highlight for clear visual feedback

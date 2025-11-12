@@ -38,7 +38,7 @@ const [{ isDragging }, drag] = useDrag(() => ({
   
   // Resize state
   const [isResizing, setIsResizing] = useState(false);
-  const [resizeHandle, setResizeHandle] = useState<'right' | 'bottom' | null>(null);
+  const [resizeHandle, setResizeHandle] = useState<'right' | 'bottom' | 'bottom-right' | null>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -121,7 +121,7 @@ const [{ isDragging }, drag] = useDrag(() => ({
   };
 
   // Resize handlers
-  const handleResizeStart = (e: React.MouseEvent, handle: 'right' | 'bottom') => {
+  const handleResizeStart = (e: React.MouseEvent, handle: 'right' | 'bottom' | 'bottom-right') => {
     e.stopPropagation();
     e.preventDefault();
     
@@ -155,6 +155,11 @@ const [{ isDragging }, drag] = useDrag(() => ({
         break;
       case 'bottom':
         // Dragging bottom edge - increase height with positive deltaY
+        newHeight = Math.max(minHeight, resizeStartPos.current.startHeight + deltaY);
+        break;
+      case 'bottom-right':
+        // Dragging bottom-right corner - increase both width and height
+        newWidth = Math.max(minWidth, resizeStartPos.current.startWidth + deltaX);
         newHeight = Math.max(minHeight, resizeStartPos.current.startHeight + deltaY);
         break;
     }
@@ -434,6 +439,12 @@ const [{ isDragging }, drag] = useDrag(() => ({
             className="absolute bottom-0 left-0 w-full h-2 cursor-ns-resize hover:bg-primary/20 transition-colors"
             style={{ marginBottom: '-4px' }}
             onMouseDown={(e) => handleResizeStart(e, 'bottom')}
+          />
+          {/* Bottom-right corner handle */}
+          <div
+            className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize hover:bg-primary/30 transition-colors"
+            style={{ marginBottom: '-4px', marginRight: '-4px' }}
+            onMouseDown={(e) => handleResizeStart(e, 'bottom-right')}
           />
         </>
       )}
