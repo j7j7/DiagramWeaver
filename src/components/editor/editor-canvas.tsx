@@ -2333,26 +2333,34 @@ const [, drop] = useDrop(() => ({
         return;
       }
 
-      // Delete or Backspace key - delete selected item
-      if ((event.key === 'Delete' || event.key === 'Backspace') && selectedItemId) {
-        handleDelete(selectedItemId);
+      // Delete or Backspace key - delete selected items
+      if ((event.key === 'Delete' || event.key === 'Backspace') && (selectedItemId || selectedItemIds.size > 0)) {
+        if (selectedItemIds.size > 0) {
+          handleDeleteMultiple(Array.from(selectedItemIds));
+        } else if (selectedItemId) {
+          handleDelete(selectedItemId);
+        }
         return;
       }
 
-      // Ctrl+C - copy selected items
-      if (event.ctrlKey && event.key === 'c' && (selectedItemId || selectedItemIds.size > 0)) {
+      // Check for Mac Command key or Windows/Linux Ctrl key
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const modifierKey = isMac ? event.metaKey : event.ctrlKey;
+
+      // Copy selected items (Ctrl+C or Cmd+C)
+      if (modifierKey && event.key === 'c' && (selectedItemId || selectedItemIds.size > 0)) {
         handleCopy();
       }
 
-      // Ctrl+V - paste item
-      if (event.ctrlKey && event.key === 'v' && clipboard) {
+      // Paste item (Ctrl+V or Cmd+V)
+      if (modifierKey && event.key === 'v' && clipboard) {
         event.preventDefault();
         handlePaste();
         return;
       }
 
-      // Ctrl+A - select all items
-      if (event.ctrlKey && event.key === 'a' && !event.shiftKey) {
+      // Select all items (Ctrl+A or Cmd+A)
+      if (modifierKey && event.key === 'a' && !event.shiftKey) {
         event.preventDefault();
         onSelectAll?.();
         return;
@@ -2361,7 +2369,7 @@ const [, drop] = useDrop(() => ({
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [selectedItemId, clipboard, onSelectAll]);
+  }, [selectedItemId, selectedItemIds, clipboard, onSelectAll]);
 
   // Handle mobile drop events
   useEffect(() => {
@@ -2504,6 +2512,42 @@ const [, drop] = useDrop(() => ({
     toast({
       title: "Item Deleted",
       description: "The selected item has been deleted.",
+    });
+  };
+
+  const handleDeleteMultiple = (itemIds: string[]) => {
+    const idsToDelete = new Set(itemIds);
+    
+    setDiagramData(prev => {
+      // Filter out nodes that are being deleted
+      const remainingNodes = prev.nodes.filter(n => !idsToDelete.has(n.id));
+      
+      // Filter out groups that are being deleted
+      const remainingGroups = prev.groups?.filter(g => !idsToDelete.has(g.id));
+      
+      // Remove deleted items from group children
+      const updatedGroups = remainingGroups?.map(g => ({
+        ...g,
+        children: g.children.filter(childId => !idsToDelete.has(childId))
+      }));
+      
+      // Remove connections that involve deleted items
+      const remainingConnections = prev.connections?.filter((e: any) => 
+        !idsToDelete.has(e.from) && !idsToDelete.has(e.to)
+      );
+      
+      return {
+        ...prev,
+        nodes: remainingNodes,
+        groups: updatedGroups,
+        connections: remainingConnections
+      };
+    });
+    
+    onItemSelect(null);
+    toast({
+      title: "Items Deleted",
+      description: `${itemIds.length} items have been deleted.`,
     });
   };
 
@@ -2737,6 +2781,41 @@ const [, drop] = useDrop(() => ({
         connections: [...(prev.connections || []), ...newConnections]
       }));
 
+      // Select all newly pasted items
+      const pastedItemIds = new Set<string>();
+      newNodes.forEach(node => pastedItemIds.add(node.id));
+      newGroups.forEach(group => pastedItemIds.add(group.id));
+      
+      // Set the first pasted item as the primary selected item
+      if (pastedItemIds.size > 0) {
+        const firstPastedId = Array.from(pastedItemIds)[0];
+        const firstPastedNode = newNodes.find(n => n.id === firstPastedId);
+        const firstPastedGroup = newGroups.find(g => g.id === firstPastedId);
+        
+        if (firstPastedNode) {
+          onItemSelect({ ...firstPastedNode, itemType: 'node' });
+        } else if (firstPastedGroup) {
+          onItemSelect({ ...firstPastedGroup, itemType: 'group' });
+        }
+      }
+      
+      // Update selected items to include all pasted items
+      if (onItemSelect) {
+        // Trigger selection update for multi-select
+        setTimeout(() => {
+          pastedItemIds.forEach(id => {
+            const pastedNode = newNodes.find(n => n.id === id);
+            const pastedGroup = newGroups.find(g => g.id === id);
+            
+            if (pastedNode) {
+              onItemSelect({ ...pastedNode, itemType: 'node' }, true); // true for shift key (multi-select)
+            } else if (pastedGroup) {
+              onItemSelect({ ...pastedGroup, itemType: 'group' }, true); // true for shift key (multi-select)
+            }
+          });
+        }, 0);
+      }
+
       toast({
         title: "Items Pasted",
         description: `${newNodes.length + newGroups.length} items and ${newConnections.length} connections pasted to canvas.`,
@@ -2754,6 +2833,9 @@ const [, drop] = useDrop(() => ({
         ...prev,
         nodes: [...prev.nodes, newNode]
       }));
+
+      // Select the newly pasted item
+      onItemSelect({ ...newNode, itemType: 'node' });
 
       toast({
         title: "Item Pasted",
@@ -2829,6 +2911,9 @@ const [, drop] = useDrop(() => ({
         nodes: [...prev.nodes, ...newNodes],
         groups: [...(prev.groups || []), newGroup, ...newChildGroups]
       }));
+
+      // Select the newly pasted group
+      onItemSelect({ ...newGroup, itemType: 'group' });
 
       toast({
         title: "Item Pasted",
