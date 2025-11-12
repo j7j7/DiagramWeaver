@@ -25,6 +25,7 @@ const TEXT_NODE_HEIGHT = 40;
 const EXTRA_LINE_HEIGHT = 20;
 const GROUP_PADDING = 50; // Increased by 25% (was 40)
 const GROUP_NODE_SPACING = 30;
+const MULTI_LINE_SPACING_BONUS = 25; // Extra spacing for nodes with 2+ lines of text
 const GRID_SNAP = 20;
 
 // Custom snap function: snaps to 10px increments
@@ -336,8 +337,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
 
             itemsPerRow = Math.max(1, Math.min(itemsPerRow, childLayouts.length));
 
-            // Use the same centering logic as the main layout function
-            let currentY = GROUP_PADDING;
+            // Organize children into rows
             let rowMaxHeight = 0;
             const rows: Array<{ children: any[], rowWidth: number, rowHeight: number }> = [];
             let currentRow: any[] = [];
@@ -360,29 +360,135 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 }
             });
 
-            // Second pass: position children with centering within the custom-sized group
+            // Calculate minimum total height needed with dynamic spacing
+            let minTotalHeight = 0;
+            const rowSpacings: number[] = [];
+            
             rows.forEach((row, rowIndex) => {
-                // Calculate horizontal offset to center the row within the group
-                const horizontalOffset = GROUP_PADDING + ((group.width || 0) - GROUP_PADDING * 2 - row.rowWidth) / 2;
+                // Calculate dynamic spacing based on node heights
+                let spacing = GROUP_NODE_SPACING;
                 
-                row.children.forEach((item, itemIndex) => {
-                    item.child.x = horizontalOffset + (itemIndex > 0 ? 
-                        row.children.slice(0, itemIndex).reduce((sum, prevItem) => sum + prevItem.width + GROUP_NODE_SPACING, 0) : 0);
-                    item.child.y = currentY;
-                });
+                // Calculate maximum height excess (how much taller than base height) for current and next row
+                const getMaxHeightExcess = (rowItems: any[]): number => {
+                    let maxExcess = 0;
+                    rowItems.forEach((item: any) => {
+                        if ((item.child as any).type === 'group') return;
+                        const node = item.child as PositionedNode;
+                        const height = item.height;
+                        
+                        // Calculate how much taller this node is than its base height
+                        let baseHeight = NODE_HEIGHT;
+                        if (node.type === 'generic.text.text') {
+                            baseHeight = TEXT_NODE_HEIGHT;
+                        } else if (node.type === 'generic.text.textbox') {
+                            baseHeight = 40;
+                        }
+                        
+                        const excess = Math.max(0, height - baseHeight);
+                        maxExcess = Math.max(maxExcess, excess);
+                    });
+                    return maxExcess;
+                };
                 
-                currentY += row.rowHeight + GROUP_NODE_SPACING;
+                const currentRowExcess = getMaxHeightExcess(row.children);
+                let nextRowExcess = 0;
+                
+                if (rowIndex < rows.length - 1) {
+                    nextRowExcess = getMaxHeightExcess(rows[rowIndex + 1].children);
+                }
+                
+                // Add extra spacing proportional to height excess (minimum bonus if any excess exists)
+                const maxExcess = Math.max(currentRowExcess, nextRowExcess);
+                if (maxExcess > 0) {
+                    // Add base bonus plus proportional amount based on excess height
+                    spacing += MULTI_LINE_SPACING_BONUS + Math.min(maxExcess * 0.5, 10);
+                } else {
+                    // Fallback: also add spacing if row height itself is above threshold (catches edge cases)
+                    const rowHeightThreshold = NODE_HEIGHT + EXTRA_LINE_HEIGHT * 0.5; // 90px
+                    if (row.rowHeight > rowHeightThreshold || (rowIndex < rows.length - 1 && rows[rowIndex + 1].rowHeight > rowHeightThreshold)) {
+                        spacing += MULTI_LINE_SPACING_BONUS;
+                    }
+                }
+                
+                rowSpacings.push(spacing);
+                minTotalHeight += row.rowHeight;
+                if (rowIndex < rows.length - 1) {
+                    minTotalHeight += spacing;
+                }
             });
 
-            // Apply vertical centering for all rows within the custom-sized group
-            const totalContentHeight = currentY - GROUP_NODE_SPACING;
-            const verticalOffset = GROUP_PADDING + ((group.height || 0) - GROUP_PADDING * 2 - totalContentHeight) / 2;
+            // Calculate available space for distribution
+            const availableHeight = (group.height || 0) - (GROUP_PADDING * 2);
+            const extraHeight = Math.max(0, availableHeight - minTotalHeight);
             
-            // Reposition all children with vertical offset
-            rows.forEach((row) => {
-                row.children.forEach((item) => {
-                    item.child.y += verticalOffset - GROUP_PADDING;
-                });
+            // Distribute extra space evenly between rows AND at top/bottom
+            const numSpaces = Math.max(1, rows.length - 1);
+            let extraSpacingPerGap = 0;
+            let topPadding = GROUP_PADDING;
+            
+            if (extraHeight > 0) {
+                // Distribute extra height evenly: between rows and at top/bottom
+                extraSpacingPerGap = extraHeight / (numSpaces + 2); // +2 for top and bottom padding
+                topPadding = GROUP_PADDING + extraSpacingPerGap;
+            }
+            
+            // Second pass: position children with distribution across available space
+            let currentY = topPadding;
+            rows.forEach((row, rowIndex) => {
+                // Calculate horizontal distribution for items in row
+                const availableRowWidth = (group.width || 0) - (GROUP_PADDING * 2);
+                const totalRowItemWidth = row.children.reduce((sum, item) => sum + item.width, 0);
+                
+                // For vertical orientation (single item per row), center each item
+                if (group.orientation === 'vertical' && row.children.length === 1) {
+                    // Center the single item horizontally
+                    const item = row.children[0];
+                    item.child.x = GROUP_PADDING + (availableRowWidth - item.width) / 2;
+                    item.child.y = currentY;
+                } else {
+                    // Calculate spacing between items - distribute extra space evenly
+                    const numItemSpaces = Math.max(1, row.children.length - 1);
+                    const minTotalWidth = totalRowItemWidth + (GROUP_NODE_SPACING * numItemSpaces);
+                    
+                    let itemSpacing: number;
+                    let rowStartX: number;
+                    
+                    if (availableRowWidth > minTotalWidth) {
+                        // Distribute evenly across available width with equal padding on both sides
+                        const extraWidth = availableRowWidth - minTotalWidth;
+                        // Add extra space to both sides and between items
+                        const extraSpacingPerGap = extraWidth / (numItemSpaces + 2); // +2 for left and right padding
+                        itemSpacing = GROUP_NODE_SPACING + extraSpacingPerGap;
+                        const sidePadding = GROUP_PADDING + extraSpacingPerGap;
+                        rowStartX = sidePadding;
+                    } else {
+                        // Use minimum spacing, center if content is wider than available space
+                        itemSpacing = GROUP_NODE_SPACING;
+                        if (availableRowWidth > totalRowItemWidth) {
+                            rowStartX = GROUP_PADDING + (availableRowWidth - minTotalWidth) / 2;
+                        } else {
+                            rowStartX = GROUP_PADDING;
+                        }
+                    }
+                    
+                    row.children.forEach((item, itemIndex) => {
+                        if (itemIndex === 0) {
+                            item.child.x = rowStartX;
+                        } else {
+                            item.child.x = rowStartX + row.children.slice(0, itemIndex).reduce((sum, prevItem) => {
+                                return sum + prevItem.width + itemSpacing;
+                            }, 0);
+                        }
+                        item.child.y = currentY;
+                    });
+                }
+                
+                // Use distributed spacing (minimum spacing + extra space distribution)
+                const spacing = rowIndex < rows.length - 1 
+                    ? rowSpacings[rowIndex] + extraSpacingPerGap 
+                    : 0;
+                
+                currentY += row.rowHeight + spacing;
             });
         }
 
@@ -667,6 +773,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                                calculatedContentWidth + horizontalPadding * 2;
 
         // Second pass: position children with centering
+        let lastSpacing = GROUP_NODE_SPACING;
         rows.forEach((row, rowIndex) => {
             // Calculate horizontal offset to center the row within the group
             const horizontalOffset = horizontalPadding + (actualGroupWidth - horizontalPadding * 2 - row.rowWidth) / 2;
@@ -677,10 +784,56 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 item.child.y = currentY;
             });
             
-            currentY += row.rowHeight + GROUP_NODE_SPACING;
+            // Calculate dynamic spacing based on node heights
+            let spacing = GROUP_NODE_SPACING;
+            
+            // Calculate maximum height excess (how much taller than base height) for current and next row
+            const getMaxHeightExcess = (rowItems: any[]): number => {
+                let maxExcess = 0;
+                rowItems.forEach((item: any) => {
+                    if ((item.child as any).type === 'group') return;
+                    const node = item.child as PositionedNode;
+                    const height = item.height;
+                    
+                    // Calculate how much taller this node is than its base height
+                    let baseHeight = NODE_HEIGHT;
+                    if (node.type === 'generic.text.text') {
+                        baseHeight = TEXT_NODE_HEIGHT;
+                    } else if (node.type === 'generic.text.textbox') {
+                        baseHeight = 40;
+                    }
+                    
+                    const excess = Math.max(0, height - baseHeight);
+                    maxExcess = Math.max(maxExcess, excess);
+                });
+                return maxExcess;
+            };
+            
+            const currentRowExcess = getMaxHeightExcess(row.children);
+            let nextRowExcess = 0;
+            
+            if (rowIndex < rows.length - 1) {
+                nextRowExcess = getMaxHeightExcess(rows[rowIndex + 1].children);
+            }
+            
+            // Add extra spacing proportional to height excess (minimum bonus if any excess exists)
+            const maxExcess = Math.max(currentRowExcess, nextRowExcess);
+            if (maxExcess > 0) {
+                // Add base bonus plus proportional amount based on excess height
+                spacing += MULTI_LINE_SPACING_BONUS + Math.min(maxExcess * 0.5, 10);
+            } else {
+                // Fallback: also add spacing if row height itself is above threshold (catches edge cases)
+                const rowHeightThreshold = NODE_HEIGHT + EXTRA_LINE_HEIGHT * 0.5; // 90px
+                if (row.rowHeight > rowHeightThreshold || (rowIndex < rows.length - 1 && rows[rowIndex + 1].rowHeight > rowHeightThreshold)) {
+                    spacing += MULTI_LINE_SPACING_BONUS;
+                }
+            }
+            
+            lastSpacing = spacing;
+            currentY += row.rowHeight + spacing;
         });
 
-        contentHeight = currentY - GROUP_NODE_SPACING;
+        contentHeight = currentY - lastSpacing;
         contentWidth = calculatedContentWidth;
 
         // Calculate group dimensions
@@ -992,9 +1145,43 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       maxRowWidth = Math.max(maxRowWidth, rowWidth);
       totalHeight += rowHeight;
       
-      // Add spacing between rows (except for last row)
+      // Add dynamic spacing between rows (except for last row)
       if (row < numRows - 1) {
-        totalHeight += GROUP_NODE_SPACING;
+        let spacing = GROUP_NODE_SPACING;
+        
+        // Calculate height excess for current and next row
+        const getMaxHeightExcess = (rowItems: any[]): number => {
+          let maxExcess = 0;
+          rowItems.forEach((child: any) => {
+            if ('type' in child && (child as any).type === 'group') return;
+            const dims = 'type' in child 
+              ? measureNodeDims(child as PositionedNode)
+              : { width: (child as DiagramGroupData).width || 300, height: (child as DiagramGroupData).height || 220 };
+            
+            const node = child as PositionedNode;
+            let baseHeight = NODE_HEIGHT;
+            if (node.type === 'generic.text.text') {
+              baseHeight = TEXT_NODE_HEIGHT;
+            } else if (node.type === 'generic.text.textbox') {
+              baseHeight = 40;
+            }
+            
+            const excess = Math.max(0, dims.height - baseHeight);
+            maxExcess = Math.max(maxExcess, excess);
+          });
+          return maxExcess;
+        };
+        
+        const currentRowExcess = getMaxHeightExcess(rowChildren);
+        const nextRowChildren = allChildren.slice((row + 1) * itemsPerRow, Math.min((row + 2) * itemsPerRow, numChildren));
+        const nextRowExcess = getMaxHeightExcess(nextRowChildren);
+        
+        const maxExcess = Math.max(currentRowExcess, nextRowExcess);
+        if (maxExcess > 0) {
+          spacing += MULTI_LINE_SPACING_BONUS + Math.min(maxExcess * 0.5, 10);
+        }
+        
+        totalHeight += spacing;
       }
     }
     
