@@ -584,6 +584,51 @@ export default function DiagramEditor() {
     createTab();
   };
 
+  const handleSelectAll = () => {
+    const allIds = new Set<string>();
+    
+    // Add all node IDs
+    diagramData.nodes.forEach(node => allIds.add(node.id));
+    
+    // Add all group IDs
+    diagramData.groups.forEach(group => allIds.add(group.id));
+    
+    // Add all connection IDs
+    diagramData.connections.forEach(connection => {
+      const connectionId = `${connection.from}-${connection.to}`;
+      allIds.add(connectionId);
+    });
+    
+    setSelectedItemIds(allIds);
+    
+    // Set the first item as the primary selected item if there are any items
+    if (allIds.size > 0) {
+      const firstId = Array.from(allIds)[0];
+      
+      // Try to find the item in nodes first
+      const nodeItem = diagramData.nodes.find(node => node.id === firstId);
+      if (nodeItem) {
+        setSelectedItem({ ...nodeItem, itemType: 'node' });
+        return;
+      }
+      
+      // Then try groups
+      const groupItem = diagramData.groups.find(group => group.id === firstId);
+      if (groupItem) {
+        setSelectedItem({ ...groupItem, itemType: 'group' });
+        return;
+      }
+      
+      // Finally try connections
+      const connection = diagramData.connections.find(conn => `${conn.from}-${conn.to}` === firstId);
+      if (connection) {
+        setSelectedItem({ ...connection, itemType: 'edge', id: firstId });
+      }
+    } else {
+      setSelectedItem(null);
+    }
+  };
+
   const handleExportSvg = async () => {
     setExportDialogOpen(true);
   };
@@ -1088,6 +1133,12 @@ export default function DiagramEditor() {
         redo();
       }
       
+      // Ctrl+A (or Cmd+A on Mac) - Select All
+      if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === 'a' && !e.shiftKey) {
+        e.preventDefault();
+        handleSelectAll();
+      }
+      
       // Escape key - Clear multi-selection
       if (e.key === 'Escape' && selectedItemIds.size > 1) {
         e.preventDefault();
@@ -1233,6 +1284,7 @@ export default function DiagramEditor() {
                     onRedo={redo}
                     canUndo={historyIndex > 0}
                     canRedo={historyIndex < history.length - 1}
+                    onSelectAll={handleSelectAll}
                     transform={canvasTransform}
                     onTransformChange={setCanvasTransform}
                     selectedItem={selectedItem}
@@ -1304,6 +1356,7 @@ export default function DiagramEditor() {
                     onSelectionChange={setSelectionCoordinates}
                     onExportComplete={() => setExportDialogOpen(false)}
                     hoverEnabled={hoverEnabled}
+                    onSelectAll={handleSelectAll}
                     />
                   </div>
                   

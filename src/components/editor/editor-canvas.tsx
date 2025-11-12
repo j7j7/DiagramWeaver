@@ -6,7 +6,7 @@ import { DiagramNode } from "../diagram/diagram-node";
 
 import { BezierConnection, BezierConnectionText } from "../diagram/bezier-connection";
 import { DiagramGroup } from "../diagram/diagram-group";
-import type { DiagramData, DiagramNodeData, DiagramGroupData } from "@/lib/types";
+import type { DiagramData, DiagramNodeData, DiagramGroupData, DiagramConnectionData } from "@/lib/types";
 import { ItemTypes } from './draggable-item';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "../ui/button";
@@ -51,6 +51,7 @@ interface EditorCanvasProps {
   onSelectionChange?: (selection: { start: { x: number; y: number } | null; end: { x: number; y: number } | null }) => void;
   onExportComplete?: () => void;
   hoverEnabled?: boolean;
+  onSelectAll?: () => void;
 }
 
 type PositionedNode = DiagramNodeData & { x: number; y: number; };
@@ -226,7 +227,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, onSelectAll }: EditorCanvasProps,
   ref
 ) {
   const [internalTransform, setInternalTransform] = useState({ x: 0, y: 0, k: 1 });
@@ -276,6 +277,10 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     node?: DiagramNodeData;
     group?: DiagramGroupData;
     children?: (DiagramNodeData | DiagramGroupData)[];
+    // Multi-selection support
+    nodes?: DiagramNodeData[];
+    groups?: DiagramGroupData[];
+    connections?: DiagramConnectionData[];
   } | null>(null);
 
   const { processedNodes, processedGroups, width, height } = useMemo(() => {
@@ -2334,11 +2339,9 @@ const [, drop] = useDrop(() => ({
         return;
       }
 
-      // Ctrl+C - copy selected item
-      if (event.ctrlKey && event.key === 'c' && selectedItemId) {
-        event.preventDefault();
-        handleCopy(selectedItemId);
-        return;
+      // Ctrl+C - copy selected items
+      if (event.ctrlKey && event.key === 'c' && (selectedItemId || selectedItemIds.size > 0)) {
+        handleCopy();
       }
 
       // Ctrl+V - paste item
@@ -2347,11 +2350,18 @@ const [, drop] = useDrop(() => ({
         handlePaste();
         return;
       }
+
+      // Ctrl+A - select all items
+      if (event.ctrlKey && event.key === 'a' && !event.shiftKey) {
+        event.preventDefault();
+        onSelectAll?.();
+        return;
+      }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [selectedItemId, clipboard]);
+  }, [selectedItemId, clipboard, onSelectAll]);
 
   // Handle mobile drop events
   useEffect(() => {
@@ -2497,49 +2507,125 @@ const [, drop] = useDrop(() => ({
     });
   };
 
-  const handleCopy = (itemId: string) => {
-    const node = diagramData.nodes.find(n => n.id === itemId);
-    const group = diagramData.groups?.find(g => g.id === itemId);
+  const handleCopy = (itemId?: string) => {
+    // If we have multiple items selected, copy all of them
+    if (selectedItemIds && selectedItemIds.size > 0) {
+      const selectedNodes: DiagramNodeData[] = [];
+      const selectedGroups: DiagramGroupData[] = [];
+      const selectedConnections: DiagramConnectionData[] = [];
+      const allSelectedIds = new Set(selectedItemIds);
 
-    if (node) {
-      setClipboard({ node: { ...node } });
+      // Collect selected nodes and groups
+      selectedItemIds.forEach(id => {
+        const node = diagramData.nodes.find(n => n.id === id);
+        const group = diagramData.groups?.find(g => g.id === id);
+        
+        if (node) {
+          selectedNodes.push({ ...node });
+        } else if (group) {
+          // Recursively collect all children of selected groups
+          const collectChildren = (groupId: string, visited: Set<string> = new Set()): (DiagramNodeData | DiagramGroupData)[] => {
+            if (visited.has(groupId)) return [];
+            visited.add(groupId);
+
+            const children: (DiagramNodeData | DiagramGroupData)[] = [];
+            const currentGroup = diagramData.groups?.find(g => g.id === groupId);
+
+            if (currentGroup?.children) {
+              for (const childId of currentGroup.children) {
+                const childNode = diagramData.nodes.find(n => n.id === childId);
+                const childGroup = diagramData.groups?.find(g => g.id === childId);
+
+                if (childNode) {
+                  children.push({ ...childNode });
+                  allSelectedIds.add(childId);
+                } else if (childGroup) {
+                  children.push({ ...childGroup });
+                  allSelectedIds.add(childId);
+                  // Recursively collect children of child groups
+                  children.push(...collectChildren(childId, visited));
+                }
+              }
+            }
+
+            return children;
+          };
+
+          selectedGroups.push({ ...group });
+          const children = collectChildren(id);
+          children.forEach(child => {
+            if ('type' in child) {
+              selectedNodes.push(child as DiagramNodeData);
+            } else {
+              selectedGroups.push(child as DiagramGroupData);
+            }
+          });
+        }
+      });
+
+      // Collect connections between selected items
+      diagramData.connections?.forEach(connection => {
+        if (allSelectedIds.has(connection.from) && allSelectedIds.has(connection.to)) {
+          selectedConnections.push({ ...connection });
+        }
+      });
+
+      setClipboard({
+        nodes: selectedNodes,
+        groups: selectedGroups,
+        connections: selectedConnections
+      });
       onClipboardChange?.(true);
-    } else if (group) {
-      // Recursively collect all children
-      const collectChildren = (groupId: string, visited: Set<string> = new Set()): (DiagramNodeData | DiagramGroupData)[] => {
-        if (visited.has(groupId)) return [];
-        visited.add(groupId);
 
-        const children: (DiagramNodeData | DiagramGroupData)[] = [];
-        const currentGroup = diagramData.groups?.find(g => g.id === groupId);
+      toast({
+        title: "Items Copied",
+        description: `${selectedNodes.length + selectedGroups.length} items and ${selectedConnections.length} connections copied to clipboard.`,
+      });
+    } else if (itemId) {
+      // Fallback to single item copy for backward compatibility
+      const node = diagramData.nodes.find(n => n.id === itemId);
+      const group = diagramData.groups?.find(g => g.id === itemId);
 
-        if (currentGroup?.children) {
-          for (const childId of currentGroup.children) {
-            const childNode = diagramData.nodes.find(n => n.id === childId);
-            const childGroup = diagramData.groups?.find(g => g.id === childId);
+      if (node) {
+        setClipboard({ node: { ...node } });
+        onClipboardChange?.(true);
+      } else if (group) {
+        // Recursively collect all children
+        const collectChildren = (groupId: string, visited: Set<string> = new Set()): (DiagramNodeData | DiagramGroupData)[] => {
+          if (visited.has(groupId)) return [];
+          visited.add(groupId);
 
-            if (childNode) {
-              children.push({ ...childNode });
-            } else if (childGroup) {
-              children.push({ ...childGroup });
-              // Recursively collect children of child groups
-              children.push(...collectChildren(childId, visited));
+          const children: (DiagramNodeData | DiagramGroupData)[] = [];
+          const currentGroup = diagramData.groups?.find(g => g.id === groupId);
+
+          if (currentGroup?.children) {
+            for (const childId of currentGroup.children) {
+              const childNode = diagramData.nodes.find(n => n.id === childId);
+              const childGroup = diagramData.groups?.find(g => g.id === childId);
+
+              if (childNode) {
+                children.push({ ...childNode });
+              } else if (childGroup) {
+                children.push({ ...childGroup });
+                // Recursively collect children of child groups
+                children.push(...collectChildren(childId, visited));
+              }
             }
           }
-        }
 
-        return children;
-      };
+          return children;
+        };
 
-      const children = collectChildren(itemId);
-      setClipboard({ group: { ...group }, children });
-      onClipboardChange?.(true);
+        const children = collectChildren(itemId);
+        setClipboard({ group: { ...group }, children });
+        onClipboardChange?.(true);
+      }
+
+      toast({
+        title: "Item Copied",
+        description: "The selected item has been copied to clipboard.",
+      });
     }
-
-    toast({
-      title: "Item Copied",
-      description: "The selected item has been copied to clipboard.",
-    });
   };
 
   const handleToggleFreeflow = (itemId: string) => {
@@ -2569,7 +2655,94 @@ const [, drop] = useDrop(() => ({
   const handlePaste = () => {
     if (!clipboard) return;
 
-    if (clipboard.node) {
+    // Handle multi-selection paste
+    if (clipboard.nodes || clipboard.groups) {
+      const nodes = clipboard.nodes || [];
+      const groups = clipboard.groups || [];
+      const connections = clipboard.connections || [];
+      
+      // Create ID mapping for all items being pasted
+      const idMapping = new Map<string, string>();
+
+      // First pass: generate new IDs for all nodes
+      const newNodes: DiagramNodeData[] = [];
+      nodes.forEach(node => {
+        const newNodeId = generateSequentialId(node.type, diagramData);
+        idMapping.set(node.id, newNodeId);
+        
+        const newNode: DiagramNodeData = {
+          ...node,
+          id: newNodeId,
+          x: (node.x || 0) + 50,
+          y: (node.y || 0) + 50,
+        };
+        newNodes.push(newNode);
+      });
+
+      // Second pass: generate new IDs for all groups and process their children
+      const newGroups: DiagramGroupData[] = [];
+      const processGroupChildren = (group: DiagramGroupData): DiagramGroupData => {
+        const newGroupId = generateGroupId((group.subType as 'group' | 'zone') || 'group', diagramData);
+        idMapping.set(group.id, newGroupId);
+
+        // Process children - map old IDs to new IDs
+        const processedChildren: string[] = [];
+        group.children?.forEach(childId => {
+          // Check if this child ID is in our mapping (means it's being copied)
+          const mappedId = idMapping.get(childId);
+          if (mappedId) {
+            processedChildren.push(mappedId);
+          } else {
+            // Child is not in our selection, keep original ID
+            processedChildren.push(childId);
+          }
+        });
+
+        return {
+          ...group,
+          id: newGroupId,
+          x: (group.x || 0) + 50,
+          y: (group.y || 0) + 50,
+          children: processedChildren
+        };
+      };
+
+      // Process all groups (including nested ones)
+      groups.forEach(group => {
+        const newGroup = processGroupChildren(group);
+        newGroups.push(newGroup);
+      });
+
+      // Third pass: create new connections with updated IDs
+      const newConnections: DiagramConnectionData[] = [];
+      connections.forEach(connection => {
+        const newFromId = idMapping.get(connection.from);
+        const newToId = idMapping.get(connection.to);
+        
+        // Only create connection if both endpoints are being copied
+        if (newFromId && newToId) {
+          newConnections.push({
+            ...connection,
+            from: newFromId,
+            to: newToId
+          });
+        }
+      });
+
+      // Update diagram data
+      setDiagramData(prev => ({
+        ...prev,
+        nodes: [...prev.nodes, ...newNodes],
+        groups: [...(prev.groups || []), ...newGroups],
+        connections: [...(prev.connections || []), ...newConnections]
+      }));
+
+      toast({
+        title: "Items Pasted",
+        description: `${newNodes.length + newGroups.length} items and ${newConnections.length} connections pasted to canvas.`,
+      });
+    } else if (clipboard.node) {
+      // Handle single node paste (backward compatibility)
       const newNode: DiagramNodeData = {
         ...clipboard.node,
         id: generateSequentialId(clipboard.node.type, diagramData),
@@ -2581,7 +2754,13 @@ const [, drop] = useDrop(() => ({
         ...prev,
         nodes: [...prev.nodes, newNode]
       }));
+
+      toast({
+        title: "Item Pasted",
+        description: "The copied item has been pasted to the canvas.",
+      });
     } else if (clipboard.group) {
+      // Handle single group paste (backward compatibility)
       // Create ID mapping for all items being pasted
       const idMapping = new Map<string, string>();
 
@@ -2616,7 +2795,7 @@ const [, drop] = useDrop(() => ({
 
       // Create new children with updated IDs and positions
       const newNodes: DiagramNodeData[] = [];
-      const newGroups: DiagramGroupData[] = [];
+      const newChildGroups: DiagramGroupData[] = [];
 
       for (const child of children) {
         const newChildId = idMapping.get(child.id)!;
@@ -2641,29 +2820,27 @@ const [, drop] = useDrop(() => ({
             y: (groupChild.y || 0) + 50,
             children: groupChild.children?.map((childId: string) => idMapping.get(childId) || childId) || []
           };
-          newGroups.push(newChildGroup);
+          newChildGroups.push(newChildGroup);
         }
       }
 
       setDiagramData(prev => ({
         ...prev,
         nodes: [...prev.nodes, ...newNodes],
-        groups: [...(prev.groups || []), newGroup, ...newGroups]
+        groups: [...(prev.groups || []), newGroup, ...newChildGroups]
       }));
-    }
 
-    toast({
-      title: "Item Pasted",
-      description: "The copied item has been pasted to the canvas.",
-    });
+      toast({
+        title: "Item Pasted",
+        description: "The copied item has been pasted to the canvas.",
+      });
+    }
   };
 
   // Wrap copy/paste handlers in useCallback for stable references
   const copyHandler = useCallback(() => {
-    if (selectedItemId) {
-      handleCopy(selectedItemId);
-    }
-  }, [selectedItemId, diagramData]);
+    handleCopy();
+  }, [selectedItemIds, diagramData]);
 
   const pasteHandler = useCallback(() => {
     handlePaste();

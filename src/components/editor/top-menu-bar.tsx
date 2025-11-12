@@ -9,7 +9,7 @@ import {
   MenubarShortcut,
   MenubarTrigger,
 } from '@/components/ui/menubar';
-import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette } from 'lucide-react';
+import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
 import { ThemeEditor } from './theme-editor';
 import type { SelectedItem } from '../diagram-editor';
@@ -37,6 +37,7 @@ interface TopMenuBarProps {
   onRedo?: () => void;
   canUndo?: boolean;
   canRedo?: boolean;
+  onSelectAll?: () => void;
   transform?: { x: number; y: number; k: number };
   onTransformChange?: (transform: { x: number; y: number; k: number }) => void;
   selectedItem?: SelectedItem | null;
@@ -72,6 +73,7 @@ export function TopMenuBar({
   onRedo,
   canUndo,
   canRedo,
+  onSelectAll,
   transform,
   onTransformChange,
   selectedItem,
@@ -165,7 +167,17 @@ export function TopMenuBar({
                 <MenubarShortcut>Ctrl+V</MenubarShortcut>
               </MenubarItem>
             )}
-            {(onCopy || onPaste) && (onUndo || onRedo) && (
+            {onSelectAll && (
+              <>
+                <MenubarSeparator />
+                <MenubarItem onClick={onSelectAll}>
+                  <CheckSquare className="mr-2 h-4 w-4" />
+                  Select All
+                  <MenubarShortcut>Ctrl+A</MenubarShortcut>
+                </MenubarItem>
+              </>
+            )}
+            {(onCopy || onPaste || onSelectAll) && (onUndo || onRedo) && (
               <MenubarSeparator />
             )}
             {onUndo && (
