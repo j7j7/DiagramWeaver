@@ -6,11 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TextStyling, COMMON_FONT_FAMILIES, FONT_WEIGHT_OPTIONS } from "@/lib/text-styling";
-import { Type, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, ArrowUp, Circle, ArrowDown, RotateCcw } from "lucide-react";
+import { TextStyling, COMMON_FONT_FAMILIES } from "@/lib/text-styling";
+import { Type, AlignLeft, AlignCenter, AlignRight, AlignJustify, ArrowUp, Circle, ArrowDown, RotateCcw } from "lucide-react";
 
 interface TextStylingPanelProps {
   styling: Partial<TextStyling>;

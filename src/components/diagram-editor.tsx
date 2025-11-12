@@ -71,6 +71,23 @@ export default function DiagramEditor() {
   const [mousePosition, setMousePosition] = React.useState<{ x: number; y: number } | null>(null);
   const [selectionCoordinates, setSelectionCoordinates] = React.useState<{ start: { x: number; y: number } | null; end: { x: number; y: number } | null } | undefined>(undefined);
   const [hoverEnabled, setHoverEnabled] = React.useState<boolean>(false);
+  const [triggerTextStylingPanel, setTriggerTextStylingPanel] = React.useState<boolean>(false);
+  const [triggerVisualStylingPanel, setTriggerVisualStylingPanel] = React.useState<boolean>(false);
+
+  // Reset trigger states after they've been used
+  React.useEffect(() => {
+    if (triggerTextStylingPanel) {
+      const timer = setTimeout(() => setTriggerTextStylingPanel(false), 100);
+      return () => clearTimeout(timer);
+    }
+  }, [triggerTextStylingPanel]);
+
+  React.useEffect(() => {
+    if (triggerVisualStylingPanel) {
+      const timer = setTimeout(() => setTriggerVisualStylingPanel(false), 100);
+      return () => clearTimeout(timer);
+    }
+  }, [triggerVisualStylingPanel]);
 
   // Tab management
   const {
@@ -1305,6 +1322,8 @@ export default function DiagramEditor() {
                     onToggleHover={() => setHoverEnabled(!hoverEnabled)}
                     onAlignObjects={handleAlignObjects}
                     onThemeApplyToSelected={handleThemeApplyToSelected}
+                    triggerTextStylingPanel={triggerTextStylingPanel}
+                    triggerVisualStylingPanel={triggerVisualStylingPanel}
                 />
                 {activeTabId && (
                   <TabBar
@@ -1357,6 +1376,8 @@ export default function DiagramEditor() {
                     onExportComplete={() => setExportDialogOpen(false)}
                     hoverEnabled={hoverEnabled}
                     onSelectAll={handleSelectAll}
+                    onTriggerTextStylingPanel={() => setTriggerTextStylingPanel(true)}
+                    onTriggerVisualStylingPanel={() => setTriggerVisualStylingPanel(true)}
                     />
                   </div>
                   

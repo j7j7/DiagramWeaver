@@ -52,6 +52,8 @@ interface EditorCanvasProps {
   onExportComplete?: () => void;
   hoverEnabled?: boolean;
   onSelectAll?: () => void;
+  onTriggerTextStylingPanel?: () => void;
+  onTriggerVisualStylingPanel?: () => void;
 }
 
 type PositionedNode = DiagramNodeData & { x: number; y: number; };
@@ -221,7 +223,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, onSelectAll }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel }: EditorCanvasProps,
   ref
 ) {
   const [internalTransform, setInternalTransform] = useState({ x: 0, y: 0, k: 1 });
@@ -1053,7 +1055,10 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           id: generateSequentialId(itemType, prevData),
           type: itemType,
           label: itemLabel,
-          info: item.provider ? `${itemLabel} from ${item.provider}` : `A new ${itemLabel}`,
+          // Don't set info/description for text and textbox resource types
+          ...(itemType !== 'generic.text.text' && itemType !== 'generic.text.textbox' && {
+            info: item.provider ? `${itemLabel} from ${item.provider}` : `A new ${itemLabel}`
+          }),
           freeflow: isShapeResource ? true : undefined, // Shapes are always freeflow
           sizeMode: isShapeResource ? 'custom' : undefined, // Shapes use custom sizing
           width: isShapeResource ? (itemType === 'generic.object.point' ? 20 : itemType === 'generic.object.rectangle' ? 80 : itemType === 'generic.object.cloud' ? 80 : 60) : undefined, // Initial width
@@ -3199,6 +3204,22 @@ return (
           }}
           onToggleFreeflow={() => handleToggleFreeflow(contextMenu.itemId)}
           isFreeflow={diagramData.nodes.find(n => n.id === contextMenu.itemId)?.freeflow || false}
+          onTextStyling={() => {
+            const item = diagramData.nodes.find(n => n.id === contextMenu.itemId) || 
+                       diagramData.groups?.find(g => g.id === contextMenu.itemId);
+            if (item) {
+              onItemSelect({ ...item, itemType: contextMenu.itemType });
+              onTriggerTextStylingPanel?.();
+            }
+          }}
+          onVisualStyling={() => {
+            const item = diagramData.nodes.find(n => n.id === contextMenu.itemId) || 
+                       diagramData.groups?.find(g => g.id === contextMenu.itemId);
+            if (item) {
+              onItemSelect({ ...item, itemType: contextMenu.itemType });
+              onTriggerVisualStylingPanel?.();
+            }
+          }}
         />
 
         {/* Selection rectangle overlay */}

@@ -54,6 +54,8 @@ interface TopMenuBarProps {
   onToggleHover?: () => void;
   onAlignObjects?: (alignment: 'top' | 'center' | 'bottom' | 'v-middle' | 'left' | 'h-center' | 'right' | 'distribute-v' | 'distribute-h') => void;
   onThemeApplyToSelected?: (theme: DiagramTheme) => void;
+  triggerTextStylingPanel?: boolean;
+  triggerVisualStylingPanel?: boolean;
 }
 
 export function TopMenuBar({
@@ -90,8 +92,25 @@ export function TopMenuBar({
   onToggleHover,
   onAlignObjects,
   onThemeApplyToSelected,
+  triggerTextStylingPanel = false,
+  triggerVisualStylingPanel = false,
 }: TopMenuBarProps) {
   const [themeEditorOpen, setThemeEditorOpen] = React.useState(false);
+  const [textStylingPanelOpen, setTextStylingPanelOpen] = React.useState(false);
+  const [visualStylingPanelOpen, setVisualStylingPanelOpen] = React.useState(false);
+
+  // Handle external triggers for panels
+  React.useEffect(() => {
+    if (triggerTextStylingPanel && selectedItem) {
+      setTextStylingPanelOpen(true);
+    }
+  }, [triggerTextStylingPanel, selectedItem]);
+
+  React.useEffect(() => {
+    if (triggerVisualStylingPanel && selectedItem) {
+      setVisualStylingPanelOpen(true);
+    }
+  }, [triggerVisualStylingPanel, selectedItem]);
   return (
     <div className="flex items-center border-b bg-card min-h-[2.5rem] overflow-x-auto">
       <Menubar className="rounded-none border-0 border-b-0 border-l-0 border-r-0 border-t-0 h-auto shrink-0">
@@ -326,6 +345,10 @@ export function TopMenuBar({
             diagramData={diagramData}
             onAlignObjects={onAlignObjects}
             onThemeApplyToSelected={onThemeApplyToSelected}
+            textStylingPanelOpen={textStylingPanelOpen}
+            visualStylingPanelOpen={visualStylingPanelOpen}
+            onTextStylingPanelOpenChange={setTextStylingPanelOpen}
+            onVisualStylingPanelOpenChange={setVisualStylingPanelOpen}
           />
         </>
       )}

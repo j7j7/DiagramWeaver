@@ -288,7 +288,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
   const touchStartPos = useRef<{ x: number; y: number } | null>(null);
   
   // Temporary position for dragging (doesn't update actual data until drop)
-  const [tempPosition, setTempPosition] = useState<{ x: number; y: number } | null>(null);
+  const [tempPosition] = useState<{ x: number; y: number } | null>(null);
   
   // Resize handlers
   const handleResizeStart = (e: React.MouseEvent, handle: 'right' | 'bottom') => {

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { Copy, Trash2, Link, Link2Off, Move3D } from 'lucide-react';
+import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette } from 'lucide-react';
 
 interface ContextMenuProps {
   x: number;
@@ -16,6 +16,8 @@ interface ContextMenuProps {
   itemType?: 'node' | 'group';
   onToggleFreeflow?: () => void;
   isFreeflow?: boolean;
+  onTextStyling?: () => void;
+  onVisualStyling?: () => void;
 }
 
 export function ContextMenu({ 
@@ -29,7 +31,9 @@ export function ContextMenu({
   onDisconnect,
   itemType = 'node',
   onToggleFreeflow,
-  isFreeflow = false
+  isFreeflow = false,
+  onTextStyling,
+  onVisualStyling
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -81,6 +85,32 @@ export function ContextMenu({
         <Copy className="w-4 h-4" />
         Copy
       </button>
+
+      {onTextStyling && (
+        <button
+          className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+          onClick={() => {
+            onTextStyling();
+            onClose();
+          }}
+        >
+          <Type className="w-4 h-4" />
+          Text Styling
+        </button>
+      )}
+
+      {onVisualStyling && (
+        <button
+          className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+          onClick={() => {
+            onVisualStyling();
+            onClose();
+          }}
+        >
+          <Palette className="w-4 h-4" />
+          Visual Styling
+        </button>
+      )}
       
       <button
         className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
@@ -89,7 +119,7 @@ export function ContextMenu({
           onClose();
         }}
       >
-        <Trash2 className="w-4 h-4" />
+        <Trash2 className="w-4 h-4 text-destructive" />
         Delete
       </button>
 

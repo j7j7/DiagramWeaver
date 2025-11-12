@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Type, 
   Info, 
@@ -10,7 +10,6 @@ import {
   AlignLeft, 
   AlignCenter,
   AlignRight,
-  AlignJustify,
   AlignVerticalJustifyStart,
   AlignVerticalJustifyCenter,
   AlignVerticalJustifyEnd,
@@ -18,7 +17,6 @@ import {
   Image as ImageIcon,
   RotateCw,
   GripVertical,
-  Layers,
   Square,
   Grid3x3,
   Maximize2,
@@ -55,6 +53,10 @@ interface ContextToolbarProps {
   diagramData?: DiagramData;
   onAlignObjects?: (alignment: 'top' | 'center' | 'bottom' | 'v-middle' | 'left' | 'h-center' | 'right' | 'distribute-v' | 'distribute-h') => void;
   onThemeApplyToSelected?: (theme: DiagramTheme) => void;
+  textStylingPanelOpen?: boolean;
+  visualStylingPanelOpen?: boolean;
+  onTextStylingPanelOpenChange?: (open: boolean) => void;
+  onVisualStylingPanelOpenChange?: (open: boolean) => void;
 }
 
 export function ContextToolbar({
@@ -69,12 +71,35 @@ export function ContextToolbar({
   diagramData,
   onAlignObjects,
   onThemeApplyToSelected,
+  textStylingPanelOpen = false,
+  visualStylingPanelOpen = false,
+  onTextStylingPanelOpenChange,
+  onVisualStylingPanelOpenChange,
 }: ContextToolbarProps) {
   const [labelOpen, setLabelOpen] = useState(false);
   const [descriptionOpen, setDescriptionOpen] = useState(false);
   const [connectionsOpen, setConnectionsOpen] = useState(false);
-  const [textStylingOpen, setTextStylingOpen] = useState(false);
-  const [visualStylingOpen, setVisualStylingOpen] = useState(false);
+  const [textStylingOpen, setTextStylingOpen] = useState(textStylingPanelOpen);
+  const [visualStylingOpen, setVisualStylingOpen] = useState(visualStylingPanelOpen);
+
+  // Sync external panel state with internal state
+  useEffect(() => {
+    setTextStylingOpen(textStylingPanelOpen);
+  }, [textStylingPanelOpen]);
+
+  useEffect(() => {
+    setVisualStylingOpen(visualStylingPanelOpen);
+  }, [visualStylingPanelOpen]);
+
+  const handleTextStylingOpenChange = (open: boolean) => {
+    setTextStylingOpen(open);
+    onTextStylingPanelOpenChange?.(open);
+  };
+
+  const handleVisualStylingOpenChange = (open: boolean) => {
+    setVisualStylingOpen(open);
+    onVisualStylingPanelOpenChange?.(open);
+  };
 
   if (!selectedItem) {
     return null;
@@ -623,7 +648,7 @@ export function ContextToolbar({
 
         {/* Text Styling Button */}
         {selectedItem && (isNode || isGroup) && (
-          <Popover open={textStylingOpen} onOpenChange={setTextStylingOpen}>
+          <Popover open={textStylingOpen} onOpenChange={handleTextStylingOpenChange}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <PopoverTrigger asChild>
@@ -646,7 +671,7 @@ export function ContextToolbar({
 
         {/* Visual Styling Button */}
         {selectedItem && (isNode || isGroup) && (
-          <Popover open={visualStylingOpen} onOpenChange={setVisualStylingOpen}>
+          <Popover open={visualStylingOpen} onOpenChange={handleVisualStylingOpenChange}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <PopoverTrigger asChild>
@@ -718,64 +743,7 @@ export function ContextToolbar({
           </Popover>
         )}
 
-        {/* Text Justification for Text Resources */}
-        {(isTextNode  || isTextboxNode) && (
-          <Popover>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 px-2">
-                    <AlignLeft className="h-4 w-4" />
-                  </Button>
-                </PopoverTrigger>
-              </TooltipTrigger>
-              <TooltipContent>Text Justification</TooltipContent>
-            </Tooltip>
-            <PopoverContent className="w-48">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Text Justification</label>
-                <Select
-                  value={(selectedItem.itemType === 'node' ? (selectedItem as any).textJustify : undefined) || 'center'}
-                  onValueChange={(value) => {
-                    if (onItemUpdate && selectedItem.itemType === 'node') {
-                      onItemUpdate?.({ ...selectedItem, textJustify: value as 'left' | 'center' | 'right' | 'full' });
-                    }
-                  }}
-                >
-                  <SelectTrigger className="h-8">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="left">
-                      <div className="flex items-center gap-2">
-                        <AlignLeft className="h-4 w-4" />
-                        <span>Left</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="center">
-                      <div className="flex items-center gap-2">
-                        <AlignCenter className="h-4 w-4" />
-                        <span>Center</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="right">
-                      <div className="flex items-center gap-2">
-                        <AlignRight className="h-4 w-4" />
-                        <span>Right</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="full">
-                      <div className="flex items-center gap-2">
-                        <AlignJustify className="h-4 w-4" />
-                        <span>Full</span>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </PopoverContent>
-          </Popover>
-        )}
+
 
 
 
