@@ -3360,54 +3360,115 @@ return (
         </div>
 
         
-        {/* Context Menu */}
-        <ContextMenu
-          visible={contextMenu.visible}
-          x={contextMenu.x}
-          y={contextMenu.y}
-          itemType={contextMenu.itemType}
-          onClose={closeContextMenu}
-          onCopy={() => handleCopy(contextMenu.itemId)}
-          onDelete={() => handleDelete(contextMenu.itemId)}
-          onConnect={() => {
-            const item = diagramData.nodes.find(n => n.id === contextMenu.itemId) || 
-                       diagramData.groups?.find(g => g.id === contextMenu.itemId);
-            if (item) {
-              onItemSelect({ ...item, itemType: contextMenu.itemType });
-              onConnect?.();
-            }
-          }}
-          onDisconnect={() => {
-            // Remove all connections to/from this item
-            setDiagramData(prev => ({
-              ...prev,
-              connections: prev.connections.filter((e: any) => e.from !== contextMenu.itemId && e.to !== contextMenu.itemId)
-            }));
-            toast({
-              title: "Connections Disconnected",
-              description: "All connections to/from this item have been removed.",
-            });
-            onDisconnect?.();
-          }}
-          onToggleFreeflow={() => handleToggleFreeflow(contextMenu.itemId)}
-          isFreeflow={diagramData.nodes.find(n => n.id === contextMenu.itemId)?.freeflow || false}
-          onTextStyling={() => {
-            const item = diagramData.nodes.find(n => n.id === contextMenu.itemId) || 
-                       diagramData.groups?.find(g => g.id === contextMenu.itemId);
-            if (item) {
-              onItemSelect({ ...item, itemType: contextMenu.itemType });
-              onTriggerTextStylingPanel?.();
-            }
-          }}
-          onVisualStyling={() => {
-            const item = diagramData.nodes.find(n => n.id === contextMenu.itemId) || 
-                       diagramData.groups?.find(g => g.id === contextMenu.itemId);
-            if (item) {
-              onItemSelect({ ...item, itemType: contextMenu.itemType });
-              onTriggerVisualStylingPanel?.();
-            }
-          }}
-        />
+        {/* Context Menu - only render when visible to avoid unnecessary calculations */}
+        {contextMenu.visible && (() => {
+          const currentItem = contextMenu.itemType === 'node' 
+            ? diagramData.nodes.find(n => n.id === contextMenu.itemId)
+            : diagramData.groups?.find(g => g.id === contextMenu.itemId);
+          
+          const isSizeModeAuto = currentItem?.sizeMode === 'auto';
+          const supportsSizeMode = contextMenu.itemType === 'node' 
+            ? (currentItem?.type === 'generic.text.textbox' || currentItem?.type === 'group')
+            : contextMenu.itemType === 'group';
+          
+          const itemConnections = diagramData.connections.filter((e: any) => 
+            e.from === contextMenu.itemId || e.to === contextMenu.itemId
+          );
+
+          return (
+            <ContextMenu
+              visible={contextMenu.visible}
+              x={contextMenu.x}
+              y={contextMenu.y}
+              itemType={contextMenu.itemType}
+              onClose={closeContextMenu}
+              onCopy={() => handleCopy(contextMenu.itemId)}
+              onDelete={() => handleDelete(contextMenu.itemId)}
+              onConnect={() => {
+                const item = diagramData.nodes.find(n => n.id === contextMenu.itemId) || 
+                           diagramData.groups?.find(g => g.id === contextMenu.itemId);
+                if (item) {
+                  onItemSelect({ ...item, itemType: contextMenu.itemType });
+                  onConnect?.();
+                }
+              }}
+              onDisconnect={() => {
+                // Remove all connections to/from this item
+                setDiagramData(prev => ({
+                  ...prev,
+                  connections: prev.connections.filter((e: any) => e.from !== contextMenu.itemId && e.to !== contextMenu.itemId)
+                }));
+                toast({
+                  title: "Connections Disconnected",
+                  description: "All connections to/from this item have been removed.",
+                });
+                onDisconnect?.();
+              }}
+              onShowConnections={() => {
+                toast({
+                  title: "Connections",
+                  description: `Found ${itemConnections.length} connection(s) for this item.`,
+                });
+              }}
+              connections={itemConnections}
+              onToggleSizeMode={() => {
+                if (contextMenu.itemType === 'node') {
+                  const node = diagramData.nodes.find(n => n.id === contextMenu.itemId);
+                  if (node && (node.type === 'generic.text.textbox' || node.type === 'group')) {
+                    setDiagramData(prev => ({
+                      ...prev,
+                      nodes: prev.nodes.map(n => 
+                        n.id === contextMenu.itemId 
+                          ? { ...n, sizeMode: n.sizeMode === 'auto' ? 'custom' : 'auto' }
+                          : n
+                      )
+                    }));
+                    toast({
+                      title: "Size Mode Changed",
+                      description: `Size mode changed to ${node.sizeMode === 'auto' ? 'Custom' : 'Auto'}`,
+                    });
+                  }
+                } else if (contextMenu.itemType === 'group') {
+                  const group = diagramData.groups?.find(g => g.id === contextMenu.itemId);
+                  if (group) {
+                    setDiagramData(prev => ({
+                      ...prev,
+                      groups: prev.groups?.map(g => 
+                        g.id === contextMenu.itemId 
+                          ? { ...g, sizeMode: g.sizeMode === 'auto' ? 'custom' : 'auto' }
+                          : g
+                      )
+                    }));
+                    toast({
+                      title: "Size Mode Changed", 
+                      description: `Size mode changed to ${group.sizeMode === 'auto' ? 'Custom' : 'Auto'}`,
+                    });
+                  }
+                }
+              }}
+              isSizeModeAuto={isSizeModeAuto}
+              supportsSizeMode={supportsSizeMode}
+              onToggleFreeflow={() => handleToggleFreeflow(contextMenu.itemId)}
+              isFreeflow={diagramData.nodes.find(n => n.id === contextMenu.itemId)?.freeflow || false}
+              onTextStyling={() => {
+                const item = diagramData.nodes.find(n => n.id === contextMenu.itemId) || 
+                           diagramData.groups?.find(g => g.id === contextMenu.itemId);
+                if (item) {
+                  onItemSelect({ ...item, itemType: contextMenu.itemType });
+                  onTriggerTextStylingPanel?.();
+                }
+              }}
+              onVisualStyling={() => {
+                const item = diagramData.nodes.find(n => n.id === contextMenu.itemId) || 
+                           diagramData.groups?.find(g => g.id === contextMenu.itemId);
+                if (item) {
+                  onItemSelect({ ...item, itemType: contextMenu.itemType });
+                  onTriggerVisualStylingPanel?.();
+                }
+              }}
+            />
+          );
+        })()}
 
         {/* Selection rectangle overlay */}
         {isSelectionMode && selectionStart && selectionEnd && (
