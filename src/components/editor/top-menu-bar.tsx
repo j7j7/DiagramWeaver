@@ -12,6 +12,7 @@ import {
 import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
 import { ThemeEditor } from './theme-editor';
+import { ThemeMenuSelector } from './theme-menu-selector';
 import type { SelectedItem } from '../diagram-editor';
 import type { DiagramData } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -242,10 +243,7 @@ export function TopMenuBar({
             )}
             <>
               {(onUndo || onRedo || onFitToView || onToggleHover) && <MenubarSeparator />}
-              <MenubarItem onClick={() => setThemeEditorOpen(true)}>
-                <Palette className="mr-2 h-4 w-4" />
-                Themes
-              </MenubarItem>
+
             </>
             {onTransformChange && (
               <>
@@ -330,6 +328,13 @@ export function TopMenuBar({
           </MenubarContent>
         </MenubarMenu>
       </Menubar>
+      
+      {/* Theme Selector in Main Toolbar */}
+      <ThemeMenuSelector 
+        onThemeSelect={onThemeApplyToSelected}
+        onOpenEditor={() => setThemeEditorOpen(true)}
+      />
+      
       {selectedItem && ((selectedItem.itemType !== 'edge' && onItemUpdate && onConnect && onDisconnect && onDelete) || (selectedItem.itemType === 'edge' && onConnectionUpdate && onDelete)) && (
         <>
           <div className="h-6 w-px bg-border mx-2" />

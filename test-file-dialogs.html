@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Dialog Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        button {
+            margin: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>File Dialog API Test</h1>
+    
+    <div class="status" id="status">
+        Checking browser support...
+    </div>
+
+    <button onclick="testSaveDialog()">Test Save Dialog</button>
+    <button onclick="testOpenDialog()">Test Open Dialog</button>
+    <button onclick="testFallback()">Test Fallback Method</button>
+
+    <script>
+        const status = document.getElementById('status');
+
+        // Check browser support
+        if (window.showSaveFilePicker && window.showOpenFilePicker) {
+            status.textContent = '✅ File System Access API is supported!';
+            status.style.background = '#d4edda';
+            status.style.color = '#155724';
+        } else {
+            status.textContent = '⚠️ File System Access API not supported, will use fallback method';
+            status.style.background = '#fff3cd';
+            status.style.color = '#856404';
+        }
+
+        async function testSaveDialog() {
+            try {
+                if (window.showSaveFilePicker) {
+                    const fileHandle = await window.showSaveFilePicker({
+                        suggestedName: 'test-themes.json',
+                        types: [{
+                            description: 'JSON files',
+                            accept: { 'application/json': ['.json'] },
+                        }],
+                    });
+                    
+                    const writable = await fileHandle.createWritable();
+                    await writable.write('{"test": "data"}');
+                    await writable.close();
+                    
+                    status.textContent = '✅ Save dialog worked!';
+                    status.style.background = '#d4edda';
+                } else {
+                    status.textContent = '❌ Save dialog not supported';
+                    status.style.background = '#f8d7da';
+                }
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    status.textContent = '⏹️ Save dialog cancelled by user';
+                } else {
+                    status.textContent = `❌ Save dialog error: ${error.message}`;
+                    status.style.background = '#f8d7da';
+                }
+            }
+        }
+
+        async function testOpenDialog() {
+            try {
+                if (window.showOpenFilePicker) {
+                    const [fileHandle] = await window.showOpenFilePicker({
+                        types: [{
+                            description: 'JSON files',
+                            accept: { 'application/json': ['.json'] },
+                        }],
+                        multiple: false,
+                    });
+                    
+                    const file = await fileHandle.getFile();
+                    const content = await file.text();
+                    
+                    status.textContent = `✅ Open dialog worked! File content: ${content.substring(0, 50)}...`;
+                    status.style.background = '#d4edda';
+                } else {
+                    status.textContent = '❌ Open dialog not supported';
+                    status.style.background = '#f8d7da';
+                }
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    status.textContent = '⏹️ Open dialog cancelled by user';
+                } else {
+                    status.textContent = `❌ Open dialog error: ${error.message}`;
+                    status.style.background = '#f8d7da';
+                }
+            }
+        }
+
+        function testFallback() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    status.textContent = `✅ Fallback worked! Selected: ${file.name}`;
+                    status.style.background = '#d4edda';
+                }
+            };
+            input.click();
+        }
+    </script>
+</body>
+</html>

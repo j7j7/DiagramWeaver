@@ -46,6 +46,7 @@ export interface DiagramTheme {
   properties: ThemeProperties;
   isDefault?: boolean;
   isBuiltIn?: boolean;
+  isFavorite?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }

@@ -311,8 +311,81 @@ class ThemeManager {
     return [...this.themes];
   }
 
-  public getTheme(id: string): DiagramTheme | undefined {
-    return this.themes.find(theme => theme.id === id);
+  public getThemesSorted(): DiagramTheme[] {
+    return [...this.themes].sort((a, b) => {
+      // Favorites first
+      if (a.isFavorite && !b.isFavorite) return -1;
+      if (!a.isFavorite && b.isFavorite) return 1;
+      // Then by name
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  public toggleFavorite(themeId: string): void {
+    const theme = this.themes.find(t => t.id === themeId);
+    if (theme) {
+      theme.isFavorite = !theme.isFavorite;
+      this.saveThemes();
+    }
+  }
+
+  public exportThemes(): string {
+    const customThemes = this.themes.filter(t => !t.isBuiltIn);
+    return JSON.stringify(customThemes, null, 2);
+  }
+
+  public importThemes(themesJson: string): { success: number; errors: string[] } {
+    const errors: string[] = [];
+    let success = 0;
+
+    try {
+      const importedThemes = JSON.parse(themesJson);
+      if (!Array.isArray(importedThemes)) {
+        errors.push('Invalid format: Expected an array of themes');
+        return { success, errors };
+      }
+
+      for (const themeData of importedThemes) {
+        try {
+          // Validate required fields
+          if (!themeData.id || !themeData.name || !themeData.properties) {
+            errors.push(`Invalid theme: ${themeData.name || 'Unknown'} - missing required fields`);
+            continue;
+          }
+
+          // Create a proper theme object with defaults
+          const theme: DiagramTheme = {
+            id: themeData.id,
+            name: themeData.name,
+            description: themeData.description || '',
+            properties: themeData.properties,
+            isBuiltIn: false,
+            isDefault: false,
+            isFavorite: themeData.isFavorite || false,
+            createdAt: themeData.createdAt || new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+
+          // Check for conflicts and add suffix if needed
+          let finalId = theme.id;
+          let counter = 1;
+          while (this.themes.some(t => t.id === finalId)) {
+            finalId = `${theme.id}-${counter}`;
+            counter++;
+          }
+          theme.id = finalId;
+
+          this.addTheme(theme);
+          success++;
+        } catch (error) {
+          errors.push(`Failed to import theme: ${themeData.name || 'Unknown'} - ${error}`);
+        }
+      }
+    } catch (error) {
+      errors.push(`Failed to parse JSON: ${error}`);
+    }
+
+    return { success, errors };
   }
 
   public addTheme(theme: DiagramTheme): void {

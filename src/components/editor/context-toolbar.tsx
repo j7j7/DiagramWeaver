@@ -31,7 +31,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Slider } from '@/components/ui/slider';
-import { ThemeSelector } from './theme-selector';
+
 import { TextStylingPanel } from './text-styling-panel';
 import { VisualStylingPanel } from './visual-styling-panel';
 import type { SelectedItem } from '../diagram-editor';
@@ -1123,13 +1123,7 @@ export function ContextToolbar({
           </Popover>
         )}
 
-        {/* Theme Selector */}
-        {selectedItem && onThemeApplyToSelected && (
-          <ThemeSelector
-            onThemeApply={onThemeApplyToSelected}
-            selectedCount={selectedItemIds?.size || 1}
-          />
-        )}
+
 
         {/* Delete Button */}
         <Tooltip>

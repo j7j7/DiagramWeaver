@@ -1,9 +1,9 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Palette, Check } from 'lucide-react';
+import { Palette, Star } from 'lucide-react';
 import { DiagramTheme } from '@/lib/theme-types';
 import { themeManager } from '@/lib/theme-manager';
 
@@ -18,10 +18,10 @@ export function ThemeSelector({ onThemeApply, disabled = false, selectedCount = 
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    setThemes(themeManager.getThemes());
+    setThemes(themeManager.getThemesSorted());
     
-    const unsubscribe = themeManager.subscribe((updatedThemes) => {
-      setThemes(updatedThemes);
+    const unsubscribe = themeManager.subscribe(() => {
+      setThemes(themeManager.getThemesSorted());
     });
     
     return unsubscribe;
@@ -30,6 +30,11 @@ export function ThemeSelector({ onThemeApply, disabled = false, selectedCount = 
   const handleThemeSelect = (theme: DiagramTheme) => {
     onThemeApply(theme);
     setIsOpen(false);
+  };
+
+  const handleToggleFavorite = (themeId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    themeManager.toggleFavorite(themeId);
   };
 
   const renderThemePreview = (theme: DiagramTheme, size: 'small' | 'medium' = 'small') => {
@@ -80,26 +85,100 @@ export function ThemeSelector({ onThemeApply, disabled = false, selectedCount = 
         <div className="space-y-3">
           <div className="text-sm font-medium">Apply Theme{selectedCount > 1 ? ` to ${selectedCount} items` : ''}</div>
           
-          <div className="grid grid-cols-2 gap-2">
-            {themes.map((theme) => (
-              <Button
-                key={theme.id}
-                variant="outline"
-                className="h-auto p-2 justify-start"
-                onClick={() => handleThemeSelect(theme)}
-              >
-                <div className="flex items-center gap-2 w-full">
-                  {renderThemePreview(theme, 'small')}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-medium truncate">{theme.name}</div>
-                    {theme.isDefault && (
-                      <div className="text-xs text-muted-foreground">Default</div>
+          {(() => {
+            const favoriteThemes = themes.filter(t => t.isFavorite);
+            const otherThemes = themes.filter(t => !t.isFavorite);
+            
+            return (
+              <>
+                {favoriteThemes.length > 0 && (
+                  <>
+                    <div className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                      <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                      Favorites
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {favoriteThemes.map((theme) => (
+                        <Button
+                          key={theme.id}
+                          variant="outline"
+                          className="h-auto p-2 justify-start"
+                          onClick={() => handleThemeSelect(theme)}
+                        >
+                          <div className="flex items-center gap-2 w-full">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-5 w-5 p-0 flex-shrink-0"
+                              onClick={(e) => handleToggleFavorite(theme.id, e)}
+                            >
+                              <Star 
+                                className="h-3 w-3 fill-yellow-400 text-yellow-400" 
+                              />
+                            </Button>
+                            {renderThemePreview(theme, 'small')}
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs font-medium truncate">{theme.name}</div>
+                              <div className="flex gap-1">
+                                {theme.isBuiltIn && <Badge variant="secondary" className="text-xs px-1 py-0">Built-in</Badge>}
+                                {theme.isDefault && <Badge variant="default" className="text-xs px-1 py-0">Default</Badge>}
+                              </div>
+                            </div>
+                          </div>
+                        </Button>
+                      ))}
+                    </div>
+                  </>
+                )}
+                
+                {otherThemes.length > 0 && (
+                  <>
+                    {favoriteThemes.length > 0 && (
+                      <div className="text-xs font-semibold text-muted-foreground">
+                        All Themes
+                      </div>
                     )}
-                  </div>
-                </div>
-              </Button>
-            ))}
-          </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {otherThemes.slice(0, 20).map((theme) => (
+                        <Button
+                          key={theme.id}
+                          variant="outline"
+                          className="h-auto p-2 justify-start"
+                          onClick={() => handleThemeSelect(theme)}
+                        >
+                          <div className="flex items-center gap-2 w-full">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-5 w-5 p-0 flex-shrink-0"
+                              onClick={(e) => handleToggleFavorite(theme.id, e)}
+                            >
+                              <Star 
+                                className="h-3 w-3 text-gray-400 hover:text-yellow-400" 
+                              />
+                            </Button>
+                            {renderThemePreview(theme, 'small')}
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs font-medium truncate">{theme.name}</div>
+                              <div className="flex gap-1">
+                                {theme.isBuiltIn && <Badge variant="secondary" className="text-xs px-1 py-0">Built-in</Badge>}
+                                {theme.isDefault && <Badge variant="default" className="text-xs px-1 py-0">Default</Badge>}
+                              </div>
+                            </div>
+                          </div>
+                        </Button>
+                      ))}
+                    </div>
+                    {otherThemes.length > 20 && (
+                      <div className="text-xs text-muted-foreground text-center">
+                        ... and {otherThemes.length - 20} more themes
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
+            );
+          })()}
           
           {themes.length === 0 && (
             <div className="text-center text-sm text-muted-foreground py-4">

@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import type { SaveFilePickerOptions, OpenFilePickerOptions } from '@/types/file-system';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,7 +20,10 @@ import {
   Eye, 
   Edit,
   Check,
-  X
+  X,
+  Star,
+  Download,
+  Upload
 } from 'lucide-react';
 import { DiagramTheme, ThemeProperties } from '@/lib/theme-types';
 import { themeManager } from '@/lib/theme-manager';
@@ -38,10 +42,10 @@ export function ThemeEditor({ open, onOpenChange, onThemeSelect }: ThemeEditorPr
   const [previewMode, setPreviewMode] = useState(false);
 
   useEffect(() => {
-    setThemes(themeManager.getThemes());
+    setThemes(themeManager.getThemesSorted());
     
-    const unsubscribe = themeManager.subscribe((updatedThemes) => {
-      setThemes(updatedThemes);
+    const unsubscribe = themeManager.subscribe(() => {
+      setThemes(themeManager.getThemesSorted());
     });
     
     return unsubscribe;
@@ -112,6 +116,103 @@ export function ThemeEditor({ open, onOpenChange, onThemeSelect }: ThemeEditorPr
         setSelectedTheme(null);
         setEditingTheme(null);
       }
+    }
+  };
+
+  const handleToggleFavorite = (themeId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    themeManager.toggleFavorite(themeId);
+  };
+
+  const handleExportThemes = async () => {
+    try {
+      const themesJson = themeManager.exportThemes();
+      
+      // Use the File System Access API if available (modern browsers)
+      if (window.showSaveFilePicker) {
+        const fileHandle = await window.showSaveFilePicker({
+          suggestedName: 'diagram-themes.json',
+          types: [{
+            description: 'JSON files',
+            accept: { 'application/json': ['.json'] },
+          }],
+        });
+        
+        const writable = await fileHandle.createWritable();
+        await writable.write(themesJson);
+        await writable.close();
+      } else {
+        // Fallback for browsers without File System Access API
+        const blob = new Blob([themesJson], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'diagram-themes.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    }
+  };
+
+  const handleImportThemes = async () => {
+    try {
+      let fileContent: string = '';
+      
+      // Use the File System Access API if available (modern browsers)
+      if (window.showOpenFilePicker) {
+        const [fileHandle] = await window.showOpenFilePicker({
+          types: [{
+            description: 'JSON files',
+            accept: { 'application/json': ['.json'] },
+          }],
+          multiple: false,
+        });
+        
+        const file = await fileHandle.getFile();
+        fileContent = await file.text();
+      } else {
+        // Fallback for browsers without File System Access API
+        fileContent = await new Promise<string>((resolve) => {
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.accept = '.json';
+          input.onchange = async (e) => {
+            const file = (e.target as HTMLInputElement).files?.[0];
+            if (file) {
+              const content = await file.text();
+              resolve(content);
+            } else {
+              resolve('');
+            }
+          };
+          input.oncancel = () => resolve('');
+          input.click();
+        });
+      }
+      
+      if (fileContent) {
+        const result = themeManager.importThemes(fileContent);
+        
+        if (result.success > 0) {
+          alert(`Successfully imported ${result.success} theme(s)`);
+        }
+        
+        if (result.errors.length > 0) {
+          alert(`Errors:\n${result.errors.join('\n')}`);
+        }
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        // User cancelled the file picker
+        return;
+      }
+      console.error('Import failed:', error);
+      alert('Import failed. Please check the file format and try again.');
     }
   };
 
@@ -192,14 +293,24 @@ export function ThemeEditor({ open, onOpenChange, onThemeSelect }: ThemeEditorPr
           <div className="lg:col-span-1 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Themes</h3>
-              <Button size="sm" onClick={handleCreateNew}>
-                <Plus className="h-4 w-4 mr-1" />
-                New
-              </Button>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={handleExportThemes}>
+                  <Download className="h-4 w-4 mr-1" />
+                  Export
+                </Button>
+                <Button size="sm" variant="outline" onClick={handleImportThemes}>
+                  <Upload className="h-4 w-4 mr-1" />
+                  Import
+                </Button>
+                <Button size="sm" onClick={handleCreateNew}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  New
+                </Button>
+              </div>
             </div>
             
             <div className="space-y-2 max-h-96 overflow-y-auto">
-              {themes.map((theme) => (
+              {themeManager.getThemesSorted().map((theme) => (
                 <Card 
                   key={theme.id} 
                   className={`cursor-pointer transition-all ${
@@ -210,9 +321,18 @@ export function ThemeEditor({ open, onOpenChange, onThemeSelect }: ThemeEditorPr
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0"
+                          onClick={(e) => handleToggleFavorite(theme.id, e)}
+                        >
+                          <Star 
+                            className={`h-3 w-3 ${theme.isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400'}`} 
+                          />
+                        </Button>
                         <span className="font-medium text-sm">{theme.name}</span>
                         {theme.isBuiltIn && <Badge variant="secondary" className="text-xs">Built-in</Badge>}
-                        {theme.isDefault && <Badge variant="default" className="text-xs">Default</Badge>}
                       </div>
                       <div className="flex gap-1">
                         <Button
@@ -252,30 +372,25 @@ export function ThemeEditor({ open, onOpenChange, onThemeSelect }: ThemeEditorPr
           <div className="lg:col-span-2">
             {editingTheme ? (
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold">
-                    {isCreatingNew ? 'Create New Theme' : 'Edit Theme'}
-                  </h3>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setPreviewMode(!previewMode)}
-                    >
-                      <Eye className="h-4 w-4 mr-1" />
-                      {previewMode ? 'Edit' : 'Preview'}
+                <div className="flex justify-end gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setPreviewMode(!previewMode)}
+                  >
+                    <Eye className="h-4 w-4 mr-1" />
+                    {previewMode ? 'Edit' : 'Preview'}
+                  </Button>
+                  <Button size="sm" onClick={handleSaveTheme}>
+                    <Save className="h-4 w-4 mr-1" />
+                    Save
+                  </Button>
+                  {selectedTheme && (
+                    <Button size="sm" onClick={handleApplyTheme}>
+                      <Check className="h-4 w-4 mr-1" />
+                      Apply
                     </Button>
-                    <Button size="sm" onClick={handleSaveTheme}>
-                      <Save className="h-4 w-4 mr-1" />
-                      Save
-                    </Button>
-                    {selectedTheme && (
-                      <Button size="sm" onClick={handleApplyTheme}>
-                        <Check className="h-4 w-4 mr-1" />
-                        Apply
-                      </Button>
-                    )}
-                  </div>
+                  )}
                 </div>
 
                 {previewMode ? (
