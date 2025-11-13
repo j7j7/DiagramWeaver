@@ -1953,11 +1953,13 @@ const [, drop] = useDrop(() => ({
     const target = e.target as HTMLElement;
     if (target.closest('.absolute') === null) {
       onItemSelect(null);
+      closeContextMenu();
     }
   };
 
   const handleNodeClick = (e: React.MouseEvent, node: DiagramNodeData) => {
     e.stopPropagation();
+    closeContextMenu();
     if (isConnectMode) {
       onNodeClickInConnectMode(node);
     } else {
@@ -1972,6 +1974,7 @@ const [, drop] = useDrop(() => ({
 
   const handleGroupClick = (e: React.MouseEvent, group: DiagramGroupData) => {
     e.stopPropagation();
+    closeContextMenu();
     if (isConnectMode) {
       onNodeClickInConnectMode(group as any);
     } else {
@@ -2684,6 +2687,22 @@ const [, drop] = useDrop(() => ({
     setContextMenu(prev => ({ ...prev, visible: false }));
   };
 
+  // Close context menu when clicking outside
+  useEffect(() => {
+    const handleGlobalClick = (event: MouseEvent) => {
+      if (contextMenu.visible) {
+        closeContextMenu();
+      }
+    };
+
+    if (contextMenu.visible) {
+      document.addEventListener('click', handleGlobalClick);
+      return () => {
+        document.removeEventListener('click', handleGlobalClick);
+      };
+    }
+  }, [contextMenu.visible]);
+
   // Action handlers
   const handleDelete = (itemId: string) => {
     const isNode = diagramData.nodes.some(n => n.id === itemId);
@@ -3327,6 +3346,7 @@ return (
                         connectionData={enhancedEdge}
                         onClick={(connection) => {
                           // Select the connection when clicked
+                          closeContextMenu();
                           if (onItemSelect) {
                             onItemSelect({
                               ...connection,
