@@ -73,6 +73,7 @@ export default function DiagramEditor() {
   const [hoverEnabled, setHoverEnabled] = React.useState<boolean>(false);
   const [triggerTextStylingPanel, setTriggerTextStylingPanel] = React.useState<boolean>(false);
   const [triggerVisualStylingPanel, setTriggerVisualStylingPanel] = React.useState<boolean>(false);
+  const [triggerConnectionSettingsPanel, setTriggerConnectionSettingsPanel] = React.useState<boolean>(false);
 
   // Reset trigger states after they've been used
   React.useEffect(() => {
@@ -88,6 +89,13 @@ export default function DiagramEditor() {
       return () => clearTimeout(timer);
     }
   }, [triggerVisualStylingPanel]);
+
+  React.useEffect(() => {
+    if (triggerConnectionSettingsPanel) {
+      const timer = setTimeout(() => setTriggerConnectionSettingsPanel(false), 100);
+      return () => clearTimeout(timer);
+    }
+  }, [triggerConnectionSettingsPanel]);
 
   // Tab management
   const {
@@ -1324,6 +1332,7 @@ export default function DiagramEditor() {
                     onThemeApplyToSelected={handleThemeApplyToSelected}
                     triggerTextStylingPanel={triggerTextStylingPanel}
                     triggerVisualStylingPanel={triggerVisualStylingPanel}
+                    triggerConnectionSettingsPanel={triggerConnectionSettingsPanel}
                 />
                 {activeTabId && (
                   <TabBar
@@ -1378,6 +1387,7 @@ export default function DiagramEditor() {
                     onSelectAll={handleSelectAll}
                     onTriggerTextStylingPanel={() => setTriggerTextStylingPanel(true)}
                     onTriggerVisualStylingPanel={() => setTriggerVisualStylingPanel(true)}
+                    onTriggerConnectionSettingsPanel={() => setTriggerConnectionSettingsPanel(true)}
                     />
                   </div>
                   

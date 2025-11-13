@@ -57,6 +57,7 @@ interface TopMenuBarProps {
   onThemeApplyToSelected?: (theme: DiagramTheme) => void;
   triggerTextStylingPanel?: boolean;
   triggerVisualStylingPanel?: boolean;
+  triggerConnectionSettingsPanel?: boolean;
 }
 
 export function TopMenuBar({
@@ -95,10 +96,12 @@ export function TopMenuBar({
   onThemeApplyToSelected,
   triggerTextStylingPanel = false,
   triggerVisualStylingPanel = false,
+  triggerConnectionSettingsPanel = false,
 }: TopMenuBarProps) {
   const [themeEditorOpen, setThemeEditorOpen] = React.useState(false);
   const [textStylingPanelOpen, setTextStylingPanelOpen] = React.useState(false);
   const [visualStylingPanelOpen, setVisualStylingPanelOpen] = React.useState(false);
+  const [connectionSettingsPanelOpen, setConnectionSettingsPanelOpen] = React.useState(false);
 
   // Handle external triggers for panels
   React.useEffect(() => {
@@ -112,6 +115,12 @@ export function TopMenuBar({
       setVisualStylingPanelOpen(true);
     }
   }, [triggerVisualStylingPanel, selectedItem]);
+
+  React.useEffect(() => {
+    if (triggerConnectionSettingsPanel && selectedItem) {
+      setConnectionSettingsPanelOpen(true);
+    }
+  }, [triggerConnectionSettingsPanel, selectedItem]);
   return (
     <div className="flex items-center border-b bg-card min-h-[2.5rem] overflow-x-auto">
       <Menubar className="rounded-none border-0 border-b-0 border-l-0 border-r-0 border-t-0 h-auto shrink-0">
@@ -352,8 +361,10 @@ export function TopMenuBar({
             onThemeApplyToSelected={onThemeApplyToSelected}
             textStylingPanelOpen={textStylingPanelOpen}
             visualStylingPanelOpen={visualStylingPanelOpen}
+            connectionSettingsPanelOpen={connectionSettingsPanelOpen}
             onTextStylingPanelOpenChange={setTextStylingPanelOpen}
             onVisualStylingPanelOpenChange={setVisualStylingPanelOpen}
+            onConnectionSettingsPanelOpenChange={setConnectionSettingsPanelOpen}
           />
         </>
       )}

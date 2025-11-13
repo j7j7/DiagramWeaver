@@ -55,8 +55,10 @@ interface ContextToolbarProps {
   onThemeApplyToSelected?: (theme: DiagramTheme) => void;
   textStylingPanelOpen?: boolean;
   visualStylingPanelOpen?: boolean;
+  connectionSettingsPanelOpen?: boolean;
   onTextStylingPanelOpenChange?: (open: boolean) => void;
   onVisualStylingPanelOpenChange?: (open: boolean) => void;
+  onConnectionSettingsPanelOpenChange?: (open: boolean) => void;
 }
 
 export function ContextToolbar({
@@ -73,8 +75,10 @@ export function ContextToolbar({
   onThemeApplyToSelected,
   textStylingPanelOpen = false,
   visualStylingPanelOpen = false,
+  connectionSettingsPanelOpen = false,
   onTextStylingPanelOpenChange,
   onVisualStylingPanelOpenChange,
+  onConnectionSettingsPanelOpenChange,
 }: ContextToolbarProps) {
   const [labelOpen, setLabelOpen] = useState(false);
   const [descriptionOpen, setDescriptionOpen] = useState(false);
@@ -90,6 +94,10 @@ export function ContextToolbar({
   useEffect(() => {
     setVisualStylingOpen(visualStylingPanelOpen);
   }, [visualStylingPanelOpen]);
+
+  useEffect(() => {
+    setConnectionsOpen(connectionSettingsPanelOpen);
+  }, [connectionSettingsPanelOpen]);
 
   const handleTextStylingOpenChange = (open: boolean) => {
     setTextStylingOpen(open);

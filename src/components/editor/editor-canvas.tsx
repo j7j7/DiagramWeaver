@@ -55,6 +55,7 @@ interface EditorCanvasProps {
   onSelectAll?: () => void;
   onTriggerTextStylingPanel?: () => void;
   onTriggerVisualStylingPanel?: () => void;
+  onTriggerConnectionSettingsPanel?: () => void;
 }
 
 type PositionedNode = DiagramNodeData & { x: number; y: number; };
@@ -224,7 +225,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerConnectionSettingsPanel }: EditorCanvasProps,
   ref
 ) {
   const [internalTransform, setInternalTransform] = useState({ x: 0, y: 0, k: 1 });
@@ -3464,6 +3465,14 @@ return (
                 if (item) {
                   onItemSelect({ ...item, itemType: contextMenu.itemType });
                   onTriggerVisualStylingPanel?.();
+                }
+              }}
+              triggerConnectionSettings={() => {
+                const item = diagramData.nodes.find(n => n.id === contextMenu.itemId) || 
+                           diagramData.groups?.find(g => g.id === contextMenu.itemId);
+                if (item) {
+                  onItemSelect({ ...item, itemType: contextMenu.itemType });
+                  onTriggerConnectionSettingsPanel?.();
                 }
               }}
             />

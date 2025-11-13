@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Maximize2, ChevronRight } from 'lucide-react';
+import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Maximize2 } from 'lucide-react';
 
 
 interface ContextMenuProps {
@@ -15,6 +15,7 @@ interface ContextMenuProps {
   onConnect: () => void;
   onDisconnect: () => void;
   onShowConnections?: () => void;
+  triggerConnectionSettings?: () => void;
   connections?: Array<{from: string; to: string; id?: string}>;
   itemType?: 'node' | 'group';
   onToggleFreeflow?: () => void;
@@ -36,6 +37,7 @@ export function ContextMenu({
   onConnect, 
   onDisconnect,
   onShowConnections,
+  triggerConnectionSettings,
   connections = [],
   itemType = 'node',
   onToggleFreeflow,
@@ -47,20 +49,17 @@ export function ContextMenu({
   supportsSizeMode = false
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
-  const [showConnectionsSubmenu, setShowConnectionsSubmenu] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         onClose();
-        setShowConnectionsSubmenu(false);
       }
     };
 
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onClose();
-        setShowConnectionsSubmenu(false);
       }
     };
 
@@ -75,10 +74,7 @@ export function ContextMenu({
     };
   }, [visible, onClose]);
 
-  if (!visible) {
-    setShowConnectionsSubmenu(false);
-    return null;
-  }
+  if (!visible) return null;
 
   return (
     <div
@@ -185,45 +181,17 @@ export function ContextMenu({
             Connect
           </button>
 
-          {onShowConnections && connections.length > 0 && (
-            <div className="relative">
-              <button
-                className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2 justify-between"
-                onClick={() => setShowConnectionsSubmenu(!showConnectionsSubmenu)}
-                onMouseEnter={() => setShowConnectionsSubmenu(true)}
-              >
-                <div className="flex items-center gap-2">
-                  <Network className="w-4 h-4" />
-                  Connections ({connections.length})
-                </div>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-              
-              {showConnectionsSubmenu && (
-                <div
-                  className={cn(
-                    "absolute left-full top-0 ml-1 bg-popover border border-border rounded-md shadow-lg py-1 z-50 min-w-[200px] max-h-64 overflow-y-auto",
-                    "animate-in fade-in-0 zoom-in-95"
-                  )}
-                  onMouseLeave={() => setShowConnectionsSubmenu(false)}
-                >
-                  {connections.map((connection, index) => (
-                    <div
-                      key={index}
-                      className="px-3 py-2 text-xs hover:bg-accent hover:text-accent-foreground cursor-pointer"
-                      onClick={() => {
-                        onShowConnections();
-                        onClose();
-                        setShowConnectionsSubmenu(false);
-                      }}
-                    >
-                      <div>From: {connection.from}</div>
-                      <div>To: {connection.to}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+          {triggerConnectionSettings && connections.length > 0 && (
+            <button
+              className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+              onClick={() => {
+                triggerConnectionSettings();
+                onClose();
+              }}
+            >
+              <Network className="w-4 h-4" />
+              Connections ({connections.length})
+            </button>
           )}
           
           <button
