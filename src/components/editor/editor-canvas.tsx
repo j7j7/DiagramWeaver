@@ -4,7 +4,7 @@ import React, { useState, useMemo, useRef, useCallback, useEffect } from "react"
 import { useDrop } from 'react-dnd';
 import { DiagramNode } from "../diagram/diagram-node";
 
-import { BezierConnection, BezierConnectionText } from "../diagram/bezier-connection";
+import { BezierConnection, BezierConnectionText, determineConnectionEdges } from "../diagram/bezier-connection";
 import { DiagramGroup } from "../diagram/diagram-group";
 import type { DiagramData, DiagramNodeData, DiagramGroupData, DiagramConnectionData } from "@/lib/types";
 import { ItemTypes } from './draggable-item';
@@ -3212,33 +3212,111 @@ const [, drop] = useDrop(() => ({
                     <path d="M 0 0 L 10 5 L 0 10 z" className="fill-current text-muted-foreground" />
                     </marker>
                 </defs>
-                {(diagramData.connections || []).map((edge: any, index: any) => {
-                    const fromItem = nodesById[edge.from] || groupsById[edge.from];
-                    const toItem = nodesById[edge.to] || groupsById[edge.to];
-                    if (!fromItem || !toItem) return null;
-
-                    // Use measured dimensions for nodes to ensure proper connection alignment
-                    const fromItemDims = 'type' in fromItem ? measureNodeDims(fromItem as PositionedNode) : { width: (fromItem as any).width, height: (fromItem as any).height };
-                    const toItemDims = 'type' in toItem ? measureNodeDims(toItem as PositionedNode) : { width: (toItem as any).width, height: (toItem as any).height };
+                {/* Count connections per edge for distribution */}
+                {(() => {
+                    // Pre-calculate edge information for all connections
+                    const connectionEdgeInfo = new Map<string, { fromEdge: string; toEdge: string }>();
+                    const edgeGroups = new Map<string, any[]>();
                     
-                    const fromPos: any = {
-                      ...fromItem,
-                      width: 'width' in fromItem ? (fromItem as any).width : fromItemDims.width,
-                      height: 'height' in fromItem ? (fromItem as any).height : fromItemDims.height,
-                    };
-                    const toPos: any = {
-                      ...toItem,
-                      width: 'width' in toItem ? (toItem as any).width : toItemDims.width,
-                      height: 'height' in toItem ? (toItem as any).height : toItemDims.height,
-                    };
+                    // First pass: determine edges for all connections and group by node+edge
+                    (diagramData.connections || []).forEach((conn: any, connIndex: number) => {
+                        const fromItem = nodesById[conn.from] || groupsById[conn.from];
+                        const toItem = nodesById[conn.to] || groupsById[conn.to];
+                        if (!fromItem || !toItem) return;
+                        
+                        const fromItemDims = 'type' in fromItem ? measureNodeDims(fromItem as PositionedNode) : { width: (fromItem as any).width, height: (fromItem as any).height };
+                        const toItemDims = 'type' in toItem ? measureNodeDims(toItem as PositionedNode) : { width: (toItem as any).width, height: (toItem as any).height };
+                        
+                        const fromPos: any = {
+                            ...fromItem,
+                            width: 'width' in fromItem ? (fromItem as any).width : fromItemDims.width,
+                            height: 'height' in fromItem ? (fromItem as any).height : fromItemDims.height,
+                        };
+                        const toPos: any = {
+                            ...toItem,
+                            width: 'width' in toItem ? (toItem as any).width : toItemDims.width,
+                            height: 'height' in toItem ? (toItem as any).height : toItemDims.height,
+                        };
+                        
+                        const edges = determineConnectionEdges(fromPos, toPos, conn, fromItemDims.width, fromItemDims.height, toItemDims.width, toItemDims.height);
+                        const edgeKey = `${conn.from}-${edges.fromEdge}`;
+                        const toEdgeKey = `${conn.to}-${edges.toEdge}`;
+                        
+                        // Use a unique key for this connection
+                        const connKey = `${conn.from}-${conn.to}-${connIndex}`;
+                        connectionEdgeInfo.set(connKey, edges);
+                        
+                        // Group connections by from node + from edge
+                        if (!edgeGroups.has(edgeKey)) {
+                            edgeGroups.set(edgeKey, []);
+                        }
+                        edgeGroups.get(edgeKey)!.push({ conn, connIndex, isFrom: true });
+                        
+                        // Group connections by to node + to edge
+                        if (!edgeGroups.has(toEdgeKey)) {
+                            edgeGroups.set(toEdgeKey, []);
+                        }
+                        edgeGroups.get(toEdgeKey)!.push({ conn, connIndex, isFrom: false });
+                    });
+                    
+                    // Second pass: render connections with per-edge indices
+                    return (diagramData.connections || []).map((edge: any, index: any) => {
+                        const fromItem = nodesById[edge.from] || groupsById[edge.from];
+                        const toItem = nodesById[edge.to] || groupsById[edge.to];
+                        if (!fromItem || !toItem) return null;
 
-                    // Explicitly set lineColor after spreading to ensure it's not overwritten
-                    fromPos.lineColor = (fromItem as any).lineColor;
-                    toPos.lineColor = (toItem as any).lineColor;
+                        // Use measured dimensions for nodes to ensure proper connection alignment
+                        const fromItemDims = 'type' in fromItem ? measureNodeDims(fromItem as PositionedNode) : { width: (fromItem as any).width, height: (fromItem as any).height };
+                        const toItemDims = 'type' in toItem ? measureNodeDims(toItem as PositionedNode) : { width: (toItem as any).width, height: (toItem as any).height };
+                        
+                        const fromPos: any = {
+                          ...fromItem,
+                          width: 'width' in fromItem ? (fromItem as any).width : fromItemDims.width,
+                          height: 'height' in fromItem ? (fromItem as any).height : fromItemDims.height,
+                        };
+                        const toPos: any = {
+                          ...toItem,
+                          width: 'width' in toItem ? (toItem as any).width : toItemDims.width,
+                          height: 'height' in toItem ? (toItem as any).height : toItemDims.height,
+                        };
 
-                    // Check if this connection is selected
-                    const edgeId = `${edge.from}-${edge.to}`;
-                    const isConnectionHighlighted = selectedItemId === edge.from || selectedItemId === edge.to || selectedItemId === edgeId;
+                        // Explicitly set lineColor after spreading to ensure it's not overwritten
+                        fromPos.lineColor = (fromItem as any).lineColor;
+                        toPos.lineColor = (toItem as any).lineColor;
+                        
+                        // Get edge information for this connection
+                        const connKey = `${edge.from}-${edge.to}-${index}`;
+                        const edges = connectionEdgeInfo.get(connKey) || determineConnectionEdges(fromPos, toPos, edge, fromItemDims.width, fromItemDims.height, toItemDims.width, toItemDims.height);
+                        
+                        // Calculate per-edge indices
+                        const fromEdgeKey = `${edge.from}-${edges.fromEdge}`;
+                        const toEdgeKey = `${edge.to}-${edges.toEdge}`;
+                        
+                        const fromEdgeConnections = edgeGroups.get(fromEdgeKey) || [];
+                        const toEdgeConnections = edgeGroups.get(toEdgeKey) || [];
+                        
+                        const fromEdgeIndex = fromEdgeConnections.findIndex((item: any) => item.connIndex === index);
+                        const toEdgeIndex = toEdgeConnections.findIndex((item: any) => item.connIndex === index);
+                        
+                        const fromEdgeTotal = fromEdgeConnections.length;
+                        const toEdgeTotal = toEdgeConnections.length;
+                        
+                        // Update edge with per-edge connection distribution info
+                        const enhancedEdge = {
+                            ...edge,
+                            fromPreferredExit: edges.fromEdge,
+                            toPreferredEntry: edges.toEdge,
+                            // Use from edge info for from node
+                            connectionIndex: fromEdgeIndex >= 0 ? fromEdgeIndex : 0,
+                            totalConnections: fromEdgeTotal > 0 ? fromEdgeTotal : 1,
+                            // Store to edge info separately for the "to" node
+                            toConnectionIndex: toEdgeIndex >= 0 ? toEdgeIndex : 0,
+                            toTotalConnections: toEdgeTotal > 0 ? toEdgeTotal : 1,
+                        };
+
+                        // Check if this connection is selected
+                        const edgeId = `${edge.from}-${edge.to}`;
+                        const isConnectionHighlighted = selectedItemId === edge.from || selectedItemId === edge.to || selectedItemId === edgeId;
 
 return (
                     <g key={`${edge.from}-${edge.to}-${index}`} className={cn(isConnectionHighlighted && 'drop-shadow-[0_0_6px_rgba(0,200,150,0.8)]')}>
@@ -3246,7 +3324,7 @@ return (
                         from={fromPos}
                         to={toPos}
                         connectionColor={edge.color}
-                        connectionData={edge}
+                        connectionData={enhancedEdge}
                         onClick={(connection) => {
                           // Select the connection when clicked
                           if (onItemSelect) {
@@ -3259,8 +3337,9 @@ return (
                         }}
                       />
                     </g>
-                    );
-                })}
+                  );
+                });
+                })()}
                 </svg>
                 
                 {/* Nodes and groups rendered on top of connections */}
@@ -3316,6 +3395,22 @@ return (
                 style={{ zIndex: 3 }}
                 >
                 {(diagramData.connections || []).map((edge: any, index: any) => {
+                    // Count connections between the same pair of nodes (bidirectional)
+                    const connectionsBetweenPair = (diagramData.connections || []).filter((conn: any) => 
+                        (conn.from === edge.from && conn.to === edge.to) || 
+                        (conn.from === edge.to && conn.to === edge.from)
+                    );
+                    
+                    const totalConnections = connectionsBetweenPair.length;
+                    const connectionIndex = connectionsBetweenPair.findIndex((conn: any) => conn === edge);
+                    
+                    // Update edge with connection distribution info
+                    const enhancedEdge = {
+                        ...edge,
+                        connectionIndex,
+                        totalConnections
+                    };
+                    
                     const fromItem = nodesById[edge.from] || groupsById[edge.from];
                     const toItem = nodesById[edge.to] || groupsById[edge.to];
                     if (!fromItem || !toItem) return null;
@@ -3348,7 +3443,7 @@ return (
                     return (
                       <BezierConnectionText
                         key={`text-${edge.from}-${edge.to}-${index}`}
-                        connectionData={edge}
+                        connectionData={enhancedEdge}
                         from={fromPos}
                         to={toPos}
                         connectionColor={edge.color}

@@ -61,6 +61,12 @@ export interface DiagramConnectionData {
   curvature?: number; // Bezier curve intensity (0.1 to 1.0)
   lineWidth?: number; // Line thickness for the connection (default: 2.5)
   shadow?: boolean; // Whether to show shadow around the connection line
+  
+  // Multiple connection support
+  connectionIndex?: number; // Index of this connection among multiple connections on the same edge of the from node (0-based)
+  totalConnections?: number; // Total number of connections on the same edge of the from node
+  toConnectionIndex?: number; // Index of this connection among multiple connections on the same edge of the to node (0-based)
+  toTotalConnections?: number; // Total number of connections on the same edge of the to node
 }
 
 export interface DiagramNodeItem {

@@ -32,7 +32,7 @@ const calculateNodeHeight = (label: string = '', nodeType: string, sizeMode?: st
   }
 };
 
-type Positionable = (DiagramNodeData | DiagramGroupData) & { x: number; y: number; width: number; height: number; };
+type Positionable = (DiagramNodeData | DiagramGroupData) & { x: number; y: number; width: number; height: number; subType?: string; };
 
 interface BezierConnectionProps {
   from: Positionable & { lineColor?: string };
@@ -49,7 +49,7 @@ interface BezierConnectionTextProps {
   connectionColor?: string;
 }
 
-function getConnectionPoint(obj: any, width: number, height: number, point: 'top' | 'bottom' | 'left' | 'right' | 'center', iconHeight?: number): { x: number; y: number } {
+function getConnectionPoint(obj: any, width: number, height: number, point: 'top' | 'bottom' | 'left' | 'right' | 'center', iconHeight?: number, connectionIndex?: number, totalConnections?: number, isToNode: boolean = false, toConnectionIndex?: number, toTotalConnections?: number): { x: number; y: number } {
   const centerX = obj.x + width / 2;
   // Use icon height for Y center calculation if provided (for nodes with text labels)
   // This ensures connections attach to the icon center, not the overall node center
@@ -62,28 +62,67 @@ function getConnectionPoint(obj: any, width: number, height: number, point: 'top
   // For groups/zones, add 4px offset outward from the edge (applies to both auto-fit and custom size)
   const edgeOffset = isGroup ? 4 : 0;
 
+  // Calculate offset for multiple connections
+  let offsetX = 0;
+  let offsetY = 0;
+  
+  // Use to-specific indices if this is the "to" node and they're provided
+  const effectiveIndex = (isToNode && toConnectionIndex !== undefined) ? toConnectionIndex : connectionIndex;
+  const effectiveTotal = (isToNode && toTotalConnections !== undefined) ? toTotalConnections : totalConnections;
+  
+  if (effectiveIndex !== undefined && effectiveTotal !== undefined && effectiveTotal > 1) {
+    // Distribute connections evenly along the edge length
+    // Edge length divided by number of connections gives us the spacing
+    let edgeLength: number;
+    let offsetFromStart: number;
+    
+    if (point === 'top' || point === 'bottom') {
+      // For horizontal edges (top/bottom), distribute along the width
+      edgeLength = width;
+      // Divide edge into (effectiveTotal + 1) segments, place connections at segment boundaries
+      // Start from the first segment boundary (not at the very edge)
+      const segmentSize = edgeLength / (effectiveTotal + 1);
+      offsetFromStart = segmentSize * (effectiveIndex + 1) - (edgeLength / 2);
+      offsetX = offsetFromStart;
+    } else if (point === 'left' || point === 'right') {
+      // For vertical edges (left/right), distribute along the height
+      // Use full height for groups, icon height for regular nodes
+      edgeLength = isGroup ? height : (iconHeight || height);
+      // Divide edge into (effectiveTotal + 1) segments, place connections at segment boundaries
+      const segmentSize = edgeLength / (effectiveTotal + 1);
+      offsetFromStart = segmentSize * (effectiveIndex + 1) - (edgeLength / 2);
+      offsetY = offsetFromStart;
+    } else {
+      // For center connections, distribute in a circular pattern
+      const angle = (effectiveIndex * 2 * Math.PI) / effectiveTotal;
+      const radius = Math.min(width, height) / 4;
+      offsetX = Math.cos(angle) * radius;
+      offsetY = Math.sin(angle) * radius;
+    }
+  }
+
   switch (point) {
     case 'top':
       // For top edge, always use horizontal center and top Y
       // For groups/zones, offset 4px upward (outward)
-      return { x: centerX, y: obj.y - edgeOffset };
+      return { x: centerX + offsetX, y: obj.y - edgeOffset };
     case 'bottom':
       // For bottom edge, always use horizontal center and bottom Y
       // For groups/zones, use full height and offset 4px downward (outward)
       const bottomY = isGroup ? obj.y + height : (iconHeight ? obj.y + iconHeight : obj.y + height);
-      return { x: centerX, y: bottomY + edgeOffset };
+      return { x: centerX + offsetX, y: bottomY + edgeOffset };
     case 'left':
       // For left edge, always use left X and vertical center
       // For groups/zones, use full height center and offset 4px leftward (outward)
-      return { x: obj.x - edgeOffset, y: edgeCenterY };
+      return { x: obj.x - edgeOffset, y: edgeCenterY + offsetY };
     case 'right':
       // For right edge, always use right X and vertical center
       // For groups/zones, use full height center and offset 4px rightward (outward)
-      return { x: obj.x + width + edgeOffset, y: edgeCenterY };
+      return { x: obj.x + width + edgeOffset, y: edgeCenterY + offsetY };
     case 'center':
-      return { x: centerX, y: centerY };
+      return { x: centerX + offsetX, y: centerY + offsetY };
     default:
-      return { x: centerX, y: centerY };
+      return { x: centerX + offsetX, y: centerY + offsetY };
   }
 }
 
@@ -98,11 +137,65 @@ function getExitAngle(exitPoint: 'top' | 'bottom' | 'left' | 'right' | 'center')
   }
 }
 
+// Helper function to determine the edge for a connection (for grouping connections by edge)
+export function determineConnectionEdges(
+  from: Positionable,
+  to: Positionable,
+  connectionData?: DiagramConnectionData,
+  fromWidth?: number,
+  fromHeight?: number,
+  toWidth?: number,
+  toHeight?: number
+): { fromEdge: 'top' | 'bottom' | 'left' | 'right' | 'center'; toEdge: 'top' | 'bottom' | 'left' | 'right' | 'center' } {
+  // Use preferred edges if specified
+  if (connectionData?.fromPreferredExit && connectionData?.toPreferredEntry) {
+    return {
+      fromEdge: connectionData.fromPreferredExit,
+      toEdge: connectionData.toPreferredEntry
+    };
+  }
+
+  // Auto-determine edges based on positions
+  const fromCenterX = from.x + (fromWidth || from.width) / 2;
+  const fromCenterY = from.y + (fromHeight || from.height) / 2;
+  const toCenterX = to.x + (toWidth || to.width) / 2;
+  const toCenterY = to.y + (toHeight || to.height) / 2;
+
+  const dx = toCenterX - fromCenterX;
+  const dy = toCenterY - fromCenterY;
+
+  const isHorizontal = Math.abs(dx) > Math.abs(dy);
+  
+  let fromEdge: 'top' | 'bottom' | 'left' | 'right' | 'center';
+  let toEdge: 'top' | 'bottom' | 'left' | 'right' | 'center';
+
+  if (isHorizontal) {
+    fromEdge = dx > 0 ? 'right' : 'left';
+    toEdge = dx > 0 ? 'left' : 'right';
+  } else {
+    fromEdge = dy > 0 ? 'bottom' : 'top';
+    toEdge = dy > 0 ? 'top' : 'bottom';
+  }
+
+  // Handle groups/zones - never use center
+  const isFromGroup = from.type === 'group' || from.subType === 'zone';
+  const isToGroup = to.type === 'group' || to.subType === 'zone';
+
+  if (isFromGroup && connectionData?.fromPreferredExit !== 'center') {
+    fromEdge = connectionData?.fromPreferredExit || fromEdge;
+  }
+  if (isToGroup && connectionData?.toPreferredEntry !== 'center') {
+    toEdge = connectionData?.toPreferredEntry || toEdge;
+  }
+
+  return { fromEdge, toEdge };
+}
+
 function getOptimalConnectionPoints(from: any, to: any, fromWidth: number, fromHeight: number, toWidth: number, toHeight: number, connectionData?: DiagramConnectionData, fromIconHeight?: number, toIconHeight?: number): { fromX: number; fromY: number; toX: number; toY: number; fromAngle: number; toAngle: number } {
   // Use specified connection points if provided
   if (connectionData?.fromPreferredExit && connectionData?.toPreferredEntry) {
-    const fromPoint = getConnectionPoint(from, fromWidth, fromHeight, connectionData.fromPreferredExit, fromIconHeight);
-    const toPoint = getConnectionPoint(to, toWidth, toHeight, connectionData.toPreferredEntry, toIconHeight);
+    const fromPoint = getConnectionPoint(from, fromWidth, fromHeight, connectionData.fromPreferredExit, fromIconHeight, connectionData?.connectionIndex, connectionData?.totalConnections, false);
+    const toPoint = getConnectionPoint(to, toWidth, toHeight, connectionData.toPreferredEntry, toIconHeight, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, true, connectionData?.toConnectionIndex, connectionData?.toTotalConnections);
     const fromAngle = getExitAngle(connectionData.fromPreferredExit);
     const toAngle = getExitAngle(connectionData.toPreferredEntry);
     return { fromX: fromPoint.x, fromY: fromPoint.y, toX: toPoint.x, toY: toPoint.y, fromAngle, toAngle };
@@ -170,8 +263,8 @@ function getOptimalConnectionPoints(from: any, to: any, fromWidth: number, fromH
     ? (isHorizontal ? (dx > 0 ? 'left' : 'right') : (dy > 0 ? 'top' : 'bottom'))
     : finalToPoint;
   
-  const fromConnectionPoint = getConnectionPoint(from, fromWidth, fromHeight, safeFromPoint, fromIconHeight);
-  const toConnectionPoint = getConnectionPoint(to, toWidth, toHeight, safeToPoint, toIconHeight);
+  const fromConnectionPoint = getConnectionPoint(from, fromWidth, fromHeight, safeFromPoint, fromIconHeight, connectionData?.connectionIndex, connectionData?.totalConnections, false);
+  const toConnectionPoint = getConnectionPoint(to, toWidth, toHeight, safeToPoint, toIconHeight, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, true, connectionData?.toConnectionIndex, connectionData?.toTotalConnections);
   
   const fromAngle = getExitAngle(safeFromPoint);
   const toAngle = getExitAngle(safeToPoint);
