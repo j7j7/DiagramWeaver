@@ -425,7 +425,7 @@ export function ContextToolbar({
             <PopoverContent className="w-96">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Connections</label>
-                <div className="max-h-64 overflow-y-auto space-y-2">
+                <div className="max-h-96 overflow-y-auto space-y-2">
                   {getAllConnections.length === 0 ? (
                     <div className="text-sm text-muted-foreground py-2">No connections</div>
                   ) : (
