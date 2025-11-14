@@ -37,6 +37,7 @@ interface EditorCanvasProps {
   diagramData: DiagramData;
   setDiagramData: React.Dispatch<React.SetStateAction<DiagramData>>;
   onItemSelect: (item: SelectedItem | null, shiftKey?: boolean) => void;
+  onBatchSelect?: (itemIds: string[]) => void;
   selectedItemId?: string;
   selectedItemIds?: Set<string>;
   isConnectMode: boolean;
@@ -225,7 +226,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerConnectionSettingsPanel }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, onBatchSelect, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerConnectionSettingsPanel }: EditorCanvasProps,
   ref
 ) {
   const [internalTransform, setInternalTransform] = useState({ x: 0, y: 0, k: 1 });
@@ -246,6 +247,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectionStart, setSelectionStart] = useState<{ x: number; y: number } | null>(null);
   const [selectionEnd, setSelectionEnd] = useState<{ x: number; y: number } | null>(null);
+  const [justCompletedSelection, setJustCompletedSelection] = useState(false);
   const [pendingExportOptions, setPendingExportOptions] = useState<{ backgroundColor?: 'transparent' | 'white'; useSelection: boolean } | null>(null);
   const { toast } = useToast();
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -1954,7 +1956,7 @@ const [, drop] = useDrop(() => ({
   
   const handleCanvasClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
-    if (target.closest('.absolute') === null) {
+    if (target.closest('.absolute') === null && !justCompletedSelection) {
       onItemSelect(null);
       closeContextMenu();
     }
@@ -2049,7 +2051,14 @@ const [, drop] = useDrop(() => ({
     // Handle selection mode with left mouse button (button === 0)
     if (e.button === 0) {
       // Check if clicking on an interactive element - if so, don't start selection
-      if (target.closest('.absolute')) return;
+      // Be more specific - only block selection for actual interactive elements
+      if (target.closest('.absolute.group') || 
+          target.closest('.absolute.rounded-lg') ||
+          target.closest('button') || 
+          target.closest('input') || 
+          target.closest('textarea') ||
+          target.closest('[role="button"]') ||
+          target.closest('.context-menu')) return;
       
       if (!canvasRef.current) return;
       const contentDiv = canvasRef.current.querySelector('.dot-grid') as HTMLElement;
@@ -2075,6 +2084,7 @@ const [, drop] = useDrop(() => ({
       const diagramX = (canvasX - transform.x) / transform.k;
       const diagramY = (canvasY - transform.y) / transform.k;
       
+
       setSelectionStart({ x: diagramX, y: diagramY });
       setSelectionEnd({ x: diagramX, y: diagramY });
       return;
@@ -2201,20 +2211,25 @@ const [, drop] = useDrop(() => ({
         }
       });
       
-      // Set primary selected item to the first one found
-      if (selectedIds.size > 0) {
+      // Select all items within the selection rectangle
+      if (selectedIds.size > 0 && onBatchSelect) {
+        onBatchSelect(Array.from(selectedIds));
+      } else if (selectedIds.size > 0) {
+        // Fallback to individual selection if batch select not available
         const firstId = Array.from(selectedIds)[0];
-        const node = diagramData.nodes.find(n => n.id === firstId);
-        const group = diagramData.groups?.find(g => g.id === firstId);
+        const primaryNode = diagramData.nodes.find(n => n.id === firstId);
+        const primaryGroup = diagramData.groups?.find(g => g.id === firstId);
         
-        if (node) {
-          onItemSelect({ ...node, itemType: 'node' });
-        } else if (group) {
-          onItemSelect({ ...group, itemType: 'group' });
+        let primaryItem = null;
+        if (primaryNode) {
+          primaryItem = { ...primaryNode, itemType: 'node' as const };
+        } else if (primaryGroup) {
+          primaryItem = { ...primaryGroup, itemType: 'group' as const };
         }
         
-        // TODO: Need to implement multi-select support in parent component
-        // For now, just select the first item
+        if (primaryItem) {
+          onItemSelect(primaryItem);
+        }
       } else {
         onItemSelect(null);
       }
@@ -2222,6 +2237,12 @@ const [, drop] = useDrop(() => ({
       // Clear selection rectangle
       setSelectionStart(null);
       setSelectionEnd(null);
+      
+      // Set flag to prevent canvas click from clearing selection
+      if (selectedIds.size > 0) {
+        setJustCompletedSelection(true);
+        setTimeout(() => setJustCompletedSelection(false), 100); // Clear flag after short delay
+      }
     }
     
     setIsPanning(false);

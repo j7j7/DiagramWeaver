@@ -295,6 +295,33 @@ export default function DiagramEditor() {
       setSelectedItemIds(item ? new Set([item.id]) : new Set());
     }
   };
+
+  const handleBatchSelect = (itemIds: string[]) => {
+    if (itemIds.length === 0) {
+      setSelectedItem(null);
+      setSelectedItemIds(new Set());
+      return;
+    }
+    
+    // Find all items
+    const items: SelectedItem[] = [];
+    itemIds.forEach(id => {
+      const node = diagramData.nodes.find(n => n.id === id);
+      const group = diagramData.groups?.find(g => g.id === id);
+      
+      if (node) {
+        items.push({ ...node, itemType: 'node' as const });
+      } else if (group) {
+        items.push({ ...group, itemType: 'group' as const });
+      }
+    });
+    
+    if (items.length > 0) {
+      // Set first item as primary, all items as selected
+      setSelectedItem(items[0]);
+      setSelectedItemIds(new Set(itemIds));
+    }
+  };
   
   const handleItemUpdate = (updatedItem: SelectedItem) => {
     if (updatedItem.itemType === 'group') {
@@ -1358,6 +1385,7 @@ export default function DiagramEditor() {
                     diagramData={diagramData} 
                     setDiagramData={setDiagramData}
                     onItemSelect={handleItemSelect}
+                    onBatchSelect={handleBatchSelect}
                     selectedItemId={selectedItem?.id}
                     selectedItemIds={selectedItemIds}
                     isConnectMode={isConnectMode}
