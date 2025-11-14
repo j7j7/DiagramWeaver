@@ -115,7 +115,7 @@
     { "from": "proc2", "to": "analytics", "text": "store" },
     { "from": "proc3", "to": "events-store", "text": "archive" }
   ],
-  "groups": [
+  "zones": [
 {
   "id": "event-flows",
    "type": "generic.grouping",

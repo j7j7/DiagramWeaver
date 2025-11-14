@@ -33,7 +33,7 @@ export function testUserExample() {
       }
     ],
     "connections": [],
-    "groups": [
+    "zones": [
       {
         "id": "group-1",
         "label": "",

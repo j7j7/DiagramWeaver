@@ -288,9 +288,20 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
 
     const { processedNodes, processedZones, width, height } = useMemo(() => {
     const nodes: DiagramNodeData[] = JSON.parse(JSON.stringify(diagramData.nodes || []));
-    const zones: DiagramZoneData[] = JSON.parse(JSON.stringify(diagramData.zones || []));
+    let zones: DiagramZoneData[] = JSON.parse(JSON.stringify(diagramData.zones || []));
     
-    console.log('Processing zones:', zones);
+    // Remove duplicate zones by ID (can happen during drag operations)
+    const uniqueZoneIds = new Set<string>();
+    zones = zones.filter(zone => {
+      if (uniqueZoneIds.has(zone.id)) {
+        console.warn('Duplicate zone detected and removed:', zone.id);
+        return false;
+      }
+      uniqueZoneIds.add(zone.id);
+      return true;
+    });
+    
+    console.log('Processing zones (deduped):', zones);
     
     const allItems: { [id: string]: DiagramNodeData | DiagramZoneData | PositionedNode | PositionedGroup } = {};
     nodes.forEach(item => allItems[item.id] = item);
@@ -998,7 +1009,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         return { width: zoneWidth, height: zoneHeight };
     };
 
-    const rootGroups = zones.filter(g => !zones.some(parentZone => parentZone.children.includes(g.id)));
+    const rootGroups = zones.filter(zone => !zones.some(parentZone => parentZone.children.includes(zone.id)));
     rootGroups.forEach(layoutZone);
 
     // Set absolute positions
@@ -1021,7 +1032,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     
     // Position root groups and orphan nodes
     let currentX = 50;
-    const allChildIds = new Set(zones.flatMap(g => g.children));
+    const allChildIds = new Set(zones.flatMap(zone => zone.children));
     const orphanNodes = nodes.filter(n => !allChildIds.has(n.id));
     const topLevelItems = [...rootGroups, ...orphanNodes];
 
@@ -1040,16 +1051,16 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         currentX += itemWidth + 50;
     });
 
-    const finalNodes = Object.values(allItems).filter(i => i.type !== 'group') as PositionedNode[];
+    const finalNodes = Object.values(allItems).filter(i => i.type !== 'zone') as PositionedNode[];
     const finalGroups = Object.values(allItems).filter(i => i.type === 'zone') as PositionedGroup[];
 
     const allElementsX = [
         ...finalNodes.map(n => (n.x || 0) + measureNodeDims(n).width),
-        ...finalGroups.map(g => (g.x || 0) + g.width)
+        ...finalGroups.map(zone => (zone.x || 0) + zone.width)
     ];
     const allElementsY = [
         ...finalNodes.map(n => (n.y || 0) + measureNodeDims(n).height),
-        ...finalGroups.map(g => (g.y || 0) + g.height)
+        ...finalGroups.map(zone => (zone.y || 0) + zone.height)
     ];
 
     const canvasWidth = Math.max(2000, ...allElementsX);
@@ -1095,7 +1106,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     }
     
     const childNodes = allNodes.filter(n => zone.children.includes(n.id));
-    const childZones = allGroups.filter((g: DiagramGroupData) => zone.children.includes(g.id));
+    const childZones = allGroups.filter((g: DiagramGroupData) => zone.children.includes(zone.id));
     
     if (childNodes.length === 0 && childZones.length === 0) {
       // Empty zone - use larger minimum size to accommodate potential textbox nodes
@@ -1109,7 +1120,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     // Calculate maximum dimensions among all children
     const allChildDims = [
       ...childNodes.map(n => measureNodeDims(n as PositionedNode)),
-      ...childZones.map(g => ({ width: g.width || 300, height: g.height || 220 }))
+      ...childZones.map(zone => ({ width: zone.width || 300, height: zone.height || 220 }))
     ];
     
     const maxChildWidth = Math.max(...allChildDims.map(d => d.width));
@@ -1285,15 +1296,15 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       }
       
       // Don't add freeflow shape nodes to groups
-      const addedItem = newNodes.find(n => n.id === newItemId) || newZones.find(g => g.id === newItemId);
+      const addedItem = newNodes.find(n => n.id === newItemId) || newZones.find(zone => zone.id === newItemId);
       const isFreeflowShape = (addedItem as any)?.freeflow === true && isShapeResource;
       
       if (targetGroupId && !isFreeflowShape) {
-        newZones = newZones.map(g => {
-          if (g.id === targetGroupId) {
-            const updatedGroup = { ...zone, children: [...zone.children, newItemId] };
-            // Recalculate group size based on new children including dynamic dimensions
-            return recalculateGroupSize(updatedGroup, newNodes, newZones);
+        newZones = newZones.map(zone => {
+          if (zone.id === targetGroupId) {
+            const updatedZone = { ...zone, children: [...zone.children, newItemId] };
+            // Recalculate zone size based on new children including dynamic dimensions
+            return recalculateGroupSize(updatedZone, newNodes, newZones);
           }
           return zone;
         });
@@ -1319,18 +1330,17 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               obstacles.push({ id: n.id, x: nn.x, y: nn.y, width: dims.width, height: dims.height });
             }
           }
-          for (const g of newZones) {
-            const gg: any = g as any;
-            if (gg.x != null && gg.y != null && g.id !== newItemId) {
-              // groups without computed size: approximate
-              obstacles.push({ id: g.id, x: gg.x, y: gg.y, width: 300, height: 220 });
+          for (const zone of newZones) {
+            if (zone.x != null && zone.y != null && zone.id !== newItemId) {
+              // zones without computed size: approximate
+              obstacles.push({ id: zone.id, x: zone.x, y: zone.y, width: 300, height: 220 });
             }
           }
           return obstacles.some(o => !(x + rectA.width <= o.x || o.x + o.width <= x || y + rectA.height <= o.y || o.y + o.height <= y));
         };
 
         // Check if the new node should be freeflow (skip overlap prevention)
-        const addedItem = newNodes.find(n => n.id === newItemId) || newZones.find(g => g.id === newItemId);
+        const addedItem = newNodes.find(n => n.id === newItemId) || newZones.find(zone => zone.id === newItemId);
         const isFreeflowNewItem = (addedItem as any)?.freeflow;
 
         // nudge search (spiral-ish) up to 50 attempts (skip for freeflow items)
@@ -1419,8 +1429,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           let minHeight = 150;
           
           if (groupNodes.length > 0) {
-            const maxNodeWidth = Math.max(...zoneNodes.map(n => measureNodeDims(n).width));
-            const maxNodeHeight = Math.max(...zoneNodes.map(n => measureNodeDims(n).height));
+            const maxNodeWidth = Math.max(...groupNodes.map(n => measureNodeDims(n).width));
+            const maxNodeHeight = Math.max(...groupNodes.map(n => measureNodeDims(n).height));
             minWidth = Math.max(minWidth, maxNodeWidth + ZONE_PADDING * 2);
             minHeight = Math.max(minHeight, maxNodeHeight + ZONE_PADDING * 2);
           }
@@ -1490,7 +1500,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           if (item.type === ItemTypes.CANVAS_NODE) {
             currentNodes = currentNodes.map(n => n.id === item.id ? { ...n, x: undefined, y: undefined } : n);
           } else { 
-            currentZones = currentZones.map(g => g.id === item.id ? { ...zone, x: undefined, y: undefined } : g);
+            currentZones = currentZones.map(zone => zone.id === item.id ? { ...zone, x: undefined, y: undefined } : zone);
           }
         } else {
           // Top-level - update coordinates
@@ -1548,18 +1558,18 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           if (zone.id === oldParentId) { 
             return { ...zone, children: zone.children.filter((nid: string) => nid !== item.id) };
           }
-          if (g.id === targetGroupId) {
-            // Can't drop a group into itself or its descendants
+          if (zone.id === targetGroupId) {
+            // Can't drop a zone into itself or its descendants
             const visited = new Set<string>();
             const isDescendant = (childId: string, parentId: string): boolean => {
               if (childId === parentId) return true;
               if (visited.has(childId)) return false; // Avoid infinite loops
               visited.add(childId);
-              const childZone = currentZones.find(g => g.id === childId);
+              const childZone = currentZones.find(z => z.id === childId);
               if (!childZone) return false;
               return childZone.children.some((nid: string) => isDescendant(nid, parentId));
             };
-            if (item.type === ItemTypes.ZONE && isDescendant(g.id, item.id)) {
+            if (item.type === ItemTypes.ZONE && isDescendant(zone.id, item.id)) {
               return zone;
             }
             // Defer actual insertion to ordering step below
@@ -1572,17 +1582,17 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         if (oldParentId && item.type === ItemTypes.ZONE) {
           // Remove parentId from the moved group and all its descendants
           const cleanUpParentId = (groupId: string) => {
-            const zone = currentZones.find(g => g.id === groupId);
+            const zone = currentZones.find(zone => zone.id === groupId);
             if (zone) {
               // Remove parentId reference
-              const groupIndex = currentZones.findIndex(g => g.id === groupId);
+              const groupIndex = currentZones.findIndex(g => zone.id === groupId);
               if (groupIndex !== -1) {
                 currentZones[groupIndex] = { ...zone, parentId: undefined };
               }
               
               // Recursively clean up all child groups
               zone.children.forEach(childId => {
-                const childZone = currentZones.find(g => g.id === childId);
+                const childZone = currentZones.find(zone => zone.id === childId);
                 if (childZone) {
                   cleanUpParentId(childId);
                 }
@@ -1599,8 +1609,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       // If target is a group and item is NOT freeflow, set ordering within that group (reorder or insert)
       if (targetGroupId && !isFreeflowNode) {
         currentZones = currentZones.map(zone => {
-          if (g.id !== targetGroupId) return zone;
-          const filtered = g.children.filter((nid: string) => nid !== item.id);
+          if (zone.id !== targetGroupId) return zone;
+          const filtered = zone.children.filter((nid: string) => nid !== item.id);
           const insertIndex = computeInsertIndex(targetGroupId, newPos);
           filtered.splice(insertIndex, 0, item.id);
           return { ...zone, children: filtered };
@@ -1609,16 +1619,16 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         // Set parentId for groups that are moved into a new parent
         if (item.type === ItemTypes.ZONE && targetGroupId) {
           const setParentId = (groupId: string, parentId: string) => {
-            const zone = currentZones.find(g => g.id === groupId);
+            const zone = currentZones.find(zone => zone.id === groupId);
             if (zone) {
-              const groupIndex = currentZones.findIndex(g => g.id === groupId);
+              const groupIndex = currentZones.findIndex(g => zone.id === groupId);
               if (groupIndex !== -1) {
                 currentZones[groupIndex] = { ...zone, parentId };
               }
               
               // Recursively set parentId for all child groups
               zone.children.forEach(childId => {
-                const childZone = currentZones.find(g => g.id === childId);
+                const childZone = currentZones.find(zone => zone.id === childId);
                 if (childZone) {
                   setParentId(childId, groupId);
                 }
@@ -1630,16 +1640,16 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       } else if (!targetGroupId && item.type === ItemTypes.ZONE) {
         // Group moved to canvas (orphaned) - clear parentId for moved group and all descendants
         const clearParentId = (groupId: string) => {
-          const zone = currentZones.find(g => g.id === groupId);
+          const zone = currentZones.find(zone => zone.id === groupId);
           if (zone) {
-            const groupIndex = currentZones.findIndex(g => g.id === groupId);
+            const groupIndex = currentZones.findIndex(g => zone.id === groupId);
             if (groupIndex !== -1) {
               currentZones[groupIndex] = { ...zone, parentId: undefined };
             }
             
             // Recursively clear parentId for all child groups
             zone.children.forEach(childId => {
-              const childZone = currentZones.find(g => g.id === childId);
+              const childZone = currentZones.find(zone => zone.id === childId);
               if (childZone) {
                 clearParentId(childId);
               }
@@ -1660,7 +1670,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           if (item.type === ItemTypes.CANVAS_NODE) {
             currentNodes = currentNodes.map(n => n.id === item.id ? { ...n, x: undefined, y: undefined } : n);
           } else { 
-            currentZones = currentZones.map(g => g.id === item.id ? { ...zone, x: undefined, y: undefined } : g);
+            currentZones = currentZones.map(zone => zone.id === item.id ? { ...zone, x: undefined, y: undefined } : zone);
           }
         } else {
           // Top-level: snap and prevent overlap
@@ -1669,10 +1679,10 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           const snappedY = snap(newPos.y);
 
           const movingIsZone = item.type === ItemTypes.ZONE;
-          const movingDims = movingIsGroup
+          const movingDims = movingIsZone
             ? (() => {
-                const g = processedZones.find(pg => pg.id === item.id);
-                return { width: g?.width ?? 300, height: g?.height ?? 220 };
+                const zone = processedZones.find(pz => pz.id === item.id);
+                return { width: zone?.width ?? 300, height: zone?.height ?? 220 };
               })()
             : (() => {
                 const n = processedNodes.find(pn => pn.id === item.id);
@@ -1684,11 +1694,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           const getChildrenRecursive = (itemId: string) => {
               if (allChildIds.has(itemId)) return;
               allChildIds.add(itemId);
-              const zone = currentZones.find(g => g.id === itemId);
-              if (!group) return;
+              const zone = currentZones.find(z => z.id === itemId);
+              if (!zone) return;
               zone.children.forEach((childId: string) => getChildrenRecursive(childId));
           };
-          if (movingIsGroup) getChildrenRecursive(item.id);
+          if (movingIsZone) getChildrenRecursive(item.id);
 
           const isOverlapAt = (x: number, y: number) => {
             const rectA = { x, y, width: movingDims.width, height: movingDims.height };
@@ -1715,7 +1725,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           const dx = snappedX - originalX;
           const dy = snappedY - originalY;
 
-          if (movingIsGroup) {
+          if (movingIsZone) {
             currentZones = currentZones.map(zone => {
               if (zone.id === item.id) return { ...zone, x: snappedX, y: snappedY };
               if (allChildIds.has(zone.id)) {
@@ -1834,20 +1844,20 @@ const [, drop] = useDrop(() => ({
             // Iterate backwards to check topmost groups first
             for (let i = processedZones.length - 1; i >= 0; i--) {
                 const zone = processedZones[i];
-                if (group.id === item.id) continue;
+                if (zone.id === item.id) continue;
                 
-                // Check if item being dragged is an ancestor of potential target group
+                // Check if item being dragged is an ancestor of potential target zone
                 let isAncestor = false;
                 if (item.id) {
                     const visited = new Set<string>();
                     const checkDescendants = (currentZoneId: string): boolean => {
                         if (visited.has(currentZoneId)) return false;
                         visited.add(currentZoneId);
-                        if (currentZoneId === group.id) return true;
-                        const currentZoneData = processedZones.find(g => g.id === currentZoneId);
+                        if (currentZoneId === zone.id) return true;
+                        const currentZoneData = processedZones.find(zone => zone.id === currentZoneId);
                         if (!currentZoneData) return false;
                         return currentZoneData.children.some((childId: string) => {
-                            const childZone = processedZones.find(g => g.id === childId);
+                            const childZone = processedZones.find(zone => zone.id === childId);
                             return childZone ? checkDescendants(childZone.id) : false;
                         });
                     };
@@ -1856,7 +1866,7 @@ const [, drop] = useDrop(() => ({
                 if (isAncestor) continue;
 
                 if (x > zone.x && x < zone.x + zone.width && y > zone.y && y < zone.y + zone.height) {
-                    targetGroupId = group.id;
+                    targetGroupId = zone.id;
                     break;
                 }
             }
@@ -2206,14 +2216,14 @@ const [, drop] = useDrop(() => ({
       });
       
       // Check groups
-      diagramData.zones?.forEach(group => {
-        const groupX = zone.x || 0;
-        const groupY = zone.y || 0;
+      diagramData.zones?.forEach(zone => {
+        const zoneX = zone.x || 0;
+        const zoneY = zone.y || 0;
         const zoneWidth = zone.width || 300;
         const zoneHeight = zone.height || 220;
         
-        if (groupX >= x1 && groupX + zoneWidth <= x2 && groupY >= y1 && groupY + zoneHeight <= y2) {
-          selectedIds.add(group.id);
+        if (zoneX >= x1 && zoneX + zoneWidth <= x2 && zoneY >= y1 && zoneY + zoneHeight <= y2) {
+          selectedIds.add(zone.id);
         }
       });
       
@@ -2224,7 +2234,7 @@ const [, drop] = useDrop(() => ({
         // Fallback to individual selection if batch select not available
         const firstId = Array.from(selectedIds)[0];
         const primaryNode = diagramData.nodes.find(n => n.id === firstId);
-        const primaryGroup = diagramData.zones?.find(g => g.id === firstId);
+        const primaryGroup = diagramData.zones?.find(zone => zone.id === firstId);
         
         let primaryItem = null;
         if (primaryNode) {
@@ -2343,7 +2353,7 @@ const [, drop] = useDrop(() => ({
 
     console.log('Processed items (final positions):', {
       allNodes: allNodes.map(n => ({ id: n.id, x: n.x, y: n.y, label: n.label, width: measureNodeDims(n).width, height: measureNodeDims(n).height })),
-      allGroups: allGroups.map(g => ({ id: g.id, x: g.x, y: g.y, width: g.width, height: g.height, label: g.label }))
+      allGroups: allGroups.map(zone => ({ id: zone.id, x: zone.x, y: zone.y, width: zone.width, height: zone.height, label: zone.label }))
     });
 
     const nodeBounds = allNodes.length
@@ -2357,10 +2367,10 @@ const [, drop] = useDrop(() => ({
 
     const groupBounds = allGroups.length
       ? {
-          minX: Math.min(...allGroups.map(g => g.x ?? 0)),
-          minY: Math.min(...allGroups.map(g => g.y ?? 0)),
-          maxX: Math.max(...allGroups.map(g => (g.x ?? 0) + g.width)),
-          maxY: Math.max(...allGroups.map(g => (g.y ?? 0) + g.height)),
+          minX: Math.min(...allGroups.map(zone => zone.x ?? 0)),
+          minY: Math.min(...allGroups.map(zone => zone.y ?? 0)),
+          maxX: Math.max(...allGroups.map(zone => (zone.x ?? 0) + zone.width)),
+          maxY: Math.max(...allGroups.map(zone => (zone.y ?? 0) + zone.height)),
         }
       : null;
 
@@ -2401,7 +2411,7 @@ const [, drop] = useDrop(() => ({
       nodesCount: allNodes.length,
       groupsCount: allGroups.length,
       sampleNodes: allNodes.slice(0, 3).map(n => ({ id: n.id, x: n.x, y: n.y, label: n.label })),
-      sampleGroups: allGroups.slice(0, 3).map(g => ({ id: g.id, x: zone.x, y: zone.y, width: zone.width, height: zone.height }))
+      sampleGroups: allGroups.slice(0, 3).map(zone => ({ id: zone.id, x: zone.x, y: zone.y, width: zone.width, height: zone.height }))
     });
 
     const displayWidth = k * contentWidth;
@@ -2572,8 +2582,8 @@ const [, drop] = useDrop(() => ({
   // Sort items for proper hierarchical rendering: parent first, then children in order
   const sortedRenderItems = useMemo(() => {
     const parentMap = new Map<string, string>();
-    processedZones.forEach(g => {
-      g.children.forEach((id: string) => parentMap.set(id, g.id));
+    processedZones.forEach(zone => {
+      zone.children.forEach((id: string) => parentMap.set(id, zone.id));
     });
 
     const getDepth = (id: string): number => {
@@ -2587,10 +2597,19 @@ const [, drop] = useDrop(() => ({
     };
 
     // Combine all items and sort by depth (parents first), then by original order
+    // Also deduplicate by ID to prevent React key conflicts
+    const seenIds = new Set<string>();
     const allItems = [
-      ...processedZones.map(g => ({ ...zone, itemType: 'zone' as const })),
+      ...processedZones.map(zone => ({ ...zone, itemType: 'zone' as const })),
       ...processedNodes.map(n => ({ ...n, itemType: 'node' as const }))
-    ];
+    ].filter(item => {
+      if (seenIds.has(item.id)) {
+        console.warn('Duplicate item in render list:', item.id, item.itemType);
+        return false;
+      }
+      seenIds.add(item.id);
+      return true;
+    });
 
     return allItems.sort((a, b) => {
       const depthA = getDepth(a.id);
@@ -2603,10 +2622,10 @@ const [, drop] = useDrop(() => ({
       
       // Same depth: maintain original order by using their position in the original arrays
       const indexA = a.itemType === 'zone' 
-        ? processedZones.findIndex(g => g.id === a.id)
+        ? processedZones.findIndex(zone => zone.id === a.id)
         : processedNodes.findIndex(n => n.id === a.id);
       const indexB = b.itemType === 'zone'
-        ? processedZones.findIndex(g => g.id === b.id)
+        ? processedZones.findIndex(zone => zone.id === b.id)
         : processedNodes.findIndex(n => n.id === b.id);
       
       return indexA - indexB;
@@ -2710,7 +2729,7 @@ const [, drop] = useDrop(() => ({
         const zone = processedZones[i];
         if (adjustedX > zone.x && adjustedX < zone.x + zone.width && 
             adjustedY > zone.y && adjustedY < zone.y + zone.height) {
-          targetGroupId = group.id;
+          targetGroupId = zone.id;
           break;
         }
       }
@@ -2735,7 +2754,7 @@ const [, drop] = useDrop(() => ({
         const zone = processedZones[i];
         if (adjustedX > zone.x && adjustedX < zone.x + zone.width && 
             adjustedY > zone.y && adjustedY < zone.y + zone.height) {
-          targetGroupId = group.id;
+          targetGroupId = zone.id;
           break;
         }
       }
@@ -2855,15 +2874,15 @@ const [, drop] = useDrop(() => ({
         ...prev,
         nodes: prev.nodes.filter(n => n.id !== itemId),
         connections: prev.connections.filter((e: any) => e.from !== itemId && e.to !== itemId),
-        zones: prev.zones?.map(g => ({
+        zones: prev.zones?.map(zone => ({
           ...zone,
-          children: g.children.filter((n: string) => n !== itemId)
+          children: zone.children.filter((n: string) => n !== itemId)
         }))
       }));
     } else {
       setDiagramData(prev => ({
         ...prev,
-        zones: prev.zones?.filter(g => g.id !== itemId)
+        zones: prev.zones?.filter(zone => zone.id !== itemId)
       }));
     }
     
@@ -2882,12 +2901,12 @@ const [, drop] = useDrop(() => ({
       const remainingNodes = prev.nodes.filter(n => !idsToDelete.has(n.id));
       
       // Filter out zones that are being deleted
-      const remainingZones = prev.zones?.filter(g => !idsToDelete.has(g.id));
+      const remainingZones = prev.zones?.filter(zone => !idsToDelete.has(zone.id));
       
       // Remove deleted items from zone children
-      const updatedZones = remainingZones?.map(g => ({
+      const updatedZones = remainingZones?.map(zone => ({
         ...zone,
-        children: g.children.filter(childId => !idsToDelete.has(childId))
+        children: zone.children.filter(childId => !idsToDelete.has(childId))
       }));
       
       // Remove connections that involve deleted items
@@ -2921,7 +2940,7 @@ const [, drop] = useDrop(() => ({
       // Collect selected nodes and groups
       selectedItemIds.forEach(id => {
         const node = diagramData.nodes.find(n => n.id === id);
-        const zone = diagramData.zones?.find(g => g.id === id);
+        const zone = diagramData.zones?.find(zone => zone.id === id);
         
         if (node) {
           selectedNodes.push({ ...node });
@@ -2932,12 +2951,12 @@ const [, drop] = useDrop(() => ({
             visited.add(groupId);
 
             const children: (DiagramNodeData | DiagramGroupData)[] = [];
-            const currentZone = diagramData.zones?.find(g => g.id === groupId);
+            const currentZone = diagramData.zones?.find(zone => zone.id === groupId);
 
             if (currentZone?.children) {
               for (const childId of currentZone.children) {
                 const childNode = diagramData.nodes.find(n => n.id === childId);
-                const childZone = diagramData.zones?.find(g => g.id === childId);
+                const childZone = diagramData.zones?.find(zone => zone.id === childId);
 
                 if (childNode) {
                   children.push({ ...childNode });
@@ -2987,7 +3006,7 @@ const [, drop] = useDrop(() => ({
     } else if (itemId) {
       // Fallback to single item copy for backward compatibility
       const node = diagramData.nodes.find(n => n.id === itemId);
-      const zone = diagramData.zones?.find(g => g.id === itemId);
+      const zone = diagramData.zones?.find(zone => zone.id === itemId);
 
       if (node) {
         setClipboard({ node: { ...node } });
@@ -2999,12 +3018,12 @@ const [, drop] = useDrop(() => ({
           visited.add(groupId);
 
           const children: (DiagramNodeData | DiagramGroupData)[] = [];
-          const currentZone = diagramData.zones?.find(g => g.id === groupId);
+          const currentZone = diagramData.zones?.find(zone => zone.id === groupId);
 
           if (currentZone?.children) {
             for (const childId of currentZone.children) {
               const childNode = diagramData.nodes.find(n => n.id === childId);
-              const childZone = diagramData.zones?.find(g => g.id === childId);
+              const childZone = diagramData.zones?.find(zone => zone.id === childId);
 
               if (childNode) {
                 children.push({ ...childNode });
@@ -3084,9 +3103,9 @@ const [, drop] = useDrop(() => ({
 
       // Second pass: generate new IDs for all groups and process their children
       const newZones: DiagramZoneData[] = [];
-      const processZoneChildren = (group: DiagramGroupData): DiagramGroupData => {
-        const newZoneId = generateGroupId((group.subType as 'group' | 'zone') || 'group', diagramData);
-        idMapping.set(group.id, newZoneId);
+      const processZoneChildren = (zone: DiagramGroupData): DiagramGroupData => {
+        const newZoneId = generateGroupId((zone.subType as 'group' | 'zone') || 'zone', diagramData);
+        idMapping.set(zone.id, newZoneId);
 
         // Process children - map old IDs to new IDs
         const processedChildren: string[] = [];
@@ -3149,7 +3168,7 @@ const [, drop] = useDrop(() => ({
       if (pastedItemIds.size > 0) {
         const firstPastedId = Array.from(pastedItemIds)[0];
         const firstPastedNode = newNodes.find(n => n.id === firstPastedId);
-        const firstPastedGroup = newZones.find(g => g.id === firstPastedId);
+        const firstPastedGroup = newZones.find(zone => zone.id === firstPastedId);
         
         if (firstPastedNode) {
           onItemSelect({ ...firstPastedNode, itemType: 'node' });
@@ -3164,7 +3183,7 @@ const [, drop] = useDrop(() => ({
         setTimeout(() => {
           pastedItemIds.forEach(id => {
             const pastedNode = newNodes.find(n => n.id === id);
-            const pastedGroup = newZones.find(g => g.id === id);
+            const pastedGroup = newZones.find(zone => zone.id === id);
             
             if (pastedNode) {
               onItemSelect({ ...pastedNode, itemType: 'node' }, true); // true for shift key (multi-select)
@@ -3219,9 +3238,9 @@ const [, drop] = useDrop(() => ({
           idMapping.set(nodeChild.id, newChildId);
         } else {
           // It's a group
-          const groupChild = child as DiagramGroupData;
-          const newChildId = generateGroupId((groupChild.subType as 'group' | 'zone') || 'group', diagramData);
-          idMapping.set(groupChild.id, newChildId);
+          const zoneChild = child as DiagramGroupData;
+          const newChildId = generateGroupId((zoneChild.subType as 'group' | 'zone') || 'group', diagramData);
+          idMapping.set(zoneChild.id, newChildId);
         }
       }
 
@@ -3253,13 +3272,13 @@ const [, drop] = useDrop(() => ({
           newNodes.push(newNode);
         } else {
           // It's a group - update its children IDs as well
-          const groupChild = child as DiagramGroupData;
+          const zoneChild = child as DiagramGroupData;
           const newChildGroup: DiagramGroupData = {
             ...zoneChild,
             id: newChildId,
-            x: (groupChild.x || 0) + 50,
-            y: (groupChild.y || 0) + 50,
-            children: groupChild.children?.map((childId: string) => idMapping.get(childId) || childId) || []
+            x: (zoneChild.x || 0) + 50,
+            y: (zoneChild.y || 0) + 50,
+            children: zoneChild.children?.map((childId: string) => idMapping.get(childId) || childId) || []
           };
           newChildGroups.push(newChildGroup);
         }
@@ -3599,8 +3618,8 @@ return (
 
                     // Build parent map for groups to gather ancestor groups of endpoints
                     const parentMap = new Map<string, string>();
-                    processedZones.forEach(g => {
-                      g.children.forEach((id: string) => parentMap.set(id, g.id));
+                    processedZones.forEach(zone => {
+                      zone.children.forEach((id: string) => parentMap.set(id, zone.id));
                     });
                     
                     return (
@@ -3623,7 +3642,7 @@ return (
         {contextMenu.visible && (() => {
           const currentItem = contextMenu.itemType === 'node' 
             ? diagramData.nodes.find(n => n.id === contextMenu.itemId)
-            : diagramData.zones?.find(g => g.id === contextMenu.itemId);
+            : diagramData.zones?.find(zone => zone.id === contextMenu.itemId);
           
           const isSizeModeAuto = currentItem?.sizeMode === 'auto';
           const supportsSizeMode = contextMenu.itemType === 'node' 
@@ -3645,11 +3664,11 @@ return (
               onDelete={() => handleDelete(contextMenu.itemId)}
               onConnect={() => {
                 const nodeItem = diagramData.nodes.find(n => n.id === contextMenu.itemId);
-                const groupItem = diagramData.zones?.find(g => g.id === contextMenu.itemId);
+                const zoneItem = diagramData.zones?.find(zone => zone.id === contextMenu.itemId);
                 if (nodeItem) {
                   onItemSelect({ ...nodeItem, itemType: 'node' });
                   onConnect?.();
-                } else if (groupItem) {
+                } else if (zoneItem) {
                   onItemSelect({ ...zoneItem, itemType: 'zone' });
                   onConnect?.();
                 }
@@ -3691,19 +3710,19 @@ return (
                     });
                   }
                 } else if (contextMenu.itemType === 'zone') {
-                  const zone = diagramData.zones?.find(g => g.id === contextMenu.itemId);
+                  const zone = diagramData.zones?.find(zone => zone.id === contextMenu.itemId);
                   if (zone) {
                     setDiagramData(prev => ({
                       ...prev,
-                      zones: prev.zones?.map(g => 
-                        g.id === contextMenu.itemId 
-                          ? { ...zone, sizeMode: g.sizeMode === 'auto' ? 'custom' : 'auto' }
-                          : g
+                      zones: prev.zones?.map(zone => 
+                        zone.id === contextMenu.itemId 
+                          ? { ...zone, sizeMode: zone.sizeMode === 'auto' ? 'custom' : 'auto' }
+                          : zone
                       )
                     }));
                     toast({
                       title: "Size Mode Changed", 
-                      description: `Size mode changed to ${group.sizeMode === 'auto' ? 'Custom' : 'Auto'}`,
+                      description: `Size mode changed to ${zone.sizeMode === 'auto' ? 'Custom' : 'Auto'}`,
                     });
                   }
                 }
@@ -3714,32 +3733,32 @@ return (
               isFreeflow={diagramData.nodes.find(n => n.id === contextMenu.itemId)?.freeflow || false}
               onTextStyling={() => {
                 const nodeItem = diagramData.nodes.find(n => n.id === contextMenu.itemId);
-                const groupItem = diagramData.zones?.find(g => g.id === contextMenu.itemId);
+                const zoneItem = diagramData.zones?.find(zone => zone.id === contextMenu.itemId);
                 if (nodeItem) {
                   onItemSelect({ ...nodeItem, itemType: 'node' });
                   onTriggerTextStylingPanel?.();
-                } else if (groupItem) {
+                } else if (zoneItem) {
                   onItemSelect({ ...zoneItem, itemType: 'zone' });
                   onTriggerTextStylingPanel?.();
                 }
               }}
               onVisualStyling={() => {
                 const nodeItem = diagramData.nodes.find(n => n.id === contextMenu.itemId);
-                const groupItem = diagramData.zones?.find(g => g.id === contextMenu.itemId);
+                const zoneItem = diagramData.zones?.find(zone => zone.id === contextMenu.itemId);
                 if (nodeItem) {
                   onItemSelect({ ...nodeItem, itemType: 'node' });
                   onTriggerVisualStylingPanel?.();
-                } else if (groupItem) {
+                } else if (zoneItem) {
                   onItemSelect({ ...zoneItem, itemType: 'zone' });
                   onTriggerVisualStylingPanel?.();
                 }
               }}
               triggerConnectionSettings={() => {
                 const nodeItem = diagramData.nodes.find(n => n.id === contextMenu.itemId);
-                const groupItem = diagramData.zones?.find(g => g.id === contextMenu.itemId);
+                const zoneItem = diagramData.zones?.find(zone => zone.id === contextMenu.itemId);
                 if (nodeItem) {
                   onItemSelect({ ...nodeItem, itemType: 'node' });
-                } else if (groupItem) {
+                } else if (zoneItem) {
                   onItemSelect({ ...zoneItem, itemType: 'zone' });
                 }
               }}

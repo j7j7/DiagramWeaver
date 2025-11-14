@@ -227,7 +227,9 @@ export interface DiagramData {
 }
 
 // Hierarchical format is now the standard format
-export interface HierarchicalDiagramData extends DiagramData {
+export interface HierarchicalDiagramData {
+  zones: DiagramZoneItem[]; // Nested format with DiagramZoneItem
+  connections: DiagramConnectionData[];
   metadata?: any;
 }
 
@@ -240,8 +242,6 @@ export type DiagramGroupItem = DiagramZoneItem;
 export interface LegacyDiagramData {
   nodes: DiagramNodeData[];
   connections: DiagramConnectionData[];
-  groups?: DiagramZoneData[]; // Optional for backward compatibility
-  zones?: DiagramZoneData[]; // New preferred format
-  rootZoneId?: string; // Legacy
-  rootZoneId?: string; // New preferred format
+  zones: DiagramZoneData[];
+  rootZoneId?: string; // Root zone identifier
 }

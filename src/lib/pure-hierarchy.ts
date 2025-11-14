@@ -34,7 +34,7 @@ export function createPureHierarchy(data: DiagramData): DiagramData {
 }
 
 /**
- * Migrate existing groups to pure hierarchical format
+ * Migrate existing zones to pure hierarchical format
  */
 function migrateToPureHierarchy(zones: DiagramZoneData[], nodes: DiagramNodeData[]): DiagramZoneData[] {
   const groupMap = new Map(zones.map(g => [g.id, { ...g, children: (g as any).nodes || [] }]));
@@ -196,7 +196,7 @@ export function flattenPureHierarchy(
   zones: DiagramZoneData[],
   nodes: DiagramNodeData[]
 ): { positionedGroups: DiagramZoneData[], positionedNodes: DiagramNodeData[] } {
-  const hierarchy = buildHierarchyTree(groups);
+  const hierarchy = buildHierarchyTree(zones);
   const groupMap = new Map(zones.map(g => [g.id, g]));
   const nodeMap = new Map(nodes.map(n => [n.id, n]));
   
@@ -204,44 +204,44 @@ export function flattenPureHierarchy(
   const positionedNodes: DiagramNodeData[] = [];
   const processedNodeIds = new Set<string>();
   
-  const processGroup = (groupId: string, parentX: number = 0, parentY: number = 0) => {
-    const zone = groupMap.get(groupId);
-    if (!group) return;
+  const processZone = (zoneId: string, parentX: number = 0, parentY: number = 0) => {
+    const zone = groupMap.get(zoneId);
+    if (!zone) return;
     
-    const groupX = (group.x || 0) + parentX;
-    const groupY = (group.y || 0) + parentY;
+    const zoneX = (zone.x || 0) + parentX;
+    const zoneY = (zone.y || 0) + parentY;
     
-    // Calculate dimensions for this group
-    const dimensions = calculateGroupDimensions(group, zones, nodes);
+    // Calculate dimensions for this zone
+    const dimensions = calculateGroupDimensions(zone, zones, nodes);
     
     positionedGroups.push({ 
-      ...group, 
-      x: groupX, 
-      y: groupY,
+      ...zone, 
+      x: zoneX, 
+      y: zoneY,
       width: dimensions.width,
       height: dimensions.height
     } as any);
     
     // Process children
-    group.children.forEach(childId => {
+    zone.children.forEach(childId => {
       const node = nodeMap.get(childId);
       if (node && !processedNodeIds.has(childId)) {
         processedNodeIds.add(childId);
         positionedNodes.push({
           ...node,
-          x: (node.x || 0) + groupX,
-          y: (node.y || 0) + groupY
+          x: (node.x || 0) + zoneX,
+          y: (node.y || 0) + zoneY
         });
       } else if (!node) {
-        // It's a sub-group
-        processGroup(childId, groupX, groupY);
+        // It's a sub-zone
+        processZone(childId, zoneX, zoneY);
       }
     });
   };
   
-  // Process root groups
-  hierarchy.get('root')?.forEach(group => {
-    processGroup(group.id);
+  // Process root zones
+  hierarchy.get('root')?.forEach(zone => {
+    processZone(zone.id);
   });
   
   return { positionedGroups, positionedNodes };
@@ -291,14 +291,14 @@ export function addNodeToGroup(
       x: 50,
       y: 50
     };
-    groups.push(newZone);
+    zones.push(newZone);
   } else {
-    // Add to existing group
-    const targetGroup = zones.find(g => g.id === targetGroupId);
-    if (targetGroup) {
-      targetGroup.children = [...(targetGroup.children || []), nodeId];
+    // Add to existing zone
+    const targetZone = zones.find(g => g.id === targetGroupId);
+    if (targetZone) {
+      targetZone.children = [...(targetZone.children || []), nodeId];
     }
   }
   
-  return { ...pureData, groups };
+  return { ...pureData, zones };
 }

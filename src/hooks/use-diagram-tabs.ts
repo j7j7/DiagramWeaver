@@ -95,7 +95,7 @@ export function useDiagramTabs({ isClient, onToast }: UseDiagramTabsOptions) {
   }, [tabs, activeTabId, isClient]);
 
   function createNewTab(name: string): TabState {
-    const emptyDiagram = { nodes: [], connections: [], groups: [] };
+    const emptyDiagram = { nodes: [], connections: [], zones: [] };
     const emptyHistory = [JSON.stringify(emptyDiagram)];
     const tabId = `tab-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     

@@ -19,7 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramZoneData, DiagramConnectionData } from '@/lib/types';
+import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramConnectionData } from '@/lib/types';
 import { generateSequentialId } from '@/lib/id-generator';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -386,7 +386,7 @@ export default function DiagramEditor() {
                     
                     // Recursively reset children of this zone
                     const zone = newZones.find(g => g.id === zoneId);
-                    if (group && zone.children) {
+                    if (zone && zone.children) {
                         zone.children.forEach((childId: string) => {
                             const childZone = newZones.find(g => g.id === childId);
                             if (childZone) {
@@ -474,7 +474,7 @@ export default function DiagramEditor() {
   };
 
   const handleConnect = (targetItem: DiagramNodeData | DiagramZoneData) => {
-    if (!isConnectMode || !selectedItem || (selectedItem.itemType !== 'node' && selectedItem.itemType !== 'group') || selectedItem.id === targetItem.id) {
+    if (!isConnectMode || !selectedItem || (selectedItem.itemType !== 'node' && selectedItem.itemType !== 'zone') || selectedItem.id === targetItem.id) {
       setIsConnectMode(false);
       return;
     }
@@ -517,7 +517,7 @@ export default function DiagramEditor() {
   }
 
   const disconnectSelected = () => {
-    if (!selectedItem || (selectedItem.itemType !== 'node' && selectedItem.itemType !== 'group')) return;
+    if (!selectedItem || (selectedItem.itemType !== 'node' && selectedItem.itemType !== 'zone')) return;
     const id = selectedItem.id;
     setDiagramData(prevData => ({
       ...prevData,
@@ -778,7 +778,7 @@ export default function DiagramEditor() {
         if (selectedItemIds.has(zone.id)) {
           return themeManager.applyThemeToItem(zone, theme) as DiagramZoneData;
         }
-        return group;
+        return zone;
       });
       
       // Update connections
@@ -905,7 +905,7 @@ export default function DiagramEditor() {
     // Handle distribute operations
     if (alignment === 'distribute-v' || alignment === 'distribute-h') {
       // Get all selected items with their positions and dimensions
-      const selectedItems: Array<{id: string, x: number, y: number, width: number, height: number, itemType: 'node' | 'group', index: number}> = [];
+      const selectedItems: Array<{id: string, x: number, y: number, width: number, height: number, itemType: 'node' | 'zone', index: number}> = [];
       
       selectedItemIds.forEach(id => {
         const node = diagramData.nodes.find(n => n.id === id);

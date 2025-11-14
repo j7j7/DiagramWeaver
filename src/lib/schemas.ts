@@ -108,7 +108,7 @@ export const DiagramGroupDataSchema = z.object({
 export const DiagramDataSchema = z.object({
   nodes: z.array(DiagramNodeDataSchema).default([]),
   connections: z.array(DiagramConnectionDataSchema).default([]),
-  groups: z.array(DiagramGroupDataSchema).default([]),
+  zones: z.array(DiagramGroupDataSchema).default([]),
 });
 
 export type DiagramDataValidated = z.infer<typeof DiagramDataSchema>;
@@ -160,7 +160,7 @@ export const DiagramNodeItemSchema = z.object({
 // Schema for nested group items (recursive)
 export const DiagramGroupItemSchema: z.ZodType<any> = z.object({
   id: z.string(),
-  type: z.literal('group'),
+  type: z.literal('zone'),
   label: z.string().optional(),
   info: z.string().optional(),
   children: z.array(z.any()).optional(), // Will be validated recursively
@@ -207,6 +207,6 @@ export const DiagramGroupItemSchema: z.ZodType<any> = z.object({
 
 // Schema for nested hierarchical diagram data
 export const HierarchicalDiagramDataSchema = z.object({
-  groups: z.array(DiagramGroupItemSchema).default([]),
+  zones: z.array(DiagramGroupItemSchema).default([]),
   connections: z.array(DiagramConnectionDataSchema).default([]),
 });

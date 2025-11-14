@@ -17,7 +17,7 @@ interface ContextMenuProps {
   onShowConnections?: () => void;
   triggerConnectionSettings?: () => void;
   connections?: Array<{from: string; to: string; id?: string}>;
-  itemType?: 'node' | 'group';
+  itemType?: 'node' | 'zone';
   onToggleFreeflow?: () => void;
   isFreeflow?: boolean;
   onTextStyling?: () => void;
@@ -166,7 +166,7 @@ export function ContextMenu({
         </>
       )}
 
-      {(itemType === 'node' || itemType === 'group') && (
+      {(itemType === 'node' || itemType === 'zone') && (
         <>
           <div className="border-t border-border my-1" />
           

@@ -11,19 +11,19 @@ export function convertToNestedHierarchy(data: DiagramData): HierarchicalDiagram
   const parentMap = new Map<string, string[]>();
   data.zones.forEach(zone => {
     // Handle both children (new format) and nodes (old format)
-    const childIds = zone.children || (group as any).nodes || [];
+    const childIds = zone.children || (zone as any).nodes || [];
     childIds.forEach((childId: string) => {
       if (!parentMap.has(zone.id)) {
         parentMap.set(zone.id, []);
       }
-      parentMap.get(group.id)!.push(childId);
+      parentMap.get(zone.id)!.push(childId);
     });
   });
   
-  // Find root groups (groups without parents)
+  // Find root zones (zones without parents)
   const rootZoneIds = data.zones
-    .filter(g => !g.parentId)
-    .map(g => g.id);
+    .filter(z => !z.parentId)
+    .map(z => z.id);
   
   // Convert each root group to nested structure
   const nestedGroups: DiagramGroupItem[] = rootZoneIds.map(rootId => 
@@ -33,11 +33,11 @@ export function convertToNestedHierarchy(data: DiagramData): HierarchicalDiagram
   // Find orphan nodes (nodes not in any group) and create a group for them
   const allChildNodeIds = new Set<string>();
   data.zones.forEach(zone => {
-    // Skip orphan-nodes groups when checking for children
-    if (group.id === 'orphan-nodes') return;
+    // Skip orphan-nodes zones when checking for children
+    if (zone.id === 'orphan-nodes') return;
     
     // Handle both children (new format) and nodes (old format)
-    const childIds = zone.children || (group as any).nodes || [];
+    const childIds = zone.children || (zone as any).nodes || [];
     childIds.forEach((childId: string) => {
       if (nodeMap.has(childId)) {
         allChildNodeIds.add(childId);
@@ -56,6 +56,7 @@ export function convertToNestedHierarchy(data: DiagramData): HierarchicalDiagram
         type: node.type,
         label: node.label,
         info: node.info,
+        // Orphan nodes keep their x,y coordinates since they're not in a zone
         x: node.x,
         y: node.y,
         lineColor: node.lineColor,
@@ -100,8 +101,8 @@ function convertGroupToNested(
   parentMap: Map<string, string[]>
 ): DiagramGroupItem {
   const zone = zoneMap.get(groupId);
-  if (!group) {
-    throw new Error(`Group ${groupId} not found`);
+  if (!zone) {
+    throw new Error(`Zone ${groupId} not found`);
   }
   
   const children = parentMap.get(groupId) || [];
@@ -110,14 +111,13 @@ function convertGroupToNested(
   children.forEach(childId => {
     const node = nodeMap.get(childId);
     if (node) {
-      // This is a node
+      // This is a node - in hierarchical format, nodes inside zones don't have x,y coordinates
       nestedChildren.push({
         id: node.id,
         type: node.type,
         label: node.label,
         info: node.info,
-        x: node.x,
-        y: node.y,
+        // x and y are omitted for hierarchical format - position is determined by zone layout
         lineColor: node.lineColor,
         edgePosition: node.edgePosition,
         borderColor: node.borderColor,
@@ -148,37 +148,37 @@ function convertGroupToNested(
   });
   
   return {
-    id: group.id,
+    id: zone.id,
     type: 'zone',
-    label: group.label,
-    info: group.info,
+    label: zone.label,
+    info: zone.info,
     children: nestedChildren,
-    x: group.x,
-    y: group.y,
-    subType: (group as any).subType,
-    color: group.color,
-    borderColor: group.borderColor,
-    textColor: group.textColor,
-    backgroundColor: group.backgroundColor,
-    borderStyle: group.borderStyle,
-    borderColors: group.borderColors,
-    backgroundStyle: group.backgroundStyle,
-    backgroundColors: group.backgroundColors,
-    gradientAngle: group.gradientAngle,
-    orientation: group.orientation,
-    maxItemsPerRow: group.maxItemsPerRow,
-    lineColor: group.lineColor,
-    shadow: group.shadow,
-    textPosition: group.textPosition,
-    width: group.width,
-    height: group.height,
-    sizeMode: group.sizeMode,
-    minWidth: group.minWidth,
-    minHeight: group.minHeight,
-    rotation: group.rotation,
-    borderWidth: group.borderWidth,
-    textJustify: group.textJustify,
-    textVerticalPosition: group.textVerticalPosition
+    x: zone.x,
+    y: zone.y,
+    subType: (zone as any).subType,
+    color: zone.color,
+    borderColor: zone.borderColor,
+    textColor: zone.textColor,
+    backgroundColor: zone.backgroundColor,
+    borderStyle: zone.borderStyle,
+    borderColors: zone.borderColors,
+    backgroundStyle: zone.backgroundStyle,
+    backgroundColors: zone.backgroundColors,
+    gradientAngle: zone.gradientAngle,
+    orientation: zone.orientation,
+    maxItemsPerRow: zone.maxItemsPerRow,
+    lineColor: zone.lineColor,
+    shadow: zone.shadow,
+    textPosition: zone.textPosition,
+    width: zone.width,
+    height: zone.height,
+    sizeMode: zone.sizeMode,
+    minWidth: zone.minWidth,
+    minHeight: zone.minHeight,
+    rotation: zone.rotation,
+    borderWidth: zone.borderWidth,
+    textJustify: zone.textJustify,
+    textVerticalPosition: zone.textVerticalPosition
   };
 }
 
@@ -192,10 +192,10 @@ export function convertFromNestedHierarchy(nestedData: HierarchicalDiagramData):
   const zoneMap = new Map<string, DiagramGroupData>();
   
   // Process all zones and collect nodes
-  nestedData.zones.forEach(group => {
+  nestedData.zones.forEach(zone => {
     // Special handling for orphan-nodes zone - convert its children directly to nodes
-    if (group.id === 'orphan-nodes') {
-      group.children.forEach(child => {
+    if (zone.id === 'orphan-nodes') {
+      zone.children?.forEach(child => {
         if (child.type !== 'zone') {
           const nodeChild = child as DiagramNodeItem;
           const node: DiagramNodeData = {
@@ -231,7 +231,7 @@ export function convertFromNestedHierarchy(nestedData: HierarchicalDiagramData):
         }
       });
     } else {
-      processNestedGroup(group, nodes, zones, nodeMap, zoneMap, null);
+      processNestedGroup(zone, nodes, zones, nodeMap, zoneMap, null);
     }
   });
   
@@ -247,7 +247,7 @@ export function convertFromNestedHierarchy(nestedData: HierarchicalDiagramData):
  * Process a nested group and convert to flat format
  */
 function processNestedGroup(
-  group: DiagramGroupItem,
+  zone: DiagramZoneItem,
   nodes: DiagramNodeData[],
   zones: DiagramZoneData[],
   nodeMap: Map<string, DiagramNodeData>,
@@ -255,50 +255,50 @@ function processNestedGroup(
   parentId: string | null
 ): void {
   // Create flat zone
-  const flatGroup: DiagramZoneData = {
-    id: group.id,
+  const flatZone: DiagramZoneData = {
+    id: zone.id,
     type: 'zone',
-    label: group.label,
+    label: zone.label,
     children: [],
-    info: group.info,
-    x: group.x,
-    y: group.y,
-    subType: group.subType,
-    color: group.color,
-    borderColor: group.borderColor,
-    textColor: group.textColor,
-    backgroundColor: group.backgroundColor,
-    borderStyle: group.borderStyle,
-    borderColors: group.borderColors,
-    backgroundStyle: group.backgroundStyle,
-    backgroundColors: group.backgroundColors,
-    gradientAngle: group.gradientAngle,
-    orientation: group.orientation,
-    maxItemsPerRow: group.maxItemsPerRow,
-    lineColor: group.lineColor,
-    shadow: group.shadow,
-    textPosition: group.textPosition,
-    width: group.width,
-    height: group.height,
-    sizeMode: group.sizeMode,
-    minWidth: group.minWidth,
-    minHeight: group.minHeight,
-    rotation: group.rotation,
-    borderWidth: group.borderWidth,
+    info: zone.info,
+    x: zone.x,
+    y: zone.y,
+    subType: zone.subType,
+    color: zone.color,
+    borderColor: zone.borderColor,
+    textColor: zone.textColor,
+    backgroundColor: zone.backgroundColor,
+    borderStyle: zone.borderStyle,
+    borderColors: zone.borderColors,
+    backgroundStyle: zone.backgroundStyle,
+    backgroundColors: zone.backgroundColors,
+    gradientAngle: zone.gradientAngle,
+    orientation: zone.orientation,
+    maxItemsPerRow: zone.maxItemsPerRow,
+    lineColor: zone.lineColor,
+    shadow: zone.shadow,
+    textPosition: zone.textPosition,
+    width: zone.width,
+    height: zone.height,
+    sizeMode: zone.sizeMode,
+    minWidth: zone.minWidth,
+    minHeight: zone.minHeight,
+    rotation: zone.rotation,
+    borderWidth: zone.borderWidth,
     parentId: parentId || undefined,
-    textJustify: group.textJustify,
-    textVerticalPosition: group.textVerticalPosition
+    textJustify: zone.textJustify,
+    textVerticalPosition: zone.textVerticalPosition
   };
   
-  groups.push(flatGroup);
-  zoneMap.set(group.id, flatGroup);
+  zones.push(flatZone);
+  zoneMap.set(zone.id, flatZone);
   
   // Process children
-  group.children.forEach(child => {
-    if (child.type === 'group') {
-      // This is a nested group
-      processNestedGroup(child as DiagramGroupItem, nodes, zones, nodeMap, zoneMap, group.id);
-      flatGroup.children.push(child.id);
+  zone.children?.forEach(child => {
+    if (child.type === 'zone') {
+      // This is a nested zone
+      processNestedGroup(child as DiagramZoneItem, nodes, zones, nodeMap, zoneMap, zone.id);
+      flatZone.children.push(child.id);
     } else {
       // This is a node
       const nodeChild = child as DiagramNodeItem;
@@ -334,7 +334,7 @@ function processNestedGroup(
     
       nodes.push(node);
       nodeMap.set(child.id, node);
-      flatGroup.children.push(child.id);
+      flatZone.children.push(child.id);
     }
   });
 }
@@ -425,7 +425,7 @@ export function flattenNestedHierarchy(
   const positionedNodes: DiagramNodeItem[] = [];
   const processedNodeIds = new Set<string>(); // Track processed nodes to avoid duplicates
   
-  const processGroup = (group: DiagramGroupItem, parentX: number = 0, parentY: number = 0) => {
+  const processGroup = (group: DiagramZoneItem, parentX: number = 0, parentY: number = 0) => {
     const groupX = (group.x || 0) + parentX;
     const groupY = (group.y || 0) + parentY;
     
@@ -438,14 +438,14 @@ export function flattenNestedHierarchy(
       y: groupY,
       width: dimensions.width,
       height: dimensions.height
-    } as any;
+    };
     
     positionedGroups.push(positionedGroup);
     
     // Process children
-    group.children.forEach(child => {
-      if (child.type === 'group') {
-        processGroup(child as DiagramGroupItem, groupX, groupY);
+    group.children?.forEach(child => {
+      if (child.type === 'zone') {
+        processGroup(child as DiagramZoneItem, groupX, groupY);
       } else {
         // Only add node if not already processed
         if (!processedNodeIds.has(child.id)) {
@@ -462,8 +462,8 @@ export function flattenNestedHierarchy(
   };
   
   // Process all root zones
-  nestedData.zones.forEach(group => {
-    processGroup(group);
+  nestedData.zones.forEach(zone => {
+    processGroup(zone);
   });
   
   return { positionedGroups, positionedNodes };

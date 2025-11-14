@@ -109,18 +109,18 @@ const handleChange = async (newText: string) => {
   const isNestedFormat = (data: any): boolean => {
     console.log('Checking nested format for data:', data);
     
-    // Check for nested format in either groups or zones
-    const groups = data.groups || data.zones;
-    console.log('Groups/zones found:', groups);
+    // Check for nested format in zones
+    const zones = data.zones;
+    console.log('Zones found:', zones);
     
-    if (!groups || !Array.isArray(groups)) {
-      console.log('No groups/zones array found');
+    if (!zones || !Array.isArray(zones)) {
+      console.log('No zones array found');
       return false;
     }
     
-    // Consider it nested if we have zones array OR if any group has zone type
+    // Consider it nested if we have zones array OR if any zone has zone type
     const hasZonesArray = !!data.zones;
-    const hasZoneTypeItems = zones.some((group: any) => group.type === 'zone');
+    const hasZoneTypeItems = zones.some((zone: any) => zone.type === 'zone');
     
     const isNested = hasZonesArray || hasZoneTypeItems;
     console.log('Has zones array:', hasZonesArray, 'Has zone type items:', hasZoneTypeItems, 'Is nested format:', isNested);
@@ -154,28 +154,23 @@ const handleChange = async (newText: string) => {
     const flatData = convertNestedToFlatForValidation(data);
     const result = { ...flatData };
     
-    // Handle both groups and zones arrays
-    const sourceArray = result.groups || result.zones;
-    console.log('Source array for conversion:', sourceArray);
+    // Handle zones array
+    const zonesArray = result.zones;
+    console.log('Zones array for conversion:', zonesArray);
     
-    if (Array.isArray(sourceArray)) {
-      const convertedArray = sourceArray.map((group: any) => {
-        console.log('Converting group:', group);
-        if (group.nodes && !group.children) {
+    if (Array.isArray(zonesArray)) {
+      const convertedArray = zonesArray.map((zone: any) => {
+        console.log('Converting zone:', zone);
+        if (zone.nodes && !zone.children) {
           console.log('Converting nodes to children');
-          return { ...group, children: group.nodes, nodes: undefined };
+          return { ...zone, children: zone.nodes, nodes: undefined };
         }
-        return group;
+        return zone;
       });
       
-      // Always use groups array in result
-      result.groups = convertedArray;
-      console.log('Final result groups:', result.groups);
-      
-      if (result.zones) {
-        result.zones = undefined; // Remove zones array after conversion
-        console.log('Removed zones array');
-      }
+      // Use zones array in result
+      result.zones = convertedArray;
+      console.log('Final result zones:', result.zones);
     }
     
     // Process nodes
@@ -193,17 +188,17 @@ const handleChange = async (newText: string) => {
       );
     }
     
-    // Process groups - migrate from nodes to children
-    if (Array.isArray(result.groups)) {
-      result.groups = await Promise.all(
-        result.zones.map(async (group: any) => {
-          const migratedGroup = { ...group };
+    // Process zones - migrate from nodes to children
+    if (Array.isArray(result.zones)) {
+      result.zones = await Promise.all(
+        result.zones.map(async (zone: any) => {
+          const migratedZone = { ...zone };
           // Migrate nodes to children if needed
-          if (group.nodes && !group.children) {
-            migratedGroup.children = group.nodes;
-            delete migratedGroup.nodes;
+          if (zone.nodes && !zone.children) {
+            migratedZone.children = zone.nodes;
+            delete migratedZone.nodes;
           }
-          return migratedGroup;
+          return migratedZone;
         })
       );
     }
