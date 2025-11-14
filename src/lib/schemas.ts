@@ -89,8 +89,8 @@ export const DiagramGroupDataSchema = z.object({
   shadow: z.boolean().optional(),
   parentId: z.string().optional(),
   
-  // Text positioning properties
-  textPosition: z.enum(['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right', 'inside']).optional(),
+   // Text positioning properties
+   textPosition: z.enum(['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right', 'inside', 'inline-top', 'inline-bottom', 'outside-top', 'outside-bottom', 'outside-left', 'outside-right']).optional(),
   
   // Text styling properties
   fontFamily: z.string().optional(), // Font family (e.g., 'Arial', 'Helvetica', 'Times New Roman')
@@ -182,7 +182,7 @@ export const DiagramGroupItemSchema: z.ZodType<any> = z.object({
   shadow: z.boolean().optional(), // Whether to show shadow around the group/zone
   
    // Text positioning properties
-   textPosition: z.enum(['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right', 'inside']).optional(),
+   textPosition: z.enum(['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right', 'inside', 'inline-top', 'inline-bottom', 'outside-top', 'outside-bottom', 'outside-left', 'outside-right']).optional(),
    
    // Text styling properties
    fontFamily: z.string().optional(), // Font family (e.g., 'Arial', 'Helvetica', 'Times New Roman')

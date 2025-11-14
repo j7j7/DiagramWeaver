@@ -1,0 +1,36 @@
+{
+  "nodes": [
+    {
+      "id": "test-node-1",
+      "type": "aws.compute.ec2",
+      "label": "EC2 Instance",
+      "x": 100,
+      "y": 100
+    }
+  ],
+  "connections": [],
+  "groups": [
+    {
+      "id": "test-zone-1",
+      "type": "zone",
+      "subType": "zone",
+      "label": "Test Zone from Resource",
+      "x": 200,
+      "y": 200,
+      "width": 200,
+      "height": 150,
+      "children": []
+    },
+    {
+      "id": "test-group-1", 
+      "type": "zone",
+      "subType": "group",
+      "label": "Test Group from Resource",
+      "x": 500,
+      "y": 200,
+      "width": 200,
+      "height": 150,
+      "children": []
+    }
+  ]
+}

@@ -57,13 +57,13 @@ export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, 
         ...selectedItem,
         borderStyle: selectedItem.borderStyle || 'solid',
         borderColors: selectedItem.borderColors || [
-          selectedItem.borderColor || (selectedItem.subType === 'zone' ? '#6b7280' : '#3b82f6'),
-          selectedItem.borderColor || (selectedItem.subType === 'zone' ? '#6b7280' : '#3b82f6')
+          selectedItem.borderColor || (selectedItem.itemType === 'zone' ? '#6b7280' : '#3b82f6'),
+          selectedItem.borderColor || (selectedItem.itemType === 'zone' ? '#6b7280' : '#3b82f6')
         ],
         backgroundStyle: selectedItem.backgroundStyle || 'solid',
         backgroundColors: selectedItem.backgroundColors || [
-          selectedItem.backgroundColor || (selectedItem.subType === 'zone' ? '#f3f4f6' : '#f3f4f6'),
-          selectedItem.backgroundColor || (selectedItem.subType === 'zone' ? '#e5e7eb' : '#e5e7eb')
+          selectedItem.backgroundColor || (selectedItem.itemType === 'zone' ? '#f3f4f6' : '#f3f4f6'),
+          selectedItem.backgroundColor || (selectedItem.itemType === 'zone' ? '#e5e7eb' : '#e5e7eb')
         ]
       };
       reset(initializedItem);
@@ -109,17 +109,17 @@ export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, 
   const { incoming, outgoing, parentGroup } = useMemo(() => {
     if (!selectedItem || !diagramData) return { incoming: [], outgoing: [], parentGroup: null };
     
-    const parent = (diagramData.groups || []).find(g => (g.children || (g as any).nodes || []).includes(selectedItem.id));
+    const parent = (diagramData.zones || []).find(zone => (zone.children || (zone as any).nodes || []).includes(selectedItem.id));
     
     const itemId = selectedItem.id;
     const nodesById = new Map(diagramData.nodes.map(n => [n.id, n]));
-    const groupsById = new Map((diagramData.groups || []).map(g => [g.id, g]));
+    const zonesById = new Map((diagramData.zones || []).map(zone => [zone.id, zone]));
 
     const incoming = (diagramData.connections || [])
       .filter((edge: any) => edge.to === itemId)
       .map((edge: any) => ({
         connection: edge,
-        label: nodesById.get(edge.from)?.label || groupsById.get(edge.from)?.label || edge.from
+        label: nodesById.get(edge.from)?.label || zonesById.get(edge.from)?.label || edge.from
       }))
       .filter(item => item.label);
       
@@ -127,7 +127,7 @@ export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, 
       .filter((edge: any) => edge.from === itemId)
       .map((edge: any) => ({
         connection: edge,
-        label: nodesById.get(edge.to)?.label || groupsById.get(edge.to)?.label || edge.to
+        label: nodesById.get(edge.to)?.label || zonesById.get(edge.to)?.label || edge.to
       }))
       .filter(item => item.label);
 

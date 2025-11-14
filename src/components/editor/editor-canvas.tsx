@@ -5,8 +5,8 @@ import { useDrop } from 'react-dnd';
 import { DiagramNode } from "../diagram/diagram-node";
 
 import { BezierConnection, BezierConnectionText, determineConnectionEdges } from "../diagram/bezier-connection";
-import { DiagramGroup } from "../diagram/diagram-group";
-import type { DiagramData, DiagramNodeData, DiagramGroupData, DiagramConnectionData } from "@/lib/types";
+import { DiagramZone } from "../diagram/diagram-zone";
+import type { DiagramData, DiagramNodeData, DiagramGroupData, DiagramZoneData, DiagramConnectionData } from "@/lib/types";
 import { ItemTypes } from './draggable-item';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "../ui/button";
@@ -23,8 +23,8 @@ const NODE_WIDTH = 80;
 const NODE_HEIGHT = 80;
 const TEXT_NODE_HEIGHT = 40;
 const EXTRA_LINE_HEIGHT = 20;
-const GROUP_PADDING = 50; // Increased by 25% (was 40)
-const GROUP_NODE_SPACING = 30;
+const ZONE_PADDING = 50; // Increased by 25% (was 40)
+const ZONE_NODE_SPACING = 30;
 const MULTI_LINE_SPACING_BONUS = 25; // Extra spacing for nodes with 2+ lines of text
 const GRID_SNAP = 20;
 
@@ -60,7 +60,7 @@ interface EditorCanvasProps {
 }
 
 type PositionedNode = DiagramNodeData & { x: number; y: number; };
-type PositionedGroup = DiagramGroupData & { x: number; y: number; width: number; height: number; };
+type PositionedGroup = DiagramZoneData & { x: number; y: number; width: number; height: number; };
 
 const measureNodeDims = (n: PositionedNode) => {
   const isTextNode = n.type === 'generic.text.text';
@@ -265,7 +265,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     visible: boolean;
     x: number;
     y: number;
-    itemType: 'node' | 'group';
+    itemType: 'node' | 'zone'; // Use 'zone' for consistency with our data structure
     itemId: string;
   }>({
     visible: false,
@@ -278,25 +278,27 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   // Clipboard state
   const [clipboard, setClipboard] = useState<{
     node?: DiagramNodeData;
-    group?: DiagramGroupData;
-    children?: (DiagramNodeData | DiagramGroupData)[];
+    zone?: DiagramZoneData;
+    children?: (DiagramNodeData | DiagramZoneData)[];
     // Multi-selection support
     nodes?: DiagramNodeData[];
-    groups?: DiagramGroupData[];
+    zones?: DiagramZoneData[];
     connections?: DiagramConnectionData[];
   } | null>(null);
 
-  const { processedNodes, processedGroups, width, height } = useMemo(() => {
+    const { processedNodes, processedZones, width, height } = useMemo(() => {
     const nodes: DiagramNodeData[] = JSON.parse(JSON.stringify(diagramData.nodes || []));
-    const groups: DiagramGroupData[] = JSON.parse(JSON.stringify(diagramData.groups || []));
+    const zones: DiagramZoneData[] = JSON.parse(JSON.stringify(diagramData.zones || []));
     
-    const allItems: { [id: string]: DiagramNodeData | DiagramGroupData | PositionedNode | PositionedGroup } = {};
+    console.log('Processing zones:', zones);
+    
+    const allItems: { [id: string]: DiagramNodeData | DiagramZoneData | PositionedNode | PositionedGroup } = {};
     nodes.forEach(item => allItems[item.id] = item);
-    groups.forEach(item => allItems[item.id] = item);
+    zones.forEach(item => allItems[item.id] = item);
     
-    // Helper function to redistribute items within a custom-sized group
-    const redistributeItemsInCustomGroup = (group: DiagramGroupData, childNodes: DiagramNodeData[], childGroups: DiagramGroupData[]) => {
-        if (!group.width || !group.height) return;
+    // Helper function to redistribute items within a custom-sized zone
+    const redistributeItemsInCustomZone = (zone: DiagramZoneData, childNodes: DiagramNodeData[], childZones: DiagramZoneData[]) => {
+        if (!zone.width || !zone.height) return;
 
         // Cache node measurements so dynamic text nodes are consistent within this pass
         const nodeDimsCache = new Map<string, { width: number; height: number }>();
@@ -306,8 +308,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             }
             return nodeDimsCache.get(node.id)!;
         };
-        const getChildDims = (child: DiagramNodeData | DiagramGroupData) => {
-            if ((child as DiagramGroupData).type === 'group') {
+        const getChildDims = (child: DiagramNodeData | DiagramZoneData) => {
+            if ((child as DiagramZoneData).type === 'zone') {
                 return {
                     width: (child as PositionedGroup).width || 300,
                     height: (child as PositionedGroup).height || 220,
@@ -320,25 +322,25 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         const regularNodes = childNodes.filter(n => !n.edgePosition);
         const edgeNodes = childNodes.filter(n => n.edgePosition);
 
-        // All regular children (nodes and groups)
-        const regularChildren = [...regularNodes, ...childGroups];
+        // All regular children (nodes and zones)
+        const regularChildren = [...regularNodes, ...childZones];
 
         if (regularChildren.length > 0) {
             const childLayouts = regularChildren.map(child => ({ child, dims: getChildDims(child) }));
-            const availableWidth = Math.max(0, group.width - (GROUP_PADDING * 2));
+            const availableWidth = Math.max(0, zone.width - (ZONE_PADDING * 2));
             const widestChildWidth = Math.max(...childLayouts.map(({ dims }) => dims.width), NODE_WIDTH);
-            const widthPerItem = widestChildWidth + GROUP_NODE_SPACING;
+            const widthPerItem = widestChildWidth + ZONE_NODE_SPACING;
             const widthBasedLimit = Math.max(1, Math.floor(availableWidth / Math.max(widthPerItem, 1))); // Ensure at least one per row
 
             // Determine items per row based on available space and orientation
             let itemsPerRow: number;
-            if (group.orientation === 'vertical') {
+            if (zone.orientation === 'vertical') {
                 itemsPerRow = 1;
-            } else if (group.orientation === 'horizontal') {
-                itemsPerRow = group.maxItemsPerRow || widthBasedLimit;
+            } else if (zone.orientation === 'horizontal') {
+                itemsPerRow = zone.maxItemsPerRow || widthBasedLimit;
             } else {
                 const approxSquare = Math.max(1, Math.floor(Math.sqrt(childLayouts.length) * 1.2));
-                itemsPerRow = group.maxItemsPerRow || Math.min(approxSquare, widthBasedLimit);
+                itemsPerRow = zone.maxItemsPerRow || Math.min(approxSquare, widthBasedLimit);
             }
 
             itemsPerRow = Math.max(1, Math.min(itemsPerRow, childLayouts.length));
@@ -355,7 +357,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 
                 // End of row
                 if (index === childLayouts.length - 1 || (index + 1) % itemsPerRow === 0) {
-                    const rowWidth = currentRow.reduce((sum, item) => sum + item.width + GROUP_NODE_SPACING, 0) - GROUP_NODE_SPACING;
+                    const rowWidth = currentRow.reduce((sum, item) => sum + item.width + ZONE_NODE_SPACING, 0) - ZONE_NODE_SPACING;
                     rows.push({
                         children: currentRow,
                         rowWidth: rowWidth,
@@ -372,13 +374,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             
             rows.forEach((row, rowIndex) => {
                 // Calculate dynamic spacing based on node heights
-                let spacing = GROUP_NODE_SPACING;
+                let spacing = ZONE_NODE_SPACING;
                 
                 // Calculate maximum height excess (how much taller than base height) for current and next row
                 const getMaxHeightExcess = (rowItems: any[]): number => {
                     let maxExcess = 0;
                     rowItems.forEach((item: any) => {
-                        if ((item.child as any).type === 'group') return;
+                        if ((item.child as any).type === 'zone') return;
                         const node = item.child as PositionedNode;
                         const height = item.height;
                         
@@ -424,37 +426,37 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             });
 
             // Calculate available space for distribution
-            const availableHeight = (group.height || 0) - (GROUP_PADDING * 2);
+            const availableHeight = (zone.height || 0) - (ZONE_PADDING * 2);
             const extraHeight = Math.max(0, availableHeight - minTotalHeight);
             
             // Distribute extra space evenly between rows AND at top/bottom
             const numSpaces = Math.max(1, rows.length - 1);
             let extraSpacingPerGap = 0;
-            let topPadding = GROUP_PADDING;
+            let topPadding = ZONE_PADDING;
             
             if (extraHeight > 0) {
                 // Distribute extra height evenly: between rows and at top/bottom
                 extraSpacingPerGap = extraHeight / (numSpaces + 2); // +2 for top and bottom padding
-                topPadding = GROUP_PADDING + extraSpacingPerGap;
+                topPadding = ZONE_PADDING + extraSpacingPerGap;
             }
             
             // Second pass: position children with distribution across available space
             let currentY = topPadding;
             rows.forEach((row, rowIndex) => {
                 // Calculate horizontal distribution for items in row
-                const availableRowWidth = (group.width || 0) - (GROUP_PADDING * 2);
+                const availableRowWidth = (zone.width || 0) - (ZONE_PADDING * 2);
                 const totalRowItemWidth = row.children.reduce((sum, item) => sum + item.width, 0);
                 
                 // For vertical orientation (single item per row), center each item
-                if (group.orientation === 'vertical' && row.children.length === 1) {
+                if (zone.orientation === 'vertical' && row.children.length === 1) {
                     // Center the single item horizontally
                     const item = row.children[0];
-                    item.child.x = GROUP_PADDING + (availableRowWidth - item.width) / 2;
+                    item.child.x = ZONE_PADDING + (availableRowWidth - item.width) / 2;
                     item.child.y = currentY;
                 } else {
                     // Calculate spacing between items - distribute extra space evenly
                     const numItemSpaces = Math.max(1, row.children.length - 1);
-                    const minTotalWidth = totalRowItemWidth + (GROUP_NODE_SPACING * numItemSpaces);
+                    const minTotalWidth = totalRowItemWidth + (ZONE_NODE_SPACING * numItemSpaces);
                     
                     let itemSpacing: number;
                     let rowStartX: number;
@@ -464,16 +466,16 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                         const extraWidth = availableRowWidth - minTotalWidth;
                         // Add extra space to both sides and between items
                         const extraSpacingPerGap = extraWidth / (numItemSpaces + 2); // +2 for left and right padding
-                        itemSpacing = GROUP_NODE_SPACING + extraSpacingPerGap;
-                        const sidePadding = GROUP_PADDING + extraSpacingPerGap;
+                        itemSpacing = ZONE_NODE_SPACING + extraSpacingPerGap;
+                        const sidePadding = ZONE_PADDING + extraSpacingPerGap;
                         rowStartX = sidePadding;
                     } else {
                         // Use minimum spacing, center if content is wider than available space
-                        itemSpacing = GROUP_NODE_SPACING;
+                        itemSpacing = ZONE_NODE_SPACING;
                         if (availableRowWidth > totalRowItemWidth) {
-                            rowStartX = GROUP_PADDING + (availableRowWidth - minTotalWidth) / 2;
+                            rowStartX = ZONE_PADDING + (availableRowWidth - minTotalWidth) / 2;
                         } else {
-                            rowStartX = GROUP_PADDING;
+                            rowStartX = ZONE_PADDING;
                         }
                     }
                     
@@ -515,30 +517,30 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
 
                     switch (edge) {
                         case 'top': {
-                            const segmentWidth = group.width! / nodes.length;
+                            const segmentWidth = zone.width! / nodes.length;
                             const centerX = segmentWidth * index + segmentWidth / 2;
                             node.x = centerX - dims.width / 2;
                             node.y = -dims.height / 2 + dims.height * 0.1;
                             break;
                         }
                         case 'bottom': {
-                            const segmentWidth = group.width! / nodes.length;
+                            const segmentWidth = zone.width! / nodes.length;
                             const centerX = segmentWidth * index + segmentWidth / 2;
                             node.x = centerX - dims.width / 2;
-                            node.y = group.height! - dims.height / 2 + dims.height * 0.1;
+                            node.y = zone.height! - dims.height / 2 + dims.height * 0.1;
                             break;
                         }
                         case 'left': {
-                            const segmentHeight = group.height! / nodes.length;
+                            const segmentHeight = zone.height! / nodes.length;
                             const centerY = segmentHeight * index + segmentHeight / 2;
                             node.x = -dims.width / 2;
                             node.y = centerY - dims.height / 2;
                             break;
                         }
                         case 'right': {
-                            const segmentHeight = group.height! / nodes.length;
+                            const segmentHeight = zone.height! / nodes.length;
                             const centerY = segmentHeight * index + segmentHeight / 2;
-                            node.x = group.width! - dims.width / 2;
+                            node.x = zone.width! - dims.width / 2;
                             node.y = centerY - dims.height / 2;
                             break;
                         }
@@ -548,44 +550,44 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         }
     };
     
-    const layoutGroup = (group: DiagramGroupData): { width: number, height: number } => {
-        // If group has custom sizing, use those dimensions and redistribute content within
-        if (group.sizeMode === 'custom' && group.width && group.height) {
-            const childNodes = group.children
+    const layoutZone = (zone: DiagramZoneData): { width: number, height: number } => {
+        // If zone has custom sizing, use those dimensions and redistribute content within
+        if (zone.sizeMode === 'custom' && zone.width && zone.height) {
+            const childNodes = zone.children
                 .map((id: string) => allItems[id])
                 .filter(Boolean)
-                .filter((c: any) => !c.type || c.type !== 'group') as DiagramNodeData[];
+                .filter((c: any) => !c.type || c.type !== 'zone') as DiagramNodeData[];
             
-            const childGroups = group.children
+            const childZones = zone.children
                 .map((id: string) => allItems[id])
                 .filter(Boolean)
-                .filter((c: any) => c.type === 'group') as DiagramGroupData[];
+                .filter((c: any) => c.type === 'zone') as DiagramZoneData[];
                 
-            // Layout child groups first
-            childGroups.forEach(cg => {
-                const dims = layoutGroup(cg);
-                (cg as any).width = dims.width;
-                (cg as any).height = dims.height;
+            // Layout child zones first
+            childZones.forEach(cz => {
+                const dims = layoutZone(cz);
+                (cz as any).width = dims.width;
+                (cz as any).height = dims.height;
             });
             
             // Redistribute items within the custom size
-            redistributeItemsInCustomGroup(group, childNodes, childGroups);
+            redistributeItemsInCustomZone(zone, childNodes, childZones);
             
-            return { width: group.width, height: group.height };
+            return { width: zone.width, height: zone.height };
         }
         
-        // Auto-sizing logic (only for non-custom groups)
+        // Auto-sizing logic (only for non-custom zones)
         
         // Auto-sizing logic (existing)
-        const childNodes = group.children
+        const childNodes = zone.children
             .map((id: string) => allItems[id])
             .filter(Boolean)
-            .filter((c: any) => !c.type || c.type !== 'group') as DiagramNodeData[];
+            .filter((c: any) => !c.type || c.type !== 'zone') as DiagramNodeData[];
         
-        const childGroups = group.children
+        const childZones = zone.children
             .map((id: string) => allItems[id])
             .filter(Boolean)
-            .filter((c: any) => c.type === 'group') as DiagramGroupData[];
+            .filter((c: any) => c.type === 'zone') as DiagramZoneData[];
 
         // Separate edge-positioned nodes from regular nodes
         const regularNodes = childNodes.filter(n => !n.edgePosition);
@@ -594,36 +596,36 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         let contentWidth = 0;
         let contentHeight = 0;
 
-        // Layout child groups first and get their dimensions (mutate originals so positions persist)
-        const laidOutChildGroups = childGroups.map(cg => {
-            const dims = layoutGroup(cg);
-            (cg as any).width = dims.width;
-            (cg as any).height = dims.height;
-            return cg; // IMPORTANT: return original reference so x/y set below apply to allItems
+        // Layout child zones first and get their dimensions (mutate originals so positions persist)
+        const laidOutChildGroups = childZones.map(cz => {
+            const dims = layoutZone(cz);
+            (cz as any).width = dims.width;
+            (cz as any).height = dims.height;
+            return cz; // IMPORTANT: return original reference so x/y set below apply to allItems
         });
 
-        // Grid layout for regular children (nodes and groups) with orientation and maxItemsPerRow support
+        // Grid layout for regular children (nodes and zones) with orientation and maxItemsPerRow support
         // Edge-positioned nodes are handled separately
         const allChildren = [...regularNodes, ...laidOutChildGroups];
         const numItems = allChildren.length;
         
         // Determine items per row based on orientation and maxItemsPerRow
         let itemsPerRow: number;
-        if (group.orientation === 'vertical') {
+        if (zone.orientation === 'vertical') {
             // Vertical orientation: single column, but respect maxItemsPerRow for column height
             itemsPerRow = 1;
-        } else if (group.orientation === 'horizontal') {
+        } else if (zone.orientation === 'horizontal') {
             // Horizontal orientation: use a reasonable default to create multiple rows but maintain width
-            itemsPerRow = group.maxItemsPerRow || Math.max(1, Math.floor(Math.sqrt(numItems) * 1.2));
+            itemsPerRow = zone.maxItemsPerRow || Math.max(1, Math.floor(Math.sqrt(numItems) * 1.2));
         } else {
             // Square orientation: use maxItemsPerRow if specified, otherwise calculate
-            itemsPerRow = group.maxItemsPerRow || Math.max(1, Math.floor(Math.sqrt(numItems) * 1.2));
+            itemsPerRow = zone.maxItemsPerRow || Math.max(1, Math.floor(Math.sqrt(numItems) * 1.2));
         }
         
-        // For groups with no regular children, ensure minimum size to accommodate content
-        // Consider edge nodes when determining if group is truly empty
+        // For zones with no regular children, ensure minimum size to accommodate content
+        // Consider edge nodes when determining if zone is truly empty
         if (numItems === 0) {
-            // Calculate maximum dimensions among all nodes (including edge nodes) for proper group sizing
+            // Calculate maximum dimensions among all nodes (including edge nodes) for proper zone sizing
             const allNodesInGroup = [...regularNodes, ...edgeNodes];
             const maxNodeWidth = allNodesInGroup.length > 0 
                 ? Math.max(...allNodesInGroup.map(n => measureNodeDims(n as PositionedNode).width))
@@ -632,29 +634,29 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 ? Math.max(...allNodesInGroup.map(n => measureNodeDims(n as PositionedNode).height))
                 : NODE_HEIGHT;
             
-            let minGroupWidth = maxNodeWidth + (GROUP_PADDING * 2);
-            let minGroupHeight = maxNodeHeight + (GROUP_PADDING * 2);
+            let minGroupWidth = maxNodeWidth + (ZONE_PADDING * 2);
+            let minGroupHeight = maxNodeHeight + (ZONE_PADDING * 2);
             
             // If we have edge nodes but no regular nodes, ensure adequate space for edge positioning
             if (edgeNodes.length > 0) {
                 // Use orientation-specific minimum dimensions for edge nodes
-                if (group.orientation === 'vertical') {
+                if (zone.orientation === 'vertical') {
                     // Vertical: need enough width for edge nodes, but keep it tall and thin
-                    minGroupWidth = Math.max(minGroupWidth, maxNodeWidth + GROUP_PADDING * 1.5);
-                    minGroupHeight = Math.max(minGroupHeight, maxNodeHeight * 3 + GROUP_PADDING * 2);
-                } else if (group.orientation === 'horizontal') {
+                    minGroupWidth = Math.max(minGroupWidth, maxNodeWidth + ZONE_PADDING * 1.5);
+                    minGroupHeight = Math.max(minGroupHeight, maxNodeHeight * 3 + ZONE_PADDING * 2);
+                } else if (zone.orientation === 'horizontal') {
                     // Horizontal: need enough height for edge nodes, but keep it wide and short
-                    minGroupWidth = Math.max(minGroupWidth, maxNodeWidth * 3 + GROUP_PADDING * 2);
-                    minGroupHeight = Math.max(minGroupHeight, maxNodeHeight + GROUP_PADDING * 1.5);
+                    minGroupWidth = Math.max(minGroupWidth, maxNodeWidth * 3 + ZONE_PADDING * 2);
+                    minGroupHeight = Math.max(minGroupHeight, maxNodeHeight + ZONE_PADDING * 1.5);
                 } else {
                     // Square: use balanced dimensions
-                    minGroupWidth = Math.max(minGroupWidth, maxNodeWidth * 2 + GROUP_PADDING * 2);
-                    minGroupHeight = Math.max(minGroupHeight, maxNodeHeight * 2 + GROUP_PADDING * 2);
+                    minGroupWidth = Math.max(minGroupWidth, maxNodeWidth * 2 + ZONE_PADDING * 2);
+                    minGroupHeight = Math.max(minGroupHeight, maxNodeHeight * 2 + ZONE_PADDING * 2);
                 }
             }
             
-            (group as PositionedGroup).width = minGroupWidth;
-            (group as PositionedGroup).height = minGroupHeight;
+            (zone as PositionedGroup).width = minGroupWidth;
+            (zone as PositionedGroup).height = minGroupHeight;
             
             // Position edge nodes even when there are no regular children
             // Group nodes by edge position for even distribution
@@ -709,19 +711,19 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             return { width: minGroupWidth, height: minGroupHeight };
         }
         
-        let currentY = GROUP_PADDING;
+        let currentY = ZONE_PADDING;
         let rowMaxHeight = 0;
         const rows: Array<{ children: any[], rowWidth: number, rowHeight: number }> = [];
         let currentRow: any[] = [];
 
         // First pass: organize children into rows and calculate row dimensions
         allChildren.forEach((child, index) => {
-            // Use different dimension calculation for groups vs nodes
+            // Use different dimension calculation for zones vs nodes
             let childWidth: number;
             let childHeight: number;
             
-            if ((child as any).type === 'group') {
-                // For groups, use their calculated width and height from the recursive layout call
+            if ((child as any).type === 'zone') {
+                // For zones, use their calculated width and height from the recursive layout call
                 childWidth = (child as any).width || 300;
                 childHeight = (child as any).height || 220;
             } else {
@@ -736,7 +738,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             
             // End of row
             if (index === allChildren.length - 1 || (index + 1) % itemsPerRow === 0) {
-                const rowWidth = currentRow.reduce((sum, item) => sum + item.width + GROUP_NODE_SPACING, 0) - GROUP_NODE_SPACING;
+                const rowWidth = currentRow.reduce((sum, item) => sum + item.width + ZONE_NODE_SPACING, 0) - ZONE_NODE_SPACING;
                 rows.push({
                     children: currentRow,
                     rowWidth: rowWidth,
@@ -747,57 +749,57 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             }
         });
 
-        // Calculate total content width for auto-sized groups
+        // Calculate total content width for auto-sized zones
         let calculatedContentWidth: number;
-        if (group.orientation === 'horizontal') {
+        if (zone.orientation === 'horizontal') {
             // For horizontal orientation, calculate width based on itemsPerRow to maintain consistent width
             // Get the dimensions of the first few items to estimate width
             const sampleItems = allChildren.slice(0, Math.min(itemsPerRow, allChildren.length));
             const estimatedWidth = sampleItems.reduce((sum, child) => {
                 let childWidth: number;
-                if ((child as any).type === 'group') {
+                if ((child as any).type === 'zone') {
                     childWidth = (child as any).width || 300;
                 } else {
                     const childDims = measureNodeDims(child as PositionedNode);
                     childWidth = childDims.width;
                 }
-                return sum + childWidth + GROUP_NODE_SPACING;
-            }, 0) - GROUP_NODE_SPACING;
+                return sum + childWidth + ZONE_NODE_SPACING;
+            }, 0) - ZONE_NODE_SPACING;
             calculatedContentWidth = estimatedWidth;
         } else {
             // For other orientations, use the maximum row width
             calculatedContentWidth = Math.max(...rows.map(row => row.rowWidth), 0);
         }
 
-        // Determine the actual group width to use for layout
+        // Determine the actual zone width to use for layout
         // Use reduced padding for both vertical and horizontal orientations to make them tighter
-        const horizontalPadding = group.orientation === 'vertical' ? GROUP_PADDING * 0.5 : 
-                                 group.orientation === 'horizontal' ? GROUP_PADDING * 0.5 : 
-                                 GROUP_PADDING;
-        const actualGroupWidth = group.sizeMode === 'custom' && group.width ? 
-                               group.width : 
+        const horizontalPadding = zone.orientation === 'vertical' ? ZONE_PADDING * 0.5 : 
+                                 zone.orientation === 'horizontal' ? ZONE_PADDING * 0.5 : 
+                                 ZONE_PADDING;
+        const actualGroupWidth = zone.sizeMode === 'custom' && zone.width ? 
+                               zone.width : 
                                calculatedContentWidth + horizontalPadding * 2;
 
         // Second pass: position children with centering
-        let lastSpacing = GROUP_NODE_SPACING;
+        let lastSpacing = ZONE_NODE_SPACING;
         rows.forEach((row, rowIndex) => {
-            // Calculate horizontal offset to center the row within the group
+            // Calculate horizontal offset to center the row within the zone
             const horizontalOffset = horizontalPadding + (actualGroupWidth - horizontalPadding * 2 - row.rowWidth) / 2;
             
             row.children.forEach((item, itemIndex) => {
                 item.child.x = horizontalOffset + (itemIndex > 0 ? 
-                    row.children.slice(0, itemIndex).reduce((sum, prevItem) => sum + prevItem.width + GROUP_NODE_SPACING, 0) : 0);
+                    row.children.slice(0, itemIndex).reduce((sum, prevItem) => sum + prevItem.width + ZONE_NODE_SPACING, 0) : 0);
                 item.child.y = currentY;
             });
             
             // Calculate dynamic spacing based on node heights
-            let spacing = GROUP_NODE_SPACING;
+            let spacing = ZONE_NODE_SPACING;
             
             // Calculate maximum height excess (how much taller than base height) for current and next row
             const getMaxHeightExcess = (rowItems: any[]): number => {
                 let maxExcess = 0;
                 rowItems.forEach((item: any) => {
-                    if ((item.child as any).type === 'group') return;
+                    if ((item.child as any).type === 'zone') return;
                     const node = item.child as PositionedNode;
                     const height = item.height;
                     
@@ -842,51 +844,51 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         contentHeight = currentY - lastSpacing;
         contentWidth = calculatedContentWidth;
 
-        // Calculate group dimensions
-        let groupWidth = actualGroupWidth;
+        // Calculate zone dimensions
+        let zoneWidth = actualGroupWidth;
         // Use reduced padding for both vertical and horizontal orientations to make them tighter
-        const verticalPadding = group.orientation === 'vertical' ? GROUP_PADDING * 0.5 : 
-                               group.orientation === 'horizontal' ? GROUP_PADDING * 0.5 : 
-                               GROUP_PADDING;
-        let groupHeight = contentHeight + verticalPadding * 2;
+        const verticalPadding = zone.orientation === 'vertical' ? ZONE_PADDING * 0.5 : 
+                               zone.orientation === 'horizontal' ? ZONE_PADDING * 0.5 : 
+                               ZONE_PADDING;
+        let zoneHeight = contentHeight + verticalPadding * 2;
         
-        // For auto-sized groups, apply orientation-specific aspect ratios
-        if (group.sizeMode !== 'custom') {
-            const originalWidth = groupWidth;
-            const originalHeight = groupHeight;
+        // For auto-sized zones, apply orientation-specific aspect ratios
+        if (zone.sizeMode !== 'custom') {
+            const originalWidth = zoneWidth;
+            const originalHeight = zoneHeight;
             
-            if (group.orientation === 'vertical') {
+            if (zone.orientation === 'vertical') {
                 // Vertical orientation: keep width tight to content, only adjust height if needed
                 // Don't force aspect ratio - let content determine width, only ensure minimum height
-                groupWidth = originalWidth; // Keep width tight to content
+                zoneWidth = originalWidth; // Keep width tight to content
                 // Only increase height if content is too tall for the width
                 const minHeightForVertical = originalWidth * 1.5; // Minimum 1.5:1 height:width ratio
                 if (originalHeight < minHeightForVertical) {
-                    groupHeight = minHeightForVertical;
+                    zoneHeight = minHeightForVertical;
                 } else {
-                    groupHeight = originalHeight;
+                    zoneHeight = originalHeight;
                 }
-            } else if (group.orientation === 'horizontal') {
+            } else if (zone.orientation === 'horizontal') {
                 // Horizontal orientation: keep height tight to content, only adjust width if needed
                 // Don't force aspect ratio - let content determine height, only ensure minimum width
-                groupHeight = originalHeight; // Keep height tight to content
+                zoneHeight = originalHeight; // Keep height tight to content
                 // Only increase width if content is too wide for the height
                 const minWidthForHorizontal = originalHeight * 1.8; // Minimum 1.8:1 width:height ratio
                 if (originalWidth < minWidthForHorizontal) {
-                    groupWidth = minWidthForHorizontal;
+                    zoneWidth = minWidthForHorizontal;
                 } else {
-                    groupWidth = originalWidth;
+                    zoneWidth = originalWidth;
                 }
             } else {
                 // Square orientation: enforce square aspect ratio by using the larger dimension
-                const maxDimension = Math.max(groupWidth, groupHeight);
-                groupWidth = maxDimension;
-                groupHeight = maxDimension;
+                const maxDimension = Math.max(zoneWidth, zoneHeight);
+                zoneWidth = maxDimension;
+                zoneHeight = maxDimension;
             }
             
-            // Re-center content within the group
-            const horizontalOffset = (groupWidth - originalWidth) / 2;
-            const verticalOffset = (groupHeight - originalHeight) / 2;
+            // Re-center content within the zone
+            const horizontalOffset = (zoneWidth - originalWidth) / 2;
+            const verticalOffset = (zoneHeight - originalHeight) / 2;
             
             // Reposition all children to center them in the group
             rows.forEach((row) => {
@@ -897,13 +899,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             });
         }
         
-        // For custom-sized groups, use the custom dimensions and apply vertical centering
-        if (group.sizeMode === 'custom') {
-            groupHeight = group.height || groupHeight;
+        // For custom-sized zones, use the custom dimensions and apply vertical centering
+        if (zone.sizeMode === 'custom') {
+            zoneHeight = zone.height || zoneHeight;
             
             // Apply vertical centering for all rows within the custom-sized group
             const totalContentHeight = contentHeight;
-            const verticalOffset = verticalPadding + (groupHeight - verticalPadding * 2 - totalContentHeight) / 2;
+            const verticalOffset = verticalPadding + (zoneHeight - verticalPadding * 2 - totalContentHeight) / 2;
             
             // Reposition all children with vertical offset
             rows.forEach((row) => {
@@ -919,29 +921,29 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             const maxEdgeNodeWidth = Math.max(...edgeNodeDims.map(d => d.width));
             const maxEdgeNodeHeight = Math.max(...edgeNodeDims.map(d => d.height));
             // Use orientation-specific minimum dimensions for edge nodes
-            if (group.orientation === 'vertical') {
+            if (zone.orientation === 'vertical') {
                 // Vertical: need enough width for edge nodes, but keep it tall and thin
-                const minWidthForEdges = maxEdgeNodeWidth + GROUP_PADDING * 1.5;
-                const minHeightForEdges = maxEdgeNodeHeight * 3 + GROUP_PADDING * 2;
-                groupWidth = Math.max(groupWidth, minWidthForEdges);
-                groupHeight = Math.max(groupHeight, minHeightForEdges);
-            } else if (group.orientation === 'horizontal') {
+                const minWidthForEdges = maxEdgeNodeWidth + ZONE_PADDING * 1.5;
+                const minHeightForEdges = maxEdgeNodeHeight * 3 + ZONE_PADDING * 2;
+                zoneWidth = Math.max(zoneWidth, minWidthForEdges);
+                zoneHeight = Math.max(zoneHeight, minHeightForEdges);
+            } else if (zone.orientation === 'horizontal') {
                 // Horizontal: need enough height for edge nodes, but keep it wide and short
-                const minWidthForEdges = maxEdgeNodeWidth * 3 + GROUP_PADDING * 2;
-                const minHeightForEdges = maxEdgeNodeHeight + GROUP_PADDING * 1.5;
-                groupWidth = Math.max(groupWidth, minWidthForEdges);
-                groupHeight = Math.max(groupHeight, minHeightForEdges);
+                const minWidthForEdges = maxEdgeNodeWidth * 3 + ZONE_PADDING * 2;
+                const minHeightForEdges = maxEdgeNodeHeight + ZONE_PADDING * 1.5;
+                zoneWidth = Math.max(zoneWidth, minWidthForEdges);
+                zoneHeight = Math.max(zoneHeight, minHeightForEdges);
             } else {
                 // Square: use balanced dimensions
-                const minWidthForEdges = maxEdgeNodeWidth * 2 + GROUP_PADDING * 2;
-                const minHeightForEdges = maxEdgeNodeHeight * 2 + GROUP_PADDING * 2;
-                groupWidth = Math.max(groupWidth, minWidthForEdges);
-                groupHeight = Math.max(groupHeight, minHeightForEdges);
+                const minWidthForEdges = maxEdgeNodeWidth * 2 + ZONE_PADDING * 2;
+                const minHeightForEdges = maxEdgeNodeHeight * 2 + ZONE_PADDING * 2;
+                zoneWidth = Math.max(zoneWidth, minWidthForEdges);
+                zoneHeight = Math.max(zoneHeight, minHeightForEdges);
             }
         }
         
-        (group as PositionedGroup).width = groupWidth;
-        (group as PositionedGroup).height = groupHeight;
+        (zone as PositionedGroup).width = zoneWidth;
+        (zone as PositionedGroup).height = zoneHeight;
 
         // Position edge nodes on the boundaries of the group
         // Group nodes by edge position for even distribution
@@ -966,14 +968,14 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     case 'bottom':
                         // Distribute horizontally along top/bottom edges
                         if (nodes.length === 1) {
-                            node.x = (groupWidth - nodeWidth) / 2;
+                            node.x = (zoneWidth - nodeWidth) / 2;
                         } else {
-                            const spacing = groupWidth / (nodes.length + 1);
+                            const spacing = zoneWidth / (nodes.length + 1);
                             node.x = spacing * (index + 1) - (nodeWidth / 2);
                         }
                         node.y = edge === 'top' 
                             ? -nodeHeight / 2 + nodeHeight * 0.1
-                            : groupHeight - nodeHeight / 2 + nodeHeight * 0.1;
+                            : zoneHeight - nodeHeight / 2 + nodeHeight * 0.1;
                         break;
                         
                     case 'left':
@@ -981,11 +983,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                         // Distribute vertically along left/right edges
                         node.x = edge === 'left'
                             ? -nodeWidth / 2
-                            : groupWidth - nodeWidth / 2;
+                            : zoneWidth - nodeWidth / 2;
                         if (nodes.length === 1) {
-                            node.y = (groupHeight - nodeHeight) / 2;
+                            node.y = (zoneHeight - nodeHeight) / 2;
                         } else {
-                            const spacing = groupHeight / (nodes.length + 1);
+                            const spacing = zoneHeight / (nodes.length + 1);
                             node.y = spacing * (index + 1) - (nodeHeight / 2);
                         }
                         break;
@@ -993,33 +995,33 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             });
         });
 
-        return { width: groupWidth, height: groupHeight };
+        return { width: zoneWidth, height: zoneHeight };
     };
 
-    const rootGroups = groups.filter(g => !groups.some(parent => parent.children.includes(g.id)));
-    rootGroups.forEach(layoutGroup);
+    const rootGroups = zones.filter(g => !zones.some(parentZone => parentZone.children.includes(g.id)));
+    rootGroups.forEach(layoutZone);
 
     // Set absolute positions
-    const setAbsolutePositions = (group: DiagramGroupData, parentX: number, parentY: number) => {
-        group.x = (group.x ?? 0) + parentX;
-        group.y = (group.y ?? 0) + parentY;
+    const setAbsolutePositionsForZone = (zone: DiagramZoneData, parentX: number, parentY: number) => {
+        zone.x = (zone.x ?? 0) + parentX;
+        zone.y = (zone.y ?? 0) + parentY;
 
-        group.children.forEach((childId: string) => {
+        zone.children.forEach((childId: string) => {
             const child = allItems[childId];
             if (!child) return;
             
-            if (child.type === 'group') {
-                setAbsolutePositions(child as DiagramGroupData, group.x!, group.y!);
+            if (child.type === 'zone') {
+                setAbsolutePositionsForZone(child as DiagramZoneData, zone.x!, zone.y!);
             } else {
-                child.x = (child.x ?? 0) + group.x!;
-                child.y = (child.y ?? 0) + group.y!;
+                child.x = (child.x ?? 0) + zone.x!;
+                child.y = (child.y ?? 0) + zone.y!;
             }
         });
     };
     
     // Position root groups and orphan nodes
     let currentX = 50;
-    const allChildIds = new Set(groups.flatMap(g => g.children));
+    const allChildIds = new Set(zones.flatMap(g => g.children));
     const orphanNodes = nodes.filter(n => !allChildIds.has(n.id));
     const topLevelItems = [...rootGroups, ...orphanNodes];
 
@@ -1029,17 +1031,17 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           item.x = currentX;
           item.y = 50;
         }
-        if (item.type === 'group') {
-          setAbsolutePositions(item as DiagramGroupData, 0, 0);
+        if (item.type === 'zone') {
+          setAbsolutePositionsForZone(item as DiagramGroupData, 0, 0);
         }
-        const itemWidth = item.type === 'group' 
+        const itemWidth = item.type === 'zone' 
             ? (item as any).width || 300 
             : measureNodeDims(item as PositionedNode).width;
         currentX += itemWidth + 50;
     });
 
     const finalNodes = Object.values(allItems).filter(i => i.type !== 'group') as PositionedNode[];
-    const finalGroups = Object.values(allItems).filter(i => i.type === 'group') as PositionedGroup[];
+    const finalGroups = Object.values(allItems).filter(i => i.type === 'zone') as PositionedGroup[];
 
     const allElementsX = [
         ...finalNodes.map(n => (n.x || 0) + measureNodeDims(n).width),
@@ -1055,7 +1057,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     
     return { 
         processedNodes: finalNodes, 
-        processedGroups: finalGroups, 
+        processedZones: finalGroups, 
         width: canvasWidth, 
         height: canvasHeight 
     };
@@ -1069,54 +1071,54 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     }, {} as Record<string, PositionedNode>);
   }, [processedNodes]);
   
-  const groupsById = useMemo(() => {
-    return processedGroups.reduce((acc, group) => {
-      acc[group.id] = group;
+  const zonesById = useMemo(() => {
+    return processedZones.reduce((acc, zone) => {
+      acc[zone.id] = zone;
       return acc;
     }, {} as Record<string, PositionedGroup>);
-  }, [processedGroups]);
+  }, [processedZones]);
   
   const selectedItem = useMemo(() => {
     if (!selectedItemId) return null;
     const node = nodesById[selectedItemId];
     if (node) return { ...node, itemType: 'node' as const };
-    const group = groupsById[selectedItemId];
-    if (group) return { ...group, itemType: 'group' as const, subType: group.subType };
+    const zone = zonesById[selectedItemId];
+    if (zone) return { ...zone, itemType: 'zone' as const, subType: (zone as any).subType };
     return null;
-  }, [selectedItemId, nodesById, groupsById]);
+  }, [selectedItemId, nodesById, zonesById]);
 
   // Helper function to recalculate group size based on its children
-  const recalculateGroupSize = (group: DiagramGroupData, allNodes: DiagramNodeData[], allGroups: DiagramGroupData[]): DiagramGroupData => {
-    // If group is in custom sizing mode, don't resize it - just return as-is
-    if (group.sizeMode === 'custom') {
-      return group;
+  const recalculateGroupSize = (zone: DiagramGroupData, allNodes: DiagramNodeData[], allGroups: DiagramZoneData[]): DiagramGroupData => {
+    // If zone is in custom sizing mode, don't resize it - just return as-is
+    if (zone.sizeMode === 'custom') {
+      return zone;
     }
     
-    const childNodes = allNodes.filter(n => group.children.includes(n.id));
-    const childGroups = allGroups.filter((g: DiagramGroupData) => group.children.includes(g.id));
+    const childNodes = allNodes.filter(n => zone.children.includes(n.id));
+    const childZones = allGroups.filter((g: DiagramGroupData) => zone.children.includes(g.id));
     
-    if (childNodes.length === 0 && childGroups.length === 0) {
-      // Empty group - use larger minimum size to accommodate potential textbox nodes
+    if (childNodes.length === 0 && childZones.length === 0) {
+      // Empty zone - use larger minimum size to accommodate potential textbox nodes
       return {
-        ...group,
-        width: Math.max(NODE_WIDTH + GROUP_PADDING * 2, 300), // Larger minimum width
-        height: Math.max(NODE_HEIGHT + GROUP_PADDING * 2, 200) // Larger minimum height
+        ...zone,
+        width: Math.max(NODE_WIDTH + ZONE_PADDING * 2, 300), // Larger minimum width
+        height: Math.max(NODE_HEIGHT + ZONE_PADDING * 2, 200) // Larger minimum height
       };
     }
     
     // Calculate maximum dimensions among all children
     const allChildDims = [
       ...childNodes.map(n => measureNodeDims(n as PositionedNode)),
-      ...childGroups.map(g => ({ width: g.width || 300, height: g.height || 220 }))
+      ...childZones.map(g => ({ width: g.width || 300, height: g.height || 220 }))
     ];
     
     const maxChildWidth = Math.max(...allChildDims.map(d => d.width));
     const maxChildHeight = Math.max(...allChildDims.map(d => d.height));
     
     // Calculate required group size based on actual grid layout
-    const allChildren = [...childNodes, ...childGroups];
+    const allChildren = [...childNodes, ...childZones];
     const numChildren = allChildren.length;
-    const itemsPerRow = group.maxItemsPerRow || Math.max(1, Math.floor(Math.sqrt(numChildren) * 1.2));
+    const itemsPerRow = zone.maxItemsPerRow || Math.max(1, Math.floor(Math.sqrt(numChildren) * 1.2));
     const numRows = Math.ceil(numChildren / itemsPerRow);
     
     // Calculate actual grid layout to determine proper dimensions
@@ -1145,7 +1147,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       
       // Add spacing between items in row
       if (rowChildren.length > 1) {
-        rowWidth += GROUP_NODE_SPACING * (rowChildren.length - 1);
+        rowWidth += ZONE_NODE_SPACING * (rowChildren.length - 1);
       }
       
       maxRowWidth = Math.max(maxRowWidth, rowWidth);
@@ -1153,13 +1155,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       
       // Add dynamic spacing between rows (except for last row)
       if (row < numRows - 1) {
-        let spacing = GROUP_NODE_SPACING;
+        let spacing = ZONE_NODE_SPACING;
         
         // Calculate height excess for current and next row
         const getMaxHeightExcess = (rowItems: any[]): number => {
           let maxExcess = 0;
           rowItems.forEach((child: any) => {
-            if ('type' in child && (child as any).type === 'group') return;
+            if ('type' in child && (child as any).type === 'zone') return;
             const dims = 'type' in child 
               ? measureNodeDims(child as PositionedNode)
               : { width: (child as DiagramGroupData).width || 300, height: (child as DiagramGroupData).height || 220 };
@@ -1191,24 +1193,32 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       }
     }
     
-    const requiredWidth = maxRowWidth + GROUP_PADDING * 2;
-    const requiredHeight = totalHeight + GROUP_PADDING * 2;
+    const requiredWidth = maxRowWidth + ZONE_PADDING * 2;
+    const requiredHeight = totalHeight + ZONE_PADDING * 2;
     
     return {
-      ...group,
-      width: Math.max(requiredWidth, maxChildWidth + GROUP_PADDING * 2),
-      height: Math.max(requiredHeight, maxChildHeight + GROUP_PADDING * 2)
+      ...zone,
+      width: Math.max(requiredWidth, maxChildWidth + ZONE_PADDING * 2),
+      height: Math.max(requiredHeight, maxChildHeight + ZONE_PADDING * 2)
     };
   };
 
   const addNode = useCallback((item: any, position: { x: number; y: number }, targetGroupId: string | null) => {
     setDiagramData((prevData) => {
-      let newGroups = prevData.groups ? [...prevData.groups] : [];
+      let newZones = prevData.zones ? [...prevData.zones] : [];
       let newNodes = prevData.nodes ? [...prevData.nodes] : [];
       let newItemId: string;
 
       const itemType = item.type || '';
       const itemLabel = item.label || '';
+      
+      // Debug logging for all items to see what we're getting
+      console.log('addNode called with:', { itemType, itemLabel, item });
+      
+      // Debug logging for zone creation
+      if (itemType === 'zone') {
+        console.log('Creating zone:', { itemType, itemLabel, item });
+      }
       
       // Check if this is a shape resource (needed for freeflow and group exclusion)
        const isShapeResource = itemType === 'generic.object.square' || 
@@ -1226,20 +1236,27 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                                itemType?.endsWith('.star') ||
                                itemType?.endsWith('.cloud');
       
-      if (itemType === 'zone' || itemType === 'group') {
-        const subType = itemType === 'zone' ? 'zone' : 'group';
-        const newGroup: DiagramGroupData = {
+      if (itemType === 'zone') {
+
+        // Use subType from item if available, otherwise derive from type
+        const subType = item.subType || 'zone';
+        const newZone: DiagramZoneData = {
           id: generateGroupId(subType, prevData),
           label: itemLabel,
           children: [],
-          type: 'group',
+          type: 'zone',
           subType,
           info: `A new ${itemLabel}`,
-          color: subType === 'group' ? '#e0e0e0' : undefined,
+          color: undefined,
           sizeMode: 'auto', // Default to auto-sizing
+          x: position.x,
+          y: position.y,
+          width: 300,
+          height: 220,
         };
-        newGroups.push(newGroup);
-        newItemId = newGroup.id;
+        newZones.push(newZone);
+        newItemId = newZone.id;
+        console.log('Zone created and added to zones:', newZone);
       } else {
         // For resource items from the sidebar, use type from drag item
         // NEVER store file in node - ResourceIcon looks up file from resource catalog
@@ -1268,17 +1285,17 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       }
       
       // Don't add freeflow shape nodes to groups
-      const addedItem = newNodes.find(n => n.id === newItemId) || newGroups.find(g => g.id === newItemId);
+      const addedItem = newNodes.find(n => n.id === newItemId) || newZones.find(g => g.id === newItemId);
       const isFreeflowShape = (addedItem as any)?.freeflow === true && isShapeResource;
       
       if (targetGroupId && !isFreeflowShape) {
-        newGroups = newGroups.map(g => {
+        newZones = newZones.map(g => {
           if (g.id === targetGroupId) {
-            const updatedGroup = { ...g, children: [...g.children, newItemId] };
+            const updatedGroup = { ...zone, children: [...zone.children, newItemId] };
             // Recalculate group size based on new children including dynamic dimensions
-            return recalculateGroupSize(updatedGroup, newNodes, newGroups);
+            return recalculateGroupSize(updatedGroup, newNodes, newZones);
           }
-          return g;
+          return zone;
         });
       } else {
         // Top-level placement: snap to grid and avoid overlap by nudging to nearest free slot
@@ -1287,9 +1304,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         let posY = snap(position.y);
 
         const isOverlapAt = (x: number, y: number) => {
-          const width = (item.type === 'zone' || item.type === 'group') ? 300 : 
+          const width = item.type === 'zone' ? 300 : 
                       (item.type ? measureNodeDims(item as PositionedNode).width : NODE_WIDTH);
-          const height = (item.type === 'zone' || item.type === 'group') ? 220 : 
+          const height = item.type === 'zone' ? 220 : 
                        (item.type ? measureNodeDims(item as PositionedNode).height : NODE_HEIGHT);
           const rectA = { x, y, width, height };
           // existing obstacles from processed nodes/groups at this render cycle are not available here,
@@ -1302,7 +1319,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               obstacles.push({ id: n.id, x: nn.x, y: nn.y, width: dims.width, height: dims.height });
             }
           }
-          for (const g of newGroups) {
+          for (const g of newZones) {
             const gg: any = g as any;
             if (gg.x != null && gg.y != null && g.id !== newItemId) {
               // groups without computed size: approximate
@@ -1313,7 +1330,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         };
 
         // Check if the new node should be freeflow (skip overlap prevention)
-        const addedItem = newNodes.find(n => n.id === newItemId) || newGroups.find(g => g.id === newItemId);
+        const addedItem = newNodes.find(n => n.id === newItemId) || newZones.find(g => g.id === newItemId);
         const isFreeflowNewItem = (addedItem as any)?.freeflow;
 
         // nudge search (spiral-ish) up to 50 attempts (skip for freeflow items)
@@ -1338,7 +1355,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         }
       }
 
-      return { ...prevData, nodes: newNodes, groups: newGroups };
+      return { ...prevData, nodes: newNodes, zones: newZones };
     });
   }, [setDiagramData]);
 
@@ -1392,24 +1409,24 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
 
   const resizeGroup = useCallback((groupId: string, newWidth: number, newHeight: number) => {
     setDiagramData(prevData => {
-      const updatedGroups = prevData.groups?.map(group => {
-        if (group.id === groupId) {
+      const updatedZones = prevData.zones?.map(zone => {
+        if (zone.id === groupId) {
           // Calculate minimum size based on content using dynamic dimensions
-          const currentGroup = processedGroups.find(g => g.id === groupId);
-          const groupNodes = processedNodes.filter(n => currentGroup?.children.includes(n.id));
+          const currentZone = processedZones.find(z => z.id === groupId);
+          const groupNodes = processedNodes.filter(n => currentZone?.children.includes(n.id));
           
           let minWidth = 200;
           let minHeight = 150;
           
           if (groupNodes.length > 0) {
-            const maxNodeWidth = Math.max(...groupNodes.map(n => measureNodeDims(n).width));
-            const maxNodeHeight = Math.max(...groupNodes.map(n => measureNodeDims(n).height));
-            minWidth = Math.max(minWidth, maxNodeWidth + GROUP_PADDING * 2);
-            minHeight = Math.max(minHeight, maxNodeHeight + GROUP_PADDING * 2);
+            const maxNodeWidth = Math.max(...zoneNodes.map(n => measureNodeDims(n).width));
+            const maxNodeHeight = Math.max(...zoneNodes.map(n => measureNodeDims(n).height));
+            minWidth = Math.max(minWidth, maxNodeWidth + ZONE_PADDING * 2);
+            minHeight = Math.max(minHeight, maxNodeHeight + ZONE_PADDING * 2);
           }
           
           return {
-            ...group,
+            ...zone,
             width: Math.max(minWidth, newWidth),
             height: Math.max(minHeight, newHeight),
             sizeMode: 'custom' as const,
@@ -1417,53 +1434,53 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             minHeight
           };
         }
-        return group;
+        return zone;
       }) || [];
       
-      return { ...prevData, groups: updatedGroups };
+      return { ...prevData, zones: updatedZones };
     });
-  }, [setDiagramData, processedGroups]);
+  }, [setDiagramData, processedZones]);
 
   const updateGroupLabel = useCallback((groupId: string, newLabel: string) => {
     setDiagramData(prevData => {
-      const updatedGroups = prevData.groups?.map(group => {
-        if (group.id === groupId) {
+      const updatedZones = prevData.zones?.map(zone => {
+        if (zone.id === groupId) {
           return {
-            ...group,
+            ...zone,
             label: newLabel
           };
         }
-        return group;
+        return zone;
       }) || [];
       
-      return { ...prevData, groups: updatedGroups };
+      return { ...prevData, zones: updatedZones };
     });
   }, [setDiagramData]);
 
   const moveMultipleItems = useCallback((items: Array<{ id: string; type: string; x?: number, y?: number }>, newPositions: Array<{ x: number; y: number }>, targetGroupId: string | null) => {
     setDiagramData(prevData => {
       let currentNodes = [...(prevData.nodes || [])];
-      let currentGroups = [...(prevData.groups || [])];
+      let currentZones = [...(prevData.zones || [])];
       
       items.forEach((item, index) => {
         const newPos = newPositions[index];
         if (!newPos) return;
         
-        const oldParentId = currentGroups.find(g => g.children.includes(item.id))?.id;
+        const oldParentId = currentZones.find(zone => zone.children.includes(item.id))?.id;
         const isFreeflowNode = currentNodes.find(n => n.id === item.id)?.freeflow;
 
         // Handle re-parenting
         if (oldParentId !== targetGroupId) {
-          currentGroups = currentGroups.map(g => {
-            if (g.id === oldParentId) { 
-              return { ...g, children: g.children.filter((nid: string) => nid !== item.id) };
+          currentZones = currentZones.map(zone => {
+            if (zone.id === oldParentId) { 
+              return { ...zone, children: zone.children.filter((nid: string) => nid !== item.id) };
             }
-            if (g.id === targetGroupId) {
-              const filtered = g.children.filter((nid: string) => nid !== item.id);
+            if (zone.id === targetGroupId) {
+              const filtered = zone.children.filter((nid: string) => nid !== item.id);
               filtered.push(item.id);
-              return { ...g, children: filtered };
+              return { ...zone, children: filtered };
             }
-            return g;
+            return zone;
           });
         }
 
@@ -1473,7 +1490,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           if (item.type === ItemTypes.CANVAS_NODE) {
             currentNodes = currentNodes.map(n => n.id === item.id ? { ...n, x: undefined, y: undefined } : n);
           } else { 
-            currentGroups = currentGroups.map(g => g.id === item.id ? { ...g, x: undefined, y: undefined } : g);
+            currentZones = currentZones.map(g => g.id === item.id ? { ...zone, x: undefined, y: undefined } : g);
           }
         } else {
           // Top-level - update coordinates
@@ -1483,27 +1500,27 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           if (item.type === ItemTypes.CANVAS_NODE) {
             currentNodes = currentNodes.map(n => n.id === item.id ? { ...n, x: snappedX, y: snappedY } : n);
           } else { 
-            currentGroups = currentGroups.map(g => g.id === item.id ? { ...g, x: snappedX, y: snappedY } : g);
+            currentZones = currentZones.map(zone => zone.id === item.id ? { ...zone, x: snappedX, y: snappedY } : zone);
           }
         }
       });
 
-      return { ...prevData, nodes: currentNodes, groups: currentGroups };
+      return { ...prevData, nodes: currentNodes, zones: currentZones };
     });
   }, [setDiagramData]);
 
   const moveItem = useCallback((item: { id: string; type: string; x?: number, y?: number }, newPos: { x: number; y: number }, targetGroupId: string | null) => {
     setDiagramData(prevData => {
       let currentNodes = [...(prevData.nodes || [])];
-      let currentGroups = [...(prevData.groups || [])];
+      let currentZones = [...(prevData.zones || [])];
       
-      const oldParentId = currentGroups.find(g => g.children.includes(item.id))?.id;
+      const oldParentId = currentZones.find(zone => zone.children.includes(item.id))?.id;
 
       // Utility to compute insert index inside a group based on pointer position
       const computeInsertIndex = (groupId: string, drop: { x: number; y: number }) => {
-        const pg = processedGroups.find(g => g.id === groupId);
+        const pg = processedZones.find(zone => zone.id === groupId);
         if (!pg) return 0;
-        const children = currentGroups.find(g => g.id === groupId)?.children.filter((id: string) => id !== item.id) || [];
+        const children = currentZones.find(zone => zone.id === groupId)?.children.filter((id: string) => id !== item.id) || [];
         const infos = children
           .map((id: string) => {
             const n = processedNodes.find(pn => pn.id === id);
@@ -1511,8 +1528,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               const dims = measureNodeDims(n);
               return { id, x: n.x, y: n.y, width: dims.width, height: dims.height };
             }
-            const g = processedGroups.find(pg2 => pg2.id === id);
-            if (g) return { id, x: g.x, y: g.y, width: g.width, height: g.height };
+            const z = processedZones.find(zone2 => zone2.id === id);
+            if (z) return { id, x: z.x, y: z.y, width: z.width, height: z.height };
             return null;
           })
           .filter(Boolean) as { id: string; x: number; y: number; width: number; height: number }[];
@@ -1527,9 +1544,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
    
       // Handle re-parenting (remove from old, we'll insert into target with ordering below)
       if (oldParentId !== targetGroupId) {
-        currentGroups = currentGroups.map(g => {
-          if (g.id === oldParentId) { 
-            return { ...g, children: g.children.filter((nid: string) => nid !== item.id) };
+        currentZones = currentZones.map(zone => {
+          if (zone.id === oldParentId) { 
+            return { ...zone, children: zone.children.filter((nid: string) => nid !== item.id) };
           }
           if (g.id === targetGroupId) {
             // Can't drop a group into itself or its descendants
@@ -1538,35 +1555,35 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               if (childId === parentId) return true;
               if (visited.has(childId)) return false; // Avoid infinite loops
               visited.add(childId);
-              const childGroup = currentGroups.find(g => g.id === childId);
-              if (!childGroup) return false;
-              return childGroup.children.some((nid: string) => isDescendant(nid, parentId));
+              const childZone = currentZones.find(g => g.id === childId);
+              if (!childZone) return false;
+              return childZone.children.some((nid: string) => isDescendant(nid, parentId));
             };
-            if (item.type === ItemTypes.GROUP && isDescendant(g.id, item.id)) {
-              return g;
+            if (item.type === ItemTypes.ZONE && isDescendant(g.id, item.id)) {
+              return zone;
             }
             // Defer actual insertion to ordering step below
-            return g;
+            return zone;
           }
-          return g;
+          return zone;
         });
 
         // Clean up residual information when moving out of old group
-        if (oldParentId && item.type === ItemTypes.GROUP) {
+        if (oldParentId && item.type === ItemTypes.ZONE) {
           // Remove parentId from the moved group and all its descendants
           const cleanUpParentId = (groupId: string) => {
-            const group = currentGroups.find(g => g.id === groupId);
-            if (group) {
+            const zone = currentZones.find(g => g.id === groupId);
+            if (zone) {
               // Remove parentId reference
-              const groupIndex = currentGroups.findIndex(g => g.id === groupId);
+              const groupIndex = currentZones.findIndex(g => g.id === groupId);
               if (groupIndex !== -1) {
-                currentGroups[groupIndex] = { ...group, parentId: undefined };
+                currentZones[groupIndex] = { ...zone, parentId: undefined };
               }
               
               // Recursively clean up all child groups
-              group.children.forEach(childId => {
-                const childGroup = currentGroups.find(g => g.id === childId);
-                if (childGroup) {
+              zone.children.forEach(childId => {
+                const childZone = currentZones.find(g => g.id === childId);
+                if (childZone) {
                   cleanUpParentId(childId);
                 }
               });
@@ -1581,28 +1598,28 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       
       // If target is a group and item is NOT freeflow, set ordering within that group (reorder or insert)
       if (targetGroupId && !isFreeflowNode) {
-        currentGroups = currentGroups.map(g => {
-          if (g.id !== targetGroupId) return g;
+        currentZones = currentZones.map(zone => {
+          if (g.id !== targetGroupId) return zone;
           const filtered = g.children.filter((nid: string) => nid !== item.id);
           const insertIndex = computeInsertIndex(targetGroupId, newPos);
           filtered.splice(insertIndex, 0, item.id);
-          return { ...g, children: filtered };
+          return { ...zone, children: filtered };
         });
 
         // Set parentId for groups that are moved into a new parent
-        if (item.type === ItemTypes.GROUP && targetGroupId) {
+        if (item.type === ItemTypes.ZONE && targetGroupId) {
           const setParentId = (groupId: string, parentId: string) => {
-            const group = currentGroups.find(g => g.id === groupId);
-            if (group) {
-              const groupIndex = currentGroups.findIndex(g => g.id === groupId);
+            const zone = currentZones.find(g => g.id === groupId);
+            if (zone) {
+              const groupIndex = currentZones.findIndex(g => g.id === groupId);
               if (groupIndex !== -1) {
-                currentGroups[groupIndex] = { ...group, parentId };
+                currentZones[groupIndex] = { ...zone, parentId };
               }
               
               // Recursively set parentId for all child groups
-              group.children.forEach(childId => {
-                const childGroup = currentGroups.find(g => g.id === childId);
-                if (childGroup) {
+              zone.children.forEach(childId => {
+                const childZone = currentZones.find(g => g.id === childId);
+                if (childZone) {
                   setParentId(childId, groupId);
                 }
               });
@@ -1610,20 +1627,20 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           };
           setParentId(item.id, targetGroupId);
         }
-      } else if (!targetGroupId && item.type === ItemTypes.GROUP) {
+      } else if (!targetGroupId && item.type === ItemTypes.ZONE) {
         // Group moved to canvas (orphaned) - clear parentId for moved group and all descendants
         const clearParentId = (groupId: string) => {
-          const group = currentGroups.find(g => g.id === groupId);
-          if (group) {
-            const groupIndex = currentGroups.findIndex(g => g.id === groupId);
+          const zone = currentZones.find(g => g.id === groupId);
+          if (zone) {
+            const groupIndex = currentZones.findIndex(g => g.id === groupId);
             if (groupIndex !== -1) {
-              currentGroups[groupIndex] = { ...group, parentId: undefined };
+              currentZones[groupIndex] = { ...zone, parentId: undefined };
             }
             
             // Recursively clear parentId for all child groups
-            group.children.forEach(childId => {
-              const childGroup = currentGroups.find(g => g.id === childId);
-              if (childGroup) {
+            zone.children.forEach(childId => {
+              const childZone = currentZones.find(g => g.id === childId);
+              if (childZone) {
                 clearParentId(childId);
               }
             });
@@ -1633,7 +1650,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       }
   
       // Handle positioning
-      if (item.type === ItemTypes.CANVAS_NODE || item.type === ItemTypes.GROUP) {
+      if (item.type === ItemTypes.CANVAS_NODE || item.type === ItemTypes.ZONE) {
         // Check if item is a freeflow node
         const isFreeflowNode = currentNodes.find(n => n.id === item.id)?.freeflow;
         
@@ -1643,7 +1660,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           if (item.type === ItemTypes.CANVAS_NODE) {
             currentNodes = currentNodes.map(n => n.id === item.id ? { ...n, x: undefined, y: undefined } : n);
           } else { 
-            currentGroups = currentGroups.map(g => g.id === item.id ? { ...g, x: undefined, y: undefined } : g);
+            currentZones = currentZones.map(g => g.id === item.id ? { ...zone, x: undefined, y: undefined } : g);
           }
         } else {
           // Top-level: snap and prevent overlap
@@ -1651,10 +1668,10 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           const snappedX = snap(newPos.x);
           const snappedY = snap(newPos.y);
 
-          const movingIsGroup = item.type === ItemTypes.GROUP;
+          const movingIsZone = item.type === ItemTypes.ZONE;
           const movingDims = movingIsGroup
             ? (() => {
-                const g = processedGroups.find(pg => pg.id === item.id);
+                const g = processedZones.find(pg => pg.id === item.id);
                 return { width: g?.width ?? 300, height: g?.height ?? 220 };
               })()
             : (() => {
@@ -1667,9 +1684,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           const getChildrenRecursive = (itemId: string) => {
               if (allChildIds.has(itemId)) return;
               allChildIds.add(itemId);
-              const group = currentGroups.find(g => g.id === itemId);
+              const zone = currentZones.find(g => g.id === itemId);
               if (!group) return;
-              group.children.forEach((childId: string) => getChildrenRecursive(childId));
+              zone.children.forEach((childId: string) => getChildrenRecursive(childId));
           };
           if (movingIsGroup) getChildrenRecursive(item.id);
 
@@ -1681,7 +1698,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 const dims = measureNodeDims(n);
                 return { id: n.id, x: n.x, y: n.y, width: dims.width, height: dims.height };
               }),
-              ...processedGroups.map(g => ({ id: g.id, x: g.x, y: g.y, width: g.width, height: g.height })),
+              ...processedZones.map(zone => ({ id: zone.id, x: zone.x, y: zone.y, width: zone.width, height: zone.height })),
             ].filter(o => o.id !== item.id && !allChildIds.has(o.id));
             return obstacles.some(o => !(x + rectA.width <= o.x || o.x + o.width <= x || y + rectA.height <= o.y || o.y + o.height <= y));
           };
@@ -1692,20 +1709,20 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             return prevData;
           }
 
-          const draggedItemData = processedNodes.find(n => n.id === item.id) || processedGroups.find(g => g.id === item.id);
+          const draggedItemData = processedNodes.find(n => n.id === item.id) || processedZones.find(zone => zone.id === item.id);
           const originalX = draggedItemData?.x ?? 0;
           const originalY = draggedItemData?.y ?? 0;
           const dx = snappedX - originalX;
           const dy = snappedY - originalY;
 
           if (movingIsGroup) {
-            currentGroups = currentGroups.map(g => {
-              if (g.id === item.id) return { ...g, x: snappedX, y: snappedY };
-              if (allChildIds.has(g.id)) {
-                const originalChild = processedGroups.find(cg => cg.id === g.id);
-                return { ...g, x: (originalChild?.x ?? 0) + dx, y: (originalChild?.y ?? 0) + dy };
+            currentZones = currentZones.map(zone => {
+              if (zone.id === item.id) return { ...zone, x: snappedX, y: snappedY };
+              if (allChildIds.has(zone.id)) {
+                const originalChild = processedZones.find(childZone => childZone.id === zone.id);
+                return { ...zone, x: (originalChild?.x ?? 0) + dx, y: (originalChild?.y ?? 0) + dy };
               }
-              return g;
+              return zone;
             });
             currentNodes = currentNodes.map(n => {
               if (allChildIds.has(n.id)) {
@@ -1719,9 +1736,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           }
         }
       }
-      return { ...prevData, nodes: currentNodes, groups: currentGroups };
+      return { ...prevData, nodes: currentNodes, zones: currentZones };
     });
-  }, [setDiagramData, processedNodes, processedGroups]);
+  }, [setDiagramData, processedNodes, processedZones]);
 
 
   type DropItem = { 
@@ -1733,7 +1750,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
 };
 
 const [, drop] = useDrop(() => ({
-    accept: [ItemTypes.DIAGRAM_NODE, ItemTypes.CANVAS_NODE, ItemTypes.GROUP],
+    accept: [ItemTypes.DIAGRAM_NODE, ItemTypes.CANVAS_NODE, ItemTypes.ZONE],
     hover: (item: DropItem, monitor) => {
         if (!canvasRef.current) return;
         const clientOffset = monitor.getClientOffset();
@@ -1750,12 +1767,12 @@ const [, drop] = useDrop(() => ({
         let deltaX = 0;
         let deltaY = 0;
         
-        if (item.id && (monitor.getItemType() === ItemTypes.CANVAS_NODE || monitor.getItemType() === ItemTypes.GROUP)) {
+        if (item.id && (monitor.getItemType() === ItemTypes.CANVAS_NODE || monitor.getItemType() === ItemTypes.ZONE)) {
           // For existing items, calculate based on initial position and delta
           const initialCanvasPos = monitor.getInitialSourceClientOffset();
           const delta = monitor.getDifferenceFromInitialOffset();
           if (initialCanvasPos && delta) {
-            const originalItem = nodesById[item.id] || groupsById[item.id];
+            const originalItem = nodesById[item.id] || zonesById[item.id];
             if (originalItem) {
               const initialX = originalItem.x ?? 0;
               const initialY = originalItem.y ?? 0;
@@ -1778,7 +1795,7 @@ const [, drop] = useDrop(() => ({
           if (!multiDragStartPositions.current) {
             multiDragStartPositions.current = {};
             selectedItemIds.forEach(id => {
-              const node = nodesById[id] || groupsById[id];
+              const node = nodesById[id] || zonesById[id];
               if (node) {
                 multiDragStartPositions.current![id] = { x: node.x ?? 0, y: node.y ?? 0 };
               }
@@ -1815,30 +1832,30 @@ const [, drop] = useDrop(() => ({
         // Only check for group highlighting if item is NOT a freeflow node
         if (!isFreeflowNode) {
             // Iterate backwards to check topmost groups first
-            for (let i = processedGroups.length - 1; i >= 0; i--) {
-                const group = processedGroups[i];
+            for (let i = processedZones.length - 1; i >= 0; i--) {
+                const zone = processedZones[i];
                 if (group.id === item.id) continue;
                 
                 // Check if item being dragged is an ancestor of potential target group
                 let isAncestor = false;
                 if (item.id) {
                     const visited = new Set<string>();
-                    const checkDescendants = (currentGroupId: string): boolean => {
-                        if (visited.has(currentGroupId)) return false;
-                        visited.add(currentGroupId);
-                        if (currentGroupId === group.id) return true;
-                        const currentGroupData = processedGroups.find(g => g.id === currentGroupId);
-                        if (!currentGroupData) return false;
-                        return currentGroupData.children.some((childId: string) => {
-                            const childGroup = processedGroups.find(g => g.id === childId);
-                            return childGroup ? checkDescendants(childGroup.id) : false;
+                    const checkDescendants = (currentZoneId: string): boolean => {
+                        if (visited.has(currentZoneId)) return false;
+                        visited.add(currentZoneId);
+                        if (currentZoneId === group.id) return true;
+                        const currentZoneData = processedZones.find(g => g.id === currentZoneId);
+                        if (!currentZoneData) return false;
+                        return currentZoneData.children.some((childId: string) => {
+                            const childZone = processedZones.find(g => g.id === childId);
+                            return childZone ? checkDescendants(childZone.id) : false;
                         });
                     };
                     isAncestor = checkDescendants(item.id);
                 }
                 if (isAncestor) continue;
 
-                if (x > group.x && x < group.x + group.width && y > group.y && y < group.y + group.height) {
+                if (x > zone.x && x < zone.x + zone.width && y > zone.y && y < zone.y + zone.height) {
                     targetGroupId = group.id;
                     break;
                 }
@@ -1870,7 +1887,7 @@ const [, drop] = useDrop(() => ({
             x = (currentPos.x - canvasRect.left - transform.x) / transform.k;
             y = (currentPos.y - canvasRect.top - transform.y) / transform.k;
           } else {
-            const originalItem = nodesById[item.id!] || groupsById[item.id!];
+            const originalItem = nodesById[item.id!] || zonesById[item.id!];
             const initialX = originalItem?.x ?? 0;
             const initialY = originalItem?.y ?? 0;
             x = initialX + delta.x / transform.k;
@@ -1890,7 +1907,7 @@ const [, drop] = useDrop(() => ({
         if (itemType === ItemTypes.DIAGRAM_NODE) { 
             // Pass full item data to preserve resource information
             addNode(item as any, { x, y }, targetGroupIdForFreeflow);
-        } else if (item.id && (itemType === ItemTypes.CANVAS_NODE || itemType === ItemTypes.GROUP)) {
+        } else if (item.id && (itemType === ItemTypes.CANVAS_NODE || itemType === ItemTypes.ZONE)) {
             // Handle multi-select movement
             if (selectedItemIds.has(item.id) && selectedItemIds.size > 1 && multiDragStartPositions.current) {
                 // Move all selected items maintaining relative spacing
@@ -1911,7 +1928,7 @@ const [, drop] = useDrop(() => ({
                     if (startPos) {
                         const newX = snap(startPos.x + deltaX);
                         const newY = snap(startPos.y + deltaY);
-                        const itemType = nodesById[id] ? ItemTypes.CANVAS_NODE : ItemTypes.GROUP;
+                        const itemType = nodesById[id] ? ItemTypes.CANVAS_NODE : ItemTypes.ZONE;
                         itemsToMove.push({ id, type: itemType, x: startPos.x, y: startPos.y });
                         newPositions.push({ x: newX, y: newY });
                     }
@@ -1937,7 +1954,7 @@ const [, drop] = useDrop(() => ({
       isOver: monitor.isOver(),
       canDrop: monitor.canDrop(),
     }),
-  }), [transform, processedGroups, diagramData, hoveredGroupId, moveItem, moveMultipleItems, addNode, nodesById, groupsById, selectedItemIds]);
+  }), [transform, processedZones, diagramData, hoveredGroupId, moveItem, moveMultipleItems, addNode, nodesById, zonesById, selectedItemIds]);
 
   // Cleanup multi-drag state when drag ends outside of drop
   useEffect(() => {
@@ -1977,19 +1994,19 @@ const [, drop] = useDrop(() => ({
     handleContextMenu(e, node.id, 'node');
   }
 
-  const handleGroupClick = (e: React.MouseEvent, group: DiagramGroupData) => {
+  const handleZoneClick = (e: React.MouseEvent, zone: DiagramZoneData) => {
     e.stopPropagation();
     closeContextMenu();
     if (isConnectMode) {
-      onNodeClickInConnectMode(group as any);
+      onNodeClickInConnectMode(zone as any);
     } else {
-      onItemSelect({ ...group, itemType: 'group' }, e.shiftKey);
+      onItemSelect({ ...zone, itemType: 'zone' }, e.shiftKey);
     }
   }
 
-  const handleGroupRightClick = (e: React.MouseEvent, group: DiagramGroupData) => {
+  const handleZoneRightClick = (e: React.MouseEvent, zone: DiagramZoneData) => {
     e.stopPropagation();
-    handleContextMenu(e, group.id, 'group');
+    handleContextMenu(e, zone.id, 'zone');
   };
 
   drop(canvasRef);
@@ -2189,13 +2206,13 @@ const [, drop] = useDrop(() => ({
       });
       
       // Check groups
-      diagramData.groups?.forEach(group => {
-        const groupX = group.x || 0;
-        const groupY = group.y || 0;
-        const groupWidth = group.width || 300;
-        const groupHeight = group.height || 220;
+      diagramData.zones?.forEach(group => {
+        const groupX = zone.x || 0;
+        const groupY = zone.y || 0;
+        const zoneWidth = zone.width || 300;
+        const zoneHeight = zone.height || 220;
         
-        if (groupX >= x1 && groupX + groupWidth <= x2 && groupY >= y1 && groupY + groupHeight <= y2) {
+        if (groupX >= x1 && groupX + zoneWidth <= x2 && groupY >= y1 && groupY + zoneHeight <= y2) {
           selectedIds.add(group.id);
         }
       });
@@ -2207,13 +2224,13 @@ const [, drop] = useDrop(() => ({
         // Fallback to individual selection if batch select not available
         const firstId = Array.from(selectedIds)[0];
         const primaryNode = diagramData.nodes.find(n => n.id === firstId);
-        const primaryGroup = diagramData.groups?.find(g => g.id === firstId);
+        const primaryGroup = diagramData.zones?.find(g => g.id === firstId);
         
         let primaryItem = null;
         if (primaryNode) {
           primaryItem = { ...primaryNode, itemType: 'node' as const };
         } else if (primaryGroup) {
-          primaryItem = { ...primaryGroup, itemType: 'group' as const };
+          primaryItem = { ...primaryGroup, itemType: 'zone' as const };
         }
         
         if (primaryItem) {
@@ -2244,7 +2261,7 @@ const [, drop] = useDrop(() => ({
     const target = e.target as HTMLElement;
     
     // Check if touching an interactive element - let them handle their own touch events
-    // This includes nodes, groups, buttons, inputs, etc.
+    // This includes nodes, zones, buttons, inputs, etc.
     if (target.closest('.absolute') || 
         target.closest('button') || 
         target.closest('input') || 
@@ -2320,9 +2337,9 @@ const [, drop] = useDrop(() => ({
     const viewportWidth = canvasRef.current.clientWidth;
     const viewportHeight = canvasRef.current.clientHeight;
 
-    // Use the processedNodes and processedGroups which have final calculated positions
+    // Use the processedNodes and processedZones which have final calculated positions
     const allNodes = processedNodes;
-    const allGroups = processedGroups;
+    const allGroups = processedZones;
 
     console.log('Processed items (final positions):', {
       allNodes: allNodes.map(n => ({ id: n.id, x: n.x, y: n.y, label: n.label, width: measureNodeDims(n).width, height: measureNodeDims(n).height })),
@@ -2384,7 +2401,7 @@ const [, drop] = useDrop(() => ({
       nodesCount: allNodes.length,
       groupsCount: allGroups.length,
       sampleNodes: allNodes.slice(0, 3).map(n => ({ id: n.id, x: n.x, y: n.y, label: n.label })),
-      sampleGroups: allGroups.slice(0, 3).map(g => ({ id: g.id, x: g.x, y: g.y, width: g.width, height: g.height }))
+      sampleGroups: allGroups.slice(0, 3).map(g => ({ id: g.id, x: zone.x, y: zone.y, width: zone.width, height: zone.height }))
     });
 
     const displayWidth = k * contentWidth;
@@ -2405,7 +2422,7 @@ const [, drop] = useDrop(() => ({
     });
 
     setTransform({ x, y, k });
-  }, [processedNodes, processedGroups]);
+  }, [processedNodes, processedZones]);
 
   const exportPng = useCallback(async (options?: { backgroundColor?: 'transparent' | 'white'; selectionArea?: { x: number; y: number; width: number; height: number } }) => {
     if (!canvasRef.current) return;
@@ -2555,7 +2572,7 @@ const [, drop] = useDrop(() => ({
   // Sort items for proper hierarchical rendering: parent first, then children in order
   const sortedRenderItems = useMemo(() => {
     const parentMap = new Map<string, string>();
-    processedGroups.forEach(g => {
+    processedZones.forEach(g => {
       g.children.forEach((id: string) => parentMap.set(id, g.id));
     });
 
@@ -2571,7 +2588,7 @@ const [, drop] = useDrop(() => ({
 
     // Combine all items and sort by depth (parents first), then by original order
     const allItems = [
-      ...processedGroups.map(g => ({ ...g, itemType: 'group' as const })),
+      ...processedZones.map(g => ({ ...zone, itemType: 'zone' as const })),
       ...processedNodes.map(n => ({ ...n, itemType: 'node' as const }))
     ];
 
@@ -2585,16 +2602,16 @@ const [, drop] = useDrop(() => ({
       }
       
       // Same depth: maintain original order by using their position in the original arrays
-      const indexA = a.itemType === 'group' 
-        ? processedGroups.findIndex(g => g.id === a.id)
+      const indexA = a.itemType === 'zone' 
+        ? processedZones.findIndex(g => g.id === a.id)
         : processedNodes.findIndex(n => n.id === a.id);
-      const indexB = b.itemType === 'group'
-        ? processedGroups.findIndex(g => g.id === b.id)
+      const indexB = b.itemType === 'zone'
+        ? processedZones.findIndex(g => g.id === b.id)
         : processedNodes.findIndex(n => n.id === b.id);
       
       return indexA - indexB;
     });
-  }, [processedGroups, processedNodes]);
+  }, [processedZones, processedNodes]);
 
   
 
@@ -2689,10 +2706,10 @@ const [, drop] = useDrop(() => ({
       
       // Check if dropping over a group
       let targetGroupId: string | null = null;
-      for (let i = processedGroups.length - 1; i >= 0; i--) {
-        const group = processedGroups[i];
-        if (adjustedX > group.x && adjustedX < group.x + group.width && 
-            adjustedY > group.y && adjustedY < group.y + group.height) {
+      for (let i = processedZones.length - 1; i >= 0; i--) {
+        const zone = processedZones[i];
+        if (adjustedX > zone.x && adjustedX < zone.x + zone.width && 
+            adjustedY > zone.y && adjustedY < zone.y + zone.height) {
           targetGroupId = group.id;
           break;
         }
@@ -2714,10 +2731,10 @@ const [, drop] = useDrop(() => ({
       
       // Check if dropping over a group
       let targetGroupId: string | null = null;
-      for (let i = processedGroups.length - 1; i >= 0; i--) {
-        const group = processedGroups[i];
-        if (adjustedX > group.x && adjustedX < group.x + group.width && 
-            adjustedY > group.y && adjustedY < group.y + group.height) {
+      for (let i = processedZones.length - 1; i >= 0; i--) {
+        const zone = processedZones[i];
+        if (adjustedX > zone.x && adjustedX < zone.x + zone.width && 
+            adjustedY > zone.y && adjustedY < zone.y + zone.height) {
           targetGroupId = group.id;
           break;
         }
@@ -2725,7 +2742,7 @@ const [, drop] = useDrop(() => ({
       
       
       
-      if (type === ItemTypes.CANVAS_NODE || type === ItemTypes.GROUP) {
+      if (type === ItemTypes.CANVAS_NODE || type === ItemTypes.ZONE) {
         moveItem({ id, type, x: originalX, y: originalY }, { x: adjustedX, y: adjustedY }, targetGroupId);
       }
     };
@@ -2743,7 +2760,7 @@ const [, drop] = useDrop(() => ({
         canvas.removeEventListener('mobileMove', handleMobileMove as EventListener);
       }
     };
-  }, [transform, processedGroups, addNode, moveItem]);
+  }, [transform, processedZones, addNode, moveItem]);
 
   // Fix passive wheel event listener
   useEffect(() => {
@@ -2793,7 +2810,7 @@ const [, drop] = useDrop(() => ({
   }, [transform]);
 
   // Context menu handlers
-  const handleContextMenu = (event: React.MouseEvent, itemId: string, itemType: 'node' | 'group') => {
+  const handleContextMenu = (event: React.MouseEvent, itemId: string, itemType: 'node' | 'zone') => {
     event.preventDefault();
     setContextMenu({
       visible: true,
@@ -2838,15 +2855,15 @@ const [, drop] = useDrop(() => ({
         ...prev,
         nodes: prev.nodes.filter(n => n.id !== itemId),
         connections: prev.connections.filter((e: any) => e.from !== itemId && e.to !== itemId),
-        groups: prev.groups?.map(g => ({
-          ...g,
+        zones: prev.zones?.map(g => ({
+          ...zone,
           children: g.children.filter((n: string) => n !== itemId)
         }))
       }));
     } else {
       setDiagramData(prev => ({
         ...prev,
-        groups: prev.groups?.filter(g => g.id !== itemId)
+        zones: prev.zones?.filter(g => g.id !== itemId)
       }));
     }
     
@@ -2864,12 +2881,12 @@ const [, drop] = useDrop(() => ({
       // Filter out nodes that are being deleted
       const remainingNodes = prev.nodes.filter(n => !idsToDelete.has(n.id));
       
-      // Filter out groups that are being deleted
-      const remainingGroups = prev.groups?.filter(g => !idsToDelete.has(g.id));
+      // Filter out zones that are being deleted
+      const remainingZones = prev.zones?.filter(g => !idsToDelete.has(g.id));
       
-      // Remove deleted items from group children
-      const updatedGroups = remainingGroups?.map(g => ({
-        ...g,
+      // Remove deleted items from zone children
+      const updatedZones = remainingZones?.map(g => ({
+        ...zone,
         children: g.children.filter(childId => !idsToDelete.has(childId))
       }));
       
@@ -2881,7 +2898,7 @@ const [, drop] = useDrop(() => ({
       return {
         ...prev,
         nodes: remainingNodes,
-        groups: updatedGroups,
+        zones: updatedZones,
         connections: remainingConnections
       };
     });
@@ -2897,36 +2914,36 @@ const [, drop] = useDrop(() => ({
     // If we have multiple items selected, copy all of them
     if (selectedItemIds && selectedItemIds.size > 0) {
       const selectedNodes: DiagramNodeData[] = [];
-      const selectedGroups: DiagramGroupData[] = [];
+      const selectedZones: DiagramZoneData[] = [];
       const selectedConnections: DiagramConnectionData[] = [];
       const allSelectedIds = new Set(selectedItemIds);
 
       // Collect selected nodes and groups
       selectedItemIds.forEach(id => {
         const node = diagramData.nodes.find(n => n.id === id);
-        const group = diagramData.groups?.find(g => g.id === id);
+        const zone = diagramData.zones?.find(g => g.id === id);
         
         if (node) {
           selectedNodes.push({ ...node });
-        } else if (group) {
+        } else if (zone) {
           // Recursively collect all children of selected groups
           const collectChildren = (groupId: string, visited: Set<string> = new Set()): (DiagramNodeData | DiagramGroupData)[] => {
             if (visited.has(groupId)) return [];
             visited.add(groupId);
 
             const children: (DiagramNodeData | DiagramGroupData)[] = [];
-            const currentGroup = diagramData.groups?.find(g => g.id === groupId);
+            const currentZone = diagramData.zones?.find(g => g.id === groupId);
 
-            if (currentGroup?.children) {
-              for (const childId of currentGroup.children) {
+            if (currentZone?.children) {
+              for (const childId of currentZone.children) {
                 const childNode = diagramData.nodes.find(n => n.id === childId);
-                const childGroup = diagramData.groups?.find(g => g.id === childId);
+                const childZone = diagramData.zones?.find(g => g.id === childId);
 
                 if (childNode) {
                   children.push({ ...childNode });
                   allSelectedIds.add(childId);
-                } else if (childGroup) {
-                  children.push({ ...childGroup });
+                } else if (childZone) {
+                  children.push({ ...childZone });
                   allSelectedIds.add(childId);
                   // Recursively collect children of child groups
                   children.push(...collectChildren(childId, visited));
@@ -2937,13 +2954,13 @@ const [, drop] = useDrop(() => ({
             return children;
           };
 
-          selectedGroups.push({ ...group });
+          selectedZones.push({ ...zone });
           const children = collectChildren(id);
           children.forEach(child => {
             if ('type' in child) {
               selectedNodes.push(child as DiagramNodeData);
             } else {
-              selectedGroups.push(child as DiagramGroupData);
+              selectedZones.push(child as DiagramGroupData);
             }
           });
         }
@@ -2958,41 +2975,41 @@ const [, drop] = useDrop(() => ({
 
       setClipboard({
         nodes: selectedNodes,
-        groups: selectedGroups,
+        zones: selectedZones,
         connections: selectedConnections
       });
       onClipboardChange?.(true);
 
       toast({
         title: "Items Copied",
-        description: `${selectedNodes.length + selectedGroups.length} items and ${selectedConnections.length} connections copied to clipboard.`,
+        description: `${selectedNodes.length + selectedZones.length} items and ${selectedConnections.length} connections copied to clipboard.`,
       });
     } else if (itemId) {
       // Fallback to single item copy for backward compatibility
       const node = diagramData.nodes.find(n => n.id === itemId);
-      const group = diagramData.groups?.find(g => g.id === itemId);
+      const zone = diagramData.zones?.find(g => g.id === itemId);
 
       if (node) {
         setClipboard({ node: { ...node } });
         onClipboardChange?.(true);
-      } else if (group) {
+      } else if (zone) {
         // Recursively collect all children
         const collectChildren = (groupId: string, visited: Set<string> = new Set()): (DiagramNodeData | DiagramGroupData)[] => {
           if (visited.has(groupId)) return [];
           visited.add(groupId);
 
           const children: (DiagramNodeData | DiagramGroupData)[] = [];
-          const currentGroup = diagramData.groups?.find(g => g.id === groupId);
+          const currentZone = diagramData.zones?.find(g => g.id === groupId);
 
-          if (currentGroup?.children) {
-            for (const childId of currentGroup.children) {
+          if (currentZone?.children) {
+            for (const childId of currentZone.children) {
               const childNode = diagramData.nodes.find(n => n.id === childId);
-              const childGroup = diagramData.groups?.find(g => g.id === childId);
+              const childZone = diagramData.zones?.find(g => g.id === childId);
 
               if (childNode) {
                 children.push({ ...childNode });
-              } else if (childGroup) {
-                children.push({ ...childGroup });
+              } else if (childZone) {
+                children.push({ ...childZone });
                 // Recursively collect children of child groups
                 children.push(...collectChildren(childId, visited));
               }
@@ -3003,7 +3020,7 @@ const [, drop] = useDrop(() => ({
         };
 
         const children = collectChildren(itemId);
-        setClipboard({ group: { ...group }, children });
+        setClipboard({ zone: { ...zone }, children });
         onClipboardChange?.(true);
       }
 
@@ -3042,9 +3059,9 @@ const [, drop] = useDrop(() => ({
     if (!clipboard) return;
 
     // Handle multi-selection paste
-    if (clipboard.nodes || clipboard.groups) {
+    if (clipboard.nodes || clipboard.zones) {
       const nodes = clipboard.nodes || [];
-      const groups = clipboard.groups || [];
+      const zones = clipboard.zones || [];
       const connections = clipboard.connections || [];
       
       // Create ID mapping for all items being pasted
@@ -3066,14 +3083,14 @@ const [, drop] = useDrop(() => ({
       });
 
       // Second pass: generate new IDs for all groups and process their children
-      const newGroups: DiagramGroupData[] = [];
-      const processGroupChildren = (group: DiagramGroupData): DiagramGroupData => {
-        const newGroupId = generateGroupId((group.subType as 'group' | 'zone') || 'group', diagramData);
-        idMapping.set(group.id, newGroupId);
+      const newZones: DiagramZoneData[] = [];
+      const processZoneChildren = (group: DiagramGroupData): DiagramGroupData => {
+        const newZoneId = generateGroupId((group.subType as 'group' | 'zone') || 'group', diagramData);
+        idMapping.set(group.id, newZoneId);
 
         // Process children - map old IDs to new IDs
         const processedChildren: string[] = [];
-        group.children?.forEach(childId => {
+        zone.children?.forEach(childId => {
           // Check if this child ID is in our mapping (means it's being copied)
           const mappedId = idMapping.get(childId);
           if (mappedId) {
@@ -3085,18 +3102,18 @@ const [, drop] = useDrop(() => ({
         });
 
         return {
-          ...group,
-          id: newGroupId,
-          x: (group.x || 0) + 50,
-          y: (group.y || 0) + 50,
+          ...zone,
+          id: newZoneId,
+          x: (zone.x || 0) + 50,
+          y: (zone.y || 0) + 50,
           children: processedChildren
         };
       };
 
-      // Process all groups (including nested ones)
-      groups.forEach(group => {
-        const newGroup = processGroupChildren(group);
-        newGroups.push(newGroup);
+      // Process all zones (including nested ones)
+      zones.forEach(zone => {
+        const newZone = processZoneChildren(zone);
+        newZones.push(newZone);
       });
 
       // Third pass: create new connections with updated IDs
@@ -3119,25 +3136,25 @@ const [, drop] = useDrop(() => ({
       setDiagramData(prev => ({
         ...prev,
         nodes: [...prev.nodes, ...newNodes],
-        groups: [...(prev.groups || []), ...newGroups],
+        zones: [...(prev.zones || []), ...newZones],
         connections: [...(prev.connections || []), ...newConnections]
       }));
 
       // Select all newly pasted items
       const pastedItemIds = new Set<string>();
       newNodes.forEach(node => pastedItemIds.add(node.id));
-      newGroups.forEach(group => pastedItemIds.add(group.id));
+      newZones.forEach(group => pastedItemIds.add(group.id));
       
       // Set the first pasted item as the primary selected item
       if (pastedItemIds.size > 0) {
         const firstPastedId = Array.from(pastedItemIds)[0];
         const firstPastedNode = newNodes.find(n => n.id === firstPastedId);
-        const firstPastedGroup = newGroups.find(g => g.id === firstPastedId);
+        const firstPastedGroup = newZones.find(g => g.id === firstPastedId);
         
         if (firstPastedNode) {
           onItemSelect({ ...firstPastedNode, itemType: 'node' });
         } else if (firstPastedGroup) {
-          onItemSelect({ ...firstPastedGroup, itemType: 'group' });
+          onItemSelect({ ...firstPastedGroup, itemType: 'zone' });
         }
       }
       
@@ -3147,12 +3164,12 @@ const [, drop] = useDrop(() => ({
         setTimeout(() => {
           pastedItemIds.forEach(id => {
             const pastedNode = newNodes.find(n => n.id === id);
-            const pastedGroup = newGroups.find(g => g.id === id);
+            const pastedGroup = newZones.find(g => g.id === id);
             
             if (pastedNode) {
               onItemSelect({ ...pastedNode, itemType: 'node' }, true); // true for shift key (multi-select)
             } else if (pastedGroup) {
-              onItemSelect({ ...pastedGroup, itemType: 'group' }, true); // true for shift key (multi-select)
+              onItemSelect({ ...pastedGroup, itemType: 'zone' }, true); // true for shift key (multi-select)
             }
           });
         }, 0);
@@ -3160,7 +3177,7 @@ const [, drop] = useDrop(() => ({
 
       toast({
         title: "Items Pasted",
-        description: `${newNodes.length + newGroups.length} items and ${newConnections.length} connections pasted to canvas.`,
+        description: `${newNodes.length + newZones.length} items and ${newConnections.length} connections pasted to canvas.`,
       });
     } else if (clipboard.node) {
       // Handle single node paste (backward compatibility)
@@ -3183,14 +3200,14 @@ const [, drop] = useDrop(() => ({
         title: "Item Pasted",
         description: "The copied item has been pasted to the canvas.",
       });
-    } else if (clipboard.group) {
+    } else if (clipboard.zone) {
       // Handle single group paste (backward compatibility)
       // Create ID mapping for all items being pasted
       const idMapping = new Map<string, string>();
 
       // Generate new ID for the main group
-      const newGroupId = generateGroupId((clipboard.group.subType as 'group' | 'zone') || 'group', diagramData);
-      idMapping.set(clipboard.group.id, newGroupId);
+      const newZoneId = generateGroupId((clipboard.zone.subType as 'group' | 'zone') || 'group', diagramData);
+      idMapping.set(clipboard.zone.id, newZoneId);
 
       // Generate new IDs for all children
       const children = clipboard.children || [];
@@ -3209,17 +3226,17 @@ const [, drop] = useDrop(() => ({
       }
 
       // Create new group with updated children IDs
-      const newGroup: DiagramGroupData = {
-        ...clipboard.group,
-        id: newGroupId,
-        x: (clipboard.group.x || 0) + 50,
-        y: (clipboard.group.y || 0) + 50,
-        children: clipboard.group.children?.map(childId => idMapping.get(childId) || childId) || []
+      const newZone: DiagramGroupData = {
+        ...clipboard.zone,
+        id: newZoneId,
+        x: (clipboard.zone.x || 0) + 50,
+        y: (clipboard.zone.y || 0) + 50,
+        children: clipboard.zone.children?.map(childId => idMapping.get(childId) || childId) || []
       };
 
       // Create new children with updated IDs and positions
       const newNodes: DiagramNodeData[] = [];
-      const newChildGroups: DiagramGroupData[] = [];
+      const newChildGroups: DiagramZoneData[] = [];
 
       for (const child of children) {
         const newChildId = idMapping.get(child.id)!;
@@ -3238,7 +3255,7 @@ const [, drop] = useDrop(() => ({
           // It's a group - update its children IDs as well
           const groupChild = child as DiagramGroupData;
           const newChildGroup: DiagramGroupData = {
-            ...groupChild,
+            ...zoneChild,
             id: newChildId,
             x: (groupChild.x || 0) + 50,
             y: (groupChild.y || 0) + 50,
@@ -3251,11 +3268,11 @@ const [, drop] = useDrop(() => ({
       setDiagramData(prev => ({
         ...prev,
         nodes: [...prev.nodes, ...newNodes],
-        groups: [...(prev.groups || []), newGroup, ...newChildGroups]
+        zones: [...(prev.zones || []), newZone, ...newChildGroups]
       }));
 
       // Select the newly pasted group
-      onItemSelect({ ...newGroup, itemType: 'group' });
+      onItemSelect({ ...newZone, itemType: 'zone' });
 
       toast({
         title: "Item Pasted",
@@ -3365,8 +3382,8 @@ const [, drop] = useDrop(() => ({
                     
                     // First pass: determine edges for all connections and group by node+edge
                     (diagramData.connections || []).forEach((conn: any, connIndex: number) => {
-                        const fromItem = nodesById[conn.from] || groupsById[conn.from];
-                        const toItem = nodesById[conn.to] || groupsById[conn.to];
+                        const fromItem = nodesById[conn.from] || zonesById[conn.from];
+                        const toItem = nodesById[conn.to] || zonesById[conn.to];
                         if (!fromItem || !toItem) return;
                         
                         const fromItemDims = 'type' in fromItem ? measureNodeDims(fromItem as PositionedNode) : { width: (fromItem as any).width, height: (fromItem as any).height };
@@ -3406,8 +3423,8 @@ const [, drop] = useDrop(() => ({
                     
                     // Second pass: render connections with per-edge indices
                     return (diagramData.connections || []).map((edge: any, index: any) => {
-                        const fromItem = nodesById[edge.from] || groupsById[edge.from];
-                        const toItem = nodesById[edge.to] || groupsById[edge.to];
+                        const fromItem = nodesById[edge.from] || zonesById[edge.from];
+                        const toItem = nodesById[edge.to] || zonesById[edge.to];
                         if (!fromItem || !toItem) return null;
 
                         // Use measured dimensions for nodes to ensure proper connection alignment
@@ -3490,17 +3507,17 @@ return (
                 
                 {/* Nodes and groups rendered on top of connections */}
                 {sortedRenderItems.map((item) => {
-                  if (item.itemType === 'group') {
+                  if (item.itemType === 'zone') {
                     return (
                       <div key={item.id} style={{ zIndex: 0, overflow: 'visible' }}>
-                        <DiagramGroup 
-                          group={item}
+                        <DiagramZone 
+                          zone={item}
                           isSelected={selectedItemId === item.id && !isConnectMode}
                           isMultiSelected={selectedItemIds.has(item.id) && !isConnectMode}
                           isDropTarget={hoveredGroupId === item.id}
                           isTargetable={isConnectMode && selectedItemId !== item.id}
-                          onClick={handleGroupClick}
-                          onContextMenu={handleGroupRightClick}
+                          onClick={handleZoneClick}
+                          onContextMenu={handleZoneRightClick}
                           onResize={resizeGroup}
                           onLabelChange={updateGroupLabel}
                         />
@@ -3557,8 +3574,8 @@ return (
                         totalConnections
                     };
                     
-                    const fromItem = nodesById[edge.from] || groupsById[edge.from];
-                    const toItem = nodesById[edge.to] || groupsById[edge.to];
+                    const fromItem = nodesById[edge.from] || zonesById[edge.from];
+                    const toItem = nodesById[edge.to] || zonesById[edge.to];
                     if (!fromItem || !toItem) return null;
 
                     // Get actual dimensions for shapes using measureNodeDims
@@ -3582,7 +3599,7 @@ return (
 
                     // Build parent map for groups to gather ancestor groups of endpoints
                     const parentMap = new Map<string, string>();
-                    processedGroups.forEach(g => {
+                    processedZones.forEach(g => {
                       g.children.forEach((id: string) => parentMap.set(id, g.id));
                     });
                     
@@ -3606,12 +3623,12 @@ return (
         {contextMenu.visible && (() => {
           const currentItem = contextMenu.itemType === 'node' 
             ? diagramData.nodes.find(n => n.id === contextMenu.itemId)
-            : diagramData.groups?.find(g => g.id === contextMenu.itemId);
+            : diagramData.zones?.find(g => g.id === contextMenu.itemId);
           
           const isSizeModeAuto = currentItem?.sizeMode === 'auto';
           const supportsSizeMode = contextMenu.itemType === 'node' 
-            ? (currentItem?.type === 'generic.text.textbox' || currentItem?.type === 'group')
-            : contextMenu.itemType === 'group';
+            ? (currentItem?.type === 'generic.text.textbox' || currentItem?.type === 'zone')
+            : contextMenu.itemType === 'zone';
           
           const itemConnections = diagramData.connections.filter((e: any) => 
             e.from === contextMenu.itemId || e.to === contextMenu.itemId
@@ -3627,10 +3644,13 @@ return (
               onCopy={() => handleCopy(contextMenu.itemId)}
               onDelete={() => handleDelete(contextMenu.itemId)}
               onConnect={() => {
-                const item = diagramData.nodes.find(n => n.id === contextMenu.itemId) || 
-                           diagramData.groups?.find(g => g.id === contextMenu.itemId);
-                if (item) {
-                  onItemSelect({ ...item, itemType: contextMenu.itemType });
+                const nodeItem = diagramData.nodes.find(n => n.id === contextMenu.itemId);
+                const groupItem = diagramData.zones?.find(g => g.id === contextMenu.itemId);
+                if (nodeItem) {
+                  onItemSelect({ ...nodeItem, itemType: 'node' });
+                  onConnect?.();
+                } else if (groupItem) {
+                  onItemSelect({ ...zoneItem, itemType: 'zone' });
                   onConnect?.();
                 }
               }}
@@ -3656,7 +3676,7 @@ return (
               onToggleSizeMode={() => {
                 if (contextMenu.itemType === 'node') {
                   const node = diagramData.nodes.find(n => n.id === contextMenu.itemId);
-                  if (node && (node.type === 'generic.text.textbox' || node.type === 'group')) {
+                  if (node && (node.type === 'generic.text.textbox' || node.type === 'zone')) {
                     setDiagramData(prev => ({
                       ...prev,
                       nodes: prev.nodes.map(n => 
@@ -3670,14 +3690,14 @@ return (
                       description: `Size mode changed to ${node.sizeMode === 'auto' ? 'Custom' : 'Auto'}`,
                     });
                   }
-                } else if (contextMenu.itemType === 'group') {
-                  const group = diagramData.groups?.find(g => g.id === contextMenu.itemId);
-                  if (group) {
+                } else if (contextMenu.itemType === 'zone') {
+                  const zone = diagramData.zones?.find(g => g.id === contextMenu.itemId);
+                  if (zone) {
                     setDiagramData(prev => ({
                       ...prev,
-                      groups: prev.groups?.map(g => 
+                      zones: prev.zones?.map(g => 
                         g.id === contextMenu.itemId 
-                          ? { ...g, sizeMode: g.sizeMode === 'auto' ? 'custom' : 'auto' }
+                          ? { ...zone, sizeMode: g.sizeMode === 'auto' ? 'custom' : 'auto' }
                           : g
                       )
                     }));
@@ -3693,27 +3713,34 @@ return (
               onToggleFreeflow={() => handleToggleFreeflow(contextMenu.itemId)}
               isFreeflow={diagramData.nodes.find(n => n.id === contextMenu.itemId)?.freeflow || false}
               onTextStyling={() => {
-                const item = diagramData.nodes.find(n => n.id === contextMenu.itemId) || 
-                           diagramData.groups?.find(g => g.id === contextMenu.itemId);
-                if (item) {
-                  onItemSelect({ ...item, itemType: contextMenu.itemType });
+                const nodeItem = diagramData.nodes.find(n => n.id === contextMenu.itemId);
+                const groupItem = diagramData.zones?.find(g => g.id === contextMenu.itemId);
+                if (nodeItem) {
+                  onItemSelect({ ...nodeItem, itemType: 'node' });
+                  onTriggerTextStylingPanel?.();
+                } else if (groupItem) {
+                  onItemSelect({ ...zoneItem, itemType: 'zone' });
                   onTriggerTextStylingPanel?.();
                 }
               }}
               onVisualStyling={() => {
-                const item = diagramData.nodes.find(n => n.id === contextMenu.itemId) || 
-                           diagramData.groups?.find(g => g.id === contextMenu.itemId);
-                if (item) {
-                  onItemSelect({ ...item, itemType: contextMenu.itemType });
+                const nodeItem = diagramData.nodes.find(n => n.id === contextMenu.itemId);
+                const groupItem = diagramData.zones?.find(g => g.id === contextMenu.itemId);
+                if (nodeItem) {
+                  onItemSelect({ ...nodeItem, itemType: 'node' });
+                  onTriggerVisualStylingPanel?.();
+                } else if (groupItem) {
+                  onItemSelect({ ...zoneItem, itemType: 'zone' });
                   onTriggerVisualStylingPanel?.();
                 }
               }}
               triggerConnectionSettings={() => {
-                const item = diagramData.nodes.find(n => n.id === contextMenu.itemId) || 
-                           diagramData.groups?.find(g => g.id === contextMenu.itemId);
-                if (item) {
-                  onItemSelect({ ...item, itemType: contextMenu.itemType });
-                  onTriggerConnectionSettingsPanel?.();
+                const nodeItem = diagramData.nodes.find(n => n.id === contextMenu.itemId);
+                const groupItem = diagramData.zones?.find(g => g.id === contextMenu.itemId);
+                if (nodeItem) {
+                  onItemSelect({ ...nodeItem, itemType: 'node' });
+                } else if (groupItem) {
+                  onItemSelect({ ...zoneItem, itemType: 'zone' });
                 }
               }}
             />

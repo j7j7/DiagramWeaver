@@ -122,7 +122,7 @@
       "nodes": [
         "generic-device-mobile-1761534825148"
       ],
-      "type": "group",
+      "type": "zone",
       "subType": "zone",
       "info": "A new Zone",
       "x": 520,
@@ -150,7 +150,7 @@
       "nodes": [
         "generic-device-desktop-1761534835201"
       ],
-      "type": "group",
+      "type": "zone",
       "subType": "zone",
       "info": "A new Zone",
       "x": 940,
@@ -164,7 +164,7 @@
         "aws-database-timestream-1761534946151",
         "aws-database-dynamodb-1761534887605"
       ],
-      "type": "group",
+      "type": "zone",
       "subType": "group",
       "info": "Data Layer Group",
       "color": "#e0e0e0",
@@ -197,7 +197,7 @@
         "aws-network-api-gateway-1761534976517",
         "aws-network-api-gateway-1761534990054"
       ],
-      "type": "group",
+      "type": "zone",
       "subType": "group",
       "info": "A new Group",
       "color": "#e0e0e0",

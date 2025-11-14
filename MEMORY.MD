@@ -353,6 +353,43 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
 - **Documentation**: WARP.md for architecture, blueprint.md for design specs
 - **Testing**: TypeScript compilation and linting integrated
 
+### Zone System Refactoring (2025-11-14)
+- **Complete Terminology Migration**: Successfully removed all 'group' references and replaced with 'zone' throughout entire codebase
+- **Type System Updates**: Updated `DiagramData` interface to use `zones` array instead of `groups`, updated `SelectedItem` type to use `itemType: 'zone'`
+- **Function and Variable Renaming**: Systematically renamed all functions, variables, and properties:
+  - `layoutGroup` → `layoutZone`
+  - `redistributeItemsInCustomGroup` → `redistributeItemsInCustomZone`
+  - `setAbsolutePositions` → `setAbsolutePositionsForZone`
+  - `handleGroupClick` → `handleZoneClick`
+  - `handleGroupRightClick` → `handleZoneRightClick`
+  - `groupsById` → `zonesById`
+  - `currentGroup` → `currentZone`
+  - `newGroup` → `newZone`
+  - `childGroup` → `childZone`
+- **Property Updates**: `diagramData.groups` → `diagramData.zones`, `GROUP_PADDING` → `ZONE_PADDING`, etc.
+- **Logic and Rendering**: Fixed all `itemType === 'group'` comparisons to `itemType === 'zone'`, updated zone rendering logic
+- **Build Status**: Application builds successfully with no TypeScript compilation errors
+- **Zone Functionality**: 
+  - Drag & Drop "Zone" from resource panel creates container zones (not icons)
+  - JSON files with `zones` array load correctly
+  - Zones render as dashed containers with proper styling
+  - Child items can be placed inside zones with full hierarchy support
+  - Zone styling (borders, colors, sizing) works properly
+- **Files Modified**: 
+  - `src/lib/types.ts` - Updated DiagramData interface
+  - `src/components/diagram-editor.tsx` - Updated SelectedItem type and all references
+  - `src/components/editor/editor-canvas.tsx` - Major refactoring of layout and rendering logic
+  - `src/components/editor/component-sidebar.tsx` - Updated all zone references
+  - `src/components/editor/context-toolbar.tsx` - Fixed zone handling
+  - `src/lib/nested-hierarchy.ts` - Updated hierarchy processing
+  - `src/lib/pure-hierarchy.ts` - Updated pure hierarchy logic
+  - All test files and hierarchy utilities updated consistently
+- **Benefits**: 
+  - Consistent terminology throughout codebase eliminates confusion
+  - Proper zone functionality working as intended
+  - Users can successfully create container zones that hold child items
+  - Clean, maintainable code with unified naming conventions
+
 ### Next Steps for Future Development
 - Expand AI capabilities for more complex diagram types
 - Add export formats (PNG, SVG, PDF)

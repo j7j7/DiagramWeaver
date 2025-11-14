@@ -1,43 +1,43 @@
-import type { DiagramData, DiagramGroupData, DiagramNodeData, HierarchicalDiagramData, DiagramGroupItem, DiagramNodeItem } from './types';
+import type { DiagramData, DiagramGroupData, DiagramNodeData, HierarchicalDiagramData, DiagramGroupItem, DiagramNodeItem, DiagramZoneItem, DiagramZoneData } from './types';
 
 /**
  * Convert flat diagram data to nested hierarchical structure
  */
 export function convertToNestedHierarchy(data: DiagramData): HierarchicalDiagramData {
   const nodeMap = new Map(data.nodes.map(n => [n.id, n]));
-  const groupMap = new Map(data.groups.map(g => [g.id, g]));
+  const zoneMap = new Map(data.zones.map(g => [g.id, g]));
   
   // Build parent-child relationships
   const parentMap = new Map<string, string[]>();
-  data.groups.forEach(group => {
+  data.zones.forEach(zone => {
     // Handle both children (new format) and nodes (old format)
-    const childIds = group.children || (group as any).nodes || [];
+    const childIds = zone.children || (group as any).nodes || [];
     childIds.forEach((childId: string) => {
-      if (!parentMap.has(group.id)) {
-        parentMap.set(group.id, []);
+      if (!parentMap.has(zone.id)) {
+        parentMap.set(zone.id, []);
       }
       parentMap.get(group.id)!.push(childId);
     });
   });
   
   // Find root groups (groups without parents)
-  const rootGroupIds = data.groups
+  const rootZoneIds = data.zones
     .filter(g => !g.parentId)
     .map(g => g.id);
   
   // Convert each root group to nested structure
-  const nestedGroups: DiagramGroupItem[] = rootGroupIds.map(rootId => 
-    convertGroupToNested(rootId, groupMap, nodeMap, parentMap)
+  const nestedGroups: DiagramGroupItem[] = rootZoneIds.map(rootId => 
+    convertGroupToNested(rootId, zoneMap, nodeMap, parentMap)
   );
   
   // Find orphan nodes (nodes not in any group) and create a group for them
   const allChildNodeIds = new Set<string>();
-  data.groups.forEach(group => {
+  data.zones.forEach(zone => {
     // Skip orphan-nodes groups when checking for children
     if (group.id === 'orphan-nodes') return;
     
     // Handle both children (new format) and nodes (old format)
-    const childIds = group.children || (group as any).nodes || [];
+    const childIds = zone.children || (group as any).nodes || [];
     childIds.forEach((childId: string) => {
       if (nodeMap.has(childId)) {
         allChildNodeIds.add(childId);
@@ -45,11 +45,11 @@ export function convertToNestedHierarchy(data: DiagramData): HierarchicalDiagram
     });
   });
   
-  const orphanNodes = data.nodes.filter(n => !allChildNodeIds.has(n.id) && n.type !== 'group');
+  const orphanNodes = data.nodes.filter(n => !allChildNodeIds.has(n.id) && n.type !== 'zone');
   if (orphanNodes.length > 0) {
-    const orphanGroup: DiagramGroupItem = {
+    const orphanGroup: DiagramZoneItem = {
       id: 'orphan-nodes',
-      type: 'group',
+      type: 'zone',
       label: '', // Invisible container
         children: orphanNodes.map(node => ({
         id: node.id,
@@ -85,7 +85,7 @@ export function convertToNestedHierarchy(data: DiagramData): HierarchicalDiagram
   }
   
   return {
-    groups: nestedGroups,
+    zones: nestedGroups,
     connections: data.connections
   };
 }
@@ -95,11 +95,11 @@ export function convertToNestedHierarchy(data: DiagramData): HierarchicalDiagram
  */
 function convertGroupToNested(
   groupId: string,
-  groupMap: Map<string, DiagramGroupData>,
+  zoneMap: Map<string, DiagramGroupData>,
   nodeMap: Map<string, DiagramNodeData>,
   parentMap: Map<string, string[]>
 ): DiagramGroupItem {
-  const group = groupMap.get(groupId);
+  const zone = zoneMap.get(groupId);
   if (!group) {
     throw new Error(`Group ${groupId} not found`);
   }
@@ -142,20 +142,20 @@ function convertGroupToNested(
       });
     } else {
       // This is a nested group
-      const nestedGroup = convertGroupToNested(childId, groupMap, nodeMap, parentMap);
+      const nestedGroup = convertGroupToNested(childId, zoneMap, nodeMap, parentMap);
       nestedChildren.push(nestedGroup);
     }
   });
   
   return {
     id: group.id,
-    type: 'group',
+    type: 'zone',
     label: group.label,
     info: group.info,
     children: nestedChildren,
     x: group.x,
     y: group.y,
-    subType: group.subType,
+    subType: (group as any).subType,
     color: group.color,
     borderColor: group.borderColor,
     textColor: group.textColor,
@@ -187,16 +187,16 @@ function convertGroupToNested(
  */
 export function convertFromNestedHierarchy(nestedData: HierarchicalDiagramData): DiagramData {
   const nodes: DiagramNodeData[] = [];
-  const groups: DiagramGroupData[] = [];
+  const zones: DiagramZoneData[] = [];
   const nodeMap = new Map<string, DiagramNodeData>();
-  const groupMap = new Map<string, DiagramGroupData>();
+  const zoneMap = new Map<string, DiagramGroupData>();
   
-  // Process all groups and collect nodes
-  nestedData.groups.forEach(group => {
-    // Special handling for orphan-nodes group - convert its children directly to nodes
+  // Process all zones and collect nodes
+  nestedData.zones.forEach(group => {
+    // Special handling for orphan-nodes zone - convert its children directly to nodes
     if (group.id === 'orphan-nodes') {
       group.children.forEach(child => {
-        if (child.type !== 'group') {
+        if (child.type !== 'zone') {
           const nodeChild = child as DiagramNodeItem;
           const node: DiagramNodeData = {
             id: nodeChild.id,
@@ -231,15 +231,15 @@ export function convertFromNestedHierarchy(nestedData: HierarchicalDiagramData):
         }
       });
     } else {
-      processNestedGroup(group, nodes, groups, nodeMap, groupMap, null);
+      processNestedGroup(group, nodes, zones, nodeMap, zoneMap, null);
     }
   });
   
   return {
     nodes,
     connections: nestedData.connections,
-    groups,
-    rootGroupId: groups.find(g => !g.parentId)?.id
+    zones,
+    rootZoneId: zones.find(g => !g.parentId)?.id
   };
 }
 
@@ -249,15 +249,15 @@ export function convertFromNestedHierarchy(nestedData: HierarchicalDiagramData):
 function processNestedGroup(
   group: DiagramGroupItem,
   nodes: DiagramNodeData[],
-  groups: DiagramGroupData[],
+  zones: DiagramZoneData[],
   nodeMap: Map<string, DiagramNodeData>,
-  groupMap: Map<string, DiagramGroupData>,
+  zoneMap: Map<string, DiagramGroupData>,
   parentId: string | null
 ): void {
-  // Create flat group
-  const flatGroup: DiagramGroupData = {
+  // Create flat zone
+  const flatGroup: DiagramZoneData = {
     id: group.id,
-    type: 'group',
+    type: 'zone',
     label: group.label,
     children: [],
     info: group.info,
@@ -291,13 +291,13 @@ function processNestedGroup(
   };
   
   groups.push(flatGroup);
-  groupMap.set(group.id, flatGroup);
+  zoneMap.set(group.id, flatGroup);
   
   // Process children
   group.children.forEach(child => {
     if (child.type === 'group') {
       // This is a nested group
-      processNestedGroup(child as DiagramGroupItem, nodes, groups, nodeMap, groupMap, group.id);
+      processNestedGroup(child as DiagramGroupItem, nodes, zones, nodeMap, zoneMap, group.id);
       flatGroup.children.push(child.id);
     } else {
       // This is a node
@@ -351,10 +351,10 @@ export function calculateNestedGroupDimensions(
 ): { width: number, height: number } {
   // Separate nodes and groups
   const childNodes = group.children.filter(child => child.type !== 'group') as DiagramNodeItem[];
-  const childGroups = group.children.filter(child => child.type === 'group') as DiagramGroupItem[];
+  const childZones = group.children.filter(child => child.type === 'group') as DiagramGroupItem[];
   
   // If no children, return minimum size
-  if (childNodes.length === 0 && childGroups.length === 0) {
+  if (childNodes.length === 0 && childZones.length === 0) {
     return {
       width: nodeWidth + groupPadding * 2,
       height: nodeHeight + groupPadding * 2
@@ -362,7 +362,7 @@ export function calculateNestedGroupDimensions(
   }
   
   // Calculate dimensions for child groups first
-  const laidOutChildGroups = childGroups.map(cg => {
+  const laidOutChildGroups = childZones.map(cg => {
     const dims = calculateNestedGroupDimensions(cg, nodeWidth, nodeHeight, groupPadding, groupNodeSpacing);
     (cg as any).width = dims.width;
     (cg as any).height = dims.height;
@@ -461,8 +461,8 @@ export function flattenNestedHierarchy(
     });
   };
   
-  // Process all root groups
-  nestedData.groups.forEach(group => {
+  // Process all root zones
+  nestedData.zones.forEach(group => {
     processGroup(group);
   });
   

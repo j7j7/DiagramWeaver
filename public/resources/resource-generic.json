@@ -1,14 +1,13 @@
 {
   "name": "Generic",
   "icon": "generic.png",
-   "totalResources": 19,
+   "totalResources": 18,
   "categories": {
     "grouping": {
       "name": "Grouping",
       "path": "generic/grouping",
       "resources": [
-         {"name": "Zone", "file": "zone.png", "type": "group"},
-         {"name": "Group", "file": "group.png", "type": "group"}
+          {"name": "Zone", "file": "zone.png", "type": "zone"}
       ]
     },
       "text": {
@@ -54,16 +53,13 @@
       "name": "Operating System",
       "path": "generic/os",
       "resources": [
-         {"name": "Linux", "file": "linux.png", "type": "os"},
-         {"name": "Windows", "file": "windows.png", "type": "os"},
-         {"name": "macOS", "file": "macos.png", "type": "os"},
-         {"name": "Ubuntu", "file": "ubuntu.png", "type": "os"},
-         {"name": "CentOS", "file": "centos.png", "type": "os"},
-         {"name": "Debian", "file": "debian.png", "type": "os"},
-         {"name": "Red Hat", "file": "redhat.png", "type": "os"},
-         {"name": "SUSE", "file": "suse.png", "type": "os"},
-         {"name": "Fedora", "file": "fedora.png", "type": "os"},
-         {"name": "Docker", "file": "docker.png", "type": "platform"}
+          {"name": "Linux", "file": "linux.png", "type": "os"},
+          {"name": "Windows", "file": "windows.png", "type": "os"},
+          {"name": "Ubuntu", "file": "ubuntu.png", "type": "os"},
+          {"name": "CentOS", "file": "centos.png", "type": "os"},
+          {"name": "Debian", "file": "debian.png", "type": "os"},
+          {"name": "Red Hat", "file": "redhat.png", "type": "os"},
+          {"name": "SUSE", "file": "suse.png", "type": "os"}
       ]
     }
   }

@@ -37,7 +37,7 @@ export function testUserExample() {
       {
         "id": "group-1",
         "label": "",
-        "type": "group",
+        "type": "zone",
         "children": [
           "node-1"
         ]
@@ -45,7 +45,7 @@ export function testUserExample() {
       {
         "id": "group-2",
         "label": "Group",
-        "type": "group",
+        "type": "zone",
         "info": "A new Group",
         "children": [
           "node-2",
@@ -55,7 +55,7 @@ export function testUserExample() {
       {
         "id": "group-3",
         "label": "Group",
-        "type": "group",
+        "type": "zone",
         "info": "A new Group",
         "children": [
           "node-3",
@@ -73,8 +73,8 @@ export function testUserExample() {
   console.log('Pure hierarchy result:', pureData);
   
   // Test flattening for rendering
-  const { positionedGroups, positionedNodes } = flattenPureHierarchy(pureData.groups, pureData.nodes);
-  console.log('Positioned groups:', positionedGroups);
+  const { positionedGroups, positionedNodes } = flattenPureHierarchy(pureData.zones, pureData.nodes);
+  console.log('Positioned zones:', positionedGroups);
   console.log('Positioned nodes:', positionedNodes);
   
   // Verify expectations

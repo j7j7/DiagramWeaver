@@ -114,16 +114,16 @@ export interface DiagramNodeItem {
   textOpacity?: number; // Text opacity (0-1)
 }
 
-export interface DiagramGroupItem {
+export interface DiagramZoneItem {
   id: string;
-  type: 'group';
+  type: 'zone';
+  subType?: 'zone' | 'group'; // For backward compatibility during migration
   label?: string;
   info?: string;
-  children: (DiagramNodeItem | DiagramGroupItem)[];
+  children: (DiagramNodeItem | DiagramZoneItem)[];
   x?: number;
   y?: number;
-  subType?: 'zone' | 'group'; // Differentiate between zone and group styling
-  color?: string; // For colored groups (legacy, kept for compatibility)
+  color?: string; // For colored zones (legacy, kept for compatibility)
   borderColor?: string; // Border color (legacy, kept for compatibility)
   textColor?: string; // Text color
   backgroundColor?: string; // Background color (legacy, kept for compatibility)
@@ -132,19 +132,19 @@ export interface DiagramGroupItem {
   backgroundStyle?: 'solid' | 'gradient' | 'none'; // Background style
   backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
   gradientAngle?: number; // Gradient angle in degrees (0, 45, -45, 90, 180)
-  orientation?: 'horizontal' | 'vertical' | 'square'; // Group shape orientation
+  orientation?: 'horizontal' | 'vertical' | 'square'; // Zone shape orientation
   maxItemsPerRow?: number; // Maximum items per row (for grid layouts)
-  lineColor?: string; // Color for connections from this group
-  shadow?: boolean; // Whether to show shadow around the group/zone
+  lineColor?: string; // Color for connections from this zone
+  shadow?: boolean; // Whether to show shadow around zone
   objectStyle?: string; // Predefined visual style key (e.g., 'solid', 'gradient', 'modern', etc.)
-  
-   // Text positioning properties
-   textPosition?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right' | 'inside';
-    
+   
+   // Text positioning properties - extended for flexible zone labeling
+   textPosition?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right' | 'inside' | 'inline-top' | 'inline-bottom' | 'outside-top' | 'outside-bottom' | 'outside-left' | 'outside-right';
+     
    // Text justification properties
    textJustify?: 'left' | 'center' | 'right' | 'full'; // Text justification for text/textbox nodes
    textVerticalPosition?: 'top' | 'middle' | 'bottom'; // Vertical position of text in textbox nodes
-    
+     
    // Text styling properties
    fontFamily?: string; // Font family (e.g., 'Arial', 'Helvetica', 'Times New Roman')
    fontSize?: number; // Font size in pixels
@@ -163,19 +163,19 @@ export interface DiagramGroupItem {
    minWidth?: number; // Minimum width constraint (based on content)
    minHeight?: number; // Minimum height constraint (based on content)
    rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
-   borderWidth?: number; // Border thickness for groups/zones
+   borderWidth?: number; // Border thickness for zones
  }
 
-export interface DiagramGroupData {
+export interface DiagramZoneData {
   id: string;
-  type: 'group';
+  type: 'zone';
+  subType?: 'zone' | 'group'; // For backward compatibility during migration
   label?: string;
-  children: string[]; // Can contain both node IDs and group IDs - renamed from 'nodes' for clarity
-  info?: string; // Add info for group descriptions/popovers
+  children: string[]; // Can contain both node IDs and zone IDs - renamed from 'nodes' for clarity
+  info?: string; // Add info for zone descriptions/popovers
   x?: number;
   y?: number;
-  subType?: 'zone' | 'group'; // Differentiate between zone and group styling
-  color?: string; // For colored groups (legacy, kept for compatibility)
+  color?: string; // For colored zones (legacy, kept for compatibility)
   borderColor?: string; // Border color (legacy, kept for compatibility)
   textColor?: string; // Text color
   backgroundColor?: string; // Background color (legacy, kept for compatibility)
@@ -184,20 +184,20 @@ export interface DiagramGroupData {
   backgroundStyle?: 'solid' | 'gradient' | 'none'; // Background style
   backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
   gradientAngle?: number; // Gradient angle in degrees (0, 45, -45, 90, 180)
-  orientation?: 'horizontal' | 'vertical' | 'square'; // Group shape orientation
+  orientation?: 'horizontal' | 'vertical' | 'square'; // Zone shape orientation
   maxItemsPerRow?: number; // Maximum items per row (for grid layouts)
-  lineColor?: string; // Color for connections from this group
-  shadow?: boolean; // Whether to show shadow around the group/zone
-  parentId?: string; // Reference to parent group ID for hierarchy tracking
+  lineColor?: string; // Color for connections from this zone
+  shadow?: boolean; // Whether to show shadow around zone
+  parentId?: string; // Reference to parent zone ID for hierarchy tracking
   objectStyle?: string; // Predefined visual style key (e.g., 'solid', 'gradient', 'modern', etc.)
    
-   // Text positioning properties
-   textPosition?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right' | 'inside';
-    
+   // Text positioning properties - extended for flexible zone labeling
+   textPosition?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right' | 'inside' | 'inline-top' | 'inline-bottom' | 'outside-top' | 'outside-bottom' | 'outside-left' | 'outside-right';
+     
    // Text justification properties
    textJustify?: 'left' | 'center' | 'right' | 'full'; // Text justification for text/textbox nodes
    textVerticalPosition?: 'top' | 'middle' | 'bottom'; // Vertical position of text in textbox nodes
-    
+     
    // Text styling properties
    fontFamily?: string; // Font family (e.g., 'Arial', 'Helvetica', 'Times New Roman')
    fontSize?: number; // Font size in pixels
@@ -216,17 +216,32 @@ export interface DiagramGroupData {
    minWidth?: number; // Minimum width constraint (based on content)
    minHeight?: number; // Minimum height constraint (based on content)
    rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
-   borderWidth?: number; // Border thickness for groups/zones
+   borderWidth?: number; // Border thickness for zones
  }
 
 export interface DiagramData {
   nodes: DiagramNodeData[];
   connections: DiagramConnectionData[];
-  groups: DiagramGroupData[]; // Always present - even single nodes are in groups
-  rootGroupId?: string; // Optional reference to the root group
+  zones: DiagramZoneData[]; // Always present - even single nodes are in zones
+  rootZoneId?: string; // Optional reference to root zone
 }
 
-export interface HierarchicalDiagramData {
-  groups: DiagramGroupItem[];
+// Hierarchical format is now the standard format
+export interface HierarchicalDiagramData extends DiagramData {
+  metadata?: any;
+}
+
+// Backward compatibility aliases
+// Legacy type alias - use DiagramZoneData directly
+export type DiagramGroupData = DiagramZoneData;
+export type DiagramGroupItem = DiagramZoneItem;
+
+// Legacy support for existing data
+export interface LegacyDiagramData {
+  nodes: DiagramNodeData[];
   connections: DiagramConnectionData[];
+  groups?: DiagramZoneData[]; // Optional for backward compatibility
+  zones?: DiagramZoneData[]; // New preferred format
+  rootZoneId?: string; // Legacy
+  rootZoneId?: string; // New preferred format
 }

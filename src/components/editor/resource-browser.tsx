@@ -62,6 +62,7 @@ import { ollamaConfig } from '@/lib/ollama-config';
 interface ResourceItem {
   name: string;
   file: string;
+  type?: string;
   hasWhiteVariant?: boolean;
   format?: string;
 }

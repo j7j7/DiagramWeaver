@@ -8,6 +8,7 @@ interface DraggableResourceItemProps {
   resource: {
     name: string;
     file: string;
+    type?: string;
     hasWhiteVariant?: boolean;
     format?: string;
   };
@@ -28,14 +29,24 @@ export function DraggableResourceItem({ resource, provider, category, icon }: Dr
     const derivedSlug = resource.name.replace(/\s+/g, '-').toLowerCase();
 
     // Pass file for initial rendering only (NOT stored in node)
-    if (provider === 'generic' && category === 'grouping') {
-      return {
-        type: resource.name.toLowerCase(), // 'zone' or 'group'
+    // Check if this is a zone resource (either by type field or by category)
+    const isZoneResource = (provider === 'generic' && category === 'grouping') || resource.type === 'zone';
+    
+    if (isZoneResource) {
+      // Zone should create zone type with subType
+      const subType = resource.name.toLowerCase(); // 'zone'
+      
+      const dragItem = {
+        type: 'zone', // Always create zone type
+        subType, // Preserve subType
         label: resource.name,
         provider,
         category,
         file: resource.file, // For ResourceIcon lookup during drag
       };
+      
+      console.log('Creating zone drag item:', dragItem);
+      return dragItem;
     }
     
     return {

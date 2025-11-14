@@ -30,7 +30,7 @@
     {
       "id": "group-1",
       "label": "",
-      "type": "group",
+      "type": "zone",
       "children": [
         "node-1"
       ]
@@ -38,7 +38,7 @@
     {
       "id": "group-2",
       "label": "Group",
-      "type": "group",
+      "type": "zone",
       "info": "A new Group",
       "children": [
         "node-2",
@@ -48,7 +48,7 @@
     {
       "id": "group-3",
       "label": "Group",
-      "type": "group",
+      "type": "zone",
       "info": "A new Group",
       "children": [
         "node-3",

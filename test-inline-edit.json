@@ -14,7 +14,7 @@
   "groups": [
     {
       "id": "group-1",
-      "type": "group",
+      "type": "zone",
       "subType": "group",
       "label": "Test Group",
       "x": 50,
@@ -25,7 +25,7 @@
     },
     {
       "id": "zone-1",
-      "type": "group",
+      "type": "zone",
       "subType": "zone",
       "label": "Test Zone",
       "x": 300,

@@ -168,11 +168,11 @@ export function ContextToolbar({
   };
 
   const handleSizeModeChange = (value: 'auto' | 'custom') => {
-    const isGroup = selectedItem.itemType === 'group';
+    const isZone = selectedItem.itemType === 'zone';
     const updatedItem = { ...selectedItem, sizeMode: value } as SelectedItem;
     if (value === 'custom' && !(selectedItem as any).width && !(selectedItem as any).height) {
-      (updatedItem as any).width = isGroup ? 300 : 40;
-      (updatedItem as any).height = isGroup ? 220 : 40;
+      (updatedItem as any).width = isZone ? 300 : 40;
+      (updatedItem as any).height = isZone ? 220 : 40;
     }
     onItemUpdate?.(updatedItem);
   };
@@ -213,7 +213,9 @@ export function ContextToolbar({
 
 
   const toggleFreeflow = () => {
-    onItemUpdate?.({ ...selectedItem, freeflow: !selectedItem.freeflow } as SelectedItem);
+    if (selectedItem.itemType === 'node') {
+      onItemUpdate?.({ ...selectedItem, freeflow: !selectedItem.freeflow } as SelectedItem);
+    }
   };
 
   const toggleNoIconBackground = () => {
@@ -261,26 +263,26 @@ export function ContextToolbar({
     onItemUpdate?.({ ...selectedItem, ...defaultStyling } as SelectedItem);
   };
 
-  const isGroup = selectedItem.itemType === 'group';
+  const isZone = selectedItem.itemType === 'zone';
   const isNode = selectedItem.itemType === 'node';
 
   const getCurrentTextStyling = useMemo(() => {
     if (isNode) {
       return extractTextStylingFromNode(selectedItem as any);
-    } else if (isGroup) {
+    } else if (isZone) {
       return extractTextStylingFromGroup(selectedItem as any);
     }
     return {};
-  }, [selectedItem, isNode, isGroup]);
+  }, [selectedItem, isNode, isZone]);
 
   const getCurrentVisualStyling = useMemo(() => {
     if (isNode) {
       return extractVisualStylingFromNode(selectedItem as any);
-    } else if (isGroup) {
+    } else if (isZone) {
       return extractVisualStylingFromGroup(selectedItem as any);
     }
     return {};
-  }, [selectedItem, isNode, isGroup]);
+  }, [selectedItem, isNode, isZone]);
   const isTextNode = isNode && selectedItem.type?.startsWith('generic.text');
   const isTextboxNode = isNode && selectedItem.type === 'generic.text.textbox';
   const isPlainTextNode = isNode && selectedItem.type === 'generic.text.text';
@@ -304,7 +306,7 @@ export function ContextToolbar({
   // Text type nodes that should hide certain controls
   const isTextTypeNode = isTextNode; // includes all generic.text nodes
 
-  // Get all connections for the selected node/group
+  // Get all connections for the selected node/zone
   const getAllConnections = useMemo(() => {
     if (!selectedItem || !diagramData) {
       return [];
@@ -312,14 +314,14 @@ export function ContextToolbar({
 
     const itemId = selectedItem.id;
     const nodesById = new Map(diagramData.nodes.map(n => [n.id, n]));
-    const groupsById = new Map((diagramData.groups || []).map(g => [g.id, g]));
+    const zonesById = new Map((diagramData.zones || []).map(zone => [zone.id, zone]));
 
     const allConnections = (diagramData.connections || []).filter((edge: any) => 
       edge.from === itemId || edge.to === itemId
     ).map((edge: any) => {
       const isOutgoing = edge.from === itemId;
       const targetId = isOutgoing ? edge.to : edge.from;
-      const targetItem = nodesById.get(targetId) || groupsById.get(targetId);
+      const targetItem = nodesById.get(targetId) || zonesById.get(targetId);
       const targetLabel = targetItem?.label || targetId;
       
       return {
@@ -389,7 +391,7 @@ export function ContextToolbar({
         </Popover>
 
         {/* Connect Button */}
-        {(isNode || isGroup) && (
+        {(isNode || isZone) && (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button 
@@ -407,7 +409,7 @@ export function ContextToolbar({
 
 
         {/* Connections Arrow Toggle - Show if there are multiple connections */}
-        {(isNode || isGroup) && getAllConnections.length > 0 && (
+        {(isNode || isZone) && getAllConnections.length > 0 && (
           <Popover open={connectionsOpen} onOpenChange={setConnectionsOpen}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -655,7 +657,7 @@ export function ContextToolbar({
 
 
         {/* Text Styling Button */}
-        {selectedItem && (isNode || isGroup) && (
+        {selectedItem && (isNode || isZone) && (
           <Popover open={textStylingOpen} onOpenChange={handleTextStylingOpenChange}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -678,7 +680,7 @@ export function ContextToolbar({
         )}
 
         {/* Visual Styling Button */}
-        {selectedItem && (isNode || isGroup) && (
+        {selectedItem && (isNode || isZone) && (
           <Popover open={visualStylingOpen} onOpenChange={handleVisualStylingOpenChange}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -760,7 +762,7 @@ export function ContextToolbar({
 
 
         {/* Orientation (Groups only) */}
-        {isGroup && (
+        {isZone && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -794,7 +796,7 @@ export function ContextToolbar({
         )}
 
         {/* Text Position (Groups) */}
-        {isGroup && (
+        {isZone && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -867,7 +869,7 @@ export function ContextToolbar({
         )}
 
         {/* Max Items Per Row (Groups) */}
-        {isGroup && (selectedItem.orientation === 'horizontal' || selectedItem.orientation === 'square') && (
+        {isZone && (selectedItem.orientation === 'horizontal' || selectedItem.orientation === 'square') && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -896,7 +898,7 @@ export function ContextToolbar({
         )}
 
         {/* Size Mode (Groups and Text Resources) */}
-        {(isGroup || isTextNode  || isTextboxNode) && (
+        {(isZone || isTextNode  || isTextboxNode) && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -957,7 +959,7 @@ export function ContextToolbar({
 
 
         {/* Rotation (All Nodes and Groups) */}
-        {(isNode || isGroup) && (
+        {(isNode || isZone) && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>

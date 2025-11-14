@@ -32,7 +32,7 @@
   "groups": [
     {
       "id": "group1",
-      "type": "group",
+      "type": "zone",
       "label": "Group with large nodes",
       "x": 600,
       "y": 100,

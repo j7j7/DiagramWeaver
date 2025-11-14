@@ -12,10 +12,10 @@ export function testHierarchicalModel() {
       { id: "2", type: "aws.compute.ec2-instance", x: 100, y: 280 }
     ],
     connections: [],
-    groups: [
+    zones: [
       {
         id: "zone-1",
-        type: "group",
+        type: "zone",
         label: "Zone",
         children: ["2"],
         subType: "zone",
@@ -24,7 +24,7 @@ export function testHierarchicalModel() {
       },
       {
         id: "zone-2", 
-        type: "group",
+        type: "zone",
         label: "Zone",
         children: ["1"],
         subType: "zone",
@@ -33,7 +33,7 @@ export function testHierarchicalModel() {
       },
       {
         id: "group-1",
-        type: "group", 
+        type: "zone", 
         label: "Group",
         children: ["zone-1"], // zone-1 is nested inside group-1
         info: "A new Group",
@@ -46,10 +46,10 @@ export function testHierarchicalModel() {
   };
 
   // Migrate to hierarchical model
-  const hierarchicalGroups = migrateToHierarchical(testData.groups || []);
+  const hierarchicalGroups = migrateToHierarchical(testData.zones || []);
   
-  console.log('Original groups:', testData.groups);
-  console.log('Hierarchical groups:', hierarchicalGroups);
+  console.log('Original zones:', testData.zones);
+  console.log('Hierarchical zones:', hierarchicalGroups);
   
   // Test flattening
   const { positionedGroups, positionedNodes } = flattenHierarchy(
@@ -57,7 +57,7 @@ export function testHierarchicalModel() {
     testData.nodes
   );
   
-  console.log('Positioned groups:', positionedGroups);
+  console.log('Positioned zones:', positionedGroups);
   console.log('Positioned nodes:', positionedNodes);
   
   return {

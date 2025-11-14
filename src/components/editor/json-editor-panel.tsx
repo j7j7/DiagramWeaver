@@ -107,23 +107,39 @@ const handleChange = async (newText: string) => {
 
   // Check if data is in nested format (has groups with nested children)
   const isNestedFormat = (data: any): boolean => {
-    if (!data || !data.groups || !Array.isArray(data.groups)) return false;
+    console.log('Checking nested format for data:', data);
     
-    return data.groups.some((group: any) => {
-      if (!group.children || !Array.isArray(group.children)) return false;
-      return group.children.some((child: any) => 
-        child && typeof child === 'object' && child.type === 'group'
-      );
-    });
+    // Check for nested format in either groups or zones
+    const groups = data.groups || data.zones;
+    console.log('Groups/zones found:', groups);
+    
+    if (!groups || !Array.isArray(groups)) {
+      console.log('No groups/zones array found');
+      return false;
+    }
+    
+    // Consider it nested if we have zones array OR if any group has zone type
+    const hasZonesArray = !!data.zones;
+    const hasZoneTypeItems = zones.some((group: any) => group.type === 'zone');
+    
+    const isNested = hasZonesArray || hasZoneTypeItems;
+    console.log('Has zones array:', hasZonesArray, 'Has zone type items:', hasZoneTypeItems, 'Is nested format:', isNested);
+    return isNested;
   };
 
   // Convert nested format to flat format for validation
   const convertNestedToFlatForValidation = (data: any): any => {
-    if (!isNestedFormat(data)) return data;
+    if (!isNestedFormat(data)) {
+      console.log('Data is not nested format, returning as-is');
+      return data;
+    }
     
     try {
+      console.log('Converting nested to flat format...');
       const nestedData = data as HierarchicalDiagramData;
-      return convertFromNestedHierarchy(nestedData);
+      const flatData = convertFromNestedHierarchy(nestedData);
+      console.log('Converted flat data:', flatData);
+      return flatData;
     } catch (error) {
       console.error('Error converting nested to flat format:', error);
       return data;
@@ -138,14 +154,28 @@ const handleChange = async (newText: string) => {
     const flatData = convertNestedToFlatForValidation(data);
     const result = { ...flatData };
     
-    // Ensure groups use children instead of nodes
-    if (Array.isArray(result.groups)) {
-      result.groups = result.groups.map((group: any) => {
+    // Handle both groups and zones arrays
+    const sourceArray = result.groups || result.zones;
+    console.log('Source array for conversion:', sourceArray);
+    
+    if (Array.isArray(sourceArray)) {
+      const convertedArray = sourceArray.map((group: any) => {
+        console.log('Converting group:', group);
         if (group.nodes && !group.children) {
+          console.log('Converting nodes to children');
           return { ...group, children: group.nodes, nodes: undefined };
         }
         return group;
       });
+      
+      // Always use groups array in result
+      result.groups = convertedArray;
+      console.log('Final result groups:', result.groups);
+      
+      if (result.zones) {
+        result.zones = undefined; // Remove zones array after conversion
+        console.log('Removed zones array');
+      }
     }
     
     // Process nodes
@@ -166,7 +196,7 @@ const handleChange = async (newText: string) => {
     // Process groups - migrate from nodes to children
     if (Array.isArray(result.groups)) {
       result.groups = await Promise.all(
-        result.groups.map(async (group: any) => {
+        result.zones.map(async (group: any) => {
           const migratedGroup = { ...group };
           // Migrate nodes to children if needed
           if (group.nodes && !group.children) {

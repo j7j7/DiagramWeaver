@@ -3,17 +3,17 @@ import type { DiagramGroupData, DiagramNodeData } from './types';
 /**
  * Build a hierarchical tree structure from flat groups array
  */
-export function buildGroupHierarchy(groups: DiagramGroupData[]): Map<string, DiagramGroupData[]> {
-  const hierarchy = new Map<string, DiagramGroupData[]>();
+export function buildGroupHierarchy(groups: DiagramZoneData[]): Map<string, DiagramZoneData[]> {
+  const hierarchy = new Map<string, DiagramZoneData[]>();
   
   // Initialize root level
   hierarchy.set('root', []);
   
   // Create a map for quick group lookup
-  const groupMap = new Map(groups.map(g => [g.id, g]));
+  const groupMap = new Map(zones.map(g => [g.id, g]));
   
   // Build parent-child relationships
-  groups.forEach(group => {
+  zones.forEach(group => {
     const parentId = group.parentId || 'root';
     
     if (!hierarchy.has(parentId)) {
@@ -29,15 +29,15 @@ export function buildGroupHierarchy(groups: DiagramGroupData[]): Map<string, Dia
 /**
  * Get all descendant groups of a given group
  */
-export function getDescendantGroups(groupId: string, groups: DiagramGroupData[]): DiagramGroupData[] {
-  const descendants: DiagramGroupData[] = [];
+export function getDescendantGroups(groupId: string, groups: DiagramZoneData[]): DiagramZoneData[] {
+  const descendants: DiagramZoneData[] = [];
   const visited = new Set<string>();
   
   const traverse = (id: string) => {
     if (visited.has(id)) return;
     visited.add(id);
     
-    const children = groups.filter(g => g.parentId === id);
+    const children = zones.filter(g => g.parentId === id);
     children.forEach(child => {
       descendants.push(child);
       traverse(child.id);
@@ -51,7 +51,7 @@ export function getDescendantGroups(groupId: string, groups: DiagramGroupData[])
 /**
  * Check if a group is a descendant of another group
  */
-export function isDescendant(childId: string, parentId: string, groups: DiagramGroupData[]): boolean {
+export function isDescendant(childId: string, parentId: string, groups: DiagramZoneData[]): boolean {
   const visited = new Set<string>();
   
   const traverse = (id: string): boolean => {
@@ -60,7 +60,7 @@ export function isDescendant(childId: string, parentId: string, groups: DiagramG
     
     if (id === parentId) return true;
     
-    const parent = groups.find(g => g.id === id);
+    const parent = zones.find(g => g.id === id);
     if (!parent || !parent.parentId) return false;
     
     return traverse(parent.parentId);
@@ -72,12 +72,12 @@ export function isDescendant(childId: string, parentId: string, groups: DiagramG
 /**
  * Get all nodes that are direct or indirect children of a group
  */
-export function getAllNodesInGroup(groupId: string, groups: DiagramGroupData[], nodes: DiagramNodeData[]): DiagramNodeData[] {
+export function getAllNodesInGroup(groupId: string, groups: DiagramZoneData[], nodes: DiagramNodeData[]): DiagramNodeData[] {
   const result: DiagramNodeData[] = [];
   const nodeMap = new Map(nodes.map(n => [n.id, n]));
   
   const traverse = (id: string) => {
-    const group = groups.find(g => g.id === id);
+    const group = zones.find(g => g.id === id);
     if (!group) return;
     
     // Add direct node children
@@ -102,9 +102,9 @@ export function getAllNodesInGroup(groupId: string, groups: DiagramGroupData[], 
 export function updateGroupParenting(
   movedGroupId: string, 
   newParentId: string | undefined, 
-  groups: DiagramGroupData[]
-): DiagramGroupData[] {
-  return groups.map(group => {
+  groups: DiagramZoneData[]
+): DiagramZoneData[] {
+  return zones.map(group => {
     if (group.id === movedGroupId) {
       return { ...group, parentId: newParentId };
     }
@@ -117,7 +117,7 @@ export function updateGroupParenting(
  */
 export function calculateGroupDimensions(
   group: DiagramGroupData,
-  allGroups: DiagramGroupData[],
+  allGroups: DiagramZoneData[],
   allNodes: DiagramNodeData[],
   nodeWidth: number = 104,
   nodeHeight: number = 100,
@@ -134,7 +134,7 @@ export function calculateGroupDimensions(
   
   const childGroups = group.children
     .map(id => groupMap.get(id))
-    .filter(Boolean) as DiagramGroupData[];
+    .filter(Boolean) as DiagramZoneData[];
 
   // If no children, return minimum size (as if it has one node)
   if (childNodes.length === 0 && childGroups.length === 0) {
@@ -202,14 +202,14 @@ export function calculateGroupDimensions(
  * Flatten hierarchy for rendering (calculate absolute positions)
  */
 export function flattenHierarchy(
-  groups: DiagramGroupData[],
+  groups: DiagramZoneData[],
   nodes: DiagramNodeData[]
-): { positionedGroups: DiagramGroupData[], positionedNodes: DiagramNodeData[] } {
+): { positionedGroups: DiagramZoneData[], positionedNodes: DiagramNodeData[] } {
   const hierarchy = buildGroupHierarchy(groups);
-  const groupMap = new Map(groups.map(g => [g.id, g]));
+  const groupMap = new Map(zones.map(g => [g.id, g]));
   const nodeMap = new Map(nodes.map(n => [n.id, n]));
   
-  const positionedGroups: DiagramGroupData[] = [];
+  const positionedGroups: DiagramZoneData[] = [];
   const positionedNodes: DiagramNodeData[] = [];
   const processedNodeIds = new Set<string>();
   
@@ -255,7 +255,7 @@ export function flattenHierarchy(
   
   // Add orphan nodes (nodes not in any group)
   const allChildNodeIds = new Set<string>();
-  groups.forEach(group => {
+  zones.forEach(group => {
     group.children.forEach(nodeId => {
       const node = nodeMap.get(nodeId);
       if (node) {
@@ -277,12 +277,12 @@ export function flattenHierarchy(
 /**
  * Migrate legacy flat group structure to hierarchical model
  */
-export function migrateToHierarchical(groups: DiagramGroupData[]): DiagramGroupData[] {
-  const groupMap = new Map(groups.map(g => [g.id, g]));
+export function migrateToHierarchical(groups: DiagramZoneData[]): DiagramZoneData[] {
+  const groupMap = new Map(zones.map(g => [g.id, g]));
   const migrated = [...groups];
   
   // Build parent-child relationships
-  groups.forEach(group => {
+  zones.forEach(group => {
     group.children.forEach(nodeId => {
       const childGroup = groupMap.get(nodeId);
       if (childGroup) {

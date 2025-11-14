@@ -45,8 +45,8 @@
       "textColor": "#0000ff"
     },
     {
-      "id": "test-group-justify",
-      "subType": "group",
+      "id": "test-zone-justify",
+      "subType": "zone",
       "label": "This is a longer text to test full justification in groups",
       "x": 100,
       "y": 250,
@@ -58,8 +58,8 @@
       "textColor": "#ff6600"
     },
     {
-      "id": "test-group-top",
-      "subType": "group",
+      "id": "test-zone-top",
+      "subType": "zone",
       "label": "Top Position",
       "x": 450,
       "y": 250,

@@ -9,7 +9,7 @@ export function testPureHierarchy() {
   const singleNodeData: DiagramData = {
     nodes: [{ id: "node1", type: "aws.compute.ec2", x: 100, y: 100 }],
     connections: [],
-    groups: []
+    zones: []
   };
 
   const result1 = createPureHierarchy(singleNodeData);
@@ -23,10 +23,10 @@ export function testPureHierarchy() {
       { id: "node3", type: "aws.database.rds", x: 300, y: 300 }
     ],
     connections: [],
-    groups: [
+    zones: [
       {
         id: "group1",
-        type: "group",
+        type: "zone",
         label: "Main Group",
         children: ["node1", "group2"],
         subType: "group",
@@ -35,7 +35,7 @@ export function testPureHierarchy() {
       },
       {
         id: "group2", 
-        type: "group",
+        type: "zone",
         label: "Sub Group",
         children: ["node2", "node3"],
         subType: "zone",

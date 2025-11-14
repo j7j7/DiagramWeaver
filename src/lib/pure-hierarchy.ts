@@ -1,4 +1,4 @@
-import type { DiagramData, DiagramGroupData, DiagramNodeData } from './types';
+import type { DiagramData, DiagramGroupData, DiagramNodeData, DiagramZoneData } from './types';
 import { generateGroupId } from './id-generator';
 
 /**
@@ -6,56 +6,56 @@ import { generateGroupId } from './id-generator';
  */
 export function createPureHierarchy(data: DiagramData): DiagramData {
   const nodes = [...(data.nodes || [])];
-  let groups = [...(data.groups || [])];
+  let zones = [...(data.zones || [])];
   
-  // If no groups exist, create an invisible root group
-  if (groups.length === 0) {
-    const rootGroup: DiagramGroupData = {
-      id: generateGroupId('group', data),
-      type: 'group',
+  // If no zones exist, create an invisible root zone
+  if (zones.length === 0) {
+    const rootZone: DiagramZoneData = {
+      id: generateGroupId('zone', data),
+      type: 'zone',
       label: '', // No label = invisible container
       children: nodes.map(n => n.id),
       subType: 'group',
       x: 0,
       y: 0
     };
-    groups = [rootGroup];
+    zones = [rootZone];
   } else {
-    // Migrate existing groups to pure hierarchy
-    groups = migrateToPureHierarchy(groups, nodes);
+    // Migrate existing zones to pure hierarchy
+    zones = migrateToPureHierarchy(zones, nodes);
   }
   
   return {
     nodes,
     connections: data.connections || [],
-    groups,
-    rootGroupId: groups.find(g => !g.parentId)?.id
+    zones,
+    rootZoneId: zones.find(g => !g.parentId)?.id
   };
 }
 
 /**
  * Migrate existing groups to pure hierarchical format
  */
-function migrateToPureHierarchy(groups: DiagramGroupData[], nodes: DiagramNodeData[]): DiagramGroupData[] {
-  const groupMap = new Map(groups.map(g => [g.id, { ...g, children: (g as any).nodes || [] }]));
+function migrateToPureHierarchy(zones: DiagramZoneData[], nodes: DiagramNodeData[]): DiagramZoneData[] {
+  const groupMap = new Map(zones.map(g => [g.id, { ...g, children: (g as any).nodes || [] }]));
   const nodeMap = new Map(nodes.map(n => [n.id, n]));
   
   // Build parent-child relationships
-  groups.forEach(group => {
+  zones.forEach(group => {
     const migratedGroup = groupMap.get(group.id)!;
     
     migratedGroup.children.forEach((childId: string) => {
-      const childGroup = groupMap.get(childId);
-      if (childGroup) {
+      const childZone = groupMap.get(childId);
+      if (childZone) {
         // This is a nested group
-        childGroup.parentId = group.id;
+        childZone.parentId = group.id;
       }
     });
   });
   
   // Find orphan nodes (nodes not in any group) and create a group for them
   const allChildNodeIds = new Set<string>();
-  groups.forEach(group => {
+  zones.forEach(group => {
     group.children?.forEach((childId: string) => {
       if (nodeMap.has(childId)) {
         allChildNodeIds.add(childId);
@@ -65,9 +65,9 @@ function migrateToPureHierarchy(groups: DiagramGroupData[], nodes: DiagramNodeDa
   
   const orphanNodes = nodes.filter(n => !allChildNodeIds.has(n.id));
   if (orphanNodes.length > 0) {
-    const orphanGroup: DiagramGroupData = {
-      id: generateGroupId('group', { nodes, connections: [], groups: [] }),
-      type: 'group',
+    const orphanGroup: DiagramZoneData = {
+      id: generateGroupId('zone', { nodes, connections: [], zones: [] }),
+      type: 'zone',
       label: 'Orphan Nodes',
       children: orphanNodes.map(n => n.id),
       subType: 'group',
@@ -83,14 +83,14 @@ function migrateToPureHierarchy(groups: DiagramGroupData[], nodes: DiagramNodeDa
 /**
  * Build complete hierarchy tree
  */
-export function buildHierarchyTree(groups: DiagramGroupData[]): Map<string, DiagramGroupData[]> {
-  const hierarchy = new Map<string, DiagramGroupData[]>();
+export function buildHierarchyTree(zones: DiagramZoneData[]): Map<string, DiagramZoneData[]> {
+  const hierarchy = new Map<string, DiagramZoneData[]>();
   
   // Initialize root level
   hierarchy.set('root', []);
   
   // Build parent-child relationships
-  groups.forEach(group => {
+  zones.forEach(group => {
     const parentId = group.parentId || 'root';
     
     if (!hierarchy.has(parentId)) {
@@ -108,7 +108,7 @@ export function buildHierarchyTree(groups: DiagramGroupData[]): Map<string, Diag
  */
 export function calculateGroupDimensions(
   group: DiagramGroupData,
-  allGroups: DiagramGroupData[],
+  allGroups: DiagramZoneData[],
   allNodes: DiagramNodeData[],
   nodeWidth: number = 104,
   nodeHeight: number = 100,
@@ -123,12 +123,12 @@ export function calculateGroupDimensions(
     .map(id => nodeMap.get(id))
     .filter(Boolean) as DiagramNodeData[];
   
-  const childGroups = group.children
+  const childZones = group.children
     .map(id => groupMap.get(id))
-    .filter(Boolean) as DiagramGroupData[];
+    .filter(Boolean) as DiagramZoneData[];
 
   // If no children, return minimum size (as if it has one node)
-  if (childNodes.length === 0 && childGroups.length === 0) {
+  if (childNodes.length === 0 && childZones.length === 0) {
     return {
       width: nodeWidth + groupPadding * 2,
       height: nodeHeight + groupPadding * 2
@@ -136,7 +136,7 @@ export function calculateGroupDimensions(
   }
 
   // Calculate dimensions for child groups first
-  const laidOutChildGroups = childGroups.map(cg => {
+  const laidOutChildGroups = childZones.map(cg => {
     const dims = calculateGroupDimensions(cg, allGroups, allNodes, nodeWidth, nodeHeight, groupPadding, groupNodeSpacing);
     (cg as any).width = dims.width;
     (cg as any).height = dims.height;
@@ -193,26 +193,26 @@ export function calculateGroupDimensions(
  * Flatten hierarchy for rendering
  */
 export function flattenPureHierarchy(
-  groups: DiagramGroupData[],
+  zones: DiagramZoneData[],
   nodes: DiagramNodeData[]
-): { positionedGroups: DiagramGroupData[], positionedNodes: DiagramNodeData[] } {
+): { positionedGroups: DiagramZoneData[], positionedNodes: DiagramNodeData[] } {
   const hierarchy = buildHierarchyTree(groups);
-  const groupMap = new Map(groups.map(g => [g.id, g]));
+  const groupMap = new Map(zones.map(g => [g.id, g]));
   const nodeMap = new Map(nodes.map(n => [n.id, n]));
   
-  const positionedGroups: DiagramGroupData[] = [];
+  const positionedGroups: DiagramZoneData[] = [];
   const positionedNodes: DiagramNodeData[] = [];
   const processedNodeIds = new Set<string>();
   
   const processGroup = (groupId: string, parentX: number = 0, parentY: number = 0) => {
-    const group = groupMap.get(groupId);
+    const zone = groupMap.get(groupId);
     if (!group) return;
     
     const groupX = (group.x || 0) + parentX;
     const groupY = (group.y || 0) + parentY;
     
     // Calculate dimensions for this group
-    const dimensions = calculateGroupDimensions(group, groups, nodes);
+    const dimensions = calculateGroupDimensions(group, zones, nodes);
     
     positionedGroups.push({ 
       ...group, 
@@ -250,7 +250,7 @@ export function flattenPureHierarchy(
 /**
  * Check if a group is a descendant of another group
  */
-export function isDescendant(childId: string, parentId: string, groups: DiagramGroupData[]): boolean {
+export function isDescendant(childId: string, parentId: string, zones: DiagramZoneData[]): boolean {
   const visited = new Set<string>();
   
   const traverse = (id: string): boolean => {
@@ -259,7 +259,7 @@ export function isDescendant(childId: string, parentId: string, groups: DiagramG
     
     if (id === parentId) return true;
     
-    const parent = groups.find(g => g.id === id);
+    const parent = zones.find(g => g.id === id);
     if (!parent || !parent.parentId) return false;
     
     return traverse(parent.parentId);
@@ -277,24 +277,24 @@ export function addNodeToGroup(
   data: DiagramData
 ): DiagramData {
   const pureData = createPureHierarchy(data);
-  const groups = [...pureData.groups];
-  const targetGroupId = groupId || groups.find(g => !g.parentId)?.id;
+  const zones = [...pureData.zones];
+  const targetGroupId = groupId || zones.find(g => !g.parentId)?.id;
   
   if (!targetGroupId) {
     // Create a new group for this node
-    const newGroup: DiagramGroupData = {
-      id: generateGroupId('group', data),
-      type: 'group',
+    const newZone: DiagramGroupData = {
+      id: generateGroupId('zone', data),
+      type: 'zone',
       label: 'Group',
       children: [nodeId],
       subType: 'group',
       x: 50,
       y: 50
     };
-    groups.push(newGroup);
+    groups.push(newZone);
   } else {
     // Add to existing group
-    const targetGroup = groups.find(g => g.id === targetGroupId);
+    const targetGroup = zones.find(g => g.id === targetGroupId);
     if (targetGroup) {
       targetGroup.children = [...(targetGroup.children || []), nodeId];
     }

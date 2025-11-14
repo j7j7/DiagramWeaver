@@ -1,0 +1,58 @@
+{
+  "nodes": [
+    {
+      "id": "web-server",
+      "type": "aws.compute.ec2",
+      "label": "Web Server",
+      "x": 150,
+      "y": 120
+    },
+    {
+      "id": "database",
+      "type": "aws.database.rds",
+      "label": "Database",
+      "x": 350,
+      "y": 120
+    },
+    {
+      "id": "cache",
+      "type": "aws.database.elasticache",
+      "label": "Cache Layer",
+      "x": 550,
+      "y": 120
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn1",
+      "from": "web-server",
+      "to": "database",
+      "label": "queries"
+    },
+    {
+      "id": "conn2", 
+      "from": "web-server",
+      "to": "cache",
+      "label": "cache"
+    }
+  ],
+  "zones": [
+    {
+      "id": "production-zone",
+      "type": "zone",
+      "subType": "zone",
+      "label": "Production Environment",
+      "children": ["web-server", "database", "cache"],
+      "x": 100,
+      "y": 80,
+      "width": 600,
+      "height": 150,
+      "sizeMode": "custom",
+      "orientation": "horizontal",
+      "borderStyle": "dashed",
+      "borderColor": "#3b82f6",
+      "backgroundColor": "rgba(59, 130, 246, 0.05)",
+      "textPosition": "top-left"
+    }
+  ]
+}

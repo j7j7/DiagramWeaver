@@ -22,12 +22,12 @@ const testData: DiagramData = {
     }
   ],
   connections: [],
-  groups: [
+  zones: [
     {
       id: "zone-1",
       label: "Zone",
       children: ["aws-compute-ec2-2"],
-      type: "group",
+      type: "zone",
       subType: "zone",
       info: "A new Zone",
       x: 100,
@@ -43,10 +43,10 @@ console.log(JSON.stringify(nestedData, null, 2));
 
 // Expected output should have nested structure
 console.log("\n=== Analysis ===");
-console.log("Number of groups:", nestedData.groups.length);
-console.log("First group children:", nestedData.groups[0]?.children);
-console.log("Has nested nodes:", nestedData.groups[0]?.children?.some(child => 
-  typeof child === 'object' && child.type !== 'group'
+console.log("Number of zones:", nestedData.zones.length);
+console.log("First zone children:", nestedData.zones[0]?.children);
+console.log("Has nested nodes:", nestedData.zones[0]?.children?.some((child: any) => 
+  typeof child === 'object' && child.type !== 'zone'
 ));
 
 export { testData, nestedData };

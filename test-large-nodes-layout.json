@@ -39,7 +39,7 @@
   "groups": [
     {
       "id": "test-group-large",
-      "type": "group",
+      "type": "zone",
       "label": "Group with Large Nodes",
       "x": 500,
       "y": 100,
@@ -50,7 +50,7 @@
     },
     {
       "id": "test-zone-large",
-      "type": "group",
+      "type": "zone",
       "subType": "zone",
       "label": "Zone for Large Nodes", 
       "x": 500,

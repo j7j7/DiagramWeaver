@@ -3,10 +3,10 @@ import type { HierarchicalDiagramData } from './types';
 
 // Test data in the new nested format
 const nestedTestData: HierarchicalDiagramData = {
-  groups: [
+  zones: [
     {
       id: "group-1",
-      type: "group",
+      type: "zone",
       label: "",
       children: [
         {
@@ -19,7 +19,7 @@ const nestedTestData: HierarchicalDiagramData = {
     },
     {
       id: "group-2",
-      type: "group",
+      type: "zone",
       label: "Group",
       info: "A new Group",
       children: [
@@ -31,7 +31,7 @@ const nestedTestData: HierarchicalDiagramData = {
         },
         {
           id: "group-3",
-          type: "group",
+          type: "zone",
           label: "Group",
           info: "A new Group",
           children: [

@@ -2,43 +2,39 @@
 
 import React, { useState, useRef } from 'react';
 import { useDrag } from 'react-dnd';
-import type { DiagramGroupData } from '@/lib/types';
+import type { DiagramZoneData } from '@/lib/types';
 import { ItemTypes } from '../editor/draggable-item';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { getTextStylingCSS, extractTextStylingFromGroup } from '@/lib/text-styling';
+import { getTextStylingCSS, extractTextStylingFromZone } from '@/lib/text-styling';
 
 const GRID_SNAP = 20;
 
-// Helper function to get text styling CSS for a group
-const getTextStylingForGroup = (group: DiagramGroupData) => {
-  const textStyling = extractTextStylingFromGroup(group);
-  return getTextStylingCSS(textStyling);
-};
 
-interface DiagramGroupProps {
-  group: DiagramGroupData & { x: number; y: number; width: number; height: number };
+
+interface DiagramZoneProps {
+  zone: DiagramZoneData & { x: number; y: number; width: number; height: number };
   isSelected?: boolean;
   isDropTarget?: boolean;
   isTargetable?: boolean;
   isMultiSelected?: boolean;
-  onClick?: (e: React.MouseEvent, group: DiagramGroupData) => void;
-  onContextMenu?: (e: React.MouseEvent, group: DiagramGroupData) => void;
-  onResize?: (groupId: string, newWidth: number, newHeight: number) => void;
-  onLabelChange?: (groupId: string, newLabel: string) => void;
+  onClick?: (e: React.MouseEvent, zone: DiagramZoneData) => void;
+  onContextMenu?: (e: React.MouseEvent, zone: DiagramZoneData) => void;
+  onResize?: (zoneId: string, newWidth: number, newHeight: number) => void;
+  onLabelChange?: (zoneId: string, newLabel: string) => void;
 }
 
 
 
 
-export function DiagramGroup({ group, isSelected, isDropTarget, isTargetable, isMultiSelected, onClick, onContextMenu, onResize, onLabelChange }: DiagramGroupProps) {
+export function DiagramZone({ zone, isSelected, isDropTarget, isTargetable, isMultiSelected, onClick, onContextMenu, onResize, onLabelChange }: DiagramZoneProps) {
 const [{ isDragging }, drag] = useDrag(() => ({
-    type: ItemTypes.GROUP,
-    item: { ...group, type: ItemTypes.GROUP },
+    type: ItemTypes.ZONE,
+    item: { ...zone, type: ItemTypes.ZONE },
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
-  }), [group]);
+  }), [zone]);
 
   const [isTouchDragging, setIsTouchDragging] = useState(false);
   const touchStartPos = useRef<{ x: number; y: number } | null>(null);
@@ -94,15 +90,15 @@ const [{ isDragging }, drag] = useDrag(() => ({
         const x = touch.clientX - canvasRect.left;
         const y = touch.clientY - canvasRect.top;
         
-        // Dispatch a custom event to the canvas for moving the group
+        // Dispatch a custom event to the canvas for moving the zone
         const moveEvent = new CustomEvent('mobileMove', {
           detail: { 
-            id: group.id, 
-            type: ItemTypes.GROUP, 
+            id: zone.id, 
+            type: ItemTypes.ZONE, 
             x, 
             y,
-            originalX: group.x,
-            originalY: group.y
+            originalX: zone.x,
+            originalY: zone.y
           }
         });
         canvas.dispatchEvent(moveEvent);
@@ -115,7 +111,7 @@ const [{ isDragging }, drag] = useDrag(() => ({
           cancelable: true,
           view: window
         });
-        onClick(syntheticEvent as any, group);
+        onClick(syntheticEvent as any, zone);
       }
     }
     
@@ -137,8 +133,8 @@ const [{ isDragging }, drag] = useDrag(() => ({
     resizeStartPos.current = {
       x: e.clientX,
       y: e.clientY,
-      startWidth: group.width,
-      startHeight: group.height
+      startWidth: zone.width,
+      startHeight: zone.height
     };
   };
 
@@ -152,8 +148,8 @@ const [{ isDragging }, drag] = useDrag(() => ({
     let newHeight = resizeStartPos.current.startHeight;
     
     // Calculate minimum size based on content
-    const minWidth = group.minWidth || 200;
-    const minHeight = group.minHeight || 150;
+    const minWidth = zone.minWidth || 200;
+    const minHeight = zone.minHeight || 150;
     
     switch (resizeHandle) {
       case 'right':
@@ -175,7 +171,7 @@ const [{ isDragging }, drag] = useDrag(() => ({
     newWidth = Math.round(newWidth / GRID_SNAP) * GRID_SNAP;
     newHeight = Math.round(newHeight / GRID_SNAP) * GRID_SNAP;
     
-    onResize(group.id, newWidth, newHeight);
+    onResize(zone.id, newWidth, newHeight);
   };
 
   const handleResizeEnd = () => {
@@ -202,7 +198,7 @@ const [{ isDragging }, drag] = useDrag(() => ({
         document.removeEventListener('mouseup', handleMouseUp);
       };
     }
-  }, [isResizing, resizeHandle, group.id, onResize]);
+  }, [isResizing, resizeHandle, zone.id, onResize]);
   
   const handleGroupMouseEnter = () => setIsHovered(true);
   const handleGroupMouseLeave = () => {
@@ -215,7 +211,7 @@ const [{ isDragging }, drag] = useDrag(() => ({
   const handleLabelStartEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsEditingLabel(true);
-    setEditValue(group.label || '');
+    setEditValue(zone.label || '');
     setTimeout(() => {
       inputRef.current?.focus();
       inputRef.current?.select();
@@ -228,7 +224,7 @@ const [{ isDragging }, drag] = useDrag(() => ({
 
   const handleLabelSubmit = () => {
     if (onLabelChange) {
-      onLabelChange(group.id, editValue.trim());
+      onLabelChange(zone.id, editValue.trim());
     }
     setIsEditingLabel(false);
     setEditValue('');
@@ -247,63 +243,105 @@ const [{ isDragging }, drag] = useDrag(() => ({
     handleLabelSubmit();
   };
 
-  const isZone = group.subType === 'zone';
-  const hasLabel = !!group.label && group.label.trim() !== '';
+  const isZone = true; // Always true now that we only have zones
+  const hasLabel = !!zone.label && zone.label.trim() !== '';
   
   // Get text position with defaults
   const getTextPosition = () => {
-    if (group.textPosition) return group.textPosition;
-    return isZone ? 'top-left' : 'bottom-right';
+    if (zone.textPosition) return zone.textPosition;
+    return 'top-left'; // Default for zones
   };
   
   const textPosition = getTextPosition();
   
-  // Get text styling CSS
-  const textStylingCSS = getTextStylingForGroup(group);
-  
   // Calculate text positioning classes and styles
   const getTextPositioning = () => {
-    // Base positioning styles
+    // Base positioning styles for zones
     const getBasePosition = () => {
-      switch (textPosition) {
+      // Use type assertion to avoid TypeScript issues
+      const position = textPosition as any;
+      switch (position) {
+        // Inline positions (text aligned with border)
+        case 'inline-top':
+          return { top: '-12px', left: '4px' };
+        case 'inline-bottom':
+          return { bottom: '-12px', left: '4px' };
+        case 'inline-left':
+          return { left: '-12px', top: '50%', transform: 'translateY(-50%)' };
+        case 'inline-right':
+          return { right: '-12px', top: '50%', transform: 'translateY(-50%)' };
+          
+        // Outside positions (text outside but not inline)
+        case 'outside-top':
+          return { top: '-30px', left: '50%', transform: 'translateX(-50%)' };
+        case 'outside-bottom':
+          return { bottom: '-30px', left: '50%', transform: 'translateX(-50%)' };
+        case 'outside-left':
+          return { left: '-30px', top: '50%', transform: 'translateY(-50%)' };
+        case 'outside-right':
+          return { right: '-30px', top: '50%', transform: 'translateY(-50%)' };
+          
+        // Traditional positions
         case 'top-left':
-          return isZone ? { top: '-12px', left: '4px' } : { top: '8px', left: '8px' };
+          return { top: '-12px', left: '4px' };
         case 'top-center':
-          return isZone 
-            ? { top: '-12px', left: '50%', transform: 'translateX(-50%)' } 
-            : { top: '8px', left: '50%', transform: 'translateX(-50%)' };
+          return { top: '-12px', left: '50%', transform: 'translateX(-50%)' };
         case 'top-right':
-          return isZone ? { top: '-12px', right: '4px' } : { top: '8px', right: '8px' };
+          return { top: '-12px', right: '4px' };
         case 'bottom-left':
-          return isZone ? { bottom: '-12px', left: '4px' } : { bottom: '8px', left: '8px' };
+          return { bottom: '-12px', left: '4px' };
         case 'bottom-center':
-          return isZone 
-            ? { bottom: '-12px', left: '50%', transform: 'translateX(-50%)' } 
-            : { bottom: '8px', left: '50%', transform: 'translateX(-50%)' };
+          return { bottom: '-12px', left: '50%', transform: 'translateX(-50%)' };
         case 'bottom-right':
-          return isZone ? { bottom: '-12px', right: '4px' } : { bottom: '8px', right: '8px' };
+          return { bottom: '-12px', right: '4px' };
+          
+        // Inside position
         case 'inside':
           return { bottom: '8px', right: '8px' };
+          
         default:
-          return isZone ? { top: '-12px', left: '4px' } : { bottom: '8px', right: '8px' };
+          return { top: '-12px', left: '4px' };
       }
     };
 
     const basePosition = getBasePosition();
     
+    // Extract text styling to get justification and vertical positioning
+    const textStyling = extractTextStylingFromZone(zone);
+    
+    // Create combined styles that respect both positioning and text styling
+    const combinedStyles: React.CSSProperties = {
+      ...basePosition,
+      // Apply text styling properties
+      fontFamily: textStyling.fontFamily,
+      fontSize: textStyling.fontSize ? `${textStyling.fontSize}px` : undefined,
+      fontWeight: textStyling.fontWeight,
+      fontStyle: textStyling.fontStyle,
+      textDecoration: textStyling.textDecoration,
+      textTransform: textStyling.textTransform,
+      letterSpacing: textStyling.letterSpacing ? `${textStyling.letterSpacing}px` : undefined,
+      lineHeight: textStyling.lineHeight,
+      opacity: textStyling.textOpacity,
+      // Use text color from styling or fallback
+      color: textStyling.textColor || textColor,
+      backgroundColor: isZone ? 'hsl(var(--background))' : 'transparent',
+      // Apply text justification
+      textAlign: textStyling.textJustify === 'full' ? 'justify' : textStyling.textJustify,
+      // Apply vertical positioning with flexbox if needed
+      ...(textStyling.textVerticalPosition && {
+        display: 'flex',
+        alignItems: textStyling.textVerticalPosition === 'top' ? 'flex-start' :
+                   textStyling.textVerticalPosition === 'middle' ? 'center' : 'flex-end'
+      })
+    };
+    
     return {
       className: "absolute px-2 hover:text-primary cursor-pointer",
-      style: {
-        ...basePosition,
-        ...textStylingCSS,
-        backgroundColor: isZone ? 'hsl(var(--background))' : 'transparent',
-        // Override color with text styling if available
-        ...(textStylingCSS.color ? {} : { color: textColor }),
-      }
+      style: combinedStyles
     };
   };
   
-  // If no label, make group invisible (just a container)
+  // If no label, make zone invisible (just a container)
   if (!hasLabel) {
     return (
       <div
@@ -314,10 +352,10 @@ const [{ isDragging }, drag] = useDrag(() => ({
         }}
         className="absolute"
         style={{
-          left: group.x,
-          top: group.y,
-          width: group.width,
-          height: group.height,
+          left: zone.x,
+          top: zone.y,
+          width: zone.width,
+          height: zone.height,
           pointerEvents: 'none' // Let clicks pass through to children
         }}
       />
@@ -325,18 +363,18 @@ const [{ isDragging }, drag] = useDrag(() => ({
   }
   
   // Use new color properties with fallbacks
-  const textColor = group.textColor || '#374151';
+  const textColor = zone.textColor || '#374151';
   
   // Handle border color (solid or gradient)
-  const borderStyle = group.borderStyle || 'solid';
-  const borderColors = group.borderColors || [group.borderColor || (isZone ? '#6b7280' : '#3b82f6'), group.borderColor || (isZone ? '#6b7280' : '#3b82f6')];
-  const borderColor = group.borderColor || (isZone ? '#6b7280' : '#3b82f6');
+  const borderStyle = zone.borderStyle || 'solid';
+  const borderColors = zone.borderColors || [zone.borderColor || (isZone ? '#6b7280' : '#3b82f6'), zone.borderColor || (isZone ? '#6b7280' : '#3b82f6')];
+  const borderColor = zone.borderColor || (isZone ? '#6b7280' : '#3b82f6');
   
   // Handle background color (solid or gradient)
-  const backgroundStyle = group.backgroundStyle || 'solid';
-  const backgroundColors = group.backgroundColors || [group.backgroundColor || (isZone ? '#f3f4f6' : '#f3f4f6'), group.backgroundColor || (isZone ? '#e5e7eb' : '#e5e7eb')];
-  const backgroundColor = group.backgroundColor || (isZone ? 'transparent' : '#f3f4f6');
-  const rotation = group.rotation || 0;
+  const backgroundStyle = zone.backgroundStyle || 'solid';
+  const backgroundColors = zone.backgroundColors || [zone.backgroundColor || (isZone ? '#f3f4f6' : '#f3f4f6'), zone.backgroundColor || (isZone ? '#e5e7eb' : '#e5e7eb')];
+  const backgroundColor = zone.backgroundColor || (isZone ? 'transparent' : '#f3f4f6');
+  const rotation = zone.rotation || 0;
 
   return (
     <div
@@ -354,14 +392,14 @@ const [{ isDragging }, drag] = useDrag(() => ({
         (isDragging || isTouchDragging || isResizing) && "opacity-50",
         (isSelected || isDropTarget || isMultiSelected) && "ring-2 ring-primary ring-offset-2",
         isTargetable && "ring-2 ring-green-500 ring-offset-2 animate-pulse",
-        group.shadow && "shadow-[0_10px_15px_-3px_rgba(239,68,68,0.3),0_4px_6px_-2px_rgba(239,68,68,0.2)]",
-        "group" // Add group class for CSS selectors
+        zone.shadow && "shadow-[0_10px_15px_-3px_rgba(239,68,68,0.3),0_4px_6px_-2px_rgba(239,68,68,0.2)]",
+        "zone" // Add zone class for CSS selectors
       )}
       style={{
-        left: group.x,
-        top: group.y,
-        width: group.width,
-        height: group.height,
+        left: zone.x,
+        top: zone.y,
+        width: zone.width,
+        height: zone.height,
         background: backgroundStyle === 'none' 
           ? 'transparent'
           : backgroundStyle === 'gradient' 
@@ -375,23 +413,23 @@ const [{ isDragging }, drag] = useDrag(() => ({
           borderImage: `linear-gradient(135deg, ${borderColors[0]}, ${borderColors[1]}) 1`,
           borderColor: 'transparent'
         } : {
-          borderWidth: (group as any).borderWidth || 2,
+          borderWidth: (zone as any).borderWidth || 2,
           borderStyle: isZone ? 'dashed' : 'solid',
           borderColor: borderColor
         }),
         color: textColor,
-        margin: group.shadow ? 4 : 0, // Add margin when shadow is enabled to prevent clipping
+        margin: zone.shadow ? 4 : 0, // Add margin when shadow is enabled to prevent clipping
         touchAction: 'none',
         transform: rotation !== 0 
-          ? `rotate(${rotation}deg)${group.shadow ? ' translateZ(0)' : ''}`
-          : (group.shadow ? 'translateZ(0)' : undefined),
+          ? `rotate(${rotation}deg)${zone.shadow ? ' translateZ(0)' : ''}`
+          : (zone.shadow ? 'translateZ(0)' : undefined),
         transformOrigin: 'center',
-        ...(group.shadow && { 
+        ...(zone.shadow && { 
           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' // More prominent shadow
         })
       }}
-      onClick={(e) => onClick && onClick(e, group)}
-      onContextMenu={(e) => onContextMenu && onContextMenu(e, group)}
+      onClick={(e) => onClick && onClick(e, zone)}
+      onContextMenu={(e) => onContextMenu && onContextMenu(e, zone)}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -399,7 +437,7 @@ const [{ isDragging }, drag] = useDrag(() => ({
       onMouseLeave={handleGroupMouseLeave}
     >
       {/* Resize handles - only show when hovered or resizing */}
-      {(isHovered || isResizing || isSelected) && group.sizeMode !== 'auto' && (
+      {(isHovered || isResizing || isSelected) && zone.sizeMode !== 'auto' && (
         <>
           {/* Right handle */}
           <div
@@ -446,18 +484,18 @@ const [{ isDragging }, drag] = useDrag(() => ({
               style={getTextPositioning().style}
               onDoubleClick={handleLabelStartEdit}
             >
-               {group.label}
+               {zone.label}
             </div>
           </PopoverTrigger>
-          {group.info && (
+          {zone.info && (
             <PopoverContent
               side="top"
               align="start"
               className="w-80 bg-popover text-popover-foreground shadow-xl border-accent"
             >
               <div className="space-y-2">
-                {group.label && <h4 className="font-semibold font-headline text-primary">{group.label}</h4>}
-                <p className="text-sm">{group.info}</p>
+                {zone.label && <h4 className="font-semibold font-headline text-primary">{zone.label}</h4>}
+                <p className="text-sm">{zone.info}</p>
               </div>
             </PopoverContent>
           )}

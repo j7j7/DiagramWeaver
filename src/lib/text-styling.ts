@@ -1,4 +1,4 @@
-import type { DiagramNodeData, DiagramNodeItem, DiagramGroupData, DiagramGroupItem } from './types';
+import type { DiagramNodeData, DiagramNodeItem, DiagramZoneData, DiagramZoneItem } from './types';
 import type { ThemeProperties } from './theme-types';
 
 // Text styling interface for consistency
@@ -96,23 +96,30 @@ export function extractTextStylingFromNode(node: DiagramNodeData | DiagramNodeIt
 }
 
 /**
- * Extracts text styling from a group data object
+ * Extracts text styling from a zone data object
  */
-export function extractTextStylingFromGroup(group: DiagramGroupData | DiagramGroupItem): TextStyling {
+export function extractTextStylingFromZone(zone: DiagramZoneData | DiagramZoneItem): TextStyling {
   return {
-    fontFamily: group.fontFamily,
-    fontSize: group.fontSize,
-    fontWeight: group.fontWeight,
-    fontStyle: group.fontStyle,
-    textDecoration: group.textDecoration,
-    textTransform: group.textTransform,
-    letterSpacing: group.letterSpacing,
-    lineHeight: group.lineHeight,
-    textOpacity: group.textOpacity,
-    textColor: group.textColor,
-    textJustify: group.textJustify,
-    textVerticalPosition: group.textVerticalPosition
+    fontFamily: zone.fontFamily,
+    fontSize: zone.fontSize,
+    fontWeight: zone.fontWeight,
+    fontStyle: zone.fontStyle,
+    textDecoration: zone.textDecoration,
+    textTransform: zone.textTransform,
+    letterSpacing: zone.letterSpacing,
+    lineHeight: zone.lineHeight,
+    textOpacity: zone.textOpacity,
+    textColor: zone.textColor,
+    textJustify: zone.textJustify,
+    textVerticalPosition: zone.textVerticalPosition
   };
+}
+
+/**
+ * Extracts text styling from a group data object (backward compatibility)
+ */
+export function extractTextStylingFromGroup(group: any): TextStyling {
+  return extractTextStylingFromZone(group);
 }
 
 /**
@@ -140,27 +147,37 @@ export function applyTextStylingToNode(
 }
 
 /**
- * Applies text styling to a group by merging with existing properties
+ * Applies text styling to a zone by merging with existing properties
+ */
+export function applyTextStylingToZone(
+  zone: DiagramZoneData | DiagramZoneItem,
+  styling: Partial<TextStyling>
+): DiagramZoneData | DiagramZoneItem {
+  return {
+    ...zone,
+    fontFamily: styling.fontFamily ?? zone.fontFamily,
+    fontSize: styling.fontSize ?? zone.fontSize,
+    fontWeight: styling.fontWeight ?? zone.fontWeight,
+    fontStyle: styling.fontStyle ?? zone.fontStyle,
+    textDecoration: styling.textDecoration ?? zone.textDecoration,
+    textTransform: styling.textTransform ?? zone.textTransform,
+    letterSpacing: styling.letterSpacing ?? zone.letterSpacing,
+    lineHeight: styling.lineHeight ?? zone.lineHeight,
+    textOpacity: styling.textOpacity ?? zone.textOpacity,
+    textColor: styling.textColor ?? zone.textColor,
+    textJustify: styling.textJustify ?? zone.textJustify,
+    textVerticalPosition: styling.textVerticalPosition ?? zone.textVerticalPosition
+  };
+}
+
+/**
+ * Applies text styling to a group by merging with existing properties (backward compatibility)
  */
 export function applyTextStylingToGroup(
-  group: DiagramGroupData | DiagramGroupItem,
+  group: any,
   styling: Partial<TextStyling>
-): DiagramGroupData | DiagramGroupItem {
-  return {
-    ...group,
-    fontFamily: styling.fontFamily ?? group.fontFamily,
-    fontSize: styling.fontSize ?? group.fontSize,
-    fontWeight: styling.fontWeight ?? group.fontWeight,
-    fontStyle: styling.fontStyle ?? group.fontStyle,
-    textDecoration: styling.textDecoration ?? group.textDecoration,
-    textTransform: styling.textTransform ?? group.textTransform,
-    letterSpacing: styling.letterSpacing ?? group.letterSpacing,
-    lineHeight: styling.lineHeight ?? group.lineHeight,
-    textOpacity: styling.textOpacity ?? group.textOpacity,
-    textColor: styling.textColor ?? group.textColor,
-    textJustify: styling.textJustify ?? group.textJustify,
-    textVerticalPosition: styling.textVerticalPosition ?? group.textVerticalPosition
-  };
+): any {
+  return applyTextStylingToZone(group, styling);
 }
 
 /**

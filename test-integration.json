@@ -2,7 +2,7 @@
   "groups": [
     {
       "id": "group-1",
-      "type": "group",
+      "type": "zone",
       "label": "Main Group",
       "info": "This is the main group containing nested items",
       "children": [
@@ -14,7 +14,7 @@
         },
         {
           "id": "group-2",
-          "type": "group",
+          "type": "zone",
           "label": "Database Group",
           "info": "Database cluster group",
           "children": [

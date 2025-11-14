@@ -12,7 +12,7 @@ interface DraggableItemProps {
 export const ItemTypes = {
   DIAGRAM_NODE: 'diagram_node',
   CANVAS_NODE: 'canvas_node',
-  GROUP: 'group',
+  ZONE: 'zone',
 };
 
 export function DraggableItem({ type, label, icon }: DraggableItemProps) {

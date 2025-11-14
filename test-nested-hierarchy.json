@@ -2,7 +2,7 @@
   "groups": [
     {
       "id": "group-1",
-      "type": "group",
+      "type": "zone",
       "label": "",
       "children": [
         {
@@ -15,7 +15,7 @@
     },
     {
       "id": "group-2",
-      "type": "group",
+      "type": "zone",
       "label": "Group",
       "info": "A new Group",
       "children": [
@@ -27,7 +27,7 @@
         },
         {
           "id": "group-3",
-          "type": "group",
+          "type": "zone",
           "label": "Group",
           "info": "A new Group",
           "children": [
