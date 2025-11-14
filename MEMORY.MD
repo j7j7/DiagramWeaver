@@ -313,11 +313,39 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
   - **Backward Compatibility**: 
     - `textPosition` property still works (`'above'`, `'center'`, `'under'`) for explicit control
     - `textVerticalPosition` takes precedence when set, providing unified control over text placement
-  - **Benefits**: 
-    - Consistent text styling across all node types (textboxes, shapes, labels)
-    - Proper vertical and horizontal alignment working as expected
-    - Shape positions remain stable regardless of text placement
-    - Full control over text positioning with intuitive property names
+   - **Benefits**: 
+     - Consistent text styling across all node types (textboxes, shapes, labels)
+     - Proper vertical and horizontal alignment working as expected
+     - Shape positions remain stable regardless of text placement
+     - Full control over text positioning with intuitive property names
+ - **Selection Box Multi-Select** (2025-11-14): Added drag-to-select functionality for selecting multiple items with selection rectangle:
+   - **Selection Box Drawing**: Click and drag on empty canvas to draw selection rectangle
+   - **Visual Feedback**: Blue dashed rectangle shows selection area while dragging
+   - **Multi-Select Logic**: All items completely within selection rectangle are selected
+   - **Primary Selection**: First item found becomes primary selected item (highlighted differently)
+   - **Batch Selection**: Additional items are added to multi-selection with blue ring highlights
+   - **Coordinate System**: Selection works correctly with zoom/pan transformations
+   - **Canvas Click Prevention**: Fixed issue where canvas click would clear selection immediately after selection box completion
+   - **Atomic Selection**: Implemented batch selection system to avoid React state timing issues
+   - **Implementation Details**:
+     - **Mouse Events**: Enhanced `handleMouseDown`, `handleMouseMove`, and `handleMouseUpOrLeave` for selection box
+     - **Coordinate Conversion**: Proper transformation between screen space and diagram space coordinates
+     - **Item Detection**: Accurate containment checking for both nodes and groups within selection rectangle
+     - **State Management**: Added `justCompletedSelection` flag to prevent selection clearing
+     - **Batch Function**: New `handleBatchSelect` function for atomic multi-item selection
+     - **Type Safety**: Proper TypeScript typing with `as const` assertions for `itemType` properties
+   - **Integration**: Works seamlessly with existing shift-click multi-select functionality
+   - **Performance**: Efficient selection detection with early exit conditions
+   - **User Experience**: Intuitive drag-to-select behavior matching professional diagram tools
+   - **Files Modified**:
+     - `src/components/editor/editor-canvas.tsx` - Selection box drawing and item detection
+     - `src/components/diagram-editor.tsx` - Batch selection state management
+   - **Benefits**: 
+     - Professional drag-select functionality matching industry standards
+     - Efficient multi-item selection for large diagrams
+     - Maintains all existing selection features (shift-click, individual selection)
+     - Robust coordinate handling with zoom/pan support
+     - Clean state management without timing issues
 
 ### Development Tools
 - **Scripts**: npm run dev, build, lint, typecheck, genkit

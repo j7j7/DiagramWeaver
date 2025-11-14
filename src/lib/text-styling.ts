@@ -57,7 +57,20 @@ export function getTextStylingCSS(styling: TextStyling): React.CSSProperties {
   if (styling.textOpacity !== undefined) css.opacity = styling.textOpacity;
   if (styling.textColor) css.color = styling.textColor;
   if (styling.textJustify) css.textAlign = styling.textJustify === 'full' ? 'justify' : styling.textJustify;
-  if (styling.textVerticalPosition) css.display = 'flex';
+  if (styling.textVerticalPosition) {
+    css.display = 'flex';
+    switch (styling.textVerticalPosition) {
+      case 'top':
+        css.alignItems = 'flex-start';
+        break;
+      case 'middle':
+        css.alignItems = 'center';
+        break;
+      case 'bottom':
+        css.alignItems = 'flex-end';
+        break;
+    }
+  }
   
   return css;
 }

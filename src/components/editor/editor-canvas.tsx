@@ -2026,18 +2026,7 @@ const [, drop] = useDrop(() => ({
       const newX = canvasRelativeCenterX - canvasCenterX * newK;
       const newY = canvasRelativeCenterY - canvasCenterY * newK;
       
-      // Debug logging to verify center calculation
-      console.log('Zoom from browser viewport center (with 10% adjustment):', {
-        browserViewportSize: { width: window.innerWidth, height: window.innerHeight },
-        browserViewportCenter: { x: browserViewportCenterX, y: browserViewportCenterY },
-        adjustedCenter: { x: adjustedCenterX, y: browserViewportCenterY },
-        canvasRect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
-        canvasRelativeCenter: { x: canvasRelativeCenterX, y: canvasRelativeCenterY },
-        canvasCenter: { x: canvasCenterX, y: canvasCenterY },
-        currentTransform: transform,
-        newScale: newK,
-        newPosition: { x: newX, y: newY }
-      });
+
       
       setTransform({ x: newX, y: newY, k: newK });
     }
@@ -2789,18 +2778,7 @@ const [, drop] = useDrop(() => ({
         const newX = canvasRelativeCenterX - (canvasRelativeCenterX - transform.x) * actualZoomRatio;
         const newY = canvasRelativeCenterY - (canvasRelativeCenterY - transform.y) * actualZoomRatio;
         
-        // Debug logging to verify center calculation
-        console.log('Zoom from browser center (passive, with 10% adjustment):', {
-          browserViewportSize: { width: window.innerWidth, height: window.innerHeight },
-          browserViewportCenter: { x: browserViewportCenterX, y: browserViewportCenterY },
-          adjustedCenter: { x: adjustedCenterX, y: browserViewportCenterY },
-          canvasRect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
-          canvasRelativeCenter: { x: canvasRelativeCenterX, y: canvasRelativeCenterY },
-          currentTransform: transform,
-          newScale: newK,
-          zoomRatio: actualZoomRatio,
-          newPosition: { x: newX, y: newY }
-        });
+
         
         setTransform({ x: newX, y: newY, k: newK });
       }

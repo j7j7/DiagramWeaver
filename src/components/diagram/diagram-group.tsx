@@ -6,8 +6,15 @@ import type { DiagramGroupData } from '@/lib/types';
 import { ItemTypes } from '../editor/draggable-item';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { getTextStylingCSS, extractTextStylingFromGroup } from '@/lib/text-styling';
 
 const GRID_SNAP = 20;
+
+// Helper function to get text styling CSS for a group
+const getTextStylingForGroup = (group: DiagramGroupData) => {
+  const textStyling = extractTextStylingFromGroup(group);
+  return getTextStylingCSS(textStyling);
+};
 
 interface DiagramGroupProps {
   group: DiagramGroupData & { x: number; y: number; width: number; height: number };
@@ -251,83 +258,49 @@ const [{ isDragging }, drag] = useDrag(() => ({
   
   const textPosition = getTextPosition();
   
+  // Get text styling CSS
+  const textStylingCSS = getTextStylingForGroup(group);
+  
   // Calculate text positioning classes and styles
   const getTextPositioning = () => {
-    switch (textPosition) {
-      case 'top-left':
-        return {
-          className: "absolute px-2 text-sm font-semibold hover:text-primary cursor-pointer",
-          style: {
-            ...(isZone ? { top: '-12px', left: '4px' } : { top: '8px', left: '8px' }),
-            backgroundColor: isZone ? 'hsl(var(--background))' : 'transparent',
-            color: textColor,
-          }
-        };
-      case 'top-center':
-        return {
-          className: "absolute px-2 text-sm font-semibold hover:text-primary cursor-pointer",
-          style: {
-            ...(isZone ? { top: '-12px', left: '50%', transform: 'translateX(-50%)' } : { top: '8px', left: '50%', transform: 'translateX(-50%)' }),
-            backgroundColor: isZone ? 'hsl(var(--background))' : 'transparent',
-            color: textColor,
-          }
-        };
-      case 'top-right':
-        return {
-          className: "absolute px-2 text-sm font-semibold hover:text-primary cursor-pointer",
-          style: {
-            ...(isZone ? { top: '-12px', right: '4px' } : { top: '8px', right: '8px' }),
-            backgroundColor: isZone ? 'hsl(var(--background))' : 'transparent',
-            color: textColor,
-          }
-        };
-      case 'bottom-left':
-        return {
-          className: "absolute px-2 text-sm font-semibold hover:text-primary cursor-pointer",
-          style: {
-            ...(isZone ? { bottom: '-12px', left: '4px' } : { bottom: '8px', left: '8px' }),
-            backgroundColor: isZone ? 'hsl(var(--background))' : 'transparent',
-            color: textColor,
-          }
-        };
-      case 'bottom-center':
-        return {
-          className: "absolute px-2 text-sm font-semibold hover:text-primary cursor-pointer",
-          style: {
-            ...(isZone ? { bottom: '-12px', left: '50%', transform: 'translateX(-50%)' } : { bottom: '8px', left: '50%', transform: 'translateX(-50%)' }),
-            backgroundColor: isZone ? 'hsl(var(--background))' : 'transparent',
-            color: textColor,
-          }
-        };
-      case 'bottom-right':
-        return {
-          className: "absolute px-2 text-sm font-semibold hover:text-primary cursor-pointer",
-          style: {
-            ...(isZone ? { bottom: '-12px', right: '4px' } : { bottom: '8px', right: '8px' }),
-            backgroundColor: isZone ? 'hsl(var(--background))' : 'transparent',
-            color: textColor,
-          }
-        };
-      case 'inside':
-        return {
-          className: "absolute px-2 text-sm font-semibold hover:text-primary cursor-pointer",
-          style: {
-            bottom: '8px',
-            right: '8px',
-            backgroundColor: 'transparent',
-            color: textColor,
-          }
-        };
-      default:
-        return {
-          className: "absolute px-2 text-sm font-semibold hover:text-primary cursor-pointer",
-          style: {
-            ...(isZone ? { top: '-12px', left: '4px' } : { bottom: '8px', right: '8px' }),
-            backgroundColor: isZone ? 'hsl(var(--background))' : 'transparent',
-            color: textColor,
-          }
-        };
-    }
+    // Base positioning styles
+    const getBasePosition = () => {
+      switch (textPosition) {
+        case 'top-left':
+          return isZone ? { top: '-12px', left: '4px' } : { top: '8px', left: '8px' };
+        case 'top-center':
+          return isZone 
+            ? { top: '-12px', left: '50%', transform: 'translateX(-50%)' } 
+            : { top: '8px', left: '50%', transform: 'translateX(-50%)' };
+        case 'top-right':
+          return isZone ? { top: '-12px', right: '4px' } : { top: '8px', right: '8px' };
+        case 'bottom-left':
+          return isZone ? { bottom: '-12px', left: '4px' } : { bottom: '8px', left: '8px' };
+        case 'bottom-center':
+          return isZone 
+            ? { bottom: '-12px', left: '50%', transform: 'translateX(-50%)' } 
+            : { bottom: '8px', left: '50%', transform: 'translateX(-50%)' };
+        case 'bottom-right':
+          return isZone ? { bottom: '-12px', right: '4px' } : { bottom: '8px', right: '8px' };
+        case 'inside':
+          return { bottom: '8px', right: '8px' };
+        default:
+          return isZone ? { top: '-12px', left: '4px' } : { bottom: '8px', right: '8px' };
+      }
+    };
+
+    const basePosition = getBasePosition();
+    
+    return {
+      className: "absolute px-2 hover:text-primary cursor-pointer",
+      style: {
+        ...basePosition,
+        ...textStylingCSS,
+        backgroundColor: isZone ? 'hsl(var(--background))' : 'transparent',
+        // Override color with text styling if available
+        ...(textStylingCSS.color ? {} : { color: textColor }),
+      }
+    };
   };
   
   // If no label, make group invisible (just a container)
