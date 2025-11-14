@@ -255,6 +255,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   const isDraggingRef = useRef(false);
   const multiDragStartPositions = useRef<{ [itemId: string]: { x: number; y: number } } | null>(null);
   
+  // Client-side rendering state
+  const [isClient, setIsClient] = useState(false);
+  
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{
     visible: boolean;
@@ -1991,7 +1994,7 @@ const [, drop] = useDrop(() => ({
   
   const handleWheel = (e: React.WheelEvent) => {
     if (!canvasRef.current) return;
-    const { clientX, clientY, deltaY } = e;
+    const { deltaY } = e;
     const rect = canvasRef.current.getBoundingClientRect();
     const s = Math.pow(0.995, deltaY); // Less sensitive zoom (changed from 0.99 to 0.995)
     
@@ -1999,12 +2002,37 @@ const [, drop] = useDrop(() => ({
     
     // Only update position if zoom actually changed (not at limit)
     if (newK !== transform.k) {
-      const mouseX = clientX - rect.left;
-      const mouseY = clientY - rect.top;
-      // Use the actual zoom ratio, not the raw scaling factor
-      const actualZoomRatio = newK / transform.k;
-      const newX = mouseX - (mouseX - transform.x) * actualZoomRatio;
-      const newY = mouseY - (mouseY - transform.y) * actualZoomRatio;
+      // Use center of visible canvas area instead of mouse cursor position
+      // The canvas rect.left already accounts for the sidebar, so we just need the browser center
+      if (typeof window === 'undefined') return; // SSR guard
+      const browserViewportCenterX = window.innerWidth / 2;
+      const browserViewportCenterY = window.innerHeight / 2;
+      
+      // Convert browser viewport center to canvas-relative coordinates
+      // rect.left already includes the sidebar offset, so no need to subtract it again
+      const canvasRelativeCenterX = browserViewportCenterX - rect.left;
+      const canvasRelativeCenterY = browserViewportCenterY - rect.top;
+      
+      // Convert to canvas coordinates (accounting for current transform)
+      const canvasCenterX = (canvasRelativeCenterX - transform.x) / transform.k;
+      const canvasCenterY = (canvasRelativeCenterY - transform.y) / transform.k;
+      
+      // Calculate new position to keep the same canvas point at browser viewport center
+      const newX = canvasRelativeCenterX - canvasCenterX * newK;
+      const newY = canvasRelativeCenterY - canvasCenterY * newK;
+      
+      // Debug logging to verify center calculation
+      console.log('Zoom from browser viewport center:', {
+        browserViewportSize: { width: window.innerWidth, height: window.innerHeight },
+        browserViewportCenter: { x: browserViewportCenterX, y: browserViewportCenterY },
+        canvasRect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
+        canvasRelativeCenter: { x: canvasRelativeCenterX, y: canvasRelativeCenterY },
+        canvasCenter: { x: canvasCenterX, y: canvasCenterY },
+        currentTransform: transform,
+        newScale: newK,
+        newPosition: { x: newX, y: newY }
+      });
+      
       setTransform({ x: newX, y: newY, k: newK });
     }
     // If zoom didn't change (at limit), do nothing - no position updates
@@ -2014,8 +2042,11 @@ const [, drop] = useDrop(() => ({
     if (isConnectMode) return;
     const target = e.target as HTMLElement;
     
-    // Handle selection mode
-    if (isSelectionMode && e.button === 0) {
+    // Handle selection mode with left mouse button (button === 0)
+    if (e.button === 0) {
+      // Check if clicking on an interactive element - if so, don't start selection
+      if (target.closest('.absolute')) return;
+      
       if (!canvasRef.current) return;
       const contentDiv = canvasRef.current.querySelector('.dot-grid') as HTMLElement;
       if (!contentDiv) return;
@@ -2045,9 +2076,12 @@ const [, drop] = useDrop(() => ({
       return;
     }
     
-    if (e.button !== 0 || target.closest('.absolute')) return;
-    setIsPanning(true);
-    setPanStart({ x: e.clientX - transform.x, y: e.clientY - transform.y });
+    // Handle panning with right mouse button (button === 2)
+    if (e.button === 2 && !target.closest('.absolute')) {
+      e.preventDefault(); // Prevent context menu
+      setIsPanning(true);
+      setPanStart({ x: e.clientX - transform.x, y: e.clientY - transform.y });
+    }
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -2066,7 +2100,8 @@ const [, drop] = useDrop(() => ({
       onMousePositionChange({ x: snap(diagramX), y: snap(diagramY) });
     }
     
-    if (isSelectionMode && selectionStart) {
+    // Handle selection when left mouse button is held and we have a selection start
+    if (selectionStart && e.buttons === 1) { // e.buttons === 1 means left mouse is pressed
       if (!canvasRef.current) return;
       const contentDiv = canvasRef.current.querySelector('.dot-grid') as HTMLElement;
       if (!contentDiv) return;
@@ -2088,6 +2123,7 @@ const [, drop] = useDrop(() => ({
   };
 
   const handleMouseUpOrLeave = async () => {
+    // Handle selection completion for export
     if (isSelectionMode && selectionStart && selectionEnd && pendingExportOptions) {
       // Complete selection and export
       // Selection coordinates are already in diagram space (relative to .dot-grid)
@@ -2125,6 +2161,63 @@ const [, drop] = useDrop(() => ({
       setSelectionEnd(null);
       setPendingExportOptions(null);
       return;
+    }
+    
+    // Handle regular selection completion (select items within selection rectangle)
+    if (selectionStart && selectionEnd) {
+      const x1 = Math.min(selectionStart.x, selectionEnd.x);
+      const y1 = Math.min(selectionStart.y, selectionEnd.y);
+      const x2 = Math.max(selectionStart.x, selectionEnd.x);
+      const y2 = Math.max(selectionStart.y, selectionEnd.y);
+      
+      // Find all nodes and groups within the selection rectangle
+      const selectedIds = new Set<string>();
+      
+      // Check nodes
+      diagramData.nodes.forEach(node => {
+        const nodeX = node.x || 0;
+        const nodeY = node.y || 0;
+        const nodeWidth = node.width || 80;
+        const nodeHeight = node.height || 50;
+        
+        if (nodeX >= x1 && nodeX + nodeWidth <= x2 && nodeY >= y1 && nodeY + nodeHeight <= y2) {
+          selectedIds.add(node.id);
+        }
+      });
+      
+      // Check groups
+      diagramData.groups?.forEach(group => {
+        const groupX = group.x || 0;
+        const groupY = group.y || 0;
+        const groupWidth = group.width || 300;
+        const groupHeight = group.height || 220;
+        
+        if (groupX >= x1 && groupX + groupWidth <= x2 && groupY >= y1 && groupY + groupHeight <= y2) {
+          selectedIds.add(group.id);
+        }
+      });
+      
+      // Set primary selected item to the first one found
+      if (selectedIds.size > 0) {
+        const firstId = Array.from(selectedIds)[0];
+        const node = diagramData.nodes.find(n => n.id === firstId);
+        const group = diagramData.groups?.find(g => g.id === firstId);
+        
+        if (node) {
+          onItemSelect({ ...node, itemType: 'node' });
+        } else if (group) {
+          onItemSelect({ ...group, itemType: 'group' });
+        }
+        
+        // TODO: Need to implement multi-select support in parent component
+        // For now, just select the first item
+      } else {
+        onItemSelect(null);
+      }
+      
+      // Clear selection rectangle
+      setSelectionStart(null);
+      setSelectionEnd(null);
     }
     
     setIsPanning(false);
@@ -2344,7 +2437,7 @@ const [, drop] = useDrop(() => ({
                                getComputedStyle(document.documentElement).getPropertyValue('--background') || '#ffffff';
 
         let exportOptions: any = {
-          pixelRatio: Math.min(3, window.devicePixelRatio || 1) * 2,
+          pixelRatio: Math.min(3, (typeof window !== 'undefined' ? window.devicePixelRatio : 1) || 1) * 2,
           cacheBust: true,
           backgroundColor: backgroundColor === 'transparent' ? undefined : backgroundColor,
           skipFonts: true,
@@ -2645,7 +2738,7 @@ const [, drop] = useDrop(() => ({
 
     const handleWheelEvent = (e: WheelEvent) => {
       e.preventDefault();
-      const { clientX, clientY, deltaY } = e;
+      const { deltaY } = e;
       const rect = canvas.getBoundingClientRect();
       const s = Math.pow(0.99, deltaY);
       
@@ -2653,12 +2746,33 @@ const [, drop] = useDrop(() => ({
       
       // Only update position if zoom actually changed (not at limit)
       if (newK !== transform.k) {
-        const mouseX = clientX - rect.left;
-        const mouseY = clientY - rect.top;
-        // Use the actual zoom ratio, not the raw scaling factor
+        // Use center of browser viewport instead of mouse cursor position
+        if (typeof window === 'undefined') return; // SSR guard
+        const browserViewportCenterX = window.innerWidth / 2;
+        const browserViewportCenterY = window.innerHeight / 2;
+        
+        // Convert browser viewport center to canvas-relative coordinates
+        // rect.left already includes the sidebar offset, so no need to subtract it again
+        const canvasRelativeCenterX = browserViewportCenterX - rect.left;
+        const canvasRelativeCenterY = browserViewportCenterY - rect.top;
+        
+        // Use actual zoom ratio, not raw scaling factor
         const actualZoomRatio = newK / transform.k;
-        const newX = mouseX - (mouseX - transform.x) * actualZoomRatio;
-        const newY = mouseY - (mouseY - transform.y) * actualZoomRatio;
+        const newX = canvasRelativeCenterX - (canvasRelativeCenterX - transform.x) * actualZoomRatio;
+        const newY = canvasRelativeCenterY - (canvasRelativeCenterY - transform.y) * actualZoomRatio;
+        
+        // Debug logging to verify center calculation
+        console.log('Zoom from browser center (passive):', {
+          browserViewportSize: { width: window.innerWidth, height: window.innerHeight },
+          browserViewportCenter: { x: browserViewportCenterX, y: browserViewportCenterY },
+          canvasRect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
+          canvasRelativeCenter: { x: canvasRelativeCenterX, y: canvasRelativeCenterY },
+          currentTransform: transform,
+          newScale: newK,
+          zoomRatio: actualZoomRatio,
+          newPosition: { x: newX, y: newY }
+        });
+        
         setTransform({ x: newX, y: newY, k: newK });
       }
       // If zoom didn't change (at limit), do nothing - no position updates
@@ -2702,6 +2816,11 @@ const [, drop] = useDrop(() => ({
       };
     }
   }, [contextMenu.visible]);
+
+  // Initialize client-side state
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Action handlers
   const handleDelete = (itemId: string) => {
@@ -3180,12 +3299,11 @@ const [, drop] = useDrop(() => ({
             className={cn(
               "w-full h-full overflow-hidden bg-background",
               isConnectMode && "cursor-crosshair",
-              !isConnectMode && "cursor-grab",
-              isPanning && "cursor-grabbing"
+              !isConnectMode && "cursor-default"
             )}
             style={{ 
               touchAction: 'none',
-              cursor: isSelectionMode ? 'crosshair' : (isConnectMode ? 'crosshair' : (!isConnectMode && !isPanning ? 'grab' : 'grabbing'))
+              cursor: isSelectionMode ? 'crosshair' : (isConnectMode ? 'crosshair' : (isPanning ? 'grabbing' : 'default'))
             }}
             
             onMouseDown={handleMouseDown}
@@ -3197,6 +3315,7 @@ const [, drop] = useDrop(() => ({
               }
               handleMouseUpOrLeave();
             }}
+            onContextMenu={(e) => e.preventDefault()} // Prevent right-click context menu
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
@@ -3595,7 +3714,7 @@ return (
         })()}
 
         {/* Selection rectangle overlay */}
-        {isSelectionMode && selectionStart && selectionEnd && (
+        {selectionStart && selectionEnd && (
           <div
             className="absolute border-2 border-blue-500 bg-blue-200/20 pointer-events-none z-[100]"
             style={{
@@ -3605,6 +3724,25 @@ return (
               height: `${Math.abs(selectionEnd.y - selectionStart.y) * transform.k}px`,
             }}
           />
+        )}
+
+        {/* Browser viewport center point indicator */}
+        {isClient && (
+          <div 
+            className="absolute pointer-events-none z-40"
+            style={{
+              left: `${window.innerWidth / 2 - (canvasRef.current?.getBoundingClientRect().left || 0)}px`,
+              top: `${window.innerHeight / 2 - (canvasRef.current?.getBoundingClientRect().top || 0)}px`,
+              transform: 'translate(-50%, -50%)',
+            }}
+            title="Browser viewport center (zoom point)"
+          >
+            {/* Crosshair lines */}
+            <div className="absolute w-8 h-px bg-red-400 opacity-50" style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }} />
+            <div className="absolute h-8 w-px bg-red-400 opacity-50" style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }} />
+            {/* Center dot */}
+            <div className="absolute w-3 h-3 bg-red-500 rounded-full opacity-80" style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }} />
+          </div>
         )}
 
         {/* Fit-to-view floating button */}
