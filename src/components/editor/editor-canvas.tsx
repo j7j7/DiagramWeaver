@@ -2003,14 +2003,17 @@ const [, drop] = useDrop(() => ({
     // Only update position if zoom actually changed (not at limit)
     if (newK !== transform.k) {
       // Use center of visible canvas area instead of mouse cursor position
-      // The canvas rect.left already accounts for the sidebar, so we just need the browser center
+      // The canvas rect.left already accounts for sidebar, so we just need to browser center
       if (typeof window === 'undefined') return; // SSR guard
       const browserViewportCenterX = window.innerWidth / 2;
       const browserViewportCenterY = window.innerHeight / 2;
       
-      // Convert browser viewport center to canvas-relative coordinates
+      // Manual 10% adjustment to test horizontal center offset
+      const adjustedCenterX = browserViewportCenterX + (window.innerWidth * 0.1);
+      
+      // Convert adjusted browser viewport center to canvas-relative coordinates
       // rect.left already includes the sidebar offset, so no need to subtract it again
-      const canvasRelativeCenterX = browserViewportCenterX - rect.left;
+      const canvasRelativeCenterX = adjustedCenterX - rect.left;
       const canvasRelativeCenterY = browserViewportCenterY - rect.top;
       
       // Convert to canvas coordinates (accounting for current transform)
@@ -2022,9 +2025,10 @@ const [, drop] = useDrop(() => ({
       const newY = canvasRelativeCenterY - canvasCenterY * newK;
       
       // Debug logging to verify center calculation
-      console.log('Zoom from browser viewport center:', {
+      console.log('Zoom from browser viewport center (with 10% adjustment):', {
         browserViewportSize: { width: window.innerWidth, height: window.innerHeight },
         browserViewportCenter: { x: browserViewportCenterX, y: browserViewportCenterY },
+        adjustedCenter: { x: adjustedCenterX, y: browserViewportCenterY },
         canvasRect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
         canvasRelativeCenter: { x: canvasRelativeCenterX, y: canvasRelativeCenterY },
         canvasCenter: { x: canvasCenterX, y: canvasCenterY },
@@ -2751,9 +2755,12 @@ const [, drop] = useDrop(() => ({
         const browserViewportCenterX = window.innerWidth / 2;
         const browserViewportCenterY = window.innerHeight / 2;
         
-        // Convert browser viewport center to canvas-relative coordinates
+        // Manual 10% adjustment to test horizontal center offset
+        const adjustedCenterX = browserViewportCenterX + (window.innerWidth * 0.1);
+        
+        // Convert adjusted browser viewport center to canvas-relative coordinates
         // rect.left already includes the sidebar offset, so no need to subtract it again
-        const canvasRelativeCenterX = browserViewportCenterX - rect.left;
+        const canvasRelativeCenterX = adjustedCenterX - rect.left;
         const canvasRelativeCenterY = browserViewportCenterY - rect.top;
         
         // Use actual zoom ratio, not raw scaling factor
@@ -2762,9 +2769,10 @@ const [, drop] = useDrop(() => ({
         const newY = canvasRelativeCenterY - (canvasRelativeCenterY - transform.y) * actualZoomRatio;
         
         // Debug logging to verify center calculation
-        console.log('Zoom from browser center (passive):', {
+        console.log('Zoom from browser center (passive, with 10% adjustment):', {
           browserViewportSize: { width: window.innerWidth, height: window.innerHeight },
           browserViewportCenter: { x: browserViewportCenterX, y: browserViewportCenterY },
+          adjustedCenter: { x: adjustedCenterX, y: browserViewportCenterY },
           canvasRect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
           canvasRelativeCenter: { x: canvasRelativeCenterX, y: canvasRelativeCenterY },
           currentTransform: transform,
@@ -3726,16 +3734,16 @@ return (
           />
         )}
 
-        {/* Browser viewport center point indicator */}
+        {/* Browser viewport center point indicator (with 10% adjustment) */}
         {isClient && (
           <div 
             className="absolute pointer-events-none z-40"
             style={{
-              left: `${window.innerWidth / 2 - (canvasRef.current?.getBoundingClientRect().left || 0)}px`,
+              left: `${window.innerWidth / 2 + (window.innerWidth * 0.1) - (canvasRef.current?.getBoundingClientRect().left || 0)}px`,
               top: `${window.innerHeight / 2 - (canvasRef.current?.getBoundingClientRect().top || 0)}px`,
               transform: 'translate(-50%, -50%)',
             }}
-            title="Browser viewport center (zoom point)"
+            title="Browser viewport center (zoom point, with 10% adjustment)"
           >
             {/* Crosshair lines */}
             <div className="absolute w-8 h-px bg-red-400 opacity-50" style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }} />
