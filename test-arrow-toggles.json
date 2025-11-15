@@ -1,0 +1,44 @@
+{
+  "nodes": [
+    {
+      "id": "node1",
+      "type": "generic.object.square",
+      "label": "Node 1",
+      "x": 100,
+      "y": 100,
+      "width": 80,
+      "height": 80
+    },
+    {
+      "id": "node2", 
+      "type": "generic.object.circle",
+      "label": "Node 2",
+      "x": 300,
+      "y": 100,
+      "width": 80,
+      "height": 80
+    },
+    {
+      "id": "node3",
+      "type": "generic.object.square", 
+      "label": "Node 3",
+      "x": 500,
+      "y": 100,
+      "width": 80,
+      "height": 80
+    }
+  ],
+  "connections": [
+    {
+      "from": "node1",
+      "to": "node2",
+      "toArrow": true
+    },
+    {
+      "from": "node2", 
+      "to": "node3",
+      "toArrow": false
+    }
+  ],
+  "zones": []
+}

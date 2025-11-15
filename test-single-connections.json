@@ -26,12 +26,14 @@
     {
       "from": "node1",
       "to": "node2",
-      "text": "Single Connection"
+      "text": "Single Connection",
+      "toArrow": false
     },
     {
       "from": "node2", 
       "to": "node3",
-      "text": "Another Single"
+      "text": "Another Single",
+      "toArrow": true
     }
   ],
   "groups": []

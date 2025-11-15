@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { ContextMenu } from "../ui/context-menu";
 import { generateGroupId, generateSequentialId } from "@/lib/id-generator";
 import { CanvasRulers } from "./canvas-rulers";
+import { ArrowToggle } from "../diagram/arrow-toggle";
 
 
 const NODE_WIDTH = 80;
@@ -3500,7 +3501,7 @@ const [, drop] = useDrop(() => ({
                         const isConnectionHighlighted = selectedItemId === edge.from || selectedItemId === edge.to || selectedItemId === edgeId;
 
 return (
-                    <g key={`${edge.from}-${edge.to}-${index}`} className={cn(isConnectionHighlighted && 'drop-shadow-[0_0_6px_rgba(0,200,150,0.8)]')}>
+                    <g key={`${edge.from}-${edge.to}-${index}-${edge.toArrow ? 'arrow' : 'noarrow'}-${edge._updated || ''}`} className={cn(isConnectionHighlighted && 'drop-shadow-[0_0_6px_rgba(0,200,150,0.8)]')}>
                       <BezierConnection
                         from={fromPos}
                         to={toPos}
@@ -3523,6 +3524,100 @@ return (
                 });
                 })()}
                 </svg>
+                
+                {/* Arrow toggles for selected node connections */}
+                {selectedItemId && (() => {
+                    const selectedNodeConnections = (diagramData.connections || []).filter((conn: any) => 
+                        conn.from === selectedItemId || conn.to === selectedItemId
+                    );
+                    
+                    return selectedNodeConnections.map((conn: any, index: number) => {
+                        const fromItem = nodesById[conn.from] || zonesById[conn.from];
+                        const toItem = nodesById[conn.to] || zonesById[conn.to];
+                        if (!fromItem || !toItem) return null;
+
+                        // Get dimensions for proper positioning
+                        const fromDims = 'type' in fromItem ? measureNodeDims(fromItem as PositionedNode) : { width: (fromItem as any).width, height: (fromItem as any).height };
+                        const toDims = 'type' in toItem ? measureNodeDims(toItem as PositionedNode) : { width: (toItem as any).width, height: (toItem as any).height };
+                        
+                        const fromPos: any = {
+                            ...fromItem,
+                            width: 'width' in fromItem ? (fromItem as any).width : fromDims.width,
+                            height: 'height' in fromItem ? (fromItem as any).height : fromDims.height,
+                        };
+                        const toPos: any = {
+                            ...toItem,
+                            width: 'width' in toItem ? (toItem as any).width : toDims.width,
+                            height: 'height' in toItem ? (toItem as any).height : toDims.height,
+                        };
+
+                        // Calculate midpoint at 50% of connection
+                        const midX = (fromPos.x + fromPos.width / 2 + toPos.x + toPos.width / 2) / 2;
+                        const midY = (fromPos.y + fromPos.height / 2 + toPos.y + toPos.height / 2) / 2;
+
+                        // Determine if this is an incoming or outgoing connection for color coding
+                        const isIncoming = conn.to === selectedItemId;
+                        const isOutgoing = conn.from === selectedItemId;
+
+                        const handleArrowToggle = (connection: any, newState: boolean) => {
+                            console.log(`=== ${isOutgoing ? 'OUTGOING' : 'INCOMING'} TOGGLE CLICKED ===`);
+                            console.log('Connection ID:', `${connection.from}-${connection.to}`);
+                            console.log('Current connection.toArrow:', connection.toArrow);
+                            console.log('New state:', newState);
+                            console.log('Full connection object:', connection);
+                            
+                            setDiagramData(prevData => {
+                                // Create a completely new connections array to ensure React re-renders
+                                const oldConnections = prevData.connections || [];
+                                const updatedConnections = oldConnections.map((c: any) => {
+                                    if (c.from === connection.from && c.to === connection.to) {
+                                        // Create a new object with updated toArrow state
+                                        return { 
+                                            ...c, 
+                                            toArrow: newState,
+                                            arrow: newState, // Set both for backward compatibility
+                                            // Add a timestamp to force re-rendering
+                                            _updated: Date.now()
+                                        };
+                                    }
+                                    return { ...c }; // Create new object for all connections to ensure re-render
+                                });
+                                
+                                // Ensure completely new array reference
+                                const newConnectionsArray = [...updatedConnections];
+                                
+                                console.log('Updated connections:', newConnectionsArray);
+                                console.log('Connection being updated:', { from: connection.from, to: connection.to, toArrow: newState });
+                                
+                                const updatedConnection = newConnectionsArray.find(c => c.from === connection.from && c.to === connection.to);
+                                console.log('Updated connection object after state update:', updatedConnection);
+                                
+                                return { 
+                                    ...prevData, 
+                                    connections: newConnectionsArray 
+                                };
+                            });
+                        };
+
+                        return (
+                            <svg
+                                key={`arrow-toggle-${conn.from}-${conn.to}-${index}-${conn.toArrow ? 'arrow' : 'noarrow'}-${conn._updated || ''}`}
+                                width={width}
+                                height={height}
+                                className="absolute top-0 left-0 overflow-visible pointer-events-auto"
+                                style={{ zIndex: 4 }}
+                            >
+                                <ArrowToggle
+                                    x={midX}
+                                    y={midY}
+                                    connection={conn}
+                                    isActive={conn.toArrow === true || conn.arrow === true}
+                                    onToggleAction={handleArrowToggle}
+                                />
+                            </svg>
+                        );
+                    });
+                })()}
                 
                 {/* Nodes and groups rendered on top of connections */}
                 {sortedRenderItems.map((item) => {

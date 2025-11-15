@@ -49,7 +49,7 @@ interface BezierConnectionTextProps {
   connectionColor?: string;
 }
 
-function getConnectionPoint(obj: any, width: number, height: number, point: 'top' | 'bottom' | 'left' | 'right' | 'center', iconHeight?: number, connectionIndex?: number, totalConnections?: number, isToNode: boolean = false, toConnectionIndex?: number, toTotalConnections?: number): { x: number; y: number } {
+export function getConnectionPoint(obj: any, width: number, height: number, point: 'top' | 'bottom' | 'left' | 'right' | 'center', iconHeight?: number, connectionIndex?: number, totalConnections?: number, isToNode: boolean = false, toConnectionIndex?: number, toTotalConnections?: number): { x: number; y: number } {
   const centerX = obj.x + width / 2;
   // Use icon height for Y center calculation if provided (for nodes with text labels)
   // This ensures connections attach to the icon center, not the overall node center
