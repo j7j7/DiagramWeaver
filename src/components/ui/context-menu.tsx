@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Maximize2 } from 'lucide-react';
+import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter } from 'lucide-react';
 
 
 interface ContextMenuProps {
@@ -22,9 +22,8 @@ interface ContextMenuProps {
   isFreeflow?: boolean;
   onTextStyling?: () => void;
   onVisualStyling?: () => void;
-  onToggleSizeMode?: () => void;
-  isSizeModeAuto?: boolean;
-  supportsSizeMode?: boolean;
+  onOrientationChange?: (orientation: 'auto' | 'grid' | 'horizontal' | 'vertical') => void;
+  currentOrientation?: 'auto' | 'grid' | 'horizontal' | 'vertical';
 }
 
 export function ContextMenu({ 
@@ -46,7 +45,9 @@ export function ContextMenu({
   onVisualStyling,
   onToggleSizeMode,
   isSizeModeAuto = true,
-  supportsSizeMode = false
+  supportsSizeMode = false,
+  onOrientationChange,
+  currentOrientation = 'auto'
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -125,29 +126,52 @@ export function ContextMenu({
         </button>
       )}
 
-      {supportsSizeMode && onToggleSizeMode && (
-        <button
-          className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
-          onClick={() => {
-            onToggleSizeMode();
-            onClose();
-          }}
-        >
-          <Maximize2 className="w-4 h-4" />
-          Size: {isSizeModeAuto ? 'Auto' : 'Free'}
-        </button>
+      {itemType === 'zone' && onOrientationChange && (
+        <>
+          <div className="border-t border-border my-1" />
+          <div className="px-3 py-1 text-xs font-medium text-muted-foreground">Orientation</div>
+          <button
+            className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+            onClick={() => {
+              onOrientationChange('auto');
+              onClose();
+            }}
+          >
+            <AlignCenter className="w-4 h-4" />
+            Auto
+          </button>
+          <button
+            className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+            onClick={() => {
+              onOrientationChange('grid');
+              onClose();
+            }}
+          >
+            <Grid3X3 className="w-4 h-4" />
+            Grid
+          </button>
+          <button
+            className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+            onClick={() => {
+              onOrientationChange('horizontal');
+              onClose();
+            }}
+          >
+            <AlignLeft className="w-4 h-4" />
+            Horizontal
+          </button>
+          <button
+            className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+            onClick={() => {
+              onOrientationChange('vertical');
+              onClose();
+            }}
+          >
+            <Move3D className="w-4 h-4" />
+            Vertical
+          </button>
+        </>
       )}
-      
-      <button
-        className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
-        onClick={() => {
-          onDelete();
-          onClose();
-        }}
-      >
-        <Trash2 className="w-4 h-4 text-destructive" />
-        Delete
-      </button>
 
       {itemType === 'node' && (
         <>
@@ -206,6 +230,19 @@ export function ContextMenu({
           </button>
         </>
       )}
+
+      <div className="border-t border-border my-1" />
+      
+      <button
+        className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+        onClick={() => {
+          onDelete();
+          onClose();
+        }}
+      >
+        <Trash2 className="w-4 h-4 text-destructive" />
+        Delete
+      </button>
     </div>
   );
 }

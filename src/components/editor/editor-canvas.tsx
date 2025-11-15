@@ -3961,10 +3961,7 @@ return (
             ? diagramData.nodes.find(n => n.id === contextMenu.itemId)
             : diagramData.zones?.find(zone => zone.id === contextMenu.itemId);
           
-          const isSizeModeAuto = currentItem?.sizeMode === 'auto';
-          const supportsSizeMode = contextMenu.itemType === 'node' 
-            ? (currentItem?.type === 'generic.text.textbox' || currentItem?.type === 'zone')
-            : contextMenu.itemType === 'zone';
+
           
           const itemConnections = diagramData.connections.filter((e: any) => 
             e.from === contextMenu.itemId || e.to === contextMenu.itemId
@@ -4009,43 +4006,7 @@ return (
                 });
               }}
               connections={itemConnections}
-              onToggleSizeMode={() => {
-                if (contextMenu.itemType === 'node') {
-                  const node = diagramData.nodes.find(n => n.id === contextMenu.itemId);
-                  if (node && (node.type === 'generic.text.textbox' || node.type === 'zone')) {
-                    setDiagramData(prev => ({
-                      ...prev,
-                      nodes: prev.nodes.map(n => 
-                        n.id === contextMenu.itemId 
-                          ? { ...n, sizeMode: n.sizeMode === 'auto' ? 'custom' : 'auto' }
-                          : n
-                      )
-                    }));
-                    toast({
-                      title: "Size Mode Changed",
-                      description: `Size mode changed to ${node.sizeMode === 'auto' ? 'Custom' : 'Auto'}`,
-                    });
-                  }
-                } else if (contextMenu.itemType === 'zone') {
-                  const zone = diagramData.zones?.find(zone => zone.id === contextMenu.itemId);
-                  if (zone) {
-                    setDiagramData(prev => ({
-                      ...prev,
-                      zones: prev.zones?.map(zone => 
-                        zone.id === contextMenu.itemId 
-                          ? { ...zone, sizeMode: zone.sizeMode === 'auto' ? 'custom' : 'auto' }
-                          : zone
-                      )
-                    }));
-                    toast({
-                      title: "Size Mode Changed", 
-                      description: `Size mode changed to ${zone.sizeMode === 'auto' ? 'Custom' : 'Auto'}`,
-                    });
-                  }
-                }
-              }}
-              isSizeModeAuto={isSizeModeAuto}
-              supportsSizeMode={supportsSizeMode}
+
               onToggleFreeflow={() => handleToggleFreeflow(contextMenu.itemId)}
               isFreeflow={diagramData.nodes.find(n => n.id === contextMenu.itemId)?.freeflow || false}
               onTextStyling={() => {
@@ -4080,6 +4041,57 @@ return (
                 }
                 onTriggerConnectionSettingsPanel?.();
               }}
+              onOrientationChange={(orientation) => {
+                if (contextMenu.itemType === 'zone') {
+                  const zone = diagramData.zones?.find(zone => zone.id === contextMenu.itemId);
+                  if (zone) {
+                    // Map the UI orientation values to the data model values
+                    let newOrientation: 'horizontal' | 'vertical' | 'square' | undefined;
+                    let newSizeMode: 'auto' | 'custom';
+                    switch (orientation) {
+                      case 'auto':
+                        newOrientation = undefined;
+                        newSizeMode = 'auto';
+                        break;
+                      case 'grid':
+                        newOrientation = 'square';
+                        newSizeMode = 'custom';
+                        break;
+                      case 'horizontal':
+                        newOrientation = 'horizontal';
+                        newSizeMode = 'custom';
+                        break;
+                      case 'vertical':
+                        newOrientation = 'vertical';
+                        newSizeMode = 'custom';
+                        break;
+                    }
+                    
+                    setDiagramData(prev => ({
+                      ...prev,
+                      zones: prev.zones?.map(z => 
+                        z.id === contextMenu.itemId 
+                          ? { ...z, orientation: newOrientation, sizeMode: newSizeMode }
+                          : z
+                      )
+                    }));
+                    toast({
+                      title: "Orientation Changed",
+                      description: `Zone orientation changed to ${orientation === 'grid' ? 'Grid' : orientation.charAt(0).toUpperCase() + orientation.slice(1)}`,
+                    });
+                  }
+                }
+              }}
+              currentOrientation={
+                (() => {
+                  const zone = diagramData.zones?.find(zone => zone.id === contextMenu.itemId);
+                  if (!zone) return 'auto';
+                  // Map the data model values back to UI values
+                  if (!zone.orientation) return 'auto';
+                  if (zone.orientation === 'square') return 'grid';
+                  return zone.orientation;
+                })()
+              }
             />
           );
         })()}
