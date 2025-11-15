@@ -9,15 +9,36 @@ import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TextStyling, COMMON_FONT_FAMILIES } from "@/lib/text-styling";
-import { Type, AlignLeft, AlignCenter, AlignRight, AlignJustify, ArrowUp, Circle, ArrowDown, RotateCcw } from "lucide-react";
+import { Type, AlignLeft, AlignCenter, AlignRight, AlignJustify, ArrowUp, Circle, ArrowDown, RotateCcw, Move3D, Box } from "lucide-react";
 
 interface TextStylingPanelProps {
   styling: Partial<TextStyling>;
   onStylingChange: (styling: Partial<TextStyling>) => void;
   onReset?: () => void;
+  selectedItem?: any; // To determine if it's a zone
+  textPosition?: string; // Current text position for zones
+  onTextPositionChange?: (position: string) => void; // Handler for text position changes
 }
 
-export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, onStylingChange, onReset }: TextStylingPanelProps) {
+export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, onStylingChange, onReset, selectedItem, textPosition, onTextPositionChange }: TextStylingPanelProps) {
+  // For zones with outside/inline positions, derive vertical position from textPosition
+  const getEffectiveVerticalPosition = (): 'top' | 'middle' | 'bottom' => {
+    try {
+      if (selectedItem && selectedItem.itemType === 'zone' && textPosition) {
+        if (textPosition === 'outside-bottom' || textPosition === 'inline-bottom') {
+          return 'bottom';
+        } else if (textPosition === 'outside-top' || textPosition === 'inline-top') {
+          return 'top';
+        }
+      }
+      return (styling.textVerticalPosition as 'top' | 'middle' | 'bottom') || 'middle';
+    } catch (error) {
+      return 'middle';
+    }
+  };
+
+  const effectiveVerticalPosition = getEffectiveVerticalPosition();
+
   const handlePropertyChange = (property: keyof TextStyling, value: any) => {
     onStylingChange({
       ...styling,
@@ -136,27 +157,55 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
           <Label className="text-xs font-medium">Vertical Position</Label>
           <div className="flex gap-1">
             <Button
-              variant={styling.textVerticalPosition === 'top' ? 'default' : 'outline'}
+              variant={effectiveVerticalPosition === 'top' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => handlePropertyChange('textVerticalPosition', styling.textVerticalPosition === 'top' ? 'middle' : 'top')}
+              onClick={() => {
+                const newVerticalPos = effectiveVerticalPosition === 'top' ? 'middle' : 'top';
+                handlePropertyChange('textVerticalPosition', newVerticalPos);
+                // For zones with outside position, update text position based on vertical position
+                if (selectedItem && selectedItem.itemType === 'zone') {
+                  if (textPosition?.startsWith('outside-') || textPosition === 'outside') {
+                    const newTextPos = newVerticalPos === 'bottom' ? 'outside-bottom' : 'outside-top';
+                    onTextPositionChange && onTextPositionChange(newTextPos);
+                  }
+                }
+              }}
               className="h-8 px-2"
               title="Align Top"
             >
               <ArrowUp className="w-3 h-3" />
             </Button>
             <Button
-              variant={styling.textVerticalPosition === 'middle' ? 'default' : 'outline'}
+              variant={effectiveVerticalPosition === 'middle' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => handlePropertyChange('textVerticalPosition', 'middle')}
+              onClick={() => {
+                handlePropertyChange('textVerticalPosition', 'middle');
+                // For zones with outside position, update text position based on vertical position
+                if (selectedItem && selectedItem.itemType === 'zone') {
+                  if (textPosition?.startsWith('outside-') || textPosition === 'outside') {
+                    onTextPositionChange && onTextPositionChange('outside-top');
+                  }
+                }
+              }}
               className="h-8 px-2"
               title="Align Middle"
             >
               <Circle className="w-3 h-3" />
             </Button>
             <Button
-              variant={styling.textVerticalPosition === 'bottom' ? 'default' : 'outline'}
+              variant={effectiveVerticalPosition === 'bottom' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => handlePropertyChange('textVerticalPosition', styling.textVerticalPosition === 'bottom' ? 'middle' : 'bottom')}
+              onClick={() => {
+                const newVerticalPos = effectiveVerticalPosition === 'bottom' ? 'middle' : 'bottom';
+                handlePropertyChange('textVerticalPosition', newVerticalPos);
+                // For zones with outside position, update text position based on vertical position
+                if (selectedItem && selectedItem.itemType === 'zone') {
+                  if (textPosition?.startsWith('outside-') || textPosition === 'outside') {
+                    const newTextPos = newVerticalPos === 'bottom' ? 'outside-bottom' : 'outside-top';
+                    onTextPositionChange && onTextPositionChange(newTextPos);
+                  }
+                }
+              }}
               className="h-8 px-2"
               title="Align Bottom"
             >
@@ -164,6 +213,47 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
             </Button>
           </div>
         </div>
+
+        {/* Text Position - Only for zones */}
+        {selectedItem && selectedItem.itemType === 'zone' && (
+          <>
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Text Position</Label>
+              <div className="grid grid-cols-2 gap-1">
+                <Button
+                  variant={textPosition === 'inside' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => onTextPositionChange && onTextPositionChange('inside')}
+                  className="h-8 px-2 text-xs"
+                  title="Inside Zone"
+                >
+                  <Box className="w-3 h-3 mr-1" />
+                  Inside
+                </Button>
+                <Button
+                  variant={textPosition?.startsWith('outside-') ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => {
+                    // Use effective vertical position to determine outside-top or outside-bottom
+                    const verticalPos = effectiveVerticalPosition || 'middle';
+                    const newPosition = verticalPos === 'bottom' ? 'outside-bottom' : 'outside-top';
+                    // Update textPosition - handleTextPositionChange will also update textVerticalPosition
+                    if (onTextPositionChange) {
+                      onTextPositionChange(newPosition);
+                    }
+                  }}
+                  className="h-8 px-2 text-xs"
+                  title="Outside Zone"
+                  type="button"
+                >
+                  <Move3D className="w-3 h-3 mr-1" />
+                  Outside
+                </Button>
+              </div>
+            </div>
+            <Separator />
+          </>
+        )}
 
         <Separator />
 

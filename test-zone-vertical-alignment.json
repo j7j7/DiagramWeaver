@@ -1,0 +1,111 @@
+{
+  "nodes": [
+    {
+      "id": "node1",
+      "type": "aws.compute.ec2",
+      "label": "EC2 Instance",
+      "x": 100,
+      "y": 100
+    },
+    {
+      "id": "node2", 
+      "type": "aws.database.rds",
+      "label": "RDS Database",
+      "x": 300,
+      "y": 100
+    }
+  ],
+  "connections": [],
+  "zones": [
+    {
+      "id": "zone1",
+      "type": "zone",
+      "subType": "zone",
+      "label": "Top Aligned",
+      "children": ["node1"],
+      "x": 50,
+      "y": 50,
+      "width": 200,
+      "height": 150,
+      "sizeMode": "custom",
+      "textPosition": "inside",
+      "textVerticalPosition": "top",
+      "textJustify": "center",
+      "borderStyle": "dashed",
+      "borderColor": "#3b82f6",
+      "backgroundColor": "rgba(59, 130, 246, 0.1)"
+    },
+    {
+      "id": "zone2",
+      "type": "zone",
+      "subType": "zone",
+      "label": "Middle Aligned",
+      "children": ["node2"],
+      "x": 300,
+      "y": 50,
+      "width": 200,
+      "height": 150,
+      "sizeMode": "custom",
+      "textPosition": "inside",
+      "textVerticalPosition": "middle",
+      "textJustify": "center",
+      "borderStyle": "dashed",
+      "borderColor": "#10b981",
+      "backgroundColor": "rgba(16, 185, 129, 0.1)"
+    },
+    {
+      "id": "zone3",
+      "type": "zone",
+      "subType": "zone",
+      "label": "Bottom Aligned",
+      "children": [],
+      "x": 550,
+      "y": 50,
+      "width": 200,
+      "height": 150,
+      "sizeMode": "custom",
+      "textPosition": "inside",
+      "textVerticalPosition": "bottom",
+      "textJustify": "center",
+      "borderStyle": "dashed",
+      "borderColor": "#f59e0b",
+      "backgroundColor": "rgba(245, 158, 11, 0.1)"
+    },
+    {
+      "id": "zone4",
+      "type": "zone",
+      "subType": "zone",
+      "label": "Top Position with Middle Align",
+      "children": [],
+      "x": 50,
+      "y": 250,
+      "width": 200,
+      "height": 150,
+      "sizeMode": "custom",
+      "textPosition": "top-center",
+      "textVerticalPosition": "middle",
+      "textJustify": "center",
+      "borderStyle": "dashed",
+      "borderColor": "#ef4444",
+      "backgroundColor": "rgba(239, 68, 68, 0.1)"
+    },
+    {
+      "id": "zone5",
+      "type": "zone",
+      "subType": "zone",
+      "label": "Bottom Position with Top Align",
+      "children": [],
+      "x": 300,
+      "y": 250,
+      "width": 200,
+      "height": 150,
+      "sizeMode": "custom",
+      "textPosition": "bottom-center",
+      "textVerticalPosition": "top",
+      "textJustify": "center",
+      "borderStyle": "dashed",
+      "borderColor": "#8b5cf6",
+      "backgroundColor": "rgba(139, 92, 246, 0.1)"
+    }
+  ]
+}

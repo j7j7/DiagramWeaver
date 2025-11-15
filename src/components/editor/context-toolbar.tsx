@@ -38,7 +38,7 @@ import type { SelectedItem } from '../diagram-editor';
 import type { DiagramData } from '@/lib/types';
 import { DiagramTheme } from '@/lib/theme-types';
 import { themeManager } from '@/lib/theme-manager';
-import { extractTextStylingFromNode, extractTextStylingFromGroup } from '@/lib/text-styling';
+import { extractTextStylingFromNode, extractTextStylingFromGroup, applyTextStylingToZone, applyTextStylingToNode } from '@/lib/text-styling';
 import { extractVisualStylingFromNode, extractVisualStylingFromGroup } from '@/lib/visual-styling';
 
 interface ContextToolbarProps {
@@ -196,7 +196,21 @@ export function ContextToolbar({
   };
 
   const handleTextPositionChange = (value: string) => {
-    onItemUpdate?.({ ...selectedItem, textPosition: value as any } as SelectedItem);
+    // When textPosition changes for zones, also update textVerticalPosition if needed
+    if (selectedItem && selectedItem.itemType === 'zone') {
+      const updatedItem: any = { ...selectedItem, textPosition: value as any };
+      
+      // Derive textVerticalPosition from textPosition for outside/inline positions
+      if (value === 'outside-bottom' || value === 'inline-bottom') {
+        updatedItem.textVerticalPosition = 'bottom';
+      } else if (value === 'outside-top' || value === 'inline-top') {
+        updatedItem.textVerticalPosition = 'top';
+      }
+      
+      onItemUpdate?.(updatedItem as SelectedItem);
+    } else {
+      onItemUpdate?.({ ...selectedItem, textPosition: value as any } as SelectedItem);
+    }
   };
 
   const handleShapeTextPlacementChange = (value: 'above' | 'center' | 'under') => {
@@ -223,7 +237,18 @@ export function ContextToolbar({
   };
 
   const handleTextStylingChange = (styling: any) => {
-    onItemUpdate?.({ ...selectedItem, ...styling } as SelectedItem);
+    if (isZone) {
+      // Use applyTextStylingToZone to properly merge styling for zones
+      const updatedZone = applyTextStylingToZone(selectedItem as any, styling);
+      onItemUpdate?.({ ...updatedZone, itemType: 'zone' } as SelectedItem);
+    } else if (isNode) {
+      // Use applyTextStylingToNode to properly merge styling for nodes
+      const updatedNode = applyTextStylingToNode(selectedItem as any, styling);
+      onItemUpdate?.({ ...updatedNode, itemType: 'node' } as SelectedItem);
+    } else {
+      // Fallback to direct spread
+      onItemUpdate?.({ ...selectedItem, ...styling } as SelectedItem);
+    }
   };
 
   const handleTextStylingReset = () => {
@@ -674,6 +699,9 @@ export function ContextToolbar({
                 styling={getCurrentTextStyling}
                 onStylingChange={handleTextStylingChange}
                 onReset={handleTextStylingReset}
+                selectedItem={selectedItem}
+                textPosition={selectedItem?.textPosition}
+                onTextPositionChange={handleTextPositionChange}
               />
             </PopoverContent>
           </Popover>
@@ -808,7 +836,7 @@ export function ContextToolbar({
               </TooltipTrigger>
               <TooltipContent>Text Position</TooltipContent>
             </Tooltip>
-            <PopoverContent className="w-48">
+            <PopoverContent className="w-56">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Text Position</label>
                 <Select 
@@ -819,12 +847,34 @@ export function ContextToolbar({
                     <SelectValue placeholder="Select position" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="top-left">Top Left</SelectItem>
-                    <SelectItem value="top-center">Top Center</SelectItem>
-                    <SelectItem value="top-right">Top Right</SelectItem>
-                    <SelectItem value="bottom-left">Bottom Left</SelectItem>
-                    <SelectItem value="bottom-center">Bottom Center</SelectItem>
-                    <SelectItem value="bottom-right">Bottom Right</SelectItem>
+                    <div className="max-h-60 overflow-y-auto">
+                      {/* Inline Positions */}
+                      <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">Inline (Border)</div>
+                      <SelectItem value="inline-top">Inline Top</SelectItem>
+                      <SelectItem value="inline-bottom">Inline Bottom</SelectItem>
+                      <SelectItem value="inline-left">Inline Left</SelectItem>
+                      <SelectItem value="inline-right">Inline Right</SelectItem>
+                      
+                      {/* Outside Positions */}
+                      <div className="px-2 py-1 text-xs font-semibold text-muted-foreground mt-2">Outside</div>
+                      <SelectItem value="outside-top">Outside Top</SelectItem>
+                      <SelectItem value="outside-bottom">Outside Bottom</SelectItem>
+                      <SelectItem value="outside-left">Outside Left</SelectItem>
+                      <SelectItem value="outside-right">Outside Right</SelectItem>
+                      
+                      {/* Traditional Positions */}
+                      <div className="px-2 py-1 text-xs font-semibold text-muted-foreground mt-2">Traditional</div>
+                      <SelectItem value="top-left">Top Left</SelectItem>
+                      <SelectItem value="top-center">Top Center</SelectItem>
+                      <SelectItem value="top-right">Top Right</SelectItem>
+                      <SelectItem value="bottom-left">Bottom Left</SelectItem>
+                      <SelectItem value="bottom-center">Bottom Center</SelectItem>
+                      <SelectItem value="bottom-right">Bottom Right</SelectItem>
+                      
+                      {/* Inside Position */}
+                      <div className="px-2 py-1 text-xs font-semibold text-muted-foreground mt-2">Inside</div>
+                      <SelectItem value="inside">Inside Zone</SelectItem>
+                    </div>
                   </SelectContent>
                 </Select>
               </div>

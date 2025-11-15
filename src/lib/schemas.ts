@@ -88,9 +88,15 @@ export const DiagramGroupDataSchema = z.object({
   lineColor: z.string().optional(),
   shadow: z.boolean().optional(),
   parentId: z.string().optional(),
+  objectStyle: z.string().optional(), // Predefined visual style key
+  borderWidth: z.number().optional(), // Border thickness for zones
   
    // Text positioning properties
    textPosition: z.enum(['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right', 'inside', 'inline-top', 'inline-bottom', 'outside-top', 'outside-bottom', 'outside-left', 'outside-right']).optional(),
+   
+   // Text justification properties
+   textJustify: z.enum(['left', 'center', 'right', 'full']).optional(), // Text justification for zones
+   textVerticalPosition: z.enum(['top', 'middle', 'bottom']).optional(), // Vertical position of text in zones
   
   // Text styling properties
   fontFamily: z.string().optional(), // Font family (e.g., 'Arial', 'Helvetica', 'Times New Roman')
@@ -180,9 +186,14 @@ export const DiagramGroupItemSchema: z.ZodType<any> = z.object({
   maxItemsPerRow: z.number().optional(), // Maximum items per row (for grid layouts)
   lineColor: z.string().optional(), // Color for connections from this group
   shadow: z.boolean().optional(), // Whether to show shadow around the group/zone
+  objectStyle: z.string().optional(), // Predefined visual style key
   
    // Text positioning properties
    textPosition: z.enum(['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right', 'inside', 'inline-top', 'inline-bottom', 'outside-top', 'outside-bottom', 'outside-left', 'outside-right']).optional(),
+   
+   // Text justification properties
+   textJustify: z.enum(['left', 'center', 'right', 'full']).optional(), // Text justification for zones
+   textVerticalPosition: z.enum(['top', 'middle', 'bottom']).optional(), // Vertical position of text in zones
    
    // Text styling properties
    fontFamily: z.string().optional(), // Font family (e.g., 'Arial', 'Helvetica', 'Times New Roman')

@@ -124,50 +124,56 @@ export function extractTextStylingFromGroup(group: any): TextStyling {
 
 /**
  * Applies text styling to a node by merging with existing properties
+ * If a property is explicitly set to undefined, it will be removed from the node
  */
 export function applyTextStylingToNode(
   node: DiagramNodeData | DiagramNodeItem,
   styling: Partial<TextStyling>
 ): DiagramNodeData | DiagramNodeItem {
-  return {
-    ...node,
-    fontFamily: styling.fontFamily ?? node.fontFamily,
-    fontSize: styling.fontSize ?? node.fontSize,
-    fontWeight: styling.fontWeight ?? node.fontWeight,
-    fontStyle: styling.fontStyle ?? node.fontStyle,
-    textDecoration: styling.textDecoration ?? node.textDecoration,
-    textTransform: styling.textTransform ?? node.textTransform,
-    letterSpacing: styling.letterSpacing ?? node.letterSpacing,
-    lineHeight: styling.lineHeight ?? node.lineHeight,
-    textOpacity: styling.textOpacity ?? node.textOpacity,
-    textColor: styling.textColor ?? node.textColor,
-    textJustify: styling.textJustify ?? node.textJustify,
-    textVerticalPosition: styling.textVerticalPosition ?? node.textVerticalPosition
-  };
+  const updated: any = { ...node };
+  
+  // Handle each property - if explicitly set (including undefined), use it; otherwise keep existing
+  if ('fontFamily' in styling) updated.fontFamily = styling.fontFamily;
+  if ('fontSize' in styling) updated.fontSize = styling.fontSize;
+  if ('fontWeight' in styling) updated.fontWeight = styling.fontWeight;
+  if ('fontStyle' in styling) updated.fontStyle = styling.fontStyle;
+  if ('textDecoration' in styling) updated.textDecoration = styling.textDecoration;
+  if ('textTransform' in styling) updated.textTransform = styling.textTransform;
+  if ('letterSpacing' in styling) updated.letterSpacing = styling.letterSpacing;
+  if ('lineHeight' in styling) updated.lineHeight = styling.lineHeight;
+  if ('textOpacity' in styling) updated.textOpacity = styling.textOpacity;
+  if ('textColor' in styling) updated.textColor = styling.textColor;
+  if ('textJustify' in styling) updated.textJustify = styling.textJustify;
+  if ('textVerticalPosition' in styling) updated.textVerticalPosition = styling.textVerticalPosition;
+  
+  return updated;
 }
 
 /**
  * Applies text styling to a zone by merging with existing properties
+ * If a property is explicitly set to undefined, it will be removed from the zone
  */
 export function applyTextStylingToZone(
   zone: DiagramZoneData | DiagramZoneItem,
   styling: Partial<TextStyling>
 ): DiagramZoneData | DiagramZoneItem {
-  return {
-    ...zone,
-    fontFamily: styling.fontFamily ?? zone.fontFamily,
-    fontSize: styling.fontSize ?? zone.fontSize,
-    fontWeight: styling.fontWeight ?? zone.fontWeight,
-    fontStyle: styling.fontStyle ?? zone.fontStyle,
-    textDecoration: styling.textDecoration ?? zone.textDecoration,
-    textTransform: styling.textTransform ?? zone.textTransform,
-    letterSpacing: styling.letterSpacing ?? zone.letterSpacing,
-    lineHeight: styling.lineHeight ?? zone.lineHeight,
-    textOpacity: styling.textOpacity ?? zone.textOpacity,
-    textColor: styling.textColor ?? zone.textColor,
-    textJustify: styling.textJustify ?? zone.textJustify,
-    textVerticalPosition: styling.textVerticalPosition ?? zone.textVerticalPosition
-  };
+  const updated: any = { ...zone };
+  
+  // Handle each property - if explicitly set (including undefined), use it; otherwise keep existing
+  if ('fontFamily' in styling) updated.fontFamily = styling.fontFamily;
+  if ('fontSize' in styling) updated.fontSize = styling.fontSize;
+  if ('fontWeight' in styling) updated.fontWeight = styling.fontWeight;
+  if ('fontStyle' in styling) updated.fontStyle = styling.fontStyle;
+  if ('textDecoration' in styling) updated.textDecoration = styling.textDecoration;
+  if ('textTransform' in styling) updated.textTransform = styling.textTransform;
+  if ('letterSpacing' in styling) updated.letterSpacing = styling.letterSpacing;
+  if ('lineHeight' in styling) updated.lineHeight = styling.lineHeight;
+  if ('textOpacity' in styling) updated.textOpacity = styling.textOpacity;
+  if ('textColor' in styling) updated.textColor = styling.textColor;
+  if ('textJustify' in styling) updated.textJustify = styling.textJustify;
+  if ('textVerticalPosition' in styling) updated.textVerticalPosition = styling.textVerticalPosition;
+  
+  return updated;
 }
 
 /**

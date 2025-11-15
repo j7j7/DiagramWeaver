@@ -1,0 +1,106 @@
+{
+  "nodes": [
+    {
+      "id": "node1",
+      "type": "aws.compute.ec2",
+      "label": "EC2 Instance",
+      "x": 100,
+      "y": 100
+    },
+    {
+      "id": "node2", 
+      "type": "aws.database.rds",
+      "label": "RDS Database",
+      "x": 300,
+      "y": 100
+    }
+  ],
+  "connections": [],
+  "zones": [
+    {
+      "id": "zone1",
+      "type": "zone",
+      "subType": "zone",
+      "label": "Left Aligned Zone Label",
+      "children": ["node1"],
+      "x": 50,
+      "y": 50,
+      "width": 200,
+      "height": 150,
+      "sizeMode": "custom",
+      "textPosition": "top-left",
+      "textJustify": "left",
+      "borderStyle": "dashed",
+      "borderColor": "#3b82f6",
+      "backgroundColor": "rgba(59, 130, 246, 0.1)"
+    },
+    {
+      "id": "zone2",
+      "type": "zone",
+      "subType": "zone",
+      "label": "Center Aligned Zone Label",
+      "children": ["node2"],
+      "x": 300,
+      "y": 50,
+      "width": 200,
+      "height": 150,
+      "sizeMode": "custom",
+      "textPosition": "top-center",
+      "textJustify": "center",
+      "borderStyle": "dashed",
+      "borderColor": "#10b981",
+      "backgroundColor": "rgba(16, 185, 129, 0.1)"
+    },
+    {
+      "id": "zone3",
+      "type": "zone",
+      "subType": "zone",
+      "label": "Right Aligned Zone Label",
+      "children": [],
+      "x": 550,
+      "y": 50,
+      "width": 200,
+      "height": 150,
+      "sizeMode": "custom",
+      "textPosition": "top-right",
+      "textJustify": "right",
+      "borderStyle": "dashed",
+      "borderColor": "#f59e0b",
+      "backgroundColor": "rgba(245, 158, 11, 0.1)"
+    },
+    {
+      "id": "zone4",
+      "type": "zone",
+      "subType": "zone",
+      "label": "Inline Edge Label",
+      "children": [],
+      "x": 50,
+      "y": 250,
+      "width": 200,
+      "height": 150,
+      "sizeMode": "custom",
+      "textPosition": "inline-top",
+      "textJustify": "center",
+      "borderStyle": "dashed",
+      "borderColor": "#ef4444",
+      "backgroundColor": "rgba(239, 68, 68, 0.1)"
+    },
+    {
+      "id": "zone5",
+      "type": "zone",
+      "subType": "zone",
+      "label": "Justified Text Zone Label That Should Span The Full Width",
+      "children": [],
+      "x": 300,
+      "y": 250,
+      "width": 250,
+      "height": 150,
+      "sizeMode": "custom",
+      "textPosition": "top-center",
+      "textJustify": "full",
+      "borderStyle": "dashed",
+      "borderColor": "#8b5cf6",
+      "backgroundColor": "rgba(139, 92, 246, 0.1)"
+    }
+  ]
+}
