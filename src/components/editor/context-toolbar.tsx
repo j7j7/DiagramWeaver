@@ -22,7 +22,8 @@ import {
   Maximize2,
   ArrowRight,
   ChevronDown,
-  Palette
+  Palette,
+  GripHorizontal
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,6 +52,7 @@ interface ContextToolbarProps {
   onConnectionUpdate?: (from: string, to: string, updates: { arrow?: boolean; text?: string; textPosition?: number; color?: string; lineWidth?: number; shadow?: boolean; [key: string]: any }) => void;
   onConnectionDisconnect?: (from: string, to: string) => void;
   diagramData?: DiagramData;
+  onDiagramDataUpdate?: (newDiagramData: DiagramData) => void;
   onAlignObjects?: (alignment: 'top' | 'center' | 'bottom' | 'v-middle' | 'left' | 'h-center' | 'right' | 'distribute-v' | 'distribute-h') => void;
   onThemeApplyToSelected?: (theme: DiagramTheme) => void;
   textStylingPanelOpen?: boolean;
@@ -71,6 +73,7 @@ export function ContextToolbar({
   onConnectionUpdate,
   onConnectionDisconnect,
   diagramData,
+  onDiagramDataUpdate,
   onAlignObjects,
   onThemeApplyToSelected,
   textStylingPanelOpen = false,
@@ -85,6 +88,8 @@ export function ContextToolbar({
   const [connectionsOpen, setConnectionsOpen] = useState(false);
   const [textStylingOpen, setTextStylingOpen] = useState(textStylingPanelOpen);
   const [visualStylingOpen, setVisualStylingOpen] = useState(visualStylingPanelOpen);
+  const [draggedConnectionIndex, setDraggedConnectionIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   // Sync external panel state with internal state
   useEffect(() => {
@@ -286,6 +291,122 @@ export function ContextToolbar({
       borderWidth: undefined
     };
     onItemUpdate?.({ ...selectedItem, ...defaultStyling } as SelectedItem);
+  };
+
+  // Drag and drop handlers for connection reordering
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    console.log('Drag start:', index);
+    setDraggedConnectionIndex(index);
+    // Set drag data to identify the connection
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index.toString());
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    console.log('Drag over:', index);
+    setDragOverIndex(index);
+  };
+
+  const handleDragEnter = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    console.log('Drag enter:', index);
+    setDragOverIndex(index);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    // Only clear drag over if we're actually leaving the element
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+    
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+      console.log('Drag leave');
+      setDragOverIndex(null);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Drop:', dropIndex, 'from:', draggedConnectionIndex);
+    setDragOverIndex(null);
+    
+    const draggedIndex = parseInt(e.dataTransfer.getData('text/plain'));
+    
+    if (isNaN(draggedIndex) || draggedIndex === dropIndex) {
+      setDraggedConnectionIndex(null);
+      return;
+    }
+
+    console.log('diagramData exists:', !!diagramData);
+    console.log('onDiagramDataUpdate exists:', !!onDiagramDataUpdate);
+    console.log('Current connections count:', diagramData?.connections?.length);
+
+    // Get the actual connection objects from the filtered getAllConnections
+    const allConnections = getAllConnections;
+    if (draggedIndex >= allConnections.length || dropIndex >= allConnections.length) {
+      console.log('Invalid indices');
+      setDraggedConnectionIndex(null);
+      return;
+    }
+
+    const draggedConnInfo = allConnections[draggedIndex];
+    const dropConnInfo = allConnections[dropIndex];
+    
+    console.log('Dragged connection:', draggedConnInfo.connection.from, '->', draggedConnInfo.connection.to);
+    console.log('Drop target connection:', dropConnInfo.connection.from, '->', dropConnInfo.connection.to);
+
+    // Reorder connections in the diagram data
+    if (diagramData && onDiagramDataUpdate) {
+      const newConnections = [...(diagramData.connections || [])];
+      
+      console.log('All connections before:', newConnections.map((c, i) => `${i}: ${c.from}->${c.to}`));
+      
+      // Find the actual indices in the full connections array
+      const draggedActualIndex = newConnections.findIndex(
+        c => (c.from === draggedConnInfo.connection.from && c.to === draggedConnInfo.connection.to) ||
+             (c.from === draggedConnInfo.connection.to && c.to === draggedConnInfo.connection.from)
+      );
+      
+      const dropActualIndex = newConnections.findIndex(
+        c => (c.from === dropConnInfo.connection.from && c.to === dropConnInfo.connection.to) ||
+             (c.from === dropConnInfo.connection.to && c.to === dropConnInfo.connection.from)
+      );
+      
+      console.log('Actual indices - dragged:', draggedActualIndex, 'drop:', dropActualIndex);
+      
+      if (draggedActualIndex !== -1 && dropActualIndex !== -1) {
+        const draggedConnection = newConnections[draggedActualIndex];
+        
+        // Remove the dragged connection and insert at new position
+        newConnections.splice(draggedActualIndex, 1);
+        newConnections.splice(dropActualIndex, 0, draggedConnection);
+        
+        console.log('Connections after reorder:', newConnections.map((c, i) => `${i}: ${c.from}->${c.to}`));
+        
+        // Update the diagram data with reordered connections
+        onDiagramDataUpdate({
+          ...diagramData,
+          connections: newConnections
+        });
+        
+        console.log('Called onDiagramDataUpdate');
+      } else {
+        console.log('Could not find connection indices in full array');
+      }
+    } else {
+      console.log('Missing diagramData or onDiagramDataUpdate');
+    }
+    
+    setDraggedConnectionIndex(null);
+  };
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    console.log('Drag end');
+    setDraggedConnectionIndex(null);
+    setDragOverIndex(null);
   };
 
   const isZone = selectedItem.itemType === 'zone';
@@ -514,10 +635,32 @@ export function ContextToolbar({
                       return (
                         <div 
                           key={`${connInfo.connection.from}-${connInfo.connection.to}-${index}`}
-                          className="flex flex-col gap-2 p-2 rounded-md border border-border hover:bg-accent/20"
+                          className={`flex flex-col gap-2 p-2 rounded-md border transition-all ${
+                            dragOverIndex === index 
+                              ? 'border-primary bg-primary/10 scale-105' 
+                              : 'border-border hover:bg-accent/20'
+                          } ${draggedConnectionIndex === index ? 'opacity-50' : ''}`}
+                          onDragOver={(e) => handleDragOver(e, index)}
+                          onDragEnter={(e) => handleDragEnter(e, index)}
+                          onDragLeave={handleDragLeave}
+                          onDrop={(e) => handleDrop(e, index)}
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <div 
+                                className="cursor-grab active:cursor-grabbing p-1 hover:bg-accent/50 rounded"
+                                draggable
+                                onDragStart={(e) => {
+                                  e.stopPropagation();
+                                  handleDragStart(e, index);
+                                }}
+                                onDragEnd={(e) => {
+                                  e.stopPropagation();
+                                  handleDragEnd(e);
+                                }}
+                              >
+                                <GripHorizontal className="h-3 w-3 text-muted-foreground" />
+                              </div>
                               <span className="text-xs font-mono text-muted-foreground">
                                 {connInfo.isOutgoing ? '→' : '←'}
                               </span>

@@ -50,6 +50,7 @@ interface TopMenuBarProps {
   onConnectionUpdate?: (from: string, to: string, updates: { arrow?: boolean; text?: string; textPosition?: number; color?: string; [key: string]: any }) => void;
   onConnectionDisconnect?: (from: string, to: string) => void;
   diagramData?: DiagramData;
+  onDiagramDataUpdate?: (newDiagramData: DiagramData) => void;
   mousePosition?: { x: number; y: number } | null;
   hoverEnabled?: boolean;
   onToggleHover?: () => void;
@@ -89,6 +90,7 @@ export function TopMenuBar({
   onConnectionUpdate,
   onConnectionDisconnect,
   diagramData,
+  onDiagramDataUpdate,
   mousePosition,
   hoverEnabled,
   onToggleHover,
@@ -357,6 +359,7 @@ export function TopMenuBar({
             onConnectionUpdate={onConnectionUpdate}
             onConnectionDisconnect={onConnectionDisconnect}
             diagramData={diagramData}
+            onDiagramDataUpdate={onDiagramDataUpdate}
             onAlignObjects={onAlignObjects}
             onThemeApplyToSelected={onThemeApplyToSelected}
             textStylingPanelOpen={textStylingPanelOpen}

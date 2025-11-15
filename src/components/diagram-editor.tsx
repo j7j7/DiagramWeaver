@@ -1377,7 +1377,8 @@ export default function DiagramEditor() {
                     }}
                     onConnectionUpdate={handleConnectionUpdate}
                     onConnectionDisconnect={disconnectConnection}
-                    diagramData={diagramData}
+                    diagramData={activeTab?.diagramData}
+                    onDiagramDataUpdate={setDiagramData}
                     mousePosition={mousePosition}
                     hoverEnabled={hoverEnabled}
                     onToggleHover={() => setHoverEnabled(!hoverEnabled)}
