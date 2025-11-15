@@ -567,10 +567,10 @@ const [{ isDragging }, drag] = useDrag(() => ({
       }}
       className={cn(
         "absolute rounded-lg cursor-move",
-        borderStyle !== 'none' && (isZone ? "border-2 border-dashed" : "border-2"),
+        borderStyle !== 'none' && "border-2",
         borderStyle === 'none' && (isSelected 
           ? "border border-dashed border-primary opacity-100" 
-          : "border border-dashed border-gray-400 opacity-0 hover:opacity-100 hover:border-primary hover:bg-primary/5"),
+          : "opacity-100 hover:border hover:border-dashed hover:border-primary hover:bg-primary/5"),
         (isDragging || isTouchDragging || isResizing) && "opacity-50",
         (isSelected || isDropTarget || isMultiSelected) && "ring-2 ring-primary ring-offset-2",
         isTargetable && "ring-2 ring-green-500 ring-offset-2 animate-pulse",
@@ -596,7 +596,7 @@ const [{ isDragging }, drag] = useDrag(() => ({
           borderColor: 'transparent'
         } : {
           borderWidth: (zone as any).borderWidth || 2,
-          borderStyle: isZone ? 'dashed' : 'solid',
+          borderStyle: borderStyle,
           borderColor: borderColor
         }),
         color: textColor,
