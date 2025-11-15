@@ -45,7 +45,7 @@ export function DraggableResourceItem({ resource, provider, category, icon }: Dr
         file: resource.file, // For ResourceIcon lookup during drag
       };
       
-      console.log('Creating zone drag item:', dragItem);
+
       return dragItem;
     }
     

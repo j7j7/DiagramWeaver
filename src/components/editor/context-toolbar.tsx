@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { 
   Type, 
   Info, 
@@ -162,11 +162,42 @@ export function ContextToolbar({
     onItemUpdate?.({ ...selectedItem, info: value } as SelectedItem);
   };
 
-  const handleColorChange = (property: 'borderColor' | 'backgroundColor' | 'textColor' | 'lineColor', value: string) => {
+  // Debounced color change to prevent excessive updates during dragging
+  const colorTimeoutRef = useRef<NodeJS.Timeout>();
+  // Connection color timeout ref
+  const connectionColorTimeoutRef = useRef<NodeJS.Timeout>();
+  
+  const handleColorChange = useCallback((property: 'borderColor' | 'backgroundColor' | 'textColor' | 'lineColor', value: string) => {
+    // Clear existing timeout
+    if (colorTimeoutRef.current) {
+      clearTimeout(colorTimeoutRef.current);
+    }
+    
+    // Set new timeout to update after 150ms of no changes
+    colorTimeoutRef.current = setTimeout(() => {
+      onItemUpdate?.({ ...selectedItem, [property]: value } as SelectedItem);
+    }, 150);
+  }, [selectedItem, onItemUpdate]);
+
+  // Immediate color change for final value (when input is released)
+  const handleColorChangeImmediate = useCallback((property: 'borderColor' | 'backgroundColor' | 'textColor' | 'lineColor', value: string) => {
+    if (colorTimeoutRef.current) {
+      clearTimeout(colorTimeoutRef.current);
+    }
     onItemUpdate?.({ ...selectedItem, [property]: value } as SelectedItem);
-  };
+  }, [selectedItem, onItemUpdate]);
 
-
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (colorTimeoutRef.current) {
+        clearTimeout(colorTimeoutRef.current);
+      }
+      if (connectionColorTimeoutRef.current) {
+        clearTimeout(connectionColorTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleMaxItemsPerRowChange = (value: number) => {
     onItemUpdate?.({ ...selectedItem, maxItemsPerRow: value } as SelectedItem);
@@ -323,7 +354,6 @@ export function ContextToolbar({
 
   // Drag and drop handlers for connection reordering
   const handleDragStart = (e: React.DragEvent, index: number) => {
-    console.log('Drag start:', index);
     setDraggedConnectionIndex(index);
     // Set drag data to identify the connection
     e.dataTransfer.effectAllowed = 'move';
@@ -333,13 +363,11 @@ export function ContextToolbar({
   const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    console.log('Drag over:', index);
     setDragOverIndex(index);
   };
 
   const handleDragEnter = (e: React.DragEvent, index: number) => {
     e.preventDefault();
-    console.log('Drag enter:', index);
     setDragOverIndex(index);
   };
 
@@ -350,7 +378,6 @@ export function ContextToolbar({
     const y = e.clientY;
     
     if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
-      console.log('Drag leave');
       setDragOverIndex(null);
     }
   };
@@ -358,7 +385,6 @@ export function ContextToolbar({
   const handleDrop = (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('Drop:', dropIndex, 'from:', draggedConnectionIndex);
     setDragOverIndex(null);
     
     const draggedIndex = parseInt(e.dataTransfer.getData('text/plain'));
@@ -368,14 +394,11 @@ export function ContextToolbar({
       return;
     }
 
-    console.log('diagramData exists:', !!diagramData);
-    console.log('onDiagramDataUpdate exists:', !!onDiagramDataUpdate);
-    console.log('Current connections count:', diagramData?.connections?.length);
+
 
     // Get the actual connection objects from the filtered getAllConnections
     const allConnections = getAllConnections;
     if (draggedIndex >= allConnections.length || dropIndex >= allConnections.length) {
-      console.log('Invalid indices');
       setDraggedConnectionIndex(null);
       return;
     }
@@ -383,14 +406,13 @@ export function ContextToolbar({
     const draggedConnInfo = allConnections[draggedIndex];
     const dropConnInfo = allConnections[dropIndex];
     
-    console.log('Dragged connection:', draggedConnInfo.connection.from, '->', draggedConnInfo.connection.to);
-    console.log('Drop target connection:', dropConnInfo.connection.from, '->', dropConnInfo.connection.to);
+
 
     // Reorder connections in the diagram data
     if (diagramData && onDiagramDataUpdate) {
       const newConnections = [...(diagramData.connections || [])];
       
-      console.log('All connections before:', newConnections.map((c, i) => `${i}: ${c.from}->${c.to}`));
+
       
       // Find the actual indices in the full connections array
       const draggedActualIndex = newConnections.findIndex(
@@ -403,7 +425,7 @@ export function ContextToolbar({
              (c.from === dropConnInfo.connection.to && c.to === dropConnInfo.connection.from)
       );
       
-      console.log('Actual indices - dragged:', draggedActualIndex, 'drop:', dropActualIndex);
+
       
       if (draggedActualIndex !== -1 && dropActualIndex !== -1) {
         const draggedConnection = newConnections[draggedActualIndex];
@@ -412,7 +434,7 @@ export function ContextToolbar({
         newConnections.splice(draggedActualIndex, 1);
         newConnections.splice(dropActualIndex, 0, draggedConnection);
         
-        console.log('Connections after reorder:', newConnections.map((c, i) => `${i}: ${c.from}->${c.to}`));
+
         
         // Update the diagram data with reordered connections
         onDiagramDataUpdate({
@@ -420,19 +442,13 @@ export function ContextToolbar({
           connections: newConnections
         });
         
-        console.log('Called onDiagramDataUpdate');
-      } else {
-        console.log('Could not find connection indices in full array');
       }
-    } else {
-      console.log('Missing diagramData or onDiagramDataUpdate');
     }
     
     setDraggedConnectionIndex(null);
   };
 
   const handleDragEnd = (e: React.DragEvent) => {
-    console.log('Drag end');
     setDraggedConnectionIndex(null);
     setDragOverIndex(null);
   };
@@ -624,15 +640,28 @@ export function ContextToolbar({
                         }
                       };
 
-                      const handleColorChange = (color: string) => {
-                        if (onConnectionUpdate) {
-                          onConnectionUpdate(
-                            connInfo.connection.from,
-                            connInfo.connection.to,
-                            {
-                              color: color
-                            }
-                          );
+                      // Debounced connection color change
+                      const handleConnectionColorChange = (color: string, immediate = false) => {
+                        if (connectionColorTimeoutRef.current) {
+                          clearTimeout(connectionColorTimeoutRef.current);
+                        }
+                        
+                        const updateColor = () => {
+                          if (onConnectionUpdate) {
+                            onConnectionUpdate(
+                              connInfo.connection.from,
+                              connInfo.connection.to,
+                              {
+                                color: color
+                              }
+                            );
+                          }
+                        };
+                        
+                        if (immediate) {
+                          updateColor();
+                        } else {
+                          connectionColorTimeoutRef.current = setTimeout(updateColor, 150);
                         }
                       };
 
@@ -722,14 +751,16 @@ export function ContextToolbar({
                               <Input
                                 type="color"
                                 value={connectionColor}
-                                onChange={(e) => handleColorChange(e.target.value)}
+                                onChange={(e) => handleConnectionColorChange((e.target as HTMLInputElement).value)}
+                                onMouseUp={(e) => handleConnectionColorChange((e.target as HTMLInputElement).value, true)}
+                                onBlur={(e) => handleConnectionColorChange((e.target as HTMLInputElement).value, true)}
                                 className="h-7 w-12 p-1 cursor-pointer shrink-0"
                                 title="Pick color"
                               />
                               <Input
                                 type="text"
                                 value={connectionColor}
-                                onChange={(e) => handleColorChange(e.target.value)}
+                                onChange={(e) => handleConnectionColorChange((e.target as HTMLInputElement).value)}
                                 className="h-7 flex-1 min-w-0 text-xs font-mono"
                                 placeholder="#6b7280"
                                 title="Hex color code"
