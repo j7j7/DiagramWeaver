@@ -210,8 +210,63 @@ export async function getResourceTypes(): Promise<ResourceType[]> {
  * @returns Promise resolving to full type or null
  */
 export async function expandResourceType(abbreviatedType: string): Promise<string | null> {
-  const resourceTypes = await getResourceTypes();
-  return matchResourceType(abbreviatedType, resourceTypes);
+  try {
+    // Check for known removed/deprecated types
+    if (isRemovedType(abbreviatedType)) {
+      console.warn(`Type '${abbreviatedType}' has been removed and will be ignored`);
+      return null;
+    }
+    
+    const resourceTypes = await getResourceTypes();
+    const match = matchResourceType(abbreviatedType, resourceTypes);
+    
+    // If no match found, it might be an invalid/removed type
+    if (!match) {
+      console.warn(`No matching resource type found for: ${abbreviatedType}`);
+    }
+    
+    return match;
+  } catch (error) {
+    console.error(`Error expanding resource type '${abbreviatedType}':`, error);
+    return null;
+  }
+}
+
+/**
+ * Check if a type has been removed/deprecated
+ */
+function isRemovedType(type: string): boolean {
+  const removedTypes = [
+    'generic.grouping.group',
+    // Add other removed types here as needed
+  ];
+  
+  const normalizedType = type.toLowerCase().trim();
+  
+  // Check explicit removed types
+  if (removedTypes.includes(normalizedType)) {
+    return true;
+  }
+  
+  // Check for patterns that are clearly invalid
+  // For example, if it references a category that doesn't exist
+  const parts = normalizedType.split('.');
+  if (parts.length >= 3) {
+    const [provider, category] = parts;
+    
+    // Known providers and their valid categories
+    const validCategories: Record<string, string[]> = {
+      'generic': ['grouping', 'text', 'object', 'user', 'device', 'os'],
+      // Add other providers as needed
+    };
+    
+    if (validCategories[provider] && !validCategories[provider].includes(category)) {
+      console.warn(`Invalid category '${category}' for provider '${provider}' in type: ${type}`);
+      return true;
+    }
+  }
+  
+  return false;
 }
 
 /**

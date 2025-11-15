@@ -173,34 +173,120 @@ const handleChange = async (newText: string) => {
       console.log('Final result zones:', result.zones);
     }
     
-    // Process nodes
+    // Process nodes with error handling to skip invalid types
     if (Array.isArray(result.nodes)) {
-      result.nodes = await Promise.all(
-        result.nodes.map(async (node: any) => {
+      const validNodes = [];
+      for (const node of result.nodes) {
+        try {
           if (node.type && typeof node.type === 'string') {
             const expanded = await expandResourceType(node.type);
             if (expanded && expanded !== node.type) {
-              return { ...node, type: expanded };
+              validNodes.push({ ...node, type: expanded });
+            } else if (expanded) {
+              // Type is valid but no expansion needed
+              validNodes.push(node);
+            } else {
+              // Type is invalid, skip this node
+              console.warn(`Skipping node with invalid type: ${node.type}`, node);
             }
+          } else {
+            // No type or invalid type format, skip this node
+            console.warn('Skipping node without valid type:', node);
           }
-          return node;
-        })
-      );
+        } catch (error) {
+          // Error processing this node, skip it
+          console.warn(`Error processing node ${node.id || 'unknown'}:`, error);
+        }
+      }
+      result.nodes = validNodes;
     }
     
-    // Process zones - migrate from nodes to children
+    // Process zones - migrate from nodes to children with error handling
     if (Array.isArray(result.zones)) {
-      result.zones = await Promise.all(
-        result.zones.map(async (zone: any) => {
+      const validZones = [];
+      for (const zone of result.zones) {
+        try {
           const migratedZone = { ...zone };
           // Migrate nodes to children if needed
           if (zone.nodes && !zone.children) {
             migratedZone.children = zone.nodes;
             delete migratedZone.nodes;
           }
-          return migratedZone;
-        })
-      );
+          
+          // Process children recursively if they exist
+          if (migratedZone.children && Array.isArray(migratedZone.children)) {
+            const validChildren = [];
+            for (const child of migratedZone.children) {
+              try {
+                if (child.type && typeof child.type === 'string') {
+                  const expanded = await expandResourceType(child.type);
+                  if (expanded && expanded !== child.type) {
+                    validChildren.push({ ...child, type: expanded });
+                  } else if (expanded) {
+                    validChildren.push(child);
+                  } else {
+                    console.warn(`Skipping child with invalid type: ${child.type}`, child);
+                  }
+                } else if (child.type === 'zone') {
+                  // It's a nested zone, keep it
+                  validChildren.push(child);
+                } else {
+                  console.warn('Skipping child without valid type:', child);
+                }
+              } catch (error) {
+                console.warn(`Error processing child ${child.id || 'unknown'}:`, error);
+              }
+            }
+            migratedZone.children = validChildren;
+          }
+          
+          validZones.push(migratedZone);
+        } catch (error) {
+          console.warn(`Error processing zone ${zone.id || 'unknown'}:`, error);
+        }
+      }
+      result.zones = validZones;
+    }
+    
+    // Clean up connections that reference invalid nodes
+    if (Array.isArray(result.connections)) {
+      const validNodeIds = new Set();
+      
+      // Collect all valid node IDs from zones and nodes
+      if (Array.isArray(result.nodes)) {
+        result.nodes.forEach((node: any) => validNodeIds.add(node.id));
+      }
+      
+      if (Array.isArray(result.zones)) {
+        const collectNodeIdsFromZone = (zone: any) => {
+          if (zone.children && Array.isArray(zone.children)) {
+            zone.children.forEach((child: any) => {
+              if (child.id && child.type !== 'zone') {
+                validNodeIds.add(child.id);
+              } else if (child.type === 'zone') {
+                collectNodeIdsFromZone(child);
+              }
+            });
+          }
+        };
+        
+        result.zones.forEach(collectNodeIdsFromZone);
+      }
+      
+      // Filter connections to only include those with valid source and target
+      const validConnections = result.connections.filter((conn: any) => {
+        const fromValid = validNodeIds.has(conn.from);
+        const toValid = validNodeIds.has(conn.to);
+        
+        if (!fromValid || !toValid) {
+          console.warn(`Skipping connection from '${conn.from}' to '${conn.to}': ${!fromValid ? 'source' : 'target'} node not found`);
+          return false;
+        }
+        
+        return true;
+      });
+      
+      result.connections = validConnections;
     }
     
     return result;
