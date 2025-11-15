@@ -238,7 +238,35 @@ export function ContextToolbar({
   };
 
   const toggleNoIconBackground = () => {
-    onItemUpdate?.({ ...selectedItem, noIconBackground: !(selectedItem as any).noIconBackground } as any);
+    if (!selectedItem) return;
+    
+    if (selectedItemIds && selectedItemIds.size > 1) {
+      // Apply to multiple selected items
+      const newNoIconBackgroundValue = !(selectedItem as any).noIconBackground;
+      
+      // Update all selected items in the diagram data
+      if (diagramData && onDiagramDataUpdate) {
+        const updatedDiagramData = {
+          ...diagramData,
+          nodes: diagramData.nodes.map((node: any) => {
+            if (selectedItemIds.has(node.id)) {
+              return { ...node, noIconBackground: newNoIconBackgroundValue };
+            }
+            return node;
+          }),
+          zones: diagramData.zones?.map((zone: any) => {
+            if (selectedItemIds.has(zone.id)) {
+              return { ...zone, noIconBackground: newNoIconBackgroundValue };
+            }
+            return zone;
+          })
+        };
+        onDiagramDataUpdate(updatedDiagramData);
+      }
+    } else {
+      // Apply to single selected item
+      onItemUpdate?.({ ...selectedItem, noIconBackground: !(selectedItem as any).noIconBackground } as any);
+    }
   };
 
   const handleTextStylingChange = (styling: any) => {
@@ -252,7 +280,7 @@ export function ContextToolbar({
       onItemUpdate?.({ ...updatedNode, itemType: 'node' } as SelectedItem);
     } else {
       // Fallback to direct spread
-      onItemUpdate?.({ ...selectedItem, ...styling } as SelectedItem);
+      onItemUpdate?.({ ...selectedItem as SelectedItem, ...styling } as SelectedItem);
     }
   };
 
@@ -270,11 +298,11 @@ export function ContextToolbar({
       textOpacity: undefined,
       textColor: undefined
     };
-    onItemUpdate?.({ ...selectedItem, ...defaultStyling } as SelectedItem);
+    onItemUpdate?.({ ...selectedItem as SelectedItem, ...defaultStyling } as SelectedItem);
   };
 
   const handleVisualStylingChange = (styling: any) => {
-    onItemUpdate?.({ ...selectedItem, ...styling } as SelectedItem);
+    onItemUpdate?.({ ...selectedItem as SelectedItem, ...styling } as SelectedItem);
   };
 
   const handleVisualStylingReset = () => {
@@ -290,7 +318,7 @@ export function ContextToolbar({
       shadow: undefined,
       borderWidth: undefined
     };
-    onItemUpdate?.({ ...selectedItem, ...defaultStyling } as SelectedItem);
+    onItemUpdate?.({ ...selectedItem as SelectedItem, ...defaultStyling } as SelectedItem);
   };
 
   // Drag and drop handlers for connection reordering
