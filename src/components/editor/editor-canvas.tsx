@@ -348,9 +348,28 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   // KEYBOARD SHORTCUTS
   // ============================================================================
   // Global keyboard shortcuts for common operations
+  // Helper function to check if any text is being edited
+  const isAnyTextBeingEdited = () => {
+    // Check if any input, textarea, or contentEditable element is focused
+    const activeElement = document.activeElement;
+    if (!activeElement) return false;
+    
+    // Check for input/textarea elements
+    if (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA') {
+      return true;
+    }
+    
+    // Check for contentEditable elements
+    if (activeElement.getAttribute('contenteditable') === 'true') {
+      return true;
+    }
+    
+    return false;
+  };
+
   // - Cmd/Ctrl+C: Copy selected item(s)
   // - Cmd/Ctrl+V: Paste from clipboard
-  // - Delete/Backspace: Delete selected item(s)
+  // - Delete/Backspace: Delete selected item(s) (only when not editing text)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
@@ -366,6 +385,12 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           handlePaste();
         }
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        // Prevent item deletion when editing text
+        if (isAnyTextBeingEdited()) {
+          // Allow normal text editing behavior (don't prevent default)
+          return;
+        }
+        
         e.preventDefault();
         if (selectedItemId) {
           operations.handleDelete(selectedItemId);
