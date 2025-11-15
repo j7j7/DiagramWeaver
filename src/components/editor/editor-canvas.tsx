@@ -3761,6 +3761,7 @@ return (
                 } else if (zoneItem) {
                   onItemSelect({ ...zoneItem, itemType: 'zone' });
                 }
+                onTriggerConnectionSettingsPanel?.();
               }}
             />
           );
