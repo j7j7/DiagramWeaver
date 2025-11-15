@@ -3560,12 +3560,6 @@ return (
                         const isOutgoing = conn.from === selectedItemId;
 
                         const handleArrowToggle = (connection: any, newState: boolean) => {
-                            console.log(`=== ${isOutgoing ? 'OUTGOING' : 'INCOMING'} TOGGLE CLICKED ===`);
-                            console.log('Connection ID:', `${connection.from}-${connection.to}`);
-                            console.log('Current connection.toArrow:', connection.toArrow);
-                            console.log('New state:', newState);
-                            console.log('Full connection object:', connection);
-                            
                             setDiagramData(prevData => {
                                 // Create a completely new connections array to ensure React re-renders
                                 const oldConnections = prevData.connections || [];
@@ -3586,12 +3580,6 @@ return (
                                 // Ensure completely new array reference
                                 const newConnectionsArray = [...updatedConnections];
                                 
-                                console.log('Updated connections:', newConnectionsArray);
-                                console.log('Connection being updated:', { from: connection.from, to: connection.to, toArrow: newState });
-                                
-                                const updatedConnection = newConnectionsArray.find(c => c.from === connection.from && c.to === connection.to);
-                                console.log('Updated connection object after state update:', updatedConnection);
-                                
                                 return { 
                                     ...prevData, 
                                     connections: newConnectionsArray 
@@ -3600,21 +3588,35 @@ return (
                         };
 
                         return (
-                            <svg
-                                key={`arrow-toggle-${conn.from}-${conn.to}-${index}-${conn.toArrow ? 'arrow' : 'noarrow'}-${conn._updated || ''}`}
-                                width={width}
-                                height={height}
-                                className="absolute top-0 left-0 overflow-visible pointer-events-auto"
-                                style={{ zIndex: 4 }}
+                            <div
+                                key={`arrow-toggle-${conn.from}-${conn.to}-${index}`}
+                                className="absolute cursor-pointer"
+                                style={{ 
+                                    zIndex: 15,
+                                    left: `${midX - 20}px`,
+                                    top: `${midY - 20}px`,
+                                    width: '40px',
+                                    height: '40px'
+                                }}
+                                onMouseDown={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    handleArrowToggle(conn, !conn.toArrow && !conn.arrow);
+                                }}
                             >
-                                <ArrowToggle
-                                    x={midX}
-                                    y={midY}
-                                    connection={conn}
-                                    isActive={conn.toArrow === true || conn.arrow === true}
-                                    onToggleAction={handleArrowToggle}
-                                />
-                            </svg>
+                                <svg
+                                    width="40"
+                                    height="40"
+                                    className="pointer-events-none"
+                                >
+                                    <ArrowToggle
+                                        x={20}
+                                        y={20}
+                                        connection={conn}
+                                        isActive={conn.toArrow === true || conn.arrow === true}
+                                    />
+                                </svg>
+                            </div>
                         );
                     });
                 })()}

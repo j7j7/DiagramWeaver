@@ -38,6 +38,7 @@ export function JsonEditorPanel({
       // Convert flat data to nested format for display in editor
       const nestedData = convertToNestedHierarchy(value);
       const next = stableStringify(nestedData);
+      
       if (!changeFromEditorRef.current && next !== lastExternalJsonRef.current) {
         lastExternalJsonRef.current = next;
         setText(next);
