@@ -191,7 +191,7 @@ export function determineConnectionEdges(
   return { fromEdge, toEdge };
 }
 
-function getOptimalConnectionPoints(from: any, to: any, fromWidth: number, fromHeight: number, toWidth: number, toHeight: number, connectionData?: DiagramConnectionData, fromIconHeight?: number, toIconHeight?: number): { fromX: number; fromY: number; toX: number; toY: number; fromAngle: number; toAngle: number } {
+export function getOptimalConnectionPoints(from: any, to: any, fromWidth: number, fromHeight: number, toWidth: number, toHeight: number, connectionData?: DiagramConnectionData, fromIconHeight?: number, toIconHeight?: number): { fromX: number; fromY: number; toX: number; toY: number; fromAngle: number; toAngle: number } {
   // Use specified connection points if provided
   if (connectionData?.fromPreferredExit && connectionData?.toPreferredEntry) {
     const fromPoint = getConnectionPoint(from, fromWidth, fromHeight, connectionData.fromPreferredExit, fromIconHeight, connectionData?.connectionIndex, connectionData?.totalConnections, false);
@@ -559,6 +559,70 @@ export function getBezierPoint(t: number, fromX: number, fromY: number, cp1X: nu
   const y = uuu * fromY + 3 * uu * t * cp1Y + 3 * u * tt * cp2Y + ttt * toY;
 
   return { x, y };
+}
+
+// Helper function to calculate control points for bezier curve
+export function calculateBezierControlPoints(fromX: number, fromY: number, toX: number, toY: number, curvature: number = 0.6, fromAngle: number = 0, toAngle: number = 0): { cp1X: number; cp1Y: number; cp2X: number; cp2Y: number } {
+  const dx = toX - fromX;
+  const dy = toY - fromY;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+  
+  // Adjust curvature based on distance
+  const adjustedCurvature = Math.min(curvature, distance / 4);
+  
+  // Calculate control points based on exit/entry angles
+  const controlOffset = adjustedCurvature * distance;
+  
+  // Calculate control points that extend outward from exit/entry points
+  let cp1X, cp1Y, cp2X, cp2Y;
+  
+  switch (fromAngle) {
+    case 0: // Top - control point goes upward
+      cp1X = fromX;
+      cp1Y = fromY - controlOffset;
+      break;
+    case 90: // Right - control point goes rightward
+      cp1X = fromX + controlOffset;
+      cp1Y = fromY;
+      break;
+    case 180: // Bottom - control point goes downward
+      cp1X = fromX;
+      cp1Y = fromY + controlOffset;
+      break;
+    case 270: // Left - control point goes leftward
+      cp1X = fromX - controlOffset;
+      cp1Y = fromY;
+      break;
+    default:
+      // Fallback to original logic
+      cp1X = fromX + controlOffset;
+      cp1Y = fromY;
+  }
+  
+  switch (toAngle) {
+    case 0: // Top - control point comes from above
+      cp2X = toX;
+      cp2Y = toY - controlOffset;
+      break;
+    case 90: // Right - control point comes from right
+      cp2X = toX + controlOffset;
+      cp2Y = toY;
+      break;
+    case 180: // Bottom - control point comes from below
+      cp2X = toX;
+      cp2Y = toY + controlOffset;
+      break;
+    case 270: // Left - control point comes from left
+      cp2X = toX - controlOffset;
+      cp2Y = toY;
+      break;
+    default:
+      // Fallback to original logic
+      cp2X = toX - controlOffset;
+      cp2Y = toY;
+  }
+  
+  return { cp1X, cp1Y, cp2X, cp2Y };
 }
 
 // Helper function to render connection text separately

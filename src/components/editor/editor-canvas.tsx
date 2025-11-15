@@ -4,7 +4,7 @@ import React, { useState, useMemo, useRef, useCallback, useEffect } from "react"
 import { useDrop } from 'react-dnd';
 import { DiagramNode } from "../diagram/diagram-node";
 
-import { BezierConnection, BezierConnectionText, determineConnectionEdges } from "../diagram/bezier-connection";
+import { BezierConnection, BezierConnectionText, determineConnectionEdges, getOptimalConnectionPoints, calculateBezierControlPoints, getBezierPoint } from "../diagram/bezier-connection";
 import { DiagramZone } from "../diagram/diagram-zone";
 import type { DiagramData, DiagramNodeData, DiagramGroupData, DiagramZoneData, DiagramConnectionData } from "@/lib/types";
 import { ItemTypes } from './draggable-item';
@@ -22,6 +22,7 @@ import { ArrowToggle } from "../diagram/arrow-toggle";
 
 const NODE_WIDTH = 80;
 const NODE_HEIGHT = 80;
+const BASE_NODE_HEIGHT = 80;
 const TEXT_NODE_HEIGHT = 40;
 const EXTRA_LINE_HEIGHT = 20;
 const ZONE_PADDING = 50; // Increased by 25% (was 40)
@@ -3536,24 +3537,144 @@ return (
                         const toItem = nodesById[conn.to] || zonesById[conn.to];
                         if (!fromItem || !toItem) return null;
 
-                        // Get dimensions for proper positioning
-                        const fromDims = 'type' in fromItem ? measureNodeDims(fromItem as PositionedNode) : { width: (fromItem as any).width, height: (fromItem as any).height };
-                        const toDims = 'type' in toItem ? measureNodeDims(toItem as PositionedNode) : { width: (toItem as any).width, height: (toItem as any).height };
+                        // Calculate dimensions and icon heights similar to BezierConnection
+                        const isFromShape = (fromItem.type === 'generic.object.square' || fromItem.type === 'generic.object.circle' || 
+                                            fromItem.type === 'generic.object.point' || fromItem.type === 'generic.object.rectangle' || fromItem.type === 'generic.object.triangle' ||
+                                            fromItem.type === 'generic.object.star' || fromItem.type === 'generic.object.cloud' ||
+                                            fromItem.type?.endsWith('.square') || fromItem.type?.endsWith('.circle') ||
+                                            fromItem.type?.endsWith('.point') || fromItem.type?.endsWith('.rectangle') || fromItem.type?.endsWith('.triangle') ||
+                                            fromItem.type?.endsWith('.star') || fromItem.type?.endsWith('.cloud'));
+                        const isToShape = (toItem.type === 'generic.object.square' || toItem.type === 'generic.object.circle' || 
+                                          toItem.type === 'generic.object.point' || toItem.type === 'generic.object.rectangle' || toItem.type === 'generic.object.triangle' ||
+                                          toItem.type === 'generic.object.star' || toItem.type === 'generic.object.cloud' ||
+                                          toItem.type?.endsWith('.square') || toItem.type?.endsWith('.circle') ||
+                                          toItem.type?.endsWith('.point') || toItem.type?.endsWith('.rectangle') || toItem.type?.endsWith('.triangle') ||
+                                          toItem.type?.endsWith('.star') || toItem.type?.endsWith('.cloud'));
                         
-                        const fromPos: any = {
-                            ...fromItem,
-                            width: 'width' in fromItem ? (fromItem as any).width : fromDims.width,
-                            height: 'height' in fromItem ? (fromItem as any).height : fromDims.height,
+                        const isFromTextType = fromItem.type === 'generic.text.text' || fromItem.type === 'generic.text.textbox';
+                        const isToTextType = toItem.type === 'generic.text.text' || toItem.type === 'generic.text.textbox';
+                        
+                        const isFromGroup = fromItem.type === 'group' || (fromItem as any).subType === 'zone';
+                        const isToGroup = toItem.type === 'group' || (toItem as any).subType === 'zone';
+                        
+                        // Calculate node heights
+                        const calculateNodeHeight = (label: string = '', nodeType: string, sizeMode?: string, customHeight?: number) => {
+                            if (sizeMode === 'custom' && customHeight) return customHeight;
+                            if (nodeType === 'generic.text.textbox') {
+                                const maxCharsPerLine = 30;
+                                const lines = Math.max(1, Math.ceil(label.length / maxCharsPerLine));
+                                return 40 + ((lines - 1) * EXTRA_LINE_HEIGHT);
+                            } else if (nodeType === 'generic.text.text') {
+                                const maxCharsPerLine = 20;
+                                const lines = Math.ceil(label.length / maxCharsPerLine);
+                                return TEXT_NODE_HEIGHT + ((lines - 1) * EXTRA_LINE_HEIGHT);
+                            } else {
+                                const maxCharsPerLine = 12;
+                                const lines = Math.ceil(label.length / maxCharsPerLine);
+                                return BASE_NODE_HEIGHT + ((lines - 1) * EXTRA_LINE_HEIGHT);
+                            }
                         };
-                        const toPos: any = {
-                            ...toItem,
-                            width: 'width' in toItem ? (toItem as any).width : toDims.width,
-                            height: 'height' in toItem ? (toItem as any).height : toDims.height,
-                        };
-
-                        // Calculate point at 75% along connection
-                        const midX = fromPos.x + fromPos.width / 2 + (toPos.x + toPos.width / 2 - (fromPos.x + fromPos.width / 2)) * 0.75;
-                        const midY = fromPos.y + fromPos.height / 2 + (toPos.y + toPos.height / 2 - (fromPos.y + fromPos.height / 2)) * 0.75;
+                        
+                        const fromCalculatedHeight = calculateNodeHeight((fromItem as any).label || '', fromItem.type, (fromItem as any).sizeMode, (fromItem as any).height);
+                        const toCalculatedHeight = calculateNodeHeight((toItem as any).label || '', toItem.type, (toItem as any).sizeMode, (toItem as any).height);
+                        
+                        // Calculate text under heights
+                        let fromTextUnderHeight = 0;
+                        let toTextUnderHeight = 0;
+                        
+                        if (isFromShape && (fromItem as any).label && ((fromItem as any).textPosition === 'under' || !(fromItem as any).textPosition)) {
+                            const maxCharsPerLine = 16;
+                            const lines = Math.ceil(((fromItem as any).label || '').length / maxCharsPerLine);
+                            fromTextUnderHeight = lines * 20;
+                        }
+                        
+                        if (isToShape && (toItem as any).label && ((toItem as any).textPosition === 'under' || !(toItem as any).textPosition)) {
+                            const maxCharsPerLine = 16;
+                            const lines = Math.ceil(((toItem as any).label || '').length / maxCharsPerLine);
+                            toTextUnderHeight = lines * 20;
+                        }
+                        
+                        if (!isFromShape && !isFromTextType && (fromItem as any).label && ((fromItem as any).label || '').trim().length > 0) {
+                            const maxCharsPerLine = 16;
+                            const lines = Math.ceil(((fromItem as any).label || '').length / maxCharsPerLine);
+                            fromTextUnderHeight = 20 + ((lines - 1) * 8);
+                        }
+                        
+                        if (!isToShape && !isToTextType && (toItem as any).label && ((toItem as any).label || '').trim().length > 0) {
+                            const maxCharsPerLine = 16;
+                            const lines = Math.ceil(((toItem as any).label || '').length / maxCharsPerLine);
+                            toTextUnderHeight = 20 + ((lines - 1) * 8);
+                        }
+                        
+                        // Calculate widths and heights
+                        const fromWidth = isFromGroup 
+                            ? ((fromItem as any).width || 300)
+                            : (isFromShape && (fromItem as any).width ? (fromItem as any).width : ((fromItem as any).width || NODE_WIDTH));
+                        const fromHeight = isFromGroup
+                            ? ((fromItem as any).height || 220)
+                            : (isFromShape && (fromItem as any).height ? (fromItem as any).height : (fromCalculatedHeight + fromTextUnderHeight));
+                        const toWidth = isToGroup
+                            ? ((toItem as any).width || 300)
+                            : (isToShape && (toItem as any).width ? (toItem as any).width : ((toItem as any).width || NODE_WIDTH));
+                        const toHeight = isToGroup
+                            ? ((toItem as any).height || 220)
+                            : (isToShape && (toItem as any).height ? (toItem as any).height : (toCalculatedHeight + toTextUnderHeight));
+                        
+                        // Calculate icon heights
+                        let fromIconHeight: number | undefined;
+                        let toIconHeight: number | undefined;
+                        
+                        if (!isFromGroup) {
+                            if (isFromShape) {
+                                fromIconHeight = (fromItem as any).height || 48;
+                            } else if (isFromTextType) {
+                                fromIconHeight = fromCalculatedHeight;
+                            } else {
+                                fromIconHeight = BASE_NODE_HEIGHT;
+                            }
+                        }
+                        
+                        if (!isToGroup) {
+                            if (isToShape) {
+                                toIconHeight = (toItem as any).height || 48;
+                            } else if (isToTextType) {
+                                toIconHeight = toCalculatedHeight;
+                            } else {
+                                toIconHeight = BASE_NODE_HEIGHT;
+                            }
+                        }
+                        
+                        // Calculate connection points along bezier curve
+                        const connectionPoints = getOptimalConnectionPoints(
+                            fromItem, 
+                            toItem, 
+                            fromWidth, 
+                            fromHeight, 
+                            toWidth, 
+                            toHeight, 
+                            conn, 
+                            fromIconHeight, 
+                            toIconHeight
+                        );
+                        const { fromX, fromY, toX, toY, fromAngle, toAngle } = connectionPoints;
+                        
+                        // Calculate control points for bezier curve
+                        const curvature = conn?.curvature || 0.6;
+                        const { cp1X, cp1Y, cp2X, cp2Y } = calculateBezierControlPoints(
+                            fromX, 
+                            fromY, 
+                            toX, 
+                            toY, 
+                            curvature, 
+                            fromAngle, 
+                            toAngle
+                        );
+                        
+                        // Position arrow toggle at 85% along the bezier curve (closer to target/entry point)
+                        const t = 0.85;
+                        const bezierPoint = getBezierPoint(t, fromX, fromY, cp1X, cp1Y, cp2X, cp2Y, toX, toY);
+                        const midX = bezierPoint.x;
+                        const midY = bezierPoint.y;
 
                         // Determine if this is an incoming or outgoing connection for color coding
                         const isIncoming = conn.to === selectedItemId;
