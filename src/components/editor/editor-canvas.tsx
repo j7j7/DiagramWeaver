@@ -1,39 +1,29 @@
 "use client";
 
 import React, { useState, useMemo, useRef, useCallback, useEffect } from "react";
-import { useDrop } from 'react-dnd';
 import { DiagramNode } from "../diagram/diagram-node";
-
-import { BezierConnection, BezierConnectionText, determineConnectionEdges, getOptimalConnectionPoints, calculateBezierControlPoints, getBezierPoint } from "../diagram/bezier-connection";
 import { DiagramZone } from "../diagram/diagram-zone";
 import type { DiagramData, DiagramNodeData, DiagramGroupData, DiagramZoneData, DiagramConnectionData } from "@/lib/types";
-import { ItemTypes } from './draggable-item';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "../ui/button";
 import { Maximize2 } from "lucide-react";
 import type { SelectedItem } from "../diagram-editor";
 import { cn } from "@/lib/utils";
-
 import { ContextMenu } from "../ui/context-menu";
-import { generateGroupId, generateSequentialId } from "@/lib/id-generator";
 import { CanvasRulers } from "./canvas-rulers";
-import { ArrowToggle } from "../diagram/arrow-toggle";
-
-
-const NODE_WIDTH = 80;
-const NODE_HEIGHT = 80;
-const BASE_NODE_HEIGHT = 80;
-const TEXT_NODE_HEIGHT = 40;
-const EXTRA_LINE_HEIGHT = 20;
-const ZONE_PADDING = 50; // Increased by 25% (was 40)
-const ZONE_NODE_SPACING = 30;
-const MULTI_LINE_SPACING_BONUS = 25; // Extra spacing for nodes with 2+ lines of text
-const GRID_SNAP = 20;
-
-// Custom snap function: snaps to 10px increments
-const snapToGrid = (v: number): number => {
-  return Math.round(v / 10) * 10;
-};
+import { RULER_SIZE, type PositionedNode, type PositionedGroup, measureNodeDims } from "./canvas-constants";
+import { calculateLayout, recalculateGroupSize } from "./canvas-layout-utils";
+import { useCanvasTransform } from "@/hooks/use-canvas-transform";
+import { useCanvasSelection } from "@/hooks/use-canvas-selection";
+import { useCanvasInteractions } from "@/hooks/use-canvas-interactions";
+import { useCanvasDragDrop } from "@/hooks/use-canvas-drag-drop";
+import { useCanvasClipboard } from "@/hooks/use-canvas-clipboard";
+import { useCanvasExport } from "@/hooks/use-canvas-export";
+import { useCanvasContextMenu } from "@/hooks/use-canvas-context-menu";
+import { useCanvasOperations } from "./canvas-operations";
+import { CanvasConnections } from "./canvas-connections";
+import { CanvasArrowToggles } from "./canvas-arrow-toggles";
+import { CanvasConnectionText } from "./canvas-connection-text";
 
 interface EditorCanvasProps {
   diagramData: DiagramData;
@@ -44,7 +34,7 @@ interface EditorCanvasProps {
   selectedItemIds?: Set<string>;
   isConnectMode: boolean;
   onNodeClickInConnectMode: (node: DiagramNodeData) => void;
-  onConnect?: () => void;
+  onConnect?: (connectionOptions?: { style?: 'pathways' | 'bezier', curvature?: number }) => void;
   onDisconnect?: () => void;
   externalTransform?: { x: number; y: number; k: number };
   onTransformChange?: (transform: { x: number; y: number; k: number }) => void;
@@ -61,162 +51,6 @@ interface EditorCanvasProps {
   onTriggerConnectionSettingsPanel?: () => void;
 }
 
-type PositionedNode = DiagramNodeData & { x: number; y: number; };
-type PositionedGroup = DiagramZoneData & { x: number; y: number; width: number; height: number; };
-
-const measureNodeDims = (n: PositionedNode) => {
-  const isTextNode = n.type === 'generic.text.text';
-  const isTextboxNode = n.type === 'generic.text.textbox';
-  const isShapeNode =
-    n.type === 'generic.object.square' ||
-    n.type === 'generic.object.circle' ||
-    n.type === 'generic.object.point' ||
-    n.type === 'generic.object.rectangle' ||
-    n.type === 'generic.object.triangle' ||
-    n.type === 'generic.object.star' ||
-    n.type === 'generic.object.cloud' ||
-    n.type?.endsWith('.square') ||
-    n.type?.endsWith('.circle') ||
-    n.type?.endsWith('.point') ||
-    n.type?.endsWith('.rectangle') ||
-    n.type?.endsWith('.triangle') ||
-    n.type?.endsWith('.star') ||
-    n.type?.endsWith('.cloud');
-  const label = (n.label || '').toString();
-
-  // Use custom dimensions if sizeMode is 'custom' and dimensions are provided
-  if ((isTextNode  || isTextboxNode || isShapeNode) && n.sizeMode === 'custom' && n.width && n.height) {
-    return { width: n.width, height: n.height };
-  }
-  
-  // Shapes always use their custom width/height if set
-  if (isShapeNode && n.width && n.height) {
-    return { width: n.width, height: n.height };
-  }
-
-  if (isTextboxNode) {
-    const avgCharWidth = 8;
-    const padding = 32;
-    const minWidth = 40;
-    const maxWidth = 400;
-    const minHeight = 40;
-
-    const words = label.split(' ');
-    const maxCharsPerLine = 30;
-    const lines: string[] = [];
-    let currentLine = '';
-
-    for (const word of words) {
-      if ((currentLine + ' ' + word).trim().length <= maxCharsPerLine) {
-        currentLine = (currentLine + ' ' + word).trim();
-      } else {
-        if (currentLine) lines.push(currentLine);
-        currentLine = word;
-      }
-    }
-    if (currentLine) lines.push(currentLine);
-
-    const maxLineLength = Math.max(...lines.map(line => line.length), 1);
-    const calculatedWidth = Math.max(
-      minWidth,
-      Math.min(maxWidth, maxLineLength * avgCharWidth + padding),
-    );
-
-    const textLines = Math.max(1, Math.ceil(label.length / maxCharsPerLine));
-    const height = minHeight + (textLines - 1) * EXTRA_LINE_HEIGHT;
-
-    return { width: calculatedWidth, height };
-  } else if (isTextboxNode) {
-    const avgCharWidth = 8;
-    const padding = 24;
-    const minWidth = 40;
-    const maxWidth = 300;
-    const minHeight = n.sizeMode === 'custom' ? 40 : 60; // Allow smaller height in custom mode
-
-    const words = label.split(' ');
-    const maxCharsPerLine = 25;
-    const lines: string[] = [];
-    let currentLine = '';
-
-    for (const word of words) {
-      if ((currentLine + ' ' + word).trim().length <= maxCharsPerLine) {
-        currentLine = (currentLine + ' ' + word).trim();
-      } else {
-        if (currentLine) lines.push(currentLine);
-        currentLine = word;
-      }
-    }
-    if (currentLine) lines.push(currentLine);
-
-    const maxLineLength = Math.max(...lines.map(line => line.length), 1);
-    const calculatedWidth = Math.max(
-      minWidth,
-      Math.min(maxWidth, maxLineLength * avgCharWidth + padding),
-    );
-
-    const textLines = Math.max(1, Math.ceil(label.length / maxCharsPerLine));
-    const height = minHeight + (textLines - 1) * EXTRA_LINE_HEIGHT;
-
-    return { width: calculatedWidth, height };
-  } else if (isTextNode  || isShapeNode) {
-    const avgCharWidth = 8;
-
-    let calculatedWidth: number;
-    let height: number;
-
-    if (isTextNode ) {
-      const padding = 16;
-      const minTextWidth = 80;
-      const maxTextWidth = 200;
-
-      const words = label.split(' ');
-      const textMaxCharsPerLine = 20;
-      const lines: string[] = [];
-      let currentLine = '';
-
-      for (const word of words) {
-        if ((currentLine + ' ' + word).trim().length <= textMaxCharsPerLine) {
-          currentLine = (currentLine + ' ' + word).trim();
-        } else {
-          if (currentLine) lines.push(currentLine);
-          currentLine = word;
-        }
-      }
-      if (currentLine) lines.push(currentLine);
-
-      const maxLineLength = Math.max(...lines.map(line => line.length), 1);
-      calculatedWidth = Math.max(
-        minTextWidth,
-        Math.min(maxTextWidth, maxLineLength * avgCharWidth + padding),
-      );
-
-      // Text nodes - use standard text height calculation
-      const textLines = Math.max(1, Math.ceil(label.length / textMaxCharsPerLine));
-      height = TEXT_NODE_HEIGHT + (textLines - 1) * EXTRA_LINE_HEIGHT;
-    } else {
-      const shapeSize = 48;
-      const textPadding = 16;
-      const textPosition = (n as any).textPosition || 'under';
-
-      if (textPosition === 'center' && label) {
-        calculatedWidth = shapeSize;
-      } else if (textPosition === 'above' || textPosition === 'under') {
-        const textWidth = Math.min(120, Math.max(40, label.length * avgCharWidth + textPadding));
-        calculatedWidth = Math.max(shapeSize, textWidth);
-      } else {
-        calculatedWidth = Math.max(shapeSize, 80);
-      }
-
-      const maxCharsPerLine = 12;
-      const shapeLines = Math.max(1, Math.ceil(label.length / maxCharsPerLine));
-      height = NODE_HEIGHT + (shapeLines - 1) * EXTRA_LINE_HEIGHT;
-    }
-
-    return { width: calculatedWidth, height };
-  } else {
-    return { width: NODE_WIDTH, height: NODE_HEIGHT };
-  }
-};
 
 export type EditorCanvasHandle = {
   fitToView: () => void;
@@ -231,851 +65,10 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   { diagramData, setDiagramData, onItemSelect, onBatchSelect, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerConnectionSettingsPanel }: EditorCanvasProps,
   ref
 ) {
-  const [internalTransform, setInternalTransform] = useState({ x: 0, y: 0, k: 1 });
-  const transform = externalTransform || internalTransform;
-  const setTransform = (newTransform: { x: number; y: number; k: number }) => {
-    if (onTransformChange) {
-      onTransformChange(newTransform);
-    } else {
-      setInternalTransform(newTransform);
-    }
-  };
-  const [isPanning, setIsPanning] = useState(false);
-  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
-  const [touchStart, setTouchStart] = useState<{ x: number; y: number; distance: number } | null>(null);
-  const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null);
-
-  const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null);
-  const [isSelectionMode, setIsSelectionMode] = useState(false);
-  const [selectionStart, setSelectionStart] = useState<{ x: number; y: number } | null>(null);
-  const [selectionEnd, setSelectionEnd] = useState<{ x: number; y: number } | null>(null);
-  const [justCompletedSelection, setJustCompletedSelection] = useState(false);
-  const [pendingExportOptions, setPendingExportOptions] = useState<{ backgroundColor?: 'transparent' | 'white'; useSelection: boolean } | null>(null);
-  const { toast } = useToast();
-  const canvasRef = useRef<HTMLDivElement>(null);
-  const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 });
-  const [dragPosition, setDragPosition] = useState<{ x: number; y: number; itemId?: string } | null>(null);
-  const [multiDragPositions, setMultiDragPositions] = useState<{ [itemId: string]: { x: number; y: number } } | null>(null);
-  const isDraggingRef = useRef(false);
-  const multiDragStartPositions = useRef<{ [itemId: string]: { x: number; y: number } } | null>(null);
-  
-  // Client-side rendering state
-  const [isClient, setIsClient] = useState(false);
-  
-  // Context menu state
-  const [contextMenu, setContextMenu] = useState<{
-    visible: boolean;
-    x: number;
-    y: number;
-    itemType: 'node' | 'zone'; // Use 'zone' for consistency with our data structure
-    itemId: string;
-  }>({
-    visible: false,
-    x: 0,
-    y: 0,
-    itemType: 'node',
-    itemId: ''
-  });
-  
-  // Clipboard state
-  const [clipboard, setClipboard] = useState<{
-    node?: DiagramNodeData;
-    zone?: DiagramZoneData;
-    children?: (DiagramNodeData | DiagramZoneData)[];
-    // Multi-selection support
-    nodes?: DiagramNodeData[];
-    zones?: DiagramZoneData[];
-    connections?: DiagramConnectionData[];
-  } | null>(null);
-
-    const { processedNodes, processedZones, width, height } = useMemo(() => {
-    const nodes: DiagramNodeData[] = JSON.parse(JSON.stringify(diagramData.nodes || []));
-    let zones: DiagramZoneData[] = JSON.parse(JSON.stringify(diagramData.zones || []));
-    
-    // Remove duplicate zones by ID (can happen during drag operations)
-    const uniqueZoneIds = new Set<string>();
-    zones = zones.filter(zone => {
-      if (uniqueZoneIds.has(zone.id)) {
-        console.warn('Duplicate zone detected and removed:', zone.id);
-        return false;
-      }
-      uniqueZoneIds.add(zone.id);
-      return true;
-    });
-    
-    console.log('Processing zones (deduped):', zones);
-    
-    const allItems: { [id: string]: DiagramNodeData | DiagramZoneData | PositionedNode | PositionedGroup } = {};
-    nodes.forEach(item => allItems[item.id] = item);
-    zones.forEach(item => allItems[item.id] = item);
-    
-    // Helper function to redistribute items within a custom-sized zone
-    const redistributeItemsInCustomZone = (zone: DiagramZoneData, childNodes: DiagramNodeData[], childZones: DiagramZoneData[]) => {
-        if (!zone.width || !zone.height) return;
-
-        // Cache node measurements so dynamic text nodes are consistent within this pass
-        const nodeDimsCache = new Map<string, { width: number; height: number }>();
-        const getNodeDims = (node: DiagramNodeData) => {
-            if (!nodeDimsCache.has(node.id)) {
-                nodeDimsCache.set(node.id, measureNodeDims(node as PositionedNode));
-            }
-            return nodeDimsCache.get(node.id)!;
-        };
-        const getChildDims = (child: DiagramNodeData | DiagramZoneData) => {
-            if ((child as DiagramZoneData).type === 'zone') {
-                return {
-                    width: (child as PositionedGroup).width || 300,
-                    height: (child as PositionedGroup).height || 220,
-                };
-            }
-            return getNodeDims(child as DiagramNodeData);
-        };
-
-        // Separate edge-positioned nodes from regular nodes
-        const regularNodes = childNodes.filter(n => !n.edgePosition);
-        const edgeNodes = childNodes.filter(n => n.edgePosition);
-
-        // All regular children (nodes and zones)
-        const regularChildren = [...regularNodes, ...childZones];
-
-        if (regularChildren.length > 0) {
-            const childLayouts = regularChildren.map(child => ({ child, dims: getChildDims(child) }));
-            const availableWidth = Math.max(0, zone.width - (ZONE_PADDING * 2));
-            const widestChildWidth = Math.max(...childLayouts.map(({ dims }) => dims.width), NODE_WIDTH);
-            const widthPerItem = widestChildWidth + ZONE_NODE_SPACING;
-            const widthBasedLimit = Math.max(1, Math.floor(availableWidth / Math.max(widthPerItem, 1))); // Ensure at least one per row
-
-            // Determine items per row based on available space and orientation
-            let itemsPerRow: number;
-            if (zone.orientation === 'vertical') {
-                itemsPerRow = 1;
-            } else if (zone.orientation === 'horizontal') {
-                itemsPerRow = zone.maxItemsPerRow || widthBasedLimit;
-            } else {
-                const approxSquare = Math.max(1, Math.floor(Math.sqrt(childLayouts.length) * 1.2));
-                itemsPerRow = zone.maxItemsPerRow || Math.min(approxSquare, widthBasedLimit);
-            }
-
-            itemsPerRow = Math.max(1, Math.min(itemsPerRow, childLayouts.length));
-
-            // Organize children into rows
-            let rowMaxHeight = 0;
-            const rows: Array<{ children: any[], rowWidth: number, rowHeight: number }> = [];
-            let currentRow: any[] = [];
-
-            // First pass: organize children into rows and calculate row dimensions
-            childLayouts.forEach(({ child, dims }, index) => {
-                currentRow.push({ child, width: dims.width, height: dims.height });
-                rowMaxHeight = Math.max(rowMaxHeight, dims.height);
-                
-                // End of row
-                if (index === childLayouts.length - 1 || (index + 1) % itemsPerRow === 0) {
-                    const rowWidth = currentRow.reduce((sum, item) => sum + item.width + ZONE_NODE_SPACING, 0) - ZONE_NODE_SPACING;
-                    rows.push({
-                        children: currentRow,
-                        rowWidth: rowWidth,
-                        rowHeight: rowMaxHeight
-                    });
-                    currentRow = [];
-                    rowMaxHeight = 0;
-                }
-            });
-
-            // Calculate minimum total height needed with dynamic spacing
-            let minTotalHeight = 0;
-            const rowSpacings: number[] = [];
-            
-            rows.forEach((row, rowIndex) => {
-                // Calculate dynamic spacing based on node heights
-                let spacing = ZONE_NODE_SPACING;
-                
-                // Calculate maximum height excess (how much taller than base height) for current and next row
-                const getMaxHeightExcess = (rowItems: any[]): number => {
-                    let maxExcess = 0;
-                    rowItems.forEach((item: any) => {
-                        if ((item.child as any).type === 'zone') return;
-                        const node = item.child as PositionedNode;
-                        const height = item.height;
-                        
-                        // Calculate how much taller this node is than its base height
-                        let baseHeight = NODE_HEIGHT;
-                        if (node.type === 'generic.text.text') {
-                            baseHeight = TEXT_NODE_HEIGHT;
-                        } else if (node.type === 'generic.text.textbox') {
-                            baseHeight = 40;
-                        }
-                        
-                        const excess = Math.max(0, height - baseHeight);
-                        maxExcess = Math.max(maxExcess, excess);
-                    });
-                    return maxExcess;
-                };
-                
-                const currentRowExcess = getMaxHeightExcess(row.children);
-                let nextRowExcess = 0;
-                
-                if (rowIndex < rows.length - 1) {
-                    nextRowExcess = getMaxHeightExcess(rows[rowIndex + 1].children);
-                }
-                
-                // Add extra spacing proportional to height excess (minimum bonus if any excess exists)
-                const maxExcess = Math.max(currentRowExcess, nextRowExcess);
-                if (maxExcess > 0) {
-                    // Add base bonus plus proportional amount based on excess height
-                    spacing += MULTI_LINE_SPACING_BONUS + Math.min(maxExcess * 0.5, 10);
-                } else {
-                    // Fallback: also add spacing if row height itself is above threshold (catches edge cases)
-                    const rowHeightThreshold = NODE_HEIGHT + EXTRA_LINE_HEIGHT * 0.5; // 90px
-                    if (row.rowHeight > rowHeightThreshold || (rowIndex < rows.length - 1 && rows[rowIndex + 1].rowHeight > rowHeightThreshold)) {
-                        spacing += MULTI_LINE_SPACING_BONUS;
-                    }
-                }
-                
-                rowSpacings.push(spacing);
-                minTotalHeight += row.rowHeight;
-                if (rowIndex < rows.length - 1) {
-                    minTotalHeight += spacing;
-                }
-            });
-
-            // Calculate available space for distribution
-            const availableHeight = (zone.height || 0) - (ZONE_PADDING * 2);
-            const extraHeight = Math.max(0, availableHeight - minTotalHeight);
-            
-            // Distribute extra space evenly between rows AND at top/bottom
-            const numSpaces = Math.max(1, rows.length - 1);
-            let extraSpacingPerGap = 0;
-            let topPadding = ZONE_PADDING;
-            
-            if (extraHeight > 0) {
-                // Distribute extra height evenly: between rows and at top/bottom
-                extraSpacingPerGap = extraHeight / (numSpaces + 2); // +2 for top and bottom padding
-                topPadding = ZONE_PADDING + extraSpacingPerGap;
-            }
-            
-            // Second pass: position children with distribution across available space
-            let currentY = topPadding;
-            rows.forEach((row, rowIndex) => {
-                // Calculate horizontal distribution for items in row
-                const availableRowWidth = (zone.width || 0) - (ZONE_PADDING * 2);
-                const totalRowItemWidth = row.children.reduce((sum, item) => sum + item.width, 0);
-                
-                // For vertical orientation (single item per row), center each item
-                if (zone.orientation === 'vertical' && row.children.length === 1) {
-                    // Center the single item horizontally
-                    const item = row.children[0];
-                    item.child.x = ZONE_PADDING + (availableRowWidth - item.width) / 2;
-                    item.child.y = currentY;
-                } else {
-                    // Calculate spacing between items - distribute extra space evenly
-                    const numItemSpaces = Math.max(1, row.children.length - 1);
-                    const minTotalWidth = totalRowItemWidth + (ZONE_NODE_SPACING * numItemSpaces);
-                    
-                    let itemSpacing: number;
-                    let rowStartX: number;
-                    
-                    if (availableRowWidth > minTotalWidth) {
-                        // Distribute evenly across available width with equal padding on both sides
-                        const extraWidth = availableRowWidth - minTotalWidth;
-                        // Add extra space to both sides and between items
-                        const extraSpacingPerGap = extraWidth / (numItemSpaces + 2); // +2 for left and right padding
-                        itemSpacing = ZONE_NODE_SPACING + extraSpacingPerGap;
-                        const sidePadding = ZONE_PADDING + extraSpacingPerGap;
-                        rowStartX = sidePadding;
-                    } else {
-                        // Use minimum spacing, center if content is wider than available space
-                        itemSpacing = ZONE_NODE_SPACING;
-                        if (availableRowWidth > totalRowItemWidth) {
-                            rowStartX = ZONE_PADDING + (availableRowWidth - minTotalWidth) / 2;
-                        } else {
-                            rowStartX = ZONE_PADDING;
-                        }
-                    }
-                    
-                    row.children.forEach((item, itemIndex) => {
-                        if (itemIndex === 0) {
-                            item.child.x = rowStartX;
-                        } else {
-                            item.child.x = rowStartX + row.children.slice(0, itemIndex).reduce((sum, prevItem) => {
-                                return sum + prevItem.width + itemSpacing;
-                            }, 0);
-                        }
-                        item.child.y = currentY;
-                    });
-                }
-                
-                // Use distributed spacing (minimum spacing + extra space distribution)
-                const spacing = rowIndex < rows.length - 1 
-                    ? rowSpacings[rowIndex] + extraSpacingPerGap 
-                    : 0;
-                
-                currentY += row.rowHeight + spacing;
-            });
-        }
-
-        // Position edge nodes on the boundaries
-        if (edgeNodes.length > 0) {
-            const nodesByEdge = {
-                top: edgeNodes.filter(n => n.edgePosition === 'top'),
-                bottom: edgeNodes.filter(n => n.edgePosition === 'bottom'),
-                left: edgeNodes.filter(n => n.edgePosition === 'left'),
-                right: edgeNodes.filter(n => n.edgePosition === 'right'),
-            };
-
-            Object.entries(nodesByEdge).forEach(([edge, nodes]) => {
-                if (nodes.length === 0) return;
-
-                nodes.forEach((node, index) => {
-                    const dims = getNodeDims(node);
-
-                    switch (edge) {
-                        case 'top': {
-                            const segmentWidth = zone.width! / nodes.length;
-                            const centerX = segmentWidth * index + segmentWidth / 2;
-                            node.x = centerX - dims.width / 2;
-                            node.y = -dims.height / 2 + dims.height * 0.1;
-                            break;
-                        }
-                        case 'bottom': {
-                            const segmentWidth = zone.width! / nodes.length;
-                            const centerX = segmentWidth * index + segmentWidth / 2;
-                            node.x = centerX - dims.width / 2;
-                            node.y = zone.height! - dims.height / 2 + dims.height * 0.1;
-                            break;
-                        }
-                        case 'left': {
-                            const segmentHeight = zone.height! / nodes.length;
-                            const centerY = segmentHeight * index + segmentHeight / 2;
-                            node.x = -dims.width / 2;
-                            node.y = centerY - dims.height / 2;
-                            break;
-                        }
-                        case 'right': {
-                            const segmentHeight = zone.height! / nodes.length;
-                            const centerY = segmentHeight * index + segmentHeight / 2;
-                            node.x = zone.width! - dims.width / 2;
-                            node.y = centerY - dims.height / 2;
-                            break;
-                        }
-                    }
-                });
-            });
-        }
-    };
-    
-    const layoutZone = (zone: DiagramZoneData): { width: number, height: number } => {
-        // If zone has custom sizing, use those dimensions and redistribute content within
-        if (zone.sizeMode === 'custom' && zone.width && zone.height) {
-            const childNodes = zone.children
-                .map((id: string) => allItems[id])
-                .filter(Boolean)
-                .filter((c: any) => !c.type || c.type !== 'zone') as DiagramNodeData[];
-            
-            const childZones = zone.children
-                .map((id: string) => allItems[id])
-                .filter(Boolean)
-                .filter((c: any) => c.type === 'zone') as DiagramZoneData[];
-                
-            // Layout child zones first
-            childZones.forEach(cz => {
-                const dims = layoutZone(cz);
-                (cz as any).width = dims.width;
-                (cz as any).height = dims.height;
-            });
-            
-            // Redistribute items within the custom size
-            redistributeItemsInCustomZone(zone, childNodes, childZones);
-            
-            return { width: zone.width, height: zone.height };
-        }
-        
-        // Auto-sizing logic (only for non-custom zones)
-        
-        // Auto-sizing logic (existing)
-        const childNodes = zone.children
-            .map((id: string) => allItems[id])
-            .filter(Boolean)
-            .filter((c: any) => !c.type || c.type !== 'zone') as DiagramNodeData[];
-        
-        const childZones = zone.children
-            .map((id: string) => allItems[id])
-            .filter(Boolean)
-            .filter((c: any) => c.type === 'zone') as DiagramZoneData[];
-
-        // Separate edge-positioned nodes from regular nodes
-        const regularNodes = childNodes.filter(n => !n.edgePosition);
-        const edgeNodes = childNodes.filter(n => n.edgePosition);
-
-        let contentWidth = 0;
-        let contentHeight = 0;
-
-        // Layout child zones first and get their dimensions (mutate originals so positions persist)
-        const laidOutChildGroups = childZones.map(cz => {
-            const dims = layoutZone(cz);
-            (cz as any).width = dims.width;
-            (cz as any).height = dims.height;
-            return cz; // IMPORTANT: return original reference so x/y set below apply to allItems
-        });
-
-        // Grid layout for regular children (nodes and zones) with orientation and maxItemsPerRow support
-        // Edge-positioned nodes are handled separately
-        const allChildren = [...regularNodes, ...laidOutChildGroups];
-        const numItems = allChildren.length;
-        
-        // Determine items per row based on orientation and maxItemsPerRow
-        let itemsPerRow: number;
-        if (zone.orientation === 'vertical') {
-            // Vertical orientation: single column, but respect maxItemsPerRow for column height
-            itemsPerRow = 1;
-        } else if (zone.orientation === 'horizontal') {
-            // Horizontal orientation: use a reasonable default to create multiple rows but maintain width
-            itemsPerRow = zone.maxItemsPerRow || Math.max(1, Math.floor(Math.sqrt(numItems) * 1.2));
-        } else {
-            // Square orientation: use maxItemsPerRow if specified, otherwise calculate
-            itemsPerRow = zone.maxItemsPerRow || Math.max(1, Math.floor(Math.sqrt(numItems) * 1.2));
-        }
-        
-        // For zones with no regular children, ensure minimum size to accommodate content
-        // Consider edge nodes when determining if zone is truly empty
-        if (numItems === 0) {
-            // Calculate maximum dimensions among all nodes (including edge nodes) for proper zone sizing
-            const allNodesInGroup = [...regularNodes, ...edgeNodes];
-            const maxNodeWidth = allNodesInGroup.length > 0 
-                ? Math.max(...allNodesInGroup.map(n => measureNodeDims(n as PositionedNode).width))
-                : NODE_WIDTH;
-            const maxNodeHeight = allNodesInGroup.length > 0 
-                ? Math.max(...allNodesInGroup.map(n => measureNodeDims(n as PositionedNode).height))
-                : NODE_HEIGHT;
-            
-            let minGroupWidth = maxNodeWidth + (ZONE_PADDING * 2);
-            let minGroupHeight = maxNodeHeight + (ZONE_PADDING * 2);
-            
-            // If we have edge nodes but no regular nodes, ensure adequate space for edge positioning
-            if (edgeNodes.length > 0) {
-                // Use orientation-specific minimum dimensions for edge nodes
-                if (zone.orientation === 'vertical') {
-                    // Vertical: need enough width for edge nodes, but keep it tall and thin
-                    minGroupWidth = Math.max(minGroupWidth, maxNodeWidth + ZONE_PADDING * 1.5);
-                    minGroupHeight = Math.max(minGroupHeight, maxNodeHeight * 3 + ZONE_PADDING * 2);
-                } else if (zone.orientation === 'horizontal') {
-                    // Horizontal: need enough height for edge nodes, but keep it wide and short
-                    minGroupWidth = Math.max(minGroupWidth, maxNodeWidth * 3 + ZONE_PADDING * 2);
-                    minGroupHeight = Math.max(minGroupHeight, maxNodeHeight + ZONE_PADDING * 1.5);
-                } else {
-                    // Square: use balanced dimensions
-                    minGroupWidth = Math.max(minGroupWidth, maxNodeWidth * 2 + ZONE_PADDING * 2);
-                    minGroupHeight = Math.max(minGroupHeight, maxNodeHeight * 2 + ZONE_PADDING * 2);
-                }
-            }
-            
-            (zone as PositionedGroup).width = minGroupWidth;
-            (zone as PositionedGroup).height = minGroupHeight;
-            
-            // Position edge nodes even when there are no regular children
-            // Group nodes by edge position for even distribution
-            const nodesByEdge = {
-                top: edgeNodes.filter(n => n.edgePosition === 'top'),
-                bottom: edgeNodes.filter(n => n.edgePosition === 'bottom'),
-                left: edgeNodes.filter(n => n.edgePosition === 'left'),
-                right: edgeNodes.filter(n => n.edgePosition === 'right')
-            };
-            
-            // Position nodes evenly along each edge
-            Object.entries(nodesByEdge).forEach(([edge, nodes]) => {
-                if (nodes.length === 0) return;
-                
-                // Use actual node dimensions for edge positioning
-                const nodeWidth = nodes.length > 0 ? measureNodeDims(nodes[0] as PositionedNode).width : NODE_WIDTH;
-                const nodeHeight = nodes.length > 0 ? measureNodeDims(nodes[0] as PositionedNode).height : NODE_HEIGHT;
-                
-                nodes.forEach((node, index) => {
-                    switch (edge) {
-                        case 'top':
-                        case 'bottom':
-                        // Distribute horizontally along top/bottom edges
-                        if (nodes.length === 1) {
-                            node.x = (minGroupWidth - nodeWidth) / 2;
-                        } else {
-                            const spacing = minGroupWidth / (nodes.length + 1);
-                            node.x = spacing * (index + 1) - (nodeWidth / 2);
-                        }
-                            node.y = edge === 'top' 
-                                ? -nodeHeight / 2 + nodeHeight * 0.1
-                                : minGroupHeight - nodeHeight / 2 + nodeHeight * 0.1;
-                            break;
-                            
-                        case 'left':
-                        case 'right':
-                            // Distribute vertically along left/right edges
-                            node.x = edge === 'left'
-                                ? -nodeWidth / 2
-                                : minGroupWidth - nodeWidth / 2;
-                            if (nodes.length === 1) {
-                                node.y = (minGroupHeight - nodeHeight) / 2;
-                            } else {
-                                const spacing = minGroupHeight / (nodes.length + 1);
-                                node.y = spacing * (index + 1) - (nodeHeight / 2);
-                            }
-                            break;
-                    }
-                });
-            });
-            
-            return { width: minGroupWidth, height: minGroupHeight };
-        }
-        
-        let currentY = ZONE_PADDING;
-        let rowMaxHeight = 0;
-        const rows: Array<{ children: any[], rowWidth: number, rowHeight: number }> = [];
-        let currentRow: any[] = [];
-
-        // First pass: organize children into rows and calculate row dimensions
-        allChildren.forEach((child, index) => {
-            // Use different dimension calculation for zones vs nodes
-            let childWidth: number;
-            let childHeight: number;
-            
-            if ((child as any).type === 'zone') {
-                // For zones, use their calculated width and height from the recursive layout call
-                childWidth = (child as any).width || 300;
-                childHeight = (child as any).height || 220;
-            } else {
-                // For nodes, use the measureNodeDims function
-                const childDims = measureNodeDims(child as PositionedNode);
-                childWidth = childDims.width;
-                childHeight = childDims.height;
-            }
-            
-            currentRow.push({ child, width: childWidth, height: childHeight });
-            rowMaxHeight = Math.max(rowMaxHeight, childHeight);
-            
-            // End of row
-            if (index === allChildren.length - 1 || (index + 1) % itemsPerRow === 0) {
-                const rowWidth = currentRow.reduce((sum, item) => sum + item.width + ZONE_NODE_SPACING, 0) - ZONE_NODE_SPACING;
-                rows.push({
-                    children: currentRow,
-                    rowWidth: rowWidth,
-                    rowHeight: rowMaxHeight
-                });
-                currentRow = [];
-                rowMaxHeight = 0;
-            }
-        });
-
-        // Calculate total content width for auto-sized zones
-        let calculatedContentWidth: number;
-        if (zone.orientation === 'horizontal') {
-            // For horizontal orientation, calculate width based on itemsPerRow to maintain consistent width
-            // Get the dimensions of the first few items to estimate width
-            const sampleItems = allChildren.slice(0, Math.min(itemsPerRow, allChildren.length));
-            const estimatedWidth = sampleItems.reduce((sum, child) => {
-                let childWidth: number;
-                if ((child as any).type === 'zone') {
-                    childWidth = (child as any).width || 300;
-                } else {
-                    const childDims = measureNodeDims(child as PositionedNode);
-                    childWidth = childDims.width;
-                }
-                return sum + childWidth + ZONE_NODE_SPACING;
-            }, 0) - ZONE_NODE_SPACING;
-            calculatedContentWidth = estimatedWidth;
-        } else {
-            // For other orientations, use the maximum row width
-            calculatedContentWidth = Math.max(...rows.map(row => row.rowWidth), 0);
-        }
-
-        // Determine the actual zone width to use for layout
-        // Use reduced padding for both vertical and horizontal orientations to make them tighter
-        const horizontalPadding = zone.orientation === 'vertical' ? ZONE_PADDING * 0.5 : 
-                                 zone.orientation === 'horizontal' ? ZONE_PADDING * 0.5 : 
-                                 ZONE_PADDING;
-        const actualGroupWidth = zone.sizeMode === 'custom' && zone.width ? 
-                               zone.width : 
-                               calculatedContentWidth + horizontalPadding * 2;
-
-        // Second pass: position children with centering
-        let lastSpacing = ZONE_NODE_SPACING;
-        rows.forEach((row, rowIndex) => {
-            // Calculate horizontal offset to center the row within the zone
-            const horizontalOffset = horizontalPadding + (actualGroupWidth - horizontalPadding * 2 - row.rowWidth) / 2;
-            
-            row.children.forEach((item, itemIndex) => {
-                item.child.x = horizontalOffset + (itemIndex > 0 ? 
-                    row.children.slice(0, itemIndex).reduce((sum, prevItem) => sum + prevItem.width + ZONE_NODE_SPACING, 0) : 0);
-                item.child.y = currentY;
-            });
-            
-            // Calculate dynamic spacing based on node heights
-            let spacing = ZONE_NODE_SPACING;
-            
-            // Calculate maximum height excess (how much taller than base height) for current and next row
-            const getMaxHeightExcess = (rowItems: any[]): number => {
-                let maxExcess = 0;
-                rowItems.forEach((item: any) => {
-                    if ((item.child as any).type === 'zone') return;
-                    const node = item.child as PositionedNode;
-                    const height = item.height;
-                    
-                    // Calculate how much taller this node is than its base height
-                    let baseHeight = NODE_HEIGHT;
-                    if (node.type === 'generic.text.text') {
-                        baseHeight = TEXT_NODE_HEIGHT;
-                    } else if (node.type === 'generic.text.textbox') {
-                        baseHeight = 40;
-                    }
-                    
-                    const excess = Math.max(0, height - baseHeight);
-                    maxExcess = Math.max(maxExcess, excess);
-                });
-                return maxExcess;
-            };
-            
-            const currentRowExcess = getMaxHeightExcess(row.children);
-            let nextRowExcess = 0;
-            
-            if (rowIndex < rows.length - 1) {
-                nextRowExcess = getMaxHeightExcess(rows[rowIndex + 1].children);
-            }
-            
-            // Add extra spacing proportional to height excess (minimum bonus if any excess exists)
-            const maxExcess = Math.max(currentRowExcess, nextRowExcess);
-            if (maxExcess > 0) {
-                // Add base bonus plus proportional amount based on excess height
-                spacing += MULTI_LINE_SPACING_BONUS + Math.min(maxExcess * 0.5, 10);
-            } else {
-                // Fallback: also add spacing if row height itself is above threshold (catches edge cases)
-                const rowHeightThreshold = NODE_HEIGHT + EXTRA_LINE_HEIGHT * 0.5; // 90px
-                if (row.rowHeight > rowHeightThreshold || (rowIndex < rows.length - 1 && rows[rowIndex + 1].rowHeight > rowHeightThreshold)) {
-                    spacing += MULTI_LINE_SPACING_BONUS;
-                }
-            }
-            
-            lastSpacing = spacing;
-            currentY += row.rowHeight + spacing;
-        });
-
-        contentHeight = currentY - lastSpacing;
-        contentWidth = calculatedContentWidth;
-
-        // Calculate zone dimensions
-        let zoneWidth = actualGroupWidth;
-        // Use reduced padding for both vertical and horizontal orientations to make them tighter
-        const verticalPadding = zone.orientation === 'vertical' ? ZONE_PADDING * 0.5 : 
-                               zone.orientation === 'horizontal' ? ZONE_PADDING * 0.5 : 
-                               ZONE_PADDING;
-        let zoneHeight = contentHeight + verticalPadding * 2;
-        
-        // For auto-sized zones, apply orientation-specific aspect ratios
-        if (zone.sizeMode !== 'custom') {
-            const originalWidth = zoneWidth;
-            const originalHeight = zoneHeight;
-            
-            if (zone.orientation === 'vertical') {
-                // Vertical orientation: keep width tight to content, only adjust height if needed
-                // Don't force aspect ratio - let content determine width, only ensure minimum height
-                zoneWidth = originalWidth; // Keep width tight to content
-                // Only increase height if content is too tall for the width
-                const minHeightForVertical = originalWidth * 1.5; // Minimum 1.5:1 height:width ratio
-                if (originalHeight < minHeightForVertical) {
-                    zoneHeight = minHeightForVertical;
-                } else {
-                    zoneHeight = originalHeight;
-                }
-            } else if (zone.orientation === 'horizontal') {
-                // Horizontal orientation: keep height tight to content, only adjust width if needed
-                // Don't force aspect ratio - let content determine height, only ensure minimum width
-                zoneHeight = originalHeight; // Keep height tight to content
-                // Only increase width if content is too wide for the height
-                const minWidthForHorizontal = originalHeight * 1.8; // Minimum 1.8:1 width:height ratio
-                if (originalWidth < minWidthForHorizontal) {
-                    zoneWidth = minWidthForHorizontal;
-                } else {
-                    zoneWidth = originalWidth;
-                }
-            } else {
-                // Square orientation: enforce square aspect ratio by using the larger dimension
-                const maxDimension = Math.max(zoneWidth, zoneHeight);
-                zoneWidth = maxDimension;
-                zoneHeight = maxDimension;
-            }
-            
-            // Re-center content within the zone
-            const horizontalOffset = (zoneWidth - originalWidth) / 2;
-            const verticalOffset = (zoneHeight - originalHeight) / 2;
-            
-            // Reposition all children to center them in the group
-            rows.forEach((row) => {
-                row.children.forEach((item) => {
-                    item.child.x += horizontalOffset;
-                    item.child.y += verticalOffset;
-                });
-            });
-        }
-        
-        // For custom-sized zones, use the custom dimensions and apply vertical centering
-        if (zone.sizeMode === 'custom') {
-            zoneHeight = zone.height || zoneHeight;
-            
-            // Apply vertical centering for all rows within the custom-sized group
-            const totalContentHeight = contentHeight;
-            const verticalOffset = verticalPadding + (zoneHeight - verticalPadding * 2 - totalContentHeight) / 2;
-            
-            // Reposition all children with vertical offset
-            rows.forEach((row) => {
-                row.children.forEach((item) => {
-                    item.child.y += verticalOffset - verticalPadding;
-                });
-            });
-        }
-        
-        // If we have edge nodes, ensure minimum size for proper edge positioning using dynamic dimensions
-        if (edgeNodes.length > 0) {
-            const edgeNodeDims = edgeNodes.map(n => measureNodeDims(n as PositionedNode));
-            const maxEdgeNodeWidth = Math.max(...edgeNodeDims.map(d => d.width));
-            const maxEdgeNodeHeight = Math.max(...edgeNodeDims.map(d => d.height));
-            // Use orientation-specific minimum dimensions for edge nodes
-            if (zone.orientation === 'vertical') {
-                // Vertical: need enough width for edge nodes, but keep it tall and thin
-                const minWidthForEdges = maxEdgeNodeWidth + ZONE_PADDING * 1.5;
-                const minHeightForEdges = maxEdgeNodeHeight * 3 + ZONE_PADDING * 2;
-                zoneWidth = Math.max(zoneWidth, minWidthForEdges);
-                zoneHeight = Math.max(zoneHeight, minHeightForEdges);
-            } else if (zone.orientation === 'horizontal') {
-                // Horizontal: need enough height for edge nodes, but keep it wide and short
-                const minWidthForEdges = maxEdgeNodeWidth * 3 + ZONE_PADDING * 2;
-                const minHeightForEdges = maxEdgeNodeHeight + ZONE_PADDING * 1.5;
-                zoneWidth = Math.max(zoneWidth, minWidthForEdges);
-                zoneHeight = Math.max(zoneHeight, minHeightForEdges);
-            } else {
-                // Square: use balanced dimensions
-                const minWidthForEdges = maxEdgeNodeWidth * 2 + ZONE_PADDING * 2;
-                const minHeightForEdges = maxEdgeNodeHeight * 2 + ZONE_PADDING * 2;
-                zoneWidth = Math.max(zoneWidth, minWidthForEdges);
-                zoneHeight = Math.max(zoneHeight, minHeightForEdges);
-            }
-        }
-        
-        (zone as PositionedGroup).width = zoneWidth;
-        (zone as PositionedGroup).height = zoneHeight;
-
-        // Position edge nodes on the boundaries of the group
-        // Group nodes by edge position for even distribution
-        const nodesByEdge = {
-            top: edgeNodes.filter(n => n.edgePosition === 'top'),
-            bottom: edgeNodes.filter(n => n.edgePosition === 'bottom'),
-            left: edgeNodes.filter(n => n.edgePosition === 'left'),
-            right: edgeNodes.filter(n => n.edgePosition === 'right')
-        };
-        
-        // Position nodes evenly along each edge
-        Object.entries(nodesByEdge).forEach(([edge, nodes]) => {
-            if (nodes.length === 0) return;
-            
-            // Use actual node dimensions for edge positioning
-            const nodeWidth = nodes.length > 0 ? measureNodeDims(nodes[0] as PositionedNode).width : NODE_WIDTH;
-            const nodeHeight = nodes.length > 0 ? measureNodeDims(nodes[0] as PositionedNode).height : NODE_HEIGHT;
-            
-            nodes.forEach((node, index) => {
-                switch (edge) {
-                    case 'top':
-                    case 'bottom':
-                        // Distribute horizontally along top/bottom edges
-                        if (nodes.length === 1) {
-                            node.x = (zoneWidth - nodeWidth) / 2;
-                        } else {
-                            const spacing = zoneWidth / (nodes.length + 1);
-                            node.x = spacing * (index + 1) - (nodeWidth / 2);
-                        }
-                        node.y = edge === 'top' 
-                            ? -nodeHeight / 2 + nodeHeight * 0.1
-                            : zoneHeight - nodeHeight / 2 + nodeHeight * 0.1;
-                        break;
-                        
-                    case 'left':
-                    case 'right':
-                        // Distribute vertically along left/right edges
-                        node.x = edge === 'left'
-                            ? -nodeWidth / 2
-                            : zoneWidth - nodeWidth / 2;
-                        if (nodes.length === 1) {
-                            node.y = (zoneHeight - nodeHeight) / 2;
-                        } else {
-                            const spacing = zoneHeight / (nodes.length + 1);
-                            node.y = spacing * (index + 1) - (nodeHeight / 2);
-                        }
-                        break;
-                }
-            });
-        });
-
-        return { width: zoneWidth, height: zoneHeight };
-    };
-
-    const rootGroups = zones.filter(zone => !zones.some(parentZone => parentZone.children.includes(zone.id)));
-    rootGroups.forEach(layoutZone);
-
-    // Set absolute positions
-    const setAbsolutePositionsForZone = (zone: DiagramZoneData, parentX: number, parentY: number) => {
-        zone.x = (zone.x ?? 0) + parentX;
-        zone.y = (zone.y ?? 0) + parentY;
-
-        zone.children.forEach((childId: string) => {
-            const child = allItems[childId];
-            if (!child) return;
-            
-            if (child.type === 'zone') {
-                setAbsolutePositionsForZone(child as DiagramZoneData, zone.x!, zone.y!);
-            } else {
-                child.x = (child.x ?? 0) + zone.x!;
-                child.y = (child.y ?? 0) + zone.y!;
-            }
-        });
-    };
-    
-    // Position root groups and orphan nodes
-    let currentX = 50;
-    const allChildIds = new Set(zones.flatMap(zone => zone.children));
-    const orphanNodes = nodes.filter(n => !allChildIds.has(n.id));
-    const topLevelItems = [...rootGroups, ...orphanNodes];
-
-    topLevelItems.forEach(item => {
-        // Only assign position if it doesn't have one
-        if (item.x === undefined || item.y === undefined) {
-          item.x = currentX;
-          item.y = 50;
-        }
-        if (item.type === 'zone') {
-          setAbsolutePositionsForZone(item as DiagramGroupData, 0, 0);
-        }
-        const itemWidth = item.type === 'zone' 
-            ? (item as any).width || 300 
-            : measureNodeDims(item as PositionedNode).width;
-        currentX += itemWidth + 50;
-    });
-
-    const finalNodes = Object.values(allItems).filter(i => i.type !== 'zone') as PositionedNode[];
-    const finalGroups = Object.values(allItems).filter(i => i.type === 'zone') as PositionedGroup[];
-
-    const allElementsX = [
-        ...finalNodes.map(n => (n.x || 0) + measureNodeDims(n).width),
-        ...finalGroups.map(zone => (zone.x || 0) + zone.width)
-    ];
-    const allElementsY = [
-        ...finalNodes.map(n => (n.y || 0) + measureNodeDims(n).height),
-        ...finalGroups.map(zone => (zone.y || 0) + zone.height)
-    ];
-
-    const canvasWidth = Math.max(2000, ...allElementsX);
-    const canvasHeight = Math.max(1500, ...allElementsY);
-    
-    return { 
-        processedNodes: finalNodes, 
-        processedZones: finalGroups, 
-        width: canvasWidth, 
-        height: canvasHeight 
-    };
-}, [diagramData]);
-
+  // Calculate layout
+  const { processedNodes, processedZones, width, height } = useMemo(() => {
+    return calculateLayout(diagramData);
+  }, [diagramData]);
 
   const nodesById = useMemo(() => {
     return processedNodes.reduce((acc, node) => {
@@ -1100,899 +93,102 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     return null;
   }, [selectedItemId, nodesById, zonesById]);
 
-  // Helper function to recalculate group size based on its children
-  const recalculateGroupSize = (zone: DiagramGroupData, allNodes: DiagramNodeData[], allGroups: DiagramZoneData[]): DiagramGroupData => {
-    // If zone is in custom sizing mode, don't resize it - just return as-is
-    if (zone.sizeMode === 'custom') {
-      return zone;
-    }
-    
-    const childNodes = allNodes.filter(n => zone.children.includes(n.id));
-    const childZones = allGroups.filter((g: DiagramGroupData) => zone.children.includes(zone.id));
-    
-    if (childNodes.length === 0 && childZones.length === 0) {
-      // Empty zone - use larger minimum size to accommodate potential textbox nodes
-      return {
-        ...zone,
-        width: Math.max(NODE_WIDTH + ZONE_PADDING * 2, 300), // Larger minimum width
-        height: Math.max(NODE_HEIGHT + ZONE_PADDING * 2, 200) // Larger minimum height
-      };
-    }
-    
-    // Calculate maximum dimensions among all children
-    const allChildDims = [
-      ...childNodes.map(n => measureNodeDims(n as PositionedNode)),
-      ...childZones.map(zone => ({ width: zone.width || 300, height: zone.height || 220 }))
-    ];
-    
-    const maxChildWidth = Math.max(...allChildDims.map(d => d.width));
-    const maxChildHeight = Math.max(...allChildDims.map(d => d.height));
-    
-    // Calculate required group size based on actual grid layout
-    const allChildren = [...childNodes, ...childZones];
-    const numChildren = allChildren.length;
-    const itemsPerRow = zone.maxItemsPerRow || Math.max(1, Math.floor(Math.sqrt(numChildren) * 1.2));
-    const numRows = Math.ceil(numChildren / itemsPerRow);
-    
-    // Calculate actual grid layout to determine proper dimensions
-    let totalWidth = 0;
-    let totalHeight = 0;
-    let maxRowWidth = 0;
-    let maxRowHeight = 0;
-    
-    for (let row = 0; row < numRows; row++) {
-      const startIndex = row * itemsPerRow;
-      const endIndex = Math.min(startIndex + itemsPerRow, numChildren);
-      const rowChildren = allChildren.slice(startIndex, endIndex);
-      
-      // Calculate dimensions for this row
-      let rowWidth = 0;
-      let rowHeight = 0;
-      
-      rowChildren.forEach(child => {
-        const dims = 'type' in child 
-          ? measureNodeDims(child as PositionedNode)
-          : { width: (child as DiagramGroupData).width || 300, height: (child as DiagramGroupData).height || 220 };
-        
-        rowWidth += dims.width;
-        rowHeight = Math.max(rowHeight, dims.height);
-      });
-      
-      // Add spacing between items in row
-      if (rowChildren.length > 1) {
-        rowWidth += ZONE_NODE_SPACING * (rowChildren.length - 1);
-      }
-      
-      maxRowWidth = Math.max(maxRowWidth, rowWidth);
-      totalHeight += rowHeight;
-      
-      // Add dynamic spacing between rows (except for last row)
-      if (row < numRows - 1) {
-        let spacing = ZONE_NODE_SPACING;
-        
-        // Calculate height excess for current and next row
-        const getMaxHeightExcess = (rowItems: any[]): number => {
-          let maxExcess = 0;
-          rowItems.forEach((child: any) => {
-            if ('type' in child && (child as any).type === 'zone') return;
-            const dims = 'type' in child 
-              ? measureNodeDims(child as PositionedNode)
-              : { width: (child as DiagramGroupData).width || 300, height: (child as DiagramGroupData).height || 220 };
-            
-            const node = child as PositionedNode;
-            let baseHeight = NODE_HEIGHT;
-            if (node.type === 'generic.text.text') {
-              baseHeight = TEXT_NODE_HEIGHT;
-            } else if (node.type === 'generic.text.textbox') {
-              baseHeight = 40;
-            }
-            
-            const excess = Math.max(0, dims.height - baseHeight);
-            maxExcess = Math.max(maxExcess, excess);
-          });
-          return maxExcess;
-        };
-        
-        const currentRowExcess = getMaxHeightExcess(rowChildren);
-        const nextRowChildren = allChildren.slice((row + 1) * itemsPerRow, Math.min((row + 2) * itemsPerRow, numChildren));
-        const nextRowExcess = getMaxHeightExcess(nextRowChildren);
-        
-        const maxExcess = Math.max(currentRowExcess, nextRowExcess);
-        if (maxExcess > 0) {
-          spacing += MULTI_LINE_SPACING_BONUS + Math.min(maxExcess * 0.5, 10);
-        }
-        
-        totalHeight += spacing;
-      }
-    }
-    
-    const requiredWidth = maxRowWidth + ZONE_PADDING * 2;
-    const requiredHeight = totalHeight + ZONE_PADDING * 2;
-    
-    return {
-      ...zone,
-      width: Math.max(requiredWidth, maxChildWidth + ZONE_PADDING * 2),
-      height: Math.max(requiredHeight, maxChildHeight + ZONE_PADDING * 2)
-    };
-  };
-
-  const addNode = useCallback((item: any, position: { x: number; y: number }, targetGroupId: string | null) => {
-    setDiagramData((prevData) => {
-      let newZones = prevData.zones ? [...prevData.zones] : [];
-      let newNodes = prevData.nodes ? [...prevData.nodes] : [];
-      let newItemId: string;
-
-      const itemType = item.type || '';
-      const itemLabel = item.label || '';
-      
-      // Debug logging for all items to see what we're getting
-      console.log('addNode called with:', { itemType, itemLabel, item });
-      
-      // Debug logging for zone creation
-      if (itemType === 'zone') {
-        console.log('Creating zone:', { itemType, itemLabel, item });
-      }
-      
-      // Check if this is a shape resource (needed for freeflow and group exclusion)
-       const isShapeResource = itemType === 'generic.object.square' || 
-                                itemType === 'generic.object.circle' || 
-                                itemType === 'generic.object.point' || 
-                                itemType === 'generic.object.rectangle' || 
-                                itemType === 'generic.object.triangle' ||
-                                itemType === 'generic.object.star' ||
-                                itemType === 'generic.object.cloud' ||
-                               itemType?.endsWith('.square') ||
-                               itemType?.endsWith('.circle') ||
-                               itemType?.endsWith('.point') ||
-                               itemType?.endsWith('.rectangle') ||
-                               itemType?.endsWith('.triangle') ||
-                               itemType?.endsWith('.star') ||
-                               itemType?.endsWith('.cloud');
-      
-      if (itemType === 'zone') {
-
-        // Use subType from item if available, otherwise derive from type
-        const subType = item.subType || 'zone';
-        const newZone: DiagramZoneData = {
-          id: generateGroupId(subType, prevData),
-          label: itemLabel,
-          children: [],
-          type: 'zone',
-          subType,
-          info: `A new ${itemLabel}`,
-          color: undefined,
-          sizeMode: 'auto', // Default to auto-sizing
-          textPosition: 'outside-top', // Default text position for new zones
-          textJustify: 'left', // Default text justification for new zones
-          x: position.x,
-          y: position.y,
-          width: 300,
-          height: 220,
-        };
-        newZones.push(newZone);
-        newItemId = newZone.id;
-        console.log('Zone created and added to zones:', newZone);
-      } else {
-        // For resource items from the sidebar, use type from drag item
-        // NEVER store file in node - ResourceIcon looks up file from resource catalog
-        // Special handling for shape resources - make them resizable and freeflow
-        const newNode: DiagramNodeData = {
-          id: generateSequentialId(itemType, prevData),
-          type: itemType,
-          label: itemLabel,
-          // Don't set info/description for text and textbox resource types
-          ...(itemType !== 'generic.text.text' && itemType !== 'generic.text.textbox' && {
-            info: item.provider ? `${itemLabel} from ${item.provider}` : `A new ${itemLabel}`
-          }),
-          freeflow: isShapeResource ? true : undefined, // Shapes are always freeflow
-          sizeMode: isShapeResource ? 'custom' : undefined, // Shapes use custom sizing
-          width: isShapeResource ? (itemType === 'generic.object.point' ? 20 : itemType === 'generic.object.rectangle' ? 80 : itemType === 'generic.object.cloud' ? 80 : 60) : undefined, // Initial width
-          height: isShapeResource ? (itemType === 'generic.object.point' ? 20 : itemType === 'generic.object.rectangle' ? 50 : itemType === 'generic.object.cloud' ? 50 : 60) : undefined, // Initial height
-          // Special defaults for point shape
-          ...(itemType === 'generic.object.point' && {
-            label: '', // No label by default
-            borderStyle: 'none', // No outline by default
-            backgroundColor: '#808080' // Grey color by default
-          })
-        };
-        newNodes.push(newNode);
-        newItemId = newNode.id;
-      }
-      
-      // Don't add freeflow shape nodes to groups
-      const addedItem = newNodes.find(n => n.id === newItemId) || newZones.find(zone => zone.id === newItemId);
-      const isFreeflowShape = (addedItem as any)?.freeflow === true && isShapeResource;
-      
-      if (targetGroupId && !isFreeflowShape) {
-        newZones = newZones.map(zone => {
-          if (zone.id === targetGroupId) {
-            const updatedZone = { ...zone, children: [...zone.children, newItemId] };
-            // Recalculate zone size based on new children including dynamic dimensions
-            return recalculateGroupSize(updatedZone, newNodes, newZones);
-          }
-          return zone;
-        });
-      } else {
-        // Top-level placement: snap to grid and avoid overlap by nudging to nearest free slot
-        const snap = snapToGrid;
-        let posX = snap(position.x);
-        let posY = snap(position.y);
-
-        const isOverlapAt = (x: number, y: number) => {
-          const width = item.type === 'zone' ? 300 : 
-                      (item.type ? measureNodeDims(item as PositionedNode).width : NODE_WIDTH);
-          const height = item.type === 'zone' ? 220 : 
-                       (item.type ? measureNodeDims(item as PositionedNode).height : NODE_HEIGHT);
-          const rectA = { x, y, width, height };
-          // existing obstacles from processed nodes/groups at this render cycle are not available here,
-          // so approximate using current prevData nodes/groups positions
-          const obstacles: { x: number; y: number; width: number; height: number; id: string }[] = [];
-          for (const n of newNodes) {
-            const nn: any = n as any;
-            if (nn.x != null && nn.y != null) {
-              const dims = measureNodeDims(nn as PositionedNode);
-              obstacles.push({ id: n.id, x: nn.x, y: nn.y, width: dims.width, height: dims.height });
-            }
-          }
-          for (const zone of newZones) {
-            if (zone.x != null && zone.y != null && zone.id !== newItemId) {
-              // zones without computed size: approximate
-              obstacles.push({ id: zone.id, x: zone.x, y: zone.y, width: 300, height: 220 });
-            }
-          }
-          return obstacles.some(o => !(x + rectA.width <= o.x || o.x + o.width <= x || y + rectA.height <= o.y || o.y + o.height <= y));
-        };
-
-        // Check if the new node should be freeflow (skip overlap prevention)
-        const addedItem = newNodes.find(n => n.id === newItemId) || newZones.find(zone => zone.id === newItemId);
-        const isFreeflowNewItem = (addedItem as any)?.freeflow;
-
-        // nudge search (spiral-ish) up to 50 attempts (skip for freeflow items)
-        const dirs = [ [1,0],[0,1],[-1,0],[0,-1] ];
-        let step = 1; let attempts = 0; let dirIdx = 0; let movesInDir = 0; let changes = 0;
-        while (!isFreeflowNewItem && isOverlapAt(posX, posY) && attempts < 50) {
-          // Use 10px increments for nudging (smaller step size)
-          const nudgeStep = 10;
-          posX += dirs[dirIdx][0] * nudgeStep;
-          posY += dirs[dirIdx][1] * nudgeStep;
-          // Snap after nudging
-          posX = snap(posX);
-          posY = snap(posY);
-          movesInDir++;
-          if (movesInDir === step) { dirIdx = (dirIdx + 1) % 4; movesInDir = 0; changes++; if (changes % 2 === 0) step++; }
-          attempts++;
-        }
-
-        if (addedItem) {
-          (addedItem as any).x = posX;
-          (addedItem as any).y = posY;
-        }
-      }
-
-      return { ...prevData, nodes: newNodes, zones: newZones };
-    });
-  }, [setDiagramData]);
-
-  const resizeNode = useCallback((nodeId: string, newWidth: number, newHeight: number) => {
-    setDiagramData(prevData => {
-      const updatedNodes = prevData.nodes?.map(node => {
-        if (node.id === nodeId) {
-          // Calculate minimum size based on node type
-          let minWidth = 80;
-          let minHeight = 40;
-          
-          const isShapeNode = node.type === 'generic.object.square' || 
-                             node.type === 'generic.object.circle' || 
-                             node.type === 'generic.object.point' || 
-                             node.type === 'generic.object.rectangle' || 
-                             node.type === 'generic.object.triangle' ||
-                             node.type === 'generic.object.star' ||
-                             node.type === 'generic.object.cloud' ||
-                             node.type?.endsWith('.square') ||
-                             node.type?.endsWith('.circle') ||
-                             node.type?.endsWith('.point') ||
-                             node.type?.endsWith('.rectangle') ||
-                             node.type?.endsWith('.triangle') ||
-                             node.type?.endsWith('.star') ||
-                             node.type?.endsWith('.cloud');
-          
-          if (node.type === 'generic.text.textbox') {
-            minWidth = 40;
-            minHeight = 40;
-          } else if (node.type === 'generic.text.textbox') {
-            minWidth = 40;
-            minHeight = 40;
-          } else if (isShapeNode) {
-            minWidth = 20;
-            minHeight = 20;
-          }
-          
-          return {
-            ...node,
-            width: Math.max(minWidth, newWidth),
-            height: Math.max(minHeight, newHeight),
-            sizeMode: 'custom' as const
-          };
-        }
-        return node;
-      }) || [];
-      
-      return { ...prevData, nodes: updatedNodes };
-    });
-  }, [setDiagramData]);
-
-  const resizeGroup = useCallback((groupId: string, newWidth: number, newHeight: number) => {
-    setDiagramData(prevData => {
-      const updatedZones = prevData.zones?.map(zone => {
-        if (zone.id === groupId) {
-          // Calculate minimum size based on content using dynamic dimensions
-          const currentZone = processedZones.find(z => z.id === groupId);
-          const groupNodes = processedNodes.filter(n => currentZone?.children.includes(n.id));
-          
-          let minWidth = 200;
-          let minHeight = 150;
-          
-          if (groupNodes.length > 0) {
-            const maxNodeWidth = Math.max(...groupNodes.map(n => measureNodeDims(n).width));
-            const maxNodeHeight = Math.max(...groupNodes.map(n => measureNodeDims(n).height));
-            minWidth = Math.max(minWidth, maxNodeWidth + ZONE_PADDING * 2);
-            minHeight = Math.max(minHeight, maxNodeHeight + ZONE_PADDING * 2);
-          }
-          
-          return {
-            ...zone,
-            width: Math.max(minWidth, newWidth),
-            height: Math.max(minHeight, newHeight),
-            sizeMode: 'custom' as const,
-            minWidth,
-            minHeight
-          };
-        }
-        return zone;
-      }) || [];
-      
-      return { ...prevData, zones: updatedZones };
-    });
-  }, [setDiagramData, processedZones]);
-
-  const updateGroupLabel = useCallback((groupId: string, newLabel: string) => {
-    setDiagramData(prevData => {
-      const updatedZones = prevData.zones?.map(zone => {
-        if (zone.id === groupId) {
-          return {
-            ...zone,
-            label: newLabel
-          };
-        }
-        return zone;
-      }) || [];
-      
-      return { ...prevData, zones: updatedZones };
-    });
-  }, [setDiagramData]);
-
-  const moveMultipleItems = useCallback((items: Array<{ id: string; type: string; x?: number, y?: number }>, newPositions: Array<{ x: number; y: number }>, targetGroupId: string | null) => {
-    setDiagramData(prevData => {
-      let currentNodes = [...(prevData.nodes || [])];
-      let currentZones = [...(prevData.zones || [])];
-      
-      items.forEach((item, index) => {
-        const newPos = newPositions[index];
-        if (!newPos) return;
-        
-        const oldParentId = currentZones.find(zone => zone.children.includes(item.id))?.id;
-        const isFreeflowNode = currentNodes.find(n => n.id === item.id)?.freeflow;
-
-        // Handle re-parenting
-        if (oldParentId !== targetGroupId) {
-          currentZones = currentZones.map(zone => {
-            if (zone.id === oldParentId) { 
-              return { ...zone, children: zone.children.filter((nid: string) => nid !== item.id) };
-            }
-            if (zone.id === targetGroupId) {
-              const filtered = zone.children.filter((nid: string) => nid !== item.id);
-              filtered.push(item.id);
-              return { ...zone, children: filtered };
-            }
-            return zone;
-          });
-        }
-
-        // Handle positioning
-        if (targetGroupId && !isFreeflowNode) {
-          // Item is now a child - remove explicit coords
-          if (item.type === ItemTypes.CANVAS_NODE) {
-            currentNodes = currentNodes.map(n => n.id === item.id ? { ...n, x: undefined, y: undefined } : n);
-          } else { 
-            currentZones = currentZones.map(zone => zone.id === item.id ? { ...zone, x: undefined, y: undefined } : zone);
-          }
-        } else {
-          // Top-level - update coordinates
-          const snappedX = snapToGrid(newPos.x);
-          const snappedY = snapToGrid(newPos.y);
-          
-          if (item.type === ItemTypes.CANVAS_NODE) {
-            currentNodes = currentNodes.map(n => n.id === item.id ? { ...n, x: snappedX, y: snappedY } : n);
-          } else { 
-            currentZones = currentZones.map(zone => zone.id === item.id ? { ...zone, x: snappedX, y: snappedY } : zone);
-          }
-        }
-      });
-
-      return { ...prevData, nodes: currentNodes, zones: currentZones };
-    });
-  }, [setDiagramData]);
-
-  const moveItem = useCallback((item: { id: string; type: string; x?: number, y?: number }, newPos: { x: number; y: number }, targetGroupId: string | null) => {
-    setDiagramData(prevData => {
-      let currentNodes = [...(prevData.nodes || [])];
-      let currentZones = [...(prevData.zones || [])];
-      
-      const oldParentId = currentZones.find(zone => zone.children.includes(item.id))?.id;
-
-      // Utility to compute insert index inside a group based on pointer position
-      const computeInsertIndex = (groupId: string, drop: { x: number; y: number }) => {
-        const pg = processedZones.find(zone => zone.id === groupId);
-        if (!pg) return 0;
-        const children = currentZones.find(zone => zone.id === groupId)?.children.filter((id: string) => id !== item.id) || [];
-        const infos = children
-          .map((id: string) => {
-            const n = processedNodes.find(pn => pn.id === id);
-            if (n) {
-              const dims = measureNodeDims(n);
-              return { id, x: n.x, y: n.y, width: dims.width, height: dims.height };
-            }
-            const z = processedZones.find(zone2 => zone2.id === id);
-            if (z) return { id, x: z.x, y: z.y, width: z.width, height: z.height };
-            return null;
-          })
-          .filter(Boolean) as { id: string; x: number; y: number; width: number; height: number }[];
-        infos.sort((a, b) => (a.y === b.y ? a.x - b.x : a.y - b.y));
-        for (let i = 0; i < infos.length; i++) {
-          const c = infos[i];
-          const cy = c.y + c.height / 2;
-          if (drop.y < cy) return i;
-        }
-        return infos.length;
-      };
-   
-      // Handle re-parenting (remove from old, we'll insert into target with ordering below)
-      if (oldParentId !== targetGroupId) {
-        currentZones = currentZones.map(zone => {
-          if (zone.id === oldParentId) { 
-            return { ...zone, children: zone.children.filter((nid: string) => nid !== item.id) };
-          }
-          if (zone.id === targetGroupId) {
-            // Can't drop a zone into itself or its descendants
-            const visited = new Set<string>();
-            const isDescendant = (childId: string, parentId: string): boolean => {
-              if (childId === parentId) return true;
-              if (visited.has(childId)) return false; // Avoid infinite loops
-              visited.add(childId);
-              const childZone = currentZones.find(z => z.id === childId);
-              if (!childZone) return false;
-              return childZone.children.some((nid: string) => isDescendant(nid, parentId));
-            };
-            if (item.type === ItemTypes.ZONE && isDescendant(zone.id, item.id)) {
-              return zone;
-            }
-            // Defer actual insertion to ordering step below
-            return zone;
-          }
-          return zone;
-        });
-
-        // Clean up residual information when moving out of old group
-        if (oldParentId && item.type === ItemTypes.ZONE) {
-          // Remove parentId from the moved group and all its descendants
-          const cleanUpParentId = (groupId: string) => {
-            const zone = currentZones.find(zone => zone.id === groupId);
-            if (zone) {
-              // Remove parentId reference
-              const groupIndex = currentZones.findIndex(g => zone.id === groupId);
-              if (groupIndex !== -1) {
-                currentZones[groupIndex] = { ...zone, parentId: undefined };
-              }
-              
-              // Recursively clean up all child groups
-              zone.children.forEach(childId => {
-                const childZone = currentZones.find(zone => zone.id === childId);
-                if (childZone) {
-                  cleanUpParentId(childId);
-                }
-              });
-            }
-          };
-          cleanUpParentId(item.id);
-        }
-      }
-
-      // Check if item is a freeflow node
-      const isFreeflowNode = currentNodes.find(n => n.id === item.id)?.freeflow;
-      
-      // If target is a group and item is NOT freeflow, set ordering within that group (reorder or insert)
-      if (targetGroupId && !isFreeflowNode) {
-        currentZones = currentZones.map(zone => {
-          if (zone.id !== targetGroupId) return zone;
-          const filtered = zone.children.filter((nid: string) => nid !== item.id);
-          const insertIndex = computeInsertIndex(targetGroupId, newPos);
-          filtered.splice(insertIndex, 0, item.id);
-          return { ...zone, children: filtered };
-        });
-
-        // Set parentId for groups that are moved into a new parent
-        if (item.type === ItemTypes.ZONE && targetGroupId) {
-          const setParentId = (groupId: string, parentId: string) => {
-            const zone = currentZones.find(zone => zone.id === groupId);
-            if (zone) {
-              const groupIndex = currentZones.findIndex(g => zone.id === groupId);
-              if (groupIndex !== -1) {
-                currentZones[groupIndex] = { ...zone, parentId };
-              }
-              
-              // Recursively set parentId for all child groups
-              zone.children.forEach(childId => {
-                const childZone = currentZones.find(zone => zone.id === childId);
-                if (childZone) {
-                  setParentId(childId, groupId);
-                }
-              });
-            }
-          };
-          setParentId(item.id, targetGroupId);
-        }
-      } else if (!targetGroupId && item.type === ItemTypes.ZONE) {
-        // Group moved to canvas (orphaned) - clear parentId for moved group and all descendants
-        const clearParentId = (groupId: string) => {
-          const zone = currentZones.find(zone => zone.id === groupId);
-          if (zone) {
-            const groupIndex = currentZones.findIndex(g => zone.id === groupId);
-            if (groupIndex !== -1) {
-              currentZones[groupIndex] = { ...zone, parentId: undefined };
-            }
-            
-            // Recursively clear parentId for all child groups
-            zone.children.forEach(childId => {
-              const childZone = currentZones.find(zone => zone.id === childId);
-              if (childZone) {
-                clearParentId(childId);
-              }
-            });
-          }
-        };
-        clearParentId(item.id);
-      }
+  const { toast } = useToast();
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 });
   
-      // Handle positioning
-      if (item.type === ItemTypes.CANVAS_NODE || item.type === ItemTypes.ZONE) {
-        // Check if item is a freeflow node
-        const isFreeflowNode = currentNodes.find(n => n.id === item.id)?.freeflow;
-        
-        // If item is (now) a child and NOT freeflow, its position is auto-calculated, so remove explicit coords.
-        // Freeflow nodes always maintain their coordinates even if dropped over a group.
-        if (targetGroupId && !isFreeflowNode) {
-          if (item.type === ItemTypes.CANVAS_NODE) {
-            currentNodes = currentNodes.map(n => n.id === item.id ? { ...n, x: undefined, y: undefined } : n);
-          } else { 
-            currentZones = currentZones.map(zone => zone.id === item.id ? { ...zone, x: undefined, y: undefined } : zone);
-          }
-        } else {
-          // Top-level: snap and prevent overlap
-          const snap = snapToGrid;
-          const snappedX = snap(newPos.x);
-          const snappedY = snap(newPos.y);
-
-          const movingIsZone = item.type === ItemTypes.ZONE;
-          const movingDims = movingIsZone
-            ? (() => {
-                const zone = processedZones.find(pz => pz.id === item.id);
-                return { width: zone?.width ?? 300, height: zone?.height ?? 220 };
-              })()
-            : (() => {
-                const n = processedNodes.find(pn => pn.id === item.id);
-                if (n) return measureNodeDims(n);
-                return { width: NODE_WIDTH, height: NODE_HEIGHT };
-              })();
-
-          const allChildIds = new Set<string>();
-          const getChildrenRecursive = (itemId: string) => {
-              if (allChildIds.has(itemId)) return;
-              allChildIds.add(itemId);
-              const zone = currentZones.find(z => z.id === itemId);
-              if (!zone) return;
-              zone.children.forEach((childId: string) => getChildrenRecursive(childId));
-          };
-          if (movingIsZone) getChildrenRecursive(item.id);
-
-          const isOverlapAt = (x: number, y: number) => {
-            const rectA = { x, y, width: movingDims.width, height: movingDims.height };
-            // obstacles: all processed nodes/groups except moving item and its descendants
-            const obstacles: { x: number; y: number; width: number; height: number; id: string }[] = [
-              ...processedNodes.map(n => {
-                const dims = measureNodeDims(n);
-                return { id: n.id, x: n.x, y: n.y, width: dims.width, height: dims.height };
-              }),
-              ...processedZones.map(zone => ({ id: zone.id, x: zone.x, y: zone.y, width: zone.width, height: zone.height })),
-            ].filter(o => o.id !== item.id && !allChildIds.has(o.id));
-            return obstacles.some(o => !(x + rectA.width <= o.x || o.x + o.width <= x || y + rectA.height <= o.y || o.y + o.height <= y));
-          };
-
-          // Skip overlap prevention for freeflow nodes
-          if (!isFreeflowNode && isOverlapAt(snappedX, snappedY)) {
-            // Abort move if overlapping; user must choose a free grid cell
-            return prevData;
-          }
-
-          const draggedItemData = processedNodes.find(n => n.id === item.id) || processedZones.find(zone => zone.id === item.id);
-          const originalX = draggedItemData?.x ?? 0;
-          const originalY = draggedItemData?.y ?? 0;
-          const dx = snappedX - originalX;
-          const dy = snappedY - originalY;
-
-          if (movingIsZone) {
-            currentZones = currentZones.map(zone => {
-              if (zone.id === item.id) return { ...zone, x: snappedX, y: snappedY };
-              if (allChildIds.has(zone.id)) {
-                const originalChild = processedZones.find(childZone => childZone.id === zone.id);
-                return { ...zone, x: (originalChild?.x ?? 0) + dx, y: (originalChild?.y ?? 0) + dy };
-              }
-              return zone;
-            });
-            currentNodes = currentNodes.map(n => {
-              if (allChildIds.has(n.id)) {
-                const originalChild = processedNodes.find(cn => cn.id === n.id);
-                return { ...n, x: (originalChild?.x ?? 0) + dx, y: (originalChild?.y ?? 0) + dy };
-              }
-              return n;
-            });
-          } else {
-            currentNodes = currentNodes.map(n => n.id === item.id ? { ...n, x: snappedX, y: snappedY } : n);
-          }
-        }
-      }
-      return { ...prevData, nodes: currentNodes, zones: currentZones };
-    });
-  }, [setDiagramData, processedNodes, processedZones]);
-
-
-  type DropItem = { 
-    id?: string; 
-    type?: string; 
-    label?: string; 
-    x?: number; 
-    y?: number;
-};
-
-const [, drop] = useDrop(() => ({
-    accept: [ItemTypes.DIAGRAM_NODE, ItemTypes.CANVAS_NODE, ItemTypes.ZONE],
-    hover: (item: DropItem, monitor) => {
-        if (!canvasRef.current) return;
-        const clientOffset = monitor.getClientOffset();
-        if (!clientOffset) return;
-        
-        const rect = canvasRef.current.getBoundingClientRect();
-        const x = (clientOffset.x - rect.left - transform.x) / transform.k;
-        const y = (clientOffset.y - rect.top - transform.y) / transform.k;
-
-        // Update drag position for real-time display
-        // hover is only called during drag, so we always update
-        let itemX = x;
-        let itemY = y;
-        let deltaX = 0;
-        let deltaY = 0;
-        
-        if (item.id && (monitor.getItemType() === ItemTypes.CANVAS_NODE || monitor.getItemType() === ItemTypes.ZONE)) {
-          // For existing items, calculate based on initial position and delta
-          const initialCanvasPos = monitor.getInitialSourceClientOffset();
-          const delta = monitor.getDifferenceFromInitialOffset();
-          if (initialCanvasPos && delta) {
-            const originalItem = nodesById[item.id] || zonesById[item.id];
-            if (originalItem) {
-              const initialX = originalItem.x ?? 0;
-              const initialY = originalItem.y ?? 0;
-              itemX = initialX + delta.x / transform.k;
-              itemY = initialY + delta.y / transform.k;
-              deltaX = delta.x / transform.k;
-              deltaY = delta.y / transform.k;
-            }
-          }
-        }
-        
-        // Snap to grid for display
-        const snap = snapToGrid;
-        itemX = snap(itemX);
-        itemY = snap(itemY);
-        
-        // Handle multi-select dragging
-        if (item.id && selectedItemIds.has(item.id) && selectedItemIds.size > 1) {
-          // Initialize start positions if not already done
-          if (!multiDragStartPositions.current) {
-            multiDragStartPositions.current = {};
-            selectedItemIds.forEach(id => {
-              const node = nodesById[id] || zonesById[id];
-              if (node) {
-                multiDragStartPositions.current![id] = { x: node.x ?? 0, y: node.y ?? 0 };
-              }
-            });
-          }
-          
-          // Calculate positions for all selected items
-          const newPositions: { [itemId: string]: { x: number; y: number } } = {};
-          selectedItemIds.forEach(id => {
-            const startPos = multiDragStartPositions.current![id];
-            if (startPos) {
-              newPositions[id] = {
-                x: snap(startPos.x + deltaX),
-                y: snap(startPos.y + deltaY)
-              };
-            }
-          });
-          
-          setMultiDragPositions(newPositions);
-        } else {
-          // Single item drag
-          setMultiDragPositions(null);
-          multiDragStartPositions.current = null;
-        }
-        
-        setDragPosition({ x: itemX, y: itemY, itemId: item.id });
-        isDraggingRef.current = true;
-
-        // Check if item is a freeflow node
-        const isFreeflowNode = item.id && nodesById[item.id]?.freeflow;
-
-        let targetGroupId: string | null = null;
-        
-        // Only check for group highlighting if item is NOT a freeflow node
-        if (!isFreeflowNode) {
-            // Iterate backwards to check topmost groups first
-            for (let i = processedZones.length - 1; i >= 0; i--) {
-                const zone = processedZones[i];
-                if (zone.id === item.id) continue;
-                
-                // Check if item being dragged is an ancestor of potential target zone
-                let isAncestor = false;
-                if (item.id) {
-                    const visited = new Set<string>();
-                    const checkDescendants = (currentZoneId: string): boolean => {
-                        if (visited.has(currentZoneId)) return false;
-                        visited.add(currentZoneId);
-                        if (currentZoneId === zone.id) return true;
-                        const currentZoneData = processedZones.find(zone => zone.id === currentZoneId);
-                        if (!currentZoneData) return false;
-                        return currentZoneData.children.some((childId: string) => {
-                            const childZone = processedZones.find(zone => zone.id === childId);
-                            return childZone ? checkDescendants(childZone.id) : false;
-                        });
-                    };
-                    isAncestor = checkDescendants(item.id);
-                }
-                if (isAncestor) continue;
-
-                if (x > zone.x && x < zone.x + zone.width && y > zone.y && y < zone.y + zone.height) {
-                    targetGroupId = zone.id;
-                    break;
-                }
-            }
-        }
-        
-        setHoveredGroupId(targetGroupId);
-    },
-    drop: (item: DropItem, monitor) => {
-        if (!canvasRef.current) return;
-        const canvasRect = canvasRef.current.getBoundingClientRect();
-        
-        const itemType = monitor.getItemType();
-        let x, y;
-        
-        const currentPos = monitor.getClientOffset();
-        if (!currentPos) return;
-
-        if (itemType === ItemTypes.DIAGRAM_NODE) {
-          // This is a new item from the sidebar
-          x = (currentPos.x - canvasRect.left - transform.x) / transform.k;
-          y = (currentPos.y - canvasRect.top - transform.y) / transform.k;
-        } else {
-          // This is an existing item being moved
-          const initialCanvasPos = monitor.getInitialSourceClientOffset();
-          const delta = monitor.getDifferenceFromInitialOffset();
-          if (!initialCanvasPos || !delta) {
-            // If delta isn't available, use client offset as fallback
-            x = (currentPos.x - canvasRect.left - transform.x) / transform.k;
-            y = (currentPos.y - canvasRect.top - transform.y) / transform.k;
-          } else {
-            const originalItem = nodesById[item.id!] || zonesById[item.id!];
-            const initialX = originalItem?.x ?? 0;
-            const initialY = originalItem?.y ?? 0;
-            x = initialX + delta.x / transform.k;
-            y = initialY + delta.y / transform.k;
-          }
-        }
-        
-        // Snap to grid before dropping
-        const snap = snapToGrid;
-        x = snap(x);
-        y = snap(y);
-        
-        // Check if item is a freeflow node
-        const isFreeflowNode = item.id && nodesById[item.id]?.freeflow;
-        const targetGroupIdForFreeflow = isFreeflowNode ? null : hoveredGroupId;
-        
-        if (itemType === ItemTypes.DIAGRAM_NODE) { 
-            // Pass full item data to preserve resource information
-            addNode(item as any, { x, y }, targetGroupIdForFreeflow);
-        } else if (item.id && (itemType === ItemTypes.CANVAS_NODE || itemType === ItemTypes.ZONE)) {
-            // Handle multi-select movement
-            if (selectedItemIds.has(item.id) && selectedItemIds.size > 1 && multiDragStartPositions.current) {
-                // Move all selected items maintaining relative spacing
-                const initialCanvasPos = monitor.getInitialSourceClientOffset();
-                const delta = monitor.getDifferenceFromInitialOffset();
-                let deltaX = 0, deltaY = 0;
-                
-                if (initialCanvasPos && delta) {
-                    deltaX = delta.x / transform.k;
-                    deltaY = delta.y / transform.k;
-                }
-                
-                const itemsToMove: Array<{ id: string; type: string; x?: number, y?: number }> = [];
-                const newPositions: Array<{ x: number; y: number }> = [];
-                
-                selectedItemIds.forEach(id => {
-                    const startPos = multiDragStartPositions.current![id];
-                    if (startPos) {
-                        const newX = snap(startPos.x + deltaX);
-                        const newY = snap(startPos.y + deltaY);
-                        const itemType = nodesById[id] ? ItemTypes.CANVAS_NODE : ItemTypes.ZONE;
-                        itemsToMove.push({ id, type: itemType, x: startPos.x, y: startPos.y });
-                        newPositions.push({ x: newX, y: newY });
-                    }
-                });
-                
-                if (itemsToMove.length > 0) {
-                    moveMultipleItems(itemsToMove, newPositions, targetGroupIdForFreeflow);
-                }
-            } else {
-                // Single item movement
-                moveItem({ id: item.id, type: item.type || '', x: item.x, y: item.y }, { x, y }, targetGroupIdForFreeflow);
-            }
-        }
-        
-        // Clear drag position display after drop
-        setDragPosition(null);
-        setMultiDragPositions(null);
-        multiDragStartPositions.current = null;
-        isDraggingRef.current = false;
-        setHoveredGroupId(null);
-    },
-    collect: (monitor) => ({
-      isOver: monitor.isOver(),
-      canDrop: monitor.canDrop(),
-    }),
-  }), [transform, processedZones, diagramData, hoveredGroupId, moveItem, moveMultipleItems, addNode, nodesById, zonesById, selectedItemIds]);
-
-  // Cleanup multi-drag state when drag ends outside of drop
-  useEffect(() => {
-    const handleGlobalMouseUp = () => {
-      if (isDraggingRef.current) {
-        setMultiDragPositions(null);
-        multiDragStartPositions.current = null;
-      }
-    };
-    
-    document.addEventListener('mouseup', handleGlobalMouseUp);
-    return () => document.removeEventListener('mouseup', handleGlobalMouseUp);
-  }, []);
-
-
+  // Client-side rendering state
+  const [isClient, setIsClient] = useState(false);
   
-  const handleCanvasClick = (e: React.MouseEvent) => {
-    const target = e.target as HTMLElement;
-    if (target.closest('.absolute') === null && !justCompletedSelection) {
-      onItemSelect(null);
-      closeContextMenu();
-    }
-  };
+  // Initialize hooks
+  const { transform, setTransform, handleWheel, handleFitToView } = useCanvasTransform({
+    externalTransform,
+    onTransformChange,
+    canvasRef,
+    processedNodes,
+    processedZones,
+  });
 
+  const { contextMenu, handleContextMenu, closeContextMenu } = useCanvasContextMenu();
+
+  const { clipboard, handleCopy, handlePaste, handleToggleFreeflow, canPaste } = useCanvasClipboard({
+    diagramData,
+    selectedItemIds,
+    setDiagramData,
+    onItemSelect,
+    onClipboardChange,
+    toast,
+  });
+
+  const { isSelectionMode, pendingExportOptions, exportPng, startSelectionMode, setIsSelectionMode, setPendingExportOptions } = useCanvasExport({
+    canvasRef,
+    transform,
+    width,
+    height,
+    toast,
+  });
+
+  const { selectionStart, selectionEnd, justCompletedSelection, handleCanvasClick, handleMouseDown: handleSelectionMouseDown, handleMouseMove: handleSelectionMouseMove, handleMouseUpOrLeave: handleSelectionMouseUpOrLeave } = useCanvasSelection({
+    canvasRef,
+    transform,
+    isConnectMode,
+    diagramData,
+    onItemSelect,
+    onBatchSelect,
+    onSelectionChange,
+    closeContextMenu,
+    isSelectionMode,
+    pendingExportOptions,
+    exportPng,
+    onExportComplete,
+    toast,
+  });
+
+  const { isPanning, handleMouseDown: handleInteractionsMouseDown, handleMouseMove: handleInteractionsMouseMove, handleMouseUpOrLeave: handleInteractionsMouseUpOrLeave, handleTouchStart, handleTouchMove, handleTouchEnd } = useCanvasInteractions({
+    canvasRef,
+    transform,
+    setTransform,
+    isConnectMode,
+    onMousePositionChange,
+  });
+
+  const operations = useCanvasOperations({
+    setDiagramData,
+    processedNodes,
+    processedZones,
+    onItemSelect,
+    toast,
+  });
+
+  const { dragPosition, multiDragPositions, hoveredGroupId, drop } = useCanvasDragDrop({
+    canvasRef,
+    transform,
+    processedZones,
+    nodesById,
+    zonesById,
+    selectedItemIds,
+    addNode: operations.addNode,
+    moveItem: operations.moveItem,
+    moveMultipleItems: operations.moveMultipleItems,
+  });
+
+  // Combine mouse handlers
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    handleSelectionMouseDown(e);
+    handleInteractionsMouseDown(e);
+  }, [handleSelectionMouseDown, handleInteractionsMouseDown]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    handleSelectionMouseMove(e);
+    handleInteractionsMouseMove(e);
+  }, [handleSelectionMouseMove, handleInteractionsMouseMove]);
+
+  const handleMouseUpOrLeave = useCallback(async () => {
+    await handleSelectionMouseUpOrLeave();
+    handleInteractionsMouseUpOrLeave();
+  }, [handleSelectionMouseUpOrLeave, handleInteractionsMouseUpOrLeave]);
+
+  // Node/zone click handlers
   const handleNodeClick = (e: React.MouseEvent, node: DiagramNodeData) => {
     e.stopPropagation();
     closeContextMenu();
@@ -2003,8 +199,13 @@ const [, drop] = useDrop(() => ({
     }
   }
 
-  const handleNodeRightClick = (e: React.MouseEvent, node: DiagramNodeData) => {
+  const handleNodeContextMenu = (e: React.MouseEvent, node: DiagramNodeData) => {
     e.stopPropagation();
+    e.preventDefault();
+    // Select the node if not already selected
+    if (selectedItemId !== node.id) {
+      onItemSelect({ ...node, itemType: 'node' }, false);
+    }
     handleContextMenu(e, node.id, 'node');
   }
 
@@ -2018,1306 +219,69 @@ const [, drop] = useDrop(() => ({
     }
   }
 
-  const handleZoneRightClick = (e: React.MouseEvent, zone: DiagramZoneData) => {
+  const handleZoneContextMenu = (e: React.MouseEvent, zone: DiagramZoneData) => {
     e.stopPropagation();
+    e.preventDefault();
+    // Select the zone if not already selected
+    if (selectedItemId !== zone.id) {
+      onItemSelect({ ...zone, itemType: 'zone' }, false);
+    }
     handleContextMenu(e, zone.id, 'zone');
   };
 
+  // Apply drop to canvas
   drop(canvasRef);
-  
-  const handleWheel = (e: React.WheelEvent) => {
-    if (!canvasRef.current) return;
-    const { deltaY } = e;
-    const rect = canvasRef.current.getBoundingClientRect();
-    const s = Math.pow(0.995, deltaY); // Less sensitive zoom (changed from 0.99 to 0.995)
-    
-    const newK = Math.max(0.1, Math.min(transform.k * s, 2.5)); // Max zoom set to 250% (2.5x)
-    
-    // Only update position if zoom actually changed (not at limit)
-    if (newK !== transform.k) {
-      // Use center of visible canvas area instead of mouse cursor position
-      // The canvas rect.left already accounts for sidebar, so we just need to browser center
-      if (typeof window === 'undefined') return; // SSR guard
-      const browserViewportCenterX = window.innerWidth / 2;
-      const browserViewportCenterY = window.innerHeight / 2;
-      
-      // Manual 10% adjustment to test horizontal center offset
-      const adjustedCenterX = browserViewportCenterX + (window.innerWidth * 0.1);
-      
-      // Convert adjusted browser viewport center to canvas-relative coordinates
-      // rect.left already includes the sidebar offset, so no need to subtract it again
-      const canvasRelativeCenterX = adjustedCenterX - rect.left;
-      const canvasRelativeCenterY = browserViewportCenterY - rect.top;
-      
-      // Convert to canvas coordinates (accounting for current transform)
-      const canvasCenterX = (canvasRelativeCenterX - transform.x) / transform.k;
-      const canvasCenterY = (canvasRelativeCenterY - transform.y) / transform.k;
-      
-      // Calculate new position to keep the same canvas point at browser viewport center
-      const newX = canvasRelativeCenterX - canvasCenterX * newK;
-      const newY = canvasRelativeCenterY - canvasCenterY * newK;
-      
-
-      
-      setTransform({ x: newX, y: newY, k: newK });
-    }
-    // If zoom didn't change (at limit), do nothing - no position updates
-  };
-  
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (isConnectMode) return;
-    const target = e.target as HTMLElement;
-    
-    // Handle selection mode with left mouse button (button === 0)
-    if (e.button === 0) {
-      // Check if clicking on an interactive element - if so, don't start selection
-      // Be more specific - only block selection for actual interactive elements
-      if (target.closest('.absolute.group') || 
-          target.closest('.absolute.rounded-lg') ||
-          target.closest('button') || 
-          target.closest('input') || 
-          target.closest('textarea') ||
-          target.closest('[role="button"]') ||
-          target.closest('.context-menu')) return;
-      
-      if (!canvasRef.current) return;
-      const contentDiv = canvasRef.current.querySelector('.dot-grid') as HTMLElement;
-      if (!contentDiv) return;
-      
-      // Get bounding rects - we need both to calculate accurate coordinates
-      const contentRect = contentDiv.getBoundingClientRect();
-      const canvasRect = canvasRef.current.getBoundingClientRect();
-      
-      // The content div's position in screen space (accounting for transform)
-      // We need to convert mouse position to coordinates relative to the untransformed div
-      // The div has transform: translate(transform.x, transform.y) scale(transform.k)
-      // So: mousePos - canvasPos = canvasSpace coordinates
-      // Then: (canvasSpace - transform.x) / transform.k = diagramSpace coordinates
-      const mouseX = e.clientX;
-      const mouseY = e.clientY;
-      
-      // Mouse position relative to canvas
-      const canvasX = mouseX - canvasRect.left;
-      const canvasY = mouseY - canvasRect.top;
-      
-      // Convert to diagram space (coordinates relative to untransformed .dot-grid div)
-      const diagramX = (canvasX - transform.x) / transform.k;
-      const diagramY = (canvasY - transform.y) / transform.k;
-      
-
-      setSelectionStart({ x: diagramX, y: diagramY });
-      setSelectionEnd({ x: diagramX, y: diagramY });
-      return;
-    }
-    
-    // Handle panning with right mouse button (button === 2)
-    if (e.button === 2 && !target.closest('.absolute')) {
-      e.preventDefault(); // Prevent context menu
-      setIsPanning(true);
-      setPanStart({ x: e.clientX - transform.x, y: e.clientY - transform.y });
-    }
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    // Track mouse position for display
-    if (canvasRef.current && onMousePositionChange) {
-      const canvasRect = canvasRef.current.getBoundingClientRect();
-      const canvasX = e.clientX - canvasRect.left;
-      const canvasY = e.clientY - canvasRect.top;
-      
-      // Convert to diagram space (coordinates relative to untransformed .dot-grid div)
-      const diagramX = (canvasX - transform.x) / transform.k;
-      const diagramY = (canvasY - transform.y) / transform.k;
-      
-      // Snap to grid for display consistency
-      const snap = snapToGrid;
-      onMousePositionChange({ x: snap(diagramX), y: snap(diagramY) });
-    }
-    
-    // Handle selection when left mouse button is held and we have a selection start
-    if (selectionStart && e.buttons === 1) { // e.buttons === 1 means left mouse is pressed
-      if (!canvasRef.current) return;
-      const contentDiv = canvasRef.current.querySelector('.dot-grid') as HTMLElement;
-      if (!contentDiv) return;
-      
-      const canvasRect = canvasRef.current.getBoundingClientRect();
-      const canvasX = e.clientX - canvasRect.left;
-      const canvasY = e.clientY - canvasRect.top;
-      
-      // Convert to coordinates relative to the untransformed .dot-grid div
-      const diagramX = (canvasX - transform.x) / transform.k;
-      const diagramY = (canvasY - transform.y) / transform.k;
-      
-      setSelectionEnd({ x: diagramX, y: diagramY });
-      return;
-    }
-    
-    if (!isPanning) return;
-    setTransform({ ...transform, x: e.clientX - panStart.x, y: e.clientY - panStart.y });
-  };
-
-  const handleMouseUpOrLeave = async () => {
-    // Handle selection completion for export
-    if (isSelectionMode && selectionStart && selectionEnd && pendingExportOptions) {
-      // Complete selection and export
-      // Selection coordinates are already in diagram space (relative to .dot-grid)
-      const x = Math.min(selectionStart.x, selectionEnd.x);
-      const y = Math.min(selectionStart.y, selectionEnd.y);
-      const width = Math.abs(selectionEnd.x - selectionStart.x);
-      const height = Math.abs(selectionEnd.y - selectionStart.y);
-      
-      if (width > 10 && height > 10) {
-        // Debug: log coordinates
-        console.log('Export selection:', { x, y, width, height, transform });
-        
-        try {
-          // Pass coordinates directly in diagram space (they're relative to the .dot-grid div)
-          await exportPng({
-            backgroundColor: pendingExportOptions.backgroundColor,
-            selectionArea: { x, y, width, height },
-          });
-          
-          // Wait a bit to ensure transform is fully restored before resetting state
-          await new Promise(resolve => requestAnimationFrame(resolve));
-          
-          // Notify parent that export is complete
-          if (onExportComplete) {
-            onExportComplete();
-          }
-        } catch (error) {
-          console.error('Export failed:', error);
-          toast({ variant: 'destructive', title: 'Export failed', description: 'Export encountered an issue.' });
-        }
-      }
-      
-      setIsSelectionMode(false);
-      setSelectionStart(null);
-      setSelectionEnd(null);
-      setPendingExportOptions(null);
-      return;
-    }
-    
-    // Handle regular selection completion (select items within selection rectangle)
-    if (selectionStart && selectionEnd) {
-      const x1 = Math.min(selectionStart.x, selectionEnd.x);
-      const y1 = Math.min(selectionStart.y, selectionEnd.y);
-      const x2 = Math.max(selectionStart.x, selectionEnd.x);
-      const y2 = Math.max(selectionStart.y, selectionEnd.y);
-      
-      // Find all nodes and groups within the selection rectangle
-      const selectedIds = new Set<string>();
-      
-      // Check nodes
-      diagramData.nodes.forEach(node => {
-        const nodeX = node.x || 0;
-        const nodeY = node.y || 0;
-        const nodeWidth = node.width || 80;
-        const nodeHeight = node.height || 50;
-        
-        if (nodeX >= x1 && nodeX + nodeWidth <= x2 && nodeY >= y1 && nodeY + nodeHeight <= y2) {
-          selectedIds.add(node.id);
-        }
-      });
-      
-      // Check groups
-      diagramData.zones?.forEach(zone => {
-        const zoneX = zone.x || 0;
-        const zoneY = zone.y || 0;
-        const zoneWidth = zone.width || 300;
-        const zoneHeight = zone.height || 220;
-        
-        if (zoneX >= x1 && zoneX + zoneWidth <= x2 && zoneY >= y1 && zoneY + zoneHeight <= y2) {
-          selectedIds.add(zone.id);
-        }
-      });
-      
-      // Select all items within the selection rectangle
-      if (selectedIds.size > 0 && onBatchSelect) {
-        onBatchSelect(Array.from(selectedIds));
-      } else if (selectedIds.size > 0) {
-        // Fallback to individual selection if batch select not available
-        const firstId = Array.from(selectedIds)[0];
-        const primaryNode = diagramData.nodes.find(n => n.id === firstId);
-        const primaryGroup = diagramData.zones?.find(zone => zone.id === firstId);
-        
-        let primaryItem = null;
-        if (primaryNode) {
-          primaryItem = { ...primaryNode, itemType: 'node' as const };
-        } else if (primaryGroup) {
-          primaryItem = { ...primaryGroup, itemType: 'zone' as const };
-        }
-        
-        if (primaryItem) {
-          onItemSelect(primaryItem);
-        }
-      } else {
-        onItemSelect(null);
-      }
-      
-      // Clear selection rectangle
-      setSelectionStart(null);
-      setSelectionEnd(null);
-      
-      // Set flag to prevent canvas click from clearing selection
-      if (selectedIds.size > 0) {
-        setJustCompletedSelection(true);
-        setTimeout(() => setJustCompletedSelection(false), 100); // Clear flag after short delay
-      }
-    }
-    
-    setIsPanning(false);
-  };
-
-
-  // Touch event handlers for mobile - improved logic
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (isConnectMode) return;
-    const target = e.target as HTMLElement;
-    
-    // Check if touching an interactive element - let them handle their own touch events
-    // This includes nodes, zones, buttons, inputs, etc.
-    if (target.closest('.absolute') || 
-        target.closest('button') || 
-        target.closest('input') || 
-        target.closest('textarea') ||
-        target.closest('[role="button"]') ||
-        target.closest('.cursor-move')) {
-      return; // Don't handle canvas pan/zoom when touching interactive elements
-    }
-    
-    if (e.touches.length === 1) {
-      // Single touch - start panning
-      const touch = e.touches[0];
-      setIsPanning(true);
-      setPanStart({ x: touch.clientX - transform.x, y: touch.clientY - transform.y });
-    } else if (e.touches.length === 2) {
-      // Two touches - prepare for zoom
-      const touch1 = e.touches[0];
-      const touch2 = e.touches[1];
-      const distance = Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
-      setTouchStart({ x: (touch1.clientX + touch2.clientX) / 2, y: (touch1.clientY + touch2.clientY) / 2, distance });
-      setLastTouchDistance(distance);
-      setIsPanning(false);
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    const target = e.target as HTMLElement;
-    
-    // Don't handle if touching interactive elements
-    if (target.closest('.absolute') || 
-        target.closest('button') || 
-        target.closest('input') || 
-        target.closest('textarea') ||
-        target.closest('[role="button"]') ||
-        target.closest('.cursor-move')) {
-      return;
-    }
-    
-    if (e.touches.length === 1 && isPanning) {
-      // Single touch - pan
-      e.preventDefault(); // Only prevent default for panning
-      const touch = e.touches[0];
-      setTransform({ ...transform, x: touch.clientX - panStart.x, y: touch.clientY - panStart.y });
-    } else if (e.touches.length === 2 && touchStart && lastTouchDistance !== null) {
-      // Two touches - zoom
-      e.preventDefault(); // Prevent page zoom
-      const touch1 = e.touches[0];
-      const touch2 = e.touches[1];
-      const currentDistance = Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
-      
-      if (!canvasRef.current) return;
-      
-      // Calculate zoom
-      const scale = currentDistance / lastTouchDistance;
-      const newK = Math.max(0.1, Math.min(transform.k * scale, 2.5));
-      
-      // Keep the same center point for zoom
-      setTransform({ ...transform, k: newK });
-      setLastTouchDistance(currentDistance);
-    }
-  };
-
-  const handleTouchEnd = () => {
-    setIsPanning(false);
-    setTouchStart(null);
-    setLastTouchDistance(null);
-  };
-
-
-  const handleFitToView = useCallback(() => {
-    if (!canvasRef.current) return;
-
-    const viewportWidth = canvasRef.current.clientWidth;
-    const viewportHeight = canvasRef.current.clientHeight;
-
-    // Use the processedNodes and processedZones which have final calculated positions
-    const allNodes = processedNodes;
-    const allGroups = processedZones;
-
-    console.log('Processed items (final positions):', {
-      allNodes: allNodes.map(n => ({ id: n.id, x: n.x, y: n.y, label: n.label, width: measureNodeDims(n).width, height: measureNodeDims(n).height })),
-      allGroups: allGroups.map(zone => ({ id: zone.id, x: zone.x, y: zone.y, width: zone.width, height: zone.height, label: zone.label }))
-    });
-
-    const nodeBounds = allNodes.length
-      ? {
-          minX: Math.min(...allNodes.map(n => n.x ?? 0)),
-          minY: Math.min(...allNodes.map(n => n.y ?? 0)),
-          maxX: Math.max(...allNodes.map(n => (n.x ?? 0) + measureNodeDims(n).width)),
-          maxY: Math.max(...allNodes.map(n => (n.y ?? 0) + measureNodeDims(n).height)),
-        }
-      : null;
-
-    const groupBounds = allGroups.length
-      ? {
-          minX: Math.min(...allGroups.map(zone => zone.x ?? 0)),
-          minY: Math.min(...allGroups.map(zone => zone.y ?? 0)),
-          maxX: Math.max(...allGroups.map(zone => (zone.x ?? 0) + zone.width)),
-          maxY: Math.max(...allGroups.map(zone => (zone.y ?? 0) + zone.height)),
-        }
-      : null;
-
-    if (!nodeBounds && !groupBounds) {
-      setTransform({ x: 0, y: 0, k: 1 });
-      return;
-    }
-
-    let minX = Math.min(nodeBounds?.minX ?? Infinity, groupBounds?.minX ?? Infinity);
-    let minY = Math.min(nodeBounds?.minY ?? Infinity, groupBounds?.minY ?? Infinity);
-    let maxX = Math.max(nodeBounds?.maxX ?? -Infinity, groupBounds?.maxX ?? -Infinity);
-    let maxY = Math.max(nodeBounds?.maxY ?? -Infinity, groupBounds?.maxY ?? -Infinity);
-
-    // Add minimal padding to account for edges/labels that can extend beyond shapes
-    const padding = 20;
-    minX -= padding;
-    minY -= padding;
-    maxX += padding;
-    maxY += padding;
-
-    const contentWidth = Math.max(1, maxX - minX);
-    const contentHeight = Math.max(1, maxY - minY);
-
-    // Calculate scale needed to fit content within viewport
-    // If content is larger than viewport, scale < 1 (zoom out)
-    // If content is smaller than viewport, allow some zoom in for better visibility
-    const scaleX = viewportWidth / contentWidth;
-    const scaleY = viewportHeight / contentHeight;
-    // Use the smaller scale to ensure everything fits, but allow up to 1.5x zoom for better visibility
-    const k = Math.min(1.5, Math.min(scaleX, scaleY));
-    
-    // Debug logging (remove in production)
-    console.log('Fit to view debug:', {
-      viewportWidth, viewportHeight,
-      contentWidth, contentHeight,
-      scaleX, scaleY, k,
-      bounds: { minX, minY, maxX, maxY },
-      nodesCount: allNodes.length,
-      groupsCount: allGroups.length,
-      sampleNodes: allNodes.slice(0, 3).map(n => ({ id: n.id, x: n.x, y: n.y, label: n.label })),
-      sampleGroups: allGroups.slice(0, 3).map(zone => ({ id: zone.id, x: zone.x, y: zone.y, width: zone.width, height: zone.height }))
-    });
-
-    const displayWidth = k * contentWidth;
-    const displayHeight = k * contentHeight;
-
-    // Calculate positioning - use your ideal values directly
-    // You want X=-200, Y=-100, so let's use those as the target
-    const x = -200;
-    const y = -100;
-    
-// Debug the centering calculation
-    console.log('Fit to view calculation:', {
-      contentBounds: { minX, minY, maxX, maxY },
-      calculatedTransform: { x, y, k },
-      contentSize: { width: contentWidth, height: contentHeight },
-      scaleFactors: { scaleX, scaleY },
-      targetPosition: { x: -200, y: -100 }
-    });
-
-    setTransform({ x, y, k });
-  }, [processedNodes, processedZones]);
-
-  const exportPng = useCallback(async (options?: { backgroundColor?: 'transparent' | 'white'; selectionArea?: { x: number; y: number; width: number; height: number } }) => {
-    if (!canvasRef.current) return;
-    
-    try {
-      const { toPng } = await import('html-to-image');
-      
-      // Find the actual content div (the one with dot-grid class)
-      const contentDiv = canvasRef.current.querySelector('.dot-grid') as HTMLElement;
-      if (!contentDiv) {
-        toast({ variant: 'destructive', title: 'Export failed', description: 'Could not find diagram content.' });
-        return;
-      }
-
-      // Store current transform from state (not DOM) to ensure we restore correctly
-      const currentTransform = transform;
-      const transformString = `translate(${currentTransform.x}px, ${currentTransform.y}px) scale(${currentTransform.k})`;
-
-      // Temporarily hide grid by removing the class
-      const hadGridClass = contentDiv.classList.contains('dot-grid');
-      if (hadGridClass) {
-        contentDiv.classList.remove('dot-grid');
-      }
-
-      // Store original inline styles (might be empty if React is controlling it)
-      const originalTransform = contentDiv.style.transform;
-      const originalTransformOrigin = contentDiv.style.transformOrigin;
-      
-      // Remove transform temporarily for accurate coordinate mapping
-      contentDiv.style.transform = 'none';
-      contentDiv.style.transformOrigin = '0 0';
-      
-      // Wait for browser to re-render with new transform
-      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-      
-      // For full export, we can work with the element as-is
-      // For selection export, we need to adjust coordinates
-      let exportElement = contentDiv;
-
-      try {
-        const backgroundColor = options?.backgroundColor === 'transparent' ? 'transparent' : 
-                               options?.backgroundColor === 'white' ? '#ffffff' :
-                               getComputedStyle(document.documentElement).getPropertyValue('--background') || '#ffffff';
-
-        let exportOptions: any = {
-          pixelRatio: Math.min(3, (typeof window !== 'undefined' ? window.devicePixelRatio : 1) || 1) * 2,
-          cacheBust: true,
-          backgroundColor: backgroundColor === 'transparent' ? undefined : backgroundColor,
-          skipFonts: true,
-        };
-
-        // If selection area is provided, crop to that area
-        if (options?.selectionArea) {
-          const { x, y, width: selectionWidth, height: selectionHeight } = options.selectionArea;
-          
-          // Debug: log before export
-          console.log('Export with selection:', { 
-            x, y, selectionWidth, selectionHeight,
-            contentDivSize: { width, height },
-            transform: currentTransform
-          });
-          
-          // Coordinates are in diagram space (relative to contentDiv without transform)
-          // html-to-image expects coordinates relative to the element's coordinate system
-          exportOptions = {
-            ...exportOptions,
-            x: Math.max(0, x),
-            y: Math.max(0, y),
-            width: Math.max(1, Math.min(selectionWidth, width - x)), // Don't exceed content bounds
-            height: Math.max(1, Math.min(selectionHeight, height - y)), // Don't exceed content bounds
-          };
-          
-          console.log('Final export options:', exportOptions);
-        }
-
-        const dataUrl = await toPng(exportElement, exportOptions);
-
-        // Use File System Access API if available
-        if ('showSaveFilePicker' in window) {
-          try {
-            const handle = await (window as any).showSaveFilePicker({
-              suggestedName: 'diagram.png',
-              types: [{
-                description: 'PNG Images',
-                accept: { 'image/png': ['.png'] }
-              }]
-            });
-            const blob = await (await fetch(dataUrl)).blob();
-            const writable = await handle.createWritable();
-            await writable.write(blob);
-            await writable.close();
-            toast({ title: 'Exported', description: 'PNG exported successfully.' });
-            return;
-          } catch (error: any) {
-            // User cancelled or API failed, fall back to download
-            if (error.name !== 'AbortError') {
-              console.log('File System Access API failed, falling back to download:', error);
-            }
-          }
-        }
-
-        // Fallback: automatic download
-        const link = document.createElement('a');
-        link.download = 'diagram.png';
-        link.href = dataUrl;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        toast({ title: 'Exported', description: 'PNG exported successfully.' });
-      } finally {
-        // Restore original state - use the transform string from state, not from DOM
-        if (hadGridClass) {
-          contentDiv.classList.add('dot-grid');
-        }
-        // Restore transform - use the state value, not the original DOM value
-        contentDiv.style.transform = transformString;
-        contentDiv.style.transformOrigin = originalTransformOrigin || '0 0';
-        
-        // Force a re-render to ensure React syncs with the DOM
-        // Use requestAnimationFrame to ensure DOM update happens before React re-renders
-        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-        
-        // Ensure transform state is still correct (in case React tried to override)
-        // This is a safety check - the transform should already be correct from state
-        if (contentDiv.style.transform !== transformString) {
-          contentDiv.style.transform = transformString;
-        }
-      }
-    } catch (err) {
-      console.error('Export failed:', err);
-      toast({ variant: 'destructive', title: 'Export failed', description: 'Export encountered an issue.' });
-    }
-  }, [toast, transform, width, height]);
-
-  const startSelectionMode = useCallback((options: { backgroundColor: 'transparent' | 'white'; useSelection: boolean }) => {
-    if (options.useSelection) {
-      setIsSelectionMode(true);
-      setPendingExportOptions(options);
-      toast({ title: 'Selection Mode', description: 'Drag to select the area to export.' });
-    } else {
-      exportPng({ backgroundColor: options.backgroundColor });
-    }
-  }, [exportPng, toast]);
-
-  // Initial imperative API setup - will be updated after handleCopy/handlePaste are defined
-
-  // Sort items for proper hierarchical rendering: parent first, then children in order
-  const sortedRenderItems = useMemo(() => {
-    const parentMap = new Map<string, string>();
-    processedZones.forEach(zone => {
-      zone.children.forEach((id: string) => parentMap.set(id, zone.id));
-    });
-
-    const getDepth = (id: string): number => {
-      let depth = 0;
-      let current = parentMap.get(id);
-      while (current) {
-        depth++;
-        current = parentMap.get(current);
-      }
-      return depth;
-    };
-
-    // Combine all items and sort by depth (parents first), then by original order
-    // Also deduplicate by ID to prevent React key conflicts
-    const seenIds = new Set<string>();
-    const allItems = [
-      ...processedZones.map(zone => ({ ...zone, itemType: 'zone' as const })),
-      ...processedNodes.map(n => ({ ...n, itemType: 'node' as const }))
-    ].filter(item => {
-      if (seenIds.has(item.id)) {
-        console.warn('Duplicate item in render list:', item.id, item.itemType);
-        return false;
-      }
-      seenIds.add(item.id);
-      return true;
-    });
-
-    return allItems.sort((a, b) => {
-      const depthA = getDepth(a.id);
-      const depthB = getDepth(b.id);
-      
-      // Parents first (lower depth)
-      if (depthA !== depthB) {
-        return depthA - depthB;
-      }
-      
-      // Same depth: maintain original order by using their position in the original arrays
-      const indexA = a.itemType === 'zone' 
-        ? processedZones.findIndex(zone => zone.id === a.id)
-        : processedNodes.findIndex(n => n.id === a.id);
-      const indexB = b.itemType === 'zone'
-        ? processedZones.findIndex(zone => zone.id === b.id)
-        : processedNodes.findIndex(n => n.id === b.id);
-      
-      return indexA - indexB;
-    });
-  }, [processedZones, processedNodes]);
-
-  
-
-
-
-  // Notify parent of selection changes
-  useEffect(() => {
-    if (onSelectionChange) {
-      onSelectionChange({ start: selectionStart, end: selectionEnd });
-    }
-  }, [selectionStart, selectionEnd, onSelectionChange]);
-
-  // Track canvas dimensions for rulers
-  useEffect(() => {
-    if (!canvasRef.current) return;
-
-    const updateDimensions = () => {
-      if (canvasRef.current) {
-        setCanvasDimensions({
-          width: canvasRef.current.clientWidth,
-          height: canvasRef.current.clientHeight,
-        });
-      }
-    };
-
-    // Initial measurement
-    updateDimensions();
-
-    // Use ResizeObserver for efficient dimension tracking
-    const resizeObserver = new ResizeObserver(updateDimensions);
-    resizeObserver.observe(canvasRef.current);
-
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, []);
 
   // Keyboard shortcuts
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // Don't trigger shortcuts when typing in input fields
-      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
-        return;
-      }
-
-      // Delete or Backspace key - delete selected items
-      if ((event.key === 'Delete' || event.key === 'Backspace') && (selectedItemId || selectedItemIds.size > 0)) {
-        if (selectedItemIds.size > 0) {
-          handleDeleteMultiple(Array.from(selectedItemIds));
-        } else if (selectedItemId) {
-          handleDelete(selectedItemId);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
+        e.preventDefault();
+        if (selectedItemId) {
+          handleCopy(selectedItemId);
+        } else if (selectedItemIds && selectedItemIds.size > 0) {
+          handleCopy();
         }
-        return;
-      }
-
-      // Check for Mac Command key or Windows/Linux Ctrl key
-      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-      const modifierKey = isMac ? event.metaKey : event.ctrlKey;
-
-      // Copy selected items (Ctrl+C or Cmd+C)
-      if (modifierKey && event.key === 'c' && (selectedItemId || selectedItemIds.size > 0)) {
-        handleCopy();
-      }
-
-      // Paste item (Ctrl+V or Cmd+V)
-      if (modifierKey && event.key === 'v' && clipboard) {
-        event.preventDefault();
-        handlePaste();
-        return;
-      }
-
-      // Select all items (Ctrl+A or Cmd+A)
-      if (modifierKey && event.key === 'a' && !event.shiftKey) {
-        event.preventDefault();
-        onSelectAll?.();
-        return;
+      } else if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
+        e.preventDefault();
+        if (canPaste()) {
+          handlePaste();
+        }
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        if (selectedItemId) {
+          operations.handleDelete(selectedItemId);
+        } else if (selectedItemIds && selectedItemIds.size > 0) {
+          operations.handleDeleteMultiple(Array.from(selectedItemIds));
+        }
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [selectedItemId, selectedItemIds, clipboard, onSelectAll]);
-
-  // Handle mobile drop events
-  useEffect(() => {
-    const handleMobileDrop = (event: CustomEvent) => {
-      const { item, x, y, itemType } = event.detail;
-      
-      // Calculate position accounting for transform
-      const adjustedX = (x - transform.x) / transform.k;
-      const adjustedY = (y - transform.y) / transform.k;
-      
-      // Check if dropping over a group
-      let targetGroupId: string | null = null;
-      for (let i = processedZones.length - 1; i >= 0; i--) {
-        const zone = processedZones[i];
-        if (adjustedX > zone.x && adjustedX < zone.x + zone.width && 
-            adjustedY > zone.y && adjustedY < zone.y + zone.height) {
-          targetGroupId = zone.id;
-          break;
-        }
-      }
-      
-      
-      
-      if (itemType === ItemTypes.DIAGRAM_NODE) {
-        addNode(item, { x: adjustedX, y: adjustedY }, targetGroupId);
-      }
-    };
-
-    const handleMobileMove = (event: CustomEvent) => {
-      const { id, type, x, y, originalX, originalY } = event.detail;
-      
-      // Calculate position accounting for transform
-      const adjustedX = (x - transform.x) / transform.k;
-      const adjustedY = (y - transform.y) / transform.k;
-      
-      // Check if dropping over a group
-      let targetGroupId: string | null = null;
-      for (let i = processedZones.length - 1; i >= 0; i--) {
-        const zone = processedZones[i];
-        if (adjustedX > zone.x && adjustedX < zone.x + zone.width && 
-            adjustedY > zone.y && adjustedY < zone.y + zone.height) {
-          targetGroupId = zone.id;
-          break;
-        }
-      }
-      
-      
-      
-      if (type === ItemTypes.CANVAS_NODE || type === ItemTypes.ZONE) {
-        moveItem({ id, type, x: originalX, y: originalY }, { x: adjustedX, y: adjustedY }, targetGroupId);
-      }
-    };
-
-    const canvas = canvasRef.current;
-    if (canvas) {
-      canvas.setAttribute('data-testid', 'editor-canvas');
-      canvas.addEventListener('mobileDrop', handleMobileDrop as EventListener);
-      canvas.addEventListener('mobileMove', handleMobileMove as EventListener);
-    }
-
+    window.addEventListener('keydown', handleKeyDown);
     return () => {
-      if (canvas) {
-        canvas.removeEventListener('mobileDrop', handleMobileDrop as EventListener);
-        canvas.removeEventListener('mobileMove', handleMobileMove as EventListener);
-      }
+      window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [transform, processedZones, addNode, moveItem]);
-
-  // Fix passive wheel event listener
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const handleWheelEvent = (e: WheelEvent) => {
-      e.preventDefault();
-      const { deltaY } = e;
-      const rect = canvas.getBoundingClientRect();
-      const s = Math.pow(0.99, deltaY);
-      
-      const newK = Math.max(0.1, Math.min(transform.k * s, 2.5));
-      
-      // Only update position if zoom actually changed (not at limit)
-      if (newK !== transform.k) {
-        // Use center of browser viewport instead of mouse cursor position
-        if (typeof window === 'undefined') return; // SSR guard
-        const browserViewportCenterX = window.innerWidth / 2;
-        const browserViewportCenterY = window.innerHeight / 2;
-        
-        // Manual 10% adjustment to test horizontal center offset
-        const adjustedCenterX = browserViewportCenterX + (window.innerWidth * 0.1);
-        
-        // Convert adjusted browser viewport center to canvas-relative coordinates
-        // rect.left already includes the sidebar offset, so no need to subtract it again
-        const canvasRelativeCenterX = adjustedCenterX - rect.left;
-        const canvasRelativeCenterY = browserViewportCenterY - rect.top;
-        
-        // Use actual zoom ratio, not raw scaling factor
-        const actualZoomRatio = newK / transform.k;
-        const newX = canvasRelativeCenterX - (canvasRelativeCenterX - transform.x) * actualZoomRatio;
-        const newY = canvasRelativeCenterY - (canvasRelativeCenterY - transform.y) * actualZoomRatio;
-        
-
-        
-        setTransform({ x: newX, y: newY, k: newK });
-      }
-      // If zoom didn't change (at limit), do nothing - no position updates
-    };
-
-    canvas.addEventListener('wheel', handleWheelEvent, { passive: false });
-    
-    return () => {
-      canvas.removeEventListener('wheel', handleWheelEvent);
-    };
-  }, [transform]);
-
-  // Context menu handlers
-  const handleContextMenu = (event: React.MouseEvent, itemId: string, itemType: 'node' | 'zone') => {
-    event.preventDefault();
-    setContextMenu({
-      visible: true,
-      x: event.clientX,
-      y: event.clientY,
-      itemType,
-      itemId
-    });
-  };
-
-  const closeContextMenu = () => {
-    setContextMenu(prev => ({ ...prev, visible: false }));
-  };
-
-  // Close context menu when clicking outside
-  useEffect(() => {
-    const handleGlobalClick = (event: MouseEvent) => {
-      if (contextMenu.visible) {
-        closeContextMenu();
-      }
-    };
-
-    if (contextMenu.visible) {
-      document.addEventListener('click', handleGlobalClick);
-      return () => {
-        document.removeEventListener('click', handleGlobalClick);
-      };
-    }
-  }, [contextMenu.visible]);
-
-  // Initialize client-side state
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  // Action handlers
-  const handleDelete = (itemId: string) => {
-    const isNode = diagramData.nodes.some(n => n.id === itemId);
-    
-    if (isNode) {
-      setDiagramData(prev => ({
-        ...prev,
-        nodes: prev.nodes.filter(n => n.id !== itemId),
-        connections: prev.connections.filter((e: any) => e.from !== itemId && e.to !== itemId),
-        zones: prev.zones?.map(zone => ({
-          ...zone,
-          children: zone.children.filter((n: string) => n !== itemId)
-        }))
-      }));
-    } else {
-      setDiagramData(prev => ({
-        ...prev,
-        zones: prev.zones?.filter(zone => zone.id !== itemId)
-      }));
-    }
-    
-    onItemSelect(null);
-    toast({
-      title: "Item Deleted",
-      description: "The selected item has been deleted.",
-    });
-  };
-
-  const handleDeleteMultiple = (itemIds: string[]) => {
-    const idsToDelete = new Set(itemIds);
-    
-    setDiagramData(prev => {
-      // Filter out nodes that are being deleted
-      const remainingNodes = prev.nodes.filter(n => !idsToDelete.has(n.id));
-      
-      // Filter out zones that are being deleted
-      const remainingZones = prev.zones?.filter(zone => !idsToDelete.has(zone.id));
-      
-      // Remove deleted items from zone children
-      const updatedZones = remainingZones?.map(zone => ({
-        ...zone,
-        children: zone.children.filter(childId => !idsToDelete.has(childId))
-      }));
-      
-      // Remove connections that involve deleted items
-      const remainingConnections = prev.connections?.filter((e: any) => 
-        !idsToDelete.has(e.from) && !idsToDelete.has(e.to)
-      );
-      
-      return {
-        ...prev,
-        nodes: remainingNodes,
-        zones: updatedZones,
-        connections: remainingConnections
-      };
-    });
-    
-    onItemSelect(null);
-    toast({
-      title: "Items Deleted",
-      description: `${itemIds.length} items have been deleted.`,
-    });
-  };
-
-  const handleCopy = (itemId?: string) => {
-    // If we have multiple items selected, copy all of them
-    if (selectedItemIds && selectedItemIds.size > 0) {
-      const selectedNodes: DiagramNodeData[] = [];
-      const selectedZones: DiagramZoneData[] = [];
-      const selectedConnections: DiagramConnectionData[] = [];
-      const allSelectedIds = new Set(selectedItemIds);
-
-      // Collect selected nodes and groups
-      selectedItemIds.forEach(id => {
-        const node = diagramData.nodes.find(n => n.id === id);
-        const zone = diagramData.zones?.find(zone => zone.id === id);
-        
-        if (node) {
-          selectedNodes.push({ ...node });
-        } else if (zone) {
-          // Recursively collect all children of selected groups
-          const collectChildren = (groupId: string, visited: Set<string> = new Set()): (DiagramNodeData | DiagramGroupData)[] => {
-            if (visited.has(groupId)) return [];
-            visited.add(groupId);
-
-            const children: (DiagramNodeData | DiagramGroupData)[] = [];
-            const currentZone = diagramData.zones?.find(zone => zone.id === groupId);
-
-            if (currentZone?.children) {
-              for (const childId of currentZone.children) {
-                const childNode = diagramData.nodes.find(n => n.id === childId);
-                const childZone = diagramData.zones?.find(zone => zone.id === childId);
-
-                if (childNode) {
-                  children.push({ ...childNode });
-                  allSelectedIds.add(childId);
-                } else if (childZone) {
-                  children.push({ ...childZone });
-                  allSelectedIds.add(childId);
-                  // Recursively collect children of child groups
-                  children.push(...collectChildren(childId, visited));
-                }
-              }
-            }
-
-            return children;
-          };
-
-          selectedZones.push({ ...zone });
-          const children = collectChildren(id);
-          children.forEach(child => {
-            if ('type' in child) {
-              selectedNodes.push(child as DiagramNodeData);
-            } else {
-              selectedZones.push(child as DiagramGroupData);
-            }
-          });
-        }
-      });
-
-      // Collect connections between selected items
-      diagramData.connections?.forEach(connection => {
-        if (allSelectedIds.has(connection.from) && allSelectedIds.has(connection.to)) {
-          selectedConnections.push({ ...connection });
-        }
-      });
-
-      setClipboard({
-        nodes: selectedNodes,
-        zones: selectedZones,
-        connections: selectedConnections
-      });
-      onClipboardChange?.(true);
-
-      toast({
-        title: "Items Copied",
-        description: `${selectedNodes.length + selectedZones.length} items and ${selectedConnections.length} connections copied to clipboard.`,
-      });
-    } else if (itemId) {
-      // Fallback to single item copy for backward compatibility
-      const node = diagramData.nodes.find(n => n.id === itemId);
-      const zone = diagramData.zones?.find(zone => zone.id === itemId);
-
-      if (node) {
-        setClipboard({ node: { ...node } });
-        onClipboardChange?.(true);
-      } else if (zone) {
-        // Recursively collect all children
-        const collectChildren = (groupId: string, visited: Set<string> = new Set()): (DiagramNodeData | DiagramGroupData)[] => {
-          if (visited.has(groupId)) return [];
-          visited.add(groupId);
-
-          const children: (DiagramNodeData | DiagramGroupData)[] = [];
-          const currentZone = diagramData.zones?.find(zone => zone.id === groupId);
-
-          if (currentZone?.children) {
-            for (const childId of currentZone.children) {
-              const childNode = diagramData.nodes.find(n => n.id === childId);
-              const childZone = diagramData.zones?.find(zone => zone.id === childId);
-
-              if (childNode) {
-                children.push({ ...childNode });
-              } else if (childZone) {
-                children.push({ ...childZone });
-                // Recursively collect children of child groups
-                children.push(...collectChildren(childId, visited));
-              }
-            }
-          }
-
-          return children;
-        };
-
-        const children = collectChildren(itemId);
-        setClipboard({ zone: { ...zone }, children });
-        onClipboardChange?.(true);
-      }
-
-      toast({
-        title: "Item Copied",
-        description: "The selected item has been copied to clipboard.",
-      });
-    }
-  };
-
-  const handleToggleFreeflow = (itemId: string) => {
-    const node = diagramData.nodes.find(n => n.id === itemId);
-    if (node) {
-      const newFreeflowState = !(node.freeflow || false);
-      setDiagramData(prev => ({
-        ...prev,
-        nodes: prev.nodes.map(n => 
-          n.id === itemId ? { ...n, freeflow: newFreeflowState } : n
-        )
-      }));
-
-      // Update selected item if it's the one being toggled
-      const selectedItem = diagramData.nodes.find(n => n.id === itemId);
-      if (selectedItem) {
-        onItemSelect({ ...selectedItem, itemType: 'node', freeflow: newFreeflowState });
-      }
-
-      toast({
-        title: `Freeflow ${newFreeflowState ? 'Enabled' : 'Disabled'}`,
-        description: `The node can ${newFreeflowState ? 'now' : 'no longer'} be placed anywhere without joining groups.`,
-      });
-    }
-  };
-
-  const handlePaste = () => {
-    if (!clipboard) return;
-
-    // Handle multi-selection paste
-    if (clipboard.nodes || clipboard.zones) {
-      const nodes = clipboard.nodes || [];
-      const zones = clipboard.zones || [];
-      const connections = clipboard.connections || [];
-      
-      // Create ID mapping for all items being pasted
-      const idMapping = new Map<string, string>();
-
-      // First pass: generate new IDs for all nodes
-      const newNodes: DiagramNodeData[] = [];
-      nodes.forEach(node => {
-        const newNodeId = generateSequentialId(node.type, diagramData);
-        idMapping.set(node.id, newNodeId);
-        
-        const newNode: DiagramNodeData = {
-          ...node,
-          id: newNodeId,
-          x: (node.x || 0) + 50,
-          y: (node.y || 0) + 50,
-        };
-        newNodes.push(newNode);
-      });
-
-      // Second pass: generate new IDs for all groups and process their children
-      const newZones: DiagramZoneData[] = [];
-      const processZoneChildren = (zone: DiagramGroupData): DiagramGroupData => {
-        const newZoneId = generateGroupId((zone.subType as 'group' | 'zone') || 'zone', diagramData);
-        idMapping.set(zone.id, newZoneId);
-
-        // Process children - map old IDs to new IDs
-        const processedChildren: string[] = [];
-        zone.children?.forEach(childId => {
-          // Check if this child ID is in our mapping (means it's being copied)
-          const mappedId = idMapping.get(childId);
-          if (mappedId) {
-            processedChildren.push(mappedId);
-          } else {
-            // Child is not in our selection, keep original ID
-            processedChildren.push(childId);
-          }
-        });
-
-        return {
-          ...zone,
-          id: newZoneId,
-          x: (zone.x || 0) + 50,
-          y: (zone.y || 0) + 50,
-          children: processedChildren
-        };
-      };
-
-      // Process all zones (including nested ones)
-      zones.forEach(zone => {
-        const newZone = processZoneChildren(zone);
-        newZones.push(newZone);
-      });
-
-      // Third pass: create new connections with updated IDs
-      const newConnections: DiagramConnectionData[] = [];
-      connections.forEach(connection => {
-        const newFromId = idMapping.get(connection.from);
-        const newToId = idMapping.get(connection.to);
-        
-        // Only create connection if both endpoints are being copied
-        if (newFromId && newToId) {
-          newConnections.push({
-            ...connection,
-            from: newFromId,
-            to: newToId
-          });
-        }
-      });
-
-      // Update diagram data
-      setDiagramData(prev => ({
-        ...prev,
-        nodes: [...prev.nodes, ...newNodes],
-        zones: [...(prev.zones || []), ...newZones],
-        connections: [...(prev.connections || []), ...newConnections]
-      }));
-
-      // Select all newly pasted items
-      const pastedItemIds = new Set<string>();
-      newNodes.forEach(node => pastedItemIds.add(node.id));
-      newZones.forEach(group => pastedItemIds.add(group.id));
-      
-      // Set the first pasted item as the primary selected item
-      if (pastedItemIds.size > 0) {
-        const firstPastedId = Array.from(pastedItemIds)[0];
-        const firstPastedNode = newNodes.find(n => n.id === firstPastedId);
-        const firstPastedGroup = newZones.find(zone => zone.id === firstPastedId);
-        
-        if (firstPastedNode) {
-          onItemSelect({ ...firstPastedNode, itemType: 'node' });
-        } else if (firstPastedGroup) {
-          onItemSelect({ ...firstPastedGroup, itemType: 'zone' });
-        }
-      }
-      
-      // Update selected items to include all pasted items
-      if (onItemSelect) {
-        // Trigger selection update for multi-select
-        setTimeout(() => {
-          pastedItemIds.forEach(id => {
-            const pastedNode = newNodes.find(n => n.id === id);
-            const pastedGroup = newZones.find(zone => zone.id === id);
-            
-            if (pastedNode) {
-              onItemSelect({ ...pastedNode, itemType: 'node' }, true); // true for shift key (multi-select)
-            } else if (pastedGroup) {
-              onItemSelect({ ...pastedGroup, itemType: 'zone' }, true); // true for shift key (multi-select)
-            }
-          });
-        }, 0);
-      }
-
-      toast({
-        title: "Items Pasted",
-        description: `${newNodes.length + newZones.length} items and ${newConnections.length} connections pasted to canvas.`,
-      });
-    } else if (clipboard.node) {
-      // Handle single node paste (backward compatibility)
-      const newNode: DiagramNodeData = {
-        ...clipboard.node,
-        id: generateSequentialId(clipboard.node.type, diagramData),
-        x: (clipboard.node.x || 0) + 50,
-        y: (clipboard.node.y || 0) + 50,
-      };
-
-      setDiagramData(prev => ({
-        ...prev,
-        nodes: [...prev.nodes, newNode]
-      }));
-
-      // Select the newly pasted item
-      onItemSelect({ ...newNode, itemType: 'node' });
-
-      toast({
-        title: "Item Pasted",
-        description: "The copied item has been pasted to the canvas.",
-      });
-    } else if (clipboard.zone) {
-      // Handle single group paste (backward compatibility)
-      // Create ID mapping for all items being pasted
-      const idMapping = new Map<string, string>();
-
-      // Generate new ID for the main group
-      const newZoneId = generateGroupId((clipboard.zone.subType as 'group' | 'zone') || 'group', diagramData);
-      idMapping.set(clipboard.zone.id, newZoneId);
-
-      // Generate new IDs for all children
-      const children = clipboard.children || [];
-      for (const child of children) {
-        if ('type' in child && child.type) {
-          // It's a node
-          const nodeChild = child as DiagramNodeData;
-          const newChildId = generateSequentialId(nodeChild.type, diagramData);
-          idMapping.set(nodeChild.id, newChildId);
-        } else {
-          // It's a group
-          const zoneChild = child as DiagramGroupData;
-          const newChildId = generateGroupId((zoneChild.subType as 'group' | 'zone') || 'group', diagramData);
-          idMapping.set(zoneChild.id, newChildId);
-        }
-      }
-
-      // Create new group with updated children IDs
-      const newZone: DiagramGroupData = {
-        ...clipboard.zone,
-        id: newZoneId,
-        x: (clipboard.zone.x || 0) + 50,
-        y: (clipboard.zone.y || 0) + 50,
-        children: clipboard.zone.children?.map(childId => idMapping.get(childId) || childId) || []
-      };
-
-      // Create new children with updated IDs and positions
-      const newNodes: DiagramNodeData[] = [];
-      const newChildGroups: DiagramZoneData[] = [];
-
-      for (const child of children) {
-        const newChildId = idMapping.get(child.id)!;
-
-        if ('type' in child && child.type) {
-          // It's a node
-          const nodeChild = child as DiagramNodeData;
-          const newNode: DiagramNodeData = {
-            ...nodeChild,
-            id: newChildId,
-            x: (nodeChild.x || 0) + 50,
-            y: (nodeChild.y || 0) + 50,
-          };
-          newNodes.push(newNode);
-        } else {
-          // It's a group - update its children IDs as well
-          const zoneChild = child as DiagramGroupData;
-          const newChildGroup: DiagramGroupData = {
-            ...zoneChild,
-            id: newChildId,
-            x: (zoneChild.x || 0) + 50,
-            y: (zoneChild.y || 0) + 50,
-            children: zoneChild.children?.map((childId: string) => idMapping.get(childId) || childId) || []
-          };
-          newChildGroups.push(newChildGroup);
-        }
-      }
-
-      setDiagramData(prev => ({
-        ...prev,
-        nodes: [...prev.nodes, ...newNodes],
-        zones: [...(prev.zones || []), newZone, ...newChildGroups]
-      }));
-
-      // Select the newly pasted group
-      onItemSelect({ ...newZone, itemType: 'zone' });
-
-      toast({
-        title: "Item Pasted",
-        description: "The copied item has been pasted to the canvas.",
-      });
-    }
-  };
-
-  // Wrap copy/paste handlers in useCallback for stable references
-  const copyHandler = useCallback(() => {
-    handleCopy();
-  }, [selectedItemIds, diagramData]);
-
-  const pasteHandler = useCallback(() => {
-    handlePaste();
-  }, [clipboard, diagramData]);
-
-  const canPasteHandler = useCallback(() => {
-    return !!clipboard;
-  }, [clipboard]);
+  }, [selectedItemId, selectedItemIds, handleCopy, handlePaste, canPaste, operations]);
 
   // Expose imperative API
+  const copyHandler = useCallback(() => {
+    if (selectedItemId) {
+      handleCopy(selectedItemId);
+    } else if (selectedItemIds && selectedItemIds.size > 0) {
+      handleCopy();
+    }
+  }, [selectedItemId, selectedItemIds, handleCopy]);
+
+  const pasteHandler = useCallback(() => {
+    if (canPaste()) {
+      handlePaste();
+    }
+  }, [canPaste, handlePaste]);
+
+  const canPasteHandler = useCallback(() => {
+    return canPaste();
+  }, [canPaste]);
+
   React.useImperativeHandle(ref, () => ({
     fitToView: handleFitToView,
     exportPng: (options?: { backgroundColor?: 'transparent' | 'white'; selectionArea?: { x: number; y: number; width: number; height: number } }) => exportPng(options),
@@ -3326,8 +290,6 @@ const [, drop] = useDrop(() => ({
     paste: pasteHandler,
     canPaste: canPasteHandler,
   }), [handleFitToView, exportPng, startSelectionMode, copyHandler, pasteHandler, canPasteHandler]);
-
-  const RULER_SIZE = 24;
 
   return (
     <div className="relative w-full h-full">
@@ -3342,830 +304,202 @@ const [, drop] = useDrop(() => ({
         )}
         
         <div
-            ref={canvasRef}
-            className={cn(
-              "w-full h-full overflow-hidden bg-background",
-              isConnectMode && "cursor-crosshair",
-              !isConnectMode && "cursor-default"
-            )}
-            style={{ 
-              touchAction: 'none',
-              cursor: isSelectionMode ? 'crosshair' : (isConnectMode ? 'crosshair' : (isPanning ? 'grabbing' : 'default'))
-            }}
-            
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUpOrLeave}
-            onMouseLeave={() => {
-              if (onMousePositionChange) {
-                onMousePositionChange(null);
-              }
-              handleMouseUpOrLeave();
-            }}
-            onContextMenu={(e) => e.preventDefault()} // Prevent right-click context menu
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            onClick={handleCanvasClick}
+          ref={canvasRef}
+          className="relative w-full h-full overflow-hidden"
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUpOrLeave}
+          onMouseLeave={handleMouseUpOrLeave}
+          onWheel={handleWheel}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onContextMenu={(e) => {
+            // Only prevent default on empty canvas
+            // Nodes and zones handle their own context menus and call stopPropagation
+            // So if event reaches here, it's empty canvas - prevent browser context menu
+            e.preventDefault();
+          }}
         >
+          <div
+            className="relative dot-grid"
+            style={{
+              width: `${width}px`,
+              height: `${height}px`,
+              transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.k})`,
+              transformOrigin: '0 0',
+            }}
+          >
+            {/* Render zones first (background) */}
+            {processedZones.map((zone) => (
+              <DiagramZone
+                key={zone.id}
+                zone={zone}
+                isSelected={selectedItemId === zone.id || (selectedItemIds?.has(zone.id) ?? false)}
+                onClick={(e: React.MouseEvent) => handleZoneClick(e, zone)}
+                onContextMenu={(e: React.MouseEvent) => handleZoneContextMenu(e, zone)}
+                onResize={operations.resizeGroup}
+                onLabelChange={operations.updateGroupLabel}
+              />
+            ))}
+
+            {/* Render nodes */}
+            {processedNodes.map((node) => (
+              <DiagramNode
+                key={node.id}
+                node={node}
+                isSelected={selectedItemId === node.id || (selectedItemIds?.has(node.id) ?? false)}
+                onClick={(e: React.MouseEvent) => handleNodeClick(e, node)}
+                onContextMenu={(e: React.MouseEvent) => handleNodeContextMenu(e, node)}
+                onResize={operations.resizeNode}
+                onLabelUpdate={onLabelUpdate}
+                onDraggingChange={onDraggingChange}
+                hoverEnabled={hoverEnabled}
+              />
+            ))}
+
+            {/* Render connections */}
+            <CanvasConnections
+              width={width}
+              height={height}
+              diagramData={diagramData}
+              nodesById={nodesById}
+              zonesById={zonesById}
+              selectedItemId={selectedItemId}
+              onItemSelect={onItemSelect}
+              closeContextMenu={closeContextMenu}
+            />
+
+            {/* Render arrow toggles */}
+            <CanvasArrowToggles
+              selectedItemId={selectedItemId}
+              diagramData={diagramData}
+              nodesById={nodesById}
+              zonesById={zonesById}
+              setDiagramData={setDiagramData}
+            />
+
+            {/* Render connection text */}
+            <CanvasConnectionText
+              width={width}
+              height={height}
+              diagramData={diagramData}
+              nodesById={nodesById}
+              zonesById={zonesById}
+              processedZones={processedZones}
+            />
+          </div>
+
+          {/* Selection rectangle overlay */}
+          {selectionStart && selectionEnd && (
             <div
-                className="relative dot-grid"
-                style={{
-                  width: `${width}px`,
-                  height: `${height}px`,
-                  transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.k})`,
-                  transformOrigin: '0 0',
-                }}
-            >
-                {/* SVG connections rendered first (behind nodes) */}
-                <svg
-                width={width}
-                height={height}
-                className="absolute top-0 left-0 overflow-visible pointer-events-none"
-                style={{ zIndex: 1 }}
-                >
-                <defs>
-                    <marker
-                    id="arrowhead"
-                    viewBox="0 0 10 10"
-                    refX="8"
-                    refY="5"
-                    markerWidth="6"
-                    markerHeight="6"
-                    orient="auto-start-reverse"
-                    >
-                    <path d="M 0 0 L 10 5 L 0 10 z" className="fill-current text-muted-foreground" />
-                    </marker>
-                </defs>
-                {/* Count connections per edge for distribution */}
-                {(() => {
-                    // Pre-calculate edge information for all connections
-                    const connectionEdgeInfo = new Map<string, { fromEdge: string; toEdge: string }>();
-                    const edgeGroups = new Map<string, any[]>();
-                    
-                    // First pass: determine edges for all connections and group by node+edge
-                    (diagramData.connections || []).forEach((conn: any, connIndex: number) => {
-                        const fromItem = nodesById[conn.from] || zonesById[conn.from];
-                        const toItem = nodesById[conn.to] || zonesById[conn.to];
-                        if (!fromItem || !toItem) return;
-                        
-                        const fromItemDims = 'type' in fromItem ? measureNodeDims(fromItem as PositionedNode) : { width: (fromItem as any).width, height: (fromItem as any).height };
-                        const toItemDims = 'type' in toItem ? measureNodeDims(toItem as PositionedNode) : { width: (toItem as any).width, height: (toItem as any).height };
-                        
-                        const fromPos: any = {
-                            ...fromItem,
-                            width: 'width' in fromItem ? (fromItem as any).width : fromItemDims.width,
-                            height: 'height' in fromItem ? (fromItem as any).height : fromItemDims.height,
-                        };
-                        const toPos: any = {
-                            ...toItem,
-                            width: 'width' in toItem ? (toItem as any).width : toItemDims.width,
-                            height: 'height' in toItem ? (toItem as any).height : toItemDims.height,
-                        };
-                        
-                        const edges = determineConnectionEdges(fromPos, toPos, conn, fromItemDims.width, fromItemDims.height, toItemDims.width, toItemDims.height);
-                        const edgeKey = `${conn.from}-${edges.fromEdge}`;
-                        const toEdgeKey = `${conn.to}-${edges.toEdge}`;
-                        
-                        // Use a unique key for this connection
-                        const connKey = `${conn.from}-${conn.to}-${connIndex}`;
-                        connectionEdgeInfo.set(connKey, edges);
-                        
-                        // Group connections by from node + from edge
-                        if (!edgeGroups.has(edgeKey)) {
-                            edgeGroups.set(edgeKey, []);
-                        }
-                        edgeGroups.get(edgeKey)!.push({ conn, connIndex, isFrom: true });
-                        
-                        // Group connections by to node + to edge
-                        if (!edgeGroups.has(toEdgeKey)) {
-                            edgeGroups.set(toEdgeKey, []);
-                        }
-                        edgeGroups.get(toEdgeKey)!.push({ conn, connIndex, isFrom: false });
-                    });
-                    
-                    // Second pass: render connections with per-edge indices
-                    return (diagramData.connections || []).map((edge: any, index: any) => {
-                        const fromItem = nodesById[edge.from] || zonesById[edge.from];
-                        const toItem = nodesById[edge.to] || zonesById[edge.to];
-                        if (!fromItem || !toItem) return null;
-
-                        // Use measured dimensions for nodes to ensure proper connection alignment
-                        const fromItemDims = 'type' in fromItem ? measureNodeDims(fromItem as PositionedNode) : { width: (fromItem as any).width, height: (fromItem as any).height };
-                        const toItemDims = 'type' in toItem ? measureNodeDims(toItem as PositionedNode) : { width: (toItem as any).width, height: (toItem as any).height };
-                        
-                        const fromPos: any = {
-                          ...fromItem,
-                          width: 'width' in fromItem ? (fromItem as any).width : fromItemDims.width,
-                          height: 'height' in fromItem ? (fromItem as any).height : fromItemDims.height,
-                        };
-                        const toPos: any = {
-                          ...toItem,
-                          width: 'width' in toItem ? (toItem as any).width : toItemDims.width,
-                          height: 'height' in toItem ? (toItem as any).height : toItemDims.height,
-                        };
-
-                        // Explicitly set lineColor after spreading to ensure it's not overwritten
-                        fromPos.lineColor = (fromItem as any).lineColor;
-                        toPos.lineColor = (toItem as any).lineColor;
-                        
-                        // Get edge information for this connection
-                        const connKey = `${edge.from}-${edge.to}-${index}`;
-                        const edges = connectionEdgeInfo.get(connKey) || determineConnectionEdges(fromPos, toPos, edge, fromItemDims.width, fromItemDims.height, toItemDims.width, toItemDims.height);
-                        
-                        // Calculate per-edge indices
-                        const fromEdgeKey = `${edge.from}-${edges.fromEdge}`;
-                        const toEdgeKey = `${edge.to}-${edges.toEdge}`;
-                        
-                        const fromEdgeConnections = edgeGroups.get(fromEdgeKey) || [];
-                        const toEdgeConnections = edgeGroups.get(toEdgeKey) || [];
-                        
-                        const fromEdgeIndex = fromEdgeConnections.findIndex((item: any) => item.connIndex === index);
-                        const toEdgeIndex = toEdgeConnections.findIndex((item: any) => item.connIndex === index);
-                        
-                        const fromEdgeTotal = fromEdgeConnections.length;
-                        const toEdgeTotal = toEdgeConnections.length;
-                        
-                        // Update edge with per-edge connection distribution info
-                        const enhancedEdge = {
-                            ...edge,
-                            fromPreferredExit: edges.fromEdge,
-                            toPreferredEntry: edges.toEdge,
-                            // Use from edge info for from node
-                            connectionIndex: fromEdgeIndex >= 0 ? fromEdgeIndex : 0,
-                            totalConnections: fromEdgeTotal > 0 ? fromEdgeTotal : 1,
-                            // Store to edge info separately for the "to" node
-                            toConnectionIndex: toEdgeIndex >= 0 ? toEdgeIndex : 0,
-                            toTotalConnections: toEdgeTotal > 0 ? toEdgeTotal : 1,
-                        };
-
-                        // Check if this connection is selected
-                        const edgeId = `${edge.from}-${edge.to}`;
-                        const isConnectionHighlighted = selectedItemId === edge.from || selectedItemId === edge.to || selectedItemId === edgeId;
-
-return (
-                    <g key={`${edge.from}-${edge.to}-${index}-${edge.toArrow ? 'arrow' : 'noarrow'}-${edge._updated || ''}`} className={cn(isConnectionHighlighted && 'drop-shadow-[0_0_6px_rgba(0,200,150,0.8)]')}>
-                      <BezierConnection
-                        from={fromPos}
-                        to={toPos}
-                        connectionColor={edge.color}
-                        connectionData={enhancedEdge}
-                        onClick={(connection) => {
-                          // Select the connection when clicked
-                          closeContextMenu();
-                          if (onItemSelect) {
-                            onItemSelect({
-                              ...connection,
-                              itemType: 'edge',
-                              id: `${connection.from}-${connection.to}`
-                            });
-                          }
-                        }}
-                      />
-                    </g>
-                  );
-                });
-                })()}
-                </svg>
-                
-                {/* Arrow toggles for selected node connections */}
-                {selectedItemId && (() => {
-                    // Reuse the same edge calculation that was used for rendering connections
-                    // We need to match the exact same connection data and indices
-                    const allConnections = diagramData.connections || [];
-                    
-                    // Pre-calculate edge information for ALL connections (same as connection rendering)
-                    const connectionEdgeInfo = new Map<string, { fromEdge: string; toEdge: string }>();
-                    const edgeGroups = new Map<string, any[]>();
-                    
-                    (diagramData.connections || []).forEach((conn: any, connIndex: number) => {
-                        const fromItem = nodesById[conn.from] || zonesById[conn.from];
-                        const toItem = nodesById[conn.to] || zonesById[conn.to];
-                        if (!fromItem || !toItem) return;
-                        
-                        const fromItemDims = 'type' in fromItem ? measureNodeDims(fromItem as PositionedNode) : { width: (fromItem as any).width, height: (fromItem as any).height };
-                        const toItemDims = 'type' in toItem ? measureNodeDims(toItem as PositionedNode) : { width: (toItem as any).width, height: (toItem as any).height };
-                        
-                        const fromPos: any = {
-                            ...fromItem,
-                            width: 'width' in fromItem ? (fromItem as any).width : fromItemDims.width,
-                            height: 'height' in fromItem ? (fromItem as any).height : fromItemDims.height,
-                        };
-                        const toPos: any = {
-                            ...toItem,
-                            width: 'width' in toItem ? (toItem as any).width : toItemDims.width,
-                            height: 'height' in toItem ? (toItem as any).height : toItemDims.height,
-                        };
-                        
-                        const edges = determineConnectionEdges(fromPos, toPos, conn, fromItemDims.width, fromItemDims.height, toItemDims.width, toItemDims.height);
-                        const edgeKey = `${conn.from}-${edges.fromEdge}`;
-                        const toEdgeKey = `${conn.to}-${edges.toEdge}`;
-                        
-                        const connKey = `${conn.from}-${conn.to}-${connIndex}`;
-                        connectionEdgeInfo.set(connKey, edges);
-                        
-                        // Group connections by from node + from edge
-                        if (!edgeGroups.has(edgeKey)) {
-                            edgeGroups.set(edgeKey, []);
-                        }
-                        edgeGroups.get(edgeKey)!.push({ conn, connIndex, isFrom: true });
-                        
-                        // Group connections by to node + to edge
-                        if (!edgeGroups.has(toEdgeKey)) {
-                            edgeGroups.set(toEdgeKey, []);
-                        }
-                        edgeGroups.get(toEdgeKey)!.push({ conn, connIndex, isFrom: false });
-                    });
-                    
-                    // Filter to only selected node connections
-                    const selectedNodeConnections = allConnections
-                        .map((conn: any, originalIndex: number) => ({ conn, originalIndex }))
-                        .filter(({ conn }: any) => 
-                            conn.from === selectedItemId || conn.to === selectedItemId
-                        );
-                    
-                    return selectedNodeConnections.map(({ conn, originalIndex }: any) => {
-                        const fromItem = nodesById[conn.from] || zonesById[conn.from];
-                        const toItem = nodesById[conn.to] || zonesById[conn.to];
-                        if (!fromItem || !toItem) return null;
-
-                        // Calculate dimensions and icon heights similar to BezierConnection
-                        const isFromShape = (fromItem.type === 'generic.object.square' || fromItem.type === 'generic.object.circle' || 
-                                            fromItem.type === 'generic.object.point' || fromItem.type === 'generic.object.rectangle' || fromItem.type === 'generic.object.triangle' ||
-                                            fromItem.type === 'generic.object.star' || fromItem.type === 'generic.object.cloud' ||
-                                            fromItem.type?.endsWith('.square') || fromItem.type?.endsWith('.circle') ||
-                                            fromItem.type?.endsWith('.point') || fromItem.type?.endsWith('.rectangle') || fromItem.type?.endsWith('.triangle') ||
-                                            fromItem.type?.endsWith('.star') || fromItem.type?.endsWith('.cloud'));
-                        const isToShape = (toItem.type === 'generic.object.square' || toItem.type === 'generic.object.circle' || 
-                                          toItem.type === 'generic.object.point' || toItem.type === 'generic.object.rectangle' || toItem.type === 'generic.object.triangle' ||
-                                          toItem.type === 'generic.object.star' || toItem.type === 'generic.object.cloud' ||
-                                          toItem.type?.endsWith('.square') || toItem.type?.endsWith('.circle') ||
-                                          toItem.type?.endsWith('.point') || toItem.type?.endsWith('.rectangle') || toItem.type?.endsWith('.triangle') ||
-                                          toItem.type?.endsWith('.star') || toItem.type?.endsWith('.cloud'));
-                        
-                        const isFromTextType = fromItem.type === 'generic.text.text' || fromItem.type === 'generic.text.textbox';
-                        const isToTextType = toItem.type === 'generic.text.text' || toItem.type === 'generic.text.textbox';
-                        
-                        const isFromGroup = fromItem.type === 'group' || (fromItem as any).subType === 'zone';
-                        const isToGroup = toItem.type === 'group' || (toItem as any).subType === 'zone';
-                        
-                        // Calculate node heights
-                        const calculateNodeHeight = (label: string = '', nodeType: string, sizeMode?: string, customHeight?: number) => {
-                            if (sizeMode === 'custom' && customHeight) return customHeight;
-                            if (nodeType === 'generic.text.textbox') {
-                                const maxCharsPerLine = 30;
-                                const lines = Math.max(1, Math.ceil(label.length / maxCharsPerLine));
-                                return 40 + ((lines - 1) * EXTRA_LINE_HEIGHT);
-                            } else if (nodeType === 'generic.text.text') {
-                                const maxCharsPerLine = 20;
-                                const lines = Math.ceil(label.length / maxCharsPerLine);
-                                return TEXT_NODE_HEIGHT + ((lines - 1) * EXTRA_LINE_HEIGHT);
-                            } else {
-                                const maxCharsPerLine = 12;
-                                const lines = Math.ceil(label.length / maxCharsPerLine);
-                                return BASE_NODE_HEIGHT + ((lines - 1) * EXTRA_LINE_HEIGHT);
-                            }
-                        };
-                        
-                        const fromCalculatedHeight = calculateNodeHeight((fromItem as any).label || '', fromItem.type, (fromItem as any).sizeMode, (fromItem as any).height);
-                        const toCalculatedHeight = calculateNodeHeight((toItem as any).label || '', toItem.type, (toItem as any).sizeMode, (toItem as any).height);
-                        
-                        // Calculate text under heights
-                        let fromTextUnderHeight = 0;
-                        let toTextUnderHeight = 0;
-                        
-                        if (isFromShape && (fromItem as any).label && ((fromItem as any).textPosition === 'under' || !(fromItem as any).textPosition)) {
-                            const maxCharsPerLine = 16;
-                            const lines = Math.ceil(((fromItem as any).label || '').length / maxCharsPerLine);
-                            fromTextUnderHeight = lines * 20;
-                        }
-                        
-                        if (isToShape && (toItem as any).label && ((toItem as any).textPosition === 'under' || !(toItem as any).textPosition)) {
-                            const maxCharsPerLine = 16;
-                            const lines = Math.ceil(((toItem as any).label || '').length / maxCharsPerLine);
-                            toTextUnderHeight = lines * 20;
-                        }
-                        
-                        if (!isFromShape && !isFromTextType && (fromItem as any).label && ((fromItem as any).label || '').trim().length > 0) {
-                            const maxCharsPerLine = 16;
-                            const lines = Math.ceil(((fromItem as any).label || '').length / maxCharsPerLine);
-                            fromTextUnderHeight = 20 + ((lines - 1) * 8);
-                        }
-                        
-                        if (!isToShape && !isToTextType && (toItem as any).label && ((toItem as any).label || '').trim().length > 0) {
-                            const maxCharsPerLine = 16;
-                            const lines = Math.ceil(((toItem as any).label || '').length / maxCharsPerLine);
-                            toTextUnderHeight = 20 + ((lines - 1) * 8);
-                        }
-                        
-                        // Calculate widths and heights
-                        const fromWidth = isFromGroup 
-                            ? ((fromItem as any).width || 300)
-                            : (isFromShape && (fromItem as any).width ? (fromItem as any).width : ((fromItem as any).width || NODE_WIDTH));
-                        const fromHeight = isFromGroup
-                            ? ((fromItem as any).height || 220)
-                            : (isFromShape && (fromItem as any).height ? (fromItem as any).height : (fromCalculatedHeight + fromTextUnderHeight));
-                        const toWidth = isToGroup
-                            ? ((toItem as any).width || 300)
-                            : (isToShape && (toItem as any).width ? (toItem as any).width : ((toItem as any).width || NODE_WIDTH));
-                        const toHeight = isToGroup
-                            ? ((toItem as any).height || 220)
-                            : (isToShape && (toItem as any).height ? (toItem as any).height : (toCalculatedHeight + toTextUnderHeight));
-                        
-                        // Calculate icon heights
-                        let fromIconHeight: number | undefined;
-                        let toIconHeight: number | undefined;
-                        
-                        if (!isFromGroup) {
-                            if (isFromShape) {
-                                fromIconHeight = (fromItem as any).height || 48;
-                            } else if (isFromTextType) {
-                                fromIconHeight = fromCalculatedHeight;
-                            } else {
-                                fromIconHeight = BASE_NODE_HEIGHT;
-                            }
-                        }
-                        
-                        if (!isToGroup) {
-                            if (isToShape) {
-                                toIconHeight = (toItem as any).height || 48;
-                            } else if (isToTextType) {
-                                toIconHeight = toCalculatedHeight;
-                            } else {
-                                toIconHeight = BASE_NODE_HEIGHT;
-                            }
-                        }
-                        
-                        // Get edge information for this connection using the same key format as connection rendering
-                        const connKey = `${conn.from}-${conn.to}-${originalIndex}`;
-                        const edges = connectionEdgeInfo.get(connKey);
-                        if (!edges) return null; // Skip if edge info not found (shouldn't happen)
-                        
-                        // Calculate per-edge indices exactly as done in connection rendering
-                        const fromEdgeKey = `${conn.from}-${edges.fromEdge}`;
-                        const toEdgeKey = `${conn.to}-${edges.toEdge}`;
-                        
-                        const fromEdgeConnections = edgeGroups.get(fromEdgeKey) || [];
-                        const toEdgeConnections = edgeGroups.get(toEdgeKey) || [];
-                        
-                        // Find the index using connIndex (which matches originalIndex in the full array)
-                        const fromEdgeIndex = fromEdgeConnections.findIndex((item: any) => item.connIndex === originalIndex);
-                        const toEdgeIndex = toEdgeConnections.findIndex((item: any) => item.connIndex === originalIndex);
-                        
-                        const fromEdgeTotal = fromEdgeConnections.length;
-                        const toEdgeTotal = toEdgeConnections.length;
-                        
-                        // Determine if this is an incoming or outgoing connection
-                        const isIncoming = conn.to === selectedItemId;
-                        const isOutgoing = conn.from === selectedItemId;
-                        
-                        // Create enhanced connection data with indices (same as connection rendering)
-                        const enhancedConn = {
-                            ...conn,
-                            fromPreferredExit: edges.fromEdge,
-                            toPreferredEntry: edges.toEdge,
-                            // Use from edge info for from node
-                            connectionIndex: fromEdgeIndex >= 0 ? fromEdgeIndex : 0,
-                            totalConnections: fromEdgeTotal > 0 ? fromEdgeTotal : 1,
-                            // Store to edge info separately for the "to" node
-                            toConnectionIndex: toEdgeIndex >= 0 ? toEdgeIndex : 0,
-                            toTotalConnections: toEdgeTotal > 0 ? toEdgeTotal : 1,
-                        };
-                        
-                        // Use the appropriate index based on whether it's incoming or outgoing
-                        const connectionIndex = isOutgoing ? enhancedConn.connectionIndex : enhancedConn.toConnectionIndex;
-                        const totalConnections = isOutgoing ? enhancedConn.totalConnections : enhancedConn.toTotalConnections;
-                        
-                        // Calculate connection points along bezier curve
-                        const connectionPoints = getOptimalConnectionPoints(
-                            fromItem, 
-                            toItem, 
-                            fromWidth, 
-                            fromHeight, 
-                            toWidth, 
-                            toHeight, 
-                            enhancedConn, 
-                            fromIconHeight, 
-                            toIconHeight
-                        );
-                        const { fromX, fromY, toX, toY, fromAngle, toAngle } = connectionPoints;
-                        
-                        // Calculate control points for bezier curve
-                        const curvature = conn?.curvature || 0.6;
-                        const { cp1X, cp1Y, cp2X, cp2Y } = calculateBezierControlPoints(
-                            fromX, 
-                            fromY, 
-                            toX, 
-                            toY, 
-                            curvature, 
-                            fromAngle, 
-                            toAngle
-                        );
-                        
-                        // Offset position based on connection index when there are multiple connections
-                        // Spread connections along the curve by adjusting the t parameter
-                        // Base position is 85% along the curve, distribute multiple connections around that point
-                        let offsetT = 0.85; // Default to 85% along the curve
-                        if (totalConnections > 1) {
-                            // Distribute connections along a small range around 85% (e.g., 80% to 90%)
-                            const tRange = 0.10; // 10% range
-                            const tStart = 0.80;
-                            const tStep = tRange / (totalConnections - 1);
-                            offsetT = tStart + (connectionIndex * tStep);
-                        }
-                        
-                        // Get final position along bezier curve
-                        const bezierPoint = getBezierPoint(offsetT, fromX, fromY, cp1X, cp1Y, cp2X, cp2Y, toX, toY);
-                        const midX = bezierPoint.x;
-                        const midY = bezierPoint.y;
-
-                        const handleArrowToggle = (connection: any, connectionOriginalIndex: number, newState: boolean) => {
-                            setDiagramData(prevData => {
-                                // Create a completely new connections array to ensure React re-renders
-                                const oldConnections = prevData.connections || [];
-                                const updatedConnections = oldConnections.map((c: any, idx: number) => {
-                                    // Match by original index to ensure we update the correct connection
-                                    // when there are multiple connections between the same nodes
-                                    if (idx === connectionOriginalIndex) {
-                                        // Create a new object with updated toArrow state
-                                        return { 
-                                            ...c, 
-                                            toArrow: newState,
-                                            arrow: newState, // Set both for backward compatibility
-                                            // Add a timestamp to force re-rendering
-                                            _updated: Date.now()
-                                        };
-                                    }
-                                    return { ...c }; // Create new object for all connections to ensure re-render
-                                });
-                                
-                                // Ensure completely new array reference
-                                const newConnectionsArray = [...updatedConnections];
-                                
-                                return { 
-                                    ...prevData, 
-                                    connections: newConnectionsArray 
-                                };
-                            });
-                        };
-
-                        return (
-                            <div
-                                key={`arrow-toggle-${conn.from}-${conn.to}-${originalIndex}`}
-                                className="absolute cursor-pointer"
-                                style={{ 
-                                    zIndex: 15,
-                                    left: `${midX - 20}px`,
-                                    top: `${midY - 20}px`,
-                                    width: '40px',
-                                    height: '40px'
-                                }}
-                                onMouseDown={(e) => {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                    handleArrowToggle(conn, originalIndex, !conn.toArrow && !conn.arrow);
-                                }}
-                            >
-                                <svg
-                                    width="40"
-                                    height="40"
-                                    className="pointer-events-none"
-                                >
-                                    <ArrowToggle
-                                        x={20}
-                                        y={20}
-                                        connection={conn}
-                                        isActive={conn.toArrow === true || conn.arrow === true}
-                                    />
-                                </svg>
-                            </div>
-                        );
-                    });
-                })()}
-                
-                {/* Nodes and groups rendered on top of connections */}
-                {sortedRenderItems.map((item) => {
-                  if (item.itemType === 'zone') {
-                    return (
-                      <div key={item.id} style={{ zIndex: 0, overflow: 'visible' }}>
-                        <DiagramZone 
-                          zone={item}
-                          isSelected={selectedItemId === item.id && !isConnectMode}
-                          isMultiSelected={selectedItemIds.has(item.id) && !isConnectMode}
-                          isDropTarget={hoveredGroupId === item.id}
-                          isTargetable={isConnectMode && selectedItemId !== item.id}
-                          onClick={handleZoneClick}
-                          onContextMenu={handleZoneRightClick}
-                          onResize={resizeGroup}
-                          onLabelChange={updateGroupLabel}
-                        />
-                      </div>
-                    );
-                  } else {
-                    const isConnectedToSelected = !!selectedItemId && (diagramData.connections || []).some((e: any) => e.from === selectedItemId && e.to === item.id || e.to === selectedItemId && e.from === item.id);
-                    const isFreeflowNode = (item as any).freeflow;
-                    return (
-                      <div key={item.id} style={{ 
-                        zIndex: isFreeflowNode ? 10 : 2, 
-                        position: 'relative', 
-                        transform: 'translateZ(0)' 
-                      }}>
-                        <DiagramNode 
-                          node={item} 
-                          isSelected={selectedItemId === item.id && !isConnectMode}
-                          isMultiSelected={selectedItemIds.has(item.id) && !isConnectMode}
-                          isTargetable={isConnectMode && selectedItemId !== item.id}
-                          isHighlighted={isConnectedToSelected}
-                          onClick={handleNodeClick}
-                          onContextMenu={handleNodeRightClick}
-                          onLabelUpdate={onLabelUpdate}
-                          onResize={resizeNode}
-                          onDraggingChange={onDraggingChange}
-                          hoverEnabled={hoverEnabled}
-                        />
-                      </div>
-                    );
-                  }
-                })}
-                
-                {/* Connection text rendered on top of everything */}
-                <svg
-                width={width}
-                height={height}
-                className="absolute top-0 left-0 overflow-visible pointer-events-none"
-                style={{ zIndex: 3 }}
-                >
-                {(diagramData.connections || []).map((edge: any, index: any) => {
-                    // Count connections between the same pair of nodes (bidirectional)
-                    const connectionsBetweenPair = (diagramData.connections || []).filter((conn: any) => 
-                        (conn.from === edge.from && conn.to === edge.to) || 
-                        (conn.from === edge.to && conn.to === edge.from)
-                    );
-                    
-                    const totalConnections = connectionsBetweenPair.length;
-                    const connectionIndex = connectionsBetweenPair.findIndex((conn: any) => conn === edge);
-                    
-                    // Update edge with connection distribution info
-                    const enhancedEdge = {
-                        ...edge,
-                        connectionIndex,
-                        totalConnections
-                    };
-                    
-                    const fromItem = nodesById[edge.from] || zonesById[edge.from];
-                    const toItem = nodesById[edge.to] || zonesById[edge.to];
-                    if (!fromItem || !toItem) return null;
-
-                    // Get actual dimensions for shapes using measureNodeDims
-                    const fromDims = measureNodeDims(fromItem as PositionedNode);
-                    const toDims = measureNodeDims(toItem as PositionedNode);
-                    
-                    const fromPos: any = {
-                      ...fromItem,
-                      width: fromDims.width,
-                      height: fromDims.height,
-                    };
-                    const toPos: any = {
-                      ...toItem,
-                      width: toDims.width,
-                      height: toDims.height,
-                    };
-
-                    // Explicitly set lineColor after spreading to ensure it's not overwritten
-                    fromPos.lineColor = (fromItem as any).lineColor;
-                    toPos.lineColor = (toItem as any).lineColor;
-
-                    // Build parent map for groups to gather ancestor groups of endpoints
-                    const parentMap = new Map<string, string>();
-                    processedZones.forEach(zone => {
-                      zone.children.forEach((id: string) => parentMap.set(id, zone.id));
-                    });
-                    
-                    return (
-                      <BezierConnectionText
-                        key={`text-${edge.from}-${edge.to}-${index}`}
-                        connectionData={enhancedEdge}
-                        from={fromPos}
-                        to={toPos}
-                        connectionColor={edge.color}
-                      />
-                    );
-                })}
-                </svg>
-                
-            </div>
-        </div>
-
-        
-        {/* Context Menu - only render when visible to avoid unnecessary calculations */}
-        {contextMenu.visible && (() => {
-          const currentItem = contextMenu.itemType === 'node' 
-            ? diagramData.nodes.find(n => n.id === contextMenu.itemId)
-            : diagramData.zones?.find(zone => zone.id === contextMenu.itemId);
-          
-
-          
-          const itemConnections = diagramData.connections.filter((e: any) => 
-            e.from === contextMenu.itemId || e.to === contextMenu.itemId
-          );
-
-          return (
-            <ContextMenu
-              visible={contextMenu.visible}
-              x={contextMenu.x}
-              y={contextMenu.y}
-              itemType={contextMenu.itemType}
-              onClose={closeContextMenu}
-              onCopy={() => handleCopy(contextMenu.itemId)}
-              onDelete={() => handleDelete(contextMenu.itemId)}
-              onConnect={() => {
-                const nodeItem = diagramData.nodes.find(n => n.id === contextMenu.itemId);
-                const zoneItem = diagramData.zones?.find(zone => zone.id === contextMenu.itemId);
-                if (nodeItem) {
-                  onItemSelect({ ...nodeItem, itemType: 'node' });
-                  onConnect?.();
-                } else if (zoneItem) {
-                  onItemSelect({ ...zoneItem, itemType: 'zone' });
-                  onConnect?.();
-                }
+              className="absolute border-2 border-blue-500 bg-blue-200/20 pointer-events-none z-[100]"
+              style={{
+                left: `${Math.min(selectionStart.x, selectionEnd.x) * transform.k + transform.x}px`,
+                top: `${Math.min(selectionStart.y, selectionEnd.y) * transform.k + transform.y}px`,
+                width: `${Math.abs(selectionEnd.x - selectionStart.x) * transform.k}px`,
+                height: `${Math.abs(selectionEnd.y - selectionStart.y) * transform.k}px`,
               }}
-              onDisconnect={() => {
-                // Remove all connections to/from this item
+            />
+          )}
+
+          {/* Context menu */}
+          <ContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            visible={contextMenu.visible}
+            onClose={closeContextMenu}
+            itemType={contextMenu.itemType}
+            onDelete={() => {
+              if (contextMenu.itemType === 'node') {
+                operations.handleDelete(contextMenu.itemId);
+              } else {
+                operations.handleDelete(contextMenu.itemId);
+              }
+              closeContextMenu();
+            }}
+            onCopy={() => {
+              handleCopy(contextMenu.itemId);
+              closeContextMenu();
+            }}
+            onConnect={() => {
+              // onConnect expects the item to already be selected, which we do in handleNodeContextMenu/handleZoneContextMenu
+              // Use setTimeout to ensure selection has been processed
+              setTimeout(() => {
+                if (onConnect) {
+                  onConnect({ style: 'bezier', curvature: 0.6 });
+                }
+              }, 0);
+              closeContextMenu();
+            }}
+            onDisconnect={() => {
+              if (onDisconnect) {
+                onDisconnect();
+              }
+              closeContextMenu();
+            }}
+            onTextStyling={() => {
+              if (onTriggerTextStylingPanel) {
+                onTriggerTextStylingPanel();
+              }
+              closeContextMenu();
+            }}
+            onVisualStyling={() => {
+              if (onTriggerVisualStylingPanel) {
+                onTriggerVisualStylingPanel();
+              }
+              closeContextMenu();
+            }}
+            connections={diagramData.connections?.filter((conn: DiagramConnectionData) => 
+              conn.from === contextMenu.itemId || conn.to === contextMenu.itemId
+            ) || []}
+            triggerConnectionSettings={() => {
+              if (onTriggerConnectionSettingsPanel) {
+                onTriggerConnectionSettingsPanel();
+              }
+              closeContextMenu();
+            }}
+            onToggleFreeflow={() => {
+              if (contextMenu.itemType === 'node') {
+                handleToggleFreeflow(contextMenu.itemId);
+              }
+              closeContextMenu();
+            }}
+            isFreeflow={contextMenu.itemType === 'node' ? (diagramData.nodes.find(n => n.id === contextMenu.itemId)?.freeflow || false) : false}
+            onOrientationChange={(orientation: 'auto' | 'horizontal' | 'vertical' | 'grid') => {
+              const zone = diagramData.zones?.find(z => z.id === contextMenu.itemId);
+              if (zone) {
+                const newOrientation = orientation === 'grid' ? 'square' : orientation === 'auto' ? undefined : orientation;
+                // Set sizeMode based on orientation:
+                // - 'auto' orientation → 'auto' sizeMode
+                // - 'grid', 'horizontal', 'vertical' → 'custom' sizeMode
+                const newSizeMode = orientation === 'auto' ? 'auto' : 'custom';
                 setDiagramData(prev => ({
                   ...prev,
-                  connections: prev.connections.filter((e: any) => e.from !== contextMenu.itemId && e.to !== contextMenu.itemId)
+                  zones: prev.zones?.map(z =>
+                    z.id === contextMenu.itemId
+                      ? { ...z, orientation: newOrientation, sizeMode: newSizeMode }
+                      : z
+                  ) || []
                 }));
                 toast({
-                  title: "Connections Disconnected",
-                  description: "All connections to/from this item have been removed.",
+                  title: "Orientation Changed",
+                  description: `Zone orientation changed to ${orientation === 'grid' ? 'Grid' : orientation.charAt(0).toUpperCase() + orientation.slice(1)}`,
                 });
-                onDisconnect?.();
-              }}
-              onShowConnections={() => {
-                toast({
-                  title: "Connections",
-                  description: `Found ${itemConnections.length} connection(s) for this item.`,
-                });
-              }}
-              connections={itemConnections}
-
-              onToggleFreeflow={() => handleToggleFreeflow(contextMenu.itemId)}
-              isFreeflow={diagramData.nodes.find(n => n.id === contextMenu.itemId)?.freeflow || false}
-              onTextStyling={() => {
-                const nodeItem = diagramData.nodes.find(n => n.id === contextMenu.itemId);
-                const zoneItem = diagramData.zones?.find(zone => zone.id === contextMenu.itemId);
-                if (nodeItem) {
-                  onItemSelect({ ...nodeItem, itemType: 'node' });
-                  onTriggerTextStylingPanel?.();
-                } else if (zoneItem) {
-                  onItemSelect({ ...zoneItem, itemType: 'zone' });
-                  onTriggerTextStylingPanel?.();
-                }
-              }}
-              onVisualStyling={() => {
-                const nodeItem = diagramData.nodes.find(n => n.id === contextMenu.itemId);
-                const zoneItem = diagramData.zones?.find(zone => zone.id === contextMenu.itemId);
-                if (nodeItem) {
-                  onItemSelect({ ...nodeItem, itemType: 'node' });
-                  onTriggerVisualStylingPanel?.();
-                } else if (zoneItem) {
-                  onItemSelect({ ...zoneItem, itemType: 'zone' });
-                  onTriggerVisualStylingPanel?.();
-                }
-              }}
-              triggerConnectionSettings={() => {
-                const nodeItem = diagramData.nodes.find(n => n.id === contextMenu.itemId);
-                const zoneItem = diagramData.zones?.find(zone => zone.id === contextMenu.itemId);
-                if (nodeItem) {
-                  onItemSelect({ ...nodeItem, itemType: 'node' });
-                } else if (zoneItem) {
-                  onItemSelect({ ...zoneItem, itemType: 'zone' });
-                }
-                onTriggerConnectionSettingsPanel?.();
-              }}
-              onOrientationChange={(orientation) => {
-                if (contextMenu.itemType === 'zone') {
-                  const zone = diagramData.zones?.find(zone => zone.id === contextMenu.itemId);
-                  if (zone) {
-                    // Map the UI orientation values to the data model values
-                    let newOrientation: 'horizontal' | 'vertical' | 'square' | undefined;
-                    let newSizeMode: 'auto' | 'custom';
-                    switch (orientation) {
-                      case 'auto':
-                        newOrientation = undefined;
-                        newSizeMode = 'auto';
-                        break;
-                      case 'grid':
-                        newOrientation = 'square';
-                        newSizeMode = 'custom';
-                        break;
-                      case 'horizontal':
-                        newOrientation = 'horizontal';
-                        newSizeMode = 'custom';
-                        break;
-                      case 'vertical':
-                        newOrientation = 'vertical';
-                        newSizeMode = 'custom';
-                        break;
-                    }
-                    
-                    setDiagramData(prev => ({
-                      ...prev,
-                      zones: prev.zones?.map(z => 
-                        z.id === contextMenu.itemId 
-                          ? { ...z, orientation: newOrientation, sizeMode: newSizeMode }
-                          : z
-                      )
-                    }));
-                    toast({
-                      title: "Orientation Changed",
-                      description: `Zone orientation changed to ${orientation === 'grid' ? 'Grid' : orientation.charAt(0).toUpperCase() + orientation.slice(1)}`,
-                    });
-                  }
-                }
-              }}
-              currentOrientation={
-                (() => {
-                  const zone = diagramData.zones?.find(zone => zone.id === contextMenu.itemId);
-                  if (!zone) return 'auto';
-                  // Map the data model values back to UI values
-                  if (!zone.orientation) return 'auto';
-                  if (zone.orientation === 'square') return 'grid';
-                  return zone.orientation;
-                })()
               }
-            />
-          );
-        })()}
-
-        {/* Selection rectangle overlay */}
-        {selectionStart && selectionEnd && (
-          <div
-            className="absolute border-2 border-blue-500 bg-blue-200/20 pointer-events-none z-[100]"
-            style={{
-              left: `${Math.min(selectionStart.x, selectionEnd.x) * transform.k + transform.x}px`,
-              top: `${Math.min(selectionStart.y, selectionEnd.y) * transform.k + transform.y}px`,
-              width: `${Math.abs(selectionEnd.x - selectionStart.x) * transform.k}px`,
-              height: `${Math.abs(selectionEnd.y - selectionStart.y) * transform.k}px`,
             }}
+            currentOrientation={
+              (() => {
+                const zone = diagramData.zones?.find(zone => zone.id === contextMenu.itemId);
+                if (!zone) return 'auto';
+                // Map the data model values back to UI values
+                if (!zone.orientation) return 'auto';
+                if (zone.orientation === 'square') return 'grid';
+                return zone.orientation;
+              })()
+            }
           />
-        )}
-
-        {/* Browser viewport center point indicator (with 10% adjustment) */}
-        {isClient && (
-          <div 
-            className="absolute pointer-events-none z-40"
-            style={{
-              left: `${window.innerWidth / 2 + (window.innerWidth * 0.1) - (canvasRef.current?.getBoundingClientRect().left || 0)}px`,
-              top: `${window.innerHeight / 2 - (canvasRef.current?.getBoundingClientRect().top || 0)}px`,
-              transform: 'translate(-50%, -50%)',
-            }}
-            title="Browser viewport center (zoom point, with 10% adjustment)"
-          >
-            {/* Crosshair lines */}
-            <div className="absolute w-8 h-px bg-red-400 opacity-50" style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }} />
-            <div className="absolute h-8 w-px bg-red-400 opacity-50" style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }} />
-            {/* Center dot */}
-            <div className="absolute w-3 h-3 bg-red-500 rounded-full opacity-80" style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }} />
-          </div>
-        )}
-
-        {/* Fit-to-view floating button */}
-        <div className="absolute bottom-4 right-4 z-50">
-          <Button variant="secondary" size="icon" onClick={handleFitToView} className="rounded-full shadow-md">
-            <Maximize2 className="h-5 w-5" />
-            <span className="sr-only">Resize to fit</span>
-          </Button>
         </div>
-
-        {/* Drag position indicator */}
-        {dragPosition && (
-          <div
-            className="absolute bg-card/95 backdrop-blur-sm border border-border rounded-md px-3 py-1.5 shadow-lg z-[60] pointer-events-none"
-            style={{
-              left: `${dragPosition.x * transform.k + transform.x + 20}px`,
-              top: `${dragPosition.y * transform.k + transform.y - 30}px`,
-              fontSize: '12px',
-              fontFamily: 'monospace',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            X: {Math.round(dragPosition.x)} Y: {Math.round(dragPosition.y)}
-            {selectedItemIds.size > 1 && ` (${selectedItemIds.size} items)`}
-          </div>
-        )}
-        
-        {/* Multi-drag position indicators */}
-        {multiDragPositions && Object.entries(multiDragPositions).map(([id, pos]) => (
-          <div
-            key={id}
-            className="absolute w-4 h-4 bg-primary/30 border-2 border-primary rounded-full z-[55] pointer-events-none"
-            style={{
-              left: `${pos.x * transform.k + transform.x - 8}px`,
-              top: `${pos.y * transform.k + transform.y - 8}px`,
-            }}
-          />
-        ))}
     </div>
   );
 });
