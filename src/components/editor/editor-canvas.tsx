@@ -1,5 +1,21 @@
 "use client";
 
+/**
+ * EditorCanvas Component
+ * 
+ * Main orchestrator component for the diagram editor canvas. This component was refactored
+ * from a single large file (~4100 lines) into smaller, focused modules for better
+ * maintainability and testability.
+ * 
+ * Architecture:
+ * - Uses custom hooks for state management and side effects
+ * - Delegates rendering to specialized sub-components
+ * - Coordinates event handling between multiple systems
+ * - Provides imperative API via ref forwarding
+ * 
+ * See tree.md for detailed documentation of all modules.
+ */
+
 import React, { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { DiagramNode } from "../diagram/diagram-node";
 import { DiagramZone } from "../diagram/diagram-zone";
@@ -65,11 +81,23 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   { diagramData, setDiagramData, onItemSelect, onBatchSelect, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerConnectionSettingsPanel }: EditorCanvasProps,
   ref
 ) {
-  // Calculate layout
+  // ============================================================================
+  // LAYOUT CALCULATION
+  // ============================================================================
+  // Uses canvas-layout-utils.ts to calculate positions for all nodes and zones
+  // This runs whenever diagramData changes and returns:
+  // - processedNodes: Nodes with calculated x/y positions
+  // - processedZones: Zones with calculated x/y/width/height
+  // - width/height: Total canvas dimensions needed to contain all items
   const { processedNodes, processedZones, width, height } = useMemo(() => {
     return calculateLayout(diagramData);
   }, [diagramData]);
 
+  // ============================================================================
+  // LOOKUP MAPS
+  // ============================================================================
+  // Create fast lookup maps for O(1) access to nodes and zones by ID
+  // Used by sub-components that need to find items quickly
   const nodesById = useMemo(() => {
     return processedNodes.reduce((acc, node) => {
       acc[node.id] = node;
@@ -84,6 +112,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     }, {} as Record<string, PositionedGroup>);
   }, [processedZones]);
   
+  // Get the currently selected item (node or zone) for internal use
   const selectedItem = useMemo(() => {
     if (!selectedItemId) return null;
     const node = nodesById[selectedItemId];
@@ -100,7 +129,14 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   // Client-side rendering state
   const [isClient, setIsClient] = useState(false);
   
-  // Initialize hooks
+  // ============================================================================
+  // HOOK: useCanvasTransform
+  // ============================================================================
+  // Manages canvas panning and zooming
+  // - transform: Current canvas transform (x, y, k/scale)
+  // - handleWheel: Processes mouse wheel events for zooming
+  // - handleFitToView: Auto-fits diagram to viewport
+  // See: src/hooks/use-canvas-transform.ts
   const { transform, setTransform, handleWheel, handleFitToView } = useCanvasTransform({
     externalTransform,
     onTransformChange,
@@ -109,8 +145,25 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     processedZones,
   });
 
+  // ============================================================================
+  // HOOK: useCanvasContextMenu
+  // ============================================================================
+  // Manages right-click context menu state and position
+  // - contextMenu: Current menu state (visible, x, y, itemType, itemId)
+  // - handleContextMenu: Opens menu at mouse position for an item
+  // - closeContextMenu: Closes the menu
+  // See: src/hooks/use-canvas-context-menu.ts
   const { contextMenu, handleContextMenu, closeContextMenu } = useCanvasContextMenu();
 
+  // ============================================================================
+  // HOOK: useCanvasClipboard
+  // ============================================================================
+  // Handles copy, paste, and clipboard operations
+  // - handleCopy: Copies selected item(s) to clipboard
+  // - handlePaste: Pastes clipboard content at mouse position
+  // - handleToggleFreeflow: Toggles freeflow mode for nodes
+  // - canPaste: Checks if clipboard has content to paste
+  // See: src/hooks/use-canvas-clipboard.ts
   const { clipboard, handleCopy, handlePaste, handleToggleFreeflow, canPaste } = useCanvasClipboard({
     diagramData,
     selectedItemIds,
@@ -120,6 +173,14 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     toast,
   });
 
+  // ============================================================================
+  // HOOK: useCanvasExport
+  // ============================================================================
+  // Manages PNG export functionality
+  // - exportPng: Exports canvas to PNG (supports transparent/white background, selection area)
+  // - startSelectionMode: Enters selection mode for area export
+  // - isSelectionMode: Whether export selection mode is active
+  // See: src/hooks/use-canvas-export.ts
   const { isSelectionMode, pendingExportOptions, exportPng, startSelectionMode, setIsSelectionMode, setPendingExportOptions } = useCanvasExport({
     canvasRef,
     transform,
@@ -128,6 +189,15 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     toast,
   });
 
+  // ============================================================================
+  // HOOK: useCanvasSelection
+  // ============================================================================
+  // Handles multi-item selection with selection rectangle
+  // - selectionStart/End: Selection rectangle coordinates
+  // - handleCanvasClick: Clears selection when clicking empty canvas
+  // - handleMouseDown/Move/Up: Manages selection rectangle drawing
+  // - justCompletedSelection: Flag to prevent immediate deselection
+  // See: src/hooks/use-canvas-selection.ts
   const { selectionStart, selectionEnd, justCompletedSelection, handleCanvasClick, handleMouseDown: handleSelectionMouseDown, handleMouseMove: handleSelectionMouseMove, handleMouseUpOrLeave: handleSelectionMouseUpOrLeave } = useCanvasSelection({
     canvasRef,
     transform,
@@ -144,6 +214,15 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     toast,
   });
 
+  // ============================================================================
+  // HOOK: useCanvasInteractions
+  // ============================================================================
+  // Handles mouse position tracking and panning
+  // - handleMouseMove: Tracks mouse position (throttled for performance)
+  // - handleMouseDown: Initiates right-click panning
+  // - handleTouchStart/Move/End: Handles touch gestures for mobile
+  // - isPanning: Whether canvas is currently being panned
+  // See: src/hooks/use-canvas-interactions.ts
   const { isPanning, handleMouseDown: handleInteractionsMouseDown, handleMouseMove: handleInteractionsMouseMove, handleMouseUpOrLeave: handleInteractionsMouseUpOrLeave, handleTouchStart, handleTouchMove, handleTouchEnd } = useCanvasInteractions({
     canvasRef,
     transform,
@@ -152,6 +231,19 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     onMousePositionChange,
   });
 
+  // ============================================================================
+  // HOOK: useCanvasOperations
+  // ============================================================================
+  // Provides CRUD operations for diagram items
+  // - addNode: Adds a new node to the diagram
+  // - resizeNode: Resizes a node with minimum size constraints
+  // - resizeGroup: Resizes a zone with minimum size constraints
+  // - moveItem: Moves a single item
+  // - moveMultipleItems: Moves multiple selected items
+  // - handleDelete: Deletes a single item
+  // - handleDeleteMultiple: Deletes multiple items
+  // - updateGroupLabel: Updates zone label
+  // See: src/components/editor/canvas-operations.ts
   const operations = useCanvasOperations({
     setDiagramData,
     processedNodes,
@@ -160,6 +252,15 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     toast,
   });
 
+  // ============================================================================
+  // HOOK: useCanvasDragDrop
+  // ============================================================================
+  // Handles drag and drop functionality using react-dnd
+  // - drop: Configures drop target for canvas
+  // - dragPosition: Current drag position for visual feedback
+  // - multiDragPositions: Positions for multi-item dragging
+  // - hoveredGroupId: ID of zone currently being hovered during drag
+  // See: src/hooks/use-canvas-drag-drop.ts
   const { dragPosition, multiDragPositions, hoveredGroupId, drop } = useCanvasDragDrop({
     canvasRef,
     transform,
@@ -172,48 +273,55 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     moveMultipleItems: operations.moveMultipleItems,
   });
 
-  // Combine mouse handlers
+  // ============================================================================
+  // EVENT HANDLER COMBINATION
+  // ============================================================================
+  // Combines mouse handlers from multiple hooks to handle all mouse interactions
+  // Selection and interaction handlers are called in sequence for each event
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    handleSelectionMouseDown(e);
-    handleInteractionsMouseDown(e);
+    handleSelectionMouseDown(e);  // Handles selection rectangle start
+    handleInteractionsMouseDown(e); // Handles right-click panning start
   }, [handleSelectionMouseDown, handleInteractionsMouseDown]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    handleSelectionMouseMove(e);
-    handleInteractionsMouseMove(e);
+    handleSelectionMouseMove(e);  // Updates selection rectangle while dragging
+    handleInteractionsMouseMove(e); // Tracks mouse position and handles panning
   }, [handleSelectionMouseMove, handleInteractionsMouseMove]);
 
   const handleMouseUpOrLeave = useCallback(async () => {
-    await handleSelectionMouseUpOrLeave();
-    handleInteractionsMouseUpOrLeave();
+    await handleSelectionMouseUpOrLeave(); // Completes selection and selects items
+    handleInteractionsMouseUpOrLeave(); // Stops panning and cleans up
   }, [handleSelectionMouseUpOrLeave, handleInteractionsMouseUpOrLeave]);
 
-  // Node/zone click handlers
+  // ============================================================================
+  // NODE/ZONE EVENT HANDLERS
+  // ============================================================================
+  // Handles clicks and context menus for individual nodes and zones
   const handleNodeClick = (e: React.MouseEvent, node: DiagramNodeData) => {
     e.stopPropagation();
     closeContextMenu();
     if (isConnectMode) {
-      onNodeClickInConnectMode(node);
+      onNodeClickInConnectMode(node); // In connect mode, clicking creates connection
     } else {
-      onItemSelect({ ...node, itemType: 'node' }, e.shiftKey);
+      onItemSelect({ ...node, itemType: 'node' }, e.shiftKey); // Normal selection
     }
   }
 
   const handleNodeContextMenu = (e: React.MouseEvent, node: DiagramNodeData) => {
     e.stopPropagation();
     e.preventDefault();
-    // Select the node if not already selected
+    // Select the node if not already selected (required for context menu actions)
     if (selectedItemId !== node.id) {
       onItemSelect({ ...node, itemType: 'node' }, false);
     }
-    handleContextMenu(e, node.id, 'node');
+    handleContextMenu(e, node.id, 'node'); // Opens context menu
   }
 
   const handleZoneClick = (e: React.MouseEvent, zone: DiagramZoneData) => {
     e.stopPropagation();
     closeContextMenu();
     if (isConnectMode) {
-      onNodeClickInConnectMode(zone as any);
+      onNodeClickInConnectMode(zone as any); // Zones can also be connection targets
     } else {
       onItemSelect({ ...zone, itemType: 'zone' }, e.shiftKey);
     }
@@ -229,10 +337,20 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     handleContextMenu(e, zone.id, 'zone');
   };
 
-  // Apply drop to canvas
+  // ============================================================================
+  // DRAG AND DROP SETUP
+  // ============================================================================
+  // Configures the canvas as a drop target for drag-and-drop operations
+  // This allows items to be dropped onto the canvas from the sidebar
   drop(canvasRef);
 
-  // Keyboard shortcuts
+  // ============================================================================
+  // KEYBOARD SHORTCUTS
+  // ============================================================================
+  // Global keyboard shortcuts for common operations
+  // - Cmd/Ctrl+C: Copy selected item(s)
+  // - Cmd/Ctrl+V: Paste from clipboard
+  // - Delete/Backspace: Delete selected item(s)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
@@ -263,7 +381,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     };
   }, [selectedItemId, selectedItemIds, handleCopy, handlePaste, canPaste, operations]);
 
-  // Expose imperative API
+  // ============================================================================
+  // IMPERATIVE API (via ref forwarding)
+  // ============================================================================
+  // Exposes methods that parent components can call via ref
+  // Used by diagram-editor.tsx for menu bar actions and other external controls
   const copyHandler = useCallback(() => {
     if (selectedItemId) {
       handleCopy(selectedItemId);
@@ -283,17 +405,23 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   }, [canPaste]);
 
   React.useImperativeHandle(ref, () => ({
-    fitToView: handleFitToView,
-    exportPng: (options?: { backgroundColor?: 'transparent' | 'white'; selectionArea?: { x: number; y: number; width: number; height: number } }) => exportPng(options),
-    startSelectionMode: (options: { backgroundColor: 'transparent' | 'white'; useSelection: boolean }) => startSelectionMode(options),
-    copy: copyHandler,
-    paste: pasteHandler,
-    canPaste: canPasteHandler,
+    fitToView: handleFitToView, // Auto-fits diagram to viewport
+    exportPng: (options?: { backgroundColor?: 'transparent' | 'white'; selectionArea?: { x: number; y: number; width: number; height: number } }) => exportPng(options), // Exports canvas to PNG
+    startSelectionMode: (options: { backgroundColor: 'transparent' | 'white'; useSelection: boolean }) => startSelectionMode(options), // Enters export selection mode
+    copy: copyHandler, // Copies selected item(s)
+    paste: pasteHandler, // Pastes from clipboard
+    canPaste: canPasteHandler, // Checks if paste is available
   }), [handleFitToView, exportPng, startSelectionMode, copyHandler, pasteHandler, canPasteHandler]);
 
   return (
     <div className="relative w-full h-full">
-        {/* Canvas Rulers */}
+        {/* ========================================================================
+            CANVAS RULERS
+            ========================================================================
+            Renders horizontal and vertical rulers along canvas edges
+            Shows pixel measurements and grid markers
+            See: src/components/editor/canvas-rulers.tsx
+        */}
         {canvasDimensions.width > 0 && canvasDimensions.height > 0 && (
           <CanvasRulers
             transform={transform}
@@ -303,6 +431,12 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           />
         )}
         
+        {/* ========================================================================
+            MAIN CANVAS CONTAINER
+            ========================================================================
+            This div handles all mouse/touch/wheel events and contains the
+            transformable diagram content area
+        */}
         <div
           ref={canvasRef}
           className="relative w-full h-full overflow-hidden"
@@ -321,6 +455,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             e.preventDefault();
           }}
         >
+          {/* ====================================================================
+              TRANSFORMABLE DIAGRAM CONTENT AREA
+              ====================================================================
+              This div contains all diagram items and is transformed (translated
+              and scaled) based on pan/zoom state. The transform CSS property
+              applies pan (x, y) and zoom (scale k) transformations.
+          */}
           <div
             className="relative dot-grid"
             style={{
@@ -330,7 +471,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               transformOrigin: '0 0',
             }}
           >
-            {/* Render zones first (background) */}
+            {/* ================================================================
+                ZONES (Background Layer)
+                ================================================================
+                Zones are rendered first so they appear behind nodes
+                Each zone can contain nodes and other zones as children
+                See: src/components/diagram/diagram-zone.tsx
+            */}
             {processedZones.map((zone) => (
               <DiagramZone
                 key={zone.id}
@@ -338,12 +485,18 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 isSelected={selectedItemId === zone.id || (selectedItemIds?.has(zone.id) ?? false)}
                 onClick={(e: React.MouseEvent) => handleZoneClick(e, zone)}
                 onContextMenu={(e: React.MouseEvent) => handleZoneContextMenu(e, zone)}
-                onResize={operations.resizeGroup}
-                onLabelChange={operations.updateGroupLabel}
+                onResize={operations.resizeGroup} // Allows resizing zones
+                onLabelChange={operations.updateGroupLabel} // Allows editing zone labels
               />
             ))}
 
-            {/* Render nodes */}
+            {/* ================================================================
+                NODES (Foreground Layer)
+                ================================================================
+                Nodes are rendered after zones so they appear on top
+                Each node represents a diagram element (text, shape, etc.)
+                See: src/components/diagram/diagram-node.tsx
+            */}
             {processedNodes.map((node) => (
               <DiagramNode
                 key={node.id}
@@ -351,14 +504,20 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 isSelected={selectedItemId === node.id || (selectedItemIds?.has(node.id) ?? false)}
                 onClick={(e: React.MouseEvent) => handleNodeClick(e, node)}
                 onContextMenu={(e: React.MouseEvent) => handleNodeContextMenu(e, node)}
-                onResize={operations.resizeNode}
-                onLabelUpdate={onLabelUpdate}
-                onDraggingChange={onDraggingChange}
-                hoverEnabled={hoverEnabled}
+                onResize={operations.resizeNode} // Allows resizing nodes
+                onLabelUpdate={onLabelUpdate} // Allows editing node labels
+                onDraggingChange={onDraggingChange} // Notifies parent of drag state
+                hoverEnabled={hoverEnabled} // Controls hover effects
               />
             ))}
 
-            {/* Render connections */}
+            {/* ================================================================
+                CONNECTIONS
+                ================================================================
+                Renders bezier curves connecting nodes/zones
+                Handles connection selection and highlighting
+                See: src/components/editor/canvas-connections.tsx
+            */}
             <CanvasConnections
               width={width}
               height={height}
@@ -370,7 +529,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               closeContextMenu={closeContextMenu}
             />
 
-            {/* Render arrow toggles */}
+            {/* ================================================================
+                ARROW TOGGLES
+                ================================================================
+                Renders arrow toggle buttons on selected connections
+                Allows toggling arrow direction (from/to/both)
+                See: src/components/editor/canvas-arrow-toggles.tsx
+            */}
             <CanvasArrowToggles
               selectedItemId={selectedItemId}
               diagramData={diagramData}
@@ -379,7 +544,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               setDiagramData={setDiagramData}
             />
 
-            {/* Render connection text */}
+            {/* ================================================================
+                CONNECTION TEXT
+                ================================================================
+                Renders and manages text labels on connections
+                Allows editing connection labels
+                See: src/components/editor/canvas-connection-text.tsx
+            */}
             <CanvasConnectionText
               width={width}
               height={height}
@@ -390,7 +561,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             />
           </div>
 
-          {/* Selection rectangle overlay */}
+          {/* ====================================================================
+              SELECTION RECTANGLE OVERLAY
+              ====================================================================
+              Visual feedback for drag-to-select operation
+              Shows a blue rectangle while user drags to select multiple items
+              Position is calculated in diagram space and converted to screen space
+          */}
           {selectionStart && selectionEnd && (
             <div
               className="absolute border-2 border-blue-500 bg-blue-200/20 pointer-events-none z-[100]"
@@ -403,7 +580,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             />
           )}
 
-          {/* Context menu */}
+          {/* ====================================================================
+              CONTEXT MENU
+              ====================================================================
+              Right-click context menu for nodes and zones
+              Provides actions like copy, delete, connect, styling, etc.
+              See: src/components/ui/context-menu.tsx
+          */}
           <ContextMenu
             x={contextMenu.x}
             y={contextMenu.y}
