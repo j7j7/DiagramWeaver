@@ -1,5 +1,5 @@
 "use client";
-import React from 'react';
+import React, { useRef, useCallback } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Panel, PanelGroup } from 'react-resizable-panels';
@@ -207,8 +207,10 @@ export default function DiagramEditor() {
     }
   }, [activeTabId, activeTab, getHistoryRef]);
 
-  // Watch diagramData changes and update history automatically
-  React.useEffect(() => {
+  // Debounced history update to prevent excessive processing during rapid changes
+  const historyTimeoutRef = useRef<NodeJS.Timeout>();
+  
+  const updateHistory = useCallback(() => {
     if (!activeTabId || !activeTab) return;
     
     // Skip history updates during dragging
@@ -218,7 +220,7 @@ export default function DiagramEditor() {
     
     const jsonString = JSON.stringify(diagramData);
     
-    // Skip if this is the same as last history entry (but not on initial load)
+    // Skip if this is same as last history entry (but not on initial load)
     if (historyRef.current.history.length > 1 && historyRef.current.history[historyRef.current.index] === jsonString) {
       return;
     }
@@ -241,6 +243,26 @@ export default function DiagramEditor() {
     updateActiveTab({ history: currentHistory, historyIndex: newIndex });
     setHistoryRef(activeTabId, historyRef.current);
   }, [diagramData, isDragging, activeTabId, activeTab, updateActiveTab, setHistoryRef]);
+
+  // Watch diagramData changes and update history with debouncing
+  React.useEffect(() => {
+    // Clear existing timeout
+    if (historyTimeoutRef.current) {
+      clearTimeout(historyTimeoutRef.current);
+    }
+    
+    // Debounce history updates to 300ms
+    historyTimeoutRef.current = setTimeout(() => {
+      updateHistory();
+    }, 300);
+    
+    // Cleanup timeout on unmount
+    return () => {
+      if (historyTimeoutRef.current) {
+        clearTimeout(historyTimeoutRef.current);
+      }
+    };
+  }, [diagramData, updateHistory]);
 
   const undo = React.useCallback(() => {
     if (!activeTabId) return;
