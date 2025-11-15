@@ -563,8 +563,8 @@ return (
                     node.sizeMode === 'custom' ? "p-1" : "p-4",
                    borderStyle !== 'none' && "border-2",
                    borderStyle === 'none' && (isSelected 
-                     ? "border border-dashed border-primary opacity-100" 
-                     : "border border-dashed border-gray-400 opacity-0 hover:opacity-100 hover:border-primary hover:bg-primary/5"),
+                      ? "border border-dashed border-primary opacity-100" 
+                      : "opacity-100 hover:border hover:border-dashed hover:border-primary hover:bg-primary/5"),
                    isSelected && borderStyle !== 'none' ? "border-primary" : !(isDragging || isTouchDragging) && borderStyle !== 'none' && "group-hover:border-accent",
                    isTargetable && "border-dashed border-primary",
                    hasShadow && "shadow-[0_10px_15px_-3px_rgba(239,68,68,0.3),0_4px_6px_-2px_rgba(239,68,68,0.2)]"
