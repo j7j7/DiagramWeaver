@@ -3551,10 +3551,9 @@ return (
                             height: 'height' in toItem ? (toItem as any).height : toDims.height,
                         };
 
-                        // Calculate point at 60% along connection for better positioning on bezier curve
-                        // Bezier curves bulge outward, so 60% positions closer to the curve's apex
-                        const midX = fromPos.x + fromPos.width / 2 + (toPos.x + toPos.width / 2 - (fromPos.x + fromPos.width / 2)) * 0.6;
-                        const midY = fromPos.y + fromPos.height / 2 + (toPos.y + toPos.height / 2 - (fromPos.y + fromPos.height / 2)) * 0.6;
+                        // Calculate point at 75% along connection
+                        const midX = fromPos.x + fromPos.width / 2 + (toPos.x + toPos.width / 2 - (fromPos.x + fromPos.width / 2)) * 0.75;
+                        const midY = fromPos.y + fromPos.height / 2 + (toPos.y + toPos.height / 2 - (fromPos.y + fromPos.height / 2)) * 0.75;
 
                         // Determine if this is an incoming or outgoing connection for color coding
                         const isIncoming = conn.to === selectedItemId;

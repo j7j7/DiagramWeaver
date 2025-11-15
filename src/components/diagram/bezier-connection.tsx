@@ -548,7 +548,7 @@ export function BezierConnection({ from, to, connectionColor, connectionData, on
 }
 
 // Helper function to calculate bezier curve point at parameter t (0 to 1)
-function getBezierPoint(t: number, fromX: number, fromY: number, cp1X: number, cp1Y: number, cp2X: number, cp2Y: number, toX: number, toY: number): { x: number; y: number } {
+export function getBezierPoint(t: number, fromX: number, fromY: number, cp1X: number, cp1Y: number, cp2X: number, cp2Y: number, toX: number, toY: number): { x: number; y: number } {
   const u = 1 - t;
   const tt = t * t;
   const uu = u * u;
