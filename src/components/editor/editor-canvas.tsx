@@ -3528,11 +3528,61 @@ return (
                 
                 {/* Arrow toggles for selected node connections */}
                 {selectedItemId && (() => {
-                    const selectedNodeConnections = (diagramData.connections || []).filter((conn: any) => 
-                        conn.from === selectedItemId || conn.to === selectedItemId
-                    );
+                    // Reuse the same edge calculation that was used for rendering connections
+                    // We need to match the exact same connection data and indices
+                    const allConnections = diagramData.connections || [];
                     
-                    return selectedNodeConnections.map((conn: any, index: number) => {
+                    // Pre-calculate edge information for ALL connections (same as connection rendering)
+                    const connectionEdgeInfo = new Map<string, { fromEdge: string; toEdge: string }>();
+                    const edgeGroups = new Map<string, any[]>();
+                    
+                    (diagramData.connections || []).forEach((conn: any, connIndex: number) => {
+                        const fromItem = nodesById[conn.from] || zonesById[conn.from];
+                        const toItem = nodesById[conn.to] || zonesById[conn.to];
+                        if (!fromItem || !toItem) return;
+                        
+                        const fromItemDims = 'type' in fromItem ? measureNodeDims(fromItem as PositionedNode) : { width: (fromItem as any).width, height: (fromItem as any).height };
+                        const toItemDims = 'type' in toItem ? measureNodeDims(toItem as PositionedNode) : { width: (toItem as any).width, height: (toItem as any).height };
+                        
+                        const fromPos: any = {
+                            ...fromItem,
+                            width: 'width' in fromItem ? (fromItem as any).width : fromItemDims.width,
+                            height: 'height' in fromItem ? (fromItem as any).height : fromItemDims.height,
+                        };
+                        const toPos: any = {
+                            ...toItem,
+                            width: 'width' in toItem ? (toItem as any).width : toItemDims.width,
+                            height: 'height' in toItem ? (toItem as any).height : toItemDims.height,
+                        };
+                        
+                        const edges = determineConnectionEdges(fromPos, toPos, conn, fromItemDims.width, fromItemDims.height, toItemDims.width, toItemDims.height);
+                        const edgeKey = `${conn.from}-${edges.fromEdge}`;
+                        const toEdgeKey = `${conn.to}-${edges.toEdge}`;
+                        
+                        const connKey = `${conn.from}-${conn.to}-${connIndex}`;
+                        connectionEdgeInfo.set(connKey, edges);
+                        
+                        // Group connections by from node + from edge
+                        if (!edgeGroups.has(edgeKey)) {
+                            edgeGroups.set(edgeKey, []);
+                        }
+                        edgeGroups.get(edgeKey)!.push({ conn, connIndex, isFrom: true });
+                        
+                        // Group connections by to node + to edge
+                        if (!edgeGroups.has(toEdgeKey)) {
+                            edgeGroups.set(toEdgeKey, []);
+                        }
+                        edgeGroups.get(toEdgeKey)!.push({ conn, connIndex, isFrom: false });
+                    });
+                    
+                    // Filter to only selected node connections
+                    const selectedNodeConnections = allConnections
+                        .map((conn: any, originalIndex: number) => ({ conn, originalIndex }))
+                        .filter(({ conn }: any) => 
+                            conn.from === selectedItemId || conn.to === selectedItemId
+                        );
+                    
+                    return selectedNodeConnections.map(({ conn, originalIndex }: any) => {
                         const fromItem = nodesById[conn.from] || zonesById[conn.from];
                         const toItem = nodesById[conn.to] || zonesById[conn.to];
                         if (!fromItem || !toItem) return null;
@@ -3644,6 +3694,46 @@ return (
                             }
                         }
                         
+                        // Get edge information for this connection using the same key format as connection rendering
+                        const connKey = `${conn.from}-${conn.to}-${originalIndex}`;
+                        const edges = connectionEdgeInfo.get(connKey);
+                        if (!edges) return null; // Skip if edge info not found (shouldn't happen)
+                        
+                        // Calculate per-edge indices exactly as done in connection rendering
+                        const fromEdgeKey = `${conn.from}-${edges.fromEdge}`;
+                        const toEdgeKey = `${conn.to}-${edges.toEdge}`;
+                        
+                        const fromEdgeConnections = edgeGroups.get(fromEdgeKey) || [];
+                        const toEdgeConnections = edgeGroups.get(toEdgeKey) || [];
+                        
+                        // Find the index using connIndex (which matches originalIndex in the full array)
+                        const fromEdgeIndex = fromEdgeConnections.findIndex((item: any) => item.connIndex === originalIndex);
+                        const toEdgeIndex = toEdgeConnections.findIndex((item: any) => item.connIndex === originalIndex);
+                        
+                        const fromEdgeTotal = fromEdgeConnections.length;
+                        const toEdgeTotal = toEdgeConnections.length;
+                        
+                        // Determine if this is an incoming or outgoing connection
+                        const isIncoming = conn.to === selectedItemId;
+                        const isOutgoing = conn.from === selectedItemId;
+                        
+                        // Create enhanced connection data with indices (same as connection rendering)
+                        const enhancedConn = {
+                            ...conn,
+                            fromPreferredExit: edges.fromEdge,
+                            toPreferredEntry: edges.toEdge,
+                            // Use from edge info for from node
+                            connectionIndex: fromEdgeIndex >= 0 ? fromEdgeIndex : 0,
+                            totalConnections: fromEdgeTotal > 0 ? fromEdgeTotal : 1,
+                            // Store to edge info separately for the "to" node
+                            toConnectionIndex: toEdgeIndex >= 0 ? toEdgeIndex : 0,
+                            toTotalConnections: toEdgeTotal > 0 ? toEdgeTotal : 1,
+                        };
+                        
+                        // Use the appropriate index based on whether it's incoming or outgoing
+                        const connectionIndex = isOutgoing ? enhancedConn.connectionIndex : enhancedConn.toConnectionIndex;
+                        const totalConnections = isOutgoing ? enhancedConn.totalConnections : enhancedConn.toTotalConnections;
+                        
                         // Calculate connection points along bezier curve
                         const connectionPoints = getOptimalConnectionPoints(
                             fromItem, 
@@ -3652,7 +3742,7 @@ return (
                             fromHeight, 
                             toWidth, 
                             toHeight, 
-                            conn, 
+                            enhancedConn, 
                             fromIconHeight, 
                             toIconHeight
                         );
@@ -3670,22 +3760,31 @@ return (
                             toAngle
                         );
                         
-                        // Position arrow toggle at 85% along the bezier curve (closer to target/entry point)
-                        const t = 0.85;
-                        const bezierPoint = getBezierPoint(t, fromX, fromY, cp1X, cp1Y, cp2X, cp2Y, toX, toY);
+                        // Offset position based on connection index when there are multiple connections
+                        // Spread connections along the curve by adjusting the t parameter
+                        // Base position is 85% along the curve, distribute multiple connections around that point
+                        let offsetT = 0.85; // Default to 85% along the curve
+                        if (totalConnections > 1) {
+                            // Distribute connections along a small range around 85% (e.g., 80% to 90%)
+                            const tRange = 0.10; // 10% range
+                            const tStart = 0.80;
+                            const tStep = tRange / (totalConnections - 1);
+                            offsetT = tStart + (connectionIndex * tStep);
+                        }
+                        
+                        // Get final position along bezier curve
+                        const bezierPoint = getBezierPoint(offsetT, fromX, fromY, cp1X, cp1Y, cp2X, cp2Y, toX, toY);
                         const midX = bezierPoint.x;
                         const midY = bezierPoint.y;
 
-                        // Determine if this is an incoming or outgoing connection for color coding
-                        const isIncoming = conn.to === selectedItemId;
-                        const isOutgoing = conn.from === selectedItemId;
-
-                        const handleArrowToggle = (connection: any, newState: boolean) => {
+                        const handleArrowToggle = (connection: any, connectionOriginalIndex: number, newState: boolean) => {
                             setDiagramData(prevData => {
                                 // Create a completely new connections array to ensure React re-renders
                                 const oldConnections = prevData.connections || [];
-                                const updatedConnections = oldConnections.map((c: any) => {
-                                    if (c.from === connection.from && c.to === connection.to) {
+                                const updatedConnections = oldConnections.map((c: any, idx: number) => {
+                                    // Match by original index to ensure we update the correct connection
+                                    // when there are multiple connections between the same nodes
+                                    if (idx === connectionOriginalIndex) {
                                         // Create a new object with updated toArrow state
                                         return { 
                                             ...c, 
@@ -3710,7 +3809,7 @@ return (
 
                         return (
                             <div
-                                key={`arrow-toggle-${conn.from}-${conn.to}-${index}`}
+                                key={`arrow-toggle-${conn.from}-${conn.to}-${originalIndex}`}
                                 className="absolute cursor-pointer"
                                 style={{ 
                                     zIndex: 15,
@@ -3722,7 +3821,7 @@ return (
                                 onMouseDown={(e) => {
                                     e.stopPropagation();
                                     e.preventDefault();
-                                    handleArrowToggle(conn, !conn.toArrow && !conn.arrow);
+                                    handleArrowToggle(conn, originalIndex, !conn.toArrow && !conn.arrow);
                                 }}
                             >
                                 <svg
