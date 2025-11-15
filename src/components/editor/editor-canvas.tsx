@@ -1262,6 +1262,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           info: `A new ${itemLabel}`,
           color: undefined,
           sizeMode: 'auto', // Default to auto-sizing
+          textPosition: 'outside-top', // Default text position for new zones
+          textJustify: 'left', // Default text justification for new zones
           x: position.x,
           y: position.y,
           width: 300,

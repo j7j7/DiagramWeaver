@@ -717,22 +717,53 @@ return (
                   {(node.type === 'generic.object.circle' || node.type?.endsWith('.circle')) && (
                     <div 
                       key={`gradient-${gradientAngle}`}
-                      className="rounded-full relative"
+                      className="relative" 
                       style={{ 
-                        background: getBackgroundStyle(),
-                        borderWidth: borderStyle === 'none' ? '0' : `${borderWidth}px`,
-                        borderStyle: borderStyle === 'gradient' ? 'solid' : borderStyle,
-                        width: node.width || 60,
-                        height: node.height || 60,
-                        minWidth: node.width || 60,
+                        width: node.width || 60, 
+                        height: node.height || 60, 
+                        minWidth: node.width || 60, 
                         minHeight: node.height || 60,
                         margin: hasShadow ? 4 : 0,
-                        ...(borderStyle === 'gradient' ? getBorderStyle() : { borderColor: getBorderStyle() }),
                         ...(hasShadow && { 
-                          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                          filter: 'drop-shadow(0 20px 25px rgba(0, 0, 0, 0.2)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.04))'
                         })
-                      }}
-                    >
+                      }}>
+                      {/* Circle using SVG for proper gradient border support */}
+                      <svg 
+                        width={node.width || 60} 
+                        height={node.height || 60}
+                        style={{ display: 'block' }}
+                      >
+                        <defs>
+                          {backgroundStyle === 'gradient' && (() => {
+                            const coords = getGradientCoordinates(gradientAngle);
+                            return (
+                              <linearGradient id={`circle-bg-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                                <stop offset="0%" stopColor={backgroundColors[0]} />
+                                <stop offset="100%" stopColor={backgroundColors[1]} />
+                              </linearGradient>
+                            );
+                          })()}
+                          {borderStyle === 'gradient' && (() => {
+                            const coords = getGradientCoordinates(gradientAngle);
+                            return (
+                              <linearGradient id={`circle-border-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                                <stop offset="0%" stopColor={borderColors[0]} />
+                                <stop offset="100%" stopColor={borderColors[1]} />
+                              </linearGradient>
+                            );
+                          })()}
+                        </defs>
+                        <circle
+                          cx={(node.width || 60) / 2}
+                          cy={(node.height || 60) / 2}
+                          r={(Math.min(node.width || 60, node.height || 60) / 2) - (borderStyle === 'none' ? 0 : borderWidth / 2)}
+                          fill={backgroundStyle === 'gradient' ? `url(#circle-bg-${node.id})` : backgroundStyle === 'none' ? 'transparent' : backgroundColor}
+                          stroke={borderStyle === 'gradient' ? `url(#circle-border-${node.id})` : borderStyle === 'none' ? 'transparent' : borderColor}
+                          strokeWidth={borderStyle === 'none' ? 0 : borderWidth}
+                          strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
+                        />
+                      </svg>
                       {/* Text inside circle */}
                       {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
                         <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)}`}>

@@ -43,9 +43,6 @@ export function ContextMenu({
   isFreeflow = false,
   onTextStyling,
   onVisualStyling,
-  onToggleSizeMode,
-  isSizeModeAuto = true,
-  supportsSizeMode = false,
   onOrientationChange,
   currentOrientation = 'auto'
 }: ContextMenuProps) {
