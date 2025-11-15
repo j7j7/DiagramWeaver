@@ -1224,66 +1224,101 @@ export default function DiagramEditor() {
         return;
       }
       
-      // Arrow keys - Move selected node by 10px grid (up to 150), then 30px increments
+      // Arrow keys - Move selected items by 10px grid
       if ((e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') && selectedItem && selectedItem.itemType !== 'edge') {
         e.preventDefault();
-        // Custom snap function: snaps to 10px increments up to 150, then 30px increments (150, 180, 210, etc.)
-        const snapToGrid = (v: number): number => {
-          if (v <= 150) {
-            return Math.round(v / 10) * 10;
-          } else {
-            return Math.round((v - 150) / 30) * 30 + 150;
-          }
-        };
         
         const gridSize = 10; // Use 10px for arrow key movement
-        let newX = (selectedItem as any).x || 0;
-        let newY = (selectedItem as any).y || 0;
+        let deltaX = 0;
+        let deltaY = 0;
         
         switch (e.key) {
           case 'ArrowUp':
-            newY -= gridSize;
+            deltaY -= gridSize;
             break;
           case 'ArrowDown':
-            newY += gridSize;
+            deltaY += gridSize;
             break;
           case 'ArrowLeft':
-            newX -= gridSize;
+            deltaX -= gridSize;
             break;
           case 'ArrowRight':
-            newX += gridSize;
+            deltaX += gridSize;
             break;
         }
         
-        // Snap to grid after movement
-        newX = snapToGrid(newX);
-        newY = snapToGrid(newY);
+        // Determine which items to move (multi-selection or single selection)
+        const itemIdsToMove = selectedItemIds.size > 0 ? Array.from(selectedItemIds) : [selectedItem.id];
         
-        // Update node position through proper callback
-        if (selectedItem.itemType === 'node') {
-          setDiagramData(prevData => ({
+        setDiagramData(prevData => {
+          const newNodes = [...prevData.nodes];
+          const newZones = [...(prevData.zones || [])];
+          
+          itemIdsToMove.forEach(id => {
+            // Update nodes
+            const nodeIndex = newNodes.findIndex(n => n.id === id);
+            if (nodeIndex !== -1) {
+              const node = newNodes[nodeIndex];
+              newNodes[nodeIndex] = { 
+                ...node, 
+                x: Math.round(((node.x || 0) + deltaX) / gridSize) * gridSize,
+                y: Math.round(((node.y || 0) + deltaY) / gridSize) * gridSize
+              };
+            }
+            
+            // Update zones
+            const zoneIndex = newZones.findIndex(g => g.id === id);
+            if (zoneIndex !== -1) {
+              const zone = newZones[zoneIndex];
+              newZones[zoneIndex] = { 
+                ...zone, 
+                x: Math.round(((zone.x || 0) + deltaX) / gridSize) * gridSize,
+                y: Math.round(((zone.y || 0) + deltaY) / gridSize) * gridSize
+              };
+            }
+          });
+          
+          return {
             ...prevData,
-            nodes: prevData.nodes.map(n => 
-              n.id === selectedItem.id ? { ...n, x: newX, y: newY } : n
-            )
-          }));
-        } else if (selectedItem.itemType === 'zone') {
-          setDiagramData(prevData => ({
-            ...prevData,
-            zones: (prevData.zones || []).map(g => 
-              g.id === selectedItem.id ? { ...g, x: newX, y: newY } : g
-            )
-          }));
+            nodes: newNodes,
+            zones: newZones
+          };
+        });
+        
+        // Update selected item states to reflect new positions
+        const updatedSelectedItems: SelectedItem[] = [];
+        itemIdsToMove.forEach(id => {
+          const updatedNode = diagramData.nodes.find(n => n.id === id);
+          const updatedZone = diagramData.zones?.find(g => g.id === id);
+          
+          if (updatedNode) {
+            updatedSelectedItems.push({ 
+              ...updatedNode, 
+              itemType: 'node',
+              x: Math.round(((updatedNode.x || 0) + deltaX) / gridSize) * gridSize,
+              y: Math.round(((updatedNode.y || 0) + deltaY) / gridSize) * gridSize
+            } as SelectedItem);
+          } else if (updatedZone) {
+            updatedSelectedItems.push({ 
+              ...updatedZone, 
+              itemType: 'zone',
+              x: Math.round(((updatedZone.x || 0) + deltaX) / gridSize) * gridSize,
+              y: Math.round(((updatedZone.y || 0) + deltaY) / gridSize) * gridSize
+            } as SelectedItem);
+          }
+        });
+        
+        // Update the primary selected item
+        const updatedPrimary = updatedSelectedItems.find(item => item.id === selectedItem.id);
+        if (updatedPrimary) {
+          setSelectedItem(updatedPrimary);
         }
-        
-        // Update selected item state
-        setSelectedItem({ ...selectedItem, x: newX, y: newY } as any);
       }
     };
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [jsonPanelOpen, historyIndex, history, selectedItem]);
+  }, [jsonPanelOpen, historyIndex, history, selectedItem, selectedItemIds, diagramData, setDiagramData, setSelectedItem]);
 
   // Persist panel width
   React.useEffect(() => {
