@@ -61,6 +61,9 @@ export function useCanvasOperations({
                                itemType?.endsWith('.star') ||
                                itemType?.endsWith('.cloud');
       
+      // Check if this is a textbox resource
+      const isTextboxResource = itemType === 'generic.text.textbox' || itemType?.endsWith('.textbox');
+      
       if (itemType === 'zone') {
         // Use subType from item if available, otherwise derive from type
         const subType = item.subType || 'zone';
@@ -96,9 +99,19 @@ export function useCanvasOperations({
             info: item.provider ? `${itemLabel} from ${item.provider}` : `A new ${itemLabel}`
           }),
           freeflow: isShapeResource ? true : undefined, // Shapes are always freeflow
-          sizeMode: isShapeResource ? 'custom' : undefined, // Shapes use custom sizing
-          width: isShapeResource ? (itemType === 'generic.object.point' ? 20 : itemType === 'generic.object.rectangle' ? 80 : itemType === 'generic.object.cloud' ? 80 : 60) : undefined, // Initial width
-          height: isShapeResource ? (itemType === 'generic.object.point' ? 20 : itemType === 'generic.object.rectangle' ? 50 : itemType === 'generic.object.cloud' ? 50 : 60) : undefined, // Initial height
+          sizeMode: (isShapeResource || isTextboxResource) ? 'custom' : undefined, // Shapes and textboxes use custom sizing
+          width: isShapeResource ? (
+            itemType === 'generic.object.point' ? 20 : 
+            itemType === 'generic.object.rectangle' ? 80 : 
+            itemType === 'generic.object.cloud' ? 80 : 
+            60
+          ) : isTextboxResource ? 120 : undefined, // Initial width - larger for textbox
+          height: isShapeResource ? (
+            itemType === 'generic.object.point' ? 20 : 
+            itemType === 'generic.object.rectangle' ? 50 : 
+            itemType === 'generic.object.cloud' ? 50 : 
+            60
+          ) : isTextboxResource ? 80 : undefined, // Initial height - larger for textbox
           // Special defaults for point shape
           ...(itemType === 'generic.object.point' && {
             label: '', // No label by default
