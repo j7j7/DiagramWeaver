@@ -24,6 +24,7 @@ interface UseCanvasDragDropOptions {
   addNode: (item: any, position: { x: number; y: number }, targetGroupId: string | null) => void;
   moveItem: (item: { id: string; type: string; x?: number, y?: number }, newPos: { x: number; y: number }, targetGroupId: string | null) => void;
   moveMultipleItems: (items: Array<{ id: string; type: string; x?: number, y?: number }>, newPositions: Array<{ x: number; y: number }>, targetGroupId: string | null) => void;
+  onDraggingChange?: (isDragging: boolean) => void;
 }
 
 export function useCanvasDragDrop({
@@ -36,6 +37,7 @@ export function useCanvasDragDrop({
   addNode,
   moveItem,
   moveMultipleItems,
+  onDraggingChange,
 }: UseCanvasDragDropOptions) {
   const [dragPosition, setDragPosition] = useState<{ x: number; y: number; itemId?: string } | null>(null);
   const [multiDragPositions, setMultiDragPositions] = useState<{ [itemId: string]: { x: number; y: number } } | null>(null);
@@ -115,7 +117,10 @@ export function useCanvasDragDrop({
       }
       
       setDragPosition({ x: itemX, y: itemY, itemId: item.id });
-      isDraggingRef.current = true;
+      if (!isDraggingRef.current) {
+        isDraggingRef.current = true;
+        onDraggingChange?.(true);
+      }
 
       // Check if item is a freeflow node
       const isFreeflowNode = item.id && nodesById[item.id]?.freeflow;
@@ -240,6 +245,7 @@ export function useCanvasDragDrop({
       setMultiDragPositions(null);
       multiDragStartPositions.current = null;
       isDraggingRef.current = false;
+      onDraggingChange?.(false);
       setHoveredGroupId(null);
     },
     collect: (monitor) => ({

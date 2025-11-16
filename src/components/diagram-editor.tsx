@@ -251,6 +251,11 @@ export default function DiagramEditor() {
       clearTimeout(historyTimeoutRef.current);
     }
     
+    // Skip history updates during dragging to prevent performance issues
+    if (isDragging) {
+      return;
+    }
+    
     // Debounce history updates to 300ms
     historyTimeoutRef.current = setTimeout(() => {
       updateHistory();
@@ -262,7 +267,7 @@ export default function DiagramEditor() {
         clearTimeout(historyTimeoutRef.current);
       }
     };
-  }, [diagramData, updateHistory]);
+  }, [diagramData, updateHistory, isDragging]);
 
   const undo = React.useCallback(() => {
     if (!activeTabId) return;
@@ -377,12 +382,15 @@ export default function DiagramEditor() {
             const currentZone = (prevData.zones || []).find(g => g.id === updatedItem.id);
             const orientationChanged = currentZone && currentZone.orientation !== updatedItem.orientation;
             
-            let newZones = (prevData.zones || []).map(g => g.id === updatedItem.id ? (updatedItem as DiagramZoneData) : g);
+            // Preserve existing zone properties and merge with updates
+            const mergedZone = { ...currentZone, ...updatedItem } as DiagramZoneData;
+            
+            let newZones = (prevData.zones || []).map(g => g.id === updatedItem.id ? mergedZone : g);
             let newNodes = prevData.nodes;
             
             // If orientation changed, reset positions of child items to trigger re-layout
             if (orientationChanged) {
-                const zoneData = updatedItem as DiagramZoneData;
+                const zoneData = mergedZone as DiagramZoneData;
                 
                 // Reset positions of child nodes
                 newNodes = prevData.nodes.map(node => {
@@ -433,10 +441,34 @@ export default function DiagramEditor() {
             };
         });
     } else {
-        setDiagramData(prevData => ({
-            ...prevData,
-            nodes: prevData.nodes.map(n => n.id === updatedItem.id ? (updatedItem as DiagramNodeData) : n)
-        }));
+        setDiagramData(prevData => {
+            // Find the existing node to preserve its properties
+            const existingNode = prevData.nodes.find(n => n.id === updatedItem.id);
+            
+            if (!existingNode) {
+                // Node doesn't exist, this shouldn't happen but handle gracefully
+                return prevData;
+            }
+            
+            // Create merged node, ensuring we preserve all existing properties
+            // Only update properties that are explicitly provided in updatedItem
+            const mergedNode = { ...existingNode } as DiagramNodeData;
+            
+            // Only copy properties that exist in updatedItem and are not undefined
+            Object.keys(updatedItem).forEach(key => {
+                if (key !== 'itemType' && key !== 'id') {
+                    const value = (updatedItem as any)[key];
+                    if (value !== undefined) {
+                        (mergedNode as any)[key] = value;
+                    }
+                }
+            });
+            
+            return {
+                ...prevData,
+                nodes: prevData.nodes.map(n => n.id === updatedItem.id ? mergedNode : n)
+            };
+        });
     }
 
     // Also update the selected item state if it's the one being edited
@@ -1504,6 +1536,7 @@ export default function DiagramEditor() {
                     externalTransform={canvasTransform}
                     onTransformChange={setCanvasTransform}
                     onLabelUpdate={handleLabelUpdate}
+                    onDraggingChange={setIsDragging}
                     onClipboardChange={setCanPaste}
                     onMousePositionChange={setMousePosition}
                     onSelectionChange={setSelectionCoordinates}

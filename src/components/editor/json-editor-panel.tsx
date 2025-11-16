@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
 import { json } from '@codemirror/lang-json';
 import { lintGutter } from '@codemirror/lint';
@@ -6,7 +6,8 @@ import { oneDark } from '@codemirror/theme-one-dark';
 import { HierarchicalDiagramDataSchema } from '@/lib/schemas';
 import { stableStringify } from '@/lib/json-utils';
 import { convertToNestedHierarchy, convertFromNestedHierarchy } from '@/lib/nested-hierarchy';
-import type { DiagramData } from '@/lib/types';
+import { computeHierarchicalDiff, applySelectiveUpdates, type JsonDiff } from '@/lib/json-diff';
+import type { DiagramData, HierarchicalDiagramData } from '@/lib/types';
 
 type Props = {
   value: DiagramData;
@@ -30,6 +31,11 @@ export function JsonEditorPanel({
   const [editorHeight, setEditorHeight] = React.useState<number>(0);
   const [panelWidth, setPanelWidth] = React.useState<number>(widthPx);
   const scrollPositionRef = React.useRef<{ scrollLeft: number; scrollTop: number }>({ scrollLeft: 0, scrollTop: 0 });
+  
+  // Performance optimization: track previous data for diffing
+  const previousValueRef = React.useRef<DiagramData>(value);
+  const previousNestedDataRef = React.useRef<HierarchicalDiagramData | null>(null);
+  const [isUpdating, setIsUpdating] = React.useState(false);
 
   // Responsive panel width based on viewport
   React.useEffect(() => {
@@ -99,33 +105,136 @@ export function JsonEditorPanel({
     return hasNestedChildren;
   }, []);
 
-  // Sync text display when value prop changes from outside
+  // Debounced update to prevent flickering during rapid changes (like dragging)
+  const updateTimeoutRef = useRef<NodeJS.Timeout>();
+  
+  // Sync text display when value prop changes from outside - optimized with selective updates
   React.useEffect(() => {
-    // Save current scroll position before updating text
-    if (editorRef.current) {
-      const view = editorRef.current;
-      scrollPositionRef.current = {
-        scrollLeft: view.scrollDOM.scrollLeft,
-        scrollTop: view.scrollDOM.scrollTop
-      };
+    // Skip update if we're already processing a change from the editor
+    if (isUpdating) return;
+    
+    // Clear any existing timeout
+    if (updateTimeoutRef.current) {
+      clearTimeout(updateTimeoutRef.current);
     }
-
-    const displayText = stableStringify(
-      isNestedFormat(value) ? value : convertToNestedHierarchy(value)
-    );
-    setText(displayText);
-
-    // Restore scroll position after text update
-    setTimeout(() => {
+    
+    // Debounce the update to reduce flickering during rapid changes
+    updateTimeoutRef.current = setTimeout(() => {
+      const currentNestedData: HierarchicalDiagramData = isNestedFormat(value) ? value as unknown as HierarchicalDiagramData : convertToNestedHierarchy(value);
+      const previousNestedData = previousNestedDataRef.current;
+      
+      // If we have previous data, compute diff and apply selective updates
+      if (previousNestedData) {
+        const diffs = computeHierarchicalDiff(previousNestedData, currentNestedData);
+        
+        // Only apply selective updates if there are changes and they're minimal
+        // Increased threshold to be more permissive for selective updates
+        if (diffs.length > 0 && diffs.length < 20) {
+          try {
+            const currentText = text;
+            const updatedText = applySelectiveUpdates(currentText, diffs.map(diff => ({
+              op: diff.change === 'removed' ? 'remove' : 
+                  diff.change === 'added' ? 'add' : 'replace',
+              path: getJsonPathFromDiff(diff, currentNestedData),
+              value: diff.newValue
+            })));
+            
+            if (updatedText !== currentText) {
+              // Save current scroll position before updating text
+              if (editorRef.current) {
+                const view = editorRef.current;
+                scrollPositionRef.current = {
+                  scrollLeft: view.scrollDOM.scrollLeft,
+                  scrollTop: view.scrollDOM.scrollTop
+                };
+              }
+              
+              setText(updatedText);
+              
+              // Restore scroll position after text update
+              setTimeout(() => {
+                if (editorRef.current) {
+                  const view = editorRef.current;
+                  view.scrollDOM.scrollLeft = scrollPositionRef.current.scrollLeft;
+                  view.scrollDOM.scrollTop = scrollPositionRef.current.scrollTop;
+                }
+              }, 0);
+              
+              previousNestedDataRef.current = currentNestedData;
+              previousValueRef.current = value;
+              return; // Skip full refresh
+            }
+          } catch (error) {
+            console.warn('Selective update failed, falling back to full refresh:', error);
+          }
+        }
+      }
+      
+      // Fallback to full refresh for major changes or when selective updates fail
+      // Save current scroll position before updating text
       if (editorRef.current) {
         const view = editorRef.current;
-        view.scrollDOM.scrollLeft = scrollPositionRef.current.scrollLeft;
-        view.scrollDOM.scrollTop = scrollPositionRef.current.scrollTop;
+        scrollPositionRef.current = {
+          scrollLeft: view.scrollDOM.scrollLeft,
+          scrollTop: view.scrollDOM.scrollTop
+        };
       }
-    }, 0);
-  }, [value, isNestedFormat]);
+
+      const displayText = stableStringify(currentNestedData);
+      setText(displayText);
+
+      // Restore scroll position after text update
+      setTimeout(() => {
+        if (editorRef.current) {
+          const view = editorRef.current;
+          view.scrollDOM.scrollLeft = scrollPositionRef.current.scrollLeft;
+          view.scrollDOM.scrollTop = scrollPositionRef.current.scrollTop;
+        }
+      }, 0);
+      
+      previousNestedDataRef.current = currentNestedData;
+      previousValueRef.current = value;
+    }, 150); // 150ms debounce delay
+    
+    // Cleanup timeout on unmount
+    return () => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+    };
+  }, [value, isNestedFormat, isUpdating, text]);
+
+  // Helper function to convert diff to JSON path
+  const getJsonPathFromDiff = (diff: JsonDiff, data: HierarchicalDiagramData): string => {
+    if (diff.type === 'connection') {
+      const id = diff.id || '';
+      const [from, to] = id.split('-');
+      const index = data.connections.findIndex(c => c.from === from && c.to === to);
+      return `/connections/${index}`;
+    }
+    
+    if (diff.type === 'zone' || diff.type === 'node') {
+      if (diff.path && diff.path.length > 0) {
+        // Nested item - find zone and child indices
+        const zoneId = diff.path[0];
+        const zoneIndex = data.zones.findIndex(z => z.id === zoneId);
+        if (zoneIndex === -1) return '';
+        
+        const zone = data.zones[zoneIndex];
+        const childIndex = zone.children?.findIndex(c => c.id === diff.id) ?? -1;
+        return `/zones/${zoneIndex}/children/${childIndex}`;
+      } else {
+        // Root zone
+        const index = data.zones.findIndex(z => z.id === diff.id);
+        return `/zones/${index}`;
+      }
+    }
+    
+    return '';
+  };
 
   const handleChange = async (newText: string) => {
+    setIsUpdating(true);
     setText(newText);
     try {
       const parsed = JSON.parse(newText);
@@ -217,6 +326,8 @@ export function JsonEditorPanel({
       }
     } catch (e: any) {
       setError(e?.message || 'Invalid JSON');
+    } finally {
+      setIsUpdating(false);
     }
   };
 

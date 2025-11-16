@@ -271,6 +271,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     addNode: operations.addNode,
     moveItem: operations.moveItem,
     moveMultipleItems: operations.moveMultipleItems,
+    onDraggingChange,
   });
 
   // ============================================================================
