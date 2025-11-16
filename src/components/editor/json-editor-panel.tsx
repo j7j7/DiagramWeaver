@@ -26,6 +26,43 @@ export function JsonEditorPanel({
   const [text, setText] = React.useState(() => stableStringify(value));
   const [error, setError] = React.useState<string | null>(null);
   const editorRef = React.useRef<any>(null);
+  const editorContainerRef = React.useRef<HTMLDivElement>(null);
+  const [editorHeight, setEditorHeight] = React.useState<number>(0);
+  const [panelWidth, setPanelWidth] = React.useState<number>(widthPx);
+
+  // Responsive panel width based on viewport
+  React.useEffect(() => {
+    const updateWidth = () => {
+      if (typeof window === 'undefined') return;
+      const maxWidth = Math.max(300, window.innerWidth * 0.35);
+      const clamped = Math.min(Math.max(280, widthPx), maxWidth);
+      setPanelWidth(clamped);
+    };
+    updateWidth();
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, [widthPx]);
+
+  // Track editor container height for CodeMirror scrolling
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const element = editorContainerRef.current;
+    if (!element || typeof ResizeObserver === 'undefined') return;
+
+    const updateHeight = () => {
+      const rect = element.getBoundingClientRect();
+      setEditorHeight(rect.height);
+    };
+    updateHeight();
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setEditorHeight(entry.contentRect.height);
+      }
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [isOpen]);
 
   // Check if data is in nested format (has zones with nested children objects)
   const isNestedFormat = React.useCallback((data: any): boolean => {
@@ -147,7 +184,7 @@ export function JsonEditorPanel({
   };
 
   return (
-    <div className="flex flex-col bg-background border-l" style={{ width: `${widthPx}px`, height: '100vh' }}>
+    <div className="flex flex-col h-full max-h-full bg-background border-l" style={{ width: `${panelWidth}px` }}>
       {/* Header */}
       <div className="flex items-center justify-between p-2 border-b bg-muted/50 flex-shrink-0">
         <div className="text-sm font-medium">JSON Editor</div>
@@ -162,12 +199,11 @@ export function JsonEditorPanel({
       </div>
 
       {/* Editor */}
-      <div className="flex-1 overflow-hidden">
+      <div ref={editorContainerRef} className="flex-1 min-h-0 overflow-hidden">
         {isOpen && (
           <CodeMirror
             value={text}
-            height="100%"
-            maxHeight="100%"
+            height={editorHeight ? `${Math.max(editorHeight, 200)}px` : '100%'}
             theme={oneDark}
             onChange={handleChange}
             extensions={[json(), lintGutter()]}
