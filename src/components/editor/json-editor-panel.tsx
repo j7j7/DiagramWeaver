@@ -29,6 +29,7 @@ export function JsonEditorPanel({
   const editorContainerRef = React.useRef<HTMLDivElement>(null);
   const [editorHeight, setEditorHeight] = React.useState<number>(0);
   const [panelWidth, setPanelWidth] = React.useState<number>(widthPx);
+  const scrollPositionRef = React.useRef<{ scrollLeft: number; scrollTop: number }>({ scrollLeft: 0, scrollTop: 0 });
 
   // Responsive panel width based on viewport
   React.useEffect(() => {
@@ -100,10 +101,28 @@ export function JsonEditorPanel({
 
   // Sync text display when value prop changes from outside
   React.useEffect(() => {
+    // Save current scroll position before updating text
+    if (editorRef.current) {
+      const view = editorRef.current;
+      scrollPositionRef.current = {
+        scrollLeft: view.scrollDOM.scrollLeft,
+        scrollTop: view.scrollDOM.scrollTop
+      };
+    }
+
     const displayText = stableStringify(
       isNestedFormat(value) ? value : convertToNestedHierarchy(value)
     );
     setText(displayText);
+
+    // Restore scroll position after text update
+    setTimeout(() => {
+      if (editorRef.current) {
+        const view = editorRef.current;
+        view.scrollDOM.scrollLeft = scrollPositionRef.current.scrollLeft;
+        view.scrollDOM.scrollTop = scrollPositionRef.current.scrollTop;
+      }
+    }, 0);
   }, [value, isNestedFormat]);
 
   const handleChange = async (newText: string) => {
@@ -170,7 +189,25 @@ export function JsonEditorPanel({
           isNestedFormat(parsed) ? parsed : convertToNestedHierarchy(finalData)
         );
         if (displayText !== text) {
+          // Save current scroll position before updating text
+          if (editorRef.current) {
+            const view = editorRef.current;
+            scrollPositionRef.current = {
+              scrollLeft: view.scrollDOM.scrollLeft,
+              scrollTop: view.scrollDOM.scrollTop
+            };
+          }
+          
           setText(displayText);
+          
+          // Restore scroll position after text update
+          setTimeout(() => {
+            if (editorRef.current) {
+              const view = editorRef.current;
+              view.scrollDOM.scrollLeft = scrollPositionRef.current.scrollLeft;
+              view.scrollDOM.scrollTop = scrollPositionRef.current.scrollTop;
+            }
+          }, 0);
         }
       } else {
         const errorMessage = validationError.issues
