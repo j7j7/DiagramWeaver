@@ -1414,7 +1414,7 @@ export default function DiagramEditor() {
           </button>
         )}
         
-        <main className={`flex-1 flex flex-col ${isMobile ? 'w-full' : ''} ${isMobile && sidebarOpen ? 'pointer-events-none' : ''}`}>
+        <main className={`flex-1 flex flex-col ${isMobile ? 'w-full' : ''} ${isMobile && sidebarOpen ? 'pointer-events-none' : ''} ${jsonPanelOpen ? 'min-w-0' : ''}`}>
             <header className="flex flex-col border-b bg-card">
                 <TopMenuBar
                     onNew={handleNew}
@@ -1475,8 +1475,8 @@ export default function DiagramEditor() {
                 />
             </header>
             <div className="flex-1 flex flex-col">
-                <div className="flex flex-1">
-                  <div className={`flex-1 h-full ${jsonPanelOpen ? 'mr-2' : ''}`}>
+                <div className={`flex flex-1 ${jsonPanelOpen ? 'overflow-x-auto' : ''}`}>
+                  <div className={`flex-1 h-full min-w-0 ${jsonPanelOpen ? 'mr-2' : ''}`}>
                 <EditorCanvas 
                     ref={editorRef}
                     diagramData={diagramData} 
@@ -1517,13 +1517,15 @@ export default function DiagramEditor() {
                   </div>
                   
                   {jsonPanelOpen && (
-                    <JsonEditorPanel
-                      value={diagramData}
-                      onValidJsonChange={handleJsonValidChange}
-                      isOpen={jsonPanelOpen}
-                      onToggleOpen={toggleJsonPanel}
-                      widthPx={400}
-                    />
+                    <div className="flex-shrink-0">
+                      <JsonEditorPanel
+                        value={diagramData}
+                        onValidJsonChange={handleJsonValidChange}
+                        isOpen={jsonPanelOpen}
+                        onToggleOpen={toggleJsonPanel}
+                        widthPx={400}
+                      />
+                    </div>
                   )}
                 </div>
             </div>
