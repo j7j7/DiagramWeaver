@@ -364,6 +364,16 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       return true;
     }
     
+    // Check for CodeMirror editor (JSON editor)
+    if (activeElement.closest('.cm-editor')) {
+      return true;
+    }
+    
+    // Check for any CodeMirror focused element
+    if (activeElement.classList.contains('cm-focused') || activeElement.closest('.cm-focused')) {
+      return true;
+    }
+    
     return false;
   };
 

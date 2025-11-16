@@ -199,11 +199,19 @@ export function convertFromNestedHierarchy(nestedData: HierarchicalDiagramData):
       zone.children?.forEach(child => {
         if (child.type !== 'zone') {
           const nodeChild = child as DiagramNodeItem;
+          // Skip if node already exists (prevent duplicates)
+          if (nodeMap.has(nodeChild.id)) {
+            console.warn('Duplicate node detected and skipped:', nodeChild.id);
+            return;
+          }
+          
           const node: DiagramNodeData = {
             id: nodeChild.id,
             type: nodeChild.type,
             label: nodeChild.label,
             info: nodeChild.info,
+            // Orphan nodes should preserve their absolute x,y coordinates if present
+            // Otherwise default to undefined to let calculateLayout position them
             x: nodeChild.x,
             y: nodeChild.y,
             lineColor: nodeChild.lineColor,
@@ -229,6 +237,7 @@ export function convertFromNestedHierarchy(nestedData: HierarchicalDiagramData):
             textVerticalPosition: nodeChild.textVerticalPosition
           };
           nodes.push(node);
+          nodeMap.set(nodeChild.id, node);
         }
       });
     } else {
@@ -236,11 +245,24 @@ export function convertFromNestedHierarchy(nestedData: HierarchicalDiagramData):
     }
   });
   
+  // Final deduplication check to ensure no duplicates
+  const uniqueNodes = Array.from(nodeMap.values());
+  const uniqueZones = Array.from(zoneMap.values());
+  
+  console.log('convertFromNestedHierarchy result:', {
+    originalNodesCount: nodes.length,
+    uniqueNodesCount: uniqueNodes.length,
+    originalZonesCount: zones.length,
+    uniqueZonesCount: uniqueZones.length,
+    nodeIds: uniqueNodes.map(n => n.id),
+    zoneIds: uniqueZones.map(z => z.id)
+  });
+  
   return {
-    nodes,
+    nodes: uniqueNodes,
     connections: nestedData.connections,
-    zones,
-    rootZoneId: zones.find(g => !g.parentId)?.id
+    zones: uniqueZones,
+    rootZoneId: uniqueZones.find(g => !g.parentId)?.id
   };
 }
 
@@ -255,6 +277,12 @@ function processNestedGroup(
   zoneMap: Map<string, DiagramGroupData>,
   parentId: string | null
 ): void {
+  // Skip if zone already exists (prevent duplicates)
+  if (zoneMap.has(zone.id)) {
+    console.warn('Duplicate zone detected and skipped:', zone.id);
+    return;
+  }
+  
   // Create flat zone
   const flatZone: DiagramZoneData = {
     id: zone.id,
@@ -304,35 +332,46 @@ function processNestedGroup(
     } else {
       // This is a node
       const nodeChild = child as DiagramNodeItem;
-          const node: DiagramNodeData = {
-            id: nodeChild.id,
-            type: nodeChild.type,
-            label: nodeChild.label,
-            info: nodeChild.info,
-            x: nodeChild.x,
-            y: nodeChild.y,
-            lineColor: nodeChild.lineColor,
-            edgePosition: nodeChild.edgePosition,
-            borderColor: nodeChild.borderColor,
-            backgroundColor: nodeChild.backgroundColor,
-            textColor: nodeChild.textColor,
-            borderStyle: nodeChild.borderStyle,
-            borderColors: nodeChild.borderColors,
-            backgroundStyle: nodeChild.backgroundStyle,
-            backgroundColors: nodeChild.backgroundColors,
-            gradientAngle: nodeChild.gradientAngle,
-            shadow: nodeChild.shadow,
-            rotation: nodeChild.rotation,
-            textPosition: nodeChild.textPosition,
-            freeflow: nodeChild.freeflow,
-            borderWidth: nodeChild.borderWidth,
-          width: nodeChild.width,
-          height: nodeChild.height,
-          sizeMode: nodeChild.sizeMode,
-          noIconBackground: nodeChild.noIconBackground,
-          textJustify: nodeChild.textJustify,
-          textVerticalPosition: nodeChild.textVerticalPosition
-        };
+      
+      // Skip if node already exists (prevent duplicates)
+      if (nodeMap.has(nodeChild.id)) {
+        console.warn('Duplicate node detected and skipped:', nodeChild.id);
+        // Still add to zone's children list
+        flatZone.children.push(child.id);
+        return;
+      }
+      
+      const node: DiagramNodeData = {
+        id: nodeChild.id,
+        type: nodeChild.type,
+        label: nodeChild.label,
+        info: nodeChild.info,
+        // In nested format, nodes inside zones don't have x,y coordinates
+        // Use 0,0 as default relative position - layoutZone will recalculate proper grid positions
+        x: nodeChild.x ?? 0,
+        y: nodeChild.y ?? 0,
+        lineColor: nodeChild.lineColor,
+        edgePosition: nodeChild.edgePosition,
+        borderColor: nodeChild.borderColor,
+        backgroundColor: nodeChild.backgroundColor,
+        textColor: nodeChild.textColor,
+        borderStyle: nodeChild.borderStyle,
+        borderColors: nodeChild.borderColors,
+        backgroundStyle: nodeChild.backgroundStyle,
+        backgroundColors: nodeChild.backgroundColors,
+        gradientAngle: nodeChild.gradientAngle,
+        shadow: nodeChild.shadow,
+        rotation: nodeChild.rotation,
+        textPosition: nodeChild.textPosition,
+        freeflow: nodeChild.freeflow,
+        borderWidth: nodeChild.borderWidth,
+        width: nodeChild.width,
+        height: nodeChild.height,
+        sizeMode: nodeChild.sizeMode,
+        noIconBackground: nodeChild.noIconBackground,
+        textJustify: nodeChild.textJustify,
+        textVerticalPosition: nodeChild.textVerticalPosition
+      };
     
       nodes.push(node);
       nodeMap.set(child.id, node);

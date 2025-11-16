@@ -1516,13 +1516,15 @@ export default function DiagramEditor() {
                     />
                   </div>
                   
-                  <JsonEditorPanel
-                    value={diagramData}
-                    onValidJsonChange={handleJsonValidChange}
-                    isOpen={jsonPanelOpen}
-                    onToggleOpen={toggleJsonPanel}
-                    widthPx={400}
-                  />
+                  {jsonPanelOpen && (
+                    <JsonEditorPanel
+                      value={diagramData}
+                      onValidJsonChange={handleJsonValidChange}
+                      isOpen={jsonPanelOpen}
+                      onToggleOpen={toggleJsonPanel}
+                      widthPx={400}
+                    />
+                  )}
                 </div>
             </div>
         </main>
