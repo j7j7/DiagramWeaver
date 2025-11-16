@@ -3,10 +3,11 @@ import CodeMirror from '@uiw/react-codemirror';
 import { json } from '@codemirror/lang-json';
 import { lintGutter } from '@codemirror/lint';
 import { oneDark } from '@codemirror/theme-one-dark';
+
 import { HierarchicalDiagramDataSchema } from '@/lib/schemas';
 import { stableStringify } from '@/lib/json-utils';
 import { convertToNestedHierarchy, convertFromNestedHierarchy } from '@/lib/nested-hierarchy';
-import { computeHierarchicalDiff, applySelectiveUpdates, type JsonDiff } from '@/lib/json-diff';
+import { computeHierarchicalDiff, applySelectiveUpdates, type JsonDiff, type JsonPatch } from '@/lib/json-diff';
 import type { DiagramData, HierarchicalDiagramData } from '@/lib/types';
 
 type Props = {
@@ -31,11 +32,13 @@ export function JsonEditorPanel({
   const [editorHeight, setEditorHeight] = React.useState<number>(0);
   const [panelWidth, setPanelWidth] = React.useState<number>(widthPx);
   const scrollPositionRef = React.useRef<{ scrollLeft: number; scrollTop: number }>({ scrollLeft: 0, scrollTop: 0 });
-  
+  const lockedScrollPosition = React.useRef<{ scrollLeft: number; scrollTop: number; isLocked: boolean }>({ scrollLeft: 0, scrollTop: 0, isLocked: false });
+   
   // Performance optimization: track previous data for diffing
   const previousValueRef = React.useRef<DiagramData>(value);
   const previousNestedDataRef = React.useRef<HierarchicalDiagramData | null>(null);
   const [isUpdating, setIsUpdating] = React.useState(false);
+  const isApplyingExternalUpdate = React.useRef(false);
 
   // Responsive panel width based on viewport
   React.useEffect(() => {
@@ -118,7 +121,7 @@ export function JsonEditorPanel({
       clearTimeout(updateTimeoutRef.current);
     }
     
-    // Debounce the update to reduce flickering during rapid changes
+    // Reduced debounce delay for more responsive updates
     updateTimeoutRef.current = setTimeout(() => {
       const currentNestedData: HierarchicalDiagramData = isNestedFormat(value) ? value as unknown as HierarchicalDiagramData : convertToNestedHierarchy(value);
       const previousNestedData = previousNestedDataRef.current;
@@ -127,42 +130,59 @@ export function JsonEditorPanel({
       if (previousNestedData) {
         const diffs = computeHierarchicalDiff(previousNestedData, currentNestedData);
         
-        // Only apply selective updates if there are changes and they're minimal
-        // Increased threshold to be more permissive for selective updates
-        if (diffs.length > 0 && diffs.length < 20) {
+        // Improved detection for when to use selective updates
+        const shouldUseSelectiveUpdate = diffs.length > 0 && 
+          diffs.length < 50 && // Not too many changes
+          !diffs.some(diff => diff.change === 'moved') && // No structural moves
+          !diffs.some(diff => diff.type === 'zone_structure'); // No zone structure changes
+        
+        if (shouldUseSelectiveUpdate) {
           try {
             const currentText = text;
-            const updatedText = applySelectiveUpdates(currentText, diffs.map(diff => ({
-              op: diff.change === 'removed' ? 'remove' : 
-                  diff.change === 'added' ? 'add' : 'replace',
-              path: getJsonPathFromDiff(diff, currentNestedData),
-              value: diff.newValue
-            })));
-            
-            if (updatedText !== currentText) {
-              // Save current scroll position before updating text
-              if (editorRef.current) {
-                const view = editorRef.current;
-                scrollPositionRef.current = {
-                  scrollLeft: view.scrollDOM.scrollLeft,
-                  scrollTop: view.scrollDOM.scrollTop
-                };
+            const patches: JsonPatch[] = [];
+            for (const diff of diffs) {
+              const path = getJsonPathFromDiff(diff, currentNestedData);
+              if (!path) continue;
+              
+              let op: 'remove' | 'add' | 'replace';
+              if (diff.change === 'removed') {
+                op = 'remove';
+              } else if (diff.change === 'added') {
+                op = 'add';
+              } else {
+                op = 'replace';
               }
               
-              setText(updatedText);
+              const patch: JsonPatch = {
+                op,
+                path
+              };
               
-              // Restore scroll position after text update
-              setTimeout(() => {
-                if (editorRef.current) {
-                  const view = editorRef.current;
-                  view.scrollDOM.scrollLeft = scrollPositionRef.current.scrollLeft;
-                  view.scrollDOM.scrollTop = scrollPositionRef.current.scrollTop;
-                }
-              }, 0);
+              if (op !== 'remove') {
+                patch.value = diff.newValue;
+              }
               
-              previousNestedDataRef.current = currentNestedData;
-              previousValueRef.current = value;
-              return; // Skip full refresh
+              patches.push(patch);
+            }
+            
+            if (patches.length > 0) {
+              const updatedText = applySelectiveUpdates(currentText, patches);
+              
+              if (updatedText !== currentText) {
+                // Try to capture scroll position, but don't fail if we can't
+                const scrollPos = captureScrollPosition();
+                
+                // Always restore using locked position logic
+                setTimeout(() => {
+                  restoreScrollPosition(scrollPos);
+                }, 0);
+                
+                setText(updatedText);
+                
+                previousNestedDataRef.current = currentNestedData;
+                previousValueRef.current = value;
+                return; // Skip full refresh
+              }
             }
           } catch (error) {
             console.warn('Selective update failed, falling back to full refresh:', error);
@@ -171,30 +191,20 @@ export function JsonEditorPanel({
       }
       
       // Fallback to full refresh for major changes or when selective updates fail
-      // Save current scroll position before updating text
-      if (editorRef.current) {
-        const view = editorRef.current;
-        scrollPositionRef.current = {
-          scrollLeft: view.scrollDOM.scrollLeft,
-          scrollTop: view.scrollDOM.scrollTop
-        };
-      }
+      // Try to capture scroll position
+      const scrollPos = captureScrollPosition();
 
       const displayText = stableStringify(currentNestedData);
       setText(displayText);
 
       // Restore scroll position after text update
       setTimeout(() => {
-        if (editorRef.current) {
-          const view = editorRef.current;
-          view.scrollDOM.scrollLeft = scrollPositionRef.current.scrollLeft;
-          view.scrollDOM.scrollTop = scrollPositionRef.current.scrollTop;
-        }
+        restoreScrollPosition(scrollPos);
       }, 0);
       
       previousNestedDataRef.current = currentNestedData;
       previousValueRef.current = value;
-    }, 150); // 150ms debounce delay
+    }, 16); // ~60fps for smoother updates
     
     // Cleanup timeout on unmount
     return () => {
@@ -204,13 +214,74 @@ export function JsonEditorPanel({
     };
   }, [value, isNestedFormat, isUpdating, text]);
 
+  // Helper function to capture scroll position (doesn't update locked position)
+  const captureScrollPosition = React.useCallback(() => {
+    if (!editorRef.current) return null;
+    
+    const view = editorRef.current;
+    const scrollTop = view.scrollDOM.scrollTop;
+    const scrollLeft = view.scrollDOM.scrollLeft;
+    
+    return {
+      scrollTop,
+      scrollLeft
+    };
+  }, []);
+
+  // Helper function to lock current scroll position (called on explicit user clicks)
+  const lockScrollPosition = React.useCallback(() => {
+    if (!editorRef.current) return;
+    
+    const view = editorRef.current;
+    const scrollTop = view.scrollDOM.scrollTop;
+    const scrollLeft = view.scrollDOM.scrollLeft;
+    
+    lockedScrollPosition.current = {
+      scrollTop,
+      scrollLeft,
+      isLocked: true
+    };
+  }, []);
+
+  // Helper function to restore scroll position
+  const restoreScrollPosition = React.useCallback((scrollPos: ReturnType<typeof captureScrollPosition>) => {
+    if (!editorRef.current) return;
+    
+    const view = editorRef.current;
+    isApplyingExternalUpdate.current = true;
+    
+    // Use locked position if available, otherwise use current position
+    let targetScrollTop, targetScrollLeft;
+    
+    if (lockedScrollPosition.current.isLocked) {
+      targetScrollTop = lockedScrollPosition.current.scrollTop;
+      targetScrollLeft = lockedScrollPosition.current.scrollLeft;
+    } else if (scrollPos) {
+      targetScrollTop = scrollPos.scrollTop;
+      targetScrollLeft = scrollPos.scrollLeft;
+    } else {
+      // Fallback to current scroll position
+      targetScrollTop = view.scrollDOM.scrollTop;
+      targetScrollLeft = view.scrollDOM.scrollLeft;
+    }
+    
+    // Restore scroll position immediately
+    view.scrollDOM.scrollLeft = targetScrollLeft;
+    view.scrollDOM.scrollTop = targetScrollTop;
+    
+    // Reset the flag after a short delay
+    setTimeout(() => {
+      isApplyingExternalUpdate.current = false;
+    }, 50);
+  }, []);
+
   // Helper function to convert diff to JSON path
   const getJsonPathFromDiff = (diff: JsonDiff, data: HierarchicalDiagramData): string => {
     if (diff.type === 'connection') {
       const id = diff.id || '';
       const [from, to] = id.split('-');
       const index = data.connections.findIndex(c => c.from === from && c.to === to);
-      return `/connections/${index}`;
+      return index >= 0 ? `/connections/${index}` : '';
     }
     
     if (diff.type === 'zone' || diff.type === 'node') {
@@ -221,12 +292,14 @@ export function JsonEditorPanel({
         if (zoneIndex === -1) return '';
         
         const zone = data.zones[zoneIndex];
-        const childIndex = zone.children?.findIndex(c => c.id === diff.id) ?? -1;
-        return `/zones/${zoneIndex}/children/${childIndex}`;
+        if (!zone.children) return `/zones/${zoneIndex}`;
+        
+        const childIndex = zone.children.findIndex(c => c.id === diff.id);
+        return childIndex >= 0 ? `/zones/${zoneIndex}/children/${childIndex}` : `/zones/${zoneIndex}`;
       } else {
         // Root zone
         const index = data.zones.findIndex(z => z.id === diff.id);
-        return `/zones/${index}`;
+        return index >= 0 ? `/zones/${index}` : '';
       }
     }
     
@@ -234,6 +307,9 @@ export function JsonEditorPanel({
   };
 
   const handleChange = async (newText: string) => {
+    // Skip handling if we're applying an external update
+    if (isApplyingExternalUpdate.current) return;
+    
     setIsUpdating(true);
     setText(newText);
     try {
@@ -298,24 +374,14 @@ export function JsonEditorPanel({
           isNestedFormat(parsed) ? parsed : convertToNestedHierarchy(finalData)
         );
         if (displayText !== text) {
-          // Save current scroll position before updating text
-          if (editorRef.current) {
-            const view = editorRef.current;
-            scrollPositionRef.current = {
-              scrollLeft: view.scrollDOM.scrollLeft,
-              scrollTop: view.scrollDOM.scrollTop
-            };
-          }
+          // Try to capture scroll position
+          const scrollPos = captureScrollPosition();
           
           setText(displayText);
           
           // Restore scroll position after text update
           setTimeout(() => {
-            if (editorRef.current) {
-              const view = editorRef.current;
-              view.scrollDOM.scrollLeft = scrollPositionRef.current.scrollLeft;
-              view.scrollDOM.scrollTop = scrollPositionRef.current.scrollTop;
-            }
+            restoreScrollPosition(scrollPos);
           }, 0);
         }
       } else {
@@ -365,7 +431,32 @@ export function JsonEditorPanel({
             }}
             editable={true}
             onCreateEditor={(view) => { 
-              editorRef.current = view; 
+              editorRef.current = view;
+              
+              // Only lock position on explicit clicks
+              const handleClick = (event: MouseEvent) => {
+                if (!view || isApplyingExternalUpdate.current) return;
+                
+                // Only lock on left clicks within the editor content
+                if (event.button === 0 && event.target === view.contentDOM) {
+                  setTimeout(() => {
+                    lockScrollPosition();
+                  }, 10); // Small delay to ensure scroll position is updated after click
+                }
+              };
+              
+              // Track scroll but don't update locked position
+              const handleScroll = () => {
+                // Don't update locked position on scroll - only on clicks
+              };
+              
+              view.dom.addEventListener('click', handleClick);
+              view.scrollDOM.addEventListener('scroll', handleScroll, { passive: true });
+              
+              // Initial lock to current position
+              setTimeout(() => {
+                lockScrollPosition();
+              }, 100);
             }}
           />
         )}
