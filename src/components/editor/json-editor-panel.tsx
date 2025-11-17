@@ -10,6 +10,12 @@ import { convertToNestedHierarchy, convertFromNestedHierarchy } from '@/lib/nest
 import { computeHierarchicalDiff, applySelectiveUpdates, type JsonDiff, type JsonPatch } from '@/lib/json-diff';
 import type { DiagramData, HierarchicalDiagramData } from '@/lib/types';
 
+// Feature flag: selective JSON text updates are currently disabled to guarantee
+// correctness of the editor output when performing complex hierarchical moves.
+// Once json-diff path resolution covers all add/remove/move cases safely,
+// this can be flipped back on.
+const ENABLE_SELECTIVE_JSON_UPDATES = false;
+
 type Props = {
   value: DiagramData;
   onValidJsonChange: (data: DiagramData) => void;
@@ -35,7 +41,8 @@ export function JsonEditorPanel({
   const lockedScrollPosition = React.useRef<{ scrollLeft: number; scrollTop: number; isLocked: boolean }>({ scrollLeft: 0, scrollTop: 0, isLocked: false });
    
   // Performance optimization: track previous data for diffing
-  const previousValueRef = React.useRef<DiagramData>(value);
+  // Track previous external value to detect real upstream changes
+  const previousValueRef = React.useRef<DiagramData | null>(null);
   const previousNestedDataRef = React.useRef<HierarchicalDiagramData | null>(null);
   const [isUpdating, setIsUpdating] = React.useState(false);
   const isApplyingExternalUpdate = React.useRef(false);
@@ -115,6 +122,13 @@ export function JsonEditorPanel({
   React.useEffect(() => {
     // Skip update if we're already processing a change from the editor
     if (isUpdating) return;
+
+    // Only react when the external value object actually changes.
+    // This prevents in-progress JSON edits from being overwritten by
+    // the last good value when the user still has invalid JSON.
+    if (previousValueRef.current === value) {
+      return;
+    }
     
     // Clear any existing timeout
     if (updateTimeoutRef.current) {
@@ -126,8 +140,11 @@ export function JsonEditorPanel({
       const currentNestedData: HierarchicalDiagramData = isNestedFormat(value) ? value as unknown as HierarchicalDiagramData : convertToNestedHierarchy(value);
       const previousNestedData = previousNestedDataRef.current;
       
-      // If we have previous data, compute diff and apply selective updates
-      if (previousNestedData) {
+      // If we have previous data and selective updates are enabled, compute diff
+      // and attempt minimal text patches. This is currently disabled by
+      // ENABLE_SELECTIVE_JSON_UPDATES to guarantee correctness when moving
+      // items between zones (where path resolution is not yet robust).
+      if (ENABLE_SELECTIVE_JSON_UPDATES && previousNestedData) {
         const diffs = computeHierarchicalDiff(previousNestedData, currentNestedData);
         
         // Improved detection for when to use selective updates
@@ -190,7 +207,8 @@ export function JsonEditorPanel({
         }
       }
       
-      // Fallback to full refresh for major changes or when selective updates fail
+      // Fallback to full refresh for all changes (current default) or when
+      // selective updates are disabled/fail
       // Try to capture scroll position
       const scrollPos = captureScrollPosition();
 
@@ -398,7 +416,10 @@ export function JsonEditorPanel({
   };
 
   return (
-    <div className="flex flex-col h-full max-h-full bg-background border-l" style={{ width: `${panelWidth}px` }}>
+    <div
+      className="flex flex-col h-full max-h-full bg-background border-l overflow-y-auto"
+      style={{ width: `${panelWidth}px` }}
+    >
       {/* Header */}
       <div className="flex items-center justify-between p-2 border-b bg-muted/50 flex-shrink-0">
         <div className="text-sm font-medium">JSON Editor</div>
@@ -413,53 +434,55 @@ export function JsonEditorPanel({
       </div>
 
       {/* Editor */}
-      <div ref={editorContainerRef} className="flex-1 min-h-0 overflow-hidden">
-        {isOpen && (
-          <CodeMirror
-            value={text}
-            height={editorHeight ? `${Math.max(editorHeight, 200)}px` : '100%'}
-            theme={oneDark}
-            onChange={handleChange}
-            extensions={[json(), lintGutter()]}
-            basicSetup={{
-              lineNumbers: true,
-              highlightActiveLine: true,
-              foldGutter: true,
-              autocompletion: true,
-              bracketMatching: true,
-              searchKeymap: true,
-            }}
-            editable={true}
-            onCreateEditor={(view) => { 
-              editorRef.current = view;
-              
-              // Only lock position on explicit clicks
-              const handleClick = (event: MouseEvent) => {
-                if (!view || isApplyingExternalUpdate.current) return;
-                
-                // Only lock on left clicks within the editor content
-                if (event.button === 0 && event.target === view.contentDOM) {
-                  setTimeout(() => {
-                    lockScrollPosition();
-                  }, 10); // Small delay to ensure scroll position is updated after click
-                }
-              };
-              
-              // Track scroll but don't update locked position
-              const handleScroll = () => {
-                // Don't update locked position on scroll - only on clicks
-              };
-              
-              view.dom.addEventListener('click', handleClick);
-              view.scrollDOM.addEventListener('scroll', handleScroll, { passive: true });
-              
-              // Initial lock to current position
-              setTimeout(() => {
-                lockScrollPosition();
-              }, 100);
-            }}
-          />
-        )}
+      <div ref={editorContainerRef} className="flex-1 min-h-0">
+        {isOpen ? (
+          <div className="h-full max-h-[calc(100vh-80px)] overflow-y-scroll">
+            <CodeMirror
+              value={text}
+              height="auto"
+              theme={oneDark}
+              onChange={handleChange}
+              extensions={[json(), lintGutter()]}
+              basicSetup={{
+                lineNumbers: true,
+                highlightActiveLine: true,
+                foldGutter: true,
+                autocompletion: true,
+                bracketMatching: true,
+                searchKeymap: true,
+              }}
+              editable={true}
+              onCreateEditor={(view) => {
+                editorRef.current = view;
+
+                // Only lock position on explicit clicks
+                const handleClick = (event: MouseEvent) => {
+                  if (!view || isApplyingExternalUpdate.current) return;
+
+                  // Only lock on left clicks within the editor content
+                  if (event.button === 0 && event.target === view.contentDOM) {
+                    setTimeout(() => {
+                      lockScrollPosition();
+                    }, 10); // Small delay to ensure scroll position is updated after click
+                  }
+                };
+
+                // Track scroll but don't update locked position
+                const handleScroll = () => {
+                  // Don't update locked position on scroll - only on clicks
+                };
+
+                view.dom.addEventListener('click', handleClick);
+                view.scrollDOM.addEventListener('scroll', handleScroll, { passive: true });
+
+                // Initial lock to current position
+                setTimeout(() => {
+                  lockScrollPosition();
+                }, 100);
+              }}
+            />
+          </div>
+        ) : null}
       </div>
 
       {/* Error footer */}

@@ -61,6 +61,9 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
 - **Environment Configuration**: Uses OLLAMA_BASE_URL (default: http://localhost:11434) and OLLAMA_MODEL (default: deepseek-v3.1:671b-cloud)
 
 ### Recent Updates and Fixes
+- **JSON Editor Sync Guard** (2025-11-17): Updated `JsonEditorPanel` so it only re-syncs its text from external `DiagramData` when the external value object actually changes. This prevents in-progress JSON edits (especially hierarchical format) from being overwritten by the last good value when the user momentarily has invalid JSON.
+- **JSON Editor Accuracy over Diff Optimization** (2025-11-17): Temporarily disabled the selective JSON diff/patch optimization in `JsonEditorPanel` (via `ENABLE_SELECTIVE_JSON_UPDATES = false`) because path resolution for hierarchical add/remove/move cases was not robust. The editor now always rebuilds the JSON text from the canonical hierarchical data after canvas changes, ensuring no entries disappear when moving items in and out of zones.
+- **JSON Editor JSX Fix** (2025-11-17): Simplified and corrected the `JsonEditorPanel` JSX return block (header, editor container, and error footer) to fix a JSX parsing error at line 419 and ensure TypeScript/JSX parsing succeeds.
 - **Generic Shape Type Refactoring** (2025-11-12): Renamed generic shape types from `generic.text.*` to `generic.object.*` for better semantic clarity:
   - **Renamed Types**: `generic.text.square`, `generic.text.rectangle`, `generic.text.circle`, `generic.text.point`, `generic.text.triangle`, `generic.text.star`, `generic.text.cloud` → `generic.object.*`
    - **Configuration Updates**: Updated `resource-generic.json` to separate text resources (text, textbox, label) from object resources (shapes)

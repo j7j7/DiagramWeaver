@@ -178,3 +178,12 @@
     }
   }
 }
+
+/* Ensure JSON editor always has a vertical scrollbar and is scrollable */
+.json-editor-scroll .cm-editor {
+  height: 100%;
+}
+
+.json-editor-scroll .cm-scroller {
+  overflow-y: scroll !important; /* always show vertical scrollbar */
+}
