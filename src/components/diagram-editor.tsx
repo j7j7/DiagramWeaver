@@ -1582,6 +1582,8 @@ export default function DiagramEditor() {
                     setDiagramData={setDiagramData}
                     onItemSelect={handleItemSelect}
                     onBatchSelect={handleBatchSelect}
+                    setSelectedItemIds={setSelectedItemIds}
+                    setSelectedItem={setSelectedItem}
                     selectedItemId={selectedItem?.id}
                     selectedItemIds={selectedItemIds}
                     isConnectMode={isConnectMode}

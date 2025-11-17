@@ -46,6 +46,8 @@ interface EditorCanvasProps {
   setDiagramData: React.Dispatch<React.SetStateAction<DiagramData>>;
   onItemSelect: (item: SelectedItem | null, shiftKey?: boolean) => void;
   onBatchSelect?: (itemIds: string[]) => void;
+  setSelectedItemIds: React.Dispatch<React.SetStateAction<Set<string>>>;
+  setSelectedItem: React.Dispatch<React.SetStateAction<SelectedItem | null>>;
   selectedItemId?: string;
   selectedItemIds?: Set<string>;
   isConnectMode: boolean;
@@ -79,7 +81,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, onBatchSelect, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerConnectionSettingsPanel }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerConnectionSettingsPanel }: EditorCanvasProps,
   ref
 ) {
   // ============================================================================
@@ -169,6 +171,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     diagramData,
     selectedItemIds,
     setDiagramData,
+    setSelectedItemIds,
+    setSelectedItem,
     onItemSelect,
     onBatchSelect,
     onClipboardChange,
