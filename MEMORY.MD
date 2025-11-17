@@ -62,6 +62,7 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
 
 ### Recent Updates and Fixes
 - **2025-11-17 – JSON Editor Reliability**: `JsonEditorPanel` now only re-syncs from external `DiagramData` when the value object actually changes, always rebuilds text from canonical hierarchical data (diff optimization disabled), and has a cleaned-up JSX return block that fixes the earlier parse error.
+- **2025-11-17 – JSON Editor Shadow File Fix**: Removed stale compiled `src/components/editor/json-editor-panel.js` which was being preferred over the `.tsx` source on some environments, causing `react_1.default` to be `undefined` and leading to `Cannot read properties of undefined (reading 'useState')` in the browser. Next.js now uses the `.tsx` file exclusively.
 - **2025-11-17 – Multi-Delete Behavior**: Delete/Backspace in `EditorCanvas` now prefers `selectedItemIds` and calls `handleDeleteMultiple`, so all selected nodes/zones/connections are removed from `DiagramData` (and thus flat + hierarchical JSON) in one keystroke.
 - **2025-11-17 – Sidebar Double-Click Placement**: Items added via sidebar double-click use the same zoom/viewport center as `useCanvasTransform` (browser viewport center mapped into canvas space), with ±80px jitter in X/Y so new items appear near the visible center instead of far down the canvas.
 - **Generic Shape Type Refactoring** (2025-11-12): Renamed generic shape types from `generic.text.*` to `generic.object.*` for better semantic clarity:
