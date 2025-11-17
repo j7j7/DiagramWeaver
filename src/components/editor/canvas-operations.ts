@@ -412,7 +412,7 @@ export function useCanvasOperations({
             const zone = currentZones.find(zone => zone.id === groupId);
             if (zone) {
               // Remove parentId reference
-              const groupIndex = currentZones.findIndex(g => zone.id === groupId);
+              const groupIndex = currentZones.findIndex(g => g.id === groupId);
               if (groupIndex !== -1) {
                 currentZones[groupIndex] = { ...zone, parentId: undefined };
               }
@@ -448,7 +448,7 @@ export function useCanvasOperations({
           const setParentId = (groupId: string, parentId: string) => {
             const zone = currentZones.find(zone => zone.id === groupId);
             if (zone) {
-              const groupIndex = currentZones.findIndex(g => zone.id === groupId);
+              const groupIndex = currentZones.findIndex(g => g.id === groupId);
               if (groupIndex !== -1) {
                 currentZones[groupIndex] = { ...zone, parentId };
               }
@@ -469,7 +469,7 @@ export function useCanvasOperations({
         const clearParentId = (groupId: string) => {
           const zone = currentZones.find(zone => zone.id === groupId);
           if (zone) {
-            const groupIndex = currentZones.findIndex(g => zone.id === groupId);
+            const groupIndex = currentZones.findIndex(g => g.id === groupId);
             if (groupIndex !== -1) {
               currentZones[groupIndex] = { ...zone, parentId: undefined };
             }

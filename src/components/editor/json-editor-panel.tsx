@@ -3,6 +3,7 @@ import CodeMirror from '@uiw/react-codemirror';
 import { json } from '@codemirror/lang-json';
 import { lintGutter } from '@codemirror/lint';
 import { oneDark } from '@codemirror/theme-one-dark';
+import { keymap } from '@codemirror/view';
 
 import { HierarchicalDiagramDataSchema } from '@/lib/schemas';
 import { stableStringify } from '@/lib/json-utils';
@@ -442,7 +443,35 @@ export function JsonEditorPanel({
               height="auto"
               theme={oneDark}
               onChange={handleChange}
-              extensions={[json(), lintGutter()]}
+              extensions={[
+                json(), 
+                lintGutter(),
+                keymap.of([
+                  {
+                    key: 'Mod-c',
+                    run: (view) => {
+                      const selection = view.state.selection.main;
+                      if (!selection.empty) {
+                        const selectedText = view.state.doc.sliceString(selection.from, selection.to);
+                        navigator.clipboard.writeText(selectedText).catch(err => {
+                          console.warn('Failed to copy to clipboard:', err);
+                        });
+                        return true;
+                      }
+                      return false;
+                    }
+                  },
+                  {
+                    key: 'Mod-a',
+                    run: (view) => {
+                      view.dispatch({
+                        selection: { anchor: 0, head: view.state.doc.length }
+                      });
+                      return true;
+                    }
+                  }
+                ])
+              ]}
               basicSetup={{
                 lineNumbers: true,
                 highlightActiveLine: true,
