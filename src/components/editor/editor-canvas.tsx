@@ -551,24 +551,60 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             {/* ================================================================
                 ZONES (Background Layer)
                 ================================================================
-                Zones are rendered first so they appear behind nodes
-                Each zone can contain nodes and other zones as children
+                Zones are rendered first so they appear behind nodes. To ensure
+                nested zones remain interactive, we render parent zones before
+                their children (lower depth first, higher depth last).
                 See: src/components/diagram/diagram-zone.tsx
             */}
-            {processedZones.map((zone) => (
-              <DiagramZone
-                key={zone.id}
-                zone={zone}
-                isSelected={selectedItemId === zone.id || (selectedItemIds?.has(zone.id) ?? false)}
-                isDropTarget={hoveredGroupId === zone.id}
-                isTargetable={hoveredGroupId === zone.id}
-                isMultiSelected={selectedItemIds?.has(zone.id) && (selectedItemIds?.size ?? 0) > 1}
-                onClick={(e: React.MouseEvent) => handleZoneClick(e, zone)}
-                onContextMenu={(e: React.MouseEvent) => handleZoneContextMenu(e, zone)}
-                onResize={operations.resizeGroup} // Allows resizing zones
-                onLabelChange={operations.updateGroupLabel} // Allows editing zone labels
-              />
-            ))}
+            {(() => {
+              // Compute depth per zone based on parent/child relationships inferred
+              // from children arrays (more robust than relying on parentId, which
+              // can get out of sync when editing JSON).
+              const depthCache = new Map<string, number>();
+              const zonesForDepth = diagramData.zones || [];
+
+              const getParentId = (childId: string): string | null => {
+                const parent = zonesForDepth.find(z => (z.children || []).includes(childId));
+                return parent ? parent.id : null;
+              };
+
+              const getDepth = (zoneId: string): number => {
+                if (depthCache.has(zoneId)) return depthCache.get(zoneId)!;
+                let depth = 0;
+                let currentId: string | null = zoneId;
+                const visited = new Set<string>();
+
+                while (currentId) {
+                  const parentId = getParentId(currentId);
+                  if (!parentId || visited.has(parentId)) break;
+                  visited.add(parentId);
+                  depth += 1;
+                  currentId = parentId;
+                }
+
+                depthCache.set(zoneId, depth);
+                return depth;
+              };
+
+              const zonesWithDepth = processedZones
+                .map(z => ({ zone: z, depth: getDepth(z.id) }))
+                .sort((a, b) => a.depth - b.depth);
+
+              return zonesWithDepth.map(({ zone }) => (
+                <DiagramZone
+                  key={zone.id}
+                  zone={zone}
+                  isSelected={selectedItemId === zone.id || (selectedItemIds?.has(zone.id) ?? false)}
+                  isDropTarget={hoveredGroupId === zone.id}
+                  isTargetable={hoveredGroupId === zone.id}
+                  isMultiSelected={selectedItemIds?.has(zone.id) && (selectedItemIds?.size ?? 0) > 1}
+                  onClick={(e: React.MouseEvent) => handleZoneClick(e, zone)}
+                  onContextMenu={(e: React.MouseEvent) => handleZoneContextMenu(e, zone)}
+                  onResize={operations.resizeGroup} // Allows resizing zones
+                  onLabelChange={operations.updateGroupLabel} // Allows editing zone labels
+                />
+              ));
+            })()}
 
             {/* ================================================================
                 NODES (Foreground Layer)
