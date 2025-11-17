@@ -190,9 +190,18 @@ export function useCanvasClipboard({
 
       // First pass: generate new IDs for all nodes
       const newNodes: DiagramNodeData[] = [];
+      const tempGeneratedIds: string[] = []; // Track IDs generated in this paste operation
+      
       nodes.forEach(node => {
-        const newNodeId = generateSequentialId(node.type, diagramData);
+        // Create temporary diagram data that includes already-generated IDs
+        const tempData: DiagramData = {
+          ...diagramData,
+          nodes: [...diagramData.nodes, ...newNodes] // Include nodes we've already created
+        };
+        
+        const newNodeId = generateSequentialId(node.type, tempData);
         idMapping.set(node.id, newNodeId);
+        tempGeneratedIds.push(newNodeId);
         
         const newNode: DiagramNodeData = {
           ...node,
@@ -206,7 +215,14 @@ export function useCanvasClipboard({
       // Second pass: generate new IDs for all groups and process their children
       const newZones: DiagramZoneData[] = [];
       const processZoneChildren = (zone: DiagramGroupData): DiagramGroupData => {
-        const newZoneId = generateGroupId((zone.subType as 'group' | 'zone') || 'zone', diagramData);
+        // Create temporary diagram data that includes already-generated IDs
+        const tempData: DiagramData = {
+          ...diagramData,
+          nodes: [...diagramData.nodes, ...newNodes],
+          zones: [...(diagramData.zones || []), ...newZones]
+        };
+        
+        const newZoneId = generateGroupId((zone.subType as 'group' | 'zone') || 'zone', tempData);
         idMapping.set(zone.id, newZoneId);
 
         // Process children - map old IDs to new IDs
@@ -261,39 +277,41 @@ export function useCanvasClipboard({
         connections: [...(prev.connections || []), ...newConnections]
       }));
 
-      // Select all newly pasted items
+      // Select all newly pasted items (clear old selection first)
       const pastedItemIds = new Set<string>();
       newNodes.forEach(node => pastedItemIds.add(node.id));
       newZones.forEach(group => pastedItemIds.add(group.id));
       
-      // Set the first pasted item as the primary selected item
+      // Use a single selection update to avoid race conditions
       if (pastedItemIds.size > 0) {
-        const firstPastedId = Array.from(pastedItemIds)[0];
+        const itemsArray = Array.from(pastedItemIds);
+        const firstPastedId = itemsArray[0];
         const firstPastedNode = newNodes.find(n => n.id === firstPastedId);
         const firstPastedGroup = newZones.find(zone => zone.id === firstPastedId);
         
+        // Set the first item as primary (clears old selection)
         if (firstPastedNode) {
-          onItemSelect({ ...firstPastedNode, itemType: 'node' });
+          onItemSelect({ ...firstPastedNode, itemType: 'node' }, false);
         } else if (firstPastedGroup) {
-          onItemSelect({ ...firstPastedGroup, itemType: 'zone' });
+          onItemSelect({ ...firstPastedGroup, itemType: 'zone' }, false);
         }
-      }
-      
-      // Update selected items to include all pasted items
-      if (onItemSelect) {
-        // Trigger selection update for multi-select
-        setTimeout(() => {
-          pastedItemIds.forEach(id => {
-            const pastedNode = newNodes.find(n => n.id === id);
-            const pastedGroup = newZones.find(zone => zone.id === id);
-            
-            if (pastedNode) {
-              onItemSelect({ ...pastedNode, itemType: 'node' }, true); // true for shift key (multi-select)
-            } else if (pastedGroup) {
-              onItemSelect({ ...pastedGroup, itemType: 'zone' }, true); // true for shift key (multi-select)
-            }
-          });
-        }, 0);
+        
+        // If multiple items, add the rest using shift key
+        if (pastedItemIds.size > 1) {
+          // Use setTimeout to ensure the first selection completes before adding more
+          setTimeout(() => {
+            itemsArray.slice(1).forEach(id => {
+              const pastedNode = newNodes.find(n => n.id === id);
+              const pastedGroup = newZones.find(zone => zone.id === id);
+              
+              if (pastedNode) {
+                onItemSelect({ ...pastedNode, itemType: 'node' }, true);
+              } else if (pastedGroup) {
+                onItemSelect({ ...pastedGroup, itemType: 'zone' }, true);
+              }
+            });
+          }, 10); // Small delay to ensure state updates
+        }
       }
 
       toast({
