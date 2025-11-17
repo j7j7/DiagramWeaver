@@ -404,10 +404,12 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         }
         
         e.preventDefault();
-        if (selectedItemId) {
-          operations.handleDelete(selectedItemId);
-        } else if (selectedItemIds && selectedItemIds.size > 0) {
+        // If there are multiple selected items, delete all of them
+        if (selectedItemIds && selectedItemIds.size > 0) {
           operations.handleDeleteMultiple(Array.from(selectedItemIds));
+        } else if (selectedItemId) {
+          // Fallback: delete single selected item
+          operations.handleDelete(selectedItemId);
         }
       }
     };
@@ -440,6 +442,33 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   const pastePaletteItemHandler = useCallback((item: any) => {
     if (!canvasRef.current) return;
     const rect = canvasRef.current.getBoundingClientRect();
+
+    // Use the same zoom/viewport center reference as useCanvasTransform
+    if (typeof window !== 'undefined') {
+      const viewportCenterX = window.innerWidth / 2;
+      const viewportCenterY = window.innerHeight / 2;
+
+      // Place new items near the center of the current viewport with slight randomness
+      const jitter = 80; // px
+      const offsetX = (Math.random() - 0.5) * 2 * jitter;
+      const offsetY = (Math.random() - 0.5) * 2 * jitter;
+
+      const adjustedViewportX = viewportCenterX + offsetX;
+      const adjustedViewportY = viewportCenterY + offsetY;
+
+      // Convert browser viewport coordinates to canvas-relative coordinates
+      const canvasRelativeX = adjustedViewportX - rect.left;
+      const canvasRelativeY = adjustedViewportY - rect.top;
+
+      // Convert to diagram-space coordinates using current transform
+      const canvasX = (canvasRelativeX - transform.x) / transform.k;
+      const canvasY = (canvasRelativeY - transform.y) / transform.k;
+
+      operations.addNode(item, { x: canvasX, y: canvasY }, null);
+      return;
+    }
+
+    // Fallback (SSR/defensive): center within canvas element
     const centerX = rect.width / 2;
     const centerY = rect.height / 2;
     const canvasX = (centerX - transform.x) / transform.k;
