@@ -560,6 +560,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 key={zone.id}
                 zone={zone}
                 isSelected={selectedItemId === zone.id || (selectedItemIds?.has(zone.id) ?? false)}
+                isDropTarget={hoveredGroupId === zone.id}
+                isTargetable={hoveredGroupId === zone.id}
+                isMultiSelected={selectedItemIds?.has(zone.id) && (selectedItemIds?.size ?? 0) > 1}
                 onClick={(e: React.MouseEvent) => handleZoneClick(e, zone)}
                 onContextMenu={(e: React.MouseEvent) => handleZoneContextMenu(e, zone)}
                 onResize={operations.resizeGroup} // Allows resizing zones
