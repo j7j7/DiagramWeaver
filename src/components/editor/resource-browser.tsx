@@ -96,8 +96,9 @@ interface ResourceIndex {
 }
 
 interface ResourceBrowserProps {
-  onResourceSelect: (resource: { name: string; file: string; }, provider: string, category: string) => void;
+  onResourceSelect: (resource: { name: string; file: string; type?: string; hasWhiteVariant?: boolean; format?: string }, provider: string, category: string) => void;
   onDiagramGenerated?: (data: any) => void;
+  onResourceActivate?: (resource: { name: string; file: string; type?: string; hasWhiteVariant?: boolean; format?: string }, provider: string, category: string) => void;
 }
 
 // Icon mapping for different resource types
@@ -159,7 +160,7 @@ function ProviderIcon({ provider }: { provider: string }) {
   );
 }
 
-export function ResourceBrowser({ onResourceSelect, onDiagramGenerated }: ResourceBrowserProps) {
+export function ResourceBrowser({ onResourceSelect, onDiagramGenerated, onResourceActivate }: ResourceBrowserProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [fullProviders, setFullProviders] = useState<Record<string, ResourceProvider>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -455,6 +456,10 @@ export function ResourceBrowser({ onResourceSelect, onDiagramGenerated }: Resour
     onResourceSelect(resource, provider, category);
   };
 
+  const handleResourceActivate = (resource: ResourceItem, provider: string, category: string) => {
+    onResourceActivate?.(resource, provider, category);
+  };
+
 return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* AI Generation */}
@@ -706,6 +711,8 @@ return (
                                         provider={providerKey}
                                         category={categoryKey}
                                         icon={getResourceIcon(resource)}
+                                        onClick={() => handleResourceClick(resource, providerKey, categoryKey)}
+                                        onDoubleClick={() => handleResourceActivate(resource, providerKey, categoryKey)}
                                       />
                                     ))}
                                   </div>

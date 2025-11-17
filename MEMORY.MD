@@ -416,3 +416,19 @@ Successfully refactored `editor-canvas.tsx` from ~4100 lines to **513 lines** (8
 - These are TypeScript type definition issues only, functionality is intact
 
 See `REFACTORING_SUMMARY.md` for complete details.
+
+### Palette Copy/Paste from Sidebar (2025-11-17)
+- Added a palette-aware copy/paste flow that reuses the existing drag-and-drop addNode logic:
+  - Clicking a resource in the left sidebar marks it as the active palette selection (no behavior change for drag).
+  - Using **Edit → Copy** while a sidebar resource is selected copies a palette item (derived from the same type/label logic as drag) into a separate clipboard.
+  - Using **Edit → Paste** first checks this palette clipboard: if present, it pastes a new instance of that resource onto the canvas at the viewport center using `operations.addNode`; otherwise it falls back to the existing canvas clipboard paste.
+  - Double-clicking a sidebar resource now immediately pastes a new instance of that item onto the canvas and updates the palette clipboard.
+- Implementation details:
+  - `DraggableResourceItem` gained optional click/double-click hooks; drag behavior is unchanged.
+  - `ResourceBrowser` forwards clicks/double-clicks up via `onResourceSelect`/`onResourceActivate`.
+  - `ComponentSidebar` forwards these to `DiagramEditor`.
+  - `DiagramEditor` tracks `selectedResource` and a `paletteClipboardItem` and extends the `TopMenuBar` copy/paste handlers to use them.
+  - `EditorCanvas` exposes a new `pastePaletteItem(item)` imperative handle that uses the same `useCanvasOperations().addNode` path as drag-and-drop to ensure identical default values.
+- Notes:
+  - Existing canvas copy/paste (for nodes/zones) and keyboard shortcuts remain unchanged.
+  - `npm run typecheck` currently fails due to pre-existing issues in `src/components/editor/text-styling-panel.tsx` and `src/lib/group-hierarchy.ts`; those files were not modified as part of this change.

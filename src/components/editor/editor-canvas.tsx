@@ -75,6 +75,7 @@ export type EditorCanvasHandle = {
   copy: () => void;
   paste: () => void;
   canPaste: () => boolean;
+  pastePaletteItem: (item: any) => void;
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
@@ -436,6 +437,16 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     }
   }, [canPaste, handlePaste]);
 
+  const pastePaletteItemHandler = useCallback((item: any) => {
+    if (!canvasRef.current) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    const canvasX = (centerX - transform.x) / transform.k;
+    const canvasY = (centerY - transform.y) / transform.k;
+    operations.addNode(item, { x: canvasX, y: canvasY }, null);
+  }, [transform, operations]);
+
   const canPasteHandler = useCallback(() => {
     return canPaste();
   }, [canPaste]);
@@ -447,7 +458,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     copy: copyHandler, // Copies selected item(s)
     paste: pasteHandler, // Pastes from clipboard
     canPaste: canPasteHandler, // Checks if paste is available
-  }), [handleFitToView, exportPng, startSelectionMode, copyHandler, pasteHandler, canPasteHandler]);
+    pastePaletteItem: pastePaletteItemHandler, // Pastes a new item from the sidebar palette
+  }), [handleFitToView, exportPng, startSelectionMode, copyHandler, pasteHandler, canPasteHandler, pastePaletteItemHandler]);
 
   return (
     <div className="relative w-full h-full">

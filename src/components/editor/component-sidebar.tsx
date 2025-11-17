@@ -21,7 +21,8 @@ interface ComponentSidebarProps {
   onDisconnect: () => void;
   onItemDelete: (itemToDelete: SelectedItem) => void;
   diagramData: DiagramData;
-  onResourceSelect: (resource: { name: string; file: string; }, provider: string, category: string) => void;
+  onResourceSelect: (resource: { name: string; file: string; type?: string; hasWhiteVariant?: boolean; format?: string }, provider: string, category: string) => void;
+  onResourceActivate?: (resource: { name: string; file: string; type?: string; hasWhiteVariant?: boolean; format?: string }, provider: string, category: string) => void;
   onToggleJsonPanel?: () => void;
   jsonPanelOpen?: boolean;
   onFitToView?: () => void;
@@ -37,7 +38,7 @@ interface ComponentSidebarProps {
 
 
 
-export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onResourceSelect, onToggleJsonPanel, jsonPanelOpen, onFitToView, onConnectionUpdate, onConnectionDisconnect, onCloseSidebar, isMobile, transform, onTransformChange, onDiagramGenerated }: ComponentSidebarProps) {
+export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onResourceSelect, onResourceActivate, onToggleJsonPanel, jsonPanelOpen, onFitToView, onConnectionUpdate, onConnectionDisconnect, onCloseSidebar, isMobile, transform, onTransformChange, onDiagramGenerated }: ComponentSidebarProps) {
   const { register, reset, getValues } = useForm();
   
 
@@ -163,6 +164,7 @@ return (
         <ResourceBrowser
           onResourceSelect={onResourceSelect}
           onDiagramGenerated={onDiagramGenerated}
+          onResourceActivate={onResourceActivate}
         />
       </div>
     </aside>

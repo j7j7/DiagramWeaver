@@ -81,6 +81,45 @@ export type SelectedItem = (
     })
 );
 
+interface PaletteResource {
+  name: string;
+  file: string;
+  type?: string;
+  hasWhiteVariant?: boolean;
+  format?: string;
+}
+
+interface PaletteSelection {
+  resource: PaletteResource;
+  provider: string;
+  category: string;
+}
+
+function createPaletteItem(resource: PaletteResource, provider: string, category: string) {
+  const derivedSlug = resource.name.replace(/\s+/g, '-').toLowerCase();
+  const isZoneResource = (provider === 'generic' && category === 'grouping') || resource.type === 'zone';
+
+  if (isZoneResource) {
+    const subType = resource.name.toLowerCase();
+    return {
+      type: 'zone',
+      subType,
+      label: resource.name,
+      provider,
+      category,
+      file: resource.file,
+    };
+  }
+
+  return {
+    type: `${provider}.${category}.${derivedSlug}`,
+    label: resource.name,
+    provider,
+    category,
+    file: resource.file,
+  };
+}
+
 export default function DiagramEditor() {
   const [isClient, setIsClient] = React.useState<boolean>(false);
   const { toast } = useToast();
@@ -100,7 +139,8 @@ export default function DiagramEditor() {
   const [triggerTextStylingPanel, setTriggerTextStylingPanel] = React.useState<boolean>(false);
   const [triggerVisualStylingPanel, setTriggerVisualStylingPanel] = React.useState<boolean>(false);
   const [triggerConnectionSettingsPanel, setTriggerConnectionSettingsPanel] = React.useState<boolean>(false);
-
+  const [selectedResource, setSelectedResource] = React.useState<PaletteSelection | null>(null);
+  const [paletteClipboardItem, setPaletteClipboardItem] = React.useState<any | null>(null);
   // Reset trigger states after they've been used
   React.useEffect(() => {
     if (triggerTextStylingPanel) {
@@ -489,11 +529,19 @@ export default function DiagramEditor() {
     }
   }
 
-  const handleResourceSelect = (resource: { name: string; file: string; }, provider: string, category: string) => {
-    // This function would typically handle adding a resource to the diagram
-    // For now, we can just log it or implement the logic to add the resource
+  const handleResourceSelect = (resource: { name: string; file: string; type?: string; hasWhiteVariant?: boolean; format?: string }, provider: string, category: string) => {
+    // Track the currently selected resource from the sidebar for copy/paste
+    setSelectedResource({ resource, provider, category });
     console.log('Resource selected:', { resource, provider, category });
-    // TODO: Implement adding resource to diagram at center position
+  };
+
+  const handleResourceActivate = (resource: { name: string; file: string; type?: string; hasWhiteVariant?: boolean; format?: string }, provider: string, category: string) => {
+    const item = createPaletteItem(resource, provider, category);
+    setSelectedResource({ resource, provider, category });
+    setPaletteClipboardItem(item);
+    if (editorRef.current) {
+      editorRef.current.pastePaletteItem(item);
+    }
   };
 
   const handleItemDelete = (itemToDelete: SelectedItem) => {
@@ -714,6 +762,23 @@ export default function DiagramEditor() {
 
   const handleNew = () => {
     createTab();
+  };
+
+  const handleMenuCopy = () => {
+    if (selectedResource) {
+      const item = createPaletteItem(selectedResource.resource, selectedResource.provider, selectedResource.category);
+      setPaletteClipboardItem(item);
+    } else {
+      editorRef.current?.copy();
+    }
+  };
+
+  const handleMenuPaste = () => {
+    if (paletteClipboardItem && editorRef.current) {
+      editorRef.current.pastePaletteItem(paletteClipboardItem);
+    } else {
+      editorRef.current?.paste();
+    }
   };
 
   const handleSelectAll = () => {
@@ -1394,6 +1459,7 @@ export default function DiagramEditor() {
     }
   }, [jsonPanelWidth, isClient]);
 
+  const canPasteFromMenu = paletteClipboardItem != null || canPaste;
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -1417,6 +1483,7 @@ export default function DiagramEditor() {
     onItemDelete={handleItemDelete}
     diagramData={diagramData}
     onResourceSelect={handleResourceSelect}
+    onResourceActivate={handleResourceActivate}
     onToggleJsonPanel={toggleJsonPanel}
     jsonPanelOpen={jsonPanelOpen}
     onFitToView={() => editorRef.current?.fitToView()}
@@ -1457,9 +1524,9 @@ export default function DiagramEditor() {
                     onToggleJsonPanel={toggleJsonPanel}
                     jsonPanelOpen={jsonPanelOpen}
                     onFitToView={() => editorRef.current?.fitToView()}
-                    onCopy={() => editorRef.current?.copy()}
-                    onPaste={() => editorRef.current?.paste()}
-                    canPaste={canPaste}
+                    onCopy={handleMenuCopy}
+                    onPaste={handleMenuPaste}
+                    canPaste={canPasteFromMenu}
                     onUndo={undo}
                     onRedo={redo}
                     canUndo={historyIndex > 0}

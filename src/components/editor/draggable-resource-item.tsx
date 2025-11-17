@@ -15,9 +15,12 @@ interface DraggableResourceItemProps {
   provider: string;
   category: string;
   icon: React.ReactNode;
+  onClick?: (args: { resource: DraggableResourceItemProps['resource']; provider: string; category: string }) => void;
+  onDoubleClick?: (args: { resource: DraggableResourceItemProps['resource']; provider: string; category: string }) => void;
+  isSelected?: boolean;
 }
 
-export function DraggableResourceItem({ resource, provider, category, icon }: DraggableResourceItemProps) {
+export function DraggableResourceItem({ resource, provider, category, icon, onClick, onDoubleClick, isSelected }: DraggableResourceItemProps) {
   const [imageError, setImageError] = useState(false);
 
   // Icon path for display in sidebar - NEVER passed to node
@@ -140,10 +143,12 @@ export function DraggableResourceItem({ resource, provider, category, icon }: Dr
         }
       }}
       style={{ opacity: (isDragging || isTouchDragging) ? 0.5 : 1 }}
-      className="cursor-move"
+      className={`cursor-move ${isSelected ? 'ring-2 ring-primary ring-offset-2' : ''}`}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      onClick={() => onClick?.({ resource, provider, category })}
+      onDoubleClick={() => onDoubleClick?.({ resource, provider, category })}
     >
       <Card className="hover:bg-accent hover:text-accent-foreground transition-colors">
         <CardContent className="p-2 flex flex-col items-center justify-center gap-1 text-center h-16">
