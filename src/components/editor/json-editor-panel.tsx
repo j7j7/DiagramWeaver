@@ -325,16 +325,52 @@ export function JsonEditorPanel({
     return '';
   };
 
-  const handleChange = async (newText: string) => {
+  const handleChange = (newText: string) => {
     // Skip handling if we're applying an external update
     if (isApplyingExternalUpdate.current) return;
     
-    setIsUpdating(true);
+    // Only update the text state, don't push to canvas yet
     setText(newText);
+    
+    // Validate JSON to show errors, but don't apply
     try {
       const parsed = JSON.parse(newText);
       
-      console.log('JSON Editor parsed data:', {
+      let validationError: any = null;
+
+      // Check if data is in nested format
+      if (isNestedFormat(parsed)) {
+        // Validate as nested format
+        const validationResult = HierarchicalDiagramDataSchema.safeParse(parsed);
+        if (!validationResult.success) {
+          validationError = validationResult.error;
+        }
+      } else {
+        // Data is in flat format, validate basic structure
+        if (!parsed || typeof parsed !== 'object' || (!parsed.nodes && !parsed.zones && !parsed.connections)) {
+          validationError = { message: 'Invalid diagram data structure' };
+        }
+      }
+      
+      if (validationError) {
+        const errorMessage = validationError.issues
+          ? validationError.issues.map((issue: any) => `${issue.path.join('.')}: ${issue.message}`).join(', ')
+          : validationError.message || 'Unknown validation error';
+        setError(`Schema validation failed: ${errorMessage}`);
+      } else {
+        setError(null);
+      }
+    } catch (e: any) {
+      setError(e?.message || 'Invalid JSON');
+    }
+  };
+
+  const handleSubmit = () => {
+    setIsUpdating(true);
+    try {
+      const parsed = JSON.parse(text);
+      
+      console.log('JSON Editor submitting data:', {
         isNested: isNestedFormat(parsed),
         nodesCount: parsed.nodes?.length || 0,
         zonesCount: parsed.zones?.length || 0,
@@ -424,14 +460,24 @@ export function JsonEditorPanel({
       {/* Header */}
       <div className="flex items-center justify-between p-2 border-b bg-muted/50 flex-shrink-0">
         <div className="text-sm font-medium">JSON Editor</div>
-        <button
-          onClick={onToggleOpen}
-          className="p-1 rounded hover:bg-muted transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleSubmit}
+            disabled={!!error}
+            className="px-3 py-1 text-sm font-medium text-white bg-primary rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            title="Apply JSON changes to canvas"
+          >
+            Submit
+          </button>
+          <button
+            onClick={onToggleOpen}
+            className="p-1 rounded hover:bg-muted transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Editor */}

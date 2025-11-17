@@ -1,6 +1,6 @@
 # MEMORY.MD
 
-## DiagramWeaver - Latest Features and Functions (Updated 2025-11-10)
+## DiagramWeaver - Latest Features and Functions (Updated 2025-11-17)
 
 ### Project Overview
 DiagramWeaver is a Next.js 15 application for creating interactive architecture diagrams. It supports drag-and-drop design, AI-powered generation from natural language descriptions, and integration with multiple cloud providers. Users can build, edit, and visualize complex system architectures with Bezier curve connections.
@@ -61,6 +61,39 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
 - **Environment Configuration**: Uses OLLAMA_BASE_URL (default: http://localhost:11434) and OLLAMA_MODEL (default: deepseek-v3.1:671b-cloud)
 
 ### Recent Updates and Fixes
+- **2025-11-17 – Zone Move ID Duplication Bug Fix**: Fixed critical bug where moving zones caused ID duplication (e.g., moving zone-2 would overwrite zone-1's ID with zone-2, resulting in duplicate zone-2 entries):
+  - **Root Cause**: Three helper functions in `canvas-operations.ts` (`cleanUpParentId`, `setParentId`, `clearParentId`) used incorrect `findIndex` predicates that always returned index 0, causing zone updates to overwrite the first zone in the array regardless of which zone was being moved.
+  - **Bug Pattern**: `findIndex(g => zone.id === groupId)` compared the outer scope `zone` variable instead of the predicate parameter `g`, making the condition constant and always matching the first element.
+  - **Fix Applied**: Changed all three predicates to `findIndex(g => g.id === groupId)` to correctly find the zone being updated.
+  - **Impact**: Zone moves now preserve all zone IDs correctly; no more ID overwrites or duplicates when dragging zones.
+  - **Files Modified**: `src/components/editor/canvas-operations.ts` (lines 415, 451, 472)
+- **2025-11-17 – Zone Drop Target Highlighting Restored**: Re-enabled visual feedback when dragging items over zones:
+  - **Issue**: After zone system refactoring, drag-over highlighting stopped working—zones no longer showed blue ring or pulse animation when items were dragged over them.
+  - **Root Cause**: `EditorCanvas` computed `hoveredGroupId` correctly via `useCanvasDragDrop`, but wasn't passing `isDropTarget` and `isTargetable` props to `DiagramZone` components.
+  - **Fix Applied**: Wired up `isDropTarget={hoveredGroupId === zone.id}` and `isTargetable={hoveredGroupId === zone.id}` in zone rendering loop.
+  - **Result**: Zones now highlight with blue ring + pulse animation while dragging items over them, providing clear visual feedback for drop targets.
+  - **Files Modified**: `src/components/editor/editor-canvas.tsx` (zone rendering section)
+- **2025-11-17 – Nested Zone Rendering & Interaction Fix**: Fixed z-order and interaction issues with nested zones:
+  - **Problem 1 - Interaction Blocking**: When Zone-A was nested inside Zone-B, clicking/dragging Zone-A was impossible because Zone-B's DOM element rendered on top and intercepted all pointer events.
+  - **Problem 2 - Depth Calculation**: Initial fix relied on `parentId` field which could be out of sync with actual nesting structure in `children` arrays.
+  - **Solution - Children-Based Depth Sorting**: Implemented depth calculation based purely on `children` array relationships (not `parentId`) and sort zones by depth before rendering:
+    - Computes depth for each zone by walking up the parent chain (via `children` arrays).
+    - Sorts zones by ascending depth: parents (depth 0) render first, children (depth 1+) render last.
+    - Child zones now sit visually on top of parents in DOM, making them fully interactive.
+  - **Implementation**: Added IIFE in zone rendering that computes depth per zone using `getParentId()` helper that searches `children` arrays, then sorts before rendering.
+  - **Result**: Nested zones are now fully clickable, draggable, and accept children; hierarchy depth is always correct regardless of `parentId` field state.
+  - **Files Modified**: `src/components/editor/editor-canvas.tsx` (zone rendering with depth sorting)
+- **2025-11-17 – Nested Zone Drop Targeting Fix**: Fixed inability to drop items into child zones when parent and child zones overlap:
+  - **Problem**: Dragging items into nested zones only highlighted/targeted the parent zone; child zones never became drop targets even when hovering directly over them.
+  - **Root Cause**: Drag-drop hover logic used "first match wins" approach—iterated zones and returned the first one containing the cursor point, which was often the parent.
+  - **Solution - Smallest Zone Wins**: Changed hover logic to collect ALL zones containing the cursor, then select the zone with smallest area (child zones have smaller area than parents):
+    - Collects all candidate zones whose bounds contain cursor position.
+    - Filters out invalid drops (e.g., dropping zone into its own descendant).
+    - Sorts candidates by area (width × height) ascending.
+    - Picks zone with smallest area as drop target.
+  - **Result**: When dragging over nested zones, the innermost/smallest zone wins; users can now drop items into both parent and child zones as expected.
+  - **Files Modified**: `src/hooks/use-canvas-drag-drop.ts` (hover handler in `useDrop` hook)
+  - **Benefit**: Full support for deeply nested zone hierarchies with intuitive drop targeting.
 - **2025-11-17 – JSON Editor Reliability**: `JsonEditorPanel` now only re-syncs from external `DiagramData` when the value object actually changes, always rebuilds text from canonical hierarchical data (diff optimization disabled), and has a cleaned-up JSX return block that fixes the earlier parse error.
 - **2025-11-17 – JSON Editor Shadow File Fix**: Removed stale compiled `src/components/editor/json-editor-panel.js` which was being preferred over the `.tsx` source on some environments, causing `react_1.default` to be `undefined` and leading to `Cannot read properties of undefined (reading 'useState')` in the browser. Next.js now uses the `.tsx` file exclusively.
 - **2025-11-17 – Multi-Delete Behavior**: Delete/Backspace in `EditorCanvas` now prefers `selectedItemIds` and calls `handleDeleteMultiple`, so all selected nodes/zones/connections are removed from `DiagramData` (and thus flat + hierarchical JSON) in one keystroke.
