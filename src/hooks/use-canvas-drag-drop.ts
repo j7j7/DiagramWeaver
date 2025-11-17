@@ -129,8 +129,11 @@ export function useCanvasDragDrop({
       
       // Only check for group highlighting if item is NOT a freeflow node
       if (!isFreeflowNode) {
-        // Iterate backwards to check topmost groups first
-        for (let i = processedZones.length - 1; i >= 0; i--) {
+        // Collect all candidate zones that contain the point, then prefer the
+        // smallest one (so child zones win over parents when nested).
+        const candidateZones: { id: string; area: number }[] = [];
+
+        for (let i = 0; i < processedZones.length; i++) {
           const zone = processedZones[i];
           if (zone.id === item.id) continue;
           
@@ -154,9 +157,14 @@ export function useCanvasDragDrop({
           if (isAncestor) continue;
 
           if (x > zone.x && x < zone.x + zone.width && y > zone.y && y < zone.y + zone.height) {
-            targetGroupId = zone.id;
-            break;
+            const area = (zone.width || 0) * (zone.height || 0);
+            candidateZones.push({ id: zone.id, area: area || Number.MAX_SAFE_INTEGER });
           }
+        }
+
+        if (candidateZones.length > 0) {
+          candidateZones.sort((a, b) => a.area - b.area);
+          targetGroupId = candidateZones[0].id;
         }
       }
       
