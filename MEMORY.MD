@@ -61,6 +61,16 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
 - **Environment Configuration**: Uses OLLAMA_BASE_URL (default: http://localhost:11434) and OLLAMA_MODEL (default: deepseek-v3.1:671b-cloud)
 
 ### Recent Updates and Fixes
+- **2025-11-17 – Copy-Paste ID Generation Fix**: Fixed duplicate IDs when pasting multiple items of the same type:
+  - **Problem 1 - Duplicate IDs**: When copying and pasting multiple nodes of the same type (e.g., 3 Windows instances), all pasted items would get the same ID because `generateSequentialId()` was called with the same `diagramData` state for each item.
+  - **Problem 2 - Selection Race Condition**: When pasting multiple items, only some of the new items would be selected (e.g., copy 2, paste, but 3 out of 4 items selected including one old item). This was caused by async state updates where shift-key selection read stale state.
+  - **Root Cause (IDs)**: ID generator checked existing IDs in `diagramData` before any new items were added. When generating IDs for items 2 and 3, the generator still saw the same max ID as item 1, producing duplicates.
+  - **Root Cause (Selection)**: Using `onItemSelect` with shift-key in `setTimeout` created race condition—shift-select reads previous state via `setSelectedItemIds(prev => ...)` which could still contain old selected items.
+  - **Fix Applied (IDs)**: Modified paste handler to pass temporary `DiagramData` that includes already-generated nodes/zones to `generateSequentialId()`, ensuring each subsequent ID is based on previously generated ones in the same paste operation.
+  - **Fix Applied (Selection)**: Replaced shift-key selection loop with `onBatchSelect()` which atomically sets all pasted items at once, eliminating race conditions entirely.
+  - **Implementation**: Added `onBatchSelect` to `UseCanvasClipboardOptions` interface and wired it through from `EditorCanvas` to the clipboard hook.
+  - **Impact**: Multiple items of the same type now paste with unique sequential IDs (e.g., windows-6, windows-7, windows-8). Only newly pasted items are selected after paste, never old items.
+  - **Files Modified**: `src/hooks/use-canvas-clipboard.ts` (ID generation loop and selection logic), `src/components/editor/editor-canvas.tsx` (pass onBatchSelect)
 - **2025-11-17 – Zone Move ID Duplication Bug Fix**: Fixed critical bug where moving zones caused ID duplication (e.g., moving zone-2 would overwrite zone-1's ID with zone-2, resulting in duplicate zone-2 entries):
   - **Root Cause**: Three helper functions in `canvas-operations.ts` (`cleanUpParentId`, `setParentId`, `clearParentId`) used incorrect `findIndex` predicates that always returned index 0, causing zone updates to overwrite the first zone in the array regardless of which zone was being moved.
   - **Bug Pattern**: `findIndex(g => zone.id === groupId)` compared the outer scope `zone` variable instead of the predicate parameter `g`, making the condition constant and always matching the first element.

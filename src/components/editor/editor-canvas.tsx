@@ -170,6 +170,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     selectedItemIds,
     setDiagramData,
     onItemSelect,
+    onBatchSelect,
     onClipboardChange,
     toast,
   });

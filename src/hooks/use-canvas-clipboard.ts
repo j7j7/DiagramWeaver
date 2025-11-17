@@ -17,6 +17,7 @@ interface UseCanvasClipboardOptions {
   selectedItemIds: Set<string>;
   setDiagramData: React.Dispatch<React.SetStateAction<DiagramData>>;
   onItemSelect: (item: any | null, shiftKey?: boolean) => void;
+  onBatchSelect?: (itemIds: string[]) => void;
   onClipboardChange?: (hasClipboard: boolean) => void;
   toast: (options: { variant?: 'destructive' | 'default'; title: string; description: string }) => void;
 }
@@ -26,6 +27,7 @@ export function useCanvasClipboard({
   selectedItemIds,
   setDiagramData,
   onItemSelect,
+  onBatchSelect,
   onClipboardChange,
   toast,
 }: UseCanvasClipboardOptions) {
@@ -277,40 +279,27 @@ export function useCanvasClipboard({
         connections: [...(prev.connections || []), ...newConnections]
       }));
 
-      // Select all newly pasted items (clear old selection first)
-      const pastedItemIds = new Set<string>();
-      newNodes.forEach(node => pastedItemIds.add(node.id));
-      newZones.forEach(group => pastedItemIds.add(group.id));
+      // Select all newly pasted items using batch select to avoid race conditions
+      const pastedItemIds: string[] = [];
+      newNodes.forEach(node => pastedItemIds.push(node.id));
+      newZones.forEach(group => pastedItemIds.push(group.id));
       
-      // Use a single selection update to avoid race conditions
-      if (pastedItemIds.size > 0) {
-        const itemsArray = Array.from(pastedItemIds);
-        const firstPastedId = itemsArray[0];
-        const firstPastedNode = newNodes.find(n => n.id === firstPastedId);
-        const firstPastedGroup = newZones.find(zone => zone.id === firstPastedId);
-        
-        // Set the first item as primary (clears old selection)
-        if (firstPastedNode) {
-          onItemSelect({ ...firstPastedNode, itemType: 'node' }, false);
-        } else if (firstPastedGroup) {
-          onItemSelect({ ...firstPastedGroup, itemType: 'zone' }, false);
-        }
-        
-        // If multiple items, add the rest using shift key
-        if (pastedItemIds.size > 1) {
-          // Use setTimeout to ensure the first selection completes before adding more
-          setTimeout(() => {
-            itemsArray.slice(1).forEach(id => {
-              const pastedNode = newNodes.find(n => n.id === id);
-              const pastedGroup = newZones.find(zone => zone.id === id);
-              
-              if (pastedNode) {
-                onItemSelect({ ...pastedNode, itemType: 'node' }, true);
-              } else if (pastedGroup) {
-                onItemSelect({ ...pastedGroup, itemType: 'zone' }, true);
-              }
-            });
-          }, 10); // Small delay to ensure state updates
+      // Use batch select if available (atomic operation, no race conditions)
+      if (pastedItemIds.length > 0) {
+        if (onBatchSelect) {
+          // Batch select handles clearing old selection and setting all new items atomically
+          onBatchSelect(pastedItemIds);
+        } else {
+          // Fallback to old behavior if batch select not available
+          const firstPastedId = pastedItemIds[0];
+          const firstPastedNode = newNodes.find(n => n.id === firstPastedId);
+          const firstPastedGroup = newZones.find(zone => zone.id === firstPastedId);
+          
+          if (firstPastedNode) {
+            onItemSelect({ ...firstPastedNode, itemType: 'node' }, false);
+          } else if (firstPastedGroup) {
+            onItemSelect({ ...firstPastedGroup, itemType: 'zone' }, false);
+          }
         }
       }
 
