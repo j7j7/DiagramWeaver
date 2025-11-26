@@ -113,6 +113,7 @@ export function LayersPanel({
     dragStartIndex.current = index;
     setDraggedLayerIndex(index);
     e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index.toString());
   }, []);
 
   // Handle drag over
@@ -214,13 +215,11 @@ export function LayersPanel({
             {layers.map((layer, index) => (
               <div
                 key={layer.id}
-                draggable={layer.id !== 'background'}
-                onDragStart={(e) => handleDragStart(e, index)}
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDrop={(e) => handleDrop(e, index)}
                 onDragEnd={handleDragEnd}
                 className={cn(
-                  "group flex items-center gap-2 p-2 rounded-md cursor-pointer transition-colors",
+                  "group flex items-center gap-2 p-2 rounded-md transition-colors",
                   "hover:bg-gray-100",
                   activeLayerId === layer.id && "bg-blue-50 border border-blue-200",
                   draggedLayerIndex === index && "opacity-50"
@@ -229,7 +228,11 @@ export function LayersPanel({
               >
                 {/* Drag Handle */}
                 {layer.id !== 'background' && (
-                  <div className="cursor-move opacity-50 hover:opacity-100">
+                  <div 
+                    className="cursor-move opacity-50 hover:opacity-100"
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, index)}
+                  >
                     <GripVertical className="w-4 h-4" />
                   </div>
                 )}
@@ -355,18 +358,7 @@ export function LayersPanel({
         )}
       </div>
 
-      {/* Footer Info */}
-      <div className="p-3 border-t bg-gray-50 text-xs text-gray-600">
-        <div className="flex justify-between">
-          <span>{layers.length} layer(s)</span>
-          <span>Active: {layers.find(l => l.id === activeLayerId)?.name || 'None'}</span>
-        </div>
-        {selectedItemsLayerIds.length > 0 && (
-          <div className="mt-1 text-blue-600">
-            {selectedItemsLayerIds.length} item(s) selected
-          </div>
-        )}
-      </div>
+
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteLayerId} onOpenChange={() => setDeleteLayerId(null)}>

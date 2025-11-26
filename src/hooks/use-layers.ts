@@ -38,8 +38,14 @@ export function useLayers({ diagramData, setDiagramData, toast }: UseLayersOptio
     return getDefaultLayersConfig();
   });
 
-  // State for layers panel visibility
-  const [layersPanelOpen, setLayersPanelOpen] = useState(false);
+  // State for layers panel visibility with localStorage persistence
+  const [layersPanelOpen, setLayersPanelOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('dw:layersPanel:open');
+      return saved !== null ? JSON.parse(saved) : false;
+    }
+    return false;
+  });
 
   // Sync layers config with diagram data
   useEffect(() => {
@@ -47,6 +53,13 @@ export function useLayers({ diagramData, setDiagramData, toast }: UseLayersOptio
       setLayersConfig(diagramData.layers);
     }
   }, [diagramData.layers]);
+
+  // Save layers panel state to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dw:layersPanel:open', JSON.stringify(layersPanelOpen));
+    }
+  }, [layersPanelOpen]);
 
   // Update diagram data when layers config changes
   const updateDiagramDataWithLayers = useCallback((newLayersConfig: LayersConfig) => {
@@ -288,12 +301,10 @@ export function useLayers({ diagramData, setDiagramData, toast }: UseLayersOptio
     setLayersPanelOpen(prev => !prev);
   }, []);
 
-  // Get all layers sorted by order (background first, then by creation)
+  // Get all layers in their current order (background first, then current order)
   const getAllLayers = useCallback((): LayerInfo[] => {
     const backgroundLayer = layersConfig.layers.find(l => l.id === DEFAULT_LAYER_ID);
-    const otherLayers = layersConfig.layers
-      .filter(l => l.id !== DEFAULT_LAYER_ID)
-      .sort((a, b) => a.id.localeCompare(b.id));
+    const otherLayers = layersConfig.layers.filter(l => l.id !== DEFAULT_LAYER_ID);
 
     return backgroundLayer ? [backgroundLayer, ...otherLayers] : otherLayers;
   }, [layersConfig]);
