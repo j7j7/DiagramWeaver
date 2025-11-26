@@ -11,6 +11,7 @@ export const DiagramNodeDataSchema = z.object({
   imagePath: z.string().optional(), // Override icon path
   lineColor: z.string().optional(), // Color for connections/borders
   edgePosition: z.enum(['top', 'bottom', 'left', 'right']).optional(), // Position node on edge of parent group
+  layer: z.string().optional(), // Layer assignment for this node
   // Label-specific styling properties
   borderColor: z.string().optional(), // Border color for label nodes
   backgroundColor: z.string().optional(), // Background color for label nodes
@@ -75,6 +76,7 @@ export const DiagramGroupDataSchema = z.object({
   y: z.number().optional(),
   subType: z.enum(['zone', 'group']).optional(),
   color: z.string().optional(), // Legacy compatibility
+  layer: z.string().optional(), // Layer assignment for this zone
   borderColor: z.string().optional(),
   textColor: z.string().optional(),
   backgroundColor: z.string().optional(),
@@ -110,11 +112,28 @@ export const DiagramGroupDataSchema = z.object({
   textOpacity: z.number().optional(), // Text opacity (0-1)
 });
 
+// Schema for LayerInfo
+export const LayerInfoSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  visible: z.boolean(),
+  locked: z.boolean(),
+  color: z.string().optional(), // Optional layer color for visualization
+});
+
+// Schema for LayersConfig
+export const LayersConfigSchema = z.object({
+  layers: z.array(LayerInfoSchema),
+  activeLayerId: z.string(),
+  defaultLayerId: z.string(), // Always 'background'
+});
+
 // Main DiagramData schema
 export const DiagramDataSchema = z.object({
   nodes: z.array(DiagramNodeDataSchema).default([]),
   connections: z.array(DiagramConnectionDataSchema).default([]),
   zones: z.array(DiagramGroupDataSchema).default([]),
+  layers: LayersConfigSchema.optional(), // Optional layers configuration
 });
 
 export type DiagramDataValidated = z.infer<typeof DiagramDataSchema>;
@@ -129,6 +148,7 @@ export const DiagramNodeItemSchema = z.object({
   y: z.number().optional(),
   lineColor: z.string().optional(), // Color for connections/borders
   edgePosition: z.enum(['top', 'bottom', 'left', 'right']).optional(), // Position node on edge of parent group
+  layer: z.string().optional(), // Layer assignment for this node
   // Label-specific styling properties
   borderColor: z.string().optional(), // Border color for label nodes
   backgroundColor: z.string().optional(), // Background color for label nodes
@@ -174,6 +194,7 @@ export const DiagramGroupItemSchema: z.ZodType<any> = z.object({
   y: z.number().optional(),
   subType: z.enum(['zone', 'group']).optional(),
   color: z.string().optional(), // For colored groups (legacy, kept for compatibility)
+  layer: z.string().optional(), // Layer assignment for this zone
   borderColor: z.string().optional(), // Border color (legacy, kept for compatibility)
   textColor: z.string().optional(), // Text color
   backgroundColor: z.string().optional(), // Background color (legacy, kept for compatibility)
@@ -220,4 +241,5 @@ export const DiagramGroupItemSchema: z.ZodType<any> = z.object({
 export const HierarchicalDiagramDataSchema = z.object({
   zones: z.array(DiagramGroupItemSchema).default([]),
   connections: z.array(DiagramConnectionDataSchema).default([]),
+  layers: LayersConfigSchema.optional(), // Optional layers configuration
 });

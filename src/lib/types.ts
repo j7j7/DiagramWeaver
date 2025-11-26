@@ -7,6 +7,7 @@ export interface DiagramNodeData {
   y?: number;
   lineColor?: string; // Color for connections/borders
   edgePosition?: 'top' | 'bottom' | 'left' | 'right'; // Position node on edge of parent group
+  layer?: string; // Layer assignment for this node
   // Label-specific styling properties
   borderColor?: string; // Border color for label nodes
   backgroundColor?: string; // Background color for label nodes
@@ -78,6 +79,7 @@ export interface DiagramNodeItem {
   y?: number;
   lineColor?: string; // Color for connections/borders
   edgePosition?: 'top' | 'bottom' | 'left' | 'right'; // Position node on edge of parent group
+  layer?: string; // Layer assignment for this node
   borderColor?: string; // Border color for label nodes
   backgroundColor?: string; // Background color for label nodes
   textColor?: string; // Text color for label nodes
@@ -124,6 +126,7 @@ export interface DiagramZoneItem {
   x?: number;
   y?: number;
   color?: string; // For colored zones (legacy, kept for compatibility)
+  layer?: string; // Layer assignment for this zone
   borderColor?: string; // Border color (legacy, kept for compatibility)
   textColor?: string; // Text color
   backgroundColor?: string; // Background color (legacy, kept for compatibility)
@@ -176,6 +179,7 @@ export interface DiagramZoneData {
   x?: number;
   y?: number;
   color?: string; // For colored zones (legacy, kept for compatibility)
+  layer?: string; // Layer assignment for this zone
   borderColor?: string; // Border color (legacy, kept for compatibility)
   textColor?: string; // Text color
   backgroundColor?: string; // Background color (legacy, kept for compatibility)
@@ -219,11 +223,27 @@ export interface DiagramZoneData {
    borderWidth?: number; // Border thickness for zones
  }
 
+// Layer management interfaces
+export interface LayerInfo {
+  id: string;
+  name: string;
+  visible: boolean;
+  locked: boolean;
+  color?: string; // Optional layer color for visualization
+}
+
+export interface LayersConfig {
+  layers: LayerInfo[];
+  activeLayerId: string;
+  defaultLayerId: string; // Always 'background'
+}
+
 export interface DiagramData {
   nodes: DiagramNodeData[];
   connections: DiagramConnectionData[];
   zones: DiagramZoneData[]; // Always present - even single nodes are in zones
   rootZoneId?: string; // Optional reference to root zone
+  layers?: LayersConfig; // Optional layers configuration
 }
 
 // Hierarchical format is now the standard format
@@ -231,6 +251,7 @@ export interface HierarchicalDiagramData {
   zones: DiagramZoneItem[]; // Nested format with DiagramZoneItem
   connections: DiagramConnectionData[];
   metadata?: any;
+  layers?: LayersConfig; // Optional layers configuration
 }
 
 // Backward compatibility aliases

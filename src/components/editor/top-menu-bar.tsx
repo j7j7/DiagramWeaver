@@ -9,7 +9,7 @@ import {
   MenubarShortcut,
   MenubarTrigger,
 } from '@/components/ui/menubar';
-import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare } from 'lucide-react';
+import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
 import { ThemeEditor } from './theme-editor';
 import { ThemeMenuSelector } from './theme-menu-selector';
@@ -30,6 +30,8 @@ interface TopMenuBarProps {
   onExportPng?: () => void;
   onToggleJsonPanel?: () => void;
   jsonPanelOpen?: boolean;
+  onToggleLayersPanel?: () => void;
+  layersPanelOpen?: boolean;
   onFitToView?: () => void;
   onCopy?: () => void;
   onPaste?: () => void;
@@ -99,6 +101,8 @@ export function TopMenuBar({
   triggerTextStylingPanel = false,
   triggerVisualStylingPanel = false,
   triggerConnectionSettingsPanel = false,
+  onToggleLayersPanel,
+  layersPanelOpen,
 }: TopMenuBarProps) {
   const [themeEditorOpen, setThemeEditorOpen] = React.useState(false);
   const [textStylingPanelOpen, setTextStylingPanelOpen] = React.useState(false);
@@ -234,9 +238,18 @@ export function TopMenuBar({
                 </MenubarItem>
               </>
             )}
-            {onToggleHover !== undefined && (
+            {onToggleLayersPanel && (
               <>
                 {(onUndo || onRedo || onFitToView) && <MenubarSeparator />}
+                <MenubarItem onClick={onToggleLayersPanel}>
+                  <Layers className="mr-2 h-4 w-4" />
+                  {layersPanelOpen ? 'Hide Layers' : 'Show Layers'}
+                </MenubarItem>
+              </>
+            )}
+            {onToggleHover !== undefined && (
+              <>
+                {(onUndo || onRedo || onFitToView || onToggleLayersPanel) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleHover}>
                   {hoverEnabled ? (
                     <>

@@ -24,9 +24,11 @@ import { generateSequentialId } from '@/lib/id-generator';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useDiagramTabs } from '@/hooks/use-diagram-tabs';
+import { useLayers } from '@/hooks/use-layers';
 import { convertFromNestedHierarchy, convertToNestedHierarchy } from '@/lib/nested-hierarchy';
 import { themeManager } from '@/lib/theme-manager';
 import { DiagramTheme } from '@/lib/theme-types';
+import { LayersPanel } from './editor/layers-panel';
 
 export type SelectedItem = (
   | (DiagramNodeData & { 
@@ -198,16 +200,27 @@ export default function DiagramEditor() {
     updateActiveTab({ diagramData: newData });
   }, [activeTabId, diagramData, updateActiveTab]);
 
-  const setSelectedItem = React.useCallback((item: SelectedItem | null) => {
+  const setSelectedItem = React.useCallback((updater: SelectedItem | null | ((prev: SelectedItem | null) => SelectedItem | null)) => {
     if (!activeTabId) return;
-    updateActiveTab({ selectedItem: item });
-  }, [activeTabId, updateActiveTab]);
+    const newItem = typeof updater === 'function' ? updater(selectedItem) : updater;
+    updateActiveTab({ selectedItem: newItem });
+  }, [activeTabId, selectedItem, updateActiveTab]);
+
+  // Initialize layers system
+  const layers = useLayers({
+    diagramData,
+    setDiagramData,
+    toast
+  });
 
   const setSelectedItemIds = React.useCallback((updater: Set<string> | ((prev: Set<string>) => Set<string>)) => {
     if (!activeTabId) return;
     const newIds = typeof updater === 'function' ? updater(selectedItemIds) : updater;
     updateActiveTab({ selectedItemIds: newIds });
-  }, [activeTabId, selectedItemIds, updateActiveTab]);
+    
+    // Update active layer based on selection
+    layers.updateActiveLayerFromSelection(newIds);
+  }, [activeTabId, selectedItemIds, updateActiveTab, layers]);
 
   const setIsConnectMode = React.useCallback((mode: boolean) => {
     if (!activeTabId) return;
@@ -1523,6 +1536,8 @@ export default function DiagramEditor() {
                     onExportSvg={handleExportSvg}
                     onToggleJsonPanel={toggleJsonPanel}
                     jsonPanelOpen={jsonPanelOpen}
+                    onToggleLayersPanel={layers.toggleLayersPanel}
+                    layersPanelOpen={layers.layersPanelOpen}
                     onFitToView={() => editorRef.current?.fitToView()}
                     onCopy={handleMenuCopy}
                     onPaste={handleMenuPaste}
@@ -1578,12 +1593,12 @@ export default function DiagramEditor() {
                   <div className={`flex-1 h-full min-w-0 ${jsonPanelOpen ? 'mr-2' : ''}`}>
                 <EditorCanvas 
                     ref={editorRef}
-                    diagramData={diagramData} 
+                    diagramData={layers.getFilteredDiagramData()} 
                     setDiagramData={setDiagramData}
                     onItemSelect={handleItemSelect}
                     onBatchSelect={handleBatchSelect}
                     setSelectedItemIds={setSelectedItemIds}
-                    setSelectedItem={setSelectedItem}
+                    setSelectedItem={setSelectedItem as any}
                     selectedItemId={selectedItem?.id}
                     selectedItemIds={selectedItemIds}
                     isConnectMode={isConnectMode}
@@ -1617,6 +1632,26 @@ export default function DiagramEditor() {
                     onTriggerConnectionSettingsPanel={() => setTriggerConnectionSettingsPanel(true)}
                     />
                   </div>
+                  
+                  {/* Layers Panel */}
+                  {layers.layersPanelOpen && (
+                    <div className="absolute top-4 right-4 z-50">
+                      <LayersPanel
+                        layers={layers.getAllLayers()}
+                        activeLayerId={layers.layersConfig.activeLayerId}
+                        selectedItemsLayerIds={selectedItemIds.size > 0 ? 
+                          Array.from(selectedItemIds).map(id => layers.getItemLayerById(id)) : []
+                        }
+                        onAddLayer={layers.addNewLayer}
+                        onRemoveLayer={layers.removeLayerById}
+                        onRenameLayer={layers.renameLayerById}
+                        onToggleVisibility={layers.toggleLayerVisibilityById}
+                        onSetActiveLayer={layers.setActiveLayerById}
+                        onReorderLayers={layers.reorderLayers}
+                        onAssignSelectedItemsToLayer={selectedItemIds.size > 0 ? (layerId: string) => layers.assignItemsToLayer(Array.from(selectedItemIds), layerId) : undefined}
+                      />
+                    </div>
+                  )}
                   
                   {jsonPanelOpen && (
                     <div className="flex-shrink-0">
