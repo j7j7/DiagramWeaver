@@ -241,29 +241,21 @@ export function LayersPanel({
                 />
 
                 {/* Layer Name */}
-                <div className="flex-1 min-w-0">
+                <div className={editingLayerId === layer.id ? "flex-1 min-w-0" : "flex-1 min-w-0"}>
                   {editingLayerId === layer.id ? (
-                    <div className="flex items-center gap-1">
-                      <Input
-                        value={editingLayerName}
-                        onChange={(e) => setEditingLayerName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            handleSaveEditLayer();
-                          } else if (e.key === 'Escape') {
-                            handleCancelEdit();
-                          }
-                        }}
-                        className="h-6 text-sm"
-                        autoFocus
-                      />
-                      <Button size="sm" variant="ghost" onClick={handleSaveEditLayer}>
-                        <Check className="w-3 h-3" />
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={handleCancelEdit}>
-                        <X className="w-3 h-3" />
-                      </Button>
-                    </div>
+                    <Input
+                      value={editingLayerName}
+                      onChange={(e) => setEditingLayerName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleSaveEditLayer();
+                        } else if (e.key === 'Escape') {
+                          handleCancelEdit();
+                        }
+                      }}
+                      className="h-6 text-sm w-full"
+                      autoFocus
+                    />
                   ) : (
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium truncate">
@@ -280,65 +272,81 @@ export function LayersPanel({
 
                 {/* Layer Actions */}
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {/* Visibility Toggle */}
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onToggleVisibility(layer.id);
-                    }}
-                    disabled={layer.id === 'background'}
-                  >
-                    {layer.visible ? (
-                      <Eye className="w-3 h-3" />
-                    ) : (
-                      <EyeOff className="w-3 h-3" />
-                    )}
-                  </Button>
+                  {editingLayerId === layer.id ? (
+                    <>
+                      <Button size="sm" variant="ghost" onClick={handleSaveEditLayer}>
+                        <Check className="w-3 h-3" />
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={handleCancelEdit}>
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      {/* Only show these icons when no items are selected */}
+                      {selectedItemsLayerIds.length === 0 && (
+                        <>
+                          {/* Visibility Toggle */}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onToggleVisibility(layer.id);
+                            }}
+                            disabled={layer.id === 'background'}
+                          >
+                            {layer.visible ? (
+                              <Eye className="w-3 h-3" />
+                            ) : (
+                              <EyeOff className="w-3 h-3" />
+                            )}
+                          </Button>
 
+                          {/* Edit Name */}
+                          {layer.id !== 'background' && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStartEditLayer(layer);
+                              }}
+                            >
+                              <Edit2 className="w-3 h-3" />
+                            </Button>
+                          )}
 
+                          {/* Delete Layer */}
+                          {layer.id !== 'background' && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteLayerId(layer.id);
+                              }}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          )}
+                        </>
+                      )}
 
-                  {/* Edit Name */}
-                  {layer.id !== 'background' && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleStartEditLayer(layer);
-                      }}
-                    >
-                      <Edit2 className="w-3 h-3" />
-                    </Button>
-                  )}
-
-                  {/* Delete Layer */}
-                  {layer.id !== 'background' && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDeleteLayerId(layer.id);
-                      }}
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
-                  )}
-
-                  {/* Assign Selected Items */}
-                  {onAssignSelectedItemsToLayer && selectedItemsLayerIds.length > 0 && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onAssignSelectedItemsToLayer(layer.id);
-                      }}
-                    >
-                      <Plus className="w-3 h-3" />
-                    </Button>
+                      {/* Assign Selected Items - always show when items are selected */}
+                      {onAssignSelectedItemsToLayer && selectedItemsLayerIds.length > 0 && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onAssignSelectedItemsToLayer(layer.id);
+                          }}
+                        >
+                          <Plus className="w-3 h-3" />
+                        </Button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
