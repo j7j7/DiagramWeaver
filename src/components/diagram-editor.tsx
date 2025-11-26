@@ -1630,6 +1630,11 @@ export default function DiagramEditor() {
                     onTriggerTextStylingPanel={() => setTriggerTextStylingPanel(true)}
                     onTriggerVisualStylingPanel={() => setTriggerVisualStylingPanel(true)}
                     onTriggerConnectionSettingsPanel={() => setTriggerConnectionSettingsPanel(true)}
+                    layers={{
+                      getAllLayers: layers.getAllLayers,
+                      getItemLayerById: layers.getItemLayerById,
+                      assignItemsToLayer: layers.assignItemsToLayer
+                    }}
                     />
                   </div>
                   

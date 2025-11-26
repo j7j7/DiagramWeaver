@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter } from 'lucide-react';
+import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight } from 'lucide-react';
 
 
 interface ContextMenuProps {
@@ -24,6 +24,9 @@ interface ContextMenuProps {
   onVisualStyling?: () => void;
   onOrientationChange?: (orientation: 'auto' | 'grid' | 'horizontal' | 'vertical') => void;
   currentOrientation?: 'auto' | 'grid' | 'horizontal' | 'vertical';
+  currentLayer?: string;
+  availableLayers?: Array<{id: string; name: string}>;
+  onChangeLayer?: (layerId: string) => void;
 }
 
 export function ContextMenu({ 
@@ -44,9 +47,13 @@ export function ContextMenu({
   onTextStyling,
   onVisualStyling,
   onOrientationChange,
-  currentOrientation = 'auto'
+  currentOrientation = 'auto',
+  currentLayer,
+  availableLayers = [],
+  onChangeLayer
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const [layerSubmenuOpen, setLayerSubmenuOpen] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -225,6 +232,52 @@ export function ContextMenu({
             <Link2Off className="w-4 h-4" />
             Disconnect
           </button>
+        </>
+      )}
+
+      {/* Layer Submenu */}
+      {availableLayers.length > 0 && (
+        <>
+          <div className="border-t border-border my-1" />
+          <div className="relative">
+            <button
+              className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+              onMouseEnter={() => setLayerSubmenuOpen(true)}
+              onMouseLeave={() => setLayerSubmenuOpen(false)}
+            >
+              <Layers className="w-4 h-4" />
+              Layer: {currentLayer}
+              <ChevronRight className="w-4 h-4 ml-auto" />
+            </button>
+            
+            {/* Layer Submenu */}
+            {layerSubmenuOpen && (
+              <div
+                className={cn(
+                  "absolute left-full top-0 bg-popover border border-border rounded-md shadow-lg py-1 z-50 min-w-[150px]",
+                  "animate-in fade-in-0 zoom-in-95"
+                )}
+                style={{ marginLeft: '4px' }}
+                onMouseEnter={() => setLayerSubmenuOpen(true)}
+                onMouseLeave={() => setLayerSubmenuOpen(false)}
+              >
+                {availableLayers.map((layer) => (
+                  <button
+                    key={layer.id}
+                    className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+                    onClick={() => {
+                      onChangeLayer?.(layer.id);
+                      onClose();
+                      setLayerSubmenuOpen(false);
+                    }}
+                  >
+                    <Layers className="w-4 h-4" />
+                    {layer.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </>
       )}
 

@@ -67,6 +67,11 @@ interface EditorCanvasProps {
   onTriggerTextStylingPanel?: () => void;
   onTriggerVisualStylingPanel?: () => void;
   onTriggerConnectionSettingsPanel?: () => void;
+  layers?: {
+    getAllLayers: () => Array<{id: string; name: string}>;
+    getItemLayerById: (itemId: string) => string;
+    assignItemsToLayer: (itemIds: string[], layerId: string) => void;
+  };
 }
 
 
@@ -81,7 +86,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerConnectionSettingsPanel }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerConnectionSettingsPanel, layers }: EditorCanvasProps,
   ref
 ) {
   // ============================================================================
@@ -770,6 +775,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               closeContextMenu();
             }}
             isFreeflow={contextMenu.itemType === 'node' ? (diagramData.nodes.find(n => n.id === contextMenu.itemId)?.freeflow || false) : false}
+            currentLayer={layers ? layers.getItemLayerById(contextMenu.itemId) : undefined}
+            availableLayers={layers ? layers.getAllLayers() : []}
+            onChangeLayer={(layerId: string) => {
+              if (layers) {
+                layers.assignItemsToLayer([contextMenu.itemId], layerId);
+              }
+            }}
             onOrientationChange={(orientation: 'auto' | 'horizontal' | 'vertical' | 'grid') => {
               const zone = diagramData.zones?.find(z => z.id === contextMenu.itemId);
               if (zone) {
