@@ -223,11 +223,11 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
       return 100 + ((lines - 1) * EXTRA_LINE_HEIGHT); // Start with 100px height
     } else if (nodeType === 'generic.text.text') {
       const maxCharsPerLine = 20; // More characters fit in text-only nodes
-      const lines = Math.ceil(label.length / maxCharsPerLine);
+      const lines = Math.max(1, Math.ceil(label.length / maxCharsPerLine));
       return TEXT_NODE_HEIGHT + ((lines - 1) * EXTRA_LINE_HEIGHT);
     } else {
       const maxCharsPerLine = 12; // Approximate characters that fit in node width
-      const lines = Math.ceil(label.length / maxCharsPerLine);
+      const lines = Math.max(1, Math.ceil(label.length / maxCharsPerLine));
       return BASE_NODE_HEIGHT + ((lines - 1) * EXTRA_LINE_HEIGHT);
     }
   };
@@ -278,8 +278,8 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
   
   const isTextNode = node.type === 'generic.text.text';
   const isTextboxNode = node.type === 'generic.text.textbox';
-  const isShapeNode = node.type === 'generic.object.square' || node.type === 'generic.object.circle' || node.type === 'generic.object.point' || node.type === 'generic.object.rectangle' || node.type === 'generic.object.triangle' || node.type === 'generic.object.star' || node.type === 'generic.object.cloud' ||
-                      node.type?.endsWith('.square') || node.type?.endsWith('.circle') || node.type?.endsWith('.point') || node.type?.endsWith('.rectangle') || node.type?.endsWith('.triangle') || node.type?.endsWith('.star') || node.type?.endsWith('.cloud');
+  const isShapeNode = node.type === 'generic.object.square' || node.type === 'generic.object.circle' || node.type === 'generic.object.point' || node.type === 'generic.object.rectangle' || node.type === 'generic.object.triangle' || node.type === 'generic.object.star' || node.type === 'generic.object.cloud' || node.type === 'generic.object.parallelogram' || node.type === 'generic.object.trapezoid' || node.type === 'generic.object.kite' || node.type === 'generic.object.hexagon' || node.type === 'generic.object.pentagon' || node.type === 'generic.object.octagon' || node.type === 'generic.object.jigsaw' || node.type === 'generic.object.arrowhead' ||
+                      node.type?.endsWith('.square') || node.type?.endsWith('.circle') || node.type?.endsWith('.point') || node.type?.endsWith('.rectangle') || node.type?.endsWith('.triangle') || node.type?.endsWith('.star') || node.type?.endsWith('.cloud') || node.type?.endsWith('.parallelogram') || node.type?.endsWith('.trapezoid') || node.type?.endsWith('.kite') || node.type?.endsWith('.hexagon') || node.type?.endsWith('.pentagon') || node.type?.endsWith('.octagon') || node.type?.endsWith('.jigsaw') || node.type?.endsWith('.arrowhead');
   const isPointNode = node.type === 'generic.object.point' || node.type?.endsWith('.point');
   const isRotatableNode = isTextNode  || isTextboxNode || isShapeNode;
   const nodeHeight = calculateNodeHeight(node.label || '', node.type, node.sizeMode, node.height);
@@ -1156,6 +1156,502 @@ return (
                                </p>
                              </div>
                           )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Parallelogram */}
+                  {(node.type === 'generic.object.parallelogram' || node.type?.endsWith('.parallelogram')) && (
+                    <div 
+                      key={`gradient-${gradientAngle}`}
+                      className="relative" 
+                      style={{ 
+                        width: node.width || 80, 
+                        height: node.height || 60, 
+                        minWidth: node.width || 80, 
+                        minHeight: node.height || 60,
+                        margin: hasShadow ? 4 : 0,
+                        ...(hasShadow && { 
+                          filter: 'drop-shadow(0 20px 25px rgba(0, 0, 0, 0.2)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.04))'
+                        })
+                      }}>
+                      <svg 
+                        width={node.width || 80} 
+                        height={node.height || 60}
+                        style={{ display: 'block' }}
+                      >
+                        <defs>
+                            {backgroundStyle === 'gradient' && (() => {
+                              const coords = getGradientCoordinates(gradientAngle);
+                              return (
+                                <linearGradient id={`parallelogram-bg-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                                  <stop offset="0%" stopColor={backgroundColors[0]} />
+                                  <stop offset="100%" stopColor={backgroundColors[1]} />
+                                </linearGradient>
+                              );
+                            })()}
+                            {borderStyle === 'gradient' && (() => {
+                              const coords = getGradientCoordinates(gradientAngle);
+                              return (
+                                <linearGradient id={`parallelogram-border-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                                  <stop offset="0%" stopColor={borderColors[0]} />
+                                  <stop offset="100%" stopColor={borderColors[1]} />
+                                </linearGradient>
+                              );
+                            })()}
+                        </defs>
+                        <path 
+                          d={`M${(node.width || 80) * 0.2 + borderWidth / 2} ${borderWidth / 2} L${(node.width || 80) - borderWidth / 2} ${borderWidth / 2} L${(node.width || 80) * 0.8 - borderWidth / 2} ${(node.height || 60) - borderWidth / 2} L${borderWidth / 2} ${(node.height || 60) - borderWidth / 2} Z`}
+                          fill={backgroundStyle === 'gradient' ? `url(#parallelogram-bg-${node.id})` : backgroundColor}
+                          stroke={borderStyle === 'gradient' ? `url(#parallelogram-border-${node.id})` : borderColor}
+                          strokeWidth={borderStyle === 'none' ? 0 : borderWidth}
+                          strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
+                        />
+                      </svg>
+                      {node.label && (
+                        <div className={`absolute inset-0 flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-2`}>
+                          <p 
+                            className={`text-xs ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
+                            style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
+                            onDoubleClick={handleLabelDoubleClick}
+                          >
+                            {node.label}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Trapezoid */}
+                  {(node.type === 'generic.object.trapezoid' || node.type?.endsWith('.trapezoid')) && (
+                    <div 
+                      key={`gradient-${gradientAngle}`}
+                      className="relative" 
+                      style={{ 
+                        width: node.width || 80, 
+                        height: node.height || 60, 
+                        minWidth: node.width || 80, 
+                        minHeight: node.height || 60,
+                        margin: hasShadow ? 4 : 0,
+                        ...(hasShadow && { 
+                          filter: 'drop-shadow(0 20px 25px rgba(0, 0, 0, 0.2)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.04))'
+                        })
+                      }}>
+                      <svg 
+                        width={node.width || 80} 
+                        height={node.height || 60}
+                        style={{ display: 'block' }}
+                      >
+                        <defs>
+                            {backgroundStyle === 'gradient' && (() => {
+                              const coords = getGradientCoordinates(gradientAngle);
+                              return (
+                                <linearGradient id={`trapezoid-bg-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                                  <stop offset="0%" stopColor={backgroundColors[0]} />
+                                  <stop offset="100%" stopColor={backgroundColors[1]} />
+                                </linearGradient>
+                              );
+                            })()}
+                            {borderStyle === 'gradient' && (() => {
+                              const coords = getGradientCoordinates(gradientAngle);
+                              return (
+                                <linearGradient id={`trapezoid-border-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                                  <stop offset="0%" stopColor={borderColors[0]} />
+                                  <stop offset="100%" stopColor={borderColors[1]} />
+                                </linearGradient>
+                              );
+                            })()}
+                        </defs>
+                        <path 
+                          d={`M${(node.width || 80) * 0.2 + borderWidth / 2} ${borderWidth / 2} L${(node.width || 80) * 0.8 - borderWidth / 2} ${borderWidth / 2} L${(node.width || 80) - borderWidth / 2} ${(node.height || 60) - borderWidth / 2} L${borderWidth / 2} ${(node.height || 60) - borderWidth / 2} Z`}
+                          fill={backgroundStyle === 'gradient' ? `url(#trapezoid-bg-${node.id})` : backgroundColor}
+                          stroke={borderStyle === 'gradient' ? `url(#trapezoid-border-${node.id})` : borderColor}
+                          strokeWidth={borderStyle === 'none' ? 0 : borderWidth}
+                          strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
+                        />
+                      </svg>
+                      {node.label && (
+                        <div className={`absolute inset-0 flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-2`}>
+                          <p 
+                            className={`text-xs ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
+                            style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
+                            onDoubleClick={handleLabelDoubleClick}
+                          >
+                            {node.label}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Kite */}
+                  {(node.type === 'generic.object.kite' || node.type?.endsWith('.kite')) && (
+                    <div 
+                      key={`gradient-${gradientAngle}`}
+                      className="relative" 
+                      style={{ 
+                        width: node.width || 60, 
+                        height: node.height || 60, 
+                        minWidth: node.width || 60, 
+                        minHeight: node.height || 60,
+                        margin: hasShadow ? 4 : 0,
+                        ...(hasShadow && { 
+                          filter: 'drop-shadow(0 20px 25px rgba(0, 0, 0, 0.2)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.04))'
+                        })
+                      }}>
+                      <svg 
+                        width={node.width || 60} 
+                        height={node.height || 60}
+                        style={{ display: 'block' }}
+                      >
+                        <defs>
+                            {backgroundStyle === 'gradient' && (() => {
+                              const coords = getGradientCoordinates(gradientAngle);
+                              return (
+                                <linearGradient id={`kite-bg-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                                  <stop offset="0%" stopColor={backgroundColors[0]} />
+                                  <stop offset="100%" stopColor={backgroundColors[1]} />
+                                </linearGradient>
+                              );
+                            })()}
+                            {borderStyle === 'gradient' && (() => {
+                              const coords = getGradientCoordinates(gradientAngle);
+                              return (
+                                <linearGradient id={`kite-border-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                                  <stop offset="0%" stopColor={borderColors[0]} />
+                                  <stop offset="100%" stopColor={borderColors[1]} />
+                                </linearGradient>
+                              );
+                            })()}
+                        </defs>
+<path 
+                          d={`M${(node.width || 60) / 2} ${borderWidth / 2} L${(node.width || 60) - borderWidth / 2} ${(node.height || 60) / 2} L${(node.width || 60) / 2} ${(node.height || 60) - borderWidth / 2} L${borderWidth / 2} ${(node.height || 60) / 2} Z`}
+                          fill={backgroundStyle === 'gradient' ? `url(#kite-bg-${node.id})` : backgroundColor}
+                          stroke={borderStyle === 'gradient' ? `url(#kite-border-${node.id})` : borderColor}
+                          strokeWidth={borderStyle === 'none' ? 0 : borderWidth}
+                          strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
+                        />
+                      </svg>
+                      {node.label && (
+                        <div className={`absolute inset-0 flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-2`}>
+                          <p 
+                            className={`text-xs ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
+                            style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
+                            onDoubleClick={handleLabelDoubleClick}
+                          >
+                            {node.label}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Hexagon */}
+                  {(node.type === 'generic.object.hexagon' || node.type?.endsWith('.hexagon')) && (
+                    <div 
+                      key={`gradient-${gradientAngle}`}
+                      className="relative" 
+                      style={{ 
+                        width: node.width || 70, 
+                        height: node.height || 60, 
+                        minWidth: node.width || 70, 
+                        minHeight: node.height || 60,
+                        margin: hasShadow ? 4 : 0,
+                        ...(hasShadow && { 
+                          filter: 'drop-shadow(0 20px 25px rgba(0, 0, 0, 0.2)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.04))'
+                        })
+                      }}>
+                      <svg 
+                        width={node.width || 70} 
+                        height={node.height || 60}
+                        style={{ display: 'block' }}
+                      >
+                        <defs>
+                            {backgroundStyle === 'gradient' && (() => {
+                              const coords = getGradientCoordinates(gradientAngle);
+                              return (
+                                <linearGradient id={`hexagon-bg-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                                  <stop offset="0%" stopColor={backgroundColors[0]} />
+                                  <stop offset="100%" stopColor={backgroundColors[1]} />
+                                </linearGradient>
+                              );
+                            })()}
+                            {borderStyle === 'gradient' && (() => {
+                              const coords = getGradientCoordinates(gradientAngle);
+                              return (
+                                <linearGradient id={`hexagon-border-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                                  <stop offset="0%" stopColor={borderColors[0]} />
+                                  <stop offset="100%" stopColor={borderColors[1]} />
+                                </linearGradient>
+                              );
+                            })()}
+                        </defs>
+                        <path 
+                          d={`M${(node.width || 70) * 0.25 + borderWidth / 2} ${borderWidth / 2} L${(node.width || 70) * 0.75 - borderWidth / 2} ${borderWidth / 2} L${(node.width || 70) - borderWidth / 2} ${(node.height || 60) / 2} L${(node.width || 70) * 0.75 - borderWidth / 2} ${(node.height || 60) - borderWidth / 2} L${(node.width || 70) * 0.25 + borderWidth / 2} ${(node.height || 60) - borderWidth / 2} L${borderWidth / 2} ${(node.height || 60) / 2} Z`}
+                          fill={backgroundStyle === 'gradient' ? `url(#hexagon-bg-${node.id})` : backgroundColor}
+                          stroke={borderStyle === 'gradient' ? `url(#hexagon-border-${node.id})` : borderColor}
+                          strokeWidth={borderStyle === 'none' ? 0 : borderWidth}
+                          strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
+                        />
+                      </svg>
+                      {node.label && (
+                        <div className={`absolute inset-0 flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-2`}>
+                          <p 
+                            className={`text-xs ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
+                            style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
+                            onDoubleClick={handleLabelDoubleClick}
+                          >
+                            {node.label}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Pentagon */}
+                  {(node.type === 'generic.object.pentagon' || node.type?.endsWith('.pentagon')) && (
+                    <div 
+                      key={`gradient-${gradientAngle}`}
+                      className="relative" 
+                      style={{ 
+                        width: node.width || 70, 
+                        height: node.height || 70, 
+                        minWidth: node.width || 70, 
+                        minHeight: node.height || 70,
+                        margin: hasShadow ? 4 : 0,
+                        ...(hasShadow && { 
+                          filter: 'drop-shadow(0 20px 25px rgba(0, 0, 0, 0.2)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.04))'
+                        })
+                      }}>
+                      <svg 
+                        width={node.width || 70} 
+                        height={node.height || 70}
+                        style={{ display: 'block' }}
+                      >
+                        <defs>
+                            {backgroundStyle === 'gradient' && (() => {
+                              const coords = getGradientCoordinates(gradientAngle);
+                              return (
+                                <linearGradient id={`pentagon-bg-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                                  <stop offset="0%" stopColor={backgroundColors[0]} />
+                                  <stop offset="100%" stopColor={backgroundColors[1]} />
+                                </linearGradient>
+                              );
+                            })()}
+                            {borderStyle === 'gradient' && (() => {
+                              const coords = getGradientCoordinates(gradientAngle);
+                              return (
+                                <linearGradient id={`pentagon-border-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                                  <stop offset="0%" stopColor={borderColors[0]} />
+                                  <stop offset="100%" stopColor={borderColors[1]} />
+                                </linearGradient>
+                              );
+                            })()}
+                        </defs>
+                        <path 
+                          d={`M${(node.width || 70) / 2} ${borderWidth / 2} L${(node.width || 70) * 0.95 - borderWidth / 2} ${(node.height || 70) * 0.35} L${(node.width || 70) * 0.8 - borderWidth / 2} ${(node.height || 70) - borderWidth / 2} L${(node.width || 70) * 0.2 + borderWidth / 2} ${(node.height || 70) - borderWidth / 2} L${(node.width || 70) * 0.05 + borderWidth / 2} ${(node.height || 70) * 0.35} Z`}
+                          fill={backgroundStyle === 'gradient' ? `url(#pentagon-bg-${node.id})` : backgroundColor}
+                          stroke={borderStyle === 'gradient' ? `url(#pentagon-border-${node.id})` : borderColor}
+                          strokeWidth={borderStyle === 'none' ? 0 : borderWidth}
+                          strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
+                        />
+                      </svg>
+                      {node.label && (
+                        <div className={`absolute inset-0 flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-2`}>
+                          <p 
+                            className={`text-xs ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
+                            style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
+                            onDoubleClick={handleLabelDoubleClick}
+                          >
+                            {node.label}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Octagon */}
+                  {(node.type === 'generic.object.octagon' || node.type?.endsWith('.octagon')) && (
+                    <div 
+                      key={`gradient-${gradientAngle}`}
+                      className="relative" 
+                      style={{ 
+                        width: node.width || 70, 
+                        height: node.height || 70, 
+                        minWidth: node.width || 70, 
+                        minHeight: node.height || 70,
+                        margin: hasShadow ? 4 : 0,
+                        ...(hasShadow && { 
+                          filter: 'drop-shadow(0 20px 25px rgba(0, 0, 0, 0.2)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.04))'
+                        })
+                      }}>
+                      <svg 
+                        width={node.width || 70} 
+                        height={node.height || 70}
+                        style={{ display: 'block' }}
+                      >
+                        <defs>
+                            {backgroundStyle === 'gradient' && (() => {
+                              const coords = getGradientCoordinates(gradientAngle);
+                              return (
+                                <linearGradient id={`octagon-bg-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                                  <stop offset="0%" stopColor={backgroundColors[0]} />
+                                  <stop offset="100%" stopColor={backgroundColors[1]} />
+                                </linearGradient>
+                              );
+                            })()}
+                            {borderStyle === 'gradient' && (() => {
+                              const coords = getGradientCoordinates(gradientAngle);
+                              return (
+                                <linearGradient id={`octagon-border-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                                  <stop offset="0%" stopColor={borderColors[0]} />
+                                  <stop offset="100%" stopColor={borderColors[1]} />
+                                </linearGradient>
+                              );
+                            })()}
+                        </defs>
+                        <path 
+                          d={`M${(node.width || 70) * 0.3 + borderWidth / 2} ${borderWidth / 2} L${(node.width || 70) * 0.7 - borderWidth / 2} ${borderWidth / 2} L${(node.width || 70) - borderWidth / 2} ${(node.height || 70) * 0.3 + borderWidth / 2} L${(node.width || 70) - borderWidth / 2} ${(node.height || 70) * 0.7 - borderWidth / 2} L${(node.width || 70) * 0.7 - borderWidth / 2} ${(node.height || 70) - borderWidth / 2} L${(node.width || 70) * 0.3 + borderWidth / 2} ${(node.height || 70) - borderWidth / 2} L${borderWidth / 2} ${(node.height || 70) * 0.7 - borderWidth / 2} L${borderWidth / 2} ${(node.height || 70) * 0.3 + borderWidth / 2} Z`}
+                          fill={backgroundStyle === 'gradient' ? `url(#octagon-bg-${node.id})` : backgroundColor}
+                          stroke={borderStyle === 'gradient' ? `url(#octagon-border-${node.id})` : borderColor}
+                          strokeWidth={borderStyle === 'none' ? 0 : borderWidth}
+                          strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
+                        />
+                      </svg>
+                      {node.label && (
+                        <div className={`absolute inset-0 flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-2`}>
+                          <p 
+                            className={`text-xs ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
+                            style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
+                            onDoubleClick={handleLabelDoubleClick}
+                          >
+                            {node.label}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Jigsaw */}
+                  {(node.type === 'generic.object.jigsaw' || node.type?.endsWith('.jigsaw')) && (
+                    <div 
+                      key={`gradient-${gradientAngle}`}
+                      className="relative" 
+                      style={{ 
+                        width: node.width || 80, 
+                        height: node.height || 80, 
+                        minWidth: node.width || 80, 
+                        minHeight: node.height || 80,
+                        margin: hasShadow ? 4 : 0,
+                        ...(hasShadow && { 
+                          filter: 'drop-shadow(0 20px 25px rgba(0, 0, 0, 0.2)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.04))'
+                        })
+                      }}>
+                      <svg 
+                        width={node.width || 80} 
+                        height={node.height || 80}
+                        style={{ display: 'block' }}
+                      >
+                        <defs>
+                            {backgroundStyle === 'gradient' && (() => {
+                              const coords = getGradientCoordinates(gradientAngle);
+                              return (
+                                <linearGradient id={`jigsaw-bg-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                                  <stop offset="0%" stopColor={backgroundColors[0]} />
+                                  <stop offset="100%" stopColor={backgroundColors[1]} />
+                                </linearGradient>
+                              );
+                            })()}
+                            {borderStyle === 'gradient' && (() => {
+                              const coords = getGradientCoordinates(gradientAngle);
+                              return (
+                                <linearGradient id={`jigsaw-border-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                                  <stop offset="0%" stopColor={borderColors[0]} />
+                                  <stop offset="100%" stopColor={borderColors[1]} />
+                                </linearGradient>
+                              );
+                            })()}
+                        </defs>
+                        <path 
+                          d={`M${borderWidth / 2} 20 L20 20 C20 20 20 10 30 10 C40 10 40 20 40 20 L${(node.width || 80) - borderWidth / 2} 20 L${(node.width || 80) - borderWidth / 2} 30 C${(node.width || 80) - borderWidth / 2} 30 ${(node.width || 80) + 10} 30 ${(node.width || 80) + 10} 40 C${(node.width || 80) + 10} 50 ${(node.width || 80) - borderWidth / 2} 50 ${(node.width || 80) - borderWidth / 2} 50 L${(node.width || 80) - borderWidth / 2} ${(node.height || 80) - borderWidth / 2} L40 ${(node.height || 80) - borderWidth / 2} C40 ${(node.height || 80) - borderWidth / 2} 40 ${(node.height || 80) + 10} 30 ${(node.height || 80) + 10} C20 ${(node.height || 80) + 10} 20 ${(node.height || 80) - borderWidth / 2} 20 ${(node.height || 80) - borderWidth / 2} L${borderWidth / 2} ${(node.height || 80) - borderWidth / 2} Z`}
+                          fill={backgroundStyle === 'gradient' ? `url(#jigsaw-bg-${node.id})` : backgroundColor}
+                          stroke={borderStyle === 'gradient' ? `url(#jigsaw-border-${node.id})` : borderColor}
+                          strokeWidth={borderStyle === 'none' ? 0 : borderWidth}
+                          strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
+                        />
+                      </svg>
+                      {node.label && (
+                        <div className={`absolute inset-0 flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-2`}>
+                          <p 
+                            className={`text-xs ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
+                            style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
+                            onDoubleClick={handleLabelDoubleClick}
+                          >
+                            {node.label}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Arrowhead (Left-facing triangle) */}
+                  {(node.type === 'generic.object.arrowhead' || node.type?.endsWith('.arrowhead')) && (
+                    <div 
+                      key={`gradient-${gradientAngle}`}
+                      className="relative" 
+                      style={{ 
+                        width: node.width || 70, 
+                        height: node.height || 60, 
+                        minWidth: node.width || 70, 
+                        minHeight: node.height || 60,
+                        margin: hasShadow ? 4 : 0,
+                        ...(hasShadow && { 
+                          filter: 'drop-shadow(0 20px 25px rgba(0, 0, 0, 0.2)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.04))'
+                        })
+                      }}>
+                      <svg 
+                        width={node.width || 70} 
+                        height={node.height || 60}
+                        style={{ display: 'block' }}
+                      >
+                        <defs>
+                            {backgroundStyle === 'gradient' && (() => {
+                              const coords = getGradientCoordinates(gradientAngle);
+                              return (
+                                <linearGradient id={`arrowhead-bg-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                                  <stop offset="0%" stopColor={backgroundColors[0]} />
+                                  <stop offset="100%" stopColor={backgroundColors[1]} />
+                                </linearGradient>
+                              );
+                            })()}
+                            {borderStyle === 'gradient' && (() => {
+                              const coords = getGradientCoordinates(gradientAngle);
+                              return (
+                                <linearGradient id={`arrowhead-border-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                                  <stop offset="0%" stopColor={borderColors[0]} />
+                                  <stop offset="100%" stopColor={borderColors[1]} />
+                                </linearGradient>
+                              );
+                            })()}
+                        </defs>
+                        <path 
+                          d={`M${(node.width || 70) - borderWidth / 2} ${borderWidth / 2} L${(node.width || 70) - borderWidth / 2} ${(node.height || 60) - borderWidth / 2} L${borderWidth / 2} ${(node.height || 60) / 2} Z`}
+                          fill={backgroundStyle === 'gradient' ? `url(#arrowhead-bg-${node.id})` : backgroundColor}
+                          stroke={borderStyle === 'gradient' ? `url(#arrowhead-border-${node.id})` : borderColor}
+                          strokeWidth={borderStyle === 'none' ? 0 : borderWidth}
+                          strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
+                        />
+                      </svg>
+                      {node.label && (
+                        <div className={`absolute inset-0 flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-2`}>
+                          <p 
+                            className={`text-xs ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
+                            style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
+                            onDoubleClick={handleLabelDoubleClick}
+                          >
+                            {node.label}
+                          </p>
                         </div>
                       )}
                     </div>

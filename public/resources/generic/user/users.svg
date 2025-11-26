@@ -1,0 +1,12 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- Users icon with transparent background - scaled to fill space -->
+  <g transform="scale(1.3) translate(-8, -6)">
+    <!-- Front user -->
+    <circle cx="36" cy="24" r="6" fill="#6B7280" />
+    <path d="M36 34c-6.6 0-12 3.4-12 7.5v1.5h24v-1.5c0-4.1-5.4-7.5-12-7.5z" fill="#6B7280" />
+    
+    <!-- Back user -->
+    <circle cx="24" cy="20" r="5" fill="#9CA3AF" />
+    <path d="M24 28c-5.5 0-10 2.8-10 6.3v1.2h20v-1.2c0-3.5-4.5-6.3-10-6.3z" fill="#9CA3AF" />
+  </g>
+</svg>

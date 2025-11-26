@@ -1368,7 +1368,7 @@ export function ContextToolbar({
                     onClick={() => onAlignObjects?.('distribute-v')}
                   >
                     <AlignVerticalJustifyCenter className="h-4 w-4 mr-2" />
-                    Distribute Vertically
+                    Vertically
                   </Button>
                   <Button
                     variant="ghost"
@@ -1377,7 +1377,7 @@ export function ContextToolbar({
                     onClick={() => onAlignObjects?.('distribute-h')}
                   >
                     <AlignCenter className="h-4 w-4 mr-2" />
-                    Distribute Horizontally
+                    Horizontally
                   </Button>
                 </div>
               </div>

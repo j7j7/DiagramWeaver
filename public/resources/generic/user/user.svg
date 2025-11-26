@@ -1,0 +1,7 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- User icon with transparent background - scaled to fill space -->
+  <g transform="scale(1.4) translate(-9, -8)">
+    <circle cx="32" cy="20" r="8" fill="#6B7280" />
+    <path d="M32 32c-8.8 0-16 4.5-16 10v2h32v-2c0-5.5-7.2-10-16-10z" fill="#6B7280" />
+  </g>
+</svg>

@@ -1,7 +1,7 @@
 {
   "name": "Generic",
   "icon": "generic.png",
-   "totalResources": 18,
+   "totalResources": 33,
   "categories": {
     "grouping": {
       "name": "Grouping",
@@ -28,7 +28,15 @@
             {"name": "Rectangle", "file": "rectangle.png", "type": "shape"},
            {"name": "Triangle", "file": "triangle.png", "type": "shape"},
            {"name": "Star", "file": "star.png", "type": "shape"},
-           {"name": "Cloud", "file": "cloud.png", "type": "shape"}
+           {"name": "Cloud", "file": "cloud.png", "type": "shape"},
+           {"name": "Parallelogram", "file": "parallelogram.png", "type": "shape"},
+           {"name": "Trapezoid", "file": "trapezoid.png", "type": "shape"},
+           {"name": "Kite", "file": "kite.png", "type": "shape"},
+           {"name": "Hexagon", "file": "hexagon.png", "type": "shape"},
+           {"name": "Pentagon", "file": "pentagon.png", "type": "shape"},
+           {"name": "Octagon", "file": "octagon.png", "type": "shape"},
+           {"name": "Jigsaw", "file": "jigsaw.png", "type": "shape"},
+           {"name": "Arrowhead", "file": "arrowhead.png", "type": "shape"}
         ]
       },
     "user": {
@@ -59,7 +67,21 @@
           {"name": "CentOS", "file": "centos.png", "type": "os"},
           {"name": "Debian", "file": "debian.png", "type": "os"},
           {"name": "Red Hat", "file": "redhat.png", "type": "os"},
-          {"name": "SUSE", "file": "suse.png", "type": "os"}
+          {"name": "SUSE", "file": "suse.png", "type": "os"},
+          {"name": "Apple", "file": "apple.png", "type": "os"}
+      ]
+    },
+    "office": {
+      "name": "Office",
+      "path": "generic/office",
+      "resources": [
+          {"name": "Word", "file": "word.png", "type": "office"},
+          {"name": "Excel", "file": "excel.png", "type": "office"},
+          {"name": "Spreadsheet", "file": "spreadsheet.png", "type": "office"},
+          {"name": "PowerPoint", "file": "powerpoint.png", "type": "office"},
+          {"name": "Presentation", "file": "presentation.png", "type": "office"},
+          {"name": "Outlook", "file": "outlook.png", "type": "office"},
+          {"name": "Email", "file": "email.png", "type": "office"}
       ]
     }
   }

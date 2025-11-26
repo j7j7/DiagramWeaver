@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramGroupData } from "@/lib/types";
 import { ItemTypes } from "./draggable-item";
 import { generateGroupId, generateSequentialId } from "@/lib/id-generator";
+import { DEFAULT_THEMES } from "@/lib/theme-manager";
 import { 
   NODE_WIDTH, 
   NODE_HEIGHT, 
@@ -28,6 +29,13 @@ export function useCanvasOperations({
   onItemSelect,
   toast,
 }: UseCanvasOperationsOptions) {
+  // Function to get random theme for shapes
+  const getRandomTheme = () => {
+    const themes = DEFAULT_THEMES.filter(theme => theme.isBuiltIn);
+    const randomIndex = Math.floor(Math.random() * themes.length);
+    return themes[randomIndex].properties;
+  };
+
   const addNode = useCallback((item: any, position: { x: number; y: number }, targetGroupId: string | null) => {
     setDiagramData((prevData) => {
       let newZones = prevData.zones ? [...prevData.zones] : [];
@@ -53,13 +61,29 @@ export function useCanvasOperations({
                                itemType === 'generic.object.triangle' ||
                                itemType === 'generic.object.star' ||
                                itemType === 'generic.object.cloud' ||
+                               itemType === 'generic.object.parallelogram' ||
+                               itemType === 'generic.object.trapezoid' ||
+                               itemType === 'generic.object.kite' ||
+                               itemType === 'generic.object.hexagon' ||
+                               itemType === 'generic.object.pentagon' ||
+                               itemType === 'generic.object.octagon' ||
+                               itemType === 'generic.object.jigsaw' ||
+                               itemType === 'generic.object.arrowhead' ||
                                itemType?.endsWith('.square') ||
                                itemType?.endsWith('.circle') ||
                                itemType?.endsWith('.point') ||
                                itemType?.endsWith('.rectangle') ||
                                itemType?.endsWith('.triangle') ||
                                itemType?.endsWith('.star') ||
-                               itemType?.endsWith('.cloud');
+                               itemType?.endsWith('.cloud') ||
+                               itemType?.endsWith('.parallelogram') ||
+                               itemType?.endsWith('.trapezoid') ||
+                               itemType?.endsWith('.kite') ||
+                               itemType?.endsWith('.hexagon') ||
+                               itemType?.endsWith('.pentagon') ||
+                               itemType?.endsWith('.octagon') ||
+                               itemType?.endsWith('.jigsaw') ||
+                               itemType?.endsWith('.arrowhead');
       
       // Check if this is a textbox resource
       const isTextboxResource = itemType === 'generic.text.textbox' || itemType?.endsWith('.textbox');
@@ -93,9 +117,10 @@ export function useCanvasOperations({
         const newNode: DiagramNodeData = {
           id: generateSequentialId(itemType, prevData),
           type: itemType,
-          label: itemLabel,
-          // Don't set info/description for text and textbox resource types
-          ...(itemType !== 'generic.text.text' && itemType !== 'generic.text.textbox' && {
+          // Set label based on type - shapes get blank by default
+          label: isShapeResource ? '' : itemLabel,
+          // Don't set info/description for text and textbox resource types, or shapes
+          ...(itemType !== 'generic.text.text' && itemType !== 'generic.text.textbox' && !isShapeResource && {
             info: item.provider ? `${itemLabel} from ${item.provider}` : `A new ${itemLabel}`
           }),
           freeflow: isShapeResource ? true : undefined, // Shapes are always freeflow
@@ -112,9 +137,12 @@ export function useCanvasOperations({
             itemType === 'generic.object.cloud' ? 50 : 
             60
           ) : isTextboxResource ? 80 : undefined, // Initial height - larger for textbox
+          // Apply random theme to all shapes (except point which has special styling)
+          ...(isShapeResource && itemType !== 'generic.object.point' && {
+            ...getRandomTheme()
+          }),
           // Special defaults for point shape
           ...(itemType === 'generic.object.point' && {
-            label: '', // No label by default
             borderStyle: 'none', // No outline by default
             backgroundColor: '#808080' // Grey color by default
           })
