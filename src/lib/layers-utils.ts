@@ -37,7 +37,7 @@ export function ensureLayerExists(config: LayersConfig, layerName: string): Laye
     name: layerName,
     visible: true,
     locked: false,
-    color: generateLayerColor(config.layers.length)
+    color: generateLayerColor(config.layers)
   };
 
   return {
@@ -159,7 +159,7 @@ export function validateLayersConfig(config: LayersConfig): boolean {
 /**
  * Generate a color for a new layer based on index
  */
-function generateLayerColor(index: number): string {
+function generateLayerColor(existingLayers: LayerInfo[]): string {
   const colors = [
     '#ef4444', // red
     '#f97316', // orange
@@ -173,7 +173,19 @@ function generateLayerColor(index: number): string {
     '#84cc16', // lime
   ];
 
-  return colors[index % colors.length];
+  // Get colors already used by existing layers
+  const usedColors = existingLayers.map(layer => layer.color);
+  
+  // Find first unused color
+  for (const color of colors) {
+    if (!usedColors.includes(color)) {
+      return color;
+    }
+  }
+  
+  // If all colors are used, generate a random one
+  const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+  return randomColor;
 }
 
 /**
@@ -204,7 +216,7 @@ export function addLayer(config: LayersConfig, layerName: string): LayersConfig 
     name: layerName,
     visible: true,
     locked: false,
-    color: generateLayerColor(config.layers.length)
+    color: generateLayerColor(config.layers)
   };
 
   return {

@@ -45,6 +45,7 @@ interface LayersPanelProps {
   onSetActiveLayer: (layerId: string) => void;
   onReorderLayers: (fromIndex: number, toIndex: number) => void;
   onAssignSelectedItemsToLayer?: (layerId: string) => void;
+  onClose?: () => void;
   className?: string;
 }
 
@@ -59,6 +60,7 @@ export function LayersPanel({
   onSetActiveLayer,
   onReorderLayers,
   onAssignSelectedItemsToLayer,
+  onClose,
   className
 }: LayersPanelProps) {
   const [newLayerName, setNewLayerName] = useState('');
@@ -157,13 +159,25 @@ export function LayersPanel({
           <Layers className="w-5 h-5" />
           <h3 className="font-semibold">Layers</h3>
         </div>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => setShowAddLayerForm(!showAddLayerForm)}
-        >
-          <Plus className="w-4 h-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setShowAddLayerForm(!showAddLayerForm)}
+          >
+            <Plus className="w-4 h-4" />
+          </Button>
+          {onClose && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onClose}
+              className="h-8 w-8 p-0"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Add Layer Form */}
@@ -203,7 +217,7 @@ export function LayersPanel({
       )}
 
       {/* Layers List */}
-      <div className="max-h-96 overflow-y-auto">
+      <div className="h-64 overflow-y-auto">
         {layers.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
             <Layers className="w-12 h-12 mx-auto mb-2 opacity-50" />

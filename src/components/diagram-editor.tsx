@@ -1662,6 +1662,7 @@ export default function DiagramEditor() {
                         onSetActiveLayer={layers.setActiveLayerById}
                         onReorderLayers={layers.reorderLayers}
                         onAssignSelectedItemsToLayer={selectedItemIds.size > 0 ? (layerId: string) => layers.assignItemsToLayer(Array.from(selectedItemIds), layerId) : undefined}
+                        onClose={layers.toggleLayersPanel}
                       />
                     </div>
                   )}
