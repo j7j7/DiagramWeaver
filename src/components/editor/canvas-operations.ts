@@ -20,6 +20,7 @@ interface UseCanvasOperationsOptions {
   processedZones: PositionedGroup[];
   onItemSelect: (item: any | null) => void;
   toast: (options: { variant?: 'destructive' | 'default'; title: string; description: string }) => void;
+  iconBackgroundEnabled?: boolean;
 }
 
 export function useCanvasOperations({
@@ -28,6 +29,7 @@ export function useCanvasOperations({
   processedZones,
   onItemSelect,
   toast,
+  iconBackgroundEnabled = true,
 }: UseCanvasOperationsOptions) {
   // Function to get random theme for shapes
   const getRandomTheme = () => {
@@ -146,6 +148,10 @@ itemType === 'generic.object.jigsaw' ||
           ...(itemType === 'generic.object.point' && {
             borderStyle: 'none', // No outline by default
             backgroundColor: '#808080' // Grey color by default
+          }),
+          // Apply icon background setting
+          ...(!iconBackgroundEnabled && {
+            noIconBackground: true
           })
         };
         newNodes.push(newNode);

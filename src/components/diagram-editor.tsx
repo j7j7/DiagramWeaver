@@ -139,6 +139,7 @@ export default function DiagramEditor() {
   const [selectionCoordinates, setSelectionCoordinates] = React.useState<{ start: { x: number; y: number } | null; end: { x: number; y: number } | null } | undefined>(undefined);
   const [hoverEnabled, setHoverEnabled] = React.useState<boolean>(false);
   const [selectionAnimationEnabled, setSelectionAnimationEnabled] = React.useState<boolean>(false);
+  const [iconBackgroundEnabled, setIconBackgroundEnabled] = React.useState<boolean>(true);
   const [triggerTextStylingPanel, setTriggerTextStylingPanel] = React.useState<boolean>(false);
   const [triggerVisualStylingPanel, setTriggerVisualStylingPanel] = React.useState<boolean>(false);
   const [triggerConnectionSettingsPanel, setTriggerConnectionSettingsPanel] = React.useState<boolean>(false);
@@ -362,6 +363,11 @@ export default function DiagramEditor() {
     const savedWidth = localStorage.getItem('dw:jsonEditor:width');
     if (savedWidth !== null) {
       setJsonPanelWidth(parseInt(savedWidth, 10));
+    }
+    // Load icon background preference
+    const savedIconBackground = localStorage.getItem('dw:iconBackground:enabled');
+    if (savedIconBackground !== null) {
+      setIconBackgroundEnabled(savedIconBackground === 'true');
     }
   }, []);
 
@@ -1476,6 +1482,13 @@ export default function DiagramEditor() {
     }
   }, [jsonPanelWidth, isClient]);
 
+  // Persist icon background preference
+  React.useEffect(() => {
+    if (isClient) {
+      localStorage.setItem('dw:iconBackground:enabled', String(iconBackgroundEnabled));
+    }
+  }, [iconBackgroundEnabled, isClient]);
+
   const canPasteFromMenu = paletteClipboardItem != null || canPaste;
 
   return (
@@ -1572,6 +1585,8 @@ export default function DiagramEditor() {
                     onToggleHover={() => setHoverEnabled(!hoverEnabled)}
                     selectionAnimationEnabled={selectionAnimationEnabled}
                     onToggleSelectionAnimation={() => setSelectionAnimationEnabled(!selectionAnimationEnabled)}
+                    iconBackgroundEnabled={iconBackgroundEnabled}
+                    onToggleIconBackground={() => setIconBackgroundEnabled(!iconBackgroundEnabled)}
                     onAlignObjects={handleAlignObjects}
                     onThemeApplyToSelected={handleThemeApplyToSelected}
                     triggerTextStylingPanel={triggerTextStylingPanel}
@@ -1637,6 +1652,7 @@ export default function DiagramEditor() {
                     onExportComplete={() => setExportDialogOpen(false)}
                     hoverEnabled={hoverEnabled}
                     selectionAnimationEnabled={selectionAnimationEnabled}
+                    iconBackgroundEnabled={iconBackgroundEnabled}
                     onSelectAll={handleSelectAll}
                     onTriggerTextStylingPanel={() => setTriggerTextStylingPanel(true)}
                     onTriggerVisualStylingPanel={() => setTriggerVisualStylingPanel(true)}

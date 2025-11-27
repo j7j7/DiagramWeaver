@@ -58,6 +58,8 @@ interface TopMenuBarProps {
   onToggleHover?: () => void;
   selectionAnimationEnabled?: boolean;
   onToggleSelectionAnimation?: () => void;
+  iconBackgroundEnabled?: boolean;
+  onToggleIconBackground?: () => void;
   onAlignObjects?: (alignment: 'top' | 'center' | 'bottom' | 'v-middle' | 'left' | 'h-center' | 'right' | 'distribute-v' | 'distribute-h') => void;
   onThemeApplyToSelected?: (theme: DiagramTheme) => void;
   triggerTextStylingPanel?: boolean;
@@ -105,6 +107,8 @@ export function TopMenuBar({
   onToggleHover,
   selectionAnimationEnabled,
   onToggleSelectionAnimation,
+  iconBackgroundEnabled,
+  onToggleIconBackground,
   onAlignObjects,
   onThemeApplyToSelected,
   triggerTextStylingPanel = false,
@@ -316,6 +320,24 @@ onToggleLayersPanel,
                     <>
                       <Move className="mr-2 h-4 w-4" />
                       Enable Selection Animation
+                    </>
+                  )}
+                </MenubarItem>
+              </>
+            )}
+            {onToggleIconBackground !== undefined && (
+              <>
+                {(onUndo || onRedo || onFitToView || onToggleHover || onToggleSelectionAnimation) && <MenubarSeparator />}
+                <MenubarItem onClick={onToggleIconBackground}>
+                  {iconBackgroundEnabled ? (
+                    <>
+                      <Move className="mr-2 h-4 w-4" />
+                      Disable Icon Background
+                    </>
+                  ) : (
+                    <>
+                      <Move className="mr-2 h-4 w-4" />
+                      Enable Icon Background
                     </>
                   )}
                 </MenubarItem>
