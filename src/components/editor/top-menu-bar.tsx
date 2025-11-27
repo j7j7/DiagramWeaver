@@ -56,6 +56,8 @@ interface TopMenuBarProps {
   mousePosition?: { x: number; y: number } | null;
   hoverEnabled?: boolean;
   onToggleHover?: () => void;
+  selectionAnimationEnabled?: boolean;
+  onToggleSelectionAnimation?: () => void;
   onAlignObjects?: (alignment: 'top' | 'center' | 'bottom' | 'v-middle' | 'left' | 'h-center' | 'right' | 'distribute-v' | 'distribute-h') => void;
   onThemeApplyToSelected?: (theme: DiagramTheme) => void;
   triggerTextStylingPanel?: boolean;
@@ -101,6 +103,8 @@ export function TopMenuBar({
   mousePosition,
   hoverEnabled,
   onToggleHover,
+  selectionAnimationEnabled,
+  onToggleSelectionAnimation,
   onAlignObjects,
   onThemeApplyToSelected,
   triggerTextStylingPanel = false,
@@ -114,6 +118,7 @@ onToggleLayersPanel,
   onVisualStylingPanelOpenChange,
   onResetConnectionSettingsTrigger,
 }: TopMenuBarProps) {
+  console.log('TopMenuBar props:', { selectionAnimationEnabled, onToggleSelectionAnimation });
   const [themeEditorOpen, setThemeEditorOpen] = React.useState(false);
   const [textStylingPanelOpen, setTextStylingPanelOpen] = React.useState(false);
   const [visualStylingPanelOpen, setVisualStylingPanelOpen] = React.useState(false);
@@ -298,10 +303,24 @@ onToggleLayersPanel,
                 </MenubarItem>
               </>
             )}
-            <>
-              {(onUndo || onRedo || onFitToView || onToggleHover) && <MenubarSeparator />}
-
-            </>
+            {onToggleSelectionAnimation !== undefined && (
+              <>
+                {(onUndo || onRedo || onFitToView || onToggleHover) && <MenubarSeparator />}
+                <MenubarItem onClick={onToggleSelectionAnimation}>
+                  {selectionAnimationEnabled ? (
+                    <>
+                      <Move className="mr-2 h-4 w-4" />
+                      Disable Selection Animation
+                    </>
+                  ) : (
+                    <>
+                      <Move className="mr-2 h-4 w-4" />
+                      Enable Selection Animation
+                    </>
+                  )}
+                </MenubarItem>
+              </>
+            )}
             {onTransformChange && (
               <>
                 {(onUndo || onRedo || onFitToView) && <MenubarSeparator />}

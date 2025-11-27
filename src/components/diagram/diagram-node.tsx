@@ -125,10 +125,11 @@ interface DiagramNodeProps {
   onPositionUpdate?: (nodeId: string, x: number, y: number) => void;
   onDraggingChange?: (isDragging: boolean) => void;
   hoverEnabled?: boolean;
+  selectionAnimationEnabled?: boolean;
   animationOffset?: { x: number; y: number };
 }
 
-export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, onClick, onContextMenu, onLabelUpdate, onResize, onPositionUpdate, onDraggingChange, hoverEnabled = true, animationOffset = { x: 0, y: 0 } }: DiagramNodeProps) {
+export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, onClick, onContextMenu, onLabelUpdate, onResize, onPositionUpdate, onDraggingChange, hoverEnabled = true, selectionAnimationEnabled = false, animationOffset = { x: 0, y: 0 } }: DiagramNodeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [editText, setEditText] = useState(node.label || '');
@@ -475,7 +476,7 @@ return (
       className={cn(
         "absolute group transition-transform duration-200 ease-in-out rounded-lg",
         !(isDragging || isTouchDragging) && "hover:scale-105",
-        (isSelected || isHighlighted || isMultiSelected) && "node-glow-pulse drop-shadow-md",
+        (isSelected || isHighlighted || isMultiSelected) && `${selectionAnimationEnabled ? "node-glow-pulse" : "node-glow-static"} drop-shadow-md`,
         (isDragging || isTouchDragging) && "opacity-50 cursor-grabbing",
         isTargetable && "cursor-crosshair opacity-70 hover:opacity-100"
         )}

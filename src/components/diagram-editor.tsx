@@ -138,6 +138,7 @@ export default function DiagramEditor() {
   const [mousePosition, setMousePosition] = React.useState<{ x: number; y: number } | null>(null);
   const [selectionCoordinates, setSelectionCoordinates] = React.useState<{ start: { x: number; y: number } | null; end: { x: number; y: number } | null } | undefined>(undefined);
   const [hoverEnabled, setHoverEnabled] = React.useState<boolean>(false);
+  const [selectionAnimationEnabled, setSelectionAnimationEnabled] = React.useState<boolean>(false);
   const [triggerTextStylingPanel, setTriggerTextStylingPanel] = React.useState<boolean>(false);
   const [triggerVisualStylingPanel, setTriggerVisualStylingPanel] = React.useState<boolean>(false);
   const [triggerConnectionSettingsPanel, setTriggerConnectionSettingsPanel] = React.useState<boolean>(false);
@@ -1569,6 +1570,8 @@ export default function DiagramEditor() {
                     mousePosition={mousePosition}
                     hoverEnabled={hoverEnabled}
                     onToggleHover={() => setHoverEnabled(!hoverEnabled)}
+                    selectionAnimationEnabled={selectionAnimationEnabled}
+                    onToggleSelectionAnimation={() => setSelectionAnimationEnabled(!selectionAnimationEnabled)}
                     onAlignObjects={handleAlignObjects}
                     onThemeApplyToSelected={handleThemeApplyToSelected}
                     triggerTextStylingPanel={triggerTextStylingPanel}
@@ -1633,6 +1636,7 @@ export default function DiagramEditor() {
                     onSelectionChange={setSelectionCoordinates}
                     onExportComplete={() => setExportDialogOpen(false)}
                     hoverEnabled={hoverEnabled}
+                    selectionAnimationEnabled={selectionAnimationEnabled}
                     onSelectAll={handleSelectAll}
                     onTriggerTextStylingPanel={() => setTriggerTextStylingPanel(true)}
                     onTriggerVisualStylingPanel={() => setTriggerVisualStylingPanel(true)}

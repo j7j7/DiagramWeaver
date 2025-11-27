@@ -64,6 +64,7 @@ interface EditorCanvasProps {
   onSelectionChange?: (selection: { start: { x: number; y: number } | null; end: { x: number; y: number } | null }) => void;
   onExportComplete?: () => void;
   hoverEnabled?: boolean;
+  selectionAnimationEnabled?: boolean;
   onSelectAll?: () => void;
   onTriggerTextStylingPanel?: () => void;
   onTriggerVisualStylingPanel?: () => void;
@@ -88,7 +89,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, selectionAnimationEnabled = false, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers }: EditorCanvasProps,
   ref
 ) {
   // ============================================================================
@@ -145,30 +146,34 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   // Create animated versions of nodes and zones lookup maps
   const animatedNodesById = useMemo(() => {
     const result = { ...nodesById };
-    Object.entries(animationOffsets).forEach(([nodeId, offset]) => {
-      const node = result[nodeId];
-      if (node) {
-        result[nodeId] = {
-          ...node,
-          x: node.x + offset.x,
-          y: node.y + offset.y
-        };
-      }
-    });
+    if (selectionAnimationEnabled) {
+      Object.entries(animationOffsets).forEach(([nodeId, offset]) => {
+        const node = result[nodeId];
+        if (node) {
+          result[nodeId] = {
+            ...node,
+            x: node.x + offset.x,
+            y: node.y + offset.y
+          };
+        }
+      });
+    }
     return result;
-  }, [nodesById, animationOffsets]);
+  }, [nodesById, animationOffsets, selectionAnimationEnabled]);
 
   const animatedZonesById = useMemo(() => {
     const result = { ...zonesById };
-    Object.entries(animationOffsets).forEach(([nodeId, offset]) => {
-      // Check if this is a zone that contains animated nodes
-      const zone = Object.values(result).find(z => 
-        z.type === 'zone' && (z as any).children?.includes(nodeId)
-      );
-      // For now, we'll skip zone animation as it's more complex
-    });
+    if (selectionAnimationEnabled) {
+      Object.entries(animationOffsets).forEach(([nodeId, offset]) => {
+        // Check if this is a zone that contains animated nodes
+        const zone = Object.values(result).find(z => 
+          z.type === 'zone' && (z as any).children?.includes(nodeId)
+        );
+        // For now, we'll skip zone animation as it's more complex
+      });
+    }
     return result;
-  }, [zonesById, animationOffsets]);
+  }, [zonesById, animationOffsets, selectionAnimationEnabled]);
   
   // ============================================================================
   // HOOK: useCanvasTransform
@@ -714,7 +719,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   onLabelUpdate={onLabelUpdate} // Allows editing node labels
                   onDraggingChange={onDraggingChange} // Notifies parent of drag state
                   hoverEnabled={hoverEnabled} // Controls hover effects
-                  animationOffset={animationOffsets[node.id] || { x: 0, y: 0 }}
+                  selectionAnimationEnabled={selectionAnimationEnabled} // Controls selection animation
+                  animationOffset={selectionAnimationEnabled ? (animationOffsets[node.id] || { x: 0, y: 0 }) : { x: 0, y: 0 }}
                 />
               ));
             })()}

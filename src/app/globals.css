@@ -207,3 +207,8 @@
 .node-glow-pulse {
   animation: pulse-glow 1s ease-in-out infinite;
 }
+
+.node-glow-static {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.8),
+              0 0 40px rgba(59, 130, 246, 0.4);
+}
