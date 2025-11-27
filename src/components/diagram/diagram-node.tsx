@@ -279,8 +279,8 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
   
   const isTextNode = node.type === 'generic.text.text';
   const isTextboxNode = node.type === 'generic.text.textbox';
-  const isShapeNode = node.type === 'generic.object.square' || node.type === 'generic.object.circle' || node.type === 'generic.object.point' || node.type === 'generic.object.rectangle' || node.type === 'generic.object.triangle' || node.type === 'generic.object.star' || node.type === 'generic.object.cloud' || node.type === 'generic.object.parallelogram' || node.type === 'generic.object.trapezoid' || node.type === 'generic.object.kite' || node.type === 'generic.object.hexagon' || node.type === 'generic.object.pentagon' || node.type === 'generic.object.octagon' || node.type === 'generic.object.jigsaw' || node.type === 'generic.object.arrowhead' ||
-                      node.type?.endsWith('.square') || node.type?.endsWith('.circle') || node.type?.endsWith('.point') || node.type?.endsWith('.rectangle') || node.type?.endsWith('.triangle') || node.type?.endsWith('.star') || node.type?.endsWith('.cloud') || node.type?.endsWith('.parallelogram') || node.type?.endsWith('.trapezoid') || node.type?.endsWith('.kite') || node.type?.endsWith('.hexagon') || node.type?.endsWith('.pentagon') || node.type?.endsWith('.octagon') || node.type?.endsWith('.jigsaw') || node.type?.endsWith('.arrowhead');
+  const isShapeNode = node.type === 'generic.object.square' || node.type === 'generic.object.circle' || node.type === 'generic.object.point' || node.type === 'generic.object.rectangle' || node.type === 'generic.object.triangle' || node.type === 'generic.object.star' || node.type === 'generic.object.cloud' || node.type === 'generic.object.parallelogram' || node.type === 'generic.object.trapezoid' || node.type === 'generic.object.kite' || node.type === 'generic.object.hexagon' || node.type === 'generic.object.pentagon' || node.type === 'generic.object.octagon' || node.type === 'generic.object.jigsaw' || node.type === 'generic.object.arrowhead' || node.type === 'generic.object.chevron' ||
+                      node.type?.endsWith('.square') || node.type?.endsWith('.circle') || node.type?.endsWith('.point') || node.type?.endsWith('.rectangle') || node.type?.endsWith('.triangle') || node.type?.endsWith('.star') || node.type?.endsWith('.cloud') || node.type?.endsWith('.parallelogram') || node.type?.endsWith('.trapezoid') || node.type?.endsWith('.kite') || node.type?.endsWith('.hexagon') || node.type?.endsWith('.pentagon') || node.type?.endsWith('.octagon') || node.type?.endsWith('.jigsaw') || node.type?.endsWith('.arrowhead') || node.type?.endsWith('.chevron');
   const isPointNode = node.type === 'generic.object.point' || node.type?.endsWith('.point');
   const isRotatableNode = isTextNode  || isTextboxNode || isShapeNode;
   const nodeHeight = calculateNodeHeight(node.label || '', node.type, node.sizeMode, node.height);
@@ -1596,6 +1596,196 @@ return (
                     </div>
                   )}
 
+                  {/* Chevron */}
+                  {(node.type === 'generic.object.chevron' || node.type?.endsWith('.chevron')) && (
+                    <div 
+                      key={`gradient-${gradientAngle}`}
+                      className="relative" 
+                      style={{ 
+                        width: node.width || 80, 
+                        height: node.height || 60, 
+                        minWidth: node.width || 80, 
+                        minHeight: node.height || 60,
+                        margin: hasShadow ? 4 : 0,
+                        ...(hasShadow && { 
+                          filter: 'drop-shadow(0 20px 25px rgba(0, 0, 0, 0.2)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.04))'
+                        })
+                      }}>
+                      <svg 
+                        width={node.width || 80} 
+                        height={node.height || 60}
+                        style={{ display: 'block' }}
+                      >
+                        <defs>
+                            {backgroundStyle === 'gradient' && (() => {
+                              const coords = getGradientCoordinates(gradientAngle);
+                              return (
+                                <linearGradient id={`chevron-bg-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                                  <stop offset="0%" stopColor={backgroundColors[0]} />
+                                  <stop offset="100%" stopColor={backgroundColors[1]} />
+                                </linearGradient>
+                              );
+                            })()}
+                            {borderStyle === 'gradient' && (() => {
+                              const coords = getGradientCoordinates(gradientAngle);
+                              return (
+                                <linearGradient id={`chevron-border-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                                  <stop offset="0%" stopColor={borderColors[0]} />
+                                  <stop offset="100%" stopColor={borderColors[1]} />
+                                </linearGradient>
+                              );
+                            })()}
+                        </defs>
+                         <path 
+                           d={`M${borderWidth / 2} ${(node.height || 60) * 0.13} L${(node.width || 80) * 0.3} ${(node.height || 60) / 2} L${borderWidth / 2} ${(node.height || 60) * 0.87} L${(node.width || 80) * 0.7} ${(node.height || 60) * 0.87} L${(node.width || 80) - borderWidth / 2} ${(node.height || 60) / 2} L${(node.width || 80) * 0.7} ${(node.height || 60) * 0.13} Z`}
+                           fill={backgroundStyle === 'gradient' ? `url(#chevron-bg-${node.id})` : backgroundColor}
+                           stroke={borderStyle === 'gradient' ? `url(#chevron-border-${node.id})` : borderColor}
+                           strokeWidth={borderStyle === 'none' ? 0 : borderWidth}
+                           strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
+                         />
+                       </svg>
+                       {/* Text inside chevron - positioned in center */}
+                       {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
+                         <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)} pt-2`}>
+                           {isEditingLabel ? (
+                             <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
+                               <input
+                                 ref={inputRef}
+                                 id={`node-input-${node.id}`}
+                                 type="text"
+                                 value={editText}
+                                 onChange={(e) => setEditText(e.target.value)}
+                                 onBlur={handleLabelSubmit}
+                                 onKeyDown={(e) => handleLabelKeyDown(e, false)}
+                                 className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none`}
+                                 style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
+                                 onClick={(e) => e.stopPropagation()}
+                               />
+                             </div>
+                           ) : (
+                             <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
+                               <p 
+                                 className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
+                                 style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
+                                 onDoubleClick={handleLabelDoubleClick}
+                               >
+                                 {node.label}
+                               </p>
+                             </div>
+                           )}
+                         </div>
+                       )}
+                       {/* Text outside chevron - positioned above */}
+                       {((node as any).textPosition === 'outside' || (node as any).textPosition === 'top') && ((node as any).textVerticalPosition === 'top' || !(node as any).textVerticalPosition) && node.label && (
+                         <div className={`absolute -top-6 left-0 right-0 flex justify-center`}>
+                           {isEditingLabel ? (
+                             <input
+                               ref={inputRef}
+                               id={`node-input-${node.id}`}
+                               type="text"
+                               value={editText}
+                               onChange={(e) => setEditText(e.target.value)}
+                               onBlur={handleLabelSubmit}
+                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
+                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none text-center`}
+                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
+                               onClick={(e) => e.stopPropagation()}
+                             />
+                           ) : (
+                             <p 
+                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text text-center w-full`}
+                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
+                               onDoubleClick={handleLabelDoubleClick}
+                             >
+                               {node.label}
+                             </p>
+                           )}
+                         </div>
+                       )}
+                       {/* Text outside chevron - positioned below */}
+                       {((node as any).textPosition === 'outside' || (node as any).textPosition === 'bottom') && ((node as any).textVerticalPosition === 'bottom' || !(node as any).textVerticalPosition) && node.label && (
+                         <div className={`absolute -bottom-6 left-0 right-0 flex justify-center`}>
+                           {isEditingLabel ? (
+                             <input
+                               ref={inputRef}
+                               id={`node-input-${node.id}`}
+                               type="text"
+                               value={editText}
+                               onChange={(e) => setEditText(e.target.value)}
+                               onBlur={handleLabelSubmit}
+                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
+                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none text-center`}
+                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
+                               onClick={(e) => e.stopPropagation()}
+                             />
+                           ) : (
+                             <p 
+                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text text-center w-full`}
+                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
+                               onDoubleClick={handleLabelDoubleClick}
+                             >
+                               {node.label}
+                             </p>
+                           )}
+                         </div>
+                       )}
+                       {/* Text outside chevron - positioned left */}
+                       {(node as any).textPosition === 'left' && node.label && (
+                         <div className={`absolute top-0 -left-2 bottom-0 flex items-center`}>
+                           {isEditingLabel ? (
+                             <input
+                               ref={inputRef}
+                               id={`node-input-${node.id}`}
+                               type="text"
+                               value={editText}
+                               onChange={(e) => setEditText(e.target.value)}
+                               onBlur={handleLabelSubmit}
+                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
+                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-auto outline-none text-right`}
+                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
+                               onClick={(e) => e.stopPropagation()}
+                             />
+                           ) : (
+                             <p 
+                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text text-right whitespace-nowrap`}
+                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
+                               onDoubleClick={handleLabelDoubleClick}
+                             >
+                               {node.label}
+                             </p>
+                           )}
+                         </div>
+                       )}
+                       {/* Text outside chevron - positioned right */}
+                       {(node as any).textPosition === 'right' && node.label && (
+                         <div className={`absolute top-0 -right-2 bottom-0 flex items-center`}>
+                           {isEditingLabel ? (
+                             <input
+                               ref={inputRef}
+                               id={`node-input-${node.id}`}
+                               type="text"
+                               value={editText}
+                               onChange={(e) => setEditText(e.target.value)}
+                               onBlur={handleLabelSubmit}
+                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
+                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-auto outline-none text-left`}
+                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
+                               onClick={(e) => e.stopPropagation()}
+                             />
+                           ) : (
+                             <p 
+                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text text-left whitespace-nowrap`}
+                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
+                               onDoubleClick={handleLabelDoubleClick}
+                             >
+                               {node.label}
+                             </p>
+                           )}
+                         </div>
+                       )}
+                    </div>
+                  )}
+
                   {/* Arrowhead (Left-facing triangle) */}
                   {(node.type === 'generic.object.arrowhead' || node.type?.endsWith('.arrowhead')) && (
                     <div 
@@ -1636,25 +1826,153 @@ return (
                               );
                             })()}
                         </defs>
-                        <path 
-                          d={`M${(node.width || 70) - borderWidth / 2} ${borderWidth / 2} L${(node.width || 70) - borderWidth / 2} ${(node.height || 60) - borderWidth / 2} L${borderWidth / 2} ${(node.height || 60) / 2} Z`}
-                          fill={backgroundStyle === 'gradient' ? `url(#arrowhead-bg-${node.id})` : backgroundColor}
-                          stroke={borderStyle === 'gradient' ? `url(#arrowhead-border-${node.id})` : borderColor}
-                          strokeWidth={borderStyle === 'none' ? 0 : borderWidth}
-                          strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
-                        />
-                      </svg>
-                      {node.label && (
-                        <div className={`absolute inset-0 flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-2`}>
-                          <p 
-                            className={`text-xs ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
-                            style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
-                            onDoubleClick={handleLabelDoubleClick}
-                          >
-                            {node.label}
-                          </p>
-                        </div>
-                      )}
+                         <path 
+                           d={`M${(node.width || 70) - borderWidth / 2} ${borderWidth / 2} L${(node.width || 70) - borderWidth / 2} ${(node.height || 60) - borderWidth / 2} L${borderWidth / 2} ${(node.height || 60) / 2} Z`}
+                           fill={backgroundStyle === 'gradient' ? `url(#arrowhead-bg-${node.id})` : backgroundColor}
+                           stroke={borderStyle === 'gradient' ? `url(#arrowhead-border-${node.id})` : borderColor}
+                           strokeWidth={borderStyle === 'none' ? 0 : borderWidth}
+                           strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
+                         />
+                       </svg>
+                       {/* Text inside arrowhead - positioned in center */}
+                       {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
+                         <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)} pt-2`}>
+                           {isEditingLabel ? (
+                             <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
+                               <input
+                                 ref={inputRef}
+                                 id={`node-input-${node.id}`}
+                                 type="text"
+                                 value={editText}
+                                 onChange={(e) => setEditText(e.target.value)}
+                                 onBlur={handleLabelSubmit}
+                                 onKeyDown={(e) => handleLabelKeyDown(e, false)}
+                                 className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none`}
+                                 style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
+                                 onClick={(e) => e.stopPropagation()}
+                               />
+                             </div>
+                           ) : (
+                             <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
+                               <p 
+                                 className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
+                                 style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
+                                 onDoubleClick={handleLabelDoubleClick}
+                               >
+                                 {node.label}
+                               </p>
+                             </div>
+                           )}
+                         </div>
+                       )}
+                       {/* Text outside arrowhead - positioned above */}
+                       {((node as any).textPosition === 'outside' || (node as any).textPosition === 'top') && ((node as any).textVerticalPosition === 'top' || !(node as any).textVerticalPosition) && node.label && (
+                         <div className={`absolute -top-6 left-0 right-0 flex justify-center`}>
+                           {isEditingLabel ? (
+                             <input
+                               ref={inputRef}
+                               id={`node-input-${node.id}`}
+                               type="text"
+                               value={editText}
+                               onChange={(e) => setEditText(e.target.value)}
+                               onBlur={handleLabelSubmit}
+                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
+                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none text-center`}
+                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
+                               onClick={(e) => e.stopPropagation()}
+                             />
+                           ) : (
+                             <p 
+                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text text-center w-full`}
+                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
+                               onDoubleClick={handleLabelDoubleClick}
+                             >
+                               {node.label}
+                             </p>
+                           )}
+                         </div>
+                       )}
+                       {/* Text outside arrowhead - positioned below */}
+                       {((node as any).textPosition === 'outside' || (node as any).textPosition === 'bottom') && ((node as any).textVerticalPosition === 'bottom' || !(node as any).textVerticalPosition) && node.label && (
+                         <div className={`absolute -bottom-6 left-0 right-0 flex justify-center`}>
+                           {isEditingLabel ? (
+                             <input
+                               ref={inputRef}
+                               id={`node-input-${node.id}`}
+                               type="text"
+                               value={editText}
+                               onChange={(e) => setEditText(e.target.value)}
+                               onBlur={handleLabelSubmit}
+                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
+                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none text-center`}
+                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
+                               onClick={(e) => e.stopPropagation()}
+                             />
+                           ) : (
+                             <p 
+                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text text-center w-full`}
+                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
+                               onDoubleClick={handleLabelDoubleClick}
+                             >
+                               {node.label}
+                             </p>
+                           )}
+                         </div>
+                       )}
+                       {/* Text outside arrowhead - positioned left */}
+                       {(node as any).textPosition === 'left' && node.label && (
+                         <div className={`absolute top-0 -left-2 bottom-0 flex items-center`}>
+                           {isEditingLabel ? (
+                             <input
+                               ref={inputRef}
+                               id={`node-input-${node.id}`}
+                               type="text"
+                               value={editText}
+                               onChange={(e) => setEditText(e.target.value)}
+                               onBlur={handleLabelSubmit}
+                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
+                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-auto outline-none text-right`}
+                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
+                               onClick={(e) => e.stopPropagation()}
+                             />
+                           ) : (
+                             <p 
+                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text text-right whitespace-nowrap`}
+                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
+                               onDoubleClick={handleLabelDoubleClick}
+                             >
+                               {node.label}
+                             </p>
+                           )}
+                         </div>
+                       )}
+                       {/* Text outside arrowhead - positioned right */}
+                       {(node as any).textPosition === 'right' && node.label && (
+                         <div className={`absolute top-0 -right-2 bottom-0 flex items-center`}>
+                           {isEditingLabel ? (
+                             <input
+                               ref={inputRef}
+                               id={`node-input-${node.id}`}
+                               type="text"
+                               value={editText}
+                               onChange={(e) => setEditText(e.target.value)}
+                               onBlur={handleLabelSubmit}
+                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
+                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-auto outline-none text-left`}
+                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
+                               onClick={(e) => e.stopPropagation()}
+                             />
+                           ) : (
+                             <p 
+                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text text-left whitespace-nowrap`}
+                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
+                               onDoubleClick={handleLabelDoubleClick}
+                             >
+                               {node.label}
+                             </p>
+                           )}
+                         </div>
+                       )}
                     </div>
                   )}
                 </div>

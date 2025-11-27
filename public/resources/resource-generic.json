@@ -1,7 +1,7 @@
 {
   "name": "Generic",
   "icon": "generic.png",
-   "totalResources": 33,
+   "totalResources": 34,
   "categories": {
     "grouping": {
       "name": "Grouping",
@@ -35,8 +35,9 @@
            {"name": "Hexagon", "file": "hexagon.png", "type": "shape"},
            {"name": "Pentagon", "file": "pentagon.png", "type": "shape"},
            {"name": "Octagon", "file": "octagon.png", "type": "shape"},
-           {"name": "Jigsaw", "file": "jigsaw.png", "type": "shape"},
-           {"name": "Arrowhead", "file": "arrowhead.png", "type": "shape"}
+{"name": "Jigsaw", "file": "jigsaw.png", "type": "shape"},
+            {"name": "Arrowhead", "file": "arrowhead.png", "type": "shape"},
+            {"name": "Chevron", "file": "chevron.png", "type": "shape"}
         ]
       },
     "user": {

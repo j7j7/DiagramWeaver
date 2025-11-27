@@ -75,6 +75,7 @@ export class OllamaService {
 - generic.object.triangle - Triangle shape
 - generic.object.star - Star shape
 - generic.object.cloud - Cloud shape
+- generic.object.chevron - Chevron shape
 
 **Resource Nodes (format: {provider}.{category}.{resource}):**
 

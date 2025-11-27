@@ -67,9 +67,10 @@ export function useCanvasOperations({
                                itemType === 'generic.object.hexagon' ||
                                itemType === 'generic.object.pentagon' ||
                                itemType === 'generic.object.octagon' ||
-                               itemType === 'generic.object.jigsaw' ||
-                               itemType === 'generic.object.arrowhead' ||
-                               itemType?.endsWith('.square') ||
+itemType === 'generic.object.jigsaw' ||
+                                itemType === 'generic.object.arrowhead' ||
+                                itemType === 'generic.object.chevron' ||
+                                itemType?.endsWith('.square') ||
                                itemType?.endsWith('.circle') ||
                                itemType?.endsWith('.point') ||
                                itemType?.endsWith('.rectangle') ||
@@ -238,14 +239,16 @@ export function useCanvasOperations({
                              node.type === 'generic.object.rectangle' || 
                              node.type === 'generic.object.triangle' ||
                              node.type === 'generic.object.star' ||
-                             node.type === 'generic.object.cloud' ||
-                             node.type?.endsWith('.square') ||
+node.type === 'generic.object.cloud' ||
+                              node.type === 'generic.object.chevron' ||
+                              node.type?.endsWith('.square') ||
                              node.type?.endsWith('.circle') ||
                              node.type?.endsWith('.point') ||
                              node.type?.endsWith('.rectangle') ||
                              node.type?.endsWith('.triangle') ||
-                             node.type?.endsWith('.star') ||
-                             node.type?.endsWith('.cloud');
+node.type?.endsWith('.star') ||
+                              node.type?.endsWith('.cloud') ||
+                              node.type?.endsWith('.chevron');
           
           if (node.type === 'generic.text.textbox') {
             minWidth = 40;

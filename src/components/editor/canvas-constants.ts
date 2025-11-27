@@ -32,13 +32,15 @@ export const measureNodeDims = (n: PositionedNode) => {
     n.type === 'generic.object.triangle' ||
     n.type === 'generic.object.star' ||
     n.type === 'generic.object.cloud' ||
+    n.type === 'generic.object.chevron' ||
     n.type?.endsWith('.square') ||
     n.type?.endsWith('.circle') ||
     n.type?.endsWith('.point') ||
     n.type?.endsWith('.rectangle') ||
     n.type?.endsWith('.triangle') ||
     n.type?.endsWith('.star') ||
-    n.type?.endsWith('.cloud');
+    n.type?.endsWith('.cloud') ||
+    n.type?.endsWith('.chevron');
   const label = (n.label || '').toString();
 
   // Use custom dimensions if sizeMode is 'custom' and dimensions are provided
