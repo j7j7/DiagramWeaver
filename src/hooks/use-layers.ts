@@ -39,13 +39,28 @@ export function useLayers({ diagramData, setDiagramData, toast }: UseLayersOptio
   });
 
   // State for layers panel visibility with localStorage persistence
-  const [layersPanelOpen, setLayersPanelOpen] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('dw:layersPanel:open');
-      return saved !== null ? JSON.parse(saved) : false;
+  const [layersPanelOpen, setLayersPanelOpen] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  // Set client-side flag after mount
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Load layers panel state from localStorage after mount (client-side only)
+  useEffect(() => {
+    if (!isClient) return;
+    
+    // Only access localStorage on client side
+    const saved = localStorage.getItem('dw:layersPanel:open');
+    if (saved !== null) {
+      try {
+        setLayersPanelOpen(JSON.parse(saved));
+      } catch (e) {
+        // Ignore parsing errors
+      }
     }
-    return false;
-  });
+  }, [isClient]);
 
   // Sync layers config with diagram data
   useEffect(() => {
@@ -56,10 +71,10 @@ export function useLayers({ diagramData, setDiagramData, toast }: UseLayersOptio
 
   // Save layers panel state to localStorage
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (isClient && typeof window !== 'undefined') {
       localStorage.setItem('dw:layersPanel:open', JSON.stringify(layersPanelOpen));
     }
-  }, [layersPanelOpen]);
+  }, [layersPanelOpen, isClient]);
 
   // Update diagram data when layers config changes
   const updateDiagramDataWithLayers = useCallback((newLayersConfig: LayersConfig) => {

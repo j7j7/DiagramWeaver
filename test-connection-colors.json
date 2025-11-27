@@ -1,0 +1,40 @@
+{
+  "nodes": [
+    {
+      "id": "node1",
+      "type": "aws.compute.ec2",
+      "label": "Blue Node",
+      "x": 100,
+      "y": 100,
+      "lineColor": "#3b82f6"
+    },
+    {
+      "id": "node2", 
+      "type": "aws.compute.ec2",
+      "label": "Orange Node",
+      "x": 300,
+      "y": 100,
+      "lineColor": "#f97316"
+    },
+    {
+      "id": "node3",
+      "type": "aws.compute.ec2", 
+      "label": "Green Node",
+      "x": 500,
+      "y": 100,
+      "lineColor": "#22c55e"
+    }
+  ],
+  "connections": [
+    {
+      "from": "node1",
+      "to": "node2"
+    },
+    {
+      "from": "node2", 
+      "to": "node3",
+      "color": "#ef4444"
+    }
+  ],
+  "zones": []
+}

@@ -67,6 +67,7 @@ interface EditorCanvasProps {
   onTriggerTextStylingPanel?: () => void;
   onTriggerVisualStylingPanel?: () => void;
   onTriggerConnectionSettingsPanel?: () => void;
+  onResetConnectionSettingsTrigger?: () => void;
   layers?: {
     getAllLayers: () => Array<{id: string; name: string}>;
     getItemLayerById: (itemId: string) => string;
@@ -86,7 +87,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerConnectionSettingsPanel, layers }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers }: EditorCanvasProps,
   ref
 ) {
   // ============================================================================
@@ -158,10 +159,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   // ============================================================================
   // Manages right-click context menu state and position
   // - contextMenu: Current menu state (visible, x, y, itemType, itemId)
-  // - handleContextMenu: Opens menu at mouse position for an item
-  // - closeContextMenu: Closes the menu
+  // - handleContextMenu: Opens context menu at specific position
+  // - closeContextMenu: Closes the context menu
   // See: src/hooks/use-canvas-context-menu.ts
   const { contextMenu, handleContextMenu, closeContextMenu } = useCanvasContextMenu();
+  const [lastRightClickItemId, setLastRightClickItemId] = React.useState<string | null>(null);
+
+
 
   // ============================================================================
   // HOOK: useCanvasClipboard
@@ -218,6 +222,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     onBatchSelect,
     onSelectionChange,
     closeContextMenu,
+    onCloseConnectionSettingsPanel: onResetConnectionSettingsTrigger,
     isSelectionMode,
     pendingExportOptions,
     exportPng,
@@ -312,6 +317,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   const handleNodeClick = (e: React.MouseEvent, node: DiagramNodeData) => {
     e.stopPropagation();
     closeContextMenu();
+    onResetConnectionSettingsTrigger?.(); // Reset connection settings panel when clicking on a node
     if (isConnectMode) {
       onNodeClickInConnectMode(node); // In connect mode, clicking creates connection
     } else {
@@ -326,12 +332,16 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     if (selectedItemId !== node.id) {
       onItemSelect({ ...node, itemType: 'node' }, false);
     }
+    // Always reset connection settings trigger when opening context menu
+    onResetConnectionSettingsTrigger?.();
+    setLastRightClickItemId(node.id);
     handleContextMenu(e, node.id, 'node'); // Opens context menu
   }
 
   const handleZoneClick = (e: React.MouseEvent, zone: DiagramZoneData) => {
     e.stopPropagation();
     closeContextMenu();
+    onResetConnectionSettingsTrigger?.(); // Reset connection settings panel when clicking on a zone
     if (isConnectMode) {
       onNodeClickInConnectMode(zone as any); // Zones can also be connection targets
     } else {
@@ -346,6 +356,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     if (selectedItemId !== zone.id) {
       onItemSelect({ ...zone, itemType: 'zone' }, false);
     }
+    // Always reset connection settings trigger when opening context menu
+    onResetConnectionSettingsTrigger?.();
+    setLastRightClickItemId(zone.id);
     handleContextMenu(e, zone.id, 'zone');
   };
 

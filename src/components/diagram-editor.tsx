@@ -141,6 +141,7 @@ export default function DiagramEditor() {
   const [triggerTextStylingPanel, setTriggerTextStylingPanel] = React.useState<boolean>(false);
   const [triggerVisualStylingPanel, setTriggerVisualStylingPanel] = React.useState<boolean>(false);
   const [triggerConnectionSettingsPanel, setTriggerConnectionSettingsPanel] = React.useState<boolean>(false);
+  const [lastRightClickItemId, setLastRightClickItemId] = React.useState<string | null>(null);
   const [selectedResource, setSelectedResource] = React.useState<PaletteSelection | null>(null);
   const [paletteClipboardItem, setPaletteClipboardItem] = React.useState<any | null>(null);
   // Reset trigger states after they've been used
@@ -192,6 +193,8 @@ export default function DiagramEditor() {
   const isConnectMode = activeTab?.isConnectMode || false;
   const jsonPanelOpen = activeTab?.jsonPanelOpen || false;
   const canvasTransform = activeTab?.canvasTransform || { x: 0, y: 0, k: 1 };
+
+
 
   // Helper functions to update active tab
   const setDiagramData = React.useCallback((updater: DiagramData | ((prev: DiagramData) => DiagramData)) => {
@@ -1571,6 +1574,10 @@ export default function DiagramEditor() {
                     triggerTextStylingPanel={triggerTextStylingPanel}
                     triggerVisualStylingPanel={triggerVisualStylingPanel}
                     triggerConnectionSettingsPanel={triggerConnectionSettingsPanel}
+                    onCloseConnectionSettingsPanel={() => {
+                      // This will be passed down to close the connection settings panel
+                      // We need to emit an event or call a callback to top-menu-bar
+                    }}
                 />
                 {activeTabId && (
                   <TabBar
@@ -1630,6 +1637,8 @@ export default function DiagramEditor() {
                     onTriggerTextStylingPanel={() => setTriggerTextStylingPanel(true)}
                     onTriggerVisualStylingPanel={() => setTriggerVisualStylingPanel(true)}
                     onTriggerConnectionSettingsPanel={() => setTriggerConnectionSettingsPanel(true)}
+                    onResetConnectionSettingsTrigger={() => setTriggerConnectionSettingsPanel(false)}
+                    onCloseConnectionSettingsPanel={() => setConnectionSettingsPanelOpen(false)}
                     layers={{
                       getAllLayers: layers.getAllLayers,
                       getItemLayerById: layers.getItemLayerById,

@@ -61,6 +61,11 @@ interface TopMenuBarProps {
   triggerTextStylingPanel?: boolean;
   triggerVisualStylingPanel?: boolean;
   triggerConnectionSettingsPanel?: boolean;
+  onConnectionSettingsPanelOpenChange?: (open: boolean) => void;
+  onCloseConnectionSettingsPanel?: () => void;
+  onTextStylingPanelOpenChange?: (open: boolean) => void;
+  onVisualStylingPanelOpenChange?: (open: boolean) => void;
+  onResetConnectionSettingsTrigger?: () => void;
 }
 
 export function TopMenuBar({
@@ -101,13 +106,84 @@ export function TopMenuBar({
   triggerTextStylingPanel = false,
   triggerVisualStylingPanel = false,
   triggerConnectionSettingsPanel = false,
-  onToggleLayersPanel,
+onToggleLayersPanel,
   layersPanelOpen,
+  onConnectionSettingsPanelOpenChange,
+  onCloseConnectionSettingsPanel,
+  onTextStylingPanelOpenChange,
+  onVisualStylingPanelOpenChange,
+  onResetConnectionSettingsTrigger,
 }: TopMenuBarProps) {
   const [themeEditorOpen, setThemeEditorOpen] = React.useState(false);
   const [textStylingPanelOpen, setTextStylingPanelOpen] = React.useState(false);
   const [visualStylingPanelOpen, setVisualStylingPanelOpen] = React.useState(false);
   const [connectionSettingsPanelOpen, setConnectionSettingsPanelOpen] = React.useState(false);
+
+  // Function to close connection settings panel
+  const handleCloseConnectionSettingsPanel = () => {
+    setConnectionSettingsPanelOpen(false);
+    onConnectionSettingsPanelOpenChange?.(false);
+  };
+
+  // Handle trigger for connection settings panel
+  React.useEffect(() => {
+    if (triggerConnectionSettingsPanel) {
+      setConnectionSettingsPanelOpen(true);
+      onConnectionSettingsPanelOpenChange?.(true);
+      // Reset the trigger after handling
+      onResetConnectionSettingsTrigger?.();
+    }
+  }, [triggerConnectionSettingsPanel, onConnectionSettingsPanelOpenChange, onResetConnectionSettingsTrigger]);
+
+  // Handle trigger for text styling panel
+  React.useEffect(() => {
+    if (triggerTextStylingPanel) {
+      setTextStylingPanelOpen(true);
+      onTextStylingPanelOpenChange?.(true);
+    }
+  }, [triggerTextStylingPanel, onTextStylingPanelOpenChange]);
+
+  // Handle trigger for visual styling panel
+  React.useEffect(() => {
+    if (triggerVisualStylingPanel) {
+      setVisualStylingPanelOpen(true);
+      onVisualStylingPanelOpenChange?.(true);
+    }
+  }, [triggerVisualStylingPanel, onVisualStylingPanelOpenChange]);
+
+  // Close connection settings panel when clicking on a node (not when triggered by context menu)
+  React.useEffect(() => {
+    if (!triggerConnectionSettingsPanel && selectedItem) {
+      setConnectionSettingsPanelOpen(false);
+      onConnectionSettingsPanelOpenChange?.(false);
+    }
+  }, [selectedItem, triggerConnectionSettingsPanel, onConnectionSettingsPanelOpenChange]);
+
+  // Handle trigger for connection settings panel
+  React.useEffect(() => {
+    if (triggerConnectionSettingsPanel) {
+      setConnectionSettingsPanelOpen(true);
+      onConnectionSettingsPanelOpenChange?.(true);
+      // Reset the trigger after handling
+      onResetConnectionSettingsTrigger?.();
+    }
+  }, [triggerConnectionSettingsPanel, onConnectionSettingsPanelOpenChange, onResetConnectionSettingsTrigger]);
+
+  // Handle trigger for text styling panel
+  React.useEffect(() => {
+    if (triggerTextStylingPanel) {
+      setTextStylingPanelOpen(true);
+      onTextStylingPanelOpenChange?.(true);
+    }
+  }, [triggerTextStylingPanel, onTextStylingPanelOpenChange]);
+
+  // Handle trigger for visual styling panel
+  React.useEffect(() => {
+    if (triggerVisualStylingPanel) {
+      setVisualStylingPanelOpen(true);
+      onVisualStylingPanelOpenChange?.(true);
+    }
+  }, [triggerVisualStylingPanel, onVisualStylingPanelOpenChange]);
 
   // Handle external triggers for panels
   React.useEffect(() => {
@@ -122,11 +198,7 @@ export function TopMenuBar({
     }
   }, [triggerVisualStylingPanel, selectedItem]);
 
-  React.useEffect(() => {
-    if (triggerConnectionSettingsPanel && selectedItem) {
-      setConnectionSettingsPanelOpen(true);
-    }
-  }, [triggerConnectionSettingsPanel, selectedItem]);
+
   return (
     <div className="flex items-center border-b bg-card min-h-[2.5rem] overflow-x-auto">
       <Menubar className="rounded-none border-0 border-b-0 border-l-0 border-r-0 border-t-0 h-auto shrink-0">

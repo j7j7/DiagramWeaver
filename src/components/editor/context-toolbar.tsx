@@ -623,7 +623,18 @@ export function ContextToolbar({
                   ) : (
                     getAllConnections.map((connInfo, index) => {
                       const hasArrow = connInfo.connection.arrow === true || connInfo.connection.toArrow === true;
-                      const connectionColor = connInfo.connection.color || '#6b7280';
+                      
+                      // Get the actual connection color using the same inheritance logic as the rendered connection
+                      const fromNode = diagramData?.nodes.find(n => n.id === connInfo.connection.from) || 
+                                      diagramData?.zones?.find(z => z.id === connInfo.connection.from);
+                      const toNode = diagramData?.nodes.find(n => n.id === connInfo.connection.to) || 
+                                    diagramData?.zones?.find(z => z.id === connInfo.connection.to);
+                      
+                      const connectionColor = connInfo.connection.color || 
+                                            toNode?.lineColor || 
+                                            fromNode?.lineColor || 
+                                            '#6b7280';
+                      
                       const textPosition = connInfo.connection.textPosition ?? 50; // Default to 50%
                       const connectionText = connInfo.connection.text || '';
                       
@@ -756,6 +767,10 @@ export function ContextToolbar({
                                 onBlur={(e) => handleConnectionColorChange((e.target as HTMLInputElement).value, true)}
                                 className="h-7 w-12 p-1 cursor-pointer shrink-0"
                                 title="Pick color"
+                                style={{ 
+                                  backgroundColor: connectionColor,
+                                  borderColor: connectionColor === '#6b7280' ? '#d1d5db' : connectionColor
+                                }}
                               />
                               <Input
                                 type="text"

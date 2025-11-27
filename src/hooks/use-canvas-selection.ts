@@ -12,6 +12,7 @@ interface UseCanvasSelectionOptions {
   onBatchSelect?: (itemIds: string[]) => void;
   onSelectionChange?: (selection: { start: { x: number; y: number } | null; end: { x: number; y: number } | null }) => void;
   closeContextMenu: () => void;
+  onCloseConnectionSettingsPanel?: () => void;
   isSelectionMode: boolean;
   pendingExportOptions: { backgroundColor?: 'transparent' | 'white'; useSelection: boolean } | null;
   exportPng: (options?: { backgroundColor?: 'transparent' | 'white'; selectionArea?: { x: number; y: number; width: number; height: number } }) => Promise<void>;
@@ -28,6 +29,7 @@ export function useCanvasSelection({
   onBatchSelect,
   onSelectionChange,
   closeContextMenu,
+  onCloseConnectionSettingsPanel,
   isSelectionMode,
   pendingExportOptions,
   exportPng,
@@ -43,8 +45,9 @@ export function useCanvasSelection({
     if (target.closest('.absolute') === null && !justCompletedSelection) {
       onItemSelect(null);
       closeContextMenu();
+      onCloseConnectionSettingsPanel?.();
     }
-  }, [justCompletedSelection, onItemSelect, closeContextMenu]);
+  }, [justCompletedSelection, onItemSelect, closeContextMenu, onCloseConnectionSettingsPanel]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (isConnectMode) return;
