@@ -38,6 +38,7 @@ import { useCanvasExport } from "@/hooks/use-canvas-export";
 import { useCanvasContextMenu } from "@/hooks/use-canvas-context-menu";
 import { useCanvasOperations } from "./canvas-operations";
 import { CanvasConnections } from "./canvas-connections";
+import { useNodeAnimationOffsets } from "@/hooks/use-sine-wave-animation";
 import { CanvasArrowToggles } from "./canvas-arrow-toggles";
 import { CanvasConnectionText } from "./canvas-connection-text";
 
@@ -137,6 +138,37 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   
   // Client-side rendering state
   const [isClient, setIsClient] = useState(false);
+  
+  // Animation offsets for selected nodes
+  const animationOffsets = useNodeAnimationOffsets(processedNodes, selectedItemIds);
+  
+  // Create animated versions of nodes and zones lookup maps
+  const animatedNodesById = useMemo(() => {
+    const result = { ...nodesById };
+    Object.entries(animationOffsets).forEach(([nodeId, offset]) => {
+      const node = result[nodeId];
+      if (node) {
+        result[nodeId] = {
+          ...node,
+          x: node.x + offset.x,
+          y: node.y + offset.y
+        };
+      }
+    });
+    return result;
+  }, [nodesById, animationOffsets]);
+
+  const animatedZonesById = useMemo(() => {
+    const result = { ...zonesById };
+    Object.entries(animationOffsets).forEach(([nodeId, offset]) => {
+      // Check if this is a zone that contains animated nodes
+      const zone = Object.values(result).find(z => 
+        z.type === 'zone' && (z as any).children?.includes(nodeId)
+      );
+      // For now, we'll skip zone animation as it's more complex
+    });
+    return result;
+  }, [zonesById, animationOffsets]);
   
   // ============================================================================
   // HOOK: useCanvasTransform
@@ -647,6 +679,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 onLabelUpdate={onLabelUpdate} // Allows editing node labels
                 onDraggingChange={onDraggingChange} // Notifies parent of drag state
                 hoverEnabled={hoverEnabled} // Controls hover effects
+                animationOffset={animationOffsets[node.id] || { x: 0, y: 0 }}
               />
             ))}
 
@@ -661,8 +694,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               width={width}
               height={height}
               diagramData={diagramData}
-              nodesById={nodesById}
-              zonesById={zonesById}
+              nodesById={animatedNodesById}
+              zonesById={animatedZonesById}
               selectedItemId={selectedItemId}
               onItemSelect={onItemSelect}
               closeContextMenu={closeContextMenu}
@@ -678,8 +711,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             <CanvasArrowToggles
               selectedItemId={selectedItemId}
               diagramData={diagramData}
-              nodesById={nodesById}
-              zonesById={zonesById}
+              nodesById={animatedNodesById}
+              zonesById={animatedZonesById}
               setDiagramData={setDiagramData}
             />
 
@@ -694,8 +727,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               width={width}
               height={height}
               diagramData={diagramData}
-              nodesById={nodesById}
-              zonesById={zonesById}
+              nodesById={animatedNodesById}
+              zonesById={animatedZonesById}
               processedZones={processedZones}
             />
           </div>

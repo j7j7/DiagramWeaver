@@ -125,9 +125,10 @@ interface DiagramNodeProps {
   onPositionUpdate?: (nodeId: string, x: number, y: number) => void;
   onDraggingChange?: (isDragging: boolean) => void;
   hoverEnabled?: boolean;
+  animationOffset?: { x: number; y: number };
 }
 
-export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, onClick, onContextMenu, onLabelUpdate, onResize, onPositionUpdate, onDraggingChange, hoverEnabled = true }: DiagramNodeProps) {
+export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, onClick, onContextMenu, onLabelUpdate, onResize, onPositionUpdate, onDraggingChange, hoverEnabled = true, animationOffset = { x: 0, y: 0 } }: DiagramNodeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [editText, setEditText] = useState(node.label || '');
@@ -479,8 +480,8 @@ return (
         isTargetable && "cursor-crosshair opacity-70 hover:opacity-100"
         )}
       style={{
-        left: isDragging ? (tempPosition?.x || node.x) : node.x,
-        top: isDragging ? (tempPosition?.y || node.y) : node.y,
+        left: isDragging ? (tempPosition?.x || node.x) : (node.x + animationOffset.x),
+        top: isDragging ? (tempPosition?.y || node.y) : (node.y + animationOffset.y),
          width: isShapeNode ? (node.width || 60) :
                 (isRotatableNode || isTextboxNode ? 
                  (node.sizeMode === 'custom' && node.width ? node.width : 'auto') : NODE_WIDTH),

@@ -534,7 +534,7 @@ export function BezierConnection({ from, to, connectionColor, connectionData, on
         <path
           d={pathData}
           stroke={finalConnectionColor}
-          className="transition-all duration-300 cursor-pointer hover:stroke-opacity-80"
+          className="cursor-pointer hover:stroke-opacity-80"
           strokeWidth={connectionData?.lineWidth || 2.5}
           fill="none"
           onClick={handleClick}
