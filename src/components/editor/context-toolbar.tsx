@@ -23,7 +23,8 @@ import {
   ArrowRight,
   ChevronDown,
   Palette,
-  GripHorizontal
+  GripHorizontal,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -600,300 +601,315 @@ export function ContextToolbar({
 
         {/* Connections Arrow Toggle - Show if there are multiple connections */}
         {(isNode || isZone) && getAllConnections.length > 0 && (
-          <Popover open={connectionsOpen} onOpenChange={setConnectionsOpen}>
+          <>
             <Tooltip>
               <TooltipTrigger asChild>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 px-2">
-                    <ArrowRight className="h-4 w-4" />
-                    {getAllConnections.length > 1 && (
-                      <span className="ml-1 text-xs">({getAllConnections.length})</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 px-2"
+                  onClick={() => setConnectionsOpen(!connectionsOpen)}
+                >
+                  <ArrowRight className="h-4 w-4" />
+                  {getAllConnections.length > 1 && (
+                    <span className="ml-1 text-xs">({getAllConnections.length})</span>
+                  )}
+                </Button>
               </TooltipTrigger>
               <TooltipContent>Connection Settings</TooltipContent>
             </Tooltip>
-            <PopoverContent className="w-96">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Connections</label>
-                <div className="max-h-96 overflow-y-auto space-y-2">
-                  {getAllConnections.length === 0 ? (
-                    <div className="text-sm text-muted-foreground py-2">No connections</div>
-                  ) : (
-                    getAllConnections.map((connInfo, index) => {
-                      const hasArrow = connInfo.connection.arrow === true || connInfo.connection.toArrow === true;
-                      
-                      // Get the actual connection color using the same inheritance logic as the rendered connection
-                      const fromNode = diagramData?.nodes.find(n => n.id === connInfo.connection.from) || 
-                                      diagramData?.zones?.find(z => z.id === connInfo.connection.from);
-                      const toNode = diagramData?.nodes.find(n => n.id === connInfo.connection.to) || 
-                                    diagramData?.zones?.find(z => z.id === connInfo.connection.to);
-                      
-                      const connectionColor = connInfo.connection.color || 
-                                            toNode?.lineColor || 
-                                            fromNode?.lineColor || 
-                                            '#6b7280';
-                      
-                      const textPosition = connInfo.connection.textPosition ?? 50; // Default to 50%
-                      const connectionText = connInfo.connection.text || '';
-                      
-                      const handleConnectionArrowToggle = () => {
-                        if (onConnectionUpdate) {
-                          onConnectionUpdate(
-                            connInfo.connection.from,
-                            connInfo.connection.to,
-                            {
-                              arrow: !hasArrow,
-                              toArrow: !hasArrow
-                            }
-                          );
-                        }
-                      };
-
-                      // Debounced connection color change
-                      const handleConnectionColorChange = (color: string, immediate = false) => {
-                        if (connectionColorTimeoutRef.current) {
-                          clearTimeout(connectionColorTimeoutRef.current);
-                        }
+            {connectionsOpen && (
+              <div className="fixed top-4 right-4 z-[60] bg-white border rounded-lg shadow-lg w-96">
+                <div className="space-y-2 p-4">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">Connections</label>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={() => setConnectionsOpen(false)}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  <div className="max-h-96 overflow-y-auto space-y-2">
+                    {getAllConnections.length === 0 ? (
+                      <div className="text-sm text-muted-foreground py-2">No connections</div>
+                    ) : (
+                      getAllConnections.map((connInfo, index) => {
+                        const hasArrow = connInfo.connection.arrow === true || connInfo.connection.toArrow === true;
                         
-                        const updateColor = () => {
+                        // Get the actual connection color using the same inheritance logic as the rendered connection
+                        const fromNode = diagramData?.nodes.find(n => n.id === connInfo.connection.from) || 
+                                        diagramData?.zones?.find(z => z.id === connInfo.connection.from);
+                        const toNode = diagramData?.nodes.find(n => n.id === connInfo.connection.to) || 
+                                      diagramData?.zones?.find(z => z.id === connInfo.connection.to);
+                        
+                        const connectionColor = connInfo.connection.color || 
+                                              toNode?.lineColor || 
+                                              fromNode?.lineColor || 
+                                              '#6b7280';
+                        
+                        const textPosition = connInfo.connection.textPosition ?? 50; // Default to 50%
+                        const connectionText = connInfo.connection.text || '';
+                        
+                        const handleConnectionArrowToggle = () => {
                           if (onConnectionUpdate) {
                             onConnectionUpdate(
                               connInfo.connection.from,
                               connInfo.connection.to,
                               {
-                                color: color
+                                arrow: !hasArrow,
+                                toArrow: !hasArrow
                               }
                             );
                           }
                         };
-                        
-                        if (immediate) {
-                          updateColor();
-                        } else {
-                          connectionColorTimeoutRef.current = setTimeout(updateColor, 150);
-                        }
-                      };
 
-                      const handleTextPositionChange = (value: number) => {
-                        if (onConnectionUpdate) {
-                          onConnectionUpdate(
-                            connInfo.connection.from,
-                            connInfo.connection.to,
-                            {
-                              textPosition: value
+                        // Debounced connection color change
+                        const handleConnectionColorChange = (color: string, immediate = false) => {
+                          if (connectionColorTimeoutRef.current) {
+                            clearTimeout(connectionColorTimeoutRef.current);
+                          }
+                          
+                          const updateColor = () => {
+                            if (onConnectionUpdate) {
+                              onConnectionUpdate(
+                                connInfo.connection.from,
+                                connInfo.connection.to,
+                                {
+                                  color: color
+                                }
+                              );
                             }
-                          );
-                        }
-                      };
+                          };
+                          
+                          if (immediate) {
+                            updateColor();
+                          } else {
+                            connectionColorTimeoutRef.current = setTimeout(updateColor, 150);
+                          }
+                        };
 
-                      const handleTextChange = (text: string) => {
-                        if (onConnectionUpdate) {
-                          onConnectionUpdate(
-                            connInfo.connection.from,
-                            connInfo.connection.to,
-                            {
-                              text: text
-                            }
-                          );
-                        }
-                      };
+                        const handleTextPositionChange = (value: number) => {
+                          if (onConnectionUpdate) {
+                            onConnectionUpdate(
+                              connInfo.connection.from,
+                              connInfo.connection.to,
+                              {
+                                textPosition: value
+                              }
+                            );
+                          }
+                        };
 
-                      return (
-                        <div 
-                          key={`${connInfo.connection.from}-${connInfo.connection.to}-${index}`}
-                          className={`flex flex-col gap-2 p-2 rounded-md border transition-all ${
-                            dragOverIndex === index 
-                              ? 'border-primary bg-primary/10 scale-105' 
-                              : 'border-border hover:bg-accent/20'
-                          } ${draggedConnectionIndex === index ? 'opacity-50' : ''}`}
-                          onDragOver={(e) => handleDragOver(e, index)}
-                          onDragEnter={(e) => handleDragEnter(e, index)}
-                          onDragLeave={handleDragLeave}
-                          onDrop={(e) => handleDrop(e, index)}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <div 
-                                className="cursor-grab active:cursor-grabbing p-1 hover:bg-accent/50 rounded"
-                                draggable
-                                onDragStart={(e) => {
-                                  e.stopPropagation();
-                                  handleDragStart(e, index);
-                                }}
-                                onDragEnd={(e) => {
-                                  e.stopPropagation();
-                                  handleDragEnd(e);
-                                }}
-                              >
-                                <GripHorizontal className="h-3 w-3 text-muted-foreground" />
+                        const handleTextChange = (text: string) => {
+                          if (onConnectionUpdate) {
+                            onConnectionUpdate(
+                              connInfo.connection.from,
+                              connInfo.connection.to,
+                              {
+                                text: text
+                              }
+                            );
+                          }
+                        };
+
+                        return (
+                          <div 
+                            key={`${connInfo.connection.from}-${connInfo.connection.to}-${index}`}
+                            className={`flex flex-col gap-2 p-2 rounded-md border transition-all ${
+                              dragOverIndex === index 
+                                ? 'border-primary bg-primary/10 scale-105' 
+                                : 'border-border hover:bg-accent/20'
+                            } ${draggedConnectionIndex === index ? 'opacity-50' : ''}`}
+                            onDragOver={(e) => handleDragOver(e, index)}
+                            onDragEnter={(e) => handleDragEnter(e, index)}
+                            onDragLeave={handleDragLeave}
+                            onDrop={(e) => handleDrop(e, index)}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <div 
+                                  className="cursor-grab active:cursor-grabbing p-1 hover:bg-accent/50 rounded"
+                                  draggable
+                                  onDragStart={(e) => {
+                                    e.stopPropagation();
+                                    handleDragStart(e, index);
+                                  }}
+                                  onDragEnd={(e) => {
+                                    e.stopPropagation();
+                                    handleDragEnd(e);
+                                  }}
+                                >
+                                  <GripHorizontal className="h-3 w-3 text-muted-foreground" />
+                                </div>
+                                <span className="text-xs font-mono text-muted-foreground">
+                                  {connInfo.isOutgoing ? '→' : '←'}
+                                </span>
+                                <span className="text-sm truncate" title={connInfo.targetLabel}>
+                                  {connInfo.targetLabel || connInfo.targetId}
+                                </span>
                               </div>
-                              <span className="text-xs font-mono text-muted-foreground">
-                                {connInfo.isOutgoing ? '→' : '←'}
-                              </span>
-                              <span className="text-sm truncate" title={connInfo.targetLabel}>
-                                {connInfo.targetLabel || connInfo.targetId}
-                              </span>
+                              <Button
+                                variant={hasArrow ? "default" : "outline"}
+                                size="sm"
+                                className="h-7 px-2 shrink-0"
+                                onClick={handleConnectionArrowToggle}
+                              >
+                                <ArrowRight className={`h-3 w-3 ${hasArrow ? '' : 'opacity-50'}`} />
+                              </Button>
                             </div>
-                            <Button
-                              variant={hasArrow ? "default" : "outline"}
-                              size="sm"
-                              className="h-7 px-2 shrink-0"
-                              onClick={handleConnectionArrowToggle}
-                            >
-                              <ArrowRight className={`h-3 w-3 ${hasArrow ? '' : 'opacity-50'}`} />
-                            </Button>
-                          </div>
-                          <div className="flex flex-col gap-1 pt-1 border-t border-border/50">
-                            <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Text:</label>
-                            <Input
-                              type="text"
-                              value={connectionText}
-                              onChange={(e) => handleTextChange(e.target.value)}
-                              placeholder="Enter connection text..."
-                              className="h-7 text-sm"
-                              title="Text displayed on connection line"
-                            />
-                          </div>
-                          <div className="flex items-center gap-2 pt-1 border-t border-border/50">
-                            <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Color:</label>
-                            <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                              <Input
-                                type="color"
-                                value={connectionColor}
-                                onChange={(e) => handleConnectionColorChange((e.target as HTMLInputElement).value)}
-                                onMouseUp={(e) => handleConnectionColorChange((e.target as HTMLInputElement).value, true)}
-                                onBlur={(e) => handleConnectionColorChange((e.target as HTMLInputElement).value, true)}
-                                className="h-7 w-12 p-1 cursor-pointer shrink-0"
-                                title="Pick color"
-                                style={{ 
-                                  backgroundColor: connectionColor,
-                                  borderColor: connectionColor === '#6b7280' ? '#d1d5db' : connectionColor
-                                }}
-                              />
+                            <div className="flex flex-col gap-1 pt-1 border-t border-border/50">
+                              <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Text:</label>
                               <Input
                                 type="text"
-                                value={connectionColor}
-                                onChange={(e) => handleConnectionColorChange((e.target as HTMLInputElement).value)}
-                                className="h-7 flex-1 min-w-0 text-xs font-mono"
-                                placeholder="#6b7280"
-                                title="Hex color code"
+                                value={connectionText}
+                                onChange={(e) => handleTextChange(e.target.value)}
+                                placeholder="Enter connection text..."
+                                className="h-7 text-sm"
+                                title="Text displayed on connection line"
                               />
                             </div>
-                          </div>
-                          <div className="flex items-center gap-2 pt-1 border-t border-border/50">
-                            <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Text Position:</label>
-                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <Slider
-                                value={[textPosition]}
-                                onValueChange={(values) => handleTextPositionChange(values[0])}
-                                min={0}
-                                max={100}
-                                step={1}
-                                className="flex-1"
-                              />
-                              <Input
-                                type="number"
-                                value={textPosition}
-                                onChange={(e) => handleTextPositionChange(Math.max(0, Math.min(100, parseInt(e.target.value) || 50)))}
-                                className="h-7 w-16 text-xs text-center shrink-0"
-                                min={0}
-                                max={100}
-                                title="Text position percentage (0-100)"
-                              />
-                              <span className="text-xs text-muted-foreground shrink-0">%</span>
+                            <div className="flex items-center gap-2 pt-1 border-t border-border/50">
+                              <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Color:</label>
+                              <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                <Input
+                                  type="color"
+                                  value={connectionColor}
+                                  onChange={(e) => handleConnectionColorChange((e.target as HTMLInputElement).value)}
+                                  onMouseUp={(e) => handleConnectionColorChange((e.target as HTMLInputElement).value, true)}
+                                  onBlur={(e) => handleConnectionColorChange((e.target as HTMLInputElement).value, true)}
+                                  className="h-7 w-12 p-1 cursor-pointer shrink-0"
+                                  title="Pick color"
+                                  style={{ 
+                                    backgroundColor: connectionColor,
+                                    borderColor: connectionColor === '#6b7280' ? '#d1d5db' : connectionColor
+                                  }}
+                                />
+                                <Input
+                                  type="text"
+                                  value={connectionColor}
+                                  onChange={(e) => handleConnectionColorChange((e.target as HTMLInputElement).value)}
+                                  className="h-7 flex-1 min-w-0 text-xs font-mono"
+                                  placeholder="#6b7280"
+                                  title="Hex color code"
+                                />
+                              </div>
                             </div>
-                          </div>
-                          <div className="flex items-center gap-2 pt-1 border-t border-border/50">
-                            <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Line Thickness:</label>
-                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <Input
-                                type="number"
-                                min="1"
-                                max="10"
-                                value={(connInfo.connection.lineWidth || 2.5).toString()}
-                                onChange={(e) => {
-                                  const width = Math.max(1, Math.min(10, parseFloat(e.target.value) || 2.5));
+                            <div className="flex items-center gap-2 pt-1 border-t border-border/50">
+                              <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Text Position:</label>
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <Slider
+                                  value={[textPosition]}
+                                  onValueChange={(values) => handleTextPositionChange(values[0])}
+                                  min={0}
+                                  max={100}
+                                  step={1}
+                                  className="flex-1"
+                                />
+                                <Input
+                                  type="number"
+                                  value={textPosition}
+                                  onChange={(e) => handleTextPositionChange(Math.max(0, Math.min(100, parseInt(e.target.value) || 50)))}
+                                  className="h-7 w-16 text-xs text-center shrink-0"
+                                  min={0}
+                                  max={100}
+                                  title="Text position percentage (0-100)"
+                                />
+                                <span className="text-xs text-muted-foreground shrink-0">%</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 pt-1 border-t border-border/50">
+                              <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Line Thickness:</label>
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  max="10"
+                                  value={(connInfo.connection.lineWidth || 2.5).toString()}
+                                  onChange={(e) => {
+                                    const width = Math.max(1, Math.min(10, parseFloat(e.target.value) || 2.5));
+                                    if (onConnectionUpdate) {
+                                      onConnectionUpdate(
+                                        connInfo.connection.from,
+                                        connInfo.connection.to,
+                                        { lineWidth: width }
+                                      );
+                                    }
+                                  }}
+                                  className="h-7 w-20 text-xs text-center shrink-0"
+                                  title="Line thickness (1-10 pixels)"
+                                />
+                                <span className="text-xs text-muted-foreground shrink-0">px</span>
+                              </div>
+                              <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0 ml-2">Shadow:</label>
+                              <Button
+                                variant={(connInfo.connection.shadow || false) ? "default" : "outline"}
+                                size="sm"
+                                className="h-7 px-2 shrink-0"
+                                onClick={() => {
                                   if (onConnectionUpdate) {
                                     onConnectionUpdate(
                                       connInfo.connection.from,
                                       connInfo.connection.to,
-                                      { lineWidth: width }
+                                      { shadow: !(connInfo.connection.shadow || false) }
                                     );
                                   }
                                 }}
-                                className="h-7 w-20 text-xs text-center shrink-0"
-                                title="Line thickness (1-10 pixels)"
-                              />
-                              <span className="text-xs text-muted-foreground shrink-0">px</span>
-                            </div>
-                            <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0 ml-2">Shadow:</label>
-                            <Button
-                              variant={(connInfo.connection.shadow || false) ? "default" : "outline"}
-                              size="sm"
-                              className="h-7 px-2 shrink-0"
-                              onClick={() => {
-                                if (onConnectionUpdate) {
-                                  onConnectionUpdate(
-                                    connInfo.connection.from,
-                                    connInfo.connection.to,
-                                    { shadow: !(connInfo.connection.shadow || false) }
-                                  );
-                                }
-                              }}
-                            >
-                              <svg
-                                width="12"
-                                height="12"
-                                viewBox="0 0 12 12"
-                                fill="none"
-                                xmlns="http://www.w3.org/2000/svg"
                               >
-                                <rect
-                                  x="2"
-                                  y="2"
-                                  width="6"
-                                  height="6"
-                                  rx="0.5"
-                                  fill="rgba(0, 0, 0, 0.15)"
-                                />
-                                <rect
-                                  x="0.5"
-                                  y="0.5"
-                                  width="6"
-                                  height="6"
-                                  rx="0.5"
-                                  fill={(connInfo.connection.shadow || false) ? "#22c55e" : "#9ca3af"}
-                                  stroke={(connInfo.connection.shadow || false) ? "#22c55e" : "#9ca3af"}
-                                  strokeWidth="0.3"
-                                />
-                              </svg>
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-destructive hover:text-destructive shrink-0"
-                              onClick={() => {
-                                if (onConnectionDisconnect) {
-                                  onConnectionDisconnect(
-                                    connInfo.connection.from,
-                                    connInfo.connection.to
-                                  );
-                                }
-                              }}
-                            >
-                              <Unlink className="h-3 w-3" />
-                            </Button>
+                                <svg
+                                  width="12"
+                                  height="12"
+                                  viewBox="0 0 12 12"
+                                  fill="none"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                >
+                                  <rect
+                                    x="2"
+                                    y="2"
+                                    width="6"
+                                    height="6"
+                                    rx="0.5"
+                                    fill="rgba(0, 0, 0, 0.15)"
+                                  />
+                                  <rect
+                                    x="0.5"
+                                    y="0.5"
+                                    width="6"
+                                    height="6"
+                                    rx="0.5"
+                                    fill={(connInfo.connection.shadow || false) ? "#22c55e" : "#9ca3af"}
+                                    stroke={(connInfo.connection.shadow || false) ? "#22c55e" : "#9ca3af"}
+                                    strokeWidth="0.3"
+                                  />
+                                </svg>
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-destructive hover:text-destructive shrink-0"
+                                onClick={() => {
+                                  if (onConnectionDisconnect) {
+                                    onConnectionDisconnect(
+                                      connInfo.connection.from,
+                                      connInfo.connection.to
+                                    );
+                                  }
+                                }}
+                              >
+                                <Unlink className="h-3 w-3" />
+                              </Button>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })
-                  )}
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
               </div>
-            </PopoverContent>
-          </Popover>
+            )}
+          </>
         )}
 
 
