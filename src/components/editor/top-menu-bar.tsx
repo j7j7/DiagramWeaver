@@ -151,52 +151,13 @@ onToggleLayersPanel,
     }
   }, [triggerVisualStylingPanel, onVisualStylingPanelOpenChange]);
 
-  // Close connection settings panel when clicking on a node (not when triggered by context menu)
+  // Close connection settings panel when clicking away (deselecting)
   React.useEffect(() => {
-    if (!triggerConnectionSettingsPanel && selectedItem) {
+    if (!selectedItem) {
       setConnectionSettingsPanelOpen(false);
       onConnectionSettingsPanelOpenChange?.(false);
     }
-  }, [selectedItem, triggerConnectionSettingsPanel, onConnectionSettingsPanelOpenChange]);
-
-  // Handle trigger for connection settings panel
-  React.useEffect(() => {
-    if (triggerConnectionSettingsPanel) {
-      setConnectionSettingsPanelOpen(true);
-      onConnectionSettingsPanelOpenChange?.(true);
-      // Reset the trigger after handling
-      onResetConnectionSettingsTrigger?.();
-    }
-  }, [triggerConnectionSettingsPanel, onConnectionSettingsPanelOpenChange, onResetConnectionSettingsTrigger]);
-
-  // Handle trigger for text styling panel
-  React.useEffect(() => {
-    if (triggerTextStylingPanel) {
-      setTextStylingPanelOpen(true);
-      onTextStylingPanelOpenChange?.(true);
-    }
-  }, [triggerTextStylingPanel, onTextStylingPanelOpenChange]);
-
-  // Handle trigger for visual styling panel
-  React.useEffect(() => {
-    if (triggerVisualStylingPanel) {
-      setVisualStylingPanelOpen(true);
-      onVisualStylingPanelOpenChange?.(true);
-    }
-  }, [triggerVisualStylingPanel, onVisualStylingPanelOpenChange]);
-
-  // Handle external triggers for panels
-  React.useEffect(() => {
-    if (triggerTextStylingPanel && selectedItem) {
-      setTextStylingPanelOpen(true);
-    }
-  }, [triggerTextStylingPanel, selectedItem]);
-
-  React.useEffect(() => {
-    if (triggerVisualStylingPanel && selectedItem) {
-      setVisualStylingPanelOpen(true);
-    }
-  }, [triggerVisualStylingPanel, selectedItem]);
+  }, [selectedItem, onConnectionSettingsPanelOpenChange]);
 
 
   return (

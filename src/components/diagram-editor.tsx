@@ -1638,7 +1638,6 @@ export default function DiagramEditor() {
                     onTriggerVisualStylingPanel={() => setTriggerVisualStylingPanel(true)}
                     onTriggerConnectionSettingsPanel={() => setTriggerConnectionSettingsPanel(true)}
                     onResetConnectionSettingsTrigger={() => setTriggerConnectionSettingsPanel(false)}
-                    onCloseConnectionSettingsPanel={() => setConnectionSettingsPanelOpen(false)}
                     layers={{
                       getAllLayers: layers.getAllLayers,
                       getItemLayerById: layers.getItemLayerById,
