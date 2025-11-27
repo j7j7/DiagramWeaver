@@ -261,11 +261,19 @@ export function LayersPanel({
                     />
                   ) : (
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium truncate">
+                      <span className={cn(
+                        "text-sm font-medium truncate",
+                        !layer.visible && "text-gray-400"
+                      )}>
                         {layer.name}
                       </span>
                       {hasSelectedItems(layer.id) && (
-                        <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">
+                        <span className={cn(
+                          "text-xs px-1.5 py-0.5 rounded",
+                          layer.visible 
+                            ? "bg-blue-100 text-blue-700" 
+                            : "bg-gray-100 text-gray-500"
+                        )}>
                           {selectedItemsLayerIds.filter(id => id === layer.id).length}
                         </span>
                       )}
