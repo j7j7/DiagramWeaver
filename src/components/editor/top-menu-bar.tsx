@@ -478,9 +478,7 @@ onToggleLayersPanel,
           Zoom: {(transform.k * 100).toFixed(0)}%
         </div>
       )}
-      <div className="ml-auto px-4">
-        <h1 className="text-2xl font-headline font-bold text-primary">Diagram Weaver</h1>
-      </div>
+
       
       {/* Theme Editor Dialog */}
       <ThemeEditor 
