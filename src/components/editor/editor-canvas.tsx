@@ -606,12 +606,20 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             {/* ================================================================
                 ZONES (Background Layer)
                 ================================================================
-                Zones are rendered first so they appear behind nodes. To ensure
-                nested zones remain interactive, we render parent zones before
-                their children (lower depth first, higher depth last).
+                Zones are rendered first so they appear behind nodes. They are
+                sorted by layer order first, then by nesting depth to ensure
+                proper layering and nested zone interaction.
                 See: src/components/diagram/diagram-zone.tsx
             */}
             {(() => {
+              // Get layer order from layers configuration
+              const layerOrder = new Map<string, number>();
+              if (diagramData.layers?.layers) {
+                diagramData.layers.layers.forEach((layer, index) => {
+                  layerOrder.set(layer.id, index);
+                });
+              }
+
               // Compute depth per zone based on parent/child relationships inferred
               // from children arrays (more robust than relying on parentId, which
               // can get out of sync when editing JSON).
@@ -642,8 +650,18 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               };
 
               const zonesWithDepth = processedZones
-                .map(z => ({ zone: z, depth: getDepth(z.id) }))
-                .sort((a, b) => a.depth - b.depth);
+                .map(z => ({ 
+                  zone: z, 
+                  depth: getDepth(z.id),
+                  layerOrder: layerOrder.get(z.layer || 'background') ?? 0
+                }))
+                .sort((a, b) => {
+                  // Sort by layer order first, then by depth
+                  if (a.layerOrder !== b.layerOrder) {
+                    return a.layerOrder - b.layerOrder;
+                  }
+                  return a.depth - b.depth;
+                });
 
               return zonesWithDepth.map(({ zone }) => (
                 <DiagramZone
@@ -664,24 +682,42 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             {/* ================================================================
                 NODES (Foreground Layer)
                 ================================================================
-                Nodes are rendered after zones so they appear on top
+                Nodes are rendered after zones so they appear on top.
+                They are sorted by layer order to ensure proper layering.
                 Each node represents a diagram element (text, shape, etc.)
                 See: src/components/diagram/diagram-node.tsx
             */}
-            {processedNodes.map((node) => (
-              <DiagramNode
-                key={node.id}
-                node={node}
-                isSelected={selectedItemId === node.id || (selectedItemIds?.has(node.id) ?? false)}
-                onClick={(e: React.MouseEvent) => handleNodeClick(e, node)}
-                onContextMenu={(e: React.MouseEvent) => handleNodeContextMenu(e, node)}
-                onResize={operations.resizeNode} // Allows resizing nodes
-                onLabelUpdate={onLabelUpdate} // Allows editing node labels
-                onDraggingChange={onDraggingChange} // Notifies parent of drag state
-                hoverEnabled={hoverEnabled} // Controls hover effects
-                animationOffset={animationOffsets[node.id] || { x: 0, y: 0 }}
-              />
-            ))}
+            {(() => {
+              // Get layer order from layers configuration
+              const layerOrder = new Map<string, number>();
+              if (diagramData.layers?.layers) {
+                diagramData.layers.layers.forEach((layer, index) => {
+                  layerOrder.set(layer.id, index);
+                });
+              }
+
+              // Sort nodes by layer order
+              const sortedNodes = [...processedNodes].sort((a, b) => {
+                const layerA = layerOrder.get(a.layer || 'background') ?? 0;
+                const layerB = layerOrder.get(b.layer || 'background') ?? 0;
+                return layerA - layerB;
+              });
+
+              return sortedNodes.map((node) => (
+                <DiagramNode
+                  key={node.id}
+                  node={node}
+                  isSelected={selectedItemId === node.id || (selectedItemIds?.has(node.id) ?? false)}
+                  onClick={(e: React.MouseEvent) => handleNodeClick(e, node)}
+                  onContextMenu={(e: React.MouseEvent) => handleNodeContextMenu(e, node)}
+                  onResize={operations.resizeNode} // Allows resizing nodes
+                  onLabelUpdate={onLabelUpdate} // Allows editing node labels
+                  onDraggingChange={onDraggingChange} // Notifies parent of drag state
+                  hoverEnabled={hoverEnabled} // Controls hover effects
+                  animationOffset={animationOffsets[node.id] || { x: 0, y: 0 }}
+                />
+              ));
+            })()}
 
             {/* ================================================================
                 CONNECTIONS
