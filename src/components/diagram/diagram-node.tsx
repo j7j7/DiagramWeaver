@@ -473,9 +473,9 @@ return (
         }
       }}
       className={cn(
-        "absolute group transition-transform duration-200 ease-in-out",
+        "absolute group transition-transform duration-200 ease-in-out rounded-lg",
         !(isDragging || isTouchDragging) && "hover:scale-105",
-        (isSelected || isHighlighted || isMultiSelected) && "ring-2 ring-accent ring-offset-2 rounded-lg drop-shadow-md",
+        (isSelected || isHighlighted || isMultiSelected) && "node-glow-pulse drop-shadow-md",
         (isDragging || isTouchDragging) && "opacity-50 cursor-grabbing",
         isTargetable && "cursor-crosshair opacity-70 hover:opacity-100"
         )}
