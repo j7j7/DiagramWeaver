@@ -84,14 +84,27 @@ export function ContextMenu({
       }
     };
 
+    const handleCanvasClick = (event: MouseEvent) => {
+      // Close context menu on any canvas click when menu is visible
+      if (visible && menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        const target = event.target as HTMLElement;
+        // Check if click is on canvas area (not on other UI elements)
+        if (target.closest('#canvas-container') || target.closest('[data-canvas]')) {
+          onClose();
+        }
+      }
+    };
+
     if (visible) {
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('keydown', handleEscape);
+      document.addEventListener('click', handleCanvasClick, true); // Use capture to ensure it fires
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener('click', handleCanvasClick, true);
     };
   }, [visible, onClose]);
 
