@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup } from 'lucide-react';
+import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup, Plus } from 'lucide-react';
 
 
 interface ContextMenuProps {
@@ -30,8 +30,10 @@ interface ContextMenuProps {
   onGroup?: () => void;
   onUngroup?: () => void;
   onRemoveFromGroup?: () => void;
+  onAddToGroup?: () => void;
   isGrouped?: boolean;
   canGroup?: boolean;
+  canAddToGroup?: boolean;
 }
 
 export function ContextMenu({ 
@@ -59,8 +61,10 @@ export function ContextMenu({
   onGroup,
   onUngroup,
   onRemoveFromGroup,
+  onAddToGroup,
   isGrouped = false,
-  canGroup = false
+  canGroup = false,
+  canAddToGroup = false
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [layerSubmenuOpen, setLayerSubmenuOpen] = useState(false);
@@ -303,6 +307,19 @@ export function ContextMenu({
         >
           <Group className="w-4 h-4" />
           Group Items
+        </button>
+      )}
+
+      {canAddToGroup && onAddToGroup && (
+        <button
+          className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+          onClick={() => {
+            onAddToGroup();
+            onClose();
+          }}
+        >
+          <Plus className="w-4 h-4" />
+          Add to Group
         </button>
       )}
 

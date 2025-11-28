@@ -7,17 +7,35 @@ export function createGroup(
   label?: string
 ): DiagramData {
   if (itemIds.length < 2) {
-    throw new Error('Groups require at least 2 items');
+    throw new Error('At least 2 items are required to create a group.');
   }
 
   const existingGroupings = itemIds
     .map(id => getItemGroup(id, diagramData))
     .filter(g => g !== null);
 
-  if (existingGroupings.length > 0) {
-    throw new Error('One or more items are already in a group. Remove from group first.');
+  // Check if items are from different groups (not allowed)
+  const uniqueGroupIds = new Set(existingGroupings.map(g => g!.id));
+  if (uniqueGroupIds.size > 1) {
+    throw new Error('Selected items are from different groups. Remove from groups first.');
+  }
+  
+  // If all items are already in the same group, no need to recreate
+  if (uniqueGroupIds.size === 1 && existingGroupings.length === itemIds.length) {
+    throw new Error('All selected items are already in this group.');
   }
 
+  // If some items are already in a group, add the new items to that existing group
+  if (uniqueGroupIds.size === 1 && existingGroupings.length > 0) {
+    const existingGroupId = existingGroupings[0]!.id;
+    const ungroupedItemIds = itemIds.filter(id => !getItemGroup(id, diagramData));
+    
+    if (ungroupedItemIds.length > 0) {
+      return addToGroup(ungroupedItemIds, existingGroupId, diagramData);
+    }
+  }
+
+  // Create a new group with all items
   const newGrouping: DiagramGroupingData = {
     id: generateSequentialId('grouping', diagramData),
     type: 'grouping',

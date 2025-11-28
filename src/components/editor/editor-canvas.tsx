@@ -928,6 +928,21 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             }
             canGroup={selectedItemIds.size >= 2}
             isGrouped={getItemGroup(contextMenu.itemId, diagramData) !== null}
+            canAddToGroup={(() => {
+              const targetGroup = getItemGroup(contextMenu.itemId, diagramData);
+              if (!targetGroup || selectedItemIds.size < 2) return false;
+              
+              // Check if any selected items are not in the target group
+              return Array.from(selectedItemIds).some(itemId => 
+                getItemGroup(itemId, diagramData)?.id !== targetGroup.id
+              );
+            })()}
+            onAddToGroup={() => {
+              const targetGroup = getItemGroup(contextMenu.itemId, diagramData);
+              if (targetGroup && onGroupItems) {
+                onGroupItems(); // This will use our updated createGroup logic
+              }
+            }}
             onGroup={onGroupItems}
             onUngroup={onUngroupItems}
             onRemoveFromGroup={onRemoveFromGroup}
