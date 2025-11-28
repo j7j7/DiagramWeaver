@@ -31,6 +31,7 @@ import { DiagramTheme } from '@/lib/theme-types';
 import { LayersPanel } from './editor/layers-panel';
 import { 
   createGroup, 
+  addToGroup,
   removeFromGroup, 
   ungroup, 
   getItemGroup,
@@ -675,6 +676,25 @@ export default function DiagramEditor() {
         variant: 'destructive', 
         title: 'Remove Failed', 
         description: error instanceof Error ? error.message : 'Failed to remove from group.' 
+      });
+    }
+  };
+
+  const handleAddToGroup = (groupId: string) => {
+    if (selectedItemIds.size === 0) return;
+
+    try {
+      const updatedData = addToGroup(Array.from(selectedItemIds), groupId, diagramData);
+      setDiagramData(updatedData);
+      toast({ 
+        title: 'Added to Group', 
+        description: `${selectedItemIds.size} item(s) added to group.` 
+      });
+    } catch (error) {
+      toast({ 
+        variant: 'destructive', 
+        title: 'Add to Group Failed', 
+        description: error instanceof Error ? error.message : 'Failed to add to group.' 
       });
     }
   };
@@ -1763,6 +1783,7 @@ export default function DiagramEditor() {
                     onGroupItems={handleGroupItems}
                     onUngroupItems={handleUngroupItems}
                     onRemoveFromGroup={handleRemoveFromGroup}
+                    onAddToGroupItems={handleAddToGroup}
                     />
                   </div>
                   

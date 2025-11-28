@@ -80,6 +80,7 @@ interface EditorCanvasProps {
   onGroupItems?: () => void;
   onUngroupItems?: () => void;
   onRemoveFromGroup?: () => void;
+  onAddToGroupItems?: (groupId: string) => void;
 }
 
 
@@ -94,7 +95,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, selectionAnimationEnabled = false, iconBackgroundEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, selectionAnimationEnabled = false, iconBackgroundEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems }: EditorCanvasProps,
   ref
 ) {
   // ============================================================================
@@ -945,8 +946,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             })()}
             onAddToGroup={() => {
               const targetGroup = getItemGroup(contextMenu.itemId, diagramData);
-              if (targetGroup && onGroupItems) {
-                onGroupItems(); // This will use our updated createGroup logic
+              if (targetGroup && onAddToGroupItems) {
+                onAddToGroupItems(targetGroup.id);
               }
             }}
             onGroup={onGroupItems}
