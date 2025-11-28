@@ -294,6 +294,65 @@ export function getAllGroupedItems(diagramData: DiagramData): Set<string> {
   return groupedItems;
 }
 
+/**
+ * Cleans up empty zones after item deletion
+ * Removes zones that have no children left and updates parent zones
+ */
+export function cleanupEmptyZones(
+  diagramData: DiagramData
+): DiagramData {
+  if (!diagramData.zones || diagramData.zones.length === 0) {
+    return diagramData;
+  }
+
+  // Create a map of zone IDs to zones for quick lookup
+  const zoneMap = new Map(diagramData.zones.map(zone => [zone.id, zone]));
+  
+  // Find zones that should be deleted (empty or only contain deleted zones)
+  const zonesToDelete = new Set<string>();
+  
+  // Check each zone for emptiness
+  const checkZoneEmptiness = (zoneId: string): boolean => {
+    const zone = zoneMap.get(zoneId);
+    if (!zone) return true;
+    
+    if (!zone.children || zone.children.length === 0) {
+      return true; // Empty zone
+    }
+    
+    // Check if all children are zones that will be deleted
+    const remainingChildren = zone.children.filter(childId => {
+      const childZone = zoneMap.get(childId);
+      if (childZone) {
+        return !checkZoneEmptiness(childId); // Recursively check child zones
+      }
+      return true; // Node (not a zone) - keep it
+    });
+    
+    return remainingChildren.length === 0;
+  };
+  
+  // Find all empty zones
+  diagramData.zones.forEach(zone => {
+    if (checkZoneEmptiness(zone.id)) {
+      zonesToDelete.add(zone.id);
+    }
+  });
+  
+  // Remove empty zones and update parent zones
+  const remainingZones = diagramData.zones
+    .filter(zone => !zonesToDelete.has(zone.id))
+    .map(zone => ({
+      ...zone,
+      children: (zone.children || []).filter(childId => !zonesToDelete.has(childId))
+    }));
+  
+  return {
+    ...diagramData,
+    zones: remainingZones
+  };
+}
+
 export function handleItemDeletion(
   deletedItemIds: string[],
   diagramData: DiagramData

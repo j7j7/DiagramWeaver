@@ -36,7 +36,8 @@ import {
   ungroup, 
   getItemGroup,
   getGroupMembers,
-  handleItemDeletion as cleanupGroupsAfterDeletion
+  handleItemDeletion as cleanupGroupsAfterDeletion,
+  cleanupEmptyZones
 } from '@/lib/grouping-utils';
 
 export type SelectedItem = (
@@ -601,7 +602,10 @@ export default function DiagramEditor() {
       }));
 
       const updatedData = { ...prevData, nodes: newNodes, zones: newZones, connections: newConnections };
-      return cleanupGroupsAfterDeletion([itemToDelete.id], updatedData);
+      
+      // Clean up groupings (old system) and empty zones (new system)
+      const withGroupingsCleaned = cleanupGroupsAfterDeletion([itemToDelete.id], updatedData);
+      return cleanupEmptyZones(withGroupingsCleaned);
     });
     setSelectedItem(null);
   };

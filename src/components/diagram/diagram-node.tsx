@@ -146,6 +146,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
   const handleLabelDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsEditingLabel(true);
+    setIsOpen(false); // Close popup when editing starts
     setEditText(node.label || '');
     setTimeout(() => {
       const ref = isTextboxNode ? textareaRef.current : inputRef.current;
@@ -541,15 +542,15 @@ return (
         transform: rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
         transformOrigin: 'center'
       }}
-      onMouseEnter={() => { if (!isDragging) { setIsOpen(hoverEnabled); setIsHovered(true); } }}
-      onMouseLeave={() => { setIsOpen(false); setIsHovered(false); } }
+      onMouseEnter={() => { if (!isDragging && !isEditingLabel) { setIsOpen(hoverEnabled); setIsHovered(true); } }}
+      onMouseLeave={() => { if (!isEditingLabel) { setIsOpen(false); setIsHovered(false); } } }
       onClick={(e) => onClick && onClick(e, node)}
       onContextMenu={(e) => onContextMenu && onContextMenu(e, node)}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      <Popover open={isOpen && !isDragging} onOpenChange={setIsOpen}>
+      <Popover open={isOpen && !isDragging && !isEditingLabel} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <div className="flex flex-col items-center justify-center h-full w-full cursor-pointer">
             {node.type === 'generic.text.text' ? (

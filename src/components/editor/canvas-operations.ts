@@ -13,6 +13,7 @@ import {
   type PositionedGroup,
 } from "./canvas-constants";
 import { recalculateGroupSize } from "./canvas-layout-utils";
+import { cleanupEmptyZones } from "@/lib/grouping-utils";
 
 interface UseCanvasOperationsOptions {
   setDiagramData: React.Dispatch<React.SetStateAction<DiagramData>>;
@@ -617,8 +618,9 @@ node.type?.endsWith('.star') ||
     setDiagramData(prev => {
       const isNode = prev.nodes.some(n => n.id === itemId);
       
+      let updatedData;
       if (isNode) {
-        return {
+        updatedData = {
           ...prev,
           nodes: prev.nodes.filter(n => n.id !== itemId),
           connections: prev.connections.filter((e: any) => e.from !== itemId && e.to !== itemId),
@@ -628,11 +630,14 @@ node.type?.endsWith('.star') ||
           }))
         };
       } else {
-        return {
+        updatedData = {
           ...prev,
           zones: prev.zones?.filter(zone => zone.id !== itemId)
         };
       }
+      
+      // Clean up empty zones after deletion
+      return cleanupEmptyZones(updatedData);
     });
     
     onItemSelect(null);
@@ -663,12 +668,15 @@ node.type?.endsWith('.star') ||
         !idsToDelete.has(e.from) && !idsToDelete.has(e.to)
       );
       
-      return {
+      const updatedData = {
         ...prev,
         nodes: remainingNodes,
         zones: updatedZones,
         connections: remainingConnections
       };
+      
+      // Clean up empty zones after deletion
+      return cleanupEmptyZones(updatedData);
     });
     
     onItemSelect(null);

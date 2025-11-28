@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramConnectionData, DiagramGroupData } from "@/lib/types";
+import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramConnectionData, DiagramGroupData, DiagramGroupingData } from "@/lib/types";
 import { generateSequentialId, generateGroupId } from "@/lib/id-generator";
 
 interface ClipboardData {
@@ -10,6 +10,9 @@ interface ClipboardData {
   nodes?: DiagramNodeData[];
   zones?: DiagramZoneData[];
   connections?: DiagramConnectionData[];
+  // Track original group relationships for creating new groups on paste
+  originalGroupRelationships?: Map<string, string>; // nodeId -> zoneId
+  originalGroupingRelationships?: Map<string, string>; // nodeId -> groupingId
 }
 
 interface UseCanvasClipboardOptions {
@@ -44,6 +47,8 @@ export function useCanvasClipboard({
       const selectedZones: DiagramZoneData[] = [];
       const selectedConnections: DiagramConnectionData[] = [];
       const allSelectedIds = new Set(selectedItemIds);
+      const originalGroupRelationships = new Map<string, string>();
+      const originalGroupingRelationships = new Map<string, string>();
 
       // Collect selected nodes and groups
       selectedItemIds.forEach(id => {
@@ -52,6 +57,15 @@ export function useCanvasClipboard({
         
         if (node) {
           selectedNodes.push({ ...node });
+          // Check if this node belongs to any zone
+          const parentZone = diagramData.zones?.find(zone => zone.children?.includes(node.id));
+          if (parentZone) {
+            originalGroupRelationships.set(node.id, parentZone.id);
+          }
+          // Check if this node belongs to any grouping
+          if (node.groupId) {
+            originalGroupingRelationships.set(node.id, node.groupId);
+          }
         } else if (zone) {
           // Recursively collect all children of selected groups
           const collectChildren = (groupId: string, visited: Set<string> = new Set()): (DiagramNodeData | DiagramGroupData)[] => {
@@ -69,6 +83,12 @@ export function useCanvasClipboard({
                 if (childNode) {
                   children.push({ ...childNode });
                   allSelectedIds.add(childId);
+                  // Track that this node belongs to this zone
+                  originalGroupRelationships.set(childId, groupId);
+                  // Track grouping relationships too
+                  if (childNode.groupId) {
+                    originalGroupingRelationships.set(childId, childNode.groupId);
+                  }
                 } else if (childZone) {
                   children.push({ ...childZone });
                   allSelectedIds.add(childId);
@@ -103,7 +123,9 @@ export function useCanvasClipboard({
       setClipboard({
         nodes: selectedNodes,
         zones: selectedZones,
-        connections: selectedConnections
+        connections: selectedConnections,
+        originalGroupRelationships,
+        originalGroupingRelationships
       });
       onClipboardChange?.(true);
 
@@ -218,6 +240,21 @@ export function useCanvasClipboard({
         newNodes.push(newNode);
       });
 
+      // Create new groups for nodes that had original group relationships
+      const originalGroupRelationships = clipboard.originalGroupRelationships || new Map();
+      const groupsToCreate = new Map<string, string[]>(); // groupId -> nodeIds
+       
+      // Group nodes by their original group
+      originalGroupRelationships.forEach((groupId, nodeId) => {
+        const newNodeId = idMapping.get(nodeId);
+        if (newNodeId) {
+          if (!groupsToCreate.has(groupId)) {
+            groupsToCreate.set(groupId, []);
+          }
+          groupsToCreate.get(groupId)!.push(newNodeId);
+        }
+      });
+
       // Second pass: generate new IDs for all groups and process their children
       const newZones: DiagramZoneData[] = [];
       const processZoneChildren = (zone: DiagramGroupData): DiagramGroupData => {
@@ -259,6 +296,42 @@ export function useCanvasClipboard({
         newZones.push(newZone);
       });
 
+      // Create new groups for nodes that were originally grouped
+      groupsToCreate.forEach((nodeIds, originalGroupId) => {
+        // Find original group to copy its properties
+        const originalGroup = diagramData.zones?.find(zone => zone.id === originalGroupId);
+        if (originalGroup && nodeIds.length > 0) {
+          // Create temporary diagram data for ID generation
+          const tempData: DiagramData = {
+            ...diagramData,
+            nodes: [...diagramData.nodes, ...newNodes],
+            zones: [...(diagramData.zones || []), ...newZones]
+          };
+          
+          const newGroupId = generateGroupId((originalGroup.subType as 'group' | 'zone') || 'group', tempData);
+          
+          // Calculate position for new group (centered around its nodes)
+          let minX = Infinity, minY = Infinity;
+          nodeIds.forEach(nodeId => {
+            const node = newNodes.find(n => n.id === nodeId);
+            if (node) {
+              minX = Math.min(minX, node.x || 0);
+              minY = Math.min(minY, node.y || 0);
+            }
+          });
+          
+          const newGroup: DiagramZoneData = {
+            ...originalGroup,
+            id: newGroupId,
+            x: minX - 20, // Position group to encompass its nodes
+            y: minY - 20,
+            children: nodeIds
+          };
+          
+          newZones.push(newGroup);
+        }
+      });
+
       // Third pass: create new connections with updated IDs
       const newConnections: DiagramConnectionData[] = [];
       connections.forEach(connection => {
@@ -275,6 +348,52 @@ export function useCanvasClipboard({
         }
       });
 
+      // Create new groupings for nodes that had original grouping relationships
+      const originalGroupingRelationships = clipboard.originalGroupingRelationships || new Map();
+      const groupingsToCreate = new Map<string, string[]>(); // groupingId -> nodeIds
+       
+      // Group nodes by their original grouping
+      originalGroupingRelationships.forEach((groupingId, nodeId) => {
+        const newNodeId = idMapping.get(nodeId);
+        if (newNodeId) {
+          if (!groupingsToCreate.has(groupingId)) {
+            groupingsToCreate.set(groupingId, []);
+          }
+          groupingsToCreate.get(groupingId)!.push(newNodeId);
+        }
+      });
+
+      // Create new groupings
+      const newGroupings: DiagramGroupingData[] = [];
+      groupingsToCreate.forEach((nodeIds, originalGroupingId) => {
+        // Find original grouping to copy its properties
+        const originalGrouping = diagramData.groupings?.find(grouping => grouping.id === originalGroupingId);
+        if (originalGrouping && nodeIds.length > 0) {
+          // Generate new grouping ID
+          const existingGroupingIds = (diagramData.groupings || []).map(g => g.id);
+          const maxNumber = Math.max(0, ...existingGroupingIds
+            .map(id => parseInt(id.replace('grouping-', '')) || 0)
+          );
+          const newGroupingId = `grouping-${maxNumber + 1}`;
+          
+          const newGrouping: DiagramGroupingData = {
+            ...originalGrouping,
+            id: newGroupingId,
+            memberIds: nodeIds
+          };
+          
+          newGroupings.push(newGrouping);
+          
+          // Update the copied nodes to reference the new grouping
+          nodeIds.forEach(nodeId => {
+            const node = newNodes.find(n => n.id === nodeId);
+            if (node) {
+              node.groupId = newGroupingId;
+            }
+          });
+        }
+      });
+
       // Collect IDs of all newly pasted items
       const pastedItemIds: string[] = [];
       newNodes.forEach(node => pastedItemIds.push(node.id));
@@ -285,7 +404,8 @@ export function useCanvasClipboard({
         ...prev,
         nodes: [...prev.nodes, ...newNodes],
         zones: [...(prev.zones || []), ...newZones],
-        connections: [...(prev.connections || []), ...newConnections]
+        connections: [...(prev.connections || []), ...newConnections],
+        groupings: [...(prev.groupings || []), ...newGroupings]
       }));
 
       // Clear old selection and set new selection to ONLY the pasted items
@@ -312,6 +432,8 @@ export function useCanvasClipboard({
       });
     } else if (clipboard.node) {
       // Handle single node paste (backward compatibility)
+      const originalGroupRelationships = clipboard.originalGroupRelationships || new Map();
+      const originalGroupingRelationships = clipboard.originalGroupingRelationships || new Map();
       const newNode: DiagramNodeData = {
         ...clipboard.node,
         id: generateSequentialId(clipboard.node.type, diagramData),
@@ -319,13 +441,66 @@ export function useCanvasClipboard({
         y: (clipboard.node.y || 0) + 50,
       };
 
+      const newZones: DiagramZoneData[] = [];
+      const newGroupings: DiagramGroupingData[] = [];
+      
+      // Check if this node was originally in a zone and create a new zone
+      const originalGroupId = originalGroupRelationships.get(clipboard.node.id);
+      if (originalGroupId) {
+        const originalGroup = diagramData.zones?.find(zone => zone.id === originalGroupId);
+        if (originalGroup) {
+          const newGroupId = generateGroupId((originalGroup.subType as 'group' | 'zone') || 'group', diagramData);
+          
+          const newGroup: DiagramZoneData = {
+            ...originalGroup,
+            id: newGroupId,
+            x: (newNode.x || 0) - 20, // Position group to encompass the node
+            y: (newNode.y || 0) - 20,
+            children: [newNode.id]
+          };
+          
+          newZones.push(newGroup);
+        }
+      }
+
+      // Check if this node was originally in a grouping and create a new grouping
+      const originalGroupingId = originalGroupingRelationships.get(clipboard.node.id);
+      if (originalGroupingId) {
+        const originalGrouping = diagramData.groupings?.find(grouping => grouping.id === originalGroupingId);
+        if (originalGrouping) {
+          // Generate new grouping ID
+          const existingGroupingIds = (diagramData.groupings || []).map(g => g.id);
+          const maxNumber = Math.max(0, ...existingGroupingIds
+            .map(id => parseInt(id.replace('grouping-', '')) || 0)
+          );
+          const newGroupingId = `grouping-${maxNumber + 1}`;
+          
+          const newGrouping: DiagramGroupingData = {
+            ...originalGrouping,
+            id: newGroupingId,
+            memberIds: [newNode.id]
+          };
+          
+          newGroupings.push(newGrouping);
+          
+          // Update the node to reference the new grouping
+          newNode.groupId = newGroupingId;
+        }
+      }
+
       setDiagramData(prev => ({
         ...prev,
-        nodes: [...prev.nodes, newNode]
+        nodes: [...prev.nodes, newNode],
+        zones: [...(prev.zones || []), ...newZones],
+        groupings: [...(prev.groupings || []), ...newGroupings]
       }));
 
-      // Select the newly pasted item
-      onItemSelect({ ...newNode, itemType: 'node' });
+      // Select the newly pasted item (or its group if one was created)
+      if (newZones.length > 0) {
+        onItemSelect({ ...newZones[0], itemType: 'zone' });
+      } else {
+        onItemSelect({ ...newNode, itemType: 'node' });
+      }
 
       toast({
         title: "Item Pasted",
