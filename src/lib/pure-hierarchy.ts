@@ -66,7 +66,7 @@ function migrateToPureHierarchy(zones: DiagramZoneData[], nodes: DiagramNodeData
   const orphanNodes = nodes.filter(n => !allChildNodeIds.has(n.id));
   if (orphanNodes.length > 0) {
     const orphanGroup: DiagramZoneData = {
-      id: generateGroupId('zone', { nodes, connections: [], zones: [] }),
+      id: generateGroupId('zone', { nodes, connections: [], zones: [], groupings: [] }),
       type: 'zone',
       label: 'Orphan Nodes',
       children: orphanNodes.map(n => n.id),

@@ -5,6 +5,7 @@ import { snapToGrid } from "@/components/editor/canvas-constants";
 import type { Transform } from "./use-canvas-transform";
 import type { PositionedNode, PositionedGroup } from "@/components/editor/canvas-constants";
 import type { DiagramData } from "@/lib/types";
+import { getItemGroup, getGroupMembers } from "@/lib/grouping-utils";
 
 type DropItem = { 
   id?: string; 
@@ -21,6 +22,7 @@ interface UseCanvasDragDropOptions {
   nodesById: Record<string, PositionedNode>;
   zonesById: Record<string, PositionedGroup>;
   selectedItemIds: Set<string>;
+  diagramData: DiagramData;
   addNode: (item: any, position: { x: number; y: number }, targetGroupId: string | null) => void;
   moveItem: (item: { id: string; type: string; x?: number, y?: number }, newPos: { x: number; y: number }, targetGroupId: string | null) => void;
   moveMultipleItems: (items: Array<{ id: string; type: string; x?: number, y?: number }>, newPositions: Array<{ x: number; y: number }>, targetGroupId: string | null) => void;
@@ -34,6 +36,7 @@ export function useCanvasDragDrop({
   nodesById,
   zonesById,
   selectedItemIds,
+  diagramData,
   addNode,
   moveItem,
   moveMultipleItems,
@@ -84,12 +87,26 @@ export function useCanvasDragDrop({
       itemX = snapToGrid(itemX);
       itemY = snapToGrid(itemY);
       
-      // Handle multi-select dragging
-      if (item.id && selectedItemIds.has(item.id) && selectedItemIds.size > 1) {
+      // Check if item is in a group and get all group members
+      let itemsToMove = new Set<string>();
+      if (item.id) {
+        const group = getItemGroup(item.id, diagramData);
+        if (group) {
+          const members = getGroupMembers(group.id, diagramData);
+          members.forEach(id => itemsToMove.add(id));
+        } else if (selectedItemIds.has(item.id) && selectedItemIds.size > 1) {
+          selectedItemIds.forEach(id => itemsToMove.add(id));
+        } else {
+          itemsToMove.add(item.id);
+        }
+      }
+      
+      // Handle multi-item dragging (either grouped or multi-selected)
+      if (item.id && itemsToMove.size > 1) {
         // Initialize start positions if not already done
         if (!multiDragStartPositions.current) {
           multiDragStartPositions.current = {};
-          selectedItemIds.forEach(id => {
+          itemsToMove.forEach(id => {
             const node = nodesById[id] || zonesById[id];
             if (node) {
               multiDragStartPositions.current![id] = { x: node.x ?? 0, y: node.y ?? 0 };
@@ -97,9 +114,9 @@ export function useCanvasDragDrop({
           });
         }
         
-        // Calculate positions for all selected items
+        // Calculate positions for all items
         const newPositions: { [itemId: string]: { x: number; y: number } } = {};
-        selectedItemIds.forEach(id => {
+        itemsToMove.forEach(id => {
           const startPos = multiDragStartPositions.current![id];
           if (startPos) {
             newPositions[id] = {
@@ -213,9 +230,22 @@ export function useCanvasDragDrop({
         // Pass full item data to preserve resource information
         addNode(item as any, { x, y }, targetGroupIdForFreeflow);
       } else if (item.id && (itemType === ItemTypes.CANVAS_NODE || itemType === ItemTypes.ZONE)) {
-        // Handle multi-select movement
-        if (selectedItemIds.has(item.id) && selectedItemIds.size > 1 && multiDragStartPositions.current) {
-          // Move all selected items maintaining relative spacing
+        // Check if item is in a group
+        const group = getItemGroup(item.id, diagramData);
+        let itemsToMoveSet = new Set<string>();
+        
+        if (group) {
+          const members = getGroupMembers(group.id, diagramData);
+          members.forEach(id => itemsToMoveSet.add(id));
+        } else if (selectedItemIds.has(item.id) && selectedItemIds.size > 1) {
+          selectedItemIds.forEach(id => itemsToMoveSet.add(id));
+        } else {
+          itemsToMoveSet.add(item.id);
+        }
+        
+        // Handle multi-item movement (grouped or multi-selected)
+        if (itemsToMoveSet.size > 1 && multiDragStartPositions.current) {
+          // Move all items maintaining relative spacing
           const initialCanvasPos = monitor.getInitialSourceClientOffset();
           const delta = monitor.getDifferenceFromInitialOffset();
           let deltaX = 0, deltaY = 0;
@@ -228,7 +258,7 @@ export function useCanvasDragDrop({
           const itemsToMove: Array<{ id: string; type: string; x?: number, y?: number }> = [];
           const newPositions: Array<{ x: number; y: number }> = [];
           
-          selectedItemIds.forEach(id => {
+          itemsToMoveSet.forEach(id => {
             const startPos = multiDragStartPositions.current![id];
             if (startPos) {
               const newX = snapToGrid(startPos.x + deltaX);
@@ -260,7 +290,7 @@ export function useCanvasDragDrop({
       isOver: monitor.isOver(),
       canDrop: monitor.canDrop(),
     }),
-  }), [transform, processedZones, hoveredGroupId, moveItem, moveMultipleItems, addNode, nodesById, zonesById, selectedItemIds, canvasRef]);
+  }), [transform, processedZones, hoveredGroupId, moveItem, moveMultipleItems, addNode, nodesById, zonesById, selectedItemIds, canvasRef, diagramData]);
 
   // Cleanup multi-drag state when drag ends outside of drop
   useEffect(() => {

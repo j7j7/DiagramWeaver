@@ -29,6 +29,14 @@ import { convertFromNestedHierarchy, convertToNestedHierarchy } from '@/lib/nest
 import { themeManager } from '@/lib/theme-manager';
 import { DiagramTheme } from '@/lib/theme-types';
 import { LayersPanel } from './editor/layers-panel';
+import { 
+  createGroup, 
+  removeFromGroup, 
+  ungroup, 
+  getItemGroup,
+  getGroupMembers,
+  handleItemDeletion as cleanupGroupsAfterDeletion
+} from '@/lib/grouping-utils';
 
 export type SelectedItem = (
   | (DiagramNodeData & { 
@@ -186,8 +194,8 @@ export default function DiagramEditor() {
   });
 
   // Sync active tab state to local state for component use
-  const diagramData = activeTab?.diagramData || { nodes: [], connections: [], zones: [] };
-  const history = activeTab?.history || [JSON.stringify({ nodes: [], connections: [], zones: [] })];
+  const diagramData = activeTab?.diagramData || { nodes: [], connections: [], zones: [], groupings: [] };
+  const history = activeTab?.history || [JSON.stringify({ nodes: [], connections: [], zones: [], groupings: [] })];
   const historyIndex = activeTab?.historyIndex || 0;
   const historyRef = React.useRef(getHistoryRef(activeTabId || '') || { history: [], index: 0 });
   const selectedItem = activeTab?.selectedItem || null;
@@ -387,13 +395,11 @@ export default function DiagramEditor() {
   }, [sidebarOpen, isMobile]);
 
   const handleItemSelect = (item: SelectedItem | null, shiftKey = false) => {
-    // If we click away while in connect mode, cancel it.
     if (isConnectMode && !item) {
       setIsConnectMode(false);
     }
     
     if (shiftKey && item) {
-      // Multi-select with shift key
       setSelectedItemIds(prev => {
         const newSet = new Set(prev);
         if (newSet.has(item.id)) {
@@ -403,12 +409,21 @@ export default function DiagramEditor() {
         }
         return newSet;
       });
-      // Set the primary selected item to the most recently selected
       setSelectedItem(item);
     } else {
-      // Normal selection
       setSelectedItem(item);
-      setSelectedItemIds(item ? new Set([item.id]) : new Set());
+      
+      if (item) {
+        const group = getItemGroup(item.id, diagramData);
+        if (group) {
+          const memberIds = getGroupMembers(group.id, diagramData);
+          setSelectedItemIds(new Set(memberIds));
+        } else {
+          setSelectedItemIds(new Set([item.id]));
+        }
+      } else {
+        setSelectedItemIds(new Set());
+      }
     }
   };
 
@@ -578,24 +593,95 @@ export default function DiagramEditor() {
         newConnections = prevData.connections.filter((e: any) => e.from !== itemToDelete.id && e.to !== itemToDelete.id);
       } else if (itemToDelete.itemType === 'zone') {
         newZones = newZones.filter(g => g.id !== itemToDelete.id);
-        // Also remove nodes that were inside the group if desired, or re-parent them.
-        // For simplicity, we'll just remove the group for now. Any nodes inside become "homeless".
       } else if (itemToDelete.itemType === 'edge') {
-        // Delete the connection/edge
         newConnections = prevData.connections.filter((e: any) => 
           !(e.from === itemToDelete.from && e.to === itemToDelete.to)
         );
       }
 
-      // Also remove the deleted item from any group's node list
       newZones = newZones.map(g => ({
         ...g,
         children: (g.children || []).filter((nodeId: string) => nodeId !== itemToDelete.id)
       }));
 
-      return { ...prevData, nodes: newNodes, zones: newZones, connections: newConnections };
+      const updatedData = { ...prevData, nodes: newNodes, zones: newZones, connections: newConnections };
+      return cleanupGroupsAfterDeletion([itemToDelete.id], updatedData);
     });
-    setSelectedItem(null); // Deselect after deleting
+    setSelectedItem(null);
+  };
+
+  const handleGroupItems = () => {
+    if (selectedItemIds.size < 2) {
+      toast({ 
+        variant: 'destructive', 
+        title: 'Cannot Group', 
+        description: 'Select at least 2 items to create a group.' 
+      });
+      return;
+    }
+
+    try {
+      const updatedData = createGroup(Array.from(selectedItemIds), diagramData);
+      setDiagramData(updatedData);
+      toast({ 
+        title: 'Items Grouped', 
+        description: `Created group with ${selectedItemIds.size} items.` 
+      });
+    } catch (error) {
+      toast({ 
+        variant: 'destructive', 
+        title: 'Group Failed', 
+        description: error instanceof Error ? error.message : 'Failed to create group.' 
+      });
+    }
+  };
+
+  const handleUngroupItems = () => {
+    if (!selectedItem) return;
+
+    const group = getItemGroup(selectedItem.id, diagramData);
+    if (!group) {
+      toast({ 
+        variant: 'destructive', 
+        title: 'Not Grouped', 
+        description: 'Selected item is not in a group.' 
+      });
+      return;
+    }
+
+    try {
+      const updatedData = ungroup(group.id, diagramData);
+      setDiagramData(updatedData);
+      toast({ 
+        title: 'Items Ungrouped', 
+        description: 'Group has been dissolved.' 
+      });
+    } catch (error) {
+      toast({ 
+        variant: 'destructive', 
+        title: 'Ungroup Failed', 
+        description: error instanceof Error ? error.message : 'Failed to ungroup items.' 
+      });
+    }
+  };
+
+  const handleRemoveFromGroup = () => {
+    if (selectedItemIds.size === 0) return;
+
+    try {
+      const updatedData = removeFromGroup(Array.from(selectedItemIds), diagramData);
+      setDiagramData(updatedData);
+      toast({ 
+        title: 'Removed from Group', 
+        description: `${selectedItemIds.size} item(s) removed from group.` 
+      });
+    } catch (error) {
+      toast({ 
+        variant: 'destructive', 
+        title: 'Remove Failed', 
+        description: error instanceof Error ? error.message : 'Failed to remove from group.' 
+      });
+    }
   };
 
   const handleConnect = (targetItem: DiagramNodeData | DiagramZoneData) => {
@@ -730,17 +816,19 @@ export default function DiagramEditor() {
               jsonData = convertFromNestedHierarchy(jsonData as any);
             }
 
-            // Add basic validation for the loaded data
-            if (jsonData.nodes && jsonData.connections) {
-              // Ensure all required arrays are present
-              const completeData: DiagramData = {
-                nodes: jsonData.nodes || [],
-                connections: jsonData.connections || [],
-                zones: jsonData.zones || [],
-                rootZoneId: jsonData.rootZoneId
-              };
+              // Add basic validation for the loaded data
+             if (jsonData.nodes && jsonData.connections) {
+               // Ensure all required arrays are present
+               const completeData: DiagramData = {
+                 nodes: jsonData.nodes || [],
+                 connections: jsonData.connections || [],
+                 zones: jsonData.zones || [],
+                 groupings: jsonData.groupings || [], // Preserve groupings
+                 rootZoneId: jsonData.rootZoneId,
+                 layers: jsonData.layers // Preserve layers
+               };
                // Clear existing data first to ensure clean load
-               setDiagramData({ nodes: [], connections: [], zones: [] });
+                setDiagramData({ nodes: [], connections: [], zones: [], groupings: [] });
                // Then set the loaded data
                setTimeout(() => {
                  setDiagramData(completeData);
@@ -1366,6 +1454,20 @@ export default function DiagramEditor() {
         return;
       }
       
+      // Ctrl+G (or Cmd+G on Mac) - Group selected items
+      if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === 'g' && !e.shiftKey) {
+        e.preventDefault();
+        handleGroupItems();
+        return;
+      }
+      
+      // Ctrl+Shift+G (or Cmd+Shift+G on Mac) - Ungroup selected items
+      if ((isMac ? e.metaKey : e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'g') {
+        e.preventDefault();
+        handleUngroupItems();
+        return;
+      }
+      
       // 'c' key - Start connecting if item is selected, cancel if in connect mode
       if (e.key.toLowerCase() === 'c' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
         e.preventDefault();
@@ -1663,6 +1765,9 @@ export default function DiagramEditor() {
                       getItemLayerById: layers.getItemLayerById,
                       assignItemsToLayer: layers.assignItemsToLayer
                     }}
+                    onGroupItems={handleGroupItems}
+                    onUngroupItems={handleUngroupItems}
+                    onRemoveFromGroup={handleRemoveFromGroup}
                     />
                   </div>
                   

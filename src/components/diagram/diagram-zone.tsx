@@ -18,6 +18,7 @@ interface DiagramZoneProps {
   isDropTarget?: boolean;
   isTargetable?: boolean;
   isMultiSelected?: boolean;
+  isGroupMember?: boolean;
   onClick?: (e: React.MouseEvent, zone: DiagramZoneData) => void;
   onContextMenu?: (e: React.MouseEvent, zone: DiagramZoneData) => void;
   onResize?: (zoneId: string, newWidth: number, newHeight: number) => void;
@@ -27,7 +28,7 @@ interface DiagramZoneProps {
 
 
 
-export function DiagramZone({ zone, isSelected, isDropTarget, isTargetable, isMultiSelected, onClick, onContextMenu, onResize, onLabelChange }: DiagramZoneProps) {
+export function DiagramZone({ zone, isSelected, isDropTarget, isTargetable, isMultiSelected, isGroupMember, onClick, onContextMenu, onResize, onLabelChange }: DiagramZoneProps) {
 const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.ZONE,
     item: { ...zone, type: ItemTypes.ZONE },
@@ -573,6 +574,7 @@ const [{ isDragging }, drag] = useDrag(() => ({
           : "opacity-100 hover:border hover:border-dashed hover:border-primary hover:bg-primary/5"),
         (isDragging || isTouchDragging || isResizing) && "opacity-50",
         (isSelected || isDropTarget || isMultiSelected) && "ring-2 ring-primary ring-offset-2",
+        isGroupMember && !isSelected && !isDropTarget && !isMultiSelected && "ring-2 ring-green-500 ring-offset-2",
         isTargetable && "ring-2 ring-green-500 ring-offset-2 animate-pulse",
         zone.shadow && "shadow-[0_10px_15px_-3px_rgba(239,68,68,0.3),0_4px_6px_-2px_rgba(239,68,68,0.2)]",
         "zone" // Add zone class for CSS selectors

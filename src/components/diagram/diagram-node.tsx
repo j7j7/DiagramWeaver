@@ -118,6 +118,7 @@ interface DiagramNodeProps {
   isTargetable?: boolean;
   isHighlighted?: boolean;
   isMultiSelected?: boolean;
+  isGroupMember?: boolean;
   onClick?: (e: React.MouseEvent, node: DiagramNodeData) => void;
   onContextMenu?: (e: React.MouseEvent, node: DiagramNodeData) => void;
   onLabelUpdate?: (nodeId: string, newLabel: string) => void;
@@ -129,7 +130,7 @@ interface DiagramNodeProps {
   animationOffset?: { x: number; y: number };
 }
 
-export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, onClick, onContextMenu, onLabelUpdate, onResize, onPositionUpdate, onDraggingChange, hoverEnabled = true, selectionAnimationEnabled = false, animationOffset = { x: 0, y: 0 } }: DiagramNodeProps) {
+export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onResize, onPositionUpdate, onDraggingChange, hoverEnabled = true, selectionAnimationEnabled = false, animationOffset = { x: 0, y: 0 } }: DiagramNodeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [editText, setEditText] = useState(node.label || '');
@@ -477,6 +478,7 @@ return (
         "absolute group transition-transform duration-200 ease-in-out rounded-lg",
         !(isDragging || isTouchDragging) && "hover:scale-105",
         (isSelected || isHighlighted || isMultiSelected) && `${selectionAnimationEnabled ? "node-glow-pulse" : "node-glow-static"} drop-shadow-md`,
+        isGroupMember && !isSelected && !isHighlighted && !isMultiSelected && `${selectionAnimationEnabled ? "node-glow-green-pulse" : "node-glow-green-static"} drop-shadow-md`,
         (isDragging || isTouchDragging) && "opacity-50 cursor-grabbing",
         isTargetable && "cursor-crosshair opacity-70 hover:opacity-100"
         )}

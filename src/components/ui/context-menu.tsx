@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight } from 'lucide-react';
+import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup } from 'lucide-react';
 
 
 interface ContextMenuProps {
@@ -27,6 +27,11 @@ interface ContextMenuProps {
   currentLayer?: string;
   availableLayers?: Array<{id: string; name: string}>;
   onChangeLayer?: (layerId: string) => void;
+  onGroup?: () => void;
+  onUngroup?: () => void;
+  onRemoveFromGroup?: () => void;
+  isGrouped?: boolean;
+  canGroup?: boolean;
 }
 
 export function ContextMenu({ 
@@ -50,7 +55,12 @@ export function ContextMenu({
   currentOrientation = 'auto',
   currentLayer,
   availableLayers = [],
-  onChangeLayer
+  onChangeLayer,
+  onGroup,
+  onUngroup,
+  onRemoveFromGroup,
+  isGrouped = false,
+  canGroup = false
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [layerSubmenuOpen, setLayerSubmenuOpen] = useState(false);
@@ -282,6 +292,47 @@ export function ContextMenu({
       )}
 
       <div className="border-t border-border my-1" />
+      
+      {canGroup && onGroup && (
+        <button
+          className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+          onClick={() => {
+            onGroup();
+            onClose();
+          }}
+        >
+          <Group className="w-4 h-4" />
+          Group Items
+        </button>
+      )}
+
+      {isGrouped && onUngroup && (
+        <button
+          className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+          onClick={() => {
+            onUngroup();
+            onClose();
+          }}
+        >
+          <Ungroup className="w-4 h-4" />
+          Ungroup
+        </button>
+      )}
+
+      {isGrouped && onRemoveFromGroup && (
+        <button
+          className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+          onClick={() => {
+            onRemoveFromGroup();
+            onClose();
+          }}
+        >
+          <Link2Off className="w-4 h-4" />
+          Remove from Group
+        </button>
+      )}
+
+      {(canGroup || isGrouped) && <div className="border-t border-border my-1" />}
       
       <button
         className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"

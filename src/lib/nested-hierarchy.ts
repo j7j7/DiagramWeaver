@@ -80,7 +80,8 @@ export function convertToNestedHierarchy(data: DiagramData): HierarchicalDiagram
         noIconBackground: node.noIconBackground,
         textJustify: node.textJustify,
         textVerticalPosition: node.textVerticalPosition,
-        layer: node.layer // Preserve layer information
+        layer: node.layer, // Preserve layer information
+        groupId: node.groupId // Preserve grouping information
       }))
     };
     nestedGroups.push(orphanGroup);
@@ -89,6 +90,7 @@ export function convertToNestedHierarchy(data: DiagramData): HierarchicalDiagram
   return {
     zones: nestedGroups,
     connections: data.connections,
+    groupings: data.groupings, // Preserve groupings
     layers: data.layers // Preserve layers configuration
   };
 }
@@ -141,7 +143,8 @@ function convertGroupToNested(
         noIconBackground: node.noIconBackground,
         textJustify: node.textJustify,
         textVerticalPosition: node.textVerticalPosition,
-        layer: node.layer // Preserve layer information
+        layer: node.layer, // Preserve layer information
+        groupId: node.groupId // Preserve grouping information
       });
     } else {
       // This is a nested group
@@ -183,7 +186,8 @@ function convertGroupToNested(
     borderWidth: zone.borderWidth,
     textJustify: zone.textJustify,
     textVerticalPosition: zone.textVerticalPosition,
-    layer: zone.layer // Preserve layer information
+    layer: zone.layer, // Preserve layer information
+    groupId: zone.groupId // Preserve grouping information
   };
 }
 
@@ -239,7 +243,8 @@ export function convertFromNestedHierarchy(nestedData: HierarchicalDiagramData):
             noIconBackground: nodeChild.noIconBackground,
             textJustify: nodeChild.textJustify,
             textVerticalPosition: nodeChild.textVerticalPosition,
-            layer: nodeChild.layer // Preserve layer information
+            layer: nodeChild.layer, // Preserve layer information
+            groupId: nodeChild.groupId // Preserve grouping information
           };
           nodes.push(node);
           nodeMap.set(nodeChild.id, node);
@@ -267,6 +272,7 @@ export function convertFromNestedHierarchy(nestedData: HierarchicalDiagramData):
     nodes: uniqueNodes,
     connections: nestedData.connections,
     zones: uniqueZones,
+    groupings: nestedData.groupings, // Preserve groupings
     rootZoneId: uniqueZones.find(g => !g.parentId)?.id,
     layers: nestedData.layers // Preserve layers configuration
   };
@@ -324,7 +330,8 @@ function processNestedGroup(
     parentId: parentId || undefined,
     textJustify: zone.textJustify,
     textVerticalPosition: zone.textVerticalPosition,
-    layer: zone.layer // Preserve layer information
+    layer: zone.layer, // Preserve layer information
+    groupId: zone.groupId // Preserve grouping information
   };
   
   zones.push(flatZone);
@@ -378,7 +385,8 @@ function processNestedGroup(
         noIconBackground: nodeChild.noIconBackground,
         textJustify: nodeChild.textJustify,
         textVerticalPosition: nodeChild.textVerticalPosition,
-        layer: nodeChild.layer // Preserve layer information
+        layer: nodeChild.layer, // Preserve layer information
+        groupId: nodeChild.groupId // Preserve grouping information
       };
     
       nodes.push(node);

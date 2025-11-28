@@ -44,6 +44,7 @@ export const DiagramNodeDataSchema = z.object({
   letterSpacing: z.number().optional(), // Letter spacing in pixels
   lineHeight: z.number().optional(), // Line height as a multiplier (e.g., 1.2, 1.5)
   textOpacity: z.number().optional(), // Text opacity (0-1)
+  groupId: z.string().optional(), // Reference to grouping this node belongs to
 });
 
 // Schema for DiagramConnectionData 
@@ -110,6 +111,16 @@ export const DiagramGroupDataSchema = z.object({
   letterSpacing: z.number().optional(), // Letter spacing in pixels
   lineHeight: z.number().optional(), // Line height as a multiplier (e.g., 1.2, 1.5)
   textOpacity: z.number().optional(), // Text opacity (0-1)
+  groupId: z.string().optional(), // Reference to grouping this zone belongs to
+});
+
+// Schema for DiagramGroupingData
+export const DiagramGroupingDataSchema = z.object({
+  id: z.string(),
+  type: z.literal('grouping'),
+  memberIds: z.array(z.string()), // IDs of nodes/zones that are grouped together
+  label: z.string().optional(), // Optional group name
+  locked: z.boolean().optional(), // If true, prevent ungrouping or modifications
 });
 
 // Schema for LayerInfo
@@ -133,6 +144,7 @@ export const DiagramDataSchema = z.object({
   nodes: z.array(DiagramNodeDataSchema).default([]),
   connections: z.array(DiagramConnectionDataSchema).default([]),
   zones: z.array(DiagramGroupDataSchema).default([]),
+  groupings: z.array(DiagramGroupingDataSchema).optional(), // Optional groupings for coordinated movement
   layers: LayersConfigSchema.optional(), // Optional layers configuration
 });
 
@@ -181,6 +193,7 @@ export const DiagramNodeItemSchema = z.object({
   letterSpacing: z.number().optional(), // Letter spacing in pixels
   lineHeight: z.number().optional(), // Line height as a multiplier (e.g., 1.2, 1.5)
   textOpacity: z.number().optional(), // Text opacity (0-1)
+  groupId: z.string().optional(), // Reference to grouping this node belongs to
 });
 
 // Schema for nested group items (recursive)
@@ -235,11 +248,13 @@ export const DiagramGroupItemSchema: z.ZodType<any> = z.object({
    minHeight: z.number().optional(), // Minimum height constraint (based on content)
    rotation: z.number().optional(), // Rotation angle in degrees (0, 45, -45, 90, -90)
    borderWidth: z.number().optional(), // Border thickness for groups/zones
+   groupId: z.string().optional(), // Reference to grouping this zone belongs to
  });
 
 // Schema for nested hierarchical diagram data
 export const HierarchicalDiagramDataSchema = z.object({
   zones: z.array(DiagramGroupItemSchema).default([]),
   connections: z.array(DiagramConnectionDataSchema).default([]),
+  groupings: z.array(DiagramGroupingDataSchema).optional(), // Optional groupings for coordinated movement
   layers: LayersConfigSchema.optional(), // Optional layers configuration
 });

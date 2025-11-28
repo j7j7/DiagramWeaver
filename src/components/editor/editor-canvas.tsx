@@ -41,6 +41,7 @@ import { CanvasConnections } from "./canvas-connections";
 import { useNodeAnimationOffsets } from "@/hooks/use-sine-wave-animation";
 import { CanvasArrowToggles } from "./canvas-arrow-toggles";
 import { CanvasConnectionText } from "./canvas-connection-text";
+import { getItemGroup } from "@/lib/grouping-utils";
 
 interface EditorCanvasProps {
   diagramData: DiagramData;
@@ -76,6 +77,9 @@ interface EditorCanvasProps {
     getItemLayerById: (itemId: string) => string;
     assignItemsToLayer: (itemIds: string[], layerId: string) => void;
   };
+  onGroupItems?: () => void;
+  onUngroupItems?: () => void;
+  onRemoveFromGroup?: () => void;
 }
 
 
@@ -90,7 +94,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, selectionAnimationEnabled = false, iconBackgroundEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, selectionAnimationEnabled = false, iconBackgroundEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup }: EditorCanvasProps,
   ref
 ) {
   // ============================================================================
@@ -323,6 +327,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     nodesById,
     zonesById,
     selectedItemIds,
+    diagramData,
     addNode: operations.addNode,
     moveItem: operations.moveItem,
     moveMultipleItems: operations.moveMultipleItems,
@@ -670,20 +675,29 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   return a.depth - b.depth;
                 });
 
-              return zonesWithDepth.map(({ zone }) => (
-                <DiagramZone
-                  key={zone.id}
-                  zone={zone}
-                  isSelected={selectedItemId === zone.id || (selectedItemIds?.has(zone.id) ?? false)}
-                  isDropTarget={hoveredGroupId === zone.id}
-                  isTargetable={hoveredGroupId === zone.id}
-                  isMultiSelected={selectedItemIds?.has(zone.id) && (selectedItemIds?.size ?? 0) > 1}
-                  onClick={(e: React.MouseEvent) => handleZoneClick(e, zone)}
-                  onContextMenu={(e: React.MouseEvent) => handleZoneContextMenu(e, zone)}
-                  onResize={operations.resizeGroup} // Allows resizing zones
-                  onLabelChange={operations.updateGroupLabel} // Allows editing zone labels
-                />
-              ));
+              return zonesWithDepth.map(({ zone }) => {
+                const isZoneSelected = selectedItemId === zone.id || (selectedItemIds?.has(zone.id) ?? false);
+                const isInGroup = selectedItemIds.size > 1 && 
+                                  selectedItemIds.has(zone.id) && 
+                                  selectedItemId !== zone.id &&
+                                  selectedItemId !== undefined &&
+                                  getItemGroup(zone.id, diagramData)?.id === getItemGroup(selectedItemId, diagramData)?.id;
+                return (
+                  <DiagramZone
+                    key={zone.id}
+                    zone={zone}
+                    isSelected={isZoneSelected}
+                    isDropTarget={hoveredGroupId === zone.id}
+                    isTargetable={hoveredGroupId === zone.id}
+                    isMultiSelected={selectedItemIds?.has(zone.id) && (selectedItemIds?.size ?? 0) > 1}
+                    isGroupMember={isInGroup}
+                    onClick={(e: React.MouseEvent) => handleZoneClick(e, zone)}
+                    onContextMenu={(e: React.MouseEvent) => handleZoneContextMenu(e, zone)}
+                    onResize={operations.resizeGroup}
+                    onLabelChange={operations.updateGroupLabel}
+                  />
+                );
+              });
             })()}
 
             {/* ================================================================
@@ -710,21 +724,30 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 return layerA - layerB;
               });
 
-              return sortedNodes.map((node) => (
-                <DiagramNode
-                  key={node.id}
-                  node={node}
-                  isSelected={selectedItemId === node.id || (selectedItemIds?.has(node.id) ?? false)}
-                  onClick={(e: React.MouseEvent) => handleNodeClick(e, node)}
-                  onContextMenu={(e: React.MouseEvent) => handleNodeContextMenu(e, node)}
-                  onResize={operations.resizeNode} // Allows resizing nodes
-                  onLabelUpdate={onLabelUpdate} // Allows editing node labels
-                  onDraggingChange={onDraggingChange} // Notifies parent of drag state
-                  hoverEnabled={hoverEnabled} // Controls hover effects
-                  selectionAnimationEnabled={selectionAnimationEnabled} // Controls selection animation
-                  animationOffset={selectionAnimationEnabled ? (animationOffsets[node.id] || { x: 0, y: 0 }) : { x: 0, y: 0 }}
-                />
-              ));
+              return sortedNodes.map((node) => {
+                const isNodeSelected = selectedItemId === node.id || (selectedItemIds?.has(node.id) ?? false);
+                const isInGroup = selectedItemIds.size > 1 && 
+                                  selectedItemIds.has(node.id) && 
+                                  selectedItemId !== node.id &&
+                                  selectedItemId !== undefined &&
+                                  getItemGroup(node.id, diagramData)?.id === getItemGroup(selectedItemId, diagramData)?.id;
+                return (
+                  <DiagramNode
+                    key={node.id}
+                    node={node}
+                    isSelected={isNodeSelected}
+                    isGroupMember={isInGroup}
+                    onClick={(e: React.MouseEvent) => handleNodeClick(e, node)}
+                    onContextMenu={(e: React.MouseEvent) => handleNodeContextMenu(e, node)}
+                    onResize={operations.resizeNode}
+                    onLabelUpdate={onLabelUpdate}
+                    onDraggingChange={onDraggingChange}
+                    hoverEnabled={hoverEnabled}
+                    selectionAnimationEnabled={selectionAnimationEnabled}
+                    animationOffset={selectionAnimationEnabled ? (animationOffsets[node.id] || { x: 0, y: 0 }) : { x: 0, y: 0 }}
+                  />
+                );
+              });
             })()}
 
             {/* ================================================================
@@ -898,12 +921,16 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               (() => {
                 const zone = diagramData.zones?.find(zone => zone.id === contextMenu.itemId);
                 if (!zone) return 'auto';
-                // Map the data model values back to UI values
                 if (!zone.orientation) return 'auto';
                 if (zone.orientation === 'square') return 'grid';
                 return zone.orientation;
               })()
             }
+            canGroup={selectedItemIds.size >= 2}
+            isGrouped={getItemGroup(contextMenu.itemId, diagramData) !== null}
+            onGroup={onGroupItems}
+            onUngroup={onUngroupItems}
+            onRemoveFromGroup={onRemoveFromGroup}
           />
         </div>
     </div>

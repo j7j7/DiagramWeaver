@@ -43,6 +43,7 @@ export interface DiagramNodeData {
   letterSpacing?: number; // Letter spacing in pixels
   lineHeight?: number; // Line height as a multiplier (e.g., 1.2, 1.5)
   textOpacity?: number; // Text opacity (0-1)
+  groupId?: string; // Reference to grouping this node belongs to
 }
 
 export interface DiagramConnectionData {
@@ -114,6 +115,7 @@ export interface DiagramNodeItem {
   letterSpacing?: number; // Letter spacing in pixels
   lineHeight?: number; // Line height as a multiplier (e.g., 1.2, 1.5)
   textOpacity?: number; // Text opacity (0-1)
+  groupId?: string; // Reference to grouping this node belongs to
 }
 
 export interface DiagramZoneItem {
@@ -167,6 +169,7 @@ export interface DiagramZoneItem {
    minHeight?: number; // Minimum height constraint (based on content)
    rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
    borderWidth?: number; // Border thickness for zones
+   groupId?: string; // Reference to grouping this zone belongs to
  }
 
 export interface DiagramZoneData {
@@ -221,7 +224,17 @@ export interface DiagramZoneData {
    minHeight?: number; // Minimum height constraint (based on content)
    rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
    borderWidth?: number; // Border thickness for zones
+   groupId?: string; // Reference to grouping this zone belongs to
  }
+
+// Grouping management interface - for visual grouping of items (distinct from zones)
+export interface DiagramGroupingData {
+  id: string;
+  type: 'grouping';
+  memberIds: string[]; // IDs of nodes/zones that are grouped together
+  label?: string; // Optional group name
+  locked?: boolean; // If true, prevent ungrouping or modifications
+}
 
 // Layer management interfaces
 export interface LayerInfo {
@@ -242,6 +255,7 @@ export interface DiagramData {
   nodes: DiagramNodeData[];
   connections: DiagramConnectionData[];
   zones: DiagramZoneData[]; // Always present - even single nodes are in zones
+  groupings?: DiagramGroupingData[]; // Optional groupings for coordinated movement
   rootZoneId?: string; // Optional reference to root zone
   layers?: LayersConfig; // Optional layers configuration
 }
@@ -250,6 +264,7 @@ export interface DiagramData {
 export interface HierarchicalDiagramData {
   zones: DiagramZoneItem[]; // Nested format with DiagramZoneItem
   connections: DiagramConnectionData[];
+  groupings?: DiagramGroupingData[]; // Optional groupings for coordinated movement
   metadata?: any;
   layers?: LayersConfig; // Optional layers configuration
 }
