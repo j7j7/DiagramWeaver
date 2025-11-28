@@ -41,6 +41,96 @@ export function useCanvasClipboard({
   const [clipboard, setClipboard] = useState<ClipboardData | null>(null);
 
   const handleCopy = useCallback((itemId?: string) => {
+    // If a specific itemId is provided, handle single item copy (including group logic)
+    if (itemId) {
+      // Fallback to single item copy for backward compatibility
+      const node = diagramData.nodes.find(n => n.id === itemId);
+      const zone = diagramData.zones?.find(zone => zone.id === itemId);
+
+      if (node) {
+        // Check if node is part of a grouping - if so, copy all items in grouping
+        if (node.groupId) {
+          const grouping = diagramData.groupings?.find(g => g.id === node.groupId);
+          if (grouping) {
+            // Collect all nodes in this grouping
+            const groupedNodes: DiagramNodeData[] = [];
+            const originalGroupingRelationships = new Map<string, string>();
+            
+            grouping.memberIds.forEach(memberId => {
+              const memberNode = diagramData.nodes.find(n => n.id === memberId);
+              if (memberNode) {
+                groupedNodes.push({ ...memberNode });
+                originalGroupingRelationships.set(memberId, memberNode.groupId!);
+              }
+            });
+            
+            setClipboard({ 
+              nodes: groupedNodes,
+              originalGroupingRelationships
+            });
+            onClipboardChange?.(true);
+            
+            toast({
+              title: "Group Copied",
+              description: `${groupedNodes.length} items in grouping copied to clipboard.`,
+            });
+            return; // Exit early to avoid falling through to other logic
+          }
+        }
+        
+        // If not grouped or grouping not found, copy just the node
+        setClipboard({ node: { ...node } });
+        onClipboardChange?.(true);
+        
+        toast({
+          title: "Item Copied",
+          description: "The selected item has been copied to clipboard.",
+        });
+        return; // Exit early
+      } else if (zone) {
+        // Handle zone copy (existing logic)
+        const originalGroupingRelationships = new Map<string, string>();
+        const collectChildren = (groupId: string, visited: Set<string> = new Set()): (DiagramNodeData | DiagramGroupData)[] => {
+          if (visited.has(groupId)) return [];
+          visited.add(groupId);
+
+          const children: (DiagramNodeData | DiagramGroupData)[] = [];
+          const currentZone = diagramData.zones?.find(zone => zone.id === groupId);
+
+          if (currentZone?.children) {
+            for (const childId of currentZone.children) {
+              const childNode = diagramData.nodes.find(n => n.id === childId);
+              const childZone = diagramData.zones?.find(zone => zone.id === childId);
+
+              if (childNode) {
+                children.push({ ...childNode });
+                // Track grouping relationships too
+                if (childNode.groupId) {
+                  originalGroupingRelationships.set(childNode.id, childNode.groupId);
+                }
+              } else if (childZone) {
+                children.push({ ...childZone });
+                // Recursively collect children of child zones
+                children.push(...collectChildren(childId, visited));
+              }
+            }
+          }
+
+          return children;
+        };
+
+        const children = collectChildren(itemId);
+        setClipboard({ zone: { ...zone }, children, originalGroupingRelationships });
+        onClipboardChange?.(true);
+
+        toast({
+          title: "Item Copied",
+          description: "The selected item has been copied to clipboard.",
+        });
+        return; // Exit early
+      }
+    }
+    
     // If we have multiple items selected, copy all of them
     if (selectedItemIds && selectedItemIds.size > 0) {
       const selectedNodes: DiagramNodeData[] = [];
