@@ -414,13 +414,8 @@ export default function DiagramEditor() {
       setSelectedItem(item);
       
       if (item) {
-        const group = getItemGroup(item.id, diagramData);
-        if (group) {
-          const memberIds = getGroupMembers(group.id, diagramData);
-          setSelectedItemIds(new Set(memberIds));
-        } else {
-          setSelectedItemIds(new Set([item.id]));
-        }
+        // Always select only the clicked item, not the entire group
+        setSelectedItemIds(new Set([item.id]));
       } else {
         setSelectedItemIds(new Set());
       }

@@ -677,11 +677,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
 
               return zonesWithDepth.map(({ zone }) => {
                 const isZoneSelected = selectedItemId === zone.id || (selectedItemIds?.has(zone.id) ?? false);
-                const isInGroup = selectedItemIds.size > 1 && 
-                                  selectedItemIds.has(zone.id) && 
-                                  selectedItemId !== zone.id &&
+                const selectedGroup = selectedItemId ? getItemGroup(selectedItemId, diagramData) : null;
+                const itemGroup = getItemGroup(zone.id, diagramData);
+                const isInGroup = selectedItemId !== zone.id &&
                                   selectedItemId !== undefined &&
-                                  getItemGroup(zone.id, diagramData)?.id === getItemGroup(selectedItemId, diagramData)?.id;
+                                  selectedGroup !== null &&
+                                  itemGroup !== null &&
+                                  selectedGroup.id === itemGroup.id;
                 return (
                   <DiagramZone
                     key={zone.id}
@@ -726,11 +728,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
 
               return sortedNodes.map((node) => {
                 const isNodeSelected = selectedItemId === node.id || (selectedItemIds?.has(node.id) ?? false);
-                const isInGroup = selectedItemIds.size > 1 && 
-                                  selectedItemIds.has(node.id) && 
-                                  selectedItemId !== node.id &&
+                const selectedGroup = selectedItemId ? getItemGroup(selectedItemId, diagramData) : null;
+                const itemGroup = getItemGroup(node.id, diagramData);
+                const isInGroup = selectedItemId !== node.id &&
                                   selectedItemId !== undefined &&
-                                  getItemGroup(node.id, diagramData)?.id === getItemGroup(selectedItemId, diagramData)?.id;
+                                  selectedGroup !== null &&
+                                  itemGroup !== null &&
+                                  selectedGroup.id === itemGroup.id;
                 return (
                   <DiagramNode
                     key={node.id}
@@ -832,6 +836,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             visible={contextMenu.visible}
             onClose={closeContextMenu}
             itemType={contextMenu.itemType}
+            itemId={contextMenu.itemId}
             onDelete={() => {
               if (contextMenu.itemType === 'node') {
                 operations.handleDelete(contextMenu.itemId);
@@ -945,7 +950,16 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             }}
             onGroup={onGroupItems}
             onUngroup={onUngroupItems}
-            onRemoveFromGroup={onRemoveFromGroup}
+            onRemoveFromGroup={(itemId: string) => {
+              if (onRemoveFromGroup) {
+                // Create a temporary selection with just this item
+                const originalSelectedIds = selectedItemIds;
+                setSelectedItemIds(new Set([itemId]));
+                onRemoveFromGroup();
+                // Restore original selection
+                setSelectedItemIds(originalSelectedIds);
+              }
+            }}
           />
         </div>
     </div>

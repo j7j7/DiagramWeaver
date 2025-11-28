@@ -18,6 +18,7 @@ interface ContextMenuProps {
   triggerConnectionSettings?: () => void;
   connections?: Array<{from: string; to: string; id?: string}>;
   itemType?: 'node' | 'zone';
+  itemId?: string;
   onToggleFreeflow?: () => void;
   isFreeflow?: boolean;
   onTextStyling?: () => void;
@@ -29,7 +30,7 @@ interface ContextMenuProps {
   onChangeLayer?: (layerId: string) => void;
   onGroup?: () => void;
   onUngroup?: () => void;
-  onRemoveFromGroup?: () => void;
+  onRemoveFromGroup?: (itemId: string) => void;
   onAddToGroup?: () => void;
   isGrouped?: boolean;
   canGroup?: boolean;
@@ -64,7 +65,8 @@ export function ContextMenu({
   onAddToGroup,
   isGrouped = false,
   canGroup = false,
-  canAddToGroup = false
+  canAddToGroup = false,
+  itemId
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [layerSubmenuOpen, setLayerSubmenuOpen] = useState(false);
@@ -340,7 +342,9 @@ export function ContextMenu({
         <button
           className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
           onClick={() => {
-            onRemoveFromGroup();
+            if (itemId && onRemoveFromGroup) {
+              onRemoveFromGroup(itemId);
+            }
             onClose();
           }}
         >
