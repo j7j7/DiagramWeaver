@@ -25,14 +25,11 @@ export function createGroup(
     throw new Error('All selected items are already in this group.');
   }
 
-  // If some items are already in a group, add the new items to that existing group
-  if (uniqueGroupIds.size === 1 && existingGroupings.length > 0) {
-    const existingGroupId = existingGroupings[0]!.id;
-    const ungroupedItemIds = itemIds.filter(id => !getItemGroup(id, diagramData));
-    
-    if (ungroupedItemIds.length > 0) {
-      return addToGroup(ungroupedItemIds, existingGroupId, diagramData);
-    }
+  // Only allow creating new groups with ungrouped items or items from same group
+  // Don't automatically add to existing groups - user should explicitly use "Add to Group"
+  if (uniqueGroupIds.size === 1 && existingGroupings.length > 0 && existingGroupings.length < itemIds.length) {
+    // Some items are in a group but not all - this is mixing groups, not allowed
+    throw new Error('Selected items are from different groups. Remove from groups first.');
   }
 
   // Create a new group with all items

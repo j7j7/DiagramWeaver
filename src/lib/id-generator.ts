@@ -10,10 +10,11 @@ export function generateSequentialId(baseId: string, existingData: DiagramData):
   // Normalize the base ID to be URL-safe
   const normalizedBase = baseId.replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase();
   
-  // Get all existing IDs (nodes and zones)
+  // Get all existing IDs (nodes, zones, and groupings)
   const allIds = [
     ...existingData.nodes.map(n => n.id),
-    ...(existingData.zones || []).map(z => z.id)
+    ...(existingData.zones || []).map(z => z.id),
+    ...(existingData.groupings || []).map(g => g.id)
   ];
   
   // Find the highest sequential number for this base type
