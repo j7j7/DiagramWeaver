@@ -936,17 +936,37 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             canGroup={selectedItemIds.size >= 2}
             isGrouped={getItemGroup(contextMenu.itemId, diagramData) !== null}
             canAddToGroup={(() => {
-              const targetGroup = getItemGroup(contextMenu.itemId, diagramData);
-              if (!targetGroup || selectedItemIds.size < 2) return false;
+              if (selectedItemIds.size < 2) return false;
               
-              // Check if any selected items are not in the target group
-              return Array.from(selectedItemIds).some(itemId => 
-                getItemGroup(itemId, diagramData)?.id !== targetGroup.id
-              );
+              // Find if any selected items are in a group
+              const selectedItemsWithGroups = Array.from(selectedItemIds).map(itemId => ({
+                itemId,
+                group: getItemGroup(itemId, diagramData)
+              })).filter(item => item.group !== null);
+              
+              // If no selected items are in any group, can't add to group
+              if (selectedItemsWithGroups.length === 0) return false;
+              
+              // If all selected items are in the same group, no need to add to group
+              const uniqueGroupIds = new Set(selectedItemsWithGroups.map(item => item.group!.id));
+              if (uniqueGroupIds.size === 1 && selectedItemsWithGroups.length === selectedItemIds.size) return false;
+              
+              // If selected items are from different groups, can't add to group
+              if (uniqueGroupIds.size > 1) return false;
+              
+              // Otherwise, we have some items in one group and some not in that group - allow adding to group
+              return true;
             })()}
             onAddToGroup={() => {
-              const targetGroup = getItemGroup(contextMenu.itemId, diagramData);
-              if (targetGroup && onAddToGroupItems) {
+              // Find the group that selected items should be added to
+              const selectedItemsWithGroups = Array.from(selectedItemIds).map(itemId => ({
+                itemId,
+                group: getItemGroup(itemId, diagramData)
+              })).filter(item => item.group !== null);
+              
+              if (selectedItemsWithGroups.length > 0 && onAddToGroupItems) {
+                // Use the first group found (there should only be one based on canAddToGroup logic)
+                const targetGroup = selectedItemsWithGroups[0].group!;
                 onAddToGroupItems(targetGroup.id);
               }
             }}
