@@ -200,6 +200,41 @@ const [{ isDragging }, drag] = useDrag(() => ({
       };
     }
   }, [isResizing, resizeHandle, zone.id, onResize]);
+
+  // Global click handler to clear resize state when clicking outside
+  React.useEffect(() => {
+    const handleGlobalClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      // Check if click is outside this zone
+      if (!target.closest(`[data-zone-id="${zone.id}"]`)) {
+        // Clear both resize state and hover state
+        handleResizeEnd();
+        setIsHovered(false);
+      }
+    };
+    
+    document.addEventListener('click', handleGlobalClick);
+    
+    return () => {
+      document.removeEventListener('click', handleGlobalClick);
+    };
+  }, [isResizing, zone.id, handleResizeEnd, setIsHovered]);
+
+  // Global keyboard handler for Escape key
+  React.useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isResizing) {
+        handleResizeEnd();
+        setIsHovered(false);
+      }
+    };
+    
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    
+    return () => {
+      document.removeEventListener('keydown', handleGlobalKeyDown);
+    };
+  }, [isResizing, handleResizeEnd, setIsHovered]);
   
   const handleGroupMouseEnter = () => setIsHovered(true);
   const handleGroupMouseLeave = () => {
@@ -561,6 +596,7 @@ const [{ isDragging }, drag] = useDrag(() => ({
 
   return (
     <div
+      data-zone-id={zone.id}
       ref={(node) => {
         if (node) {
           drag(node);

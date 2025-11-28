@@ -179,6 +179,10 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
     } else if (e.key === 'Escape') {
       setIsEditingLabel(false);
       setEditText(node.label || '');
+      // Also clear resize state when Escape is pressed
+      if (isResizing) {
+        handleResizeEnd();
+      }
     } else if (!isEditingLabel && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
       // Handle keyboard navigation for selected nodes
       e.preventDefault();
@@ -388,6 +392,41 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
     }
   }, [isResizing, resizeHandle, node.id, onResize]);
 
+  // Global click handler to clear resize state when clicking outside
+  useEffect(() => {
+    const handleGlobalClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      // Check if click is outside this node
+      if (!target.closest(`[data-node-id="${node.id}"]`)) {
+        // Clear both resize state and hover state
+        handleResizeEnd();
+        setIsHovered(false);
+      }
+    };
+    
+    document.addEventListener('click', handleGlobalClick);
+    
+    return () => {
+      document.removeEventListener('click', handleGlobalClick);
+    };
+  }, [isResizing, node.id, handleResizeEnd, setIsHovered]);
+
+  // Global keyboard handler for Escape key
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isResizing) {
+        handleResizeEnd();
+        setIsHovered(false);
+      }
+    };
+    
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    
+    return () => {
+      document.removeEventListener('keydown', handleGlobalKeyDown);
+    };
+  }, [isResizing, handleResizeEnd, setIsHovered]);
+
   // Touch event handlers for mobile drag and drop
   const handleTouchStart = (e: React.TouchEvent) => {
     const touch = e.touches[0];
@@ -469,6 +508,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
 
 return (
     <div
+      data-node-id={node.id}
       ref={(node) => {
         if (node) {
           drag(node);
