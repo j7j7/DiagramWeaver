@@ -554,6 +554,50 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   }, [selectedItemId, selectedItemIds, handleCopy, handlePaste, canPaste, operations]);
 
   // ============================================================================
+  // CANVAS DIMENSIONS TRACKING
+  // ============================================================================
+  // Tracks canvas container dimensions using ResizeObserver
+  // This is needed for rulers to display correctly
+  useEffect(() => {
+    if (!canvasRef.current) return;
+
+    const updateDimensions = () => {
+      if (canvasRef.current) {
+        setCanvasDimensions({
+          width: canvasRef.current.offsetWidth,
+          height: canvasRef.current.offsetHeight
+        });
+      }
+    };
+
+    // Initial dimensions
+    updateDimensions();
+
+    // Set up ResizeObserver to track dimension changes
+    if (typeof ResizeObserver !== 'undefined') {
+      const resizeObserver = new ResizeObserver(() => {
+        updateDimensions();
+      });
+      
+      resizeObserver.observe(canvasRef.current);
+      
+      return () => {
+        resizeObserver.disconnect();
+      };
+    } else {
+      // Fallback for browsers without ResizeObserver
+      const handleResize = () => {
+        updateDimensions();
+      };
+      
+      window.addEventListener('resize', handleResize);
+      return () => {
+        window.removeEventListener('resize', handleResize);
+      };
+    }
+  }, []);
+
+  // ============================================================================
   // IMPERATIVE API (via ref forwarding)
   // ============================================================================
   // Exposes methods that parent components can call via ref
