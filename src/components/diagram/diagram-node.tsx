@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { useDrag } from 'react-dnd';
+import { getEmptyImage } from 'react-dnd-html5-backend';
 import {
   Popover,
   PopoverContent,
@@ -293,7 +294,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
   const nodeHeight = calculateNodeHeight(node.label || '', node.type, node.sizeMode, node.height);
   const rotation = (node as any).rotation || 0;
   
-  const [{ isDragging }, drag] = useDrag(() => ({
+  const [{ isDragging }, drag, preview] = useDrag(() => ({
     type: ItemTypes.CANVAS_NODE,
     item: { id: node.id, x: node.x, y: node.y, type: ItemTypes.CANVAS_NODE, label: node.label || '' },
     collect: (monitor) => ({
@@ -306,6 +307,10 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
       onDraggingChange?.(false);
     },
   }), [node.id, node.x, node.y, onDraggingChange]);
+
+  useEffect(() => {
+    preview(getEmptyImage(), { captureDraggingState: true });
+  }, [preview]);
 
   const [isTouchDragging, setIsTouchDragging] = useState(false);
   const touchStartPos = useRef<{ x: number; y: number } | null>(null);
@@ -520,12 +525,12 @@ return (
         !(isDragging || isTouchDragging) && "hover:scale-105",
         (isSelected || isHighlighted || isMultiSelected) && `${selectionAnimationEnabled ? "node-glow-pulse" : "node-glow-static"} drop-shadow-md`,
         isGroupMember && !isSelected && !isHighlighted && !isMultiSelected && `${selectionAnimationEnabled ? "node-glow-green-pulse" : "node-glow-green-static"} drop-shadow-md`,
-        (isDragging || isTouchDragging) && "opacity-50 cursor-grabbing",
+        (isDragging || isTouchDragging) && "cursor-grabbing",
         isTargetable && "cursor-crosshair opacity-70 hover:opacity-100"
         )}
       style={{
-        left: isDragging ? (tempPosition?.x || node.x) : (node.x + animationOffset.x),
-        top: isDragging ? (tempPosition?.y || node.y) : (node.y + animationOffset.y),
+        left: node.x + animationOffset.x,
+        top: node.y + animationOffset.y,
          width: isShapeNode ? (node.width || 60) :
                 (isRotatableNode || isTextboxNode ? 
                  (node.sizeMode === 'custom' && node.width ? node.width : 'auto') : NODE_WIDTH),

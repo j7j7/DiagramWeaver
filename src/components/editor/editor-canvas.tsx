@@ -690,10 +690,19 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                                   selectedGroup !== null &&
                                   itemGroup !== null &&
                                   selectedGroup.id === itemGroup.id;
+
+                // Override position if being dragged
+                let displayZone = zone;
+                if (dragPosition?.itemId === zone.id) {
+                  displayZone = { ...zone, x: dragPosition.x, y: dragPosition.y };
+                } else if (multiDragPositions?.[zone.id]) {
+                  displayZone = { ...zone, x: multiDragPositions[zone.id].x, y: multiDragPositions[zone.id].y };
+                }
+
                 return (
                   <DiagramZone
                     key={zone.id}
-                    zone={zone}
+                    zone={displayZone}
                     isSelected={isZoneSelected}
                     isDropTarget={hoveredGroupId === zone.id}
                     isTargetable={hoveredGroupId === zone.id}
@@ -741,10 +750,19 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                                   selectedGroup !== null &&
                                   itemGroup !== null &&
                                   selectedGroup.id === itemGroup.id;
+
+                // Override position if being dragged
+                let displayNode = node;
+                if (dragPosition?.itemId === node.id) {
+                  displayNode = { ...node, x: dragPosition.x, y: dragPosition.y };
+                } else if (multiDragPositions?.[node.id]) {
+                  displayNode = { ...node, x: multiDragPositions[node.id].x, y: multiDragPositions[node.id].y };
+                }
+
                 return (
                   <DiagramNode
                     key={node.id}
-                    node={node}
+                    node={displayNode}
                     isSelected={isNodeSelected}
                     isGroupMember={isInGroup}
                     onClick={(e: React.MouseEvent) => handleNodeClick(e, node)}

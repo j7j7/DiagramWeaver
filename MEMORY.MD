@@ -479,3 +479,9 @@ See `REFACTORING_SUMMARY.md` for complete details.
 - Notes:
   - Existing canvas copy/paste (for nodes/zones) and keyboard shortcuts remain unchanged.
   - `npm run typecheck` currently fails due to pre-existing issues in `src/components/editor/text-styling-panel.tsx` and `src/lib/group-hierarchy.ts`; those files were not modified as part of this change.
+- **Drag and Drop Visuals** (2025-11-29): Updated drag and drop behavior to move the original item instead of a ghost preview:
+  - **Visual Feedback**: The original item now moves on the canvas during drag, providing a more direct manipulation feel.
+  - **Ghost Hiding**: Suppressed the default HTML5 drag ghost image using `getEmptyImage()` from `react-dnd-html5-backend`.
+  - **State Management**: Dragging updates a temporary visual state (`dragPosition`) without committing to the main `diagramData` history, preventing undo/redo stack pollution during the drag operation.
+  - **History Update**: Undo/redo history is only updated once the drag is completed (on drop).
+  - **Files Modified**: `src/components/editor/editor-canvas.tsx`, `src/components/diagram/diagram-node.tsx`, `src/components/diagram/diagram-zone.tsx`.

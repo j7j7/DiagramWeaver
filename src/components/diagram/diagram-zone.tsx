@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useDrag } from 'react-dnd';
+import { getEmptyImage } from 'react-dnd-html5-backend';
 import type { DiagramZoneData } from '@/lib/types';
 import { ItemTypes } from '../editor/draggable-item';
 import { cn } from '@/lib/utils';
@@ -29,13 +30,17 @@ interface DiagramZoneProps {
 
 
 export function DiagramZone({ zone, isSelected, isDropTarget, isTargetable, isMultiSelected, isGroupMember, onClick, onContextMenu, onResize, onLabelChange }: DiagramZoneProps) {
-const [{ isDragging }, drag] = useDrag(() => ({
+const [{ isDragging }, drag, preview] = useDrag(() => ({
     type: ItemTypes.ZONE,
     item: { ...zone, type: ItemTypes.ZONE },
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
   }), [zone]);
+
+  useEffect(() => {
+    preview(getEmptyImage(), { captureDraggingState: true });
+  }, [preview]);
 
   const [isTouchDragging, setIsTouchDragging] = useState(false);
   const touchStartPos = useRef<{ x: number; y: number } | null>(null);
@@ -608,7 +613,8 @@ const [{ isDragging }, drag] = useDrag(() => ({
         borderStyle === 'none' && (isSelected 
           ? "border border-dashed border-primary opacity-100" 
           : "opacity-100 hover:border hover:border-dashed hover:border-primary hover:bg-primary/5"),
-        (isDragging || isTouchDragging || isResizing) && "opacity-50",
+        (isDragging || isTouchDragging) && "cursor-grabbing",
+        isResizing && "opacity-50",
         (isSelected || isDropTarget || isMultiSelected) && "ring-2 ring-primary ring-offset-2",
         isGroupMember && !isSelected && !isDropTarget && !isMultiSelected && "ring-2 ring-green-500 ring-offset-2",
         isTargetable && "ring-2 ring-green-500 ring-offset-2 animate-pulse",
