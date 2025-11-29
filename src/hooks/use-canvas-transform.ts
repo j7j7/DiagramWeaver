@@ -37,7 +37,7 @@ export function useCanvasTransform({
     if (!canvasRef.current) return;
     const { deltaY } = e;
     const rect = canvasRef.current.getBoundingClientRect();
-    const s = Math.pow(0.995, deltaY); // Less sensitive zoom (changed from 0.99 to 0.995)
+    const s = Math.pow(0.9975, deltaY); // More precise zoom (twice as precise)
     
     const newK = Math.max(0.1, Math.min(transform.k * s, 2.5)); // Max zoom set to 250% (2.5x)
     
@@ -172,7 +172,7 @@ export function useCanvasTransform({
       e.preventDefault();
       const { deltaY } = e;
       const rect = canvas.getBoundingClientRect();
-      const s = Math.pow(0.99, deltaY);
+      const s = Math.pow(0.995, deltaY);
       
       const newK = Math.max(0.1, Math.min(transform.k * s, 2.5));
       

@@ -485,3 +485,28 @@ See `REFACTORING_SUMMARY.md` for complete details.
   - **State Management**: Dragging updates a temporary visual state (`dragPosition`) without committing to the main `diagramData` history, preventing undo/redo stack pollution during the drag operation.
   - **History Update**: Undo/redo history is only updated once the drag is completed (on drop).
   - **Files Modified**: `src/components/editor/editor-canvas.tsx`, `src/components/diagram/diagram-node.tsx`, `src/components/diagram/diagram-zone.tsx`.
+|- **Real-Time Connection Line Updates During Drag** (2025-11-29): Enhanced drag and drop to update connection lines dynamically as items are dragged:
+|  - **Display Position Overrides**: Created `displayNodesById` and `displayZonesById` lookup maps that override item positions with temporary drag positions during drag operations.
+|  - **Live Connection Updates**: Connection rendering components (`CanvasConnections`, `CanvasArrowToggles`, `CanvasConnectionText`) receive the display position maps and update connection lines in real-time.
+|  - **Multi-Item Support**: Both single-item drag (`dragPosition`) and multi-item drag (`multiDragPositions`) update connection lines for all dragged items simultaneously.
+|  - **No Data Mutations**: Visual updates happen without modifying the underlying `diagramData`, maintaining clean undo/redo history.
+|  - **Hook Reordering Fix**: Resolved React hook dependency errors by reordering hooks in `editor-canvas.tsx` to ensure display maps are calculated before being passed to connection components.
+|  - **Animation Integration**: Display maps layer on top of animation offsets (`animatedNodesById`, `animatedZonesById`) for smooth visual feedback.
+|  - **Implementation**: The drag-drop hook (`useCanvasDragDrop`) tracks temporary positions, which are then merged into display lookup maps used by all rendering components.
+|  - **Files Modified**: `src/components/editor/editor-canvas.tsx` (display map creation and prop passing to connection components).
+|- **Debug Log Cleanup** (2025-11-29): Removed verbose debug console.log statements from JSON editor:
+|  - **Cleaned Output**: Removed repetitive "Has both nodes and zones at root - flat format" and similar messages that cluttered browser console.
+|  - **Affected Functions**: Cleaned up `isNestedFormat()` and `handleSubmit()` in `json-editor-panel.tsx`.
+|  - **Functionality Preserved**: All validation and format detection logic remains intact, only removed logging.
+  - **Files Modified**: `src/components/editor/json-editor-panel.tsx`.
+- **Auto Layout Feature** (2025-11-29): Added a new "Auto Layout" feature to automatically arrange diagram items:
+  - **Algorithm**: Implemented a hierarchical layered layout (Sugiyama-style) that:
+    - Processes the diagram bottom-up (zones first).
+    - Assigns ranks/layers to nodes based on dependencies (connections).
+    - Minimizes edge crossings using barycenter heuristic.
+    - Assigns X/Y coordinates with uniform spacing.
+    - Handles disconnected components by packing them.
+  - **UI**: Added "Layout" menu with "Auto Layout" item and keyboard shortcut `Ctrl+Shift+L`.
+  - **Zone Preservation**: Modified algorithm to preserve zone sizes and internal layouts. Zones are treated as rigid blocks during auto-layout, with their dimensions calculated from current content.
+  - **Grouping Support**: Enhanced algorithm to treat groupings as single units. Items within a grouping move together as a block, preserving their relative arrangement.
+  - **Implementation**: Created `src/lib/auto-layout.ts` engine and updated `canvas-layout-utils.ts` to support freeform layout inside zones.

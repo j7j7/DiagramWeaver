@@ -57,7 +57,11 @@ Uses Google Genkit for natural language processing:
 - Radix UI components for consistent interactions
 
 ### Features
-- **Drag & Drop**: React DND for intuitive diagram creation
+- **Drag & Drop**: React DND for intuitive diagram creation with real-time visual feedback
+  - Original items move during drag (no ghost preview)
+  - Connection lines update dynamically during drag operations
+  - Multi-item dragging with maintained relative positioning
+  - Undo/redo history updated only on drop completion
 - **Zoom & Pan**: Canvas transformation with grid snapping
 - **Smart Layouts**: Automatic positioning within groups while preserving manual layouts
 - **Pathfinding**: Intelligent edge routing around obstacles
@@ -65,6 +69,8 @@ Uses Google Genkit for natural language processing:
 - **Connect Mode**: Visual connection creation between nodes
 - **File I/O**: JSON import/export functionality
 - **AI Generation**: Natural language to diagram conversion
+- **Multi-Select**: Shift-click and drag-to-select for batch operations
+- **JSON Editor**: Live bidirectional sync with CodeMirror editor
 
 ## Development Notes
 
@@ -92,3 +98,88 @@ The Genkit flow expects specific JSON structure output. When modifying prompts:
 - Verify drag-and-drop behavior across group boundaries
 - Validate AI generation with edge cases and malformed inputs
 - Check zoom/pan performance with large diagrams
+
+## Recent Architectural Improvements (2025-11-29)
+
+### Drag and Drop System Enhancements
+
+#### Visual Feedback System
+The drag-and-drop system has been enhanced to provide immediate visual feedback:
+
+1. **Original Item Movement**: Items move directly on the canvas during drag rather than showing a ghost preview
+   - Implemented using `getEmptyImage()` from `react-dnd-html5-backend` to suppress default drag preview
+   - Applied in both `DiagramNode` and `DiagramZone` components via `preview(getEmptyImage())`
+
+2. **Display Position Override System**: 
+   - `useCanvasDragDrop` hook tracks temporary drag positions (`dragPosition` for single items, `multiDragPositions` for groups)
+   - `displayNodesById` and `displayZonesById` lookup maps layer drag positions over base item positions
+   - These display maps are computed from `animatedNodesById`/`animatedZonesById` (which include selection animations)
+   - All rendering and connection components use display maps for consistent visual state
+
+3. **Real-Time Connection Updates**:
+   - Connection rendering components (`CanvasConnections`, `CanvasArrowToggles`, `CanvasConnectionText`) receive display position maps
+   - Connection lines redraw automatically as nodes/zones move during drag
+   - Bezier curves recalculate control points based on temporary positions
+   - Works for both single-item and multi-item drag operations
+
+4. **State Management**:
+   - Drag operations update only visual state, never `diagramData` directly
+   - Undo/redo history updated once on drop (not during drag hover)
+   - `isDragging` flag passed to parent to debounce history updates
+   - Clean separation between visual feedback and data persistence
+
+#### Implementation Details
+
+**Hook Layering** (in `editor-canvas.tsx`):
+```
+diagramData → processedNodes/processedZones (layout)
+            → nodesById/zonesById (lookup maps)
+            → animatedNodesById/animatedZonesById (selection animation)
+            → displayNodesById/displayZonesById (drag overrides)
+            → rendering components
+```
+
+**Key Files**:
+- `src/hooks/use-canvas-drag-drop.ts` - Tracks drag positions and hover targets
+- `src/components/editor/editor-canvas.tsx` - Creates display maps and passes to renderers
+- `src/components/diagram/diagram-node.tsx` - Drag source for nodes
+- `src/components/diagram/diagram-zone.tsx` - Drag source for zones
+- `src/components/editor/canvas-connections.tsx` - Connection line rendering
+
+### Editor Canvas Architecture
+
+The `EditorCanvas` component follows a modular hook-based architecture:
+
+**Core Hooks**:
+- `useCanvasTransform` - Pan/zoom state and transformations
+- `useCanvasOperations` - CRUD operations for diagram items
+- `useCanvasDragDrop` - Drag-and-drop logic with react-dnd
+- `useCanvasSelection` - Multi-item selection with rectangle
+- `useCanvasInteractions` - Mouse/touch event handling
+- `useCanvasClipboard` - Copy/paste operations
+- `useCanvasExport` - PNG export functionality
+- `useCanvasContextMenu` - Right-click menu management
+
+**Data Flow**:
+1. Parent `DiagramEditor` maintains `diagramData` state
+2. `EditorCanvas` calculates layout via `calculateLayout()` from `canvas-layout-utils.ts`
+3. Hooks process layout data and manage interactions
+4. Display maps merge all visual states (animation + drag)
+5. Rendering components use display maps for final output
+
+**Refactoring Stats**:
+- Original: ~4100 lines in single file
+- Current: 513 lines in main component + 8 focused hooks
+- 87.5% reduction in main component complexity
+- Each hook handles single responsibility
+
+### JSON Editor System
+
+The JSON editor panel provides live bidirectional sync:
+- Uses CodeMirror 6 for professional editing experience
+- Validates JSON against Zod schemas
+- Supports both flat and hierarchical (nested) diagram formats
+- Auto-converts between formats transparently
+- Debounced updates (16ms) prevent flickering during rapid changes
+- Scroll position preservation during external updates
+- Recent cleanup removed verbose debug logging for cleaner console output

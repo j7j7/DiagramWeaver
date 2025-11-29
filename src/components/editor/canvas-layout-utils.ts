@@ -395,6 +395,59 @@ function layoutZone(
   allItems: { [id: string]: DiagramNodeData | DiagramZoneData | PositionedNode | PositionedGroup },
   measureNodeDimsFn: (n: PositionedNode) => { width: number; height: number }
 ): { width: number; height: number } {
+  // If zone has free layout mode, respect existing positions and just calculate size
+  if (zone.layoutMode === 'free') {
+    const childNodes = zone.children
+      .map((id: string) => allItems[id])
+      .filter(Boolean)
+      .filter((c: any) => !c.type || c.type !== 'zone') as DiagramNodeData[];
+    
+    const childZones = zone.children
+      .map((id: string) => allItems[id])
+      .filter(Boolean)
+      .filter((c: any) => c.type === 'zone') as DiagramZoneData[];
+      
+    // Layout child zones first
+    childZones.forEach(cz => {
+      const dims = layoutZone(cz, allItems, measureNodeDimsFn);
+      (cz as any).width = dims.width;
+      (cz as any).height = dims.height;
+    });
+    
+    // Calculate bounds based on children positions
+    let maxX = 0;
+    let maxY = 0;
+    const allChildren = [...childNodes, ...childZones];
+    
+    if (allChildren.length === 0) {
+      // Default size for empty free zone
+      const minWidth = 300;
+      const minHeight = 200;
+      (zone as PositionedGroup).width = minWidth;
+      (zone as PositionedGroup).height = minHeight;
+      return { width: minWidth, height: minHeight };
+    }
+
+    allChildren.forEach(child => {
+       const dims = (child as any).type === 'zone' 
+         ? { width: (child as any).width || 300, height: (child as any).height || 220 }
+         : measureNodeDimsFn(child as PositionedNode);
+       
+       const x = (child.x || 0);
+       const y = (child.y || 0);
+       maxX = Math.max(maxX, x + dims.width);
+       maxY = Math.max(maxY, y + dims.height);
+    });
+    
+    // Add padding
+    const width = Math.max(maxX + ZONE_PADDING, 150);
+    const height = Math.max(maxY + ZONE_PADDING, 100);
+    
+    (zone as PositionedGroup).width = width;
+    (zone as PositionedGroup).height = height;
+    return { width, height };
+  }
+
   // If zone has custom sizing, use those dimensions and redistribute content within
   if (zone.sizeMode === 'custom' && zone.width && zone.height) {
     const childNodes = zone.children

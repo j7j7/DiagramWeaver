@@ -47,6 +47,7 @@ import {
   getItemPosition,
   getItemCount
 } from '@/lib/rendering-order-utils';
+import { performAutoLayout } from '@/lib/auto-layout';
 
 export type SelectedItem = (
   | (DiagramNodeData & { 
@@ -1432,6 +1433,24 @@ export default function DiagramEditor() {
     }
   };
 
+  const handleAutoLayout = () => {
+    try {
+      const newData = performAutoLayout(diagramData);
+      setDiagramData(newData);
+      toast({ 
+        title: 'Auto Layout Applied', 
+        description: 'Diagram has been automatically arranged.' 
+      });
+    } catch (error) {
+      console.error('Auto layout failed:', error);
+      toast({ 
+        variant: 'destructive', 
+        title: 'Auto Layout Failed', 
+        description: 'Could not apply auto layout.' 
+      });
+    }
+  };
+
   const toggleJsonPanel = () => {
     const newState = !jsonPanelOpen;
     setJsonPanelOpen(newState);
@@ -1516,6 +1535,13 @@ export default function DiagramEditor() {
       if ((isMac ? e.metaKey : e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'g') {
         e.preventDefault();
         handleUngroupItems();
+        return;
+      }
+      
+      // Ctrl+Shift+L (or Cmd+Shift+L on Mac) - Auto Layout
+      if ((isMac ? e.metaKey : e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        handleAutoLayout();
         return;
       }
       
@@ -1741,6 +1767,7 @@ export default function DiagramEditor() {
                     iconBackgroundEnabled={iconBackgroundEnabled}
                     onToggleIconBackground={() => setIconBackgroundEnabled(!iconBackgroundEnabled)}
                     onAlignObjects={handleAlignObjects}
+                    onAutoLayout={handleAutoLayout}
                     onThemeApplyToSelected={handleThemeApplyToSelected}
                     triggerTextStylingPanel={triggerTextStylingPanel}
                     triggerVisualStylingPanel={triggerVisualStylingPanel}

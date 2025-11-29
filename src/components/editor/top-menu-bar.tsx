@@ -70,6 +70,7 @@ interface TopMenuBarProps {
   onTextStylingPanelOpenChange?: (open: boolean) => void;
   onVisualStylingPanelOpenChange?: (open: boolean) => void;
   onResetConnectionSettingsTrigger?: () => void;
+  onAutoLayout?: () => void;
 }
 
 export function TopMenuBar({
@@ -121,6 +122,7 @@ onToggleLayersPanel,
   onTextStylingPanelOpenChange,
   onVisualStylingPanelOpenChange,
   onResetConnectionSettingsTrigger,
+  onAutoLayout,
 }: TopMenuBarProps) {
   
   const [themeEditorOpen, setThemeEditorOpen] = React.useState(false);
@@ -421,6 +423,49 @@ onToggleLayersPanel,
                     </div>
                   </PopoverContent>
                 </Popover>
+              </>
+            )}
+          </MenubarContent>
+        </MenubarMenu>
+        <MenubarMenu>
+          <MenubarTrigger>Layout</MenubarTrigger>
+          <MenubarContent>
+            {onAutoLayout && (
+              <MenubarItem onClick={onAutoLayout}>
+                <CheckSquare className="mr-2 h-4 w-4" />
+                Auto Layout
+                <MenubarShortcut>Ctrl+Shift+L</MenubarShortcut>
+              </MenubarItem>
+            )}
+            {onAlignObjects && (
+              <>
+                <MenubarSeparator />
+                <MenubarItem onClick={() => onAlignObjects('left')}>
+                  Align Left
+                </MenubarItem>
+                <MenubarItem onClick={() => onAlignObjects('h-center')}>
+                  Align Center (H)
+                </MenubarItem>
+                <MenubarItem onClick={() => onAlignObjects('right')}>
+                  Align Right
+                </MenubarItem>
+                <MenubarSeparator />
+                <MenubarItem onClick={() => onAlignObjects('top')}>
+                  Align Top
+                </MenubarItem>
+                <MenubarItem onClick={() => onAlignObjects('v-middle')}>
+                  Align Middle (V)
+                </MenubarItem>
+                <MenubarItem onClick={() => onAlignObjects('bottom')}>
+                  Align Bottom
+                </MenubarItem>
+                <MenubarSeparator />
+                <MenubarItem onClick={() => onAlignObjects('distribute-h')}>
+                  Distribute Horizontally
+                </MenubarItem>
+                <MenubarItem onClick={() => onAlignObjects('distribute-v')}>
+                  Distribute Vertically
+                </MenubarItem>
               </>
             )}
           </MenubarContent>

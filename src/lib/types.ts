@@ -222,12 +222,13 @@ export interface DiagramZoneData {
    sizeMode?: 'auto' | 'custom'; // Whether to use auto-calculated or custom dimensions
    minWidth?: number; // Minimum width constraint (based on content)
    minHeight?: number; // Minimum height constraint (based on content)
-   rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
-   borderWidth?: number; // Border thickness for zones
-   groupId?: string; // Reference to grouping this zone belongs to
- }
+  rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
+  borderWidth?: number; // Border thickness for zones
+  groupId?: string; // Reference to grouping this zone belongs to
+  layoutMode?: 'grid' | 'free'; // Layout mode for children: 'grid' (default) or 'free' (preserve x/y)
+}
 
-// Grouping management interface - for visual grouping of items (distinct from zones)
+export interface DiagramGroupingData {
 export interface DiagramGroupingData {
   id: string;
   type: 'grouping';
