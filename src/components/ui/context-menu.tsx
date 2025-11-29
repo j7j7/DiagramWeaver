@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup, Plus } from 'lucide-react';
+import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup, Plus, ArrowUp, ArrowDown, ChevronUp, ChevronDown } from 'lucide-react';
 
 
 interface ContextMenuProps {
@@ -35,6 +35,14 @@ interface ContextMenuProps {
   isGrouped?: boolean;
   canGroup?: boolean;
   canAddToGroup?: boolean;
+  onMoveToBack?: () => void;
+  onMoveToFront?: () => void;
+  onMoveOneBack?: () => void;
+  onMoveOneForward?: () => void;
+  canMoveToBack?: boolean;
+  canMoveToFront?: boolean;
+  canMoveOneBack?: boolean;
+  canMoveOneForward?: boolean;
 }
 
 export function ContextMenu({ 
@@ -66,7 +74,15 @@ export function ContextMenu({
   isGrouped = false,
   canGroup = false,
   canAddToGroup = false,
-  itemId
+  itemId,
+  onMoveToBack,
+  onMoveToFront,
+  onMoveOneBack,
+  onMoveOneForward,
+  canMoveToBack = false,
+  canMoveToFront = false,
+  canMoveOneBack = false,
+  canMoveOneForward = false
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [layerSubmenuOpen, setLayerSubmenuOpen] = useState(false);
@@ -364,6 +380,70 @@ export function ContextMenu({
           <Link2Off className="w-4 h-4" />
           Remove from Group
         </button>
+      )}
+
+      {/* Rendering Order Controls */}
+      {(canMoveToBack || canMoveToFront || canMoveOneBack || canMoveOneForward) && (
+        <>
+          <div className="border-t border-border my-1" />
+          <div className="px-3 py-1 text-xs font-medium text-muted-foreground">Rendering Order</div>
+          
+          {onMoveToBack && (
+            <button
+              className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+              onClick={() => {
+                onMoveToBack();
+                onClose();
+              }}
+              disabled={!canMoveToBack}
+            >
+              <ChevronDown className="w-4 h-4" />
+              Move to Back
+            </button>
+          )}
+          
+          {onMoveOneBack && (
+            <button
+              className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+              onClick={() => {
+                onMoveOneBack();
+                onClose();
+              }}
+              disabled={!canMoveOneBack}
+            >
+              <ArrowDown className="w-4 h-4" />
+              Move One Back
+            </button>
+          )}
+          
+          {onMoveOneForward && (
+            <button
+              className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+              onClick={() => {
+                onMoveOneForward();
+                onClose();
+              }}
+              disabled={!canMoveOneForward}
+            >
+              <ArrowUp className="w-4 h-4" />
+              Move One Forward
+            </button>
+          )}
+          
+          {onMoveToFront && (
+            <button
+              className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+              onClick={() => {
+                onMoveToFront();
+                onClose();
+              }}
+              disabled={!canMoveToFront}
+            >
+              <ChevronUp className="w-4 h-4" />
+              Move to Front
+            </button>
+          )}
+        </>
       )}
 
       {(canGroup || isGrouped) && <div className="border-t border-border my-1" />}

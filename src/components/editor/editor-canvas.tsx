@@ -81,6 +81,10 @@ interface EditorCanvasProps {
   onUngroupItems?: () => void;
   onRemoveFromGroup?: () => void;
   onAddToGroupItems?: (groupId: string) => void;
+  onMoveToBack?: () => void;
+  onMoveToFront?: () => void;
+  onMoveOneBack?: () => void;
+  onMoveOneForward?: () => void;
 }
 
 
@@ -95,7 +99,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, selectionAnimationEnabled = false, iconBackgroundEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, selectionAnimationEnabled = false, iconBackgroundEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward }: EditorCanvasProps,
   ref
 ) {
   // ============================================================================
@@ -981,6 +985,30 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 // Restore original selection
                 setSelectedItemIds(originalSelectedIds);
               }
+            }}
+            onMoveToBack={() => {
+              if (onMoveToBack) {
+                onMoveToBack();
+              }
+              closeContextMenu();
+            }}
+            onMoveToFront={() => {
+              if (onMoveToFront) {
+                onMoveToFront();
+              }
+              closeContextMenu();
+            }}
+            onMoveOneBack={() => {
+              if (onMoveOneBack) {
+                onMoveOneBack();
+              }
+              closeContextMenu();
+            }}
+            onMoveOneForward={() => {
+              if (onMoveOneForward) {
+                onMoveOneForward();
+              }
+              closeContextMenu();
             }}
           />
         </div>

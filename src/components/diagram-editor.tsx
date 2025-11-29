@@ -39,6 +39,14 @@ import {
   handleItemDeletion as cleanupGroupsAfterDeletion,
   cleanupEmptyZones
 } from '@/lib/grouping-utils';
+import { 
+  moveItemToBack,
+  moveItemToFront,
+  moveItemOneBack,
+  moveItemOneForward,
+  getItemPosition,
+  getItemCount
+} from '@/lib/rendering-order-utils';
 
 export type SelectedItem = (
   | (DiagramNodeData & { 
@@ -1047,6 +1055,30 @@ export default function DiagramEditor() {
         description: `Applied "${theme.name}" theme to ${count} item${count > 1 ? 's' : ''}.` 
       });
     }
+  };
+
+  const handleMoveToBack = () => {
+    if (!selectedItem || selectedItem.itemType === 'edge') return;
+    const updatedData = moveItemToBack(diagramData, selectedItem.id, selectedItem.itemType);
+    setDiagramData(updatedData);
+  };
+
+  const handleMoveToFront = () => {
+    if (!selectedItem || selectedItem.itemType === 'edge') return;
+    const updatedData = moveItemToFront(diagramData, selectedItem.id, selectedItem.itemType);
+    setDiagramData(updatedData);
+  };
+
+  const handleMoveOneBack = () => {
+    if (!selectedItem || selectedItem.itemType === 'edge') return;
+    const updatedData = moveItemOneBack(diagramData, selectedItem.id, selectedItem.itemType);
+    setDiagramData(updatedData);
+  };
+
+  const handleMoveOneForward = () => {
+    if (!selectedItem || selectedItem.itemType === 'edge') return;
+    const updatedData = moveItemOneForward(diagramData, selectedItem.id, selectedItem.itemType);
+    setDiagramData(updatedData);
   };
 
   const handleAlignObjects = (alignment: 'top' | 'center' | 'bottom' | 'v-middle' | 'left' | 'h-center' | 'right' | 'distribute-v' | 'distribute-h') => {

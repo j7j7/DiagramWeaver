@@ -24,7 +24,10 @@ import {
   ChevronDown,
   Palette,
   GripHorizontal,
-  X
+  X,
+  ArrowUp,
+  ArrowDown,
+  ChevronUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1416,7 +1419,89 @@ export function ContextToolbar({
           </Popover>
         )}
 
-
+        {/* Rendering Order Controls */}
+        {(isNode || isZone) && (
+          <Popover>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 px-2">
+                    <ArrowUp className="h-4 w-4" />
+                    <ChevronDown className="h-3 w-3 ml-1" />
+                  </Button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent>Rendering Order</TooltipContent>
+            </Tooltip>
+            <PopoverContent className="w-48">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Rendering Order</label>
+                <div className="space-y-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start h-8 px-2"
+                    onClick={() => {
+                      if (onDiagramDataUpdate && diagramData) {
+                        const { moveItemToFront } = require('@/lib/rendering-order-utils');
+                        const updatedData = moveItemToFront(diagramData, selectedItem.id, selectedItem.itemType);
+                        onDiagramDataUpdate(updatedData);
+                      }
+                    }}
+                  >
+                    <ChevronUp className="h-4 w-4 mr-2" />
+                    Move to Front
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start h-8 px-2"
+                    onClick={() => {
+                      if (onDiagramDataUpdate && diagramData) {
+                        const { moveItemOneForward } = require('@/lib/rendering-order-utils');
+                        const updatedData = moveItemOneForward(diagramData, selectedItem.id, selectedItem.itemType);
+                        onDiagramDataUpdate(updatedData);
+                      }
+                    }}
+                  >
+                    <ArrowUp className="h-4 w-4 mr-2" />
+                    Move One Forward
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start h-8 px-2"
+                    onClick={() => {
+                      if (onDiagramDataUpdate && diagramData) {
+                        const { moveItemOneBack } = require('@/lib/rendering-order-utils');
+                        const updatedData = moveItemOneBack(diagramData, selectedItem.id, selectedItem.itemType);
+                        onDiagramDataUpdate(updatedData);
+                      }
+                    }}
+                  >
+                    <ArrowDown className="h-4 w-4 mr-2" />
+                    Move One Back
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start h-8 px-2"
+                    onClick={() => {
+                      if (onDiagramDataUpdate && diagramData) {
+                        const { moveItemToBack } = require('@/lib/rendering-order-utils');
+                        const updatedData = moveItemToBack(diagramData, selectedItem.id, selectedItem.itemType);
+                        onDiagramDataUpdate(updatedData);
+                      }
+                    }}
+                  >
+                    <ChevronDown className="h-4 w-4 mr-2" />
+                    Move to Back
+                  </Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
 
         {/* Delete Button */}
         <Tooltip>
