@@ -122,7 +122,7 @@ onToggleLayersPanel,
   onVisualStylingPanelOpenChange,
   onResetConnectionSettingsTrigger,
 }: TopMenuBarProps) {
-  console.log('TopMenuBar props:', { selectionAnimationEnabled, onToggleSelectionAnimation });
+  
   const [themeEditorOpen, setThemeEditorOpen] = React.useState(false);
   const [textStylingPanelOpen, setTextStylingPanelOpen] = React.useState(false);
   const [visualStylingPanelOpen, setVisualStylingPanelOpen] = React.useState(false);
