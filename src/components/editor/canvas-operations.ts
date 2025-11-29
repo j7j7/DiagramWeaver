@@ -3,6 +3,7 @@ import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramGroupData } 
 import { ItemTypes } from "./draggable-item";
 import { generateGroupId, generateSequentialId } from "@/lib/id-generator";
 import { DEFAULT_THEMES } from "@/lib/theme-manager";
+import { DEFAULT_TEXT_STYLING } from "@/lib/text-styling";
 import { 
   NODE_WIDTH, 
   NODE_HEIGHT, 
@@ -141,6 +142,10 @@ itemType === 'generic.object.jigsaw' ||
             itemType === 'generic.object.cloud' ? 50 : 
             60
           ) : isTextboxResource ? 80 : undefined, // Initial height - larger for textbox
+          // Apply default text color for text resources
+          ...((itemType === 'generic.text.text' || itemType === 'generic.text.textbox') && {
+            textColor: DEFAULT_TEXT_STYLING.textColor
+          }),
           // Apply random theme to all shapes (except point which has special styling)
           ...(isShapeResource && itemType !== 'generic.object.point' && {
             ...getRandomTheme()
