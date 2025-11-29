@@ -510,3 +510,7 @@ See `REFACTORING_SUMMARY.md` for complete details.
   - **Zone Preservation**: Modified algorithm to preserve zone sizes and internal layouts. Zones are treated as rigid blocks during auto-layout, with their dimensions calculated from current content.
   - **Grouping Support**: Enhanced algorithm to treat groupings as single units. Items within a grouping move together as a block, preserving their relative arrangement.
   - **Implementation**: Created `src/lib/auto-layout.ts` engine and updated `canvas-layout-utils.ts` to support freeform layout inside zones.
+  - **Layout Refinement**:
+    - **Randomness**: Added randomness to item processing, neighbor traversal, and initial layer ordering to ensure different layouts on repeated calls.
+    - **Horizontal Flow**: Switched to Left-to-Right main flow (ranks on X axis, items on Y) for better screen utilization.
+    - **Component Packing**: Implemented a 2D shelf-packing algorithm to arrange disconnected components into a roughly 1.5:1 aspect ratio box instead of a single wide row.
