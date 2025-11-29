@@ -84,23 +84,17 @@ export function JsonEditorPanel({
 
   // Check if data is in nested format (has zones with nested children objects)
   const isNestedFormat = React.useCallback((data: any): boolean => {
-    console.log('Checking nested format for data:', data);
-    
     // Nested format has zones array but NO nodes array at root level
     // Instead, nodes are nested inside zones as children objects
     const hasNodesArray = Array.isArray(data.nodes) && data.nodes.length > 0;
     const hasZonesArray = Array.isArray(data.zones) && data.zones.length > 0;
     
-    console.log('Has nodes array:', hasNodesArray, 'Has zones array:', hasZonesArray);
-    
     if (!hasZonesArray) {
-      console.log('No zones array - not nested format');
       return false;
     }
     
     // If we have both nodes and zones at root, it's flat format
     if (hasNodesArray) {
-      console.log('Has both nodes and zones at root - flat format');
       return false;
     }
     
@@ -112,7 +106,6 @@ export function JsonEditorPanel({
       return zone.children.length > 0 && typeof zone.children[0] === 'object';
     });
     
-    console.log('Has nested children objects:', hasNestedChildren);
     return hasNestedChildren;
   }, []);
 
@@ -370,16 +363,6 @@ export function JsonEditorPanel({
     try {
       const parsed = JSON.parse(text);
       
-      console.log('JSON Editor submitting data:', {
-        isNested: isNestedFormat(parsed),
-        nodesCount: parsed.nodes?.length || 0,
-        zonesCount: parsed.zones?.length || 0,
-        connectionsCount: parsed.connections?.length || 0,
-        sampleNode: parsed.nodes?.[0],
-        sampleZone: parsed.zones?.[0],
-        allNodeIds: parsed.nodes?.map((n: any) => n.id)
-      });
-      
       let finalData: DiagramData | null = null;
       let validationError: any = null;
 
@@ -408,19 +391,6 @@ export function JsonEditorPanel({
       }
       
       if (!validationError && finalData) {
-        console.log('JSON Editor emitting valid data:', {
-          nodesCount: finalData.nodes?.length || 0,
-          zonesCount: finalData.zones?.length || 0,
-          connectionsCount: finalData.connections?.length || 0,
-          sampleNode: finalData.nodes?.[0],
-          sampleZone: finalData.zones?.[0],
-          allNodeIds: finalData.nodes?.map((n: any) => n.id),
-          allZoneIds: finalData.zones?.map((z: any) => z.id),
-          hasDuplicateNodeIds: !!finalData.nodes?.some((node: any, index: number) => 
-            finalData.nodes.findIndex((n: any) => n.id === node.id) !== index
-          )
-        });
-        
         setError(null);
         onValidJsonChange(finalData);
         
