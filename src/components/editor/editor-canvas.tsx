@@ -192,6 +192,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   // - transform: Current canvas transform (x, y, k/scale)
   // - handleWheel: Processes mouse wheel events for zooming
   // - handleFitToView: Auto-fits diagram to viewport
+  // - setTransform: Updates transform state
   // See: src/hooks/use-canvas-transform.ts
   const { transform, setTransform, handleWheel, handleFitToView } = useCanvasTransform({
     externalTransform,
@@ -200,6 +201,109 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     processedNodes,
     processedZones,
   });
+
+  // ============================================================================
+  // HOOK: useCanvasOperations
+  // ============================================================================
+  // Provides CRUD operations for diagram items
+  // - addNode: Adds a new node to the diagram
+  // - resizeNode: Resizes a node with minimum size constraints
+  // - resizeGroup: Resizes a zone with minimum size constraints
+  // - moveItem: Moves a single item
+  // - moveMultipleItems: Moves multiple selected items
+  // - handleDelete: Deletes a single item
+  // - handleDeleteMultiple: Deletes multiple items
+  // - updateGroupLabel: Updates zone label
+  // See: src/components/editor/canvas-operations.ts
+  const operations = useCanvasOperations({
+    setDiagramData,
+    processedNodes,
+    processedZones,
+    onItemSelect,
+    toast,
+    iconBackgroundEnabled,
+  });
+
+  // ============================================================================
+  // HOOK: useCanvasDragDrop
+  // ============================================================================
+  // Handles drag and drop functionality using react-dnd
+  // - drop: Configures drop target for canvas
+  // - dragPosition: Current drag position for visual feedback
+  // - multiDragPositions: Positions for multi-item dragging
+  // - hoveredGroupId: ID of zone currently being hovered during drag
+  // See: src/hooks/use-canvas-drag-drop.ts
+  const { dragPosition, multiDragPositions, hoveredGroupId, drop } = useCanvasDragDrop({
+    canvasRef,
+    transform,
+    processedZones,
+    nodesById,
+    zonesById,
+    selectedItemIds,
+    diagramData,
+    addNode: operations.addNode,
+    moveItem: operations.moveItem,
+    moveMultipleItems: operations.moveMultipleItems,
+    onDraggingChange,
+  });
+
+  // Create display versions of nodes and zones lookup maps that include drag overrides
+  const displayNodesById = useMemo(() => {
+    const result = { ...animatedNodesById };
+    
+    // Apply single item drag override
+    if (dragPosition?.itemId && result[dragPosition.itemId]) {
+      result[dragPosition.itemId] = {
+        ...result[dragPosition.itemId],
+        x: dragPosition.x,
+        y: dragPosition.y
+      };
+    }
+    
+    // Apply multi-item drag overrides
+    if (multiDragPositions) {
+      Object.entries(multiDragPositions).forEach(([itemId, pos]) => {
+        if (result[itemId]) {
+          result[itemId] = {
+            ...result[itemId],
+            x: pos.x,
+            y: pos.y
+          };
+        }
+      });
+    }
+    
+    return result;
+  }, [animatedNodesById, dragPosition, multiDragPositions]);
+
+  const displayZonesById = useMemo(() => {
+    const result = { ...animatedZonesById };
+    
+    // Apply single item drag override
+    if (dragPosition?.itemId && result[dragPosition.itemId]) {
+      result[dragPosition.itemId] = {
+        ...result[dragPosition.itemId],
+        x: dragPosition.x,
+        y: dragPosition.y
+      };
+    }
+    
+    // Apply multi-item drag overrides
+    if (multiDragPositions) {
+      Object.entries(multiDragPositions).forEach(([itemId, pos]) => {
+        if (result[itemId]) {
+          result[itemId] = {
+            ...result[itemId],
+            x: pos.x,
+            y: pos.y
+          };
+        }
+      });
+    }
+    
+    return result;
+  }, [animatedZonesById, dragPosition, multiDragPositions]);
+
 
   // ============================================================================
   // HOOK: useCanvasContextMenu
@@ -294,50 +398,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     onMousePositionChange,
   });
 
-  // ============================================================================
-  // HOOK: useCanvasOperations
-  // ============================================================================
-  // Provides CRUD operations for diagram items
-  // - addNode: Adds a new node to the diagram
-  // - resizeNode: Resizes a node with minimum size constraints
-  // - resizeGroup: Resizes a zone with minimum size constraints
-  // - moveItem: Moves a single item
-  // - moveMultipleItems: Moves multiple selected items
-  // - handleDelete: Deletes a single item
-  // - handleDeleteMultiple: Deletes multiple items
-  // - updateGroupLabel: Updates zone label
-  // See: src/components/editor/canvas-operations.ts
-  const operations = useCanvasOperations({
-    setDiagramData,
-    processedNodes,
-    processedZones,
-    onItemSelect,
-    toast,
-    iconBackgroundEnabled,
-  });
 
-  // ============================================================================
-  // HOOK: useCanvasDragDrop
-  // ============================================================================
-  // Handles drag and drop functionality using react-dnd
-  // - drop: Configures drop target for canvas
-  // - dragPosition: Current drag position for visual feedback
-  // - multiDragPositions: Positions for multi-item dragging
-  // - hoveredGroupId: ID of zone currently being hovered during drag
-  // See: src/hooks/use-canvas-drag-drop.ts
-  const { dragPosition, multiDragPositions, hoveredGroupId, drop } = useCanvasDragDrop({
-    canvasRef,
-    transform,
-    processedZones,
-    nodesById,
-    zonesById,
-    selectedItemIds,
-    diagramData,
-    addNode: operations.addNode,
-    moveItem: operations.moveItem,
-    moveMultipleItems: operations.moveMultipleItems,
-    onDraggingChange,
-  });
 
   // ============================================================================
   // EVENT HANDLER COMBINATION
@@ -691,13 +752,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                                   itemGroup !== null &&
                                   selectedGroup.id === itemGroup.id;
 
-                // Override position if being dragged
-                let displayZone = zone;
-                if (dragPosition?.itemId === zone.id) {
-                  displayZone = { ...zone, x: dragPosition.x, y: dragPosition.y };
-                } else if (multiDragPositions?.[zone.id]) {
-                  displayZone = { ...zone, x: multiDragPositions[zone.id].x, y: multiDragPositions[zone.id].y };
-                }
+                // Use display zone from pre-calculated map (includes drag position)
+                const displayZone = displayZonesById[zone.id] || zone;
 
                 return (
                   <DiagramZone
@@ -751,13 +807,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                                   itemGroup !== null &&
                                   selectedGroup.id === itemGroup.id;
 
-                // Override position if being dragged
-                let displayNode = node;
-                if (dragPosition?.itemId === node.id) {
-                  displayNode = { ...node, x: dragPosition.x, y: dragPosition.y };
-                } else if (multiDragPositions?.[node.id]) {
-                  displayNode = { ...node, x: multiDragPositions[node.id].x, y: multiDragPositions[node.id].y };
-                }
+                // Use display node from pre-calculated map (includes drag position)
+                const displayNode = displayNodesById[node.id] || node;
 
                 return (
                   <DiagramNode
@@ -789,8 +840,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               width={width}
               height={height}
               diagramData={diagramData}
-              nodesById={animatedNodesById}
-              zonesById={animatedZonesById}
+              nodesById={displayNodesById}
+              zonesById={displayZonesById}
               selectedItemId={selectedItemId}
               onItemSelect={onItemSelect}
               closeContextMenu={closeContextMenu}
@@ -806,8 +857,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             <CanvasArrowToggles
               selectedItemId={selectedItemId}
               diagramData={diagramData}
-              nodesById={animatedNodesById}
-              zonesById={animatedZonesById}
+              nodesById={displayNodesById}
+              zonesById={displayZonesById}
               setDiagramData={setDiagramData}
             />
 
@@ -822,8 +873,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               width={width}
               height={height}
               diagramData={diagramData}
-              nodesById={animatedNodesById}
-              zonesById={animatedZonesById}
+              nodesById={displayNodesById}
+              zonesById={displayZonesById}
               processedZones={processedZones}
             />
           </div>
