@@ -99,6 +99,7 @@ interface ResourceBrowserProps {
   onResourceSelect: (resource: { name: string; file: string; type?: string; hasWhiteVariant?: boolean; format?: string }, provider: string, category: string) => void;
   onDiagramGenerated?: (data: any) => void;
   onResourceActivate?: (resource: { name: string; file: string; type?: string; hasWhiteVariant?: boolean; format?: string }, provider: string, category: string) => void;
+  currentDiagram?: any;
 }
 
 // Icon mapping for different resource types
@@ -160,7 +161,7 @@ function ProviderIcon({ provider }: { provider: string }) {
   );
 }
 
-export function ResourceBrowser({ onResourceSelect, onDiagramGenerated, onResourceActivate }: ResourceBrowserProps) {
+export function ResourceBrowser({ onResourceSelect, onDiagramGenerated, onResourceActivate, currentDiagram }: ResourceBrowserProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [fullProviders, setFullProviders] = useState<Record<string, ResourceProvider>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -378,7 +379,7 @@ export function ResourceBrowser({ onResourceSelect, onDiagramGenerated, onResour
   // AI Generation handler
   const handleGenerateClick = async () => {
     setIsGenerating(true);
-    const { data, error } = await generateDiagram(description);
+    const { data, error } = await generateDiagram(description, currentDiagram);
     setIsGenerating(false);
     if (error || !data) {
       toast({

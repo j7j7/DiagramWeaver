@@ -7,10 +7,10 @@
 import { ollamaService } from '@/ai/ollama-service';
 
 export async function generateDiagramCodeFromDescription(
-  input: { description: string }
+  input: { description: string; currentDiagram?: any }
 ): Promise<{ diagramCode: string }> {
   try {
-    const diagramCode = await ollamaService.generate(input.description);
+    const diagramCode = await ollamaService.generate(input.description, input.currentDiagram);
     return { diagramCode };
   } catch (error) {
     console.error('Error generating diagram:', error);

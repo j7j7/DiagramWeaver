@@ -48,10 +48,8 @@ export class OllamaService {
   /**
    * Generate text using Ollama API
    */
-  async generate(prompt: string): Promise<string> {
-    const request: OllamaGenerateRequest = {
-      model: this.config.getModel(),
-      prompt: `You are an expert diagram generator for DiagramWeaver. You will take a natural language description and generate valid JSON that can be directly imported into DiagramWeaver.
+  async generate(prompt: string, currentDiagram?: any): Promise<string> {
+    let systemPrompt = `You are an expert diagram generator for DiagramWeaver. Your task is to convert a natural language description into a JSON structure representing a diagram.
 
 ## DIAGRAMWEAVER SCHEMA REFERENCE:
 
@@ -122,8 +120,53 @@ export class OllamaService {
 ### Key Properties:
 **Nodes:** id, type, label, x, y, backgroundColor, textColor, borderStyle, backgroundStyle, gradientAngle, shadow, width, height
 **Connections:** from, to, color, toArrow, fromArrow, style, curvature
-**Groups:** id, type: "group", label, children, subType: "zone"|"group", orientation, backgroundStyle, gradientAngle
+**Groups:** id, type: "group", label, children, subType: "zone"|"group", orientation, backgroundStyle, gradientAngle`;
 
+    if (currentDiagram && (currentDiagram.nodes?.length > 0 || currentDiagram.zones?.length > 0)) {
+      // Simplify diagram for prompt to save tokens if needed, but for now send full structure
+      // Remove potentially heavy fields if they exist and aren't needed
+      const contextDiagram = {
+        nodes: currentDiagram.nodes.map((n: any) => ({
+          id: n.id,
+          type: n.type,
+          label: n.label,
+          x: n.x,
+          y: n.y
+        })),
+        connections: currentDiagram.connections.map((c: any) => ({
+          from: c.from,
+          to: c.to,
+          text: c.text
+        })),
+        zones: currentDiagram.zones?.map((z: any) => ({
+          id: z.id,
+          label: z.label,
+          children: z.children
+        }))
+      };
+
+      systemPrompt += `
+
+## CURRENT DIAGRAM CONTEXT:
+The user is working on an EXISTING diagram. Use this JSON as your starting point.
+${JSON.stringify(contextDiagram, null, 2)}
+
+## TASK:
+Modify the diagram above based on the user's request.
+1. **Preserve** existing nodes and connections unless the user explicitly asks to remove or change them.
+2. **Add** new nodes and connections as requested.
+3. **Return the COMPLETE updated JSON** (including both old and new items).
+4. **Positioning**: Place new items near relevant existing items but avoid overlapping.
+`;
+    } else {
+      systemPrompt += `
+
+## TASK:
+Create a NEW diagram based on the user request.
+`;
+    }
+
+    systemPrompt += `
 ## USER REQUEST:
 ${prompt}
 
@@ -158,7 +201,11 @@ ${prompt}
 8. Use bezier connections with curvature 0.6 for better appearance
 9. Return only JSON object that can be directly parsed
 
-Generate complete DiagramWeaver JSON now:`,
+Generate complete DiagramWeaver JSON now:`;
+
+    const request: OllamaGenerateRequest = {
+      model: this.config.getModel(),
+      prompt: systemPrompt,
       stream: false,
       format: 'json',
       options: {
@@ -187,11 +234,17 @@ Generate complete DiagramWeaver JSON now:`,
         // Clean response and parse JSON to ensure it's valid
         let cleanedResponse = data.response.trim();
         
-        // Remove any markdown code blocks if present
-        if (cleanedResponse.startsWith('```json')) {
-          cleanedResponse = cleanedResponse.replace(/```json\s*/, '').replace(/```\s*$/, '');
-        } else if (cleanedResponse.startsWith('```')) {
-          cleanedResponse = cleanedResponse.replace(/```\s*/, '').replace(/```\s*$/, '');
+        // Attempt to extract JSON object if wrapped in text or markdown
+        const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          cleanedResponse = jsonMatch[0];
+        } else {
+            // Fallback: Remove markdown code blocks if present
+            if (cleanedResponse.startsWith('```json')) {
+              cleanedResponse = cleanedResponse.replace(/```json\s*/, '').replace(/```\s*$/, '');
+            } else if (cleanedResponse.startsWith('```')) {
+              cleanedResponse = cleanedResponse.replace(/```\s*/, '').replace(/```\s*$/, '');
+            }
         }
         
         try {

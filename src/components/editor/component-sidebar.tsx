@@ -165,6 +165,7 @@ return (
           onResourceSelect={onResourceSelect}
           onDiagramGenerated={onDiagramGenerated}
           onResourceActivate={onResourceActivate}
+          currentDiagram={diagramData}
         />
       </div>
     </aside>
