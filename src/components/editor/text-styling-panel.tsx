@@ -40,10 +40,9 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
   const effectiveVerticalPosition = getEffectiveVerticalPosition();
 
   const handlePropertyChange = (property: keyof TextStyling, value: any) => {
-    onStylingChange({
-      ...styling,
-      [property]: value
-    });
+    // Only update the specific property that changed
+    const updatedStyling = { [property]: value };
+    onStylingChange(updatedStyling);
   };
 
   const handleReset = () => {
@@ -164,8 +163,8 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
                 handlePropertyChange('textVerticalPosition', newVerticalPos);
                 // For zones with outside position, update text position based on vertical position
                 if (selectedItem && selectedItem.itemType === 'zone') {
-                  if (textPosition?.startsWith('outside-') || textPosition === 'outside') {
-                    const newTextPos = newVerticalPos === 'bottom' ? 'outside-bottom' : 'outside-top';
+if (textPosition?.startsWith('outside-') || textPosition === 'outside') {
+                    const newTextPos = 'outside-top';
                     onTextPositionChange && onTextPositionChange(newTextPos);
                   }
                 }
@@ -201,7 +200,7 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
                 // For zones with outside position, update text position based on vertical position
                 if (selectedItem && selectedItem.itemType === 'zone') {
                   if (textPosition?.startsWith('outside-') || textPosition === 'outside') {
-                    const newTextPos = newVerticalPos === 'bottom' ? 'outside-bottom' : 'outside-top';
+                    const newTextPos: string = newVerticalPos === 'bottom' ? 'outside-bottom' : 'outside-top';
                     onTextPositionChange && onTextPositionChange(newTextPos);
                   }
                 }

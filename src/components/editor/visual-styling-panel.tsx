@@ -28,22 +28,19 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
       clearTimeout(propertyTimeoutRef.current);
     }
     
+    // Only update the specific property that changed
+    const updatedStyling = { [property]: value };
+    
     if (immediate) {
       // Immediate update for final values
-      onStylingChange({
-        ...styling,
-        [property]: value
-      });
+      onStylingChange(updatedStyling);
     } else {
       // Debounced update during dragging
       propertyTimeoutRef.current = setTimeout(() => {
-        onStylingChange({
-          ...styling,
-          [property]: value
-        });
+        onStylingChange(updatedStyling);
       }, 150);
     }
-  }, [styling, onStylingChange]);
+  }, [onStylingChange]);
 
   // Cleanup timeout on unmount
   useEffect(() => {

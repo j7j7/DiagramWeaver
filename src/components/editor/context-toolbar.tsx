@@ -40,7 +40,7 @@ import { Slider } from '@/components/ui/slider';
 import { TextStylingPanel } from './text-styling-panel';
 import { VisualStylingPanel } from './visual-styling-panel';
 import type { SelectedItem } from '../diagram-editor';
-import type { DiagramData } from '@/lib/types';
+import type { DiagramData, DiagramZoneData } from '@/lib/types';
 import { DiagramTheme } from '@/lib/theme-types';
 import { themeManager } from '@/lib/theme-manager';
 import { extractTextStylingFromNode, extractTextStylingFromGroup, applyTextStylingToZone, applyTextStylingToNode } from '@/lib/text-styling';
@@ -305,17 +305,44 @@ export function ContextToolbar({
   };
 
   const handleTextStylingChange = (styling: any) => {
-    if (isZone) {
-      // Use applyTextStylingToZone to properly merge styling for zones
-      const updatedZone = applyTextStylingToZone(selectedItem as any, styling);
-      onItemUpdate?.({ ...updatedZone, itemType: 'zone' } as SelectedItem);
-    } else if (isNode) {
-      // Use applyTextStylingToNode to properly merge styling for nodes
-      const updatedNode = applyTextStylingToNode(selectedItem as any, styling);
-      onItemUpdate?.({ ...updatedNode, itemType: 'node' } as SelectedItem);
+    // Check if multiple items are selected
+    if (selectedItemIds && selectedItemIds.size > 1 && diagramData && onDiagramDataUpdate) {
+      // Apply styling change to all selected items
+      const updatedDiagramData = { ...diagramData };
+      
+      // Update nodes
+      updatedDiagramData.nodes = updatedDiagramData.nodes.map(node => {
+        if (selectedItemIds.has(node.id)) {
+          return applyTextStylingToNode(node, styling);
+        }
+        return node;
+      });
+      
+      // Update zones
+      if (updatedDiagramData.zones) {
+        updatedDiagramData.zones = updatedDiagramData.zones.map(zone => {
+          if (selectedItemIds.has(zone.id)) {
+            return applyTextStylingToZone(zone, styling) as DiagramZoneData;
+          }
+          return zone;
+        });
+      }
+      
+      onDiagramDataUpdate(updatedDiagramData);
     } else {
-      // Fallback to direct spread
-      onItemUpdate?.({ ...selectedItem as SelectedItem, ...styling } as SelectedItem);
+      // Single item selection - existing logic
+      if (isZone) {
+        // Use applyTextStylingToZone to properly merge styling for zones
+        const updatedZone = applyTextStylingToZone(selectedItem as any, styling);
+        onItemUpdate?.({ ...updatedZone, itemType: 'zone' } as SelectedItem);
+      } else if (isNode) {
+        // Use applyTextStylingToNode to properly merge styling for nodes
+        const updatedNode = applyTextStylingToNode(selectedItem as any, styling);
+        onItemUpdate?.({ ...updatedNode, itemType: 'node' } as SelectedItem);
+      } else {
+        // Fallback to direct spread
+        onItemUpdate?.({ ...selectedItem as SelectedItem, ...styling } as SelectedItem);
+      }
     }
   };
 
@@ -333,11 +360,66 @@ export function ContextToolbar({
       textOpacity: undefined,
       textColor: undefined
     };
-    onItemUpdate?.({ ...selectedItem as SelectedItem, ...defaultStyling } as SelectedItem);
+    
+    // Check if multiple items are selected
+    if (selectedItemIds && selectedItemIds.size > 1 && diagramData && onDiagramDataUpdate) {
+      // Apply reset to all selected items
+      const updatedDiagramData = { ...diagramData };
+      
+      // Update nodes
+      updatedDiagramData.nodes = updatedDiagramData.nodes.map(node => {
+        if (selectedItemIds.has(node.id)) {
+          return applyTextStylingToNode(node, defaultStyling);
+        }
+        return node;
+      });
+      
+      // Update zones
+      if (updatedDiagramData.zones) {
+        updatedDiagramData.zones = updatedDiagramData.zones.map(zone => {
+          if (selectedItemIds.has(zone.id)) {
+            return applyTextStylingToZone(zone, defaultStyling) as DiagramZoneData;
+          }
+          return zone;
+        });
+      }
+      
+      onDiagramDataUpdate(updatedDiagramData);
+    } else {
+      // Single item selection - existing logic
+      onItemUpdate?.({ ...selectedItem as SelectedItem, ...defaultStyling } as SelectedItem);
+    }
   };
 
   const handleVisualStylingChange = (styling: any) => {
-    onItemUpdate?.({ ...selectedItem as SelectedItem, ...styling } as SelectedItem);
+    // Check if multiple items are selected
+    if (selectedItemIds && selectedItemIds.size > 1 && diagramData && onDiagramDataUpdate) {
+      // Apply styling change to all selected items
+      const updatedDiagramData = { ...diagramData };
+      
+      // Update nodes
+      updatedDiagramData.nodes = updatedDiagramData.nodes.map(node => {
+        if (selectedItemIds.has(node.id)) {
+          return { ...node, ...styling };
+        }
+        return node;
+      });
+      
+      // Update zones
+      if (updatedDiagramData.zones) {
+        updatedDiagramData.zones = updatedDiagramData.zones.map(zone => {
+          if (selectedItemIds.has(zone.id)) {
+            return { ...zone, ...styling };
+          }
+          return zone;
+        });
+      }
+      
+      onDiagramDataUpdate(updatedDiagramData);
+    } else {
+      // Single item selection - existing logic
+      onItemUpdate?.({ ...selectedItem as SelectedItem, ...styling } as SelectedItem);
+    }
   };
 
   const handleVisualStylingReset = () => {
@@ -353,7 +435,35 @@ export function ContextToolbar({
       shadow: undefined,
       borderWidth: undefined
     };
-    onItemUpdate?.({ ...selectedItem as SelectedItem, ...defaultStyling } as SelectedItem);
+    
+    // Check if multiple items are selected
+    if (selectedItemIds && selectedItemIds.size > 1 && diagramData && onDiagramDataUpdate) {
+      // Apply reset to all selected items
+      const updatedDiagramData = { ...diagramData };
+      
+      // Update nodes
+      updatedDiagramData.nodes = updatedDiagramData.nodes.map(node => {
+        if (selectedItemIds.has(node.id)) {
+          return { ...node, ...defaultStyling };
+        }
+        return node;
+      });
+      
+      // Update zones
+      if (updatedDiagramData.zones) {
+        updatedDiagramData.zones = updatedDiagramData.zones.map(zone => {
+          if (selectedItemIds.has(zone.id)) {
+            return { ...zone, ...defaultStyling };
+          }
+          return zone;
+        });
+      }
+      
+      onDiagramDataUpdate(updatedDiagramData);
+    } else {
+      // Single item selection - existing logic
+      onItemUpdate?.({ ...selectedItem as SelectedItem, ...defaultStyling } as SelectedItem);
+    }
   };
 
   // Drag and drop handlers for connection reordering
