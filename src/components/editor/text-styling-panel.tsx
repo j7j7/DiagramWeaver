@@ -16,11 +16,12 @@ interface TextStylingPanelProps {
   onStylingChange: (styling: Partial<TextStyling>) => void;
   onReset?: () => void;
   selectedItem?: any; // To determine if it's a zone
+  selectedItemIds?: Set<string>; // Multi-selected items
   textPosition?: string; // Current text position for zones
   onTextPositionChange?: (position: string) => void; // Handler for text position changes
 }
 
-export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, onStylingChange, onReset, selectedItem, textPosition, onTextPositionChange }: TextStylingPanelProps) {
+export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, onStylingChange, onReset, selectedItem, selectedItemIds, textPosition, onTextPositionChange }: TextStylingPanelProps) {
   // For zones with outside/inline positions, derive vertical position from textPosition
   const getEffectiveVerticalPosition = (): 'top' | 'middle' | 'bottom' => {
     try {
@@ -42,7 +43,14 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
   const handlePropertyChange = (property: keyof TextStyling, value: any) => {
     // Only update the specific property that changed
     const updatedStyling = { [property]: value };
-    onStylingChange(updatedStyling);
+    
+    // If multiple items are selected, apply change immediately to avoid debouncing conflicts
+    const isMultiSelect = selectedItemIds && selectedItemIds.size > 1;
+    if (isMultiSelect) {
+      onStylingChange(updatedStyling);
+    } else {
+      onStylingChange(updatedStyling);
+    }
   };
 
   const handleReset = () => {

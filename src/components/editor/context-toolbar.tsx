@@ -571,22 +571,52 @@ export function ContextToolbar({
   const isNode = selectedItem.itemType === 'node';
 
   const getCurrentTextStyling = useMemo(() => {
+    if (!selectedItem || !diagramData) return {};
+    
+    // In multi-select scenarios, get fresh data from diagramData to avoid stale references
+    let currentItem = selectedItem;
+    if (selectedItemIds && selectedItemIds.size > 1) {
+      // Find the current version of the selected item in diagramData
+      if (isNode) {
+        const foundNode = diagramData.nodes.find(n => n.id === selectedItem.id);
+        currentItem = foundNode ? { ...foundNode, itemType: 'node' as const } : selectedItem;
+      } else if (isZone) {
+        const foundZone = diagramData.zones?.find(z => z.id === selectedItem.id);
+        currentItem = foundZone ? { ...foundZone, itemType: 'zone' as const } : selectedItem;
+      }
+    }
+    
     if (isNode) {
-      return extractTextStylingFromNode(selectedItem as any);
+      return extractTextStylingFromNode(currentItem as any);
     } else if (isZone) {
-      return extractTextStylingFromGroup(selectedItem as any);
+      return extractTextStylingFromGroup(currentItem as any);
     }
     return {};
-  }, [selectedItem, isNode, isZone]);
+  }, [selectedItem, isNode, isZone, selectedItemIds, diagramData]);
 
   const getCurrentVisualStyling = useMemo(() => {
+    if (!selectedItem || !diagramData) return {};
+    
+    // In multi-select scenarios, get fresh data from diagramData to avoid stale references
+    let currentItem = selectedItem;
+    if (selectedItemIds && selectedItemIds.size > 1) {
+      // Find the current version of the selected item in diagramData
+      if (isNode) {
+        const foundNode = diagramData.nodes.find(n => n.id === selectedItem.id);
+        currentItem = foundNode ? { ...foundNode, itemType: 'node' as const } : selectedItem;
+      } else if (isZone) {
+        const foundZone = diagramData.zones?.find(z => z.id === selectedItem.id);
+        currentItem = foundZone ? { ...foundZone, itemType: 'zone' as const } : selectedItem;
+      }
+    }
+    
     if (isNode) {
-      return extractVisualStylingFromNode(selectedItem as any);
+      return extractVisualStylingFromNode(currentItem as any);
     } else if (isZone) {
-      return extractVisualStylingFromGroup(selectedItem as any);
+      return extractVisualStylingFromGroup(currentItem as any);
     }
     return {};
-  }, [selectedItem, isNode, isZone]);
+  }, [selectedItem, isNode, isZone, selectedItemIds, diagramData]);
   const isTextNode = isNode && selectedItem.type?.startsWith('generic.text');
   const isTextboxNode = isNode && selectedItem.type === 'generic.text.textbox';
   const isPlainTextNode = isNode && selectedItem.type === 'generic.text.text';
@@ -1046,6 +1076,7 @@ export function ContextToolbar({
                 onStylingChange={handleTextStylingChange}
                 onReset={handleTextStylingReset}
                 selectedItem={selectedItem}
+                selectedItemIds={selectedItemIds}
                 textPosition={selectedItem?.textPosition}
                 onTextPositionChange={handleTextPositionChange}
               />
@@ -1071,6 +1102,7 @@ export function ContextToolbar({
                 styling={getCurrentVisualStyling}
                 onStylingChange={handleVisualStylingChange}
                 onReset={handleVisualStylingReset}
+                selectedItemIds={selectedItemIds}
               />
             </PopoverContent>
           </Popover>

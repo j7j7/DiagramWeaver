@@ -16,9 +16,10 @@ interface VisualStylingPanelProps {
   styling: Partial<VisualStyling>;
   onStylingChange: (styling: Partial<VisualStyling>) => void;
   onReset?: () => void;
+  selectedItemIds?: Set<string>; // Multi-selected items
 }
 
-export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset }: VisualStylingPanelProps) {
+export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, selectedItemIds }: VisualStylingPanelProps) {
   // Debounced property change to prevent excessive updates during color dragging
   const propertyTimeoutRef = useRef<NodeJS.Timeout>();
   
@@ -31,16 +32,19 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
     // Only update the specific property that changed
     const updatedStyling = { [property]: value };
     
-    if (immediate) {
-      // Immediate update for final values
+    // If multiple items are selected, always use immediate updates to avoid debouncing conflicts
+    const isMultiSelect = selectedItemIds && selectedItemIds.size > 1;
+    
+    if (immediate || isMultiSelect) {
+      // Immediate update for final values or multi-select
       onStylingChange(updatedStyling);
     } else {
-      // Debounced update during dragging
+      // Debounced update during dragging for single select
       propertyTimeoutRef.current = setTimeout(() => {
         onStylingChange(updatedStyling);
       }, 150);
     }
-  }, [onStylingChange]);
+  }, [onStylingChange, selectedItemIds]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
