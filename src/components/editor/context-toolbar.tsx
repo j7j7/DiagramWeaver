@@ -204,29 +204,156 @@ export function ContextToolbar({
   }, []);
 
   const handleMaxItemsPerRowChange = (value: number) => {
-    onItemUpdate?.({ ...selectedItem, maxItemsPerRow: value } as SelectedItem);
+    // Check if multiple items are selected
+    if (selectedItemIds && selectedItemIds.size > 1 && diagramData && onDiagramDataUpdate) {
+      // Apply maxItemsPerRow change to all selected items
+      const updatedDiagramData = { ...diagramData };
+      
+      // Update zones (only zones have maxItemsPerRow)
+      if (updatedDiagramData.zones) {
+        updatedDiagramData.zones = updatedDiagramData.zones.map(zone => {
+          if (selectedItemIds.has(zone.id)) {
+            return { ...zone, maxItemsPerRow: value };
+          }
+          return zone;
+        });
+      }
+      
+      onDiagramDataUpdate(updatedDiagramData);
+    } else {
+      // Single item selection - existing logic
+      onItemUpdate?.({ ...selectedItem, maxItemsPerRow: value } as SelectedItem);
+    }
   };
 
   const handleSizeModeChange = (value: 'auto' | 'custom') => {
-    const isZone = selectedItem.itemType === 'zone';
-    const updatedItem = { ...selectedItem, sizeMode: value } as SelectedItem;
-    if (value === 'custom' && !(selectedItem as any).width && !(selectedItem as any).height) {
-      (updatedItem as any).width = isZone ? 300 : 40;
-      (updatedItem as any).height = isZone ? 220 : 40;
+    // Check if multiple items are selected
+    if (selectedItemIds && selectedItemIds.size > 1 && diagramData && onDiagramDataUpdate) {
+      // Apply sizeMode change to all selected items
+      const updatedDiagramData = { ...diagramData };
+      
+      // Update zones (only zones have sizeMode)
+      if (updatedDiagramData.zones) {
+        updatedDiagramData.zones = updatedDiagramData.zones.map(zone => {
+          if (selectedItemIds.has(zone.id)) {
+            const updatedZone = { ...zone, sizeMode: value };
+            // Set default dimensions if switching to custom without existing dimensions
+            if (value === 'custom' && !zone.width && !zone.height) {
+              (updatedZone as any).width = 300;
+              (updatedZone as any).height = 220;
+            }
+            return updatedZone;
+          }
+          return zone;
+        });
+      }
+      
+      onDiagramDataUpdate(updatedDiagramData);
+    } else {
+      // Single item selection - existing logic
+      const isZone = selectedItem.itemType === 'zone';
+      const updatedItem = { ...selectedItem, sizeMode: value } as SelectedItem;
+      if (value === 'custom' && !(selectedItem as any).width && !(selectedItem as any).height) {
+        (updatedItem as any).width = isZone ? 300 : 40;
+        (updatedItem as any).height = isZone ? 220 : 40;
+      }
+      onItemUpdate?.(updatedItem);
     }
-    onItemUpdate?.(updatedItem);
   };
 
   const handleWidthChange = (value: number) => {
-    onItemUpdate?.({ ...selectedItem, width: value } as SelectedItem);
+    // Check if multiple items are selected
+    if (selectedItemIds && selectedItemIds.size > 1 && diagramData && onDiagramDataUpdate) {
+      // Apply width change to all selected items
+      const updatedDiagramData = { ...diagramData };
+      
+      // Update nodes
+      updatedDiagramData.nodes = updatedDiagramData.nodes.map(node => {
+        if (selectedItemIds.has(node.id)) {
+          return { ...node, width: value };
+        }
+        return node;
+      });
+      
+      // Update zones
+      if (updatedDiagramData.zones) {
+        updatedDiagramData.zones = updatedDiagramData.zones.map(zone => {
+          if (selectedItemIds.has(zone.id)) {
+            return { ...zone, width: value };
+          }
+          return zone;
+        });
+      }
+      
+      onDiagramDataUpdate(updatedDiagramData);
+    } else {
+      // Single item selection - existing logic
+      onItemUpdate?.({ ...selectedItem, width: value } as SelectedItem);
+    }
   };
 
   const handleHeightChange = (value: number) => {
-    onItemUpdate?.({ ...selectedItem, height: value } as SelectedItem);
+    // Check if multiple items are selected
+    if (selectedItemIds && selectedItemIds.size > 1 && diagramData && onDiagramDataUpdate) {
+      // Apply height change to all selected items
+      const updatedDiagramData = { ...diagramData };
+      
+      // Update nodes
+      updatedDiagramData.nodes = updatedDiagramData.nodes.map(node => {
+        if (selectedItemIds.has(node.id)) {
+          return { ...node, height: value };
+        }
+        return node;
+      });
+      
+      // Update zones
+      if (updatedDiagramData.zones) {
+        updatedDiagramData.zones = updatedDiagramData.zones.map(zone => {
+          if (selectedItemIds.has(zone.id)) {
+            return { ...zone, height: value };
+          }
+          return zone;
+        });
+      }
+      
+      onDiagramDataUpdate(updatedDiagramData);
+    } else {
+      // Single item selection - existing logic
+      onItemUpdate?.({ ...selectedItem, height: value } as SelectedItem);
+    }
   };
 
   const handleRotationChange = (value: string) => {
-    onItemUpdate?.({ ...selectedItem, rotation: parseInt(value) } as SelectedItem);
+    const rotationValue = parseInt(value);
+    
+    // Check if multiple items are selected
+    if (selectedItemIds && selectedItemIds.size > 1 && diagramData && onDiagramDataUpdate) {
+      // Apply rotation change to all selected items
+      const updatedDiagramData = { ...diagramData };
+      
+      // Update nodes
+      updatedDiagramData.nodes = updatedDiagramData.nodes.map(node => {
+        if (selectedItemIds.has(node.id)) {
+          return { ...node, rotation: rotationValue };
+        }
+        return node;
+      });
+      
+      // Update zones
+      if (updatedDiagramData.zones) {
+        updatedDiagramData.zones = updatedDiagramData.zones.map(zone => {
+          if (selectedItemIds.has(zone.id)) {
+            return { ...zone, rotation: rotationValue };
+          }
+          return zone;
+        });
+      }
+      
+      onDiagramDataUpdate(updatedDiagramData);
+    } else {
+      // Single item selection - existing logic
+      onItemUpdate?.({ ...selectedItem, rotation: rotationValue } as SelectedItem);
+    }
   };
 
 
