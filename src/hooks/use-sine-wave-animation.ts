@@ -16,8 +16,8 @@ export function useSineWaveAnimation(options: SineWaveAnimationOptions = {}) {
   } = options;
 
   const [offset, setOffset] = useState({ x: 0, y: 0 });
-  const animationRef = useRef<number>();
-  const timeRef = useRef(0);
+  const animationRef = useRef<number | null>(null);
+  const timeRef = useRef<number>(0);
 
   useEffect(() => {
     if (!enabled) {
@@ -55,7 +55,7 @@ export function useSineWaveAnimation(options: SineWaveAnimationOptions = {}) {
 export function useNodeAnimationOffsets(nodes: any[], selectedIds: Set<string>) {
   const [offsets, setOffsets] = useState<Record<string, { x: number; y: number }>>({});
   const [randomPhases, setRandomPhases] = useState<Record<string, { phaseX: number; phaseY: number; freqX: number; freqY: number }>>({});
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | null>(null);
   const randomPhasesRef = useRef(randomPhases);
   const nodesRef = useRef(nodes);
   const selectedIdsRef = useRef(selectedIds);

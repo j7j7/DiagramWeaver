@@ -110,7 +110,7 @@ export function JsonEditorPanel({
   }, []);
 
   // Debounced update to prevent flickering during rapid changes (like dragging)
-  const updateTimeoutRef = useRef<NodeJS.Timeout>();
+  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Sync text display when value prop changes from outside - optimized with selective updates
   React.useEffect(() => {

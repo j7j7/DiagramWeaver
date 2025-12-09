@@ -4,7 +4,7 @@ import { snapToGrid } from "@/components/editor/canvas-constants";
 import type { Transform } from "./use-canvas-transform";
 
 interface UseCanvasSelectionOptions {
-  canvasRef: React.RefObject<HTMLDivElement>;
+  canvasRef: React.RefObject<HTMLDivElement | null>;
   transform: Transform;
   isConnectMode: boolean;
   diagramData: DiagramData;

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import type { DiagramData, LayersConfig, LayerInfo } from '@/lib/types';
+import type { DiagramData, LayersConfig, LayerInfo, DiagramNodeData, DiagramZoneData } from '@/lib/types';
 import { 
   getDefaultLayersConfig, 
   ensureLayerExists, 
@@ -117,20 +117,21 @@ export function useLayers({ diagramData, setDiagramData, toast }: UseLayersOptio
       
       // Move all items from the removed layer to background
       setDiagramData(prevData => {
-        const { nodes, zones } = getItemsInLayer(prevData, layerId);
+        const { nodes: nodesInLayer, zones: zonesInLayer } = getItemsInLayer(prevData, layerId);
         const updatedNodes = prevData.nodes.map(node => 
-          nodes.find(n => n.id === node.id) ? setItemLayer(node, DEFAULT_LAYER_ID) : node
-        );
+          nodesInLayer.find(n => n.id === node.id) ? setItemLayer(node, DEFAULT_LAYER_ID) : node
+        ) as DiagramNodeData[];
         const updatedZones = prevData.zones.map(zone => 
-          zones.find(z => z.id === zone.id) ? setItemLayer(zone, DEFAULT_LAYER_ID) : zone
-        );
+          zonesInLayer.find(z => z.id === zone.id) ? setItemLayer(zone, DEFAULT_LAYER_ID) : zone
+        ) as DiagramZoneData[];
 
         return {
           ...prevData,
           nodes: updatedNodes,
           zones: updatedZones,
+          connections: prevData.connections,
           layers: newConfig
-        };
+        } as DiagramData;
       });
 
       toast?.({
@@ -218,16 +219,18 @@ export function useLayers({ diagramData, setDiagramData, toast }: UseLayersOptio
     setDiagramData(prevData => {
       const updatedNodes = prevData.nodes.map(node => 
         itemIds.includes(node.id) ? setItemLayer(node, layerId) : node
-      );
+      ) as DiagramNodeData[];
       const updatedZones = prevData.zones.map(zone => 
         itemIds.includes(zone.id) ? setItemLayer(zone, layerId) : zone
-      );
+      ) as DiagramZoneData[];
 
       return {
         ...prevData,
         nodes: updatedNodes,
-        zones: updatedZones
-      };
+        zones: updatedZones,
+        connections: prevData.connections,
+        layers: prevData.layers
+      } as DiagramData;
     });
 
     toast?.({

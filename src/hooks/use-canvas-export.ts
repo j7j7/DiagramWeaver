@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import type { Transform } from "./use-canvas-transform";
 
 interface UseCanvasExportOptions {
-  canvasRef: React.RefObject<HTMLDivElement>;
+  canvasRef: React.RefObject<HTMLDivElement | null>;
   transform: Transform;
   width: number;
   height: number;

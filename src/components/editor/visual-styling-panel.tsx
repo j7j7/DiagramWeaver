@@ -21,7 +21,7 @@ interface VisualStylingPanelProps {
 
 export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, selectedItemIds }: VisualStylingPanelProps) {
   // Debounced property change to prevent excessive updates during color dragging
-  const propertyTimeoutRef = useRef<NodeJS.Timeout>();
+  const propertyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const handlePropertyChange = useCallback((property: keyof VisualStyling, value: any, immediate = false) => {
     // Clear existing timeout

@@ -167,9 +167,9 @@ export function ContextToolbar({
   };
 
   // Debounced color change to prevent excessive updates during dragging
-  const colorTimeoutRef = useRef<NodeJS.Timeout>();
+  const colorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   // Connection color timeout ref
-  const connectionColorTimeoutRef = useRef<NodeJS.Timeout>();
+  const connectionColorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const handleColorChange = useCallback((property: 'borderColor' | 'backgroundColor' | 'textColor' | 'lineColor', value: string) => {
     // Clear existing timeout

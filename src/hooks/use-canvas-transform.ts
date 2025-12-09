@@ -10,7 +10,7 @@ export interface Transform {
 interface UseCanvasTransformOptions {
   externalTransform?: Transform;
   onTransformChange?: (transform: Transform) => void;
-  canvasRef: React.RefObject<HTMLDivElement>;
+  canvasRef: React.RefObject<HTMLDivElement | null>;
   processedNodes: PositionedNode[];
   processedZones: PositionedGroup[];
 }

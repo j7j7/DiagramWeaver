@@ -229,7 +229,6 @@ export interface DiagramZoneData {
 }
 
 export interface DiagramGroupingData {
-export interface DiagramGroupingData {
   id: string;
   type: 'grouping';
   memberIds: string[]; // IDs of nodes/zones that are grouped together

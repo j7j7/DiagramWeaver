@@ -1,4 +1,4 @@
-import type { DiagramGroupData, DiagramNodeData } from './types';
+import type { DiagramGroupData, DiagramNodeData, DiagramZoneData } from './types';
 
 /**
  * Build a hierarchical tree structure from flat groups array
@@ -10,10 +10,10 @@ export function buildGroupHierarchy(groups: DiagramZoneData[]): Map<string, Diag
   hierarchy.set('root', []);
   
   // Create a map for quick group lookup
-  const groupMap = new Map(zones.map(g => [g.id, g]));
+  const groupMap: Map<string, DiagramZoneData> = new Map(groups.map(g => [g.id, g]));
   
   // Build parent-child relationships
-  zones.forEach(group => {
+  groups.forEach(group => {
     const parentId = group.parentId || 'root';
     
     if (!hierarchy.has(parentId)) {
@@ -37,7 +37,7 @@ export function getDescendantGroups(groupId: string, groups: DiagramZoneData[]):
     if (visited.has(id)) return;
     visited.add(id);
     
-    const children = zones.filter(g => g.parentId === id);
+    const children = groups.filter(g => g.parentId === id);
     children.forEach(child => {
       descendants.push(child);
       traverse(child.id);
@@ -60,7 +60,7 @@ export function isDescendant(childId: string, parentId: string, groups: DiagramZ
     
     if (id === parentId) return true;
     
-    const parent = zones.find(g => g.id === id);
+    const parent = groups.find(g => g.id === id);
     if (!parent || !parent.parentId) return false;
     
     return traverse(parent.parentId);
@@ -77,7 +77,7 @@ export function getAllNodesInGroup(groupId: string, groups: DiagramZoneData[], n
   const nodeMap = new Map(nodes.map(n => [n.id, n]));
   
   const traverse = (id: string) => {
-    const group = zones.find(g => g.id === id);
+    const group = groups.find(g => g.id === id);
     if (!group) return;
     
     // Add direct node children
@@ -104,7 +104,7 @@ export function updateGroupParenting(
   newParentId: string | undefined, 
   groups: DiagramZoneData[]
 ): DiagramZoneData[] {
-  return zones.map(group => {
+  return groups.map(group => {
     if (group.id === movedGroupId) {
       return { ...group, parentId: newParentId };
     }
@@ -206,8 +206,8 @@ export function flattenHierarchy(
   nodes: DiagramNodeData[]
 ): { positionedGroups: DiagramZoneData[], positionedNodes: DiagramNodeData[] } {
   const hierarchy = buildGroupHierarchy(groups);
-  const groupMap = new Map(zones.map(g => [g.id, g]));
-  const nodeMap = new Map(nodes.map(n => [n.id, n]));
+  const groupMap: Map<string, DiagramZoneData> = new Map(groups.map(g => [g.id, g]));
+  const nodeMap: Map<string, DiagramNodeData> = new Map(nodes.map(n => [n.id, n]));
   
   const positionedGroups: DiagramZoneData[] = [];
   const positionedNodes: DiagramNodeData[] = [];
@@ -217,8 +217,8 @@ export function flattenHierarchy(
     const group = groupMap.get(groupId);
     if (!group) return;
     
-    const groupX = (group.x || 0) + parentX;
-    const groupY = (group.y || 0) + parentY;
+    const groupX = (group.x ?? 0) + parentX;
+    const groupY = (group.y ?? 0) + parentY;
     
     // Calculate dimensions for this group
     const dimensions = calculateGroupDimensions(group, groups, nodes);
@@ -255,7 +255,7 @@ export function flattenHierarchy(
   
   // Add orphan nodes (nodes not in any group)
   const allChildNodeIds = new Set<string>();
-  zones.forEach(group => {
+  groups.forEach(group => {
     group.children.forEach(nodeId => {
       const node = nodeMap.get(nodeId);
       if (node) {
@@ -278,11 +278,11 @@ export function flattenHierarchy(
  * Migrate legacy flat group structure to hierarchical model
  */
 export function migrateToHierarchical(groups: DiagramZoneData[]): DiagramZoneData[] {
-  const groupMap = new Map(zones.map(g => [g.id, g]));
+  const groupMap = new Map(groups.map(g => [g.id, g]));
   const migrated = [...groups];
   
   // Build parent-child relationships
-  zones.forEach(group => {
+  groups.forEach(group => {
     group.children.forEach(nodeId => {
       const childGroup = groupMap.get(nodeId);
       if (childGroup) {

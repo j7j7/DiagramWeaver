@@ -16,7 +16,7 @@ type DropItem = {
 };
 
 interface UseCanvasDragDropOptions {
-  canvasRef: React.RefObject<HTMLDivElement>;
+  canvasRef: React.RefObject<HTMLDivElement | null>;
   transform: Transform;
   processedZones: PositionedGroup[];
   nodesById: Record<string, PositionedNode>;

@@ -285,7 +285,7 @@ export default function DiagramEditor() {
   }, [activeTabId, activeTab, getHistoryRef]);
 
   // Debounced history update to prevent excessive processing during rapid changes
-  const historyTimeoutRef = useRef<NodeJS.Timeout>();
+  const historyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const updateHistory = useCallback(() => {
     if (!activeTabId || !activeTab) return;

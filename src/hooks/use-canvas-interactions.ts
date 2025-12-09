@@ -3,7 +3,7 @@ import type { Transform } from "./use-canvas-transform";
 import { snapToGrid } from "@/components/editor/canvas-constants";
 
 interface UseCanvasInteractionsOptions {
-  canvasRef: React.RefObject<HTMLDivElement>;
+  canvasRef: React.RefObject<HTMLDivElement | null>;
   transform: Transform;
   setTransform: (transform: Transform) => void;
   isConnectMode: boolean;
