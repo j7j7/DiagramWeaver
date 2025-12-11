@@ -90,7 +90,7 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
             <SelectTrigger id="font-family" className="h-8 text-xs">
               <SelectValue placeholder="Select font family" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="z-[70]">
               {COMMON_FONT_FAMILIES.map((font) => (
                 <SelectItem key={font} value={font} className="text-xs">
                   <span style={{ fontFamily: font }}>{font.split(',')[0]}</span>
@@ -274,7 +274,7 @@ if (textPosition?.startsWith('outside-') || textPosition === 'outside') {
             <SelectTrigger id="text-transform" className="h-8 text-xs">
               <SelectValue placeholder="Select text transform" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="z-[70]">
               <SelectItem value="none" className="text-xs">None</SelectItem>
               <SelectItem value="uppercase" className="text-xs">UPPERCASE</SelectItem>
               <SelectItem value="lowercase" className="text-xs">lowercase</SelectItem>

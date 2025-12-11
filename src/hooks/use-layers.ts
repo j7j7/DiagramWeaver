@@ -118,10 +118,10 @@ export function useLayers({ diagramData, setDiagramData, toast }: UseLayersOptio
       // Move all items from the removed layer to background
       setDiagramData(prevData => {
         const { nodes: nodesInLayer, zones: zonesInLayer } = getItemsInLayer(prevData, layerId);
-        const updatedNodes = prevData.nodes.map(node => 
+        const updatedNodes = (prevData.nodes || []).map(node => 
           nodesInLayer.find(n => n.id === node.id) ? setItemLayer(node, DEFAULT_LAYER_ID) : node
         ) as DiagramNodeData[];
-        const updatedZones = prevData.zones.map(zone => 
+        const updatedZones = (prevData.zones || []).map(zone => 
           zonesInLayer.find(z => z.id === zone.id) ? setItemLayer(zone, DEFAULT_LAYER_ID) : zone
         ) as DiagramZoneData[];
 
@@ -217,10 +217,10 @@ export function useLayers({ diagramData, setDiagramData, toast }: UseLayersOptio
   // Assign items to a layer
   const assignItemsToLayer = useCallback((itemIds: string[], layerId: string) => {
     setDiagramData(prevData => {
-      const updatedNodes = prevData.nodes.map(node => 
+      const updatedNodes = (prevData.nodes || []).map(node => 
         itemIds.includes(node.id) ? setItemLayer(node, layerId) : node
       ) as DiagramNodeData[];
-      const updatedZones = prevData.zones.map(zone => 
+      const updatedZones = (prevData.zones || []).map(zone => 
         itemIds.includes(zone.id) ? setItemLayer(zone, layerId) : zone
       ) as DiagramZoneData[];
 
@@ -242,12 +242,12 @@ export function useLayers({ diagramData, setDiagramData, toast }: UseLayersOptio
 
   // Get layer for a specific item
   const getItemLayerById = useCallback((itemId: string): string => {
-    const node = diagramData.nodes.find(n => n.id === itemId);
+    const node = diagramData.nodes?.find(n => n.id === itemId);
     if (node) {
       return getItemLayer(node);
     }
 
-    const zone = diagramData.zones.find(z => z.id === itemId);
+    const zone = diagramData.zones?.find(z => z.id === itemId);
     if (zone) {
       return getItemLayer(zone);
     }

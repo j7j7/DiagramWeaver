@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Type, 
   Info, 
@@ -91,33 +92,136 @@ export function ContextToolbar({
   const [labelOpen, setLabelOpen] = useState(false);
   const [descriptionOpen, setDescriptionOpen] = useState(false);
   const [connectionsOpen, setConnectionsOpen] = useState(false);
-  const [textStylingOpen, setTextStylingOpen] = useState(textStylingPanelOpen);
-  const [visualStylingOpen, setVisualStylingOpen] = useState(visualStylingPanelOpen);
+  const [textStylingOpen, setTextStylingOpen] = useState(false);
+  const [visualStylingOpen, setVisualStylingOpen] = useState(false);
   const [draggedConnectionIndex, setDraggedConnectionIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const textStylingPanelRef = useRef<HTMLDivElement>(null);
+  const visualStylingPanelRef = useRef<HTMLDivElement>(null);
+  const textStylingButtonRef = useRef<HTMLButtonElement>(null);
+  const visualStylingButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Sync external panel state with internal state
+  const handleTextStylingOpenChange = useCallback((open: boolean) => {
+    setTextStylingOpen(open);
+    onTextStylingPanelOpenChange?.(open);
+  }, [onTextStylingPanelOpenChange]);
+
+  const handleVisualStylingOpenChange = useCallback((open: boolean) => {
+    setVisualStylingOpen(open);
+    onVisualStylingPanelOpenChange?.(open);
+  }, [onVisualStylingPanelOpenChange]);
+
+  // Sync external panel state with internal state - but only when explicitly triggered
+  // Don't auto-open when external state changes - only sync when opening, not when closing
   useEffect(() => {
-    setTextStylingOpen(textStylingPanelOpen);
-  }, [textStylingPanelOpen]);
+    if (textStylingPanelOpen && !textStylingOpen) {
+      setTextStylingOpen(true);
+    }
+  }, [textStylingPanelOpen, textStylingOpen]);
 
   useEffect(() => {
-    setVisualStylingOpen(visualStylingPanelOpen);
-  }, [visualStylingPanelOpen]);
+    if (visualStylingPanelOpen && !visualStylingOpen) {
+      setVisualStylingOpen(true);
+    }
+  }, [visualStylingPanelOpen, visualStylingOpen]);
+
+  // Close panels when selectedItem becomes null (deselecting)
+  useEffect(() => {
+    if (!selectedItem) {
+      if (textStylingOpen) {
+        handleTextStylingOpenChange(false);
+      }
+      if (visualStylingOpen) {
+        handleVisualStylingOpenChange(false);
+      }
+    }
+  }, [selectedItem, textStylingOpen, visualStylingOpen, handleTextStylingOpenChange, handleVisualStylingOpenChange]);
+
+  // Click outside detection for text styling panel
+  useEffect(() => {
+    if (!textStylingOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      
+      // Check if click is on the panel or button
+      if (
+        textStylingPanelRef.current?.contains(target) ||
+        textStylingButtonRef.current?.contains(target)
+      ) {
+        return;
+      }
+      
+      // Check if click is on a Radix Select dropdown (portaled to body)
+      // Radix Select content has data-radix-select-content attribute
+      if (target.closest('[data-radix-select-content]')) {
+        return;
+      }
+      
+      // Check if click is on a Radix Select viewport (the scrollable area)
+      if (target.closest('[data-radix-select-viewport]')) {
+        return;
+      }
+      
+      // Check if click is on a Radix Select item
+      if (target.closest('[data-radix-select-item]')) {
+        return;
+      }
+      
+      // If none of the above, close the panel
+      handleTextStylingOpenChange(false);
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [textStylingOpen, handleTextStylingOpenChange]);
+
+  // Click outside detection for visual styling panel
+  useEffect(() => {
+    if (!visualStylingOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      
+      // Check if click is on the panel or button
+      if (
+        visualStylingPanelRef.current?.contains(target) ||
+        visualStylingButtonRef.current?.contains(target)
+      ) {
+        return;
+      }
+      
+      // Check if click is on a Radix Select dropdown (portaled to body)
+      // Radix Select content has data-radix-select-content attribute
+      if (target.closest('[data-radix-select-content]')) {
+        return;
+      }
+      
+      // Check if click is on a Radix Select viewport (the scrollable area)
+      if (target.closest('[data-radix-select-viewport]')) {
+        return;
+      }
+      
+      // Check if click is on a Radix Select item
+      if (target.closest('[data-radix-select-item]')) {
+        return;
+      }
+      
+      // If none of the above, close the panel
+      handleVisualStylingOpenChange(false);
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [visualStylingOpen, handleVisualStylingOpenChange]);
 
   useEffect(() => {
     setConnectionsOpen(connectionSettingsPanelOpen);
   }, [connectionSettingsPanelOpen]);
-
-  const handleTextStylingOpenChange = (open: boolean) => {
-    setTextStylingOpen(open);
-    onTextStylingPanelOpenChange?.(open);
-  };
-
-  const handleVisualStylingOpenChange = (open: boolean) => {
-    setVisualStylingOpen(open);
-    onVisualStylingPanelOpenChange?.(open);
-  };
 
   if (!selectedItem) {
     return null;
@@ -1184,20 +1288,25 @@ export function ContextToolbar({
 
         {/* Text Styling Button */}
         {selectedItem && (isNode || isZone) && (
-          <Popover open={textStylingOpen} onOpenChange={handleTextStylingOpenChange}>
+          <>
             <Tooltip>
               <TooltipTrigger asChild>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 px-2">
-                    <Type className="h-4 w-4" />
-                  </Button>
-                </PopoverTrigger>
+                <Button 
+                  ref={textStylingButtonRef}
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 px-2"
+                  onClick={() => handleTextStylingOpenChange(!textStylingOpen)}
+                >
+                  <Type className="h-4 w-4" />
+                </Button>
               </TooltipTrigger>
               <TooltipContent>Text Styling</TooltipContent>
             </Tooltip>
-            <PopoverPrimitive.Portal>
-              <PopoverPrimitive.Content 
-                className="w-80 p-0 border-none shadow-none bg-transparent fixed top-0 left-0 h-screen m-0 z-[60] outline-none"
+            {textStylingOpen && typeof window !== 'undefined' && createPortal(
+              <div 
+                ref={textStylingPanelRef}
+                className="fixed top-0 left-0 h-screen z-[60]"
                 style={{ pointerEvents: 'auto' }}
               >
                 <TextStylingPanel
@@ -1209,27 +1318,33 @@ export function ContextToolbar({
                   textPosition={selectedItem?.textPosition}
                   onTextPositionChange={handleTextPositionChange}
                 />
-              </PopoverPrimitive.Content>
-            </PopoverPrimitive.Portal>
-          </Popover>
+              </div>,
+              document.body
+            )}
+          </>
         )}
 
         {/* Visual Styling Button */}
         {selectedItem && (isNode || isZone) && (
-          <Popover open={visualStylingOpen} onOpenChange={handleVisualStylingOpenChange}>
+          <>
             <Tooltip>
               <TooltipTrigger asChild>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 px-2">
-                    <Palette className="h-4 w-4" />
-                  </Button>
-                </PopoverTrigger>
+                <Button 
+                  ref={visualStylingButtonRef}
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 px-2"
+                  onClick={() => handleVisualStylingOpenChange(!visualStylingOpen)}
+                >
+                  <Palette className="h-4 w-4" />
+                </Button>
               </TooltipTrigger>
               <TooltipContent>Visual Styling</TooltipContent>
             </Tooltip>
-            <PopoverPrimitive.Portal>
-              <PopoverPrimitive.Content 
-                className="w-80 p-0 border-none shadow-none bg-transparent fixed top-0 left-0 h-screen m-0 z-[60] outline-none"
+            {visualStylingOpen && typeof window !== 'undefined' && createPortal(
+              <div 
+                ref={visualStylingPanelRef}
+                className="fixed top-0 left-0 h-screen z-[60]"
                 style={{ pointerEvents: 'auto' }}
               >
                 <VisualStylingPanel
@@ -1238,9 +1353,10 @@ export function ContextToolbar({
                   onReset={handleVisualStylingReset}
                   selectedItemIds={selectedItemIds}
                 />
-              </PopoverPrimitive.Content>
-            </PopoverPrimitive.Portal>
-          </Popover>
+              </div>,
+              document.body
+            )}
+          </>
         )}
 
 

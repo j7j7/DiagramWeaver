@@ -44,7 +44,7 @@ export function createGroup(
     itemIds.includes(node.id) ? { ...node, groupId: newGrouping.id } : node
   );
 
-  const updatedZones = diagramData.zones.map(zone =>
+  const updatedZones = (diagramData.zones || []).map(zone =>
     itemIds.includes(zone.id) ? { ...zone, groupId: newGrouping.id } : zone
   );
 
@@ -91,7 +91,7 @@ export function addToGroup(
     itemIds.includes(node.id) ? { ...node, groupId: groupId } : node
   );
 
-  const updatedZones = diagramData.zones.map(zone =>
+  const updatedZones = (diagramData.zones || []).map(zone =>
     itemIds.includes(zone.id) ? { ...zone, groupId: groupId } : zone
   );
 
@@ -133,7 +133,7 @@ export function removeFromGroup(
     itemIds.includes(node.id) ? { ...node, groupId: undefined } : node
   );
 
-  const updatedZones = diagramData.zones.map(zone =>
+  const updatedZones = (diagramData.zones || []).map(zone =>
     itemIds.includes(zone.id) ? { ...zone, groupId: undefined } : zone
   );
 
@@ -165,7 +165,7 @@ export function ungroup(groupId: string, diagramData: DiagramData): DiagramData 
     memberIds.includes(node.id) ? { ...node, groupId: undefined } : node
   );
 
-  const updatedZones = diagramData.zones.map(zone =>
+  const updatedZones = (diagramData.zones || []).map(zone =>
     memberIds.includes(zone.id) ? { ...zone, groupId: undefined } : zone
   );
 
@@ -195,7 +195,7 @@ export function getItemGroup(
     return group || null;
   }
 
-  const zone = diagramData.zones.find(z => z.id === itemId);
+  const zone = (diagramData.zones || []).find(z => z.id === itemId);
   if (zone?.groupId) {
     const group = (diagramData.groupings || []).find(g => g.id === zone.groupId);
     return group || null;
@@ -217,7 +217,7 @@ export function calculateRelativePositions(
       return;
     }
 
-    const zone = diagramData.zones.find(z => z.id === id);
+    const zone = (diagramData.zones || []).find(z => z.id === id);
     if (zone && zone.x !== undefined && zone.y !== undefined) {
       positions.set(id, { x: zone.x, y: zone.y });
     }
@@ -264,7 +264,7 @@ export function moveGroupMembers(
     return node;
   });
 
-  const updatedZones = diagramData.zones.map(zone => {
+  const updatedZones = (diagramData.zones || []).map(zone => {
     if (group.memberIds.includes(zone.id) && zone.x !== undefined && zone.y !== undefined) {
       return {
         ...zone,

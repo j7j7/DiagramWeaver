@@ -106,7 +106,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
             <SelectTrigger id="predefined-style" className="h-8 text-xs">
               <SelectValue placeholder="Select style preset" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="z-[70]">
               {Object.entries(VISUAL_STYLES).map(([key, style]) => (
                 <SelectItem key={key} value={key} className="text-xs">
                   <div className="flex flex-col">
@@ -137,7 +137,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
             <SelectTrigger id="border-style" className="h-8 text-xs">
               <SelectValue placeholder="Select border style" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="z-[70]">
               <SelectItem value="none" className="text-xs">None</SelectItem>
               <SelectItem value="solid" className="text-xs">Solid</SelectItem>
               <SelectItem value="dotted" className="text-xs">Dotted</SelectItem>
@@ -265,7 +265,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
             <SelectTrigger id="background-style" className="h-8 text-xs">
               <SelectValue placeholder="Select background style" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="z-[70]">
               <SelectItem value="none" className="text-xs">None</SelectItem>
               <SelectItem value="solid" className="text-xs">Solid</SelectItem>
               <SelectItem value="gradient" className="text-xs">Gradient</SelectItem>
@@ -373,7 +373,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
               <SelectTrigger id="gradient-angle" className="h-8 text-xs">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[70]">
                 <SelectItem value="-45" className="text-xs">Alt Diagonal ↗</SelectItem>
                 <SelectItem value="0" className="text-xs">Right →</SelectItem>
                 <SelectItem value="45" className="text-xs">Diagonal ↘</SelectItem>
