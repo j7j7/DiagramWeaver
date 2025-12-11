@@ -1,0 +1,15 @@
+[Unit]
+Description=DiagramWeaver Production Build Service
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/j7/code/github/DiagramWeaver
+ExecStart=/home/j7/code/github/DiagramWeaver/start-production-server.sh
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target
