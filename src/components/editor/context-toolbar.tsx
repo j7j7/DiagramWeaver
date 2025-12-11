@@ -33,6 +33,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Slider } from '@/components/ui/slider';
@@ -1052,10 +1053,7 @@ export function ContextToolbar({
                                   onBlur={(e) => handleConnectionColorChange((e.target as HTMLInputElement).value, true)}
                                   className="h-7 w-12 p-1 cursor-pointer shrink-0"
                                   title="Pick color"
-                                  style={{ 
-                                    backgroundColor: connectionColor,
-                                    borderColor: connectionColor === '#6b7280' ? '#d1d5db' : connectionColor
-                                  }}
+              style={{ pointerEvents: 'auto' }}
                                 />
                                 <Input
                                   type="text"
@@ -1197,17 +1195,22 @@ export function ContextToolbar({
               </TooltipTrigger>
               <TooltipContent>Text Styling</TooltipContent>
             </Tooltip>
-            <PopoverContent className="w-80 p-0" align="start">
-              <TextStylingPanel
-                styling={getCurrentTextStyling}
-                onStylingChange={handleTextStylingChange}
-                onReset={handleTextStylingReset}
-                selectedItem={selectedItem}
-                selectedItemIds={selectedItemIds}
-                textPosition={selectedItem?.textPosition}
-                onTextPositionChange={handleTextPositionChange}
-              />
-            </PopoverContent>
+            <PopoverPrimitive.Portal>
+              <PopoverPrimitive.Content 
+                className="w-80 p-0 border-none shadow-none bg-transparent fixed top-0 left-0 h-screen m-0 z-[60] outline-none"
+                style={{ pointerEvents: 'auto' }}
+              >
+                <TextStylingPanel
+                  styling={getCurrentTextStyling}
+                  onStylingChange={handleTextStylingChange}
+                  onReset={handleTextStylingReset}
+                  selectedItem={selectedItem}
+                  selectedItemIds={selectedItemIds}
+                  textPosition={selectedItem?.textPosition}
+                  onTextPositionChange={handleTextPositionChange}
+                />
+              </PopoverPrimitive.Content>
+            </PopoverPrimitive.Portal>
           </Popover>
         )}
 
@@ -1224,14 +1227,19 @@ export function ContextToolbar({
               </TooltipTrigger>
               <TooltipContent>Visual Styling</TooltipContent>
             </Tooltip>
-            <PopoverContent className="w-80 p-0" align="start">
-              <VisualStylingPanel
-                styling={getCurrentVisualStyling}
-                onStylingChange={handleVisualStylingChange}
-                onReset={handleVisualStylingReset}
-                selectedItemIds={selectedItemIds}
-              />
-            </PopoverContent>
+            <PopoverPrimitive.Portal>
+              <PopoverPrimitive.Content 
+                className="w-80 p-0 border-none shadow-none bg-transparent fixed top-0 left-0 h-screen m-0 z-[60] outline-none"
+                style={{ pointerEvents: 'auto' }}
+              >
+                <VisualStylingPanel
+                  styling={getCurrentVisualStyling}
+                  onStylingChange={handleVisualStylingChange}
+                  onReset={handleVisualStylingReset}
+                  selectedItemIds={selectedItemIds}
+                />
+              </PopoverPrimitive.Content>
+            </PopoverPrimitive.Portal>
           </Popover>
         )}
 

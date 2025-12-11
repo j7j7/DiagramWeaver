@@ -86,6 +86,7 @@ export function ContextMenu({
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [layerSubmenuOpen, setLayerSubmenuOpen] = useState(false);
+  const [renderOrderSubmenuOpen, setRenderOrderSubmenuOpen] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -173,6 +174,93 @@ export function ContextMenu({
           <Palette className="w-4 h-4" />
           Visual Styling
         </button>
+      )}
+
+      {/* Render Order Submenu */}
+      {(canMoveToBack || canMoveToFront || canMoveOneBack || canMoveOneForward) && (
+        <div className="relative">
+          <button
+            className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+            onMouseEnter={() => setRenderOrderSubmenuOpen(true)}
+            onMouseLeave={() => setRenderOrderSubmenuOpen(false)}
+          >
+            <ArrowUp className="w-4 h-4" />
+            Render Order
+            <ChevronRight className="w-4 h-4 ml-auto" />
+          </button>
+          
+          {renderOrderSubmenuOpen && (
+            <div
+              className={cn(
+                "absolute left-full top-0 bg-popover border border-border rounded-md shadow-lg py-1 z-50 min-w-[150px]",
+                "animate-in fade-in-0 zoom-in-95"
+              )}
+              style={{ marginLeft: '4px' }}
+              onMouseEnter={() => setRenderOrderSubmenuOpen(true)}
+              onMouseLeave={() => setRenderOrderSubmenuOpen(false)}
+            >
+              {onMoveToFront && (
+                <button
+                  className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+                  onClick={() => {
+                    onMoveToFront();
+                    onClose();
+                    setRenderOrderSubmenuOpen(false);
+                  }}
+                  disabled={!canMoveToFront}
+                >
+                  <ChevronUp className="w-4 h-4" />
+                  Move to Front
+                </button>
+              )}
+
+              {onMoveOneForward && (
+                <button
+                  className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+                  onClick={() => {
+                    onMoveOneForward();
+                    onClose();
+                    setRenderOrderSubmenuOpen(false);
+                  }}
+                  disabled={!canMoveOneForward}
+                >
+                  <ArrowUp className="w-4 h-4" />
+                  Move One Forward
+                </button>
+              )}
+
+              {onMoveOneBack && (
+                <button
+                  className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+                  onClick={() => {
+                    onMoveOneBack();
+                    onClose();
+                    setRenderOrderSubmenuOpen(false);
+                  }}
+                  disabled={!canMoveOneBack}
+                >
+                  <ArrowDown className="w-4 h-4" />
+                  Move One Back
+                </button>
+              )}
+
+              {onMoveToBack && (
+                <button
+                  className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+                  onClick={() => {
+                    onMoveToBack();
+                    onClose();
+                    setRenderOrderSubmenuOpen(false);
+                  }}
+                  disabled={!canMoveToBack}
+                >
+                  <ChevronDown className="w-4 h-4" />
+                  Move to Back
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       {itemType === 'zone' && onOrientationChange && (
@@ -382,69 +470,7 @@ export function ContextMenu({
         </button>
       )}
 
-      {/* Rendering Order Controls */}
-      {(canMoveToBack || canMoveToFront || canMoveOneBack || canMoveOneForward) && (
-        <>
-          <div className="border-t border-border my-1" />
-          <div className="px-3 py-1 text-xs font-medium text-muted-foreground">Rendering Order</div>
-          
-          {onMoveToBack && (
-            <button
-              className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
-              onClick={() => {
-                onMoveToBack();
-                onClose();
-              }}
-              disabled={!canMoveToBack}
-            >
-              <ChevronDown className="w-4 h-4" />
-              Move to Back
-            </button>
-          )}
-          
-          {onMoveOneBack && (
-            <button
-              className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
-              onClick={() => {
-                onMoveOneBack();
-                onClose();
-              }}
-              disabled={!canMoveOneBack}
-            >
-              <ArrowDown className="w-4 h-4" />
-              Move One Back
-            </button>
-          )}
-          
-          {onMoveOneForward && (
-            <button
-              className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
-              onClick={() => {
-                onMoveOneForward();
-                onClose();
-              }}
-              disabled={!canMoveOneForward}
-            >
-              <ArrowUp className="w-4 h-4" />
-              Move One Forward
-            </button>
-          )}
-          
-          {onMoveToFront && (
-            <button
-              className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
-              onClick={() => {
-                onMoveToFront();
-                onClose();
-              }}
-              disabled={!canMoveToFront}
-            >
-              <ChevronUp className="w-4 h-4" />
-              Move to Front
-            </button>
-          )}
-        </>
-      )}
+
 
       {(canGroup || isGrouped) && <div className="border-t border-border my-1" />}
       

@@ -1123,6 +1123,10 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               }
               closeContextMenu();
             }}
+            canMoveToBack={!!onMoveToBack && (contextMenu.itemType === 'node' || contextMenu.itemType === 'zone')}
+            canMoveToFront={!!onMoveToFront && (contextMenu.itemType === 'node' || contextMenu.itemType === 'zone')}
+            canMoveOneBack={!!onMoveOneBack && (contextMenu.itemType === 'node' || contextMenu.itemType === 'zone')}
+            canMoveOneForward={!!onMoveOneForward && (contextMenu.itemType === 'node' || contextMenu.itemType === 'zone')}
           />
         </div>
     </div>

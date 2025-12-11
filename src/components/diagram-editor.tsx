@@ -1847,6 +1847,10 @@ export default function DiagramEditor() {
                     onUngroupItems={handleUngroupItems}
                     onRemoveFromGroup={handleRemoveFromGroup}
                     onAddToGroupItems={handleAddToGroup}
+                    onMoveToBack={handleMoveToBack}
+                    onMoveToFront={handleMoveToFront}
+                    onMoveOneBack={handleMoveOneBack}
+                    onMoveOneForward={handleMoveOneForward}
                     />
                   </div>
                   
