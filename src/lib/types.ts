@@ -45,6 +45,11 @@ export interface DiagramNodeData {
   textOpacity?: number; // Text opacity (0-1)
   groupId?: string; // Reference to grouping this node belongs to
   importId?: string; // ID for tracking imported items from Scratch Pad
+  
+  // Resource information for icon rendering
+  provider?: string; // Provider name (e.g., 'aws', 'azure', 'gcp')
+  category?: string; // Category name (e.g., 'compute', 'storage', 'network')
+  file?: string; // Resource filename (e.g., 'ec2.png', 's3.png')
 }
 
 export interface ScratchPadItem {

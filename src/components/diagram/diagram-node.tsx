@@ -2125,7 +2125,15 @@ return (
                     isSelected ? "border-primary" : (node as any).noIconBackground || (isDragging || isTouchDragging) ? "" : "group-hover:border-accent",
                     isTargetable && "border-dashed border-primary"
                     )}>
-                    <ResourceIcon type={node.type} width="70" height="70" className="w-[70px] h-[70px]" />
+                    <ResourceIcon 
+                      type={node.type} 
+                      provider={node.provider}
+                      category={node.category}
+                      file={node.file}
+                      width="70" 
+                      height="70" 
+                      className="w-[70px] h-[70px]" 
+                    />
                 </div>
                 {isEditingLabel ? (
                   <input

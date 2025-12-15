@@ -2,7 +2,13 @@
   {
     "name": "ABC-server-1",
     "type": "EC2",
-    "description": "Simple web server",
+    "description": "Simple web server Primary",
+    "provider": "AWS"
+  },
+  {
+    "name": "ABC-server-2",
+    "type": "EC2",
+    "description": "Simple web server Backup",
     "provider": "AWS"
   },
   {

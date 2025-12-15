@@ -41,10 +41,27 @@ export function ScratchPad({ isOpen, onClose, diagramData }: ScratchPadProps) {
     }
   }, []);
 
+  // Load imports from localStorage
+  useEffect(() => {
+    const savedImports = localStorage.getItem('dw:scratchpad:imports');
+    if (savedImports) {
+      try {
+        setImports(JSON.parse(savedImports));
+      } catch (e) {
+        console.error('Failed to load imports', e);
+      }
+    }
+  }, []);
+
   // Save favorites to localStorage
   useEffect(() => {
     localStorage.setItem('dw:scratchpad:favorites', JSON.stringify(favorites));
   }, [favorites]);
+
+  // Save imports to localStorage
+  useEffect(() => {
+    localStorage.setItem('dw:scratchpad:imports', JSON.stringify(imports));
+  }, [imports]);
 
   const [{ isOver }, drop] = useDrop(() => ({
     accept: ItemTypes.DIAGRAM_NODE,
@@ -73,7 +90,15 @@ export function ScratchPad({ isOpen, onClose, diagramData }: ScratchPadProps) {
         const json = JSON.parse(event.target?.result as string);
         if (Array.isArray(json)) {
           const newImports = await processImportedItems(json);
-          setImports(prev => [...prev, ...newImports]);
+          
+          // Filter out items that already exist (by name and type combination)
+          setImports(prev => {
+            const existingKeys = prev.map(item => `${item.label}-${item.type}`);
+            const filteredNewImports = newImports.filter(newItem => 
+              !existingKeys.includes(`${newItem.label}-${newItem.type}`)
+            );
+            return [...prev, ...filteredNewImports];
+          });
         }
       } catch (err) {
         console.error('Failed to parse import', err);
@@ -94,6 +119,14 @@ export function ScratchPad({ isOpen, onClose, diagramData }: ScratchPadProps) {
   
   const deleteImport = (id: string) => {
       setImports(prev => prev.filter(item => item.id !== id));
+  }
+
+  const clearFavorites = () => {
+    setFavorites([]);
+  }
+
+  const clearImports = () => {
+    setImports([]);
   }
 
   const handleEditClick = (item: ScratchPadItem) => {
@@ -135,9 +168,23 @@ const renderIcon = (item: ScratchPadItem) => {
         </div>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-          <TabsList className="w-full justify-start rounded-none border-b px-2 h-10 bg-transparent">
-            <TabsTrigger value="favorites" className="data-[state=active]:bg-background">Favorites</TabsTrigger>
-            <TabsTrigger value="imports" className="data-[state=active]:bg-background">Imports</TabsTrigger>
+          <TabsList className="w-full justify-between rounded-none border-b px-2 h-10 bg-transparent">
+            <div className="flex gap-2">
+              <TabsTrigger value="favorites" className="data-[state=active]:bg-background">Favorites</TabsTrigger>
+              <TabsTrigger value="imports" className="data-[state=active]:bg-background">Imports</TabsTrigger>
+            </div>
+            <div className="flex gap-1">
+              {activeTab === 'favorites' && favorites.length > 0 && (
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={clearFavorites} title="Clear Favorites">
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              )}
+              {activeTab === 'imports' && imports.length > 0 && (
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={clearImports} title="Clear Imports">
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
           </TabsList>
           
           <TabsContent value="favorites" className="flex-1 flex flex-col min-h-0 p-0 m-0">

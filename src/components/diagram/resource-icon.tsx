@@ -6,24 +6,33 @@ import { Server, User } from "lucide-react";
 interface ResourceIconProps extends React.SVGProps<SVGSVGElement> {
   type: string; // Format: provider.category.resourcename (e.g., aws.compute.ec2)
   imagePath?: string; // If provided, use this exact icon path (legacy support)
+  provider?: string; // Direct provider info for icon lookup
+  category?: string; // Direct category info for icon lookup  
+  file?: string; // Direct file info for icon lookup
 }
 
-export function ResourceIcon({ type, imagePath, ...props }: ResourceIconProps) {
+export function ResourceIcon({ type, imagePath, provider, category, file, ...props }: ResourceIconProps) {
   const [resourceFile, setResourceFile] = useState<string | null>(null);
 
-  // Look up file from resource catalog based on type
+  // Look up file from resource catalog based on type or direct provider info
   useEffect(() => {
+    // If direct provider info is provided, use it immediately
+    if (provider && category && file) {
+      setResourceFile(file);
+      return;
+    }
+
     const parts = type.split('.');
     if (parts.length >= 3) {
-      const provider = parts[0];
-      const category = parts[1];
+      const typeProvider = parts[0];
+      const typeCategory = parts[1];
       const resourceName = parts.slice(2).join('-').toLowerCase();
       
       // Reset resource file when type changes
       setResourceFile(null);
       
-      // Fetch the resource catalog to get the correct filename
-      fetch(`/resources/resource-${provider}.json`)
+      // Fetch resource catalog to get correct filename
+      fetch(`/resources/resource-${typeProvider}.json`)
         .then(res => {
           if (!res.ok) {
             throw new Error(`HTTP ${res.status}`);
@@ -31,9 +40,9 @@ export function ResourceIcon({ type, imagePath, ...props }: ResourceIconProps) {
           return res.json();
         })
         .then(data => {
-          const categoryData = data.categories?.[category];
+          const categoryData = data.categories?.[typeCategory];
           if (categoryData?.resources) {
-            // Find the resource that matches the resourceName (derived from type)
+            // Find resource that matches resourceName (derived from type)
             // Look for resources where name.toLowerCase().replace(/\s+/g, '-') matches resourceName
             const resource = categoryData.resources.find((r: {name: string, file: string}) => 
               r.name.replace(/\s+/g, '-').toLowerCase() === resourceName
@@ -41,7 +50,7 @@ export function ResourceIcon({ type, imagePath, ...props }: ResourceIconProps) {
             if (resource?.file) {
               setResourceFile(resource.file);
             } else {
-              console.warn(`Resource not found: ${resourceName} in ${provider}.${category}`, {
+              console.warn(`Resource not found: ${resourceName} in ${typeProvider}.${typeCategory}`, {
                 availableResources: categoryData.resources.map((r: any) => ({
                   name: r.name,
                   normalized: r.name.replace(/\s+/g, '-').toLowerCase()
@@ -49,16 +58,16 @@ export function ResourceIcon({ type, imagePath, ...props }: ResourceIconProps) {
               });
             }
           } else {
-            console.warn(`Category not found: ${category} in ${provider}`, {
+            console.warn(`Category not found: ${typeCategory} in ${typeProvider}`, {
               availableCategories: Object.keys(data.categories || {})
             });
           }
         })
         .catch((err) => {
-          console.warn(`Failed to load resource catalog for ${provider}:`, err.message);
+          console.warn(`Failed to load resource catalog for ${typeProvider}:`, err.message);
         });
     }
-  }, [type, imagePath]);
+  }, [type, imagePath, provider, category, file]);
 
   const iconPath = useMemo(() => {
     const parts = type.split('.');
@@ -68,15 +77,20 @@ export function ResourceIcon({ type, imagePath, ...props }: ResourceIconProps) {
       return imagePath;
     }
     
-    // Only use resource catalog lookup - no fallbacks
-    if (resourceFile && parts.length >= 3) {
-      const provider = parts[0];
-      const category = parts[1];
+    // If direct provider info is provided, use it
+    if (provider && category && resourceFile) {
       return `/resources/${provider}/${category}/${resourceFile}`;
     }
     
+    // Only use resource catalog lookup - no fallbacks
+    if (resourceFile && parts.length >= 3) {
+      const typeProvider = parts[0];
+      const typeCategory = parts[1];
+      return `/resources/${typeProvider}/${typeCategory}/${resourceFile}`;
+    }
+    
     return null;
-  }, [type, resourceFile, imagePath]);
+  }, [type, resourceFile, imagePath, provider, category]);
 
   if (iconPath) {
     return (
