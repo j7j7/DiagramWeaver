@@ -1,0 +1,284 @@
+"use client";
+import React, { useState, useEffect } from 'react';
+import Draggable from 'react-draggable';
+import { useDrop } from 'react-dnd';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { X, Check, Edit2, Trash2 } from 'lucide-react';
+import { DraggableItem, ItemTypes } from './draggable-item';
+import type { DiagramData, ScratchPadItem } from '@/lib/types';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { TextStylingPanel } from './text-styling-panel';
+import { VisualStylingPanel } from './visual-styling-panel';
+import { processImportedItems, getResourcePath } from '@/lib/resource-mapping';
+
+interface ScratchPadProps {
+  isOpen: boolean;
+  onClose: () => void;
+  diagramData: DiagramData;
+}
+
+export function ScratchPad({ isOpen, onClose, diagramData }: ScratchPadProps) {
+  const [favorites, setFavorites] = useState<ScratchPadItem[]>([]);
+  const [imports, setImports] = useState<ScratchPadItem[]>([]);
+  const [activeTab, setActiveTab] = useState('favorites');
+  const [editingItem, setEditingItem] = useState<ScratchPadItem | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
+  // Load favorites from localStorage
+  useEffect(() => {
+    const savedFavorites = localStorage.getItem('dw:scratchpad:favorites');
+    if (savedFavorites) {
+      try {
+        setFavorites(JSON.parse(savedFavorites));
+      } catch (e) {
+        console.error('Failed to load favorites', e);
+      }
+    }
+  }, []);
+
+  // Save favorites to localStorage
+  useEffect(() => {
+    localStorage.setItem('dw:scratchpad:favorites', JSON.stringify(favorites));
+  }, [favorites]);
+
+  const [{ isOver }, drop] = useDrop(() => ({
+    accept: ItemTypes.DIAGRAM_NODE,
+    drop: (item: any) => {
+      const newItem: ScratchPadItem = {
+        id: crypto.randomUUID(),
+        label: item.label || 'New Item',
+        type: item.type,
+        data: { ...item }, // Store all properties as template
+        isFavorite: true,
+      };
+      setFavorites(prev => [...prev, newItem]);
+    },
+    collect: (monitor) => ({
+      isOver: monitor.isOver(),
+    }),
+  }));
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+        if (Array.isArray(json)) {
+          const newImports = await processImportedItems(json);
+          setImports(prev => [...prev, ...newImports]);
+        }
+      } catch (err) {
+        console.error('Failed to parse import', err);
+      }
+    };
+    reader.readAsText(file);
+    // Reset input
+    e.target.value = '';
+  };
+
+  const updateFavorite = (id: string, updates: Partial<ScratchPadItem>) => {
+    setFavorites(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item));
+  };
+
+  const deleteFavorite = (id: string) => {
+    setFavorites(prev => prev.filter(item => item.id !== id));
+  };
+  
+  const deleteImport = (id: string) => {
+      setImports(prev => prev.filter(item => item.id !== id));
+  }
+
+  const handleEditClick = (item: ScratchPadItem) => {
+    setEditingItem(item);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (editingItem) {
+        updateFavorite(editingItem.id, { 
+            label: editingItem.label,
+            data: editingItem.data
+        });
+        setIsEditDialogOpen(false);
+        setEditingItem(null);
+    }
+  };
+
+const renderIcon = (item: ScratchPadItem) => {
+    const resourcePath = getResourcePath(item as any);
+    if (resourcePath) {
+        return <img src={resourcePath} className="w-6 h-6 object-contain" alt={item.label} />;
+    }
+    return <div className="w-6 h-6 bg-muted rounded-full" />;
+}
+
+  const nodeRef = React.useRef(null);
+
+  if (!isOpen) return null;
+
+  return (
+    <Draggable handle=".scratchpad-handle" nodeRef={nodeRef}>
+      <div ref={nodeRef} className="fixed top-20 right-20 z-50 w-80 bg-background border rounded-lg shadow-xl flex flex-col max-h-[600px]">
+        <div className="scratchpad-handle p-3 border-b bg-muted/50 rounded-t-lg cursor-move flex justify-between items-center">
+          <h3 className="font-semibold text-sm">Scratch Pad</h3>
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+          <TabsList className="w-full justify-start rounded-none border-b px-2 h-10 bg-transparent">
+            <TabsTrigger value="favorites" className="data-[state=active]:bg-background">Favorites</TabsTrigger>
+            <TabsTrigger value="imports" className="data-[state=active]:bg-background">Imports</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="favorites" className="flex-1 flex flex-col min-h-0 p-0 m-0">
+            <div 
+              ref={(node) => { if (node) drop(node); }}
+              className={`flex-1 p-4 overflow-y-auto min-h-[200px] ${isOver ? 'bg-accent/20' : ''}`}
+            >
+              {favorites.length === 0 ? (
+                <div className="text-center text-muted-foreground text-sm py-8">
+                  Drag items here from the sidebar to save them as favorites.
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {favorites.map(item => (
+                    <div key={item.id} className="relative group">
+                      <DraggableItem 
+                        type={item.type} 
+                        label={item.label} 
+                        icon={renderIcon(item)}
+                        data={{ ...item.data, label: item.label, fromScratchPad: true }} 
+                      />
+                      <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 bg-background/80 rounded z-10">
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditClick(item)}>
+                          <Edit2 className="h-3 w-3" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => deleteFavorite(item.id)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="imports" className="flex-1 flex flex-col min-h-0 p-0 m-0">
+            <div className="p-2 border-b">
+              <div className="flex items-center gap-2">
+                <Input type="file" accept=".json" onChange={handleImport} className="h-8 text-xs" />
+              </div>
+            </div>
+            <ScrollArea className="flex-1 p-2 h-[300px]">
+               <div className="grid grid-cols-2 gap-2">
+                  {imports.map(item => {
+                    const isOnCanvas = diagramData.nodes.some(n => n.importId === item.importId);
+                    return (
+                        <div key={item.id} className="relative group">
+                            <DraggableItem 
+                                type={item.type} 
+                                label={item.label} 
+                                icon={renderIcon(item)}
+                                data={{ ...item.data, importId: item.importId, fromScratchPad: true }} 
+                            />
+                            {isOnCanvas && (
+                                <div className="absolute top-1 left-1 bg-green-500 text-white rounded-full p-0.5 z-10">
+                                    <Check className="h-3 w-3" />
+                                </div>
+                            )}
+                             <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 bg-background/80 rounded z-10">
+                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => deleteImport(item.id)}>
+                                <Trash2 className="h-3 w-3" />
+                                </Button>
+                            </div>
+                        </div>
+                    );
+                  })}
+               </div>
+            </ScrollArea>
+          </TabsContent>
+        </Tabs>
+
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle>Edit Favorite</DialogTitle>
+                </DialogHeader>
+                {editingItem && (
+                    <Tabs defaultValue="general" className="w-full">
+                        <TabsList className="w-full grid grid-cols-3">
+                            <TabsTrigger value="general">General</TabsTrigger>
+                            <TabsTrigger value="text">Text</TabsTrigger>
+                            <TabsTrigger value="visual">Visual</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="general" className="py-4 space-y-4">
+                            <div className="grid gap-4">
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="name" className="text-right">Label</Label>
+                                    <Input 
+                                        id="name" 
+                                        value={editingItem.label} 
+                                        onChange={(e) => setEditingItem({...editingItem, label: e.target.value})} 
+                                        className="col-span-3" 
+                                    />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="info" className="text-right">Description</Label>
+                                    <Textarea 
+                                        id="info" 
+                                        value={editingItem.data.info || ''} 
+                                        onChange={(e) => setEditingItem({
+                                            ...editingItem, 
+                                            data: { ...editingItem.data, info: e.target.value }
+                                        })} 
+                                        className="col-span-3" 
+                                    />
+                                </div>
+                            </div>
+                        </TabsContent>
+                        <TabsContent value="text" className="py-4 flex justify-center">
+                            <TextStylingPanel 
+                                styling={editingItem.data} 
+                                onStylingChange={(changes) => setEditingItem({
+                                    ...editingItem,
+                                    data: { ...editingItem.data, ...changes }
+                                })}
+                                selectedItem={{
+                                    ...editingItem.data,
+                                    id: editingItem.id,
+                                    type: editingItem.type,
+                                    itemType: editingItem.type === 'zone' ? 'zone' : 'node'
+                                }}
+                            />
+                        </TabsContent>
+                        <TabsContent value="visual" className="py-4 flex justify-center">
+                            <VisualStylingPanel 
+                                styling={editingItem.data} 
+                                onStylingChange={(changes) => setEditingItem({
+                                    ...editingItem,
+                                    data: { ...editingItem.data, ...changes }
+                                })}
+                            />
+                        </TabsContent>
+                    </Tabs>
+                )}
+                <DialogFooter>
+                    <Button onClick={handleSaveEdit}>Save</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+      </div>
+    </Draggable>
+  );
+}

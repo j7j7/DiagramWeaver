@@ -122,8 +122,8 @@ itemType === 'generic.object.jigsaw' ||
         const newNode: DiagramNodeData = {
           id: generateSequentialId(itemType, prevData),
           type: itemType,
-          // Set label based on type - shapes get blank by default
-          label: isShapeResource ? '' : itemLabel,
+          // Set label based on type - shapes get blank by default, unless it's a configured item (e.g. from Scratch Pad)
+          label: (isShapeResource && !item.label) ? '' : itemLabel,
           // Don't set info/description for text and textbox resource types, or shapes
           ...(itemType !== 'generic.text.text' && itemType !== 'generic.text.textbox' && !isShapeResource && {
             info: item.provider ? `${itemLabel} from ${item.provider}` : `A new ${itemLabel}`
@@ -158,7 +158,15 @@ itemType === 'generic.object.jigsaw' ||
           // Apply icon background setting
           ...(!iconBackgroundEnabled && {
             noIconBackground: true
-          })
+          }),
+          // Merge extra properties from item (favorites/imports), excluding reserved ones
+          // Keep provider, category, and file for icon rendering
+          ...Object.keys(item).reduce((acc: any, key) => {
+             if (!['type', 'label', 'x', 'y', 'id'].includes(key)) {
+               acc[key] = item[key];
+             }
+             return acc;
+          }, {}),
         };
         newNodes.push(newNode);
         newItemId = newNode.id;

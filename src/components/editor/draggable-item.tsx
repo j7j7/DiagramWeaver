@@ -7,6 +7,7 @@ interface DraggableItemProps {
     type: string;
     label: string;
     icon: React.ReactNode;
+    data?: any;
 }
 
 export const ItemTypes = {
@@ -15,8 +16,8 @@ export const ItemTypes = {
   ZONE: 'zone',
 };
 
-export function DraggableItem({ type, label, icon }: DraggableItemProps) {
-  const item = useMemo(() => ({ type, label }), [type, label]);
+export function DraggableItem({ type, label, icon, data }: DraggableItemProps) {
+  const item = useMemo(() => ({ type, label, ...data }), [type, label, data]);
   const [{ isDragging }, drag, dragPreview] = useDrag(() => ({
     type: ItemTypes.DIAGRAM_NODE,
     item: item,

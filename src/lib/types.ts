@@ -44,6 +44,16 @@ export interface DiagramNodeData {
   lineHeight?: number; // Line height as a multiplier (e.g., 1.2, 1.5)
   textOpacity?: number; // Text opacity (0-1)
   groupId?: string; // Reference to grouping this node belongs to
+  importId?: string; // ID for tracking imported items from Scratch Pad
+}
+
+export interface ScratchPadItem {
+  id: string;
+  label: string;
+  type: string;
+  data: Partial<DiagramNodeData>;
+  isFavorite: boolean;
+  importId?: string;
 }
 
 export interface DiagramConnectionData {

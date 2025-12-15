@@ -71,6 +71,8 @@ interface TopMenuBarProps {
   onVisualStylingPanelOpenChange?: (open: boolean) => void;
   onResetConnectionSettingsTrigger?: () => void;
   onAutoLayout?: () => void;
+  onToggleScratchPad?: () => void;
+  scratchPadOpen?: boolean;
 }
 
 export function TopMenuBar({
@@ -115,7 +117,7 @@ export function TopMenuBar({
   triggerTextStylingPanel = false,
   triggerVisualStylingPanel = false,
   triggerConnectionSettingsPanel = false,
-onToggleLayersPanel,
+  onToggleLayersPanel,
   layersPanelOpen,
   onConnectionSettingsPanelOpenChange,
   onCloseConnectionSettingsPanel,
@@ -123,6 +125,8 @@ onToggleLayersPanel,
   onVisualStylingPanelOpenChange,
   onResetConnectionSettingsTrigger,
   onAutoLayout,
+  onToggleScratchPad,
+  scratchPadOpen,
 }: TopMenuBarProps) {
   
   const [themeEditorOpen, setThemeEditorOpen] = React.useState(false);
@@ -288,6 +292,15 @@ onToggleLayersPanel,
                 <MenubarItem onClick={onToggleLayersPanel}>
                   <Layers className="mr-2 h-4 w-4" />
                   {layersPanelOpen ? 'Hide Layers' : 'Show Layers'}
+                </MenubarItem>
+              </>
+            )}
+            {onToggleScratchPad && (
+              <>
+                {(onUndo || onRedo || onFitToView || onToggleLayersPanel) && <MenubarSeparator />}
+                <MenubarItem onClick={onToggleScratchPad}>
+                  <Clipboard className="mr-2 h-4 w-4" />
+                  {scratchPadOpen ? 'Hide Scratch Pad' : 'Show Scratch Pad'}
                 </MenubarItem>
               </>
             )}

@@ -29,6 +29,7 @@ import { convertFromNestedHierarchy, convertToNestedHierarchy } from '@/lib/nest
 import { themeManager } from '@/lib/theme-manager';
 import { DiagramTheme } from '@/lib/theme-types';
 import { LayersPanel } from './editor/layers-panel';
+import { ScratchPad } from './editor/scratch-pad';
 import { 
   createGroup, 
   addToGroup,
@@ -150,6 +151,7 @@ export default function DiagramEditor() {
   const [closeTabDialogOpen, setCloseTabDialogOpen] = React.useState(false);
   const [pendingCloseTabId, setPendingCloseTabId] = React.useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = React.useState<boolean>(false);
+  const [scratchPadOpen, setScratchPadOpen] = React.useState<boolean>(false);
   const [jsonPanelWidth, setJsonPanelWidth] = React.useState<number>(420);
   const [isDragging, setIsDragging] = React.useState<boolean>(false);
   const [canPaste, setCanPaste] = React.useState<boolean>(false);
@@ -1776,6 +1778,8 @@ export default function DiagramEditor() {
                       // This will be passed down to close the connection settings panel
                       // We need to emit an event or call a callback to top-menu-bar
                     }}
+                    onToggleScratchPad={() => setScratchPadOpen(!scratchPadOpen)}
+                    scratchPadOpen={scratchPadOpen}
                 />
                 {activeTabId && (
                   <TabBar
@@ -1894,6 +1898,11 @@ export default function DiagramEditor() {
           onOpenChange={setExportDialogOpen}
           onExport={handleExport}
           selectionCoordinates={selectionCoordinates}
+        />
+        <ScratchPad 
+          isOpen={scratchPadOpen} 
+          onClose={() => setScratchPadOpen(false)} 
+          diagramData={diagramData}
         />
         <AlertDialog open={closeTabDialogOpen} onOpenChange={setCloseTabDialogOpen}>
           <AlertDialogContent>
