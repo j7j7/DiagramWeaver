@@ -192,8 +192,6 @@ export function useCanvasDragDrop({
       setHoveredGroupId(targetGroupId);
     },
     drop: (item: DropItem, monitor) => {
-      console.log('[Canvas] Drop handler called:', { itemType: monitor.getItemType(), itemId: item.id });
-      
       if (!canvasRef.current) return;
       const canvasRect = canvasRef.current.getBoundingClientRect();
       
@@ -240,18 +238,10 @@ export function useCanvasDragDrop({
            clientOffset!.y
          )));
       
-      console.log('[Canvas] Scratchpad detection:', {
-        scratchpadElement: !!scratchpadElement,
-        clientOffset,
-        isDroppedOnScratchpad,
-        itemType,
-        itemId: item.id
-      });
+
 
       // If dropped on scratchpad, clear drag state to let item return to data position
       if (isDroppedOnScratchpad && item.id && (itemType === ItemTypes.CANVAS_NODE || itemType === ItemTypes.ZONE)) {
-        console.log('[Canvas] Detected scratchpad drop, forcing refresh...');
-        
         // Clear all drag state
         setDragPosition(null);
         setMultiDragPositions(null);
@@ -262,7 +252,6 @@ export function useCanvasDragDrop({
         
         // Force browser refresh after a short delay to ensure item is added to scratchpad first
         setTimeout(() => {
-          console.log('[Canvas] Reloading page...');
           window.location.reload();
         }, 200);
         

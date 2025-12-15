@@ -34,7 +34,7 @@ export function ScratchPad({ isOpen, onClose, diagramData }: ScratchPadProps) {
       if (savedFavorites) {
         try {
           const parsed = JSON.parse(savedFavorites);
-          console.log('[ScratchPad] Loaded favorites from localStorage on mount:', parsed);
+        
           return parsed;
         } catch (e) {
           console.error('Failed to load favorites', e);
@@ -51,7 +51,7 @@ export function ScratchPad({ isOpen, onClose, diagramData }: ScratchPadProps) {
       if (savedImports) {
         try {
           const parsed = JSON.parse(savedImports);
-          console.log('[ScratchPad] Loaded imports from localStorage on mount:', parsed);
+
           return parsed;
         } catch (e) {
           console.error('Failed to load imports', e);
@@ -74,7 +74,7 @@ export function ScratchPad({ isOpen, onClose, diagramData }: ScratchPadProps) {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
-        console.log('[ScratchPad] Saving favorites to localStorage:', favorites);
+  
         localStorage.setItem('dw:scratchpad:favorites', JSON.stringify(favorites));
       } catch (e) {
         console.error('Failed to save favorites to localStorage', e);
@@ -96,8 +96,6 @@ export function ScratchPad({ isOpen, onClose, diagramData }: ScratchPadProps) {
   const [{ isOver }, drop] = useDrop(() => ({
     accept: [ItemTypes.DIAGRAM_NODE, ItemTypes.CANVAS_NODE],
     drop: (item: any) => {
-      console.log('[ScratchPad] Drop handler called:', { itemType: item.type, itemId: item.id, isCanvasItem: item.id && (item.x !== undefined || item.y !== undefined) });
-      
       // Check if this is a canvas item (has id and position properties)
       const isCanvasItem = item.id && (item.x !== undefined || item.y !== undefined);
       
@@ -218,16 +216,13 @@ export function ScratchPad({ isOpen, onClose, diagramData }: ScratchPadProps) {
         ...(item.category && { category: item.category }),
         ...(item.file && { file: item.file }),
       };
-      console.log('[ScratchPad] Adding new item to favorites:', newItem);
       setFavorites(prev => [...prev, newItem]);
       
       // Force browser refresh after adding canvas item to scratchpad
       if (isCanvasItem) {
-        console.log('[ScratchPad] Canvas item added, forcing refresh...');
         setTimeout(() => {
-          console.log('[ScratchPad] Reloading page...');
           window.location.reload();
-        }, 300);
+        }, 100);
       }
     },
     collect: (monitor) => ({
@@ -327,7 +322,7 @@ const DraggableShape = ({ item, data }: { item: ScratchPadItem; data: any }) => 
     }),
   }), [dragItem]);
   
-  console.log('[ScratchPad] Draggable shape item:', dragItem);
+
   
   return (
     <div
