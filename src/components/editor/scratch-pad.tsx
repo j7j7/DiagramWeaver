@@ -96,6 +96,8 @@ export function ScratchPad({ isOpen, onClose, diagramData }: ScratchPadProps) {
   const [{ isOver }, drop] = useDrop(() => ({
     accept: [ItemTypes.DIAGRAM_NODE, ItemTypes.CANVAS_NODE],
     drop: (item: any) => {
+      console.log('[ScratchPad] Drop handler called:', { itemType: item.type, itemId: item.id, isCanvasItem: item.id && (item.x !== undefined || item.y !== undefined) });
+      
       // Check if this is a canvas item (has id and position properties)
       const isCanvasItem = item.id && (item.x !== undefined || item.y !== undefined);
       
@@ -218,6 +220,15 @@ export function ScratchPad({ isOpen, onClose, diagramData }: ScratchPadProps) {
       };
       console.log('[ScratchPad] Adding new item to favorites:', newItem);
       setFavorites(prev => [...prev, newItem]);
+      
+      // Force browser refresh after adding canvas item to scratchpad
+      if (isCanvasItem) {
+        console.log('[ScratchPad] Canvas item added, forcing refresh...');
+        setTimeout(() => {
+          console.log('[ScratchPad] Reloading page...');
+          window.location.reload();
+        }, 300);
+      }
     },
     collect: (monitor) => ({
       isOver: monitor.isOver(),
@@ -389,7 +400,7 @@ const renderIcon = (item: ScratchPadItem) => {
 
   return (
     <Draggable handle=".scratchpad-handle" nodeRef={nodeRef}>
-      <div ref={nodeRef} className="fixed top-20 right-20 z-50 w-80 bg-background border rounded-lg shadow-xl flex flex-col max-h-[600px]">
+      <div ref={nodeRef} data-testid="scratchpad" className="fixed top-20 right-20 z-50 w-80 bg-background border rounded-lg shadow-xl flex flex-col max-h-[600px]">
         <div className="scratchpad-handle p-3 border-b bg-muted/50 rounded-t-lg cursor-move flex justify-between items-center">
           <h3 className="font-semibold text-sm">Scratch Pad</h3>
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>

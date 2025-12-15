@@ -47,6 +47,7 @@ export function useCanvasDragDrop({
   const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null);
   const isDraggingRef = useRef(false);
   const multiDragStartPositions = useRef<{ [itemId: string]: { x: number; y: number } } | null>(null);
+  const isDroppingOnScratchpadRef = useRef(false);
 
   const [, drop] = useDrop(() => ({
     accept: [ItemTypes.DIAGRAM_NODE, ItemTypes.CANVAS_NODE, ItemTypes.ZONE],
@@ -133,7 +134,10 @@ export function useCanvasDragDrop({
         multiDragStartPositions.current = null;
       }
       
-      setDragPosition({ x: itemX, y: itemY, itemId: item.id });
+      // Don't update drag position if we're dropping on scratchpad
+      if (!isDroppingOnScratchpadRef.current) {
+        setDragPosition({ x: itemX, y: itemY, itemId: item.id });
+      }
       if (!isDraggingRef.current) {
         isDraggingRef.current = true;
         onDraggingChange?.(true);
@@ -188,6 +192,8 @@ export function useCanvasDragDrop({
       setHoveredGroupId(targetGroupId);
     },
     drop: (item: DropItem, monitor) => {
+      console.log('[Canvas] Drop handler called:', { itemType: monitor.getItemType(), itemId: item.id });
+      
       if (!canvasRef.current) return;
       const canvasRect = canvasRef.current.getBoundingClientRect();
       
@@ -222,6 +228,47 @@ export function useCanvasDragDrop({
       x = snapToGrid(x);
       y = snapToGrid(y);
       
+      // Check if drop is on scratchpad (don't move the item if it is)
+      const scratchpadElement = document.querySelector('[data-testid="scratchpad"]') || 
+                               document.querySelector('.fixed.top-20.right-20');
+      const dropTarget = monitor.getDropResult();
+      const clientOffset = monitor.getClientOffset();
+      const isDroppedOnScratchpad = scratchpadElement && 
+        (clientOffset && 
+         scratchpadElement.contains(document.elementFromPoint(
+           clientOffset!.x, 
+           clientOffset!.y
+         )));
+      
+      console.log('[Canvas] Scratchpad detection:', {
+        scratchpadElement: !!scratchpadElement,
+        clientOffset,
+        isDroppedOnScratchpad,
+        itemType,
+        itemId: item.id
+      });
+
+      // If dropped on scratchpad, clear drag state to let item return to data position
+      if (isDroppedOnScratchpad && item.id && (itemType === ItemTypes.CANVAS_NODE || itemType === ItemTypes.ZONE)) {
+        console.log('[Canvas] Detected scratchpad drop, forcing refresh...');
+        
+        // Clear all drag state
+        setDragPosition(null);
+        setMultiDragPositions(null);
+        multiDragStartPositions.current = null;
+        isDraggingRef.current = false;
+        onDraggingChange?.(false);
+        setHoveredGroupId(null);
+        
+        // Force browser refresh after a short delay to ensure item is added to scratchpad first
+        setTimeout(() => {
+          console.log('[Canvas] Reloading page...');
+          window.location.reload();
+        }, 200);
+        
+        return;
+      }
+
       // Check if item is a freeflow node
       const isFreeflowNode = item.id && nodesById[item.id]?.freeflow;
       const targetGroupIdForFreeflow = isFreeflowNode ? null : hoveredGroupId;
@@ -230,6 +277,8 @@ export function useCanvasDragDrop({
         // Pass full item data to preserve resource information
         addNode(item as any, { x, y }, targetGroupIdForFreeflow);
       } else if (item.id && (itemType === ItemTypes.CANVAS_NODE || itemType === ItemTypes.ZONE)) {
+        // Skip move operation if dropped on scratchpad
+        if (!isDroppedOnScratchpad) {
         // Check if item is in a group
         const group = getItemGroup(item.id, diagramData);
         let itemsToMoveSet = new Set<string>();
@@ -275,6 +324,7 @@ export function useCanvasDragDrop({
         } else {
           // Single item movement
           moveItem({ id: item.id, type: item.type || '', x: item.x, y: item.y }, { x, y }, targetGroupIdForFreeflow);
+        }
         }
       }
       
