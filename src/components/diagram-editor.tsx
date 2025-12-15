@@ -151,23 +151,26 @@ export default function DiagramEditor() {
   const [closeTabDialogOpen, setCloseTabDialogOpen] = React.useState(false);
   const [pendingCloseTabId, setPendingCloseTabId] = React.useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = React.useState<boolean>(false);
-  const [scratchPadOpen, setScratchPadOpen] = React.useState<boolean>(false);
-
-  // Load scratchpad visibility from localStorage after mount
-  React.useEffect(() => {
-    const savedVisibility = localStorage.getItem('dw:scratchpad:visible');
-    if (savedVisibility) {
-      try {
-        setScratchPadOpen(JSON.parse(savedVisibility));
-      } catch (e) {
-        console.error('Failed to load scratchpad visibility', e);
+  // Initialize scratchpad visibility from localStorage
+  const [scratchPadOpen, setScratchPadOpen] = React.useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const savedVisibility = localStorage.getItem('dw:scratchpad:visible');
+      if (savedVisibility) {
+        try {
+          return JSON.parse(savedVisibility);
+        } catch (e) {
+          console.error('Failed to load scratchpad visibility', e);
+        }
       }
     }
-  }, []);
+    return false;
+  });
 
   // Save scratchpad visibility to localStorage when it changes
   React.useEffect(() => {
-    localStorage.setItem('dw:scratchpad:visible', JSON.stringify(scratchPadOpen));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dw:scratchpad:visible', JSON.stringify(scratchPadOpen));
+    }
   }, [scratchPadOpen]);
   const [jsonPanelWidth, setJsonPanelWidth] = React.useState<number>(420);
   const [isDragging, setIsDragging] = React.useState<boolean>(false);

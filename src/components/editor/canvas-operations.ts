@@ -175,11 +175,12 @@ itemType === 'generic.object.jigsaw' ||
             textColor: DEFAULT_TEXT_STYLING.textColor
           }),
           // Apply random theme to all shapes (except point which has special styling)
-          ...(isShapeResource && itemType !== 'generic.object.point' && {
+          // BUT: Don't apply random theme if coming from scratchpad with existing properties
+          ...(isShapeResource && itemType !== 'generic.object.point' && !isFromScratchPad && {
             ...getRandomTheme()
           }),
-          // Special defaults for point shape
-          ...(itemType === 'generic.object.point' && {
+          // Special defaults for point shape (only if not from scratchpad)
+          ...(itemType === 'generic.object.point' && !isFromScratchPad && {
             borderStyle: 'none', // No outline by default
             backgroundColor: '#808080' // Grey color by default
           }),
@@ -189,8 +190,9 @@ itemType === 'generic.object.jigsaw' ||
           }),
           // Merge extra properties from item (favorites/imports), excluding reserved ones
           // Keep provider, category, and file for icon rendering
+          // This MUST come AFTER random theme so scratchpad properties override defaults
           ...Object.keys(item).reduce((acc: any, key) => {
-             if (!['type', 'label', 'x', 'y', 'id'].includes(key)) {
+             if (!['type', 'label', 'x', 'y', 'id', 'fromScratchPad'].includes(key)) {
                acc[key] = item[key];
              }
              return acc;

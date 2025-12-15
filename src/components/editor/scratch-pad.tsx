@@ -1,7 +1,7 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Draggable from 'react-draggable';
-import { useDrop } from 'react-dnd';
+import { useDrop, useDrag } from 'react-dnd';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,8 @@ import { TextStylingPanel } from './text-styling-panel';
 import { VisualStylingPanel } from './visual-styling-panel';
 import { processImportedItems, getResourcePath } from '@/lib/resource-mapping';
 import { ResourceIcon } from '@/components/diagram/resource-icon';
+import { ShapePreview } from './shape-preview';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface ScratchPadProps {
   isOpen: boolean;
@@ -24,83 +26,65 @@ interface ScratchPadProps {
 }
 
 export function ScratchPad({ isOpen, onClose, diagramData }: ScratchPadProps) {
-  const [favorites, setFavorites] = useState<ScratchPadItem[]>([]);
-  const [imports, setImports] = useState<ScratchPadItem[]>([]);
-  const [activeTab, setActiveTab] = useState('favorites');
-  const [editingItem, setEditingItem] = useState<ScratchPadItem | null>(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-// Load favorites from localStorage (client-side only)
-  useEffect(() => {
+// Load favorites from localStorage (client-side only) - use initializer
+  const [favorites, setFavorites] = useState<ScratchPadItem[]>(() => {
     if (typeof window !== 'undefined') {
       const savedFavorites = localStorage.getItem('dw:scratchpad:favorites');
       if (savedFavorites) {
         try {
-          setFavorites(JSON.parse(savedFavorites));
+          const parsed = JSON.parse(savedFavorites);
+          console.log('[ScratchPad] Loaded favorites from localStorage on mount:', parsed);
+          return parsed;
         } catch (e) {
           console.error('Failed to load favorites', e);
         }
       }
     }
-  }, []);
+    return [];
+  });
 
-  // Load imports from localStorage (client-side only)
-  useEffect(() => {
+  // Load imports from localStorage (client-side only) - use initializer
+  const [imports, setImports] = useState<ScratchPadItem[]>(() => {
     if (typeof window !== 'undefined') {
       const savedImports = localStorage.getItem('dw:scratchpad:imports');
       if (savedImports) {
         try {
-          setImports(JSON.parse(savedImports));
+          const parsed = JSON.parse(savedImports);
+          console.log('[ScratchPad] Loaded imports from localStorage on mount:', parsed);
+          return parsed;
         } catch (e) {
           console.error('Failed to load imports', e);
         }
       }
     }
-  }, []);
-
-  // Load scratchpad visibility state from localStorage (client-side only)
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedVisibility = localStorage.getItem('dw:scratchpad:visible');
-      if (savedVisibility) {
-        try {
-          const isVisible = JSON.parse(savedVisibility);
-          // Don't call onClose here - let parent control initial state
-        } catch (e) {
-          console.error('Failed to load scratchpad visibility', e);
-        }
-      }
-    }
-  }, []);
-
-  // Save scratchpad visibility to localStorage when it changes
-  useEffect(() => {
-    localStorage.setItem('dw:scratchpad:visible', JSON.stringify(isOpen));
-  }, [isOpen]);
-
-  // Load imports from localStorage
-  useEffect(() => {
-    const savedImports = localStorage.getItem('dw:scratchpad:imports');
-    if (savedImports) {
-      try {
-        setImports(JSON.parse(savedImports));
-      } catch (e) {
-        console.error('Failed to load imports', e);
-      }
-    }
-  }, []);
+    return [];
+  });
+  
+  const [activeTab, setActiveTab] = useState('favorites');
+  const [editingItem, setEditingItem] = useState<ScratchPadItem | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   // Save favorites to localStorage (client-side only)
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('dw:scratchpad:favorites', JSON.stringify(favorites));
+      try {
+        console.log('[ScratchPad] Saving favorites to localStorage:', favorites);
+        localStorage.setItem('dw:scratchpad:favorites', JSON.stringify(favorites));
+      } catch (e) {
+        console.error('Failed to save favorites to localStorage', e);
+      }
     }
   }, [favorites]);
 
   // Save imports to localStorage (client-side only)
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('dw:scratchpad:imports', JSON.stringify(imports));
+      try {
+        localStorage.setItem('dw:scratchpad:imports', JSON.stringify(imports));
+      } catch (e) {
+        console.error('Failed to save imports to localStorage', e);
+      }
     }
   }, [imports]);
 
@@ -227,6 +211,7 @@ export function ScratchPad({ isOpen, onClose, diagramData }: ScratchPadProps) {
         ...(item.category && { category: item.category }),
         ...(item.file && { file: item.file }),
       };
+      console.log('[ScratchPad] Adding new item to favorites:', newItem);
       setFavorites(prev => [...prev, newItem]);
     },
     collect: (monitor) => ({
@@ -299,6 +284,70 @@ export function ScratchPad({ isOpen, onClose, diagramData }: ScratchPadProps) {
     }
   };
 
+// Component for rendering draggable shape items directly (not wrapped in DraggableItem)
+const DraggableShape = ({ item, data }: { item: ScratchPadItem; data: any }) => {
+  const itemData = item.data || {};
+  // Get original canvas dimensions
+  const originalWidth = itemData.width || 60;
+  const originalHeight = itemData.height || 60;
+  
+  // Display at 50% size on scratchpad to match other items
+  const displayWidth = originalWidth * 0.5;
+  const displayHeight = originalHeight * 0.5;
+  
+  // Create drag item with ALL properties preserved
+  const dragItem = useMemo(() => ({
+    type: item.type, // Use the actual shape type, not ItemTypes.DIAGRAM_NODE
+    label: item.label,
+    ...data, // This includes all visual properties
+    fromScratchPad: true,
+  }), [item.type, item.label, data]);
+  
+  const [{ isDragging }, drag] = useDrag(() => ({
+    type: ItemTypes.DIAGRAM_NODE,
+    item: dragItem,
+    collect: (monitor) => ({
+      isDragging: !!monitor.isDragging(),
+    }),
+  }), [dragItem]);
+  
+  console.log('[ScratchPad] Draggable shape item:', dragItem);
+  
+  return (
+    <div
+      ref={drag}
+      style={{ opacity: isDragging ? 0.5 : 1 }}
+      className="cursor-move"
+    >
+      <Card className="hover:bg-accent hover:text-accent-foreground transition-colors">
+        <CardContent className="p-3 flex flex-col items-center justify-center gap-2 text-center min-h-24">
+          <ShapePreview
+            type={item.type}
+            width={displayWidth}
+            height={displayHeight}
+            backgroundColor={itemData.backgroundColor}
+            borderColor={itemData.borderColor}
+            strokeWidth={(itemData.borderWidth || 2) * 0.5}
+            borderStyle={itemData.borderStyle}
+            backgroundStyle={itemData.backgroundStyle}
+            backgroundColors={itemData.backgroundColors}
+            borderColors={itemData.borderColors}
+            gradientAngle={itemData.gradientAngle}
+            label={item.label}
+            textColor={itemData.textColor}
+            fontFamily={itemData.fontFamily}
+            fontSize={8}
+            fontWeight={itemData.fontWeight}
+            fontStyle={itemData.fontStyle}
+            textDecoration={itemData.textDecoration}
+            shadow={itemData.shadow}
+          />
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
 const renderIcon = (item: ScratchPadItem) => {
     // For items with resource mapping (cloud resources), use image path
     const resourcePath = getResourcePath(item as any);
@@ -306,7 +355,7 @@ const renderIcon = (item: ScratchPadItem) => {
         return <img src={resourcePath} className="w-6 h-6 object-contain" alt={item.label} />;
     }
     
-    // For shapes and other items, use ResourceIcon component
+    // For other items, use ResourceIcon component
     return (
         <ResourceIcon 
             type={item.type} 
@@ -377,28 +426,46 @@ const renderIcon = (item: ScratchPadItem) => {
                       (n.importId && item.data?.importId && n.importId === item.data.importId) ||
                       (n.label === item.label && n.type === item.type)
                     );
+                    
+                    const itemData = {
+                      // For canvas items, properties are already flat in item.data
+                      // For imported items, properties are in item.data
+                      ...item.data, 
+                      // Include item-level properties for canvas operations
+                      ...(item.objectType && { objectType: item.objectType }),
+                      ...(item.importId && { importId: item.importId }),
+                      ...(item.provider && { provider: item.provider }),
+                      ...(item.category && { category: item.category }),
+                      ...(item.file && { file: item.file }),
+                      // CRITICAL: Ensure the original type is preserved for shapes
+                      type: item.type,
+                      label: item.label, 
+                      fromScratchPad: true 
+                    };
+                    
+                    // Check if this is a shape item
+                    const isShape = item.type.startsWith('generic.object.') || 
+                      item.type?.endsWith('.square') || item.type?.endsWith('.circle') || 
+                      item.type?.endsWith('.point') || item.type?.endsWith('.rectangle') || 
+                      item.type?.endsWith('.triangle') || item.type?.endsWith('.star') || 
+                      item.type?.endsWith('.cloud') || item.type?.endsWith('.parallelogram') ||
+                      item.type?.endsWith('.trapezoid') || item.type?.endsWith('.kite') || 
+                      item.type?.endsWith('.hexagon') || item.type?.endsWith('.pentagon') || 
+                      item.type?.endsWith('.octagon') || item.type?.endsWith('.jigsaw') ||
+                      item.type?.endsWith('.arrowhead') || item.type?.endsWith('.chevron');
+                    
                     return (
                     <div key={item.id} className="relative group">
-                      <DraggableItem 
-                        type={ItemTypes.DIAGRAM_NODE} 
-                        label={item.label} 
-                        icon={renderIcon(item)}
-                        data={{ 
-                          // For canvas items, properties are already flat in item.data
-                          // For imported items, properties are in item.data
-                          ...item.data, 
-                          // Include item-level properties for canvas operations
-                          ...(item.objectType && { objectType: item.objectType }),
-                          ...(item.importId && { importId: item.importId }),
-                          ...(item.provider && { provider: item.provider }),
-                          ...(item.category && { category: item.category }),
-                          ...(item.file && { file: item.file }),
-                          // CRITICAL: Ensure the original type is preserved for shapes
-                          type: item.type,
-                          label: item.label, 
-                          fromScratchPad: true 
-                        }}
-                      />
+                      {isShape ? (
+                        <DraggableShape item={item} data={itemData} />
+                      ) : (
+                        <DraggableItem 
+                          type={ItemTypes.DIAGRAM_NODE} 
+                          label={item.label} 
+                          icon={renderIcon(item)}
+                          data={itemData}
+                        />
+                      )}
                       {isOnCanvas && (
                         <div className="absolute top-1 left-1 bg-green-500 text-white rounded-full p-0.5 z-10">
                           <Check className="h-3 w-3" />
@@ -430,23 +497,41 @@ const renderIcon = (item: ScratchPadItem) => {
                <div className="grid grid-cols-2 gap-2">
                   {imports.map(item => {
                     const isOnCanvas = diagramData.nodes.some(n => n.importId === item.importId);
+                    
+                    const itemData = { 
+                      ...item.data, 
+                      // Also include item-level properties that might not be in data
+                      ...(item.objectType && { objectType: item.objectType }),
+                      ...(item.importId && { importId: item.importId }),
+                      // CRITICAL: Ensure the original type is preserved for shapes
+                      type: item.type,
+                      label: item.label,
+                      fromScratchPad: true 
+                    };
+                    
+                    // Check if this is a shape item
+                    const isShape = item.type.startsWith('generic.object.') || 
+                      item.type?.endsWith('.square') || item.type?.endsWith('.circle') || 
+                      item.type?.endsWith('.point') || item.type?.endsWith('.rectangle') || 
+                      item.type?.endsWith('.triangle') || item.type?.endsWith('.star') || 
+                      item.type?.endsWith('.cloud') || item.type?.endsWith('.parallelogram') ||
+                      item.type?.endsWith('.trapezoid') || item.type?.endsWith('.kite') || 
+                      item.type?.endsWith('.hexagon') || item.type?.endsWith('.pentagon') || 
+                      item.type?.endsWith('.octagon') || item.type?.endsWith('.jigsaw') ||
+                      item.type?.endsWith('.arrowhead') || item.type?.endsWith('.chevron');
+                    
                     return (
                         <div key={item.id} className="relative group">
-                            <DraggableItem 
-                                type={ItemTypes.DIAGRAM_NODE} 
-                                label={item.label} 
-                                icon={renderIcon(item)}
-                                data={{ 
-                                  ...item.data, 
-                                  // Also include item-level properties that might not be in data
-                                  ...(item.objectType && { objectType: item.objectType }),
-                                  ...(item.importId && { importId: item.importId }),
-                                  // CRITICAL: Ensure the original type is preserved for shapes
-                                  type: item.type,
-                                  label: item.label,
-                                  fromScratchPad: true 
-                                }} 
-                            />
+                            {isShape ? (
+                              <DraggableShape item={item} data={itemData} />
+                            ) : (
+                              <DraggableItem 
+                                  type={ItemTypes.DIAGRAM_NODE} 
+                                  label={item.label} 
+                                  icon={renderIcon(item)}
+                                  data={itemData} 
+                              />
+                            )}
                             {isOnCanvas && (
                                 <div className="absolute top-1 left-1 bg-green-500 text-white rounded-full p-0.5 z-10">
                                     <Check className="h-3 w-3" />
