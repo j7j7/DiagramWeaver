@@ -64,6 +64,11 @@ export function ScratchPad({ isOpen, onClose, diagramData }: ScratchPadProps) {
   const [activeTab, setActiveTab] = useState('favorites');
   const [editingItem, setEditingItem] = useState<ScratchPadItem | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Save favorites to localStorage (client-side only)
   useEffect(() => {
@@ -98,11 +103,11 @@ export function ScratchPad({ isOpen, onClose, diagramData }: ScratchPadProps) {
       const zoneChildren = item.children || item.nodes;
       if (isCanvasItem && item.type === 'zone' && zoneChildren && Array.isArray(zoneChildren)) {
         // Create favorites for each child node in the zone
-        const newFavorites = zoneChildren.map((child: any) => {
+        const newFavorites = zoneChildren.map((child: any, index: number) => {
           // Use originalType if available (for canvas items in zones), otherwise use type
           const childType = child.originalType || child.type || 'generic.object.square';
           return {
-            id: crypto.randomUUID(),
+            id: `scratchpad-${Date.now()}-${index}`,
             label: child.label || 'New Item',
             type: childType,
             // Preserve ALL visual properties from child node
@@ -161,7 +166,7 @@ export function ScratchPad({ isOpen, onClose, diagramData }: ScratchPadProps) {
       const itemType = isCanvasItem ? (item.originalType || item.type) : item.type;
       
       const newItem: ScratchPadItem = {
-        id: crypto.randomUUID(),
+        id: `scratchpad-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         label: item.label || 'New Item',
         type: itemType,
         // For canvas items, preserve ALL visual properties in data
@@ -315,7 +320,9 @@ const DraggableShape = ({ item, data }: { item: ScratchPadItem; data: any }) => 
   
   return (
     <div
-      ref={drag}
+      ref={(node) => {
+        if (node) drag(node);
+      }}
       style={{ opacity: isDragging ? 0.5 : 1 }}
       className="cursor-move"
     >
@@ -378,7 +385,7 @@ const renderIcon = (item: ScratchPadItem) => {
 
   const nodeRef = React.useRef(null);
 
-  if (!isOpen) return null;
+  if (!isOpen || !isMounted) return null;
 
   return (
     <Draggable handle=".scratchpad-handle" nodeRef={nodeRef}>
