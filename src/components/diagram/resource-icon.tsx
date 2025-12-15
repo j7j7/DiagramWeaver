@@ -108,6 +108,58 @@ export function ResourceIcon({ type, imagePath, provider, category, file, ...pro
   }
 
 
+  // Handle shape types
+  if (type.startsWith('generic.object.') || type?.endsWith('.square') || type?.endsWith('.circle') || 
+      type?.endsWith('.point') || type?.endsWith('.rectangle') || type?.endsWith('.triangle') ||
+      type?.endsWith('.star') || type?.endsWith('.cloud') || type?.endsWith('.parallelogram') ||
+      type?.endsWith('.trapezoid') || type?.endsWith('.kite') || type?.endsWith('.hexagon') ||
+      type?.endsWith('.pentagon') || type?.endsWith('.octagon') || type?.endsWith('.jigsaw') ||
+      type?.endsWith('.arrowhead') || type?.endsWith('.chevron')) {
+    
+    // Render different shapes based on type
+    const shapeType = type.split('.').pop() || 'square';
+    
+    switch (shapeType) {
+      case 'circle':
+      case 'point':
+        return (
+          <svg {...props} viewBox="0 0 24 24" fill={props.fill || "currentColor"} stroke={props.stroke || "none"} strokeWidth={props.strokeWidth || 2}>
+            <circle cx="12" cy="12" r="10" />
+          </svg>
+        );
+      case 'triangle':
+        return (
+          <svg {...props} viewBox="0 0 24 24" fill={props.fill || "currentColor"} stroke={props.stroke || "none"} strokeWidth={props.strokeWidth || 2}>
+            <polygon points="12,2 22,20 2,20" />
+          </svg>
+        );
+      case 'star':
+        return (
+          <svg {...props} viewBox="0 0 24 24" fill={props.fill || "currentColor"} stroke={props.stroke || "none"} strokeWidth={props.strokeWidth || 2}>
+            <polygon points="12,2 15,9 22,9 17,14 19,21 12,17 5,21 7,14 2,9 9,9" />
+          </svg>
+        );
+      case 'cloud':
+        return (
+          <svg {...props} viewBox="0 0 24 24" fill={props.fill || "currentColor"} stroke={props.stroke || "none"} strokeWidth={props.strokeWidth || 2}>
+            <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
+          </svg>
+        );
+      case 'rectangle':
+        return (
+          <svg {...props} viewBox="0 0 24 24" fill={props.fill || "currentColor"} stroke={props.stroke || "none"} strokeWidth={props.strokeWidth || 2}>
+            <rect x="4" y="6" width="16" height="12" />
+          </svg>
+        );
+      default: // square, parallelogram, trapezoid, kite, hexagon, pentagon, octagon, jigsaw, arrowhead, chevron
+        return (
+          <svg {...props} viewBox="0 0 24 24" fill={props.fill || "currentColor"} stroke={props.stroke || "none"} strokeWidth={props.strokeWidth || 2}>
+            <rect x="4" y="4" width="16" height="16" />
+          </svg>
+        );
+    }
+  }
+
   switch (type) {
     case "user":
       return <User {...props} />;

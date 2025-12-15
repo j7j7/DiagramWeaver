@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { TextStylingPanel } from './text-styling-panel';
 import { VisualStylingPanel } from './visual-styling-panel';
 import { processImportedItems, getResourcePath } from '@/lib/resource-mapping';
+import { ResourceIcon } from '@/components/diagram/resource-icon';
 
 interface ScratchPadProps {
   isOpen: boolean;
@@ -29,17 +30,53 @@ export function ScratchPad({ isOpen, onClose, diagramData }: ScratchPadProps) {
   const [editingItem, setEditingItem] = useState<ScratchPadItem | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  // Load favorites from localStorage
+// Load favorites from localStorage (client-side only)
   useEffect(() => {
-    const savedFavorites = localStorage.getItem('dw:scratchpad:favorites');
-    if (savedFavorites) {
-      try {
-        setFavorites(JSON.parse(savedFavorites));
-      } catch (e) {
-        console.error('Failed to load favorites', e);
+    if (typeof window !== 'undefined') {
+      const savedFavorites = localStorage.getItem('dw:scratchpad:favorites');
+      if (savedFavorites) {
+        try {
+          setFavorites(JSON.parse(savedFavorites));
+        } catch (e) {
+          console.error('Failed to load favorites', e);
+        }
       }
     }
   }, []);
+
+  // Load imports from localStorage (client-side only)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedImports = localStorage.getItem('dw:scratchpad:imports');
+      if (savedImports) {
+        try {
+          setImports(JSON.parse(savedImports));
+        } catch (e) {
+          console.error('Failed to load imports', e);
+        }
+      }
+    }
+  }, []);
+
+  // Load scratchpad visibility state from localStorage (client-side only)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedVisibility = localStorage.getItem('dw:scratchpad:visible');
+      if (savedVisibility) {
+        try {
+          const isVisible = JSON.parse(savedVisibility);
+          // Don't call onClose here - let parent control initial state
+        } catch (e) {
+          console.error('Failed to load scratchpad visibility', e);
+        }
+      }
+    }
+  }, []);
+
+  // Save scratchpad visibility to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('dw:scratchpad:visible', JSON.stringify(isOpen));
+  }, [isOpen]);
 
   // Load imports from localStorage
   useEffect(() => {
@@ -53,25 +90,142 @@ export function ScratchPad({ isOpen, onClose, diagramData }: ScratchPadProps) {
     }
   }, []);
 
-  // Save favorites to localStorage
+  // Save favorites to localStorage (client-side only)
   useEffect(() => {
-    localStorage.setItem('dw:scratchpad:favorites', JSON.stringify(favorites));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dw:scratchpad:favorites', JSON.stringify(favorites));
+    }
   }, [favorites]);
 
-  // Save imports to localStorage
+  // Save imports to localStorage (client-side only)
   useEffect(() => {
-    localStorage.setItem('dw:scratchpad:imports', JSON.stringify(imports));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dw:scratchpad:imports', JSON.stringify(imports));
+    }
   }, [imports]);
 
   const [{ isOver }, drop] = useDrop(() => ({
-    accept: ItemTypes.DIAGRAM_NODE,
+    accept: [ItemTypes.DIAGRAM_NODE, ItemTypes.CANVAS_NODE],
     drop: (item: any) => {
+      // Check if this is a canvas item (has id and position properties)
+      const isCanvasItem = item.id && (item.x !== undefined || item.y !== undefined);
+      
+      // Handle zones with children or nodes - create favorites for each child node
+      const zoneChildren = item.children || item.nodes;
+      if (isCanvasItem && item.type === 'zone' && zoneChildren && Array.isArray(zoneChildren)) {
+        // Create favorites for each child node in the zone
+        const newFavorites = zoneChildren.map((child: any) => {
+          // Use originalType if available (for canvas items in zones), otherwise use type
+          const childType = child.originalType || child.type || 'generic.object.square';
+          return {
+            id: crypto.randomUUID(),
+            label: child.label || 'New Item',
+            type: childType,
+            // Preserve ALL visual properties from child node
+            data: {
+              borderColor: child.borderColor,
+              backgroundColor: child.backgroundColor,
+              textColor: child.textColor,
+              borderStyle: child.borderStyle,
+              borderColors: child.borderColors,
+              backgroundStyle: child.backgroundStyle,
+              backgroundColors: child.backgroundColors,
+              gradientAngle: child.gradientAngle,
+              shadow: child.shadow,
+              rotation: child.rotation,
+              textPosition: child.textPosition,
+              freeflow: child.freeflow,
+              borderWidth: child.borderWidth,
+              objectStyle: child.objectStyle,
+              width: child.width,
+              height: child.height,
+              sizeMode: child.sizeMode,
+              noIconBackground: child.noIconBackground,
+              textJustify: child.textJustify,
+              textVerticalPosition: child.textVerticalPosition,
+              fontFamily: child.fontFamily,
+              fontSize: child.fontSize,
+              fontWeight: child.fontWeight,
+              fontStyle: child.fontStyle,
+              textDecoration: child.textDecoration,
+              textTransform: child.textTransform,
+              letterSpacing: child.letterSpacing,
+              lineHeight: child.lineHeight,
+              textOpacity: child.textOpacity,
+              // Resource info for icon rendering
+              ...(child.provider && { provider: child.provider }),
+              ...(child.category && { category: child.category }),
+              ...(child.file && { file: child.file }),
+              ...(child.info && { info: child.info }),
+              ...(child.importId && { importId: child.importId }),
+            },
+            isFavorite: true,
+            // Store important properties at item level for access
+            ...(child.objectType && { objectType: child.objectType }),
+            ...(child.importId && { importId: child.importId }),
+            ...(child.provider && { provider: child.provider }),
+            ...(child.category && { category: child.category }),
+            ...(child.file && { file: child.file }),
+          };
+        });
+        setFavorites(prev => [...prev, ...newFavorites]);
+        return;
+      }
+      
+      // For individual canvas items, use the original node type, not the ItemTypes constant
+      // Use originalType if available (for canvas items), otherwise use type
+      const itemType = isCanvasItem ? (item.originalType || item.type) : item.type;
+      
       const newItem: ScratchPadItem = {
         id: crypto.randomUUID(),
         label: item.label || 'New Item',
-        type: item.type,
-        data: { ...item }, // Store all properties as template
+        type: itemType,
+        // For canvas items, preserve ALL visual properties in data
+        data: isCanvasItem ? { 
+          // Include ALL visual properties from canvas item
+          borderColor: item.borderColor,
+          backgroundColor: item.backgroundColor,
+          textColor: item.textColor,
+          borderStyle: item.borderStyle,
+          borderColors: item.borderColors,
+          backgroundStyle: item.backgroundStyle,
+          backgroundColors: item.backgroundColors,
+          gradientAngle: item.gradientAngle,
+          shadow: item.shadow,
+          rotation: item.rotation,
+          textPosition: item.textPosition,
+          freeflow: item.freeflow,
+          borderWidth: item.borderWidth,
+          objectStyle: item.objectStyle,
+          width: item.width,
+          height: item.height,
+          sizeMode: item.sizeMode,
+          noIconBackground: item.noIconBackground,
+          textJustify: item.textJustify,
+          textVerticalPosition: item.textVerticalPosition,
+          fontFamily: item.fontFamily,
+          fontSize: item.fontSize,
+          fontWeight: item.fontWeight,
+          fontStyle: item.fontStyle,
+          textDecoration: item.textDecoration,
+          textTransform: item.textTransform,
+          letterSpacing: item.letterSpacing,
+          lineHeight: item.lineHeight,
+          textOpacity: item.textOpacity,
+          // Resource info for icon rendering
+          ...(item.provider && { provider: item.provider }),
+          ...(item.category && { category: item.category }),
+          ...(item.file && { file: item.file }),
+          ...(item.info && { info: item.info }),
+          ...(item.importId && { importId: item.importId }),
+        } : { ...item }, // For non-canvas items, keep original structure
         isFavorite: true,
+        // Store important properties at item level for access
+        ...(item.objectType && { objectType: item.objectType }),
+        ...(item.importId && { importId: item.importId }),
+        ...(item.provider && { provider: item.provider }),
+        ...(item.category && { category: item.category }),
+        ...(item.file && { file: item.file }),
       };
       setFavorites(prev => [...prev, newItem]);
     },
@@ -146,11 +300,31 @@ export function ScratchPad({ isOpen, onClose, diagramData }: ScratchPadProps) {
   };
 
 const renderIcon = (item: ScratchPadItem) => {
+    // For items with resource mapping (cloud resources), use image path
     const resourcePath = getResourcePath(item as any);
     if (resourcePath) {
         return <img src={resourcePath} className="w-6 h-6 object-contain" alt={item.label} />;
     }
-    return <div className="w-6 h-6 bg-muted rounded-full" />;
+    
+    // For shapes and other items, use ResourceIcon component
+    return (
+        <ResourceIcon 
+            type={item.type} 
+            width={24} 
+            height={24}
+            provider={item.data?.provider}
+            category={item.data?.category}
+            file={item.data?.file}
+            // Pass visual properties for shape rendering
+            fill={item.data?.backgroundColor}
+            stroke={item.data?.borderColor}
+            strokeWidth={item.data?.borderWidth}
+            style={{
+                transform: item.data?.rotation ? `rotate(${item.data.rotation}deg)` : undefined,
+                opacity: item.data?.textOpacity
+            }}
+        />
+    );
 }
 
   const nodeRef = React.useRef(null);
@@ -198,14 +372,38 @@ const renderIcon = (item: ScratchPadItem) => {
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-2">
-                  {favorites.map(item => (
+                  {favorites.map(item => {
+                    const isOnCanvas = diagramData.nodes.some(n => 
+                      (n.importId && item.data?.importId && n.importId === item.data.importId) ||
+                      (n.label === item.label && n.type === item.type)
+                    );
+                    return (
                     <div key={item.id} className="relative group">
                       <DraggableItem 
-                        type={item.type} 
+                        type={ItemTypes.DIAGRAM_NODE} 
                         label={item.label} 
                         icon={renderIcon(item)}
-                        data={{ ...item.data, label: item.label, fromScratchPad: true }} 
+                        data={{ 
+                          // For canvas items, properties are already flat in item.data
+                          // For imported items, properties are in item.data
+                          ...item.data, 
+                          // Include item-level properties for canvas operations
+                          ...(item.objectType && { objectType: item.objectType }),
+                          ...(item.importId && { importId: item.importId }),
+                          ...(item.provider && { provider: item.provider }),
+                          ...(item.category && { category: item.category }),
+                          ...(item.file && { file: item.file }),
+                          // CRITICAL: Ensure the original type is preserved for shapes
+                          type: item.type,
+                          label: item.label, 
+                          fromScratchPad: true 
+                        }}
                       />
+                      {isOnCanvas && (
+                        <div className="absolute top-1 left-1 bg-green-500 text-white rounded-full p-0.5 z-10">
+                          <Check className="h-3 w-3" />
+                        </div>
+                      )}
                       <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 bg-background/80 rounded z-10">
                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditClick(item)}>
                           <Edit2 className="h-3 w-3" />
@@ -215,7 +413,8 @@ const renderIcon = (item: ScratchPadItem) => {
                         </Button>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -234,10 +433,19 @@ const renderIcon = (item: ScratchPadItem) => {
                     return (
                         <div key={item.id} className="relative group">
                             <DraggableItem 
-                                type={item.type} 
+                                type={ItemTypes.DIAGRAM_NODE} 
                                 label={item.label} 
                                 icon={renderIcon(item)}
-                                data={{ ...item.data, importId: item.importId, fromScratchPad: true }} 
+                                data={{ 
+                                  ...item.data, 
+                                  // Also include item-level properties that might not be in data
+                                  ...(item.objectType && { objectType: item.objectType }),
+                                  ...(item.importId && { importId: item.importId }),
+                                  // CRITICAL: Ensure the original type is preserved for shapes
+                                  type: item.type,
+                                  label: item.label,
+                                  fromScratchPad: true 
+                                }} 
                             />
                             {isOnCanvas && (
                                 <div className="absolute top-1 left-1 bg-green-500 text-white rounded-full p-0.5 z-10">

@@ -12,6 +12,7 @@ export interface MappedImportItem {
   isFavorite: boolean;
   importId: string;
   resourceMapping?: ResourceMapping;
+  objectType?: 'shape' | 'icon' | 'text';
 }
 
 /**
@@ -132,49 +133,85 @@ async function mapImportToResource(item: any): Promise<ResourceMapping | null> {
 }
 
 /**
+ * Determine object type based on item properties
+ */
+function determineObjectType(item: any, _resourceMapping: ResourceMapping | null): 'shape' | 'icon' | 'text' {
+  // Check if it's a text resource
+  if (item.type?.toLowerCase().includes('text') || 
+      item.type?.toLowerCase().includes('textbox') ||
+      item.type?.startsWith('generic.text')) {
+    return 'text';
+  }
+  
+  // Check if it's a shape resource
+  if (item.type?.startsWith('generic.object') || 
+      item.type?.includes('square') || 
+      item.type?.includes('circle') || 
+      item.type?.includes('triangle') ||
+      item.type?.includes('rectangle') ||
+      item.type?.includes('star') ||
+      item.type?.includes('cloud') ||
+      item.type?.includes('parallelogram') ||
+      item.type?.includes('trapezoid') ||
+      item.type?.includes('kite') ||
+      item.type?.includes('hexagon') ||
+      item.type?.includes('pentagon') ||
+      item.type?.includes('octagon') ||
+      item.type?.includes('jigsaw') ||
+      item.type?.includes('arrowhead') ||
+      item.type?.includes('chevron')) {
+    return 'shape';
+  }
+  
+  // Default to icon for cloud resources and other types
+  return 'icon';
+}
+
+/**
  * Processes imported JSON array and maps items to resources
  */
 export async function processImportedItems(json: any[]): Promise<MappedImportItem[]> {
-  const processedItems = await Promise.all(
-    json.map(async (item: any) => {
-      const resourceMapping = await mapImportToResource(item);
-      
-      // Determine type based on resource mapping or fallback
-      let type = 'generic.object.square'; // default type
-      
-      if (resourceMapping) {
-        // Create type based on provider and category, using original type name
-        // This ensures ResourceIcon can find correct resource in catalog
-        type = `${resourceMapping.provider}.${resourceMapping.category}.${item.type.toLowerCase()}`;
-      } else if (item.type) {
-        type = item.type;
-      }
+  const promises = json.map(async (item: any) => {
+    const resourceMapping = await mapImportToResource(item);
+    
+    // Determine type based on resource mapping or fallback
+    let type = 'generic.object.square'; // default type
+    
+    if (resourceMapping) {
+      // Create type based on provider and category, using original type name
+      // This ensures ResourceIcon can find correct resource in catalog
+      type = `${resourceMapping.provider}.${resourceMapping.category}.${item.type.toLowerCase()}`;
+    } else if (item.type) {
+      type = item.type;
+    }
 
-      return {
-        id: crypto.randomUUID(),
-        label: item.name || 'Imported Item',
-        type,
-        data: {
-          ...item,
-          // Add resource mapping to data for icon rendering
-          ...(resourceMapping && { resourceMapping }),
-          // Store provider, category, file for canvas rendering
-          ...(resourceMapping && {
-            provider: resourceMapping.provider,
-            category: resourceMapping.category,
-            file: resourceMapping.file
-          }),
-          // Store description if provided
-          ...(item.description && { info: item.description })
-        },
-        isFavorite: false,
-        importId: item.importId || crypto.randomUUID(),
-        ...(resourceMapping && { resourceMapping })
-      };
-    })
-  );
+    const objectType = determineObjectType(item, resourceMapping);
 
-  return processedItems;
+    return {
+      id: crypto.randomUUID(),
+      label: item.name || 'Imported Item',
+      type,
+      data: {
+        ...item,
+        // Add resource mapping to data for icon rendering
+        ...(resourceMapping && { resourceMapping }),
+        // Store provider, category, file for canvas rendering
+        ...(resourceMapping && {
+          provider: resourceMapping.provider,
+          category: resourceMapping.category,
+          file: resourceMapping.file
+        }),
+        // Store description if provided
+        ...(item.description && { info: item.description })
+      },
+      isFavorite: false,
+      importId: item.importId || item.name || crypto.randomUUID(), // Use name as importId for matching
+      objectType,
+      ...(resourceMapping && { resourceMapping })
+    };
+  });
+
+  return Promise.all(promises);
 }
 
 /**
@@ -211,7 +248,7 @@ export function getResourcePath(item: any): string | null {
     return `/resources/${item.provider}/${item.category}/${item.file}`;
   }
   
-  // Check if item (canvas node) has resource info directly
+  // Check if the item (canvas node) has resource info directly
   if (item.provider && item.category && item.file) {
     return `/resources/${item.provider}/${item.category}/${item.file}`;
   }

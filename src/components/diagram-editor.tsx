@@ -152,6 +152,23 @@ export default function DiagramEditor() {
   const [pendingCloseTabId, setPendingCloseTabId] = React.useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = React.useState<boolean>(false);
   const [scratchPadOpen, setScratchPadOpen] = React.useState<boolean>(false);
+
+  // Load scratchpad visibility from localStorage after mount
+  React.useEffect(() => {
+    const savedVisibility = localStorage.getItem('dw:scratchpad:visible');
+    if (savedVisibility) {
+      try {
+        setScratchPadOpen(JSON.parse(savedVisibility));
+      } catch (e) {
+        console.error('Failed to load scratchpad visibility', e);
+      }
+    }
+  }, []);
+
+  // Save scratchpad visibility to localStorage when it changes
+  React.useEffect(() => {
+    localStorage.setItem('dw:scratchpad:visible', JSON.stringify(scratchPadOpen));
+  }, [scratchPadOpen]);
   const [jsonPanelWidth, setJsonPanelWidth] = React.useState<number>(420);
   const [isDragging, setIsDragging] = React.useState<boolean>(false);
   const [canPaste, setCanPaste] = React.useState<boolean>(false);

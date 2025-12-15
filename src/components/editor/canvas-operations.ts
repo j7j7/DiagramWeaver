@@ -46,7 +46,8 @@ export function useCanvasOperations({
       let newNodes = prevData.nodes ? [...prevData.nodes] : [];
       let newItemId: string;
 
-      const itemType = item.type || '';
+      // Use originalType if available (for shape preservation), otherwise use type
+      const itemType = item.originalType || item.type || '';
       const itemLabel = item.label || '';
       
       // Debug logging for all items to see what we're getting
@@ -55,6 +56,33 @@ export function useCanvasOperations({
       // Debug logging for zone creation
       if (itemType === 'zone') {
         console.log('Creating zone:', { itemType, itemLabel, item });
+      }
+      
+      // Check if this is a scratchpad item that already exists on canvas
+      const isFromScratchPad = item.fromScratchPad || item.data?.fromScratchPad;
+      const importId = item.importId || item.data?.importId;
+      let existingNode = null;
+      
+      if (isFromScratchPad && importId) {
+        existingNode = prevData.nodes.find(n => n.importId === importId);
+      }
+      
+      // If item exists and is from scratchpad, create a copy with new ID
+      if (existingNode) {
+        console.log('Creating copy of existing scratchpad item:', existingNode.id);
+        // We'll create a new node based on the existing one but with a new ID
+        const copyNode: DiagramNodeData = {
+          ...existingNode,
+          id: generateSequentialId(existingNode.type, prevData),
+          x: position.x,
+          y: position.y,
+          // Remove importId to make this a standalone copy
+          importId: undefined,
+          // Update label to indicate it's a copy
+          label: existingNode.label ? `${existingNode.label} (copy)` : undefined
+        };
+        newNodes.push(copyNode);
+        newItemId = copyNode.id;
       }
       
       // Check if this is a shape resource (needed for freeflow and group exclusion)
@@ -93,7 +121,7 @@ itemType === 'generic.object.jigsaw' ||
       // Check if this is a textbox resource
       const isTextboxResource = itemType === 'generic.text.textbox' || itemType?.endsWith('.textbox');
       
-      if (itemType === 'zone') {
+      if (!existingNode && itemType === 'zone') {
         // Use subType from item if available, otherwise derive from type
         const subType = item.subType || 'zone';
         const newZone: DiagramZoneData = {
@@ -115,7 +143,7 @@ itemType === 'generic.object.jigsaw' ||
         newZones.push(newZone);
         newItemId = newZone.id;
         console.log('Zone created and added to zones:', newZone);
-      } else {
+      } else if (!existingNode) {
         // For resource items from the sidebar, use type from drag item
         // NEVER store file in node - ResourceIcon looks up file from resource catalog
         // Special handling for shape resources - make them resizable and freeflow

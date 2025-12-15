@@ -296,7 +296,15 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
   
   const [{ isDragging }, drag, preview] = useDrag(() => ({
     type: ItemTypes.CANVAS_NODE,
-    item: { id: node.id, x: node.x, y: node.y, type: ItemTypes.CANVAS_NODE, label: node.label || '' },
+    item: { 
+      ...node, // Include ALL node properties
+      x: node.x, 
+      y: node.y, 
+      type: ItemTypes.CANVAS_NODE, 
+      // CRITICAL: Preserve original shape type for scratchpad
+      originalType: node.type,
+      label: node.label || '' 
+    },
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
@@ -306,7 +314,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
     onDragEnd: () => {
       onDraggingChange?.(false);
     },
-  }), [node.id, node.x, node.y, onDraggingChange]);
+  }), [node, node.id, node.x, node.y, onDraggingChange]);
 
   useEffect(() => {
     preview(getEmptyImage(), { captureDraggingState: true });

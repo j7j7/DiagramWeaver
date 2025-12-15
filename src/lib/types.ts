@@ -59,6 +59,11 @@ export interface ScratchPadItem {
   data: Partial<DiagramNodeData>;
   isFavorite: boolean;
   importId?: string;
+  objectType?: 'shape' | 'icon' | 'text'; // Type of object for proper handling
+  // Store resource info at item level for easy access
+  provider?: string;
+  category?: string;
+  file?: string;
 }
 
 export interface DiagramConnectionData {

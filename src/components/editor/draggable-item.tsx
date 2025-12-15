@@ -17,7 +17,18 @@ export const ItemTypes = {
 };
 
 export function DraggableItem({ type, label, icon, data }: DraggableItemProps) {
-  const item = useMemo(() => ({ type, label, ...data }), [type, label, data]);
+  const item = useMemo(() => {
+    // Start with the data object, then override with props to ensure type precedence
+    const result = { ...data };
+    // Ensure the props type takes precedence over data.type
+    result.type = type;
+    result.label = label;
+    // Store the original type if it exists in data (for shape preservation)
+    if (data && data.type && data.type !== type) {
+      result.originalType = data.type;
+    }
+    return result;
+  }, [type, label, data]);
   const [{ isDragging }, drag, dragPreview] = useDrag(() => ({
     type: ItemTypes.DIAGRAM_NODE,
     item: item,
