@@ -65,9 +65,23 @@ export function ScratchPad({ isOpen, onClose, diagramData }: ScratchPadProps) {
   const [editingItem, setEditingItem] = useState<ScratchPadItem | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     setIsMounted(true);
+    
+    // Load position from localStorage
+    if (typeof window !== 'undefined') {
+      const savedPosition = localStorage.getItem('dw:scratchpad:position');
+      if (savedPosition) {
+        try {
+          const parsed = JSON.parse(savedPosition);
+          setPosition(parsed);
+        } catch (e) {
+          console.error('Failed to load scratchpad position', e);
+        }
+      }
+    }
   }, []);
 
   // Save favorites to localStorage (client-side only)
@@ -92,6 +106,17 @@ export function ScratchPad({ isOpen, onClose, diagramData }: ScratchPadProps) {
       }
     }
   }, [imports]);
+
+  // Save position to localStorage when it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined' && isMounted) {
+      try {
+        localStorage.setItem('dw:scratchpad:position', JSON.stringify(position));
+      } catch (e) {
+        console.error('Failed to save scratchpad position', e);
+      }
+    }
+  }, [position, isMounted]);
 
   const [{ isOver }, drop] = useDrop(() => ({
     accept: [ItemTypes.DIAGRAM_NODE, ItemTypes.CANVAS_NODE],
@@ -394,7 +419,14 @@ const renderIcon = (item: ScratchPadItem) => {
   if (!isOpen || !isMounted) return null;
 
   return (
-    <Draggable handle=".scratchpad-handle" nodeRef={nodeRef}>
+    <Draggable 
+      handle=".scratchpad-handle" 
+      nodeRef={nodeRef}
+      defaultPosition={position}
+      onStop={(e, data) => {
+        setPosition({ x: data.x, y: data.y });
+      }}
+    >
       <div ref={nodeRef} data-testid="scratchpad" className="fixed top-20 right-20 z-50 w-80 bg-background border rounded-lg shadow-xl flex flex-col max-h-[600px]">
         <div className="scratchpad-handle p-3 border-b bg-muted/50 rounded-t-lg cursor-move flex justify-between items-center">
           <h3 className="font-semibold text-sm">Scratch Pad</h3>
