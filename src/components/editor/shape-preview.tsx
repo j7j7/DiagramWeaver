@@ -242,23 +242,362 @@ export function ShapePreview({
       );
     }
 
+    // Parallelogram
+    if (type === 'generic.object.parallelogram' || type?.endsWith('.parallelogram')) {
+      const coords = getGradientCoordinates(gradientAngle);
+      return (
+        <svg {...commonSvgProps}>
+          <defs>
+            {effectiveBackgroundStyle === 'gradient' && (
+              <linearGradient id={gradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                <stop offset="0%" stopColor={bgColors[0]} />
+                <stop offset="100%" stopColor={bgColors[1]} />
+              </linearGradient>
+            )}
+            {borderStyle === 'gradient' && (
+              <linearGradient id={borderGradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                <stop offset="0%" stopColor={borderColorArray[0]} />
+                <stop offset="100%" stopColor={borderColorArray[1]} />
+              </linearGradient>
+            )}
+          </defs>
+          <polygon
+            points={`${displayWidth * 0.2},${strokeWidth} ${displayWidth - strokeWidth},${strokeWidth} ${displayWidth * 0.8},${displayHeight - strokeWidth} ${strokeWidth},${displayHeight - strokeWidth}`}
+            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
+            stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
+            strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
+            strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
+            strokeLinejoin="round"
+          />
+        </svg>
+      );
+    }
+
+    // Chevron
+    if (type === 'generic.object.chevron' || type?.endsWith('.chevron')) {
+      const coords = getGradientCoordinates(gradientAngle);
+      return (
+        <svg {...commonSvgProps}>
+          <defs>
+            {effectiveBackgroundStyle === 'gradient' && (
+              <linearGradient id={gradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                <stop offset="0%" stopColor={bgColors[0]} />
+                <stop offset="100%" stopColor={bgColors[1]} />
+              </linearGradient>
+            )}
+            {borderStyle === 'gradient' && (
+              <linearGradient id={borderGradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                <stop offset="0%" stopColor={borderColorArray[0]} />
+                <stop offset="100%" stopColor={borderColorArray[1]} />
+              </linearGradient>
+            )}
+          </defs>
+          <path
+            d={`M ${strokeWidth},${displayHeight / 2} 
+                L ${displayWidth * 0.3},${strokeWidth} 
+                L ${displayWidth - strokeWidth},${displayHeight / 2} 
+                L ${displayWidth * 0.3},${displayHeight - strokeWidth} 
+                Z`}
+            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
+            stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
+            strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
+            strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
+            strokeLinejoin="round"
+          />
+        </svg>
+      );
+    }
+
+    // Trapezoid
+    if (type === 'generic.object.trapezoid' || type?.endsWith('.trapezoid')) {
+      const coords = getGradientCoordinates(gradientAngle);
+      return (
+        <svg {...commonSvgProps}>
+          <defs>
+            {effectiveBackgroundStyle === 'gradient' && (
+              <linearGradient id={gradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                <stop offset="0%" stopColor={bgColors[0]} />
+                <stop offset="100%" stopColor={bgColors[1]} />
+              </linearGradient>
+            )}
+            {borderStyle === 'gradient' && (
+              <linearGradient id={borderGradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                <stop offset="0%" stopColor={borderColorArray[0]} />
+                <stop offset="100%" stopColor={borderColorArray[1]} />
+              </linearGradient>
+            )}
+          </defs>
+          <polygon
+            points={`${displayWidth * 0.25},${strokeWidth} ${displayWidth * 0.75},${strokeWidth} ${displayWidth - strokeWidth},${displayHeight - strokeWidth} ${strokeWidth},${displayHeight - strokeWidth}`}
+            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
+            stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
+            strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
+            strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
+            strokeLinejoin="round"
+          />
+        </svg>
+      );
+    }
+
+    // Kite
+    if (type === 'generic.object.kite' || type?.endsWith('.kite')) {
+      const coords = getGradientCoordinates(gradientAngle);
+      return (
+        <svg {...commonSvgProps}>
+          <defs>
+            {effectiveBackgroundStyle === 'gradient' && (
+              <linearGradient id={gradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                <stop offset="0%" stopColor={bgColors[0]} />
+                <stop offset="100%" stopColor={bgColors[1]} />
+              </linearGradient>
+            )}
+            {borderStyle === 'gradient' && (
+              <linearGradient id={borderGradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                <stop offset="0%" stopColor={borderColorArray[0]} />
+                <stop offset="100%" stopColor={borderColorArray[1]} />
+              </linearGradient>
+            )}
+          </defs>
+          <polygon
+            points={`${displayWidth / 2},${strokeWidth} ${displayWidth * 0.75},${displayHeight * 0.4} ${displayWidth / 2},${displayHeight - strokeWidth} ${displayWidth * 0.25},${displayHeight * 0.4}`}
+            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
+            stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
+            strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
+            strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
+            strokeLinejoin="round"
+          />
+        </svg>
+      );
+    }
+
+    // Hexagon
+    if (type === 'generic.object.hexagon' || type?.endsWith('.hexagon')) {
+      const coords = getGradientCoordinates(gradientAngle);
+      const hexWidth = displayWidth - strokeWidth;
+      const hexHeight = displayHeight - strokeWidth;
+      const centerX = hexWidth / 2 + strokeWidth / 2;
+      const centerY = hexHeight / 2 + strokeWidth / 2;
+      const radius = Math.min(hexWidth, hexHeight) / 2;
+      
+      const hexPoints = [];
+      for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI / 3) * i - Math.PI / 2;
+        const x = centerX + radius * Math.cos(angle);
+        const y = centerY + radius * Math.sin(angle);
+        hexPoints.push(`${x},${y}`);
+      }
+      
+      return (
+        <svg {...commonSvgProps}>
+          <defs>
+            {effectiveBackgroundStyle === 'gradient' && (
+              <linearGradient id={gradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                <stop offset="0%" stopColor={bgColors[0]} />
+                <stop offset="100%" stopColor={bgColors[1]} />
+              </linearGradient>
+            )}
+            {borderStyle === 'gradient' && (
+              <linearGradient id={borderGradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                <stop offset="0%" stopColor={borderColorArray[0]} />
+                <stop offset="100%" stopColor={borderColorArray[1]} />
+              </linearGradient>
+            )}
+          </defs>
+          <polygon
+            points={hexPoints.join(' ')}
+            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
+            stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
+            strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
+            strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
+            strokeLinejoin="round"
+          />
+        </svg>
+      );
+    }
+
+    // Pentagon
+    if (type === 'generic.object.pentagon' || type?.endsWith('.pentagon')) {
+      const coords = getGradientCoordinates(gradientAngle);
+      const pentWidth = displayWidth - strokeWidth;
+      const pentHeight = displayHeight - strokeWidth;
+      const centerX = pentWidth / 2 + strokeWidth / 2;
+      const centerY = pentHeight / 2 + strokeWidth / 2;
+      const radius = Math.min(pentWidth, pentHeight) / 2;
+      
+      const pentPoints = [];
+      for (let i = 0; i < 5; i++) {
+        const angle = (2 * Math.PI / 5) * i - Math.PI / 2;
+        const x = centerX + radius * Math.cos(angle);
+        const y = centerY + radius * Math.sin(angle);
+        pentPoints.push(`${x},${y}`);
+      }
+      
+      return (
+        <svg {...commonSvgProps}>
+          <defs>
+            {effectiveBackgroundStyle === 'gradient' && (
+              <linearGradient id={gradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                <stop offset="0%" stopColor={bgColors[0]} />
+                <stop offset="100%" stopColor={bgColors[1]} />
+              </linearGradient>
+            )}
+            {borderStyle === 'gradient' && (
+              <linearGradient id={borderGradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                <stop offset="0%" stopColor={borderColorArray[0]} />
+                <stop offset="100%" stopColor={borderColorArray[1]} />
+              </linearGradient>
+            )}
+          </defs>
+          <polygon
+            points={pentPoints.join(' ')}
+            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
+            stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
+            strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
+            strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
+            strokeLinejoin="round"
+          />
+        </svg>
+      );
+    }
+
+    // Octagon
+    if (type === 'generic.object.octagon' || type?.endsWith('.octagon')) {
+      const coords = getGradientCoordinates(gradientAngle);
+      const octWidth = displayWidth - strokeWidth;
+      const octHeight = displayHeight - strokeWidth;
+      const centerX = octWidth / 2 + strokeWidth / 2;
+      const centerY = octHeight / 2 + strokeWidth / 2;
+      const radius = Math.min(octWidth, octHeight) / 2;
+      
+      const octPoints = [];
+      for (let i = 0; i < 8; i++) {
+        const angle = (Math.PI / 4) * i;
+        const x = centerX + radius * Math.cos(angle);
+        const y = centerY + radius * Math.sin(angle);
+        octPoints.push(`${x},${y}`);
+      }
+      
+      return (
+        <svg {...commonSvgProps}>
+          <defs>
+            {effectiveBackgroundStyle === 'gradient' && (
+              <linearGradient id={gradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                <stop offset="0%" stopColor={bgColors[0]} />
+                <stop offset="100%" stopColor={bgColors[1]} />
+              </linearGradient>
+            )}
+            {borderStyle === 'gradient' && (
+              <linearGradient id={borderGradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                <stop offset="0%" stopColor={borderColorArray[0]} />
+                <stop offset="100%" stopColor={borderColorArray[1]} />
+              </linearGradient>
+            )}
+          </defs>
+          <polygon
+            points={octPoints.join(' ')}
+            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
+            stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
+            strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
+            strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
+            strokeLinejoin="round"
+          />
+        </svg>
+      );
+    }
+
+    // Jigsaw
+    if (type === 'generic.object.jigsaw' || type?.endsWith('.jigsaw')) {
+      const coords = getGradientCoordinates(gradientAngle);
+      return (
+        <svg {...commonSvgProps}>
+          <defs>
+            {effectiveBackgroundStyle === 'gradient' && (
+              <linearGradient id={gradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                <stop offset="0%" stopColor={bgColors[0]} />
+                <stop offset="100%" stopColor={bgColors[1]} />
+              </linearGradient>
+            )}
+            {borderStyle === 'gradient' && (
+              <linearGradient id={borderGradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                <stop offset="0%" stopColor={borderColorArray[0]} />
+                <stop offset="100%" stopColor={borderColorArray[1]} />
+              </linearGradient>
+            )}
+          </defs>
+          <path
+            d={`M ${strokeWidth},${displayHeight * 0.3} 
+                Q ${strokeWidth},${displayHeight * 0.1} ${displayWidth * 0.2},${strokeWidth} 
+                L ${displayWidth * 0.4},${strokeWidth} 
+                Q ${displayWidth * 0.5},${displayHeight * 0.1} ${displayWidth * 0.6},${strokeWidth} 
+                L ${displayWidth * 0.8},${strokeWidth} 
+                Q ${displayWidth - strokeWidth},${displayHeight * 0.1} ${displayWidth - strokeWidth},${displayHeight * 0.3} 
+                L ${displayWidth - strokeWidth},${displayHeight * 0.7} 
+                Q ${displayWidth - strokeWidth},${displayHeight * 0.9} ${displayWidth * 0.8},${displayHeight - strokeWidth} 
+                L ${displayWidth * 0.6},${displayHeight - strokeWidth} 
+                Q ${displayWidth * 0.5},${displayHeight * 0.9} ${displayWidth * 0.4},${displayHeight - strokeWidth} 
+                L ${displayWidth * 0.2},${displayHeight - strokeWidth} 
+                Q ${strokeWidth},${displayHeight * 0.9} ${strokeWidth},${displayHeight * 0.7} 
+                Z`}
+            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
+            stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
+            strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
+            strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
+            strokeLinejoin="round"
+          />
+        </svg>
+      );
+    }
+
+    // Arrowhead
+    if (type === 'generic.object.arrowhead' || type?.endsWith('.arrowhead')) {
+      const coords = getGradientCoordinates(gradientAngle);
+      return (
+        <svg {...commonSvgProps}>
+          <defs>
+            {effectiveBackgroundStyle === 'gradient' && (
+              <linearGradient id={gradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                <stop offset="0%" stopColor={bgColors[0]} />
+                <stop offset="100%" stopColor={bgColors[1]} />
+              </linearGradient>
+            )}
+            {borderStyle === 'gradient' && (
+              <linearGradient id={borderGradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                <stop offset="0%" stopColor={borderColorArray[0]} />
+                <stop offset="100%" stopColor={borderColorArray[1]} />
+              </linearGradient>
+            )}
+          </defs>
+          <path
+            d={`M ${strokeWidth},${displayHeight / 2} 
+                L ${displayWidth * 0.7},${strokeWidth} 
+                L ${displayWidth - strokeWidth},${displayHeight / 2} 
+                L ${displayWidth * 0.7},${displayHeight - strokeWidth} 
+                Z`}
+            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
+            stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
+            strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
+            strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
+            strokeLinejoin="round"
+          />
+        </svg>
+      );
+    }
+
     // Rectangle / Square (Default)
-    // Also handles parallelogram, trapezoid etc. with simple rect for now, or add specific paths if needed
-    // For now, let's stick to the basic shapes and default to rect for others to ensure they render something
     const coords = getGradientCoordinates(gradientAngle);
     return (
       <svg {...commonSvgProps}>
         <defs>
           {effectiveBackgroundStyle === 'gradient' && (
             <linearGradient id={gradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
-              <stop offset="0%" stopColor={bgColors[0]} />
-              <stop offset="100%" stopColor={bgColors[1]} />
+                <stop offset="0%" stopColor={bgColors[0]} />
+                <stop offset="100%" stopColor={bgColors[1]} />
             </linearGradient>
           )}
           {borderStyle === 'gradient' && (
             <linearGradient id={borderGradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
-              <stop offset="0%" stopColor={borderColorArray[0]} />
-              <stop offset="100%" stopColor={borderColorArray[1]} />
+                <stop offset="0%" stopColor={borderColorArray[0]} />
+                <stop offset="100%" stopColor={borderColorArray[1]} />
             </linearGradient>
           )}
         </defs>
