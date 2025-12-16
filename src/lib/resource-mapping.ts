@@ -243,12 +243,7 @@ export function getResourcePath(item: any): string | null {
     return `/resources/${item.data.provider}/${item.data.category}/${item.data.file}`;
   }
   
-  // Check if the item itself has the resource info (for direct drag from sidebar)
-  if (item.provider && item.category && item.file) {
-    return `/resources/${item.provider}/${item.category}/${item.file}`;
-  }
-  
-  // Check if the item (canvas node) has resource info directly
+  // Check if the item itself has the resource info (for direct drag from sidebar and canvas nodes)
   if (item.provider && item.category && item.file) {
     return `/resources/${item.provider}/${item.category}/${item.file}`;
   }

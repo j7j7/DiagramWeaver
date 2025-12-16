@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 
 interface ShapePreviewProps {
   type: string;
@@ -62,7 +62,9 @@ export function ShapePreview({
   textDecoration,
   shadow = false
 }: ShapePreviewProps) {
-  
+  const gradientId = useId();
+  const borderGradientId = useId();
+
   // Use provided colors or fallback to fill/stroke for backward compatibility
   // Only apply defaults if NO color is provided at all
   const effectiveBackgroundColor = backgroundColor !== undefined ? backgroundColor : (fill !== undefined ? fill : '#6b7280');
@@ -84,9 +86,7 @@ export function ShapePreview({
   // Ensure backgroundStyle defaults to 'solid' if not provided (matching canvas behavior)
   const effectiveBackgroundStyle = backgroundStyle !== undefined ? backgroundStyle : 'solid';
   
-  // Generate unique ID for gradients
-  const gradientId = `shape-preview-gradient-${Math.random().toString(36).substr(2, 9)}`;
-  const borderGradientId = `shape-preview-border-${Math.random().toString(36).substr(2, 9)}`;
+
 
   const commonSvgProps = {
     width: displayWidth,

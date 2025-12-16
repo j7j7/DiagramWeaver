@@ -622,10 +622,10 @@ const renderIcon = (item: ScratchPadItem) => {
                                     <Label htmlFor="info" className="text-right">Description</Label>
                                     <Textarea 
                                         id="info" 
-                                        value={editingItem.data.info || ''} 
+                                        value={editingItem.data?.info ?? ''} 
                                         onChange={(e) => setEditingItem({
                                             ...editingItem, 
-                                            data: { ...editingItem.data, info: e.target.value }
+                                            data: { ...(editingItem.data || {}), info: e.target.value }
                                         })} 
                                         className="col-span-3" 
                                     />

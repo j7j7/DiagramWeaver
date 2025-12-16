@@ -306,7 +306,7 @@ export function TopMenuBar({
             )}
             {onToggleHover !== undefined && (
               <>
-                {(onUndo || onRedo || onFitToView || onToggleLayersPanel) && <MenubarSeparator />}
+                {(onUndo || onRedo || onFitToView || onToggleLayersPanel || onToggleScratchPad) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleHover}>
                   {hoverEnabled ? (
                     <>
