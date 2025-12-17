@@ -9,7 +9,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { X, Check, Edit2, Trash2 } from 'lucide-react';
 import { DraggableItem, ItemTypes } from './draggable-item';
 import type { DiagramData, ScratchPadItem } from '@/lib/types';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogPortal, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { TextStylingPanel } from './text-styling-panel';
@@ -598,7 +599,10 @@ const renderIcon = (item: ScratchPadItem) => {
         </Tabs>
 
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-            <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto w-[90vw]">
+            <DialogPortal>
+                <DialogPrimitive.Content
+                    className="fixed left-0 top-[50%] z-50 max-w-2xl max-h-[90vh] w-[45vw] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg overflow-y-auto"
+                >
                 <DialogHeader>
                     <DialogTitle>Edit Favorite</DialogTitle>
                 </DialogHeader>
@@ -663,7 +667,8 @@ const renderIcon = (item: ScratchPadItem) => {
                 <DialogFooter>
                     <Button onClick={handleSaveEdit}>Save</Button>
                 </DialogFooter>
-            </DialogContent>
+                </DialogPrimitive.Content>
+            </DialogPortal>
         </Dialog>
       </div>
     </Draggable>
