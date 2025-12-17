@@ -128,7 +128,7 @@ export function DraggableItem({ type, label, icon, data }: DraggableItemProps) {
       onTouchEnd={handleTouchEnd}
     >
       <Card className="hover:bg-accent hover:text-accent-foreground transition-colors">
-        <CardContent className="p-3 flex flex-col items-center justify-center gap-2 text-center min-h-24">
+        <CardContent className="p-1.5 flex flex-col items-center justify-center gap-1 text-center min-h-12">
           <div className="flex items-center justify-center">{icon}</div>
           <span className="font-medium text-xs">{label}</span>
         </CardContent>

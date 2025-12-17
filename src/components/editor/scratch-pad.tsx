@@ -329,9 +329,9 @@ const DraggableShape = ({ item, data }: { item: ScratchPadItem; data: any }) => 
   const originalWidth = itemData.width || 60;
   const originalHeight = itemData.height || 60;
   
-  // Display at 50% size on scratchpad to match other items
-  const displayWidth = originalWidth * 0.5;
-  const displayHeight = originalHeight * 0.5;
+  // Display at 25% size on scratchpad (50% smaller than current 50%)
+  const displayWidth = originalWidth * 0.25;
+  const displayHeight = originalHeight * 0.25;
   
   // Create drag item with ALL properties preserved
   const dragItem = useMemo(() => ({
@@ -360,7 +360,7 @@ const DraggableShape = ({ item, data }: { item: ScratchPadItem; data: any }) => 
       className="cursor-move"
     >
       <Card className="hover:bg-accent hover:text-accent-foreground transition-colors">
-        <CardContent className="p-3 flex flex-col items-center justify-center gap-2 text-center min-h-24">
+        <CardContent className="p-1.5 flex flex-col items-center justify-center gap-1 text-center min-h-12">
           <ShapePreview
             type={item.type}
             width={displayWidth}
@@ -399,8 +399,8 @@ const renderIcon = (item: ScratchPadItem) => {
     return (
         <ResourceIcon 
             type={item.type} 
-            width={24} 
-            height={24}
+            width={17} 
+            height={17}
             provider={item.data?.provider}
             category={item.data?.category}
             file={item.data?.file}
@@ -467,7 +467,7 @@ const renderIcon = (item: ScratchPadItem) => {
                   Drag items here from the sidebar to save them as favorites.
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-4 gap-1">
                   {favorites.map(item => {
                     const isOnCanvas = diagramData.nodes.some(n => 
                       (n.importId && item.data?.importId && n.importId === item.data.importId) ||
@@ -541,7 +541,7 @@ const renderIcon = (item: ScratchPadItem) => {
               </div>
             </div>
             <ScrollArea className="flex-1 p-2 h-[300px]">
-               <div className="grid grid-cols-2 gap-2">
+               <div className="grid grid-cols-4 gap-1">
                   {imports.map(item => {
                     const isOnCanvas = diagramData.nodes.some(n => n.importId === item.importId);
                     
