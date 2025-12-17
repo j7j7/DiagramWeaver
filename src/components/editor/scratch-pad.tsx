@@ -598,7 +598,7 @@ const renderIcon = (item: ScratchPadItem) => {
         </Tabs>
 
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto w-[90vw]">
                 <DialogHeader>
                     <DialogTitle>Edit Favorite</DialogTitle>
                 </DialogHeader>
@@ -634,7 +634,7 @@ const renderIcon = (item: ScratchPadItem) => {
                                 </div>
                             </div>
                         </TabsContent>
-                        <TabsContent value="text" className="py-4 flex justify-center">
+                        <TabsContent value="text" className="py-4">
                             <TextStylingPanel 
                                 styling={editingItem.data} 
                                 onStylingChange={(changes) => setEditingItem({
@@ -649,7 +649,7 @@ const renderIcon = (item: ScratchPadItem) => {
                                 }}
                             />
                         </TabsContent>
-                        <TabsContent value="visual" className="py-4 flex justify-center">
+                        <TabsContent value="visual" className="py-4">
                             <VisualStylingPanel 
                                 styling={editingItem.data} 
                                 onStylingChange={(changes) => setEditingItem({

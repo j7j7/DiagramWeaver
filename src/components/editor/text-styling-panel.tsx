@@ -60,7 +60,7 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
   };
 
   return (
-    <Card className="w-80">
+    <Card className="w-full">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-medium flex items-center gap-2">

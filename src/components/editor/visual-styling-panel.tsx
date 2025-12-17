@@ -70,7 +70,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
   const currentPredefinedStyle = findClosestPredefinedStyle(styling as VisualStyling);
 
   return (
-    <Card className="w-80">
+    <Card className="w-full">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
