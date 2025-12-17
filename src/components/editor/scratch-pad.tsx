@@ -23,9 +23,11 @@ interface ScratchPadProps {
   isOpen: boolean;
   onClose: () => void;
   diagramData: DiagramData;
+  setDiagramData: React.Dispatch<React.SetStateAction<DiagramData>>;
+  onCanvasRefresh: () => void;
 }
 
-export function ScratchPad({ isOpen, onClose, diagramData }: ScratchPadProps) {
+export function ScratchPad({ isOpen, onClose, diagramData, setDiagramData, onCanvasRefresh }: ScratchPadProps) {
 
 // Load favorites from localStorage (client-side only) - use initializer
   const [favorites, setFavorites] = useState<ScratchPadItem[]>(() => {
@@ -243,10 +245,10 @@ export function ScratchPad({ isOpen, onClose, diagramData }: ScratchPadProps) {
       };
       setFavorites(prev => [...prev, newItem]);
       
-      // Force browser refresh after adding canvas item to scratchpad
+      // Refresh canvas after adding canvas item to scratchpad
       if (isCanvasItem) {
         setTimeout(() => {
-          window.location.reload();
+          onCanvasRefresh();
         }, 100);
       }
     },

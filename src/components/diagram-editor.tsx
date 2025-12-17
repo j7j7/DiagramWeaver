@@ -236,6 +236,13 @@ export default function DiagramEditor() {
   const isConnectMode = activeTab?.isConnectMode || false;
   const jsonPanelOpen = activeTab?.jsonPanelOpen || false;
   const canvasTransform = activeTab?.canvasTransform || { x: 0, y: 0, k: 1 };
+  
+  // Refresh key to force canvas re-render
+  const [canvasRefreshKey, setCanvasRefreshKey] = React.useState(0);
+  
+  const refreshCanvas = React.useCallback(() => {
+    setCanvasRefreshKey(prev => prev + 1);
+  }, []);
 
 
 
@@ -1821,6 +1828,7 @@ export default function DiagramEditor() {
                 <div className={`flex flex-1 ${jsonPanelOpen ? 'overflow-x-auto' : ''}`}>
                   <div className={`flex-1 h-full min-w-0 ${jsonPanelOpen ? 'mr-2' : ''}`}>
                 <EditorCanvas 
+                    key={canvasRefreshKey}
                     ref={editorRef}
                     diagramData={layers.getFilteredDiagramData()} 
                     setDiagramData={setDiagramData}
@@ -1923,6 +1931,8 @@ export default function DiagramEditor() {
           isOpen={scratchPadOpen} 
           onClose={() => setScratchPadOpen(false)} 
           diagramData={diagramData}
+          setDiagramData={setDiagramData}
+          onCanvasRefresh={refreshCanvas}
         />
         <AlertDialog open={closeTabDialogOpen} onOpenChange={setCloseTabDialogOpen}>
           <AlertDialogContent>
