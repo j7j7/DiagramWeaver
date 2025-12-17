@@ -67,7 +67,7 @@ export function ResourceIcon({ type, imagePath, provider, category, file, ...pro
           console.warn(`Failed to load resource catalog for ${typeProvider}:`, err.message);
         });
     }
-  }, [type, imagePath, provider, category, file]);
+  }, [type, provider, category, file]);
 
   const iconPath = useMemo(() => {
     const parts = type.split('.');

@@ -79,7 +79,9 @@ export function useCanvasOperations({
           // Remove importId to make this a standalone copy
           importId: undefined,
           // Update label to indicate it's a copy
-          label: existingNode.label ? `${existingNode.label} (copy)` : undefined
+          label: existingNode.label ? 
+            `${existingNode.label.replace(/(\s\(copy\))+$/g, '').trim()} (copy)` : 
+            undefined
         };
         newNodes.push(copyNode);
         newItemId = copyNode.id;

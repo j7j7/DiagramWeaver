@@ -229,7 +229,6 @@ export function useCanvasDragDrop({
       // Check if drop is on scratchpad (don't move the item if it is)
       const scratchpadElement = document.querySelector('[data-testid="scratchpad"]') || 
                                document.querySelector('.fixed.top-20.right-20');
-      const dropTarget = monitor.getDropResult();
       const clientOffset = monitor.getClientOffset();
       const isDroppedOnScratchpad = scratchpadElement && 
         (clientOffset && 
