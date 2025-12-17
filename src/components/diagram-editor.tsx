@@ -1933,6 +1933,7 @@ export default function DiagramEditor() {
           diagramData={diagramData}
           setDiagramData={setDiagramData}
           onCanvasRefresh={refreshCanvas}
+          onHistoryUpdate={updateHistory}
         />
         <AlertDialog open={closeTabDialogOpen} onOpenChange={setCloseTabDialogOpen}>
           <AlertDialogContent>

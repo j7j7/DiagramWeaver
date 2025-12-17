@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { X, Check, Edit2, Trash2 } from 'lucide-react';
+import { X, Check, Edit2, Trash2, Download, Upload } from 'lucide-react';
 import { DraggableItem, ItemTypes } from './draggable-item';
 import type { DiagramData, ScratchPadItem } from '@/lib/types';
 import { Dialog, DialogPortal, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -26,9 +26,10 @@ interface ScratchPadProps {
   diagramData: DiagramData;
   setDiagramData: React.Dispatch<React.SetStateAction<DiagramData>>;
   onCanvasRefresh: () => void;
+  onHistoryUpdate?: () => void;
 }
 
-export function ScratchPad({ isOpen, onClose, diagramData, setDiagramData, onCanvasRefresh }: ScratchPadProps) {
+export function ScratchPad({ isOpen, onClose, diagramData, setDiagramData, onCanvasRefresh, onHistoryUpdate }: ScratchPadProps) {
 
 // Load favorites from localStorage (client-side only) - use initializer
   const [favorites, setFavorites] = useState<ScratchPadItem[]>(() => {
@@ -91,13 +92,14 @@ export function ScratchPad({ isOpen, onClose, diagramData, setDiagramData, onCan
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
-  
         localStorage.setItem('dw:scratchpad:favorites', JSON.stringify(favorites));
+        // Trigger history update when favorites change
+        onHistoryUpdate?.();
       } catch (e) {
         console.error('Failed to save favorites to localStorage', e);
       }
     }
-  }, [favorites]);
+  }, [favorites, onHistoryUpdate]);
 
   // Save imports to localStorage (client-side only)
   useEffect(() => {
@@ -307,6 +309,86 @@ export function ScratchPad({ isOpen, onClose, diagramData, setDiagramData, onCan
     setImports([]);
   }
 
+  const saveFavorites = async () => {
+    if (favorites.length === 0) {
+      return;
+    }
+    
+    try {
+      const jsonString = JSON.stringify(favorites, null, 2);
+
+      // Try to use File System Access API if available (same as main save)
+      if ('showSaveFilePicker' in window) {
+        try {
+          const handle = await (window as any).showSaveFilePicker({
+            suggestedName: `diagramweaver-favorites-${new Date().toISOString().split('T')[0]}.json`,
+            types: [{
+              description: 'JSON Files',
+              accept: { 'application/json': ['.json'] }
+            }]
+          });
+          const writable = await handle.createWritable();
+          await writable.write(jsonString);
+          await writable.close();
+          return;
+        } catch (error: any) {
+          // User cancelled or API failed, fall back to download
+          if (error.name !== 'AbortError') {
+            console.log('File System Access API failed, falling back to download:', error);
+          }
+        }
+      }
+
+      // Fallback: automatic download
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `diagramweaver-favorites-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Failed to save favorites', e);
+    }
+  };
+
+  const loadFavorites = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+        if (Array.isArray(json)) {
+          // Validate that the loaded items have the required structure
+          const validFavorites = json.filter(item => 
+            item && 
+            typeof item === 'object' && 
+            item.id && 
+            item.label && 
+            item.type
+          );
+          
+          if (validFavorites.length > 0) {
+            setFavorites(prev => [...prev, ...validFavorites]);
+          } else {
+            console.error('No valid favorites found in file');
+          }
+        } else {
+          console.error('Invalid file format: expected array');
+        }
+      } catch (err) {
+        console.error('Failed to parse favorites file', err);
+      }
+    };
+    reader.readAsText(file);
+    // Reset input
+    e.target.value = '';
+  };
+
   const handleEditClick = (item: ScratchPadItem) => {
     setEditingItem(item);
     setIsEditDialogOpen(true);
@@ -445,10 +527,31 @@ const renderIcon = (item: ScratchPadItem) => {
               <TabsTrigger value="imports" className="data-[state=active]:bg-background">Imports</TabsTrigger>
             </div>
             <div className="flex gap-1">
-              {activeTab === 'favorites' && favorites.length > 0 && (
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={clearFavorites} title="Clear Favorites">
-                  <Trash2 className="h-3 w-3" />
-                </Button>
+              {activeTab === 'favorites' && (
+                <>
+                  {favorites.length > 0 && (
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={saveFavorites} title="Save Favorites">
+                      <Download className="h-3 w-3" />
+                    </Button>
+                  )}
+                  <div className="relative">
+                    <Input 
+                      type="file" 
+                      accept=".json" 
+                      onChange={loadFavorites} 
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                      title="Load Favorites"
+                    />
+                    <Button variant="ghost" size="icon" className="h-6 w-6" title="Load Favorites">
+                      <Upload className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  {favorites.length > 0 && (
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={clearFavorites} title="Clear Favorites">
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  )}
+                </>
               )}
               {activeTab === 'imports' && imports.length > 0 && (
                 <Button variant="ghost" size="icon" className="h-6 w-6" onClick={clearImports} title="Clear Imports">
@@ -597,6 +700,8 @@ const renderIcon = (item: ScratchPadItem) => {
             </ScrollArea>
           </TabsContent>
         </Tabs>
+
+
 
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
             <DialogPortal>
