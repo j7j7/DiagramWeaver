@@ -8,20 +8,21 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
 import { TextStyling, COMMON_FONT_FAMILIES } from "@/lib/text-styling";
-import { Type, AlignLeft, AlignCenter, AlignRight, AlignJustify, ArrowUp, Circle, ArrowDown, RotateCcw, Move3D, Box } from "lucide-react";
+import { Type, AlignLeft, AlignCenter, AlignRight, AlignJustify, ArrowUp, Circle, ArrowDown, RotateCcw, Move3D, Box, X } from "lucide-react";
 import Draggable from 'react-draggable';
 
 interface TextStylingPanelProps {
   styling: Partial<TextStyling>;
   onStylingChange: (styling: Partial<TextStyling>) => void;
   onReset?: () => void;
+  onClose?: () => void;
   selectedItem?: any; // To determine if it's a zone
   selectedItemIds?: Set<string>; // Multi-selected items
   textPosition?: string; // Current text position for zones
   onTextPositionChange?: (position: string) => void; // Handler for text position changes
 }
 
-export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, onStylingChange, onReset, selectedItem, selectedItemIds, textPosition, onTextPositionChange }: TextStylingPanelProps) {
+export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItem, selectedItemIds, textPosition, onTextPositionChange }: TextStylingPanelProps) {
   const [position, setPosition] = useState({ x: 100, y: 100 });
   const [isMounted, setIsMounted] = useState(false);
   const nodeRef = useRef(null);
@@ -106,14 +107,14 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
             <Type className="w-4 h-4" />
             <h3 className="font-semibold">Text Styling</h3>
           </div>
-          {onReset && (
+          {onClose && (
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleReset}
+              onClick={onClose}
               className="h-8 w-8 p-0"
             >
-              <RotateCcw className="w-4 h-4" />
+              <X className="w-4 h-4" />
             </Button>
           )}
         </div>

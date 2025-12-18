@@ -9,17 +9,18 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { VisualStyling, VISUAL_STYLES, getPredefinedVisualStyle, findClosestPredefinedStyle } from "@/lib/visual-styling";
-import { Palette, RotateCcw } from "lucide-react";
+import { Palette, RotateCcw, X } from "lucide-react";
 import Draggable from 'react-draggable';
 
 interface VisualStylingPanelProps {
   styling: Partial<VisualStyling>;
   onStylingChange: (styling: Partial<VisualStyling>) => void;
   onReset?: () => void;
+  onClose?: () => void;
   selectedItemIds?: Set<string>; // Multi-selected items
 }
 
-export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, selectedItemIds }: VisualStylingPanelProps) {
+export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds }: VisualStylingPanelProps) {
   const [position, setPosition] = useState({ x: 200, y: 100 });
   const [isMounted, setIsMounted] = useState(false);
   const nodeRef = useRef(null);
@@ -116,14 +117,14 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
             <Palette className="w-4 h-4" />
             <h3 className="font-semibold">Visual Styling</h3>
           </div>
-          {onReset && (
+          {onClose && (
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleReset}
+              onClick={onClose}
               className="h-8 w-8 p-0"
             >
-              <RotateCcw className="w-4 h-4" />
+              <X className="w-4 h-4" />
             </Button>
           )}
         </div>
