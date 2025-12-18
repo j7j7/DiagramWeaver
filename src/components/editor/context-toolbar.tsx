@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import Draggable from 'react-draggable';
 import { createPortal } from 'react-dom';
 import { 
   Type, 
@@ -96,7 +97,10 @@ export function ContextToolbar({
   const [visualStylingOpen, setVisualStylingOpen] = useState(false);
   const [draggedConnectionIndex, setDraggedConnectionIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [connectionsPosition, setConnectionsPosition] = useState({ x: 0, y: 0 });
+  const [isConnectionsMounted, setIsConnectionsMounted] = useState(false);
   const textStylingPanelRef = useRef<HTMLDivElement>(null);
+  const connectionsPanelRef = useRef(null);
   const visualStylingPanelRef = useRef<HTMLDivElement>(null);
   const textStylingButtonRef = useRef<HTMLButtonElement>(null);
   const visualStylingButtonRef = useRef<HTMLButtonElement>(null);
@@ -994,20 +998,29 @@ export function ContextToolbar({
               <TooltipContent>Connection Settings</TooltipContent>
             </Tooltip>
             {connectionsOpen && (
-              <div className="fixed top-4 right-4 z-[60] bg-white border rounded-lg shadow-lg w-96">
-                <div className="space-y-2 p-4">
-                  <div className="flex items-center justify-between">
+              <Draggable 
+                handle=".connections-handle" 
+                nodeRef={connectionsPanelRef}
+                defaultPosition={connectionsPosition}
+                onStop={(e, data) => {
+                  setConnectionsPosition({ x: data.x, y: data.y });
+                }}
+              >
+                <div ref={connectionsPanelRef} className="fixed top-20 right-20 z-50 bg-white border rounded-lg shadow-lg w-80">
+                <div className="connections-handle flex items-center justify-between p-4 border-b cursor-move">
+                  <div className="flex items-center gap-2">
                     <label className="text-sm font-medium">Connections</label>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0"
-                      onClick={() => setConnectionsOpen(false)}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
                   </div>
-                  <div className="max-h-96 overflow-y-auto space-y-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={() => setConnectionsOpen(false)}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+                <div className="max-h-96 overflow-y-auto space-y-2 p-4">
                     {getAllConnections.length === 0 ? (
                       <div className="text-sm text-muted-foreground py-2">No connections</div>
                     ) : (
@@ -1279,7 +1292,7 @@ export function ContextToolbar({
                     )}
                   </div>
                 </div>
-              </div>
+              </Draggable>
             )}
           </>
         )}
