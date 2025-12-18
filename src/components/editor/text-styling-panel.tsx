@@ -96,7 +96,7 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
     <Draggable 
       handle=".text-styling-handle" 
       nodeRef={nodeRef}
-      defaultPosition={position}
+      position={position}
       onStop={(e, data) => {
         setPosition({ x: data.x, y: data.y });
       }}

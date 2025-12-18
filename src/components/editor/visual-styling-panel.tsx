@@ -106,7 +106,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
     <Draggable 
       handle=".visual-styling-handle" 
       nodeRef={nodeRef}
-      defaultPosition={position}
+      position={position}
       onStop={(e, data) => {
         setPosition({ x: data.x, y: data.y });
       }}
