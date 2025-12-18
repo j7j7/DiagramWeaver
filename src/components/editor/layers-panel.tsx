@@ -187,7 +187,7 @@ export function LayersPanel({
     <Draggable 
       handle=".layers-handle" 
       nodeRef={nodeRef}
-      defaultPosition={position}
+      position={position}
       onStop={(e, data) => {
         setPosition({ x: data.x, y: data.y });
       }}

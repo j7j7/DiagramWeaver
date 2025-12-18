@@ -1006,17 +1006,12 @@ export function ContextToolbar({
                   setConnectionsPosition({ x: data.x, y: data.y });
                 }}
               >
-                <div ref={connectionsPanelRef} className="fixed top-20 right-20 z-50 bg-white border rounded-lg shadow-lg w-80">
+                <div ref={connectionsPanelRef} className="fixed top-20 right-20 z-50 w-80 bg-white border rounded-lg shadow-lg">
                 <div className="connections-handle flex items-center justify-between p-4 border-b cursor-move">
                   <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium">Connections</label>
+                    <h3 className="font-semibold">Connections</h3>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    onClick={() => setConnectionsOpen(false)}
-                  >
+                  <Button variant="ghost" size="sm" onClick={() => setConnectionsOpen(false)}>
                     <X className="w-4 h-4" />
                   </Button>
                 </div>
