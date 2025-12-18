@@ -512,11 +512,13 @@ const renderIcon = (item: ScratchPadItem) => {
         setPosition({ x: data.x, y: data.y });
       }}
     >
-      <div ref={nodeRef} data-testid="scratchpad" className="fixed top-20 right-20 z-50 w-80 bg-background border rounded-lg shadow-xl flex flex-col max-h-[600px]">
-        <div className="scratchpad-handle p-3 border-b bg-muted/50 rounded-t-lg cursor-move flex justify-between items-center">
-          <h3 className="font-semibold text-sm">Scratch Pad</h3>
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
-            <X className="h-4 w-4" />
+      <div ref={nodeRef} data-testid="scratchpad" className="fixed top-20 right-20 z-50 w-80 bg-white border rounded-lg shadow-lg flex flex-col max-h-[600px]">
+        <div className="scratchpad-handle flex items-center justify-between p-4 border-b cursor-move">
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold">Scratch Pad</h3>
+          </div>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="w-4 h-4" />
           </Button>
         </div>
         

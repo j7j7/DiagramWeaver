@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import Draggable from 'react-draggable';
 import { 
   Layers, 
   Plus, 
@@ -69,8 +70,11 @@ export function LayersPanel({
   const [deleteLayerId, setDeleteLayerId] = useState<string | null>(null);
   const [draggedLayerIndex, setDraggedLayerIndex] = useState<number | null>(null);
   const [showAddLayerForm, setShowAddLayerForm] = useState(false);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isMounted, setIsMounted] = useState(false);
   
   const dragStartIndex = useRef<number | null>(null);
+  const nodeRef = useRef(null);
 
   // Handle adding a new layer
   const handleAddLayer = useCallback(() => {
@@ -151,14 +155,50 @@ export function LayersPanel({
     return selectedItemsLayerIds.includes(layerId);
   }, [selectedItemsLayerIds]);
 
+  useEffect(() => {
+    setIsMounted(true);
+    
+    // Load position from localStorage
+    if (typeof window !== 'undefined') {
+      const savedPosition = localStorage.getItem('dw:layers:position');
+      if (savedPosition) {
+        try {
+          const parsed = JSON.parse(savedPosition);
+          setPosition(parsed);
+        } catch (e) {
+          console.error('Failed to load layers position', e);
+        }
+      }
+    }
+  }, []);
+
+  // Save position to localStorage when it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined' && isMounted) {
+      try {
+        localStorage.setItem('dw:layers:position', JSON.stringify(position));
+      } catch (e) {
+        console.error('Failed to save layers position', e);
+      }
+    }
+  }, [position, isMounted]);
+
   return (
-    <div className={cn("bg-white border rounded-lg shadow-lg w-80", className)}>
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b">
-        <div className="flex items-center gap-2">
-          <Layers className="w-5 h-5" />
-          <h3 className="font-semibold">Layers</h3>
-        </div>
+    <Draggable 
+      handle=".layers-handle" 
+      nodeRef={nodeRef}
+      defaultPosition={position}
+      onStop={(e, data) => {
+        setPosition({ x: data.x, y: data.y });
+      }}
+    >
+      <div ref={nodeRef} className={cn("fixed top-20 left-20 z-50 bg-white border rounded-lg shadow-lg w-80", className)}>
+        {/* Header */}
+        <div className="layers-handle flex items-center justify-between p-4 border-b cursor-move">
+          <div className="flex items-center gap-2">
+            <Layers className="w-5 h-5" />
+            <h3 className="font-semibold">Layers</h3>
+          </div>
         <div className="flex items-center gap-1">
           <Button
             size="sm"
@@ -397,6 +437,7 @@ export function LayersPanel({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </div>
+    </Draggable>
   );
 }
