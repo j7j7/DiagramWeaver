@@ -19,16 +19,13 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { DiagramNode } from "../diagram/diagram-node";
 import { DiagramZone } from "../diagram/diagram-zone";
-import type { DiagramData, DiagramNodeData, DiagramGroupData, DiagramZoneData, DiagramConnectionData } from "@/lib/types";
+import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramConnectionData } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { Button } from "../ui/button";
-import { Maximize2 } from "lucide-react";
 import type { SelectedItem } from "../diagram-editor";
-import { cn } from "@/lib/utils";
 import { ContextMenu } from "../ui/context-menu";
 import { CanvasRulers } from "./canvas-rulers";
-import { RULER_SIZE, type PositionedNode, type PositionedGroup, measureNodeDims } from "./canvas-constants";
-import { calculateLayout, recalculateGroupSize } from "./canvas-layout-utils";
+import { RULER_SIZE, type PositionedNode, type PositionedGroup } from "./canvas-constants";
+import { calculateLayout } from "./canvas-layout-utils";
 import { useCanvasTransform } from "@/hooks/use-canvas-transform";
 import { useCanvasSelection } from "@/hooks/use-canvas-selection";
 import { useCanvasInteractions } from "@/hooks/use-canvas-interactions";
@@ -85,6 +82,9 @@ interface EditorCanvasProps {
   onMoveToFront?: () => void;
   onMoveOneBack?: () => void;
   onMoveOneForward?: () => void;
+  onZoneLayoutChange?: (zoneId: string, layout: 'grid' | 'circular') => void;
+  onZoneCycle?: (zoneId: string) => void;
+  onZoneSort?: (zoneId: string, order: 'alpha-asc' | 'alpha-desc') => void;
 }
 
 
@@ -99,7 +99,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, selectionAnimationEnabled = false, iconBackgroundEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, selectionAnimationEnabled = false, iconBackgroundEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort }: EditorCanvasProps,
   ref
 ) {
   // ============================================================================
@@ -1127,6 +1127,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             canMoveToFront={!!onMoveToFront && (contextMenu.itemType === 'node' || contextMenu.itemType === 'zone')}
             canMoveOneBack={!!onMoveOneBack && (contextMenu.itemType === 'node' || contextMenu.itemType === 'zone')}
             canMoveOneForward={!!onMoveOneForward && (contextMenu.itemType === 'node' || contextMenu.itemType === 'zone')}
+            onLayoutChange={(layout) => onZoneLayoutChange?.(contextMenu.itemId, layout)}
+            onCycleItems={() => onZoneCycle?.(contextMenu.itemId)}
+            onSortItems={(order) => onZoneSort?.(contextMenu.itemId, order)}
           />
         </div>
     </div>

@@ -246,6 +246,8 @@ export interface DiagramZoneData {
   borderWidth?: number; // Border thickness for zones
   groupId?: string; // Reference to grouping this zone belongs to
   layoutMode?: 'grid' | 'free'; // Layout mode for children: 'grid' (default) or 'free' (preserve x/y)
+  layoutType?: 'grid' | 'circular'; // Visual layout arrangement
+  sorting?: 'manual' | 'alpha-asc' | 'alpha-desc'; // Sorting order for children
 }
 
 export interface DiagramGroupingData {

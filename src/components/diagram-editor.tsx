@@ -49,6 +49,7 @@ import {
   getItemCount
 } from '@/lib/rendering-order-utils';
 import { performAutoLayout } from '@/lib/auto-layout';
+import { applyZoneLayout, cycleZoneItems } from '@/lib/zone-layout-utils';
 
 export type SelectedItem = (
   | (DiagramNodeData & { 
@@ -1697,6 +1698,29 @@ export default function DiagramEditor() {
     }
   }, [iconBackgroundEnabled, isClient]);
 
+  const handleZoneLayoutChange = (zoneId: string, layoutType: 'grid' | 'circular') => {
+    setDiagramData(prevData => {
+      return applyZoneLayout(zoneId, {
+        ...prevData,
+        zones: (prevData.zones || []).map(z => z.id === zoneId ? { ...z, layoutType } : z)
+      });
+    });
+  };
+
+  const handleZoneCycle = (zoneId: string) => {
+    setDiagramData(prevData => cycleZoneItems(zoneId, prevData));
+  };
+
+  const handleZoneSort = (zoneId: string, sorting: 'alpha-asc' | 'alpha-desc') => {
+    setDiagramData(prevData => {
+      const updatedData = {
+        ...prevData,
+        zones: (prevData.zones || []).map(z => z.id === zoneId ? { ...z, sorting } : z)
+      };
+      return applyZoneLayout(zoneId, updatedData);
+    });
+  };
+
   const canPasteFromMenu = paletteClipboardItem != null || canPaste;
 
   return (
@@ -1883,6 +1907,9 @@ export default function DiagramEditor() {
                     onMoveToFront={handleMoveToFront}
                     onMoveOneBack={handleMoveOneBack}
                     onMoveOneForward={handleMoveOneForward}
+                    onZoneLayoutChange={handleZoneLayoutChange}
+                    onZoneCycle={handleZoneCycle}
+                    onZoneSort={handleZoneSort}
                     />
                   </div>
                   

@@ -395,8 +395,8 @@ function layoutZone(
   allItems: { [id: string]: DiagramNodeData | DiagramZoneData | PositionedNode | PositionedGroup },
   measureNodeDimsFn: (n: PositionedNode) => { width: number; height: number }
 ): { width: number; height: number } {
-  // If zone has free layout mode, respect existing positions and just calculate size
-  if (zone.layoutMode === 'free') {
+  // If zone has free layout mode or circular layout, respect existing positions and just calculate size
+  if (zone.layoutMode === 'free' || zone.layoutType === 'circular') {
     const childNodes = zone.children
       .map((id: string) => allItems[id])
       .filter(Boolean)
@@ -415,8 +415,10 @@ function layoutZone(
     });
     
     // Calculate bounds based on children positions
-    let maxX = 0;
-    let maxY = 0;
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
     const allChildren = [...childNodes, ...childZones];
     
     if (allChildren.length === 0) {
@@ -435,16 +437,69 @@ function layoutZone(
        
        const x = (child.x || 0);
        const y = (child.y || 0);
+       minX = Math.min(minX, x);
+       minY = Math.min(minY, y);
        maxX = Math.max(maxX, x + dims.width);
        maxY = Math.max(maxY, y + dims.height);
     });
     
     // Add padding
-    const width = Math.max(maxX + ZONE_PADDING, 150);
-    const height = Math.max(maxY + ZONE_PADDING, 100);
+    let width = Math.max(maxX - minX + ZONE_PADDING, 150);
+    let height = Math.max(maxY - minY + ZONE_PADDING, 100);
+
+    // If it's a circular layout, force width and height to be equal (max of both) to ensure a circle
+    if (zone.layoutType === 'circular') {
+        const diameter = Math.max(width, height);
+        width = diameter;
+        height = diameter;
+    }
     
     (zone as PositionedGroup).width = width;
     (zone as PositionedGroup).height = height;
+
+    // Shift children to align them within the bounds
+    // For circular zones: Normalize positions to be relative to zone origin
+    // For free layout zones: align with padding
+    if (zone.layoutType === 'circular') {
+        // For circular zones, normalize child positions to be zone-relative
+        // The center of the circular zone should be at (width/2, height/2) in zone-relative coords
+        // If items appear offset, it's because they have absolute coordinates that need normalization
+        
+        // Calculate where the center should be in zone-relative coordinates
+        const centerX = width / 2;
+        const centerY = height / 2;
+        
+        // If children have absolute positions (e.g., after moving the zone),
+        // we need to normalize them by removing the zone's position
+        // The zone's position is added to child positions by setAbsolutePositionsForZone
+        // So we need to subtract it to get back to zone-relative
+        
+        // Calculate the current bounds center (in absolute coordinates)
+        const currentCenterX = minX + (maxX - minX) / 2;
+        const currentCenterY = minY + (maxY - minY) / 2;
+        
+        // Calculate shift needed to center items within the zone
+        const shiftX = centerX - currentCenterX;
+        const shiftY = centerY - currentCenterY;
+
+        if (shiftX !== 0 || shiftY !== 0) {
+            allChildren.forEach(child => {
+                child.x = (child.x || 0) + shiftX;
+                child.y = (child.y || 0) + shiftY;
+            });
+        }
+    } else if (zone.layoutMode === 'free') {
+        const shiftX = ZONE_PADDING - minX;
+        const shiftY = ZONE_PADDING - minY;
+
+        if (shiftX !== 0 || shiftY !== 0) {
+            allChildren.forEach(child => {
+                child.x = (child.x || 0) + shiftX;
+                child.y = (child.y || 0) + shiftY;
+            });
+        }
+    }
+
     return { width, height };
   }
 

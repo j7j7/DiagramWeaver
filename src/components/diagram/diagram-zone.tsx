@@ -608,7 +608,8 @@ const [{ isDragging }, drag, preview] = useDrag(() => ({
         }
       }}
       className={cn(
-        "absolute rounded-lg cursor-move",
+        "absolute cursor-move",
+        zone.layoutType === 'circular' ? "rounded-full" : "rounded-lg",
         borderStyle !== 'none' && "border-2",
         borderStyle === 'none' && (isSelected 
           ? "border border-dashed border-primary opacity-100" 

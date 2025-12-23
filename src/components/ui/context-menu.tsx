@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup, Plus, ArrowUp, ArrowDown, ChevronUp, ChevronDown } from 'lucide-react';
+import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup, Plus, ArrowUp, ArrowDown, ChevronUp, ChevronDown, Circle, RotateCw, ArrowDownAZ, ArrowUpAZ } from 'lucide-react';
 
 
 interface ContextMenuProps {
@@ -24,6 +24,9 @@ interface ContextMenuProps {
   onTextStyling?: () => void;
   onVisualStyling?: () => void;
   onOrientationChange?: (orientation: 'auto' | 'grid' | 'horizontal' | 'vertical') => void;
+  onLayoutChange?: (layout: 'grid' | 'circular') => void;
+  onCycleItems?: () => void;
+  onSortItems?: (order: 'alpha-asc' | 'alpha-desc') => void;
   currentOrientation?: 'auto' | 'grid' | 'horizontal' | 'vertical';
   currentLayer?: string;
   availableLayers?: Array<{id: string; name: string}>;
@@ -82,7 +85,10 @@ export function ContextMenu({
   canMoveToBack = false,
   canMoveToFront = false,
   canMoveOneBack = false,
-  canMoveOneForward = false
+  canMoveOneForward = false,
+  onLayoutChange,
+  onCycleItems,
+  onSortItems
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [layerSubmenuOpen, setLayerSubmenuOpen] = useState(false);
@@ -307,6 +313,74 @@ export function ContextMenu({
             <Move3D className="w-4 h-4" />
             Vertical
           </button>
+        </>
+      )}
+
+      {itemType === 'zone' && onLayoutChange && (
+        <>
+          <div className="border-t border-border my-1" />
+          <div className="px-3 py-1 text-xs font-medium text-muted-foreground">Layout & Order</div>
+          <button
+            className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+            onClick={() => {
+              onLayoutChange('grid');
+              onClose();
+            }}
+          >
+            <Grid3X3 className="w-4 h-4" />
+            Grid Layout
+          </button>
+          <button
+            className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+            onClick={() => {
+              onLayoutChange('circular');
+              onClose();
+            }}
+          >
+            <Circle className="w-4 h-4" />
+            Circular Layout
+          </button>
+        </>
+      )}
+
+      {itemType === 'zone' && (onCycleItems || onSortItems) && (
+        <>
+           {onCycleItems && (
+              <button
+                className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+                onClick={() => {
+                  onCycleItems();
+                  onClose();
+                }}
+              >
+                <RotateCw className="w-4 h-4" />
+                Cycle Items
+              </button>
+           )}
+           {onSortItems && (
+             <>
+              <button
+                className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+                onClick={() => {
+                  onSortItems('alpha-asc');
+                  onClose();
+                }}
+              >
+                <ArrowDownAZ className="w-4 h-4" />
+                Sort A-Z
+              </button>
+              <button
+                className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+                onClick={() => {
+                  onSortItems('alpha-desc');
+                  onClose();
+                }}
+              >
+                <ArrowUpAZ className="w-4 h-4" />
+                Sort Z-A
+              </button>
+             </>
+           )}
         </>
       )}
 
