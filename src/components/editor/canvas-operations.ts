@@ -15,6 +15,7 @@ import {
 } from "./canvas-constants";
 import { recalculateGroupSize } from "./canvas-layout-utils";
 import { cleanupEmptyZones } from "@/lib/grouping-utils";
+import { applyZoneLayout } from "@/lib/zone-layout-utils";
 
 interface UseCanvasOperationsOptions {
   setDiagramData: React.Dispatch<React.SetStateAction<DiagramData>>;
@@ -217,6 +218,15 @@ itemType === 'generic.object.jigsaw' ||
           }
           return zone;
         });
+        
+        // If target zone has circular layout, re-apply layout to recalculate positions
+        const targetZone = newZones.find(z => z.id === targetGroupId);
+        if (targetZone?.layoutType === 'circular') {
+          const intermediateData = { ...prevData, nodes: newNodes, zones: newZones };
+          const updatedWithLayout = applyZoneLayout(targetGroupId, intermediateData);
+          newNodes = updatedWithLayout.nodes;
+          newZones = updatedWithLayout.zones;
+        }
       } else {
         // Top-level placement: snap to grid and avoid overlap by nudging to nearest free slot
         let posX = snapToGrid(position.x);
@@ -650,12 +660,40 @@ node.type?.endsWith('.star') ||
               }
               return n;
             });
-          } else {
-            currentNodes = currentNodes.map(n => n.id === item.id ? { ...n, x: snappedX, y: snappedY } : n);
+           } else {
+             currentNodes = currentNodes.map(n => n.id === item.id ? { ...n, x: snappedX, y: snappedY } : n);
+           }
+         }
+       }
+       
+      let finalData = { ...prevData, nodes: currentNodes, zones: currentZones };
+      
+      // If item was moved into or out of a circular zone, re-apply layout to affected zones
+      if (oldParentId !== targetGroupId) {
+        // Item moved - check both old and new parent zones
+        const zonesToRelayout: string[] = [];
+        
+        if (oldParentId) {
+          const oldZone = finalData.zones?.find(z => z.id === oldParentId);
+          if (oldZone?.layoutType === 'circular' && oldZone.children.length > 0) {
+            zonesToRelayout.push(oldParentId);
           }
         }
+        
+        if (targetGroupId) {
+          const newZone = finalData.zones?.find(z => z.id === targetGroupId);
+          if (newZone?.layoutType === 'circular') {
+            zonesToRelayout.push(targetGroupId);
+          }
+        }
+        
+        // Apply layout to all affected zones
+        zonesToRelayout.forEach(zoneId => {
+          finalData = applyZoneLayout(zoneId, finalData);
+        });
       }
-      return { ...prevData, nodes: currentNodes, zones: currentZones };
+      
+      return finalData;
     });
   }, [setDiagramData, processedNodes, processedZones]);
 
@@ -682,7 +720,19 @@ node.type?.endsWith('.star') ||
       }
       
       // Clean up empty zones after deletion
-      return cleanupEmptyZones(updatedData);
+      updatedData = cleanupEmptyZones(updatedData);
+      
+      // If a node was deleted, check if it was in a circular zone and re-apply layout
+      if (isNode) {
+        const circularZone = updatedData.zones?.find(zone => 
+          zone.layoutType === 'circular' && zone.children.length > 0
+        );
+        if (circularZone) {
+          updatedData = applyZoneLayout(circularZone.id, updatedData);
+        }
+      }
+      
+      return updatedData;
     });
     
     onItemSelect(null);
@@ -713,7 +763,7 @@ node.type?.endsWith('.star') ||
         !idsToDelete.has(e.from) && !idsToDelete.has(e.to)
       );
       
-      const updatedData = {
+      const dataBeforeCleanup = {
         ...prev,
         nodes: remainingNodes,
         zones: updatedZones,
@@ -721,7 +771,24 @@ node.type?.endsWith('.star') ||
       };
       
       // Clean up empty zones after deletion
-      return cleanupEmptyZones(updatedData);
+      let finalData = cleanupEmptyZones(dataBeforeCleanup);
+      
+      // If items were deleted from circular zones, re-apply layout to those zones
+      // Collect zones that need re-layout
+      const zonesToRelayout = finalData.zones?.filter(zone => {
+        if (zone.layoutType !== 'circular' || zone.children.length === 0) return false;
+        // Check if any of the deleted items were in this zone
+        const prevZone = prev.zones?.find(z => z.id === zone.id);
+        if (!prevZone) return false;
+        return prevZone.children.some(childId => idsToDelete.has(childId));
+      }) || [];
+      
+      // Apply layout to all affected zones
+      zonesToRelayout.forEach(zone => {
+        finalData = applyZoneLayout(zone.id, finalData);
+      });
+      
+      return finalData;
     });
     
     onItemSelect(null);
