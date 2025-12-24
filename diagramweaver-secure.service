@@ -1,0 +1,26 @@
+[Unit]
+Description=DiagramWeaver Production Build Service
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/j7/code/github/DiagramWeaver
+ExecStart=/home/j7/code/github/DiagramWeaver/start-secure-server.sh
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Basic security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/home/j7/code/github/DiagramWeaver/.next
+PrivateTmp=yes
+UMask=022
+
+# User permissions (non-root)
+User=j7
+
+[Install]
+WantedBy=default.target
