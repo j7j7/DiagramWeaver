@@ -114,23 +114,56 @@ function layoutCircularZone(
       }
   });
 
-  // 2. Calculate Circle Radius
-  // Circumference approx = N * (ItemSize + Gap)
-  // 2 * PI * R = N * (maxItemDim + 20)
+  // 2. Determine layout strategy: single circle or multiple rings
   const gap = 20;
   const count = orderedChildIds.length;
   
-  // Base radius on circumference needed
-  let radius = (count * (maxItemDim + gap)) / (2 * Math.PI);
+  // Calculate number of rings needed for efficient space usage
+  // Use multiple concentric circles when there are many items
+  let numRings = 1;
+  let itemsPerRing: number[] = [count];
   
-  // Ensure minimum radius so items don't overlap in center
-  radius = Math.max(radius, maxItemDim); 
+  if (count > 6) {
+    // For 7-12 items: use 2 rings
+    if (count <= 12) {
+      numRings = 2;
+      const outerCount = Math.ceil(count * 0.6); // ~60% on outer ring
+      itemsPerRing = [count - outerCount, outerCount];
+    } else {
+      // For 13+ items: use 3 rings
+      numRings = 3;
+      const outerCount = Math.ceil(count * 0.5); // ~50% on outer ring
+      const middleCount = Math.ceil((count - outerCount) * 0.6); // ~60% of remaining on middle
+      itemsPerRing = [count - outerCount - middleCount, middleCount, outerCount];
+    }
+  }
   
-  // Increase radius to give items more space from center
-  radius = radius * 1.4;
+  // Calculate radius for each ring
+  // Outer ring needs to accommodate its items
+  const outerRingItemCount = itemsPerRing[itemsPerRing.length - 1];
+  const outerRingRadius = (outerRingItemCount * (maxItemDim + gap)) / (2 * Math.PI);
+  const minRadius = maxItemDim * 1.2; // Minimum radius to avoid center overlap
+  const adjustedOuterRadius = Math.max(outerRingRadius, minRadius) * 1.4;
   
-  // If only 1 item, place in center
-  if (count === 1) radius = 0;
+  // Calculate radii for inner rings (proportional spacing)
+  const ringRadii: number[] = [];
+  if (numRings === 1) {
+    if (count === 1) {
+      ringRadii.push(0); // Center item
+    } else {
+      ringRadii.push(adjustedOuterRadius);
+    }
+  } else if (numRings === 2) {
+    ringRadii.push(adjustedOuterRadius * 0.4); // Inner ring at 40% of outer
+    ringRadii.push(adjustedOuterRadius);
+  } else {
+    ringRadii.push(adjustedOuterRadius * 0.25); // Inner ring at 25%
+    ringRadii.push(adjustedOuterRadius * 0.55); // Middle ring at 55%
+    ringRadii.push(adjustedOuterRadius); // Outer ring
+  }
+  
+  // Use outer radius for zone size calculation
+  const radius = adjustedOuterRadius;
 
   // 3. Zone Dimensions (Diameter + Padding)
   // For items to fit inside circle, we need enough diameter to cover:
@@ -149,12 +182,17 @@ function layoutCircularZone(
   const updatedNodes = [...data.nodes];
   const updatedZones = [...data.zones];
 
-  orderedChildIds.forEach((childId, index) => {
-      const angle = (index / count) * 2 * Math.PI - (Math.PI / 2); // Start at top
+  let itemIndex = 0;
+  itemsPerRing.forEach((ringItemCount, ringIndex) => {
+    const ringRadius = ringRadii[ringIndex];
+    
+    for (let i = 0; i < ringItemCount && itemIndex < count; i++) {
+      const childId = orderedChildIds[itemIndex];
+      const angle = (i / ringItemCount) * 2 * Math.PI - (Math.PI / 2); // Start at top
       
       // Calculate center position of the item relative to zone center
-      const relX = count === 1 ? 0 : Math.cos(angle) * radius;
-      const relY = count === 1 ? 0 : Math.sin(angle) * radius;
+      const relX = ringRadius === 0 ? 0 : Math.cos(angle) * ringRadius;
+      const relY = ringRadius === 0 ? 0 : Math.sin(angle) * ringRadius;
 
       // Item top-left relative to zone top-left
       // itemX = centerX + relX - itemWidth/2
@@ -184,6 +222,9 @@ function layoutCircularZone(
               };
           }
       }
+      
+      itemIndex++;
+    }
   });
 
   // 6. Update Zone Dimensions
