@@ -60,6 +60,14 @@ else
   echo "[install] dependencies present (skip). Use --fresh-install to force clean install."
 fi
 
+# Ensure baseline-browser-mapping is up to date
+echo "[baseline] Updating baseline-browser-mapping"
+npm i baseline-browser-mapping@latest -D
+
+# Fix security vulnerabilities
+echo "[audit] Running npm audit fix"
+npm audit fix
+
 # Kill anything already on the dev port (9002) to avoid conflicts
 kill_port() {
   local p

@@ -5,6 +5,25 @@ import * as RechartsPrimitive from "recharts"
 
 import { cn } from "@/lib/utils"
 
+type PayloadEntry = {
+  name?: string | number
+  value?: any
+  dataKey?: string | number
+  payload?: any
+  color?: string
+}
+
+type TooltipContentProps = {
+  active?: boolean
+  label?: string | number
+  payload?: PayloadEntry[]
+  coordinate?: { x?: number; y?: number }
+  labelFormatter?: (label: any, payload?: PayloadEntry[]) => React.ReactNode
+  labelClassName?: string
+  formatter?: (value: any, name: any, item: PayloadEntry, index: number, payload: any) => React.ReactNode
+  color?: string
+}
+
 // Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = { light: "", dark: ".dark" } as const
 
@@ -104,7 +123,7 @@ const ChartTooltip = RechartsPrimitive.Tooltip
 
 const ChartTooltipContent = React.forwardRef<
   HTMLDivElement,
-  React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
+  TooltipContentProps &
     React.ComponentProps<"div"> & {
       hideLabel?: boolean
       hideIndicator?: boolean
@@ -117,11 +136,11 @@ const ChartTooltipContent = React.forwardRef<
     {
       active,
       payload,
+      label,
       className,
       indicator = "dot",
       hideLabel = false,
       hideIndicator = false,
-      label,
       labelFormatter,
       labelClassName,
       formatter,
@@ -183,12 +202,12 @@ const ChartTooltipContent = React.forwardRef<
           className
         )}
       >
-        {!nestLabel ? tooltipLabel : null}
+         {!nestLabel ? tooltipLabel : null}
         <div className="grid gap-1.5">
-          {payload.map((item, index) => {
+          {payload?.map((item: PayloadEntry, index: number) => {
             const key = `${nameKey || item.name || item.dataKey || "value"}`
             const itemConfig = getPayloadConfigFromPayload(config, item, key)
-            const indicatorColor = color || item.payload.fill || item.color
+            const indicatorColor = color || item.payload?.fill || item.color
 
             return (
               <div
@@ -260,10 +279,11 @@ const ChartLegend = RechartsPrimitive.Legend
 
 const ChartLegendContent = React.forwardRef<
   HTMLDivElement,
-  React.ComponentProps<"div"> &
-    Pick<RechartsPrimitive.LegendProps, "payload" | "verticalAlign"> & {
+  React.ComponentProps<"div"> & {
       hideIcon?: boolean
       nameKey?: string
+      verticalAlign?: "top" | "bottom"
+      payload?: PayloadEntry[]
     }
 >(
   (

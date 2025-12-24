@@ -2,7 +2,7 @@
 import React, { useRef, useCallback } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { Panel, PanelGroup } from 'react-resizable-panels';
+import { Panel, Group as PanelGroup } from 'react-resizable-panels';
 import { ComponentSidebar } from './editor/component-sidebar';
 import { EditorCanvas, type EditorCanvasHandle } from './editor/editor-canvas';
 import { JsonEditorPanel } from './editor/json-editor-panel';

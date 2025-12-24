@@ -58,7 +58,7 @@ function sortChildrenIds(
 
 /**
  * Cycles the order of children in the zone.
- * This shifts the items in the layout positions.
+ * This randomly reorders the items in the layout positions.
  */
 export function cycleZoneItems(
   zoneId: string,
@@ -67,15 +67,18 @@ export function cycleZoneItems(
     const zone = data.zones.find(z => z.id === zoneId);
     if (!zone) return data;
 
-    // Shift children array: [A, B, C] -> [C, A, B]
+    // Randomly shuffle children array
     const children = [...zone.children];
     if (children.length < 2) return data;
 
-    const last = children.pop()!;
-    children.unshift(last);
+    // Fisher-Yates shuffle for random ordering
+    for (let i = children.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [children[i], children[j]] = [children[j], children[i]];
+    }
 
-    // Update zone with new children order
-    const updatedZone = { ...zone, children };
+    // Update zone with new children order and set sorting to 'manual' to preserve random order
+    const updatedZone = { ...zone, children, sorting: 'manual' as const };
     
     // Create intermediate data with updated zone order
     const intermediateData = {
