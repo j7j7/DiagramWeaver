@@ -143,7 +143,9 @@ function layoutCircularZone(
   const outerRingItemCount = itemsPerRing[itemsPerRing.length - 1];
   const outerRingRadius = (outerRingItemCount * (maxItemDim + gap)) / (2 * Math.PI);
   const minRadius = maxItemDim * 1.2; // Minimum radius to avoid center overlap
-  const adjustedOuterRadius = Math.max(outerRingRadius, minRadius) * 1.4;
+  // Increase multiplier for 3-ring layouts to provide more space between rings
+  const radiusMultiplier = numRings === 3 ? 2.2 : 1.7;
+  const adjustedOuterRadius = Math.max(outerRingRadius, minRadius) * radiusMultiplier;
   
   // Calculate radii for inner rings (proportional spacing)
   const ringRadii: number[] = [];
@@ -157,8 +159,9 @@ function layoutCircularZone(
     ringRadii.push(adjustedOuterRadius * 0.4); // Inner ring at 40% of outer
     ringRadii.push(adjustedOuterRadius);
   } else {
-    ringRadii.push(adjustedOuterRadius * 0.25); // Inner ring at 25%
-    ringRadii.push(adjustedOuterRadius * 0.55); // Middle ring at 55%
+    // For 3 rings, increase spacing to prevent overlap
+    ringRadii.push(adjustedOuterRadius * 0.2); // Inner ring at 20% (was 25%)
+    ringRadii.push(adjustedOuterRadius * 0.65); // Middle ring at 65% (was 55%)
     ringRadii.push(adjustedOuterRadius); // Outer ring
   }
   
@@ -171,7 +174,8 @@ function layoutCircularZone(
   // + maxItemDim (item extends beyond its center)
   // + ZONE_PADDING (extra buffer, multiplied for triangular layouts)
   const baseDiameter = radius * 2 + maxItemDim + ZONE_PADDING * 6;
-  const diameter = baseDiameter * 0.72;
+  // Increase zone size when using 3 rings to prevent center ring compression
+  const diameter = baseDiameter * (numRings === 3 ? 0.85 : 0.72);
   
   // 4. Calculate Center relative to Zone
   // Zone (x,y) is top-left. Center is (width/2, height/2).
