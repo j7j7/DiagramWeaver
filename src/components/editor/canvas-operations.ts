@@ -15,7 +15,7 @@ import {
 } from "./canvas-constants";
 import { recalculateGroupSize } from "./canvas-layout-utils";
 import { cleanupEmptyZones } from "@/lib/grouping-utils";
-import { applyZoneLayout } from "@/lib/zone-layout-utils";
+import { applyZoneLayout, cycleZoneItems } from "@/lib/zone-layout-utils";
 
 interface UseCanvasOperationsOptions {
   setDiagramData: React.Dispatch<React.SetStateAction<DiagramData>>;
@@ -435,7 +435,18 @@ node.type?.endsWith('.star') ||
         }
       });
 
-      return { ...prevData, nodes: currentNodes, zones: currentZones };
+      let finalData = { ...prevData, nodes: currentNodes, zones: currentZones };
+
+      // If items were moved within the same circular zone, cycle items
+      // This applies when all items have the same oldParentId and targetGroupId
+      if (targetGroupId) {
+        const targetZone = finalData.zones?.find(z => z.id === targetGroupId);
+        if (targetZone?.layoutType === 'circular') {
+          finalData = cycleZoneItems(targetGroupId, finalData);
+        }
+      }
+
+      return finalData;
     });
   }, [setDiagramData]);
 
@@ -669,7 +680,6 @@ node.type?.endsWith('.star') ||
         let finalData = { ...prevData, nodes: currentNodes, zones: currentZones };
       
       // If item was moved into or out of a circular zone, re-apply layout to affected zones
-      // But NOT if item was just moved within the same circular zone (to preserve custom positions)
       if (oldParentId !== targetGroupId) {
         // Item moved - check both old and new parent zones
         const zonesToRelayout: string[] = [];
@@ -692,6 +702,12 @@ node.type?.endsWith('.star') ||
         zonesToRelayout.forEach(zoneId => {
           finalData = applyZoneLayout(zoneId, finalData);
         });
+      } else if (targetGroupId) {
+        // Item moved within the same zone - check if it's a circular zone and cycle items
+        const targetZone = finalData.zones?.find(z => z.id === targetGroupId);
+        if (targetZone?.layoutType === 'circular') {
+          finalData = cycleZoneItems(targetGroupId, finalData);
+        }
       }
       
       // If moved item itself is a circular zone, re-apply its layout
