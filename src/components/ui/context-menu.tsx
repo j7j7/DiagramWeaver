@@ -93,6 +93,7 @@ export function ContextMenu({
   const menuRef = useRef<HTMLDivElement>(null);
   const [layerSubmenuOpen, setLayerSubmenuOpen] = useState(false);
   const [renderOrderSubmenuOpen, setRenderOrderSubmenuOpen] = useState(false);
+  const [layoutOrderSubmenuOpen, setLayoutOrderSubmenuOpen] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -316,72 +317,100 @@ export function ContextMenu({
         </>
       )}
 
-      {itemType === 'zone' && onLayoutChange && (
-        <>
-          <div className="border-t border-border my-1" />
-          <div className="px-3 py-1 text-xs font-medium text-muted-foreground">Layout & Order</div>
+      {/* Layout & Order Submenu */}
+      {itemType === 'zone' && (onLayoutChange || onCycleItems || onSortItems) && (
+        <div className="relative">
           <button
             className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
-            onClick={() => {
-              onLayoutChange('grid');
-              onClose();
-            }}
+            onMouseEnter={() => setLayoutOrderSubmenuOpen(true)}
+            onMouseLeave={() => setLayoutOrderSubmenuOpen(false)}
           >
             <Grid3X3 className="w-4 h-4" />
-            Grid Layout
+            Layout & Order
+            <ChevronRight className="w-4 h-4 ml-auto" />
           </button>
-          <button
-            className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
-            onClick={() => {
-              onLayoutChange('circular');
-              onClose();
-            }}
-          >
-            <Circle className="w-4 h-4" />
-            Circular Layout
-          </button>
-        </>
-      )}
 
-      {itemType === 'zone' && (onCycleItems || onSortItems) && (
-        <>
-           {onCycleItems && (
-              <button
-                className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
-                onClick={() => {
-                  onCycleItems();
-                  onClose();
-                }}
-              >
-                <RotateCw className="w-4 h-4" />
-                Cycle Items
-              </button>
-           )}
-           {onSortItems && (
-             <>
-              <button
-                className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
-                onClick={() => {
-                  onSortItems('alpha-asc');
-                  onClose();
-                }}
-              >
-                <ArrowDownAZ className="w-4 h-4" />
-                Sort A-Z
-              </button>
-              <button
-                className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
-                onClick={() => {
-                  onSortItems('alpha-desc');
-                  onClose();
-                }}
-              >
-                <ArrowUpAZ className="w-4 h-4" />
-                Sort Z-A
-              </button>
-             </>
-           )}
-        </>
+          {layoutOrderSubmenuOpen && (
+            <div
+              className={cn(
+                "absolute left-full top-0 bg-popover border border-border rounded-md shadow-lg py-1 z-50 min-w-[150px]",
+                "animate-in fade-in-0 zoom-in-95"
+              )}
+              style={{ marginLeft: '4px' }}
+              onMouseEnter={() => setLayoutOrderSubmenuOpen(true)}
+              onMouseLeave={() => setLayoutOrderSubmenuOpen(false)}
+            >
+              {onLayoutChange && (
+                <>
+                  <button
+                    className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+                    onClick={() => {
+                      onLayoutChange('grid');
+                      onClose();
+                      setLayoutOrderSubmenuOpen(false);
+                    }}
+                  >
+                    <Grid3X3 className="w-4 h-4" />
+                    Grid Layout
+                  </button>
+                  <button
+                    className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+                    onClick={() => {
+                      onLayoutChange('circular');
+                      onClose();
+                      setLayoutOrderSubmenuOpen(false);
+                    }}
+                  >
+                    <Circle className="w-4 h-4" />
+                    Circular Layout
+                  </button>
+                  {(onCycleItems || onSortItems) && <div className="border-t border-border my-1" />}
+                </>
+              )}
+
+              {onCycleItems && (
+                <button
+                  className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+                  onClick={() => {
+                    onCycleItems();
+                    onClose();
+                    setLayoutOrderSubmenuOpen(false);
+                  }}
+                >
+                  <RotateCw className="w-4 h-4" />
+                  Cycle Items
+                </button>
+              )}
+
+              {onSortItems && (
+                <>
+                  <button
+                    className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+                    onClick={() => {
+                      onSortItems('alpha-asc');
+                      onClose();
+                      setLayoutOrderSubmenuOpen(false);
+                    }}
+                  >
+                    <ArrowDownAZ className="w-4 h-4" />
+                    Sort A-Z
+                  </button>
+                  <button
+                    className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+                    onClick={() => {
+                      onSortItems('alpha-desc');
+                      onClose();
+                      setLayoutOrderSubmenuOpen(false);
+                    }}
+                  >
+                    <ArrowUpAZ className="w-4 h-4" />
+                    Sort Z-A
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       {itemType === 'node' && (
