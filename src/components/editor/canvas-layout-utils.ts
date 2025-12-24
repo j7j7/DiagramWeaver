@@ -446,9 +446,15 @@ function layoutZone(
     // Add padding
     let width = Math.max(maxX - minX + ZONE_PADDING, 150);
     let height = Math.max(maxY - minY + ZONE_PADDING, 100);
-
-    // If it's a circular layout, force width and height to be equal (max of both) to ensure a circle
-    if (zone.layoutType === 'circular') {
+ 
+    // If it's a circular layout, use the size already calculated by applyZoneLayout
+    // Don't recalculate from child positions - it would overwrite the proper size
+    if (zone.layoutType === 'circular' && zone.width && zone.height) {
+        // Use the pre-calculated diameter from applyZoneLayout
+        width = zone.width;
+        height = zone.height;
+    } else if (zone.layoutType === 'circular') {
+        // Fallback: force width and height to be equal (max of both) to ensure a circle
         const diameter = Math.max(width, height);
         width = diameter;
         height = diameter;
@@ -458,37 +464,9 @@ function layoutZone(
     (zone as PositionedGroup).height = height;
 
     // Shift children to align them within the bounds
-    // For circular zones: Normalize positions to be relative to zone origin
+    // For circular zones: DO NOT modify child positions - they are already set by applyZoneLayout
     // For free layout zones: align with padding
-    if (zone.layoutType === 'circular') {
-        // For circular zones, normalize child positions to be zone-relative
-        // The center of the circular zone should be at (width/2, height/2) in zone-relative coords
-        // If items appear offset, it's because they have absolute coordinates that need normalization
-        
-        // Calculate where the center should be in zone-relative coordinates
-        const centerX = width / 2;
-        const centerY = height / 2;
-        
-        // If children have absolute positions (e.g., after moving the zone),
-        // we need to normalize them by removing the zone's position
-        // The zone's position is added to child positions by setAbsolutePositionsForZone
-        // So we need to subtract it to get back to zone-relative
-        
-        // Calculate the current bounds center (in absolute coordinates)
-        const currentCenterX = minX + (maxX - minX) / 2;
-        const currentCenterY = minY + (maxY - minY) / 2;
-        
-        // Calculate shift needed to center items within the zone
-        const shiftX = centerX - currentCenterX;
-        const shiftY = centerY - currentCenterY;
-
-        if (shiftX !== 0 || shiftY !== 0) {
-            allChildren.forEach(child => {
-                child.x = (child.x || 0) + shiftX;
-                child.y = (child.y || 0) + shiftY;
-            });
-        }
-    } else if (zone.layoutMode === 'free') {
+    if (zone.layoutMode === 'free') {
         const shiftX = ZONE_PADDING - minX;
         const shiftY = ZONE_PADDING - minY;
 
@@ -499,6 +477,8 @@ function layoutZone(
             });
         }
     }
+    // For circular zones, we do NOT modify child positions here
+    // They are already correctly positioned relative to zone by applyZoneLayout
 
     return { width, height };
   }

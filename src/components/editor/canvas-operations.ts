@@ -669,6 +669,7 @@ node.type?.endsWith('.star') ||
       let finalData = { ...prevData, nodes: currentNodes, zones: currentZones };
       
       // If item was moved into or out of a circular zone, re-apply layout to affected zones
+      // But NOT if item was just moved within the same circular zone (to preserve custom positions)
       if (oldParentId !== targetGroupId) {
         // Item moved - check both old and new parent zones
         const zonesToRelayout: string[] = [];
@@ -692,6 +693,9 @@ node.type?.endsWith('.star') ||
           finalData = applyZoneLayout(zoneId, finalData);
         });
       }
+      // If oldParentId === targetGroupId, item was moved within the same zone
+      // Don't re-apply circular layout to preserve the manual drag positioning
+      // The calculateLayout function will handle zone sizing automatically
       
       return finalData;
     });

@@ -130,10 +130,11 @@ function layoutCircularZone(
   if (count === 1) radius = 0;
 
   // 3. Zone Dimensions (Diameter + Padding)
-  // Use a tighter calculation for diameter
-  // Diameter needs to cover 2 * (radius + maxItemDim/2)
-  // Add minimal padding around the items
-  const diameter = (radius + maxItemDim / 2) * 2 + ZONE_PADDING;
+  // For items to fit inside circle, we need enough diameter to cover:
+  // 2 * radius (diameter of circle where items are centered)
+  // + maxItemDim (item extends beyond its center)
+  // + ZONE_PADDING (extra buffer, multiplied for triangular layouts)
+  const diameter = radius * 2 + maxItemDim + ZONE_PADDING * 4;
   
   // 4. Calculate Center relative to Zone
   // Zone (x,y) is top-left. Center is (width/2, height/2).
