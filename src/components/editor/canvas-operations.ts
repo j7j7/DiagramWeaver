@@ -665,8 +665,8 @@ node.type?.endsWith('.star') ||
            }
          }
        }
-       
-      let finalData = { ...prevData, nodes: currentNodes, zones: currentZones };
+        
+        let finalData = { ...prevData, nodes: currentNodes, zones: currentZones };
       
       // If item was moved into or out of a circular zone, re-apply layout to affected zones
       // But NOT if item was just moved within the same circular zone (to preserve custom positions)
@@ -693,9 +693,13 @@ node.type?.endsWith('.star') ||
           finalData = applyZoneLayout(zoneId, finalData);
         });
       }
-      // If oldParentId === targetGroupId, item was moved within the same zone
-      // Don't re-apply circular layout to preserve the manual drag positioning
-      // The calculateLayout function will handle zone sizing automatically
+      
+      // If moved item itself is a circular zone, re-apply its layout
+      // This keeps items oriented correctly within the zone after moving the zone
+      const isMovingCircularZone = item.type === ItemTypes.ZONE && finalData.zones?.find(z => z.id === item.id)?.layoutType === 'circular';
+      if (isMovingCircularZone) {
+        finalData = applyZoneLayout(item.id, finalData);
+      }
       
       return finalData;
     });

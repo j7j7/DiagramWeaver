@@ -126,6 +126,9 @@ function layoutCircularZone(
   // Ensure minimum radius so items don't overlap in center
   radius = Math.max(radius, maxItemDim); 
   
+  // Increase radius to give items more space from center
+  radius = radius * 1.4;
+  
   // If only 1 item, place in center
   if (count === 1) radius = 0;
 
@@ -134,7 +137,7 @@ function layoutCircularZone(
   // 2 * radius (diameter of circle where items are centered)
   // + maxItemDim (item extends beyond its center)
   // + ZONE_PADDING (extra buffer, multiplied for triangular layouts)
-  const diameter = radius * 2 + maxItemDim + ZONE_PADDING * 4;
+  const diameter = (radius * 2 + maxItemDim + ZONE_PADDING * 6) * 0.8;
   
   // 4. Calculate Center relative to Zone
   // Zone (x,y) is top-left. Center is (width/2, height/2).
