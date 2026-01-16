@@ -182,6 +182,7 @@ export default function DiagramEditor() {
   const [hoverEnabled, setHoverEnabled] = React.useState<boolean>(false);
   const [selectionAnimationEnabled, setSelectionAnimationEnabled] = React.useState<boolean>(false);
   const [iconBackgroundEnabled, setIconBackgroundEnabled] = React.useState<boolean>(true);
+  const [isReadOnly, setIsReadOnly] = React.useState<boolean>(false);
   const [triggerTextStylingPanel, setTriggerTextStylingPanel] = React.useState<boolean>(false);
   const [triggerVisualStylingPanel, setTriggerVisualStylingPanel] = React.useState<boolean>(false);
   const [triggerConnectionSettingsPanel, setTriggerConnectionSettingsPanel] = React.useState<boolean>(false);
@@ -1819,6 +1820,8 @@ export default function DiagramEditor() {
                     onToggleSelectionAnimation={() => setSelectionAnimationEnabled(!selectionAnimationEnabled)}
                     iconBackgroundEnabled={iconBackgroundEnabled}
                     onToggleIconBackground={() => setIconBackgroundEnabled(!iconBackgroundEnabled)}
+                    isReadOnly={isReadOnly}
+                    onToggleReadOnly={() => setIsReadOnly(!isReadOnly)}
                     onAlignObjects={handleAlignObjects}
                     onAutoLayout={handleAutoLayout}
                     onThemeApplyToSelected={handleThemeApplyToSelected}
@@ -1910,6 +1913,7 @@ export default function DiagramEditor() {
                     onZoneLayoutChange={handleZoneLayoutChange}
                     onZoneCycle={handleZoneCycle}
                     onZoneSort={handleZoneSort}
+                    isReadOnly={isReadOnly}
                     />
                   </div>
                   

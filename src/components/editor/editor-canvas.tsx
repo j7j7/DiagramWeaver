@@ -85,6 +85,7 @@ interface EditorCanvasProps {
   onZoneLayoutChange?: (zoneId: string, layout: 'grid' | 'circular') => void;
   onZoneCycle?: (zoneId: string) => void;
   onZoneSort?: (zoneId: string, order: 'alpha-asc' | 'alpha-desc') => void;
+  isReadOnly?: boolean;
 }
 
 
@@ -99,7 +100,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, selectionAnimationEnabled = false, iconBackgroundEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, selectionAnimationEnabled = false, iconBackgroundEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false }: EditorCanvasProps,
   ref
 ) {
   // ============================================================================
@@ -241,6 +242,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     zonesById,
     selectedItemIds,
     diagramData,
+    isReadOnly,
     addNode: operations.addNode,
     moveItem: operations.moveItem,
     moveMultipleItems: operations.moveMultipleItems,
@@ -313,7 +315,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   // - handleContextMenu: Opens context menu at specific position
   // - closeContextMenu: Closes the context menu
   // See: src/hooks/use-canvas-context-menu.ts
-  const { contextMenu, handleContextMenu, closeContextMenu } = useCanvasContextMenu();
+  const { contextMenu, handleContextMenu, closeContextMenu } = useCanvasContextMenu({ isReadOnly });
   const [lastRightClickItemId, setLastRightClickItemId] = React.useState<string | null>(null);
 
 
@@ -368,6 +370,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     canvasRef,
     transform,
     isConnectMode,
+    isReadOnly,
     diagramData,
     onItemSelect,
     onBatchSelect,

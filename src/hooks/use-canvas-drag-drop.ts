@@ -23,6 +23,7 @@ interface UseCanvasDragDropOptions {
   zonesById: Record<string, PositionedGroup>;
   selectedItemIds: Set<string>;
   diagramData: DiagramData;
+  isReadOnly?: boolean;
   addNode: (item: any, position: { x: number; y: number }, targetGroupId: string | null) => void;
   moveItem: (item: { id: string; type: string; x?: number, y?: number }, newPos: { x: number; y: number }, targetGroupId: string | null) => void;
   moveMultipleItems: (items: Array<{ id: string; type: string; x?: number, y?: number }>, newPositions: Array<{ x: number; y: number }>, targetGroupId: string | null) => void;
@@ -37,6 +38,7 @@ export function useCanvasDragDrop({
   zonesById,
   selectedItemIds,
   diagramData,
+  isReadOnly = false,
   addNode,
   moveItem,
   moveMultipleItems,
@@ -49,9 +51,12 @@ export function useCanvasDragDrop({
   const multiDragStartPositions = useRef<{ [itemId: string]: { x: number; y: number } } | null>(null);
   const isDroppingOnScratchpadRef = useRef(false);
 
+  const noOpDrop = () => {};
+
   const [, drop] = useDrop(() => ({
     accept: [ItemTypes.DIAGRAM_NODE, ItemTypes.CANVAS_NODE, ItemTypes.ZONE],
     hover: (item: DropItem, monitor) => {
+      if (isReadOnly) return;
       if (!canvasRef.current) return;
       const clientOffset = monitor.getClientOffset();
       if (!clientOffset) return;
@@ -192,6 +197,7 @@ export function useCanvasDragDrop({
       setHoveredGroupId(targetGroupId);
     },
     drop: (item: DropItem, monitor) => {
+      if (isReadOnly) return;
       if (!canvasRef.current) return;
       const canvasRect = canvasRef.current.getBoundingClientRect();
       
@@ -347,7 +353,7 @@ export function useCanvasDragDrop({
     dragPosition,
     multiDragPositions,
     hoveredGroupId,
-    drop,
+    drop: isReadOnly ? noOpDrop : drop,
   };
 }
 

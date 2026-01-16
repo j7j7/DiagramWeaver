@@ -20,9 +20,10 @@ import { themeManager } from '@/lib/theme-manager';
 interface ThemeMenuSelectorProps {
   onThemeSelect?: (theme: DiagramTheme) => void;
   onOpenEditor?: () => void;
+  isReadOnly?: boolean;
 }
 
-export function ThemeMenuSelector({ onThemeSelect, onOpenEditor }: ThemeMenuSelectorProps) {
+export function ThemeMenuSelector({ onThemeSelect, onOpenEditor, isReadOnly = false }: ThemeMenuSelectorProps) {
   const [themes, setThemes] = useState<DiagramTheme[]>([]);
 
   useEffect(() => {
@@ -36,6 +37,7 @@ export function ThemeMenuSelector({ onThemeSelect, onOpenEditor }: ThemeMenuSele
   }, []);
 
   const handleThemeSelect = (theme: DiagramTheme, e?: React.MouseEvent) => {
+    if (isReadOnly) return;
     e?.stopPropagation();
     if (onThemeSelect) {
       onThemeSelect(theme);
@@ -43,6 +45,7 @@ export function ThemeMenuSelector({ onThemeSelect, onOpenEditor }: ThemeMenuSele
   };
 
   const handleToggleFavorite = (themeId: string, e: React.MouseEvent) => {
+    if (isReadOnly) return;
     e.stopPropagation();
     themeManager.toggleFavorite(themeId);
   };
@@ -89,10 +92,11 @@ export function ThemeMenuSelector({ onThemeSelect, onOpenEditor }: ThemeMenuSele
               <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
               Favorites
             </div>
-            {favoriteThemes.map((theme) => (
+              {favoriteThemes.map((theme) => (
               <DropdownMenuItem
                 key={theme.id}
                 onClick={(e) => handleThemeSelect(theme, e)}
+                disabled={isReadOnly}
                 className="p-2 cursor-pointer"
               >
                 <div className="flex items-center gap-2 w-full">
@@ -128,6 +132,7 @@ export function ThemeMenuSelector({ onThemeSelect, onOpenEditor }: ThemeMenuSele
               <DropdownMenuItem
                 key={theme.id}
                 onClick={(e) => handleThemeSelect(theme, e)}
+                disabled={isReadOnly}
                 className="p-2 cursor-pointer"
               >
                 <div className="flex items-center gap-2 w-full">

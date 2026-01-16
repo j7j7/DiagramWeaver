@@ -32,9 +32,10 @@ interface ThemeEditorProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onThemeSelect?: (theme: DiagramTheme) => void;
+  isReadOnly?: boolean;
 }
 
-export function ThemeEditor({ open, onOpenChange, onThemeSelect }: ThemeEditorProps) {
+export function ThemeEditor({ open, onOpenChange, onThemeSelect, isReadOnly = false }: ThemeEditorProps) {
   const [themes, setThemes] = useState<DiagramTheme[]>([]);
   const [selectedTheme, setSelectedTheme] = useState<DiagramTheme | null>(null);
   const [editingTheme, setEditingTheme] = useState<DiagramTheme | null>(null);
@@ -386,7 +387,7 @@ export function ThemeEditor({ open, onOpenChange, onThemeSelect }: ThemeEditorPr
                     Save
                   </Button>
                   {selectedTheme && (
-                    <Button size="sm" onClick={handleApplyTheme}>
+                    <Button size="sm" onClick={handleApplyTheme} disabled={isReadOnly}>
                       <Check className="h-4 w-4 mr-1" />
                       Apply
                     </Button>

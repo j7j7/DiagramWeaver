@@ -7,6 +7,7 @@ interface UseCanvasSelectionOptions {
   canvasRef: React.RefObject<HTMLDivElement | null>;
   transform: Transform;
   isConnectMode: boolean;
+  isReadOnly?: boolean;
   diagramData: DiagramData;
   onItemSelect: (item: any | null, shiftKey?: boolean) => void;
   onBatchSelect?: (itemIds: string[]) => void;
@@ -24,6 +25,7 @@ export function useCanvasSelection({
   canvasRef,
   transform,
   isConnectMode,
+  isReadOnly = false,
   diagramData,
   onItemSelect,
   onBatchSelect,
@@ -50,7 +52,7 @@ export function useCanvasSelection({
   }, [justCompletedSelection, onItemSelect, closeContextMenu, onCloseConnectionSettingsPanel]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (isConnectMode) return;
+    if (isConnectMode || isReadOnly) return;
     const target = e.target as HTMLElement;
     
     // Handle selection mode with left mouse button (button === 0)
@@ -92,7 +94,7 @@ export function useCanvasSelection({
       setSelectionStart({ x: diagramX, y: diagramY });
       setSelectionEnd({ x: diagramX, y: diagramY });
     }
-  }, [isConnectMode, canvasRef, transform]);
+  }, [isConnectMode, isReadOnly, canvasRef, transform]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     // Handle selection when left mouse button is held and we have a selection start

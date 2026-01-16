@@ -8,7 +8,11 @@ interface ContextMenuState {
   itemId: string;
 }
 
-export function useCanvasContextMenu() {
+interface UseCanvasContextMenuOptions {
+  isReadOnly?: boolean;
+}
+
+export function useCanvasContextMenu({ isReadOnly = false }: UseCanvasContextMenuOptions = {}) {
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({
     visible: false,
     x: 0,
@@ -18,6 +22,7 @@ export function useCanvasContextMenu() {
   });
 
   const handleContextMenu = (event: React.MouseEvent, itemId: string, itemType: 'node' | 'zone') => {
+    if (isReadOnly) return;
     event.preventDefault();
     setContextMenu({
       visible: true,

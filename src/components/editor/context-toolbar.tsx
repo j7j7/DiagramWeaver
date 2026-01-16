@@ -68,6 +68,7 @@ interface ContextToolbarProps {
   onTextStylingPanelOpenChange?: (open: boolean) => void;
   onVisualStylingPanelOpenChange?: (open: boolean) => void;
   onConnectionSettingsPanelOpenChange?: (open: boolean) => void;
+  isReadOnly?: boolean;
 }
 
 export function ContextToolbar({
@@ -89,6 +90,7 @@ export function ContextToolbar({
   onTextStylingPanelOpenChange,
   onVisualStylingPanelOpenChange,
   onConnectionSettingsPanelOpenChange,
+  isReadOnly = false,
 }: ContextToolbarProps) {
   const [labelOpen, setLabelOpen] = useState(false);
   const [descriptionOpen, setDescriptionOpen] = useState(false);
@@ -908,7 +910,20 @@ export function ContextToolbar({
 
   return (
     <TooltipProvider>
-      <div className="flex items-center gap-1 px-2 border-l border-border min-h-[2.5rem] shrink-0">
+      {isReadOnly && selectedItem ? (
+        <div className="flex items-center gap-2 px-3 border-l border-border min-h-[2.5rem] shrink-0 bg-muted/30">
+          <div className="flex flex-col">
+            <span className="text-sm font-medium">{selectedItem.label || 'Unnamed Item'}</span>
+            <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+              {selectedItem.info || 'No description'}
+            </span>
+          </div>
+          <span className="text-xs text-muted-foreground px-2 border-l border-border">
+            {selectedItem.itemType === 'node' ? 'Node' : selectedItem.itemType === 'zone' ? 'Zone' : 'Connection'}
+          </span>
+        </div>
+      ) : (
+        <div className="flex items-center gap-1 px-2 border-l border-border min-h-[2.5rem] shrink-0">
         {/* Label Editor */}
         <Popover open={labelOpen} onOpenChange={setLabelOpen}>
           <Tooltip>
@@ -1919,6 +1934,7 @@ export function ContextToolbar({
           <TooltipContent>Delete</TooltipContent>
         </Tooltip>
       </div>
+      )}
     </TooltipProvider>
   );
 }

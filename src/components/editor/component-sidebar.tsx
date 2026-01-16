@@ -33,12 +33,13 @@ interface ComponentSidebarProps {
   transform?: { x: number; y: number; k: number };
   onTransformChange?: (transform: { x: number; y: number; k: number }) => void;
   onDiagramGenerated?: (data: any) => void;
+  isReadOnly?: boolean;
 }
 
 
 
 
-export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onResourceSelect, onResourceActivate, onToggleJsonPanel, jsonPanelOpen, onFitToView, onConnectionUpdate, onConnectionDisconnect, onCloseSidebar, isMobile, transform, onTransformChange, onDiagramGenerated }: ComponentSidebarProps) {
+export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onResourceSelect, onResourceActivate, onToggleJsonPanel, jsonPanelOpen, onFitToView, onConnectionUpdate, onConnectionDisconnect, onCloseSidebar, isMobile, transform, onTransformChange, onDiagramGenerated, isReadOnly = false }: ComponentSidebarProps) {
   const { register, reset, getValues } = useForm();
   
 

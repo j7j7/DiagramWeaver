@@ -9,7 +9,7 @@ import {
   MenubarShortcut,
   MenubarTrigger,
 } from '@/components/ui/menubar';
-import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers } from 'lucide-react';
+import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
 import { ThemeEditor } from './theme-editor';
 import { ThemeMenuSelector } from './theme-menu-selector';
@@ -73,6 +73,8 @@ interface TopMenuBarProps {
   onAutoLayout?: () => void;
   onToggleScratchPad?: () => void;
   scratchPadOpen?: boolean;
+  isReadOnly?: boolean;
+  onToggleReadOnly?: () => void;
 }
 
 export function TopMenuBar({
@@ -127,6 +129,8 @@ export function TopMenuBar({
   onAutoLayout,
   onToggleScratchPad,
   scratchPadOpen,
+  isReadOnly = false,
+  onToggleReadOnly,
 }: TopMenuBarProps) {
   
   const [themeEditorOpen, setThemeEditorOpen] = React.useState(false);
@@ -237,14 +241,14 @@ export function TopMenuBar({
           <MenubarTrigger>Edit</MenubarTrigger>
           <MenubarContent>
             {onCopy && (
-              <MenubarItem onClick={onCopy}>
+              <MenubarItem onClick={onCopy} disabled={isReadOnly}>
                 <Copy className="mr-2 h-4 w-4" />
                 Copy
                 <MenubarShortcut>Ctrl+C</MenubarShortcut>
               </MenubarItem>
             )}
             {onPaste && (
-              <MenubarItem onClick={onPaste} disabled={!canPaste}>
+              <MenubarItem onClick={onPaste} disabled={!canPaste || isReadOnly}>
                 <Clipboard className="mr-2 h-4 w-4" />
                 Paste
                 <MenubarShortcut>Ctrl+V</MenubarShortcut>
@@ -253,7 +257,7 @@ export function TopMenuBar({
             {onSelectAll && (
               <>
                 <MenubarSeparator />
-                <MenubarItem onClick={onSelectAll}>
+                <MenubarItem onClick={onSelectAll} disabled={isReadOnly}>
                   <CheckSquare className="mr-2 h-4 w-4" />
                   Select All
                   <MenubarShortcut>Ctrl+A</MenubarShortcut>
@@ -264,14 +268,14 @@ export function TopMenuBar({
               <MenubarSeparator />
             )}
             {onUndo && (
-              <MenubarItem onClick={onUndo} disabled={!canUndo}>
+              <MenubarItem onClick={onUndo} disabled={!canUndo || isReadOnly}>
                 <Undo className="mr-2 h-4 w-4" />
                 Undo
                 <MenubarShortcut>Ctrl+Z</MenubarShortcut>
               </MenubarItem>
             )}
             {onRedo && (
-              <MenubarItem onClick={onRedo} disabled={!canRedo}>
+              <MenubarItem onClick={onRedo} disabled={!canRedo || isReadOnly}>
                 <Redo className="mr-2 h-4 w-4" />
                 Redo
                 <MenubarShortcut>Ctrl+Shift+Z</MenubarShortcut>
@@ -353,6 +357,24 @@ export function TopMenuBar({
                     <>
                       <Move className="mr-2 h-4 w-4" />
                       Enable Icon Background
+                    </>
+                  )}
+                </MenubarItem>
+              </>
+            )}
+            {onToggleReadOnly !== undefined && (
+              <>
+                {(onUndo || onRedo || onFitToView || onToggleHover || onToggleSelectionAnimation || onToggleIconBackground) && <MenubarSeparator />}
+                <MenubarItem onClick={onToggleReadOnly}>
+                  {isReadOnly ? (
+                    <>
+                      <Unlock className="mr-2 h-4 w-4" />
+                      Disable Read-Only Mode
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="mr-2 h-4 w-4" />
+                      Enable Read-Only Mode
                     </>
                   )}
                 </MenubarItem>
@@ -489,6 +511,7 @@ export function TopMenuBar({
       <ThemeMenuSelector 
         onThemeSelect={onThemeApplyToSelected}
         onOpenEditor={() => setThemeEditorOpen(true)}
+        isReadOnly={isReadOnly}
       />
       
       {selectedItem && ((selectedItem.itemType !== 'edge' && onItemUpdate && onConnect && onDisconnect && onDelete) || (selectedItem.itemType === 'edge' && onConnectionUpdate && onDelete)) && (
@@ -543,6 +566,7 @@ export function TopMenuBar({
         open={themeEditorOpen}
         onOpenChange={setThemeEditorOpen}
         onThemeSelect={onThemeApplyToSelected}
+        isReadOnly={isReadOnly}
       />
     </div>
   );
