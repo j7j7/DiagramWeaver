@@ -23,6 +23,7 @@ type Props = {
   isOpen: boolean;
   onToggleOpen: () => void;
   widthPx: number;
+  isReadOnly?: boolean;
 };
 
 export function JsonEditorPanel({
@@ -31,6 +32,7 @@ export function JsonEditorPanel({
   isOpen,
   onToggleOpen,
   widthPx,
+  isReadOnly = false,
 }: Props) {
   const [text, setText] = React.useState(() => stableStringify(value));
   const [error, setError] = React.useState<string | null>(null);
@@ -319,6 +321,8 @@ export function JsonEditorPanel({
   };
 
   const handleChange = (newText: string) => {
+    // Skip handling if read-only mode is enabled
+    if (isReadOnly) return;
     // Skip handling if we're applying an external update
     if (isApplyingExternalUpdate.current) return;
     
@@ -431,14 +435,16 @@ export function JsonEditorPanel({
       <div className="flex items-center justify-between p-2 border-b bg-muted/50 flex-shrink-0">
         <div className="text-sm font-medium">JSON Editor</div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleSubmit}
-            disabled={!!error}
-            className="px-3 py-1 text-sm font-medium text-white bg-primary rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            title="Apply JSON changes to canvas"
-          >
-            Submit
-          </button>
+          {!isReadOnly && (
+            <button
+              onClick={handleSubmit}
+              disabled={!!error}
+              className="px-3 py-1 text-sm font-medium text-white bg-primary rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              title="Apply JSON changes to canvas"
+            >
+              Submit
+            </button>
+          )}
           <button
             onClick={onToggleOpen}
             className="p-1 rounded hover:bg-muted transition-colors"
@@ -496,7 +502,7 @@ export function JsonEditorPanel({
                 bracketMatching: true,
                 searchKeymap: true,
               }}
-              editable={true}
+              editable={!isReadOnly}
               onCreateEditor={(view) => {
                 editorRef.current = view;
 

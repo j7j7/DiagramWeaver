@@ -19,6 +19,7 @@ interface CanvasArrowTogglesProps {
   nodesById: Record<string, PositionedNode>;
   zonesById: Record<string, PositionedGroup>;
   setDiagramData: React.Dispatch<React.SetStateAction<DiagramData>>;
+  isReadOnly?: boolean;
 }
 
 export function CanvasArrowToggles({
@@ -27,6 +28,7 @@ export function CanvasArrowToggles({
   nodesById,
   zonesById,
   setDiagramData,
+  isReadOnly = false,
 }: CanvasArrowTogglesProps) {
   if (!selectedItemId) return null;
 
@@ -314,7 +316,7 @@ export function CanvasArrowToggles({
         return (
           <div
             key={`arrow-toggle-${conn.from}-${conn.to}-${originalIndex}`}
-            className="absolute cursor-pointer"
+            className={`absolute ${isReadOnly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
             style={{ 
               zIndex: 15,
               left: `${midX - 20}px`,
@@ -323,6 +325,11 @@ export function CanvasArrowToggles({
               height: '40px'
             }}
             onMouseDown={(e) => {
+              if (isReadOnly) {
+                e.stopPropagation();
+                e.preventDefault();
+                return;
+              }
               e.stopPropagation();
               e.preventDefault();
               handleArrowToggle(conn, originalIndex, !conn.toArrow && !conn.arrow);

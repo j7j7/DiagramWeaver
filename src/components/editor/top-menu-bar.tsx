@@ -514,7 +514,7 @@ export function TopMenuBar({
         isReadOnly={isReadOnly}
       />
       
-      {selectedItem && ((selectedItem.itemType !== 'edge' && onItemUpdate && onConnect && onDisconnect && onDelete) || (selectedItem.itemType === 'edge' && onConnectionUpdate && onDelete)) && (
+      {selectedItem && !isReadOnly && ((selectedItem.itemType !== 'edge' && onItemUpdate && onConnect && onDisconnect && onDelete) || (selectedItem.itemType === 'edge' && onConnectionUpdate && onDelete)) && (
         <>
           <div className="h-6 w-px bg-border mx-2" />
           <ContextToolbar
@@ -536,6 +536,7 @@ export function TopMenuBar({
             onTextStylingPanelOpenChange={setTextStylingPanelOpen}
             onVisualStylingPanelOpenChange={setVisualStylingPanelOpen}
             onConnectionSettingsPanelOpenChange={setConnectionSettingsPanelOpen}
+            isReadOnly={isReadOnly}
           />
         </>
       )}

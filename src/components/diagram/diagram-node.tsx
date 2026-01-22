@@ -129,9 +129,10 @@ interface DiagramNodeProps {
   hoverEnabled?: boolean;
   selectionAnimationEnabled?: boolean;
   animationOffset?: { x: number; y: number };
+  isReadOnly?: boolean;
 }
 
-export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onResize, onPositionUpdate, onDraggingChange, hoverEnabled = true, selectionAnimationEnabled = false, animationOffset = { x: 0, y: 0 } }: DiagramNodeProps) {
+export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onResize, onPositionUpdate, onDraggingChange, hoverEnabled = true, selectionAnimationEnabled = false, animationOffset = { x: 0, y: 0 }, isReadOnly = false }: DiagramNodeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [editText, setEditText] = useState(node.label || '');
@@ -328,6 +329,11 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
   
   // Resize handlers
   const handleResizeStart = (e: React.MouseEvent, handle: 'right' | 'bottom' | 'bottom-right') => {
+    if (isReadOnly) {
+      e.stopPropagation();
+      e.preventDefault();
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
     
@@ -2183,7 +2189,7 @@ return (
       </Popover>
       
       {/* Resize handles - show for text resources (textbox always, others only in custom mode), or for shapes (except points) */}
-       {(isHovered || isResizing || isSelected) && 
+       {!isReadOnly && (isHovered || isResizing || isSelected) && 
         (isTextboxNode || ((isTextNode ) && node.sizeMode === 'custom') || (isShapeNode && !isPointNode)) && (
         <>
           {/* Right handle */}

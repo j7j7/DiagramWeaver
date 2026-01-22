@@ -815,6 +815,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     onContextMenu={(e: React.MouseEvent) => handleZoneContextMenu(e, zone)}
                     onResize={operations.resizeGroup}
                     onLabelChange={operations.updateGroupLabel}
+                    isReadOnly={isReadOnly}
                   />
                 );
               });
@@ -871,6 +872,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     hoverEnabled={hoverEnabled}
                     selectionAnimationEnabled={selectionAnimationEnabled}
                     animationOffset={selectionAnimationEnabled ? (animationOffsets[node.id] || { x: 0, y: 0 }) : { x: 0, y: 0 }}
+                    isReadOnly={isReadOnly}
                   />
                 );
               });
@@ -907,6 +909,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               nodesById={displayNodesById}
               zonesById={displayZonesById}
               setDiagramData={setDiagramData}
+              isReadOnly={isReadOnly}
             />
 
             {/* ================================================================

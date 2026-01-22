@@ -24,12 +24,13 @@ interface DiagramZoneProps {
   onContextMenu?: (e: React.MouseEvent, zone: DiagramZoneData) => void;
   onResize?: (zoneId: string, newWidth: number, newHeight: number) => void;
   onLabelChange?: (zoneId: string, newLabel: string) => void;
+  isReadOnly?: boolean;
 }
 
 
 
 
-export function DiagramZone({ zone, isSelected, isDropTarget, isTargetable, isMultiSelected, isGroupMember, onClick, onContextMenu, onResize, onLabelChange }: DiagramZoneProps) {
+export function DiagramZone({ zone, isSelected, isDropTarget, isTargetable, isMultiSelected, isGroupMember, onClick, onContextMenu, onResize, onLabelChange, isReadOnly = false }: DiagramZoneProps) {
 const [{ isDragging }, drag, preview] = useDrag(() => ({
     type: ItemTypes.ZONE,
     item: { ...zone, type: ItemTypes.ZONE },
@@ -131,6 +132,11 @@ const [{ isDragging }, drag, preview] = useDrag(() => ({
 
   // Resize handlers
   const handleResizeStart = (e: React.MouseEvent, handle: 'right' | 'bottom' | 'bottom-right') => {
+    if (isReadOnly) {
+      e.stopPropagation();
+      e.preventDefault();
+      return;
+    }
     e.stopPropagation();
     e.preventDefault();
     
@@ -664,7 +670,7 @@ const [{ isDragging }, drag, preview] = useDrag(() => ({
       onMouseLeave={handleGroupMouseLeave}
     >
       {/* Resize handles - only show when hovered or resizing */}
-      {(isHovered || isResizing || isSelected) && zone.sizeMode !== 'auto' && (
+      {!isReadOnly && (isHovered || isResizing || isSelected) && zone.sizeMode !== 'auto' && (
         <>
           {/* Right handle */}
           <div

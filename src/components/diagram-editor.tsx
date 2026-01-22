@@ -1946,6 +1946,7 @@ export default function DiagramEditor() {
                         isOpen={jsonPanelOpen}
                         onToggleOpen={toggleJsonPanel}
                         widthPx={400}
+                        isReadOnly={isReadOnly}
                       />
                     </div>
                   )}
