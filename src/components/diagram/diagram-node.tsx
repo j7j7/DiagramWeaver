@@ -290,19 +290,19 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
     const getTagPositionClasses = (position?: string) => {
       switch (position) {
         case 'top-left':
-          return '-top-6 left-0';
+          return '-top-10 left-0';
         case 'top-center':
-          return '-top-6 left-1/2 transform -translate-x-1/2';
+          return '-top-10 left-1/2 transform -translate-x-1/2';
         case 'top-right':
-          return '-top-6 right-0';
+          return '-top-10 right-0';
         case 'bottom-left':
-          return '-bottom-6 left-0';
+          return '-bottom-10 left-0';
         case 'bottom-center':
-          return '-bottom-6 left-1/2 transform -translate-x-1/2';
+          return '-bottom-10 left-1/2 transform -translate-x-1/2';
         case 'bottom-right':
-          return '-bottom-6 right-0';
+          return '-bottom-10 right-0';
         default:
-          return '-top-6 left-1/2 transform -translate-x-1/2'; // Default to top-center
+          return '-top-10 left-1/2 transform -translate-x-1/2'; // Default to top-center
       }
     };
 
