@@ -2,20 +2,20 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import Draggable from 'react-draggable';
 import { createPortal } from 'react-dom';
-import { 
-  Type, 
-  Info, 
-  Trash2, 
-  Link, 
-  Unlink, 
-  Layout, 
-  AlignLeft, 
+import {
+  Type,
+  Info,
+  Trash2,
+  Link,
+  Unlink,
+  Layout,
+  AlignLeft,
   AlignCenter,
   AlignRight,
   AlignVerticalJustifyStart,
   AlignVerticalJustifyCenter,
   AlignVerticalJustifyEnd,
-  Move3D, 
+  Move3D,
   Image as ImageIcon,
   RotateCw,
   GripVertical,
@@ -29,7 +29,8 @@ import {
   X,
   ArrowUp,
   ArrowDown,
-  ChevronUp
+  ChevronUp,
+  Tag
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -93,6 +94,7 @@ export function ContextToolbar({
   isReadOnly = false,
 }: ContextToolbarProps) {
   const [labelOpen, setLabelOpen] = useState(false);
+  const [tagOpen, setTagOpen] = useState(false);
   const [descriptionOpen, setDescriptionOpen] = useState(false);
   const [connectionsOpen, setConnectionsOpen] = useState(false);
   const [textStylingOpen, setTextStylingOpen] = useState(false);
@@ -271,6 +273,10 @@ export function ContextToolbar({
 
   const handleLabelChange = (value: string) => {
     onItemUpdate?.({ ...selectedItem, label: value } as SelectedItem);
+  };
+
+  const handleTagChange = (value: string) => {
+    onItemUpdate?.({ ...selectedItem, tag: value } as SelectedItem);
   };
 
   const handleInfoChange = (value: string) => {
@@ -858,20 +864,22 @@ export function ContextToolbar({
   const isTextNode = isNode && selectedItem.type?.startsWith('generic.text');
   const isTextboxNode = isNode && selectedItem.type === 'generic.text.textbox';
   const isPlainTextNode = isNode && selectedItem.type === 'generic.text.text';
-  const isShapeNode = isNode && (selectedItem.type === 'generic.object.square' || 
-                                 selectedItem.type === 'generic.object.circle' || 
-                                 selectedItem.type === 'generic.object.point' || 
-                                 selectedItem.type === 'generic.object.rectangle' || 
-                                 selectedItem.type === 'generic.object.triangle' ||
-                                 selectedItem.type === 'generic.object.star' ||
-                                 selectedItem.type === 'generic.object.cloud' ||
-                                 selectedItem.type?.endsWith('.square') ||
-                                 selectedItem.type?.endsWith('.circle') ||
-                                 selectedItem.type?.endsWith('.point') ||
-                                 selectedItem.type?.endsWith('.rectangle') ||
-                                 selectedItem.type?.endsWith('.triangle') ||
-                                 selectedItem.type?.endsWith('.star') ||
-                                 selectedItem.type?.endsWith('.cloud'));
+   const isShapeNode = isNode && (selectedItem.type === 'generic.object.square' ||
+                                  selectedItem.type === 'generic.object.circle' ||
+                                  selectedItem.type === 'generic.object.point' ||
+                                  selectedItem.type === 'generic.object.rectangle' ||
+                                  selectedItem.type === 'generic.object.rounded-rectangle' ||
+                                  selectedItem.type === 'generic.object.triangle' ||
+                                  selectedItem.type === 'generic.object.star' ||
+                                  selectedItem.type === 'generic.object.cloud' ||
+                                  selectedItem.type?.endsWith('.square') ||
+                                  selectedItem.type?.endsWith('.circle') ||
+                                  selectedItem.type?.endsWith('.point') ||
+                                  selectedItem.type?.endsWith('.rectangle') ||
+                                  selectedItem.type?.endsWith('.rounded-rectangle') ||
+                                  selectedItem.type?.endsWith('.triangle') ||
+                                  selectedItem.type?.endsWith('.star') ||
+                                  selectedItem.type?.endsWith('.cloud'));
   
 
   const isLabelOrTextbox = isTextboxNode;
@@ -948,6 +956,33 @@ export function ContextToolbar({
             </div>
           </PopoverContent>
         </Popover>
+
+        {/* Tag Editor - Only show for rounded rectangles */}
+        {selectedItem?.type?.includes('rounded-rectangle') && (
+          <Popover open={tagOpen} onOpenChange={setTagOpen}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 px-2">
+                    <Tag className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent>Tag</TooltipContent>
+            </Tooltip>
+            <PopoverContent className="w-64">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Tag</label>
+                <Input
+                  value={(selectedItem as any).tag || ''}
+                  onChange={(e) => handleTagChange(e.target.value)}
+                  placeholder="Enter tag"
+                  onBlur={() => setTagOpen(false)}
+                />
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
 
         {/* Description Editor */}
         <Popover open={descriptionOpen} onOpenChange={setDescriptionOpen}>

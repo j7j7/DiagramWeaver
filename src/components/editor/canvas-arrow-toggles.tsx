@@ -94,18 +94,18 @@ export function CanvasArrowToggles({
         if (!fromItem || !toItem) return null;
 
         // Calculate dimensions and icon heights similar to BezierConnection
-        const isFromShape = (fromItem.type === 'generic.object.square' || fromItem.type === 'generic.object.circle' || 
-                            fromItem.type === 'generic.object.point' || fromItem.type === 'generic.object.rectangle' || fromItem.type === 'generic.object.triangle' ||
-                            fromItem.type === 'generic.object.star' || fromItem.type === 'generic.object.cloud' ||
-                            fromItem.type?.endsWith('.square') || fromItem.type?.endsWith('.circle') ||
-                            fromItem.type?.endsWith('.point') || fromItem.type?.endsWith('.rectangle') || fromItem.type?.endsWith('.triangle') ||
-                            fromItem.type?.endsWith('.star') || fromItem.type?.endsWith('.cloud'));
-        const isToShape = (toItem.type === 'generic.object.square' || toItem.type === 'generic.object.circle' || 
-                          toItem.type === 'generic.object.point' || toItem.type === 'generic.object.rectangle' || toItem.type === 'generic.object.triangle' ||
-                          toItem.type === 'generic.object.star' || toItem.type === 'generic.object.cloud' ||
-                          toItem.type?.endsWith('.square') || toItem.type?.endsWith('.circle') ||
-                          toItem.type?.endsWith('.point') || toItem.type?.endsWith('.rectangle') || toItem.type?.endsWith('.triangle') ||
-                          toItem.type?.endsWith('.star') || toItem.type?.endsWith('.cloud'));
+        const isFromShape = (fromItem.type === 'generic.object.square' || fromItem.type === 'generic.object.circle' ||
+                             fromItem.type === 'generic.object.point' || fromItem.type === 'generic.object.rectangle' || fromItem.type === 'generic.object.rounded-rectangle' || fromItem.type === 'generic.object.triangle' ||
+                             fromItem.type === 'generic.object.star' || fromItem.type === 'generic.object.cloud' ||
+                             fromItem.type?.endsWith('.square') || fromItem.type?.endsWith('.circle') ||
+                             fromItem.type?.endsWith('.point') || fromItem.type?.endsWith('.rectangle') || fromItem.type?.endsWith('.rounded-rectangle') || fromItem.type?.endsWith('.triangle') ||
+                             fromItem.type?.endsWith('.star') || fromItem.type?.endsWith('.cloud'));
+        const isToShape = (toItem.type === 'generic.object.square' || toItem.type === 'generic.object.circle' ||
+                           toItem.type === 'generic.object.point' || toItem.type === 'generic.object.rectangle' || toItem.type === 'generic.object.rounded-rectangle' || toItem.type === 'generic.object.triangle' ||
+                           toItem.type === 'generic.object.star' || toItem.type === 'generic.object.cloud' ||
+                           toItem.type?.endsWith('.square') || toItem.type?.endsWith('.circle') ||
+                           toItem.type?.endsWith('.point') || toItem.type?.endsWith('.rectangle') || toItem.type?.endsWith('.rounded-rectangle') || toItem.type?.endsWith('.triangle') ||
+                           toItem.type?.endsWith('.star') || toItem.type?.endsWith('.cloud'));
         
         const isFromTextType = fromItem.type === 'generic.text.text' || fromItem.type === 'generic.text.textbox';
         const isToTextType = toItem.type === 'generic.text.text' || toItem.type === 'generic.text.textbox';

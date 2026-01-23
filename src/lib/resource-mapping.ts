@@ -144,11 +144,12 @@ function determineObjectType(item: any, _resourceMapping: ResourceMapping | null
   }
   
   // Check if it's a shape resource
-  if (item.type?.startsWith('generic.object') || 
-      item.type?.includes('square') || 
-      item.type?.includes('circle') || 
+  if (item.type?.startsWith('generic.object') ||
+      item.type?.includes('square') ||
+      item.type?.includes('circle') ||
       item.type?.includes('triangle') ||
       item.type?.includes('rectangle') ||
+      item.type?.includes('rounded-rectangle') ||
       item.type?.includes('star') ||
       item.type?.includes('cloud') ||
       item.type?.includes('parallelogram') ||

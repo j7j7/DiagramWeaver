@@ -89,37 +89,39 @@ export function useCanvasOperations({
       }
       
       // Check if this is a shape resource (needed for freeflow and group exclusion)
-      const isShapeResource = itemType === 'generic.object.square' || 
-                               itemType === 'generic.object.circle' || 
-                               itemType === 'generic.object.point' || 
-                               itemType === 'generic.object.rectangle' || 
-                               itemType === 'generic.object.triangle' ||
-                               itemType === 'generic.object.star' ||
-                               itemType === 'generic.object.cloud' ||
-                               itemType === 'generic.object.parallelogram' ||
-                               itemType === 'generic.object.trapezoid' ||
-                               itemType === 'generic.object.kite' ||
-                               itemType === 'generic.object.hexagon' ||
-                               itemType === 'generic.object.pentagon' ||
-                               itemType === 'generic.object.octagon' ||
-itemType === 'generic.object.jigsaw' ||
+      const isShapeResource = itemType === 'generic.object.square' ||
+                                itemType === 'generic.object.circle' ||
+                                itemType === 'generic.object.point' ||
+                                itemType === 'generic.object.rectangle' ||
+                                itemType === 'generic.object.rounded-rectangle' ||
+                                itemType === 'generic.object.triangle' ||
+                                itemType === 'generic.object.star' ||
+                                itemType === 'generic.object.cloud' ||
+                                itemType === 'generic.object.parallelogram' ||
+                                itemType === 'generic.object.trapezoid' ||
+                                itemType === 'generic.object.kite' ||
+                                itemType === 'generic.object.hexagon' ||
+                                itemType === 'generic.object.pentagon' ||
+                                itemType === 'generic.object.octagon' ||
+                                itemType === 'generic.object.jigsaw' ||
                                 itemType === 'generic.object.arrowhead' ||
                                 itemType === 'generic.object.chevron' ||
                                 itemType?.endsWith('.square') ||
-                               itemType?.endsWith('.circle') ||
-                               itemType?.endsWith('.point') ||
-                               itemType?.endsWith('.rectangle') ||
-                               itemType?.endsWith('.triangle') ||
-                               itemType?.endsWith('.star') ||
-                               itemType?.endsWith('.cloud') ||
-                               itemType?.endsWith('.parallelogram') ||
-                               itemType?.endsWith('.trapezoid') ||
-                               itemType?.endsWith('.kite') ||
-                               itemType?.endsWith('.hexagon') ||
-                               itemType?.endsWith('.pentagon') ||
-                               itemType?.endsWith('.octagon') ||
-                               itemType?.endsWith('.jigsaw') ||
-                               itemType?.endsWith('.arrowhead');
+                                itemType?.endsWith('.circle') ||
+                                itemType?.endsWith('.point') ||
+                                itemType?.endsWith('.rectangle') ||
+                                itemType?.endsWith('.rounded-rectangle') ||
+                                itemType?.endsWith('.triangle') ||
+                                itemType?.endsWith('.star') ||
+                                itemType?.endsWith('.cloud') ||
+                                itemType?.endsWith('.parallelogram') ||
+                                itemType?.endsWith('.trapezoid') ||
+                                itemType?.endsWith('.kite') ||
+                                itemType?.endsWith('.hexagon') ||
+                                itemType?.endsWith('.pentagon') ||
+                                itemType?.endsWith('.octagon') ||
+                                itemType?.endsWith('.jigsaw') ||
+                                itemType?.endsWith('.arrowhead');
       
       // Check if this is a textbox resource
       const isTextboxResource = itemType === 'generic.text.textbox' || itemType?.endsWith('.textbox');
@@ -161,18 +163,20 @@ itemType === 'generic.object.jigsaw' ||
           }),
           freeflow: isShapeResource ? true : undefined, // Shapes are always freeflow
           sizeMode: (isShapeResource || isTextboxResource) ? 'custom' : undefined, // Shapes and textboxes use custom sizing
-          width: isShapeResource ? (
-            itemType === 'generic.object.point' ? 20 : 
-            itemType === 'generic.object.rectangle' ? 80 : 
-            itemType === 'generic.object.cloud' ? 80 : 
-            60
-          ) : isTextboxResource ? 120 : undefined, // Initial width - larger for textbox
-          height: isShapeResource ? (
-            itemType === 'generic.object.point' ? 20 : 
-            itemType === 'generic.object.rectangle' ? 50 : 
-            itemType === 'generic.object.cloud' ? 50 : 
-            60
-          ) : isTextboxResource ? 80 : undefined, // Initial height - larger for textbox
+           width: isShapeResource ? (
+             itemType === 'generic.object.point' ? 20 :
+             itemType === 'generic.object.rectangle' ? 80 :
+             itemType === 'generic.object.rounded-rectangle' ? 80 :
+             itemType === 'generic.object.cloud' ? 80 :
+             60
+           ) : isTextboxResource ? 120 : undefined, // Initial width - larger for textbox
+           height: isShapeResource ? (
+             itemType === 'generic.object.point' ? 20 :
+             itemType === 'generic.object.rectangle' ? 50 :
+             itemType === 'generic.object.rounded-rectangle' ? 50 :
+             itemType === 'generic.object.cloud' ? 50 :
+             60
+           ) : isTextboxResource ? 80 : undefined, // Initial height - larger for textbox
           // Apply default text color for text resources
           ...((itemType === 'generic.text.text' || itemType === 'generic.text.textbox') && {
             textColor: DEFAULT_TEXT_STYLING.textColor
@@ -295,20 +299,22 @@ itemType === 'generic.object.jigsaw' ||
           let minWidth = 80;
           let minHeight = 40;
           
-          const isShapeNode = node.type === 'generic.object.square' || 
-                             node.type === 'generic.object.circle' || 
-                             node.type === 'generic.object.point' || 
-                             node.type === 'generic.object.rectangle' || 
-                             node.type === 'generic.object.triangle' ||
-                             node.type === 'generic.object.star' ||
-node.type === 'generic.object.cloud' ||
+           const isShapeNode = node.type === 'generic.object.square' ||
+                              node.type === 'generic.object.circle' ||
+                              node.type === 'generic.object.point' ||
+                              node.type === 'generic.object.rectangle' ||
+                              node.type === 'generic.object.rounded-rectangle' ||
+                              node.type === 'generic.object.triangle' ||
+                              node.type === 'generic.object.star' ||
+                              node.type === 'generic.object.cloud' ||
                               node.type === 'generic.object.chevron' ||
                               node.type?.endsWith('.square') ||
-                             node.type?.endsWith('.circle') ||
-                             node.type?.endsWith('.point') ||
-                             node.type?.endsWith('.rectangle') ||
-                             node.type?.endsWith('.triangle') ||
-node.type?.endsWith('.star') ||
+                              node.type?.endsWith('.circle') ||
+                              node.type?.endsWith('.point') ||
+                              node.type?.endsWith('.rectangle') ||
+                              node.type?.endsWith('.rounded-rectangle') ||
+                              node.type?.endsWith('.triangle') ||
+                              node.type?.endsWith('.star') ||
                               node.type?.endsWith('.cloud') ||
                               node.type?.endsWith('.chevron');
           

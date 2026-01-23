@@ -24,23 +24,25 @@ export const snapToGrid = (v: number): number => {
 export const measureNodeDims = (n: PositionedNode) => {
   const isTextNode = n.type === 'generic.text.text';
   const isTextboxNode = n.type === 'generic.text.textbox';
-  const isShapeNode =
-    n.type === 'generic.object.square' ||
-    n.type === 'generic.object.circle' ||
-    n.type === 'generic.object.point' ||
-    n.type === 'generic.object.rectangle' ||
-    n.type === 'generic.object.triangle' ||
-    n.type === 'generic.object.star' ||
-    n.type === 'generic.object.cloud' ||
-    n.type === 'generic.object.chevron' ||
-    n.type?.endsWith('.square') ||
-    n.type?.endsWith('.circle') ||
-    n.type?.endsWith('.point') ||
-    n.type?.endsWith('.rectangle') ||
-    n.type?.endsWith('.triangle') ||
-    n.type?.endsWith('.star') ||
-    n.type?.endsWith('.cloud') ||
-    n.type?.endsWith('.chevron');
+   const isShapeNode =
+     n.type === 'generic.object.square' ||
+     n.type === 'generic.object.circle' ||
+     n.type === 'generic.object.point' ||
+     n.type === 'generic.object.rectangle' ||
+     n.type === 'generic.object.rounded-rectangle' ||
+     n.type === 'generic.object.triangle' ||
+     n.type === 'generic.object.star' ||
+     n.type === 'generic.object.cloud' ||
+     n.type === 'generic.object.chevron' ||
+     n.type?.endsWith('.square') ||
+     n.type?.endsWith('.circle') ||
+     n.type?.endsWith('.point') ||
+     n.type?.endsWith('.rectangle') ||
+     n.type?.endsWith('.rounded-rectangle') ||
+     n.type?.endsWith('.triangle') ||
+     n.type?.endsWith('.star') ||
+     n.type?.endsWith('.cloud') ||
+     n.type?.endsWith('.chevron');
   const label = (n.label || '').toString();
 
   // Use custom dimensions if sizeMode is 'custom' and dimensions are provided

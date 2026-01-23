@@ -68,6 +68,7 @@ export class OllamaService {
 **Shape Nodes:**
 - generic.object.square - Square shape
 - generic.object.rectangle - Rectangle shape
+- generic.object.rounded-rectangle - Rounded rectangle shape
 - generic.object.circle - Circle shape
 - generic.object.point - Point shape (small grey point, no outline, no label, freeflow mode)
 - generic.object.triangle - Triangle shape

@@ -1134,10 +1134,11 @@ export default function DiagramEditor() {
         const node = item as any;
         
         // Check if it's a shape node
-        const isShapeNode = node.type === 'generic.object.square' || 
-                           node.type === 'generic.object.circle' || 
-                           node.type === 'generic.object.point' || 
-                           node.type === 'generic.object.rectangle' || 
+        const isShapeNode = node.type === 'generic.object.square' ||
+                           node.type === 'generic.object.circle' ||
+                           node.type === 'generic.object.point' ||
+                           node.type === 'generic.object.rectangle' ||
+                           node.type === 'generic.object.rounded-rectangle' ||
                            node.type === 'generic.object.triangle' ||
                            node.type === 'generic.object.star' ||
                            node.type === 'generic.object.cloud';

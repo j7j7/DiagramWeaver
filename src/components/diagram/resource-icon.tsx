@@ -109,8 +109,8 @@ export function ResourceIcon({ type, imagePath, provider, category, file, ...pro
 
 
   // Handle shape types
-  if (type.startsWith('generic.object.') || type?.endsWith('.square') || type?.endsWith('.circle') || 
-      type?.endsWith('.point') || type?.endsWith('.rectangle') || type?.endsWith('.triangle') ||
+  if (type.startsWith('generic.object.') || type?.endsWith('.square') || type?.endsWith('.circle') ||
+      type?.endsWith('.point') || type?.endsWith('.rectangle') || type?.endsWith('.rounded-rectangle') || type?.endsWith('.triangle') ||
       type?.endsWith('.star') || type?.endsWith('.cloud') || type?.endsWith('.parallelogram') ||
       type?.endsWith('.trapezoid') || type?.endsWith('.kite') || type?.endsWith('.hexagon') ||
       type?.endsWith('.pentagon') || type?.endsWith('.octagon') || type?.endsWith('.jigsaw') ||
@@ -149,6 +149,12 @@ export function ResourceIcon({ type, imagePath, provider, category, file, ...pro
         return (
           <svg {...props} viewBox="0 0 24 24" fill={props.fill || "currentColor"} stroke={props.stroke || "none"} strokeWidth={props.strokeWidth || 2}>
             <rect x="4" y="6" width="16" height="12" />
+          </svg>
+        );
+      case 'rounded-rectangle':
+        return (
+          <svg {...props} viewBox="0 0 24 24" fill={props.fill || "currentColor"} stroke={props.stroke || "none"} strokeWidth={props.strokeWidth || 2}>
+            <rect x="4" y="6" width="16" height="12" rx="2" ry="2" />
           </svg>
         );
       default: // square, parallelogram, trapezoid, kite, hexagon, pentagon, octagon, jigsaw, arrowhead, chevron
