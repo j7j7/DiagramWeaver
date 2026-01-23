@@ -2,6 +2,8 @@ export interface DiagramNodeData {
   id: string;
   type: string; // Format: provider.category.resourcename (e.g., aws.compute.ec2)
   label?: string;
+  tag?: string;
+  tagPosition?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right';
   info?: string;
   x?: number;
   y?: number;

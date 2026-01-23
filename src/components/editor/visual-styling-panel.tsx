@@ -18,9 +18,13 @@ interface VisualStylingPanelProps {
   onReset?: () => void;
   onClose?: () => void;
   selectedItemIds?: Set<string>; // Multi-selected items
+  tag?: string;
+  tagPosition?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right';
+  onTagChange?: (tag: string) => void;
+  onTagPositionChange?: (position: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right') => void;
 }
 
-export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds }: VisualStylingPanelProps) {
+export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange }: VisualStylingPanelProps) {
   const [position, setPosition] = useState({ x: 200, y: 100 });
   const [isMounted, setIsMounted] = useState(false);
   const nodeRef = useRef(null);
@@ -426,17 +430,45 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
 
           <Separator />
 
-          {/* Shadow Toggle */}
-          <div className="flex items-center justify-between">
-            <Label htmlFor="shadow" className="text-xs font-medium">Shadow</Label>
-            <Switch
-              id="shadow"
-              checked={styling.shadow || false}
-              onCheckedChange={(checked) => handlePropertyChange('shadow', checked)}
-            />
-          </div>
-        </div>
-      </div>
-    </Draggable>
-  );
+           {/* Shadow Toggle */}
+           <div className="flex items-center justify-between">
+             <Label htmlFor="shadow" className="text-xs font-medium">Shadow</Label>
+             <Switch
+               id="shadow"
+               checked={styling.shadow || false}
+               onCheckedChange={(checked) => handlePropertyChange('shadow', checked)}
+             />
+           </div>
+
+           {/* Tag Section - Only show if item has a tag */}
+           {tag && tag.trim() && (
+             <>
+               <Separator />
+
+               {/* Tag Position */}
+               <div className="space-y-2">
+                 <Label htmlFor="tag-position" className="text-xs font-medium">Tag Position</Label>
+                 <Select
+                   value={tagPosition || 'top-center'}
+                   onValueChange={(value) => onTagPositionChange?.(value as any)}
+                 >
+                   <SelectTrigger id="tag-position" className="h-8 text-xs">
+                     <SelectValue placeholder="Select tag position" />
+                   </SelectTrigger>
+                   <SelectContent className="z-[70]">
+                     <SelectItem value="top-left" className="text-xs">Top Left</SelectItem>
+                     <SelectItem value="top-center" className="text-xs">Top Center</SelectItem>
+                     <SelectItem value="top-right" className="text-xs">Top Right</SelectItem>
+                     <SelectItem value="bottom-left" className="text-xs">Bottom Left</SelectItem>
+                     <SelectItem value="bottom-center" className="text-xs">Bottom Center</SelectItem>
+                     <SelectItem value="bottom-right" className="text-xs">Bottom Right</SelectItem>
+                   </SelectContent>
+                 </Select>
+               </div>
+             </>
+           )}
+         </div>
+       </div>
+     </Draggable>
+   );
 });

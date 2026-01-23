@@ -284,9 +284,29 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
        default:
          return 'justify-center';
      }
-   };
-  
-  const isTextNode = node.type === 'generic.text.text';
+    };
+
+    // Helper function to get tag positioning classes
+    const getTagPositionClasses = (position?: string) => {
+      switch (position) {
+        case 'top-left':
+          return '-top-6 -left-2';
+        case 'top-center':
+          return '-top-6 left-1/2 transform -translate-x-1/2';
+        case 'top-right':
+          return '-top-6 -right-2';
+        case 'bottom-left':
+          return '-bottom-6 -left-2';
+        case 'bottom-center':
+          return '-bottom-6 left-1/2 transform -translate-x-1/2';
+        case 'bottom-right':
+          return '-bottom-6 -right-2';
+        default:
+          return '-top-6 left-1/2 transform -translate-x-1/2'; // Default to top-center
+      }
+    };
+
+   const isTextNode = node.type === 'generic.text.text';
   const isTextboxNode = node.type === 'generic.text.textbox';
    const isShapeNode = node.type === 'generic.object.square' || node.type === 'generic.object.circle' || node.type === 'generic.object.point' || node.type === 'generic.object.rectangle' || node.type === 'generic.object.rounded-rectangle' || node.type === 'generic.object.triangle' || node.type === 'generic.object.star' || node.type === 'generic.object.cloud' || node.type === 'generic.object.parallelogram' || node.type === 'generic.object.trapezoid' || node.type === 'generic.object.kite' || node.type === 'generic.object.hexagon' || node.type === 'generic.object.pentagon' || node.type === 'generic.object.octagon' || node.type === 'generic.object.jigsaw' || node.type === 'generic.object.arrowhead' || node.type === 'generic.object.chevron' ||
                        node.type?.endsWith('.square') || node.type?.endsWith('.circle') || node.type?.endsWith('.point') || node.type?.endsWith('.rectangle') || node.type?.endsWith('.rounded-rectangle') || node.type?.endsWith('.triangle') || node.type?.endsWith('.star') || node.type?.endsWith('.cloud') || node.type?.endsWith('.parallelogram') || node.type?.endsWith('.trapezoid') || node.type?.endsWith('.kite') || node.type?.endsWith('.hexagon') || node.type?.endsWith('.pentagon') || node.type?.endsWith('.octagon') || node.type?.endsWith('.jigsaw') || node.type?.endsWith('.arrowhead') || node.type?.endsWith('.chevron');
@@ -678,1526 +698,145 @@ return (
                         onDoubleClick={handleLabelDoubleClick}
                       >
                         {node.label || 'Enter text...'}
-                      </p>
-                    </div>
-                 )}
+                       </p>
+                         </div>
+                     )}
                </div>
                );
                 })()
              ) : isShapeNode ? (
               // Shape node - render pure shape with text in different positions (resizable)
-              (() => {
-                const borderWidth = (node as any).borderWidth || 2;
-                const hasShadow = (node as any).shadow || false;
-                const borderStyle = (node as any).borderStyle || 'solid';
-                const borderColors = (node as any).borderColors || [(node as any).borderColor || '#6b7280', (node as any).borderColor || '#6b7280'];
-                const borderColor = (node as any).borderColor || '#6b7280';
-                const backgroundStyle = (node as any).backgroundStyle || 'solid';
-                const backgroundColors = (node as any).backgroundColors || [(node as any).backgroundColor || '#6b7280', (node as any).backgroundColor || '#6b7280'];
-                const backgroundColor = (node as any).backgroundColor || '#6b7280';
-                const gradientAngle = (node as any).gradientAngle || 135;
-                
-                // Generate background style
-                const getBackgroundStyle = () => {
-                  if (backgroundStyle === 'none') return 'transparent';
-                  if (backgroundStyle === 'gradient') return getGradientWithAngle(backgroundColors, gradientAngle);
-                  return backgroundColor;
-                };
-                
-                 // Get the effective background color for text color calculation
-                 const effectiveBgColor = backgroundStyle === 'gradient' ? backgroundColors[0] : backgroundColor;
-                 
-                 // Helper function to get text color for shapes
-                 const getShapeTextColor = () => getTextColorForBackground(effectiveBgColor, (node as any).textColor);
-                 
-                 // Generate border style
-                const getBorderStyle = () => {
-                  if (borderStyle === 'none') return 'none';
-                  if (borderStyle === 'dotted') return 'dotted';
-                  if (borderStyle === 'gradient') {
-                    return {
-                      borderImage: `linear-gradient(${gradientAngle}deg, ${borderColors[0]}, ${borderColors[1]}) 1`,
-                      borderColor: 'transparent'
-                    };
-                  }
-                  return borderColor;
-                };
-                
-                return (
-              <div className="flex flex-col items-center justify-center h-full w-full relative">
-                <div className="flex items-center justify-center" style={{ width: '100%', height: '100%' }}>
-                  {(node.type === 'generic.object.square' || node.type?.endsWith('.square')) && (
-                    <div 
-                      key={`gradient-${gradientAngle}`}
-                      className="relative"
-                      style={{ 
-                        background: getBackgroundStyle(),
-                        borderWidth: borderStyle === 'none' ? '0' : `${borderWidth}px`,
-                        borderStyle: borderStyle === 'gradient' ? 'solid' : borderStyle,
-                        width: node.width || 60,
-                        height: node.height || 60,
-                        minWidth: node.width || 60,
-                        minHeight: node.height || 60,
-                        margin: hasShadow ? 4 : 0,
-                        ...(borderStyle === 'gradient' ? getBorderStyle() : { borderColor: getBorderStyle() }),
-                        ...(hasShadow && { 
-                          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
-                        })
-                      }}
-                    >
-                      {/* Text inside square */}
-                      {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
-                        <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)}`}>
-                          {isEditingLabel ? (
-                            <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
-                              <input
-                                ref={inputRef}
-                                id={`node-input-${node.id}`}
-                                type="text"
-                                value={editText}
-                                onChange={(e) => setEditText(e.target.value)}
-                                onBlur={handleLabelSubmit}
-                                onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                                className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none`}
-                                style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                            </div>
-                          ) : (
-                            <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
-                              <p 
-                                className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
-                                style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
-                                onDoubleClick={handleLabelDoubleClick}
-                              >
-                                {node.label}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {(node.type === 'generic.object.circle' || node.type?.endsWith('.circle')) && (
-                    <div 
-                      key={`gradient-${gradientAngle}`}
-                      className="relative" 
-                      style={{ 
-                        width: node.width || 60, 
-                        height: node.height || 60, 
-                        minWidth: node.width || 60, 
-                        minHeight: node.height || 60,
-                        margin: hasShadow ? 4 : 0,
-                        ...(hasShadow && { 
-                          filter: 'drop-shadow(0 20px 25px rgba(0, 0, 0, 0.2)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.04))'
-                        })
-                      }}>
-                      {/* Circle using SVG for proper gradient border support */}
-                      <svg 
-                        width={node.width || 60} 
-                        height={node.height || 60}
-                        style={{ display: 'block' }}
-                      >
-                        <defs>
-                          {backgroundStyle === 'gradient' && (() => {
-                            const coords = getGradientCoordinates(gradientAngle);
-                            return (
-                              <linearGradient id={`circle-bg-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
-                                <stop offset="0%" stopColor={backgroundColors[0]} />
-                                <stop offset="100%" stopColor={backgroundColors[1]} />
-                              </linearGradient>
-                            );
-                          })()}
-                          {borderStyle === 'gradient' && (() => {
-                            const coords = getGradientCoordinates(gradientAngle);
-                            return (
-                              <linearGradient id={`circle-border-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
-                                <stop offset="0%" stopColor={borderColors[0]} />
-                                <stop offset="100%" stopColor={borderColors[1]} />
-                              </linearGradient>
-                            );
-                          })()}
-                        </defs>
-                        <circle
-                          cx={(node.width || 60) / 2}
-                          cy={(node.height || 60) / 2}
-                          r={(Math.min(node.width || 60, node.height || 60) / 2) - (borderStyle === 'none' ? 0 : borderWidth / 2)}
-                          fill={backgroundStyle === 'gradient' ? `url(#circle-bg-${node.id})` : backgroundStyle === 'none' ? 'transparent' : backgroundColor}
-                          stroke={borderStyle === 'gradient' ? `url(#circle-border-${node.id})` : borderStyle === 'none' ? 'transparent' : borderColor}
-                          strokeWidth={borderStyle === 'none' ? 0 : borderWidth}
-                          strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
-                        />
-                      </svg>
-                      {/* Text inside circle */}
-                      {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
-                        <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)}`}>
-                          {isEditingLabel ? (
-                            <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
-                              <input
-                                ref={inputRef}
-                                id={`node-input-${node.id}`}
-                                type="text"
-                                value={editText}
-                                onChange={(e) => setEditText(e.target.value)}
-                                onBlur={handleLabelSubmit}
-                                onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                                className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none`}
-                                style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                            </div>
-                          ) : (
-                            <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
-                              <p 
-                                className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
-                                style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
-                                onDoubleClick={handleLabelDoubleClick}
-                              >
-                                {node.label}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {(node.type === 'generic.object.point' || node.type?.endsWith('.point')) && (
-                    <div 
-                      key={`gradient-${gradientAngle}`}
-                      className="rounded-full relative"
-                      style={{ 
-                        background: getBackgroundStyle(),
-                        borderWidth: borderStyle === 'none' ? '0' : `${borderWidth}px`,
-                        borderStyle: borderStyle === 'gradient' ? 'solid' : borderStyle,
-                        width: node.width || 20,
-                        height: node.height || 20,
-                        minWidth: node.width || 20,
-                        minHeight: node.height || 20,
-                        margin: hasShadow ? 4 : 0,
-                        ...(borderStyle === 'gradient' ? getBorderStyle() : { borderColor: getBorderStyle() }),
-                        ...(hasShadow && { 
-                          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
-                        })
-                      }}
-                    >
-                      {/* Text inside point - typically empty */}
-                      {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
-                        <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)}`}>
-                          {isEditingLabel ? (
-                             <input
-                               ref={inputRef}
-                               id={`node-input-${node.id}`}
-                               type="text"
-                               value={editText}
-                               onChange={(e) => setEditText(e.target.value)}
-                               onBlur={handleLabelSubmit}
-                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                               className={`text-xs ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none`}
-                                style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
-                               onClick={(e) => e.stopPropagation()}
-                             />
-                           ) : (
-                             <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
-                               <p 
-                                 className={`text-xs ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
-                                 style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
-                                 onDoubleClick={handleLabelDoubleClick}
-                               >
-                                 {node.label}
-                               </p>
-                             </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {(node.type === 'generic.object.rectangle' || node.type?.endsWith('.rectangle')) && (
-                    <div 
-                      key={`gradient-${gradientAngle}`}
-                      className="relative"
-                      style={{ 
-                        background: getBackgroundStyle(),
-                        borderWidth: borderStyle === 'none' ? '0' : `${borderWidth}px`,
-                        borderStyle: borderStyle === 'gradient' ? 'solid' : borderStyle,
-                        width: node.width || 80,
-                        height: node.height || 50,
-                        minWidth: node.width || 80,
-                        minHeight: node.height || 50,
-                        margin: hasShadow ? 4 : 0,
-                        ...(borderStyle === 'gradient' ? getBorderStyle() : { borderColor: getBorderStyle() }),
-                        ...(hasShadow && { 
-                          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
-                        })
-                      }}
-                    >
-                      {/* Text inside rectangle */}
-                      {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
-                        <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)}`}>
-                          {isEditingLabel ? (
-                             <input
-                               ref={inputRef}
-                               id={`node-input-${node.id}`}
-                               type="text"
-                               value={editText}
-                               onChange={(e) => setEditText(e.target.value)}
-                               onBlur={handleLabelSubmit}
-                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                               className={`text-xs ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none`}
-                                style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
-                               onClick={(e) => e.stopPropagation()}
-                             />
-                           ) : (
-                             <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
-                               <p 
-                                 className={`text-xs ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
-                                 style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
-                                 onDoubleClick={handleLabelDoubleClick}
-                               >
-                                 {node.label}
-                               </p>
-                             </div>
-                          )}
-                        </div>
-                      )}
-                     </div>
-                    )}
-                    {(node.type === 'generic.object.rounded-rectangle' || node.type?.endsWith('.rounded-rectangle')) && (
-                      <div className="relative">
-                        {/* Tag box positioned above the main rectangle */}
-                        {(node as any).tag && (node as any).tag.trim() && (
+               (() => {
+                 return (
+                   <div className="flex flex-col items-center justify-center h-full w-full relative">
+                     <div className="flex items-center justify-center" style={{ width: '100%', height: '100%' }}>
+                        {(node.type === 'generic.object.square' || node.type?.endsWith('.square')) && (
                           <div
-                            className="absolute -top-6 left-1/2 transform -translate-x-1/2 px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10"
+                            key={`gradient-${(node as any).gradientAngle || 135}`}
+                            className="relative"
                             style={{
-                              color: '#374151',
-                              whiteSpace: 'nowrap',
-                              minWidth: 'fit-content',
-                              boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
+                              background: ((node as any).backgroundStyle === 'gradient') ?
+                                getGradientWithAngle((node as any).backgroundColors || [(node as any).backgroundColor || '#6b7280'], (node as any).gradientAngle || 135) :
+                                (node as any).backgroundColor || '#6b7280',
+                              borderWidth: ((node as any).borderStyle === 'none') ? '0' : `${(node as any).borderWidth || 2}px`,
+                              borderStyle: (node as any).borderStyle === 'gradient' ? 'solid' : ((node as any).borderStyle || 'solid'),
+                              borderColor: (node as any).borderColor || '#6b7280',
+                              width: node.width || 60,
+                              height: node.height || 60,
+                              minWidth: node.width || 60,
+                              minHeight: node.height || 60,
+                              margin: ((node as any).shadow) ? 4 : 0,
+                              ...(node as any).shadow && {
+                                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                              }
                             }}
                           >
-                            {(node as any).tag}
+                            {/* Text inside square */}
+                            {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
+                              <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)}`}>
+                                {isEditingLabel ? (
+                                  <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
+                                    <input
+                                      ref={inputRef}
+                                      id={`node-input-${node.id}`}
+                                      type="text"
+                                      value={editText}
+                                      onChange={(e) => setEditText(e.target.value)}
+                                      onBlur={handleLabelSubmit}
+                                      onKeyDown={(e) => handleLabelKeyDown(e, false)}
+                                      className={`text-xs ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none`}
+                                      style={{ ...getTextStylingForNode(node), color: getTextColorForBackground(((node as any).backgroundStyle === 'gradient') ? ((node as any).backgroundColors || [(node as any).backgroundColor || '#6b7280'])[0] : ((node as any).backgroundColor || '#6b7280'), (node as any).textColor) }}
+                                      onClick={(e) => e.stopPropagation()}
+                                    />
+                                  </div>
+                                ) : (
+                                  <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
+                                    <p
+                                      className={`text-xs ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
+                                      style={{ ...getTextStylingForNode(node), color: getTextColorForBackground(((node as any).backgroundStyle === 'gradient') ? ((node as any).backgroundColors || [(node as any).backgroundColor || '#6b7280'])[0] : ((node as any).backgroundColor || '#6b7280'), (node as any).textColor), display: 'block' }}
+                                      onDoubleClick={handleLabelDoubleClick}
+                                    >
+                                      {node.label}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         )}
+                        {(node.type === 'generic.object.rounded-rectangle' || node.type?.endsWith('.rounded-rectangle')) && (
+                          <div className="relative">
+                            {/* Tag box positioned based on tagPosition */}
+                            {(node as any).tag && (node as any).tag.trim() && (
+                              <div
+                                className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
+                                style={{
+                                  color: '#374151',
+                                  whiteSpace: 'nowrap',
+                                  minWidth: 'fit-content',
+                                  boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
+                                }}
+                              >
+                                {(node as any).tag}
+                              </div>
+                            )}
 
-                        {/* Main rounded rectangle - this is the primary positioned element */}
-                        <div
-                          key={`gradient-${gradientAngle}`}
-                          className="relative"
-                          style={{
-                            background: getBackgroundStyle(),
-                            border: borderStyle === 'none' ? 'none' : `${borderWidth}px ${borderStyle} ${borderColor}`,
-                            borderRadius: '12px',
-                            width: node.width || 80,
-                            height: node.height || 50,
-                            minWidth: node.width || 80,
-                            minHeight: node.height || 50,
-                            margin: hasShadow ? 4 : 0,
-                            ...(hasShadow && {
-                              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
-                            })
-                          }}
-                        >
-                          {/* Text inside rounded rectangle */}
-                          {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
-                            <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)}`}>
-                              {isEditingLabel ? (
-                                <input
-                                  ref={inputRef}
-                                  id={`node-input-${node.id}`}
-                                  type="text"
-                                  value={editText}
-                                  onChange={(e) => setEditText(e.target.value)}
-                                  onBlur={handleLabelSubmit}
-                                  onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                                  className={`text-xs ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none`}
-                                  style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
-                                  onClick={(e) => e.stopPropagation()}
-                                />
-                              ) : (
-                                <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
-                                  <p
-                                    className={`text-xs ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
-                                    style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
-                                    onDoubleClick={handleLabelDoubleClick}
-                                  >
-                                    {node.label}
-                                  </p>
+                            {/* Main rounded rectangle */}
+                            <div
+                              key={`gradient-${(node as any).gradientAngle || 135}`}
+                              className="relative"
+                              style={{
+                                background: ((node as any).backgroundStyle === 'gradient') ?
+                                  getGradientWithAngle((node as any).backgroundColors || [(node as any).backgroundColor || '#6b7280'], (node as any).gradientAngle || 135) :
+                                  (node as any).backgroundColor || '#6b7280',
+                                border: ((node as any).borderStyle === 'none') ? 'none' : `${(node as any).borderWidth || 2}px ${(node as any).borderStyle || 'solid'} ${(node as any).borderColor || '#6b7280'}`,
+                                borderRadius: '12px',
+                                width: node.width || 80,
+                                height: node.height || 50,
+                                minWidth: node.width || 80,
+                                minHeight: node.height || 50,
+                                margin: ((node as any).shadow) ? 4 : 0,
+                                ...(((node as any).shadow) && {
+                                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                                })
+                              }}
+                            >
+                              {/* Text inside rounded rectangle */}
+                              {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
+                                <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)}`}>
+                                  {isEditingLabel ? (
+                                    <input
+                                      ref={inputRef}
+                                      id={`node-input-${node.id}`}
+                                      type="text"
+                                      value={editText}
+                                      onChange={(e) => setEditText(e.target.value)}
+                                      onBlur={handleLabelSubmit}
+                                      onKeyDown={(e) => handleLabelKeyDown(e, false)}
+                                      className={`text-xs ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none`}
+                                      style={{ ...getTextStylingForNode(node), color: getTextColorForBackground(((node as any).backgroundStyle === 'gradient') ? ((node as any).backgroundColors || [(node as any).backgroundColor || '#6b7280'])[0] : ((node as any).backgroundColor || '#6b7280'), (node as any).textColor) }}
+                                      onClick={(e) => e.stopPropagation()}
+                                    />
+                                  ) : (
+                                    <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
+                                      <p
+                                        className={`text-xs ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
+                                        style={{ ...getTextStylingForNode(node), color: getTextColorForBackground(((node as any).backgroundStyle === 'gradient') ? ((node as any).backgroundColors || [(node as any).backgroundColor || '#6b7280'])[0] : ((node as any).backgroundColor || '#6b7280'), (node as any).textColor), display: 'block' }}
+                                        onDoubleClick={handleLabelDoubleClick}
+                                      >
+                                        {node.label}
+                                      </p>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    {(node.type === 'generic.object.triangle' || node.type?.endsWith('.triangle')) && (
-                    <div 
-                      key={`gradient-${gradientAngle}`}
-                      className="relative" 
-                      style={{ 
-                        width: node.width || 60, 
-                        height: node.height || 60, 
-                        minWidth: node.width || 60, 
-                        minHeight: node.height || 60,
-                        margin: hasShadow ? 4 : 0,
-                        ...(hasShadow && { 
-                          filter: 'drop-shadow(0 20px 25px rgba(0, 0, 0, 0.2)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.04))'
-                        })
-                      }}>
-                      {/* Triangle using SVG for proper border and shadow support */}
-                      <svg 
-                        width={node.width || 60} 
-                        height={node.height || 60}
-                        style={{ display: 'block' }}
-                      >
-                        <defs>
-                          {backgroundStyle === 'gradient' && (() => {
-                            const coords = getGradientCoordinates(gradientAngle);
-                            return (
-                              <linearGradient id={`triangle-bg-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
-                                <stop offset="0%" stopColor={backgroundColors[0]} />
-                                <stop offset="100%" stopColor={backgroundColors[1]} />
-                              </linearGradient>
-                            );
-                          })()}
-                          {borderStyle === 'gradient' && (() => {
-                            const coords = getGradientCoordinates(gradientAngle);
-                            return (
-                              <linearGradient id={`triangle-border-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
-                                <stop offset="0%" stopColor={borderColors[0]} />
-                                <stop offset="100%" stopColor={borderColors[1]} />
-                              </linearGradient>
-                            );
-                          })()}
-                        </defs>
-                        <polygon
-                          points={`${(node.width || 60) / 2},${borderWidth / 2} ${borderWidth / 2},${(node.height || 60) - borderWidth / 2} ${(node.width || 60) - borderWidth / 2},${(node.height || 60) - borderWidth / 2}`}
-                          fill={backgroundStyle === 'gradient' ? `url(#triangle-bg-${node.id})` : backgroundStyle === 'none' ? 'transparent' : backgroundColor}
-                          stroke={borderStyle === 'gradient' ? `url(#triangle-border-${node.id})` : borderStyle === 'none' ? 'transparent' : borderColor}
-                          strokeWidth={borderStyle === 'none' ? 0 : borderWidth}
-                          strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
-                        />
-                      </svg>
-                      {/* Text inside triangle - positioned in center */}
-                      {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
-                        <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)} pt-2`}>
-                          {isEditingLabel ? (
-                            <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
-                              <input
-                                ref={inputRef}
-                                id={`node-input-${node.id}`}
-                                type="text"
-                                value={editText}
-                                onChange={(e) => setEditText(e.target.value)}
-                                onBlur={handleLabelSubmit}
-                                onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                                className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none`}
-                                style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                            </div>
-                          ) : (
-                            <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
-                              <p 
-                                className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
-                                style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
-                                onDoubleClick={handleLabelDoubleClick}
-                              >
-                                {node.label}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {(node.type === 'generic.object.star' || node.type?.endsWith('.star')) && (
-                    <div 
-                      key={`gradient-${gradientAngle}`}
-                      className="relative" 
-                      style={{ 
-                        width: node.width || 60, 
-                        height: node.height || 60, 
-                        minWidth: node.width || 60, 
-                        minHeight: node.height || 60,
-                        margin: hasShadow ? 4 : 0,
-                        ...(hasShadow && { 
-                          filter: 'drop-shadow(0 20px 25px rgba(0, 0, 0, 0.2)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.04))'
-                        })
-                      }}>
-                      {/* Star using SVG */}
-                      <svg 
-                        width={node.width || 60} 
-                        height={node.height || 60}
-                        style={{ display: 'block' }}
-                      >
-                        <defs>
-                            {backgroundStyle === 'gradient' && (() => {
-                              const coords = getGradientCoordinates(gradientAngle);
-                              return (
-                                <linearGradient id={`star-bg-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
-                                  <stop offset="0%" stopColor={backgroundColors[0]} />
-                                  <stop offset="100%" stopColor={backgroundColors[1]} />
-                                </linearGradient>
-                              );
-                            })()}
-                            {borderStyle === 'gradient' && (() => {
-                              const coords = getGradientCoordinates(gradientAngle);
-                              return (
-                                <linearGradient id={`star-border-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
-                                  <stop offset="0%" stopColor={borderColors[0]} />
-                                  <stop offset="100%" stopColor={borderColors[1]} />
-                                </linearGradient>
-                              );
-                            })()}
-                        </defs>
-                        {/* 5-pointed star path */}
-                        <path
-                          d={`M ${(node.width || 60) / 2},${borderWidth / 2} 
-                              L ${(node.width || 60) * 0.61},${(node.height || 60) * 0.38} 
-                              L ${(node.width || 60) - borderWidth / 2},${(node.height || 60) * 0.38} 
-                              L ${(node.width || 60) * 0.68},${(node.height || 60) * 0.62} 
-                              L ${(node.width || 60) * 0.82},${(node.height || 60) - borderWidth / 2} 
-                              L ${(node.width || 60) / 2},${(node.height || 60) * 0.75} 
-                              L ${(node.width || 60) * 0.18},${(node.height || 60) - borderWidth / 2} 
-                              L ${(node.width || 60) * 0.32},${(node.height || 60) * 0.62} 
-                              L ${borderWidth / 2},${(node.height || 60) * 0.38} 
-                              L ${(node.width || 60) * 0.39},${(node.height || 60) * 0.38} Z`}
-                          fill={backgroundStyle === 'gradient' ? `url(#star-bg-${node.id})` : backgroundStyle === 'none' ? 'transparent' : backgroundColor}
-                          stroke={borderStyle === 'gradient' ? `url(#star-border-${node.id})` : borderStyle === 'none' ? 'transparent' : borderColor}
-                          strokeWidth={borderStyle === 'none' ? 0 : borderWidth}
-                          strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
-                        />
-                      </svg>
-                      {/* Text inside star - positioned in center */}
-                      {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
-                        <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)} pt-2`}>
-                          {isEditingLabel ? (
-                            <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
-                              <input
-                                ref={inputRef}
-                                id={`node-input-${node.id}`}
-                                type="text"
-                                value={editText}
-                                onChange={(e) => setEditText(e.target.value)}
-                                onBlur={handleLabelSubmit}
-                                onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                                className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none`}
-                                style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                            </div>
-                          ) : (
-                            <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
-                              <p 
-                                className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
-                                style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
-                                onDoubleClick={handleLabelDoubleClick}
-                              >
-                                {node.label}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {(node.type === 'generic.object.cloud' || node.type?.endsWith('.cloud')) && (
-                    <div 
-                      key={`gradient-${gradientAngle}`}
-                      className="relative" 
-                      style={{ 
-                        width: node.width || 80, 
-                        height: node.height || 50, 
-                        minWidth: node.width || 80, 
-                        minHeight: node.height || 50,
-                        margin: hasShadow ? 4 : 0,
-                        ...(hasShadow && { 
-                          filter: 'drop-shadow(0 20px 25px rgba(0, 0, 0, 0.2)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.04))'
-                        })
-                      }}>
-                      {/* Cloud using SVG */}
-                      <svg 
-                        width={node.width || 80} 
-                        height={node.height || 50}
-                        style={{ display: 'block' }}
-                      >
-                        <defs>
-                            {backgroundStyle === 'gradient' && (() => {
-                              const coords = getGradientCoordinates(gradientAngle);
-                              return (
-                                <linearGradient id={`cloud-bg-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
-                                  <stop offset="0%" stopColor={backgroundColors[0]} />
-                                  <stop offset="100%" stopColor={backgroundColors[1]} />
-                                </linearGradient>
-                              );
-                            })()}
-                            {borderStyle === 'gradient' && (() => {
-                              const coords = getGradientCoordinates(gradientAngle);
-                              return (
-                                <linearGradient id={`cloud-border-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
-                                  <stop offset="0%" stopColor={borderColors[0]} />
-                                  <stop offset="100%" stopColor={borderColors[1]} />
-                                </linearGradient>
-                              );
-                            })()}
-                        </defs>
-                        {/* Cloud shape made of multiple circles */}
-                        <path
-                          d={`M ${(node.width || 80) * 0.2},${(node.height || 50) / 2} 
-                              Q ${borderWidth / 2},${(node.height || 50) * 0.3} ${(node.width || 80) * 0.15},${(node.height || 50) * 0.15} 
-                              Q ${(node.width || 80) * 0.1},${borderWidth / 2} ${(node.width || 80) * 0.25},${borderWidth / 2} 
-                              Q ${(node.width || 80) * 0.35},${borderWidth / 2} ${(node.width || 80) * 0.4},${(node.height || 50) * 0.2} 
-                              Q ${(node.width || 80) * 0.5},${borderWidth / 2} ${(node.width || 80) * 0.6},${(node.height || 50) * 0.15} 
-                              Q ${(node.width || 80) * 0.7},${borderWidth / 2} ${(node.width || 80) * 0.75},${(node.height || 50) * 0.25} 
-                              Q ${(node.width || 80) - borderWidth / 2},${(node.height || 50) * 0.25} ${(node.width || 80) * 0.85},${(node.height || 50) * 0.35} 
-                              Q ${(node.width || 80) - borderWidth / 2},${(node.height || 50) * 0.5} ${(node.width || 80) * 0.8},${(node.height || 50) * 0.65} 
-                              Q ${(node.width || 80) * 0.7},${(node.height || 50) - borderWidth / 2} ${(node.width || 80) * 0.55},${(node.height || 50) * 0.7} 
-                              Q ${(node.width || 80) * 0.45},${(node.height || 50) - borderWidth / 2} ${(node.width || 80) * 0.35},${(node.height || 50) * 0.65} 
-                              Q ${(node.width || 80) * 0.25},${(node.height || 50) - borderWidth / 2} ${(node.width || 80) * 0.15},${(node.height || 50) * 0.55} 
-                              Q ${borderWidth / 2},${(node.height || 50) * 0.55} ${(node.width || 80) * 0.18},${(node.height || 50) / 2} Z`}
-                          fill={backgroundStyle === 'gradient' ? `url(#cloud-bg-${node.id})` : backgroundStyle === 'none' ? 'transparent' : backgroundColor}
-                          stroke={borderStyle === 'gradient' ? `url(#cloud-border-${node.id})` : borderStyle === 'none' ? 'transparent' : borderColor}
-                          strokeWidth={borderStyle === 'none' ? 0 : borderWidth}
-                          strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
-                        />
-                      </svg>
-                      {/* Text inside cloud - positioned in center */}
-                      {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
-                        <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)}`}>
-                          {isEditingLabel ? (
-                             <input
-                               ref={inputRef}
-                               id={`node-input-${node.id}`}
-                               type="text"
-                               value={editText}
-                               onChange={(e) => setEditText(e.target.value)}
-                               onBlur={handleLabelSubmit}
-                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                               className={`text-xs ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none`}
-                                style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
-                               onClick={(e) => e.stopPropagation()}
-                             />
-                           ) : (
-                             <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
-                               <p 
-                                 className={`text-xs ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
-                                 style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
-                                 onDoubleClick={handleLabelDoubleClick}
-                               >
-                                 {node.label}
-                               </p>
-                             </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Parallelogram */}
-                  {(node.type === 'generic.object.parallelogram' || node.type?.endsWith('.parallelogram')) && (
-                    <div 
-                      key={`gradient-${gradientAngle}`}
-                      className="relative" 
-                      style={{ 
-                        width: node.width || 80, 
-                        height: node.height || 60, 
-                        minWidth: node.width || 80, 
-                        minHeight: node.height || 60,
-                        margin: hasShadow ? 4 : 0,
-                        ...(hasShadow && { 
-                          filter: 'drop-shadow(0 20px 25px rgba(0, 0, 0, 0.2)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.04))'
-                        })
-                      }}>
-                      <svg 
-                        width={node.width || 80} 
-                        height={node.height || 60}
-                        style={{ display: 'block' }}
-                      >
-                        <defs>
-                            {backgroundStyle === 'gradient' && (() => {
-                              const coords = getGradientCoordinates(gradientAngle);
-                              return (
-                                <linearGradient id={`parallelogram-bg-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
-                                  <stop offset="0%" stopColor={backgroundColors[0]} />
-                                  <stop offset="100%" stopColor={backgroundColors[1]} />
-                                </linearGradient>
-                              );
-                            })()}
-                            {borderStyle === 'gradient' && (() => {
-                              const coords = getGradientCoordinates(gradientAngle);
-                              return (
-                                <linearGradient id={`parallelogram-border-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
-                                  <stop offset="0%" stopColor={borderColors[0]} />
-                                  <stop offset="100%" stopColor={borderColors[1]} />
-                                </linearGradient>
-                              );
-                            })()}
-                        </defs>
-                        <path 
-                          d={`M${(node.width || 80) * 0.2 + borderWidth / 2} ${borderWidth / 2} L${(node.width || 80) - borderWidth / 2} ${borderWidth / 2} L${(node.width || 80) * 0.8 - borderWidth / 2} ${(node.height || 60) - borderWidth / 2} L${borderWidth / 2} ${(node.height || 60) - borderWidth / 2} Z`}
-                          fill={backgroundStyle === 'gradient' ? `url(#parallelogram-bg-${node.id})` : backgroundColor}
-                          stroke={borderStyle === 'gradient' ? `url(#parallelogram-border-${node.id})` : borderColor}
-                          strokeWidth={borderStyle === 'none' ? 0 : borderWidth}
-                          strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
-                        />
-                      </svg>
-                      {node.label && (
-                        <div className={`absolute inset-0 flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-2`}>
-                          <p 
-                            className={`text-xs ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
-                            style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
-                            onDoubleClick={handleLabelDoubleClick}
-                          >
-                            {node.label}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Trapezoid */}
-                  {(node.type === 'generic.object.trapezoid' || node.type?.endsWith('.trapezoid')) && (
-                    <div 
-                      key={`gradient-${gradientAngle}`}
-                      className="relative" 
-                      style={{ 
-                        width: node.width || 80, 
-                        height: node.height || 60, 
-                        minWidth: node.width || 80, 
-                        minHeight: node.height || 60,
-                        margin: hasShadow ? 4 : 0,
-                        ...(hasShadow && { 
-                          filter: 'drop-shadow(0 20px 25px rgba(0, 0, 0, 0.2)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.04))'
-                        })
-                      }}>
-                      <svg 
-                        width={node.width || 80} 
-                        height={node.height || 60}
-                        style={{ display: 'block' }}
-                      >
-                        <defs>
-                            {backgroundStyle === 'gradient' && (() => {
-                              const coords = getGradientCoordinates(gradientAngle);
-                              return (
-                                <linearGradient id={`trapezoid-bg-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
-                                  <stop offset="0%" stopColor={backgroundColors[0]} />
-                                  <stop offset="100%" stopColor={backgroundColors[1]} />
-                                </linearGradient>
-                              );
-                            })()}
-                            {borderStyle === 'gradient' && (() => {
-                              const coords = getGradientCoordinates(gradientAngle);
-                              return (
-                                <linearGradient id={`trapezoid-border-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
-                                  <stop offset="0%" stopColor={borderColors[0]} />
-                                  <stop offset="100%" stopColor={borderColors[1]} />
-                                </linearGradient>
-                              );
-                            })()}
-                        </defs>
-                        <path 
-                          d={`M${(node.width || 80) * 0.2 + borderWidth / 2} ${borderWidth / 2} L${(node.width || 80) * 0.8 - borderWidth / 2} ${borderWidth / 2} L${(node.width || 80) - borderWidth / 2} ${(node.height || 60) - borderWidth / 2} L${borderWidth / 2} ${(node.height || 60) - borderWidth / 2} Z`}
-                          fill={backgroundStyle === 'gradient' ? `url(#trapezoid-bg-${node.id})` : backgroundColor}
-                          stroke={borderStyle === 'gradient' ? `url(#trapezoid-border-${node.id})` : borderColor}
-                          strokeWidth={borderStyle === 'none' ? 0 : borderWidth}
-                          strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
-                        />
-                      </svg>
-                      {node.label && (
-                        <div className={`absolute inset-0 flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-2`}>
-                          <p 
-                            className={`text-xs ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
-                            style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
-                            onDoubleClick={handleLabelDoubleClick}
-                          >
-                            {node.label}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Kite */}
-                  {(node.type === 'generic.object.kite' || node.type?.endsWith('.kite')) && (
-                    <div 
-                      key={`gradient-${gradientAngle}`}
-                      className="relative" 
-                      style={{ 
-                        width: node.width || 60, 
-                        height: node.height || 60, 
-                        minWidth: node.width || 60, 
-                        minHeight: node.height || 60,
-                        margin: hasShadow ? 4 : 0,
-                        ...(hasShadow && { 
-                          filter: 'drop-shadow(0 20px 25px rgba(0, 0, 0, 0.2)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.04))'
-                        })
-                      }}>
-                      <svg 
-                        width={node.width || 60} 
-                        height={node.height || 60}
-                        style={{ display: 'block' }}
-                      >
-                        <defs>
-                            {backgroundStyle === 'gradient' && (() => {
-                              const coords = getGradientCoordinates(gradientAngle);
-                              return (
-                                <linearGradient id={`kite-bg-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
-                                  <stop offset="0%" stopColor={backgroundColors[0]} />
-                                  <stop offset="100%" stopColor={backgroundColors[1]} />
-                                </linearGradient>
-                              );
-                            })()}
-                            {borderStyle === 'gradient' && (() => {
-                              const coords = getGradientCoordinates(gradientAngle);
-                              return (
-                                <linearGradient id={`kite-border-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
-                                  <stop offset="0%" stopColor={borderColors[0]} />
-                                  <stop offset="100%" stopColor={borderColors[1]} />
-                                </linearGradient>
-                              );
-                            })()}
-                        </defs>
-<path 
-                          d={`M${(node.width || 60) / 2} ${borderWidth / 2} L${(node.width || 60) - borderWidth / 2} ${(node.height || 60) / 2} L${(node.width || 60) / 2} ${(node.height || 60) - borderWidth / 2} L${borderWidth / 2} ${(node.height || 60) / 2} Z`}
-                          fill={backgroundStyle === 'gradient' ? `url(#kite-bg-${node.id})` : backgroundColor}
-                          stroke={borderStyle === 'gradient' ? `url(#kite-border-${node.id})` : borderColor}
-                          strokeWidth={borderStyle === 'none' ? 0 : borderWidth}
-                          strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
-                        />
-                      </svg>
-                      {node.label && (
-                        <div className={`absolute inset-0 flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-2`}>
-                          <p 
-                            className={`text-xs ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
-                            style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
-                            onDoubleClick={handleLabelDoubleClick}
-                          >
-                            {node.label}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Hexagon */}
-                  {(node.type === 'generic.object.hexagon' || node.type?.endsWith('.hexagon')) && (
-                    <div 
-                      key={`gradient-${gradientAngle}`}
-                      className="relative" 
-                      style={{ 
-                        width: node.width || 70, 
-                        height: node.height || 60, 
-                        minWidth: node.width || 70, 
-                        minHeight: node.height || 60,
-                        margin: hasShadow ? 4 : 0,
-                        ...(hasShadow && { 
-                          filter: 'drop-shadow(0 20px 25px rgba(0, 0, 0, 0.2)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.04))'
-                        })
-                      }}>
-                      <svg 
-                        width={node.width || 70} 
-                        height={node.height || 60}
-                        style={{ display: 'block' }}
-                      >
-                        <defs>
-                            {backgroundStyle === 'gradient' && (() => {
-                              const coords = getGradientCoordinates(gradientAngle);
-                              return (
-                                <linearGradient id={`hexagon-bg-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
-                                  <stop offset="0%" stopColor={backgroundColors[0]} />
-                                  <stop offset="100%" stopColor={backgroundColors[1]} />
-                                </linearGradient>
-                              );
-                            })()}
-                            {borderStyle === 'gradient' && (() => {
-                              const coords = getGradientCoordinates(gradientAngle);
-                              return (
-                                <linearGradient id={`hexagon-border-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
-                                  <stop offset="0%" stopColor={borderColors[0]} />
-                                  <stop offset="100%" stopColor={borderColors[1]} />
-                                </linearGradient>
-                              );
-                            })()}
-                        </defs>
-                        <path 
-                          d={`M${(node.width || 70) * 0.25 + borderWidth / 2} ${borderWidth / 2} L${(node.width || 70) * 0.75 - borderWidth / 2} ${borderWidth / 2} L${(node.width || 70) - borderWidth / 2} ${(node.height || 60) / 2} L${(node.width || 70) * 0.75 - borderWidth / 2} ${(node.height || 60) - borderWidth / 2} L${(node.width || 70) * 0.25 + borderWidth / 2} ${(node.height || 60) - borderWidth / 2} L${borderWidth / 2} ${(node.height || 60) / 2} Z`}
-                          fill={backgroundStyle === 'gradient' ? `url(#hexagon-bg-${node.id})` : backgroundColor}
-                          stroke={borderStyle === 'gradient' ? `url(#hexagon-border-${node.id})` : borderColor}
-                          strokeWidth={borderStyle === 'none' ? 0 : borderWidth}
-                          strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
-                        />
-                      </svg>
-                      {node.label && (
-                        <div className={`absolute inset-0 flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-2`}>
-                          <p 
-                            className={`text-xs ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
-                            style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
-                            onDoubleClick={handleLabelDoubleClick}
-                          >
-                            {node.label}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Pentagon */}
-                  {(node.type === 'generic.object.pentagon' || node.type?.endsWith('.pentagon')) && (
-                    <div 
-                      key={`gradient-${gradientAngle}`}
-                      className="relative" 
-                      style={{ 
-                        width: node.width || 70, 
-                        height: node.height || 70, 
-                        minWidth: node.width || 70, 
-                        minHeight: node.height || 70,
-                        margin: hasShadow ? 4 : 0,
-                        ...(hasShadow && { 
-                          filter: 'drop-shadow(0 20px 25px rgba(0, 0, 0, 0.2)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.04))'
-                        })
-                      }}>
-                      <svg 
-                        width={node.width || 70} 
-                        height={node.height || 70}
-                        style={{ display: 'block' }}
-                      >
-                        <defs>
-                            {backgroundStyle === 'gradient' && (() => {
-                              const coords = getGradientCoordinates(gradientAngle);
-                              return (
-                                <linearGradient id={`pentagon-bg-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
-                                  <stop offset="0%" stopColor={backgroundColors[0]} />
-                                  <stop offset="100%" stopColor={backgroundColors[1]} />
-                                </linearGradient>
-                              );
-                            })()}
-                            {borderStyle === 'gradient' && (() => {
-                              const coords = getGradientCoordinates(gradientAngle);
-                              return (
-                                <linearGradient id={`pentagon-border-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
-                                  <stop offset="0%" stopColor={borderColors[0]} />
-                                  <stop offset="100%" stopColor={borderColors[1]} />
-                                </linearGradient>
-                              );
-                            })()}
-                        </defs>
-                        <path 
-                          d={`M${(node.width || 70) / 2} ${borderWidth / 2} L${(node.width || 70) * 0.95 - borderWidth / 2} ${(node.height || 70) * 0.35} L${(node.width || 70) * 0.8 - borderWidth / 2} ${(node.height || 70) - borderWidth / 2} L${(node.width || 70) * 0.2 + borderWidth / 2} ${(node.height || 70) - borderWidth / 2} L${(node.width || 70) * 0.05 + borderWidth / 2} ${(node.height || 70) * 0.35} Z`}
-                          fill={backgroundStyle === 'gradient' ? `url(#pentagon-bg-${node.id})` : backgroundColor}
-                          stroke={borderStyle === 'gradient' ? `url(#pentagon-border-${node.id})` : borderColor}
-                          strokeWidth={borderStyle === 'none' ? 0 : borderWidth}
-                          strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
-                        />
-                      </svg>
-                      {node.label && (
-                        <div className={`absolute inset-0 flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-2`}>
-                          <p 
-                            className={`text-xs ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
-                            style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
-                            onDoubleClick={handleLabelDoubleClick}
-                          >
-                            {node.label}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Octagon */}
-                  {(node.type === 'generic.object.octagon' || node.type?.endsWith('.octagon')) && (
-                    <div 
-                      key={`gradient-${gradientAngle}`}
-                      className="relative" 
-                      style={{ 
-                        width: node.width || 70, 
-                        height: node.height || 70, 
-                        minWidth: node.width || 70, 
-                        minHeight: node.height || 70,
-                        margin: hasShadow ? 4 : 0,
-                        ...(hasShadow && { 
-                          filter: 'drop-shadow(0 20px 25px rgba(0, 0, 0, 0.2)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.04))'
-                        })
-                      }}>
-                      <svg 
-                        width={node.width || 70} 
-                        height={node.height || 70}
-                        style={{ display: 'block' }}
-                      >
-                        <defs>
-                            {backgroundStyle === 'gradient' && (() => {
-                              const coords = getGradientCoordinates(gradientAngle);
-                              return (
-                                <linearGradient id={`octagon-bg-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
-                                  <stop offset="0%" stopColor={backgroundColors[0]} />
-                                  <stop offset="100%" stopColor={backgroundColors[1]} />
-                                </linearGradient>
-                              );
-                            })()}
-                            {borderStyle === 'gradient' && (() => {
-                              const coords = getGradientCoordinates(gradientAngle);
-                              return (
-                                <linearGradient id={`octagon-border-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
-                                  <stop offset="0%" stopColor={borderColors[0]} />
-                                  <stop offset="100%" stopColor={borderColors[1]} />
-                                </linearGradient>
-                              );
-                            })()}
-                        </defs>
-                        <path 
-                          d={`M${(node.width || 70) * 0.3 + borderWidth / 2} ${borderWidth / 2} L${(node.width || 70) * 0.7 - borderWidth / 2} ${borderWidth / 2} L${(node.width || 70) - borderWidth / 2} ${(node.height || 70) * 0.3 + borderWidth / 2} L${(node.width || 70) - borderWidth / 2} ${(node.height || 70) * 0.7 - borderWidth / 2} L${(node.width || 70) * 0.7 - borderWidth / 2} ${(node.height || 70) - borderWidth / 2} L${(node.width || 70) * 0.3 + borderWidth / 2} ${(node.height || 70) - borderWidth / 2} L${borderWidth / 2} ${(node.height || 70) * 0.7 - borderWidth / 2} L${borderWidth / 2} ${(node.height || 70) * 0.3 + borderWidth / 2} Z`}
-                          fill={backgroundStyle === 'gradient' ? `url(#octagon-bg-${node.id})` : backgroundColor}
-                          stroke={borderStyle === 'gradient' ? `url(#octagon-border-${node.id})` : borderColor}
-                          strokeWidth={borderStyle === 'none' ? 0 : borderWidth}
-                          strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
-                        />
-                      </svg>
-                      {node.label && (
-                        <div className={`absolute inset-0 flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-2`}>
-                          <p 
-                            className={`text-xs ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
-                            style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
-                            onDoubleClick={handleLabelDoubleClick}
-                          >
-                            {node.label}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Jigsaw */}
-                  {(node.type === 'generic.object.jigsaw' || node.type?.endsWith('.jigsaw')) && (
-                    <div 
-                      key={`gradient-${gradientAngle}`}
-                      className="relative" 
-                      style={{ 
-                        width: node.width || 80, 
-                        height: node.height || 80, 
-                        minWidth: node.width || 80, 
-                        minHeight: node.height || 80,
-                        margin: hasShadow ? 4 : 0,
-                        ...(hasShadow && { 
-                          filter: 'drop-shadow(0 20px 25px rgba(0, 0, 0, 0.2)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.04))'
-                        })
-                      }}>
-                      <svg 
-                        width={node.width || 80} 
-                        height={node.height || 80}
-                        style={{ display: 'block' }}
-                      >
-                        <defs>
-                            {backgroundStyle === 'gradient' && (() => {
-                              const coords = getGradientCoordinates(gradientAngle);
-                              return (
-                                <linearGradient id={`jigsaw-bg-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
-                                  <stop offset="0%" stopColor={backgroundColors[0]} />
-                                  <stop offset="100%" stopColor={backgroundColors[1]} />
-                                </linearGradient>
-                              );
-                            })()}
-                            {borderStyle === 'gradient' && (() => {
-                              const coords = getGradientCoordinates(gradientAngle);
-                              return (
-                                <linearGradient id={`jigsaw-border-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
-                                  <stop offset="0%" stopColor={borderColors[0]} />
-                                  <stop offset="100%" stopColor={borderColors[1]} />
-                                </linearGradient>
-                              );
-                            })()}
-                        </defs>
-                        <path 
-                          d={`M${borderWidth / 2} 20 L20 20 C20 20 20 10 30 10 C40 10 40 20 40 20 L${(node.width || 80) - borderWidth / 2} 20 L${(node.width || 80) - borderWidth / 2} 30 C${(node.width || 80) - borderWidth / 2} 30 ${(node.width || 80) + 10} 30 ${(node.width || 80) + 10} 40 C${(node.width || 80) + 10} 50 ${(node.width || 80) - borderWidth / 2} 50 ${(node.width || 80) - borderWidth / 2} 50 L${(node.width || 80) - borderWidth / 2} ${(node.height || 80) - borderWidth / 2} L40 ${(node.height || 80) - borderWidth / 2} C40 ${(node.height || 80) - borderWidth / 2} 40 ${(node.height || 80) + 10} 30 ${(node.height || 80) + 10} C20 ${(node.height || 80) + 10} 20 ${(node.height || 80) - borderWidth / 2} 20 ${(node.height || 80) - borderWidth / 2} L${borderWidth / 2} ${(node.height || 80) - borderWidth / 2} Z`}
-                          fill={backgroundStyle === 'gradient' ? `url(#jigsaw-bg-${node.id})` : backgroundColor}
-                          stroke={borderStyle === 'gradient' ? `url(#jigsaw-border-${node.id})` : borderColor}
-                          strokeWidth={borderStyle === 'none' ? 0 : borderWidth}
-                          strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
-                        />
-                      </svg>
-                      {node.label && (
-                        <div className={`absolute inset-0 flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-2`}>
-                          <p 
-                            className={`text-xs ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
-                            style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
-                            onDoubleClick={handleLabelDoubleClick}
-                          >
-                            {node.label}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Chevron */}
-                  {(node.type === 'generic.object.chevron' || node.type?.endsWith('.chevron')) && (
-                    <div 
-                      key={`gradient-${gradientAngle}`}
-                      className="relative" 
-                      style={{ 
-                        width: node.width || 80, 
-                        height: node.height || 60, 
-                        minWidth: node.width || 80, 
-                        minHeight: node.height || 60,
-                        margin: hasShadow ? 4 : 0,
-                        ...(hasShadow && { 
-                          filter: 'drop-shadow(0 20px 25px rgba(0, 0, 0, 0.2)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.04))'
-                        })
-                      }}>
-                      <svg 
-                        width={node.width || 80} 
-                        height={node.height || 60}
-                        style={{ display: 'block' }}
-                      >
-                        <defs>
-                            {backgroundStyle === 'gradient' && (() => {
-                              const coords = getGradientCoordinates(gradientAngle);
-                              return (
-                                <linearGradient id={`chevron-bg-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
-                                  <stop offset="0%" stopColor={backgroundColors[0]} />
-                                  <stop offset="100%" stopColor={backgroundColors[1]} />
-                                </linearGradient>
-                              );
-                            })()}
-                            {borderStyle === 'gradient' && (() => {
-                              const coords = getGradientCoordinates(gradientAngle);
-                              return (
-                                <linearGradient id={`chevron-border-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
-                                  <stop offset="0%" stopColor={borderColors[0]} />
-                                  <stop offset="100%" stopColor={borderColors[1]} />
-                                </linearGradient>
-                              );
-                            })()}
-                        </defs>
-                         <path 
-                           d={`M${borderWidth / 2} ${(node.height || 60) * 0.13} L${(node.width || 80) * 0.3} ${(node.height || 60) / 2} L${borderWidth / 2} ${(node.height || 60) * 0.87} L${(node.width || 80) * 0.7} ${(node.height || 60) * 0.87} L${(node.width || 80) - borderWidth / 2} ${(node.height || 60) / 2} L${(node.width || 80) * 0.7} ${(node.height || 60) * 0.13} Z`}
-                           fill={backgroundStyle === 'gradient' ? `url(#chevron-bg-${node.id})` : backgroundColor}
-                           stroke={borderStyle === 'gradient' ? `url(#chevron-border-${node.id})` : borderColor}
-                           strokeWidth={borderStyle === 'none' ? 0 : borderWidth}
-                           strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
-                         />
-                       </svg>
-                       {/* Text inside chevron - positioned in center */}
-                       {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
-                         <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)} pt-2`}>
-                           {isEditingLabel ? (
-                             <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
-                               <input
-                                 ref={inputRef}
-                                 id={`node-input-${node.id}`}
-                                 type="text"
-                                 value={editText}
-                                 onChange={(e) => setEditText(e.target.value)}
-                                 onBlur={handleLabelSubmit}
-                                 onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                                 className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none`}
-                                 style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
-                                 onClick={(e) => e.stopPropagation()}
-                               />
-                             </div>
-                           ) : (
-                             <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
-                               <p 
-                                 className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
-                                 style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
-                                 onDoubleClick={handleLabelDoubleClick}
-                               >
-                                 {node.label}
-                               </p>
-                             </div>
-                           )}
-                         </div>
-                       )}
-                       {/* Text outside chevron - positioned above */}
-                       {((node as any).textPosition === 'outside' || (node as any).textPosition === 'top') && ((node as any).textVerticalPosition === 'top' || !(node as any).textVerticalPosition) && node.label && (
-                         <div className={`absolute -top-6 left-0 right-0 flex justify-center`}>
-                           {isEditingLabel ? (
-                             <input
-                               ref={inputRef}
-                               id={`node-input-${node.id}`}
-                               type="text"
-                               value={editText}
-                               onChange={(e) => setEditText(e.target.value)}
-                               onBlur={handleLabelSubmit}
-                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none text-center`}
-                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
-                               onClick={(e) => e.stopPropagation()}
-                             />
-                           ) : (
-                             <p 
-                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text text-center w-full`}
-                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
-                               onDoubleClick={handleLabelDoubleClick}
-                             >
-                               {node.label}
-                             </p>
-                           )}
-                         </div>
-                       )}
-                       {/* Text outside chevron - positioned below */}
-                       {((node as any).textPosition === 'outside' || (node as any).textPosition === 'bottom') && ((node as any).textVerticalPosition === 'bottom' || !(node as any).textVerticalPosition) && node.label && (
-                         <div className={`absolute -bottom-6 left-0 right-0 flex justify-center`}>
-                           {isEditingLabel ? (
-                             <input
-                               ref={inputRef}
-                               id={`node-input-${node.id}`}
-                               type="text"
-                               value={editText}
-                               onChange={(e) => setEditText(e.target.value)}
-                               onBlur={handleLabelSubmit}
-                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none text-center`}
-                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
-                               onClick={(e) => e.stopPropagation()}
-                             />
-                           ) : (
-                             <p 
-                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text text-center w-full`}
-                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
-                               onDoubleClick={handleLabelDoubleClick}
-                             >
-                               {node.label}
-                             </p>
-                           )}
-                         </div>
-                       )}
-                       {/* Text outside chevron - positioned left */}
-                       {(node as any).textPosition === 'left' && node.label && (
-                         <div className={`absolute top-0 -left-2 bottom-0 flex items-center`}>
-                           {isEditingLabel ? (
-                             <input
-                               ref={inputRef}
-                               id={`node-input-${node.id}`}
-                               type="text"
-                               value={editText}
-                               onChange={(e) => setEditText(e.target.value)}
-                               onBlur={handleLabelSubmit}
-                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-auto outline-none text-right`}
-                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
-                               onClick={(e) => e.stopPropagation()}
-                             />
-                           ) : (
-                             <p 
-                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text text-right whitespace-nowrap`}
-                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
-                               onDoubleClick={handleLabelDoubleClick}
-                             >
-                               {node.label}
-                             </p>
-                           )}
-                         </div>
-                       )}
-                       {/* Text outside chevron - positioned right */}
-                       {(node as any).textPosition === 'right' && node.label && (
-                         <div className={`absolute top-0 -right-2 bottom-0 flex items-center`}>
-                           {isEditingLabel ? (
-                             <input
-                               ref={inputRef}
-                               id={`node-input-${node.id}`}
-                               type="text"
-                               value={editText}
-                               onChange={(e) => setEditText(e.target.value)}
-                               onBlur={handleLabelSubmit}
-                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-auto outline-none text-left`}
-                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
-                               onClick={(e) => e.stopPropagation()}
-                             />
-                           ) : (
-                             <p 
-                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text text-left whitespace-nowrap`}
-                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
-                               onDoubleClick={handleLabelDoubleClick}
-                             >
-                               {node.label}
-                             </p>
-                           )}
-                         </div>
-                       )}
-                    </div>
-                  )}
-
-                  {/* Arrowhead (Left-facing triangle) */}
-                  {(node.type === 'generic.object.arrowhead' || node.type?.endsWith('.arrowhead')) && (
-                    <div 
-                      key={`gradient-${gradientAngle}`}
-                      className="relative" 
-                      style={{ 
-                        width: node.width || 70, 
-                        height: node.height || 60, 
-                        minWidth: node.width || 70, 
-                        minHeight: node.height || 60,
-                        margin: hasShadow ? 4 : 0,
-                        ...(hasShadow && { 
-                          filter: 'drop-shadow(0 20px 25px rgba(0, 0, 0, 0.2)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.04))'
-                        })
-                      }}>
-                      <svg 
-                        width={node.width || 70} 
-                        height={node.height || 60}
-                        style={{ display: 'block' }}
-                      >
-                        <defs>
-                            {backgroundStyle === 'gradient' && (() => {
-                              const coords = getGradientCoordinates(gradientAngle);
-                              return (
-                                <linearGradient id={`arrowhead-bg-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
-                                  <stop offset="0%" stopColor={backgroundColors[0]} />
-                                  <stop offset="100%" stopColor={backgroundColors[1]} />
-                                </linearGradient>
-                              );
-                            })()}
-                            {borderStyle === 'gradient' && (() => {
-                              const coords = getGradientCoordinates(gradientAngle);
-                              return (
-                                <linearGradient id={`arrowhead-border-${node.id}`} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
-                                  <stop offset="0%" stopColor={borderColors[0]} />
-                                  <stop offset="100%" stopColor={borderColors[1]} />
-                                </linearGradient>
-                              );
-                            })()}
-                        </defs>
-                         <path 
-                           d={`M${(node.width || 70) - borderWidth / 2} ${borderWidth / 2} L${(node.width || 70) - borderWidth / 2} ${(node.height || 60) - borderWidth / 2} L${borderWidth / 2} ${(node.height || 60) / 2} Z`}
-                           fill={backgroundStyle === 'gradient' ? `url(#arrowhead-bg-${node.id})` : backgroundColor}
-                           stroke={borderStyle === 'gradient' ? `url(#arrowhead-border-${node.id})` : borderColor}
-                           strokeWidth={borderStyle === 'none' ? 0 : borderWidth}
-                           strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
-                         />
-                       </svg>
-                       {/* Text inside arrowhead - positioned in center */}
-                       {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
-                         <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)} pt-2`}>
-                           {isEditingLabel ? (
-                             <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
-                               <input
-                                 ref={inputRef}
-                                 id={`node-input-${node.id}`}
-                                 type="text"
-                                 value={editText}
-                                 onChange={(e) => setEditText(e.target.value)}
-                                 onBlur={handleLabelSubmit}
-                                 onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                                 className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none`}
-                                 style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
-                                 onClick={(e) => e.stopPropagation()}
-                               />
-                             </div>
-                           ) : (
-                             <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
-                               <p 
-                                 className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
-                                 style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
-                                 onDoubleClick={handleLabelDoubleClick}
-                               >
-                                 {node.label}
-                               </p>
-                             </div>
-                           )}
-                         </div>
-                       )}
-                       {/* Text outside arrowhead - positioned above */}
-                       {((node as any).textPosition === 'outside' || (node as any).textPosition === 'top') && ((node as any).textVerticalPosition === 'top' || !(node as any).textVerticalPosition) && node.label && (
-                         <div className={`absolute -top-6 left-0 right-0 flex justify-center`}>
-                           {isEditingLabel ? (
-                             <input
-                               ref={inputRef}
-                               id={`node-input-${node.id}`}
-                               type="text"
-                               value={editText}
-                               onChange={(e) => setEditText(e.target.value)}
-                               onBlur={handleLabelSubmit}
-                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none text-center`}
-                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
-                               onClick={(e) => e.stopPropagation()}
-                             />
-                           ) : (
-                             <p 
-                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text text-center w-full`}
-                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
-                               onDoubleClick={handleLabelDoubleClick}
-                             >
-                               {node.label}
-                             </p>
-                           )}
-                         </div>
-                       )}
-                       {/* Text outside arrowhead - positioned below */}
-                       {((node as any).textPosition === 'outside' || (node as any).textPosition === 'bottom') && ((node as any).textVerticalPosition === 'bottom' || !(node as any).textVerticalPosition) && node.label && (
-                         <div className={`absolute -bottom-6 left-0 right-0 flex justify-center`}>
-                           {isEditingLabel ? (
-                             <input
-                               ref={inputRef}
-                               id={`node-input-${node.id}`}
-                               type="text"
-                               value={editText}
-                               onChange={(e) => setEditText(e.target.value)}
-                               onBlur={handleLabelSubmit}
-                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none text-center`}
-                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
-                               onClick={(e) => e.stopPropagation()}
-                             />
-                           ) : (
-                             <p 
-                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text text-center w-full`}
-                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
-                               onDoubleClick={handleLabelDoubleClick}
-                             >
-                               {node.label}
-                             </p>
-                           )}
-                         </div>
-                       )}
-                       {/* Text outside arrowhead - positioned left */}
-                       {(node as any).textPosition === 'left' && node.label && (
-                         <div className={`absolute top-0 -left-2 bottom-0 flex items-center`}>
-                           {isEditingLabel ? (
-                             <input
-                               ref={inputRef}
-                               id={`node-input-${node.id}`}
-                               type="text"
-                               value={editText}
-                               onChange={(e) => setEditText(e.target.value)}
-                               onBlur={handleLabelSubmit}
-                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-auto outline-none text-right`}
-                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
-                               onClick={(e) => e.stopPropagation()}
-                             />
-                           ) : (
-                             <p 
-                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text text-right whitespace-nowrap`}
-                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
-                               onDoubleClick={handleLabelDoubleClick}
-                             >
-                               {node.label}
-                             </p>
-                           )}
-                         </div>
-                       )}
-                       {/* Text outside arrowhead - positioned right */}
-                       {(node as any).textPosition === 'right' && node.label && (
-                         <div className={`absolute top-0 -right-2 bottom-0 flex items-center`}>
-                           {isEditingLabel ? (
-                             <input
-                               ref={inputRef}
-                               id={`node-input-${node.id}`}
-                               type="text"
-                               value={editText}
-                               onChange={(e) => setEditText(e.target.value)}
-                               onBlur={handleLabelSubmit}
-                               onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-auto outline-none text-left`}
-                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor() }}
-                               onClick={(e) => e.stopPropagation()}
-                             />
-                           ) : (
-                             <p 
-                               className={`text-xs font-medium ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text text-left whitespace-nowrap`}
-                               style={{ ...getTextStylingForNode(node), color: getShapeTextColor(), display: 'block' }}
-                               onDoubleClick={handleLabelDoubleClick}
-                             >
-                               {node.label}
-                             </p>
-                           )}
-                         </div>
-                       )}
-                    </div>
-                  )}
-                </div>
-                
-                {/* Text above shape */}
-                {((node as any).textVerticalPosition === 'top' || (node as any).textPosition === 'above') && node.label && (() => {
-                  const shapeWidth = node.width || 60;
-                  const charsPerLine = Math.floor(shapeWidth / 7);
-                  const estimatedLines = Math.ceil((node.label?.length || 0) / charsPerLine);
-                  const lineHeight = 1.25;
-                  const textHeight = estimatedLines * lineHeight;
-                  const topOffset = -(textHeight + 0.5);
-                  
-                  return (
-                    <div 
-                      className="absolute left-0 flex items-center"
-                      style={{ 
-                        top: `${topOffset}rem`,
-                        width: shapeWidth,
-                        minWidth: shapeWidth
-                      }}
-                    >
-                      {isEditingLabel ? (
-                        <input
-                          ref={inputRef}
-                          id={`node-input-${node.id}`}
-                          type="text"
-                          value={editText}
-                          onChange={(e) => setEditText(e.target.value)}
-                          onBlur={handleLabelSubmit}
-                          onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                          className={`text-sm ${getTextJustifyClass((node as any).textJustify)} bg-background border border-primary rounded px-2 py-1 w-full outline-none`}
-                          style={getTextStylingForNode(node)}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      ) : (
-                         <p 
-                           className={`${getTextJustifyClass((node as any).textJustify)} break-words leading-tight px-2 py-1 bg-background/90 rounded cursor-text hover:bg-background/95 w-full`}
-                           style={{ ...getTextStylingForNode(node), display: 'block' }}
-                           onDoubleClick={handleLabelDoubleClick}
-                         >
-                           {node.label}
-                         </p>
-                      )}
-                    </div>
-                  );
-                })()}
-                
-                {/* Text under shape */}
-                {((node as any).textVerticalPosition === 'bottom' || (node as any).textPosition === 'under') && node.label && (() => {
-                  const shapeHeight = node.height || 60;
-                  const shapeWidth = node.width || 60;
-                  const charsPerLine = Math.floor(shapeWidth / 7);
-                  const estimatedLines = Math.ceil((node.label?.length || 0) / charsPerLine);
-                  const lineHeight = 1.25;
-                  const textHeight = estimatedLines * lineHeight;
-                  const bottomOffset = shapeHeight + 0.5;
-                  
-                  return (
-                  <div 
-                    className="absolute left-0 flex items-center"
-                    style={{ 
-                      top: `${bottomOffset}px`,
-                      width: shapeWidth,
-                      minWidth: shapeWidth
-                    }}
-                  >
-                    {isEditingLabel ? (
-                      <input
-                        ref={inputRef}
-                        id={`node-input-${node.id}`}
-                        type="text"
-                        value={editText}
-                        onChange={(e) => setEditText(e.target.value)}
-                        onBlur={handleLabelSubmit}
-                        onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                        className={`text-sm ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-primary rounded px-2 py-1 w-full outline-none`}
-                        style={getTextStylingForNode(node)}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    ) : (
-                        <p 
-                          className={`${getTextJustifyClass((node as any).textJustify)} break-words leading-tight px-2 py-1 cursor-text hover:bg-background/50 rounded w-full`}
-                          style={{ ...getTextStylingForNode(node), display: 'block' }}
-                          onDoubleClick={handleLabelDoubleClick}
-                        >
-                         {node.label}
-                       </p>
-                    )}
-                  </div>
-                  );
-                })()}
-              </div>
-              );
-              })()
+                          </div>
+                        )}
+                     </div>
+                   </div>
+                 );
+               })()
             ) : (
               <>
                 <div className={cn(
@@ -2253,44 +892,44 @@ return (
             </div>
           </PopoverContent>
         )}
-      </Popover>
-      
-      {/* Resize handles - show for text resources (textbox always, others only in custom mode), or for shapes (except points) */}
-       {!isReadOnly && (isHovered || isResizing || isSelected) && 
-        (isTextboxNode || ((isTextNode ) && node.sizeMode === 'custom') || (isShapeNode && !isPointNode)) && (
-        <>
-          {/* Right handle */}
-          <div
-            className="absolute top-0 right-0 w-2 h-full cursor-ew-resize hover:bg-primary/20 transition-colors z-50"
-            style={{ marginRight: '-4px' }}
-            onMouseDown={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              handleResizeStart(e, 'right');
-            }}
-          />
-          {/* Bottom handle */}
-          <div
-            className="absolute bottom-0 left-0 w-full h-2 cursor-ns-resize hover:bg-primary/20 transition-colors z-50"
-            style={{ marginBottom: '-4px' }}
-            onMouseDown={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              handleResizeStart(e, 'bottom');
-            }}
-          />
-          {/* Bottom-right corner handle */}
-          <div
-            className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize hover:bg-primary/30 transition-colors z-50"
-            style={{ marginBottom: '-4px', marginRight: '-4px' }}
-            onMouseDown={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              handleResizeStart(e, 'bottom-right');
-            }}
-          />
-        </>
-      )}
+       </Popover>
+
+       {/* Resize handles - show for text resources (textbox always, others only in custom mode), or for shapes (except points) */}
+        {!isReadOnly && (isHovered || isResizing || isSelected) &&
+         (isTextboxNode || ((isTextNode ) && node.sizeMode === 'custom') || (isShapeNode && !isPointNode)) && (
+         <>
+           {/* Right handle */}
+           <div
+             className="absolute top-0 right-0 w-2 h-full cursor-ew-resize hover:bg-primary/20 transition-colors z-50"
+             style={{ marginRight: '-4px' }}
+             onMouseDown={(e) => {
+               e.stopPropagation();
+               e.preventDefault();
+               handleResizeStart(e, 'right');
+             }}
+           />
+           {/* Bottom handle */}
+           <div
+             className="absolute bottom-0 left-0 w-full h-2 cursor-ns-resize hover:bg-primary/20 transition-colors z-50"
+             style={{ marginBottom: '-4px' }}
+             onMouseDown={(e) => {
+               e.stopPropagation();
+               e.preventDefault();
+               handleResizeStart(e, 'bottom');
+             }}
+           />
+           {/* Bottom-right corner handle */}
+           <div
+             className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize hover:bg-primary/30 transition-colors z-50"
+             style={{ marginBottom: '-4px', marginRight: '-4px' }}
+             onMouseDown={(e) => {
+               e.stopPropagation();
+               e.preventDefault();
+               handleResizeStart(e, 'bottom-right');
+             }}
+           />
+         </>
+       )}
     </div>
   );
 }

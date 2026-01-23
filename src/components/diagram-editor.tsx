@@ -52,8 +52,8 @@ import { performAutoLayout } from '@/lib/auto-layout';
 import { applyZoneLayout, cycleZoneItems } from '@/lib/zone-layout-utils';
 
 export type SelectedItem = (
-  | (DiagramNodeData & { 
-      itemType: 'node', 
+  | (DiagramNodeData & {
+      itemType: 'node',
       id: string,
       // Zone styling properties for nodes
       borderColor?: string,
@@ -88,7 +88,9 @@ export type SelectedItem = (
       orientation?: 'horizontal' | 'vertical' | 'square',
       maxItemsPerRow?: number,
       lineColor?: string,
-      parentId?: string
+      parentId?: string,
+      tag?: string,
+      tagPosition?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right'
     })
   | (DiagramZoneData & { 
       itemType: 'zone', 

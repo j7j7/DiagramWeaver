@@ -1410,6 +1410,10 @@ export function ContextToolbar({
                   onStylingChange={handleVisualStylingChange}
                   onReset={handleVisualStylingReset}
                   selectedItemIds={selectedItemIds}
+                  tag={selectedItem?.tag}
+                  tagPosition={selectedItem?.tagPosition}
+                  onTagChange={(tag) => onItemUpdate?.({ ...selectedItem, tag } as SelectedItem)}
+                  onTagPositionChange={(tagPosition) => onItemUpdate?.({ ...selectedItem, tagPosition } as SelectedItem)}
                 />
               </div>,
               document.body
