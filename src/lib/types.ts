@@ -133,11 +133,13 @@ export interface DiagramNodeItem {
   fontWeight?: 'normal' | 'bold' | '100' | '200' | '300' | '400' | '500' | '600' | '700' | '800' | '900'; // Font weight
   fontStyle?: 'normal' | 'italic' | 'oblique'; // Font style
   textDecoration?: 'none' | 'underline' | 'overline' | 'line-through'; // Text decoration
-  textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize'; // Text transformation
-  letterSpacing?: number; // Letter spacing in pixels
-  lineHeight?: number; // Line height as a multiplier (e.g., 1.2, 1.5)
-  textOpacity?: number; // Text opacity (0-1)
-  groupId?: string; // Reference to grouping this node belongs to
+   textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize'; // Text transformation
+   letterSpacing?: number; // Letter spacing in pixels
+   lineHeight?: number; // Line height as a multiplier (e.g., 1.2, 1.5)
+   textOpacity?: number; // Text opacity (0-1)
+   tag?: string; // Tag text for node identification
+   tagPosition?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right'; // Tag position relative to node
+   groupId?: string; // Reference to grouping this node belongs to
 }
 
 export interface DiagramZoneItem {
@@ -189,10 +191,12 @@ export interface DiagramZoneItem {
    sizeMode?: 'auto' | 'custom'; // Whether to use auto-calculated or custom dimensions
    minWidth?: number; // Minimum width constraint (based on content)
    minHeight?: number; // Minimum height constraint (based on content)
-   rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
-   borderWidth?: number; // Border thickness for zones
-   groupId?: string; // Reference to grouping this zone belongs to
- }
+    rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
+    borderWidth?: number; // Border thickness for zones
+    tag?: string; // Tag text for zone identification
+    tagPosition?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right'; // Tag position relative to zone
+    groupId?: string; // Reference to grouping this zone belongs to
+  }
 
 export interface DiagramZoneData {
   id: string;
@@ -217,9 +221,11 @@ export interface DiagramZoneData {
   maxItemsPerRow?: number; // Maximum items per row (for grid layouts)
   lineColor?: string; // Color for connections from this zone
   shadow?: boolean; // Whether to show shadow around zone
-  parentId?: string; // Reference to parent zone ID for hierarchy tracking
-  objectStyle?: string; // Predefined visual style key (e.g., 'solid', 'gradient', 'modern', etc.)
-   
+   parentId?: string; // Reference to parent zone ID for hierarchy tracking
+   objectStyle?: string; // Predefined visual style key (e.g., 'solid', 'gradient', 'modern', etc.)
+   tag?: string; // Tag text for zone identification
+   tagPosition?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right'; // Tag position relative to zone
+
    // Text positioning properties - extended for flexible zone labeling
    textPosition?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right' | 'inside' | 'inline-top' | 'inline-bottom' | 'outside-top' | 'outside-bottom' | 'outside-left' | 'outside-right';
      

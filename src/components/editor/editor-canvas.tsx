@@ -57,6 +57,7 @@ interface EditorCanvasProps {
   onTransformChange?: (transform: { x: number; y: number; k: number }) => void;
    onLabelUpdate?: (nodeId: string, newLabel: string) => void;
    onTagUpdate?: (nodeId: string, newTag: string) => void;
+   onZoneTagUpdate?: (zoneId: string, newTag: string) => void;
    onDraggingChange?: (isDragging: boolean) => void;
   onClipboardChange?: (hasClipboard: boolean) => void;
   onMousePositionChange?: (position: { x: number; y: number } | null) => void;
@@ -101,7 +102,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, selectionAnimationEnabled = false, iconBackgroundEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false }: EditorCanvasProps,
+   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform,      onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, selectionAnimationEnabled = false, iconBackgroundEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false }: EditorCanvasProps,
   ref
 ) {
   // ============================================================================
@@ -814,9 +815,10 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     isGroupMember={isInGroup}
                     onClick={(e: React.MouseEvent) => handleZoneClick(e, zone)}
                     onContextMenu={(e: React.MouseEvent) => handleZoneContextMenu(e, zone)}
-                    onResize={operations.resizeGroup}
-                    onLabelChange={operations.updateGroupLabel}
-                    isReadOnly={isReadOnly}
+                     onResize={operations.resizeGroup}
+                     onLabelChange={operations.updateGroupLabel}
+                     onTagUpdate={operations.updateGroupTag}
+                     isReadOnly={isReadOnly}
                   />
                 );
               });

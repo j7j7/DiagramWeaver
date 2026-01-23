@@ -48,6 +48,7 @@ import type { DiagramData, DiagramZoneData } from '@/lib/types';
 import { DiagramTheme } from '@/lib/theme-types';
 import { themeManager } from '@/lib/theme-manager';
 import { extractTextStylingFromNode, extractTextStylingFromGroup, applyTextStylingToZone, applyTextStylingToNode } from '@/lib/text-styling';
+import { isShapeNodeType } from '@/lib/utils';
 import { extractVisualStylingFromNode, extractVisualStylingFromGroup } from '@/lib/visual-styling';
 
 interface ContextToolbarProps {
@@ -864,22 +865,40 @@ export function ContextToolbar({
   const isTextNode = isNode && selectedItem.type?.startsWith('generic.text');
   const isTextboxNode = isNode && selectedItem.type === 'generic.text.textbox';
   const isPlainTextNode = isNode && selectedItem.type === 'generic.text.text';
-   const isShapeNode = isNode && (selectedItem.type === 'generic.object.square' ||
-                                  selectedItem.type === 'generic.object.circle' ||
-                                  selectedItem.type === 'generic.object.point' ||
-                                  selectedItem.type === 'generic.object.rectangle' ||
-                                  selectedItem.type === 'generic.object.rounded-rectangle' ||
-                                  selectedItem.type === 'generic.object.triangle' ||
-                                  selectedItem.type === 'generic.object.star' ||
-                                  selectedItem.type === 'generic.object.cloud' ||
-                                  selectedItem.type?.endsWith('.square') ||
-                                  selectedItem.type?.endsWith('.circle') ||
-                                  selectedItem.type?.endsWith('.point') ||
-                                  selectedItem.type?.endsWith('.rectangle') ||
-                                  selectedItem.type?.endsWith('.rounded-rectangle') ||
-                                  selectedItem.type?.endsWith('.triangle') ||
-                                  selectedItem.type?.endsWith('.star') ||
-                                  selectedItem.type?.endsWith('.cloud'));
+    const isShapeNode = isNode && (selectedItem.type === 'generic.object.square' ||
+                                   selectedItem.type === 'generic.object.circle' ||
+                                   selectedItem.type === 'generic.object.point' ||
+                                   selectedItem.type === 'generic.object.rectangle' ||
+                                   selectedItem.type === 'generic.object.rounded-rectangle' ||
+                                   selectedItem.type === 'generic.object.triangle' ||
+                                   selectedItem.type === 'generic.object.star' ||
+                                   selectedItem.type === 'generic.object.cloud' ||
+                                   selectedItem.type === 'generic.object.parallelogram' ||
+                                   selectedItem.type === 'generic.object.trapezoid' ||
+                                   selectedItem.type === 'generic.object.kite' ||
+                                   selectedItem.type === 'generic.object.hexagon' ||
+                                   selectedItem.type === 'generic.object.pentagon' ||
+                                   selectedItem.type === 'generic.object.octagon' ||
+                                   selectedItem.type === 'generic.object.jigsaw' ||
+                                   selectedItem.type === 'generic.object.arrowhead' ||
+                                   selectedItem.type === 'generic.object.chevron' ||
+                                   selectedItem.type?.endsWith('.square') ||
+                                   selectedItem.type?.endsWith('.circle') ||
+                                   selectedItem.type?.endsWith('.point') ||
+                                   selectedItem.type?.endsWith('.rectangle') ||
+                                   selectedItem.type?.endsWith('.rounded-rectangle') ||
+                                   selectedItem.type?.endsWith('.triangle') ||
+                                   selectedItem.type?.endsWith('.star') ||
+                                   selectedItem.type?.endsWith('.cloud') ||
+                                   selectedItem.type?.endsWith('.parallelogram') ||
+                                   selectedItem.type?.endsWith('.trapezoid') ||
+                                   selectedItem.type?.endsWith('.kite') ||
+                                   selectedItem.type?.endsWith('.hexagon') ||
+                                   selectedItem.type?.endsWith('.pentagon') ||
+                                   selectedItem.type?.endsWith('.octagon') ||
+                                   selectedItem.type?.endsWith('.jigsaw') ||
+                                   selectedItem.type?.endsWith('.arrowhead') ||
+                                   selectedItem.type?.endsWith('.chevron'));
   
 
   const isLabelOrTextbox = isTextboxNode;
@@ -1738,8 +1757,8 @@ export function ContextToolbar({
 
 
 
-        {/* Freeflow Toggle (Nodes) */}
-        {isNode && (
+        {/* Freeflow Toggle (Nodes) - Hidden for shape nodes */}
+        {isNode && !isShapeNode && (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button 
@@ -1755,8 +1774,8 @@ export function ContextToolbar({
           </Tooltip>
         )}
 
-        {/* Remove Icon Background (Non-text nodes) */}
-        {isNode && !isTextNode && (
+        {/* Remove Icon Background (Non-text, non-shape nodes) */}
+        {isNode && !isTextNode && !isShapeNode && (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button 

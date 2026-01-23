@@ -6,6 +6,7 @@ import type { Transform } from "./use-canvas-transform";
 import type { PositionedNode, PositionedGroup } from "@/components/editor/canvas-constants";
 import type { DiagramData } from "@/lib/types";
 import { getItemGroup, getGroupMembers } from "@/lib/grouping-utils";
+import { isShapeNodeType } from "@/lib/utils";
 
 type DropItem = { 
   id?: string; 
@@ -148,11 +149,11 @@ export function useCanvasDragDrop({
         onDraggingChange?.(true);
       }
 
-      // Check if item is a freeflow node
-      const isFreeflowNode = item.id && nodesById[item.id]?.freeflow;
+      // Check if item is a freeflow node (shapes are always freeflow)
+      const isFreeflowNode = item.id && (nodesById[item.id]?.freeflow || isShapeNodeType(item.type || ''));
 
       let targetGroupId: string | null = null;
-      
+
       // Only check for group highlighting if item is NOT a freeflow node
       if (!isFreeflowNode) {
         // Collect all candidate zones that contain the point, then prefer the
@@ -263,8 +264,8 @@ export function useCanvasDragDrop({
         return;
       }
 
-      // Check if item is a freeflow node
-      const isFreeflowNode = item.id && nodesById[item.id]?.freeflow;
+      // Check if item is a freeflow node (shapes are always freeflow)
+      const isFreeflowNode = item.id && (nodesById[item.id]?.freeflow || isShapeNodeType(item.type || ''));
       const targetGroupIdForFreeflow = isFreeflowNode ? null : hoveredGroupId;
       
       if (itemType === ItemTypes.DIAGRAM_NODE) { 

@@ -6,7 +6,16 @@ import { Panel, Group as PanelGroup } from 'react-resizable-panels';
 import { ComponentSidebar } from './editor/component-sidebar';
 import { EditorCanvas, type EditorCanvasHandle } from './editor/editor-canvas';
 import { JsonEditorPanel } from './editor/json-editor-panel';
-import { TopMenuBar } from './editor/top-menu-bar';
+import dynamic from 'next/dynamic';
+
+const TopMenuBar = dynamic(() => import('./editor/top-menu-bar').then(mod => ({ default: mod.TopMenuBar })), {
+  ssr: false,
+  loading: () => <div className="flex items-center border-b bg-card min-h-[2.5rem] overflow-x-auto">
+    <div className="flex h-10 items-center space-x-1 rounded-md border bg-background p-1">
+      <div className="flex cursor-default select-none items-center rounded-sm px-3 py-1.5 text-sm font-medium">Loading...</div>
+    </div>
+  </div>
+});
 import { TabBar } from './editor/tab-bar';
 import { ExportDialog } from './editor/export-dialog';
 import {
@@ -29,7 +38,9 @@ import { convertFromNestedHierarchy, convertToNestedHierarchy } from '@/lib/nest
 import { themeManager } from '@/lib/theme-manager';
 import { DiagramTheme } from '@/lib/theme-types';
 import { LayersPanel } from './editor/layers-panel';
-import { ScratchPad } from './editor/scratch-pad';
+const ScratchPad = dynamic(() => import('./editor/scratch-pad').then(mod => ({ default: mod.ScratchPad })), {
+  ssr: false,
+});
 import { 
   createGroup, 
   addToGroup,
@@ -614,6 +625,18 @@ export default function DiagramEditor() {
 
     // Also update the selected item if it's the one being edited
     if (selectedItem?.id === nodeId && selectedItem.itemType === 'node') {
+      setSelectedItem({ ...selectedItem, tag: newTag });
+    }
+  }
+
+  const handleZoneTagUpdate = (zoneId: string, newTag: string) => {
+    setDiagramData(prevData => ({
+      ...prevData,
+      zones: prevData.zones?.map(z => z.id === zoneId ? { ...z, tag: newTag } : z)
+    }));
+
+    // Also update the selected item if it's the one being edited
+    if (selectedItem?.id === zoneId && selectedItem.itemType === 'zone') {
       setSelectedItem({ ...selectedItem, tag: newTag });
     }
   }
@@ -1900,6 +1923,7 @@ export default function DiagramEditor() {
                      onTransformChange={setCanvasTransform}
                      onLabelUpdate={handleLabelUpdate}
                      onTagUpdate={handleTagUpdate}
+                     onZoneTagUpdate={handleZoneTagUpdate}
                      onDraggingChange={setIsDragging}
                     onClipboardChange={setCanPaste}
                     onMousePositionChange={setMousePosition}

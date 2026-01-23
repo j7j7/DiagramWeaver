@@ -14,6 +14,7 @@ import {
   type PositionedGroup,
 } from "./canvas-constants";
 import { recalculateGroupSize } from "./canvas-layout-utils";
+import { isShapeNodeType } from "@/lib/utils";
 import { cleanupEmptyZones } from "@/lib/grouping-utils";
 import { applyZoneLayout, cycleZoneItems } from "@/lib/zone-layout-utils";
 
@@ -211,7 +212,7 @@ export function useCanvasOperations({
       
       // Don't add freeflow shape nodes to groups
       const addedItem = newNodes.find(n => n.id === newItemId) || newZones.find(zone => zone.id === newItemId);
-      const isFreeflowShape = (addedItem as any)?.freeflow === true && isShapeResource;
+      const isFreeflowShape = ((addedItem as any)?.freeflow === true || isShapeNodeType((addedItem as any)?.type)) && isShapeResource;
       
       if (targetGroupId && !isFreeflowShape) {
         newZones = newZones.map(zone => {
@@ -263,7 +264,7 @@ export function useCanvasOperations({
 
         // Check if the new node should be freeflow (skip overlap prevention)
         const addedItem = newNodes.find(n => n.id === newItemId) || newZones.find(zone => zone.id === newItemId);
-        const isFreeflowNewItem = (addedItem as any)?.freeflow;
+        const isFreeflowNewItem = (addedItem as any)?.freeflow || isShapeNodeType((addedItem as any)?.type);
 
         // nudge search (spiral-ish) up to 50 attempts (skip for freeflow items)
         const dirs = [ [1,0],[0,1],[-1,0],[0,-1] ];
@@ -393,6 +394,22 @@ export function useCanvasOperations({
     });
   }, [setDiagramData]);
 
+  const updateGroupTag = useCallback((groupId: string, newTag: string) => {
+    setDiagramData(prevData => {
+      const updatedZones = prevData.zones?.map(zone => {
+        if (zone.id === groupId) {
+          return {
+            ...zone,
+            tag: newTag
+          };
+        }
+        return zone;
+      }) || [];
+
+      return { ...prevData, zones: updatedZones };
+    });
+  }, [setDiagramData]);
+
   const moveMultipleItems = useCallback((items: Array<{ id: string; type: string; x?: number, y?: number }>, newPositions: Array<{ x: number; y: number }>, targetGroupId: string | null) => {
     setDiagramData(prevData => {
       let currentNodes = [...(prevData.nodes || [])];
@@ -403,7 +420,8 @@ export function useCanvasOperations({
         if (!newPos) return;
         
         const oldParentId = currentZones.find(zone => zone.children.includes(item.id))?.id;
-        const isFreeflowNode = currentNodes.find(n => n.id === item.id)?.freeflow;
+        const node = currentNodes.find(n => n.id === item.id);
+        const isFreeflowNode = node?.freeflow || isShapeNodeType(node?.type || '');
 
         // Handle re-parenting
         if (oldParentId !== targetGroupId) {
@@ -540,9 +558,10 @@ export function useCanvasOperations({
         }
       }
 
-      // Check if item is a freeflow node
-      const isFreeflowNode = currentNodes.find(n => n.id === item.id)?.freeflow;
-      
+      // Check if item is a freeflow node (shapes are always freeflow)
+      const node = currentNodes.find(n => n.id === item.id);
+      const isFreeflowNode = node?.freeflow || isShapeNodeType(node?.type || '');
+
       // If target is a group and item is NOT freeflow, set ordering within that group (reorder or insert)
       if (targetGroupId && !isFreeflowNode) {
         currentZones = currentZones.map(zone => {
@@ -598,9 +617,10 @@ export function useCanvasOperations({
   
       // Handle positioning
       if (item.type === ItemTypes.CANVAS_NODE || item.type === ItemTypes.ZONE) {
-        // Check if item is a freeflow node
-        const isFreeflowNode = currentNodes.find(n => n.id === item.id)?.freeflow;
-        
+        // Check if item is a freeflow node (shapes are always freeflow)
+        const node = currentNodes.find(n => n.id === item.id);
+        const isFreeflowNode = node?.freeflow || isShapeNodeType(node?.type || '');
+
         // If item is (now) a child and NOT freeflow, its position is auto-calculated, so remove explicit coords.
         // Freeflow nodes always maintain their coordinates even if dropped over a group.
         if (targetGroupId && !isFreeflowNode) {
@@ -833,6 +853,7 @@ export function useCanvasOperations({
     resizeNode,
     resizeGroup,
     updateGroupLabel,
+    updateGroupTag,
     moveMultipleItems,
     moveItem,
     handleDelete,

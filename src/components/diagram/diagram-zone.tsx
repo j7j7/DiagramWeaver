@@ -24,13 +24,14 @@ interface DiagramZoneProps {
   onContextMenu?: (e: React.MouseEvent, zone: DiagramZoneData) => void;
   onResize?: (zoneId: string, newWidth: number, newHeight: number) => void;
   onLabelChange?: (zoneId: string, newLabel: string) => void;
+  onTagUpdate?: (zoneId: string, newTag: string) => void;
   isReadOnly?: boolean;
 }
 
 
 
 
-export function DiagramZone({ zone, isSelected, isDropTarget, isTargetable, isMultiSelected, isGroupMember, onClick, onContextMenu, onResize, onLabelChange, isReadOnly = false }: DiagramZoneProps) {
+export function DiagramZone({ zone, isSelected, isDropTarget, isTargetable, isMultiSelected, isGroupMember, onClick, onContextMenu, onResize, onLabelChange, onTagUpdate, isReadOnly = false }: DiagramZoneProps) {
 const [{ isDragging }, drag, preview] = useDrag(() => ({
     type: ItemTypes.ZONE,
     item: { ...zone, type: ItemTypes.ZONE },
@@ -51,9 +52,12 @@ const [{ isDragging }, drag, preview] = useDrag(() => ({
   const [resizeHandle, setResizeHandle] = useState<'right' | 'bottom' | 'bottom-right' | null>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
+  const [isEditingTag, setIsEditingTag] = useState(false);
   const [editValue, setEditValue] = useState('');
+  const [editTagValue, setEditTagValue] = useState('');
   const resizeStartPos = useRef<{ x: number; y: number; startWidth: number; startHeight: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const tagInputRef = useRef<HTMLInputElement>(null);
 
   // Touch event handlers for mobile drag and drop
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -290,8 +294,64 @@ const [{ isDragging }, drag, preview] = useDrag(() => ({
     handleLabelSubmit();
   };
 
+  // Tag editing handlers
+  const handleTagStartEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsEditingTag(true);
+    setEditTagValue(zone.tag || '');
+    setTimeout(() => {
+      tagInputRef.current?.focus();
+      tagInputRef.current?.select();
+    }, 0);
+  };
+
+  const handleTagChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEditTagValue(e.target.value);
+  };
+
+  const handleTagSubmit = () => {
+    if (onTagUpdate) {
+      onTagUpdate(zone.id, editTagValue.trim());
+    }
+    setIsEditingTag(false);
+    setEditTagValue('');
+  };
+
+  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleTagSubmit();
+    } else if (e.key === 'Escape') {
+      setIsEditingTag(false);
+      setEditTagValue('');
+    }
+  };
+
+  const handleTagBlur = () => {
+    handleTagSubmit();
+  };
+
   const isZone = true; // Always true now that we only have zones
   const hasLabel = !!zone.label && zone.label.trim() !== '';
+
+  // Helper function to get tag positioning classes
+  const getTagPositionClasses = (position?: string) => {
+    switch (position) {
+      case 'top-left':
+        return '-top-[30px] left-0';
+      case 'top-center':
+        return '-top-[30px] left-1/2 transform -translate-x-1/2';
+      case 'top-right':
+        return '-top-[30px] right-0';
+      case 'bottom-left':
+        return '-bottom-[30px] left-0';
+      case 'bottom-center':
+        return '-bottom-[30px] left-1/2 transform -translate-x-1/2';
+      case 'bottom-right':
+        return '-bottom-[30px] right-0';
+      default:
+        return '-top-[30px] left-1/2 transform -translate-x-1/2'; // Default to top-center
+    }
+  };
   
   // Get text position with defaults
   const getTextPosition = () => {
@@ -745,7 +805,41 @@ const [{ isDragging }, drag, preview] = useDrag(() => ({
             </PopoverContent>
           )}
         </Popover>
-      )}
-    </div>
-  );
-}
+       )}
+
+       {/* Tag rendering */}
+       {zone.tag && zone.tag.trim() && (
+         <div
+           className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses(zone.tagPosition)}`}
+           style={{
+             color: '#374151',
+             whiteSpace: 'nowrap',
+             minWidth: 'fit-content',
+             boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
+           }}
+         >
+           {isEditingTag ? (
+             <input
+               ref={tagInputRef}
+               type="text"
+               value={editTagValue}
+               onChange={handleTagChange}
+               onBlur={handleTagBlur}
+               onKeyDown={handleTagKeyDown}
+               className="text-xs font-medium bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
+               onClick={(e) => e.stopPropagation()}
+               style={{ minWidth: '60px' }}
+             />
+           ) : (
+             <span
+               onDoubleClick={handleTagStartEdit}
+               className="cursor-text"
+             >
+               {zone.tag}
+             </span>
+           )}
+         </div>
+       )}
+     </div>
+   );
+ }

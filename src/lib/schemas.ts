@@ -93,9 +93,11 @@ export const DiagramGroupDataSchema = z.object({
   lineColor: z.string().optional(),
   shadow: z.boolean().optional(),
   parentId: z.string().optional(),
-  objectStyle: z.string().optional(), // Predefined visual style key
-  borderWidth: z.number().optional(), // Border thickness for zones
-  
+   objectStyle: z.string().optional(), // Predefined visual style key
+   tag: z.string().optional(), // Tag text for zone identification
+   tagPosition: z.enum(['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right']).optional(), // Tag position relative to zone
+   borderWidth: z.number().optional(), // Border thickness for zones
+
    // Text positioning properties
    textPosition: z.enum(['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right', 'inside', 'inline-top', 'inline-bottom', 'outside-top', 'outside-bottom', 'outside-left', 'outside-right']).optional(),
    

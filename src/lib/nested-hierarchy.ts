@@ -78,11 +78,13 @@ export function convertToNestedHierarchy(data: DiagramData): HierarchicalDiagram
         height: node.height,
         sizeMode: node.sizeMode,
         noIconBackground: node.noIconBackground,
-        textJustify: node.textJustify,
-        textVerticalPosition: node.textVerticalPosition,
-        layer: node.layer, // Preserve layer information
-        groupId: node.groupId // Preserve grouping information
-      }))
+         textJustify: node.textJustify,
+         textVerticalPosition: node.textVerticalPosition,
+         tag: node.tag,
+         tagPosition: node.tagPosition,
+         layer: node.layer, // Preserve layer information
+         groupId: node.groupId // Preserve grouping information
+       }))
     };
     nestedGroups.push(orphanGroup);
   }
@@ -141,10 +143,12 @@ function convertGroupToNested(
         height: node.height,
         sizeMode: node.sizeMode,
         noIconBackground: node.noIconBackground,
-        textJustify: node.textJustify,
-        textVerticalPosition: node.textVerticalPosition,
-        layer: node.layer, // Preserve layer information
-        groupId: node.groupId // Preserve grouping information
+         textJustify: node.textJustify,
+         textVerticalPosition: node.textVerticalPosition,
+         tag: node.tag,
+         tagPosition: node.tagPosition,
+         layer: node.layer, // Preserve layer information
+         groupId: node.groupId // Preserve grouping information
       });
     } else {
       // This is a nested group
@@ -183,12 +187,14 @@ function convertGroupToNested(
     minWidth: zone.minWidth,
     minHeight: zone.minHeight,
     rotation: zone.rotation,
-    borderWidth: zone.borderWidth,
-    textJustify: zone.textJustify,
-    textVerticalPosition: zone.textVerticalPosition,
-    layer: zone.layer, // Preserve layer information
-    groupId: zone.groupId // Preserve grouping information
-  };
+     borderWidth: zone.borderWidth,
+     textJustify: zone.textJustify,
+     textVerticalPosition: zone.textVerticalPosition,
+     tag: zone.tag,
+     tagPosition: zone.tagPosition,
+     layer: zone.layer, // Preserve layer information
+     groupId: zone.groupId // Preserve grouping information
+   };
 }
 
 /**
@@ -242,9 +248,11 @@ export function convertFromNestedHierarchy(nestedData: HierarchicalDiagramData):
             sizeMode: nodeChild.sizeMode,
             noIconBackground: nodeChild.noIconBackground,
             textJustify: nodeChild.textJustify,
-            textVerticalPosition: nodeChild.textVerticalPosition,
-            layer: nodeChild.layer, // Preserve layer information
-            groupId: nodeChild.groupId // Preserve grouping information
+             textVerticalPosition: nodeChild.textVerticalPosition,
+             tag: nodeChild.tag,
+             tagPosition: nodeChild.tagPosition,
+             layer: nodeChild.layer, // Preserve layer information
+             groupId: nodeChild.groupId // Preserve grouping information
           };
           nodes.push(node);
           nodeMap.set(nodeChild.id, node);
@@ -328,10 +336,12 @@ function processNestedGroup(
     rotation: zone.rotation,
     borderWidth: zone.borderWidth,
     parentId: parentId || undefined,
-    textJustify: zone.textJustify,
-    textVerticalPosition: zone.textVerticalPosition,
-    layer: zone.layer, // Preserve layer information
-    groupId: zone.groupId // Preserve grouping information
+     textJustify: zone.textJustify,
+     textVerticalPosition: zone.textVerticalPosition,
+     tag: zone.tag,
+     tagPosition: zone.tagPosition,
+     layer: zone.layer, // Preserve layer information
+     groupId: zone.groupId // Preserve grouping information
   };
   
   zones.push(flatZone);
@@ -383,10 +393,12 @@ function processNestedGroup(
         height: nodeChild.height,
         sizeMode: nodeChild.sizeMode,
         noIconBackground: nodeChild.noIconBackground,
-        textJustify: nodeChild.textJustify,
-        textVerticalPosition: nodeChild.textVerticalPosition,
-        layer: nodeChild.layer, // Preserve layer information
-        groupId: nodeChild.groupId // Preserve grouping information
+         textJustify: nodeChild.textJustify,
+         textVerticalPosition: nodeChild.textVerticalPosition,
+         tag: nodeChild.tag,
+         tagPosition: nodeChild.tagPosition,
+         layer: nodeChild.layer, // Preserve layer information
+         groupId: nodeChild.groupId // Preserve grouping information
       };
     
       nodes.push(node);
