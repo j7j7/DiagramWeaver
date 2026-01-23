@@ -170,7 +170,7 @@ kill_all_ports
 # Additional aggressive kill for any remaining processes
 echo "[port] Double-checking for remaining processes..."
 for port in 9002 3000; do
-  local has_process=false
+  has_process=false
   if command -v lsof >/dev/null 2>&1; then
     if lsof -ti tcp:"$port" >/dev/null 2>&1; then
       has_process=true
