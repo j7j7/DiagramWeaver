@@ -68,25 +68,46 @@ npm i baseline-browser-mapping@latest -D
 echo "[audit] Running npm audit fix"
 npm audit fix
 
-# Kill anything already on the dev port (9002) to avoid conflicts
+# Kill anything already on the specified port to avoid conflicts
 kill_port() {
-  local p
-  if p=$(lsof -ti tcp:"$1" 2>/dev/null); then
-    echo "[port] Killing processes on :$1 ($p)"
+  local port=$1
+  local pids=""
+  
+  # Try different methods to find processes on the port
+  if command -v lsof >/dev/null 2>&1; then
+    # macOS/Linux with lsof
+    pids=$(lsof -ti tcp:"$port" 2>/dev/null || true)
+  elif command -v netstat >/dev/null 2>&1; then
+    # Linux with netstat
+    pids=$(netstat -tlnp 2>/dev/null | grep ":$port " | awk '/LISTEN/ {print $7}' | cut -d'/' -f1 | grep -E '^[0-9]+$' || true)
+  elif command -v ss >/dev/null 2>&1; then
+    # Linux with ss
+    pids=$(ss -tlnp 2>/dev/null | grep ":$port " | awk '{print $7}' | cut -d',' -f2 | cut -d'=' -f2 | grep -E '^[0-9]+$' || true)
+  fi
+  
+  if [[ -n "$pids" ]]; then
+    echo "[port] Killing processes on :$port ($pids)"
     # Try graceful kill first
-    echo "$p" | xargs kill 2>/dev/null || true
+    echo "$pids" | xargs kill 2>/dev/null || true
     sleep 1
-    # Force kill if still running
-    if lsof -ti tcp:"$1" >/dev/null 2>&1; then
-      echo "[port] Force killing remaining processes on :$1"
-      echo "$p" | xargs kill -9 2>/dev/null || true
+    
+    # Force kill any remaining processes
+    local remaining_pids=""
+    if command -v lsof >/dev/null 2>&1; then
+      remaining_pids=$(lsof -ti tcp:"$port" 2>/dev/null || true)
+    elif command -v netstat >/dev/null 2>&1; then
+      remaining_pids=$(netstat -tlnp 2>/dev/null | grep ":$port " | awk '/LISTEN/ {print $7}' | cut -d'/' -f1 | grep -E '^[0-9]+$' || true)
+    elif command -v ss >/dev/null 2>&1; then
+      remaining_pids=$(ss -tlnp 2>/dev/null | grep ":$port " | awk '{print $7}' | cut -d',' -f2 | cut -d'=' -f2 | grep -E '^[0-9]+$' || true)
+    fi
+    
+    if [[ -n "$remaining_pids" ]]; then
+      echo "[port] Force killing remaining processes on :$port"
+      echo "$remaining_pids" | xargs kill -9 2>/dev/null || true
       sleep 0.5
     fi
-    # Final check and force kill any remaining processes
-    if lsof -ti tcp:"$1" >/dev/null 2>&1; then
-      echo "[port] Final force kill on :$1"
-      lsof -ti tcp:"$1" | xargs -r kill -9 2>/dev/null || true
-    fi
+  else
+    echo "[port] No processes found on :$port"
   fi
 }
 
@@ -149,9 +170,24 @@ kill_all_ports
 # Additional aggressive kill for any remaining processes
 echo "[port] Double-checking for remaining processes..."
 for port in 9002 3000; do
-  if lsof -ti tcp:"$port" >/dev/null 2>&1; then
+  local has_process=false
+  if command -v lsof >/dev/null 2>&1; then
+    if lsof -ti tcp:"$port" >/dev/null 2>&1; then
+      has_process=true
+    fi
+  elif command -v netstat >/dev/null 2>&1; then
+    if netstat -tln 2>/dev/null | grep -q ":$port "; then
+      has_process=true
+    fi
+  elif command -v ss >/dev/null 2>&1; then
+    if ss -tln 2>/dev/null | grep -q ":$port "; then
+      has_process=true
+    fi
+  fi
+  
+  if [[ "$has_process" == true ]]; then
     echo "[port] Force killing remaining processes on :$port"
-    lsof -ti tcp:"$port" | xargs -r kill -9 2>/dev/null || true
+    kill_port "$port"
     sleep 1
   fi
 done
@@ -161,6 +197,8 @@ echo "[port] Killing any npm/Node processes on target ports..."
 pkill -f "npm.*run.*dev" 2>/dev/null || true
 pkill -f "next.*dev" 2>/dev/null || true
 pkill -f "node.*next" 2>/dev/null || true
+pkill -f "npm.*run.*start" 2>/dev/null || true
+pkill -f "next.*start" 2>/dev/null || true
 sleep 1
 
 if [[ "$MODE" == "build" ]]; then
