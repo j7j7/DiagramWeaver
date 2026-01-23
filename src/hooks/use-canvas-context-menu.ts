@@ -24,10 +24,48 @@ export function useCanvasContextMenu({ isReadOnly = false }: UseCanvasContextMen
   const handleContextMenu = (event: React.MouseEvent, itemId: string, itemType: 'node' | 'zone') => {
     if (isReadOnly) return;
     event.preventDefault();
+
+    // Calculate smart positioning to keep menu on-screen
+    // Context menus are typically 150-200px wide and vary in height
+    const menuWidth = 200; // Approximate menu width including submenus
+    const menuHeight = 400; // Maximum expected menu height
+    const padding = 8; // Padding from screen edges
+
+    let x = event.clientX;
+    let y = event.clientY;
+
+    // Determine available space in each direction
+    const spaceRight = window.innerWidth - x;
+    const spaceLeft = x;
+    const spaceBottom = window.innerHeight - y;
+    const spaceTop = y;
+
+    // Position horizontally: prefer right side, but use left if not enough space for menu + submenus
+    if (spaceRight < menuWidth && spaceLeft >= menuWidth) {
+      // Position to the left of the cursor
+      x = x - menuWidth;
+    } else {
+      // Keep on the right, but don't go off-screen
+      x = Math.min(x, window.innerWidth - menuWidth - padding);
+    }
+
+    // Position vertically: prefer below cursor, but use above if not enough space
+    if (spaceBottom < menuHeight && spaceTop >= menuHeight) {
+      // Position above the cursor
+      y = y - menuHeight;
+    } else {
+      // Keep below, but don't go off-screen
+      y = Math.min(y, window.innerHeight - menuHeight - padding);
+    }
+
+    // Ensure minimum distance from edges
+    x = Math.max(padding, x);
+    y = Math.max(padding, y);
+
     setContextMenu({
       visible: true,
-      x: event.clientX,
-      y: event.clientY,
+      x,
+      y,
       itemType,
       itemId
     });
