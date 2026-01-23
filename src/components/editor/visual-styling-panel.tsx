@@ -380,11 +380,11 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                           const currentColors = styling.backgroundColors || ['#f3f4f6', '#e5e7eb'];
                           handlePropertyChange('backgroundColors', [currentColors[0], (e.target as HTMLInputElement).value]);
                         }}
-                        onMouseUp={() => {
+                        onMouseUp={(e) => {
                           const currentColors = styling.backgroundColors || ['#f3f4f6', '#e5e7eb'];
                           handlePropertyChange('backgroundColors', [currentColors[0], (e.target as HTMLInputElement).value], true);
                         }}
-                        onBlur={() => {
+                        onBlur={(e) => {
                           const currentColors = styling.backgroundColors || ['#f3f4f6', '#e5e7eb'];
                           handlePropertyChange('backgroundColors', [currentColors[0], (e.target as HTMLInputElement).value], true);
                         }}
@@ -408,8 +408,8 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                       type="color"
                       value={styling.backgroundColor || '#f3f4f6'}
                       onChange={(e) => handlePropertyChange('backgroundColor', e.target.value)}
-                      onMouseUp={() => handlePropertyChange('backgroundColor', (e.target as HTMLInputElement).value, true)}
-                      onBlur={() => handlePropertyChange('backgroundColor', (e.target as HTMLInputElement).value, true)}
+                      onMouseUp={(e) => handlePropertyChange('backgroundColor', (e.target as HTMLInputElement).value, true)}
+                      onBlur={(e) => handlePropertyChange('backgroundColor', (e.target as HTMLInputElement).value, true)}
                       className="h-6 w-8 p-0.5"
                     />
                     <Input
