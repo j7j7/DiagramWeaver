@@ -957,8 +957,8 @@ export function ContextToolbar({
           </PopoverContent>
         </Popover>
 
-        {/* Tag Editor - Only show for rounded rectangles */}
-        {selectedItem?.type?.includes('rounded-rectangle') && (
+        {/* Tag Editor - Show for all shapes */}
+        {isShapeNode && (
           <Popover open={tagOpen} onOpenChange={setTagOpen}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -1410,8 +1410,8 @@ export function ContextToolbar({
                   onStylingChange={handleVisualStylingChange}
                   onReset={handleVisualStylingReset}
                   selectedItemIds={selectedItemIds}
-                  tag={selectedItem?.tag}
-                  tagPosition={selectedItem?.tagPosition}
+                  tag={(selectedItem as any)?.tag}
+                  tagPosition={(selectedItem as any)?.tagPosition}
                   onTagChange={(tag) => onItemUpdate?.({ ...selectedItem, tag } as SelectedItem)}
                   onTagPositionChange={(tagPosition) => onItemUpdate?.({ ...selectedItem, tagPosition } as SelectedItem)}
                 />

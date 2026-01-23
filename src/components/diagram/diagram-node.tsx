@@ -290,17 +290,17 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
     const getTagPositionClasses = (position?: string) => {
       switch (position) {
         case 'top-left':
-          return '-top-6 -left-2';
+          return '-top-6 left-0';
         case 'top-center':
           return '-top-6 left-1/2 transform -translate-x-1/2';
         case 'top-right':
-          return '-top-6 -right-2';
+          return '-top-6 right-0';
         case 'bottom-left':
-          return '-bottom-6 -left-2';
+          return '-bottom-6 left-0';
         case 'bottom-center':
           return '-bottom-6 left-1/2 transform -translate-x-1/2';
         case 'bottom-right':
-          return '-bottom-6 -right-2';
+          return '-bottom-6 right-0';
         default:
           return '-top-6 left-1/2 transform -translate-x-1/2'; // Default to top-center
       }
@@ -706,10 +706,11 @@ return (
                 })()
              ) : isShapeNode ? (
               // Shape node - render pure shape with text in different positions (resizable)
-               (() => {
-                 return (
-                   <div className="flex flex-col items-center justify-center h-full w-full relative">
-                     <div className="flex items-center justify-center" style={{ width: '100%', height: '100%' }}>
+                (() => {
+                  return (
+                    <div className="flex flex-col items-center justify-center h-full w-full relative">
+                      <div className="flex items-center justify-center" style={{ width: '100%', height: '100%' }}>
+                        {/* Square shape */}
                         {(node.type === 'generic.object.square' || node.type?.endsWith('.square')) && (
                           <div
                             key={`gradient-${(node as any).gradientAngle || 135}`}
@@ -731,6 +732,21 @@ return (
                               }
                             }}
                           >
+                            {/* Tag box positioned based on tagPosition */}
+                            {(node as any).tag && (node as any).tag.trim() && (
+                              <div
+                                className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
+                                style={{
+                                  color: '#374151',
+                                  whiteSpace: 'nowrap',
+                                  minWidth: 'fit-content',
+                                  boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
+                                }}
+                              >
+                                {(node as any).tag}
+                              </div>
+                            )}
+
                             {/* Text inside square */}
                             {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
                               <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)}`}>
@@ -764,6 +780,79 @@ return (
                             )}
                           </div>
                         )}
+
+                        {/* Rectangle shape */}
+                        {(node.type === 'generic.object.rectangle' || node.type?.endsWith('.rectangle')) && (
+                          <div
+                            key={`gradient-${(node as any).gradientAngle || 135}`}
+                            className="relative"
+                            style={{
+                              background: ((node as any).backgroundStyle === 'gradient') ?
+                                getGradientWithAngle((node as any).backgroundColors || [(node as any).backgroundColor || '#6b7280'], (node as any).gradientAngle || 135) :
+                                (node as any).backgroundColor || '#6b7280',
+                              borderWidth: ((node as any).borderStyle === 'none') ? '0' : `${(node as any).borderWidth || 2}px`,
+                              borderStyle: (node as any).borderStyle === 'gradient' ? 'solid' : ((node as any).borderStyle || 'solid'),
+                              borderColor: (node as any).borderColor || '#6b7280',
+                              width: node.width || 80,
+                              height: node.height || 50,
+                              minWidth: node.width || 80,
+                              minHeight: node.height || 50,
+                              margin: ((node as any).shadow) ? 4 : 0,
+                              ...(node as any).shadow && {
+                                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                              }
+                            }}
+                          >
+                            {/* Tag box positioned based on tagPosition */}
+                            {(node as any).tag && (node as any).tag.trim() && (
+                              <div
+                                className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
+                                style={{
+                                  color: '#374151',
+                                  whiteSpace: 'nowrap',
+                                  minWidth: 'fit-content',
+                                  boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
+                                }}
+                              >
+                                {(node as any).tag}
+                              </div>
+                            )}
+
+                            {/* Text inside rectangle */}
+                            {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
+                              <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)}`}>
+                                {isEditingLabel ? (
+                                  <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
+                                    <input
+                                      ref={inputRef}
+                                      id={`node-input-${node.id}`}
+                                      type="text"
+                                      value={editText}
+                                      onChange={(e) => setEditText(e.target.value)}
+                                      onBlur={handleLabelSubmit}
+                                      onKeyDown={(e) => handleLabelKeyDown(e, false)}
+                                      className={`text-xs ${getTextJustifyClass((node as any).textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none`}
+                                      style={{ ...getTextStylingForNode(node), color: getTextColorForBackground(((node as any).backgroundStyle === 'gradient') ? ((node as any).backgroundColors || [(node as any).backgroundColor || '#6b7280'])[0] : ((node as any).backgroundColor || '#6b7280'), (node as any).textColor) }}
+                                      onClick={(e) => e.stopPropagation()}
+                                    />
+                                  </div>
+                                ) : (
+                                  <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} px-1`}>
+                                    <p
+                                      className={`text-xs ${getTextJustifyClass((node as any).textJustify)} break-words leading-tight cursor-text w-full`}
+                                      style={{ ...getTextStylingForNode(node), color: getTextColorForBackground(((node as any).backgroundStyle === 'gradient') ? ((node as any).backgroundColors || [(node as any).backgroundColor || '#6b7280'])[0] : ((node as any).backgroundColor || '#6b7280'), (node as any).textColor), display: 'block' }}
+                                      onDoubleClick={handleLabelDoubleClick}
+                                    >
+                                      {node.label}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Rounded rectangle */}
                         {(node.type === 'generic.object.rounded-rectangle' || node.type?.endsWith('.rounded-rectangle')) && (
                           <div className="relative">
                             {/* Tag box positioned based on tagPosition */}
@@ -833,11 +922,11 @@ return (
                             </div>
                           </div>
                         )}
-                     </div>
-                   </div>
-                 );
-               })()
-            ) : (
+                      </div>
+                    </div>
+                  );
+                })()
+             ) : (
               <>
                 <div className={cn(
                     "flex items-center justify-center w-20 h-20 transition-colors flex-shrink-0",

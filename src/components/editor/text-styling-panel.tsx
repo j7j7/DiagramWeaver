@@ -93,16 +93,15 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
   };
 
   return (
-    <Draggable 
-      handle=".text-styling-handle" 
+    <Draggable
       nodeRef={nodeRef}
       position={position}
       onStop={(e, data) => {
         setPosition({ x: data.x, y: data.y });
       }}
     >
-      <div ref={nodeRef} className="fixed top-20 left-20 z-50 bg-white border rounded-lg shadow-lg w-80">
-        <div className="text-styling-handle flex items-center justify-between p-4 border-b cursor-move">
+      <div ref={nodeRef} className="fixed top-20 left-20 z-50 bg-white border rounded-lg shadow-lg w-80 cursor-move">
+        <div className="flex items-center justify-between p-4 border-b">
           <div className="flex items-center gap-2">
             <Type className="w-4 h-4" />
             <h3 className="font-semibold">Text Styling</h3>
