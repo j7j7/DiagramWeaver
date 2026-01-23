@@ -55,8 +55,9 @@ interface EditorCanvasProps {
   onDisconnect?: () => void;
   externalTransform?: { x: number; y: number; k: number };
   onTransformChange?: (transform: { x: number; y: number; k: number }) => void;
-  onLabelUpdate?: (nodeId: string, newLabel: string) => void;
-  onDraggingChange?: (isDragging: boolean) => void;
+   onLabelUpdate?: (nodeId: string, newLabel: string) => void;
+   onTagUpdate?: (nodeId: string, newTag: string) => void;
+   onDraggingChange?: (isDragging: boolean) => void;
   onClipboardChange?: (hasClipboard: boolean) => void;
   onMousePositionChange?: (position: { x: number; y: number } | null) => void;
   onSelectionChange?: (selection: { start: { x: number; y: number } | null; end: { x: number; y: number } | null }) => void;
@@ -100,7 +101,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, selectionAnimationEnabled = false, iconBackgroundEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false }: EditorCanvasProps,
+   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, selectionAnimationEnabled = false, iconBackgroundEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false }: EditorCanvasProps,
   ref
 ) {
   // ============================================================================
@@ -864,11 +865,12 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     node={displayNode}
                     isSelected={isNodeSelected}
                     isGroupMember={isInGroup}
-                    onClick={(e: React.MouseEvent) => handleNodeClick(e, node)}
-                    onContextMenu={(e: React.MouseEvent) => handleNodeContextMenu(e, node)}
-                    onResize={operations.resizeNode}
-                    onLabelUpdate={onLabelUpdate}
-                    onDraggingChange={onDraggingChange}
+                     onClick={(e: React.MouseEvent) => handleNodeClick(e, node)}
+                     onContextMenu={(e: React.MouseEvent) => handleNodeContextMenu(e, node)}
+                     onResize={operations.resizeNode}
+                     onLabelUpdate={onLabelUpdate}
+                     onTagUpdate={onTagUpdate}
+                     onDraggingChange={onDraggingChange}
                     hoverEnabled={hoverEnabled}
                     selectionAnimationEnabled={selectionAnimationEnabled}
                     animationOffset={selectionAnimationEnabled ? (animationOffsets[node.id] || { x: 0, y: 0 }) : { x: 0, y: 0 }}

@@ -123,6 +123,7 @@ interface DiagramNodeProps {
   onClick?: (e: React.MouseEvent, node: DiagramNodeData) => void;
   onContextMenu?: (e: React.MouseEvent, node: DiagramNodeData) => void;
   onLabelUpdate?: (nodeId: string, newLabel: string) => void;
+  onTagUpdate?: (nodeId: string, newTag: string) => void;
   onResize?: (nodeId: string, newWidth: number, newHeight: number) => void;
   onPositionUpdate?: (nodeId: string, x: number, y: number) => void;
   onDraggingChange?: (isDragging: boolean) => void;
@@ -132,10 +133,12 @@ interface DiagramNodeProps {
   isReadOnly?: boolean;
 }
 
-export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onResize, onPositionUpdate, onDraggingChange, hoverEnabled = true, selectionAnimationEnabled = false, animationOffset = { x: 0, y: 0 }, isReadOnly = false }: DiagramNodeProps) {
+export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onPositionUpdate, onDraggingChange, hoverEnabled = true, selectionAnimationEnabled = false, animationOffset = { x: 0, y: 0 }, isReadOnly = false }: DiagramNodeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
+  const [isEditingTag, setIsEditingTag] = useState(false);
   const [editText, setEditText] = useState(node.label || '');
+  const [editTagText, setEditTagText] = useState(node.tag || '');
   
   // Resize state
   const [isResizing, setIsResizing] = useState(false);
@@ -144,6 +147,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
   const resizeStartPos = useRef<{ x: number; y: number; startWidth: number; startHeight: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const tagInputRef = useRef<HTMLInputElement>(null);
 
   const handleLabelDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -164,6 +168,26 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
       onLabelUpdate(node.id, editText.trim());
     }
     setIsEditingLabel(false);
+  };
+
+  const handleTagDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsEditingTag(true);
+    setIsOpen(false); // Close popup when editing starts
+    setEditTagText(node.tag || '');
+    setTimeout(() => {
+      if (tagInputRef.current) {
+        tagInputRef.current.focus();
+        tagInputRef.current.select();
+      }
+    }, 0);
+  };
+
+  const handleTagSubmit = () => {
+    if (onTagUpdate && editTagText.trim() !== node.tag) {
+      onTagUpdate(node.id, editTagText.trim());
+    }
+    setIsEditingTag(false);
   };
 
   const handleLabelKeyDown = (e: React.KeyboardEvent, isMultiline: boolean = false) => {
@@ -192,7 +216,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
       const gridSize = 20;
       let newX = node.x || 0;
       let newY = node.y || 0;
-      
+
       switch (e.key) {
         case 'ArrowUp':
           newY -= gridSize;
@@ -207,11 +231,20 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
           newX += gridSize;
           break;
       }
-      
+
       // Update node position through parent
       if (onPositionUpdate) {
         onPositionUpdate(node.id, newX, newY);
       }
+    }
+  };
+
+  const handleTagKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleTagSubmit();
+    } else if (e.key === 'Escape') {
+      setIsEditingTag(false);
+      setEditTagText(node.tag || '');
     }
   };
   
@@ -290,19 +323,19 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
     const getTagPositionClasses = (position?: string) => {
       switch (position) {
         case 'top-left':
-          return '-top-10 left-0';
+          return '-top-[30px] left-0';
         case 'top-center':
-          return '-top-10 left-1/2 transform -translate-x-1/2';
+          return '-top-[30px] left-1/2 transform -translate-x-1/2';
         case 'top-right':
-          return '-top-10 right-0';
+          return '-top-[30px] right-0';
         case 'bottom-left':
-          return '-bottom-10 left-0';
+          return '-bottom-[30px] left-0';
         case 'bottom-center':
-          return '-bottom-10 left-1/2 transform -translate-x-1/2';
+          return '-bottom-[30px] left-1/2 transform -translate-x-1/2';
         case 'bottom-right':
-          return '-bottom-10 right-0';
+          return '-bottom-[30px] right-0';
         default:
-          return '-top-10 left-1/2 transform -translate-x-1/2'; // Default to top-center
+          return '-top-[30px] left-1/2 transform -translate-x-1/2'; // Default to top-center
       }
     };
 
@@ -581,15 +614,15 @@ return (
         transform: rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
         transformOrigin: 'center'
       }}
-      onMouseEnter={() => { if (!isDragging && !isEditingLabel) { setIsOpen(hoverEnabled); setIsHovered(true); } }}
-      onMouseLeave={() => { if (!isEditingLabel) { setIsOpen(false); setIsHovered(false); } } }
+      onMouseEnter={() => { if (!isDragging && !isEditingLabel && !isEditingTag) { setIsOpen(hoverEnabled); setIsHovered(true); } }}
+      onMouseLeave={() => { if (!isEditingLabel && !isEditingTag) { setIsOpen(false); setIsHovered(false); } } }
       onClick={(e) => onClick && onClick(e, node)}
       onContextMenu={(e) => onContextMenu && onContextMenu(e, node)}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      <Popover open={isOpen && !isDragging && !isEditingLabel} onOpenChange={setIsOpen}>
+      <Popover open={isOpen && !isDragging && !isEditingLabel && !isEditingTag} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <div className="flex flex-col items-center justify-center h-full w-full cursor-pointer">
             {node.type === 'generic.text.text' ? (
@@ -732,22 +765,41 @@ return (
                               }
                             }}
                           >
-                            {/* Tag box positioned based on tagPosition */}
-                            {(node as any).tag && (node as any).tag.trim() && (
-                              <div
-                                className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
-                                style={{
-                                  color: '#374151',
-                                  whiteSpace: 'nowrap',
-                                  minWidth: 'fit-content',
-                                  boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
-                                }}
-                              >
-                                {(node as any).tag}
-                              </div>
-                            )}
+                             {/* Tag box positioned based on tagPosition */}
+                             {(node as any).tag && (node as any).tag.trim() && (
+                               <div
+                                 className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
+                                 style={{
+                                   color: '#374151',
+                                   whiteSpace: 'nowrap',
+                                   minWidth: 'fit-content',
+                                   boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
+                                 }}
+                               >
+                                 {isEditingTag ? (
+                                   <input
+                                     ref={tagInputRef}
+                                     type="text"
+                                     value={editTagText}
+                                     onChange={(e) => setEditTagText(e.target.value)}
+                                     onBlur={handleTagSubmit}
+                                     onKeyDown={handleTagKeyDown}
+                                     className="text-xs font-medium bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
+                                     onClick={(e) => e.stopPropagation()}
+                                     style={{ minWidth: '60px' }}
+                                   />
+                                 ) : (
+                                   <span
+                                     onDoubleClick={handleTagDoubleClick}
+                                     className="cursor-text"
+                                   >
+                                     {(node as any).tag}
+                                   </span>
+                                 )}
+                               </div>
+                             )}
 
-                            {/* Text inside square */}
+                             {/* Text inside square */}
                             {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
                               <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)}`}>
                                 {isEditingLabel ? (
@@ -803,22 +855,41 @@ return (
                               }
                             }}
                           >
-                            {/* Tag box positioned based on tagPosition */}
-                            {(node as any).tag && (node as any).tag.trim() && (
-                              <div
-                                className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
-                                style={{
-                                  color: '#374151',
-                                  whiteSpace: 'nowrap',
-                                  minWidth: 'fit-content',
-                                  boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
-                                }}
-                              >
-                                {(node as any).tag}
-                              </div>
-                            )}
+                             {/* Tag box positioned based on tagPosition */}
+                             {(node as any).tag && (node as any).tag.trim() && (
+                               <div
+                                 className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
+                                 style={{
+                                   color: '#374151',
+                                   whiteSpace: 'nowrap',
+                                   minWidth: 'fit-content',
+                                   boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
+                                 }}
+                               >
+                                 {isEditingTag ? (
+                                   <input
+                                     ref={tagInputRef}
+                                     type="text"
+                                     value={editTagText}
+                                     onChange={(e) => setEditTagText(e.target.value)}
+                                     onBlur={handleTagSubmit}
+                                     onKeyDown={handleTagKeyDown}
+                                     className="text-xs font-medium bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
+                                     onClick={(e) => e.stopPropagation()}
+                                     style={{ minWidth: '60px' }}
+                                   />
+                                 ) : (
+                                   <span
+                                     onDoubleClick={handleTagDoubleClick}
+                                     className="cursor-text"
+                                   >
+                                     {(node as any).tag}
+                                   </span>
+                                 )}
+                               </div>
+                             )}
 
-                            {/* Text inside rectangle */}
+                             {/* Text inside rectangle */}
                             {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
                               <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)}`}>
                                 {isEditingLabel ? (
@@ -866,7 +937,26 @@ return (
                                   boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
                                 }}
                               >
-                                {(node as any).tag}
+                                {isEditingTag ? (
+                                  <input
+                                    ref={tagInputRef}
+                                    type="text"
+                                    value={editTagText}
+                                    onChange={(e) => setEditTagText(e.target.value)}
+                                    onBlur={handleTagSubmit}
+                                    onKeyDown={handleTagKeyDown}
+                                    className="text-xs font-medium bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
+                                    onClick={(e) => e.stopPropagation()}
+                                    style={{ minWidth: '60px' }}
+                                  />
+                                ) : (
+                                  <span
+                                    onDoubleClick={handleTagDoubleClick}
+                                    className="cursor-text"
+                                  >
+                                    {(node as any).tag}
+                                  </span>
+                                )}
                               </div>
                             )}
 
@@ -946,22 +1036,41 @@ return (
                                }
                              }}
                            >
-                             {/* Tag box positioned based on tagPosition */}
-                             {(node as any).tag && (node as any).tag.trim() && (
-                               <div
-                                 className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
-                                 style={{
-                                   color: '#374151',
-                                   whiteSpace: 'nowrap',
-                                   minWidth: 'fit-content',
-                                   boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
-                                 }}
-                               >
-                                 {(node as any).tag}
-                               </div>
-                             )}
+                              {/* Tag box positioned based on tagPosition */}
+                              {(node as any).tag && (node as any).tag.trim() && (
+                                <div
+                                  className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
+                                  style={{
+                                    color: '#374151',
+                                    whiteSpace: 'nowrap',
+                                    minWidth: 'fit-content',
+                                    boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
+                                  }}
+                                >
+                                  {isEditingTag ? (
+                                    <input
+                                      ref={tagInputRef}
+                                      type="text"
+                                      value={editTagText}
+                                      onChange={(e) => setEditTagText(e.target.value)}
+                                      onBlur={handleTagSubmit}
+                                      onKeyDown={handleTagKeyDown}
+                                      className="text-xs font-medium bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
+                                      onClick={(e) => e.stopPropagation()}
+                                      style={{ minWidth: '60px' }}
+                                    />
+                                  ) : (
+                                    <span
+                                      onDoubleClick={handleTagDoubleClick}
+                                      className="cursor-text"
+                                    >
+                                      {(node as any).tag}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
 
-                             {/* Text inside circle */}
+                              {/* Text inside circle */}
                              {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
                                <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)}`}>
                                  {isEditingLabel ? (
@@ -1023,22 +1132,41 @@ return (
                                />
                              </svg>
 
-                             {/* Tag box positioned based on tagPosition */}
-                             {(node as any).tag && (node as any).tag.trim() && (
-                               <div
-                                 className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
-                                 style={{
-                                   color: '#374151',
-                                   whiteSpace: 'nowrap',
-                                   minWidth: 'fit-content',
-                                   boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
-                                 }}
-                               >
-                                 {(node as any).tag}
-                               </div>
-                             )}
+                              {/* Tag box positioned based on tagPosition */}
+                              {(node as any).tag && (node as any).tag.trim() && (
+                                <div
+                                  className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
+                                  style={{
+                                    color: '#374151',
+                                    whiteSpace: 'nowrap',
+                                    minWidth: 'fit-content',
+                                    boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
+                                  }}
+                                >
+                                  {isEditingTag ? (
+                                    <input
+                                      ref={tagInputRef}
+                                      type="text"
+                                      value={editTagText}
+                                      onChange={(e) => setEditTagText(e.target.value)}
+                                      onBlur={handleTagSubmit}
+                                      onKeyDown={handleTagKeyDown}
+                                      className="text-xs font-medium bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
+                                      onClick={(e) => e.stopPropagation()}
+                                      style={{ minWidth: '60px' }}
+                                    />
+                                  ) : (
+                                    <span
+                                      onDoubleClick={handleTagDoubleClick}
+                                      className="cursor-text"
+                                    >
+                                      {(node as any).tag}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
 
-                             {/* Text inside kite */}
+                              {/* Text inside kite */}
                              {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
                                <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)}`}>
                                  {isEditingLabel ? (
@@ -1100,22 +1228,41 @@ return (
                                />
                              </svg>
 
-                             {/* Tag box positioned based on tagPosition */}
-                             {(node as any).tag && (node as any).tag.trim() && (
-                               <div
-                                 className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
-                                 style={{
-                                   color: '#374151',
-                                   whiteSpace: 'nowrap',
-                                   minWidth: 'fit-content',
-                                   boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
-                                 }}
-                               >
-                                 {(node as any).tag}
-                               </div>
-                             )}
+                              {/* Tag box positioned based on tagPosition */}
+                              {(node as any).tag && (node as any).tag.trim() && (
+                                <div
+                                  className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
+                                  style={{
+                                    color: '#374151',
+                                    whiteSpace: 'nowrap',
+                                    minWidth: 'fit-content',
+                                    boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
+                                  }}
+                                >
+                                  {isEditingTag ? (
+                                    <input
+                                      ref={tagInputRef}
+                                      type="text"
+                                      value={editTagText}
+                                      onChange={(e) => setEditTagText(e.target.value)}
+                                      onBlur={handleTagSubmit}
+                                      onKeyDown={handleTagKeyDown}
+                                      className="text-xs font-medium bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
+                                      onClick={(e) => e.stopPropagation()}
+                                      style={{ minWidth: '60px' }}
+                                    />
+                                  ) : (
+                                    <span
+                                      onDoubleClick={handleTagDoubleClick}
+                                      className="cursor-text"
+                                    >
+                                      {(node as any).tag}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
 
-                             {/* Text inside triangle */}
+                              {/* Text inside triangle */}
                              {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
                                <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)}`}>
                                  {isEditingLabel ? (
@@ -1177,22 +1324,41 @@ return (
                                />
                              </svg>
 
-                             {/* Tag box positioned based on tagPosition */}
-                             {(node as any).tag && (node as any).tag.trim() && (
-                               <div
-                                 className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
-                                 style={{
-                                   color: '#374151',
-                                   whiteSpace: 'nowrap',
-                                   minWidth: 'fit-content',
-                                   boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
-                                 }}
-                               >
-                                 {(node as any).tag}
-                               </div>
-                             )}
+                              {/* Tag box positioned based on tagPosition */}
+                              {(node as any).tag && (node as any).tag.trim() && (
+                                <div
+                                  className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
+                                  style={{
+                                    color: '#374151',
+                                    whiteSpace: 'nowrap',
+                                    minWidth: 'fit-content',
+                                    boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
+                                  }}
+                                >
+                                  {isEditingTag ? (
+                                    <input
+                                      ref={tagInputRef}
+                                      type="text"
+                                      value={editTagText}
+                                      onChange={(e) => setEditTagText(e.target.value)}
+                                      onBlur={handleTagSubmit}
+                                      onKeyDown={handleTagKeyDown}
+                                      className="text-xs font-medium bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
+                                      onClick={(e) => e.stopPropagation()}
+                                      style={{ minWidth: '60px' }}
+                                    />
+                                  ) : (
+                                    <span
+                                      onDoubleClick={handleTagDoubleClick}
+                                      className="cursor-text"
+                                    >
+                                      {(node as any).tag}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
 
-                             {/* Text inside star */}
+                              {/* Text inside star */}
                              {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
                                <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)}`}>
                                  {isEditingLabel ? (
@@ -1254,22 +1420,41 @@ return (
                                />
                              </svg>
 
-                             {/* Tag box positioned based on tagPosition */}
-                             {(node as any).tag && (node as any).tag.trim() && (
-                               <div
-                                 className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
-                                 style={{
-                                   color: '#374151',
-                                   whiteSpace: 'nowrap',
-                                   minWidth: 'fit-content',
-                                   boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
-                                 }}
-                               >
-                                 {(node as any).tag}
-                               </div>
-                             )}
+                              {/* Tag box positioned based on tagPosition */}
+                              {(node as any).tag && (node as any).tag.trim() && (
+                                <div
+                                  className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
+                                  style={{
+                                    color: '#374151',
+                                    whiteSpace: 'nowrap',
+                                    minWidth: 'fit-content',
+                                    boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
+                                  }}
+                                >
+                                  {isEditingTag ? (
+                                    <input
+                                      ref={tagInputRef}
+                                      type="text"
+                                      value={editTagText}
+                                      onChange={(e) => setEditTagText(e.target.value)}
+                                      onBlur={handleTagSubmit}
+                                      onKeyDown={handleTagKeyDown}
+                                      className="text-xs font-medium bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
+                                      onClick={(e) => e.stopPropagation()}
+                                      style={{ minWidth: '60px' }}
+                                    />
+                                  ) : (
+                                    <span
+                                      onDoubleClick={handleTagDoubleClick}
+                                      className="cursor-text"
+                                    >
+                                      {(node as any).tag}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
 
-                             {/* Text inside hexagon */}
+                              {/* Text inside hexagon */}
                              {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
                                <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)}`}>
                                  {isEditingLabel ? (
@@ -1331,22 +1516,41 @@ return (
                                />
                              </svg>
 
-                             {/* Tag box positioned based on tagPosition */}
-                             {(node as any).tag && (node as any).tag.trim() && (
-                               <div
-                                 className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
-                                 style={{
-                                   color: '#374151',
-                                   whiteSpace: 'nowrap',
-                                   minWidth: 'fit-content',
-                                   boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
-                                 }}
-                               >
-                                 {(node as any).tag}
-                               </div>
-                             )}
+                              {/* Tag box positioned based on tagPosition */}
+                              {(node as any).tag && (node as any).tag.trim() && (
+                                <div
+                                  className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
+                                  style={{
+                                    color: '#374151',
+                                    whiteSpace: 'nowrap',
+                                    minWidth: 'fit-content',
+                                    boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
+                                  }}
+                                >
+                                  {isEditingTag ? (
+                                    <input
+                                      ref={tagInputRef}
+                                      type="text"
+                                      value={editTagText}
+                                      onChange={(e) => setEditTagText(e.target.value)}
+                                      onBlur={handleTagSubmit}
+                                      onKeyDown={handleTagKeyDown}
+                                      className="text-xs font-medium bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
+                                      onClick={(e) => e.stopPropagation()}
+                                      style={{ minWidth: '60px' }}
+                                    />
+                                  ) : (
+                                    <span
+                                      onDoubleClick={handleTagDoubleClick}
+                                      className="cursor-text"
+                                    >
+                                      {(node as any).tag}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
 
-                             {/* Text inside pentagon */}
+                              {/* Text inside pentagon */}
                              {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
                                <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)}`}>
                                  {isEditingLabel ? (
@@ -1408,22 +1612,41 @@ return (
                                />
                              </svg>
 
-                             {/* Tag box positioned based on tagPosition */}
-                             {(node as any).tag && (node as any).tag.trim() && (
-                               <div
-                                 className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
-                                 style={{
-                                   color: '#374151',
-                                   whiteSpace: 'nowrap',
-                                   minWidth: 'fit-content',
-                                   boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
-                                 }}
-                               >
-                                 {(node as any).tag}
-                               </div>
-                             )}
+                              {/* Tag box positioned based on tagPosition */}
+                              {(node as any).tag && (node as any).tag.trim() && (
+                                <div
+                                  className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
+                                  style={{
+                                    color: '#374151',
+                                    whiteSpace: 'nowrap',
+                                    minWidth: 'fit-content',
+                                    boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
+                                  }}
+                                >
+                                  {isEditingTag ? (
+                                    <input
+                                      ref={tagInputRef}
+                                      type="text"
+                                      value={editTagText}
+                                      onChange={(e) => setEditTagText(e.target.value)}
+                                      onBlur={handleTagSubmit}
+                                      onKeyDown={handleTagKeyDown}
+                                      className="text-xs font-medium bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
+                                      onClick={(e) => e.stopPropagation()}
+                                      style={{ minWidth: '60px' }}
+                                    />
+                                  ) : (
+                                    <span
+                                      onDoubleClick={handleTagDoubleClick}
+                                      className="cursor-text"
+                                    >
+                                      {(node as any).tag}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
 
-                             {/* Text inside octagon */}
+                              {/* Text inside octagon */}
                              {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
                                <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)}`}>
                                  {isEditingLabel ? (
@@ -1485,22 +1708,41 @@ return (
                                />
                              </svg>
 
-                             {/* Tag box positioned based on tagPosition */}
-                             {(node as any).tag && (node as any).tag.trim() && (
-                               <div
-                                 className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
-                                 style={{
-                                   color: '#374151',
-                                   whiteSpace: 'nowrap',
-                                   minWidth: 'fit-content',
-                                   boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
-                                 }}
-                               >
-                                 {(node as any).tag}
-                               </div>
-                             )}
+                              {/* Tag box positioned based on tagPosition */}
+                              {(node as any).tag && (node as any).tag.trim() && (
+                                <div
+                                  className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
+                                  style={{
+                                    color: '#374151',
+                                    whiteSpace: 'nowrap',
+                                    minWidth: 'fit-content',
+                                    boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
+                                  }}
+                                >
+                                  {isEditingTag ? (
+                                    <input
+                                      ref={tagInputRef}
+                                      type="text"
+                                      value={editTagText}
+                                      onChange={(e) => setEditTagText(e.target.value)}
+                                      onBlur={handleTagSubmit}
+                                      onKeyDown={handleTagKeyDown}
+                                      className="text-xs font-medium bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
+                                      onClick={(e) => e.stopPropagation()}
+                                      style={{ minWidth: '60px' }}
+                                    />
+                                  ) : (
+                                    <span
+                                      onDoubleClick={handleTagDoubleClick}
+                                      className="cursor-text"
+                                    >
+                                      {(node as any).tag}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
 
-                             {/* Text inside cloud */}
+                              {/* Text inside cloud */}
                              {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
                                <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)}`}>
                                  {isEditingLabel ? (
@@ -1562,22 +1804,41 @@ return (
                                />
                              </svg>
 
-                             {/* Tag box positioned based on tagPosition */}
-                             {(node as any).tag && (node as any).tag.trim() && (
-                               <div
-                                 className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
-                                 style={{
-                                   color: '#374151',
-                                   whiteSpace: 'nowrap',
-                                   minWidth: 'fit-content',
-                                   boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
-                                 }}
-                               >
-                                 {(node as any).tag}
-                               </div>
-                             )}
+                              {/* Tag box positioned based on tagPosition */}
+                              {(node as any).tag && (node as any).tag.trim() && (
+                                <div
+                                  className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
+                                  style={{
+                                    color: '#374151',
+                                    whiteSpace: 'nowrap',
+                                    minWidth: 'fit-content',
+                                    boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
+                                  }}
+                                >
+                                  {isEditingTag ? (
+                                    <input
+                                      ref={tagInputRef}
+                                      type="text"
+                                      value={editTagText}
+                                      onChange={(e) => setEditTagText(e.target.value)}
+                                      onBlur={handleTagSubmit}
+                                      onKeyDown={handleTagKeyDown}
+                                      className="text-xs font-medium bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
+                                      onClick={(e) => e.stopPropagation()}
+                                      style={{ minWidth: '60px' }}
+                                    />
+                                  ) : (
+                                    <span
+                                      onDoubleClick={handleTagDoubleClick}
+                                      className="cursor-text"
+                                    >
+                                      {(node as any).tag}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
 
-                             {/* Text inside parallelogram */}
+                              {/* Text inside parallelogram */}
                              {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
                                <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)}`}>
                                  {isEditingLabel ? (
@@ -1639,22 +1900,41 @@ return (
                                />
                              </svg>
 
-                             {/* Tag box positioned based on tagPosition */}
-                             {(node as any).tag && (node as any).tag.trim() && (
-                               <div
-                                 className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
-                                 style={{
-                                   color: '#374151',
-                                   whiteSpace: 'nowrap',
-                                   minWidth: 'fit-content',
-                                   boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
-                                 }}
-                               >
-                                 {(node as any).tag}
-                               </div>
-                             )}
+                              {/* Tag box positioned based on tagPosition */}
+                              {(node as any).tag && (node as any).tag.trim() && (
+                                <div
+                                  className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
+                                  style={{
+                                    color: '#374151',
+                                    whiteSpace: 'nowrap',
+                                    minWidth: 'fit-content',
+                                    boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
+                                  }}
+                                >
+                                  {isEditingTag ? (
+                                    <input
+                                      ref={tagInputRef}
+                                      type="text"
+                                      value={editTagText}
+                                      onChange={(e) => setEditTagText(e.target.value)}
+                                      onBlur={handleTagSubmit}
+                                      onKeyDown={handleTagKeyDown}
+                                      className="text-xs font-medium bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
+                                      onClick={(e) => e.stopPropagation()}
+                                      style={{ minWidth: '60px' }}
+                                    />
+                                  ) : (
+                                    <span
+                                      onDoubleClick={handleTagDoubleClick}
+                                      className="cursor-text"
+                                    >
+                                      {(node as any).tag}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
 
-                             {/* Text inside trapezoid */}
+                              {/* Text inside trapezoid */}
                              {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
                                <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)}`}>
                                  {isEditingLabel ? (
@@ -1716,22 +1996,41 @@ return (
                                />
                              </svg>
 
-                             {/* Tag box positioned based on tagPosition */}
-                             {(node as any).tag && (node as any).tag.trim() && (
-                               <div
-                                 className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
-                                 style={{
-                                   color: '#374151',
-                                   whiteSpace: 'nowrap',
-                                   minWidth: 'fit-content',
-                                   boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
-                                 }}
-                               >
-                                 {(node as any).tag}
-                               </div>
-                             )}
+                              {/* Tag box positioned based on tagPosition */}
+                              {(node as any).tag && (node as any).tag.trim() && (
+                                <div
+                                  className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
+                                  style={{
+                                    color: '#374151',
+                                    whiteSpace: 'nowrap',
+                                    minWidth: 'fit-content',
+                                    boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
+                                  }}
+                                >
+                                  {isEditingTag ? (
+                                    <input
+                                      ref={tagInputRef}
+                                      type="text"
+                                      value={editTagText}
+                                      onChange={(e) => setEditTagText(e.target.value)}
+                                      onBlur={handleTagSubmit}
+                                      onKeyDown={handleTagKeyDown}
+                                      className="text-xs font-medium bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
+                                      onClick={(e) => e.stopPropagation()}
+                                      style={{ minWidth: '60px' }}
+                                    />
+                                  ) : (
+                                    <span
+                                      onDoubleClick={handleTagDoubleClick}
+                                      className="cursor-text"
+                                    >
+                                      {(node as any).tag}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
 
-                             {/* Text inside jigsaw */}
+                              {/* Text inside jigsaw */}
                              {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
                                <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)}`}>
                                  {isEditingLabel ? (
@@ -1793,22 +2092,41 @@ return (
                                />
                              </svg>
 
-                             {/* Tag box positioned based on tagPosition */}
-                             {(node as any).tag && (node as any).tag.trim() && (
-                               <div
-                                 className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
-                                 style={{
-                                   color: '#374151',
-                                   whiteSpace: 'nowrap',
-                                   minWidth: 'fit-content',
-                                   boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
-                                 }}
-                               >
-                                 {(node as any).tag}
-                               </div>
-                             )}
+                              {/* Tag box positioned based on tagPosition */}
+                              {(node as any).tag && (node as any).tag.trim() && (
+                                <div
+                                  className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
+                                  style={{
+                                    color: '#374151',
+                                    whiteSpace: 'nowrap',
+                                    minWidth: 'fit-content',
+                                    boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
+                                  }}
+                                >
+                                  {isEditingTag ? (
+                                    <input
+                                      ref={tagInputRef}
+                                      type="text"
+                                      value={editTagText}
+                                      onChange={(e) => setEditTagText(e.target.value)}
+                                      onBlur={handleTagSubmit}
+                                      onKeyDown={handleTagKeyDown}
+                                      className="text-xs font-medium bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
+                                      onClick={(e) => e.stopPropagation()}
+                                      style={{ minWidth: '60px' }}
+                                    />
+                                  ) : (
+                                    <span
+                                      onDoubleClick={handleTagDoubleClick}
+                                      className="cursor-text"
+                                    >
+                                      {(node as any).tag}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
 
-                             {/* Text inside arrowhead */}
+                              {/* Text inside arrowhead */}
                              {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
                                <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)}`}>
                                  {isEditingLabel ? (
@@ -1870,22 +2188,41 @@ return (
                                />
                              </svg>
 
-                             {/* Tag box positioned based on tagPosition */}
-                             {(node as any).tag && (node as any).tag.trim() && (
-                               <div
-                                 className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
-                                 style={{
-                                   color: '#374151',
-                                   whiteSpace: 'nowrap',
-                                   minWidth: 'fit-content',
-                                   boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
-                                 }}
-                               >
-                                 {(node as any).tag}
-                               </div>
-                             )}
+                              {/* Tag box positioned based on tagPosition */}
+                              {(node as any).tag && (node as any).tag.trim() && (
+                                <div
+                                  className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses((node as any).tagPosition)}`}
+                                  style={{
+                                    color: '#374151',
+                                    whiteSpace: 'nowrap',
+                                    minWidth: 'fit-content',
+                                    boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
+                                  }}
+                                >
+                                  {isEditingTag ? (
+                                    <input
+                                      ref={tagInputRef}
+                                      type="text"
+                                      value={editTagText}
+                                      onChange={(e) => setEditTagText(e.target.value)}
+                                      onBlur={handleTagSubmit}
+                                      onKeyDown={handleTagKeyDown}
+                                      className="text-xs font-medium bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
+                                      onClick={(e) => e.stopPropagation()}
+                                      style={{ minWidth: '60px' }}
+                                    />
+                                  ) : (
+                                    <span
+                                      onDoubleClick={handleTagDoubleClick}
+                                      className="cursor-text"
+                                    >
+                                      {(node as any).tag}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
 
-                             {/* Text inside chevron */}
+                              {/* Text inside chevron */}
                              {(((node as any).textVerticalPosition === 'middle' || !(node as any).textVerticalPosition) && ((node as any).textPosition === 'center' || !(node as any).textPosition)) && node.label && (
                                <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass((node as any).textVerticalPosition)}`}>
                                  {isEditingLabel ? (

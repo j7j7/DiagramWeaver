@@ -606,6 +606,18 @@ export default function DiagramEditor() {
     }
   }
 
+  const handleTagUpdate = (nodeId: string, newTag: string) => {
+    setDiagramData(prevData => ({
+      ...prevData,
+      nodes: prevData.nodes.map(n => n.id === nodeId ? { ...n, tag: newTag } : n)
+    }));
+
+    // Also update the selected item if it's the one being edited
+    if (selectedItem?.id === nodeId && selectedItem.itemType === 'node') {
+      setSelectedItem({ ...selectedItem, tag: newTag });
+    }
+  }
+
   const handleResourceSelect = (resource: { name: string; file: string; type?: string; hasWhiteVariant?: boolean; format?: string }, provider: string, category: string) => {
     // Track the currently selected resource from the sidebar for copy/paste
     setSelectedResource({ resource, provider, category });
@@ -1885,9 +1897,10 @@ export default function DiagramEditor() {
                              }
                         }}
                     externalTransform={canvasTransform}
-                    onTransformChange={setCanvasTransform}
-                    onLabelUpdate={handleLabelUpdate}
-                    onDraggingChange={setIsDragging}
+                     onTransformChange={setCanvasTransform}
+                     onLabelUpdate={handleLabelUpdate}
+                     onTagUpdate={handleTagUpdate}
+                     onDraggingChange={setIsDragging}
                     onClipboardChange={setCanPaste}
                     onMousePositionChange={setMousePosition}
                     onSelectionChange={setSelectionCoordinates}
