@@ -47,6 +47,7 @@ export function SvgShapeBase({
       defaultWidth={defaultWidth}
       defaultHeight={defaultHeight}
       useSvgShadow={styles.shadow}
+      skipWrapperStyling={true}
       {...rest}
     >
       <svg width={width} height={height} viewBox={viewBox} className="absolute inset-0">

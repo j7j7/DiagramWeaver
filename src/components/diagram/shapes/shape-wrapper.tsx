@@ -13,6 +13,7 @@ interface ShapeWrapperProps {
   defaultHeight?: number;
   borderRadius?: string;
   useSvgShadow?: boolean;
+  skipWrapperStyling?: boolean; // When true, skip border/background styling on wrapper (for SVG shapes)
   // Tag props
   tag?: string;
   tagPosition?: string;
@@ -39,6 +40,7 @@ export function ShapeWrapper({
   defaultHeight = 60,
   borderRadius,
   useSvgShadow = false,
+  skipWrapperStyling = false,
   tag,
   tagPosition,
   isEditingTag,
@@ -67,15 +69,19 @@ export function ShapeWrapper({
     ? `${Math.min(width, height) * 0.06}px` 
     : borderRadius;
 
+  // Skip border/background styling when skipWrapperStyling is true (for SVG shapes)
+  // or when useSvgShadow is true (for SVG shapes with shadow)
+  const shouldSkipStyling = skipWrapperStyling || useSvgShadow;
+
   return (
     <div
       key={`gradient-${nodeAny.gradientAngle || 135}`}
       className="relative"
       style={{
-        background: !useSvgShadow ? styles.background : undefined,
-        borderWidth: !useSvgShadow ? styles.borderWidth : undefined,
-        borderStyle: !useSvgShadow ? styles.borderStyle : undefined,
-        borderColor: !useSvgShadow ? styles.borderColor : undefined,
+        background: !shouldSkipStyling ? styles.background : undefined,
+        borderWidth: !shouldSkipStyling ? styles.borderWidth : undefined,
+        borderStyle: !shouldSkipStyling ? styles.borderStyle : undefined,
+        borderColor: !shouldSkipStyling ? styles.borderColor : undefined,
         borderRadius: calculatedBorderRadius,
         width,
         height,
