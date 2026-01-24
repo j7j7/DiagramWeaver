@@ -202,7 +202,7 @@ export function ContextMenu({
                 "absolute left-full top-0 bg-popover border border-border rounded-md shadow-lg py-1 z-50 min-w-[150px]",
                 "animate-in fade-in-0 zoom-in-95"
               )}
-              style={{ marginLeft: '4px' }}
+              style={{ marginLeft: '0px' }}
               onMouseEnter={() => setRenderOrderSubmenuOpen(true)}
               onMouseLeave={() => setRenderOrderSubmenuOpen(false)}
             >
@@ -493,7 +493,7 @@ export function ContextMenu({
                   "absolute left-full top-0 bg-popover border border-border rounded-md shadow-lg py-1 z-50 min-w-[150px]",
                   "animate-in fade-in-0 zoom-in-95"
                 )}
-                style={{ marginLeft: '4px' }}
+                style={{ marginLeft: '0px' }}
                 onMouseEnter={() => setLayerSubmenuOpen(true)}
                 onMouseLeave={() => setLayerSubmenuOpen(false)}
               >

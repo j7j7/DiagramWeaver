@@ -32,30 +32,30 @@ export function JigsawShape(props: JigsawShapeProps) {
   return (
     <SvgShapeBase
       {...props}
-      viewBox="0 0 100 100"
+      viewBox="0 0 120 120"
       svgContent={
         <path
-          d="M 15,15 
-             L 42,15 
-             Q 42,20 45,22.5 
-             Q 50,25 55,22.5 
-             Q 58,20 58,15 
-             L 85,15 
-             L 85,42 
-             Q 90,42 92.5,45 
-             Q 95,50 92.5,55 
-             Q 90,58 85,58 
-             L 85,85 
-             L 58,85 
-             Q 58,80 55,77.5 
-             Q 50,75 45,77.5 
-             Q 42,80 42,85 
-             L 15,85 
-             L 15,58 
-             Q 10,58 7.5,55 
-             Q 5,50 7.5,45 
-             Q 10,42 15,42 
-             L 15,15 
+          d="M 20,20 
+             L 52,20 
+             Q 52,24 54,26 
+             Q 60,28 66,26 
+             Q 68,24 68,20 
+             L 100,20 
+             L 100,52 
+             Q 104,52 106,54 
+             Q 108,60 106,66 
+             Q 104,68 100,68 
+             L 100,100 
+             L 68,100 
+             Q 68,96 66,94 
+             Q 60,92 54,94 
+             Q 52,96 52,100 
+             L 20,100 
+             L 20,68 
+             Q 16,68 14,66 
+             Q 12,60 14,54 
+             Q 16,52 20,52 
+             L 20,20 
              Z"
           fill={nodeAny.backgroundStyle === 'gradient'
             ? getGradientWithAngle(nodeAny.backgroundColors || [nodeAny.backgroundColor || '#6b7280'], nodeAny.gradientAngle || 135)
