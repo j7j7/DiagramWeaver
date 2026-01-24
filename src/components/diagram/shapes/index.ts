@@ -1,0 +1,16 @@
+export { SquareShape } from './square';
+export { RectangleShape } from './rectangle';
+export { RoundedRectangleShape } from './rounded-rectangle';
+export { CircleShape } from './circle';
+export { KiteShape } from './kite';
+export { TriangleShape } from './triangle';
+export { StarShape } from './star';
+export { HexagonShape } from './hexagon';
+export { PentagonShape } from './pentagon';
+export { OctagonShape } from './octagon';
+export { CloudShape } from './cloud';
+export { ParallelogramShape } from './parallelogram';
+export { TrapezoidShape } from './trapezoid';
+export { JigsawShape } from './jigsaw';
+export { ArrowheadShape } from './arrowhead';
+export { ChevronShape } from './chevron';
