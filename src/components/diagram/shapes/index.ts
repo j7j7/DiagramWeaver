@@ -2,6 +2,7 @@ export { SquareShape } from './square';
 export { RectangleShape } from './rectangle';
 export { RoundedRectangleShape } from './rounded-rectangle';
 export { CircleShape } from './circle';
+export { PointShape } from './point';
 export { KiteShape } from './kite';
 export { TriangleShape } from './triangle';
 export { StarShape } from './star';

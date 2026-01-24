@@ -32,15 +32,37 @@ export function JigsawShape(props: JigsawShapeProps) {
   return (
     <SvgShapeBase
       {...props}
-      viewBox="0 0 60 60"
+      viewBox="0 0 100 100"
       svgContent={
         <path
-          d="M10,10 Q10,5 15,5 L45,5 Q50,5 50,10 L50,20 Q50,25 45,25 Q42,22 40,25 Q38,28 40,30 Q42,32 45,30 Q50,30 50,35 L50,45 Q50,50 45,50 L35,50 Q30,50 30,45 Q27,42 25,45 Q23,48 25,50 Q27,52 30,50 Q35,50 35,55 L25,55 Q20,55 20,50 Q17,47 15,50 Q13,53 15,55 Q17,57 20,55 Q25,55 25,60 L15,60 Q10,60 10,55 L10,45 Q10,40 15,40 Q18,43 20,40 Q22,37 20,35 Q18,33 15,35 Q10,35 10,30 L10,20 Q10,15 15,15 Q18,18 20,15 Q22,12 20,10 Q18,8 15,10 Q10,10 10,5 Z"
+          d="M 15,15 
+             L 42,15 
+             Q 42,20 45,22.5 
+             Q 50,25 55,22.5 
+             Q 58,20 58,15 
+             L 85,15 
+             L 85,42 
+             Q 90,42 92.5,45 
+             Q 95,50 92.5,55 
+             Q 90,58 85,58 
+             L 85,85 
+             L 58,85 
+             Q 58,80 55,77.5 
+             Q 50,75 45,77.5 
+             Q 42,80 42,85 
+             L 15,85 
+             L 15,58 
+             Q 10,58 7.5,55 
+             Q 5,50 7.5,45 
+             Q 10,42 15,42 
+             L 15,15 
+             Z"
           fill={nodeAny.backgroundStyle === 'gradient'
             ? getGradientWithAngle(nodeAny.backgroundColors || [nodeAny.backgroundColor || '#6b7280'], nodeAny.gradientAngle || 135)
             : nodeAny.backgroundColor || '#6b7280'}
           stroke={nodeAny.borderColor || '#6b7280'}
           strokeWidth={nodeAny.borderStyle === 'none' ? '0' : (nodeAny.borderWidth || 2)}
+          strokeLinejoin="round"
           {...getRoundedEdgesProps(roundedEdges)}
         />
       }

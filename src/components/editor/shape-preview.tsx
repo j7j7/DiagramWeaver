@@ -238,18 +238,25 @@ export function ShapePreview({
             )}
           </defs>
           <path
-            d={`M ${displayWidth * 0.2},${displayHeight / 2} 
-                Q ${strokeWidth / 2},${displayHeight * 0.3} ${displayWidth * 0.15},${displayHeight * 0.15} 
-                Q ${displayWidth * 0.1},${strokeWidth / 2} ${displayWidth * 0.25},${strokeWidth / 2} 
-                Q ${displayWidth * 0.35},${strokeWidth / 2} ${displayWidth * 0.4},${displayHeight * 0.2} 
-                Q ${displayWidth * 0.5},${strokeWidth / 2} ${displayWidth * 0.6},${displayHeight * 0.15} 
-                Q ${displayWidth * 0.7},${strokeWidth / 2} ${displayWidth * 0.75},${displayHeight * 0.25} 
-                Q ${displayWidth - strokeWidth / 2},${displayHeight * 0.25} ${displayWidth * 0.85},${displayHeight * 0.35} 
-                Q ${displayWidth - strokeWidth / 2},${displayHeight * 0.5} ${displayWidth * 0.8},${displayHeight * 0.65} 
-                Q ${displayWidth * 0.7},${displayHeight - strokeWidth / 2} ${displayWidth * 0.55},${displayHeight * 0.7} 
-                Q ${displayWidth * 0.45},${displayHeight - strokeWidth / 2} ${displayWidth * 0.35},${displayHeight * 0.65} 
-                Q ${displayWidth * 0.25},${displayHeight - strokeWidth / 2} ${displayWidth * 0.15},${displayHeight * 0.55} 
-                Q ${strokeWidth / 2},${displayHeight * 0.55} ${displayWidth * 0.18},${displayHeight / 2} Z`}
+            d={`M ${displayWidth * 0.1},${displayHeight * 0.5} 
+                C ${displayWidth * 0.1},${displayHeight * 0.36} ${displayWidth * 0.15},${displayHeight * 0.24} ${displayWidth * 0.225},${displayHeight * 0.24} 
+                C ${displayWidth * 0.25},${displayHeight * 0.16} ${displayWidth * 0.3},${displayHeight * 0.12} ${displayWidth * 0.35},${displayHeight * 0.16} 
+                C ${displayWidth * 0.375},${displayHeight * 0.08} ${displayWidth * 0.425},${displayHeight * 0.04} ${displayWidth * 0.475},${displayHeight * 0.08} 
+                C ${displayWidth * 0.525},${displayHeight * 0.04} ${displayWidth * 0.575},${displayHeight * 0.08} ${displayWidth * 0.6},${displayHeight * 0.16} 
+                C ${displayWidth * 0.65},${displayHeight * 0.12} ${displayWidth * 0.7},${displayHeight * 0.16} ${displayWidth * 0.725},${displayHeight * 0.24} 
+                C ${displayWidth * 0.85},${displayHeight * 0.24} ${displayWidth * 0.9},${displayHeight * 0.36} ${displayWidth * 0.9},${displayHeight * 0.5} 
+                C ${displayWidth * 0.94},${displayHeight * 0.52} ${displayWidth * 0.96},${displayHeight * 0.58} ${displayWidth * 0.96},${displayHeight * 0.66} 
+                C ${displayWidth * 0.96},${displayHeight * 0.74} ${displayWidth * 0.94},${displayHeight * 0.8} ${displayWidth * 0.9},${displayHeight * 0.82} 
+                C ${displayWidth * 0.88},${displayHeight * 0.88} ${displayWidth * 0.84},${displayHeight * 0.9} ${displayWidth * 0.8},${displayHeight * 0.86} 
+                C ${displayWidth * 0.76},${displayHeight * 0.9} ${displayWidth * 0.72},${displayHeight * 0.86} ${displayWidth * 0.7},${displayHeight * 0.82} 
+                C ${displayWidth * 0.66},${displayHeight * 0.84} ${displayWidth * 0.62},${displayHeight * 0.82} ${displayWidth * 0.6},${displayHeight * 0.78} 
+                C ${displayWidth * 0.56},${displayHeight * 0.82} ${displayWidth * 0.52},${displayHeight * 0.78} ${displayWidth * 0.5},${displayHeight * 0.74} 
+                C ${displayWidth * 0.48},${displayHeight * 0.78} ${displayWidth * 0.44},${displayHeight * 0.74} ${displayWidth * 0.42},${displayHeight * 0.7} 
+                C ${displayWidth * 0.38},${displayHeight * 0.72} ${displayWidth * 0.34},${displayHeight * 0.7} ${displayWidth * 0.32},${displayHeight * 0.66} 
+                C ${displayWidth * 0.28},${displayHeight * 0.68} ${displayWidth * 0.24},${displayHeight * 0.66} ${displayWidth * 0.225},${displayHeight * 0.62} 
+                C ${displayWidth * 0.18},${displayHeight * 0.64} ${displayWidth * 0.14},${displayHeight * 0.58} ${displayWidth * 0.14},${displayHeight * 0.52} 
+                C ${displayWidth * 0.14},${displayHeight * 0.5} ${displayWidth * 0.15},${displayHeight * 0.44} ${displayWidth * 0.2},${displayHeight * 0.42} 
+                C ${displayWidth * 0.15},${displayHeight * 0.4} ${displayWidth * 0.1},${displayHeight * 0.46} ${displayWidth * 0.1},${displayHeight * 0.5} Z`}
             fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
             stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
             strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}

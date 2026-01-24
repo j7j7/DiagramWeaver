@@ -18,6 +18,7 @@ import {
   RectangleShape,
   RoundedRectangleShape,
   CircleShape,
+  PointShape,
   KiteShape,
   TriangleShape,
   StarShape,
@@ -297,6 +298,8 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
       return <RoundedRectangleShape {...shapeProps} />;
     } else if (nodeType === 'generic.object.circle' || nodeType?.endsWith('.circle')) {
       return <CircleShape {...shapeProps} />;
+    } else if (nodeType === 'generic.object.point' || nodeType?.endsWith('.point')) {
+      return <PointShape {...shapeProps} />;
     } else if (nodeType === 'generic.object.kite' || nodeType?.endsWith('.kite')) {
       return <KiteShape {...shapeProps} />;
     } else if (nodeType === 'generic.object.triangle' || nodeType?.endsWith('.triangle')) {
