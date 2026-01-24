@@ -3,7 +3,7 @@
 import React from "react";
 import type { DiagramNodeData } from "@/lib/types";
 import { SvgShapeBase } from "./svg-shape-base";
-import { getGradientWithAngle, getShapeStyles } from "./shape-utils";
+import { getGradientWithAngle, getShapeStyles, polygonToRoundedPath } from "./shape-utils";
 
 interface KiteShapeProps {
   node: DiagramNodeData & { width?: number; height?: number };
@@ -28,20 +28,39 @@ export function KiteShape(props: KiteShapeProps) {
   const { node } = props;
   const nodeAny = node as any;
   const styles = getShapeStyles(node);
+  const roundedEdges = nodeAny.roundedEdges || false;
+  const points = "30,5 50,30 30,55 10,30";
+  const viewBox: [number, number] = [60, 60];
+
+  const fillColor = nodeAny.backgroundStyle === 'gradient'
+    ? getGradientWithAngle(nodeAny.backgroundColors || [nodeAny.backgroundColor || '#6b7280'], nodeAny.gradientAngle || 135)
+    : nodeAny.backgroundColor || '#6b7280';
+  
+  const strokeColor = nodeAny.borderColor || '#6b7280';
+  const strokeWidth = nodeAny.borderStyle === 'none' ? '0' : (nodeAny.borderWidth || 2);
 
   return (
     <SvgShapeBase
       {...props}
       viewBox="0 0 60 60"
       svgContent={
-        <polygon
-          points="30,5 50,30 30,55 10,30"
-          fill={nodeAny.backgroundStyle === 'gradient'
-            ? getGradientWithAngle(nodeAny.backgroundColors || [nodeAny.backgroundColor || '#6b7280'], nodeAny.gradientAngle || 135)
-            : nodeAny.backgroundColor || '#6b7280'}
-          stroke={nodeAny.borderColor || '#6b7280'}
-          strokeWidth={nodeAny.borderStyle === 'none' ? '0' : (nodeAny.borderWidth || 2)}
-        />
+        roundedEdges ? (
+          <path
+            d={polygonToRoundedPath(points, undefined, viewBox)}
+            fill={fillColor}
+            stroke={strokeColor}
+            strokeWidth={strokeWidth}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+        ) : (
+          <polygon
+            points={points}
+            fill={fillColor}
+            stroke={strokeColor}
+            strokeWidth={strokeWidth}
+          />
+        )
       }
     />
   );

@@ -148,6 +148,7 @@ export const getShapeStyles = (node: DiagramNodeData & { width?: number; height?
   const borderColor = nodeAny.borderColor || '#6b7280';
   const borderWidth = nodeAny.borderWidth || 2;
   const shadow = nodeAny.shadow || false;
+  const roundedEdges = nodeAny.roundedEdges || false;
 
   return {
     background: backgroundStyle === 'gradient' 
@@ -157,6 +158,166 @@ export const getShapeStyles = (node: DiagramNodeData & { width?: number; height?
     borderStyle: borderStyle === 'gradient' ? 'solid' : borderStyle,
     borderColor,
     shadow,
+    roundedEdges,
     backgroundColor: backgroundStyle === 'gradient' ? backgroundColors[0] : backgroundColor,
   };
 };
+
+/**
+ * Convert polygon points string to array of [x, y] coordinates
+ */
+const parsePoints = (points: string): [number, number][] => {
+  return points.split(/\s+/).map(point => {
+    const [x, y] = point.split(',').map(Number);
+    return [x, y];
+  });
+};
+
+/**
+ * Calculate the angle between two points
+ */
+const angleBetween = (p1: [number, number], p2: [number, number]): number => {
+  return Math.atan2(p2[1] - p1[1], p2[0] - p1[0]);
+};
+
+/**
+ * Calculate distance between two points
+ */
+const distance = (p1: [number, number], p2: [number, number]): number => {
+  return Math.sqrt(Math.pow(p2[0] - p1[0], 2) + Math.pow(p2[1] - p1[1], 2));
+};
+
+/**
+ * Convert polygon points to a path with rounded corners
+ * @param points - Polygon points string (e.g., "30,5 55,50 5,50")
+ * @param radius - Corner radius (default: 5% of average edge length)
+ * @param viewBox - ViewBox dimensions [width, height] for calculating relative radius
+ */
+export const polygonToRoundedPath = (
+  points: string,
+  radius?: number,
+  viewBox?: [number, number]
+): string => {
+  const coords = parsePoints(points);
+  if (coords.length < 3) return '';
+
+  // Calculate default radius if not provided (6% of average edge length for subtle rounding)
+  let defaultRadius = radius;
+  if (defaultRadius === undefined) {
+    let totalLength = 0;
+    for (let i = 0; i < coords.length; i++) {
+      const next = (i + 1) % coords.length;
+      totalLength += distance(coords[i], coords[next]);
+    }
+    const avgLength = totalLength / coords.length;
+    defaultRadius = avgLength * 0.06; // 6% of average edge length (subtle rounding)
+  }
+
+  // Clamp radius to prevent it from being too large
+  let minEdgeLength = Infinity;
+  for (let i = 0; i < coords.length; i++) {
+    const next = (i + 1) % coords.length;
+    const edgeLength = distance(coords[i], coords[next]);
+    minEdgeLength = Math.min(minEdgeLength, edgeLength);
+  }
+  const maxRadius = minEdgeLength * 0.25; // Max 25% of shortest edge (prevents over-exaggeration)
+  
+  // Ensure minimum radius for small shapes (at least 1 unit to keep rounding visible)
+  const minRadius = 1;
+  const actualRadius = Math.max(minRadius, Math.min(defaultRadius, maxRadius));
+
+  const pathParts: string[] = [];
+  
+  for (let i = 0; i < coords.length; i++) {
+    const prev = coords[(i - 1 + coords.length) % coords.length];
+    const curr = coords[i];
+    const next = coords[(i + 1) % coords.length];
+
+    // Calculate edge vectors pointing AWAY from the corner (along the edges)
+    // Edge 1: from prev to curr (pointing toward curr, then away from prev)
+    const edge1 = [curr[0] - prev[0], curr[1] - prev[1]];
+    // Edge 2: from curr to next (pointing away from curr toward next)
+    const edge2 = [next[0] - curr[0], next[1] - curr[1]];
+    
+    // Normalize edge vectors
+    const len1 = Math.sqrt(edge1[0] * edge1[0] + edge1[1] * edge1[1]);
+    const len2 = Math.sqrt(edge2[0] * edge2[0] + edge2[1] * edge2[1]);
+    
+    if (len1 === 0 || len2 === 0) continue;
+    
+    const dir1 = [edge1[0] / len1, edge1[1] / len1]; // Direction along edge 1 (toward curr)
+    const dir2 = [edge2[0] / len2, edge2[1] / len2]; // Direction along edge 2 (away from curr)
+    
+    // Calculate the angle between the two edges
+    const dotProduct = dir1[0] * dir2[0] + dir1[1] * dir2[1];
+    const angle = Math.acos(Math.max(-1, Math.min(1, dotProduct)));
+    
+    // Calculate distance from corner to start/end of rounded corner
+    // Use a smaller multiplier to create subtle rounding without bulging
+    const dist = actualRadius / Math.tan(angle / 2);
+    
+    // Clamp distance to prevent it from exceeding a smaller portion of edge length
+    // This creates more subtle rounding
+    const maxDist1 = len1 * 0.3;
+    const maxDist2 = len2 * 0.3;
+    const clampedDist = Math.min(dist, maxDist1, maxDist2, actualRadius * 1.5);
+    
+    // Calculate rounded corner start point (along edge 1, before reaching curr)
+    const startX = curr[0] - dir1[0] * clampedDist;
+    const startY = curr[1] - dir1[1] * clampedDist;
+    
+    // Calculate rounded corner end point (along edge 2, after leaving curr)
+    const endX = curr[0] + dir2[0] * clampedDist;
+    const endY = curr[1] + dir2[1] * clampedDist;
+    
+    if (i === 0) {
+      pathParts.push(`M ${startX},${startY}`);
+    } else {
+      pathParts.push(`L ${startX},${startY}`);
+    }
+    
+    // Add smooth curve to round the corner
+    // Use a control point that's positioned to create a smooth rounded corner
+    // Position it between start and end, offset slightly toward the corner
+    // but not at the corner itself (to avoid bulging)
+    
+    const midX = (startX + endX) / 2;
+    const midY = (startY + endY) / 2;
+    
+    // Calculate direction from midpoint toward corner
+    const toCornerX = curr[0] - midX;
+    const toCornerY = curr[1] - midY;
+    const toCornerLen = Math.sqrt(toCornerX * toCornerX + toCornerY * toCornerY);
+    
+    if (toCornerLen > 0.01) {
+      // Position control point closer to midpoint than corner
+      // This creates a smooth curve without bulging
+      const controlOffset = Math.min(actualRadius * 0.5, toCornerLen * 0.3);
+      const controlX = midX + (toCornerX / toCornerLen) * controlOffset;
+      const controlY = midY + (toCornerY / toCornerLen) * controlOffset;
+      
+      pathParts.push(`Q ${controlX},${controlY} ${endX},${endY}`);
+    } else {
+      // Fallback: straight line
+      pathParts.push(`L ${endX},${endY}`);
+    }
+  }
+  
+  pathParts.push('Z');
+  return pathParts.join(' ');
+};
+
+/**
+ * Get SVG stroke properties for rounded edges (for path-based shapes)
+ * Returns strokeLinejoin and strokeLinecap properties when roundedEdges is enabled
+ */
+export const getRoundedEdgesProps = (roundedEdges: boolean) => {
+  if (!roundedEdges) {
+    return {};
+  }
+  return {
+    strokeLinejoin: 'round' as const,
+    strokeLinecap: 'round' as const,
+  };
+};
+

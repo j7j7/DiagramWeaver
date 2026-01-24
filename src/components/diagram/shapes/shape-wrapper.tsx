@@ -59,6 +59,13 @@ export function ShapeWrapper({
   const nodeAny = node as any;
   const width = node.width || defaultWidth;
   const height = node.height || defaultHeight;
+  const roundedEdges = nodeAny.roundedEdges || false;
+
+  // Calculate borderRadius when roundedEdges is enabled
+  // Use 6% of the smaller dimension for subtle rounding
+  const calculatedBorderRadius = roundedEdges 
+    ? `${Math.min(width, height) * 0.06}px` 
+    : borderRadius;
 
   return (
     <div
@@ -69,7 +76,7 @@ export function ShapeWrapper({
         borderWidth: !useSvgShadow ? styles.borderWidth : undefined,
         borderStyle: !useSvgShadow ? styles.borderStyle : undefined,
         borderColor: !useSvgShadow ? styles.borderColor : undefined,
-        borderRadius,
+        borderRadius: calculatedBorderRadius,
         width,
         height,
         minWidth: width,

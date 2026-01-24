@@ -433,12 +433,21 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                 <div className="w-1.5 h-1.5 bg-purple-500 rounded-full"></div>
                 <Label className="text-xs font-semibold text-slate-700">Effects</Label>
               </div>
-              <div className="flex items-center justify-between">
-                <Label className="text-xs text-slate-600">Shadow</Label>
-                <Switch
-                  checked={styling.shadow || false}
-                  onCheckedChange={(checked) => handlePropertyChange('shadow', checked)}
-                />
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs text-slate-600">Shadow</Label>
+                  <Switch
+                    checked={styling.shadow || false}
+                    onCheckedChange={(checked) => handlePropertyChange('shadow', checked)}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs text-slate-600">Rounded Edges</Label>
+                  <Switch
+                    checked={styling.roundedEdges || false}
+                    onCheckedChange={(checked) => handlePropertyChange('roundedEdges', checked)}
+                  />
+                </div>
               </div>
             </div>
 

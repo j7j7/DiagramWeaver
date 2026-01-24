@@ -112,6 +112,7 @@ export interface DiagramNodeItem {
   backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
   gradientAngle?: number; // Gradient angle in degrees (0, 45, -45, 90, 180)
   shadow?: boolean; // Whether to show shadow around label/textbox nodes
+  roundedEdges?: boolean; // Whether to apply rounded edges to shapes
   rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
   textPosition?: 'above' | 'center' | 'under'; // Text position for shape nodes
   freeflow?: boolean; // If true, node can be placed anywhere without joining groups/zones

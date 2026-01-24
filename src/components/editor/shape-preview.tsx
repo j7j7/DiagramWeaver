@@ -1,4 +1,5 @@
 import React, { useId } from 'react';
+import { polygonToRoundedPath } from '@/components/diagram/shapes/shape-utils';
 
 interface ShapePreviewProps {
   type: string;
@@ -22,6 +23,7 @@ interface ShapePreviewProps {
   fontStyle?: string;
   textDecoration?: string;
   shadow?: boolean;
+  roundedEdges?: boolean;
 }
 
 // Helper function to convert gradient angle to SVG coordinates
@@ -60,7 +62,8 @@ export function ShapePreview({
   fontWeight,
   fontStyle,
   textDecoration,
-  shadow = false
+  shadow = false,
+  roundedEdges = false
 }: ShapePreviewProps) {
   const gradientId = useId();
   const borderGradientId = useId();
@@ -132,6 +135,9 @@ export function ShapePreview({
     // Triangle
     if (type === 'generic.object.triangle' || type?.endsWith('.triangle')) {
       const coords = getGradientCoordinates(gradientAngle);
+      const points = `${displayWidth / 2},${strokeWidth} ${displayWidth - strokeWidth},${displayHeight - strokeWidth} ${strokeWidth},${displayHeight - strokeWidth}`;
+      const viewBox: [number, number] = [displayWidth, displayHeight];
+      
       return (
         <svg {...commonSvgProps}>
           <defs>
@@ -148,14 +154,25 @@ export function ShapePreview({
               </linearGradient>
             )}
           </defs>
-          <polygon
-            points={`${displayWidth / 2},${strokeWidth} ${displayWidth - strokeWidth},${displayHeight - strokeWidth} ${strokeWidth},${displayHeight - strokeWidth}`}
-            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
-            stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
-            strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
-            strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
-            strokeLinejoin="round"
-          />
+          {roundedEdges ? (
+            <path
+              d={polygonToRoundedPath(points, undefined, viewBox)}
+              fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
+              stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
+              strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
+              strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+          ) : (
+            <polygon
+              points={points}
+              fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
+              stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
+              strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
+              strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
+            />
+          )}
         </svg>
       );
     }
@@ -194,7 +211,8 @@ export function ShapePreview({
             stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
             strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
             strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
-            strokeLinejoin="round"
+            strokeLinejoin={roundedEdges ? 'round' : 'miter'}
+            strokeLinecap={roundedEdges ? 'round' : 'butt'}
           />
         </svg>
       );
@@ -236,7 +254,8 @@ export function ShapePreview({
             stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
             strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
             strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
-            strokeLinejoin="round"
+            strokeLinejoin={roundedEdges ? 'round' : 'miter'}
+            strokeLinecap={roundedEdges ? 'round' : 'butt'}
           />
         </svg>
       );
@@ -267,7 +286,8 @@ export function ShapePreview({
             stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
             strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
             strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
-            strokeLinejoin="round"
+            strokeLinejoin={roundedEdges ? 'round' : 'miter'}
+            strokeLinecap={roundedEdges ? 'round' : 'butt'}
           />
         </svg>
       );
@@ -302,7 +322,8 @@ export function ShapePreview({
             stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
             strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
             strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
-            strokeLinejoin="round"
+            strokeLinejoin={roundedEdges ? 'round' : 'miter'}
+            strokeLinecap={roundedEdges ? 'round' : 'butt'}
           />
         </svg>
       );
@@ -333,7 +354,8 @@ export function ShapePreview({
             stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
             strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
             strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
-            strokeLinejoin="round"
+            strokeLinejoin={roundedEdges ? 'round' : 'miter'}
+            strokeLinecap={roundedEdges ? 'round' : 'butt'}
           />
         </svg>
       );
@@ -364,7 +386,8 @@ export function ShapePreview({
             stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
             strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
             strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
-            strokeLinejoin="round"
+            strokeLinejoin={roundedEdges ? 'round' : 'miter'}
+            strokeLinecap={roundedEdges ? 'round' : 'butt'}
           />
         </svg>
       );
@@ -409,7 +432,8 @@ export function ShapePreview({
             stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
             strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
             strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
-            strokeLinejoin="round"
+            strokeLinejoin={roundedEdges ? 'round' : 'miter'}
+            strokeLinecap={roundedEdges ? 'round' : 'butt'}
           />
         </svg>
       );
@@ -454,7 +478,8 @@ export function ShapePreview({
             stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
             strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
             strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
-            strokeLinejoin="round"
+            strokeLinejoin={roundedEdges ? 'round' : 'miter'}
+            strokeLinecap={roundedEdges ? 'round' : 'butt'}
           />
         </svg>
       );
@@ -499,7 +524,8 @@ export function ShapePreview({
             stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
             strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
             strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
-            strokeLinejoin="round"
+            strokeLinejoin={roundedEdges ? 'round' : 'miter'}
+            strokeLinecap={roundedEdges ? 'round' : 'butt'}
           />
         </svg>
       );
@@ -542,7 +568,8 @@ export function ShapePreview({
             stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
             strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
             strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
-            strokeLinejoin="round"
+            strokeLinejoin={roundedEdges ? 'round' : 'miter'}
+            strokeLinecap={roundedEdges ? 'round' : 'butt'}
           />
         </svg>
       );
@@ -577,7 +604,8 @@ export function ShapePreview({
             stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
             strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
             strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
-            strokeLinejoin="round"
+            strokeLinejoin={roundedEdges ? 'round' : 'miter'}
+            strokeLinecap={roundedEdges ? 'round' : 'butt'}
           />
         </svg>
       );
@@ -621,6 +649,8 @@ export function ShapePreview({
 
     // Rectangle / Square (Default)
     const coords = getGradientCoordinates(gradientAngle);
+    // Calculate borderRadius when roundedEdges is enabled (6% of smaller dimension)
+    const borderRadius = roundedEdges ? Math.min(displayWidth, displayHeight) * 0.06 : 0;
     return (
       <svg {...commonSvgProps}>
         <defs>
@@ -637,16 +667,20 @@ export function ShapePreview({
             </linearGradient>
           )}
         </defs>
-        <rect
-          x={strokeWidth / 2}
-          y={strokeWidth / 2}
-          width={Math.max(0, displayWidth - strokeWidth)}
-          height={Math.max(0, displayHeight - strokeWidth)}
-          fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
-          stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
-          strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
-          strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
-        />
+          <rect
+            x={strokeWidth / 2}
+            y={strokeWidth / 2}
+            width={Math.max(0, displayWidth - strokeWidth)}
+            height={Math.max(0, displayHeight - strokeWidth)}
+            rx={borderRadius}
+            ry={borderRadius}
+            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
+            stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
+            strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
+            strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
+            strokeLinejoin={roundedEdges ? 'round' : 'miter'}
+            strokeLinecap={roundedEdges ? 'round' : 'butt'}
+          />
       </svg>
     );
   };

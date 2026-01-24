@@ -3,7 +3,7 @@
 import React from "react";
 import type { DiagramNodeData } from "@/lib/types";
 import { SvgShapeBase } from "./svg-shape-base";
-import { getGradientWithAngle } from "./shape-utils";
+import { getGradientWithAngle, polygonToRoundedPath } from "./shape-utils";
 
 interface ParallelogramShapeProps {
   node: DiagramNodeData & { width?: number; height?: number };
@@ -27,6 +27,16 @@ interface ParallelogramShapeProps {
 export function ParallelogramShape(props: ParallelogramShapeProps) {
   const { node } = props;
   const nodeAny = node as any;
+  const roundedEdges = nodeAny.roundedEdges || false;
+  const points = "20,5 75,5 60,45 5,45";
+  const viewBox: [number, number] = [80, 50];
+
+  const fillColor = nodeAny.backgroundStyle === 'gradient'
+    ? getGradientWithAngle(nodeAny.backgroundColors || [nodeAny.backgroundColor || '#6b7280'], nodeAny.gradientAngle || 135)
+    : nodeAny.backgroundColor || '#6b7280';
+  
+  const strokeColor = nodeAny.borderColor || '#6b7280';
+  const strokeWidth = nodeAny.borderStyle === 'none' ? '0' : (nodeAny.borderWidth || 2);
 
   return (
     <SvgShapeBase
@@ -35,14 +45,23 @@ export function ParallelogramShape(props: ParallelogramShapeProps) {
       defaultWidth={80}
       defaultHeight={50}
       svgContent={
-        <polygon
-          points="20,5 75,5 60,45 5,45"
-          fill={nodeAny.backgroundStyle === 'gradient'
-            ? getGradientWithAngle(nodeAny.backgroundColors || [nodeAny.backgroundColor || '#6b7280'], nodeAny.gradientAngle || 135)
-            : nodeAny.backgroundColor || '#6b7280'}
-          stroke={nodeAny.borderColor || '#6b7280'}
-          strokeWidth={nodeAny.borderStyle === 'none' ? '0' : (nodeAny.borderWidth || 2)}
-        />
+        roundedEdges ? (
+          <path
+            d={polygonToRoundedPath(points, undefined, viewBox)}
+            fill={fillColor}
+            stroke={strokeColor}
+            strokeWidth={strokeWidth}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+        ) : (
+          <polygon
+            points={points}
+            fill={fillColor}
+            stroke={strokeColor}
+            strokeWidth={strokeWidth}
+          />
+        )
       }
     />
   );

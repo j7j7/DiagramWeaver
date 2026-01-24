@@ -3,7 +3,7 @@
 import React from "react";
 import type { DiagramNodeData } from "@/lib/types";
 import { SvgShapeBase } from "./svg-shape-base";
-import { getGradientWithAngle } from "./shape-utils";
+import { getGradientWithAngle, polygonToRoundedPath } from "./shape-utils";
 
 interface StarShapeProps {
   node: DiagramNodeData & { width?: number; height?: number };
@@ -27,20 +27,39 @@ interface StarShapeProps {
 export function StarShape(props: StarShapeProps) {
   const { node } = props;
   const nodeAny = node as any;
+  const roundedEdges = nodeAny.roundedEdges || false;
+  const points = "30,2 38,22 58,22 42,36 50,56 30,44 10,56 18,36 2,22 22,22";
+  const viewBox: [number, number] = [60, 60];
+
+  const fillColor = nodeAny.backgroundStyle === 'gradient'
+    ? getGradientWithAngle(nodeAny.backgroundColors || [nodeAny.backgroundColor || '#6b7280'], nodeAny.gradientAngle || 135)
+    : nodeAny.backgroundColor || '#6b7280';
+  
+  const strokeColor = nodeAny.borderColor || '#6b7280';
+  const strokeWidth = nodeAny.borderStyle === 'none' ? '0' : (nodeAny.borderWidth || 2);
 
   return (
     <SvgShapeBase
       {...props}
       viewBox="0 0 60 60"
       svgContent={
-        <polygon
-          points="30,2 38,22 58,22 42,36 50,56 30,44 10,56 18,36 2,22 22,22"
-          fill={nodeAny.backgroundStyle === 'gradient'
-            ? getGradientWithAngle(nodeAny.backgroundColors || [nodeAny.backgroundColor || '#6b7280'], nodeAny.gradientAngle || 135)
-            : nodeAny.backgroundColor || '#6b7280'}
-          stroke={nodeAny.borderColor || '#6b7280'}
-          strokeWidth={nodeAny.borderStyle === 'none' ? '0' : (nodeAny.borderWidth || 2)}
-        />
+        roundedEdges ? (
+          <path
+            d={polygonToRoundedPath(points, undefined, viewBox)}
+            fill={fillColor}
+            stroke={strokeColor}
+            strokeWidth={strokeWidth}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+        ) : (
+          <polygon
+            points={points}
+            fill={fillColor}
+            stroke={strokeColor}
+            strokeWidth={strokeWidth}
+          />
+        )
       }
     />
   );

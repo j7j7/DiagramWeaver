@@ -464,6 +464,7 @@ const DraggableShape = ({ item, data }: { item: ScratchPadItem; data: any }) => 
             fontStyle={itemData.fontStyle}
             textDecoration={itemData.textDecoration}
             shadow={itemData.shadow}
+            roundedEdges={itemData.roundedEdges}
           />
         </CardContent>
       </Card>

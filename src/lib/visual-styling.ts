@@ -12,6 +12,7 @@ export interface VisualStyling {
   gradientAngle?: number; // Gradient angle in degrees (0, 45, -45, 90, 180)
   shadow?: boolean;
   borderWidth?: number; // Border thickness
+  roundedEdges?: boolean; // Whether to apply rounded edges to shapes
 }
 
 // Predefined visual styles for dropdown selection
@@ -124,7 +125,8 @@ export function getVisualStyling(
     backgroundColors: node?.backgroundColors || theme?.backgroundColors,
     gradientAngle: node?.gradientAngle || theme?.gradientAngle || 135,
     shadow: node?.shadow ?? theme?.shadow ?? false,
-    borderWidth: node?.borderWidth ?? theme?.borderWidth ?? 2
+    borderWidth: node?.borderWidth ?? theme?.borderWidth ?? 2,
+    roundedEdges: node?.roundedEdges ?? theme?.roundedEdges ?? false
   };
 }
 
@@ -174,7 +176,8 @@ export function extractVisualStylingFromNode(node: DiagramNodeData | DiagramNode
     backgroundColors: node.backgroundColors,
     gradientAngle: node.gradientAngle,
     shadow: node.shadow,
-    borderWidth: node.borderWidth
+    borderWidth: node.borderWidth,
+    roundedEdges: (node as any).roundedEdges
   };
 }
 
@@ -212,8 +215,9 @@ export function applyVisualStylingToNode(
     backgroundColors: styling.backgroundColors ?? node.backgroundColors,
     gradientAngle: styling.gradientAngle ?? node.gradientAngle,
     shadow: styling.shadow ?? node.shadow,
-    borderWidth: styling.borderWidth ?? node.borderWidth
-  };
+    borderWidth: styling.borderWidth ?? node.borderWidth,
+    roundedEdges: styling.roundedEdges ?? (node as any).roundedEdges
+  } as DiagramNodeData | DiagramNodeItem;
 }
 
 /**

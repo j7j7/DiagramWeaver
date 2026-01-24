@@ -3,7 +3,7 @@
 import React from "react";
 import type { DiagramNodeData } from "@/lib/types";
 import { SvgShapeBase } from "./svg-shape-base";
-import { getGradientWithAngle } from "./shape-utils";
+import { getGradientWithAngle, getRoundedEdgesProps } from "./shape-utils";
 
 interface CloudShapeProps {
   node: DiagramNodeData & { width?: number; height?: number };
@@ -27,6 +27,7 @@ interface CloudShapeProps {
 export function CloudShape(props: CloudShapeProps) {
   const { node } = props;
   const nodeAny = node as any;
+  const roundedEdges = nodeAny.roundedEdges || false;
 
   return (
     <SvgShapeBase
@@ -42,6 +43,7 @@ export function CloudShape(props: CloudShapeProps) {
             : nodeAny.backgroundColor || '#6b7280'}
           stroke={nodeAny.borderColor || '#6b7280'}
           strokeWidth={nodeAny.borderStyle === 'none' ? '0' : (nodeAny.borderWidth || 2)}
+          {...getRoundedEdgesProps(roundedEdges)}
         />
       }
     />
