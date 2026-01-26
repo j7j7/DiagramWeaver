@@ -2313,6 +2313,10 @@ function DiagramEditorInner({
                         onReorderLayers={layers.reorderLayers}
                         onAssignSelectedItemsToLayer={selectedItemIds.size > 0 ? (layerId: string) => layers.assignItemsToLayer(Array.from(selectedItemIds), layerId) : undefined}
                         onClose={layers.toggleLayersPanel}
+                        getLayerItemCount={(layerId: string) => {
+                          const items = layers.getLayerItems(layerId);
+                          return (items.nodes?.length || 0) + (items.zones?.length || 0);
+                        }}
                       />
                     </div>
                   )}

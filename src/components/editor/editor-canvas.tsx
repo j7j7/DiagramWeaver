@@ -842,8 +842,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   const handleNodeContextMenu = (e: React.MouseEvent, node: DiagramNodeData) => {
     e.stopPropagation();
     e.preventDefault();
-    // Select the node if not already selected (required for context menu actions)
-    if (selectedItemId !== node.id) {
+    // If multiple items are selected and this node is already in the selection, preserve the selection
+    // Otherwise, select just this node
+    if (selectedItemIds.size > 1 && selectedItemIds.has(node.id)) {
+      // Preserve multi-selection - don't change selection
+    } else if (selectedItemId !== node.id) {
       onItemSelect({ ...node, itemType: 'node' }, false);
     }
     // Always reset connection settings trigger when opening context menu
@@ -866,8 +869,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   const handleZoneContextMenu = (e: React.MouseEvent, zone: DiagramZoneData) => {
     e.stopPropagation();
     e.preventDefault();
-    // Select the zone if not already selected
-    if (selectedItemId !== zone.id) {
+    // If multiple items are selected and this zone is already in the selection, preserve the selection
+    // Otherwise, select just this zone
+    if (selectedItemIds.size > 1 && selectedItemIds.has(zone.id)) {
+      // Preserve multi-selection - don't change selection
+    } else if (selectedItemId !== zone.id) {
       onItemSelect({ ...zone, itemType: 'zone' }, false);
     }
     // Always reset connection settings trigger when opening context menu
@@ -1502,7 +1508,12 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             availableLayers={layers ? layers.getAllLayers() : []}
             onChangeLayer={(layerId: string) => {
               if (layers) {
-                layers.assignItemsToLayer([contextMenu.itemId], layerId);
+                // If multiple items are selected, move all selected items to the layer
+                // Otherwise, move just the right-clicked item
+                const itemsToMove = selectedItemIds.size > 1 
+                  ? Array.from(selectedItemIds) 
+                  : [contextMenu.itemId];
+                layers.assignItemsToLayer(itemsToMove, layerId);
               }
             }}
             onOrientationChange={(orientation: 'auto' | 'horizontal' | 'vertical' | 'grid') => {

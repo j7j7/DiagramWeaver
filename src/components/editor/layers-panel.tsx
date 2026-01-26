@@ -48,6 +48,7 @@ interface LayersPanelProps {
   onAssignSelectedItemsToLayer?: (layerId: string) => void;
   onClose?: () => void;
   className?: string;
+  getLayerItemCount?: (layerId: string) => number;
 }
 
 export function LayersPanel({
@@ -62,7 +63,8 @@ export function LayersPanel({
   onReorderLayers,
   onAssignSelectedItemsToLayer,
   onClose,
-  className
+  className,
+  getLayerItemCount
 }: LayersPanelProps) {
   const [newLayerName, setNewLayerName] = useState('');
   const [editingLayerId, setEditingLayerId] = useState<string | null>(null);
@@ -321,6 +323,16 @@ export function LayersPanel({
                       )}>
                         {layer.name}
                       </span>
+                      {getLayerItemCount && (
+                        <span className={cn(
+                          "text-xs px-1.5 py-0.5 rounded",
+                          layer.visible 
+                            ? "bg-gray-100 text-gray-600" 
+                            : "bg-gray-50 text-gray-400"
+                        )}>
+                          {getLayerItemCount(layer.id)}
+                        </span>
+                      )}
                       {hasSelectedItems(layer.id) && (
                         <span className={cn(
                           "text-xs px-1.5 py-0.5 rounded",
