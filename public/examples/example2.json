@@ -6,611 +6,230 @@
       "label": "",
       "children": [
         {
-          "id": "generic-user-user-1",
-          "type": "generic.user.user",
-          "label": "User",
-          "info": "User from generic",
-          "x": 460,
-          "y": 180,
-          "freeflow": true
-        },
-        {
-          "id": "generic-object-rounded-rectangle-1",
-          "type": "generic.object.rounded-rectangle",
-          "label": "Container",
-          "x": 340,
-          "y": 460,
-          "lineColor": "#f97316",
+          "id": "generic-text-textbox-1",
+          "type": "generic.text.textbox",
+          "label": "Generic Flow Chart",
+          "x": 150,
+          "y": 110,
           "borderColor": "#6b7280",
           "backgroundColor": "#f9fafb",
           "textColor": "#374151",
           "borderStyle": "solid",
-          "borderColors": [
-            "#f97316",
-            "#ea580c"
-          ],
           "backgroundStyle": "solid",
-          "backgroundColors": [
-            "#fed7aa",
-            "#ffedd5"
-          ],
           "gradientAngle": 0,
           "shadow": false,
           "freeflow": true,
           "borderWidth": 1,
-          "width": 780,
-          "height": 600,
+          "width": 980,
+          "height": 660,
           "sizeMode": "custom",
-          "textVerticalPosition": "bottom",
-          "tag": "AWS",
-          "tagPosition": "top-left",
+          "textVerticalPosition": "top",
           "locked": true
         },
         {
-          "id": "aws-general-internet-gateway-1",
-          "type": "aws.general.internet-gateway",
-          "label": "Internet Gateway",
-          "info": "Internet Gateway from aws",
-          "x": 690,
-          "y": 260,
-          "freeflow": true
-        },
-        {
-          "id": "generic-object-rounded-rectangle-2",
-          "type": "generic.object.rounded-rectangle",
-          "label": "Availability Zone",
-          "x": 360,
-          "y": 480,
-          "lineColor": "#06b6d4",
-          "borderColor": "#3b82f6",
-          "backgroundColor": "#e3e3e3",
-          "textColor": "#1e40af",
-          "borderStyle": "dotted",
-          "backgroundStyle": "solid",
-          "gradientAngle": 135,
-          "shadow": true,
+          "id": "programming-flowchart-start-end-1",
+          "type": "programming.flowchart.start/end",
+          "label": "Start/End",
+          "info": "Start/End from programming",
+          "x": 170,
+          "y": 130,
           "freeflow": true,
-          "borderWidth": 2,
-          "width": 340,
-          "height": 540,
-          "sizeMode": "custom",
-          "textVerticalPosition": "bottom",
-          "tagPosition": "bottom-center"
+          "noIconBackground": true
         },
         {
-          "id": "generic-object-rounded-rectangle-3",
-          "type": "generic.object.rounded-rectangle",
-          "label": "Availability Zone",
-          "x": 760,
-          "y": 480,
-          "lineColor": "#06b6d4",
-          "borderColor": "#3b82f6",
-          "backgroundColor": "#e3e3e3",
-          "textColor": "#1e40af",
-          "borderStyle": "dotted",
-          "backgroundStyle": "solid",
-          "gradientAngle": 135,
-          "shadow": true,
+          "id": "programming-flowchart-input-output-1",
+          "type": "programming.flowchart.input/output",
+          "label": "Input",
+          "info": "Input/Output from programming",
+          "x": 170,
+          "y": 300,
           "freeflow": true,
-          "borderWidth": 2,
-          "width": 340,
-          "height": 540,
-          "sizeMode": "custom",
-          "textVerticalPosition": "bottom",
-          "tagPosition": "bottom-center"
+          "noIconBackground": true
         },
         {
-          "id": "generic-object-rectangle-1",
-          "type": "generic.object.rectangle",
-          "label": "",
-          "x": 390,
-          "y": 820,
-          "lineColor": "#4b5563",
-          "borderColor": "#16a34a",
-          "backgroundColor": "#f0fdf4",
-          "textColor": "#14532d",
-          "borderStyle": "solid",
-          "backgroundStyle": "solid",
-          "gradientAngle": 90,
-          "shadow": true,
+          "id": "programming-flowchart-display-1",
+          "type": "programming.flowchart.display",
+          "label": "Stop",
+          "info": "Display from programming",
+          "x": 450,
+          "y": 310,
           "freeflow": true,
-          "borderWidth": 2,
-          "width": 280,
-          "height": 160,
-          "sizeMode": "custom",
-          "tag": "Data",
-          "tagPosition": "bottom-center",
-          "groupId": "grouping-1"
+          "noIconBackground": true
         },
         {
-          "id": "aws-database-rds-1",
-          "type": "aws.database.rds",
-          "label": "RDS",
-          "info": "RDS from aws",
-          "x": 430,
-          "y": 850,
-          "freeflow": true,
-          "groupId": "grouping-1"
-        },
-        {
-          "id": "aws-storage-s3-1",
-          "type": "aws.storage.s3",
-          "label": "S3",
-          "info": "S3 from aws",
-          "x": 560,
-          "y": 850,
-          "freeflow": true,
-          "groupId": "grouping-1"
-        },
-        {
-          "id": "generic-object-rectangle-2",
-          "type": "generic.object.rectangle",
-          "label": "",
-          "x": 390,
-          "y": 600,
-          "lineColor": "#4b5563",
-          "borderColor": "#16a34a",
-          "backgroundColor": "#f0fdf4",
-          "textColor": "#14532d",
-          "borderStyle": "solid",
-          "backgroundStyle": "solid",
-          "gradientAngle": 90,
-          "shadow": true,
-          "freeflow": true,
-          "borderWidth": 2,
-          "width": 280,
-          "height": 160,
-          "sizeMode": "custom",
-          "tag": "Web/Apps",
-          "tagPosition": "bottom-center",
-          "groupId": "grouping-2"
-        },
-        {
-          "id": "aws-compute-ec2-1",
-          "type": "aws.compute.ec2",
-          "label": "App x1",
-          "info": "EC2 from aws",
-          "x": 420,
-          "y": 630,
-          "freeflow": true,
-          "groupId": "grouping-2"
-        },
-        {
-          "id": "aws-compute-ec2-2",
-          "type": "aws.compute.ec2",
-          "label": "App x2",
-          "info": "EC2 from aws",
-          "x": 560,
-          "y": 630,
-          "freeflow": true,
-          "groupId": "grouping-2"
-        },
-        {
-          "id": "aws-network-alb-1",
-          "type": "aws.network.alb",
-          "label": "ALB",
-          "info": "ALB from aws",
-          "x": 490,
-          "y": 490,
-          "freeflow": true
-        },
-        {
-          "id": "generic-object-rectangle-3",
-          "type": "generic.object.rectangle",
-          "label": "",
-          "x": 790,
-          "y": 820,
-          "lineColor": "#4b5563",
-          "borderColor": "#16a34a",
-          "backgroundColor": "#f0fdf4",
-          "textColor": "#14532d",
-          "borderStyle": "solid",
-          "backgroundStyle": "solid",
-          "gradientAngle": 90,
-          "shadow": true,
-          "freeflow": true,
-          "borderWidth": 2,
-          "width": 280,
-          "height": 160,
-          "sizeMode": "custom",
-          "tag": "Data",
-          "tagPosition": "bottom-center",
-          "groupId": "grouping-3"
-        },
-        {
-          "id": "aws-database-rds-2",
-          "type": "aws.database.rds",
-          "label": "RDS",
-          "info": "RDS from aws",
-          "x": 830,
-          "y": 850,
-          "freeflow": true,
-          "groupId": "grouping-3"
-        },
-        {
-          "id": "aws-storage-s3-2",
-          "type": "aws.storage.s3",
-          "label": "S3",
-          "info": "S3 from aws",
-          "x": 960,
-          "y": 850,
-          "freeflow": true,
-          "groupId": "grouping-3"
-        },
-        {
-          "id": "generic-object-rectangle-4",
-          "type": "generic.object.rectangle",
-          "label": "",
-          "x": 790,
-          "y": 600,
-          "lineColor": "#4b5563",
-          "borderColor": "#16a34a",
-          "backgroundColor": "#f0fdf4",
-          "textColor": "#14532d",
-          "borderStyle": "solid",
-          "backgroundStyle": "solid",
-          "gradientAngle": 90,
-          "shadow": true,
-          "freeflow": true,
-          "borderWidth": 2,
-          "width": 280,
-          "height": 160,
-          "sizeMode": "custom",
-          "tag": "Web/Apps",
-          "tagPosition": "bottom-center",
-          "groupId": "grouping-4"
-        },
-        {
-          "id": "aws-compute-ec2-3",
-          "type": "aws.compute.ec2",
-          "label": "App x1",
-          "info": "EC2 from aws",
+          "id": "programming-flowchart-database-1",
+          "type": "programming.flowchart.database",
+          "label": "Store Results",
+          "info": "Database from programming",
           "x": 820,
-          "y": 630,
-          "freeflow": true,
-          "groupId": "grouping-4"
-        },
-        {
-          "id": "aws-compute-ec2-4",
-          "type": "aws.compute.ec2",
-          "label": "App x2",
-          "info": "EC2 from aws",
-          "x": 960,
-          "y": 630,
-          "freeflow": true,
-          "groupId": "grouping-4"
-        },
-        {
-          "id": "aws-network-alb-2",
-          "type": "aws.network.alb",
-          "label": "ALB",
-          "info": "ALB from aws",
-          "x": 890,
-          "y": 490,
-          "freeflow": true
-        },
-        {
-          "id": "aws-network-vpc-1",
-          "type": "aws.network.vpc",
-          "label": "VPC",
-          "info": "VPC from aws",
-          "x": 1180,
           "y": 610,
-          "rotation": 0,
-          "freeflow": true
+          "freeflow": true,
+          "noIconBackground": true
         },
         {
-          "id": "aws-network-direct-connect-1",
-          "type": "aws.network.direct-connect",
-          "label": "Direct Connect",
-          "info": "Direct Connect from aws",
-          "x": 1300,
+          "id": "programming-flowchart-decision-1",
+          "type": "programming.flowchart.decision",
+          "label": "Decision",
+          "info": "Decision from programming",
+          "x": 250,
+          "y": 440,
+          "freeflow": true,
+          "noIconBackground": true
+        },
+        {
+          "id": "programming-flowchart-manual-input-1",
+          "type": "programming.flowchart.manual-input",
+          "label": "Manual Input",
+          "info": "Manual Input from programming",
+          "x": 820,
+          "y": 350,
+          "freeflow": true,
+          "noIconBackground": true
+        },
+        {
+          "id": "programming-flowchart-document-1",
+          "type": "programming.flowchart.document",
+          "label": "Update Info",
+          "info": "Document from programming",
+          "x": 450,
+          "y": 580,
+          "freeflow": true,
+          "noIconBackground": true
+        },
+        {
+          "id": "programming-flowchart-decision-2",
+          "type": "programming.flowchart.decision",
+          "label": "Fixed",
+          "info": "Decision from programming",
+          "x": 610,
+          "y": 430,
+          "freeflow": true,
+          "noIconBackground": true
+        },
+        {
+          "id": "programming-flowchart-document-2",
+          "type": "programming.flowchart.document",
+          "label": "Info",
+          "info": "Document from programming",
+          "x": 610,
+          "y": 240,
+          "freeflow": true,
+          "noIconBackground": true,
+          "textTransform": "none",
+          "textOpacity": 1
+        },
+        {
+          "id": "programming-flowchart-start-end-2",
+          "type": "programming.flowchart.start/end",
+          "label": "Finished",
+          "info": "Start/End from programming",
+          "x": 1010,
           "y": 610,
-          "rotation": 0,
-          "freeflow": true
-        },
-        {
-          "id": "aws-network-transit-gateway-1",
-          "type": "aws.network.transit-gateway",
-          "label": "Transit Gateway",
-          "info": "Transit Gateway from aws",
-          "x": 1580,
-          "y": 750,
-          "rotation": 0,
-          "freeflow": true
-        },
-        {
-          "id": "generic-object-cloud-1",
-          "type": "generic.object.cloud",
-          "label": "Cloud",
-          "x": 1450,
-          "y": 460,
-          "lineColor": "#f472b6",
-          "borderColor": "#d1d5db",
-          "backgroundColor": "#f3f4f6",
-          "textColor": "#831843",
-          "borderStyle": "solid",
-          "backgroundStyle": "solid",
-          "backgroundColors": [
-            "#fdf2f8",
-            "#fce7f3"
-          ],
-          "gradientAngle": 135,
-          "shadow": true,
           "freeflow": true,
-          "borderWidth": 2,
-          "width": 160,
-          "height": 100,
-          "sizeMode": "custom"
-        },
-        {
-          "id": "generic-object-line-1",
-          "type": "generic.object.line",
-          "label": "This line points out something interesting",
-          "x": 990,
-          "y": 400,
-          "lineColor": "#6b7280",
-          "textColor": "#9a3412",
-          "borderStyle": "gradient",
-          "borderColors": [
-            "#f97316",
-            "#ea580c"
-          ],
-          "backgroundStyle": "gradient",
-          "backgroundColors": [
-            "#fed7aa",
-            "#ffedd5"
-          ],
-          "gradientAngle": 135,
-          "shadow": true,
-          "freeflow": true,
-          "borderWidth": 2,
-          "width": 150,
-          "height": 100,
-          "sizeMode": "custom",
-          "startPos": {
-            "x": 990,
-            "y": 510
-          },
-          "endPos": {
-            "x": 1430,
-            "y": 400
-          },
-          "startCap": "arrow",
-          "endCap": "none",
-          "lineThickness": 2.5,
-          "lineTextVerticalPosition": "middle"
-        },
-        {
-          "id": "generic-object-rounded-rectangle-4",
-          "type": "generic.object.rounded-rectangle",
-          "label": "Typical Diagram with mixed icons",
-          "x": 930,
-          "y": 260,
-          "lineColor": "#06b6d4",
-          "borderColor": "#ffffff",
-          "backgroundColor": "#ecfeff",
-          "textColor": "#333333",
-          "borderStyle": "solid",
-          "borderColors": [
-            "#ffffff",
-            "#d07543"
-          ],
-          "backgroundStyle": "gradient",
-          "backgroundColors": [
-            "#c7c7c7",
-            "#ffffff"
-          ],
-          "gradientAngle": 135,
-          "shadow": true,
-          "freeflow": true,
-          "borderWidth": 2,
-          "width": 540,
-          "height": 80,
-          "sizeMode": "custom"
-        },
-        {
-          "id": "generic-text-textbox-1",
-          "type": "generic.text.textbox",
-          "label": "Diagram V1 - Dated 02/02/2026 \nSome detailed information about this diagram goes here.",
-          "info": "more info about this goes on here",
-          "x": 1260,
-          "y": 950,
-          "textColor": "#374151",
-          "rotation": 0,
-          "freeflow": true,
-          "width": 340,
-          "height": 80,
-          "sizeMode": "custom"
+          "noIconBackground": true
         }
       ]
     }
   ],
   "connections": [
     {
-      "from": "aws-general-internet-gateway-1",
-      "to": "generic-object-rounded-rectangle-2",
+      "from": "programming-flowchart-decision-1",
+      "to": "programming-flowchart-display-1",
+      "style": "bezier",
+      "curvature": 0.6,
+      "color": "#9f5050",
+      "text": "Denied",
       "toArrow": true,
       "arrow": true,
-      "style": "bezier",
-      "curvature": 0.6
+      "_updated": 1769435381170
     },
     {
-      "from": "generic-user-user-1",
-      "to": "aws-general-internet-gateway-1",
-      "toArrow": true,
-      "arrow": true,
-      "style": "bezier",
-      "curvature": 0.6
-    },
-    {
-      "from": "aws-general-internet-gateway-1",
-      "to": "generic-object-rounded-rectangle-3",
-      "toArrow": true,
-      "arrow": true,
-      "style": "bezier",
-      "curvature": 0.6
-    },
-    {
-      "from": "generic-object-rectangle-2",
-      "to": "generic-object-rectangle-1",
-      "toArrow": true,
-      "arrow": true,
-      "style": "bezier",
-      "curvature": 0.6
-    },
-    {
-      "from": "generic-object-rectangle-1",
-      "to": "generic-object-rectangle-3",
-      "toArrow": true,
-      "arrow": true,
-      "style": "bezier",
-      "curvature": 0.6
-    },
-    {
-      "from": "aws-network-alb-2",
-      "to": "aws-compute-ec2-3",
-      "style": "bezier",
-      "curvature": 0.6
-    },
-    {
-      "from": "aws-network-alb-2",
-      "to": "aws-compute-ec2-4",
-      "style": "bezier",
-      "curvature": 0.6
-    },
-    {
-      "from": "generic-object-cloud-1",
-      "to": "aws-network-transit-gateway-1",
-      "toArrow": true,
-      "arrow": true,
-      "style": "bezier",
-      "curvature": 0.6
-    },
-    {
-      "from": "aws-network-transit-gateway-1",
-      "to": "aws-network-direct-connect-1",
+      "from": "programming-flowchart-start-end-1",
+      "to": "programming-flowchart-input-output-1",
       "style": "bezier",
       "curvature": 0.6,
       "toArrow": true,
       "arrow": true,
-      "_updated": 1769438066851
+      "_updated": 1769435805575
     },
     {
-      "from": "aws-network-direct-connect-1",
-      "to": "aws-network-vpc-1",
+      "from": "programming-flowchart-input-output-1",
+      "to": "programming-flowchart-decision-1",
       "style": "bezier",
-      "curvature": 0.6
-    },
-    {
-      "from": "aws-network-vpc-1",
-      "to": "generic-object-rounded-rectangle-1",
-      "style": "bezier",
-      "curvature": 0.6
-    },
-    {
-      "from": "generic-object-rectangle-4",
-      "to": "generic-object-rectangle-3",
+      "curvature": 0.6,
       "toArrow": true,
       "arrow": true,
-      "style": "bezier",
-      "curvature": 0.6
+      "_updated": 1769435808205
     },
     {
-      "from": "aws-storage-s3-1",
-      "to": "aws-database-rds-1",
+      "from": "programming-flowchart-document-1",
+      "to": "programming-flowchart-decision-2",
       "style": "bezier",
-      "curvature": 0.6
+      "curvature": 0.6,
+      "toArrow": true,
+      "arrow": true,
+      "_updated": 1769435363309
     },
     {
-      "from": "aws-storage-s3-2",
-      "to": "aws-database-rds-2",
+      "from": "programming-flowchart-manual-input-1",
+      "to": "programming-flowchart-document-2",
       "style": "bezier",
-      "curvature": 0.6
+      "curvature": 0.6,
+      "toArrow": true,
+      "arrow": true,
+      "_updated": 1769435356592
     },
     {
-      "from": "aws-network-alb-1",
-      "to": "aws-compute-ec2-1",
+      "from": "programming-flowchart-decision-2",
+      "to": "programming-flowchart-manual-input-1",
       "style": "bezier",
-      "curvature": 0.6
+      "curvature": 0.6,
+      "toArrow": true,
+      "arrow": true,
+      "_updated": 1769435361427,
+      "text": "No",
+      "color": "#9f5050"
     },
     {
-      "from": "aws-network-alb-1",
-      "to": "aws-compute-ec2-2",
+      "from": "programming-flowchart-document-2",
+      "to": "programming-flowchart-decision-2",
       "style": "bezier",
-      "curvature": 0.6
+      "curvature": 0.6,
+      "toArrow": true,
+      "arrow": true,
+      "_updated": 1769435359074
+    },
+    {
+      "from": "programming-flowchart-decision-1",
+      "to": "programming-flowchart-document-1",
+      "style": "bezier",
+      "curvature": 0.6,
+      "color": "#3cbe6e",
+      "text": "Approved",
+      "toArrow": true,
+      "arrow": true,
+      "_updated": 1769435409222
+    },
+    {
+      "from": "programming-flowchart-decision-2",
+      "to": "programming-flowchart-database-1",
+      "style": "bezier",
+      "curvature": 0.6,
+      "text": "Yes",
+      "color": "#41bf71",
+      "toArrow": true,
+      "arrow": true,
+      "_updated": 1769435506275
+    },
+    {
+      "from": "programming-flowchart-database-1",
+      "to": "programming-flowchart-start-end-2",
+      "style": "bezier",
+      "curvature": 0.6,
+      "toArrow": true,
+      "arrow": true,
+      "_updated": 1769435556650
     }
   ],
-  "groupings": [
-    {
-      "id": "grouping-1",
-      "type": "grouping",
-      "memberIds": [
-        "generic-object-rectangle-1",
-        "aws-database-rds-1",
-        "aws-storage-s3-1"
-      ]
-    },
-    {
-      "id": "grouping-2",
-      "type": "grouping",
-      "memberIds": [
-        "generic-object-rectangle-2",
-        "aws-compute-ec2-1",
-        "aws-compute-ec2-2"
-      ]
-    },
-    {
-      "id": "grouping-3",
-      "type": "grouping",
-      "memberIds": [
-        "generic-object-rectangle-3",
-        "aws-database-rds-2",
-        "aws-storage-s3-2"
-      ]
-    },
-    {
-      "id": "grouping-4",
-      "type": "grouping",
-      "memberIds": [
-        "generic-object-rectangle-4",
-        "aws-compute-ec2-3",
-        "aws-compute-ec2-4"
-      ]
-    }
-  ],
-  "layers": {
-    "layers": [
-      {
-        "id": "background",
-        "name": "Background",
-        "visible": true,
-        "locked": false,
-        "color": "#f3f4f6"
-      },
-      {
-        "id": "stage-2",
-        "name": "Stage 2",
-        "visible": true,
-        "locked": false,
-        "color": "#eab308"
-      },
-      {
-        "id": "issues",
-        "name": "Stage2-Q",
-        "visible": true,
-        "locked": false,
-        "color": "#f97316"
-      },
-      {
-        "id": "fixed",
-        "name": "Stage2-D",
-        "visible": true,
-        "locked": false,
-        "color": "#ef4444"
-      }
-    ],
-    "activeLayerId": "background",
-    "defaultLayerId": "background"
-  }
+  "groupings": []
 }
