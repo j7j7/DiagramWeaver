@@ -36,12 +36,12 @@ export function ArrowToggle({ x, y, connection, isActive }: ArrowToggleProps) {
             className="transition-all duration-200"
           />
         ) : (
-          // X symbol when inactive (white for contrast)
+          // Plus symbol when inactive (white for contrast)
           <g>
             <line
-              x1="-6"
+              x1="0"
               y1="-6"
-              x2="6"
+              x2="0"
               y2="6"
               stroke="white"
               strokeWidth="2"
@@ -49,9 +49,9 @@ export function ArrowToggle({ x, y, connection, isActive }: ArrowToggleProps) {
             />
             <line
               x1="-6"
-              y1="6"
+              y1="0"
               x2="6"
-              y2="-6"
+              y2="0"
               stroke="white"
               strokeWidth="2"
               className="transition-all duration-200"

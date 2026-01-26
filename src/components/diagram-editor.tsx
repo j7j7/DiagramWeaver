@@ -2221,6 +2221,7 @@ function DiagramEditorInner({
                                  });
                              }
                         }}
+                    onConnectionDelete={disconnectConnection}
                     externalTransform={canvasTransform}
                      onTransformChange={setCanvasTransform}
                      onLabelUpdate={handleLabelUpdate}
