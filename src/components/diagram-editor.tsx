@@ -198,6 +198,13 @@ export default function DiagramEditor() {
   const [selectionAnimationEnabled, setSelectionAnimationEnabled] = React.useState<boolean>(false);
   const [iconBackgroundEnabled, setIconBackgroundEnabled] = React.useState<boolean>(true);
   const [defaultFreeflowEnabled, setDefaultFreeflowEnabled] = React.useState<boolean>(false);
+  const [alignmentGuidesEnabled, setAlignmentGuidesEnabled] = React.useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('dw:alignmentGuides:enabled');
+      return saved !== 'false'; // Default to enabled
+    }
+    return true;
+  });
   const [isReadOnly, setIsReadOnly] = React.useState<boolean>(false);
   const [triggerTextStylingPanel, setTriggerTextStylingPanel] = React.useState<boolean>(false);
   const [triggerVisualStylingPanel, setTriggerVisualStylingPanel] = React.useState<boolean>(false);
@@ -1849,6 +1856,13 @@ export default function DiagramEditor() {
     }
   }, [defaultFreeflowEnabled, isClient]);
 
+  // Persist alignment guides preference
+  React.useEffect(() => {
+    if (isClient) {
+      localStorage.setItem('dw:alignmentGuides:enabled', String(alignmentGuidesEnabled));
+    }
+  }, [alignmentGuidesEnabled, isClient]);
+
   const handleZoneLayoutChange = (zoneId: string, layoutType: 'grid' | 'circular') => {
     setDiagramData(prevData => {
       return applyZoneLayout(zoneId, {
@@ -1926,6 +1940,8 @@ export default function DiagramEditor() {
         setIconBackgroundEnabled={setIconBackgroundEnabled}
         defaultFreeflowEnabled={defaultFreeflowEnabled}
         setDefaultFreeflowEnabled={setDefaultFreeflowEnabled}
+        alignmentGuidesEnabled={alignmentGuidesEnabled}
+        setAlignmentGuidesEnabled={setAlignmentGuidesEnabled}
         isReadOnly={isReadOnly}
         setIsReadOnly={setIsReadOnly}
         handleAlignObjects={handleAlignObjects}
@@ -2040,6 +2056,8 @@ function DiagramEditorInner({
   setIconBackgroundEnabled,
   defaultFreeflowEnabled,
   setDefaultFreeflowEnabled,
+  alignmentGuidesEnabled,
+  setAlignmentGuidesEnabled,
   isReadOnly,
   setIsReadOnly,
   handleAlignObjects,
@@ -2233,6 +2251,8 @@ function DiagramEditorInner({
                     onToggleIconBackground={() => setIconBackgroundEnabled(!iconBackgroundEnabled)}
                     defaultFreeflowEnabled={defaultFreeflowEnabled}
                     onToggleDefaultFreeflow={() => setDefaultFreeflowEnabled(!defaultFreeflowEnabled)}
+                    alignmentGuidesEnabled={alignmentGuidesEnabled}
+                    onToggleAlignmentGuides={() => setAlignmentGuidesEnabled(!alignmentGuidesEnabled)}
                     isReadOnly={isReadOnly}
                     onToggleReadOnly={() => setIsReadOnly(!isReadOnly)}
                     onAlignObjects={handleAlignObjects}
@@ -2333,6 +2353,7 @@ function DiagramEditorInner({
                     onZoneCycle={handleZoneCycle}
                     onZoneSort={handleZoneSort}
                     isReadOnly={isReadOnly}
+                    alignmentGuidesEnabled={alignmentGuidesEnabled}
                     />
                   </div>
                   

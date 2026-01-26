@@ -67,6 +67,8 @@ interface TopMenuBarProps {
   onToggleIconBackground?: () => void;
   defaultFreeflowEnabled?: boolean;
   onToggleDefaultFreeflow?: () => void;
+  alignmentGuidesEnabled?: boolean;
+  onToggleAlignmentGuides?: () => void;
   onAlignObjects?: (alignment: 'top' | 'center' | 'bottom' | 'v-middle' | 'left' | 'h-center' | 'right' | 'distribute-v' | 'distribute-h') => void;
   onThemeApplyToSelected?: (theme: DiagramTheme) => void;
   triggerTextStylingPanel?: boolean;
@@ -127,6 +129,8 @@ export function TopMenuBar({
   onToggleIconBackground,
   defaultFreeflowEnabled,
   onToggleDefaultFreeflow,
+  alignmentGuidesEnabled,
+  onToggleAlignmentGuides,
   onAlignObjects,
   onThemeApplyToSelected,
   triggerTextStylingPanel = false,
@@ -432,9 +436,27 @@ export function TopMenuBar({
                 </MenubarItem>
               </>
             )}
-            {onToggleReadOnly !== undefined && (
+            {onToggleAlignmentGuides !== undefined && (
               <>
                 {(onUndo || onRedo || onFitToView || onToggleHover || onToggleSelectionAnimation || onToggleIconBackground || onToggleDefaultFreeflow) && <MenubarSeparator />}
+                <MenubarItem onClick={onToggleAlignmentGuides}>
+                  {alignmentGuidesEnabled ? (
+                    <>
+                      <Move className="mr-2 h-4 w-4" />
+                      Hide Alignment Guides
+                    </>
+                  ) : (
+                    <>
+                      <Move className="mr-2 h-4 w-4" />
+                      Show Alignment Guides
+                    </>
+                  )}
+                </MenubarItem>
+              </>
+            )}
+            {onToggleReadOnly !== undefined && (
+              <>
+                {(onUndo || onRedo || onFitToView || onToggleHover || onToggleSelectionAnimation || onToggleIconBackground || onToggleDefaultFreeflow || onToggleAlignmentGuides) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleReadOnly}>
                   {isReadOnly ? (
                     <>

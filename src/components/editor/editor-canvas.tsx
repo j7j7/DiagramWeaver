@@ -41,6 +41,8 @@ import { CanvasConnectionText } from "./canvas-connection-text";
 import { getItemGroup } from "@/lib/grouping-utils";
 import { CanvasRotationOverlay } from "./canvas-rotation-overlay";
 import { measureNodeDims } from "./canvas-constants";
+import { useAlignmentGuides } from "@/hooks/use-alignment-guides";
+import { CanvasAlignmentGuides } from "./canvas-alignment-guides";
 
 interface EditorCanvasProps {
   diagramData: DiagramData;
@@ -93,6 +95,7 @@ interface EditorCanvasProps {
   onZoneCycle?: (zoneId: string) => void;
   onZoneSort?: (zoneId: string, order: 'alpha-asc' | 'alpha-desc') => void;
   isReadOnly?: boolean;
+  alignmentGuidesEnabled?: boolean;
 }
 
 
@@ -106,7 +109,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, externalTransform,      onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, selectionAnimationEnabled = false, iconBackgroundEnabled = true, defaultFreeflowEnabled = false, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false }: EditorCanvasProps,
+   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, externalTransform,      onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, selectionAnimationEnabled = false, iconBackgroundEnabled = true, defaultFreeflowEnabled = false, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true }: EditorCanvasProps,
   ref
 ) {
   // ============================================================================
@@ -711,6 +714,25 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     return result;
   }, [animatedZonesById, dragPosition, multiDragPositions]);
 
+  // ============================================================================
+  // HOOK: useAlignmentGuides
+  // ============================================================================
+  // Calculates alignment guides during drag operations
+  // Shows green semi-transparent lines when objects align
+  // Note: Must be called AFTER displayNodesById and displayZonesById are created
+  // See: src/hooks/use-alignment-guides.ts
+  const draggedItemId = dragPosition?.itemId || null;
+  const draggedItemIds = multiDragPositions ? new Set(Object.keys(multiDragPositions)) : new Set<string>();
+
+  const { guides: alignmentGuides } = useAlignmentGuides({
+    diagramData,
+    displayNodesById,
+    displayZonesById,
+    draggedItemId,
+    draggedItemIds,
+    transform,
+    enabled: alignmentGuidesEnabled,
+  });
 
   // ============================================================================
   // HOOK: useCanvasContextMenu
@@ -1351,6 +1373,20 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               nodesById={displayNodesById}
               zonesById={displayZonesById}
               processedZones={processedZones}
+            />
+
+            {/* ================================================================
+                ALIGNMENT GUIDES
+                ================================================================
+                Renders visual alignment guide lines during drag operations
+                Shows green semi-transparent lines when objects align
+                See: src/components/editor/canvas-alignment-guides.tsx
+            */}
+            <CanvasAlignmentGuides
+              guides={alignmentGuides}
+              width={width}
+              height={height}
+              transform={transform}
             />
           </div>
 
