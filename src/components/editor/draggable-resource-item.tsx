@@ -3,6 +3,7 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useDrag } from 'react-dnd';
 import { Card, CardContent } from '../ui/card';
 import { DraggableItem, ItemTypes } from './draggable-item';
+import { Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip';
 
 interface DraggableResourceItemProps {
   resource: {
@@ -18,9 +19,10 @@ interface DraggableResourceItemProps {
   onClick?: (args: { resource: DraggableResourceItemProps['resource']; provider: string; category: string }) => void;
   onDoubleClick?: (args: { resource: DraggableResourceItemProps['resource']; provider: string; category: string }) => void;
   isSelected?: boolean;
+  viewMode?: 'normal' | 'compact';
 }
 
-export function DraggableResourceItem({ resource, provider, category, icon, onClick, onDoubleClick, isSelected }: DraggableResourceItemProps) {
+export function DraggableResourceItem({ resource, provider, category, icon, onClick, onDoubleClick, isSelected, viewMode = 'normal' }: DraggableResourceItemProps) {
   const [imageError, setImageError] = useState(false);
 
   // Icon path for display in sidebar - NEVER passed to node
@@ -135,7 +137,9 @@ export function DraggableResourceItem({ resource, provider, category, icon, onCl
     setImageError(true);
   };
 
-  return (
+  const isCompact = viewMode === 'compact';
+  
+  const dragWrapper = (
     <div
       ref={(node) => {
         if (node) {
@@ -150,28 +154,59 @@ export function DraggableResourceItem({ resource, provider, category, icon, onCl
       onClick={() => onClick?.({ resource, provider, category })}
       onDoubleClick={() => onDoubleClick?.({ resource, provider, category })}
     >
-      <Card className="hover:bg-accent hover:text-accent-foreground transition-colors">
-        <CardContent className="p-2 flex flex-col items-center justify-center gap-1 text-center h-16">
-          <div className="w-6 h-6 flex items-center justify-center">
-            {!imageError ? (
-              <img
-                src={iconPath}
-                alt={resource.name}
-                className="w-6 h-6 object-contain"
-                onError={handleImageError}
-              />
-            ) : (
-              icon
+      {isCompact ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Card className="hover:bg-accent hover:text-accent-foreground transition-colors w-full">
+              <CardContent className="p-1.5 flex flex-col items-center justify-center gap-0.5 text-center h-12">
+                <div className="w-5 h-5 flex items-center justify-center">
+                  {!imageError ? (
+                    <img
+                      src={iconPath}
+                      alt={resource.name}
+                      className="w-5 h-5 object-contain"
+                      onError={handleImageError}
+                    />
+                  ) : (
+                    icon
+                  )}
+                </div>
+                {resource.hasWhiteVariant && (
+                  <div className="text-[10px] text-muted-foreground leading-none">W</div>
+                )}
+              </CardContent>
+            </Card>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{resource.name}</p>
+          </TooltipContent>
+        </Tooltip>
+      ) : (
+        <Card className="hover:bg-accent hover:text-accent-foreground transition-colors">
+          <CardContent className="p-2 flex flex-col items-center justify-center gap-1 text-center h-16">
+            <div className="w-6 h-6 flex items-center justify-center">
+              {!imageError ? (
+                <img
+                  src={iconPath}
+                  alt={resource.name}
+                  className="w-6 h-6 object-contain"
+                  onError={handleImageError}
+                />
+              ) : (
+                icon
+              )}
+            </div>
+            <span className="font-medium text-xs leading-tight">
+              {resource.name}
+            </span>
+            {resource.hasWhiteVariant && (
+              <div className="text-xs text-muted-foreground">White</div>
             )}
-          </div>
-          <span className="font-medium text-xs leading-tight">
-            {resource.name}
-          </span>
-          {resource.hasWhiteVariant && (
-            <div className="text-xs text-muted-foreground">White</div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
+
+  return dragWrapper;
 }

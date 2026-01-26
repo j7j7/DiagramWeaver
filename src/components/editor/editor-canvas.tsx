@@ -39,6 +39,8 @@ import { useNodeAnimationOffsets } from "@/hooks/use-sine-wave-animation";
 import { CanvasArrowToggles } from "./canvas-arrow-toggles";
 import { CanvasConnectionText } from "./canvas-connection-text";
 import { getItemGroup } from "@/lib/grouping-utils";
+import { CanvasRotationOverlay } from "./canvas-rotation-overlay";
+import { measureNodeDims } from "./canvas-constants";
 
 interface EditorCanvasProps {
   diagramData: DiagramData;
@@ -152,6 +154,183 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   
   // Client-side rendering state
   const [isClient, setIsClient] = useState(false);
+
+  // ============================================================================
+  // ROTATION HANDLE STATE
+  // ============================================================================
+  // Track which selected item is currently hovered (for showing rotation handles)
+  const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
+  const [hoveredItemType, setHoveredItemType] = useState<'node' | 'zone' | null>(null);
+
+  // Rotation drag state
+  const [rotationDragState, setRotationDragState] = useState<{
+    isActive: boolean;
+    targetId: string;
+    targetType: 'node' | 'zone';
+    startY: number;
+    startRotation: number;
+    currentRotation: number;
+    capturedElement: HTMLElement | null;
+  } | null>(null);
+
+  // Determine which item should show rotation handles
+  // Handles appear when:
+  // 1. A selected item is hovered (multi-select scenario), OR
+  // 2. A single item is selected (even if not hovered)
+  const rotationTarget = useMemo(() => {
+    // If hovering a selected item, use that (multi-select scenario)
+    if (hoveredItemId && hoveredItemType && selectedItemIds.has(hoveredItemId)) {
+      return { id: hoveredItemId, type: hoveredItemType };
+    }
+    // If single item selected, show handles for it (even if not hovered)
+    if (selectedItemId && selectedItemIds.size === 1) {
+      const node = nodesById[selectedItemId];
+      if (node) return { id: selectedItemId, type: 'node' as const };
+      const zone = zonesById[selectedItemId];
+      if (zone) return { id: selectedItemId, type: 'zone' as const };
+    }
+    // No rotation handles if no selection or multi-select without hover
+    return null;
+  }, [hoveredItemId, hoveredItemType, selectedItemIds, selectedItemId, nodesById, zonesById]);
+
+  // Handle hover changes from nodes/zones
+  const handleHoverChange = useCallback((id: string, itemType: 'node' | 'zone', isHovered: boolean) => {
+    if (isHovered) {
+      setHoveredItemId(id);
+      setHoveredItemType(itemType);
+    } else {
+      // Only clear if this is the currently hovered item
+      if (hoveredItemId === id) {
+        setHoveredItemId(null);
+        setHoveredItemType(null);
+      }
+    }
+  }, [hoveredItemId]);
+
+  // Update rotation for an item
+  const setRotationForItem = useCallback((targetId: string, targetType: 'node' | 'zone', rotation: number) => {
+    // Snap to nearest 5-degree increment
+    let snappedRotation = Math.round(rotation / 5) * 5;
+    
+    // Normalize rotation to [-180, 180)
+    let normalizedRotation = snappedRotation % 360;
+    if (normalizedRotation >= 180) normalizedRotation -= 360;
+    if (normalizedRotation < -180) normalizedRotation += 360;
+
+    setDiagramData(prev => {
+      if (targetType === 'node') {
+        return {
+          ...prev,
+          nodes: prev.nodes.map(n => 
+            n.id === targetId ? { ...n, rotation: normalizedRotation } : n
+          ),
+        };
+      } else {
+        return {
+          ...prev,
+          zones: (prev.zones || []).map(z =>
+            z.id === targetId ? { ...z, rotation: normalizedRotation } : z
+          ),
+        };
+      }
+    });
+
+    // Update selectedItem if it's the rotated item
+    if (selectedItem?.id === targetId) {
+      setSelectedItem({ ...selectedItem, rotation: normalizedRotation } as any);
+    }
+  }, [setDiagramData, selectedItem, setSelectedItem]);
+
+  // Handle rotation handle pointer down
+  const handleRotationHandlePointerDown = useCallback((e: React.PointerEvent, corner: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right') => {
+    if (!rotationTarget) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const target = rotationTarget.type === 'node' 
+      ? nodesById[rotationTarget.id]
+      : zonesById[rotationTarget.id];
+    
+    if (!target) return;
+
+    const currentRotation = (target as any).rotation || 0;
+
+    const capturedElement = e.target as HTMLElement;
+    
+    setRotationDragState({
+      isActive: true,
+      targetId: rotationTarget.id,
+      targetType: rotationTarget.type,
+      startY: e.clientY,
+      startRotation: currentRotation,
+      currentRotation: currentRotation,
+      capturedElement,
+    });
+
+    // Set pointer capture for smooth dragging
+    capturedElement.setPointerCapture(e.pointerId);
+  }, [rotationTarget, nodesById, zonesById]);
+
+  // Handle pointer move for rotation
+  useEffect(() => {
+    if (!rotationDragState) return;
+
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!rotationDragState || !rotationDragState.isActive) return;
+
+      const deltaY = rotationDragState.startY - e.clientY;
+      const sensitivityDegPerPx = 0.5; // degrees per pixel
+      const deltaDeg = deltaY * sensitivityDegPerPx;
+      const rawRotation = rotationDragState.startRotation + deltaDeg;
+      
+      // Snap to nearest 5-degree increment
+      const newRotation = Math.round(rawRotation / 5) * 5;
+
+      // Capture values for the update
+      const targetId = rotationDragState.targetId;
+      const targetType = rotationDragState.targetType;
+
+      setRotationDragState(prev => prev ? { ...prev, currentRotation: newRotation } : null);
+
+      // Update rotation (throttled via requestAnimationFrame)
+      requestAnimationFrame(() => {
+        setRotationForItem(targetId, targetType, newRotation);
+      });
+    };
+
+    const handlePointerUp = (e: PointerEvent) => {
+      if (!rotationDragState) return;
+
+      // Capture values before clearing state
+      const targetId = rotationDragState.targetId;
+      const targetType = rotationDragState.targetType;
+      const finalRotation = rotationDragState.currentRotation;
+      const capturedElement = rotationDragState.capturedElement;
+
+      // Release pointer capture
+      if (capturedElement) {
+        try {
+          capturedElement.releasePointerCapture(e.pointerId);
+        } catch (err) {
+          // Ignore errors if pointer capture was already released
+        }
+      }
+
+      // Final update with current rotation
+      setRotationForItem(targetId, targetType, finalRotation);
+
+      setRotationDragState(null);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+    };
+  }, [rotationDragState, setRotationForItem]);
   
   // Animation offsets for selected nodes
   const animationOffsets = useNodeAnimationOffsets(processedNodes, selectedItemIds);
@@ -819,6 +998,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                      onLabelChange={operations.updateGroupLabel}
                      onTagUpdate={operations.updateGroupTag}
                      isReadOnly={isReadOnly}
+                     onHoverChange={handleHoverChange}
                   />
                 );
               });
@@ -877,6 +1057,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     selectionAnimationEnabled={selectionAnimationEnabled}
                     animationOffset={selectionAnimationEnabled ? (animationOffsets[node.id] || { x: 0, y: 0 }) : { x: 0, y: 0 }}
                     isReadOnly={isReadOnly}
+                    onHoverChange={handleHoverChange}
                   />
                 );
               });
@@ -951,6 +1132,59 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               }}
             />
           )}
+
+          {/* ====================================================================
+              ROTATION HANDLES OVERLAY
+              ====================================================================
+              Shows rotation handles at corners of selected/hovered items
+              Includes green angle HUD while dragging
+              See: src/components/editor/canvas-rotation-overlay.tsx
+          */}
+          {rotationTarget && (() => {
+            const target = rotationTarget.type === 'node'
+              ? nodesById[rotationTarget.id]
+              : zonesById[rotationTarget.id];
+
+            if (!target) return null;
+
+            // Calculate bounds
+            let bounds: { x: number; y: number; width: number; height: number };
+            
+            if (rotationTarget.type === 'node') {
+              const node = target as PositionedNode;
+              const dims = measureNodeDims(node);
+              bounds = {
+                x: node.x || 0,
+                y: node.y || 0,
+                width: dims.width,
+                height: dims.height,
+              };
+            } else {
+              const zone = target as PositionedGroup;
+              bounds = {
+                x: zone.x || 0,
+                y: zone.y || 0,
+                width: zone.width || 300,
+                height: zone.height || 220,
+              };
+            }
+
+            const currentRotation = (target as any).rotation || 0;
+            const dragRotation = rotationDragState?.isActive && rotationDragState.targetId === rotationTarget.id
+              ? rotationDragState.currentRotation
+              : undefined;
+
+            return (
+              <CanvasRotationOverlay
+                transform={transform}
+                targetBounds={bounds}
+                rotation={currentRotation}
+                isDragging={rotationDragState?.isActive && rotationDragState.targetId === rotationTarget.id}
+                dragRotation={dragRotation}
+                onHandlePointerDown={handleRotationHandlePointerDown}
+              />
+            );
+          })()}
 
           {/* ====================================================================
               CONTEXT MENU

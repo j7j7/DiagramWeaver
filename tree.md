@@ -292,6 +292,31 @@ The `editor-canvas.tsx` component orchestrates multiple specialized hooks, utili
 
 ---
 
+### `canvas-rotation-overlay.tsx`
+**Renders rotation handles and angle HUD for selected items**
+
+**Props:**
+- `transform` - Canvas transform (pan/zoom)
+- `targetBounds` - Item bounds in diagram space (x, y, width, height)
+- `rotation` - Current rotation angle in degrees
+- `isDragging` - Whether rotation drag is active
+- `dragRotation` - Current rotation during drag (optional)
+- `onHandlePointerDown` - Callback when handle is pressed
+
+**Features:**
+- Displays four semi-transparent green rotate handles at item corners
+- Shows green angle HUD circle with tick marks (every 5°) while dragging
+- Calculates rotated corner positions based on current rotation angle
+- Converts diagram-space coordinates to screen-space for overlay positioning
+- Renders angle indicator line and central angle readout during rotation
+
+**Key Functions:**
+- Computes rotated corner positions using trigonometry
+- Renders SVG-based angle HUD with tick marks and indicator line
+- Positions handles at correct screen coordinates accounting for zoom/pan
+
+---
+
 ### `canvas-rulers.tsx`
 **Renders horizontal and vertical rulers**
 
@@ -333,6 +358,7 @@ editor-canvas.tsx (Main Component)
     ├── CanvasConnections → Connection lines
     ├── CanvasArrowToggles → Arrow controls
     ├── CanvasConnectionText → Connection labels
+    ├── CanvasRotationOverlay → Rotation handles & HUD
     └── ContextMenu → Right-click menu
 ```
 

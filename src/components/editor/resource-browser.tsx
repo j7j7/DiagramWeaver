@@ -7,10 +7,11 @@ const RESOURCE_BROWSER_COOKIE = 'resource-browser-state';
 interface ResourceBrowserState {
   expandedProviders: string[];
   expandedCategories: string[];
+  viewMode?: 'normal' | 'compact';
 }
 
 const getBrowserState = (): ResourceBrowserState => {
-  if (typeof window === 'undefined') return { expandedProviders: [], expandedCategories: [] };
+  if (typeof window === 'undefined') return { expandedProviders: [], expandedCategories: [], viewMode: 'normal' };
   
   try {
     const cookie = document.cookie
@@ -19,13 +20,15 @@ const getBrowserState = (): ResourceBrowserState => {
     
     if (cookie) {
       const decoded = decodeURIComponent(cookie.split('=')[1]);
-      return JSON.parse(decoded);
+      const parsed = JSON.parse(decoded);
+      // Ensure viewMode defaults to 'normal' if not present
+      return { ...parsed, viewMode: parsed.viewMode || 'normal' };
     }
   } catch (error) {
     console.warn('Failed to parse resource browser state from cookie:', error);
   }
   
-  return { expandedProviders: [], expandedCategories: [] };
+  return { expandedProviders: [], expandedCategories: [], viewMode: 'normal' };
 };
 
 const setBrowserState = (state: ResourceBrowserState) => {
@@ -41,7 +44,7 @@ const setBrowserState = (state: ResourceBrowserState) => {
     console.warn('Failed to save resource browser state to cookie:', error);
   }
 };
-import { ChevronDown, ChevronRight, Search, Package, Server, Database, Globe, Cloud, Cpu, Shield, BarChart3, Layers, Box, Network, Maximize2, Minimize2, Type } from 'lucide-react';
+import { ChevronDown, ChevronRight, Search, Package, Server, Database, Globe, Cloud, Cpu, Shield, BarChart3, Layers, Box, Network, Maximize2, Minimize2, Type, LayoutGrid, List } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
@@ -54,6 +57,7 @@ import { generateDiagram } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Loader } from 'lucide-react';
 import { ollamaConfig } from '@/lib/ollama-config';
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip';
 
 // Resource index is fetched at runtime from public/resources
 // This avoids duplicate JSON sources and keeps a single source of truth.
@@ -119,6 +123,49 @@ const typeIcons: Record<string, React.ReactNode> = {
   group: <Box className="w-4 h-4" />,
   text: <Type className="w-4 h-4" />,
 };
+
+// Helper functions for subtle tint colors
+function getProviderTintClasses(providerKey: string): string {
+  const tints: Record<string, string> = {
+    generic: 'bg-slate-500/5 border-slate-500/15',
+    aws: 'bg-orange-500/5 border-orange-500/15',
+    azure: 'bg-blue-500/5 border-blue-500/15',
+    gcp: 'bg-green-500/5 border-green-500/15',
+    oci: 'bg-red-500/5 border-red-500/15',
+    k8s: 'bg-blue-600/5 border-blue-600/15',
+    onprem: 'bg-gray-600/5 border-gray-600/15',
+    saas: 'bg-purple-500/5 border-purple-500/15',
+    elastic: 'bg-yellow-500/5 border-yellow-500/15',
+    firebase: 'bg-yellow-600/5 border-yellow-600/15',
+    digitalocean: 'bg-blue-400/5 border-blue-400/15',
+    ibm: 'bg-blue-700/5 border-blue-700/15',
+    openstack: 'bg-red-600/5 border-red-600/15',
+    outscale: 'bg-cyan-500/5 border-cyan-500/15',
+    gis: 'bg-green-600/5 border-green-600/15',
+    programming: 'bg-purple-600/5 border-purple-600/15',
+    alibabacloud: 'bg-orange-600/5 border-orange-600/15',
+  };
+  return tints[providerKey] || 'bg-muted/5 border-muted/15';
+}
+
+function getCategoryTintClasses(categoryKey: string): string {
+  const tints: Record<string, string> = {
+    grouping: 'bg-indigo-500/5 border-indigo-500/10',
+    text: 'bg-gray-500/5 border-gray-500/10',
+    compute: 'bg-blue-500/5 border-blue-500/10',
+    database: 'bg-emerald-500/5 border-emerald-500/10',
+    network: 'bg-cyan-500/5 border-cyan-500/10',
+    storage: 'bg-amber-500/5 border-amber-500/10',
+    security: 'bg-red-500/5 border-red-500/10',
+    analytics: 'bg-purple-500/5 border-purple-500/10',
+    management: 'bg-teal-500/5 border-teal-500/10',
+    integration: 'bg-pink-500/5 border-pink-500/10',
+    mobile: 'bg-violet-500/5 border-violet-500/10',
+    iot: 'bg-lime-500/5 border-lime-500/10',
+    object: 'bg-slate-500/5 border-slate-500/10',
+  };
+  return tints[categoryKey] || 'bg-muted/5 border-muted/10';
+}
 
 // Provider icon component that tries to load actual provider icons
 function ProviderIcon({ provider }: { provider: string }) {
@@ -186,6 +233,7 @@ export function ResourceBrowser({ onResourceSelect, onDiagramGenerated, onResour
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set(savedState.expandedCategories)
   );
+  const [viewMode, setViewMode] = useState<'normal' | 'compact'>(savedState.viewMode || 'normal');
 
   useEffect(() => {
     const loadAll = async () => {
@@ -302,7 +350,9 @@ export function ResourceBrowser({ onResourceSelect, onDiagramGenerated, onResour
     setExpandedCategories(allCategories);
     
     // Save to cookie
+    const currentState = getBrowserState();
     setBrowserState({
+      ...currentState,
       expandedProviders: Array.from(allProviders),
       expandedCategories: Array.from(allCategories)
     });
@@ -313,9 +363,23 @@ export function ResourceBrowser({ onResourceSelect, onDiagramGenerated, onResour
     setExpandedCategories(new Set());
     
     // Save to cookie
+    const currentState = getBrowserState();
     setBrowserState({
+      ...currentState,
       expandedProviders: [],
       expandedCategories: []
+    });
+  };
+
+  const toggleViewMode = () => {
+    const newMode = viewMode === 'normal' ? 'compact' : 'normal';
+    setViewMode(newMode);
+    
+    // Save to cookie
+    const currentState = getBrowserState();
+    setBrowserState({
+      ...currentState,
+      viewMode: newMode
     });
   };
 
@@ -609,6 +673,19 @@ return (
           </div>
           <div className="ml-auto flex gap-1">
             <Button
+              variant={viewMode === 'normal' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={toggleViewMode}
+              className="h-6 px-2"
+              title={viewMode === 'normal' ? 'Switch to compact view' : 'Switch to normal view'}
+            >
+              {viewMode === 'normal' ? (
+                <LayoutGrid className="w-3 h-3" />
+              ) : (
+                <List className="w-3 h-3" />
+              )}
+            </Button>
+            <Button
               variant="ghost"
               size="sm"
               onClick={expandAll}
@@ -652,81 +729,88 @@ return (
                 </div>
               </div>
             ) : (
-              Object.entries(filteredProviders).map(([providerKey, provider]) => (
-                <div key={providerKey} className="mb-2">
-                  <Collapsible open={expandedProviders.has(providerKey)} onOpenChange={() => toggleProvider(providerKey)}>
-                    <CollapsibleTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-between p-3 h-auto hover:bg-accent/50 hover:text-accent-foreground touch-target"
-                      >
-                        <div className="flex items-center gap-2">
-                          {expandedProviders.has(providerKey) ? (
-                            <ChevronDown className="w-4 h-4" />
-                          ) : (
-                            <ChevronRight className="w-4 h-4" />
-                          )}
-                          <ProviderIcon provider={providerKey} />
-                          <span className="font-medium">{provider.name}</span>
-                          <Badge variant="secondary" className="ml-auto">
-                            {provider.totalResources}
-                          </Badge>
-                        </div>
-                      </Button>
-                    </CollapsibleTrigger>
+              <TooltipProvider>
+                {Object.entries(filteredProviders).map(([providerKey, provider]) => (
+                  <div key={providerKey} className={`mb-2 rounded-md border ${getProviderTintClasses(providerKey)}`}>
+                    <Collapsible open={expandedProviders.has(providerKey)} onOpenChange={() => toggleProvider(providerKey)}>
+                      <CollapsibleTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-between p-3 h-auto hover:bg-accent/50 hover:text-accent-foreground touch-target"
+                        >
+                          <div className="flex items-center gap-2">
+                            {expandedProviders.has(providerKey) ? (
+                              <ChevronDown className="w-4 h-4" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4" />
+                            )}
+                            <ProviderIcon provider={providerKey} />
+                            <span className="font-medium">{provider.name}</span>
+                            <Badge variant="secondary" className="ml-auto">
+                              {provider.totalResources}
+                            </Badge>
+                          </div>
+                        </Button>
+                      </CollapsibleTrigger>
 
-                    <CollapsibleContent>
-                      <div className="ml-4 pl-2 border-l-2 border-muted">
-                        {Object.entries(provider.categories).map(([categoryKey, category]) => {
-                          const categoryFullKey = `${providerKey}-${categoryKey}`;
-                          const isExpanded = expandedCategories.has(categoryFullKey);
+                      <CollapsibleContent>
+                        <div className="ml-4 pl-2 border-l-2 border-muted">
+                          {Object.entries(provider.categories).map(([categoryKey, category]) => {
+                            const categoryFullKey = `${providerKey}-${categoryKey}`;
+                            const isExpanded = expandedCategories.has(categoryFullKey);
 
-                          return (
-                            <div key={categoryKey} className="mb-1">
-                              <Collapsible open={isExpanded} onOpenChange={() => toggleCategory(categoryFullKey)}>
-                                <CollapsibleTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    className="w-full justify-between p-2 h-auto hover:bg-accent/40 hover:text-accent-foreground touch-target"
-                                  >
-                                    <div className="flex items-center gap-1">
-                                      {isExpanded ? (
-                                        <ChevronDown className="w-3 h-3" />
-                                      ) : (
-                                        <ChevronRight className="w-3 h-3" />
-                                      )}
-                                      <span className="text-sm">{category.name}</span>
-                                      <Badge variant="outline" className="ml-auto text-xs">
-                                        {category.resources.length}
-                                      </Badge>
+                            return (
+                              <div key={categoryKey} className={`mb-1 rounded-md border ${getCategoryTintClasses(categoryKey)}`}>
+                                <Collapsible open={isExpanded} onOpenChange={() => toggleCategory(categoryFullKey)}>
+                                  <CollapsibleTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      className="w-full justify-between p-2 h-auto hover:bg-accent/40 hover:text-accent-foreground touch-target"
+                                    >
+                                      <div className="flex items-center gap-1">
+                                        {isExpanded ? (
+                                          <ChevronDown className="w-3 h-3" />
+                                        ) : (
+                                          <ChevronRight className="w-3 h-3" />
+                                        )}
+                                        <span className="text-sm">{category.name}</span>
+                                        <Badge variant="outline" className="ml-auto text-xs">
+                                          {category.resources.length}
+                                        </Badge>
+                                      </div>
+                                    </Button>
+                                  </CollapsibleTrigger>
+
+                                  <CollapsibleContent>
+                                    <div className={`ml-4 grid touch-spacing ${
+                                      viewMode === 'compact' 
+                                        ? 'grid-cols-[repeat(auto-fill,minmax(56px,1fr))] gap-1 p-1' 
+                                        : 'grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-2 p-2'
+                                    }`}>
+                                      {category.resources.map((resource, index) => (
+                                        <DraggableResourceItem
+                                          key={index}
+                                          resource={resource}
+                                          provider={providerKey}
+                                          category={categoryKey}
+                                          icon={getResourceIcon(resource)}
+                                          onClick={() => handleResourceClick(resource, providerKey, categoryKey)}
+                                          onDoubleClick={() => handleResourceActivate(resource, providerKey, categoryKey)}
+                                          viewMode={viewMode}
+                                        />
+                                      ))}
                                     </div>
-                                  </Button>
-                                </CollapsibleTrigger>
-
-                                <CollapsibleContent>
-                                  <div className="ml-4 grid grid-cols-2 gap-2 p-2 touch-spacing">
-                                    {category.resources.map((resource, index) => (
-                                      <DraggableResourceItem
-                                        key={index}
-                                        resource={resource}
-                                        provider={providerKey}
-                                        category={categoryKey}
-                                        icon={getResourceIcon(resource)}
-                                        onClick={() => handleResourceClick(resource, providerKey, categoryKey)}
-                                        onDoubleClick={() => handleResourceActivate(resource, providerKey, categoryKey)}
-                                      />
-                                    ))}
-                                  </div>
-                                </CollapsibleContent>
-                              </Collapsible>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                </div>
-              ))
+                                  </CollapsibleContent>
+                                </Collapsible>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </div>
+                ))}
+              </TooltipProvider>
             )}
           </div>
         </ScrollArea>

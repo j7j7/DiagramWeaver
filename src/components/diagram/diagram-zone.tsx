@@ -26,12 +26,13 @@ interface DiagramZoneProps {
   onLabelChange?: (zoneId: string, newLabel: string) => void;
   onTagUpdate?: (zoneId: string, newTag: string) => void;
   isReadOnly?: boolean;
+  onHoverChange?: (id: string, itemType: 'node' | 'zone', isHovered: boolean) => void;
 }
 
 
 
 
-export function DiagramZone({ zone, isSelected, isDropTarget, isTargetable, isMultiSelected, isGroupMember, onClick, onContextMenu, onResize, onLabelChange, onTagUpdate, isReadOnly = false }: DiagramZoneProps) {
+export function DiagramZone({ zone, isSelected, isDropTarget, isTargetable, isMultiSelected, isGroupMember, onClick, onContextMenu, onResize, onLabelChange, onTagUpdate, isReadOnly = false, onHoverChange }: DiagramZoneProps) {
 const [{ isDragging }, drag, preview] = useDrag(() => ({
     type: ItemTypes.ZONE,
     item: { ...zone, type: ItemTypes.ZONE },
@@ -251,8 +252,12 @@ const [{ isDragging }, drag, preview] = useDrag(() => ({
     };
   }, [isResizing, handleResizeEnd, setIsHovered]);
   
-  const handleGroupMouseEnter = () => setIsHovered(true);
+  const handleGroupMouseEnter = () => {
+    setIsHovered(true);
+    onHoverChange?.(zone.id, 'zone', true);
+  };
   const handleGroupMouseLeave = () => {
+    onHoverChange?.(zone.id, 'zone', false);
     if (!isResizing) {
       setIsHovered(false);
     }

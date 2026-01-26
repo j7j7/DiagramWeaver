@@ -9,10 +9,11 @@ import {
   MenubarShortcut,
   MenubarTrigger,
 } from '@/components/ui/menubar';
-import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock } from 'lucide-react';
+import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
 import { ThemeEditor } from './theme-editor';
 import { ThemeMenuSelector } from './theme-menu-selector';
+import { AboutDialog } from './about-dialog';
 import type { SelectedItem } from '../diagram-editor';
 import type { DiagramData } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -134,6 +135,7 @@ export function TopMenuBar({
 }: TopMenuBarProps) {
   
   const [themeEditorOpen, setThemeEditorOpen] = React.useState(false);
+  const [aboutOpen, setAboutOpen] = React.useState(false);
   const [textStylingPanelOpen, setTextStylingPanelOpen] = React.useState(false);
   const [visualStylingPanelOpen, setVisualStylingPanelOpen] = React.useState(false);
   const [connectionSettingsPanelOpen, setConnectionSettingsPanelOpen] = React.useState(false);
@@ -235,6 +237,11 @@ export function TopMenuBar({
                 </MenubarItem>
               </>
             )}
+            <MenubarSeparator />
+            <MenubarItem onClick={() => setAboutOpen(true)}>
+              <Info className="mr-2 h-4 w-4" />
+              About
+            </MenubarItem>
           </MenubarContent>
         </MenubarMenu>
         <MenubarMenu>
@@ -568,6 +575,12 @@ export function TopMenuBar({
         onOpenChange={setThemeEditorOpen}
         onThemeSelect={onThemeApplyToSelected}
         isReadOnly={isReadOnly}
+      />
+      
+      {/* About Dialog */}
+      <AboutDialog 
+        open={aboutOpen}
+        onOpenChange={setAboutOpen}
       />
     </div>
   );

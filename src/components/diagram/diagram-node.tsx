@@ -150,9 +150,10 @@ interface DiagramNodeProps {
   selectionAnimationEnabled?: boolean;
   animationOffset?: { x: number; y: number };
   isReadOnly?: boolean;
+  onHoverChange?: (id: string, itemType: 'node' | 'zone', isHovered: boolean) => void;
 }
 
-export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onPositionUpdate, onDraggingChange, hoverEnabled = true, selectionAnimationEnabled = false, animationOffset = { x: 0, y: 0 }, isReadOnly = false }: DiagramNodeProps) {
+export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onPositionUpdate, onDraggingChange, hoverEnabled = true, selectionAnimationEnabled = false, animationOffset = { x: 0, y: 0 }, isReadOnly = false, onHoverChange }: DiagramNodeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [isEditingTag, setIsEditingTag] = useState(false);
@@ -694,8 +695,20 @@ return (
         transform: rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
         transformOrigin: 'center'
       }}
-      onMouseEnter={() => { if (!isDragging && !isEditingLabel && !isEditingTag) { setIsOpen(hoverEnabled); setIsHovered(true); } }}
-      onMouseLeave={() => { if (!isEditingLabel && !isEditingTag) { setIsOpen(false); setIsHovered(false); } } }
+      onMouseEnter={() => { 
+        if (!isDragging && !isEditingLabel && !isEditingTag) { 
+          setIsOpen(hoverEnabled); 
+          setIsHovered(true);
+          onHoverChange?.(node.id, 'node', true);
+        } 
+      }}
+      onMouseLeave={() => { 
+        if (!isEditingLabel && !isEditingTag) { 
+          setIsOpen(false); 
+          setIsHovered(false);
+          onHoverChange?.(node.id, 'node', false);
+        } 
+      }}
       onClick={(e) => onClick && onClick(e, node)}
       onContextMenu={(e) => onContextMenu && onContextMenu(e, node)}
       onTouchStart={handleTouchStart}
