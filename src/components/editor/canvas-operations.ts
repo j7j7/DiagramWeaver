@@ -198,8 +198,11 @@ export function useCanvasOperations({
           }),
           // Special defaults for line shape (only if not from scratchpad)
           ...(itemType === 'generic.object.line' && !isFromScratchPad && {
-            startPos: { x: position.x, y: position.y + 50 },
-            endPos: { x: position.x + 150, y: position.y + 50 },
+            startPos: { x: position.x, y: position.y },
+            endPos: { x: position.x + 150, y: position.y },
+            // Set x/y to min of startPos/endPos for consistency with how line nodes are positioned
+            x: position.x, // min of startPos.x and endPos.x
+            y: position.y, // min of startPos.y and endPos.y
             startCap: 'none',
             endCap: 'none',
             lineThickness: 2.5,
@@ -825,8 +828,8 @@ export function useCanvasOperations({
                if (n.id === item.id) {
                  // Special handling for line shapes - move both endpoints
                  if (n.type === 'generic.object.line' || n.type?.endsWith('.line')) {
-                   const currentStartPos = (n as any).startPos || { x: n.x || 0, y: (n.y || 0) + 50 };
-                   const currentEndPos = (n as any).endPos || { x: (n.x || 0) + 150, y: (n.y || 0) + 50 };
+                   const currentStartPos = (n as any).startPos || { x: n.x || 0, y: n.y || 0 };
+                   const currentEndPos = (n as any).endPos || { x: (n.x || 0) + 150, y: n.y || 0 };
                    const deltaX = snappedX - originalX;
                    const deltaY = snappedY - originalY;
                    

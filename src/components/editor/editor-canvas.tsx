@@ -609,8 +609,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         // For line nodes, also update startPos and endPos
         const originalNode = nodesById[dragPosition.itemId];
         if (originalNode) {
-          const currentStartPos = (originalNode as any)?.startPos || { x: (originalNode?.x || 0), y: (originalNode?.y || 0) + 50 };
-          const currentEndPos = (originalNode as any)?.endPos || { x: (originalNode?.x || 0) + 150, y: (originalNode?.y || 0) + 50 };
+          const currentStartPos = (originalNode as any)?.startPos || { x: (originalNode?.x || 0), y: (originalNode?.y || 0) };
+          const currentEndPos = (originalNode as any)?.endPos || { x: (originalNode?.x || 0) + 150, y: (originalNode?.y || 0) };
           
           result[dragPosition.itemId] = {
             ...node,
@@ -651,8 +651,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               const deltaX = pos.x - originalX;
               const deltaY = pos.y - originalY;
               
-              const currentStartPos = (originalNode as any)?.startPos || { x: originalX, y: originalY + 50 };
-              const currentEndPos = (originalNode as any)?.endPos || { x: originalX + 150, y: originalY + 50 };
+              const currentStartPos = (originalNode as any)?.startPos || { x: originalX, y: originalY };
+              const currentEndPos = (originalNode as any)?.endPos || { x: originalX + 150, y: originalY };
               
               result[itemId] = {
                 ...node,

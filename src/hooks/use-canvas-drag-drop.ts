@@ -80,8 +80,24 @@ export function useCanvasDragDrop({
         if (initialCanvasPos && delta) {
           const originalItem = nodesById[item.id] || zonesById[item.id];
           if (originalItem) {
-            const initialX = originalItem.x ?? 0;
-            const initialY = originalItem.y ?? 0;
+            // For line nodes, use the min of startPos/endPos as the initial position
+            // This ensures consistency with how line nodes are rendered
+            const isLineNode = originalItem.type === 'generic.object.line' || originalItem.type?.endsWith('.line');
+            let initialX: number;
+            let initialY: number;
+            
+            if (isLineNode && (originalItem as any).startPos && (originalItem as any).endPos) {
+              // Use min of startPos/endPos for line nodes
+              const startPos = (originalItem as any).startPos;
+              const endPos = (originalItem as any).endPos;
+              initialX = Math.min(startPos.x, endPos.x);
+              initialY = Math.min(startPos.y, endPos.y);
+            } else {
+              // For other nodes, use x/y directly
+              initialX = originalItem.x ?? 0;
+              initialY = originalItem.y ?? 0;
+            }
+            
             itemX = initialX + delta.x / transform.k;
             itemY = initialY + delta.y / transform.k;
             deltaX = delta.x / transform.k;

@@ -90,8 +90,8 @@ const renderLineCap = (
 export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, onClick, onContextMenu }: LineShapeProps) {
   // Get absolute positions (required for lines)
   // Use local positions if available (for smooth dragging), otherwise use node positions
-  const startPos = (node as any).__localStartPos || node.startPos || { x: (node.x || 0), y: (node.y || 0) + 50 };
-  const endPos = (node as any).__localEndPos || node.endPos || { x: (node.x || 0) + 150, y: (node.y || 0) + 50 };
+  const startPos = (node as any).__localStartPos || node.startPos || { x: (node.x || 0), y: (node.y || 0) };
+  const endPos = (node as any).__localEndPos || node.endPos || { x: (node.x || 0) + 150, y: (node.y || 0) };
   
   // Calculate bounding box
   const minX = Math.min(startPos.x, endPos.x);

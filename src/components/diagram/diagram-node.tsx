@@ -591,8 +591,8 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
     onDraggingChange?.(true);
     
     // Store absolute canvas positions (use local state if available, otherwise node state)
-    const currentStartPos = localStartPos || (node as any).startPos || { x: node.x || 0, y: (node.y || 0) + 50 };
-    const currentEndPos = localEndPos || (node as any).endPos || { x: (node.x || 0) + 150, y: (node.y || 0) + 50 };
+    const currentStartPos = localStartPos || (node as any).startPos || { x: node.x || 0, y: node.y || 0 };
+    const currentEndPos = localEndPos || (node as any).endPos || { x: (node.x || 0) + 150, y: node.y || 0 };
     
     // Store initial container position (keep it stable during drag)
     const initialMinX = Math.min(currentStartPos.x, currentEndPos.x);
@@ -619,8 +619,9 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
   // Initialize and sync local state with node positions (but not during drag)
   useEffect(() => {
     if (!isDraggingLineEndpoint && isLineNode) {
-      const startPos = (node as any).startPos || { x: node.x || 0, y: (node.y || 0) + 50 };
-      const endPos = (node as any).endPos || { x: (node.x || 0) + 150, y: (node.y || 0) + 50 };
+      const startPos = (node as any).startPos || { x: node.x || 0, y: node.y || 0 };
+      const endPos = (node as any).endPos || { x: (node.x || 0) + 150, y: node.y || 0 };
+      
       // Only update if positions actually changed to avoid unnecessary state updates
       setLocalStartPos(prev => {
         if (!prev || prev.x !== startPos.x || prev.y !== startPos.y) {
@@ -1179,8 +1180,8 @@ return (
        {!isReadOnly && isLineNode && isSelected && !isMultiSelected && (() => {
          // Get base positions - use same logic as drag start handler for consistency
          // This ensures handles are positioned correctly even on first drag
-         const baseStartPos = localStartPos || (node as any).startPos || { x: node.x || 0, y: (node.y || 0) + 50 };
-         const baseEndPos = localEndPos || (node as any).endPos || { x: (node.x || 0) + 150, y: (node.y || 0) + 50 };
+        const baseStartPos = localStartPos || (node as any).startPos || { x: node.x || 0, y: node.y || 0 };
+        const baseEndPos = localEndPos || (node as any).endPos || { x: (node.x || 0) + 150, y: node.y || 0 };
          
          // During drag, only update the handle being dragged, keep the other stable
          const currentStartPos = isDraggingLineEndpoint && lineEndpointHandle === 'start' && localStartPos
