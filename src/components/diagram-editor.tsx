@@ -1904,6 +1904,8 @@ export default function DiagramEditor() {
         setSelectionAnimationEnabled={setSelectionAnimationEnabled}
         iconBackgroundEnabled={iconBackgroundEnabled}
         setIconBackgroundEnabled={setIconBackgroundEnabled}
+        defaultFreeflowEnabled={defaultFreeflowEnabled}
+        setDefaultFreeflowEnabled={setDefaultFreeflowEnabled}
         isReadOnly={isReadOnly}
         setIsReadOnly={setIsReadOnly}
         handleAlignObjects={handleAlignObjects}
@@ -2016,6 +2018,8 @@ function DiagramEditorInner({
   setSelectionAnimationEnabled,
   iconBackgroundEnabled,
   setIconBackgroundEnabled,
+  defaultFreeflowEnabled,
+  setDefaultFreeflowEnabled,
   isReadOnly,
   setIsReadOnly,
   handleAlignObjects,
