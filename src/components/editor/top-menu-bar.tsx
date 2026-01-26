@@ -80,6 +80,7 @@ interface TopMenuBarProps {
   scratchPadOpen?: boolean;
   isReadOnly?: boolean;
   onToggleReadOnly?: () => void;
+  onStartTutorial?: () => void;
 }
 
 export function TopMenuBar({
@@ -137,6 +138,7 @@ export function TopMenuBar({
   scratchPadOpen,
   isReadOnly = false,
   onToggleReadOnly,
+  onStartTutorial,
 }: TopMenuBarProps) {
   
   const [themeEditorOpen, setThemeEditorOpen] = React.useState(false);
@@ -190,14 +192,14 @@ export function TopMenuBar({
     <div className="flex items-center border-b bg-card min-h-[2.5rem] overflow-x-auto">
       <Menubar className="rounded-none border-0 border-b-0 border-l-0 border-r-0 border-t-0 h-auto shrink-0">
         <MenubarMenu>
-          <MenubarTrigger>File</MenubarTrigger>
+          <MenubarTrigger data-tutorial-id="file-menu">File</MenubarTrigger>
           <MenubarContent>
             <MenubarItem onClick={onNew}>
               <Plus className="mr-2 h-4 w-4" />
               New
               <MenubarShortcut>Ctrl+N</MenubarShortcut>
             </MenubarItem>
-            <MenubarItem onClick={onLoad}>
+            <MenubarItem onClick={onLoad} data-tutorial-id="load-menu">
               <Upload className="mr-2 h-4 w-4" />
               Load
               <MenubarShortcut>Ctrl+O</MenubarShortcut>
@@ -252,7 +254,7 @@ export function TopMenuBar({
             {onToggleJsonPanel && (
               <>
                 <MenubarSeparator />
-                <MenubarItem onClick={onToggleJsonPanel}>
+                <MenubarItem onClick={onToggleJsonPanel} data-tutorial-id="toggle-json-menu">
                   <Code className="mr-2 h-4 w-4" />
                   {jsonPanelOpen ? 'Hide JSON' : 'Show JSON'}
                 </MenubarItem>
@@ -263,10 +265,15 @@ export function TopMenuBar({
               <Info className="mr-2 h-4 w-4" />
               About
             </MenubarItem>
+            <MenubarSeparator />
+            <MenubarItem onClick={onStartTutorial}>
+              <Info className="mr-2 h-4 w-4" />
+              Start Tutorial
+            </MenubarItem>
           </MenubarContent>
         </MenubarMenu>
         <MenubarMenu>
-          <MenubarTrigger>Edit</MenubarTrigger>
+          <MenubarTrigger data-tutorial-id="edit-menu">Edit</MenubarTrigger>
           <MenubarContent>
             {onCopy && (
               <MenubarItem onClick={onCopy} disabled={isReadOnly}>

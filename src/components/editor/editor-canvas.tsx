@@ -995,7 +995,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   }), [handleFitToView, exportPng, startSelectionMode, copyHandler, pasteHandler, canPasteHandler, pastePaletteItemHandler]);
 
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full" data-tutorial-id="canvas">
         {/* ========================================================================
             CANVAS RULERS
             ========================================================================

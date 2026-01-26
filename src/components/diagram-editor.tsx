@@ -42,6 +42,8 @@ import { LayersPanel } from './editor/layers-panel';
 const ScratchPad = dynamic(() => import('./editor/scratch-pad').then(mod => ({ default: mod.ScratchPad })), {
   ssr: false,
 });
+import { TutorialProvider, useTutorial } from './tutorial/tutorial-provider';
+import { TutorialOverlay } from './tutorial/tutorial-overlay';
 import { 
   createGroup, 
   addToGroup,
@@ -1804,6 +1806,256 @@ export default function DiagramEditor() {
 
   const canPasteFromMenu = paletteClipboardItem != null || canPaste;
 
+  // Tutorial integration
+  const handleStartTutorial = React.useCallback(() => {
+    // This will be called from TopMenuBar, but we need to access the tutorial context
+    // So we'll pass it through a ref or use a different approach
+  }, []);
+
+  return (
+    <TutorialProvider>
+      <DiagramEditorInner
+        canPasteFromMenu={canPasteFromMenu}
+        isMobile={isMobile}
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+        selectedItem={selectedItem}
+        selectedItemIds={selectedItemIds}
+        handleItemUpdate={handleItemUpdate}
+        startConnecting={startConnecting}
+        handleItemDelete={handleItemDelete}
+        handleResourceSelect={handleResourceSelect}
+        handleResourceActivate={handleResourceActivate}
+        toggleJsonPanel={toggleJsonPanel}
+        jsonPanelOpen={jsonPanelOpen}
+        editorRef={editorRef}
+        handleConnectionUpdate={handleConnectionUpdate}
+        disconnectConnection={disconnectConnection}
+        setDiagramData={setDiagramData}
+        layers={layers}
+        canvasTransform={canvasTransform}
+        setCanvasTransform={setCanvasTransform}
+        handleNew={handleNew}
+        handleLoadClick={handleLoadClick}
+        handleSave={handleSave}
+        handleLoadExample={handleLoadExample}
+        createTab={createTab}
+        handleExportSvg={handleExportSvg}
+        handleMenuCopy={handleMenuCopy}
+        handleMenuPaste={handleMenuPaste}
+        canPaste={canPaste}
+        undo={undo}
+        redo={redo}
+        historyIndex={historyIndex}
+        history={history}
+        handleSelectAll={handleSelectAll}
+        mousePosition={mousePosition}
+        hoverEnabled={hoverEnabled}
+        setHoverEnabled={setHoverEnabled}
+        selectionAnimationEnabled={selectionAnimationEnabled}
+        setSelectionAnimationEnabled={setSelectionAnimationEnabled}
+        iconBackgroundEnabled={iconBackgroundEnabled}
+        setIconBackgroundEnabled={setIconBackgroundEnabled}
+        isReadOnly={isReadOnly}
+        setIsReadOnly={setIsReadOnly}
+        handleAlignObjects={handleAlignObjects}
+        handleAutoLayout={handleAutoLayout}
+        handleThemeApplyToSelected={handleThemeApplyToSelected}
+        triggerTextStylingPanel={triggerTextStylingPanel}
+        triggerVisualStylingPanel={triggerVisualStylingPanel}
+        triggerConnectionSettingsPanel={triggerConnectionSettingsPanel}
+        setScratchPadOpen={setScratchPadOpen}
+        scratchPadOpen={scratchPadOpen}
+        tabs={tabs}
+        activeTabId={activeTabId}
+        switchTab={switchTab}
+        handleTabClose={handleTabClose}
+        fileInputRef={fileInputRef}
+        handleFileChange={handleFileChange}
+        jsonPanelOpen={jsonPanelOpen}
+        diagramData={diagramData}
+        handleJsonValidChange={handleJsonValidChange}
+        toggleJsonPanel={toggleJsonPanel}
+        exportDialogOpen={exportDialogOpen}
+        setExportDialogOpen={setExportDialogOpen}
+        handleExport={handleExport}
+        selectionCoordinates={selectionCoordinates}
+        refreshCanvas={refreshCanvas}
+        updateHistory={updateHistory}
+        closeTabDialogOpen={closeTabDialogOpen}
+        setCloseTabDialogOpen={setCloseTabDialogOpen}
+        pendingCloseTabId={pendingCloseTabId}
+        setPendingCloseTabId={setPendingCloseTabId}
+        handleCloseTabConfirm={handleCloseTabConfirm}
+        selectedItemIds={selectedItemIds}
+        handleItemSelect={handleItemSelect}
+        handleBatchSelect={handleBatchSelect}
+        setSelectedItemIds={setSelectedItemIds}
+        setSelectedItem={setSelectedItem}
+        selectedItem={selectedItem}
+        isConnectMode={isConnectMode}
+        handleConnect={handleConnect}
+        setIsConnectMode={setIsConnectMode}
+        disconnectSelected={disconnectSelected}
+        handleLabelUpdate={handleLabelUpdate}
+        handleTagUpdate={handleTagUpdate}
+        handleZoneTagUpdate={handleZoneTagUpdate}
+        setIsDragging={setIsDragging}
+        setCanPaste={setCanPaste}
+        setMousePosition={setMousePosition}
+        setSelectionCoordinates={setSelectionCoordinates}
+        handleGroupItems={handleGroupItems}
+        handleUngroupItems={handleUngroupItems}
+        handleRemoveFromGroup={handleRemoveFromGroup}
+        handleAddToGroup={handleAddToGroup}
+        handleMoveToBack={handleMoveToBack}
+        handleMoveToFront={handleMoveToFront}
+        handleMoveOneBack={handleMoveOneBack}
+        handleMoveOneForward={handleMoveOneForward}
+        handleZoneLayoutChange={handleZoneLayoutChange}
+        handleZoneCycle={handleZoneCycle}
+        handleZoneSort={handleZoneSort}
+        canvasRefreshKey={canvasRefreshKey}
+        activeTab={activeTab}
+      />
+      <TutorialOverlay />
+    </TutorialProvider>
+  );
+}
+
+function DiagramEditorInner({
+  canPasteFromMenu,
+  isMobile,
+  sidebarOpen,
+  setSidebarOpen,
+  selectedItem,
+  selectedItemIds,
+  handleItemUpdate,
+  startConnecting,
+  handleItemDelete,
+  handleResourceSelect,
+  handleResourceActivate,
+  toggleJsonPanel,
+  jsonPanelOpen,
+  editorRef,
+  handleConnectionUpdate,
+  disconnectConnection,
+  setDiagramData,
+  layers,
+  canvasTransform,
+  setCanvasTransform,
+  handleNew,
+  handleLoadClick,
+  handleSave,
+  handleLoadExample,
+  createTab,
+  handleExportSvg,
+  handleMenuCopy,
+  handleMenuPaste,
+  canPaste,
+  undo,
+  redo,
+  historyIndex,
+  history,
+  handleSelectAll,
+  mousePosition,
+  hoverEnabled,
+  setHoverEnabled,
+  selectionAnimationEnabled,
+  setSelectionAnimationEnabled,
+  iconBackgroundEnabled,
+  setIconBackgroundEnabled,
+  isReadOnly,
+  setIsReadOnly,
+  handleAlignObjects,
+  handleAutoLayout,
+  handleThemeApplyToSelected,
+  triggerTextStylingPanel,
+  triggerVisualStylingPanel,
+  triggerConnectionSettingsPanel,
+  setScratchPadOpen,
+  scratchPadOpen,
+  tabs,
+  activeTabId,
+  switchTab,
+  handleTabClose,
+  fileInputRef,
+  handleFileChange,
+  jsonPanelOpen: jsonPanelOpenInner,
+  diagramData,
+  handleJsonValidChange,
+  toggleJsonPanel: toggleJsonPanelInner,
+  exportDialogOpen,
+  setExportDialogOpen,
+  handleExport,
+  selectionCoordinates,
+  refreshCanvas,
+  updateHistory,
+  closeTabDialogOpen,
+  setCloseTabDialogOpen,
+  pendingCloseTabId,
+  setPendingCloseTabId,
+  handleCloseTabConfirm,
+  handleItemSelect,
+  handleBatchSelect,
+  setSelectedItemIds,
+  setSelectedItem,
+  isConnectMode,
+  handleConnect,
+  setIsConnectMode,
+  disconnectSelected,
+  handleLabelUpdate,
+  handleTagUpdate,
+  handleZoneTagUpdate,
+  setIsDragging,
+  setCanPaste,
+  setMousePosition,
+  setSelectionCoordinates,
+  handleGroupItems,
+  handleUngroupItems,
+  handleRemoveFromGroup,
+  handleAddToGroup,
+  handleMoveToBack,
+  handleMoveToFront,
+  handleMoveOneBack,
+  handleMoveOneForward,
+  handleZoneLayoutChange,
+  handleZoneCycle,
+  handleZoneSort,
+  canvasRefreshKey,
+  activeTab,
+}: any) {
+  const { start } = useTutorial();
+  
+  const handleStartTutorial = React.useCallback(() => {
+    start([
+      {
+        id: 'step-1',
+        title: 'Welcome to DiagramWeaver',
+        body: 'Click the File menu to open it. If you don’t want to, press Next and the tutorial will do it for you.',
+        target: 'file-menu',
+        requiresTargetClick: true,
+        autoActionsOnNext: [{ type: 'click', target: 'file-menu' }],
+      },
+      {
+        id: 'step-2',
+        title: 'Edit menu',
+        body: 'The Edit menu has actions like copy/paste and undo/redo. Click it, or press Next to open it automatically.',
+        target: 'edit-menu',
+        requiresTargetClick: true,
+        autoActionsOnNext: [{ type: 'click', target: 'edit-menu' }],
+      },
+      {
+        id: 'step-3',
+        title: 'Tutorial complete',
+        body: 'You’re all set. You can run this tutorial again any time from File → Start Tutorial.',
+        target: 'canvas',
+        mode: 'message',
+        requiresTargetClick: false,
+      },
+    ]);
+  }, [start]);
+
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="flex h-screen w-screen bg-background text-foreground font-body relative overflow-hidden">
@@ -1915,6 +2167,7 @@ export default function DiagramEditor() {
                     }}
                     onToggleScratchPad={() => setScratchPadOpen(!scratchPadOpen)}
                     scratchPadOpen={scratchPadOpen}
+                    onStartTutorial={handleStartTutorial}
                 />
                 {activeTabId && (
                   <TabBar
