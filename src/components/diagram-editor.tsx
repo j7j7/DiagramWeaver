@@ -1862,8 +1862,11 @@ export default function DiagramEditor() {
         handleAutoLayout={handleAutoLayout}
         handleThemeApplyToSelected={handleThemeApplyToSelected}
         triggerTextStylingPanel={triggerTextStylingPanel}
+        setTriggerTextStylingPanel={setTriggerTextStylingPanel}
         triggerVisualStylingPanel={triggerVisualStylingPanel}
+        setTriggerVisualStylingPanel={setTriggerVisualStylingPanel}
         triggerConnectionSettingsPanel={triggerConnectionSettingsPanel}
+        setTriggerConnectionSettingsPanel={setTriggerConnectionSettingsPanel}
         setScratchPadOpen={setScratchPadOpen}
         scratchPadOpen={scratchPadOpen}
         tabs={tabs}
@@ -1971,8 +1974,11 @@ function DiagramEditorInner({
   handleAutoLayout,
   handleThemeApplyToSelected,
   triggerTextStylingPanel,
+  setTriggerTextStylingPanel,
   triggerVisualStylingPanel,
+  setTriggerVisualStylingPanel,
   triggerConnectionSettingsPanel,
+  setTriggerConnectionSettingsPanel,
   setScratchPadOpen,
   scratchPadOpen,
   tabs,

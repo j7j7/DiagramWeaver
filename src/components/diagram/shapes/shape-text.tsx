@@ -35,50 +35,128 @@ export function ShapeText({
   const inputRef = useRef<HTMLInputElement>(null);
   const nodeAny = node as any;
   const styles = getShapeStyles(node);
+  const verticalPosition = nodeAny.textVerticalPosition;
+  const textPosition = nodeAny.textPosition;
 
-  // Only show text if it's in the center/middle position (default)
-  const showText = (nodeAny.textVerticalPosition === 'middle' || !nodeAny.textVerticalPosition) &&
-                   (nodeAny.textPosition === 'center' || !nodeAny.textPosition) &&
-                   label;
-
-  if (!showText) {
+  // Show text if label exists
+  if (!label) {
     return null;
   }
 
+  // Determine position: textVerticalPosition takes precedence, fallback to textPosition for backward compatibility
+  let effectivePosition: 'top' | 'middle' | 'bottom';
+  if (verticalPosition) {
+    effectivePosition = verticalPosition;
+  } else if (textPosition === 'above') {
+    effectivePosition = 'top';
+  } else if (textPosition === 'under') {
+    effectivePosition = 'bottom';
+  } else {
+    effectivePosition = 'middle'; // Default to middle/inside
+  }
+
+  // Determine if text should be inside or outside
+  const isInside = effectivePosition === 'middle';
+  const isAbove = effectivePosition === 'top';
+  const isBelow = effectivePosition === 'bottom';
+
+  // Get shape dimensions for outside positioning
+  const shapeWidth = node.width || 60;
+  const shapeHeight = node.height || 60;
+  const spacing = 4; // Spacing between shape and text
+
+  // Render text inside the shape (middle position)
+  if (isInside) {
+    return (
+      <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass(effectivePosition)}`}>
+        {isEditingLabel ? (
+          <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass(effectivePosition)} px-1`}>
+            <input
+              ref={inputRef}
+              id={`node-input-${node.id}`}
+              type="text"
+              value={editText}
+              onChange={(e) => onLabelTextChange(e.target.value)}
+              onBlur={onLabelSubmit}
+              onKeyDown={onLabelKeyDown}
+              className={`text-xs ${getTextJustifyClass(nodeAny.textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none`}
+              style={{
+                ...getTextStylingForNode(node),
+                color: getTextColorForBackground(styles.backgroundColor, nodeAny.textColor)
+              }}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        ) : (
+          <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass(effectivePosition)} px-1`}>
+            <p
+              className={`text-xs ${getTextJustifyClass(nodeAny.textJustify)} break-words leading-tight cursor-text w-full`}
+              style={{
+                ...getTextStylingForNode(node),
+                color: getTextColorForBackground(styles.backgroundColor, nodeAny.textColor),
+                display: 'block'
+              }}
+              onDoubleClick={onLabelDoubleClick}
+            >
+              {label}
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Render text outside the shape (above or below)
+  const outsideStyle: React.CSSProperties = {
+    position: 'absolute',
+    left: 0,
+    width: `${shapeWidth}px`,
+    ...getTextStylingForNode(node),
+    display: 'block',
+  };
+
+  if (isAbove) {
+    // Position above the shape - use bottom to position above the wrapper
+    outsideStyle.bottom = `calc(100% + ${spacing}px)`;
+  } else if (isBelow) {
+    // Position below the shape - use top to position below the wrapper
+    outsideStyle.top = `calc(100% + ${spacing}px)`;
+  }
+
   return (
-    <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass(nodeAny.textVerticalPosition)}`}>
+    <div
+      className={`absolute ${getTextJustifyClass(nodeAny.textJustify)} w-full`}
+      style={outsideStyle}
+    >
       {isEditingLabel ? (
-        <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass(nodeAny.textVerticalPosition)} px-1`}>
-          <input
-            ref={inputRef}
-            id={`node-input-${node.id}`}
-            type="text"
-            value={editText}
-            onChange={(e) => onLabelTextChange(e.target.value)}
-            onBlur={onLabelSubmit}
-            onKeyDown={onLabelKeyDown}
-            className={`text-xs ${getTextJustifyClass(nodeAny.textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none`}
-            style={{
-              ...getTextStylingForNode(node),
-              color: getTextColorForBackground(styles.backgroundColor, nodeAny.textColor)
-            }}
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
+        <input
+          ref={inputRef}
+          id={`node-input-${node.id}`}
+          type="text"
+          value={editText}
+          onChange={(e) => onLabelTextChange(e.target.value)}
+          onBlur={onLabelSubmit}
+          onKeyDown={onLabelKeyDown}
+          className={`text-xs ${getTextJustifyClass(nodeAny.textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none`}
+          style={{
+            ...getTextStylingForNode(node),
+            color: nodeAny.textColor || '#374151',
+            display: 'block'
+          }}
+          onClick={(e) => e.stopPropagation()}
+        />
       ) : (
-        <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass(nodeAny.textVerticalPosition)} px-1`}>
-          <p
-            className={`text-xs ${getTextJustifyClass(nodeAny.textJustify)} break-words leading-tight cursor-text w-full`}
-            style={{
-              ...getTextStylingForNode(node),
-              color: getTextColorForBackground(styles.backgroundColor, nodeAny.textColor),
-              display: 'block'
-            }}
-            onDoubleClick={onLabelDoubleClick}
-          >
-            {label}
-          </p>
-        </div>
+        <p
+          className={`text-xs ${getTextJustifyClass(nodeAny.textJustify)} break-words leading-tight cursor-text w-full`}
+          style={{
+            ...getTextStylingForNode(node),
+            color: nodeAny.textColor || '#374151',
+            display: 'block'
+          }}
+          onDoubleClick={onLabelDoubleClick}
+        >
+          {label}
+        </p>
       )}
     </div>
   );

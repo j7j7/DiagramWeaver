@@ -31,8 +31,14 @@ export function useCanvasInteractions({
     const target = e.target as HTMLElement;
     
     // Handle panning with right mouse button (button === 2)
-    if (e.button === 2 && !target.closest('.absolute')) {
-      e.preventDefault(); // Prevent context menu
+    // Only prevent default and start panning if NOT clicking on a node or zone
+    // Check for nodes/zones by looking for data attributes or .absolute class
+    const isNodeOrZone = target.closest('[data-node-id]') || 
+                         target.closest('[data-zone-id]') ||
+                         target.closest('.absolute');
+    
+    if (e.button === 2 && !isNodeOrZone) {
+      e.preventDefault(); // Prevent context menu only on empty canvas
       setIsPanning(true);
       setPanStart({ x: e.clientX - transform.x, y: e.clientY - transform.y });
     }
