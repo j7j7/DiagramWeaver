@@ -174,41 +174,64 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   } | null>(null);
 
   // Determine which item should show rotation handles
-  // Handles appear when:
-  // 1. A selected item is hovered (multi-select scenario), OR
-  // 2. A single item is selected (even if not hovered)
+  // Handles appear when items are selected and persist until deselected
+  // For multi-select, use the first selected item (or hovered item if available)
   const rotationTarget = useMemo(() => {
-    // If hovering a selected item, use that (multi-select scenario)
+    // If no items selected, no rotation handles
+    if (selectedItemIds.size === 0) {
+      return null;
+    }
+    
+    // If hovering a selected item, use that (for multi-select, this provides better UX)
     if (hoveredItemId && hoveredItemType && selectedItemIds.has(hoveredItemId)) {
       return { id: hoveredItemId, type: hoveredItemType };
     }
-    // If single item selected, show handles for it (even if not hovered)
-    if (selectedItemId && selectedItemIds.size === 1) {
+    
+    // For single selection, show handles for the selected item
+    if (selectedItemIds.size === 1 && selectedItemId) {
       const node = nodesById[selectedItemId];
       if (node) return { id: selectedItemId, type: 'node' as const };
       const zone = zonesById[selectedItemId];
       if (zone) return { id: selectedItemId, type: 'zone' as const };
     }
-    // No rotation handles if no selection or multi-select without hover
+    
+    // For multi-select, use the first selected item (persistent, won't flicker)
+    if (selectedItemIds.size > 1) {
+      // Try to find first node
+      for (const id of selectedItemIds) {
+        const node = nodesById[id];
+        if (node) return { id, type: 'node' as const };
+      }
+      // If no nodes, find first zone
+      for (const id of selectedItemIds) {
+        const zone = zonesById[id];
+        if (zone) return { id, type: 'zone' as const };
+      }
+    }
+    
     return null;
   }, [hoveredItemId, hoveredItemType, selectedItemIds, selectedItemId, nodesById, zonesById]);
 
   // Handle hover changes from nodes/zones
+  // Don't clear hover when mouse moves to rotation overlay to prevent flickering
   const handleHoverChange = useCallback((id: string, itemType: 'node' | 'zone', isHovered: boolean) => {
     if (isHovered) {
       setHoveredItemId(id);
       setHoveredItemType(itemType);
     } else {
-      // Only clear if this is the currently hovered item
-      if (hoveredItemId === id) {
+      // Only clear if this was the hovered item and we're not in multi-select
+      // In multi-select, keep the hover state stable to prevent flickering
+      if (hoveredItemId === id && selectedItemIds.size <= 1) {
         setHoveredItemId(null);
         setHoveredItemType(null);
       }
+      // For multi-select, keep the hover state even when mouse leaves
+      // This prevents flickering when moving mouse to rotation handles
     }
-  }, [hoveredItemId]);
+  }, [hoveredItemId, selectedItemIds]);
 
   // Update rotation for an item
-  const setRotationForItem = useCallback((targetId: string, targetType: 'node' | 'zone', rotation: number) => {
+  const setRotationForItem = useCallback((targetId: string, targetType: 'node' | 'zone', rotation: number, applyToAllSelected = false) => {
     // Snap to nearest 5-degree increment
     let snappedRotation = Math.round(rotation / 5) * 5;
     
@@ -218,20 +241,40 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     if (normalizedRotation < -180) normalizedRotation += 360;
 
     setDiagramData(prev => {
-      if (targetType === 'node') {
-        return {
-          ...prev,
-          nodes: prev.nodes.map(n => 
-            n.id === targetId ? { ...n, rotation: normalizedRotation } : n
-          ),
-        };
+      if (applyToAllSelected && selectedItemIds.size > 1) {
+        // Apply rotation to all selected items
+        const updatedNodes = prev.nodes.map(n => {
+          if (selectedItemIds.has(n.id)) {
+            return { ...n, rotation: normalizedRotation };
+          }
+          return n;
+        });
+        
+        const updatedZones = (prev.zones || []).map(z => {
+          if (selectedItemIds.has(z.id)) {
+            return { ...z, rotation: normalizedRotation };
+          }
+          return z;
+        });
+        
+        return { ...prev, nodes: updatedNodes, zones: updatedZones };
       } else {
-        return {
-          ...prev,
-          zones: (prev.zones || []).map(z =>
-            z.id === targetId ? { ...z, rotation: normalizedRotation } : z
-          ),
-        };
+        // Single item rotation
+        if (targetType === 'node') {
+          return {
+            ...prev,
+            nodes: prev.nodes.map(n => 
+              n.id === targetId ? { ...n, rotation: normalizedRotation } : n
+            ),
+          };
+        } else {
+          return {
+            ...prev,
+            zones: (prev.zones || []).map(z =>
+              z.id === targetId ? { ...z, rotation: normalizedRotation } : z
+            ),
+          };
+        }
       }
     });
 
@@ -239,7 +282,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     if (selectedItem?.id === targetId) {
       setSelectedItem({ ...selectedItem, rotation: normalizedRotation } as any);
     }
-  }, [setDiagramData, selectedItem, setSelectedItem]);
+  }, [setDiagramData, selectedItem, setSelectedItem, selectedItemIds]);
 
   // Handle rotation handle pointer down
   const handleRotationHandlePointerDown = useCallback((e: React.PointerEvent, corner: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right') => {
@@ -295,7 +338,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
 
       // Update rotation (throttled via requestAnimationFrame)
       requestAnimationFrame(() => {
-        setRotationForItem(targetId, targetType, newRotation);
+        setRotationForItem(targetId, targetType, newRotation, true); // Apply to all selected
       });
     };
 
@@ -318,7 +361,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       }
 
       // Final update with current rotation
-      setRotationForItem(targetId, targetType, finalRotation);
+      setRotationForItem(targetId, targetType, finalRotation, true); // Apply to all selected
 
       setRotationDragState(null);
     };
@@ -405,6 +448,79 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     toast,
     iconBackgroundEnabled,
   });
+
+  // Wrapper functions for multi-item resize
+  const handleNodeResize = useCallback((nodeId: string, newWidth: number, newHeight: number) => {
+    if (selectedItemIds.size > 1 && selectedItemIds.has(nodeId)) {
+      // Multi-select resize: calculate scale factors from the dragged node
+      const draggedNode = nodesById[nodeId];
+      if (draggedNode && (draggedNode as any).originalWidth !== undefined) {
+        const startWidth = (draggedNode as any).originalWidth;
+        const startHeight = (draggedNode as any).originalHeight;
+        const scaleX = startWidth > 0 ? newWidth / startWidth : 1;
+        const scaleY = startHeight > 0 ? newHeight / startHeight : 1;
+        
+        // Separate nodes and zones, get their original dimensions from diagramData
+        const selectedNodeIds: string[] = [];
+        const selectedZoneIds: string[] = [];
+        
+        selectedItemIds.forEach(id => {
+          if (nodesById[id]) {
+            selectedNodeIds.push(id);
+          } else if (zonesById[id]) {
+            selectedZoneIds.push(id);
+          }
+        });
+        
+        if (selectedNodeIds.length > 0) {
+          operations.resizeMultipleNodes(selectedNodeIds, scaleX, scaleY);
+        }
+        if (selectedZoneIds.length > 0) {
+          operations.resizeMultipleGroups(selectedZoneIds, scaleX, scaleY);
+        }
+      } else {
+        operations.resizeNode(nodeId, newWidth, newHeight);
+      }
+    } else {
+      operations.resizeNode(nodeId, newWidth, newHeight);
+    }
+  }, [selectedItemIds, nodesById, zonesById, operations]);
+
+  const handleZoneResize = useCallback((zoneId: string, newWidth: number, newHeight: number) => {
+    if (selectedItemIds.size > 1 && selectedItemIds.has(zoneId)) {
+      // Multi-select resize: calculate scale factors from the dragged zone
+      const draggedZone = zonesById[zoneId];
+      if (draggedZone && (draggedZone as any).originalWidth !== undefined) {
+        const startWidth = (draggedZone as any).originalWidth;
+        const startHeight = (draggedZone as any).originalHeight;
+        const scaleX = startWidth > 0 ? newWidth / startWidth : 1;
+        const scaleY = startHeight > 0 ? newHeight / startHeight : 1;
+        
+        // Separate nodes and zones
+        const selectedNodeIds: string[] = [];
+        const selectedZoneIds: string[] = [];
+        
+        selectedItemIds.forEach(id => {
+          if (nodesById[id]) {
+            selectedNodeIds.push(id);
+          } else if (zonesById[id]) {
+            selectedZoneIds.push(id);
+          }
+        });
+        
+        if (selectedNodeIds.length > 0) {
+          operations.resizeMultipleNodes(selectedNodeIds, scaleX, scaleY);
+        }
+        if (selectedZoneIds.length > 0) {
+          operations.resizeMultipleGroups(selectedZoneIds, scaleX, scaleY);
+        }
+      } else {
+        operations.resizeGroup(zoneId, newWidth, newHeight);
+      }
+    } else {
+      operations.resizeGroup(zoneId, newWidth, newHeight);
+    }
+  }, [selectedItemIds, nodesById, zonesById, operations]);
 
   // ============================================================================
   // HOOK: useCanvasDragDrop
@@ -994,7 +1110,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     isGroupMember={isInGroup}
                     onClick={(e: React.MouseEvent) => handleZoneClick(e, zone)}
                     onContextMenu={(e: React.MouseEvent) => handleZoneContextMenu(e, zone)}
-                     onResize={operations.resizeGroup}
+                     onResize={handleZoneResize}
                      onLabelChange={operations.updateGroupLabel}
                      onTagUpdate={operations.updateGroupTag}
                      isReadOnly={isReadOnly}
@@ -1049,7 +1165,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     isGroupMember={isInGroup}
                      onClick={(e: React.MouseEvent) => handleNodeClick(e, node)}
                      onContextMenu={(e: React.MouseEvent) => handleNodeContextMenu(e, node)}
-                     onResize={operations.resizeNode}
+                     onResize={handleNodeResize}
                      onLabelUpdate={onLabelUpdate}
                      onTagUpdate={onTagUpdate}
                      onDraggingChange={onDraggingChange}

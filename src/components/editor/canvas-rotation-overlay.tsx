@@ -89,6 +89,12 @@ export function CanvasRotationOverlay({
           e.stopPropagation();
           onHandlePointerDown(e, 'top-left');
         }}
+        onMouseEnter={(e) => {
+          e.stopPropagation();
+        }}
+        onMouseLeave={(e) => {
+          e.stopPropagation();
+        }}
         aria-label="Rotate"
       >
         <RotateCw className="w-4 h-4 text-green-700" />

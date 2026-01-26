@@ -344,6 +344,94 @@ export function useCanvasOperations({
     });
   }, [setDiagramData]);
 
+  const resizeMultipleNodes = useCallback((nodeIds: string[], scaleX: number, scaleY: number) => {
+    setDiagramData(prevData => {
+      const updatedNodes = prevData.nodes?.map(node => {
+        if (nodeIds.includes(node.id)) {
+          // Use original dimensions if stored, otherwise use current dimensions
+          const originalWidth = (node as any).originalWidth ?? (node.width || 80);
+          const originalHeight = (node as any).originalHeight ?? (node.height || 80);
+          const currentWidth = originalWidth;
+          const currentHeight = originalHeight;
+          
+          // Calculate minimum size based on node type
+          let minWidth = 80;
+          let minHeight = 40;
+          
+          const isShapeNode = node.type === 'generic.object.square' ||
+                             node.type === 'generic.object.circle' ||
+                             node.type === 'generic.object.point' ||
+                             node.type === 'generic.object.rectangle' ||
+                             node.type === 'generic.object.rounded-rectangle' ||
+                             node.type === 'generic.object.triangle' ||
+                             node.type === 'generic.object.star' ||
+                             node.type === 'generic.object.cloud' ||
+                             node.type === 'generic.object.chevron' ||
+                             node.type?.endsWith('.square') ||
+                             node.type?.endsWith('.circle') ||
+                             node.type?.endsWith('.point') ||
+                             node.type?.endsWith('.rectangle') ||
+                             node.type?.endsWith('.rounded-rectangle') ||
+                             node.type?.endsWith('.triangle') ||
+                             node.type?.endsWith('.star') ||
+                             node.type?.endsWith('.cloud') ||
+                             node.type?.endsWith('.chevron');
+          
+          if (node.type === 'generic.text.textbox') {
+            minWidth = 40;
+            minHeight = 40;
+          } else if (isShapeNode) {
+            minWidth = 20;
+            minHeight = 20;
+          }
+          
+          const newWidth = Math.max(minWidth, Math.round(currentWidth * scaleX / 20) * 20);
+          const newHeight = Math.max(minHeight, Math.round(currentHeight * scaleY / 20) * 20);
+          
+          return {
+            ...node,
+            width: newWidth,
+            height: newHeight,
+            sizeMode: 'custom' as const
+          };
+        }
+        return node;
+      }) || [];
+      
+      return { ...prevData, nodes: updatedNodes };
+    });
+  }, [setDiagramData]);
+
+  const resizeMultipleGroups = useCallback((groupIds: string[], scaleX: number, scaleY: number) => {
+    const GRID_SNAP = 20; // Match diagram-zone.tsx
+    setDiagramData(prevData => {
+      const updatedZones = prevData.zones?.map(zone => {
+        if (groupIds.includes(zone.id)) {
+          // Use original dimensions if stored, otherwise use current dimensions
+          const originalWidth = (zone as any).originalWidth ?? (zone.width || 200);
+          const originalHeight = (zone as any).originalHeight ?? (zone.height || 150);
+          const currentWidth = originalWidth;
+          const currentHeight = originalHeight;
+          const minWidth = zone.minWidth || 200;
+          const minHeight = zone.minHeight || 150;
+          
+          const newWidth = Math.max(minWidth, Math.round(currentWidth * scaleX / GRID_SNAP) * GRID_SNAP);
+          const newHeight = Math.max(minHeight, Math.round(currentHeight * scaleY / GRID_SNAP) * GRID_SNAP);
+          
+          return {
+            ...zone,
+            width: newWidth,
+            height: newHeight,
+            sizeMode: 'custom' as const
+          };
+        }
+        return zone;
+      }) || [];
+      
+      return { ...prevData, zones: updatedZones };
+    });
+  }, [setDiagramData]);
+
   const resizeGroup = useCallback((groupId: string, newWidth: number, newHeight: number) => {
     setDiagramData(prevData => {
       const updatedZones = prevData.zones?.map(zone => {
@@ -852,6 +940,8 @@ export function useCanvasOperations({
     addNode,
     resizeNode,
     resizeGroup,
+    resizeMultipleNodes,
+    resizeMultipleGroups,
     updateGroupLabel,
     updateGroupTag,
     moveMultipleItems,

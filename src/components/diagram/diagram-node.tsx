@@ -475,11 +475,18 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
     
     setIsResizing(true);
     setResizeHandle(handle);
+    const startWidth = node.width || (isTextboxNode ? 40 : 80);
+    const startHeight = node.height || nodeHeight;
+    
+    // Store original dimensions for multi-resize
+    (node as any).originalWidth = startWidth;
+    (node as any).originalHeight = startHeight;
+    
     resizeStartPos.current = {
       x: e.clientX,
       y: e.clientY,
-      startWidth: node.width || (isTextboxNode ? 40 : 80),
-      startHeight: node.height || nodeHeight
+      startWidth,
+      startHeight
     };
   };
 
@@ -525,25 +532,31 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
     setIsResizing(false);
     setResizeHandle(null);
     resizeStartPos.current = null;
+    // Clear original dimensions used for multi-resize
+    delete (node as any).originalWidth;
+    delete (node as any).originalHeight;
   };
 
   // Global mouse events for resize
   useEffect(() => {
     if (isResizing) {
       const handleGlobalMouseMove = (e: MouseEvent) => {
+        if (!isResizing || !resizeStartPos.current || !resizeHandle || !onResize) return;
         handleResizeMove(e as any);
       };
       
-      const handleGlobalMouseUp = () => {
+      const handleGlobalMouseUp = (e: MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
         handleResizeEnd();
       };
       
-      document.addEventListener('mousemove', handleGlobalMouseMove);
-      document.addEventListener('mouseup', handleGlobalMouseUp);
+      document.addEventListener('mousemove', handleGlobalMouseMove, true);
+      document.addEventListener('mouseup', handleGlobalMouseUp, true);
       
       return () => {
-        document.removeEventListener('mousemove', handleGlobalMouseMove);
-        document.removeEventListener('mouseup', handleGlobalMouseUp);
+        document.removeEventListener('mousemove', handleGlobalMouseMove, true);
+        document.removeEventListener('mouseup', handleGlobalMouseUp, true);
       };
     }
   }, [isResizing, resizeHandle, node.id, onResize]);
@@ -897,7 +910,7 @@ return (
        </Popover>
 
        {/* Resize handles - show for text resources (textbox always, others only in custom mode), or for shapes (except points) */}
-        {!isReadOnly && (isHovered || isResizing || isSelected) &&
+        {!isReadOnly && (isResizing || isSelected) &&
          (isTextboxNode || ((isTextNode ) && node.sizeMode === 'custom') || (isShapeNode && !isPointNode)) && (
           <ResizeHandles
             visible={true}

@@ -149,11 +149,18 @@ const [{ isDragging }, drag, preview] = useDrag(() => ({
     
     setIsResizing(true);
     setResizeHandle(handle);
+    const startWidth = zone.width;
+    const startHeight = zone.height;
+    
+    // Store original dimensions for multi-resize
+    (zone as any).originalWidth = startWidth;
+    (zone as any).originalHeight = startHeight;
+    
     resizeStartPos.current = {
       x: e.clientX,
       y: e.clientY,
-      startWidth: zone.width,
-      startHeight: zone.height
+      startWidth,
+      startHeight
     };
   };
 
@@ -197,24 +204,30 @@ const [{ isDragging }, drag, preview] = useDrag(() => ({
     setIsResizing(false);
     setResizeHandle(null);
     resizeStartPos.current = null;
+    // Clear original dimensions used for multi-resize
+    delete (zone as any).originalWidth;
+    delete (zone as any).originalHeight;
   };
 
   // Global mouse events for resize
   React.useEffect(() => {
     if (isResizing) {
       const handleMouseMove = (e: MouseEvent) => {
+        if (!isResizing || !resizeStartPos.current || !resizeHandle || !onResize) return;
         handleResizeMove(e as any);
       };
-      const handleMouseUp = () => {
+      const handleMouseUp = (e: MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
         handleResizeEnd();
       };
       
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('mousemove', handleMouseMove, true);
+      document.addEventListener('mouseup', handleMouseUp, true);
       
       return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
+        document.removeEventListener('mousemove', handleMouseMove, true);
+        document.removeEventListener('mouseup', handleMouseUp, true);
       };
     }
   }, [isResizing, resizeHandle, zone.id, onResize]);
@@ -736,8 +749,8 @@ const [{ isDragging }, drag, preview] = useDrag(() => ({
       onMouseEnter={handleGroupMouseEnter}
       onMouseLeave={handleGroupMouseLeave}
     >
-      {/* Resize handles - only show when hovered or resizing */}
-      {!isReadOnly && (isHovered || isResizing || isSelected) && zone.sizeMode !== 'auto' && (
+      {/* Resize handles - only show when selected or resizing */}
+      {!isReadOnly && (isResizing || isSelected) && zone.sizeMode !== 'auto' && (
         <ResizeHandles
           visible={true}
           activeHandle={resizeHandle}
