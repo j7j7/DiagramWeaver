@@ -54,6 +54,7 @@ export interface DiagramNodeData {
   startCap?: 'none' | 'arrow' | 'dot' | 'square'; // Start endpoint style for line shapes
   endCap?: 'none' | 'arrow' | 'dot' | 'square'; // End endpoint style for line shapes
   lineThickness?: number; // Line thickness for line shapes (default: 2.5)
+  lineType?: 'solid' | 'dashed' | 'dotted'; // Line type/style for line shapes
   lineTextVerticalPosition?: 'above' | 'middle' | 'below'; // Text position relative to line
   
   // Lock property - prevents movement when true
@@ -159,6 +160,7 @@ export interface DiagramNodeItem {
   startCap?: 'none' | 'arrow' | 'dot' | 'square'; // Start endpoint style for line shapes
   endCap?: 'none' | 'arrow' | 'dot' | 'square'; // End endpoint style for line shapes
   lineThickness?: number; // Line thickness for line shapes (default: 2.5)
+  lineType?: 'solid' | 'dashed' | 'dotted'; // Line type/style for line shapes
   lineTextVerticalPosition?: 'above' | 'middle' | 'below'; // Text position relative to line
   
   // Lock property - prevents movement when true

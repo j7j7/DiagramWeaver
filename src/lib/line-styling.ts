@@ -5,6 +5,7 @@ import type { TextStyling } from './text-styling';
 export interface LineStyling extends TextStyling {
   // Line-specific properties
   lineThickness?: number; // Line thickness (0.5-10px)
+  lineType?: 'solid' | 'dashed' | 'dotted'; // Line type/style
   startCap?: 'none' | 'arrow' | 'dot' | 'square'; // Start endpoint style
   endCap?: 'none' | 'arrow' | 'dot' | 'square'; // End endpoint style
   lineColor?: string; // Line color
@@ -18,6 +19,7 @@ export function extractLineStylingFromNode(node: DiagramNodeData | DiagramNodeIt
   return {
     // Line properties
     lineThickness: node.lineThickness,
+    lineType: (node as any).lineType,
     startCap: node.startCap,
     endCap: node.endCap,
     lineColor: node.lineColor,
@@ -49,6 +51,7 @@ export function applyLineStylingToNode(
   
   // Line properties
   if ('lineThickness' in styling) updated.lineThickness = styling.lineThickness;
+  if ('lineType' in styling) updated.lineType = styling.lineType;
   if ('startCap' in styling) updated.startCap = styling.startCap;
   if ('endCap' in styling) updated.endCap = styling.endCap;
   if ('lineColor' in styling) updated.lineColor = styling.lineColor;
@@ -76,6 +79,7 @@ export function applyLineStylingToNode(
  */
 export const DEFAULT_LINE_STYLING: LineStyling = {
   lineThickness: 2.5,
+  lineType: 'solid',
   startCap: 'none',
   endCap: 'none',
   lineColor: '#6b7280',

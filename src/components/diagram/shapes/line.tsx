@@ -124,6 +124,17 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
   const lineColor = node.lineColor || '#6b7280';
   const actualStrokeWidth = node.lineThickness || strokeWidth;
   
+  // Line type - determine strokeDasharray based on lineType
+  const lineType = (node as any).lineType || 'solid';
+  let strokeDasharray: string | undefined;
+  if (lineType === 'dashed') {
+    // Dashed line: longer dashes with gaps
+    strokeDasharray = `${actualStrokeWidth * 4} ${actualStrokeWidth * 2}`;
+  } else if (lineType === 'dotted') {
+    // Dotted line: small dots with gaps
+    strokeDasharray = `0 ${actualStrokeWidth * 2}`;
+  }
+  
   // Get text styling from node
   const textStyling = extractTextStylingFromNode(node);
   const textColor = textStyling.textColor || lineColor;
@@ -256,6 +267,7 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
           stroke={stroke || lineColor}
           strokeWidth={actualStrokeWidth}
           strokeLinecap="round"
+          strokeDasharray={strokeDasharray}
           style={{ pointerEvents: 'none' }} // Visual line is not clickable (hit area above handles it)
         />
         

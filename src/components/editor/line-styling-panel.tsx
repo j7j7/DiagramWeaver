@@ -121,6 +121,33 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
               />
             </div>
 
+            {/* Line Type */}
+            <div className="space-y-1 mb-2">
+              <Label htmlFor="line-type" className="text-xs text-slate-600">Line Type</Label>
+              <Select
+                value={styling.lineType || 'solid'}
+                onValueChange={(value) => handlePropertyChange('lineType', value as any)}
+              >
+                <SelectTrigger id="line-type" className="h-7 text-xs">
+                  <SelectValue placeholder="Select line type" />
+                </SelectTrigger>
+                <SelectContent className="z-[70]">
+                  <SelectItem value="solid" className="text-xs flex items-center gap-2">
+                    <Minus className="w-3 h-3" />
+                    Solid
+                  </SelectItem>
+                  <SelectItem value="dashed" className="text-xs flex items-center gap-2">
+                    <Minus className="w-3 h-3" />
+                    Dashed
+                  </SelectItem>
+                  <SelectItem value="dotted" className="text-xs flex items-center gap-2">
+                    <Minus className="w-3 h-3" />
+                    Dotted
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Start Cap */}
             <div className="space-y-1 mb-2">
               <Label htmlFor="start-cap" className="text-xs text-slate-600">Start Cap</Label>
