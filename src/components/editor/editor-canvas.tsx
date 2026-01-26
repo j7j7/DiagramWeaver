@@ -602,28 +602,85 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     
     // Apply single item drag override
     if (dragPosition?.itemId && result[dragPosition.itemId]) {
-      result[dragPosition.itemId] = {
-        ...result[dragPosition.itemId],
-        x: dragPosition.x,
-        y: dragPosition.y
-      };
+      const node = result[dragPosition.itemId];
+      const isLineNode = node.type === 'generic.object.line' || node.type?.endsWith('.line');
+      
+      if (isLineNode && dragPosition.deltaX !== undefined && dragPosition.deltaY !== undefined) {
+        // For line nodes, also update startPos and endPos
+        const originalNode = nodesById[dragPosition.itemId];
+        if (originalNode) {
+          const currentStartPos = (originalNode as any)?.startPos || { x: (originalNode?.x || 0), y: (originalNode?.y || 0) + 50 };
+          const currentEndPos = (originalNode as any)?.endPos || { x: (originalNode?.x || 0) + 150, y: (originalNode?.y || 0) + 50 };
+          
+          result[dragPosition.itemId] = {
+            ...node,
+            x: dragPosition.x,
+            y: dragPosition.y,
+            startPos: { x: currentStartPos.x + dragPosition.deltaX, y: currentStartPos.y + dragPosition.deltaY },
+            endPos: { x: currentEndPos.x + dragPosition.deltaX, y: currentEndPos.y + dragPosition.deltaY }
+          };
+        } else {
+          result[dragPosition.itemId] = {
+            ...node,
+            x: dragPosition.x,
+            y: dragPosition.y
+          };
+        }
+      } else {
+        result[dragPosition.itemId] = {
+          ...node,
+          x: dragPosition.x,
+          y: dragPosition.y
+        };
+      }
     }
     
     // Apply multi-item drag overrides
     if (multiDragPositions) {
       Object.entries(multiDragPositions).forEach(([itemId, pos]) => {
         if (result[itemId]) {
-          result[itemId] = {
-            ...result[itemId],
-            x: pos.x,
-            y: pos.y
-          };
+          const node = result[itemId];
+          const isLineNode = node.type === 'generic.object.line' || node.type?.endsWith('.line');
+          
+          if (isLineNode) {
+            // For line nodes, calculate delta and update startPos and endPos
+            const originalNode = nodesById[itemId];
+            if (originalNode) {
+              const originalX = originalNode.x ?? 0;
+              const originalY = originalNode.y ?? 0;
+              const deltaX = pos.x - originalX;
+              const deltaY = pos.y - originalY;
+              
+              const currentStartPos = (originalNode as any)?.startPos || { x: originalX, y: originalY + 50 };
+              const currentEndPos = (originalNode as any)?.endPos || { x: originalX + 150, y: originalY + 50 };
+              
+              result[itemId] = {
+                ...node,
+                x: pos.x,
+                y: pos.y,
+                startPos: { x: currentStartPos.x + deltaX, y: currentStartPos.y + deltaY },
+                endPos: { x: currentEndPos.x + deltaX, y: currentEndPos.y + deltaY }
+              };
+            } else {
+              result[itemId] = {
+                ...node,
+                x: pos.x,
+                y: pos.y
+              };
+            }
+          } else {
+            result[itemId] = {
+              ...node,
+              x: pos.x,
+              y: pos.y
+            };
+          }
         }
       });
     }
     
     return result;
-  }, [animatedNodesById, dragPosition, multiDragPositions]);
+  }, [animatedNodesById, dragPosition, multiDragPositions, nodesById]);
 
   const displayZonesById = useMemo(() => {
     const result = { ...animatedZonesById };

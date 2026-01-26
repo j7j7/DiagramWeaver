@@ -45,7 +45,7 @@ export function useCanvasDragDrop({
   moveMultipleItems,
   onDraggingChange,
 }: UseCanvasDragDropOptions) {
-  const [dragPosition, setDragPosition] = useState<{ x: number; y: number; itemId?: string } | null>(null);
+  const [dragPosition, setDragPosition] = useState<{ x: number; y: number; itemId?: string; deltaX?: number; deltaY?: number } | null>(null);
   const [multiDragPositions, setMultiDragPositions] = useState<{ [itemId: string]: { x: number; y: number } } | null>(null);
   const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null);
   const isDraggingRef = useRef(false);
@@ -91,8 +91,19 @@ export function useCanvasDragDrop({
       }
       
       // Snap to grid for display
-      itemX = snapToGrid(itemX);
-      itemY = snapToGrid(itemY);
+      const snappedX = snapToGrid(itemX);
+      const snappedY = snapToGrid(itemY);
+      
+      // Recalculate delta based on snapped positions for consistency
+      if (item.id && (monitor.getItemType() === ItemTypes.CANVAS_NODE || monitor.getItemType() === ItemTypes.ZONE)) {
+        const originalItem = nodesById[item.id] || zonesById[item.id];
+        if (originalItem) {
+          const originalX = originalItem.x ?? 0;
+          const originalY = originalItem.y ?? 0;
+          deltaX = snappedX - originalX;
+          deltaY = snappedY - originalY;
+        }
+      }
       
       // Check if item is in a group and get all group members
       let itemsToMove = new Set<string>();
@@ -142,7 +153,7 @@ export function useCanvasDragDrop({
       
       // Don't update drag position if we're dropping on scratchpad
       if (!isDroppingOnScratchpadRef.current) {
-        setDragPosition({ x: itemX, y: itemY, itemId: item.id });
+        setDragPosition({ x: snappedX, y: snappedY, itemId: item.id, deltaX, deltaY });
       }
       if (!isDraggingRef.current) {
         isDraggingRef.current = true;

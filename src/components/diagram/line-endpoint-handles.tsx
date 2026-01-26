@@ -46,7 +46,7 @@ export function LineEndpointHandles({
   const isHighlighted = (handle: LineHandleType) => isActive(handle) || isHovered(handle);
   
   // Handle size
-  const handleSize = 12;
+  const handleSize = 24;
   const halfSize = handleSize / 2;
   
   // Calculate relative positions (absolute position - node position)
@@ -62,7 +62,7 @@ export function LineEndpointHandles({
       {activeHandle !== 'start' && (
         <div
           className={cn(
-            "absolute rounded-full border-2 border-blue-500 bg-white cursor-move",
+            "absolute rounded-full border-2 border-blue-500 bg-transparent cursor-move",
             isHighlighted('start') && "border-blue-700 scale-125 shadow-lg",
             isActive('start') && "bg-blue-200",
             zIndexClass
@@ -86,7 +86,7 @@ export function LineEndpointHandles({
       {activeHandle !== 'end' && (
         <div
           className={cn(
-            "absolute rounded-full border-2 border-green-500 bg-white cursor-move",
+            "absolute rounded-full border-2 border-green-500 bg-transparent cursor-move",
             isHighlighted('end') && "border-green-700 scale-125 shadow-lg",
             isActive('end') && "bg-green-200",
             zIndexClass
