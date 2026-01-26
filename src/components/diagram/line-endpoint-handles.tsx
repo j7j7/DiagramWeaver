@@ -50,6 +50,7 @@ export function LineEndpointHandles({
   const halfSize = handleSize / 2;
   
   // Calculate relative positions (absolute position - node position)
+  // These positions are relative to the node container (which is at nodeX, nodeY)
   const relStartX = startPoint.x - nodeX;
   const relStartY = startPoint.y - nodeY;
   const relEndX = endPoint.x - nodeX;
@@ -57,47 +58,51 @@ export function LineEndpointHandles({
 
   return (
     <>
-      {/* Start point handle */}
-      <div
-        className={cn(
-          "absolute rounded-full border-2 border-blue-500 bg-white transition-all cursor-move",
-          isHighlighted('start') && "border-blue-700 scale-125 shadow-lg",
-          isActive('start') && "bg-blue-200",
-          zIndexClass
-        )}
-        style={{
-          left: `${relStartX - halfSize}px`,
-          top: `${relStartY - halfSize}px`,
-          width: `${handleSize}px`,
-          height: `${handleSize}px`,
-          pointerEvents: 'auto', // Ensure handles are clickable even if parent has pointerEvents: 'none'
-        }}
-        onMouseEnter={() => setHoveredHandle('start')}
-        onMouseLeave={() => setHoveredHandle(null)}
-        onMouseDown={(e) => handleMouseDown(e, 'start')}
-        title="Drag to move start point"
-      />
+      {/* Start point handle - hide when actively dragging */}
+      {activeHandle !== 'start' && (
+        <div
+          className={cn(
+            "absolute rounded-full border-2 border-blue-500 bg-white transition-all cursor-move",
+            isHighlighted('start') && "border-blue-700 scale-125 shadow-lg",
+            isActive('start') && "bg-blue-200",
+            zIndexClass
+          )}
+          style={{
+            left: `${relStartX - halfSize}px`,
+            top: `${relStartY - halfSize}px`,
+            width: `${handleSize}px`,
+            height: `${handleSize}px`,
+            pointerEvents: 'auto', // Ensure handles are clickable even if parent has pointerEvents: 'none'
+          }}
+          onMouseEnter={() => setHoveredHandle('start')}
+          onMouseLeave={() => setHoveredHandle(null)}
+          onMouseDown={(e) => handleMouseDown(e, 'start')}
+          title="Drag to move start point"
+        />
+      )}
 
-      {/* End point handle */}
-      <div
-        className={cn(
-          "absolute rounded-full border-2 border-green-500 bg-white transition-all cursor-move",
-          isHighlighted('end') && "border-green-700 scale-125 shadow-lg",
-          isActive('end') && "bg-green-200",
-          zIndexClass
-        )}
-        style={{
-          left: `${relEndX - halfSize}px`,
-          top: `${relEndY - halfSize}px`,
-          width: `${handleSize}px`,
-          height: `${handleSize}px`,
-          pointerEvents: 'auto', // Ensure handles are clickable even if parent has pointerEvents: 'none'
-        }}
-        onMouseEnter={() => setHoveredHandle('end')}
-        onMouseLeave={() => setHoveredHandle(null)}
-        onMouseDown={(e) => handleMouseDown(e, 'end')}
-        title="Drag to move end point"
-      />
+      {/* End point handle - hide when actively dragging */}
+      {activeHandle !== 'end' && (
+        <div
+          className={cn(
+            "absolute rounded-full border-2 border-green-500 bg-white transition-all cursor-move",
+            isHighlighted('end') && "border-green-700 scale-125 shadow-lg",
+            isActive('end') && "bg-green-200",
+            zIndexClass
+          )}
+          style={{
+            left: `${relEndX - halfSize}px`,
+            top: `${relEndY - halfSize}px`,
+            width: `${handleSize}px`,
+            height: `${handleSize}px`,
+            pointerEvents: 'auto', // Ensure handles are clickable even if parent has pointerEvents: 'none'
+          }}
+          onMouseEnter={() => setHoveredHandle('end')}
+          onMouseLeave={() => setHoveredHandle(null)}
+          onMouseDown={(e) => handleMouseDown(e, 'end')}
+          title="Drag to move end point"
+        />
+      )}
     </>
   );
 }

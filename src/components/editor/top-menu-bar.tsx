@@ -69,11 +69,13 @@ interface TopMenuBarProps {
   onThemeApplyToSelected?: (theme: DiagramTheme) => void;
   triggerTextStylingPanel?: boolean;
   triggerVisualStylingPanel?: boolean;
+  triggerLineStylingPanel?: boolean;
   triggerConnectionSettingsPanel?: boolean;
   onConnectionSettingsPanelOpenChange?: (open: boolean) => void;
   onCloseConnectionSettingsPanel?: () => void;
   onTextStylingPanelOpenChange?: (open: boolean) => void;
   onVisualStylingPanelOpenChange?: (open: boolean) => void;
+  onLineStylingPanelOpenChange?: (open: boolean) => void;
   onResetConnectionSettingsTrigger?: () => void;
   onAutoLayout?: () => void;
   onToggleScratchPad?: () => void;
@@ -125,6 +127,7 @@ export function TopMenuBar({
   onThemeApplyToSelected,
   triggerTextStylingPanel = false,
   triggerVisualStylingPanel = false,
+  triggerLineStylingPanel = false,
   triggerConnectionSettingsPanel = false,
   onToggleLayersPanel,
   layersPanelOpen,
@@ -132,6 +135,7 @@ export function TopMenuBar({
   onCloseConnectionSettingsPanel,
   onTextStylingPanelOpenChange,
   onVisualStylingPanelOpenChange,
+  onLineStylingPanelOpenChange,
   onResetConnectionSettingsTrigger,
   onAutoLayout,
   onToggleScratchPad,
@@ -145,6 +149,7 @@ export function TopMenuBar({
   const [aboutOpen, setAboutOpen] = React.useState(false);
   const [textStylingPanelOpen, setTextStylingPanelOpen] = React.useState(false);
   const [visualStylingPanelOpen, setVisualStylingPanelOpen] = React.useState(false);
+  const [lineStylingPanelOpen, setLineStylingPanelOpen] = React.useState(false);
   const [connectionSettingsPanelOpen, setConnectionSettingsPanelOpen] = React.useState(false);
 
   // Function to close connection settings panel
@@ -178,6 +183,14 @@ export function TopMenuBar({
       onVisualStylingPanelOpenChange?.(true);
     }
   }, [triggerVisualStylingPanel, onVisualStylingPanelOpenChange]);
+
+  // Handle trigger for line styling panel
+  React.useEffect(() => {
+    if (triggerLineStylingPanel) {
+      setLineStylingPanelOpen(true);
+      onLineStylingPanelOpenChange?.(true);
+    }
+  }, [triggerLineStylingPanel, onLineStylingPanelOpenChange]);
 
   // Close connection settings panel when clicking away (deselecting)
   React.useEffect(() => {
@@ -580,9 +593,11 @@ export function TopMenuBar({
             onThemeApplyToSelected={onThemeApplyToSelected}
             textStylingPanelOpen={textStylingPanelOpen}
             visualStylingPanelOpen={visualStylingPanelOpen}
+            lineStylingPanelOpen={lineStylingPanelOpen}
             connectionSettingsPanelOpen={connectionSettingsPanelOpen}
             onTextStylingPanelOpenChange={setTextStylingPanelOpen}
             onVisualStylingPanelOpenChange={setVisualStylingPanelOpen}
+            onLineStylingPanelOpenChange={setLineStylingPanelOpen}
             onConnectionSettingsPanelOpenChange={setConnectionSettingsPanelOpen}
             isReadOnly={isReadOnly}
           />

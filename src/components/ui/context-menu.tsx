@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { cn, isShapeNodeType } from '@/lib/utils';
-import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup, Plus, ArrowUp, ArrowDown, ChevronUp, ChevronDown, Circle, RotateCw, ArrowDownAZ, ArrowUpAZ } from 'lucide-react';
+import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup, Plus, ArrowUp, ArrowDown, ChevronUp, ChevronDown, Circle, RotateCw, ArrowDownAZ, ArrowUpAZ, Minus } from 'lucide-react';
 
 
 interface ContextMenuProps {
@@ -24,6 +24,7 @@ interface ContextMenuProps {
   isFreeflow?: boolean;
   onTextStyling?: () => void;
   onVisualStyling?: () => void;
+  onLineStyling?: () => void;
   onOrientationChange?: (orientation: 'auto' | 'grid' | 'horizontal' | 'vertical') => void;
   onLayoutChange?: (layout: 'grid' | 'circular') => void;
   onCycleItems?: () => void;
@@ -67,6 +68,7 @@ export function ContextMenu({
   isFreeflow = false,
   onTextStyling,
   onVisualStyling,
+  onLineStyling,
   onOrientationChange,
   currentOrientation = 'auto',
   currentLayer,
@@ -182,6 +184,19 @@ export function ContextMenu({
         >
           <Palette className="w-4 h-4" />
           Visual Styling
+        </button>
+      )}
+
+      {onLineStyling && (
+        <button
+          className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+          onClick={() => {
+            onLineStyling();
+            onClose();
+          }}
+        >
+          <Minus className="w-4 h-4" />
+          Line Styling
         </button>
       )}
 

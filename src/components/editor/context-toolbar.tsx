@@ -30,7 +30,8 @@ import {
   ArrowUp,
   ArrowDown,
   ChevronUp,
-  Tag
+  Tag,
+  Minus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,6 +44,7 @@ import { Slider } from '@/components/ui/slider';
 
 import { TextStylingPanel } from './text-styling-panel';
 import { VisualStylingPanel } from './visual-styling-panel';
+import { LineStylingPanel } from './line-styling-panel';
 import type { SelectedItem } from '../diagram-editor';
 import type { DiagramData, DiagramZoneData } from '@/lib/types';
 import { DiagramTheme } from '@/lib/theme-types';
@@ -50,6 +52,7 @@ import { themeManager } from '@/lib/theme-manager';
 import { extractTextStylingFromNode, extractTextStylingFromGroup, applyTextStylingToZone, applyTextStylingToNode } from '@/lib/text-styling';
 import { isShapeNodeType } from '@/lib/utils';
 import { extractVisualStylingFromNode, extractVisualStylingFromGroup } from '@/lib/visual-styling';
+import { extractLineStylingFromNode, applyLineStylingToNode } from '@/lib/line-styling';
 
 interface ContextToolbarProps {
   selectedItem: SelectedItem | null;
@@ -66,9 +69,11 @@ interface ContextToolbarProps {
   onThemeApplyToSelected?: (theme: DiagramTheme) => void;
   textStylingPanelOpen?: boolean;
   visualStylingPanelOpen?: boolean;
+  lineStylingPanelOpen?: boolean;
   connectionSettingsPanelOpen?: boolean;
   onTextStylingPanelOpenChange?: (open: boolean) => void;
   onVisualStylingPanelOpenChange?: (open: boolean) => void;
+  onLineStylingPanelOpenChange?: (open: boolean) => void;
   onConnectionSettingsPanelOpenChange?: (open: boolean) => void;
   isReadOnly?: boolean;
 }
@@ -88,9 +93,11 @@ export function ContextToolbar({
   onThemeApplyToSelected,
   textStylingPanelOpen = false,
   visualStylingPanelOpen = false,
+  lineStylingPanelOpen = false,
   connectionSettingsPanelOpen = false,
   onTextStylingPanelOpenChange,
   onVisualStylingPanelOpenChange,
+  onLineStylingPanelOpenChange,
   onConnectionSettingsPanelOpenChange,
   isReadOnly = false,
 }: ContextToolbarProps) {
@@ -100,6 +107,7 @@ export function ContextToolbar({
   const [connectionsOpen, setConnectionsOpen] = useState(false);
   const [textStylingOpen, setTextStylingOpen] = useState(false);
   const [visualStylingOpen, setVisualStylingOpen] = useState(false);
+  const [lineStylingOpen, setLineStylingOpen] = useState(false);
   const [draggedConnectionIndex, setDraggedConnectionIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [connectionsPosition, setConnectionsPosition] = useState({ x: 0, y: 0 });
@@ -107,8 +115,10 @@ export function ContextToolbar({
   const textStylingPanelRef = useRef<HTMLDivElement>(null);
   const connectionsPanelRef = useRef(null);
   const visualStylingPanelRef = useRef<HTMLDivElement>(null);
+  const lineStylingPanelRef = useRef<HTMLDivElement>(null);
   const textStylingButtonRef = useRef<HTMLButtonElement>(null);
   const visualStylingButtonRef = useRef<HTMLButtonElement>(null);
+  const lineStylingButtonRef = useRef<HTMLButtonElement>(null);
 
   const handleTextStylingOpenChange = useCallback((open: boolean) => {
     setTextStylingOpen(open);
@@ -119,6 +129,11 @@ export function ContextToolbar({
     setVisualStylingOpen(open);
     onVisualStylingPanelOpenChange?.(open);
   }, [onVisualStylingPanelOpenChange]);
+
+  const handleLineStylingOpenChange = useCallback((open: boolean) => {
+    setLineStylingOpen(open);
+    onLineStylingPanelOpenChange?.(open);
+  }, [onLineStylingPanelOpenChange]);
 
   // Sync external panel state with internal state - but only when explicitly triggered
   // Don't auto-open when external state changes - only sync when opening, not when closing
@@ -134,6 +149,12 @@ export function ContextToolbar({
     }
   }, [visualStylingPanelOpen, visualStylingOpen]);
 
+  useEffect(() => {
+    if (lineStylingPanelOpen && !lineStylingOpen) {
+      setLineStylingOpen(true);
+    }
+  }, [lineStylingPanelOpen, lineStylingOpen]);
+
   // Close panels when selectedItem becomes null (deselecting)
   useEffect(() => {
     if (!selectedItem) {
@@ -143,8 +164,11 @@ export function ContextToolbar({
       if (visualStylingOpen) {
         handleVisualStylingOpenChange(false);
       }
+      if (lineStylingOpen) {
+        handleLineStylingOpenChange(false);
+      }
     }
-  }, [selectedItem, textStylingOpen, visualStylingOpen, handleTextStylingOpenChange, handleVisualStylingOpenChange]);
+  }, [selectedItem, textStylingOpen, visualStylingOpen, lineStylingOpen, handleTextStylingOpenChange, handleVisualStylingOpenChange, handleLineStylingOpenChange]);
 
   // Click outside detection for text styling panel
   useEffect(() => {
@@ -227,6 +251,46 @@ export function ContextToolbar({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [visualStylingOpen, handleVisualStylingOpenChange]);
+
+  // Click outside detection for line styling panel
+  useEffect(() => {
+    if (!lineStylingOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      
+      // Check if click is on the panel or button
+      if (
+        lineStylingPanelRef.current?.contains(target) ||
+        lineStylingButtonRef.current?.contains(target)
+      ) {
+        return;
+      }
+      
+      // Check if click is on a Radix Select dropdown (portaled to body)
+      if (target.closest('[data-radix-select-content]')) {
+        return;
+      }
+      
+      // Check if click is on a Radix Select viewport (the scrollable area)
+      if (target.closest('[data-radix-select-viewport]')) {
+        return;
+      }
+      
+      // Check if click is on a Radix Select item
+      if (target.closest('[data-radix-select-item]')) {
+        return;
+      }
+      
+      // If none of the above, close the panel
+      handleLineStylingOpenChange(false);
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [lineStylingOpen, handleLineStylingOpenChange]);
 
   useEffect(() => {
     setConnectionsOpen(connectionSettingsPanelOpen);
@@ -711,6 +775,75 @@ export function ContextToolbar({
     }
   };
 
+  const handleLineStylingChange = (styling: any) => {
+    // Check if multiple items are selected
+    if (selectedItemIds && selectedItemIds.size > 1 && diagramData && onDiagramDataUpdate) {
+      // Apply styling change to all selected items
+      const updatedDiagramData = { ...diagramData };
+      
+      // Update nodes (only line nodes)
+      updatedDiagramData.nodes = updatedDiagramData.nodes.map(node => {
+        if (selectedItemIds.has(node.id) && (node.type === 'generic.object.line' || node.type?.endsWith('.line'))) {
+          return applyLineStylingToNode(node, styling);
+        }
+        return node;
+      });
+      
+      onDiagramDataUpdate(updatedDiagramData);
+    } else {
+      // Single item selection
+      if (isNode && isLineNode) {
+        const updatedNode = applyLineStylingToNode(selectedItem as any, styling);
+        onItemUpdate?.({ ...updatedNode, itemType: 'node' } as SelectedItem);
+      }
+    }
+  };
+
+  const handleLineStylingReset = () => {
+    // Reset to default line styling
+    const defaultStyling = {
+      lineThickness: undefined,
+      startCap: undefined,
+      endCap: undefined,
+      lineColor: undefined,
+      lineTextVerticalPosition: undefined,
+      fontFamily: undefined,
+      fontSize: undefined,
+      fontWeight: undefined,
+      fontStyle: undefined,
+      textDecoration: undefined,
+      textTransform: undefined,
+      letterSpacing: undefined,
+      lineHeight: undefined,
+      textOpacity: undefined,
+      textColor: undefined,
+      textJustify: undefined,
+      textVerticalPosition: undefined
+    };
+    
+    // Check if multiple items are selected
+    if (selectedItemIds && selectedItemIds.size > 1 && diagramData && onDiagramDataUpdate) {
+      // Apply reset to all selected items
+      const updatedDiagramData = { ...diagramData };
+      
+      // Update nodes (only line nodes)
+      updatedDiagramData.nodes = updatedDiagramData.nodes.map(node => {
+        if (selectedItemIds.has(node.id) && (node.type === 'generic.object.line' || node.type?.endsWith('.line'))) {
+          return applyLineStylingToNode(node, defaultStyling);
+        }
+        return node;
+      });
+      
+      onDiagramDataUpdate(updatedDiagramData);
+    } else {
+      // Single item selection
+      if (isNode && isLineNode) {
+        const updatedNode = applyLineStylingToNode(selectedItem as any, defaultStyling);
+        onItemUpdate?.({ ...updatedNode, itemType: 'node' } as SelectedItem);
+      }
+    }
+  };
+
   // Drag and drop handlers for connection reordering
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedConnectionIndex(index);
@@ -902,6 +1035,22 @@ export function ContextToolbar({
                                    selectedItem.type?.endsWith('.chevron') ||
                                    selectedItem.type?.endsWith('.line'));
     const isLineNode = isNode && (selectedItem.type === 'generic.object.line' || selectedItem.type?.endsWith('.line'));
+
+  const getCurrentLineStyling = useMemo(() => {
+    if (!selectedItem || !diagramData) return {};
+    
+    // Only for line nodes
+    if (!isNode || !isLineNode) return {};
+    
+    // In multi-select scenarios, get fresh data from diagramData to avoid stale references
+    let currentItem = selectedItem;
+    if (selectedItemIds && selectedItemIds.size > 1) {
+      const foundNode = diagramData.nodes.find(n => n.id === selectedItem.id);
+      currentItem = foundNode ? { ...foundNode, itemType: 'node' as const } : selectedItem;
+    }
+    
+    return extractLineStylingFromNode(currentItem as any);
+  }, [selectedItem, isNode, isLineNode, selectedItemIds, diagramData]);
   
 
   const isLabelOrTextbox = isTextboxNode;
@@ -1436,6 +1585,43 @@ export function ContextToolbar({
                   tagPosition={(selectedItem as any)?.tagPosition}
                   onTagChange={(tag) => onItemUpdate?.({ ...selectedItem, tag } as SelectedItem)}
                   onTagPositionChange={(tagPosition) => onItemUpdate?.({ ...selectedItem, tagPosition } as SelectedItem)}
+                />
+              </div>,
+              document.body
+            )}
+          </>
+        )}
+
+        {/* Line Styling Button - Only for line nodes */}
+        {selectedItem && isLineNode && (
+          <>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  ref={lineStylingButtonRef}
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 px-2"
+                  onClick={() => handleLineStylingOpenChange(!lineStylingOpen)}
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Line Styling</TooltipContent>
+            </Tooltip>
+            {lineStylingOpen && typeof window !== 'undefined' && createPortal(
+              <div 
+                ref={lineStylingPanelRef}
+                className="fixed top-0 left-0 h-screen z-[60]"
+                style={{ pointerEvents: 'auto' }}
+              >
+                <LineStylingPanel
+                  styling={getCurrentLineStyling}
+                  onStylingChange={handleLineStylingChange}
+                  onReset={handleLineStylingReset}
+                  selectedItem={selectedItem}
+                  selectedItemIds={selectedItemIds}
+                  onClose={() => handleLineStylingOpenChange(false)}
                 />
               </div>,
               document.body

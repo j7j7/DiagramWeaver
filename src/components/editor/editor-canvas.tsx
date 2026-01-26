@@ -72,6 +72,7 @@ interface EditorCanvasProps {
   onSelectAll?: () => void;
   onTriggerTextStylingPanel?: () => void;
   onTriggerVisualStylingPanel?: () => void;
+  onTriggerLineStylingPanel?: () => void;
   onTriggerConnectionSettingsPanel?: () => void;
   onResetConnectionSettingsTrigger?: () => void;
   layers?: {
@@ -105,7 +106,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, externalTransform,      onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, selectionAnimationEnabled = false, iconBackgroundEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false }: EditorCanvasProps,
+   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, externalTransform,      onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, selectionAnimationEnabled = false, iconBackgroundEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false }: EditorCanvasProps,
   ref
 ) {
   // ============================================================================
@@ -1418,6 +1419,15 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               }
               closeContextMenu();
             }}
+            onLineStyling={contextMenu.itemType === 'node' && (() => {
+              const node = diagramData.nodes.find(n => n.id === contextMenu.itemId);
+              return node && (node.type === 'generic.object.line' || node.type?.endsWith('.line'));
+            })() ? () => {
+              if (onTriggerLineStylingPanel) {
+                onTriggerLineStylingPanel();
+              }
+              closeContextMenu();
+            } : undefined}
             connections={diagramData.connections?.filter((conn: DiagramConnectionData) => 
               conn.from === contextMenu.itemId || conn.to === contextMenu.itemId
             ) || []}

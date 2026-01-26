@@ -2,6 +2,7 @@
 
 import React from "react";
 import type { DiagramNodeData } from "@/lib/types";
+import { extractTextStylingFromNode } from "@/lib/text-styling";
 
 interface LineShapeProps {
   node: DiagramNodeData & { width?: number; height?: number };
@@ -123,6 +124,16 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
   const lineColor = node.lineColor || fill;
   const actualStrokeWidth = node.lineThickness || strokeWidth;
   
+  // Get text styling from node
+  const textStyling = extractTextStylingFromNode(node);
+  const textColor = textStyling.textColor || lineColor;
+  const fontSize = textStyling.fontSize || 12;
+  const fontWeight = textStyling.fontWeight || '500';
+  const fontFamily = textStyling.fontFamily || 'Inter, system-ui, sans-serif';
+  const fontStyle = textStyling.fontStyle || 'normal';
+  const letterSpacing = textStyling.letterSpacing || 0;
+  const textOpacity = textStyling.textOpacity !== undefined ? textStyling.textOpacity : 1;
+  
   // Calculate the actual line endpoints, adjusted for cap sizes
   const capSize = 10;
   const capOffset = capSize + actualStrokeWidth / 2;
@@ -163,7 +174,9 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
   
   // Text position mode: 'above', 'below', or 'middle' (default)
   const textPosition = (node as any).lineTextVerticalPosition || 'middle';
-  const textOffset = textPosition === 'above' ? -12 : textPosition === 'below' ? 12 : 0;
+  // Calculate offset based on font size - scale with font but keep it closer for large fonts
+  const baseOffset = fontSize * 0.8; // 0.8x font size for closer spacing, especially for large fonts
+  const textOffset = textPosition === 'above' ? -baseOffset : textPosition === 'below' ? baseOffset : 0;
   
   // Calculate perpendicular offset for text above/below
   const perpAngleRad = lineAngleRad + Math.PI / 2;
@@ -246,34 +259,53 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
           style={{ pointerEvents: 'none' }} // Visual line is not clickable (hit area above handles it)
         />
         
-        {/* Start cap */}
-        {renderLineCap(startCap, relStartX - svgMinX, relStartY - svgMinY, angleToEnd, lineColor, capSize)}
+        {/* Start cap - points outward from start (backward, away from line) */}
+        {renderLineCap(startCap, relStartX - svgMinX, relStartY - svgMinY, angleToStart, lineColor, capSize)}
         
-        {/* End cap */}
-        {renderLineCap(endCap, relEndX - svgMinX, relEndY - svgMinY, angleToStart, lineColor, capSize)}
+        {/* End cap - points outward from end (forward, continuing line direction) */}
+        {renderLineCap(endCap, relEndX - svgMinX, relEndY - svgMinY, angleToEnd, lineColor, capSize)}
         
         {/* Text label */}
         {label && textLines.length > 0 && (
           <g transform={`translate(${finalTextX - svgMinX}, ${finalTextY - svgMinY}) rotate(${angleToEnd})`}>
             {textLines.map((line, index) => {
-              const lineHeight = 14;
-              const startY = -((textLines.length - 1) * lineHeight) / 2;
+              const lineHeightValue = textStyling.lineHeight || 1.4;
+              const lineHeightPx = fontSize * lineHeightValue;
+              const startY = -((textLines.length - 1) * lineHeightPx) / 2;
+              
+              // Apply text transform if specified
+              let displayText = line;
+              if (textStyling.textTransform === 'uppercase') {
+                displayText = line.toUpperCase();
+              } else if (textStyling.textTransform === 'lowercase') {
+                displayText = line.toLowerCase();
+              } else if (textStyling.textTransform === 'capitalize') {
+                displayText = line.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+              }
+              
               return (
                 <text
                   key={index}
                   x={0}
-                  y={startY + (index * lineHeight)}
-                  fill={lineColor}
-                  fontSize="12"
-                  fontWeight="500"
+                  y={startY + (index * lineHeightPx)}
+                  fill={textColor}
+                  fontSize={fontSize}
+                  fontWeight={fontWeight}
+                  fontFamily={fontFamily}
+                  fontStyle={fontStyle}
+                  letterSpacing={letterSpacing ? `${letterSpacing}px` : undefined}
+                  opacity={textOpacity}
                   textAnchor="middle"
                   dominantBaseline="middle"
                   className="pointer-events-none select-none"
                   style={{
-                    textShadow: '0 0 3px rgba(255,255,255,1), 0 0 6px rgba(255,255,255,0.8), 1px 1px 4px rgba(255,255,255,1), -1px -1px 4px rgba(255,255,255,1), 1px -1px 4px rgba(255,255,255,1), -1px 1px 4px rgba(255,255,255,1)'
+                    textShadow: '0 0 3px rgba(255,255,255,1), 0 0 6px rgba(255,255,255,0.8), 1px 1px 4px rgba(255,255,255,1), -1px -1px 4px rgba(255,255,255,1), 1px -1px 4px rgba(255,255,255,1), -1px 1px 4px rgba(255,255,255,1)',
+                    textDecoration: textStyling.textDecoration === 'underline' ? 'underline' : 
+                                   textStyling.textDecoration === 'line-through' ? 'line-through' :
+                                   textStyling.textDecoration === 'overline' ? 'overline' : 'none'
                   }}
                 >
-                  {line}
+                  {displayText}
                 </text>
               );
             })}

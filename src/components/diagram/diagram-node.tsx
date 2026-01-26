@@ -571,6 +571,9 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
     }
   };
   
+  // Store initial container position when drag starts (keeps container stable during drag)
+  const initialContainerPosRef = useRef<{ x: number; y: number } | null>(null);
+  
   // Line endpoint drag handlers
   const handleLineEndpointDragStart = (e: React.MouseEvent, handle: 'start' | 'end') => {
     if (isReadOnly) {
@@ -590,6 +593,11 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
     // Store absolute canvas positions (use local state if available, otherwise node state)
     const currentStartPos = localStartPos || (node as any).startPos || { x: node.x || 0, y: (node.y || 0) + 50 };
     const currentEndPos = localEndPos || (node as any).endPos || { x: (node.x || 0) + 150, y: (node.y || 0) + 50 };
+    
+    // Store initial container position (keep it stable during drag)
+    const initialMinX = Math.min(currentStartPos.x, currentEndPos.x);
+    const initialMinY = Math.min(currentStartPos.y, currentEndPos.y);
+    initialContainerPosRef.current = { x: initialMinX, y: initialMinY };
     
     lineEndpointStartPos.current = {
       x: e.clientX,
@@ -684,8 +692,9 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
         endPos: currentEndPos
       });
       
-      // Reset ref after update
+      // Reset refs after update
       latestPositionsRef.current = { startPos: null, endPos: null };
+      initialContainerPosRef.current = null;
     }
     
     // Notify parent that dragging has ended (allows history updates again)
@@ -877,8 +886,14 @@ return (
       onClick={isLineNode ? undefined : (e) => onClick && onClick(e, node)} // Lines handle clicks in their SVG (not on container)
       onContextMenu={isLineNode ? undefined : (e) => onContextMenu && onContextMenu(e, node)} // Lines handle context menu in their SVG (not on container)
       style={{
-        left: node.x + animationOffset.x,
-        top: node.y + animationOffset.y,
+        // For lines during drag, keep container position stable (use initial position)
+        // This prevents handles from drifting - they're positioned relative to stable container
+        left: isLineNode && isDraggingLineEndpoint && initialContainerPosRef.current
+          ? initialContainerPosRef.current.x + animationOffset.x
+          : node.x + animationOffset.x,
+        top: isLineNode && isDraggingLineEndpoint && initialContainerPosRef.current
+          ? initialContainerPosRef.current.y + animationOffset.y
+          : node.y + animationOffset.y,
          width: isLineNode ? 'auto' : // Lines don't need a fixed width container
                 (isShapeNode ? (node.width || 60) :
                 (isRotatableNode || isTextboxNode ? 
@@ -1161,19 +1176,41 @@ return (
        )}
        
        {/* Line endpoint handles for line shapes - only show when THIS line is selected (not in multi-select with other items) */}
-       {!isReadOnly && isLineNode && isSelected && !isMultiSelected && (
-         <LineEndpointHandles
-           visible={true}
-           activeHandle={lineEndpointHandle}
-           startPoint={localStartPos || (node as any).startPos || { x: node.x || 0, y: (node.y || 0) + 50 }}
-           endPoint={localEndPos || (node as any).endPos || { x: (node.x || 0) + 150, y: (node.y || 0) + 50 }}
-           nodeX={node.x || 0}
-           nodeY={node.y || 0}
-           onStartDrag={handleLineEndpointDragStart}
-           disabled={false}
-           zIndexClass="z-50"
-         />
-       )}
+       {!isReadOnly && isLineNode && isSelected && !isMultiSelected && (() => {
+         // Get base positions from node
+         const baseStartPos = (node as any).startPos || { x: node.x || 0, y: (node.y || 0) + 50 };
+         const baseEndPos = (node as any).endPos || { x: (node.x || 0) + 150, y: (node.y || 0) + 50 };
+         
+         // During drag, only update the handle being dragged, keep the other stable
+         const currentStartPos = isDraggingLineEndpoint && lineEndpointHandle === 'start' && localStartPos
+           ? localStartPos
+           : baseStartPos;
+         const currentEndPos = isDraggingLineEndpoint && lineEndpointHandle === 'end' && localEndPos
+           ? localEndPos
+           : baseEndPos;
+         
+         // Use stable container position during drag (initial position), otherwise calculate from current positions
+         const nodeX = isDraggingLineEndpoint && initialContainerPosRef.current
+           ? initialContainerPosRef.current.x
+           : Math.min(currentStartPos.x, currentEndPos.x);
+         const nodeY = isDraggingLineEndpoint && initialContainerPosRef.current
+           ? initialContainerPosRef.current.y
+           : Math.min(currentStartPos.y, currentEndPos.y);
+         
+         return (
+           <LineEndpointHandles
+             visible={true}
+             activeHandle={lineEndpointHandle}
+             startPoint={currentStartPos}
+             endPoint={currentEndPos}
+             nodeX={nodeX}
+             nodeY={nodeY}
+             onStartDrag={handleLineEndpointDragStart}
+             disabled={false}
+             zIndexClass="z-50"
+           />
+         );
+       })()}
 
        {/* Connect handle - show when selected (not for lines) */}
        {!isReadOnly && (isSelected || isMultiSelected) && onConnect && !isLineNode && (

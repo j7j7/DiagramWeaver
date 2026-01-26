@@ -201,6 +201,7 @@ export default function DiagramEditor() {
   const [isReadOnly, setIsReadOnly] = React.useState<boolean>(false);
   const [triggerTextStylingPanel, setTriggerTextStylingPanel] = React.useState<boolean>(false);
   const [triggerVisualStylingPanel, setTriggerVisualStylingPanel] = React.useState<boolean>(false);
+  const [triggerLineStylingPanel, setTriggerLineStylingPanel] = React.useState<boolean>(false);
   const [triggerConnectionSettingsPanel, setTriggerConnectionSettingsPanel] = React.useState<boolean>(false);
   const [lastRightClickItemId, setLastRightClickItemId] = React.useState<string | null>(null);
   const [selectedResource, setSelectedResource] = React.useState<PaletteSelection | null>(null);
@@ -219,6 +220,13 @@ export default function DiagramEditor() {
       return () => clearTimeout(timer);
     }
   }, [triggerVisualStylingPanel]);
+
+  React.useEffect(() => {
+    if (triggerLineStylingPanel) {
+      const timer = setTimeout(() => setTriggerLineStylingPanel(false), 100);
+      return () => clearTimeout(timer);
+    }
+  }, [triggerLineStylingPanel]);
 
   React.useEffect(() => {
     if (triggerConnectionSettingsPanel) {
@@ -1865,6 +1873,8 @@ export default function DiagramEditor() {
         setTriggerTextStylingPanel={setTriggerTextStylingPanel}
         triggerVisualStylingPanel={triggerVisualStylingPanel}
         setTriggerVisualStylingPanel={setTriggerVisualStylingPanel}
+        triggerLineStylingPanel={triggerLineStylingPanel}
+        setTriggerLineStylingPanel={setTriggerLineStylingPanel}
         triggerConnectionSettingsPanel={triggerConnectionSettingsPanel}
         setTriggerConnectionSettingsPanel={setTriggerConnectionSettingsPanel}
         setScratchPadOpen={setScratchPadOpen}
@@ -1977,6 +1987,8 @@ function DiagramEditorInner({
   setTriggerTextStylingPanel,
   triggerVisualStylingPanel,
   setTriggerVisualStylingPanel,
+  triggerLineStylingPanel,
+  setTriggerLineStylingPanel,
   triggerConnectionSettingsPanel,
   setTriggerConnectionSettingsPanel,
   setScratchPadOpen,
@@ -2166,6 +2178,7 @@ function DiagramEditorInner({
                     onThemeApplyToSelected={handleThemeApplyToSelected}
                     triggerTextStylingPanel={triggerTextStylingPanel}
                     triggerVisualStylingPanel={triggerVisualStylingPanel}
+                    triggerLineStylingPanel={triggerLineStylingPanel}
                     triggerConnectionSettingsPanel={triggerConnectionSettingsPanel}
                     onCloseConnectionSettingsPanel={() => {
                       // This will be passed down to close the connection settings panel
@@ -2238,6 +2251,7 @@ function DiagramEditorInner({
                     onSelectAll={handleSelectAll}
                     onTriggerTextStylingPanel={() => setTriggerTextStylingPanel(true)}
                     onTriggerVisualStylingPanel={() => setTriggerVisualStylingPanel(true)}
+                    onTriggerLineStylingPanel={() => setTriggerLineStylingPanel(true)}
                     onTriggerConnectionSettingsPanel={() => setTriggerConnectionSettingsPanel(true)}
                     onResetConnectionSettingsTrigger={() => setTriggerConnectionSettingsPanel(false)}
                     layers={{
