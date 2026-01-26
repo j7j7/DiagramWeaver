@@ -288,21 +288,15 @@ export function convertFromNestedHierarchy(nestedData: HierarchicalDiagramData):
   const uniqueNodes = Array.from(nodeMap.values());
   const uniqueZones = Array.from(zoneMap.values());
   
-  console.log('convertFromNestedHierarchy result:', {
-    originalNodesCount: nodes.length,
-    uniqueNodesCount: uniqueNodes.length,
-    originalZonesCount: zones.length,
-    uniqueZonesCount: uniqueZones.length,
-    nodeIds: uniqueNodes.map(n => n.id),
-    zoneIds: uniqueZones.map(z => z.id)
-  });
+  // Filter out orphan-nodes zone - it's just a container and shouldn't be rendered
+  const filteredZones = uniqueZones.filter(zone => zone.id !== 'orphan-nodes');
   
   return {
     nodes: uniqueNodes,
     connections: nestedData.connections,
-    zones: uniqueZones,
+    zones: filteredZones,
     groupings: nestedData.groupings, // Preserve groupings
-    rootZoneId: uniqueZones.find(g => !g.parentId)?.id,
+    rootZoneId: filteredZones.find(g => !g.parentId)?.id,
     layers: nestedData.layers // Preserve layers configuration
   };
 }

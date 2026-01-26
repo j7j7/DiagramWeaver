@@ -14,11 +14,6 @@ interface UseCanvasSelectionOptions {
   onSelectionChange?: (selection: { start: { x: number; y: number } | null; end: { x: number; y: number } | null }) => void;
   closeContextMenu: () => void;
   onCloseConnectionSettingsPanel?: () => void;
-  isSelectionMode: boolean;
-  pendingExportOptions: { backgroundColor?: 'transparent' | 'white'; useSelection: boolean } | null;
-  exportPng: (options?: { backgroundColor?: 'transparent' | 'white'; selectionArea?: { x: number; y: number; width: number; height: number } }) => Promise<void>;
-  onExportComplete?: () => void;
-  toast: (options: { variant?: 'destructive' | 'default'; title: string; description: string }) => void;
 }
 
 export function useCanvasSelection({
@@ -32,11 +27,6 @@ export function useCanvasSelection({
   onSelectionChange,
   closeContextMenu,
   onCloseConnectionSettingsPanel,
-  isSelectionMode,
-  pendingExportOptions,
-  exportPng,
-  onExportComplete,
-  toast,
 }: UseCanvasSelectionOptions) {
   const [selectionStart, setSelectionStart] = useState<{ x: number; y: number } | null>(null);
   const [selectionEnd, setSelectionEnd] = useState<{ x: number; y: number } | null>(null);
@@ -116,44 +106,6 @@ export function useCanvasSelection({
   }, [selectionStart, canvasRef, transform]);
 
   const handleMouseUpOrLeave = useCallback(async () => {
-    // Handle selection completion for export
-    if (isSelectionMode && selectionStart && selectionEnd && pendingExportOptions) {
-      // Complete selection and export
-      // Selection coordinates are already in diagram space (relative to .dot-grid)
-      const x = Math.min(selectionStart.x, selectionEnd.x);
-      const y = Math.min(selectionStart.y, selectionEnd.y);
-      const width = Math.abs(selectionEnd.x - selectionStart.x);
-      const height = Math.abs(selectionEnd.y - selectionStart.y);
-      
-      if (width > 10 && height > 10) {
-        // Debug: log coordinates
-        console.log('Export selection:', { x, y, width, height, transform });
-        
-        try {
-          // Pass coordinates directly in diagram space (they're relative to the .dot-grid div)
-          await exportPng({
-            backgroundColor: pendingExportOptions.backgroundColor,
-            selectionArea: { x, y, width, height },
-          });
-          
-          // Wait a bit to ensure transform is fully restored before resetting state
-          await new Promise(resolve => requestAnimationFrame(resolve));
-          
-          // Notify parent that export is complete
-          if (onExportComplete) {
-            onExportComplete();
-          }
-        } catch (error) {
-          console.error('Export failed:', error);
-          toast({ variant: 'destructive', title: 'Export failed', description: 'Export encountered an issue.' });
-        }
-      }
-      
-      setSelectionStart(null);
-      setSelectionEnd(null);
-      return;
-    }
-    
     // Handle regular selection completion (select items within selection rectangle)
     if (selectionStart && selectionEnd) {
       const x1 = Math.min(selectionStart.x, selectionEnd.x);
@@ -221,7 +173,7 @@ export function useCanvasSelection({
         setTimeout(() => setJustCompletedSelection(false), 100); // Clear flag after short delay
       }
     }
-  }, [isSelectionMode, selectionStart, selectionEnd, pendingExportOptions, exportPng, onExportComplete, toast, transform, diagramData, onBatchSelect, onItemSelect]);
+  }, [selectionStart, selectionEnd, diagramData, onBatchSelect, onItemSelect]);
 
   // Notify parent of selection changes
   useEffect(() => {

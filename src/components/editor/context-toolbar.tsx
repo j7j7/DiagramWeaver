@@ -1131,8 +1131,8 @@ export function ContextToolbar({
           </PopoverContent>
         </Popover>
 
-        {/* Tag Editor - Show for all shapes */}
-        {isShapeNode && (
+        {/* Tag Editor - Show for all shapes except lines */}
+        {isShapeNode && !isLineNode && (
           <Popover open={tagOpen} onOpenChange={setTagOpen}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -1158,7 +1158,8 @@ export function ContextToolbar({
           </Popover>
         )}
 
-        {/* Description Editor */}
+        {/* Description Editor - Hide for lines */}
+        {!isLineNode && (
         <Popover open={descriptionOpen} onOpenChange={setDescriptionOpen}>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -1183,9 +1184,10 @@ export function ContextToolbar({
             </div>
           </PopoverContent>
         </Popover>
+        )}
 
-        {/* Connect Button */}
-        {(isNode || isZone) && (
+        {/* Connect Button - Hide for lines */}
+        {(isNode || isZone) && !isLineNode && (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button 
@@ -1684,7 +1686,8 @@ export function ContextToolbar({
         )}
 
         {/* Line Endpoint Controls */}
-        {isLineNode && (
+        {/* Line Endpoints - Hide for lines (endpoints are controlled via handles on canvas) */}
+        {false && isLineNode && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -1914,8 +1917,8 @@ export function ContextToolbar({
           </Popover>
         )}
 
-        {/* Edge Position (Nodes in groups) */}
-        {isNode && !isTextTypeNode && (
+        {/* Edge Position (Nodes in groups) - Hide for lines */}
+        {isNode && !isTextTypeNode && !isLineNode && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>

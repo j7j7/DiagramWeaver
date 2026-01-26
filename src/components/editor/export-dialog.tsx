@@ -15,19 +15,18 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 interface ExportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onExport: (options: { backgroundColor: 'transparent' | 'white'; useSelection: boolean }) => Promise<void>;
-  selectionCoordinates?: { start: { x: number; y: number } | null; end: { x: number; y: number } | null };
+  onExport: (options: { backgroundColor: 'transparent' | 'white'; quality: 'low' | 'medium' | 'high' }) => Promise<void>;
 }
 
-export function ExportDialog({ open, onOpenChange, onExport, selectionCoordinates }: ExportDialogProps) {
+export function ExportDialog({ open, onOpenChange, onExport }: ExportDialogProps) {
   const [backgroundColor, setBackgroundColor] = useState<'transparent' | 'white'>('white');
-  const [useSelection, setUseSelection] = useState(false);
+  const [quality, setQuality] = useState<'low' | 'medium' | 'high'>('medium');
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = async () => {
     setIsExporting(true);
     try {
-      await onExport({ backgroundColor, useSelection });
+      await onExport({ backgroundColor, quality });
       onOpenChange(false);
     } catch (error) {
       console.error('Export failed:', error);
@@ -40,9 +39,9 @@ export function ExportDialog({ open, onOpenChange, onExport, selectionCoordinate
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Export Diagram</DialogTitle>
+          <DialogTitle>Export PNG</DialogTitle>
           <DialogDescription>
-            Choose export options for your diagram
+            Export the current viewport as a PNG image
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-6 py-4">
@@ -60,35 +59,21 @@ export function ExportDialog({ open, onOpenChange, onExport, selectionCoordinate
             </RadioGroup>
           </div>
           <div className="space-y-3">
-            <Label>Export Area</Label>
-            <RadioGroup value={useSelection ? 'selection' : 'full'} onValueChange={(value) => setUseSelection(value === 'selection')}>
+            <Label>Quality</Label>
+            <RadioGroup value={quality} onValueChange={(value) => setQuality(value as 'low' | 'medium' | 'high')}>
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="full" id="full" />
-                <Label htmlFor="full" className="font-normal cursor-pointer">Full Diagram</Label>
+                <RadioGroupItem value="low" id="low" />
+                <Label htmlFor="low" className="font-normal cursor-pointer">Low (1x) - Smaller file size</Label>
               </div>
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="selection" id="selection" />
-                <Label htmlFor="selection" className="font-normal cursor-pointer">Selected Region (drag to select area)</Label>
+                <RadioGroupItem value="medium" id="medium" />
+                <Label htmlFor="medium" className="font-normal cursor-pointer">Medium (2x) - Balanced</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="high" id="high" />
+                <Label htmlFor="high" className="font-normal cursor-pointer">High (4x) - Best quality</Label>
               </div>
             </RadioGroup>
-            {useSelection && (
-              <div className="ml-6 space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  After clicking Export, drag on the canvas to select the area you want to export.
-                </p>
-                {selectionCoordinates?.start && selectionCoordinates?.end && (
-                  <div className="text-sm font-mono bg-muted/50 p-2 rounded border">
-                    <div className="font-semibold mb-1">Selection Coordinates:</div>
-                    <div>Start: ({Math.round(selectionCoordinates.start.x)}, {Math.round(selectionCoordinates.start.y)})</div>
-                    <div>End: ({Math.round(selectionCoordinates.end.x)}, {Math.round(selectionCoordinates.end.y)})</div>
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      Width: {Math.round(Math.abs(selectionCoordinates.end.x - selectionCoordinates.start.x))}px, 
-                      Height: {Math.round(Math.abs(selectionCoordinates.end.y - selectionCoordinates.start.y))}px
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </div>
         <DialogFooter>

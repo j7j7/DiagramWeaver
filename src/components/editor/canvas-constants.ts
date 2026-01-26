@@ -24,6 +24,7 @@ export const snapToGrid = (v: number): number => {
 export const measureNodeDims = (n: PositionedNode) => {
   const isTextNode = n.type === 'generic.text.text';
   const isTextboxNode = n.type === 'generic.text.textbox';
+  const isLineNode = n.type === 'generic.object.line' || n.type?.endsWith('.line');
    const isShapeNode =
      n.type === 'generic.object.square' ||
      n.type === 'generic.object.circle' ||
@@ -44,6 +45,22 @@ export const measureNodeDims = (n: PositionedNode) => {
      n.type?.endsWith('.cloud') ||
      n.type?.endsWith('.chevron');
   const label = (n.label || '').toString();
+
+  // Line nodes calculate dimensions from startPos/endPos
+  if (isLineNode) {
+    const startPos = (n as any).startPos || { x: n.x || 0, y: n.y || 0 };
+    const endPos = (n as any).endPos || { x: (n.x || 0) + 150, y: n.y || 0 };
+    const minX = Math.min(startPos.x, endPos.x);
+    const minY = Math.min(startPos.y, endPos.y);
+    const maxX = Math.max(startPos.x, endPos.x);
+    const maxY = Math.max(startPos.y, endPos.y);
+    // Add padding for caps and text
+    const padding = 30;
+    return { 
+      width: Math.max(150, maxX - minX + padding * 2), 
+      height: Math.max(100, maxY - minY + padding * 2) 
+    };
+  }
 
   // Use custom dimensions if sizeMode is 'custom' and dimensions are provided
   if ((isTextNode  || isTextboxNode || isShapeNode) && n.sizeMode === 'custom' && n.width && n.height) {

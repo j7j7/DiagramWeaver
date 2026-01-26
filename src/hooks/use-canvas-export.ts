@@ -1,5 +1,7 @@
 import { useState, useCallback } from "react";
 import type { Transform } from "./use-canvas-transform";
+import type { DiagramData } from "@/lib/types";
+import { measureNodeDims, type PositionedNode, type PositionedGroup } from "@/components/editor/canvas-constants";
 
 interface UseCanvasExportOptions {
   canvasRef: React.RefObject<HTMLDivElement | null>;
@@ -7,6 +9,10 @@ interface UseCanvasExportOptions {
   width: number;
   height: number;
   toast: (options: { variant?: 'destructive' | 'default'; title: string; description: string }) => void;
+  diagramData: DiagramData;
+  processedNodes: PositionedNode[];
+  processedZones: PositionedGroup[];
+  selectedItemIds?: Set<string>;
 }
 
 export function useCanvasExport({
@@ -15,11 +21,139 @@ export function useCanvasExport({
   width,
   height,
   toast,
+  diagramData,
+  processedNodes,
+  processedZones,
+  selectedItemIds = new Set(),
 }: UseCanvasExportOptions) {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [pendingExportOptions, setPendingExportOptions] = useState<{ backgroundColor?: 'transparent' | 'white'; useSelection: boolean } | null>(null);
 
-  const exportPng = useCallback(async (options?: { backgroundColor?: 'transparent' | 'white'; selectionArea?: { x: number; y: number; width: number; height: number } }) => {
+  // Calculate bounds of items (all items or selected items only)
+  const calculateItemBounds = useCallback((itemIds?: Set<string>) => {
+    // Filter items based on selection if provided
+    const validNodes = processedNodes.filter(n => {
+      const isValid = typeof n.x === 'number' && 
+        typeof n.y === 'number' && 
+        !isNaN(n.x) && 
+        !isNaN(n.y) &&
+        isFinite(n.x) &&
+        isFinite(n.y);
+      
+      // If itemIds provided, only include selected items
+      if (itemIds && itemIds.size > 0) {
+        return isValid && itemIds.has(n.id);
+      }
+      return isValid;
+    });
+
+    const validZones = processedZones.filter(z => {
+      const isValid = typeof z.x === 'number' && 
+        typeof z.y === 'number' && 
+        typeof z.width === 'number' &&
+        typeof z.height === 'number' &&
+        !isNaN(z.x) && 
+        !isNaN(z.y) &&
+        !isNaN(z.width) &&
+        !isNaN(z.height) &&
+        isFinite(z.x) &&
+        isFinite(z.y) &&
+        isFinite(z.width) &&
+        isFinite(z.height) &&
+        z.width > 0 &&
+        z.height > 0;
+      
+      // If itemIds provided, only include selected items
+      if (itemIds && itemIds.size > 0) {
+        return isValid && itemIds.has(z.id);
+      }
+      return isValid;
+    });
+
+    // If no valid items, return null
+    if (validNodes.length === 0 && validZones.length === 0) {
+      return null;
+    }
+
+    // Calculate bounds for nodes
+    let nodeMinX = Infinity;
+    let nodeMinY = Infinity;
+    let nodeMaxX = -Infinity;
+    let nodeMaxY = -Infinity;
+
+    validNodes.forEach(n => {
+      const dims = measureNodeDims(n);
+      const x = n.x!;
+      const y = n.y!;
+      const width = dims.width;
+      const height = dims.height;
+
+      // Use custom dimensions if available (for custom sizeMode nodes)
+      const nodeWidth = (n.sizeMode === 'custom' && n.width) ? n.width : width;
+      const nodeHeight = (n.sizeMode === 'custom' && n.height) ? n.height : height;
+
+      nodeMinX = Math.min(nodeMinX, x);
+      nodeMinY = Math.min(nodeMinY, y);
+      nodeMaxX = Math.max(nodeMaxX, x + nodeWidth);
+      nodeMaxY = Math.max(nodeMaxY, y + nodeHeight);
+    });
+
+    // Calculate bounds for zones
+    let zoneMinX = Infinity;
+    let zoneMinY = Infinity;
+    let zoneMaxX = -Infinity;
+    let zoneMaxY = -Infinity;
+
+    validZones.forEach(z => {
+      const x = z.x!;
+      const y = z.y!;
+      const width = z.width!;
+      const height = z.height!;
+
+      zoneMinX = Math.min(zoneMinX, x);
+      zoneMinY = Math.min(zoneMinY, y);
+      zoneMaxX = Math.max(zoneMaxX, x + width);
+      zoneMaxY = Math.max(zoneMaxY, y + height);
+    });
+
+    // Combine bounds from nodes and zones
+    const minX = Math.min(
+      validNodes.length > 0 ? nodeMinX : Infinity,
+      validZones.length > 0 ? zoneMinX : Infinity
+    );
+    const minY = Math.min(
+      validNodes.length > 0 ? nodeMinY : Infinity,
+      validZones.length > 0 ? zoneMinY : Infinity
+    );
+    const maxX = Math.max(
+      validNodes.length > 0 ? nodeMaxX : -Infinity,
+      validZones.length > 0 ? zoneMaxX : -Infinity
+    );
+    const maxY = Math.max(
+      validNodes.length > 0 ? nodeMaxY : -Infinity,
+      validZones.length > 0 ? zoneMaxY : -Infinity
+    );
+
+    // Calculate content dimensions
+    const contentWidth = maxX - minX;
+    const contentHeight = maxY - minY;
+
+    if (contentWidth <= 0 || contentHeight <= 0) {
+      return null;
+    }
+
+    // Add padding around content
+    const padding = 40;
+
+    return {
+      x: minX - padding,
+      y: minY - padding,
+      width: contentWidth + (2 * padding),
+      height: contentHeight + (2 * padding),
+    };
+  }, [processedNodes, processedZones]);
+
+  const exportPng = useCallback(async (options?: { backgroundColor?: 'transparent' | 'white'; quality?: 'low' | 'medium' | 'high' }) => {
     if (!canvasRef.current) return;
     
     try {
@@ -32,66 +166,49 @@ export function useCanvasExport({
         return;
       }
 
-      // Store current transform from state (not DOM) to ensure we restore correctly
-      const currentTransform = transform;
-      const transformString = `translate(${currentTransform.x}px, ${currentTransform.y}px) scale(${currentTransform.k})`;
-
-      // Temporarily hide grid by removing the class
+      // Temporarily hide grid
       const hadGridClass = contentDiv.classList.contains('dot-grid');
       if (hadGridClass) {
         contentDiv.classList.remove('dot-grid');
       }
-
-      // Store original inline styles (might be empty if React is controlling it)
-      const originalTransform = contentDiv.style.transform;
-      const originalTransformOrigin = contentDiv.style.transformOrigin;
       
-      // Remove transform temporarily for accurate coordinate mapping
-      contentDiv.style.transform = 'none';
-      contentDiv.style.transformOrigin = '0 0';
-      
-      // Wait for browser to re-render with new transform
+      // Wait for browser to apply changes
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       
-      // For full export, we can work with the element as-is
-      // For selection export, we need to adjust coordinates
-      let exportElement = contentDiv;
+      // Export the canvas container as-is (current viewport)
+      let exportElement = canvasRef.current;
 
       try {
         const backgroundColor = options?.backgroundColor === 'transparent' ? 'transparent' : 
                                options?.backgroundColor === 'white' ? '#ffffff' :
                                getComputedStyle(document.documentElement).getPropertyValue('--background') || '#ffffff';
 
+        // Set pixel ratio based on quality setting
+        const quality = options?.quality || 'medium';
+        let pixelRatio: number;
+        
+        switch (quality) {
+          case 'low':
+            pixelRatio = 1;
+            break;
+          case 'medium':
+            pixelRatio = 2;
+            break;
+          case 'high':
+            pixelRatio = 4;
+            break;
+          default:
+            pixelRatio = 2;
+        }
+
+        console.log('Exporting current viewport with quality:', quality, 'pixelRatio:', pixelRatio);
+
         let exportOptions: any = {
-          pixelRatio: Math.min(3, (typeof window !== 'undefined' ? window.devicePixelRatio : 1) || 1) * 2,
+          pixelRatio: pixelRatio,
           cacheBust: true,
           backgroundColor: backgroundColor === 'transparent' ? undefined : backgroundColor,
           skipFonts: true,
         };
-
-        // If selection area is provided, crop to that area
-        if (options?.selectionArea) {
-          const { x, y, width: selectionWidth, height: selectionHeight } = options.selectionArea;
-          
-          // Debug: log before export
-          console.log('Export with selection:', { 
-            x, y, selectionWidth, selectionHeight,
-            contentDivSize: { width, height },
-            transform: currentTransform
-          });
-          
-          // Coordinates are in diagram space (relative to contentDiv without transform)
-          // html-to-image expects coordinates relative to the element's coordinate system
-          exportOptions = {
-            ...exportOptions,
-            x: Math.max(0, x),
-            y: Math.max(0, y),
-            width: Math.max(1, Math.min(selectionWidth, width - x)), // Don't exceed content bounds
-            height: Math.max(1, Math.min(selectionHeight, height - y)), // Don't exceed content bounds
-          };
-          
-          console.log('Final export options:', exportOptions);
-        }
 
         const dataUrl = await toPng(exportElement, exportOptions);
 
@@ -128,47 +245,24 @@ export function useCanvasExport({
         document.body.removeChild(link);
         toast({ title: 'Exported', description: 'PNG exported successfully.' });
       } finally {
-        // Restore original state - use the transform string from state, not from DOM
+        // Restore grid class
         if (hadGridClass) {
           contentDiv.classList.add('dot-grid');
-        }
-        // Restore transform - use the state value, not the original DOM value
-        contentDiv.style.transform = transformString;
-        contentDiv.style.transformOrigin = originalTransformOrigin || '0 0';
-        
-        // Force a re-render to ensure React syncs with the DOM
-        // Use requestAnimationFrame to ensure DOM update happens before React re-renders
-        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-        
-        // Ensure transform state is still correct (in case React tried to override)
-        // This is a safety check - the transform should already be correct from state
-        if (contentDiv.style.transform !== transformString) {
-          contentDiv.style.transform = transformString;
         }
       }
     } catch (err) {
       console.error('Export failed:', err);
       toast({ variant: 'destructive', title: 'Export failed', description: 'Export encountered an issue.' });
     }
-  }, [toast, transform, width, height, canvasRef]);
+  }, [toast, transform, width, height, canvasRef, calculateItemBounds, selectedItemIds, processedNodes, processedZones]);
 
-  const startSelectionMode = useCallback((options: { backgroundColor: 'transparent' | 'white'; useSelection: boolean }) => {
-    if (options.useSelection) {
-      setIsSelectionMode(true);
-      setPendingExportOptions(options);
-      toast({ title: 'Selection Mode', description: 'Drag to select the area to export.' });
-    } else {
-      exportPng({ backgroundColor: options.backgroundColor });
-    }
-  }, [exportPng, toast]);
+  const startExport = useCallback((options: { backgroundColor: 'transparent' | 'white'; quality?: 'low' | 'medium' | 'high' }) => {
+    exportPng({ backgroundColor: options.backgroundColor, quality: options.quality });
+  }, [exportPng]);
 
   return {
-    isSelectionMode,
-    pendingExportOptions,
     exportPng,
-    startSelectionMode,
-    setIsSelectionMode,
-    setPendingExportOptions,
+    startExport,
   };
 }
 

@@ -97,8 +97,7 @@ interface EditorCanvasProps {
 
 export type EditorCanvasHandle = {
   fitToView: () => void;
-  exportPng: (options?: { backgroundColor?: 'transparent' | 'white'; selectionArea?: { x: number; y: number; width: number; height: number } }) => Promise<void>;
-  startSelectionMode: (options: { backgroundColor: 'transparent' | 'white'; useSelection: boolean }) => void;
+  exportPng: (options?: { backgroundColor?: 'transparent' | 'white'; quality?: 'low' | 'medium' | 'high' }) => Promise<void>;
   copy: () => void;
   paste: () => void;
   canPaste: () => boolean;
@@ -749,16 +748,19 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   // HOOK: useCanvasExport
   // ============================================================================
   // Manages PNG export functionality
-  // - exportPng: Exports canvas to PNG (supports transparent/white background, selection area)
-  // - startSelectionMode: Enters selection mode for area export
-  // - isSelectionMode: Whether export selection mode is active
+  // - exportPng: Exports current viewport to PNG
+  // - startExport: Starts export with quality settings
   // See: src/hooks/use-canvas-export.ts
-  const { isSelectionMode, pendingExportOptions, exportPng, startSelectionMode, setIsSelectionMode, setPendingExportOptions } = useCanvasExport({
+  const { exportPng, startExport } = useCanvasExport({
     canvasRef,
     transform,
     width,
     height,
     toast,
+    diagramData,
+    processedNodes,
+    processedZones,
+    selectedItemIds,
   });
 
   // ============================================================================
@@ -781,11 +783,6 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     onSelectionChange,
     closeContextMenu,
     onCloseConnectionSettingsPanel: onResetConnectionSettingsTrigger,
-    isSelectionMode,
-    pendingExportOptions,
-    exportPng,
-    onExportComplete,
-    toast,
   });
 
   // ============================================================================
@@ -1066,13 +1063,12 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
 
   React.useImperativeHandle(ref, () => ({
     fitToView: handleFitToView, // Auto-fits diagram to viewport
-    exportPng: (options?: { backgroundColor?: 'transparent' | 'white'; selectionArea?: { x: number; y: number; width: number; height: number } }) => exportPng(options), // Exports canvas to PNG
-    startSelectionMode: (options: { backgroundColor: 'transparent' | 'white'; useSelection: boolean }) => startSelectionMode(options), // Enters export selection mode
+    exportPng: (options?: { backgroundColor?: 'transparent' | 'white'; quality?: 'low' | 'medium' | 'high' }) => exportPng(options), // Exports current viewport to PNG
     copy: copyHandler, // Copies selected item(s)
     paste: pasteHandler, // Pastes from clipboard
     canPaste: canPasteHandler, // Checks if paste is available
     pastePaletteItem: pastePaletteItemHandler, // Pastes a new item from the sidebar palette
-  }), [handleFitToView, exportPng, startSelectionMode, copyHandler, pasteHandler, canPasteHandler, pastePaletteItemHandler]);
+  }), [handleFitToView, exportPng, copyHandler, pasteHandler, canPasteHandler, pastePaletteItemHandler]);
 
   return (
     <div className="relative w-full h-full" data-tutorial-id="canvas">

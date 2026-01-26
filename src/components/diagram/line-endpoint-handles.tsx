@@ -62,9 +62,9 @@ export function LineEndpointHandles({
       {activeHandle !== 'start' && (
         <div
           className={cn(
-            "absolute rounded-full border-2 border-blue-500 bg-transparent cursor-move",
-            isHighlighted('start') && "border-blue-700 scale-125 shadow-lg",
-            isActive('start') && "bg-blue-200",
+            "absolute rounded-full border-2 border-green-500 bg-transparent cursor-move",
+            isHighlighted('start') && "border-green-700 scale-125 shadow-lg",
+            isActive('start') && "bg-green-200",
             zIndexClass
           )}
           style={{
@@ -86,9 +86,9 @@ export function LineEndpointHandles({
       {activeHandle !== 'end' && (
         <div
           className={cn(
-            "absolute rounded-full border-2 border-green-500 bg-transparent cursor-move",
-            isHighlighted('end') && "border-green-700 scale-125 shadow-lg",
-            isActive('end') && "bg-green-200",
+            "absolute rounded-full border-2 border-yellow-500 bg-transparent cursor-move",
+            isHighlighted('end') && "border-yellow-700 scale-125 shadow-lg",
+            isActive('end') && "bg-yellow-200",
             zIndexClass
           )}
           style={{

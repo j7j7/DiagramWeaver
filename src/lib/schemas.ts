@@ -79,7 +79,7 @@ export const DiagramConnectionDataSchema = z.object({
 // Schema for DiagramGroupData
 export const DiagramGroupDataSchema = z.object({
   id: z.string(),
-  type: z.literal('group'),
+  type: z.literal('zone'),
   label: z.string().optional(),
   children: z.array(z.string()),
   info: z.string().optional(),
@@ -218,13 +218,15 @@ export const DiagramNodeItemSchema = z.object({
   lineTextVerticalPosition: z.enum(['above', 'middle', 'below']).optional(), // Text position relative to line
 });
 
-// Schema for nested group items (recursive)
-export const DiagramGroupItemSchema: z.ZodType<any> = z.object({
+// Schema for nested group items in hierarchical format
+// Note: Using z.any() for children to allow flexible nested structures
+// The actual validation happens when converting to flat format
+export const DiagramGroupItemSchema = z.object({
   id: z.string(),
   type: z.literal('zone'),
   label: z.string().optional(),
   info: z.string().optional(),
-  children: z.array(z.any()).optional(), // Will be validated recursively
+  children: z.array(z.any()).optional(), // Allow any structure - validated during conversion
   x: z.number().optional(),
   y: z.number().optional(),
   subType: z.enum(['zone', 'group']).optional(),
@@ -271,7 +273,7 @@ export const DiagramGroupItemSchema: z.ZodType<any> = z.object({
    rotation: z.number().optional(), // Rotation angle in degrees (0, 45, -45, 90, -90)
    borderWidth: z.number().optional(), // Border thickness for groups/zones
    groupId: z.string().optional(), // Reference to grouping this zone belongs to
- });
+});
 
 // Schema for nested hierarchical diagram data
 export const HierarchicalDiagramDataSchema = z.object({

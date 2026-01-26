@@ -194,7 +194,6 @@ export default function DiagramEditor() {
   const [canPaste, setCanPaste] = React.useState<boolean>(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [mousePosition, setMousePosition] = React.useState<{ x: number; y: number } | null>(null);
-  const [selectionCoordinates, setSelectionCoordinates] = React.useState<{ start: { x: number; y: number } | null; end: { x: number; y: number } | null } | undefined>(undefined);
   const [hoverEnabled, setHoverEnabled] = React.useState<boolean>(false);
   const [selectionAnimationEnabled, setSelectionAnimationEnabled] = React.useState<boolean>(false);
   const [iconBackgroundEnabled, setIconBackgroundEnabled] = React.useState<boolean>(true);
@@ -914,23 +913,35 @@ export default function DiagramEditor() {
     let dataToValidate: unknown = json;
 
     if (isHierarchical) {
+      console.log('[Load] Detected hierarchical format, converting to flat...');
       // Validate hierarchical format first
       const hierarchicalResult = HierarchicalDiagramDataSchema.safeParse(json);
       if (!hierarchicalResult.success) {
+        console.error('[Load] Hierarchical validation failed:', hierarchicalResult.error);
         throw new Error(`Invalid hierarchical diagram format: ${hierarchicalResult.error.message}`);
       }
+      console.log('[Load] Hierarchical validation passed');
       // Convert hierarchical to flat format
       dataToValidate = convertFromNestedHierarchy(hierarchicalResult.data);
+      console.log('[Load] Converted to flat format:', {
+        nodes: (dataToValidate as any).nodes?.length,
+        zones: (dataToValidate as any).zones?.length,
+        connections: (dataToValidate as any).connections?.length
+      });
+    } else {
+      console.log('[Load] Detected flat format');
     }
 
     // Validate flat format
     const flatResult = DiagramDataSchema.safeParse(dataToValidate);
     if (!flatResult.success) {
+      console.error('[Load] Flat validation failed:', flatResult.error);
       throw new Error(`Invalid diagram format: ${flatResult.error.message}`);
     }
+    console.log('[Load] Flat validation passed');
 
     // Ensure all required arrays are present
-    return {
+    const result = {
       nodes: flatResult.data.nodes || [],
       connections: flatResult.data.connections || [],
       zones: flatResult.data.zones || [],
@@ -938,18 +949,31 @@ export default function DiagramEditor() {
       rootZoneId: (dataToValidate as any).rootZoneId,
       layers: flatResult.data.layers,
     };
+    
+    console.log('[Load] Final result:', {
+      nodes: result.nodes.length,
+      zones: result.zones.length,
+      connections: result.connections.length,
+      hasLayers: !!result.layers
+    });
+    
+    return result;
   }, []);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      console.log('[Load] Loading file:', file.name);
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
           const text = e.target?.result;
           if (typeof text === 'string') {
+            console.log('[Load] File read successfully, parsing JSON...');
             const jsonData = JSON.parse(text);
+            console.log('[Load] JSON parsed successfully, converting to DiagramData...');
             const completeData = parseUnknownJsonToDiagramData(jsonData);
+            console.log('[Load] Conversion successful, updating state...');
             
             // Clear existing data first to ensure clean load
             setDiagramData({ nodes: [], connections: [], zones: [], groupings: [] });
@@ -957,10 +981,12 @@ export default function DiagramEditor() {
             setTimeout(() => {
               setDiagramData(completeData);
               setSelectedItem(null);
-              toast({ title: 'Diagram Loaded', description: 'Your diagram has been successfully loaded. If the JSON editor doesn\'t update, try toggling it off and on.' });
+              console.log('[Load] State updated successfully');
+              toast({ title: 'Diagram Loaded', description: 'Your diagram has been successfully loaded.' });
             }, 0);
           }
         } catch (error) {
+          console.error('[Load] Error loading file:', error);
           const message = error instanceof Error ? error.message : "An unknown error occurred";
           toast({
               variant: 'destructive',
@@ -1089,18 +1115,14 @@ export default function DiagramEditor() {
     setExportDialogOpen(true);
   };
 
-  const handleExport = async (options: { backgroundColor: 'transparent' | 'white'; useSelection: boolean }) => {
-    if (options.useSelection) {
-      // Keep dialog open during selection mode
-      if (editorRef.current) {
-        await editorRef.current.startSelectionMode(options);
-      }
-    } else {
-      // Close dialog and export immediately for full diagram
-      setExportDialogOpen(false);
-      if (editorRef.current) {
-        await editorRef.current.exportPng({ backgroundColor: options.backgroundColor });
-      }
+  const handleExport = async (options: { backgroundColor: 'transparent' | 'white'; quality?: 'low' | 'medium' | 'high' }) => {
+    // Close dialog and export current viewport
+    setExportDialogOpen(false);
+    if (editorRef.current) {
+      await editorRef.current.exportPng({ 
+        backgroundColor: options.backgroundColor,
+        quality: options.quality || 'medium'
+      });
     }
   };
 
@@ -1892,7 +1914,6 @@ export default function DiagramEditor() {
         exportDialogOpen={exportDialogOpen}
         setExportDialogOpen={setExportDialogOpen}
         handleExport={handleExport}
-        selectionCoordinates={selectionCoordinates}
         refreshCanvas={refreshCanvas}
         updateHistory={updateHistory}
         closeTabDialogOpen={closeTabDialogOpen}
@@ -1916,7 +1937,6 @@ export default function DiagramEditor() {
         setIsDragging={setIsDragging}
         setCanPaste={setCanPaste}
         setMousePosition={setMousePosition}
-        setSelectionCoordinates={setSelectionCoordinates}
         handleGroupItems={handleGroupItems}
         handleUngroupItems={handleUngroupItems}
         handleRemoveFromGroup={handleRemoveFromGroup}
@@ -2006,7 +2026,6 @@ function DiagramEditorInner({
   exportDialogOpen,
   setExportDialogOpen,
   handleExport,
-  selectionCoordinates,
   refreshCanvas,
   updateHistory,
   closeTabDialogOpen,
@@ -2028,7 +2047,6 @@ function DiagramEditorInner({
   setIsDragging,
   setCanPaste,
   setMousePosition,
-  setSelectionCoordinates,
   handleGroupItems,
   handleUngroupItems,
   handleRemoveFromGroup,
@@ -2243,7 +2261,6 @@ function DiagramEditorInner({
                      onDraggingChange={setIsDragging}
                     onClipboardChange={setCanPaste}
                     onMousePositionChange={setMousePosition}
-                    onSelectionChange={setSelectionCoordinates}
                     onExportComplete={() => setExportDialogOpen(false)}
                     hoverEnabled={hoverEnabled}
                     selectionAnimationEnabled={selectionAnimationEnabled}
@@ -2314,7 +2331,6 @@ function DiagramEditorInner({
           open={exportDialogOpen}
           onOpenChange={setExportDialogOpen}
           onExport={handleExport}
-          selectionCoordinates={selectionCoordinates}
         />
         <ScratchPad 
           isOpen={scratchPadOpen} 
