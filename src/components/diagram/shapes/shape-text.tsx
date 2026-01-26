@@ -38,6 +38,11 @@ export function ShapeText({
   const verticalPosition = nodeAny.textVerticalPosition;
   const textPosition = nodeAny.textPosition;
 
+  // Point shapes don't display text
+  if (node.type === 'generic.object.point' || node.type?.endsWith('.point')) {
+    return null;
+  }
+
   // Show text if label exists
   if (!label) {
     return null;
