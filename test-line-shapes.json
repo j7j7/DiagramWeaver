@@ -1,0 +1,47 @@
+{
+  "zones": [
+    {
+      "id": "line-test-1",
+      "type": "generic.object.line",
+      "label": "Horizontal Line",
+      "startPos": { "x": 100, "y": 100 },
+      "endPos": { "x": 300, "y": 100 },
+      "startCap": "dot",
+      "endCap": "arrow",
+      "lineThickness": 3,
+      "lineColor": "#3b82f6"
+    },
+    {
+      "id": "line-test-2",
+      "type": "generic.object.line",
+      "label": "Angled Line",
+      "startPos": { "x": 100, "y": 200 },
+      "endPos": { "x": 300, "y": 350 },
+      "startCap": "square",
+      "endCap": "arrow",
+      "lineThickness": 2.5,
+      "lineColor": "#ef4444"
+    },
+    {
+      "id": "line-test-3",
+      "type": "generic.object.line",
+      "label": "Vertical Line",
+      "startPos": { "x": 400, "y": 100 },
+      "endPos": { "x": 400, "y": 350 },
+      "startCap": "arrow",
+      "endCap": "dot",
+      "lineThickness": 4,
+      "lineColor": "#10b981"
+    },
+    {
+      "id": "square-1",
+      "type": "generic.object.square",
+      "label": "Regular Shape",
+      "x": 500,
+      "y": 150,
+      "width": 80,
+      "height": 80
+    }
+  ],
+  "connections": []
+}

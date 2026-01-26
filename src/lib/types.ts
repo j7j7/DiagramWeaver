@@ -48,6 +48,13 @@ export interface DiagramNodeData {
   groupId?: string; // Reference to grouping this node belongs to
   importId?: string; // ID for tracking imported items from Scratch Pad
   
+  // Line shape specific properties (absolute canvas positions)
+  startPos?: { x: number; y: number }; // Absolute canvas position for line start
+  endPos?: { x: number; y: number }; // Absolute canvas position for line end
+  startCap?: 'none' | 'arrow' | 'dot' | 'square'; // Start endpoint style for line shapes
+  endCap?: 'none' | 'arrow' | 'dot' | 'square'; // End endpoint style for line shapes
+  lineThickness?: number; // Line thickness for line shapes (default: 2.5)
+  
   // Resource information for icon rendering
   provider?: string; // Provider name (e.g., 'aws', 'azure', 'gcp')
   category?: string; // Category name (e.g., 'compute', 'storage', 'network')
@@ -141,6 +148,13 @@ export interface DiagramNodeItem {
    tag?: string; // Tag text for node identification
    tagPosition?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right'; // Tag position relative to node
    groupId?: string; // Reference to grouping this node belongs to
+   
+   // Line shape specific properties (absolute canvas positions)
+   startPos?: { x: number; y: number }; // Absolute canvas position for line start
+   endPos?: { x: number; y: number }; // Absolute canvas position for line end
+   startCap?: 'none' | 'arrow' | 'dot' | 'square'; // Start endpoint style for line shapes
+   endCap?: 'none' | 'arrow' | 'dot' | 'square'; // End endpoint style for line shapes
+   lineThickness?: number; // Line thickness for line shapes (default: 2.5)
 }
 
 export interface DiagramZoneItem {

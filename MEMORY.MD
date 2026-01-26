@@ -61,6 +61,59 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
 - **Environment Configuration**: Uses OLLAMA_BASE_URL (default: http://localhost:11434) and OLLAMA_MODEL (default: deepseek-v3.1:671b-cloud)
 
 ### Recent Updates and Fixes
+- **2026-01-26 – Line Shape Feature** (Corrected Implementation): Added a new line shape type that works fundamentally differently from other shapes:
+  - **Unique Object Type**: Lines are NOT regular shapes - they're a special diagram element with their own behavior
+  - **Absolute Position System**: Lines store TWO absolute canvas positions (`startPos` and `endPos`) instead of one position + relative offsets
+  - **Bounding Box Calculation**: The node's x,y position represents the top-left of the bounding box containing both endpoints
+  - **Independent Endpoint Dragging**: 
+    - Blue handle appears at start point, green handle at end point
+    - Drag either handle to move that endpoint independently
+    - **Grid Snapping**: Endpoints snap to grid when dragged for precise alignment
+    - Creates angled lines (45°, vertical, horizontal, any angle)
+    - Endpoint positions are absolute canvas coordinates
+  - **Line Movement**: 
+    - Click and drag the line body (not handles) to move entire line
+    - Both startPos and endPos update together by the same delta
+    - Maintains the line's angle and length while moving
+  - **Visual Differences from Regular Shapes**:
+    - ❌ NO bounding box/ring highlight when selected (only endpoint handles show)
+    - ❌ NO resize handles (resize by dragging endpoints)
+    - ❌ NO rotation controls (rotation defined by endpoint positions)
+    - ❌ NO connection handles (lines aren't connectable nodes)
+    - ❌ NO hover scale effect or glow
+  - **Customizable Endpoint Caps**:
+    - **None**: No decoration
+    - **Arrow**: Triangular arrowhead pointing along line direction
+    - **Dot**: Circular cap
+    - **Square**: Square cap rotated to line angle
+  - **Context Toolbar Controls** (only these show for lines):
+    - Start Cap dropdown (none/arrow/dot/square)
+    - End Cap dropdown (none/arrow/dot/square)
+    - Line Thickness input (0.5-10px)
+    - Line Color picker (via lineColor property)
+  - **Line Properties**:
+    ```typescript
+    {
+      startPos: { x: number, y: number },  // Absolute canvas position
+      endPos: { x: number, y: number },    // Absolute canvas position
+      startCap: 'none' | 'arrow' | 'dot' | 'square',
+      endCap: 'none' | 'arrow' | 'dot' | 'square',
+      lineThickness: number,
+      lineColor: string
+    }
+    ```
+  - **Default Configuration**: New lines created horizontal, 150px length, start=none, end=arrow, thickness=2.5px
+  - **Rendering System**: 
+    - LineShape component calculates relative coordinates from absolute positions
+    - SVG positioned absolutely with calculated dimensions
+    - Caps rendered at correct angles based on line direction
+  - **Movement System**: Both moveItem and moveMultipleItems handle lines specially by updating both endpoints
+  - **Type System**: Extended DiagramNodeData/DiagramNodeItem with startPos, endPos, startCap, endCap, lineThickness
+  - **Components Created**:
+    - `src/components/diagram/shapes/line.tsx` - Line rendering with SVG
+    - `src/components/diagram/line-endpoint-handles.tsx` - Draggable endpoint handles
+  - **Files Modified**: types.ts, diagram-node.tsx, context-toolbar.tsx, canvas-operations.ts, resource-generic.json
+  - **Benefits**: True line objects for annotations, directional indicators, visual separators, and custom connector-like elements without using the connection system
 - **2025-11-17 – Copy-Paste ID Generation Fix**: Fixed duplicate IDs when pasting multiple items of the same type:
   - **Problem 1 - Duplicate IDs**: When copying and pasting multiple nodes of the same type (e.g., 3 Windows instances), all pasted items would get the same ID because `generateSequentialId()` was called with the same `diagramData` state for each item.
   - **Problem 2 - Selection Race Condition**: When pasting multiple items, only some of the new items would be selected (e.g., copy 2, paste, but 3 out of 4 items selected including one old item). This was caused by async state updates where shift-key selection read stale state.

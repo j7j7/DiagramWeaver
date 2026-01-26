@@ -107,6 +107,7 @@ export function useCanvasOperations({
                                 itemType === 'generic.object.jigsaw' ||
                                 itemType === 'generic.object.arrowhead' ||
                                 itemType === 'generic.object.chevron' ||
+                                itemType === 'generic.object.line' ||
                                 itemType?.endsWith('.square') ||
                                 itemType?.endsWith('.circle') ||
                                 itemType?.endsWith('.point') ||
@@ -122,7 +123,8 @@ export function useCanvasOperations({
                                 itemType?.endsWith('.pentagon') ||
                                 itemType?.endsWith('.octagon') ||
                                 itemType?.endsWith('.jigsaw') ||
-                                itemType?.endsWith('.arrowhead');
+                                itemType?.endsWith('.arrowhead') ||
+                                itemType?.endsWith('.line');
       
       // Check if this is a textbox resource
       const isTextboxResource = itemType === 'generic.text.textbox' || itemType?.endsWith('.textbox');
@@ -169,6 +171,7 @@ export function useCanvasOperations({
              itemType === 'generic.object.rectangle' ? 80 :
              itemType === 'generic.object.rounded-rectangle' ? 80 :
              itemType === 'generic.object.cloud' ? 80 :
+             itemType === 'generic.object.line' ? 150 :
              60
            ) : isTextboxResource ? 120 : undefined, // Initial width - larger for textbox
            height: isShapeResource ? (
@@ -176,6 +179,7 @@ export function useCanvasOperations({
              itemType === 'generic.object.rectangle' ? 50 :
              itemType === 'generic.object.rounded-rectangle' ? 50 :
              itemType === 'generic.object.cloud' ? 50 :
+             itemType === 'generic.object.line' ? 100 :
              60
            ) : isTextboxResource ? 80 : undefined, // Initial height - larger for textbox
           // Apply default text color for text resources
@@ -191,6 +195,15 @@ export function useCanvasOperations({
           ...(itemType === 'generic.object.point' && !isFromScratchPad && {
             borderStyle: 'none', // No outline by default
             backgroundColor: '#808080' // Grey color by default
+          }),
+          // Special defaults for line shape (only if not from scratchpad)
+          ...(itemType === 'generic.object.line' && !isFromScratchPad && {
+            startPos: { x: position.x, y: position.y + 50 },
+            endPos: { x: position.x + 150, y: position.y + 50 },
+            startCap: 'none',
+            endCap: 'arrow',
+            lineThickness: 2.5,
+            lineColor: '#000000',
           }),
           // Apply icon background setting
           ...(!iconBackgroundEnabled && {
@@ -542,7 +555,27 @@ export function useCanvasOperations({
           const snappedY = snapToGrid(newPos.y);
           
           if (item.type === ItemTypes.CANVAS_NODE) {
-            currentNodes = currentNodes.map(n => n.id === item.id ? { ...n, x: snappedX, y: snappedY } : n);
+            currentNodes = currentNodes.map(n => {
+              if (n.id === item.id) {
+                // Special handling for line shapes - move both endpoints
+                if (n.type === 'generic.object.line' || n.type?.endsWith('.line')) {
+                  const currentStartPos = (n as any).startPos || { x: n.x || 0, y: (n.y || 0) + 50 };
+                  const currentEndPos = (n as any).endPos || { x: (n.x || 0) + 150, y: (n.y || 0) + 50 };
+                  const deltaX = snappedX - (n.x || 0);
+                  const deltaY = snappedY - (n.y || 0);
+                  
+                  return {
+                    ...n,
+                    x: snappedX,
+                    y: snappedY,
+                    startPos: { x: currentStartPos.x + deltaX, y: currentStartPos.y + deltaY },
+                    endPos: { x: currentEndPos.x + deltaX, y: currentEndPos.y + deltaY }
+                  };
+                }
+                return { ...n, x: snappedX, y: snappedY };
+              }
+              return n;
+            });
           } else { 
             currentZones = currentZones.map(zone => zone.id === item.id ? { ...zone, x: snappedX, y: snappedY } : zone);
           }

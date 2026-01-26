@@ -214,25 +214,39 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       return null;
     }
     
+    // Helper to check if a node is a line (exclude from rotation)
+    const isLineNode = (node: any) => {
+      return node?.type === 'generic.object.line' || node?.type?.endsWith('.line');
+    };
+    
     // If hovering a selected item, use that (for multi-select, this provides better UX)
     if (hoveredItemId && hoveredItemType && selectedItemIds.has(hoveredItemId)) {
+      // Exclude line nodes from rotation
+      if (hoveredItemType === 'node') {
+        const node = nodesById[hoveredItemId];
+        if (node && isLineNode(node)) return null;
+      }
       return { id: hoveredItemId, type: hoveredItemType };
     }
     
     // For single selection, show handles for the selected item
     if (selectedItemIds.size === 1 && selectedItemId) {
       const node = nodesById[selectedItemId];
-      if (node) return { id: selectedItemId, type: 'node' as const };
+      if (node) {
+        // Exclude line nodes from rotation
+        if (isLineNode(node)) return null;
+        return { id: selectedItemId, type: 'node' as const };
+      }
       const zone = zonesById[selectedItemId];
       if (zone) return { id: selectedItemId, type: 'zone' as const };
     }
     
     // For multi-select, use the first selected item (persistent, won't flicker)
     if (selectedItemIds.size > 1) {
-      // Try to find first node
+      // Try to find first node (excluding lines)
       for (const id of selectedItemIds) {
         const node = nodesById[id];
-        if (node) return { id, type: 'node' as const };
+        if (node && !isLineNode(node)) return { id, type: 'node' as const };
       }
       // If no nodes, find first zone
       for (const id of selectedItemIds) {
@@ -482,6 +496,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   });
 
   // Wrapper functions for multi-item resize
+  const handleNodeUpdate = useCallback((updatedNode: DiagramNodeData) => {
+    setDiagramData(prevData => ({
+      ...prevData,
+      nodes: prevData.nodes?.map(n => n.id === updatedNode.id ? updatedNode : n) || []
+    }));
+  }, [setDiagramData]);
+
   const handleNodeResize = useCallback((nodeId: string, newWidth: number, newHeight: number) => {
     if (selectedItemIds.size > 1 && selectedItemIds.has(nodeId)) {
       // Multi-select resize: calculate scale factors from the dragged node
@@ -1204,6 +1225,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                      onLabelUpdate={onLabelUpdate}
                      onTagUpdate={onTagUpdate}
                      onDraggingChange={onDraggingChange}
+                     onUpdate={handleNodeUpdate}
                     hoverEnabled={hoverEnabled}
                     selectionAnimationEnabled={selectionAnimationEnabled}
                     animationOffset={selectionAnimationEnabled ? (animationOffsets[node.id] || { x: 0, y: 0 }) : { x: 0, y: 0 }}
@@ -1211,6 +1233,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     onHoverChange={handleHoverChange}
                     onConnect={onConnect}
                     isConnectMode={isConnectMode && isNodeSelected}
+                    transform={transform}
+                    canvasRef={canvasRef}
                   />
                 );
               });

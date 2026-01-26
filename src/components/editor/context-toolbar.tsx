@@ -882,6 +882,7 @@ export function ContextToolbar({
                                    selectedItem.type === 'generic.object.jigsaw' ||
                                    selectedItem.type === 'generic.object.arrowhead' ||
                                    selectedItem.type === 'generic.object.chevron' ||
+                                   selectedItem.type === 'generic.object.line' ||
                                    selectedItem.type?.endsWith('.square') ||
                                    selectedItem.type?.endsWith('.circle') ||
                                    selectedItem.type?.endsWith('.point') ||
@@ -898,7 +899,9 @@ export function ContextToolbar({
                                    selectedItem.type?.endsWith('.octagon') ||
                                    selectedItem.type?.endsWith('.jigsaw') ||
                                    selectedItem.type?.endsWith('.arrowhead') ||
-                                   selectedItem.type?.endsWith('.chevron'));
+                                   selectedItem.type?.endsWith('.chevron') ||
+                                   selectedItem.type?.endsWith('.line'));
+    const isLineNode = isNode && (selectedItem.type === 'generic.object.line' || selectedItem.type?.endsWith('.line'));
   
 
   const isLabelOrTextbox = isTextboxNode;
@@ -1443,7 +1446,7 @@ export function ContextToolbar({
 
 
         {/* Text Placement for Shapes */}
-        {isShapeNode && (
+        {isShapeNode && !isLineNode && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -1486,6 +1489,93 @@ export function ContextToolbar({
                     </SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+
+        {/* Line Endpoint Controls */}
+        {isLineNode && (
+          <Popover>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 px-2">
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="4" y1="12" x2="20" y2="12" />
+                      <polygon points="20,12 16,10 16,14" fill="currentColor" />
+                    </svg>
+                  </Button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent>Line Endpoints</TooltipContent>
+            </Tooltip>
+            <PopoverContent className="w-56">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Start Cap</label>
+                  <Select
+                    value={(selectedItem as any).startCap || 'none'}
+                    onValueChange={(value) => {
+                      onItemUpdate?.({ 
+                        ...selectedItem, 
+                        startCap: value as 'none' | 'arrow' | 'dot' | 'square'
+                      } as SelectedItem);
+                    }}
+                  >
+                    <SelectTrigger className="h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      <SelectItem value="arrow">Arrow</SelectItem>
+                      <SelectItem value="dot">Dot</SelectItem>
+                      <SelectItem value="square">Square</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">End Cap</label>
+                  <Select
+                    value={(selectedItem as any).endCap || 'arrow'}
+                    onValueChange={(value) => {
+                      onItemUpdate?.({ 
+                        ...selectedItem, 
+                        endCap: value as 'none' | 'arrow' | 'dot' | 'square'
+                      } as SelectedItem);
+                    }}
+                  >
+                    <SelectTrigger className="h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      <SelectItem value="arrow">Arrow</SelectItem>
+                      <SelectItem value="dot">Dot</SelectItem>
+                      <SelectItem value="square">Square</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Line Thickness</label>
+                  <input
+                    type="number"
+                    className="w-full h-8 px-2 rounded border"
+                    value={(selectedItem as any).lineThickness || 2.5}
+                    min={0.5}
+                    max={10}
+                    step={0.5}
+                    onChange={(e) => {
+                      const thickness = parseFloat(e.target.value);
+                      if (!isNaN(thickness)) {
+                        onItemUpdate?.({ 
+                          ...selectedItem, 
+                          lineThickness: thickness
+                        } as SelectedItem);
+                      }
+                    }}
+                  />
+                </div>
               </div>
             </PopoverContent>
           </Popover>
@@ -1718,8 +1808,8 @@ export function ContextToolbar({
 
 
 
-        {/* Rotation (All Nodes and Groups) */}
-        {(isNode || isZone) && (
+        {/* Rotation (All Nodes and Groups, except lines) */}
+        {(isNode || isZone) && !isLineNode && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>

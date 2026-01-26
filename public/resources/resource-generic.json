@@ -38,7 +38,8 @@
            {"name": "Octagon", "file": "octagon.png", "type": "shape"},
 {"name": "Jigsaw", "file": "jigsaw.png", "type": "shape"},
             {"name": "Arrowhead", "file": "arrowhead.png", "type": "shape"},
-            {"name": "Chevron", "file": "chevron.png", "type": "shape"}
+            {"name": "Chevron", "file": "chevron.png", "type": "shape"},
+            {"name": "Line", "file": "line.png", "type": "line"}
         ]
       },
     "user": {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useDrag } from 'react-dnd';
 import { getEmptyImage } from 'react-dnd-html5-backend';
 import {
@@ -12,6 +12,7 @@ import { ResourceIcon } from "./resource-icon";
 import type { DiagramNodeData } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { ItemTypes } from "../editor/draggable-item";
+import { snapToGrid } from "@/components/editor/canvas-constants";
 import { getTextStylingCSS, extractTextStylingFromNode } from "@/lib/text-styling";
 import {
   SquareShape,
@@ -31,8 +32,10 @@ import {
   JigsawShape,
   ArrowheadShape,
   ChevronShape,
+  LineShape,
 } from "./shapes";
 import { ResizeHandles } from "./resize-handles";
+import { LineEndpointHandles } from "./line-endpoint-handles";
 import { ConnectHandle } from "./connect-handle";
 
 const NODE_WIDTH = 80;
@@ -150,6 +153,7 @@ interface DiagramNodeProps {
   onResizeEnd?: () => void;
   onPositionUpdate?: (nodeId: string, x: number, y: number) => void;
   onDraggingChange?: (isDragging: boolean) => void;
+  onUpdate?: (node: DiagramNodeData) => void;
   hoverEnabled?: boolean;
   selectionAnimationEnabled?: boolean;
   animationOffset?: { x: number; y: number };
@@ -157,9 +161,11 @@ interface DiagramNodeProps {
   onHoverChange?: (id: string, itemType: 'node' | 'zone', isHovered: boolean) => void;
   onConnect?: (connectionOptions?: { style?: 'pathways' | 'bezier', curvature?: number }) => void;
   isConnectMode?: boolean;
+  transform?: { x: number; y: number; k: number }; // Canvas transform for coordinate conversion
+  canvasRef?: React.RefObject<HTMLDivElement | null>; // Canvas ref for coordinate conversion
 }
 
-export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onResizeStart, onResizeEnd, onPositionUpdate, onDraggingChange, hoverEnabled = true, selectionAnimationEnabled = false, animationOffset = { x: 0, y: 0 }, isReadOnly = false, onHoverChange, onConnect, isConnectMode }: DiagramNodeProps) {
+export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onResizeStart, onResizeEnd, onPositionUpdate, onDraggingChange, onUpdate, hoverEnabled = true, selectionAnimationEnabled = false, animationOffset = { x: 0, y: 0 }, isReadOnly = false, onHoverChange, onConnect, isConnectMode, transform, canvasRef }: DiagramNodeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [isEditingTag, setIsEditingTag] = useState(false);
@@ -175,6 +181,11 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
   const inputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
+  
+  // Line endpoint dragging state
+  const [isDraggingLineEndpoint, setIsDraggingLineEndpoint] = useState(false);
+  const [lineEndpointHandle, setLineEndpointHandle] = useState<'start' | 'end' | null>(null);
+  const lineEndpointStartPos = useRef<{ x: number; y: number; startPoint: { x: number; y: number }; endPoint: { x: number; y: number } } | null>(null);
 
   const handleLabelDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -332,6 +343,8 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
       return <ArrowheadShape {...shapeProps} />;
     } else if (nodeType === 'generic.object.chevron' || nodeType?.endsWith('.chevron')) {
       return <ChevronShape {...shapeProps} />;
+    } else if (nodeType === 'generic.object.line' || nodeType?.endsWith('.line')) {
+      return <LineShape {...shapeProps} />;
     }
     return null;
   };
@@ -430,9 +443,10 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
    const isTextNode = node.type === 'generic.text.text';
   const isTextboxNode = node.type === 'generic.text.textbox';
    const isShapeNode = node.type === 'generic.object.square' || node.type === 'generic.object.circle' || node.type === 'generic.object.point' || node.type === 'generic.object.rectangle' || node.type === 'generic.object.rounded-rectangle' || node.type === 'generic.object.triangle' || node.type === 'generic.object.star' || node.type === 'generic.object.cloud' || node.type === 'generic.object.parallelogram' || node.type === 'generic.object.trapezoid' || node.type === 'generic.object.kite' || node.type === 'generic.object.hexagon' || node.type === 'generic.object.pentagon' || node.type === 'generic.object.octagon' || node.type === 'generic.object.jigsaw' || node.type === 'generic.object.arrowhead' || node.type === 'generic.object.chevron' ||
-                       node.type?.endsWith('.square') || node.type?.endsWith('.circle') || node.type?.endsWith('.point') || node.type?.endsWith('.rectangle') || node.type?.endsWith('.rounded-rectangle') || node.type?.endsWith('.triangle') || node.type?.endsWith('.star') || node.type?.endsWith('.cloud') || node.type?.endsWith('.parallelogram') || node.type?.endsWith('.trapezoid') || node.type?.endsWith('.kite') || node.type?.endsWith('.hexagon') || node.type?.endsWith('.pentagon') || node.type?.endsWith('.octagon') || node.type?.endsWith('.jigsaw') || node.type?.endsWith('.arrowhead') || node.type?.endsWith('.chevron');
+                       node.type?.endsWith('.square') || node.type?.endsWith('.circle') || node.type?.endsWith('.point') || node.type?.endsWith('.rectangle') || node.type?.endsWith('.rounded-rectangle') || node.type?.endsWith('.triangle') || node.type?.endsWith('.star') || node.type?.endsWith('.cloud') || node.type?.endsWith('.parallelogram') || node.type?.endsWith('.trapezoid') || node.type?.endsWith('.kite') || node.type?.endsWith('.hexagon') || node.type?.endsWith('.pentagon') || node.type?.endsWith('.octagon') || node.type?.endsWith('.jigsaw') || node.type?.endsWith('.arrowhead') || node.type?.endsWith('.chevron') || node.type === 'generic.object.line' || node.type?.endsWith('.line');
   const isPointNode = node.type === 'generic.object.point' || node.type?.endsWith('.point');
-  const isRotatableNode = isTextNode  || isTextboxNode || isShapeNode;
+  const isLineNode = node.type === 'generic.object.line' || node.type?.endsWith('.line');
+  const isRotatableNode = (isTextNode || isTextboxNode || isShapeNode) && !isLineNode;
   const nodeHeight = calculateNodeHeight(node.label || '', node.type, node.sizeMode, node.height);
   const rotation = (node as any).rotation || 0;
   
@@ -550,6 +564,81 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
       onResizeEnd();
     }
   };
+  
+  // Line endpoint drag handlers
+  const handleLineEndpointDragStart = (e: React.MouseEvent, handle: 'start' | 'end') => {
+    if (isReadOnly) {
+      e.stopPropagation();
+      e.preventDefault();
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setIsDraggingLineEndpoint(true);
+    setLineEndpointHandle(handle);
+    
+    // Store absolute canvas positions
+    const currentStartPos = (node as any).startPos || { x: node.x || 0, y: (node.y || 0) + 50 };
+    const currentEndPos = (node as any).endPos || { x: (node.x || 0) + 150, y: (node.y || 0) + 50 };
+    
+    lineEndpointStartPos.current = {
+      x: e.clientX,
+      y: e.clientY,
+      startPoint: currentStartPos,
+      endPoint: currentEndPos
+    };
+  };
+  
+  const handleLineEndpointDragMove = useCallback((e: MouseEvent | React.MouseEvent) => {
+    if (!isDraggingLineEndpoint || !lineEndpointStartPos.current || !lineEndpointHandle) return;
+    
+    // Convert screen coordinates to canvas coordinates
+    let deltaX = e.clientX - lineEndpointStartPos.current.x;
+    let deltaY = e.clientY - lineEndpointStartPos.current.y;
+    
+    // Apply transform if available (convert screen delta to canvas delta)
+    if (transform) {
+      deltaX = deltaX / transform.k;
+      deltaY = deltaY / transform.k;
+    }
+    
+    let newStartPos = lineEndpointStartPos.current.startPoint;
+    let newEndPos = lineEndpointStartPos.current.endPoint;
+    
+    if (lineEndpointHandle === 'start') {
+      newStartPos = {
+        x: snapToGrid(lineEndpointStartPos.current.startPoint.x + deltaX),
+        y: snapToGrid(lineEndpointStartPos.current.startPoint.y + deltaY)
+      };
+    } else {
+      newEndPos = {
+        x: snapToGrid(lineEndpointStartPos.current.endPoint.x + deltaX),
+        y: snapToGrid(lineEndpointStartPos.current.endPoint.y + deltaY)
+      };
+    }
+    
+    // Calculate new bounding box
+    const minX = Math.min(newStartPos.x, newEndPos.x);
+    const minY = Math.min(newStartPos.y, newEndPos.y);
+    
+    // Update the node with new absolute positions and recalculated x,y
+    if (onUpdate) {
+      onUpdate({
+        ...node,
+        x: minX,
+        y: minY,
+        startPos: newStartPos,
+        endPos: newEndPos
+      });
+    }
+  }, [isDraggingLineEndpoint, lineEndpointHandle, node, onUpdate, transform]);
+  
+  const handleLineEndpointDragEnd = () => {
+    setIsDraggingLineEndpoint(false);
+    setLineEndpointHandle(null);
+    lineEndpointStartPos.current = null;
+  };
 
   // Global mouse events for resize
   useEffect(() => {
@@ -574,6 +663,29 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
       };
     }
   }, [isResizing, resizeHandle, node.id, onResize]);
+  
+  // Global mouse events for line endpoint dragging
+  useEffect(() => {
+    if (isDraggingLineEndpoint) {
+      const handleGlobalMouseMove = (e: MouseEvent) => {
+        handleLineEndpointDragMove(e);
+      };
+      
+      const handleGlobalMouseUp = (e: MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handleLineEndpointDragEnd();
+      };
+      
+      document.addEventListener('mousemove', handleGlobalMouseMove, true);
+      document.addEventListener('mouseup', handleGlobalMouseUp, true);
+      
+      return () => {
+        document.removeEventListener('mousemove', handleGlobalMouseMove, true);
+        document.removeEventListener('mouseup', handleGlobalMouseUp, true);
+      };
+    }
+  }, [isDraggingLineEndpoint, lineEndpointHandle, handleLineEndpointDragMove]);
 
   // Global click handler to clear resize state when clicking outside
   useEffect(() => {
@@ -699,9 +811,10 @@ return (
       }}
       className={cn(
         "absolute group transition-transform duration-200 ease-in-out rounded-lg",
-        !(isDragging || isTouchDragging) && !(isSelected || isHighlighted || isMultiSelected) && "hover:scale-105",
-        (isSelected || isHighlighted || isMultiSelected) && `${selectionAnimationEnabled ? "node-glow-pulse" : "node-glow-static"} drop-shadow-md`,
-        isGroupMember && !isSelected && !isHighlighted && !isMultiSelected && `${selectionAnimationEnabled ? "node-glow-green-pulse" : "node-glow-green-static"} drop-shadow-md`,
+        // Hover and selection effects - not for lines
+        !isLineNode && !(isDragging || isTouchDragging) && !(isSelected || isHighlighted || isMultiSelected) && "hover:scale-105",
+        !isLineNode && (isSelected || isHighlighted || isMultiSelected) && `${selectionAnimationEnabled ? "node-glow-pulse" : "node-glow-static"} drop-shadow-md`,
+        !isLineNode && isGroupMember && !isSelected && !isHighlighted && !isMultiSelected && `${selectionAnimationEnabled ? "node-glow-green-pulse" : "node-glow-green-static"} drop-shadow-md`,
         (isDragging || isTouchDragging) && "cursor-grabbing",
         isTargetable && "cursor-crosshair opacity-70 hover:opacity-100"
         )}
@@ -970,9 +1083,9 @@ return (
         )}
        </Popover>
 
-       {/* Resize handles - show for text resources (textbox always, others only in custom mode), or for shapes (except points) */}
+       {/* Resize handles - show for text resources (textbox always, others only in custom mode), or for shapes (except points and lines) */}
         {!isReadOnly && (isResizing || isSelected || isMultiSelected) &&
-         (isTextboxNode || ((isTextNode ) && node.sizeMode === 'custom') || (isShapeNode && !isPointNode)) && (
+         (isTextboxNode || ((isTextNode ) && node.sizeMode === 'custom') || (isShapeNode && !isPointNode && !isLineNode)) && (
           <ResizeHandles
             visible={true}
             activeHandle={resizeHandle}
@@ -982,9 +1095,24 @@ return (
             zIndexClass="z-50"
           />
        )}
+       
+       {/* Line endpoint handles for line shapes */}
+       {!isReadOnly && isLineNode && (isSelected || isMultiSelected) && (
+         <LineEndpointHandles
+           visible={true}
+           activeHandle={lineEndpointHandle}
+           startPoint={(node as any).startPos || { x: node.x || 0, y: (node.y || 0) + 50 }}
+           endPoint={(node as any).endPos || { x: (node.x || 0) + 150, y: (node.y || 0) + 50 }}
+           nodeX={node.x || 0}
+           nodeY={node.y || 0}
+           onStartDrag={handleLineEndpointDragStart}
+           disabled={false}
+           zIndexClass="z-50"
+         />
+       )}
 
-       {/* Connect handle - show when selected */}
-       {!isReadOnly && (isSelected || isMultiSelected) && onConnect && (
+       {/* Connect handle - show when selected (not for lines) */}
+       {!isReadOnly && (isSelected || isMultiSelected) && onConnect && !isLineNode && (
          <ConnectHandle
            visible={true}
            onConnect={() => onConnect({ style: 'bezier', curvature: 0.6 })}

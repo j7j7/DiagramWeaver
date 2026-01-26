@@ -15,3 +15,6 @@ export { TrapezoidShape } from './trapezoid';
 export { JigsawShape } from './jigsaw';
 export { ArrowheadShape } from './arrowhead';
 export { ChevronShape } from './chevron';
+export { LineShape } from './line';
+export { ShapeWrapper } from './shape-wrapper';
+export { ShapeTag } from './shape-tag';
