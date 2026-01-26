@@ -8,6 +8,8 @@ interface LineShapeProps {
   fill?: string;
   stroke?: string;
   strokeWidth?: number;
+  onClick?: (e: React.MouseEvent, node: DiagramNodeData) => void;
+  onContextMenu?: (e: React.MouseEvent, node: DiagramNodeData) => void;
 }
 
 // Helper to render different line cap styles
@@ -84,10 +86,11 @@ const renderLineCap = (
   return null;
 };
 
-export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5 }: LineShapeProps) {
+export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, onClick, onContextMenu }: LineShapeProps) {
   // Get absolute positions (required for lines)
-  const startPos = node.startPos || { x: (node.x || 0), y: (node.y || 0) + 50 };
-  const endPos = node.endPos || { x: (node.x || 0) + 150, y: (node.y || 0) + 50 };
+  // Use local positions if available (for smooth dragging), otherwise use node positions
+  const startPos = (node as any).__localStartPos || node.startPos || { x: (node.x || 0), y: (node.y || 0) + 50 };
+  const endPos = (node as any).__localEndPos || node.endPos || { x: (node.x || 0) + 150, y: (node.y || 0) + 50 };
   
   // Calculate bounding box
   const minX = Math.min(startPos.x, endPos.x);
@@ -110,6 +113,7 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5 }:
   const dy = endPos.y - startPos.y;
   const angleToEnd = Math.atan2(dy, dx) * (180 / Math.PI);
   const angleToStart = angleToEnd + 180;
+  const lineAngleRad = Math.atan2(dy, dx);
   
   // Line caps
   const startCap = node.startCap || 'none';
@@ -141,14 +145,57 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5 }:
     lineEndY += Math.sin(endAngleRad) * capOffset;
   }
   
-  // Calculate padding and SVG dimensions
+  // Calculate padding and SVG dimensions (include space for text)
   const padding = capSize * 3;
-  const svgMinX = Math.min(relStartX, relEndX) - padding;
-  const svgMinY = Math.min(relStartY, relEndY) - padding;
-  const svgMaxX = Math.max(relStartX, relEndX) + padding;
-  const svgMaxY = Math.max(relStartY, relEndY) + padding;
+  const textPadding = node.label ? 30 : 0; // Extra padding for text
+  const svgMinX = Math.min(relStartX, relEndX) - padding - textPadding;
+  const svgMinY = Math.min(relStartY, relEndY) - padding - textPadding;
+  const svgMaxX = Math.max(relStartX, relEndX) + padding + textPadding;
+  const svgMaxY = Math.max(relStartY, relEndY) + padding + textPadding;
   const svgWidth = svgMaxX - svgMinX;
   const svgHeight = svgMaxY - svgMinY;
+  
+  // Calculate text position along the line
+  const textPositionPercent = (node as any).lineTextPosition || 50; // 0-100, default 50% (middle)
+  const t = textPositionPercent / 100;
+  const textX = lineStartX + (lineEndX - lineStartX) * t;
+  const textY = lineStartY + (lineEndY - lineStartY) * t;
+  
+  // Text position mode: 'above', 'below', or 'middle' (default)
+  const textPosition = (node as any).lineTextVerticalPosition || 'middle';
+  const textOffset = textPosition === 'above' ? -12 : textPosition === 'below' ? 12 : 0;
+  
+  // Calculate perpendicular offset for text above/below
+  const perpAngleRad = lineAngleRad + Math.PI / 2;
+  const textOffsetX = Math.cos(perpAngleRad) * textOffset;
+  const textOffsetY = Math.sin(perpAngleRad) * textOffset;
+  
+  const finalTextX = textX + textOffsetX;
+  const finalTextY = textY + textOffsetY;
+  
+  // Process text (split by newlines and handle long lines)
+  const label = node.label || '';
+  const explicitLines = label.split('\n');
+  const textLines: string[] = [];
+  
+  explicitLines.forEach(line => {
+    if (line.length > 15) {
+      const words = line.split(' ');
+      let currentLine = '';
+      words.forEach(word => {
+        const testLine = currentLine ? `${currentLine} ${word}` : word;
+        if (testLine.length <= 15) {
+          currentLine = testLine;
+        } else {
+          if (currentLine) textLines.push(currentLine);
+          currentLine = word;
+        }
+      });
+      if (currentLine) textLines.push(currentLine);
+    } else {
+      textLines.push(line);
+    }
+  });
   
   return (
     <div style={{
@@ -165,9 +212,28 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5 }:
         viewBox={`0 0 ${svgWidth} ${svgHeight}`}
         style={{
           overflow: 'visible',
-          pointerEvents: 'auto',
+          pointerEvents: 'none', // Make SVG background non-clickable
         }}
       >
+        {/* Invisible wider hit area for easier clicking - must be first so it's behind the visible line */}
+        <line
+          x1={lineStartX - svgMinX}
+          y1={lineStartY - svgMinY}
+          x2={lineEndX - svgMinX}
+          y2={lineEndY - svgMinY}
+          stroke="transparent"
+          strokeWidth={Math.max(20, actualStrokeWidth * 3)} // Wider hit area (min 20px)
+          strokeLinecap="round"
+          style={{ pointerEvents: 'stroke', cursor: 'pointer' }} // Only stroke is clickable
+          onClick={(e) => {
+            e.stopPropagation();
+            onClick?.(e as any, node);
+          }}
+          onContextMenu={(e) => {
+            e.stopPropagation();
+            onContextMenu?.(e as any, node);
+          }}
+        />
         {/* Main line */}
         <line
           x1={lineStartX - svgMinX}
@@ -177,6 +243,7 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5 }:
           stroke={stroke || lineColor}
           strokeWidth={actualStrokeWidth}
           strokeLinecap="round"
+          style={{ pointerEvents: 'none' }} // Visual line is not clickable (hit area above handles it)
         />
         
         {/* Start cap */}
@@ -184,6 +251,34 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5 }:
         
         {/* End cap */}
         {renderLineCap(endCap, relEndX - svgMinX, relEndY - svgMinY, angleToStart, lineColor, capSize)}
+        
+        {/* Text label */}
+        {label && textLines.length > 0 && (
+          <g transform={`translate(${finalTextX - svgMinX}, ${finalTextY - svgMinY}) rotate(${angleToEnd})`}>
+            {textLines.map((line, index) => {
+              const lineHeight = 14;
+              const startY = -((textLines.length - 1) * lineHeight) / 2;
+              return (
+                <text
+                  key={index}
+                  x={0}
+                  y={startY + (index * lineHeight)}
+                  fill={lineColor}
+                  fontSize="12"
+                  fontWeight="500"
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  className="pointer-events-none select-none"
+                  style={{
+                    textShadow: '0 0 3px rgba(255,255,255,1), 0 0 6px rgba(255,255,255,0.8), 1px 1px 4px rgba(255,255,255,1), -1px -1px 4px rgba(255,255,255,1), 1px -1px 4px rgba(255,255,255,1), -1px 1px 4px rgba(255,255,255,1)'
+                  }}
+                >
+                  {line}
+                </text>
+              );
+            })}
+          </g>
+        )}
       </svg>
     </div>
   );

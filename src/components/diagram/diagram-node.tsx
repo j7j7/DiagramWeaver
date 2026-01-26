@@ -343,9 +343,15 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
       return <ArrowheadShape {...shapeProps} />;
     } else if (nodeType === 'generic.object.chevron' || nodeType?.endsWith('.chevron')) {
       return <ChevronShape {...shapeProps} />;
-    } else if (nodeType === 'generic.object.line' || nodeType?.endsWith('.line')) {
-      return <LineShape {...shapeProps} />;
-    }
+    } else       if (nodeType === 'generic.object.line' || nodeType?.endsWith('.line')) {
+        // Pass local positions for smooth dragging (if available)
+        const lineNodeWithLocalPos = {
+          ...node,
+          ...(localStartPos && { __localStartPos: localStartPos }),
+          ...(localEndPos && { __localEndPos: localEndPos })
+        };
+        return <LineShape {...shapeProps} node={lineNodeWithLocalPos} onClick={onClick} onContextMenu={onContextMenu} />;
+      }
     return null;
   };
   
@@ -578,9 +584,12 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
     setIsDraggingLineEndpoint(true);
     setLineEndpointHandle(handle);
     
-    // Store absolute canvas positions
-    const currentStartPos = (node as any).startPos || { x: node.x || 0, y: (node.y || 0) + 50 };
-    const currentEndPos = (node as any).endPos || { x: (node.x || 0) + 150, y: (node.y || 0) + 50 };
+    // Notify parent that dragging has started (prevents history updates during drag)
+    onDraggingChange?.(true);
+    
+    // Store absolute canvas positions (use local state if available, otherwise node state)
+    const currentStartPos = localStartPos || (node as any).startPos || { x: node.x || 0, y: (node.y || 0) + 50 };
+    const currentEndPos = localEndPos || (node as any).endPos || { x: (node.x || 0) + 150, y: (node.y || 0) + 50 };
     
     lineEndpointStartPos.current = {
       x: e.clientX,
@@ -588,8 +597,38 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
       startPoint: currentStartPos,
       endPoint: currentEndPos
     };
+    
+    // Initialize ref with current positions
+    latestPositionsRef.current = { startPos: currentStartPos, endPos: currentEndPos };
   };
   
+  // Use local state for immediate visual updates, only sync to data on drag end
+  const [localStartPos, setLocalStartPos] = useState<{ x: number; y: number } | null>(null);
+  const [localEndPos, setLocalEndPos] = useState<{ x: number; y: number } | null>(null);
+  // Ref to track latest positions during drag (for reliable access on drag end)
+  const latestPositionsRef = useRef<{ startPos: { x: number; y: number } | null, endPos: { x: number; y: number } | null }>({ startPos: null, endPos: null });
+  
+  // Initialize and sync local state with node positions (but not during drag)
+  useEffect(() => {
+    if (!isDraggingLineEndpoint && isLineNode) {
+      const startPos = (node as any).startPos || { x: node.x || 0, y: (node.y || 0) + 50 };
+      const endPos = (node as any).endPos || { x: (node.x || 0) + 150, y: (node.y || 0) + 50 };
+      // Only update if positions actually changed to avoid unnecessary state updates
+      setLocalStartPos(prev => {
+        if (!prev || prev.x !== startPos.x || prev.y !== startPos.y) {
+          return startPos;
+        }
+        return prev;
+      });
+      setLocalEndPos(prev => {
+        if (!prev || prev.x !== endPos.x || prev.y !== endPos.y) {
+          return endPos;
+        }
+        return prev;
+      });
+    }
+  }, [node.id, (node as any).startPos?.x, (node as any).startPos?.y, (node as any).endPos?.x, (node as any).endPos?.y, isDraggingLineEndpoint, isLineNode]);
+
   const handleLineEndpointDragMove = useCallback((e: MouseEvent | React.MouseEvent) => {
     if (!isDraggingLineEndpoint || !lineEndpointStartPos.current || !lineEndpointHandle) return;
     
@@ -611,34 +650,51 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
         x: snapToGrid(lineEndpointStartPos.current.startPoint.x + deltaX),
         y: snapToGrid(lineEndpointStartPos.current.startPoint.y + deltaY)
       };
+      setLocalStartPos(newStartPos);
+      latestPositionsRef.current.startPos = newStartPos;
     } else {
       newEndPos = {
         x: snapToGrid(lineEndpointStartPos.current.endPoint.x + deltaX),
         y: snapToGrid(lineEndpointStartPos.current.endPoint.y + deltaY)
       };
+      setLocalEndPos(newEndPos);
+      latestPositionsRef.current.endPos = newEndPos;
     }
     
-    // Calculate new bounding box
-    const minX = Math.min(newStartPos.x, newEndPos.x);
-    const minY = Math.min(newStartPos.y, newEndPos.y);
-    
-    // Update the node with new absolute positions and recalculated x,y
-    if (onUpdate) {
+    // Update local state immediately for visual feedback (no data update yet)
+    // This provides instant visual feedback without triggering expensive re-renders
+  }, [isDraggingLineEndpoint, lineEndpointHandle, transform]);
+  
+  const handleLineEndpointDragEnd = useCallback(() => {
+    // Only update data on drag end (not during drag) for better performance
+    if (onUpdate && lineEndpointStartPos.current) {
+      // Get the current positions from ref (most reliable) or fall back to local state or original
+      const currentStartPos = latestPositionsRef.current.startPos || localStartPos || lineEndpointStartPos.current.startPoint;
+      const currentEndPos = latestPositionsRef.current.endPos || localEndPos || lineEndpointStartPos.current.endPoint;
+      
+      const minX = Math.min(currentStartPos.x, currentEndPos.x);
+      const minY = Math.min(currentStartPos.y, currentEndPos.y);
+      
+      // Update the node with final positions
       onUpdate({
         ...node,
         x: minX,
         y: minY,
-        startPos: newStartPos,
-        endPos: newEndPos
+        startPos: currentStartPos,
+        endPos: currentEndPos
       });
+      
+      // Reset ref after update
+      latestPositionsRef.current = { startPos: null, endPos: null };
     }
-  }, [isDraggingLineEndpoint, lineEndpointHandle, node, onUpdate, transform]);
-  
-  const handleLineEndpointDragEnd = () => {
+    
+    // Notify parent that dragging has ended (allows history updates again)
+    onDraggingChange?.(false);
+    
     setIsDraggingLineEndpoint(false);
     setLineEndpointHandle(null);
     lineEndpointStartPos.current = null;
-  };
+  }, [onUpdate, node, localStartPos, localEndPos, onDraggingChange]);
 
   // Global mouse events for resize
   useEffect(() => {
@@ -685,7 +741,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
         document.removeEventListener('mouseup', handleGlobalMouseUp, true);
       };
     }
-  }, [isDraggingLineEndpoint, lineEndpointHandle, handleLineEndpointDragMove]);
+  }, [isDraggingLineEndpoint, lineEndpointHandle, handleLineEndpointDragMove, handleLineEndpointDragEnd, localStartPos, localEndPos, onUpdate, node]);
 
   // Global click handler to clear resize state when clicking outside
   useEffect(() => {
@@ -818,24 +874,32 @@ return (
         (isDragging || isTouchDragging) && "cursor-grabbing",
         isTargetable && "cursor-crosshair opacity-70 hover:opacity-100"
         )}
+      onClick={isLineNode ? undefined : (e) => onClick && onClick(e, node)} // Lines handle clicks in their SVG (not on container)
+      onContextMenu={isLineNode ? undefined : (e) => onContextMenu && onContextMenu(e, node)} // Lines handle context menu in their SVG (not on container)
       style={{
         left: node.x + animationOffset.x,
         top: node.y + animationOffset.y,
-         width: isShapeNode ? (node.width || 60) :
+         width: isLineNode ? 'auto' : // Lines don't need a fixed width container
+                (isShapeNode ? (node.width || 60) :
                 (isRotatableNode || isTextboxNode ? 
-                 (node.sizeMode === 'custom' && node.width ? node.width : 'auto') : NODE_WIDTH),
-         minWidth: isShapeNode ? (node.width || 60) :
+                 (node.sizeMode === 'custom' && node.width ? node.width : 'auto') : NODE_WIDTH)),
+         minWidth: isLineNode ? 0 : // Lines don't need min width
+                   (isShapeNode ? (node.width || 60) :
                     isTextboxNode ? 40 :
-                   isRotatableNode ? 80 : NODE_WIDTH,
-         maxWidth: isShapeNode ? (node.width || 60) :
+                   isRotatableNode ? 80 : NODE_WIDTH),
+         maxWidth: isLineNode ? 'none' : // Lines don't need max width
+                   (isShapeNode ? (node.width || 60) :
                     isTextboxNode ? (node.sizeMode === 'custom' ? 'none' : 400) :
-                   isRotatableNode ? 200 : NODE_WIDTH,
-         height: isShapeNode ? (node.height || 60) :
+                   isRotatableNode ? 200 : NODE_WIDTH),
+         height: isLineNode ? 'auto' : // Lines don't need a fixed height container
+                 (isShapeNode ? (node.height || 60) :
                  isTextboxNode && node.sizeMode === 'custom' ? (node.height || 40) :
-                 (isRotatableNode || isTextboxNode) ? nodeHeight : 'auto',
+                 (isRotatableNode || isTextboxNode) ? nodeHeight : 'auto'),
         touchAction: 'none',
         transform: rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
-        transformOrigin: 'center'
+        transformOrigin: 'center',
+        // For lines: container doesn't intercept clicks, but children (endpoint handles) can still receive events
+        ...(isLineNode && { pointerEvents: 'none' }), 
       }}
       onMouseEnter={() => { 
         if (!isDragging && !isEditingLabel && !isEditingTag) { 
@@ -1096,13 +1160,13 @@ return (
           />
        )}
        
-       {/* Line endpoint handles for line shapes */}
-       {!isReadOnly && isLineNode && (isSelected || isMultiSelected) && (
+       {/* Line endpoint handles for line shapes - only show when THIS line is selected (not in multi-select with other items) */}
+       {!isReadOnly && isLineNode && isSelected && !isMultiSelected && (
          <LineEndpointHandles
            visible={true}
            activeHandle={lineEndpointHandle}
-           startPoint={(node as any).startPos || { x: node.x || 0, y: (node.y || 0) + 50 }}
-           endPoint={(node as any).endPos || { x: (node.x || 0) + 150, y: (node.y || 0) + 50 }}
+           startPoint={localStartPos || (node as any).startPos || { x: node.x || 0, y: (node.y || 0) + 50 }}
+           endPoint={localEndPos || (node as any).endPos || { x: (node.x || 0) + 150, y: (node.y || 0) + 50 }}
            nodeX={node.x || 0}
            nodeY={node.y || 0}
            onStartDrag={handleLineEndpointDragStart}

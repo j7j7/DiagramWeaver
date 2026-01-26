@@ -70,6 +70,7 @@ export function LineEndpointHandles({
           top: `${relStartY - halfSize}px`,
           width: `${handleSize}px`,
           height: `${handleSize}px`,
+          pointerEvents: 'auto', // Ensure handles are clickable even if parent has pointerEvents: 'none'
         }}
         onMouseEnter={() => setHoveredHandle('start')}
         onMouseLeave={() => setHoveredHandle(null)}
@@ -90,6 +91,7 @@ export function LineEndpointHandles({
           top: `${relEndY - halfSize}px`,
           width: `${handleSize}px`,
           height: `${handleSize}px`,
+          pointerEvents: 'auto', // Ensure handles are clickable even if parent has pointerEvents: 'none'
         }}
         onMouseEnter={() => setHoveredHandle('end')}
         onMouseLeave={() => setHoveredHandle(null)}

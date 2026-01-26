@@ -1576,6 +1576,49 @@ export function ContextToolbar({
                     }}
                   />
                 </div>
+                
+                {/* Text Position Controls */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Text Position</label>
+                  <Select
+                    value={(selectedItem as any).lineTextVerticalPosition || 'middle'}
+                    onValueChange={(value: 'above' | 'below' | 'middle') => {
+                      onItemUpdate?.({
+                        ...selectedItem,
+                        lineTextVerticalPosition: value
+                      } as SelectedItem);
+                    }}
+                  >
+                    <SelectTrigger className="h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="above">Above Line</SelectItem>
+                      <SelectItem value="middle">On Line</SelectItem>
+                      <SelectItem value="below">Below Line</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Text Position Along Line (%)</label>
+                  <input
+                    type="number"
+                    className="w-full h-8 px-2 rounded border"
+                    value={(selectedItem as any).lineTextPosition || 50}
+                    min={0}
+                    max={100}
+                    step={5}
+                    onChange={(e) => {
+                      const value = Math.max(0, Math.min(100, parseInt(e.target.value) || 50));
+                      onItemUpdate?.({
+                        ...selectedItem,
+                        lineTextPosition: value
+                      } as SelectedItem);
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">0% = start, 50% = middle, 100% = end</p>
+                </div>
               </div>
             </PopoverContent>
           </Popover>
