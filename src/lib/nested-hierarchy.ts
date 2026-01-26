@@ -83,7 +83,14 @@ export function convertToNestedHierarchy(data: DiagramData): HierarchicalDiagram
          tag: node.tag,
          tagPosition: node.tagPosition,
          layer: node.layer, // Preserve layer information
-         groupId: node.groupId // Preserve grouping information
+         groupId: node.groupId, // Preserve grouping information
+         // Line shape specific properties
+         startPos: node.startPos,
+         endPos: node.endPos,
+         startCap: node.startCap,
+         endCap: node.endCap,
+         lineThickness: node.lineThickness,
+         lineTextVerticalPosition: node.lineTextVerticalPosition
        }))
     };
     nestedGroups.push(orphanGroup);
@@ -148,7 +155,14 @@ function convertGroupToNested(
          tag: node.tag,
          tagPosition: node.tagPosition,
          layer: node.layer, // Preserve layer information
-         groupId: node.groupId // Preserve grouping information
+         groupId: node.groupId, // Preserve grouping information
+         // Line shape specific properties
+         startPos: node.startPos,
+         endPos: node.endPos,
+         startCap: node.startCap,
+         endCap: node.endCap,
+         lineThickness: node.lineThickness,
+         lineTextVerticalPosition: node.lineTextVerticalPosition
       });
     } else {
       // This is a nested group
@@ -252,7 +266,14 @@ export function convertFromNestedHierarchy(nestedData: HierarchicalDiagramData):
              tag: nodeChild.tag,
              tagPosition: nodeChild.tagPosition,
              layer: nodeChild.layer, // Preserve layer information
-             groupId: nodeChild.groupId // Preserve grouping information
+             groupId: nodeChild.groupId, // Preserve grouping information
+             // Line shape specific properties
+             startPos: nodeChild.startPos,
+             endPos: nodeChild.endPos,
+             startCap: nodeChild.startCap,
+             endCap: nodeChild.endCap,
+             lineThickness: nodeChild.lineThickness,
+             lineTextVerticalPosition: nodeChild.lineTextVerticalPosition
           };
           nodes.push(node);
           nodeMap.set(nodeChild.id, node);
@@ -398,7 +419,14 @@ function processNestedGroup(
          tag: nodeChild.tag,
          tagPosition: nodeChild.tagPosition,
          layer: nodeChild.layer, // Preserve layer information
-         groupId: nodeChild.groupId // Preserve grouping information
+         groupId: nodeChild.groupId, // Preserve grouping information
+         // Line shape specific properties
+         startPos: nodeChild.startPos,
+         endPos: nodeChild.endPos,
+         startCap: nodeChild.startCap,
+         endCap: nodeChild.endCap,
+         lineThickness: nodeChild.lineThickness,
+         lineTextVerticalPosition: nodeChild.lineTextVerticalPosition
       };
     
       nodes.push(node);

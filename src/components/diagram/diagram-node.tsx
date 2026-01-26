@@ -1177,9 +1177,10 @@ return (
        
        {/* Line endpoint handles for line shapes - only show when THIS line is selected (not in multi-select with other items) */}
        {!isReadOnly && isLineNode && isSelected && !isMultiSelected && (() => {
-         // Get base positions from node
-         const baseStartPos = (node as any).startPos || { x: node.x || 0, y: (node.y || 0) + 50 };
-         const baseEndPos = (node as any).endPos || { x: (node.x || 0) + 150, y: (node.y || 0) + 50 };
+         // Get base positions - use same logic as drag start handler for consistency
+         // This ensures handles are positioned correctly even on first drag
+         const baseStartPos = localStartPos || (node as any).startPos || { x: node.x || 0, y: (node.y || 0) + 50 };
+         const baseEndPos = localEndPos || (node as any).endPos || { x: (node.x || 0) + 150, y: (node.y || 0) + 50 };
          
          // During drag, only update the handle being dragged, keep the other stable
          const currentStartPos = isDraggingLineEndpoint && lineEndpointHandle === 'start' && localStartPos

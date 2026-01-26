@@ -156,7 +156,7 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
             <div className="space-y-1 mb-2">
               <Label htmlFor="end-cap" className="text-xs text-slate-600">End Cap</Label>
               <Select
-                value={styling.endCap || 'arrow'}
+                value={styling.endCap || 'none'}
                 onValueChange={(value) => handlePropertyChange('endCap', value as any)}
               >
                 <SelectTrigger id="end-cap" className="h-7 text-xs">

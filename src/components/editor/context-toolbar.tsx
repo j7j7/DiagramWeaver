@@ -791,9 +791,12 @@ export function ContextToolbar({
       
       onDiagramDataUpdate(updatedDiagramData);
     } else {
-      // Single item selection
-      if (isNode && isLineNode) {
-        const updatedNode = applyLineStylingToNode(selectedItem as any, styling);
+      // Single item selection - get fresh node data from diagramData to preserve startPos/endPos
+      if (isNode && isLineNode && diagramData) {
+        // Get the latest node data from diagramData to ensure we have current startPos/endPos
+        const freshNode = diagramData.nodes.find(n => n.id === selectedItem.id);
+        const nodeToUpdate = freshNode || selectedItem;
+        const updatedNode = applyLineStylingToNode(nodeToUpdate as any, styling);
         onItemUpdate?.({ ...updatedNode, itemType: 'node' } as SelectedItem);
       }
     }
@@ -1516,7 +1519,7 @@ export function ContextToolbar({
 
 
         {/* Text Styling Button */}
-        {selectedItem && (isNode || isZone) && (
+        {selectedItem && (isNode || isZone) && !isLineNode && (
           <>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -1554,7 +1557,7 @@ export function ContextToolbar({
         )}
 
         {/* Visual Styling Button */}
-        {selectedItem && (isNode || isZone) && (
+        {selectedItem && (isNode || isZone) && !isLineNode && (
           <>
             <Tooltip>
               <TooltipTrigger asChild>

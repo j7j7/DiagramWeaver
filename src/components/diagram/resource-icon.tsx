@@ -114,12 +114,18 @@ export function ResourceIcon({ type, imagePath, provider, category, file, ...pro
       type?.endsWith('.star') || type?.endsWith('.cloud') || type?.endsWith('.parallelogram') ||
       type?.endsWith('.trapezoid') || type?.endsWith('.kite') || type?.endsWith('.hexagon') ||
       type?.endsWith('.pentagon') || type?.endsWith('.octagon') || type?.endsWith('.jigsaw') ||
-      type?.endsWith('.arrowhead') || type?.endsWith('.chevron')) {
+      type?.endsWith('.arrowhead') || type?.endsWith('.chevron') || type?.endsWith('.line')) {
     
     // Render different shapes based on type
     const shapeType = type.split('.').pop() || 'square';
     
     switch (shapeType) {
+      case 'line':
+        return (
+          <svg {...props} viewBox="0 0 24 24" fill="none" stroke={props.stroke || "currentColor"} strokeWidth={props.strokeWidth || 2} strokeLinecap="round">
+            <line x1="2" y1="12" x2="22" y2="12" />
+          </svg>
+        );
       case 'circle':
       case 'point':
         return (

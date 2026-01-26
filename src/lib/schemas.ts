@@ -47,6 +47,14 @@ export const DiagramNodeDataSchema = z.object({
   lineHeight: z.number().optional(), // Line height as a multiplier (e.g., 1.2, 1.5)
   textOpacity: z.number().optional(), // Text opacity (0-1)
   groupId: z.string().optional(), // Reference to grouping this node belongs to
+  
+  // Line shape specific properties (absolute canvas positions)
+  startPos: z.object({ x: z.number(), y: z.number() }).optional(), // Absolute canvas position for line start
+  endPos: z.object({ x: z.number(), y: z.number() }).optional(), // Absolute canvas position for line end
+  startCap: z.enum(['none', 'arrow', 'dot', 'square']).optional(), // Start endpoint style for line shapes
+  endCap: z.enum(['none', 'arrow', 'dot', 'square']).optional(), // End endpoint style for line shapes
+  lineThickness: z.number().optional(), // Line thickness for line shapes (default: 2.5)
+  lineTextVerticalPosition: z.enum(['above', 'middle', 'below']).optional(), // Text position relative to line
 });
 
 // Schema for DiagramConnectionData 
@@ -200,6 +208,14 @@ export const DiagramNodeItemSchema = z.object({
   lineHeight: z.number().optional(), // Line height as a multiplier (e.g., 1.2, 1.5)
   textOpacity: z.number().optional(), // Text opacity (0-1)
   groupId: z.string().optional(), // Reference to grouping this node belongs to
+  
+  // Line shape specific properties (absolute canvas positions)
+  startPos: z.object({ x: z.number(), y: z.number() }).optional(), // Absolute canvas position for line start
+  endPos: z.object({ x: z.number(), y: z.number() }).optional(), // Absolute canvas position for line end
+  startCap: z.enum(['none', 'arrow', 'dot', 'square']).optional(), // Start endpoint style for line shapes
+  endCap: z.enum(['none', 'arrow', 'dot', 'square']).optional(), // End endpoint style for line shapes
+  lineThickness: z.number().optional(), // Line thickness for line shapes (default: 2.5)
+  lineTextVerticalPosition: z.enum(['above', 'middle', 'below']).optional(), // Text position relative to line
 });
 
 // Schema for nested group items (recursive)

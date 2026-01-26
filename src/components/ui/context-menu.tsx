@@ -50,6 +50,11 @@ interface ContextMenuProps {
   canMoveOneForward?: boolean;
 }
 
+// Helper function to check if a node type is a line
+const isLineNodeType = (nodeType?: string): boolean => {
+  return nodeType === 'generic.object.line' || (nodeType?.endsWith('.line') ?? false);
+};
+
 export function ContextMenu({ 
   x, 
   y, 
@@ -161,7 +166,7 @@ export function ContextMenu({
         Copy
       </button>
 
-      {onTextStyling && (
+      {onTextStyling && !isLineNodeType(nodeType) && (
         <button
           className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
           onClick={() => {
@@ -174,7 +179,7 @@ export function ContextMenu({
         </button>
       )}
 
-      {onVisualStyling && (
+      {onVisualStyling && !isLineNodeType(nodeType) && (
         <button
           className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
           onClick={() => {
@@ -430,7 +435,7 @@ export function ContextMenu({
         </div>
       )}
 
-      {itemType === 'node' && nodeType && !isShapeNodeType(nodeType) && (
+      {itemType === 'node' && nodeType && !isShapeNodeType(nodeType) && !isLineNodeType(nodeType) && (
         <>
           <div className="border-t border-border my-1" />
           
@@ -447,7 +452,7 @@ export function ContextMenu({
         </>
       )}
 
-      {(itemType === 'node' || itemType === 'zone') && (
+      {(itemType === 'node' || itemType === 'zone') && !isLineNodeType(nodeType) && (
         <>
           <div className="border-t border-border my-1" />
           

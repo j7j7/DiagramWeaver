@@ -54,6 +54,7 @@ export interface DiagramNodeData {
   startCap?: 'none' | 'arrow' | 'dot' | 'square'; // Start endpoint style for line shapes
   endCap?: 'none' | 'arrow' | 'dot' | 'square'; // End endpoint style for line shapes
   lineThickness?: number; // Line thickness for line shapes (default: 2.5)
+  lineTextVerticalPosition?: 'above' | 'middle' | 'below'; // Text position relative to line
   
   // Resource information for icon rendering
   provider?: string; // Provider name (e.g., 'aws', 'azure', 'gcp')
@@ -155,6 +156,7 @@ export interface DiagramNodeItem {
    startCap?: 'none' | 'arrow' | 'dot' | 'square'; // Start endpoint style for line shapes
    endCap?: 'none' | 'arrow' | 'dot' | 'square'; // End endpoint style for line shapes
    lineThickness?: number; // Line thickness for line shapes (default: 2.5)
+   lineTextVerticalPosition?: 'above' | 'middle' | 'below'; // Text position relative to line
 }
 
 export interface DiagramZoneItem {
