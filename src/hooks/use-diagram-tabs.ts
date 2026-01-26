@@ -94,31 +94,32 @@ export function useDiagramTabs({ isClient, onToast }: UseDiagramTabsOptions) {
     }
   }, [tabs, activeTabId, isClient]);
 
-  function createNewTab(name: string): TabState {
-    const emptyDiagram = { nodes: [], connections: [], zones: [], groupings: [] };
-    const emptyHistory = [JSON.stringify(emptyDiagram)];
+  function createNewTab(name: string, diagramData?: DiagramData): TabState {
+    const initialDiagram = diagramData || { nodes: [], connections: [], zones: [], groupings: [] };
+    const initialHistory = [JSON.stringify(initialDiagram)];
     const tabId = `tab-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
-    historyRefs.current[tabId] = { history: emptyHistory, index: 0 };
+    historyRefs.current[tabId] = { history: initialHistory, index: 0 };
 
     return {
       id: tabId,
       name,
-      diagramData: emptyDiagram,
-      history: emptyHistory,
+      diagramData: initialDiagram,
+      history: initialHistory,
       historyIndex: 0,
       selectedItem: null,
       selectedItemIds: new Set(),
       isConnectMode: false,
       jsonPanelOpen: false,
       canvasTransform: { x: 0, y: 0, k: 1 },
-      savedDataHash: JSON.stringify(emptyDiagram),
+      savedDataHash: JSON.stringify(initialDiagram),
     };
   }
 
-  const createTab = useCallback(() => {
+  const createTab = useCallback((options?: { name?: string; diagramData?: DiagramData }) => {
     const tabNumber = tabs.length + 1;
-    const newTab = createNewTab(`Diagram ${tabNumber}`);
+    const tabName = options?.name || `Diagram ${tabNumber}`;
+    const newTab = createNewTab(tabName, options?.diagramData);
     setTabs(prev => [...prev, newTab]);
     setActiveTabId(newTab.id);
     onToast({ title: 'New Tab', description: `${newTab.name} created.` });

@@ -1,0 +1,43 @@
+{
+  "nodes": [
+    {
+      "id": "web-server",
+      "type": "Server",
+      "label": "Web Server",
+      "info": "Main web server handling HTTP requests",
+      "x": 200,
+      "y": 200
+    },
+    {
+      "id": "api-server",
+      "type": "Server",
+      "label": "API Server",
+      "info": "REST API server for backend services",
+      "x": 500,
+      "y": 200
+    },
+    {
+      "id": "database",
+      "type": "RDS",
+      "label": "Database",
+      "info": "PostgreSQL database for data storage",
+      "x": 800,
+      "y": 200
+    },
+    {
+      "id": "cache",
+      "type": "ElastiCache",
+      "label": "Cache",
+      "info": "Redis cache for improved performance",
+      "x": 500,
+      "y": 400
+    }
+  ],
+  "connections": [
+    { "from": "web-server", "to": "api-server", "text": "HTTP" },
+    { "from": "api-server", "to": "database", "text": "SQL" },
+    { "from": "api-server", "to": "cache", "text": "Redis" }
+  ],
+  "zones": [],
+  "groupings": []
+}

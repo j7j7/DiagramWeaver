@@ -8,6 +8,9 @@ import {
   MenubarSeparator,
   MenubarShortcut,
   MenubarTrigger,
+  MenubarSub,
+  MenubarSubTrigger,
+  MenubarSubContent,
 } from '@/components/ui/menubar';
 import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
@@ -26,6 +29,7 @@ interface TopMenuBarProps {
   onNew: () => void;
   onLoad: () => void;
   onSave: () => void;
+  onLoadExample?: (exampleId: string) => void;
   onNewTab?: () => void;
   onExportSvg?: () => void;
   onExportPng?: () => void;
@@ -82,6 +86,7 @@ export function TopMenuBar({
   onNew,
   onLoad,
   onSave,
+  onLoadExample,
   onNewTab,
   onExportSvg,
   onExportPng,
@@ -202,6 +207,22 @@ export function TopMenuBar({
               Save
               <MenubarShortcut>Ctrl+S</MenubarShortcut>
             </MenubarItem>
+            {onLoadExample && (
+              <>
+                <MenubarSeparator />
+                <MenubarSub>
+                  <MenubarSubTrigger>Examples</MenubarSubTrigger>
+                  <MenubarSubContent>
+                    <MenubarItem onClick={() => onLoadExample('example1')}>
+                      Example 1
+                    </MenubarItem>
+                    <MenubarItem onClick={() => onLoadExample('example2')}>
+                      Example 2
+                    </MenubarItem>
+                  </MenubarSubContent>
+                </MenubarSub>
+              </>
+            )}
             {onNewTab && (
               <>
                 <MenubarSeparator />
@@ -520,6 +541,19 @@ export function TopMenuBar({
         onOpenEditor={() => setThemeEditorOpen(true)}
         isReadOnly={isReadOnly}
       />
+      
+      {/* Fit to View Button */}
+      {onFitToView && (
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="h-8 px-2"
+          onClick={onFitToView}
+          title="Fit to View"
+        >
+          <Maximize2 className="h-4 w-4" />
+        </Button>
+      )}
       
       {selectedItem && !isReadOnly && ((selectedItem.itemType !== 'edge' && onItemUpdate && onConnect && onDisconnect && onDelete) || (selectedItem.itemType === 'edge' && onConnectionUpdate && onDelete)) && (
         <>

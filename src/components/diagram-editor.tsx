@@ -35,6 +35,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useDiagramTabs } from '@/hooks/use-diagram-tabs';
 import { useLayers } from '@/hooks/use-layers';
 import { convertFromNestedHierarchy, convertToNestedHierarchy } from '@/lib/nested-hierarchy';
+import { DiagramDataSchema, HierarchicalDiagramDataSchema } from '@/lib/schemas';
 import { themeManager } from '@/lib/theme-manager';
 import { DiagramTheme } from '@/lib/theme-types';
 import { LayersPanel } from './editor/layers-panel';
@@ -892,6 +893,43 @@ export default function DiagramEditor() {
     fileInputRef.current?.click();
   };
 
+  // Helper function to parse unknown JSON to DiagramData
+  const parseUnknownJsonToDiagramData = React.useCallback((json: unknown): DiagramData => {
+    // Check if this is hierarchical format (has groups with nested children)
+    const isHierarchical = typeof json === 'object' && json !== null &&
+      'zones' in json && Array.isArray((json as any).zones) &&
+      (json as any).zones.some((zone: any) => zone.children && Array.isArray(zone.children) &&
+        zone.children.some((child: any) => child && typeof child === 'object'));
+
+    let dataToValidate: unknown = json;
+
+    if (isHierarchical) {
+      // Validate hierarchical format first
+      const hierarchicalResult = HierarchicalDiagramDataSchema.safeParse(json);
+      if (!hierarchicalResult.success) {
+        throw new Error(`Invalid hierarchical diagram format: ${hierarchicalResult.error.message}`);
+      }
+      // Convert hierarchical to flat format
+      dataToValidate = convertFromNestedHierarchy(hierarchicalResult.data);
+    }
+
+    // Validate flat format
+    const flatResult = DiagramDataSchema.safeParse(dataToValidate);
+    if (!flatResult.success) {
+      throw new Error(`Invalid diagram format: ${flatResult.error.message}`);
+    }
+
+    // Ensure all required arrays are present
+    return {
+      nodes: flatResult.data.nodes || [],
+      connections: flatResult.data.connections || [],
+      zones: flatResult.data.zones || [],
+      groupings: flatResult.data.groupings || [],
+      rootZoneId: (dataToValidate as any).rootZoneId,
+      layers: flatResult.data.layers,
+    };
+  }, []);
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -900,40 +938,17 @@ export default function DiagramEditor() {
         try {
           const text = e.target?.result;
           if (typeof text === 'string') {
-            let jsonData = JSON.parse(text);
-
-            // Check if this is hierarchical format (has groups with nested children)
-            const isHierarchical = jsonData.zones && Array.isArray(jsonData.zones) &&
-              jsonData.zones.some((zone: any) => zone.children && Array.isArray(zone.children) &&
-                zone.children.some((child: any) => child && typeof child === 'object'));
-
-            if (isHierarchical) {
-              // Convert hierarchical to flat format
-              jsonData = convertFromNestedHierarchy(jsonData as any);
-            }
-
-              // Add basic validation for the loaded data
-             if (jsonData.nodes && jsonData.connections) {
-               // Ensure all required arrays are present
-               const completeData: DiagramData = {
-                 nodes: jsonData.nodes || [],
-                 connections: jsonData.connections || [],
-                 zones: jsonData.zones || [],
-                 groupings: jsonData.groupings || [], // Preserve groupings
-                 rootZoneId: jsonData.rootZoneId,
-                 layers: jsonData.layers // Preserve layers
-               };
-               // Clear existing data first to ensure clean load
-                setDiagramData({ nodes: [], connections: [], zones: [], groupings: [] });
-               // Then set the loaded data
-               setTimeout(() => {
-                 setDiagramData(completeData);
-                 setSelectedItem(null);
-                 toast({ title: 'Diagram Loaded', description: 'Your diagram has been successfully loaded. If the JSON editor doesn\'t update, try toggling it off and on.' });
-               }, 0);
-            } else {
-              throw new Error('Invalid diagram file format.');
-            }
+            const jsonData = JSON.parse(text);
+            const completeData = parseUnknownJsonToDiagramData(jsonData);
+            
+            // Clear existing data first to ensure clean load
+            setDiagramData({ nodes: [], connections: [], zones: [], groupings: [] });
+            // Then set the loaded data
+            setTimeout(() => {
+              setDiagramData(completeData);
+              setSelectedItem(null);
+              toast({ title: 'Diagram Loaded', description: 'Your diagram has been successfully loaded. If the JSON editor doesn\'t update, try toggling it off and on.' });
+            }, 0);
           }
         } catch (error) {
           const message = error instanceof Error ? error.message : "An unknown error occurred";
@@ -970,6 +985,33 @@ export default function DiagramEditor() {
   const handleNew = () => {
     createTab();
   };
+
+  const handleLoadExample = React.useCallback(async (exampleId: string) => {
+    try {
+      const res = await fetch(`/examples/${exampleId}.json`);
+      if (!res.ok) {
+        throw new Error(`Failed to load example: ${res.statusText}`);
+      }
+      const json = await res.json();
+      const diagram = parseUnknownJsonToDiagramData(json);
+      
+      // Create a new tab with the example data
+      const exampleName = exampleId === 'example1' ? 'Example 1' : exampleId === 'example2' ? 'Example 2' : `Example: ${exampleId}`;
+      createTab({ name: exampleName, diagramData: diagram });
+      
+      toast({ 
+        title: 'Example Loaded', 
+        description: `${exampleName} has been loaded in a new tab.` 
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "An unknown error occurred";
+      toast({
+        variant: 'destructive',
+        title: 'Error Loading Example',
+        description: `Could not load example. ${message}`,
+      });
+    }
+  }, [parseUnknownJsonToDiagramData, createTab, toast]);
 
   const handleMenuCopy = () => {
     if (selectedResource) {
@@ -1820,6 +1862,7 @@ export default function DiagramEditor() {
                     onNew={handleNew}
                     onLoad={handleLoadClick}
                     onSave={handleSave}
+                    onLoadExample={handleLoadExample}
                     onNewTab={createTab}
                     onExportSvg={handleExportSvg}
                     onToggleJsonPanel={toggleJsonPanel}

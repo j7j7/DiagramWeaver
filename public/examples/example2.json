@@ -1,0 +1,71 @@
+{
+  "nodes": [
+    {
+      "id": "load-balancer",
+      "type": "ELB",
+      "label": "Load Balancer",
+      "info": "Distributes traffic across multiple servers",
+      "x": 300,
+      "y": 100
+    },
+    {
+      "id": "app-server-1",
+      "type": "EC2",
+      "label": "App Server 1",
+      "info": "Application server instance 1"
+    },
+    {
+      "id": "app-server-2",
+      "type": "EC2",
+      "label": "App Server 2",
+      "info": "Application server instance 2"
+    },
+    {
+      "id": "app-server-3",
+      "type": "EC2",
+      "label": "App Server 3",
+      "info": "Application server instance 3"
+    },
+    {
+      "id": "database-primary",
+      "type": "RDS",
+      "label": "Primary DB",
+      "info": "Primary database instance",
+      "x": 700,
+      "y": 300
+    },
+    {
+      "id": "database-replica",
+      "type": "RDS",
+      "label": "Replica DB",
+      "info": "Read replica for scaling",
+      "x": 700,
+      "y": 500
+    }
+  ],
+  "connections": [
+    { "from": "load-balancer", "to": "app-server-1", "text": "HTTP" },
+    { "from": "load-balancer", "to": "app-server-2", "text": "HTTP" },
+    { "from": "load-balancer", "to": "app-server-3", "text": "HTTP" },
+    { "from": "app-server-1", "to": "database-primary", "text": "SQL" },
+    { "from": "app-server-2", "to": "database-primary", "text": "SQL" },
+    { "from": "app-server-3", "to": "database-primary", "text": "SQL" },
+    { "from": "database-primary", "to": "database-replica", "text": "Replication" }
+  ],
+  "zones": [
+    {
+      "id": "app-servers",
+      "type": "generic.grouping",
+      "subType": "Group",
+      "label": "Application Servers",
+      "info": "Group of application server instances",
+      "nodes": ["app-server-1", "app-server-2", "app-server-3"],
+      "orientation": "horizontal",
+      "borderColor": "#3b82f6",
+      "textColor": "#1e40af",
+      "backgroundColor": "#eff6ff",
+      "shadow": true
+    }
+  ],
+  "groupings": []
+}
