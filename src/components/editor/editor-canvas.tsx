@@ -1290,8 +1290,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           */}
           {rotationTarget && (() => {
             const target = rotationTarget.type === 'node'
-              ? nodesById[rotationTarget.id]
-              : zonesById[rotationTarget.id];
+              ? displayNodesById[rotationTarget.id]
+              : displayZonesById[rotationTarget.id];
 
             if (!target) return null;
 
