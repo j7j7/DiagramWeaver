@@ -562,11 +562,6 @@ export function TopMenuBar({
           Zoom: {(transform.k * 100).toFixed(1)}% (k: {transform.k.toFixed(3)})
         </div>
       )}
-      {transform && (
-        <div className="text-xs text-muted-foreground px-2 border-l border-border">
-          Canvas: X: {transform.x.toFixed(1)}, Y: {transform.y.toFixed(1)}
-        </div>
-      )}
       {mousePosition && (
         <div className="text-xs text-muted-foreground px-2 border-l border-border">
           Cursor: X: {mousePosition.x.toFixed(0)}, Y: {mousePosition.y.toFixed(0)}

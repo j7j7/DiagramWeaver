@@ -93,31 +93,10 @@ export function useCanvasTransform({
     // The actual visible viewport dimensions
     const viewportWidth = visibleRight - visibleLeft;
     const viewportHeight = visibleBottom - visibleTop;
-    
-    console.log('Fit to view - Window size:', { windowWidth, windowHeight });
-    console.log('Fit to view - Canvas bounding rect:', {
-      left: rect.left,
-      top: rect.top,
-      right: rect.right,
-      bottom: rect.bottom,
-      width: rect.width,
-      height: rect.height
-    });
-    console.log('Fit to view - Visible portion:', {
-      visibleLeft,
-      visibleTop,
-      visibleRight,
-      visibleBottom,
-      viewportWidth,
-      viewportHeight
-    });
 
     if (viewportWidth === 0 || viewportHeight === 0) {
-      console.log('Fit to view - Zero viewport dimensions, skipping');
       return; // Can't fit if viewport has no size
     }
-    
-    console.log('Fit to view - Final viewport to use:', { viewportWidth, viewportHeight });
 
     // Filter out items with invalid positions
     const validNodes = processedNodes.filter(n => 
@@ -146,11 +125,8 @@ export function useCanvasTransform({
       z.height > 0
     );
 
-    console.log('Fit to view - Valid items:', { validNodes: validNodes.length, validZones: validZones.length });
-
     // If no valid items, reset transform
     if (validNodes.length === 0 && validZones.length === 0) {
-      console.log('Fit to view - No valid items, resetting');
       setTransform({ x: 0, y: 0, k: 1 });
       return;
     }
@@ -214,16 +190,11 @@ export function useCanvasTransform({
       validZones.length > 0 ? zoneMaxY : -Infinity
     );
 
-    console.log('Fit to view - Content bounds:', { minX, minY, maxX, maxY });
-
     // Calculate content dimensions
     const contentWidth = maxX - minX;
     const contentHeight = maxY - minY;
 
-    console.log('Fit to view - Content size:', { contentWidth, contentHeight });
-
     if (contentWidth <= 0 || contentHeight <= 0) {
-      console.log('Fit to view - Invalid content dimensions, resetting');
       setTransform({ x: 0, y: 0, k: 1 });
       return;
     }
@@ -235,13 +206,9 @@ export function useCanvasTransform({
     const availableWidth = viewportWidth - (2 * padding);
     const availableHeight = viewportHeight - (2 * padding);
 
-    console.log('Fit to view - Available space:', { availableWidth, availableHeight });
-
     // Calculate zoom to fit content in available space
     const scaleX = availableWidth / contentWidth;
     const scaleY = availableHeight / contentHeight;
-    
-    console.log('Fit to view - Scale factors:', { scaleX, scaleY });
     
     // Use the smaller scale to ensure both dimensions fit
     let k = Math.min(scaleX, scaleY);
@@ -249,59 +216,19 @@ export function useCanvasTransform({
     // Clamp zoom to reasonable bounds
     k = Math.max(0.1, Math.min(2.5, k));
     
-    console.log('Fit to view - Final zoom (k):', k, `(${(k * 100).toFixed(1)}%)`);
-    
     // Calculate the center of the content in canvas coordinates
     const contentCenterX = (minX + maxX) / 2;
     const contentCenterY = (minY + maxY) / 2;
     
-    console.log('Fit to view - Content center:', { contentCenterX, contentCenterY });
-    
     // Calculate the center of the viewport
     const viewportCenterX = viewportWidth / 2;
     const viewportCenterY = viewportHeight / 2;
-    
-    console.log('Fit to view - Viewport center:', { viewportCenterX, viewportCenterY });
     
     // Transform formula: viewport_point = canvas_point * k + offset
     // We want: contentCenter * k + offset = viewportCenter
     // So: offset = viewportCenter - contentCenter * k
     const x = viewportCenterX - (contentCenterX * k);
     const y = viewportCenterY - (contentCenterY * k);
-
-    console.log('Fit to view - Final transform:', { x: x.toFixed(1), y: y.toFixed(1), k: k.toFixed(3) });
-    
-    // Verify the scaled bounds
-    const scaledMinX = minX * k + x;
-    const scaledMaxX = maxX * k + x;
-    const scaledMinY = minY * k + y;
-    const scaledMaxY = maxY * k + y;
-    
-    console.log('Fit to view - Scaled content bounds:', { 
-      scaledMinX: scaledMinX.toFixed(1), 
-      scaledMaxX: scaledMaxX.toFixed(1), 
-      scaledMinY: scaledMinY.toFixed(1), 
-      scaledMaxY: scaledMaxY.toFixed(1) 
-    });
-    console.log('Fit to view - Viewport bounds:', { 
-      minX: 0, 
-      maxX: viewportWidth, 
-      minY: 0, 
-      maxY: viewportHeight 
-    });
-    
-    // Debug: Show where each node will appear on screen
-    console.log('Fit to view - Node screen positions:');
-    validNodes.forEach(n => {
-      const dims = measureNodeDims(n);
-      const nodeWidth = (n.sizeMode === 'custom' && n.width) ? n.width : dims.width;
-      const nodeHeight = (n.sizeMode === 'custom' && n.height) ? n.height : dims.height;
-      const screenX = n.x! * k + x;
-      const screenY = n.y! * k + y;
-      const screenRight = (n.x! + nodeWidth) * k + x;
-      const screenBottom = (n.y! + nodeHeight) * k + y;
-      console.log(`  ${n.label || n.id}: canvas(${n.x}, ${n.y}) → screen(${screenX.toFixed(1)}, ${screenY.toFixed(1)}) to (${screenRight.toFixed(1)}, ${screenBottom.toFixed(1)})`);
-    });
 
     setTransform({ x, y, k });
   }, [processedNodes, processedZones, canvasRef, setTransform]);
