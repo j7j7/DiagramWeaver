@@ -25,6 +25,7 @@ interface UseCanvasOperationsOptions {
   onItemSelect: (item: any | null) => void;
   toast: (options: { variant?: 'destructive' | 'default'; title: string; description: string }) => void;
   iconBackgroundEnabled?: boolean;
+  defaultFreeflowEnabled?: boolean;
 }
 
 export function useCanvasOperations({
@@ -34,6 +35,7 @@ export function useCanvasOperations({
   onItemSelect,
   toast,
   iconBackgroundEnabled = true,
+  defaultFreeflowEnabled = false,
 }: UseCanvasOperationsOptions) {
   // Function to get random theme for shapes
   const getRandomTheme = () => {
@@ -164,7 +166,7 @@ export function useCanvasOperations({
           ...(itemType !== 'generic.text.text' && itemType !== 'generic.text.textbox' && !isShapeResource && {
             info: item.provider ? `${itemLabel} from ${item.provider}` : `A new ${itemLabel}`
           }),
-          freeflow: isShapeResource ? true : undefined, // Shapes are always freeflow
+          freeflow: isShapeResource ? true : (defaultFreeflowEnabled ? true : false), // Shapes are always freeflow, otherwise use default preference
           sizeMode: (isShapeResource || isTextboxResource) ? 'custom' : undefined, // Shapes and textboxes use custom sizing
            width: isShapeResource ? (
              itemType === 'generic.object.point' ? 20 :

@@ -197,6 +197,7 @@ export default function DiagramEditor() {
   const [hoverEnabled, setHoverEnabled] = React.useState<boolean>(false);
   const [selectionAnimationEnabled, setSelectionAnimationEnabled] = React.useState<boolean>(false);
   const [iconBackgroundEnabled, setIconBackgroundEnabled] = React.useState<boolean>(true);
+  const [defaultFreeflowEnabled, setDefaultFreeflowEnabled] = React.useState<boolean>(false);
   const [isReadOnly, setIsReadOnly] = React.useState<boolean>(false);
   const [triggerTextStylingPanel, setTriggerTextStylingPanel] = React.useState<boolean>(false);
   const [triggerVisualStylingPanel, setTriggerVisualStylingPanel] = React.useState<boolean>(false);
@@ -441,6 +442,11 @@ export default function DiagramEditor() {
     const savedIconBackground = localStorage.getItem('dw:iconBackground:enabled');
     if (savedIconBackground !== null) {
       setIconBackgroundEnabled(savedIconBackground === 'true');
+    }
+    // Load default freeflow preference
+    const savedDefaultFreeflow = localStorage.getItem('dw:defaultFreeflow:enabled');
+    if (savedDefaultFreeflow !== null) {
+      setDefaultFreeflowEnabled(savedDefaultFreeflow === 'true');
     }
   }, []);
 
@@ -1816,6 +1822,13 @@ export default function DiagramEditor() {
     }
   }, [iconBackgroundEnabled, isClient]);
 
+  // Persist default freeflow preference
+  React.useEffect(() => {
+    if (isClient) {
+      localStorage.setItem('dw:defaultFreeflow:enabled', String(defaultFreeflowEnabled));
+    }
+  }, [defaultFreeflowEnabled, isClient]);
+
   const handleZoneLayoutChange = (zoneId: string, layoutType: 'grid' | 'circular') => {
     setDiagramData(prevData => {
       return applyZoneLayout(zoneId, {
@@ -2194,6 +2207,8 @@ function DiagramEditorInner({
                     onToggleSelectionAnimation={() => setSelectionAnimationEnabled(!selectionAnimationEnabled)}
                     iconBackgroundEnabled={iconBackgroundEnabled}
                     onToggleIconBackground={() => setIconBackgroundEnabled(!iconBackgroundEnabled)}
+                    defaultFreeflowEnabled={defaultFreeflowEnabled}
+                    onToggleDefaultFreeflow={() => setDefaultFreeflowEnabled(!defaultFreeflowEnabled)}
                     isReadOnly={isReadOnly}
                     onToggleReadOnly={() => setIsReadOnly(!isReadOnly)}
                     onAlignObjects={handleAlignObjects}
@@ -2270,6 +2285,7 @@ function DiagramEditorInner({
                     hoverEnabled={hoverEnabled}
                     selectionAnimationEnabled={selectionAnimationEnabled}
                     iconBackgroundEnabled={iconBackgroundEnabled}
+                    defaultFreeflowEnabled={defaultFreeflowEnabled}
                     onSelectAll={handleSelectAll}
                     onTriggerTextStylingPanel={() => setTriggerTextStylingPanel(true)}
                     onTriggerVisualStylingPanel={() => setTriggerVisualStylingPanel(true)}

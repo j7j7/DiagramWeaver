@@ -65,6 +65,8 @@ interface TopMenuBarProps {
   onToggleSelectionAnimation?: () => void;
   iconBackgroundEnabled?: boolean;
   onToggleIconBackground?: () => void;
+  defaultFreeflowEnabled?: boolean;
+  onToggleDefaultFreeflow?: () => void;
   onAlignObjects?: (alignment: 'top' | 'center' | 'bottom' | 'v-middle' | 'left' | 'h-center' | 'right' | 'distribute-v' | 'distribute-h') => void;
   onThemeApplyToSelected?: (theme: DiagramTheme) => void;
   triggerTextStylingPanel?: boolean;
@@ -123,6 +125,8 @@ export function TopMenuBar({
   onToggleSelectionAnimation,
   iconBackgroundEnabled,
   onToggleIconBackground,
+  defaultFreeflowEnabled,
+  onToggleDefaultFreeflow,
   onAlignObjects,
   onThemeApplyToSelected,
   triggerTextStylingPanel = false,
@@ -410,9 +414,27 @@ export function TopMenuBar({
                 </MenubarItem>
               </>
             )}
-            {onToggleReadOnly !== undefined && (
+            {onToggleDefaultFreeflow !== undefined && (
               <>
                 {(onUndo || onRedo || onFitToView || onToggleHover || onToggleSelectionAnimation || onToggleIconBackground) && <MenubarSeparator />}
+                <MenubarItem onClick={onToggleDefaultFreeflow}>
+                  {defaultFreeflowEnabled ? (
+                    <>
+                      <Move className="mr-2 h-4 w-4" />
+                      Default Freeflow: Enabled
+                    </>
+                  ) : (
+                    <>
+                      <Move className="mr-2 h-4 w-4" />
+                      Default Freeflow: Disabled
+                    </>
+                  )}
+                </MenubarItem>
+              </>
+            )}
+            {onToggleReadOnly !== undefined && (
+              <>
+                {(onUndo || onRedo || onFitToView || onToggleHover || onToggleSelectionAnimation || onToggleIconBackground || onToggleDefaultFreeflow) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleReadOnly}>
                   {isReadOnly ? (
                     <>
