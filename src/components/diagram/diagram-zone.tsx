@@ -24,6 +24,8 @@ interface DiagramZoneProps {
   onClick?: (e: React.MouseEvent, zone: DiagramZoneData) => void;
   onContextMenu?: (e: React.MouseEvent, zone: DiagramZoneData) => void;
   onResize?: (zoneId: string, newWidth: number, newHeight: number) => void;
+  onResizeStart?: (zoneId: string, width: number, height: number) => void;
+  onResizeEnd?: () => void;
   onLabelChange?: (zoneId: string, newLabel: string) => void;
   onTagUpdate?: (zoneId: string, newTag: string) => void;
   isReadOnly?: boolean;
@@ -33,7 +35,7 @@ interface DiagramZoneProps {
 
 
 
-export function DiagramZone({ zone, isSelected, isDropTarget, isTargetable, isMultiSelected, isGroupMember, onClick, onContextMenu, onResize, onLabelChange, onTagUpdate, isReadOnly = false, onHoverChange }: DiagramZoneProps) {
+export function DiagramZone({ zone, isSelected, isDropTarget, isTargetable, isMultiSelected, isGroupMember, onClick, onContextMenu, onResize, onResizeStart, onResizeEnd, onLabelChange, onTagUpdate, isReadOnly = false, onHoverChange }: DiagramZoneProps) {
 const [{ isDragging }, drag, preview] = useDrag(() => ({
     type: ItemTypes.ZONE,
     item: { ...zone, type: ItemTypes.ZONE },
@@ -156,6 +158,11 @@ const [{ isDragging }, drag, preview] = useDrag(() => ({
     (zone as any).originalWidth = startWidth;
     (zone as any).originalHeight = startHeight;
     
+    // Notify parent to store original dimensions for all selected items
+    if (onResizeStart) {
+      onResizeStart(zone.id, startWidth, startHeight);
+    }
+    
     resizeStartPos.current = {
       x: e.clientX,
       y: e.clientY,
@@ -207,6 +214,10 @@ const [{ isDragging }, drag, preview] = useDrag(() => ({
     // Clear original dimensions used for multi-resize
     delete (zone as any).originalWidth;
     delete (zone as any).originalHeight;
+    // Notify parent to clear original dimensions
+    if (onResizeEnd) {
+      onResizeEnd();
+    }
   };
 
   // Global mouse events for resize
@@ -750,7 +761,7 @@ const [{ isDragging }, drag, preview] = useDrag(() => ({
       onMouseLeave={handleGroupMouseLeave}
     >
       {/* Resize handles - only show when selected or resizing */}
-      {!isReadOnly && (isResizing || isSelected) && zone.sizeMode !== 'auto' && (
+      {!isReadOnly && (isResizing || isSelected || isMultiSelected) && zone.sizeMode !== 'auto' && (
         <ResizeHandles
           visible={true}
           activeHandle={resizeHandle}

@@ -145,6 +145,8 @@ interface DiagramNodeProps {
   onLabelUpdate?: (nodeId: string, newLabel: string) => void;
   onTagUpdate?: (nodeId: string, newTag: string) => void;
   onResize?: (nodeId: string, newWidth: number, newHeight: number) => void;
+  onResizeStart?: (nodeId: string, width: number, height: number) => void;
+  onResizeEnd?: () => void;
   onPositionUpdate?: (nodeId: string, x: number, y: number) => void;
   onDraggingChange?: (isDragging: boolean) => void;
   hoverEnabled?: boolean;
@@ -154,7 +156,7 @@ interface DiagramNodeProps {
   onHoverChange?: (id: string, itemType: 'node' | 'zone', isHovered: boolean) => void;
 }
 
-export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onPositionUpdate, onDraggingChange, hoverEnabled = true, selectionAnimationEnabled = false, animationOffset = { x: 0, y: 0 }, isReadOnly = false, onHoverChange }: DiagramNodeProps) {
+export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onResizeStart, onResizeEnd, onPositionUpdate, onDraggingChange, hoverEnabled = true, selectionAnimationEnabled = false, animationOffset = { x: 0, y: 0 }, isReadOnly = false, onHoverChange }: DiagramNodeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [isEditingTag, setIsEditingTag] = useState(false);
@@ -482,6 +484,11 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
     (node as any).originalWidth = startWidth;
     (node as any).originalHeight = startHeight;
     
+    // Notify parent to store original dimensions for all selected items
+    if (onResizeStart) {
+      onResizeStart(node.id, startWidth, startHeight);
+    }
+    
     resizeStartPos.current = {
       x: e.clientX,
       y: e.clientY,
@@ -535,6 +542,10 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
     // Clear original dimensions used for multi-resize
     delete (node as any).originalWidth;
     delete (node as any).originalHeight;
+    // Notify parent to clear original dimensions
+    if (onResizeEnd) {
+      onResizeEnd();
+    }
   };
 
   // Global mouse events for resize
@@ -910,7 +921,7 @@ return (
        </Popover>
 
        {/* Resize handles - show for text resources (textbox always, others only in custom mode), or for shapes (except points) */}
-        {!isReadOnly && (isResizing || isSelected) &&
+        {!isReadOnly && (isResizing || isSelected || isMultiSelected) &&
          (isTextboxNode || ((isTextNode ) && node.sizeMode === 'custom') || (isShapeNode && !isPointNode)) && (
           <ResizeHandles
             visible={true}

@@ -344,13 +344,14 @@ export function useCanvasOperations({
     });
   }, [setDiagramData]);
 
-  const resizeMultipleNodes = useCallback((nodeIds: string[], scaleX: number, scaleY: number) => {
+  const resizeMultipleNodes = useCallback((nodeIds: string[], scaleX: number, scaleY: number, originalDimensions?: Map<string, { width: number; height: number }>) => {
     setDiagramData(prevData => {
       const updatedNodes = prevData.nodes?.map(node => {
         if (nodeIds.includes(node.id)) {
-          // Use original dimensions if stored, otherwise use current dimensions
-          const originalWidth = (node as any).originalWidth ?? (node.width || 80);
-          const originalHeight = (node as any).originalHeight ?? (node.height || 80);
+          // Use original dimensions from ref if provided, otherwise use current dimensions
+          const originalDims = originalDimensions?.get(node.id);
+          const originalWidth = originalDims?.width ?? (node.width || 80);
+          const originalHeight = originalDims?.height ?? (node.height || 80);
           const currentWidth = originalWidth;
           const currentHeight = originalHeight;
           
@@ -402,14 +403,15 @@ export function useCanvasOperations({
     });
   }, [setDiagramData]);
 
-  const resizeMultipleGroups = useCallback((groupIds: string[], scaleX: number, scaleY: number) => {
+  const resizeMultipleGroups = useCallback((groupIds: string[], scaleX: number, scaleY: number, originalDimensions?: Map<string, { width: number; height: number }>) => {
     const GRID_SNAP = 20; // Match diagram-zone.tsx
     setDiagramData(prevData => {
       const updatedZones = prevData.zones?.map(zone => {
         if (groupIds.includes(zone.id)) {
-          // Use original dimensions if stored, otherwise use current dimensions
-          const originalWidth = (zone as any).originalWidth ?? (zone.width || 200);
-          const originalHeight = (zone as any).originalHeight ?? (zone.height || 150);
+          // Use original dimensions from ref if provided, otherwise use current dimensions
+          const originalDims = originalDimensions?.get(zone.id);
+          const originalWidth = originalDims?.width ?? (zone.width || 200);
+          const originalHeight = originalDims?.height ?? (zone.height || 150);
           const currentWidth = originalWidth;
           const currentHeight = originalHeight;
           const minWidth = zone.minWidth || 200;

@@ -173,6 +173,37 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     capturedElement: HTMLElement | null;
   } | null>(null);
 
+  // Store original dimensions for all selected items during multi-resize
+  const originalDimensionsRef = useRef<Map<string, { width: number; height: number }>>(new Map());
+
+  // Store original dimensions for all selected items when resize starts
+  const handleResizeStart = useCallback((itemId: string, width: number, height: number) => {
+    // Store original dimensions for the item being resized
+    originalDimensionsRef.current.set(itemId, { width, height });
+    
+    // If multi-select, store original dimensions for all selected items
+    if (selectedItemIds.size > 1) {
+      selectedItemIds.forEach(id => {
+        if (!originalDimensionsRef.current.has(id)) {
+          const node = nodesById[id];
+          const zone = zonesById[id];
+          if (node) {
+            const nodeWidth = node.width || 80;
+            const nodeHeight = node.height || 80;
+            originalDimensionsRef.current.set(id, { width: nodeWidth, height: nodeHeight });
+          } else if (zone) {
+            originalDimensionsRef.current.set(id, { width: zone.width, height: zone.height });
+          }
+        }
+      });
+    }
+  }, [selectedItemIds, nodesById, zonesById]);
+
+  // Clear original dimensions when resize ends
+  const handleResizeEnd = useCallback(() => {
+    originalDimensionsRef.current.clear();
+  }, []);
+
   // Determine which item should show rotation handles
   // Handles appear when items are selected and persist until deselected
   // For multi-select, use the first selected item (or hovered item if available)
@@ -453,48 +484,10 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   const handleNodeResize = useCallback((nodeId: string, newWidth: number, newHeight: number) => {
     if (selectedItemIds.size > 1 && selectedItemIds.has(nodeId)) {
       // Multi-select resize: calculate scale factors from the dragged node
-      const draggedNode = nodesById[nodeId];
-      if (draggedNode && (draggedNode as any).originalWidth !== undefined) {
-        const startWidth = (draggedNode as any).originalWidth;
-        const startHeight = (draggedNode as any).originalHeight;
-        const scaleX = startWidth > 0 ? newWidth / startWidth : 1;
-        const scaleY = startHeight > 0 ? newHeight / startHeight : 1;
-        
-        // Separate nodes and zones, get their original dimensions from diagramData
-        const selectedNodeIds: string[] = [];
-        const selectedZoneIds: string[] = [];
-        
-        selectedItemIds.forEach(id => {
-          if (nodesById[id]) {
-            selectedNodeIds.push(id);
-          } else if (zonesById[id]) {
-            selectedZoneIds.push(id);
-          }
-        });
-        
-        if (selectedNodeIds.length > 0) {
-          operations.resizeMultipleNodes(selectedNodeIds, scaleX, scaleY);
-        }
-        if (selectedZoneIds.length > 0) {
-          operations.resizeMultipleGroups(selectedZoneIds, scaleX, scaleY);
-        }
-      } else {
-        operations.resizeNode(nodeId, newWidth, newHeight);
-      }
-    } else {
-      operations.resizeNode(nodeId, newWidth, newHeight);
-    }
-  }, [selectedItemIds, nodesById, zonesById, operations]);
-
-  const handleZoneResize = useCallback((zoneId: string, newWidth: number, newHeight: number) => {
-    if (selectedItemIds.size > 1 && selectedItemIds.has(zoneId)) {
-      // Multi-select resize: calculate scale factors from the dragged zone
-      const draggedZone = zonesById[zoneId];
-      if (draggedZone && (draggedZone as any).originalWidth !== undefined) {
-        const startWidth = (draggedZone as any).originalWidth;
-        const startHeight = (draggedZone as any).originalHeight;
-        const scaleX = startWidth > 0 ? newWidth / startWidth : 1;
-        const scaleY = startHeight > 0 ? newHeight / startHeight : 1;
+      const draggedOriginal = originalDimensionsRef.current.get(nodeId);
+      if (draggedOriginal) {
+        const scaleX = draggedOriginal.width > 0 ? newWidth / draggedOriginal.width : 1;
+        const scaleY = draggedOriginal.height > 0 ? newHeight / draggedOriginal.height : 1;
         
         // Separate nodes and zones
         const selectedNodeIds: string[] = [];
@@ -509,10 +502,44 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         });
         
         if (selectedNodeIds.length > 0) {
-          operations.resizeMultipleNodes(selectedNodeIds, scaleX, scaleY);
+          operations.resizeMultipleNodes(selectedNodeIds, scaleX, scaleY, originalDimensionsRef.current);
         }
         if (selectedZoneIds.length > 0) {
-          operations.resizeMultipleGroups(selectedZoneIds, scaleX, scaleY);
+          operations.resizeMultipleGroups(selectedZoneIds, scaleX, scaleY, originalDimensionsRef.current);
+        }
+      } else {
+        operations.resizeNode(nodeId, newWidth, newHeight);
+      }
+    } else {
+      operations.resizeNode(nodeId, newWidth, newHeight);
+    }
+  }, [selectedItemIds, nodesById, zonesById, operations]);
+
+  const handleZoneResize = useCallback((zoneId: string, newWidth: number, newHeight: number) => {
+    if (selectedItemIds.size > 1 && selectedItemIds.has(zoneId)) {
+      // Multi-select resize: calculate scale factors from the dragged zone
+      const draggedOriginal = originalDimensionsRef.current.get(zoneId);
+      if (draggedOriginal) {
+        const scaleX = draggedOriginal.width > 0 ? newWidth / draggedOriginal.width : 1;
+        const scaleY = draggedOriginal.height > 0 ? newHeight / draggedOriginal.height : 1;
+        
+        // Separate nodes and zones
+        const selectedNodeIds: string[] = [];
+        const selectedZoneIds: string[] = [];
+        
+        selectedItemIds.forEach(id => {
+          if (nodesById[id]) {
+            selectedNodeIds.push(id);
+          } else if (zonesById[id]) {
+            selectedZoneIds.push(id);
+          }
+        });
+        
+        if (selectedNodeIds.length > 0) {
+          operations.resizeMultipleNodes(selectedNodeIds, scaleX, scaleY, originalDimensionsRef.current);
+        }
+        if (selectedZoneIds.length > 0) {
+          operations.resizeMultipleGroups(selectedZoneIds, scaleX, scaleY, originalDimensionsRef.current);
         }
       } else {
         operations.resizeGroup(zoneId, newWidth, newHeight);
@@ -1111,6 +1138,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     onClick={(e: React.MouseEvent) => handleZoneClick(e, zone)}
                     onContextMenu={(e: React.MouseEvent) => handleZoneContextMenu(e, zone)}
                      onResize={handleZoneResize}
+                     onResizeStart={handleResizeStart}
+                     onResizeEnd={handleResizeEnd}
                      onLabelChange={operations.updateGroupLabel}
                      onTagUpdate={operations.updateGroupTag}
                      isReadOnly={isReadOnly}
@@ -1162,10 +1191,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     key={node.id}
                     node={displayNode}
                     isSelected={isNodeSelected}
+                    isMultiSelected={selectedItemIds?.has(node.id) && (selectedItemIds?.size ?? 0) > 1}
                     isGroupMember={isInGroup}
                      onClick={(e: React.MouseEvent) => handleNodeClick(e, node)}
                      onContextMenu={(e: React.MouseEvent) => handleNodeContextMenu(e, node)}
                      onResize={handleNodeResize}
+                     onResizeStart={handleResizeStart}
+                     onResizeEnd={handleResizeEnd}
                      onLabelUpdate={onLabelUpdate}
                      onTagUpdate={onTagUpdate}
                      onDraggingChange={onDraggingChange}
