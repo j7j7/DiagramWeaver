@@ -84,13 +84,25 @@ export function convertToNestedHierarchy(data: DiagramData): HierarchicalDiagram
          tagPosition: node.tagPosition,
          layer: node.layer, // Preserve layer information
          groupId: node.groupId, // Preserve grouping information
+         // Text styling properties
+         fontFamily: node.fontFamily,
+         fontSize: node.fontSize,
+         fontWeight: node.fontWeight,
+         fontStyle: node.fontStyle,
+         textDecoration: node.textDecoration,
+         textTransform: node.textTransform,
+         letterSpacing: node.letterSpacing,
+         lineHeight: node.lineHeight,
+         textOpacity: node.textOpacity,
          // Line shape specific properties
          startPos: node.startPos,
          endPos: node.endPos,
          startCap: node.startCap,
          endCap: node.endCap,
          lineThickness: node.lineThickness,
-         lineTextVerticalPosition: node.lineTextVerticalPosition
+         lineTextVerticalPosition: node.lineTextVerticalPosition,
+         // Lock property
+         locked: node.locked
        }))
     };
     nestedGroups.push(orphanGroup);
@@ -156,13 +168,25 @@ function convertGroupToNested(
          tagPosition: node.tagPosition,
          layer: node.layer, // Preserve layer information
          groupId: node.groupId, // Preserve grouping information
+         // Text styling properties
+         fontFamily: node.fontFamily,
+         fontSize: node.fontSize,
+         fontWeight: node.fontWeight,
+         fontStyle: node.fontStyle,
+         textDecoration: node.textDecoration,
+         textTransform: node.textTransform,
+         letterSpacing: node.letterSpacing,
+         lineHeight: node.lineHeight,
+         textOpacity: node.textOpacity,
          // Line shape specific properties
          startPos: node.startPos,
          endPos: node.endPos,
          startCap: node.startCap,
          endCap: node.endCap,
          lineThickness: node.lineThickness,
-         lineTextVerticalPosition: node.lineTextVerticalPosition
+         lineTextVerticalPosition: node.lineTextVerticalPosition,
+         // Lock property
+         locked: node.locked
       });
     } else {
       // This is a nested group
@@ -207,7 +231,17 @@ function convertGroupToNested(
      tag: zone.tag,
      tagPosition: zone.tagPosition,
      layer: zone.layer, // Preserve layer information
-     groupId: zone.groupId // Preserve grouping information
+     groupId: zone.groupId, // Preserve grouping information
+     // Text styling properties
+     fontFamily: zone.fontFamily,
+     fontSize: zone.fontSize,
+     fontWeight: zone.fontWeight,
+     fontStyle: zone.fontStyle,
+     textDecoration: zone.textDecoration,
+     textTransform: zone.textTransform,
+     letterSpacing: zone.letterSpacing,
+     lineHeight: zone.lineHeight,
+     textOpacity: zone.textOpacity
    };
 }
 
@@ -267,13 +301,25 @@ export function convertFromNestedHierarchy(nestedData: HierarchicalDiagramData):
              tagPosition: nodeChild.tagPosition,
              layer: nodeChild.layer, // Preserve layer information
              groupId: nodeChild.groupId, // Preserve grouping information
+             // Text styling properties
+             fontFamily: nodeChild.fontFamily,
+             fontSize: nodeChild.fontSize,
+             fontWeight: nodeChild.fontWeight,
+             fontStyle: nodeChild.fontStyle,
+             textDecoration: nodeChild.textDecoration,
+             textTransform: nodeChild.textTransform,
+             letterSpacing: nodeChild.letterSpacing,
+             lineHeight: nodeChild.lineHeight,
+             textOpacity: nodeChild.textOpacity,
              // Line shape specific properties
              startPos: nodeChild.startPos,
              endPos: nodeChild.endPos,
              startCap: nodeChild.startCap,
              endCap: nodeChild.endCap,
              lineThickness: nodeChild.lineThickness,
-             lineTextVerticalPosition: nodeChild.lineTextVerticalPosition
+             lineTextVerticalPosition: nodeChild.lineTextVerticalPosition,
+             // Lock property
+             locked: nodeChild.locked
           };
           nodes.push(node);
           nodeMap.set(nodeChild.id, node);
@@ -356,7 +402,17 @@ function processNestedGroup(
      tag: zone.tag,
      tagPosition: zone.tagPosition,
      layer: zone.layer, // Preserve layer information
-     groupId: zone.groupId // Preserve grouping information
+     groupId: zone.groupId, // Preserve grouping information
+     // Text styling properties
+     fontFamily: zone.fontFamily,
+     fontSize: zone.fontSize,
+     fontWeight: zone.fontWeight,
+     fontStyle: zone.fontStyle,
+     textDecoration: zone.textDecoration,
+     textTransform: zone.textTransform,
+     letterSpacing: zone.letterSpacing,
+     lineHeight: zone.lineHeight,
+     textOpacity: zone.textOpacity
   };
   
   zones.push(flatZone);
@@ -414,13 +470,25 @@ function processNestedGroup(
          tagPosition: nodeChild.tagPosition,
          layer: nodeChild.layer, // Preserve layer information
          groupId: nodeChild.groupId, // Preserve grouping information
+         // Text styling properties
+         fontFamily: nodeChild.fontFamily,
+         fontSize: nodeChild.fontSize,
+         fontWeight: nodeChild.fontWeight,
+         fontStyle: nodeChild.fontStyle,
+         textDecoration: nodeChild.textDecoration,
+         textTransform: nodeChild.textTransform,
+         letterSpacing: nodeChild.letterSpacing,
+         lineHeight: nodeChild.lineHeight,
+         textOpacity: nodeChild.textOpacity,
          // Line shape specific properties
          startPos: nodeChild.startPos,
          endPos: nodeChild.endPos,
          startCap: nodeChild.startCap,
          endCap: nodeChild.endCap,
          lineThickness: nodeChild.lineThickness,
-         lineTextVerticalPosition: nodeChild.lineTextVerticalPosition
+         lineTextVerticalPosition: nodeChild.lineTextVerticalPosition,
+         // Lock property
+         locked: nodeChild.locked
       };
     
       nodes.push(node);

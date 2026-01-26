@@ -153,13 +153,16 @@ export interface DiagramNodeItem {
    tagPosition?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right'; // Tag position relative to node
    groupId?: string; // Reference to grouping this node belongs to
    
-   // Line shape specific properties (absolute canvas positions)
-   startPos?: { x: number; y: number }; // Absolute canvas position for line start
-   endPos?: { x: number; y: number }; // Absolute canvas position for line end
-   startCap?: 'none' | 'arrow' | 'dot' | 'square'; // Start endpoint style for line shapes
-   endCap?: 'none' | 'arrow' | 'dot' | 'square'; // End endpoint style for line shapes
-   lineThickness?: number; // Line thickness for line shapes (default: 2.5)
-   lineTextVerticalPosition?: 'above' | 'middle' | 'below'; // Text position relative to line
+  // Line shape specific properties (absolute canvas positions)
+  startPos?: { x: number; y: number }; // Absolute canvas position for line start
+  endPos?: { x: number; y: number }; // Absolute canvas position for line end
+  startCap?: 'none' | 'arrow' | 'dot' | 'square'; // Start endpoint style for line shapes
+  endCap?: 'none' | 'arrow' | 'dot' | 'square'; // End endpoint style for line shapes
+  lineThickness?: number; // Line thickness for line shapes (default: 2.5)
+  lineTextVerticalPosition?: 'above' | 'middle' | 'below'; // Text position relative to line
+  
+  // Lock property - prevents movement when true
+  locked?: boolean; // If true, node cannot be moved
 }
 
 export interface DiagramZoneItem {

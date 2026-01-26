@@ -56,6 +56,9 @@ export const DiagramNodeDataSchema = z.object({
   endCap: z.enum(['none', 'arrow', 'dot', 'square']).optional(), // End endpoint style for line shapes
   lineThickness: z.number().optional(), // Line thickness for line shapes (default: 2.5)
   lineTextVerticalPosition: z.enum(['above', 'middle', 'below']).optional(), // Text position relative to line
+  
+  // Lock property - prevents movement when true
+  locked: z.boolean().optional(), // If true, node cannot be moved
 });
 
 // Schema for DiagramConnectionData 
@@ -218,6 +221,9 @@ export const DiagramNodeItemSchema = z.object({
   endCap: z.enum(['none', 'arrow', 'dot', 'square']).optional(), // End endpoint style for line shapes
   lineThickness: z.number().optional(), // Line thickness for line shapes (default: 2.5)
   lineTextVerticalPosition: z.enum(['above', 'middle', 'below']).optional(), // Text position relative to line
+  
+  // Lock property - prevents movement when true
+  locked: z.boolean().optional(), // If true, node cannot be moved
 });
 
 // Schema for nested group items in hierarchical format

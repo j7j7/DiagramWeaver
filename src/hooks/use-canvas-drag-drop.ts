@@ -121,17 +121,23 @@ export function useCanvasDragDrop({
         }
       }
       
-      // Check if item is in a group and get all group members
+      // Check if item is in multi-select first, then check group membership
+      // Multi-select takes priority over group membership when multiple items are selected
       let itemsToMove = new Set<string>();
       if (item.id) {
-        const group = getItemGroup(item.id, diagramData);
-        if (group) {
-          const members = getGroupMembers(group.id, diagramData);
-          members.forEach(id => itemsToMove.add(id));
-        } else if (selectedItemIds.has(item.id) && selectedItemIds.size > 1) {
+        if (selectedItemIds.size > 1 && selectedItemIds.has(item.id)) {
+          // Multiple items are selected and the dragged item is one of them - move all selected items
+          // This takes priority over group membership
           selectedItemIds.forEach(id => itemsToMove.add(id));
         } else {
-          itemsToMove.add(item.id);
+          // Check if item is in a group (only if not part of multi-select)
+          const group = getItemGroup(item.id, diagramData);
+          if (group) {
+            const members = getGroupMembers(group.id, diagramData);
+            members.forEach(id => itemsToMove.add(id));
+          } else {
+            itemsToMove.add(item.id);
+          }
         }
       }
       
@@ -301,17 +307,23 @@ export function useCanvasDragDrop({
       } else if (item.id && (itemType === ItemTypes.CANVAS_NODE || itemType === ItemTypes.ZONE)) {
         // Skip move operation if dropped on scratchpad
         if (!isDroppedOnScratchpad) {
-        // Check if item is in a group
+        // Check if item is in multi-select first, then check group membership
+        // Multi-select takes priority over group membership when multiple items are selected
         const group = getItemGroup(item.id, diagramData);
         let itemsToMoveSet = new Set<string>();
         
-        if (group) {
-          const members = getGroupMembers(group.id, diagramData);
-          members.forEach(id => itemsToMoveSet.add(id));
-        } else if (selectedItemIds.has(item.id) && selectedItemIds.size > 1) {
+        if (selectedItemIds.size > 1 && selectedItemIds.has(item.id)) {
+          // Multiple items are selected and the dragged item is one of them - move all selected items
+          // This takes priority over group membership
           selectedItemIds.forEach(id => itemsToMoveSet.add(id));
         } else {
-          itemsToMoveSet.add(item.id);
+          // Check if item is in a group (only if not part of multi-select)
+          if (group) {
+            const members = getGroupMembers(group.id, diagramData);
+            members.forEach(id => itemsToMoveSet.add(id));
+          } else {
+            itemsToMoveSet.add(item.id);
+          }
         }
         
         // Handle multi-item movement (grouped or multi-selected)

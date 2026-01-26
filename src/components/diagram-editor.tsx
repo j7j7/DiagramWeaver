@@ -485,8 +485,17 @@ export default function DiagramEditor() {
       setSelectedItem(item);
       
       if (item) {
-        // Always select only the clicked item, not the entire group
-        setSelectedItemIds(new Set([item.id]));
+        // If clicking on an item that's already in a multi-select, preserve the selection
+        // This allows dragging multi-selected items without clearing the selection
+        setSelectedItemIds(prev => {
+          if (prev.size > 1 && prev.has(item.id)) {
+            // Preserve multi-select if clicking on an already-selected item
+            return prev;
+          } else {
+            // Otherwise, select only the clicked item
+            return new Set([item.id]);
+          }
+        });
       } else {
         setSelectedItemIds(new Set());
       }
