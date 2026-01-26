@@ -316,7 +316,24 @@ class ThemeManager {
       // Favorites first
       if (a.isFavorite && !b.isFavorite) return -1;
       if (!a.isFavorite && b.isFavorite) return 1;
-      // Then by name
+      
+      // Built-in themes before custom themes
+      if (a.isBuiltIn && !b.isBuiltIn) return -1;
+      if (!a.isBuiltIn && b.isBuiltIn) return 1;
+      
+      // Within built-in themes, sort by name
+      if (a.isBuiltIn && b.isBuiltIn) {
+        return a.name.localeCompare(b.name);
+      }
+      
+      // Custom themes: sort by creation date (newest last) or updated date
+      const aDate = a.createdAt || a.updatedAt || '';
+      const bDate = b.createdAt || b.updatedAt || '';
+      if (aDate && bDate) {
+        return aDate.localeCompare(bDate);
+      }
+      
+      // Fallback to name
       return a.name.localeCompare(b.name);
     });
   }
@@ -427,12 +444,21 @@ class ThemeManager {
     const original = this.themes.find(theme => theme.id === id);
     if (!original) return null;
 
+    // Deep clone the properties object to avoid shared references
+    const clonedProperties: ThemeProperties = {
+      ...original.properties,
+      // Deep clone arrays if they exist
+      borderColors: original.properties.borderColors ? [...original.properties.borderColors] : undefined,
+      backgroundColors: original.properties.backgroundColors ? [...original.properties.backgroundColors] : undefined,
+    };
+
     const duplicate: DiagramTheme = {
       ...original,
       id: `${original.id}-copy-${Date.now()}`,
       name: newName,
       isBuiltIn: false,
       isDefault: false,
+      properties: clonedProperties,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };

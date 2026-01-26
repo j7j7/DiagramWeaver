@@ -35,6 +35,7 @@ export const DiagramNodeDataSchema = z.object({
   noIconBackground: z.boolean().optional(), // If true, removes the white background from icon nodes
   // Text justification for text resources
   textJustify: z.enum(['left', 'center', 'right', 'full']).optional(), // Text justification for text/textbox nodes
+  textVerticalPosition: z.enum(['top', 'middle', 'bottom']).optional(), // Vertical position of text in textbox/shape nodes
   
   // Text styling properties
   fontFamily: z.string().optional(), // Font family (e.g., 'Arial', 'Helvetica', 'Times New Roman')
@@ -196,6 +197,7 @@ export const DiagramNodeItemSchema = z.object({
   noIconBackground: z.boolean().optional(), // If true, removes the white background from icon nodes
   // Text justification for text resources
   textJustify: z.enum(['left', 'center', 'right', 'full']).optional(), // Text justification for text/textbox nodes
+  textVerticalPosition: z.enum(['top', 'middle', 'bottom']).optional(), // Vertical position of text in textbox/shape nodes
   
   // Text styling properties
   fontFamily: z.string().optional(), // Font family (e.g., 'Arial', 'Helvetica', 'Times New Roman')

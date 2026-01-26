@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { SaveFilePickerOptions, OpenFilePickerOptions } from '@/types/file-system';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,6 +41,7 @@ export function ThemeEditor({ open, onOpenChange, onThemeSelect, isReadOnly = fa
   const [editingTheme, setEditingTheme] = useState<DiagramTheme | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
+  const editorPanelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setThemes(themeManager.getThemesSorted());
@@ -54,7 +55,13 @@ export function ThemeEditor({ open, onOpenChange, onThemeSelect, isReadOnly = fa
 
   const handleThemeSelect = (theme: DiagramTheme) => {
     setSelectedTheme(theme);
-    setEditingTheme({ ...theme });
+    // Deep clone the theme and its properties to avoid shared references
+    const clonedProperties: ThemeProperties = {
+      ...theme.properties,
+      borderColors: theme.properties.borderColors ? [...theme.properties.borderColors] : undefined,
+      backgroundColors: theme.properties.backgroundColors ? [...theme.properties.backgroundColors] : undefined,
+    };
+    setEditingTheme({ ...theme, properties: clonedProperties });
     setIsCreatingNew(false);
   };
 
@@ -88,19 +95,34 @@ export function ThemeEditor({ open, onOpenChange, onThemeSelect, isReadOnly = fa
     setEditingTheme(newTheme);
     setIsCreatingNew(true);
     setSelectedTheme(null);
+    
+    // Scroll editor panel into view after state update
+    setTimeout(() => {
+      editorPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 100);
   };
 
   const handleSaveTheme = () => {
     if (!editingTheme) return;
     
+    // Deep clone properties before saving to ensure we're saving a clean copy
+    const clonedProperties: ThemeProperties = {
+      ...editingTheme.properties,
+      borderColors: editingTheme.properties.borderColors ? [...editingTheme.properties.borderColors] : undefined,
+      backgroundColors: editingTheme.properties.backgroundColors ? [...editingTheme.properties.backgroundColors] : undefined,
+    };
+    const themeToSave = { ...editingTheme, properties: clonedProperties };
+    
     if (isCreatingNew) {
-      themeManager.addTheme(editingTheme);
+      themeManager.addTheme(themeToSave);
       setIsCreatingNew(false);
+      // Update the editing theme to the saved version
+      setEditingTheme(themeToSave);
     } else {
-      themeManager.updateTheme(editingTheme.id, editingTheme);
+      themeManager.updateTheme(editingTheme.id, themeToSave);
     }
     
-    setSelectedTheme(editingTheme);
+    setSelectedTheme(themeToSave);
   };
 
   const handleDuplicateTheme = (theme: DiagramTheme) => {
@@ -303,9 +325,18 @@ export function ThemeEditor({ open, onOpenChange, onThemeSelect, isReadOnly = fa
                   <Upload className="h-4 w-4 mr-1" />
                   Import
                 </Button>
-                <Button size="sm" onClick={handleCreateNew}>
-                  <Plus className="h-4 w-4 mr-1" />
-                  New
+                <Button 
+                  size="sm" 
+                  variant="default"
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleCreateNew();
+                  }}
+                >
+                  <Plus className="h-4 w-4 shrink-0" />
+                  <span className="whitespace-nowrap">New</span>
                 </Button>
               </div>
             </div>
@@ -370,7 +401,7 @@ export function ThemeEditor({ open, onOpenChange, onThemeSelect, isReadOnly = fa
           </div>
 
           {/* Theme Editor */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2" ref={editorPanelRef}>
             {editingTheme ? (
               <div className="space-y-4">
                 <div className="flex justify-end gap-2">
