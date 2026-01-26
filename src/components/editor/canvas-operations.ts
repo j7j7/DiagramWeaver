@@ -231,6 +231,24 @@ export function useCanvasOperations({
       const isFreeflowShape = ((addedItem as any)?.freeflow === true || isShapeNodeType((addedItem as any)?.type)) && isShapeResource;
       
       if (targetGroupId && !isFreeflowShape) {
+        // Get the target zone to calculate relative position
+        const targetZone = newZones.find(z => z.id === targetGroupId);
+        if (targetZone && addedItem) {
+          // Convert absolute drop position to relative position within the zone
+          // Use processedZones to get the current absolute zone position, or fall back to zone's stored position
+          const processedZone = processedZones.find(z => z.id === targetGroupId);
+          const zoneX = processedZone?.x ?? targetZone.x ?? 0;
+          const zoneY = processedZone?.y ?? targetZone.y ?? 0;
+          
+          // Calculate relative position: absolute drop position minus zone position
+          const relativeX = position.x - zoneX;
+          const relativeY = position.y - zoneY;
+          
+          // Set the node's position to relative coordinates
+          (addedItem as any).x = relativeX;
+          (addedItem as any).y = relativeY;
+        }
+        
         newZones = newZones.map(zone => {
           if (zone.id === targetGroupId) {
             const updatedZone = { ...zone, children: [...zone.children, newItemId] };
@@ -241,8 +259,8 @@ export function useCanvasOperations({
         });
         
         // If target zone has circular layout, re-apply layout to recalculate positions
-        const targetZone = newZones.find(z => z.id === targetGroupId);
-        if (targetZone?.layoutType === 'circular') {
+        const updatedTargetZone = newZones.find(z => z.id === targetGroupId);
+        if (updatedTargetZone?.layoutType === 'circular') {
           const intermediateData = { ...prevData, nodes: newNodes, zones: newZones };
           const updatedWithLayout = applyZoneLayout(targetGroupId, intermediateData);
           newNodes = updatedWithLayout.nodes;
@@ -808,21 +826,15 @@ export function useCanvasOperations({
           const dy = snappedY - originalY;
 
           if (movingIsZone) {
+            // Update the zone's position
             currentZones = currentZones.map(zone => {
               if (zone.id === item.id) return { ...zone, x: snappedX, y: snappedY };
-              if (allChildIds.has(zone.id)) {
-                const originalChild = processedZones.find(childZone => childZone.id === zone.id);
-                return { ...zone, x: (originalChild?.x ?? 0) + dx, y: (originalChild?.y ?? 0) + dy };
-              }
               return zone;
             });
-            currentNodes = currentNodes.map(n => {
-              if (allChildIds.has(n.id)) {
-                const originalChild = processedNodes.find(cn => cn.id === n.id);
-                return { ...n, x: (originalChild?.x ?? 0) + dx, y: (originalChild?.y ?? 0) + dy };
-              }
-              return n;
-            });
+            // DO NOT update child node/zone positions here - they have relative positions
+            // that will be correctly converted to absolute during layout recalculation
+            // The layout system will handle converting relative positions to absolute
+            // based on the zone's new position
            } else {
              currentNodes = currentNodes.map(n => {
                if (n.id === item.id) {

@@ -406,9 +406,17 @@ function layoutZone(
     ((node.x !== undefined && node.x !== null) || (node.y !== undefined && node.y !== null))
   );
   
-  // If zone has free layout mode, circular layout, or contains freeflow nodes with absolute positions,
-  // respect existing positions and just calculate size
-  if (zone.layoutMode === 'free' || zone.layoutType === 'circular' || hasFreeflowWithAbsolutePositions) {
+  // Check if any nodes have explicit positions set (relative positions from user drops)
+  // If nodes have positions set, preserve them instead of applying grid layout
+  const hasNodesWithPositions = checkChildNodes.some(node => 
+    (node.x !== undefined && node.x !== null) && 
+    (node.y !== undefined && node.y !== null) &&
+    !node.freeflow // Regular nodes with positions should be preserved
+  );
+  
+  // If zone has free layout mode, circular layout, contains freeflow nodes with absolute positions,
+  // or has nodes with explicit positions, respect existing positions and just calculate size
+  if (zone.layoutMode === 'free' || zone.layoutType === 'circular' || hasFreeflowWithAbsolutePositions || hasNodesWithPositions) {
     const childNodes = zone.children
       .map((id: string) => allItems[id])
       .filter(Boolean)
@@ -477,11 +485,11 @@ function layoutZone(
 
     // Shift children to align them within the bounds
     // For circular zones: DO NOT modify child positions - they are already set by applyZoneLayout
-    // For free layout zones: align with padding, BUT preserve absolute positions for freeflow nodes
-    if (zone.layoutMode === 'free' || hasFreeflowWithAbsolutePositions) {
-        // If zone was treated as free layout due to freeflow nodes with absolute positions, never shift
-        // Only shift if it's explicitly free layout mode without freeflow nodes
-        if (zone.layoutMode === 'free' && !hasFreeflowWithAbsolutePositions) {
+    // For free layout zones: align with padding, BUT preserve positions for freeflow nodes and nodes with explicit positions
+    if (zone.layoutMode === 'free' || hasFreeflowWithAbsolutePositions || hasNodesWithPositions) {
+        // If zone was treated as free layout due to freeflow nodes with absolute positions or nodes with positions, never shift
+        // Only shift if it's explicitly free layout mode without positioned nodes
+        if (zone.layoutMode === 'free' && !hasFreeflowWithAbsolutePositions && !hasNodesWithPositions) {
             const shiftX = ZONE_PADDING - minX;
             const shiftY = ZONE_PADDING - minY;
 
@@ -492,7 +500,7 @@ function layoutZone(
                 });
             }
         }
-        // If hasFreeflowWithAbsolutePositions is true, positions are already absolute - don't shift
+        // If hasFreeflowWithAbsolutePositions or hasNodesWithPositions is true, positions should be preserved - don't shift
     }
     // For circular zones, we do NOT modify child positions here
     // They are already correctly positioned relative to zone by applyZoneLayout
@@ -961,24 +969,20 @@ function setAbsolutePositionsForZone(
     if (child.type === 'zone') {
       setAbsolutePositionsForZone(child as DiagramZoneData, zone.x!, zone.y!, allItems);
     } else {
-      // For nodes that already have absolute positions (especially freeflow nodes),
-      // preserve their positions as-is (they're already absolute)
-      // Otherwise, treat as relative to zone
-      const node = child as DiagramNodeData;
-      const hasFreeflow = node.freeflow === true;
-      const hasAbsolutePosition = (node.x !== undefined && node.x !== null) && (node.y !== undefined && node.y !== null);
+      // For nodes in zones, positions are ALWAYS relative to the zone
+      // Convert relative positions to absolute by adding zone position
+      // Since this node is in zone.children, it's guaranteed to be a child of this zone
+      // and its position should be relative to the zone origin
+      const currentX = child.x ?? 0;
+      const currentY = child.y ?? 0;
+      const zoneX = zone.x ?? 0;
+      const zoneY = zone.y ?? 0;
       
-      // If node has freeflow AND both x and y are set, preserve absolute position
-      // Also preserve if both coordinates are set and are large values (likely absolute, not relative)
-      // Otherwise, treat as relative to zone
-      if ((hasFreeflow && hasAbsolutePosition) || (hasAbsolutePosition && (Math.abs(node.x!) > 100 || Math.abs(node.y!) > 100))) {
-        // Position is already absolute, don't modify it
-        // Keep the existing absolute position
-      } else {
-        // Treat as relative position, add zone position
-        child.x = (child.x ?? 0) + zone.x!;
-        child.y = (child.y ?? 0) + zone.y!;
-      }
+      // Always convert relative to absolute for nodes that are children of zones
+      // The only exception is freeflow nodes that might have absolute positions,
+      // but those shouldn't be in zones anyway (they're filtered out in addNode)
+      child.x = currentX + zoneX;
+      child.y = currentY + zoneY;
     }
   });
 }
