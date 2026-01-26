@@ -1144,6 +1144,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                      onTagUpdate={operations.updateGroupTag}
                      isReadOnly={isReadOnly}
                      onHoverChange={handleHoverChange}
+                     onConnect={onConnect}
+                     isConnectMode={isConnectMode && isZoneSelected}
                   />
                 );
               });
@@ -1206,6 +1208,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     animationOffset={selectionAnimationEnabled ? (animationOffsets[node.id] || { x: 0, y: 0 }) : { x: 0, y: 0 }}
                     isReadOnly={isReadOnly}
                     onHoverChange={handleHoverChange}
+                    onConnect={onConnect}
+                    isConnectMode={isConnectMode && isNodeSelected}
                   />
                 );
               });

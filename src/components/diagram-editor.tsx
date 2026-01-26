@@ -2207,7 +2207,7 @@ function DiagramEditorInner({
                     selectedItemIds={selectedItemIds}
                     isConnectMode={isConnectMode}
                     onNodeClickInConnectMode={handleConnect}
-                    onConnect={() => setIsConnectMode(true)}
+                    onConnect={startConnecting}
                     onDisconnect={() => {
                              // Remove all connections from selected item
                              if (selectedItem) {

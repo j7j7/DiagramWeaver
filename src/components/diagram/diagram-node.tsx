@@ -33,6 +33,7 @@ import {
   ChevronShape,
 } from "./shapes";
 import { ResizeHandles } from "./resize-handles";
+import { ConnectHandle } from "./connect-handle";
 
 const NODE_WIDTH = 80;
 const BASE_NODE_HEIGHT = 80;
@@ -154,9 +155,11 @@ interface DiagramNodeProps {
   animationOffset?: { x: number; y: number };
   isReadOnly?: boolean;
   onHoverChange?: (id: string, itemType: 'node' | 'zone', isHovered: boolean) => void;
+  onConnect?: (connectionOptions?: { style?: 'pathways' | 'bezier', curvature?: number }) => void;
+  isConnectMode?: boolean;
 }
 
-export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onResizeStart, onResizeEnd, onPositionUpdate, onDraggingChange, hoverEnabled = true, selectionAnimationEnabled = false, animationOffset = { x: 0, y: 0 }, isReadOnly = false, onHoverChange }: DiagramNodeProps) {
+export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onResizeStart, onResizeEnd, onPositionUpdate, onDraggingChange, hoverEnabled = true, selectionAnimationEnabled = false, animationOffset = { x: 0, y: 0 }, isReadOnly = false, onHoverChange, onConnect, isConnectMode }: DiagramNodeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [isEditingTag, setIsEditingTag] = useState(false);
@@ -978,6 +981,17 @@ return (
             disabled={false}
             zIndexClass="z-50"
           />
+       )}
+
+       {/* Connect handle - show when selected */}
+       {!isReadOnly && (isSelected || isMultiSelected) && onConnect && (
+         <ConnectHandle
+           visible={true}
+           onConnect={() => onConnect({ style: 'bezier', curvature: 0.6 })}
+           isConnectMode={isConnectMode}
+           disabled={false}
+           zIndexClass="z-50"
+         />
        )}
     </div>
   );

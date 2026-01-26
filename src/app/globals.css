@@ -332,3 +332,76 @@
 .dw-resize-handle-active .dw-resize-indicator-knob {
   animation: resize-handle-pulse 1.5s ease-in-out infinite;
 }
+
+/* Connect handle - similar styling to resize handles */
+.dw-connect-handle {
+  pointer-events: auto;
+  transition: opacity 0.15s ease-in-out;
+}
+
+/* Base state - subtle visibility when handle is shown */
+.dw-connect-handle:not([data-hovered="true"]):not([data-active="true"]) {
+  opacity: 0.4;
+}
+
+/* Hovered state - more visible */
+.dw-connect-handle-highlighted {
+  opacity: 1;
+}
+
+/* Active state (connect mode) - glowing */
+.dw-connect-handle-active {
+  opacity: 1;
+}
+
+/* Connect indicator (circular button) */
+.dw-connect-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgb(34 197 94 / 0.3);
+  border: 2px solid rgb(34 197 94 / 0.7);
+  transition: all 0.15s ease-in-out;
+}
+
+/* Hovered connect handle - larger, brighter, with glow */
+.dw-connect-handle[data-hovered="true"] .dw-connect-indicator {
+  width: 24px;
+  height: 24px;
+  background: rgb(34 197 94 / 0.5);
+  border-color: rgb(34 197 94);
+  border-width: 2px;
+  box-shadow: 0 0 6px rgb(34 197 94 / 0.6),
+              0 0 12px rgb(34 197 94 / 0.3);
+}
+
+/* Active connect handle (connect mode) - glowing animation */
+.dw-connect-handle[data-active="true"] .dw-connect-indicator {
+  width: 24px;
+  height: 24px;
+  background: rgb(34 197 94 / 0.6);
+  border-color: rgb(34 197 94);
+  border-width: 2px;
+  box-shadow: 0 0 8px rgb(34 197 94 / 0.8),
+              0 0 16px rgb(34 197 94 / 0.5),
+              0 0 24px rgb(34 197 94 / 0.3);
+  animation: connect-handle-pulse 1.5s ease-in-out infinite;
+}
+
+/* Pulse animation for active connect mode */
+@keyframes connect-handle-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgb(34 197 94 / 0.8),
+                0 0 16px rgb(34 197 94 / 0.5),
+                0 0 24px rgb(34 197 94 / 0.3);
+  }
+  50% {
+    box-shadow: 0 0 12px rgb(34 197 94 / 1),
+                0 0 24px rgb(34 197 94 / 0.7),
+                0 0 36px rgb(34 197 94 / 0.4);
+  }
+}

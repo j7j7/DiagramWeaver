@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { extractTextStylingFromZone } from '@/lib/text-styling';
 import { ResizeHandles } from './resize-handles';
+import { ConnectHandle } from './connect-handle';
 
 const GRID_SNAP = 20;
 
@@ -30,12 +31,14 @@ interface DiagramZoneProps {
   onTagUpdate?: (zoneId: string, newTag: string) => void;
   isReadOnly?: boolean;
   onHoverChange?: (id: string, itemType: 'node' | 'zone', isHovered: boolean) => void;
+  onConnect?: (connectionOptions?: { style?: 'pathways' | 'bezier', curvature?: number }) => void;
+  isConnectMode?: boolean;
 }
 
 
 
 
-export function DiagramZone({ zone, isSelected, isDropTarget, isTargetable, isMultiSelected, isGroupMember, onClick, onContextMenu, onResize, onResizeStart, onResizeEnd, onLabelChange, onTagUpdate, isReadOnly = false, onHoverChange }: DiagramZoneProps) {
+export function DiagramZone({ zone, isSelected, isDropTarget, isTargetable, isMultiSelected, isGroupMember, onClick, onContextMenu, onResize, onResizeStart, onResizeEnd, onLabelChange, onTagUpdate, isReadOnly = false, onHoverChange, onConnect, isConnectMode }: DiagramZoneProps) {
 const [{ isDragging }, drag, preview] = useDrag(() => ({
     type: ItemTypes.ZONE,
     item: { ...zone, type: ItemTypes.ZONE },
@@ -767,6 +770,17 @@ const [{ isDragging }, drag, preview] = useDrag(() => ({
           activeHandle={resizeHandle}
           hoveredHandle={hoveredHandle}
           onStart={handleResizeStart}
+          disabled={false}
+          zIndexClass="z-50"
+        />
+      )}
+
+      {/* Connect handle - show when selected */}
+      {!isReadOnly && (isSelected || isMultiSelected) && onConnect && (
+        <ConnectHandle
+          visible={true}
+          onConnect={() => onConnect({ style: 'bezier', curvature: 0.6 })}
+          isConnectMode={isConnectMode}
           disabled={false}
           zIndexClass="z-50"
         />
