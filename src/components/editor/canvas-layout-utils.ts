@@ -395,8 +395,20 @@ function layoutZone(
   allItems: { [id: string]: DiagramNodeData | DiagramZoneData | PositionedNode | PositionedGroup },
   measureNodeDimsFn: (n: PositionedNode) => { width: number; height: number }
 ): { width: number; height: number } {
-  // If zone has free layout mode or circular layout, respect existing positions and just calculate size
-  if (zone.layoutMode === 'free' || zone.layoutType === 'circular') {
+  // Check if zone contains freeflow nodes with absolute positions - treat as free layout
+  const checkChildNodes = zone.children
+    .map((id: string) => allItems[id])
+    .filter(Boolean)
+    .filter((c: any) => !c.type || c.type !== 'zone') as DiagramNodeData[];
+  
+  const hasFreeflowWithAbsolutePositions = checkChildNodes.some(node => 
+    node.freeflow === true && 
+    ((node.x !== undefined && node.x !== null) || (node.y !== undefined && node.y !== null))
+  );
+  
+  // If zone has free layout mode, circular layout, or contains freeflow nodes with absolute positions,
+  // respect existing positions and just calculate size
+  if (zone.layoutMode === 'free' || zone.layoutType === 'circular' || hasFreeflowWithAbsolutePositions) {
     const childNodes = zone.children
       .map((id: string) => allItems[id])
       .filter(Boolean)
@@ -465,17 +477,22 @@ function layoutZone(
 
     // Shift children to align them within the bounds
     // For circular zones: DO NOT modify child positions - they are already set by applyZoneLayout
-    // For free layout zones: align with padding
-    if (zone.layoutMode === 'free') {
-        const shiftX = ZONE_PADDING - minX;
-        const shiftY = ZONE_PADDING - minY;
+    // For free layout zones: align with padding, BUT preserve absolute positions for freeflow nodes
+    if (zone.layoutMode === 'free' || hasFreeflowWithAbsolutePositions) {
+        // If zone was treated as free layout due to freeflow nodes with absolute positions, never shift
+        // Only shift if it's explicitly free layout mode without freeflow nodes
+        if (zone.layoutMode === 'free' && !hasFreeflowWithAbsolutePositions) {
+            const shiftX = ZONE_PADDING - minX;
+            const shiftY = ZONE_PADDING - minY;
 
-        if (shiftX !== 0 || shiftY !== 0) {
-            allChildren.forEach(child => {
-                child.x = (child.x || 0) + shiftX;
-                child.y = (child.y || 0) + shiftY;
-            });
+            if (shiftX !== 0 || shiftY !== 0) {
+                allChildren.forEach(child => {
+                    child.x = (child.x || 0) + shiftX;
+                    child.y = (child.y || 0) + shiftY;
+                });
+            }
         }
+        // If hasFreeflowWithAbsolutePositions is true, positions are already absolute - don't shift
     }
     // For circular zones, we do NOT modify child positions here
     // They are already correctly positioned relative to zone by applyZoneLayout
@@ -944,8 +961,24 @@ function setAbsolutePositionsForZone(
     if (child.type === 'zone') {
       setAbsolutePositionsForZone(child as DiagramZoneData, zone.x!, zone.y!, allItems);
     } else {
-      child.x = (child.x ?? 0) + zone.x!;
-      child.y = (child.y ?? 0) + zone.y!;
+      // For nodes that already have absolute positions (especially freeflow nodes),
+      // preserve their positions as-is (they're already absolute)
+      // Otherwise, treat as relative to zone
+      const node = child as DiagramNodeData;
+      const hasFreeflow = node.freeflow === true;
+      const hasAbsolutePosition = (node.x !== undefined && node.x !== null) && (node.y !== undefined && node.y !== null);
+      
+      // If node has freeflow AND both x and y are set, preserve absolute position
+      // Also preserve if both coordinates are set and are large values (likely absolute, not relative)
+      // Otherwise, treat as relative to zone
+      if ((hasFreeflow && hasAbsolutePosition) || (hasAbsolutePosition && (Math.abs(node.x!) > 100 || Math.abs(node.y!) > 100))) {
+        // Position is already absolute, don't modify it
+        // Keep the existing absolute position
+      } else {
+        // Treat as relative position, add zone position
+        child.x = (child.x ?? 0) + zone.x!;
+        child.y = (child.y ?? 0) + zone.y!;
+      }
     }
   });
 }
@@ -956,8 +989,35 @@ export function calculateLayout(diagramData: DiagramData): {
   width: number;
   height: number;
 } {
-  const nodes: DiagramNodeData[] = JSON.parse(JSON.stringify(diagramData.nodes || []));
+  let nodes: DiagramNodeData[] = JSON.parse(JSON.stringify(diagramData.nodes || []));
   let zones: DiagramZoneData[] = JSON.parse(JSON.stringify(diagramData.zones || []));
+  
+  // Extract nodes that are nested as objects in zones' children arrays
+  // This handles data structures where nodes are objects in children instead of just IDs
+  const extractedNodes: DiagramNodeData[] = [];
+  zones.forEach(zone => {
+    zone.children.forEach((child: any) => {
+      // If child is an object (not just an ID string) and has a type that's not 'zone'
+      if (typeof child === 'object' && child !== null && child.type && child.type !== 'zone') {
+        // Check if this node is already in the nodes array
+        if (!nodes.find(n => n.id === child.id) && !extractedNodes.find(n => n.id === child.id)) {
+          extractedNodes.push(child as DiagramNodeData);
+        }
+      }
+    });
+  });
+  
+  // Add extracted nodes to the nodes array
+  nodes = [...nodes, ...extractedNodes];
+  
+  // Normalize zones' children arrays to contain only IDs (strings)
+  zones = zones.map(zone => ({
+    ...zone,
+    children: zone.children.map((child: any) => {
+      // If child is an object, return its ID; otherwise return as-is (should be ID string)
+      return typeof child === 'object' && child !== null ? child.id : child;
+    })
+  }));
   
   // Remove duplicate zones by ID (can happen during drag operations)
   const uniqueZoneIds = new Set<string>();
