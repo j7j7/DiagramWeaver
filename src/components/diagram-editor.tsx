@@ -983,6 +983,11 @@ export default function DiagramEditor() {
               setSelectedItem(null);
               console.log('[Load] State updated successfully');
               toast({ title: 'Diagram Loaded', description: 'Your diagram has been successfully loaded.' });
+              
+              // Fit diagram to view after loading
+              setTimeout(() => {
+                editorRef.current?.fitToView();
+              }, 100);
             }, 0);
           }
         } catch (error) {
