@@ -49,11 +49,13 @@ interface BezierConnectionTextProps {
   connectionColor?: string;
 }
 
-export function getConnectionPoint(obj: any, width: number, height: number, point: 'top' | 'bottom' | 'left' | 'right' | 'center', iconHeight?: number, connectionIndex?: number, totalConnections?: number, isToNode: boolean = false, toConnectionIndex?: number, toTotalConnections?: number): { x: number; y: number } {
+export function getConnectionPoint(obj: any, width: number, height: number, point: 'top' | 'bottom' | 'left' | 'right' | 'center', iconHeight?: number, connectionIndex?: number, totalConnections?: number, isToNode: boolean = false, toConnectionIndex?: number, toTotalConnections?: number, iconOffset?: number): { x: number; y: number } {
   const centerX = obj.x + width / 2;
   // Use icon height for Y center calculation if provided (for nodes with text labels)
   // This ensures connections attach to the icon center, not the overall node center
-  const centerY = iconHeight ? obj.y + iconHeight / 2 : obj.y + height / 2;
+  // iconOffset accounts for text positioned above the icon
+  const iconYOffset = iconOffset || 0;
+  const centerY = iconHeight ? obj.y + iconYOffset + iconHeight / 2 : obj.y + height / 2;
   
   // For groups/zones, always use full height for edge center calculations
   const isGroup = obj.type === 'group' || obj.subType === 'zone';
@@ -109,7 +111,7 @@ export function getConnectionPoint(obj: any, width: number, height: number, poin
     case 'bottom':
       // For bottom edge, always use horizontal center and bottom Y
       // For groups/zones, use full height and offset 4px downward (outward)
-      const bottomY = isGroup ? obj.y + height : (iconHeight ? obj.y + iconHeight : obj.y + height);
+      const bottomY = isGroup ? obj.y + height : (iconHeight ? obj.y + iconYOffset + iconHeight : obj.y + height);
       return { x: centerX + offsetX, y: bottomY + edgeOffset };
     case 'left':
       // For left edge, always use left X and vertical center
@@ -191,11 +193,11 @@ export function determineConnectionEdges(
   return { fromEdge, toEdge };
 }
 
-export function getOptimalConnectionPoints(from: any, to: any, fromWidth: number, fromHeight: number, toWidth: number, toHeight: number, connectionData?: DiagramConnectionData, fromIconHeight?: number, toIconHeight?: number): { fromX: number; fromY: number; toX: number; toY: number; fromAngle: number; toAngle: number } {
+export function getOptimalConnectionPoints(from: any, to: any, fromWidth: number, fromHeight: number, toWidth: number, toHeight: number, connectionData?: DiagramConnectionData, fromIconHeight?: number, toIconHeight?: number, fromIconOffset?: number, toIconOffset?: number): { fromX: number; fromY: number; toX: number; toY: number; fromAngle: number; toAngle: number } {
   // Use specified connection points if provided
   if (connectionData?.fromPreferredExit && connectionData?.toPreferredEntry) {
-    const fromPoint = getConnectionPoint(from, fromWidth, fromHeight, connectionData.fromPreferredExit, fromIconHeight, connectionData?.connectionIndex, connectionData?.totalConnections, false);
-    const toPoint = getConnectionPoint(to, toWidth, toHeight, connectionData.toPreferredEntry, toIconHeight, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, true, connectionData?.toConnectionIndex, connectionData?.toTotalConnections);
+    const fromPoint = getConnectionPoint(from, fromWidth, fromHeight, connectionData.fromPreferredExit, fromIconHeight, connectionData?.connectionIndex, connectionData?.totalConnections, false, undefined, undefined, fromIconOffset);
+    const toPoint = getConnectionPoint(to, toWidth, toHeight, connectionData.toPreferredEntry, toIconHeight, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, true, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, toIconOffset);
     const fromAngle = getExitAngle(connectionData.fromPreferredExit);
     const toAngle = getExitAngle(connectionData.toPreferredEntry);
     return { fromX: fromPoint.x, fromY: fromPoint.y, toX: toPoint.x, toY: toPoint.y, fromAngle, toAngle };
@@ -203,10 +205,13 @@ export function getOptimalConnectionPoints(from: any, to: any, fromWidth: number
 
   // Auto-determine optimal connection points
   // Use icon height for center calculation if provided (for nodes with text labels)
+  // iconOffset accounts for text positioned above the icon
+  const fromIconYOffset = fromIconOffset || 0;
+  const toIconYOffset = toIconOffset || 0;
   const fromCenterX = from.x + fromWidth / 2;
-  const fromCenterY = fromIconHeight ? from.y + fromIconHeight / 2 : from.y + fromHeight / 2;
+  const fromCenterY = fromIconHeight ? from.y + fromIconYOffset + fromIconHeight / 2 : from.y + fromHeight / 2;
   const toCenterX = to.x + toWidth / 2;
-  const toCenterY = toIconHeight ? to.y + toIconHeight / 2 : to.y + toHeight / 2;
+  const toCenterY = toIconHeight ? to.y + toIconYOffset + toIconHeight / 2 : to.y + toHeight / 2;
 
   const dx = toCenterX - fromCenterX;
   const dy = toCenterY - fromCenterY;
@@ -263,8 +268,8 @@ export function getOptimalConnectionPoints(from: any, to: any, fromWidth: number
     ? (isHorizontal ? (dx > 0 ? 'left' : 'right') : (dy > 0 ? 'top' : 'bottom'))
     : finalToPoint;
   
-  const fromConnectionPoint = getConnectionPoint(from, fromWidth, fromHeight, safeFromPoint, fromIconHeight, connectionData?.connectionIndex, connectionData?.totalConnections, false);
-  const toConnectionPoint = getConnectionPoint(to, toWidth, toHeight, safeToPoint, toIconHeight, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, true, connectionData?.toConnectionIndex, connectionData?.toTotalConnections);
+  const fromConnectionPoint = getConnectionPoint(from, fromWidth, fromHeight, safeFromPoint, fromIconHeight, connectionData?.connectionIndex, connectionData?.totalConnections, false, undefined, undefined, fromIconOffset);
+  const toConnectionPoint = getConnectionPoint(to, toWidth, toHeight, safeToPoint, toIconHeight, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, true, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, toIconOffset);
   
   const fromAngle = getExitAngle(safeFromPoint);
   const toAngle = getExitAngle(safeToPoint);
@@ -419,6 +424,8 @@ export function BezierConnection({ from, to, connectionColor, connectionData, on
   // BUT: Groups/zones should use full height, not icon height
   let fromIconHeight: number | undefined;
   let toIconHeight: number | undefined;
+  let fromIconOffset: number | undefined;
+  let toIconOffset: number | undefined;
   
   if (!isFromGroup) {
     if (isFromShape) {
@@ -430,6 +437,14 @@ export function BezierConnection({ from, to, connectionColor, connectionData, on
     } else {
       // For regular resource nodes, use BASE_NODE_HEIGHT (icon only, ignore text)
       fromIconHeight = BASE_NODE_HEIGHT;
+      // Calculate icon offset if text is positioned above
+      const textVerticalPosition = (from as any).textVerticalPosition || 'bottom';
+      if (textVerticalPosition === 'top' && from.label && from.label.trim().length > 0) {
+        // Calculate text height when positioned above
+        const maxCharsPerLine = 16;
+        const lines = Math.ceil(from.label.length / maxCharsPerLine);
+        fromIconOffset = 20 + ((lines - 1) * 8); // Same calculation as textUnderHeight
+      }
     }
   }
   // If isFromGroup, fromIconHeight remains undefined, so full height will be used
@@ -444,13 +459,22 @@ export function BezierConnection({ from, to, connectionColor, connectionData, on
     } else {
       // For regular resource nodes, use BASE_NODE_HEIGHT (icon only, ignore text)
       toIconHeight = BASE_NODE_HEIGHT;
+      // Calculate icon offset if text is positioned above
+      const textVerticalPosition = (to as any).textVerticalPosition || 'bottom';
+      if (textVerticalPosition === 'top' && to.label && to.label.trim().length > 0) {
+        // Calculate text height when positioned above
+        const maxCharsPerLine = 16;
+        const lines = Math.ceil(to.label.length / maxCharsPerLine);
+        toIconOffset = 20 + ((lines - 1) * 8); // Same calculation as textUnderHeight
+      }
     }
   }
   // If isToGroup, toIconHeight remains undefined, so full height will be used
 
   // Use icon-only heights for connection point calculations (undefined for groups/zones = use full height)
   // Pass full heights for width calculations, but icon heights for Y positioning
-  const connectionPoints = getOptimalConnectionPoints(from, to, fromWidth, fromHeight, toWidth, toHeight, connectionData, fromIconHeight, toIconHeight);
+  // Pass icon offsets to account for text positioned above icons
+  const connectionPoints = getOptimalConnectionPoints(from, to, fromWidth, fromHeight, toWidth, toHeight, connectionData, fromIconHeight, toIconHeight, fromIconOffset, toIconOffset);
   const { fromX, fromY, toX, toY, fromAngle, toAngle } = connectionPoints;
 
   const curvature = connectionData?.curvature || 0.6;
@@ -662,18 +686,38 @@ export function BezierConnectionText({ connectionData, from, to, connectionColor
     
     let fromIconHeight: number | undefined;
     let toIconHeight: number | undefined;
+    let fromIconOffset: number | undefined;
+    let toIconOffset: number | undefined;
     
     if (!isFromGroup) {
       fromIconHeight = isFromShape ? (from.height || 48) : (isFromTextType ? fromHeight : BASE_NODE_HEIGHT);
+      // Calculate icon offset if text is positioned above (for regular nodes only)
+      if (!isFromShape && !isFromTextType) {
+        const textVerticalPosition = (from as any).textVerticalPosition || 'bottom';
+        if (textVerticalPosition === 'top' && from.label && from.label.trim().length > 0) {
+          const maxCharsPerLine = 16;
+          const lines = Math.ceil(from.label.length / maxCharsPerLine);
+          fromIconOffset = 20 + ((lines - 1) * 8);
+        }
+      }
     }
     // If isFromGroup, fromIconHeight remains undefined, so full height will be used
     
     if (!isToGroup) {
       toIconHeight = isToShape ? (to.height || 48) : (isToTextType ? toHeight : BASE_NODE_HEIGHT);
+      // Calculate icon offset if text is positioned above (for regular nodes only)
+      if (!isToShape && !isToTextType) {
+        const textVerticalPosition = (to as any).textVerticalPosition || 'bottom';
+        if (textVerticalPosition === 'top' && to.label && to.label.trim().length > 0) {
+          const maxCharsPerLine = 16;
+          const lines = Math.ceil(to.label.length / maxCharsPerLine);
+          toIconOffset = 20 + ((lines - 1) * 8);
+        }
+      }
     }
     // If isToGroup, toIconHeight remains undefined, so full height will be used
     
-    const connectionPoints = getOptimalConnectionPoints(from, to, fromWidth, fromHeight, toWidth, toHeight, connectionData, fromIconHeight, toIconHeight);
+    const connectionPoints = getOptimalConnectionPoints(from, to, fromWidth, fromHeight, toWidth, toHeight, connectionData, fromIconHeight, toIconHeight, fromIconOffset, toIconOffset);
     const { fromX, fromY, toX, toY, fromAngle, toAngle } = connectionPoints;
 
     const curvature = connectionData?.curvature || 0.6;

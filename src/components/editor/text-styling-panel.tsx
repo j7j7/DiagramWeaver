@@ -65,7 +65,24 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
           return 'top';
         }
       }
-      return (styling.textVerticalPosition as 'top' | 'middle' | 'bottom') || 'middle';
+      // If textVerticalPosition is explicitly set, use it
+      if (styling.textVerticalPosition) {
+        return styling.textVerticalPosition as 'top' | 'middle' | 'bottom';
+      }
+      // Default based on item type:
+      // - Regular nodes (icon nodes): default to 'bottom' for backward compatibility
+      // - Textboxes and zones: default to 'middle'
+      if (selectedItem && selectedItem.itemType === 'node') {
+        const nodeType = selectedItem.type;
+        // Textboxes should default to 'middle', regular nodes to 'bottom'
+        if (nodeType === 'generic.text.textbox') {
+          return 'middle';
+        }
+        // Regular icon nodes default to 'bottom'
+        return 'bottom';
+      }
+      // Default to 'middle' for zones and other types
+      return 'middle';
     } catch (error) {
       return 'middle';
     }

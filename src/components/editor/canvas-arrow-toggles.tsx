@@ -176,9 +176,11 @@ export function CanvasArrowToggles({
           ? ((toItem as any).height || 220)
           : (isToShape && (toItem as any).height ? (toItem as any).height : (toCalculatedHeight + toTextUnderHeight));
         
-        // Calculate icon heights
+        // Calculate icon heights and offsets
         let fromIconHeight: number | undefined;
         let toIconHeight: number | undefined;
+        let fromIconOffset: number | undefined;
+        let toIconOffset: number | undefined;
         
         if (!isFromGroup) {
           if (isFromShape) {
@@ -187,6 +189,13 @@ export function CanvasArrowToggles({
             fromIconHeight = fromCalculatedHeight;
           } else {
             fromIconHeight = BASE_NODE_HEIGHT;
+            // Calculate icon offset if text is positioned above
+            const textVerticalPosition = (fromItem as any).textVerticalPosition || 'bottom';
+            if (textVerticalPosition === 'top' && (fromItem as any).label && ((fromItem as any).label || '').trim().length > 0) {
+              const maxCharsPerLine = 16;
+              const lines = Math.ceil(((fromItem as any).label || '').length / maxCharsPerLine);
+              fromIconOffset = 20 + ((lines - 1) * 8);
+            }
           }
         }
         
@@ -197,6 +206,13 @@ export function CanvasArrowToggles({
             toIconHeight = toCalculatedHeight;
           } else {
             toIconHeight = BASE_NODE_HEIGHT;
+            // Calculate icon offset if text is positioned above
+            const textVerticalPosition = (toItem as any).textVerticalPosition || 'bottom';
+            if (textVerticalPosition === 'top' && (toItem as any).label && ((toItem as any).label || '').trim().length > 0) {
+              const maxCharsPerLine = 16;
+              const lines = Math.ceil(((toItem as any).label || '').length / maxCharsPerLine);
+              toIconOffset = 20 + ((lines - 1) * 8);
+            }
           }
         }
         
@@ -250,7 +266,9 @@ export function CanvasArrowToggles({
           toHeight, 
           enhancedConn, 
           fromIconHeight, 
-          toIconHeight
+          toIconHeight,
+          fromIconOffset,
+          toIconOffset
         );
         const { fromX, fromY, toX, toY, fromAngle, toAngle } = connectionPoints;
         

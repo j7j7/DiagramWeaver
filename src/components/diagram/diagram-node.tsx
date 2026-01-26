@@ -864,45 +864,92 @@ return (
                   </div>
                 </div>
              ) : (
-              <>
-                <div className={cn(
-                    "flex items-center justify-center w-20 h-20 transition-colors flex-shrink-0",
-                    (node as any).noIconBackground ? "" : "rounded-lg shadow-md border bg-card",
-                    isSelected ? "border-primary" : (node as any).noIconBackground || (isDragging || isTouchDragging) ? "" : "group-hover:border-accent",
-                    isTargetable && "border-dashed border-primary"
+              // Regular icon node - support vertical text positioning
+              (() => {
+                const nodeAny = node as any;
+                const textVerticalPosition = nodeAny.textVerticalPosition || 'bottom'; // Default to bottom for backward compatibility
+                const isMiddle = textVerticalPosition === 'middle';
+                const isTop = textVerticalPosition === 'top';
+                const isBottom = textVerticalPosition === 'bottom';
+                
+                // For middle position, use relative container with absolute positioning
+                // For top/bottom, use flex-col with order
+                return (
+                  <div className={cn(
+                    "flex flex-col items-center justify-center",
+                    isMiddle && "relative"
+                  )}>
+                    {/* Icon container */}
+                    <div className={cn(
+                      "flex items-center justify-center w-20 h-20 transition-colors flex-shrink-0",
+                      (node as any).noIconBackground ? "" : "rounded-lg shadow-md border bg-card",
+                      isSelected ? "border-primary" : (node as any).noIconBackground || (isDragging || isTouchDragging) ? "" : "group-hover:border-accent",
+                      isTargetable && "border-dashed border-primary",
+                      isTop && "order-2", // Icon comes after text when text is on top
+                      isBottom && "order-1" // Icon comes before text when text is on bottom (default)
                     )}>
-                    <ResourceIcon 
-                      type={node.type} 
-                      provider={node.provider}
-                      category={node.category}
-                      file={node.file}
-                      width="70" 
-                      height="70" 
-                      className="w-[70px] h-[70px]" 
-                    />
-                </div>
-                {isEditingLabel ? (
-                  <input
-                    ref={inputRef}
-                    id={`node-input-${node.id}`}
-                    type="text"
-                    value={editText}
-                    onChange={(e) => setEditText(e.target.value)}
-                    onBlur={handleLabelSubmit}
-                     onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                     className={`text-sm text-center bg-transparent border border-primary rounded w-full outline-none ${node.sizeMode === 'custom' ? 'px-1 py-0.5' : 'px-1 py-0.5'}`}
-                     onClick={(e) => e.stopPropagation()}
-                   />
-                   ) : node.label ? (
-                    <p 
-                      className="text-center break-words leading-tight cursor-text hover:bg-background/50 rounded px-1 py-0.5 -mx-1 -my-0.5"
-                      style={getTextStylingForNode(node)}
-                      onDoubleClick={handleLabelDoubleClick}
-                    >
-                      {node.label}
-                    </p>
-                ) : null}
-              </>
+                      <ResourceIcon 
+                        type={node.type} 
+                        provider={node.provider}
+                        category={node.category}
+                        file={node.file}
+                        width="70" 
+                        height="70" 
+                        className="w-[70px] h-[70px]" 
+                      />
+                    </div>
+                    
+                    {/* Text - positioned based on textVerticalPosition */}
+                    {isEditingLabel ? (
+                      <input
+                        ref={inputRef}
+                        id={`node-input-${node.id}`}
+                        type="text"
+                        value={editText}
+                        onChange={(e) => setEditText(e.target.value)}
+                        onBlur={handleLabelSubmit}
+                        onKeyDown={(e) => handleLabelKeyDown(e, false)}
+                        className={cn(
+                          "text-sm text-center bg-transparent border border-primary rounded outline-none",
+                          node.sizeMode === 'custom' ? 'px-1 py-0.5' : 'px-1 py-0.5',
+                          isMiddle ? "absolute w-20 h-20 flex items-center justify-center pointer-events-auto left-0 top-0" : "w-full",
+                          isTop && "order-1", // Text comes before icon when on top
+                          isBottom && "order-2" // Text comes after icon when on bottom (default)
+                        )}
+                        style={isMiddle ? {
+                          ...getTextStylingForNode(node),
+                          backgroundColor: 'transparent',
+                          zIndex: 10
+                        } : getTextStylingForNode(node)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    ) : node.label ? (
+                      <p 
+                        className={cn(
+                          "text-center break-words leading-tight cursor-text hover:bg-background/50 rounded px-1 py-0.5",
+                          isMiddle ? "absolute w-20 h-20 flex items-center justify-center pointer-events-auto left-0 top-0 -mx-0 -my-0" : "-mx-1 -my-0.5 w-full",
+                          isTop && "order-1", // Text comes before icon when on top
+                          isBottom && "order-2" // Text comes after icon when on bottom (default)
+                        )}
+                        style={isMiddle ? {
+                          ...getTextStylingForNode(node),
+                          backgroundColor: 'transparent',
+                          zIndex: 10,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        } : {
+                          ...getTextStylingForNode(node),
+                          display: 'block'
+                        }}
+                        onDoubleClick={handleLabelDoubleClick}
+                      >
+                        {node.label}
+                      </p>
+                    ) : null}
+                  </div>
+                );
+              })()
             )}
           </div>
         </PopoverTrigger>
