@@ -237,3 +237,98 @@
   box-shadow: 0 0 20px rgba(34, 197, 94, 0.8),
               0 0 40px rgba(34, 197, 94, 0.4);
 }
+
+/* Resize handles - visible rails and knobs */
+.dw-resize-handle {
+  pointer-events: auto;
+  transition: opacity 0.15s ease-in-out;
+}
+
+/* Base state - subtle visibility when handles are shown */
+.dw-resize-handle:not([data-hovered="true"]):not([data-active="true"]) {
+  opacity: 0.4;
+}
+
+/* Hovered or active state - more visible */
+.dw-resize-handle-highlighted,
+.dw-resize-handle-active {
+  opacity: 1;
+}
+
+/* Rail indicators (for right and bottom edges) */
+.dw-resize-indicator-rail {
+  position: absolute;
+  background: rgb(34 197 94 / 0.3);
+  transition: all 0.15s ease-in-out;
+}
+
+.dw-resize-rail-right .dw-resize-indicator-rail {
+  top: 0;
+  right: 0;
+  width: 4px;
+  height: 100%;
+}
+
+.dw-resize-rail-bottom .dw-resize-indicator-rail {
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+}
+
+/* Hovered rail - brighter and slightly thicker */
+.dw-resize-handle[data-hovered="true"] .dw-resize-indicator-rail,
+.dw-resize-handle[data-active="true"] .dw-resize-indicator-rail {
+  background: rgb(34 197 94 / 0.7);
+  box-shadow: 0 0 4px rgb(34 197 94 / 0.5);
+}
+
+.dw-resize-handle[data-hovered="true"].dw-resize-rail-right .dw-resize-indicator-rail,
+.dw-resize-handle[data-active="true"].dw-resize-rail-right .dw-resize-indicator-rail {
+  width: 5px;
+}
+
+.dw-resize-handle[data-hovered="true"].dw-resize-rail-bottom .dw-resize-indicator-rail,
+.dw-resize-handle[data-active="true"].dw-resize-rail-bottom .dw-resize-indicator-rail {
+  height: 5px;
+}
+
+/* Knob indicator (for corner handle) */
+.dw-resize-indicator-knob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgb(34 197 94 / 0.3);
+  border: 2px solid rgb(34 197 94 / 0.7);
+  transition: all 0.15s ease-in-out;
+}
+
+/* Hovered/active knob - larger, brighter, with glow */
+.dw-resize-handle[data-hovered="true"] .dw-resize-indicator-knob,
+.dw-resize-handle[data-active="true"] .dw-resize-indicator-knob {
+  width: 24px;
+  height: 24px;
+  background: rgb(34 197 94 / 0.5);
+  border-color: rgb(34 197 94);
+  border-width: 2px;
+  box-shadow: 0 0 6px rgb(34 197 94 / 0.6),
+              0 0 12px rgb(34 197 94 / 0.3);
+}
+
+/* Subtle pulse animation for active resize */
+@keyframes resize-handle-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.dw-resize-handle-active .dw-resize-indicator-knob {
+  animation: resize-handle-pulse 1.5s ease-in-out infinite;
+}

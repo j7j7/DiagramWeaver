@@ -8,6 +8,7 @@ import { ItemTypes } from '../editor/draggable-item';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { extractTextStylingFromZone } from '@/lib/text-styling';
+import { ResizeHandles } from './resize-handles';
 
 const GRID_SNAP = 20;
 
@@ -51,6 +52,7 @@ const [{ isDragging }, drag, preview] = useDrag(() => ({
   // Resize state
   const [isResizing, setIsResizing] = useState(false);
   const [resizeHandle, setResizeHandle] = useState<'right' | 'bottom' | 'bottom-right' | null>(null);
+  const [hoveredHandle, setHoveredHandle] = useState<'right' | 'bottom' | 'bottom-right' | null>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [isEditingTag, setIsEditingTag] = useState(false);
@@ -736,26 +738,14 @@ const [{ isDragging }, drag, preview] = useDrag(() => ({
     >
       {/* Resize handles - only show when hovered or resizing */}
       {!isReadOnly && (isHovered || isResizing || isSelected) && zone.sizeMode !== 'auto' && (
-        <>
-          {/* Right handle */}
-          <div
-            className="absolute top-0 right-0 w-2 h-full cursor-ew-resize hover:bg-primary/20 transition-colors"
-            style={{ marginRight: '-4px' }}
-            onMouseDown={(e) => handleResizeStart(e, 'right')}
-          />
-          {/* Bottom handle */}
-          <div
-            className="absolute bottom-0 left-0 w-full h-2 cursor-ns-resize hover:bg-primary/20 transition-colors"
-            style={{ marginBottom: '-4px' }}
-            onMouseDown={(e) => handleResizeStart(e, 'bottom')}
-          />
-          {/* Bottom-right corner handle */}
-          <div
-            className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize hover:bg-primary/30 transition-colors"
-            style={{ marginBottom: '-4px', marginRight: '-4px' }}
-            onMouseDown={(e) => handleResizeStart(e, 'bottom-right')}
-          />
-        </>
+        <ResizeHandles
+          visible={true}
+          activeHandle={resizeHandle}
+          hoveredHandle={hoveredHandle}
+          onStart={handleResizeStart}
+          disabled={false}
+          zIndexClass="z-50"
+        />
       )}
       {/* Label display/edit */}
       {isEditingLabel ? (

@@ -32,6 +32,7 @@ import {
   ArrowheadShape,
   ChevronShape,
 } from "./shapes";
+import { ResizeHandles } from "./resize-handles";
 
 const NODE_WIDTH = 80;
 const BASE_NODE_HEIGHT = 80;
@@ -163,6 +164,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
   // Resize state
   const [isResizing, setIsResizing] = useState(false);
   const [resizeHandle, setResizeHandle] = useState<'right' | 'bottom' | 'bottom-right' | null>(null);
+  const [hoveredHandle, setHoveredHandle] = useState<'right' | 'bottom' | 'bottom-right' | null>(null);
   const [isHovered, setIsHovered] = useState(false);
   const resizeStartPos = useRef<{ x: number; y: number; startWidth: number; startHeight: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -670,7 +672,7 @@ return (
       }}
       className={cn(
         "absolute group transition-transform duration-200 ease-in-out rounded-lg",
-        !(isDragging || isTouchDragging) && "hover:scale-105",
+        !(isDragging || isTouchDragging) && !(isSelected || isHighlighted || isMultiSelected) && "hover:scale-105",
         (isSelected || isHighlighted || isMultiSelected) && `${selectionAnimationEnabled ? "node-glow-pulse" : "node-glow-static"} drop-shadow-md`,
         isGroupMember && !isSelected && !isHighlighted && !isMultiSelected && `${selectionAnimationEnabled ? "node-glow-green-pulse" : "node-glow-green-static"} drop-shadow-md`,
         (isDragging || isTouchDragging) && "cursor-grabbing",
@@ -897,38 +899,14 @@ return (
        {/* Resize handles - show for text resources (textbox always, others only in custom mode), or for shapes (except points) */}
         {!isReadOnly && (isHovered || isResizing || isSelected) &&
          (isTextboxNode || ((isTextNode ) && node.sizeMode === 'custom') || (isShapeNode && !isPointNode)) && (
-         <>
-           {/* Right handle */}
-           <div
-             className="absolute top-0 right-0 w-2 h-full cursor-ew-resize hover:bg-primary/20 transition-colors z-50"
-             style={{ marginRight: '-4px' }}
-             onMouseDown={(e) => {
-               e.stopPropagation();
-               e.preventDefault();
-               handleResizeStart(e, 'right');
-             }}
-           />
-           {/* Bottom handle */}
-           <div
-             className="absolute bottom-0 left-0 w-full h-2 cursor-ns-resize hover:bg-primary/20 transition-colors z-50"
-             style={{ marginBottom: '-4px' }}
-             onMouseDown={(e) => {
-               e.stopPropagation();
-               e.preventDefault();
-               handleResizeStart(e, 'bottom');
-             }}
-           />
-           {/* Bottom-right corner handle */}
-           <div
-             className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize hover:bg-primary/30 transition-colors z-50"
-             style={{ marginBottom: '-4px', marginRight: '-4px' }}
-             onMouseDown={(e) => {
-               e.stopPropagation();
-               e.preventDefault();
-               handleResizeStart(e, 'bottom-right');
-             }}
-           />
-         </>
+          <ResizeHandles
+            visible={true}
+            activeHandle={resizeHandle}
+            hoveredHandle={hoveredHandle}
+            onStart={handleResizeStart}
+            disabled={false}
+            zIndexClass="z-50"
+          />
        )}
     </div>
   );
