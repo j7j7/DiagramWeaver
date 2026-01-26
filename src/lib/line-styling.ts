@@ -77,8 +77,8 @@ export function applyLineStylingToNode(
 export const DEFAULT_LINE_STYLING: LineStyling = {
   lineThickness: 2.5,
   startCap: 'none',
-  endCap: 'arrow',
-  lineColor: '#000000',
+  endCap: 'none',
+  lineColor: '#6b7280',
   fontFamily: 'Inter, system-ui, sans-serif',
   fontSize: 12,
   fontWeight: 'normal',

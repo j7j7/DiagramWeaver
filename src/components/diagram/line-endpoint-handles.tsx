@@ -62,7 +62,7 @@ export function LineEndpointHandles({
       {activeHandle !== 'start' && (
         <div
           className={cn(
-            "absolute rounded-full border-2 border-blue-500 bg-white transition-all cursor-move",
+            "absolute rounded-full border-2 border-blue-500 bg-white cursor-move",
             isHighlighted('start') && "border-blue-700 scale-125 shadow-lg",
             isActive('start') && "bg-blue-200",
             zIndexClass
@@ -73,6 +73,7 @@ export function LineEndpointHandles({
             width: `${handleSize}px`,
             height: `${handleSize}px`,
             pointerEvents: 'auto', // Ensure handles are clickable even if parent has pointerEvents: 'none'
+            transition: 'transform 0.2s, border-color 0.2s, background-color 0.2s, box-shadow 0.2s', // Only transition visual effects, not position
           }}
           onMouseEnter={() => setHoveredHandle('start')}
           onMouseLeave={() => setHoveredHandle(null)}
@@ -85,7 +86,7 @@ export function LineEndpointHandles({
       {activeHandle !== 'end' && (
         <div
           className={cn(
-            "absolute rounded-full border-2 border-green-500 bg-white transition-all cursor-move",
+            "absolute rounded-full border-2 border-green-500 bg-white cursor-move",
             isHighlighted('end') && "border-green-700 scale-125 shadow-lg",
             isActive('end') && "bg-green-200",
             zIndexClass
@@ -96,6 +97,7 @@ export function LineEndpointHandles({
             width: `${handleSize}px`,
             height: `${handleSize}px`,
             pointerEvents: 'auto', // Ensure handles are clickable even if parent has pointerEvents: 'none'
+            transition: 'transform 0.2s, border-color 0.2s, background-color 0.2s, box-shadow 0.2s', // Only transition visual effects, not position
           }}
           onMouseEnter={() => setHoveredHandle('end')}
           onMouseLeave={() => setHoveredHandle(null)}

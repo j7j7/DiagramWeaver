@@ -118,10 +118,10 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
   
   // Line caps
   const startCap = node.startCap || 'none';
-  const endCap = node.endCap || 'arrow';
+  const endCap = node.endCap || 'none';
   
-  // Use node's lineColor or default to fill color
-  const lineColor = node.lineColor || fill;
+  // Use node's lineColor or default to grey
+  const lineColor = node.lineColor || '#6b7280';
   const actualStrokeWidth = node.lineThickness || strokeWidth;
   
   // Get text styling from node

@@ -201,9 +201,9 @@ export function useCanvasOperations({
             startPos: { x: position.x, y: position.y + 50 },
             endPos: { x: position.x + 150, y: position.y + 50 },
             startCap: 'none',
-            endCap: 'arrow',
+            endCap: 'none',
             lineThickness: 2.5,
-            lineColor: '#000000',
+            lineColor: '#6b7280',
           }),
           // Apply icon background setting
           ...(!iconBackgroundEnabled && {
@@ -821,7 +821,27 @@ export function useCanvasOperations({
               return n;
             });
            } else {
-             currentNodes = currentNodes.map(n => n.id === item.id ? { ...n, x: snappedX, y: snappedY } : n);
+             currentNodes = currentNodes.map(n => {
+               if (n.id === item.id) {
+                 // Special handling for line shapes - move both endpoints
+                 if (n.type === 'generic.object.line' || n.type?.endsWith('.line')) {
+                   const currentStartPos = (n as any).startPos || { x: n.x || 0, y: (n.y || 0) + 50 };
+                   const currentEndPos = (n as any).endPos || { x: (n.x || 0) + 150, y: (n.y || 0) + 50 };
+                   const deltaX = snappedX - originalX;
+                   const deltaY = snappedY - originalY;
+                   
+                   return {
+                     ...n,
+                     x: snappedX,
+                     y: snappedY,
+                     startPos: { x: currentStartPos.x + deltaX, y: currentStartPos.y + deltaY },
+                     endPos: { x: currentEndPos.x + deltaX, y: currentEndPos.y + deltaY }
+                   };
+                 }
+                 return { ...n, x: snappedX, y: snappedY };
+               }
+               return n;
+             });
            }
          }
        }

@@ -1189,13 +1189,18 @@ return (
            ? localEndPos
            : baseEndPos;
          
-         // Use stable container position during drag (initial position), otherwise calculate from current positions
-         const nodeX = isDraggingLineEndpoint && initialContainerPosRef.current
+         // Use node.x/y if available (matches LineShape calculation), otherwise use min of positions
+         // This ensures handles align exactly with the line endpoints
+         const nodeX = node.x ?? Math.min(currentStartPos.x, currentEndPos.x);
+         const nodeY = node.y ?? Math.min(currentStartPos.y, currentEndPos.y);
+         
+         // During drag, use stable container position to prevent handles from drifting
+         const handleNodeX = isDraggingLineEndpoint && initialContainerPosRef.current
            ? initialContainerPosRef.current.x
-           : Math.min(currentStartPos.x, currentEndPos.x);
-         const nodeY = isDraggingLineEndpoint && initialContainerPosRef.current
+           : nodeX;
+         const handleNodeY = isDraggingLineEndpoint && initialContainerPosRef.current
            ? initialContainerPosRef.current.y
-           : Math.min(currentStartPos.y, currentEndPos.y);
+           : nodeY;
          
          return (
            <LineEndpointHandles
@@ -1203,8 +1208,8 @@ return (
              activeHandle={lineEndpointHandle}
              startPoint={currentStartPos}
              endPoint={currentEndPos}
-             nodeX={nodeX}
-             nodeY={nodeY}
+             nodeX={handleNodeX}
+             nodeY={handleNodeY}
              onStartDrag={handleLineEndpointDragStart}
              disabled={false}
              zIndexClass="z-50"
