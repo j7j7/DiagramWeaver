@@ -13,6 +13,8 @@ interface ClipboardData {
   // Track original group relationships for creating new groups on paste
   originalGroupRelationships?: Map<string, string>; // nodeId -> zoneId
   originalGroupingRelationships?: Map<string, string>; // nodeId -> groupingId
+  // Track original memberIds order for each grouping to preserve order on paste
+  originalGroupingMemberOrder?: Map<string, string[]>; // groupingId -> ordered memberIds
 }
 
 interface UseCanvasClipboardOptions {
@@ -52,9 +54,13 @@ export function useCanvasClipboard({
         if (node.groupId) {
           const grouping = diagramData.groupings?.find(g => g.id === node.groupId);
           if (grouping) {
-            // Collect all nodes in this grouping
+            // Collect all nodes in this grouping, preserving the original order
             const groupedNodes: DiagramNodeData[] = [];
             const originalGroupingRelationships = new Map<string, string>();
+            const originalGroupingMemberOrder = new Map<string, string[]>();
+            
+            // Preserve the original memberIds order
+            originalGroupingMemberOrder.set(grouping.id, [...grouping.memberIds]);
             
             grouping.memberIds.forEach(memberId => {
               const memberNode = diagramData.nodes.find(n => n.id === memberId);
@@ -66,7 +72,8 @@ export function useCanvasClipboard({
             
             setClipboard({ 
               nodes: groupedNodes,
-              originalGroupingRelationships
+              originalGroupingRelationships,
+              originalGroupingMemberOrder
             });
             onClipboardChange?.(true);
             
@@ -90,6 +97,7 @@ export function useCanvasClipboard({
       } else if (zone) {
         // Handle zone copy (existing logic)
         const originalGroupingRelationships = new Map<string, string>();
+        const originalGroupingMemberOrder = new Map<string, string[]>();
         const collectChildren = (groupId: string, visited: Set<string> = new Set()): (DiagramNodeData | DiagramGroupData)[] => {
           if (visited.has(groupId)) return [];
           visited.add(groupId);
@@ -107,6 +115,13 @@ export function useCanvasClipboard({
                 // Track grouping relationships too
                 if (childNode.groupId) {
                   originalGroupingRelationships.set(childNode.id, childNode.groupId);
+                  // Store the original memberIds order for this grouping if not already stored
+                  if (!originalGroupingMemberOrder.has(childNode.groupId)) {
+                    const grouping = diagramData.groupings?.find(g => g.id === childNode.groupId);
+                    if (grouping) {
+                      originalGroupingMemberOrder.set(childNode.groupId, [...grouping.memberIds]);
+                    }
+                  }
                 }
               } else if (childZone) {
                 children.push({ ...childZone });
@@ -120,7 +135,7 @@ export function useCanvasClipboard({
         };
 
         const children = collectChildren(itemId);
-        setClipboard({ zone: { ...zone }, children, originalGroupingRelationships });
+        setClipboard({ zone: { ...zone }, children, originalGroupingRelationships, originalGroupingMemberOrder });
         onClipboardChange?.(true);
 
         toast({
@@ -139,6 +154,7 @@ export function useCanvasClipboard({
       const allSelectedIds = new Set(selectedItemIds);
       const originalGroupRelationships = new Map<string, string>();
       const originalGroupingRelationships = new Map<string, string>();
+      const originalGroupingMemberOrder = new Map<string, string[]>();
 
       // Collect selected nodes and groups
       selectedItemIds.forEach(id => {
@@ -155,6 +171,13 @@ export function useCanvasClipboard({
           // Check if this node belongs to any grouping
           if (node.groupId) {
             originalGroupingRelationships.set(node.id, node.groupId);
+            // Store the original memberIds order for this grouping if not already stored
+            if (!originalGroupingMemberOrder.has(node.groupId)) {
+              const grouping = diagramData.groupings?.find(g => g.id === node.groupId);
+              if (grouping) {
+                originalGroupingMemberOrder.set(node.groupId, [...grouping.memberIds]);
+              }
+            }
           }
         } else if (zone) {
           // Recursively collect all children of selected groups
@@ -178,6 +201,13 @@ export function useCanvasClipboard({
                   // Track grouping relationships too
                   if (childNode.groupId) {
                     originalGroupingRelationships.set(childId, childNode.groupId);
+                    // Store the original memberIds order for this grouping if not already stored
+                    if (!originalGroupingMemberOrder.has(childNode.groupId)) {
+                      const grouping = diagramData.groupings?.find(g => g.id === childNode.groupId);
+                      if (grouping) {
+                        originalGroupingMemberOrder.set(childNode.groupId, [...grouping.memberIds]);
+                      }
+                    }
                   }
                 } else if (childZone) {
                   children.push({ ...childZone });
@@ -215,7 +245,8 @@ export function useCanvasClipboard({
         zones: selectedZones,
         connections: selectedConnections,
         originalGroupRelationships,
-        originalGroupingRelationships
+        originalGroupingRelationships,
+        originalGroupingMemberOrder
       });
       onClipboardChange?.(true);
 
@@ -440,6 +471,7 @@ export function useCanvasClipboard({
 
       // Create new groupings for nodes that had original grouping relationships
       const originalGroupingRelationships = clipboard.originalGroupingRelationships || new Map();
+      const originalGroupingMemberOrder = clipboard.originalGroupingMemberOrder || new Map();
       const groupingsToCreate = new Map<string, string[]>(); // groupingId -> nodeIds
        
       // Group nodes by their original grouping
@@ -466,16 +498,38 @@ export function useCanvasClipboard({
           );
           const newGroupingId = `grouping-${maxNumber + 1}`;
           
+          // Preserve the original order of memberIds
+          const originalOrder = originalGroupingMemberOrder.get(originalGroupingId);
+          let orderedMemberIds: string[];
+          
+          if (originalOrder) {
+            // Map original IDs to new IDs while preserving order
+            orderedMemberIds = originalOrder
+              .map(originalId => idMapping.get(originalId))
+              .filter((newId): newId is string => newId !== undefined && nodeIds.includes(newId));
+            
+            // Add any nodes that weren't in the original order (shouldn't happen, but safety check)
+            const orderedSet = new Set(orderedMemberIds);
+            nodeIds.forEach(nodeId => {
+              if (!orderedSet.has(nodeId)) {
+                orderedMemberIds.push(nodeId);
+              }
+            });
+          } else {
+            // Fallback to unordered if original order not available
+            orderedMemberIds = nodeIds;
+          }
+          
           const newGrouping: DiagramGroupingData = {
             ...originalGrouping,
             id: newGroupingId,
-            memberIds: nodeIds
+            memberIds: orderedMemberIds
           };
           
           newGroupings.push(newGrouping);
           
           // Update the copied nodes to reference the new grouping
-          nodeIds.forEach(nodeId => {
+          orderedMemberIds.forEach(nodeId => {
             const node = newNodes.find(n => n.id === nodeId);
             if (node) {
               node.groupId = newGroupingId;
