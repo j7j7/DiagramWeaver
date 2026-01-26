@@ -1249,6 +1249,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               }
               closeContextMenu();
             }}
+            nodeType={contextMenu.itemType === 'node' ? (diagramData.nodes.find(n => n.id === contextMenu.itemId)?.type) : undefined}
             onToggleFreeflow={() => {
               if (contextMenu.itemType === 'node') {
                 handleToggleFreeflow(contextMenu.itemId);

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
-import { cn } from '@/lib/utils';
+import { cn, isShapeNodeType } from '@/lib/utils';
 import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup, Plus, ArrowUp, ArrowDown, ChevronUp, ChevronDown, Circle, RotateCw, ArrowDownAZ, ArrowUpAZ } from 'lucide-react';
 
 
@@ -19,6 +19,7 @@ interface ContextMenuProps {
   connections?: Array<{from: string; to: string; id?: string}>;
   itemType?: 'node' | 'zone';
   itemId?: string;
+  nodeType?: string;
   onToggleFreeflow?: () => void;
   isFreeflow?: boolean;
   onTextStyling?: () => void;
@@ -61,6 +62,7 @@ export function ContextMenu({
   triggerConnectionSettings,
   connections = [],
   itemType = 'node',
+  nodeType,
   onToggleFreeflow,
   isFreeflow = false,
   onTextStyling,
@@ -413,7 +415,7 @@ export function ContextMenu({
         </div>
       )}
 
-      {itemType === 'node' && (
+      {itemType === 'node' && nodeType && !isShapeNodeType(nodeType) && (
         <>
           <div className="border-t border-border my-1" />
           

@@ -217,7 +217,7 @@ export function TopMenuBar({
                 {onExportSvg && (
                   <MenubarItem onClick={onExportSvg}>
                     <ImageDown className="mr-2 h-4 w-4" />
-                    Export SVG
+                    Export PNG
                   </MenubarItem>
                 )}
                 {onExportPng && (
