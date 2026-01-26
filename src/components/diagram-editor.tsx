@@ -1738,11 +1738,22 @@ export default function DiagramEditor() {
         // Determine which items to move (multi-selection or single selection)
         const itemIdsToMove = selectedItemIds.size > 0 ? Array.from(selectedItemIds) : [selectedItem.id];
         
+        // Filter out locked nodes
+        const unlockedItemIds = itemIdsToMove.filter(id => {
+          const node = diagramData.nodes.find(n => n.id === id);
+          return !node || !node.locked;
+        });
+        
+        // If all items are locked, don't move anything
+        if (unlockedItemIds.length === 0) {
+          return;
+        }
+        
         setDiagramData(prevData => {
           const newNodes = [...prevData.nodes];
           const newZones = [...(prevData.zones || [])];
           
-          itemIdsToMove.forEach(id => {
+          unlockedItemIds.forEach(id => {
             // Update nodes
             const nodeIndex = newNodes.findIndex(n => n.id === id);
             if (nodeIndex !== -1) {
@@ -1775,7 +1786,7 @@ export default function DiagramEditor() {
         
         // Update selected item states to reflect new positions
         const updatedSelectedItems: SelectedItem[] = [];
-        itemIdsToMove.forEach(id => {
+        unlockedItemIds.forEach(id => {
           const updatedNode = diagramData.nodes.find(n => n.id === id);
           const updatedZone = diagramData.zones?.find(g => g.id === id);
           

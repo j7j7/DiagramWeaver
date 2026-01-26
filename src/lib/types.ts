@@ -56,6 +56,9 @@ export interface DiagramNodeData {
   lineThickness?: number; // Line thickness for line shapes (default: 2.5)
   lineTextVerticalPosition?: 'above' | 'middle' | 'below'; // Text position relative to line
   
+  // Lock property - prevents movement when true
+  locked?: boolean; // If true, node cannot be moved
+  
   // Resource information for icon rendering
   provider?: string; // Provider name (e.g., 'aws', 'azure', 'gcp')
   category?: string; // Category name (e.g., 'compute', 'storage', 'network')

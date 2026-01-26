@@ -1506,6 +1506,23 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               closeContextMenu();
             }}
             isFreeflow={contextMenu.itemType === 'node' ? (diagramData.nodes.find(n => n.id === contextMenu.itemId)?.freeflow || false) : false}
+            onToggleLock={() => {
+              if (contextMenu.itemType === 'node') {
+                const node = diagramData.nodes.find(n => n.id === contextMenu.itemId);
+                if (node) {
+                  setDiagramData(prev => ({
+                    ...prev,
+                    nodes: prev.nodes.map(n =>
+                      n.id === contextMenu.itemId
+                        ? { ...n, locked: !n.locked }
+                        : n
+                    )
+                  }));
+                }
+              }
+              closeContextMenu();
+            }}
+            isLocked={contextMenu.itemType === 'node' ? (diagramData.nodes.find(n => n.id === contextMenu.itemId)?.locked || false) : false}
             currentLayer={layers ? layers.getItemLayerById(contextMenu.itemId) : undefined}
             availableLayers={layers ? layers.getAllLayers() : []}
             onChangeLayer={(layerId: string) => {

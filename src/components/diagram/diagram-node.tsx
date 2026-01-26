@@ -249,7 +249,10 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
         handleResizeEnd();
       }
     } else if (!isEditingLabel && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
-      // Handle keyboard navigation for selected nodes
+      // Handle keyboard navigation for selected nodes (skip if locked)
+      if (node.locked) {
+        return; // Don't move locked nodes
+      }
       e.preventDefault();
       const gridSize = 20;
       let newX = node.x || 0;
@@ -455,6 +458,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
   const isRotatableNode = (isTextNode || isTextboxNode || isShapeNode) && !isLineNode;
   const nodeHeight = calculateNodeHeight(node.label || '', node.type, node.sizeMode, node.height);
   const rotation = (node as any).rotation || 0;
+  const isLocked = node.locked || false;
   
   const [{ isDragging }, drag, preview] = useDrag(() => ({
     type: ItemTypes.CANVAS_NODE,
@@ -467,6 +471,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
       originalType: node.type,
       label: node.label || '' 
     },
+    canDrag: () => !isLocked && !isReadOnly,
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
@@ -476,7 +481,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
     onDragEnd: () => {
       onDraggingChange?.(false);
     },
-  }), [node, node.id, node.x, node.y, onDraggingChange]);
+  }), [node, node.id, node.x, node.y, onDraggingChange, isLocked, isReadOnly]);
 
   useEffect(() => {
     preview(getEmptyImage(), { captureDraggingState: true });
@@ -790,6 +795,11 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
 
   // Touch event handlers for mobile drag and drop
   const handleTouchStart = (e: React.TouchEvent) => {
+    if (isLocked || isReadOnly) {
+      e.stopPropagation();
+      e.preventDefault();
+      return;
+    }
     const touch = e.touches[0];
     touchStartPos.current = { x: touch.clientX, y: touch.clientY };
     setIsTouchDragging(true);
@@ -877,8 +887,8 @@ return (
       }}
       className={cn(
         "absolute group transition-transform duration-200 ease-in-out rounded-lg",
-        // Hover and selection effects - not for lines
-        !isLineNode && !(isDragging || isTouchDragging) && !(isSelected || isHighlighted || isMultiSelected) && "hover:scale-105",
+        // Hover and selection effects - not for lines, and not when locked
+        !isLineNode && !(isDragging || isTouchDragging) && !(isSelected || isHighlighted || isMultiSelected) && !isLocked && "hover:scale-105",
         !isLineNode && (isSelected || isHighlighted || isMultiSelected) && `${selectionAnimationEnabled ? "node-glow-pulse" : "node-glow-static"} drop-shadow-md`,
         !isLineNode && isGroupMember && !isSelected && !isHighlighted && !isMultiSelected && `${selectionAnimationEnabled ? "node-glow-green-pulse" : "node-glow-green-static"} drop-shadow-md`,
         (isDragging || isTouchDragging) && "cursor-grabbing",
@@ -931,8 +941,6 @@ return (
           onHoverChange?.(node.id, 'node', false);
         } 
       }}
-      onClick={(e) => onClick && onClick(e, node)}
-      onContextMenu={(e) => onContextMenu && onContextMenu(e, node)}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}

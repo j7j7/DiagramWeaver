@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { cn, isShapeNodeType } from '@/lib/utils';
-import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup, Plus, ArrowUp, ArrowDown, ChevronUp, ChevronDown, Circle, RotateCw, ArrowDownAZ, ArrowUpAZ, Minus } from 'lucide-react';
+import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup, Plus, ArrowUp, ArrowDown, ChevronUp, ChevronDown, Circle, RotateCw, ArrowDownAZ, ArrowUpAZ, Minus, Lock, Unlock } from 'lucide-react';
 
 
 interface ContextMenuProps {
@@ -48,6 +48,8 @@ interface ContextMenuProps {
   canMoveToFront?: boolean;
   canMoveOneBack?: boolean;
   canMoveOneForward?: boolean;
+  onToggleLock?: () => void;
+  isLocked?: boolean;
 }
 
 // Helper function to check if a node type is a line
@@ -97,7 +99,9 @@ export function ContextMenu({
   canMoveOneForward = false,
   onLayoutChange,
   onCycleItems,
-  onSortItems
+  onSortItems,
+  onToggleLock,
+  isLocked = false
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [layerSubmenuOpen, setLayerSubmenuOpen] = useState(false);
@@ -598,6 +602,30 @@ export function ContextMenu({
 
 
       {(canGroup || isGrouped) && <div className="border-t border-border my-1" />}
+      
+      {onToggleLock && (
+        <button
+          className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+          onClick={() => {
+            onToggleLock();
+            onClose();
+          }}
+        >
+          {isLocked ? (
+            <>
+              <Unlock className="w-4 h-4" />
+              Unlock
+            </>
+          ) : (
+            <>
+              <Lock className="w-4 h-4" />
+              Lock
+            </>
+          )}
+        </button>
+      )}
+
+      {onToggleLock && <div className="border-t border-border my-1" />}
       
       <button
         className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
