@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DiagramWeaver Viewer Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #555;
+            margin-top: 40px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 10px;
+        }
+        .section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .code-block {
+            background: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .viewer-container {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 20px 0;
+            background: white;
+        }
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: none;
+            display: block;
+        }
+        .info {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .warning {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        button {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1976d2;
+        }
+        .example-diagram {
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>DiagramWeaver Viewer Integration Test</h1>
+    
+    <div class="section">
+        <h2>1. Interactive Viewer (iframe)</h2>
+        <p>Embed an interactive diagram viewer in an iframe. Users can pan, zoom, and see tooltips.</p>
+        
+        <div class="info">
+            <strong>Usage:</strong> Use the <code>/viewer</code> route with either a <code>json</code> parameter (base64-encoded JSON) or a <code>url</code> parameter (URL to fetch JSON from).
+        </div>
+
+        <h3>Example 1: Using inline JSON (base64-encoded)</h3>
+        <div class="code-block">
+&lt;iframe 
+  src="https://yourapp.com/viewer?json=eyJub2RlcyI6W10sImNvbm5lY3Rpb25zIjpbXSwiem9uZXMiOltdfQ==" 
+  width="100%" 
+  height="600"
+  frameborder="0"
+&gt;&lt;/iframe&gt;
+        </div>
+
+        <h3>Example 2: Using remote JSON URL</h3>
+        <div class="code-block">
+&lt;iframe 
+  src="https://yourapp.com/viewer?url=https://example.com/diagram.json" 
+  width="100%" 
+  height="600"
+  frameborder="0"
+&gt;&lt;/iframe&gt;
+        </div>
+
+        <h3>Live Example:</h3>
+        <div class="viewer-container">
+            <iframe 
+                id="viewer-iframe"
+                src="/viewer?url=/examples/example1.json"
+                width="100%" 
+                height="600"
+                frameborder="0"
+            ></iframe>
+        </div>
+
+        <div class="warning">
+            <strong>Note:</strong> The iframe will automatically fit the diagram to view on load. Users can use the zoom controls in the top-right corner.
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>2. Static Image Export</h2>
+        <p>Generate a static PNG or SVG image of the diagram for embedding in emails, PDFs, or documentation.</p>
+
+        <div class="info">
+            <strong>Usage:</strong> POST to <code>/api/export</code> with diagram JSON in the request body. Query parameters control format, quality, and background.
+        </div>
+
+        <h3>API Endpoint</h3>
+        <div class="code-block">
+POST /api/export?format=png&quality=medium&bg=white
+
+Request Body:
+{
+  "diagram": {
+    "nodes": [...],
+    "connections": [...],
+    "zones": [...]
+  }
+}
+        </div>
+
+        <h3>Query Parameters</h3>
+        <ul>
+            <li><code>format</code>: 'png' | 'svg' (default: 'png')</li>
+            <li><code>quality</code>: 'low' | 'medium' | 'high' (default: 'medium')</li>
+            <li><code>bg</code>: 'transparent' | 'white' (default: 'white')</li>
+        </ul>
+
+        <h3>JavaScript Example</h3>
+        <div class="code-block">
+async function exportDiagram(diagramData) {
+  const response = await fetch('/api/export?format=png&quality=medium&bg=white', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ diagram: diagramData }),
+  });
+  
+  if (response.ok) {
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    // Use the image URL
+    const img = document.createElement('img');
+    img.src = url;
+    document.body.appendChild(img);
+  }
+}
+        </div>
+
+        <div class="warning">
+            <strong>Note:</strong> Server-side rendering requires Puppeteer/Playwright. Currently, the API returns a viewer URL that can be used with a headless browser for rendering.
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>3. URL Parameter Encoding</h2>
+        <p>How to encode your diagram JSON for the viewer URL:</p>
+
+        <h3>JavaScript</h3>
+        <div class="code-block">
+const diagramData = {
+  nodes: [...],
+  connections: [...],
+  zones: [...]
+};
+
+// Encode to base64
+const jsonString = JSON.stringify(diagramData);
+const base64Json = btoa(jsonString);
+const viewerUrl = `https://yourapp.com/viewer?json=${encodeURIComponent(base64Json)}`;
+        </div>
+
+        <h3>Python</h3>
+        <div class="code-block">
+import json
+import base64
+from urllib.parse import quote
+
+diagram_data = {
+    "nodes": [...],
+    "connections": [...],
+    "zones": [...]
+}
+
+# Encode to base64
+json_string = json.dumps(diagram_data)
+base64_json = base64.b64encode(json_string.encode()).decode()
+viewer_url = f"https://yourapp.com/viewer?json={quote(base64_json)}"
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>4. Conference Page Integration Example</h2>
+        <p>Example of how to embed a diagram on a conference page:</p>
+
+        <div class="code-block">
+&lt;!-- Conference Page HTML --&gt;
+&lt;div class="diagram-section"&gt;
+    &lt;h3&gt;Architecture Overview&lt;/h3>
+    &lt;p&gt;Explore our system architecture:&lt;/p&gt;
+    
+    &lt;!-- Interactive Viewer --&gt;
+    &lt;iframe 
+        src="https://yourapp.com/viewer?url=https://conference.example.com/diagrams/architecture.json"
+        width="100%"
+        height="600"
+        frameborder="0"
+        style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"
+    &gt;&lt;/iframe&gt;
+    
+    &lt;!-- Or use static image for email/PDF --&gt;
+    &lt;img 
+        src="https://yourapp.com/api/export?format=png&quality=high&bg=white"
+        alt="Architecture Diagram"
+        style="max-width: 100%; height: auto;"
+    /&gt;
+&lt;/div&gt;
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>5. Testing</h2>
+        <p>Test the viewer with different diagrams:</p>
+        
+        <button onclick="loadExample1()">Load Example 1</button>
+        <button onclick="loadExample2()">Load Example 2</button>
+        <button onclick="loadCustom()">Load Custom JSON</button>
+
+        <div id="test-results" style="margin-top: 20px;"></div>
+    </div>
+
+    <script>
+        function loadExample1() {
+            const iframe = document.getElementById('viewer-iframe');
+            iframe.src = '/viewer?url=/examples/example1.json';
+            document.getElementById('test-results').innerHTML = 
+                '<div class="info">Loaded Example 1 diagram</div>';
+        }
+
+        function loadExample2() {
+            const iframe = document.getElementById('viewer-iframe');
+            iframe.src = '/viewer?url=/examples/example2.json';
+            document.getElementById('test-results').innerHTML = 
+                '<div class="info">Loaded Example 2 diagram</div>';
+        }
+
+        function loadCustom() {
+            // Example: Load a custom diagram
+            const customDiagram = {
+                nodes: [
+                    { id: 'node1', type: 'Server', label: 'Web Server', x: 100, y: 100 },
+                    { id: 'node2', type: 'Database', label: 'DB', x: 300, y: 100 },
+                ],
+                connections: [
+                    { from: 'node1', to: 'node2' },
+                ],
+                zones: [],
+            };
+
+            const jsonString = JSON.stringify(customDiagram);
+            const base64Json = btoa(jsonString);
+            const viewerUrl = `/viewer?json=${encodeURIComponent(base64Json)}`;
+            
+            const iframe = document.getElementById('viewer-iframe');
+            iframe.src = viewerUrl;
+            document.getElementById('test-results').innerHTML = 
+                '<div class="info">Loaded custom diagram</div>';
+        }
+
+        // Test export API
+        async function testExport() {
+            try {
+                const diagramData = {
+                    nodes: [
+                        { id: 'node1', type: 'Server', label: 'Test Server', x: 100, y: 100 },
+                    ],
+                    connections: [],
+                    zones: [],
+                };
+
+                const response = await fetch('/api/export?format=png&quality=medium&bg=white', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ diagram: diagramData }),
+                });
+
+                const result = await response.json();
+                console.log('Export API response:', result);
+            } catch (error) {
+                console.error('Export test failed:', error);
+            }
+        }
+    </script>
+</body>
+</html>

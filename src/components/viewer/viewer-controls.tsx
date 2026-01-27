@@ -1,0 +1,54 @@
+"use client";
+
+import React from "react";
+import { ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface ViewerControlsProps {
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onFitToView: () => void;
+  className?: string;
+}
+
+export function ViewerControls({
+  onZoomIn,
+  onZoomOut,
+  onFitToView,
+  className,
+}: ViewerControlsProps) {
+  return (
+    <div
+      className={cn(
+        "absolute top-4 right-4 z-50 flex flex-col gap-2 bg-card border border-border rounded-lg shadow-lg p-2",
+        className
+      )}
+    >
+      <button
+        onClick={onZoomIn}
+        className="p-2 hover:bg-accent rounded-md transition-colors"
+        title="Zoom In"
+        aria-label="Zoom In"
+      >
+        <ZoomIn className="w-4 h-4" />
+      </button>
+      <button
+        onClick={onZoomOut}
+        className="p-2 hover:bg-accent rounded-md transition-colors"
+        title="Zoom Out"
+        aria-label="Zoom Out"
+      >
+        <ZoomOut className="w-4 h-4" />
+      </button>
+      <div className="h-px bg-border my-1" />
+      <button
+        onClick={onFitToView}
+        className="p-2 hover:bg-accent rounded-md transition-colors"
+        title="Fit to View"
+        aria-label="Fit to View"
+      >
+        <Maximize2 className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}

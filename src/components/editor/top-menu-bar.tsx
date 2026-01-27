@@ -12,11 +12,12 @@ import {
   MenubarSubTrigger,
   MenubarSubContent,
 } from '@/components/ui/menubar';
-import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info } from 'lucide-react';
+import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
 import { ThemeEditor } from './theme-editor';
 import { ThemeMenuSelector } from './theme-menu-selector';
 import { AboutDialog } from './about-dialog';
+import { ViewerUrlDialog } from './viewer-url-dialog';
 import type { SelectedItem } from '../diagram-editor';
 import type { DiagramData } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -155,6 +156,7 @@ export function TopMenuBar({
   
   const [themeEditorOpen, setThemeEditorOpen] = React.useState(false);
   const [aboutOpen, setAboutOpen] = React.useState(false);
+  const [viewerUrlDialogOpen, setViewerUrlDialogOpen] = React.useState(false);
   const [textStylingPanelOpen, setTextStylingPanelOpen] = React.useState(false);
   const [visualStylingPanelOpen, setVisualStylingPanelOpen] = React.useState(false);
   const [lineStylingPanelOpen, setLineStylingPanelOpen] = React.useState(false);
@@ -278,6 +280,15 @@ export function TopMenuBar({
                 <MenubarItem onClick={onToggleJsonPanel} data-tutorial-id="toggle-json-menu">
                   <Code className="mr-2 h-4 w-4" />
                   {jsonPanelOpen ? 'Hide JSON' : 'Show JSON'}
+                </MenubarItem>
+              </>
+            )}
+            {diagramData && (
+              <>
+                <MenubarSeparator />
+                <MenubarItem onClick={() => setViewerUrlDialogOpen(true)}>
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Copy Viewer URL
                 </MenubarItem>
               </>
             )}
@@ -678,10 +689,19 @@ export function TopMenuBar({
       />
       
       {/* About Dialog */}
-      <AboutDialog 
+      <AboutDialog
         open={aboutOpen}
         onOpenChange={setAboutOpen}
       />
+      
+      {/* Viewer URL Dialog */}
+      {diagramData && (
+        <ViewerUrlDialog
+          open={viewerUrlDialogOpen}
+          onOpenChange={setViewerUrlDialogOpen}
+          diagramData={diagramData}
+        />
+      )}
     </div>
   );
 }

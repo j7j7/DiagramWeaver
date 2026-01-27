@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DiagramWeaver Viewer Example</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section h2 {
+            color: #444;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .viewer-container {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 20px 0;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: none;
+            display: block;
+        }
+
+        .controls {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+
+        .controls button {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .controls button:hover {
+            background: #1976d2;
+        }
+
+        .controls button.secondary {
+            background: #6c757d;
+        }
+
+        .controls button.secondary:hover {
+            background: #5a6268;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .info-box strong {
+            display: block;
+            margin-bottom: 5px;
+            color: #1976d2;
+        }
+
+        .code-snippet {
+            background: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 12px;
+            margin: 10px 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #333;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>DiagramWeaver Viewer Test</h1>
+        <p class="subtitle">Test the interactive diagram viewer embedded in this page</p>
+
+        <div class="section">
+            <h2>Interactive Viewer</h2>
+            <p>This diagram is loaded from a simple JSON structure. You can pan by dragging, zoom with the mouse wheel, and use the controls in the top-right corner.</p>
+
+            <div class="info-box">
+                <strong>Viewer URL:</strong>
+                <span id="viewer-url">Loading...</span>
+            </div>
+
+            <div class="viewer-container">
+                <iframe 
+                    id="diagram-viewer"
+                    src=""
+                    width="100%" 
+                    height="600"
+                    frameborder="0"
+                    title="Diagram Viewer"
+                ></iframe>
+            </div>
+
+            <div class="controls">
+                <button onclick="loadExample1()">Load Example 1 (Simple)</button>
+                <button onclick="loadExample2()">Load Example 2 (Complex)</button>
+                <button onclick="loadCustomDiagram()">Load Custom Diagram</button>
+                <button onclick="loadFromRemote()" class="secondary">Load from Remote URL</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Diagram JSON</h2>
+            <p>The diagram below is generated from this JSON structure:</p>
+            <div class="code-snippet" id="diagram-json">Loading...</div>
+        </div>
+
+        <div class="section">
+            <h2>How It Works</h2>
+            <p>The viewer accepts diagram data via URL parameters:</p>
+            
+            <h3>Option 1: Inline JSON (Base64)</h3>
+            <div class="code-snippet">
+/viewer?json=eyJub2RlcyI6W10sImNvbm5lY3Rpb25zIjpbXSwiem9uZXMiOl19
+            </div>
+
+            <h3>Option 2: Remote JSON URL</h3>
+            <div class="code-snippet">
+/viewer?url=https://example.com/diagram.json
+            </div>
+
+            <div class="info-box">
+                <strong>Note:</strong> Make sure your DiagramWeaver server is running on <code>http://localhost:9002</code> (or update the base URL in the JavaScript below).
+            </div>
+        </div>
+
+        <div id="status"></div>
+    </div>
+
+    <script>
+        // Base URL for the DiagramWeaver server
+        // Change this if your server runs on a different port or domain
+        const BASE_URL = window.location.protocol + '//' + window.location.host;
+        // For local testing, you might need: const BASE_URL = 'http://localhost:9002';
+
+        // Simple example diagram
+        const example1Diagram = {
+            nodes: [
+                { 
+                    id: 'web-server', 
+                    type: 'Server', 
+                    label: 'Web Server', 
+                    info: 'Main web server handling HTTP requests',
+                    x: 200, 
+                    y: 200 
+                },
+                { 
+                    id: 'api-server', 
+                    type: 'Server', 
+                    label: 'API Server', 
+                    info: 'REST API server for backend services',
+                    x: 500, 
+                    y: 200 
+                },
+                { 
+                    id: 'database', 
+                    type: 'Database', 
+                    label: 'Database', 
+                    info: 'PostgreSQL database for data storage',
+                    x: 800, 
+                    y: 200 
+                },
+                { 
+                    id: 'cache', 
+                    type: 'Cache', 
+                    label: 'Cache', 
+                    info: 'Redis cache for improved performance',
+                    x: 500, 
+                    y: 400 
+                }
+            ],
+            connections: [
+                { from: 'web-server', to: 'api-server', text: 'HTTP' },
+                { from: 'api-server', to: 'database', text: 'SQL' },
+                { from: 'api-server', to: 'cache', text: 'Redis' }
+            ],
+            zones: [],
+            groupings: []
+        };
+
+        // More complex example
+        const example2Diagram = {
+            nodes: [
+                { id: 'user', type: 'User', label: 'User', x: 100, y: 100 },
+                { id: 'lb', type: 'LoadBalancer', label: 'Load Balancer', x: 300, y: 100 },
+                { id: 'app1', type: 'Server', label: 'App Server 1', x: 500, y: 50 },
+                { id: 'app2', type: 'Server', label: 'App Server 2', x: 500, y: 150 },
+                { id: 'db', type: 'Database', label: 'Database', x: 700, y: 100 },
+            ],
+            connections: [
+                { from: 'user', to: 'lb' },
+                { from: 'lb', to: 'app1' },
+                { from: 'lb', to: 'app2' },
+                { from: 'app1', to: 'db' },
+                { from: 'app2', to: 'db' },
+            ],
+            zones: [],
+            groupings: []
+        };
+
+        // Custom diagram example
+        const customDiagram = {
+            nodes: [
+                { 
+                    id: 'frontend', 
+                    type: 'generic.object.rectangle', 
+                    label: 'Frontend', 
+                    x: 150, 
+                    y: 150,
+                    backgroundColor: '#e3f2fd',
+                    borderColor: '#2196f3',
+                    width: 200,
+                    height: 100
+                },
+                { 
+                    id: 'backend', 
+                    type: 'generic.object.rectangle', 
+                    label: 'Backend API', 
+                    x: 450, 
+                    y: 150,
+                    backgroundColor: '#f3e5f5',
+                    borderColor: '#9c27b0',
+                    width: 200,
+                    height: 100
+                },
+                { 
+                    id: 'storage', 
+                    type: 'generic.object.rectangle', 
+                    label: 'Storage', 
+                    x: 750, 
+                    y: 150,
+                    backgroundColor: '#e8f5e9',
+                    borderColor: '#4caf50',
+                    width: 200,
+                    height: 100
+                }
+            ],
+            connections: [
+                { from: 'frontend', to: 'backend', text: 'REST API' },
+                { from: 'backend', to: 'storage', text: 'Data' }
+            ],
+            zones: [],
+            groupings: []
+        };
+
+        function encodeDiagram(diagram) {
+            const jsonString = JSON.stringify(diagram);
+            const base64Json = btoa(jsonString);
+            return encodeURIComponent(base64Json);
+        }
+
+        function loadDiagram(diagram, name) {
+            const encoded = encodeDiagram(diagram);
+            const viewerUrl = `${BASE_URL}/viewer?json=${encoded}`;
+            
+            const iframe = document.getElementById('diagram-viewer');
+            iframe.src = viewerUrl;
+            
+            document.getElementById('viewer-url').textContent = viewerUrl;
+            document.getElementById('diagram-json').textContent = JSON.stringify(diagram, null, 2);
+            
+            showStatus(`Loaded ${name}`, 'success');
+        }
+
+        function loadExample1() {
+            loadDiagram(example1Diagram, 'Example 1 (Simple)');
+        }
+
+        function loadExample2() {
+            loadDiagram(example2Diagram, 'Example 2 (Complex)');
+        }
+
+        function loadCustomDiagram() {
+            loadDiagram(customDiagram, 'Custom Diagram');
+        }
+
+        function loadFromRemote() {
+            // Load from the examples directory
+            const viewerUrl = `${BASE_URL}/viewer?url=${BASE_URL}/examples/example1.json`;
+            
+            const iframe = document.getElementById('diagram-viewer');
+            iframe.src = viewerUrl;
+            
+            document.getElementById('viewer-url').textContent = viewerUrl;
+            document.getElementById('diagram-json').textContent = 'Loading from remote URL...';
+            
+            showStatus('Loading from remote URL', 'success');
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+            setTimeout(() => {
+                statusDiv.innerHTML = '';
+            }, 3000);
+        }
+
+        // Load example 1 by default
+        window.addEventListener('DOMContentLoaded', () => {
+            loadExample1();
+        });
+
+        // Handle iframe load errors
+        document.getElementById('diagram-viewer').addEventListener('error', (e) => {
+            showStatus('Error loading diagram. Make sure the DiagramWeaver server is running.', 'error');
+        });
+    </script>
+</body>
+</html>
