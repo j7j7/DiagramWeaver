@@ -1616,12 +1616,10 @@ export default function DiagramEditor() {
         pendingCloseTabId={pendingCloseTabId}
         setPendingCloseTabId={setPendingCloseTabId}
         handleCloseTabConfirm={handleCloseTabConfirm}
-        selectedItemIds={selectedItemIds}
         handleItemSelect={handleItemSelect}
         handleBatchSelect={handleBatchSelect}
         setSelectedItemIds={setSelectedItemIds}
         setSelectedItem={setSelectedItem}
-        selectedItem={selectedItem}
         isConnectMode={isConnectMode}
         handleConnect={handleConnect}
         setIsConnectMode={setIsConnectMode}

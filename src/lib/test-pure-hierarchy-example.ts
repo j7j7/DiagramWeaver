@@ -73,7 +73,7 @@ export function testUserExample() {
   console.log('Pure hierarchy result:', pureData);
   
   // Test flattening for rendering
-  const { positionedGroups, positionedNodes } = flattenPureHierarchy(pureData.zones, pureData.nodes);
+  const { positionedGroups, positionedNodes } = flattenPureHierarchy(pureData.zones ?? [], pureData.nodes);
   console.log('Positioned zones:', positionedGroups);
   console.log('Positioned nodes:', positionedNodes);
   

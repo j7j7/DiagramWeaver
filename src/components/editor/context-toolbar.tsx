@@ -45,7 +45,7 @@ import { TextStylingPanel } from './text-styling-panel';
 import { VisualStylingPanel } from './visual-styling-panel';
 import { LineStylingPanel } from './line-styling-panel';
 import type { SelectedItem } from '../diagram-editor';
-import type { DiagramData, DiagramZoneData } from '@/lib/types';
+import type { DiagramData, DiagramNodeData, DiagramZoneData } from '@/lib/types';
 import { DiagramTheme } from '@/lib/theme-types';
 import { themeManager } from '@/lib/theme-manager';
 import { extractTextStylingFromNode, extractTextStylingFromGroup, applyTextStylingToZone, applyTextStylingToNode } from '@/lib/text-styling';
@@ -432,11 +432,10 @@ export function ContextToolbar({
       onDiagramDataUpdate(updatedDiagramData);
     } else {
       // Single item selection - existing logic
-      const isZone = selectedItem.itemType === 'zone';
       const updatedItem = { ...selectedItem, sizeMode: value } as SelectedItem;
       if (value === 'custom' && !(selectedItem as any).width && !(selectedItem as any).height) {
-        (updatedItem as any).width = isZone ? 300 : 40;
-        (updatedItem as any).height = isZone ? 220 : 40;
+        (updatedItem as any).width = 40;
+        (updatedItem as any).height = 40;
       }
       onItemUpdate?.(updatedItem);
     }
@@ -544,21 +543,7 @@ export function ContextToolbar({
   };
 
   const handleTextPositionChange = (value: string) => {
-    // When textPosition changes for zones, also update textVerticalPosition if needed
-    if (selectedItem && selectedItem.itemType === 'zone') {
-      const updatedItem: any = { ...selectedItem, textPosition: value as any };
-      
-      // Derive textVerticalPosition from textPosition for outside/inline positions
-      if (value === 'outside-bottom' || value === 'inline-bottom') {
-        updatedItem.textVerticalPosition = 'bottom';
-      } else if (value === 'outside-top' || value === 'inline-top') {
-        updatedItem.textVerticalPosition = 'top';
-      }
-      
-      onItemUpdate?.(updatedItem as SelectedItem);
-    } else {
-      onItemUpdate?.({ ...selectedItem, textPosition: value as any } as SelectedItem);
-    }
+    onItemUpdate?.({ ...selectedItem, textPosition: value as any } as SelectedItem);
   };
 
   const handleShapeTextPlacementChange = (value: 'above' | 'center' | 'under') => {
@@ -633,16 +618,11 @@ export function ContextToolbar({
       onDiagramDataUpdate(updatedDiagramData);
     } else {
       // Single item selection - existing logic
-      if (isZone) {
-        // Use applyTextStylingToZone to properly merge styling for zones
-        const updatedZone = applyTextStylingToZone(selectedItem as any, styling);
-        onItemUpdate?.({ ...updatedZone, itemType: 'zone' } as SelectedItem);
-      } else if (isNode) {
+      if (isNode) {
         // Use applyTextStylingToNode to properly merge styling for nodes
         const updatedNode = applyTextStylingToNode(selectedItem as any, styling);
         onItemUpdate?.({ ...updatedNode, itemType: 'node' } as SelectedItem);
       } else {
-        // Fallback to direct spread
         onItemUpdate?.({ ...selectedItem as SelectedItem, ...styling } as SelectedItem);
       }
     }
@@ -941,7 +921,6 @@ export function ContextToolbar({
     setDragOverIndex(null);
   };
 
-  const isZone = selectedItem.itemType === 'zone';
   const isNode = selectedItem.itemType === 'node';
 
   const getCurrentTextStyling = useMemo(() => {
@@ -954,19 +933,14 @@ export function ContextToolbar({
       if (isNode) {
         const foundNode = diagramData.nodes.find(n => n.id === selectedItem.id);
         currentItem = foundNode ? { ...foundNode, itemType: 'node' as const } : selectedItem;
-      } else if (isZone) {
-        const foundZone = diagramData.zones?.find(z => z.id === selectedItem.id);
-        currentItem = foundZone ? { ...foundZone, itemType: 'zone' as const } : selectedItem;
       }
     }
     
     if (isNode) {
       return extractTextStylingFromNode(currentItem as any);
-    } else if (isZone) {
-      return extractTextStylingFromGroup(currentItem as any);
     }
     return {};
-  }, [selectedItem, isNode, isZone, selectedItemIds, diagramData]);
+  }, [selectedItem, isNode, selectedItemIds, diagramData]);
 
   const getCurrentVisualStyling = useMemo(() => {
     if (!selectedItem || !diagramData) return {};
@@ -978,19 +952,14 @@ export function ContextToolbar({
       if (isNode) {
         const foundNode = diagramData.nodes.find(n => n.id === selectedItem.id);
         currentItem = foundNode ? { ...foundNode, itemType: 'node' as const } : selectedItem;
-      } else if (isZone) {
-        const foundZone = diagramData.zones?.find(z => z.id === selectedItem.id);
-        currentItem = foundZone ? { ...foundZone, itemType: 'zone' as const } : selectedItem;
       }
     }
     
     if (isNode) {
       return extractVisualStylingFromNode(currentItem as any);
-    } else if (isZone) {
-      return extractVisualStylingFromGroup(currentItem as any);
     }
     return {};
-  }, [selectedItem, isNode, isZone, selectedItemIds, diagramData]);
+  }, [selectedItem, isNode, selectedItemIds, diagramData]);
   const isTextNode = isNode && selectedItem.type?.startsWith('generic.text');
   const isTextboxNode = isNode && selectedItem.type === 'generic.text.textbox';
   const isPlainTextNode = isNode && selectedItem.type === 'generic.text.text';
@@ -1094,7 +1063,7 @@ export function ContextToolbar({
             </span>
           </div>
           <span className="text-xs text-muted-foreground px-2 border-l border-border">
-            {selectedItem.itemType === 'node' ? 'Node' : selectedItem.itemType === 'zone' ? 'Zone' : 'Connection'}
+            {selectedItem.itemType === 'node' ? 'Node' : 'Connection'}
           </span>
         </div>
       ) : (
@@ -1180,7 +1149,7 @@ export function ContextToolbar({
         )}
 
         {/* Connect Button - Hide for lines */}
-        {(isNode || isZone) && !isLineNode && (
+        {isNode && !isLineNode && (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button 
@@ -1198,7 +1167,7 @@ export function ContextToolbar({
 
 
         {/* Connections Arrow Toggle - Show if there are multiple connections */}
-        {(isNode || isZone) && getAllConnections.length > 0 && (
+        {isNode && getAllConnections.length > 0 && (
           <>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -1514,7 +1483,7 @@ export function ContextToolbar({
 
 
         {/* Text Styling Button */}
-        {selectedItem && (isNode || isZone) && !isLineNode && (
+        {selectedItem && isNode && !isLineNode && (
           <>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -1552,7 +1521,7 @@ export function ContextToolbar({
         )}
 
         {/* Visual Styling Button */}
-        {selectedItem && (isNode || isZone) && !isLineNode && (
+        {selectedItem && isNode && !isLineNode && (
           <>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -1817,8 +1786,8 @@ export function ContextToolbar({
 
 
 
-        {/* Orientation (Groups only) */}
-        {isZone && (
+        {/* Orientation (Groups only) - zones removed */}
+        {false && selectedItem && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -1834,7 +1803,7 @@ export function ContextToolbar({
               <div className="space-y-2">
                 <label className="text-sm font-medium">Orientation</label>
                 <Select 
-                  value={selectedItem.orientation || 'square'} 
+                  value={((selectedItem as any).orientation as string) || 'square'} 
                   onValueChange={handleOrientationChange}
                 >
                   <SelectTrigger>
@@ -1852,7 +1821,7 @@ export function ContextToolbar({
         )}
 
         {/* Text Position (Groups) */}
-        {isZone && (
+        {false && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -1868,7 +1837,7 @@ export function ContextToolbar({
               <div className="space-y-2">
                 <label className="text-sm font-medium">Text Position</label>
                 <Select 
-                  value={selectedItem.textPosition || ''} 
+                  value={String((selectedItem as any)?.textPosition ?? '')} 
                   onValueChange={handleTextPositionChange}
                 >
                   <SelectTrigger>
@@ -1911,7 +1880,7 @@ export function ContextToolbar({
         )}
 
         {/* Edge Position (Nodes in groups) - Hide for lines */}
-        {isNode && !isTextTypeNode && !isLineNode && (
+        {selectedItem && isNode && !isTextTypeNode && !isLineNode && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -1927,7 +1896,7 @@ export function ContextToolbar({
               <div className="space-y-2">
                 <label className="text-sm font-medium">Edge Position</label>
                 <Select 
-                  value={selectedItem.edgePosition || 'none'} 
+                  value={(selectedItem as DiagramNodeData).edgePosition || 'none'} 
                   onValueChange={handleEdgePositionChange}
                 >
                   <SelectTrigger>
@@ -1946,8 +1915,8 @@ export function ContextToolbar({
           </Popover>
         )}
 
-        {/* Max Items Per Row (Groups) */}
-        {isZone && (selectedItem.orientation === 'horizontal' || selectedItem.orientation === 'square') && (
+        {/* Max Items Per Row (Groups) - zones removed */}
+        {false && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -1976,7 +1945,7 @@ export function ContextToolbar({
         )}
 
         {/* Size Mode (Groups and Text Resources) */}
-        {(isZone || isTextNode  || isTextboxNode) && (
+        {(isTextNode || isTextboxNode) && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -2037,7 +2006,7 @@ export function ContextToolbar({
 
 
         {/* Rotation (All Nodes and Groups, except lines) */}
-        {(isNode || isZone) && !isLineNode && (
+        {isNode && !isLineNode && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -2195,7 +2164,7 @@ export function ContextToolbar({
         )}
 
         {/* Rendering Order Controls */}
-        {(isNode || isZone) && (
+        {isNode && (
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>

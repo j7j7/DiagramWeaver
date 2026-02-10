@@ -8,7 +8,7 @@ import { ShapeText } from "./shape-text";
 
 interface ShapeWrapperProps {
   node: DiagramNodeData & { width?: number; height?: number };
-  children: React.ReactNode;
+  children?: React.ReactNode;
   defaultWidth?: number;
   defaultHeight?: number;
   borderRadius?: string;
@@ -96,11 +96,11 @@ export function ShapeWrapper({
         })
       }}
     >
-      {children}
+      {children ?? null}
       
       <ShapeTag
-        tag={tag}
-        tagPosition={tagPosition}
+        tag={tag ?? ''}
+        tagPosition={tagPosition ?? 'top-left'}
         isEditingTag={isEditingTag}
         editTagText={editTagText}
         onTagTextChange={onTagTextChange}

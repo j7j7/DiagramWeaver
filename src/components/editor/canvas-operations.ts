@@ -13,10 +13,8 @@ import {
   type PositionedNode,
   type PositionedGroup,
 } from "./canvas-constants";
-import { recalculateGroupSize } from "./canvas-layout-utils";
 import { isShapeNodeType } from "@/lib/utils";
-import { cleanupEmptyZones } from "@/lib/grouping-utils";
-import { applyZoneLayout, cycleZoneItems } from "@/lib/zone-layout-utils";
+// Zones removed - no zone layout
 
 interface UseCanvasOperationsOptions {
   setDiagramData: React.Dispatch<React.SetStateAction<DiagramData>>;
@@ -42,10 +40,9 @@ export function useCanvasOperations({
     return themes[randomIndex].properties;
   };
 
-  const addNode = useCallback((item: any, position: { x: number; y: number }, targetGroupId: string | null) => {
+  const addNode = useCallback((item: any, position: { x: number; y: number }, _targetGroupId: string | null) => {
     setDiagramData((prevData) => {
-      let newZones = prevData.zones ? [...prevData.zones] : [];
-      let newNodes = prevData.nodes ? [...prevData.nodes] : [];
+      const newNodes = prevData.nodes ? [...prevData.nodes] : [];
       let newItemId: string;
 
       // Use originalType if available (for shape preservation), otherwise use type
@@ -54,11 +51,6 @@ export function useCanvasOperations({
       
       // Debug logging for all items to see what we're getting
       console.log('addNode called with:', { itemType, itemLabel, item });
-      
-      // Debug logging for zone creation
-      if (itemType === 'zone') {
-        console.log('Creating zone:', { itemType, itemLabel, item });
-      }
       
       // Check if this is a scratchpad item that already exists on canvas
       const isFromScratchPad = item.fromScratchPad || item.data?.fromScratchPad;
@@ -129,29 +121,7 @@ export function useCanvasOperations({
       // Check if this is a textbox resource
       const isTextboxResource = itemType === 'generic.text.textbox' || itemType?.endsWith('.textbox');
       
-      if (!existingNode && itemType === 'zone') {
-        // Use subType from item if available, otherwise derive from type
-        const subType = item.subType || 'zone';
-        const newZone: DiagramZoneData = {
-          id: generateGroupId(subType, prevData),
-          label: itemLabel,
-          children: [],
-          type: 'zone',
-          subType,
-          info: `A new ${itemLabel}`,
-          color: undefined,
-          sizeMode: 'auto', // Default to auto-sizing
-          textPosition: 'outside-top', // Default text position for new zones
-          textJustify: 'left', // Default text justification for new zones
-          x: position.x,
-          y: position.y,
-          width: 300,
-          height: 220,
-        };
-        newZones.push(newZone);
-        newItemId = newZone.id;
-        console.log('Zone created and added to zones:', newZone);
-      } else if (!existingNode) {
+      if (!existingNode) {
         // For resource items from the sidebar, use type from drag item
         // NEVER store file in node - ResourceIcon looks up file from resource catalog
         // Special handling for shape resources - make them resizable
@@ -225,100 +195,14 @@ export function useCanvasOperations({
         newItemId = newNode.id;
       }
       
-      // All nodes/zones use free placement - never auto-add to groups on drop
-      const addedItem = newNodes.find(n => n.id === newItemId) || newZones.find(zone => zone.id === newItemId);
-      const shouldAddToGroup = false; // Disabled: objects always placed at drop position
-      
-      if (shouldAddToGroup && targetGroupId && addedItem) {
-        // Get the target zone to calculate relative position
-        const targetZone = newZones.find(z => z.id === targetGroupId);
-        if (targetZone && addedItem) {
-          // Convert absolute drop position to relative position within the zone
-          // Use processedZones to get the current absolute zone position, or fall back to zone's stored position
-          const processedZone = processedZones.find(z => z.id === targetGroupId);
-          const zoneX = processedZone?.x ?? targetZone.x ?? 0;
-          const zoneY = processedZone?.y ?? targetZone.y ?? 0;
-          
-          // Calculate relative position: absolute drop position minus zone position
-          const relativeX = position.x - zoneX;
-          const relativeY = position.y - zoneY;
-          
-          // Set the node's position to relative coordinates
-          (addedItem as any).x = relativeX;
-          (addedItem as any).y = relativeY;
-        }
-        
-        newZones = newZones.map(zone => {
-          if (zone.id === targetGroupId) {
-            const updatedZone = { ...zone, children: [...zone.children, newItemId] };
-            // Recalculate zone size based on new children including dynamic dimensions
-            return recalculateGroupSize(updatedZone, newNodes, newZones);
-          }
-          return zone;
-        });
-        
-        // If target zone has circular layout, re-apply layout to recalculate positions
-        const updatedTargetZone = newZones.find(z => z.id === targetGroupId);
-        if (updatedTargetZone?.layoutType === 'circular') {
-          const intermediateData = { ...prevData, nodes: newNodes, zones: newZones };
-          const updatedWithLayout = applyZoneLayout(targetGroupId, intermediateData);
-          newNodes = updatedWithLayout.nodes;
-          newZones = updatedWithLayout.zones;
-        }
-      } else {
-        // Top-level placement: snap to grid and avoid overlap by nudging to nearest free slot
-        let posX = snapToGrid(position.x);
-        let posY = snapToGrid(position.y);
-
-        const isOverlapAt = (x: number, y: number) => {
-          const width = item.type === 'zone' ? 300 : 
-                      (item.type ? measureNodeDims(item as PositionedNode).width : NODE_WIDTH);
-          const height = item.type === 'zone' ? 220 : 
-                       (item.type ? measureNodeDims(item as PositionedNode).height : NODE_HEIGHT);
-          const rectA = { x, y, width, height };
-          // existing obstacles from processed nodes/groups at this render cycle are not available here,
-          // so approximate using current prevData nodes/groups positions
-          const obstacles: { x: number; y: number; width: number; height: number; id: string }[] = [];
-          for (const n of newNodes) {
-            const nn: any = n as any;
-            if (nn.x != null && nn.y != null) {
-              const dims = measureNodeDims(nn as PositionedNode);
-              obstacles.push({ id: n.id, x: nn.x, y: nn.y, width: dims.width, height: dims.height });
-            }
-          }
-          for (const zone of newZones) {
-            if (zone.x != null && zone.y != null && zone.id !== newItemId) {
-              // zones without computed size: approximate
-              obstacles.push({ id: zone.id, x: zone.x, y: zone.y, width: 300, height: 220 });
-            }
-          }
-          return obstacles.some(o => !(x + rectA.width <= o.x || o.x + o.width <= x || y + rectA.height <= o.y || o.y + o.height <= y));
-        };
-
-        const addedItemForPos = newNodes.find(n => n.id === newItemId) || newZones.find(zone => zone.id === newItemId);
-        // All items use free placement - skip overlap nudging
-        const dirs = [ [1,0],[0,1],[-1,0],[0,-1] ];
-        let step = 1; let attempts = 0; let dirIdx = 0; let movesInDir = 0; let changes = 0;
-        while (false && isOverlapAt(posX, posY) && attempts < 50) {
-          // Use 10px increments for nudging (smaller step size)
-          const nudgeStep = 10;
-          posX += dirs[dirIdx][0] * nudgeStep;
-          posY += dirs[dirIdx][1] * nudgeStep;
-          // Snap after nudging
-          posX = snapToGrid(posX);
-          posY = snapToGrid(posY);
-          movesInDir++;
-          if (movesInDir === step) { dirIdx = (dirIdx + 1) % 4; movesInDir = 0; changes++; if (changes % 2 === 0) step++; }
-          attempts++;
-        }
-
-        if (addedItemForPos) {
-          (addedItemForPos as any).x = posX;
-          (addedItemForPos as any).y = posY;
-        }
+      // Flat diagram: all nodes at top level
+      const addedItemForPos = newNodes.find(n => n.id === newItemId);
+      if (addedItemForPos) {
+        (addedItemForPos as any).x = snapToGrid(position.x);
+        (addedItemForPos as any).y = snapToGrid(position.y);
       }
 
-      return { ...prevData, nodes: newNodes, zones: newZones };
+      return { ...prevData, nodes: newNodes };
     });
   }, [setDiagramData]);
 
@@ -433,70 +317,13 @@ export function useCanvasOperations({
     });
   }, [setDiagramData]);
 
-  const resizeMultipleGroups = useCallback((groupIds: string[], scaleX: number, scaleY: number, originalDimensions?: Map<string, { width: number; height: number }>) => {
-    const GRID_SNAP = 20; // Match diagram-zone.tsx
-    setDiagramData(prevData => {
-      const updatedZones = prevData.zones?.map(zone => {
-        if (groupIds.includes(zone.id)) {
-          // Use original dimensions from ref if provided, otherwise use current dimensions
-          const originalDims = originalDimensions?.get(zone.id);
-          const originalWidth = originalDims?.width ?? (zone.width || 200);
-          const originalHeight = originalDims?.height ?? (zone.height || 150);
-          const currentWidth = originalWidth;
-          const currentHeight = originalHeight;
-          const minWidth = zone.minWidth || 200;
-          const minHeight = zone.minHeight || 150;
-          
-          const newWidth = Math.max(minWidth, Math.round(currentWidth * scaleX / GRID_SNAP) * GRID_SNAP);
-          const newHeight = Math.max(minHeight, Math.round(currentHeight * scaleY / GRID_SNAP) * GRID_SNAP);
-          
-          return {
-            ...zone,
-            width: newWidth,
-            height: newHeight,
-            sizeMode: 'custom' as const
-          };
-        }
-        return zone;
-      }) || [];
-      
-      return { ...prevData, zones: updatedZones };
-    });
-  }, [setDiagramData]);
+  const resizeMultipleGroups = useCallback((_groupIds: string[], _scaleX: number, _scaleY: number, _originalDimensions?: Map<string, { width: number; height: number }>) => {
+    // Zones removed - no-op
+  }, []);
 
-  const resizeGroup = useCallback((groupId: string, newWidth: number, newHeight: number) => {
-    setDiagramData(prevData => {
-      const updatedZones = prevData.zones?.map(zone => {
-        if (zone.id === groupId) {
-          // Calculate minimum size based on content using dynamic dimensions
-          const currentZone = processedZones.find(z => z.id === groupId);
-          const groupNodes = processedNodes.filter(n => currentZone?.children.includes(n.id));
-          
-          let minWidth = 200;
-          let minHeight = 150;
-          
-          if (groupNodes.length > 0) {
-            const maxNodeWidth = Math.max(...groupNodes.map(n => measureNodeDims(n).width));
-            const maxNodeHeight = Math.max(...groupNodes.map(n => measureNodeDims(n).height));
-            minWidth = Math.max(minWidth, maxNodeWidth + ZONE_PADDING * 2);
-            minHeight = Math.max(minHeight, maxNodeHeight + ZONE_PADDING * 2);
-          }
-          
-          return {
-            ...zone,
-            width: Math.max(minWidth, newWidth),
-            height: Math.max(minHeight, newHeight),
-            sizeMode: 'custom' as const,
-            minWidth,
-            minHeight
-          };
-        }
-        return zone;
-      }) || [];
-      
-      return { ...prevData, zones: updatedZones };
-    });
-  }, [setDiagramData, processedZones, processedNodes]);
+  const resizeGroup = useCallback((_groupId: string, _newWidth: number, _newHeight: number) => {
+    // Zones removed - no-op
+  }, []);
 
   const updateGroupLabel = useCallback((groupId: string, newLabel: string) => {
     setDiagramData(prevData => {
@@ -599,18 +426,7 @@ export function useCanvasOperations({
         }
       });
 
-      let finalData = { ...prevData, nodes: currentNodes, zones: currentZones };
-
-      // If items were moved within the same circular zone, cycle items
-      // This applies when all items have the same oldParentId and targetGroupId
-      if (targetGroupId) {
-        const targetZone = finalData.zones?.find(z => z.id === targetGroupId);
-        if (targetZone?.layoutType === 'circular') {
-          finalData = cycleZoneItems(targetGroupId, finalData);
-        }
-      }
-
-      return finalData;
+      return { ...prevData, nodes: currentNodes };
     });
   }, [setDiagramData]);
 
@@ -852,47 +668,7 @@ export function useCanvasOperations({
          }
        }
         
-        let finalData = { ...prevData, nodes: currentNodes, zones: currentZones };
-      
-      // If item was moved into or out of a circular zone, re-apply layout to affected zones
-      if (oldParentId !== targetGroupId) {
-        // Item moved - check both old and new parent zones
-        const zonesToRelayout: string[] = [];
-        
-        if (oldParentId) {
-          const oldZone = finalData.zones?.find(z => z.id === oldParentId);
-          if (oldZone?.layoutType === 'circular' && oldZone.children.length > 0) {
-            zonesToRelayout.push(oldParentId);
-          }
-        }
-        
-        if (targetGroupId) {
-          const newZone = finalData.zones?.find(z => z.id === targetGroupId);
-          if (newZone?.layoutType === 'circular') {
-            zonesToRelayout.push(targetGroupId);
-          }
-        }
-        
-        // Apply layout to all affected zones
-        zonesToRelayout.forEach(zoneId => {
-          finalData = applyZoneLayout(zoneId, finalData);
-        });
-      } else if (targetGroupId) {
-        // Item moved within the same zone - check if it's a circular zone and cycle items
-        const targetZone = finalData.zones?.find(z => z.id === targetGroupId);
-        if (targetZone?.layoutType === 'circular') {
-          finalData = cycleZoneItems(targetGroupId, finalData);
-        }
-      }
-      
-      // If moved item itself is a circular zone, re-apply its layout
-      // This keeps items oriented correctly within the zone after moving the zone
-      const isMovingCircularZone = item.type === ItemTypes.ZONE && finalData.zones?.find(z => z.id === item.id)?.layoutType === 'circular';
-      if (isMovingCircularZone) {
-        finalData = applyZoneLayout(item.id, finalData);
-      }
-      
-      return finalData;
+        return { ...prevData, nodes: currentNodes };
     });
   }, [setDiagramData, processedNodes, processedZones]);
 
@@ -906,7 +682,7 @@ export function useCanvasOperations({
           ...prev,
           nodes: prev.nodes.filter(n => n.id !== itemId),
           connections: prev.connections.filter((e: any) => e.from !== itemId && e.to !== itemId),
-          zones: prev.zones?.map(zone => ({
+          zones: (prev.zones ?? []).map(zone => ({
             ...zone,
             children: zone.children.filter((n: string) => n !== itemId)
           }))
@@ -914,21 +690,8 @@ export function useCanvasOperations({
       } else {
         updatedData = {
           ...prev,
-          zones: prev.zones?.filter(zone => zone.id !== itemId)
+          zones: (prev.zones ?? []).filter(zone => zone.id !== itemId)
         };
-      }
-      
-      // Clean up empty zones after deletion
-      updatedData = cleanupEmptyZones(updatedData);
-      
-      // If a node was deleted, check if it was in a circular zone and re-apply layout
-      if (isNode) {
-        const circularZone = updatedData.zones?.find(zone => 
-          zone.layoutType === 'circular' && zone.children.length > 0
-        );
-        if (circularZone) {
-          updatedData = applyZoneLayout(circularZone.id, updatedData);
-        }
       }
       
       return updatedData;
@@ -969,25 +732,7 @@ export function useCanvasOperations({
         connections: remainingConnections
       };
       
-      // Clean up empty zones after deletion
-      let finalData = cleanupEmptyZones(dataBeforeCleanup);
-      
-      // If items were deleted from circular zones, re-apply layout to those zones
-      // Collect zones that need re-layout
-      const zonesToRelayout = finalData.zones?.filter(zone => {
-        if (zone.layoutType !== 'circular' || zone.children.length === 0) return false;
-        // Check if any of the deleted items were in this zone
-        const prevZone = prev.zones?.find(z => z.id === zone.id);
-        if (!prevZone) return false;
-        return prevZone.children.some(childId => idsToDelete.has(childId));
-      }) || [];
-      
-      // Apply layout to all affected zones
-      zonesToRelayout.forEach(zone => {
-        finalData = applyZoneLayout(zone.id, finalData);
-      });
-      
-      return finalData;
+      return dataBeforeCleanup;
     });
     
     onItemSelect(null);

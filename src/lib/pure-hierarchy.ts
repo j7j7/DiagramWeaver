@@ -28,8 +28,7 @@ export function createPureHierarchy(data: DiagramData): DiagramData {
   return {
     nodes,
     connections: data.connections || [],
-    zones,
-    rootZoneId: zones.find(g => !g.parentId)?.id
+    zones
   };
 }
 
@@ -277,7 +276,7 @@ export function addNodeToGroup(
   data: DiagramData
 ): DiagramData {
   const pureData = createPureHierarchy(data);
-  const zones = [...pureData.zones];
+  const zones = [...(pureData.zones ?? [])];
   const targetGroupId = groupId || zones.find(g => !g.parentId)?.id;
   
   if (!targetGroupId) {

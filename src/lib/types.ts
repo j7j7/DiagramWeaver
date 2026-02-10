@@ -55,6 +55,7 @@ export interface DiagramNodeData {
   endCap?: 'none' | 'arrow' | 'dot' | 'square'; // End endpoint style for line shapes
   lineThickness?: number; // Line thickness for line shapes (default: 2.5)
   lineType?: 'solid' | 'dashed' | 'dotted'; // Line type/style for line shapes
+  lineTextPosition?: number; // Text position along line (0-100%, default 50%)
   lineTextVerticalPosition?: 'above' | 'middle' | 'below'; // Text position relative to line
   
   // Lock property - prevents movement when true

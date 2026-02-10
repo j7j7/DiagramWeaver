@@ -14,7 +14,7 @@ export function TutorialOverlay() {
   const [mounted, setMounted] = useState(false);
   const targetElementRef = useRef<Element | null>(null);
   const attachedElementRef = useRef<Element | null>(null);
-  const clickHandlerRef = useRef<((e: MouseEvent) => void) | null>(null);
+  const clickHandlerRef = useRef<((e: Event) => void) | null>(null);
   const lastAutoEnterStepIdRef = useRef<string | null>(null);
   const currentIndexRef = useRef<number>(0);
   const pendingNextRef = useRef<number | null>(null);
@@ -225,7 +225,7 @@ export function TutorialOverlay() {
 
     const expectedIndex = currentIndex;
 
-    const handleTargetClick = (e: MouseEvent) => {
+    const handleTargetClick = (_e: Event) => {
       // Do NOT stop propagation: the user must be clicking the real UI element.
       // Small delay gives the UI time to respond (e.g. menus opening) before we advance.
       window.setTimeout(() => safeNext(expectedIndex), 75);

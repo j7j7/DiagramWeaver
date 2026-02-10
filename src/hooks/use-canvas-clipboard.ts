@@ -481,8 +481,8 @@ export function useCanvasClipboard({
           if (originalOrder) {
             // Map original IDs to new IDs while preserving order
             orderedMemberIds = originalOrder
-              .map(originalId => idMapping.get(originalId))
-              .filter((newId): newId is string => newId !== undefined && nodeIds.includes(newId));
+              .map((originalId: string) => idMapping.get(originalId))
+              .filter((newId: string | undefined): newId is string => newId !== undefined && nodeIds.includes(newId));
             
             // Add any nodes that weren't in the original order (shouldn't happen, but safety check)
             const orderedSet = new Set(orderedMemberIds);

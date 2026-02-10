@@ -5,11 +5,11 @@ import type { DiagramData, DiagramGroupData, DiagramNodeData, HierarchicalDiagra
  */
 export function convertToNestedHierarchy(data: DiagramData): HierarchicalDiagramData {
   const nodeMap = new Map(data.nodes.map(n => [n.id, n]));
-  const zoneMap = new Map(data.zones.map(g => [g.id, g]));
+  const zoneMap = new Map((data.zones ?? []).map(g => [g.id, g]));
   
   // Build parent-child relationships
   const parentMap = new Map<string, string[]>();
-  data.zones.forEach(zone => {
+  (data.zones ?? []).forEach(zone => {
     // Handle both children (new format) and nodes (old format)
     const childIds = zone.children || (zone as any).nodes || [];
     childIds.forEach((childId: string) => {
@@ -21,7 +21,7 @@ export function convertToNestedHierarchy(data: DiagramData): HierarchicalDiagram
   });
   
   // Find root zones (zones without parents)
-  const rootZoneIds = data.zones
+  const rootZoneIds = (data.zones ?? [])
     .filter(z => !z.parentId)
     .map(z => z.id);
   
@@ -32,7 +32,7 @@ export function convertToNestedHierarchy(data: DiagramData): HierarchicalDiagram
   
   // Find orphan nodes (nodes not in any group) and create a group for them
   const allChildNodeIds = new Set<string>();
-  data.zones.forEach(zone => {
+  (data.zones ?? []).forEach(zone => {
     // Skip orphan-nodes zones when checking for children
     if (zone.id === 'orphan-nodes') return;
     
@@ -342,7 +342,6 @@ export function convertFromNestedHierarchy(nestedData: HierarchicalDiagramData):
     connections: nestedData.connections,
     zones: filteredZones,
     groupings: nestedData.groupings, // Preserve groupings
-    rootZoneId: filteredZones.find(g => !g.parentId)?.id,
     layers: nestedData.layers // Preserve layers configuration
   };
 }

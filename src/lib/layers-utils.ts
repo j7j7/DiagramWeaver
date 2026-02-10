@@ -102,7 +102,7 @@ export function getItemsInLayer(diagramData: DiagramData, layerId: string): {
   zones: DiagramZoneData[];
 } {
   const nodes = diagramData.nodes.filter(node => getItemLayer(node) === layerId);
-  const zones = diagramData.zones.filter(zone => getItemLayer(zone) === layerId);
+  const zones = (diagramData.zones ?? []).filter(zone => getItemLayer(zone) === layerId);
 
   return { nodes, zones };
 }
@@ -346,7 +346,7 @@ export function filterByVisibleLayers(diagramData: DiagramData): DiagramData {
     nodes: diagramData.nodes.filter(node => 
       visibleLayerIds.includes(getItemLayer(node))
     ),
-    zones: diagramData.zones.filter(zone => 
+    zones: (diagramData.zones ?? []).filter(zone => 
       visibleLayerIds.includes(getItemLayer(zone))
     )
   };

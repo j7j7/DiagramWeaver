@@ -18,7 +18,6 @@
 
 import React, { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { DiagramNode } from "../diagram/diagram-node";
-import { DiagramZone } from "../diagram/diagram-zone";
 import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramConnectionData } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import type { SelectedItem } from "../diagram-editor";
@@ -883,7 +882,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     if (isConnectMode) {
       onNodeClickInConnectMode(zone as any); // Zones can also be connection targets
     } else {
-      onItemSelect({ ...zone, itemType: 'zone' }, e.shiftKey);
+      onItemSelect({ ...zone, itemType: 'node' } as Parameters<typeof onItemSelect>[0], e.shiftKey);
     }
   }
 
@@ -895,7 +894,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     if (selectedItemIds.size > 1 && selectedItemIds.has(zone.id)) {
       // Preserve multi-selection - don't change selection
     } else if (selectedItemId !== zone.id) {
-      onItemSelect({ ...zone, itemType: 'zone' }, false);
+      onItemSelect({ ...zone, itemType: 'node' } as Parameters<typeof onItemSelect>[0], false);
     }
     // Always reset connection settings trigger when opening context menu
     onResetConnectionSettingsTrigger?.();
@@ -1156,103 +1155,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               transformOrigin: '0 0',
             }}
           >
-            {/* ================================================================
-                ZONES (Background Layer)
-                ================================================================
-                Zones are rendered first so they appear behind nodes. They are
-                sorted by layer order first, then by nesting depth to ensure
-                proper layering and nested zone interaction.
-                See: src/components/diagram/diagram-zone.tsx
-            */}
-            {(() => {
-              // Get layer order from layers configuration
-              const layerOrder = new Map<string, number>();
-              if (diagramData.layers?.layers) {
-                diagramData.layers.layers.forEach((layer, index) => {
-                  layerOrder.set(layer.id, index);
-                });
-              }
-
-              // Compute depth per zone based on parent/child relationships inferred
-              // from children arrays (more robust than relying on parentId, which
-              // can get out of sync when editing JSON).
-              const depthCache = new Map<string, number>();
-              const zonesForDepth = diagramData.zones || [];
-
-              const getParentId = (childId: string): string | null => {
-                const parent = zonesForDepth.find(z => (z.children || []).includes(childId));
-                return parent ? parent.id : null;
-              };
-
-              const getDepth = (zoneId: string): number => {
-                if (depthCache.has(zoneId)) return depthCache.get(zoneId)!;
-                let depth = 0;
-                let currentId: string | null = zoneId;
-                const visited = new Set<string>();
-
-                while (currentId) {
-                  const parentId = getParentId(currentId);
-                  if (!parentId || visited.has(parentId)) break;
-                  visited.add(parentId);
-                  depth += 1;
-                  currentId = parentId;
-                }
-
-                depthCache.set(zoneId, depth);
-                return depth;
-              };
-
-              const zonesWithDepth = processedZones
-                .map(z => ({ 
-                  zone: z, 
-                  depth: getDepth(z.id),
-                  layerOrder: layerOrder.get(z.layer || 'background') ?? 0
-                }))
-                .sort((a, b) => {
-                  // Sort by layer order first, then by depth
-                  if (a.layerOrder !== b.layerOrder) {
-                    return a.layerOrder - b.layerOrder;
-                  }
-                  return a.depth - b.depth;
-                });
-
-              return zonesWithDepth.map(({ zone }) => {
-                const isZoneSelected = selectedItemId === zone.id || (selectedItemIds?.has(zone.id) ?? false);
-                const selectedGroup = selectedItemId ? getItemGroup(selectedItemId, diagramData) : null;
-                const itemGroup = getItemGroup(zone.id, diagramData);
-                const isInGroup = selectedItemId !== zone.id &&
-                                  selectedItemId !== undefined &&
-                                  selectedGroup !== null &&
-                                  itemGroup !== null &&
-                                  selectedGroup.id === itemGroup.id;
-
-                // Use display zone from pre-calculated map (includes drag position)
-                const displayZone = displayZonesById[zone.id] || zone;
-
-                return (
-                  <DiagramZone
-                    key={zone.id}
-                    zone={displayZone}
-                    isSelected={isZoneSelected}
-                    isDropTarget={hoveredGroupId === zone.id}
-                    isTargetable={hoveredGroupId === zone.id}
-                    isMultiSelected={selectedItemIds?.has(zone.id) && (selectedItemIds?.size ?? 0) > 1}
-                    isGroupMember={isInGroup}
-                    onClick={(e: React.MouseEvent) => handleZoneClick(e, zone)}
-                    onContextMenu={(e: React.MouseEvent) => handleZoneContextMenu(e, zone)}
-                     onResize={handleZoneResize}
-                     onResizeStart={handleResizeStart}
-                     onResizeEnd={handleResizeEnd}
-                     onLabelChange={operations.updateGroupLabel}
-                     onTagUpdate={operations.updateGroupTag}
-                     isReadOnly={isReadOnly}
-                     onHoverChange={handleHoverChange}
-                     onConnect={onConnect}
-                     isConnectMode={isConnectMode && isZoneSelected}
-                  />
-                );
-              });
-            })()}
+            {/* Zones removed - diagram is flat (nodes only) */}
 
             {/* ================================================================
                 NODES (Foreground Layer)
@@ -1452,7 +1355,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 transform={transform}
                 targetBounds={bounds}
                 rotation={currentRotation}
-                isDragging={rotationDragState?.isActive && rotationDragState.targetId === rotationTarget.id}
+                isDragging={(rotationDragState?.isActive && rotationDragState.targetId === rotationTarget.id) ?? false}
                 dragRotation={dragRotation}
                 onHandlePointerDown={handleRotationHandlePointerDown}
               />

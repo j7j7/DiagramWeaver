@@ -37,6 +37,9 @@ export interface ThemeProperties {
   
   // Gradient properties
   gradientAngle?: number;
+
+  // Shape properties
+  roundedEdges?: boolean;
 }
 
 export interface DiagramTheme {

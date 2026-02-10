@@ -2,7 +2,6 @@
 
 import React, { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { DiagramNode } from "../diagram/diagram-node";
-import { DiagramZone } from "../diagram/diagram-zone";
 import type { DiagramData } from "@/lib/types";
 import { calculateLayout } from "../editor/canvas-layout-utils";
 import { useCanvasTransform, type Transform } from "@/hooks/use-canvas-transform";
@@ -151,13 +150,13 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
   }, []);
 
   // Handle node hover (for tooltips)
-  const handleNodeHover = useCallback((id: string, isHovered: boolean) => {
+  const handleNodeHover = useCallback((id: string, _itemType: 'node' | 'zone', isHovered: boolean) => {
     // Tooltips are handled by DiagramNode component via Popover
     // No state needed here for viewer mode
   }, []);
 
   // Handle zone hover (for tooltips)
-  const handleZoneHover = useCallback((id: string, isHovered: boolean) => {
+  const handleZoneHover = useCallback((id: string, _itemType: 'node' | 'zone', isHovered: boolean) => {
     // Tooltips are handled by DiagramZone component via Popover
     // No state needed here for viewer mode
   }, []);
@@ -201,8 +200,8 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
       {/* Rulers */}
       <CanvasRulers
         transform={transform}
-        width={canvasDimensions.width}
-        height={canvasDimensions.height}
+        canvasWidth={canvasDimensions.width}
+        canvasHeight={canvasDimensions.height}
       />
 
       {/* Canvas content */}
@@ -216,23 +215,7 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
           cursor: 'grab',
         }}
       >
-        {/* Render zones first (background) */}
-        {processedZones.map((zone) => {
-          const zoneData = zonesById[zone.id];
-          if (!zoneData) return null;
-
-          return (
-            <DiagramZone
-              key={zone.id}
-              zone={zoneData}
-              isSelected={false}
-              isMultiSelected={false}
-              isReadOnly={true}
-              onHoverChange={handleZoneHover}
-              onClick={handleZoneClick}
-            />
-          );
-        })}
+        {/* Zones removed - diagram is flat (nodes only) */}
 
         {/* Render nodes */}
         {processedNodes.map((node) => {

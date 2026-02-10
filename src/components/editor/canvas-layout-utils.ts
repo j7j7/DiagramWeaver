@@ -982,9 +982,10 @@ export function calculateLayout(diagramData: DiagramData): {
   height: number;
 } {
   let nodes: DiagramNodeData[] = JSON.parse(JSON.stringify(diagramData.nodes || []));
-  let zones: DiagramZoneData[] = JSON.parse(JSON.stringify(diagramData.zones ?? []));
+  // Zones removed: diagram is flat. Ignore any zones in data (flatten on import handles legacy JSON).
+  const zones: DiagramZoneData[] = [];
   
-  // Extract nodes that are nested as objects in zones' children arrays
+  // Extract nodes that are nested as objects in zones' children arrays (no-op when zones empty)
   // This handles data structures where nodes are objects in children instead of just IDs
   const extractedNodes: DiagramNodeData[] = [];
   zones.forEach(zone => {
@@ -1001,27 +1002,6 @@ export function calculateLayout(diagramData: DiagramData): {
   
   // Add extracted nodes to the nodes array
   nodes = [...nodes, ...extractedNodes];
-  
-  // Normalize zones' children arrays to contain only IDs (strings)
-  zones = zones.map(zone => ({
-    ...zone,
-    children: zone.children.map((child: any) => {
-      // If child is an object, return its ID; otherwise return as-is (should be ID string)
-      return typeof child === 'object' && child !== null ? child.id : child;
-    })
-  }));
-  
-  // Remove duplicate zones by ID (can happen during drag operations)
-  const uniqueZoneIds = new Set<string>();
-  zones = zones.filter(zone => {
-    if (uniqueZoneIds.has(zone.id)) {
-      console.warn('Duplicate zone detected and removed:', zone.id);
-      return false;
-    }
-    uniqueZoneIds.add(zone.id);
-    return true;
-  });
-  
   
   const allItems: { [id: string]: DiagramNodeData | DiagramZoneData | PositionedNode | PositionedGroup } = {};
   nodes.forEach(item => allItems[item.id] = item);

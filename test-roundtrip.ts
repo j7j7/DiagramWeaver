@@ -1,4 +1,5 @@
-import { HierarchicalDiagramDataSchema, DiagramDataSchema } from './src/lib/schemas';
+import { HierarchicalDiagramDataSchema } from './src/lib/schemas';
+import type { HierarchicalDiagramData } from './src/lib/types';
 import { convertFromNestedHierarchy, convertToNestedHierarchy } from './src/lib/nested-hierarchy';
 import * as fs from 'fs';
 
@@ -16,10 +17,10 @@ if (!hierarchicalResult.success) {
 console.log('✓ Original JSON is valid nested format\n');
 
 console.log('Step 2: Convert to flat format (simulating load)');
-const flatData = convertFromNestedHierarchy(hierarchicalResult.data);
+const flatData = convertFromNestedHierarchy(hierarchicalResult.data as HierarchicalDiagramData);
 console.log('✓ Converted to flat format');
 console.log('- Nodes:', flatData.nodes.length);
-console.log('- Zones:', flatData.zones.length);
+console.log('- Zones:', (flatData.zones ?? []).length);
 console.log('- Connections:', flatData.connections.length);
 console.log('\n');
 

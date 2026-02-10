@@ -58,13 +58,13 @@ export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, 
         ...selectedItem,
         borderStyle: selectedItem.borderStyle || 'solid',
         borderColors: selectedItem.borderColors || [
-          selectedItem.borderColor || (selectedItem.itemType === 'zone' ? '#6b7280' : '#3b82f6'),
-          selectedItem.borderColor || (selectedItem.itemType === 'zone' ? '#6b7280' : '#3b82f6')
+          selectedItem.borderColor || '#3b82f6',
+          selectedItem.borderColor || '#3b82f6'
         ],
         backgroundStyle: selectedItem.backgroundStyle || 'solid',
         backgroundColors: selectedItem.backgroundColors || [
-          selectedItem.backgroundColor || (selectedItem.itemType === 'zone' ? '#f3f4f6' : '#f3f4f6'),
-          selectedItem.backgroundColor || (selectedItem.itemType === 'zone' ? '#e5e7eb' : '#e5e7eb')
+          selectedItem.backgroundColor || '#f3f4f6',
+          selectedItem.backgroundColor || '#e5e7eb'
         ]
       };
       reset(initializedItem);

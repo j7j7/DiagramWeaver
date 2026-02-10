@@ -1,4 +1,4 @@
-import type { DiagramData } from './types';
+import type { DiagramData, HierarchicalDiagramData } from './types';
 import { DiagramDataSchema, HierarchicalDiagramDataSchema } from './schemas';
 import { convertFromNestedHierarchy } from './nested-hierarchy';
 
@@ -37,7 +37,7 @@ export function validateDiagramData(json: unknown): DiagramData {
       throw new Error(`Invalid hierarchical diagram format: ${hierarchicalResult.error.message}`);
     }
     // Convert hierarchical to flat format
-    dataToValidate = convertFromNestedHierarchy(hierarchicalResult.data);
+    dataToValidate = convertFromNestedHierarchy(hierarchicalResult.data as HierarchicalDiagramData);
   }
 
   // Validate flat format
@@ -46,15 +46,12 @@ export function validateDiagramData(json: unknown): DiagramData {
     throw new Error(`Invalid diagram format: ${flatResult.error.message}`);
   }
 
-  // Ensure all required arrays are present
   return {
     nodes: flatResult.data.nodes || [],
     connections: flatResult.data.connections || [],
-    zones: flatResult.data.zones || [],
     groupings: flatResult.data.groupings || [],
-    rootZoneId: (dataToValidate as any).rootZoneId,
     layers: flatResult.data.layers,
-  };
+  } as DiagramData;
 }
 
 /**

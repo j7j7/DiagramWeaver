@@ -1,4 +1,4 @@
-import type { DiagramData, DiagramNodeData, DiagramConnectionData, DiagramGroupingData } from './types';
+import type { DiagramData, DiagramNodeData, DiagramConnectionData, DiagramGroupingData, LayersConfig } from './types';
 
 /** Zone-like structure for parsing - supports both flat (children as IDs) and nested (children as objects) */
 interface ParsedZone {
@@ -146,7 +146,7 @@ export function flattenDiagramOnImport(raw: RawDiagramData): DiagramData {
     nodes: flatNodes,
     connections,
     groupings: groupings.length > 0 ? groupings : undefined,
-    layers: raw.layers
+    layers: raw.layers as LayersConfig | undefined
   };
 }
 
@@ -156,6 +156,6 @@ function normalizeDiagramData(raw: RawDiagramData): DiagramData {
     nodes: raw.nodes || [],
     connections: raw.connections || [],
     groupings: raw.groupings,
-    layers: raw.layers
+    layers: raw.layers as LayersConfig | undefined
   };
 }

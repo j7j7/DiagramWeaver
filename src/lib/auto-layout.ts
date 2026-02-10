@@ -58,7 +58,7 @@ export function performAutoLayout(data: DiagramData): DiagramData {
     });
   });
   
-  newData.zones.forEach(zone => {
+  (newData.zones ?? []).forEach(zone => {
     // Initial size, will be updated by recursive layout
     itemMap.set(zone.id, {
       id: zone.id,
@@ -77,7 +77,7 @@ export function performAutoLayout(data: DiagramData): DiagramData {
   const allChildIds = new Set<string>();
   const itemToGroupingId = new Map<string, string>();
   
-  newData.zones.forEach(zone => {
+  (newData.zones ?? []).forEach(zone => {
     hierarchy.set(zone.id, [...zone.children]);
     zone.children.forEach(childId => allChildIds.add(childId));
   });
@@ -91,7 +91,7 @@ export function performAutoLayout(data: DiagramData): DiagramData {
   // Root items are those not in any zone
   let rootItems = [
     ...newData.nodes.filter(n => !allChildIds.has(n.id)).map(n => n.id),
-    ...newData.zones.filter(z => !allChildIds.has(z.id)).map(z => z.id)
+    ...(newData.zones ?? []).filter(z => !allChildIds.has(z.id)).map(z => z.id)
   ];
   
   // Randomize root items order to produce variety in layout
@@ -99,7 +99,7 @@ export function performAutoLayout(data: DiagramData): DiagramData {
 
   // Helper to calculate bounding box of a zone based on its children
   const calculateZoneDimensions = (zoneId: string): { width: number, height: number } => {
-    const zone = newData.zones.find(z => z.id === zoneId);
+    const zone = (newData.zones ?? []).find(z => z.id === zoneId);
     if (!zone) return { width: 300, height: 200 };
 
     // If sizeMode is custom, use explicit dimensions
@@ -125,7 +125,7 @@ export function performAutoLayout(data: DiagramData): DiagramData {
             return;
         }
 
-        const childZone = newData.zones.find(z => z.id === childId);
+        const childZone = (newData.zones ?? []).find(z => z.id === childId);
         if (childZone) {
             hasChildren = true;
             // Recursively calculate dimensions for child zone
@@ -191,7 +191,7 @@ export function performAutoLayout(data: DiagramData): DiagramData {
                           maxX = Math.max(maxX, (node.x || 0) + dims.width);
                           maxY = Math.max(maxY, (node.y || 0) + dims.height);
                       } else {
-                          const zone = newData.zones.find(z => z.id === mId);
+                          const zone = (newData.zones ?? []).find(z => z.id === mId);
                           if (zone) {
                               hasMembers = true;
                               // Use calculated dimensions from itemMap if available
@@ -263,7 +263,7 @@ export function performAutoLayout(data: DiagramData): DiagramData {
 
     // Build reverse lookup: child -> parent (within the whole diagram)
     const parentMap = new Map<string, string>();
-    newData.zones.forEach(z => {
+    (newData.zones ?? []).forEach(z => {
         z.children.forEach(c => parentMap.set(c, z.id));
     });
 
@@ -319,7 +319,7 @@ export function performAutoLayout(data: DiagramData): DiagramData {
                      node.x = (node.x || 0) + deltaX;
                      node.y = (node.y || 0) + deltaY;
                  } else {
-                     const zone = newData.zones.find(z => z.id === mId);
+                     const zone = (newData.zones ?? []).find(z => z.id === mId);
                      if (zone) {
                          zone.x = (zone.x || 0) + deltaX;
                          zone.y = (zone.y || 0) + deltaY;
@@ -334,7 +334,7 @@ export function performAutoLayout(data: DiagramData): DiagramData {
                  node.y = item.y + 50;
              }
           } else {
-             const zone = newData.zones.find(z => z.id === id);
+             const zone = (newData.zones ?? []).find(z => z.id === id);
              if (zone) {
                  zone.x = item.x + 50;
                  zone.y = item.y + 50;
