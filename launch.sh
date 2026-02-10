@@ -2,7 +2,6 @@
 # Launch script for DiagramWeaver on macOS
 # Usage examples:
 #   ./launch.sh                 # install if needed, start Next.js dev on :9002 and open browser
-#   ./launch.sh --genkit        # also start Genkit dev server
 #   ./launch.sh --build         # build and run production server
 #   ./launch.sh --no-open       # do not open browser automatically
 #   ./launch.sh --fresh-install # force clean install (npm ci)
@@ -16,7 +15,6 @@ cd "$REPO_DIR"
 PORT=9002
 MODE="dev"           # dev | build
 OPEN_BROWSER=1
-START_GENKIT=0
 FORCE_CI=0
 DETACH=0
 
@@ -24,7 +22,6 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --build) MODE="build" ; shift ;;
     --no-open) OPEN_BROWSER=0 ; shift ;;
-    --genkit) START_GENKIT=1 ; shift ;;
     --fresh-install) FORCE_CI=1 ; shift ;;
     --detach) DETACH=1 ; shift ;;
     *) echo "Unknown option: $1" ; exit 1 ;;
@@ -195,11 +192,9 @@ kill_existing_background() {
 }
 
 NEXT_PID=""
-GENKIT_PID=""
 cleanup() {
   echo "\n[cleanup] Stopping background processes..."
   [[ -n "$NEXT_PID" ]] && kill "$NEXT_PID" 2>/dev/null || true
-  [[ -n "$GENKIT_PID" ]] && kill "$GENKIT_PID" 2>/dev/null || true
 }
 
 # Only set up cleanup trap if not in detach mode
@@ -309,17 +304,6 @@ fi
 
 echo "[ok] App running at $APP_URL"
 
-if [[ "$START_GENKIT" -eq 1 ]]; then
-  if command -v genkit >/dev/null 2>&1; then
-    echo "[genkit] Starting Genkit dev server"
-    npm run genkit:dev &> .genkit-dev.log &
-    GENKIT_PID=$!
-    echo "[genkit] Logs: .genkit-dev.log (PID $GENKIT_PID)"
-  else
-    echo "[genkit] 'genkit' CLI not found. Install with: npm i -g genkit-cli"
-  fi
-fi
-
 if [[ "$OPEN_BROWSER" -eq 1 ]]; then
   if command -v open >/dev/null 2>&1; then
     open "$APP_URL" || true
@@ -328,7 +312,7 @@ if [[ "$OPEN_BROWSER" -eq 1 ]]; then
   fi
 fi
 
-echo "[logs] Next.js PID: $NEXT_PID${GENKIT_PID:+ | Genkit PID: $GENKIT_PID}"
+echo "[logs] Next.js PID: $NEXT_PID"
 
 if [[ "$DETACH" -eq 1 ]]; then
   if [[ "$MODE" == "build" ]]; then
@@ -341,7 +325,6 @@ if [[ "$DETACH" -eq 1 ]]; then
     echo "[detach] Dev server started successfully. Detaching process..."
     # Disown both processes for dev mode
     [[ -n "$NEXT_PID" ]] && disown "$NEXT_PID" 2>/dev/null || true
-    [[ -n "$GENKIT_PID" ]] && disown "$GENKIT_PID" 2>/dev/null || true
     echo "[detach] Running in background. Use 'pkill -f \"launch.sh.*--detach\"' to stop."
     exit 0
   fi

@@ -2184,7 +2184,6 @@ function DiagramEditorInner({
     isMobile={isMobile}
     transform={canvasTransform}
     onTransformChange={setCanvasTransform}
-    onDiagramGenerated={setDiagramData}
   />
         </div>
         

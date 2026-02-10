@@ -31,7 +31,7 @@ export function AboutDialog({ open, onOpenChange }: AboutDialogProps) {
         
         <div className="space-y-4 py-4">
           <p className="text-sm">
-            An interactive diagram creation tool that allows you to create diagrams from JSON configurations or natural language descriptions.
+            An interactive diagram creation tool that allows you to create diagrams from JSON configurations.
           </p>
           
           <div className="space-y-2">
@@ -42,9 +42,6 @@ export function AboutDialog({ open, onOpenChange }: AboutDialogProps) {
               </p>
               <p>
                 • Diagram content is <strong>not uploaded</strong> to cloud services by Diagram Weaver.
-              </p>
-              <p>
-                • Optional AI features may connect to a locally-running Ollama endpoint (default: http://localhost:11434).
               </p>
             </div>
           </div>

@@ -29,9 +29,6 @@ This document outlines all required libraries and dependencies to build and run 
 - **postcss**: ^8 - CSS post-processor
 - **tailwindcss-animate**: 1.0.7 - Animation utilities for Tailwind
 
-### Additional Development Tools
-- **genkit-cli**: ^1.20.0 - AI development CLI tool
-
 ## Production Dependencies
 
 ### UI Components & Libraries
@@ -92,10 +89,6 @@ This document outlines all required libraries and dependencies to build and run 
 - **embla-carousel-react**: ^8.6.0 - Carousel component
 - **react-day-picker**: ^8.10.1 - Date picker component
 
-### External Services & AI
-- **firebase**: ^11.9.1 - Firebase SDK
-- **ollama**: ^0.6.2 - Ollama AI client
-
 ## Installation Commands
 
 For a network-restricted environment, you'll need to download these packages manually or configure your package manager to use an internal registry:
@@ -134,10 +127,6 @@ The application is configured to allow images from:
 - `images.unsplash.com`
 - `picsum.photos`
 
-### Optional External Services
-- **Ollama** - For AI functionality (if used)
-- **Firebase** - For backend services (if used)
-
 ## Notes for Network-Restricted Setup
 
 1. **Node.js and npm/yarn must be pre-installed** in the environment
@@ -145,8 +134,7 @@ The application is configured to allow images from:
    - Internal npm registry
    - Pre-downloaded package files
    - Air-gapped package installation
-3. **External service features** (Ollama, Firebase) will require network access or local alternatives
-4. **Image loading** from external domains may not work without network access
+3. **Image loading** from external domains may not work without network access
 
 ## Total Package Count
 - **Production dependencies**: ~65 packages

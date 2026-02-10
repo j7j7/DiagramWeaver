@@ -32,14 +32,13 @@ interface ComponentSidebarProps {
   isMobile?: boolean;
   transform?: { x: number; y: number; k: number };
   onTransformChange?: (transform: { x: number; y: number; k: number }) => void;
-  onDiagramGenerated?: (data: any) => void;
   isReadOnly?: boolean;
 }
 
 
 
 
-export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onResourceSelect, onResourceActivate, onToggleJsonPanel, jsonPanelOpen, onFitToView, onConnectionUpdate, onConnectionDisconnect, onCloseSidebar, isMobile, transform, onTransformChange, onDiagramGenerated, isReadOnly = false }: ComponentSidebarProps) {
+export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onResourceSelect, onResourceActivate, onToggleJsonPanel, jsonPanelOpen, onFitToView, onConnectionUpdate, onConnectionDisconnect, onCloseSidebar, isMobile, transform, onTransformChange, isReadOnly = false }: ComponentSidebarProps) {
   const { register, reset, getValues } = useForm();
   
 
@@ -164,9 +163,7 @@ return (
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         <ResourceBrowser
           onResourceSelect={onResourceSelect}
-          onDiagramGenerated={onDiagramGenerated}
           onResourceActivate={onResourceActivate}
-          currentDiagram={diagramData}
         />
       </div>
     </aside>

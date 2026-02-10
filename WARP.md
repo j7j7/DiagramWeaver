@@ -11,10 +11,6 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 - `npm run lint` - Run ESLint
 - `npm run typecheck` - Run TypeScript type checking
 
-### AI/Genkit Development
-- `npm run genkit:dev` - Start Genkit development server
-- `npm run genkit:watch` - Start Genkit with file watching
-
 ## Architecture Overview
 
 ### Core Application Structure
@@ -23,7 +19,6 @@ DiagramWeaver is a Next.js 15 application that renders interactive diagrams from
 1. **Main Editor (`DiagramEditor`)** - Central component managing diagram state, drag-and-drop, and user interactions
 2. **Canvas System (`EditorCanvas`)** - Handles diagram rendering, zooming, panning, and layout algorithms
 3. **Node Components** - Modular diagram elements with AWS icon support and hover information
-4. **AI Generation** - Google Genkit integration for natural language to diagram conversion
 
 ### Key Data Flow
 1. Diagrams are defined by `DiagramData` interface containing nodes, edges, and groups
@@ -44,12 +39,6 @@ Core interfaces define the diagram structure:
 - `DiagramEdgeData` - Connections between nodes
 - `DiagramData` - Complete diagram structure
 
-### AI Integration
-Uses Google Genkit for natural language processing:
-- `src/ai/genkit.ts` - Genkit configuration with Gemini 2.5 Flash
-- `src/ai/flows/generate-diagram-code-from-description.ts` - Flow for converting descriptions to JSON
-- `src/app/actions.ts` - Server action wrapping AI generation with error handling
-
 ### Styling and Theming
 - TailwindCSS with custom design system following blueprint specifications
 - Primary colors: Deep blue (#3F51B5), Light gray (#EEEEEE), Teal (#009688)
@@ -68,7 +57,6 @@ Uses Google Genkit for natural language processing:
 - **Hover Information**: Animated popover system for node details
 - **Connect Mode**: Visual connection creation between nodes
 - **File I/O**: JSON import/export functionality
-- **AI Generation**: Natural language to diagram conversion
 - **Multi-Select**: Shift-click and drag-to-select for batch operations
 - **JSON Editor**: Live bidirectional sync with CodeMirror editor
 
@@ -87,16 +75,9 @@ The layout system in `EditorCanvas` handles:
 - Automatic sizing based on content
 - Top-level manual positioning preservation
 
-### AI Prompt Engineering
-The Genkit flow expects specific JSON structure output. When modifying prompts:
-- Ensure output matches `DiagramData` interface
-- Include proper AWS service type names
-- Consider group/zone relationships for complex diagrams
-
 ### Testing Considerations
 - Test diagram rendering with various node counts and nesting levels
 - Verify drag-and-drop behavior across group boundaries
-- Validate AI generation with edge cases and malformed inputs
 - Check zoom/pan performance with large diagrams
 
 ## Recent Architectural Improvements (2025-11-29)
