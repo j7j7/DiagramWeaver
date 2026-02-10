@@ -5,17 +5,9 @@ import { lintGutter } from '@codemirror/lint';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { keymap } from '@codemirror/view';
 
-import { HierarchicalDiagramDataSchema } from '@/lib/schemas';
 import { stableStringify } from '@/lib/json-utils';
-import { convertToNestedHierarchy, convertFromNestedHierarchy } from '@/lib/nested-hierarchy';
-import { computeHierarchicalDiff, applySelectiveUpdates, type JsonDiff, type JsonPatch } from '@/lib/json-diff';
-import type { DiagramData, HierarchicalDiagramData } from '@/lib/types';
-
-// Feature flag: selective JSON text updates are currently disabled to guarantee
-// correctness of the editor output when performing complex hierarchical moves.
-// Once json-diff path resolution covers all add/remove/move cases safely,
-// this can be flipped back on.
-const ENABLE_SELECTIVE_JSON_UPDATES = false;
+import { flattenDiagramOnImport, type RawDiagramData } from '@/lib/flatten-on-import';
+import type { DiagramData } from '@/lib/types';
 
 type Props = {
   value: DiagramData;
@@ -34,7 +26,10 @@ export function JsonEditorPanel({
   widthPx,
   isReadOnly = false,
 }: Props) {
-  const [text, setText] = React.useState(() => stableStringify(value));
+  const [text, setText] = React.useState(() => {
+    const d: DiagramData = { nodes: value.nodes || [], connections: value.connections || [], groupings: value.groupings, layers: value.layers };
+    return stableStringify(d);
+  });
   const [error, setError] = React.useState<string | null>(null);
   const editorRef = React.useRef<any>(null);
   const editorContainerRef = React.useRef<HTMLDivElement>(null);
@@ -44,9 +39,7 @@ export function JsonEditorPanel({
   const lockedScrollPosition = React.useRef<{ scrollLeft: number; scrollTop: number; isLocked: boolean }>({ scrollLeft: 0, scrollTop: 0, isLocked: false });
    
   // Performance optimization: track previous data for diffing
-  // Track previous external value to detect real upstream changes
   const previousValueRef = React.useRef<DiagramData | null>(null);
-  const previousNestedDataRef = React.useRef<HierarchicalDiagramData | null>(null);
   const [isUpdating, setIsUpdating] = React.useState(false);
   const isApplyingExternalUpdate = React.useRef(false);
 
@@ -84,33 +77,6 @@ export function JsonEditorPanel({
     return () => observer.disconnect();
   }, [isOpen]);
 
-  // Check if data is in nested format (has zones with nested children objects)
-  const isNestedFormat = React.useCallback((data: any): boolean => {
-    // Nested format has zones array but NO nodes array at root level
-    // Instead, nodes are nested inside zones as children objects
-    const hasNodesArray = Array.isArray(data.nodes) && data.nodes.length > 0;
-    const hasZonesArray = Array.isArray(data.zones) && data.zones.length > 0;
-    
-    if (!hasZonesArray) {
-      return false;
-    }
-    
-    // If we have both nodes and zones at root, it's flat format
-    if (hasNodesArray) {
-      return false;
-    }
-    
-    // Check if any zone has children that are objects (not just IDs)
-    const hasNestedChildren = data.zones.some((zone: any) => {
-      if (!zone.children || !Array.isArray(zone.children)) return false;
-      // In nested format, children are objects with type, id, etc.
-      // In flat format, children are just string IDs
-      return zone.children.length > 0 && typeof zone.children[0] === 'object';
-    });
-    
-    return hasNestedChildren;
-  }, []);
-
   // Debounced update to prevent flickering during rapid changes (like dragging)
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -131,94 +97,19 @@ export function JsonEditorPanel({
       clearTimeout(updateTimeoutRef.current);
     }
     
-    // Reduced debounce delay for more responsive updates
     updateTimeoutRef.current = setTimeout(() => {
-      const currentNestedData: HierarchicalDiagramData = isNestedFormat(value) ? value as unknown as HierarchicalDiagramData : convertToNestedHierarchy(value);
-      const previousNestedData = previousNestedDataRef.current;
-      
-      // If we have previous data and selective updates are enabled, compute diff
-      // and attempt minimal text patches. This is currently disabled by
-      // ENABLE_SELECTIVE_JSON_UPDATES to guarantee correctness when moving
-      // items between zones (where path resolution is not yet robust).
-      if (ENABLE_SELECTIVE_JSON_UPDATES && previousNestedData) {
-        const diffs = computeHierarchicalDiff(previousNestedData, currentNestedData);
-        
-        // Improved detection for when to use selective updates
-        const shouldUseSelectiveUpdate = diffs.length > 0 && 
-          diffs.length < 50 && // Not too many changes
-          !diffs.some(diff => diff.change === 'moved') && // No structural moves
-          !diffs.some(diff => diff.type === 'zone_structure'); // No zone structure changes
-        
-        if (shouldUseSelectiveUpdate) {
-          try {
-            const currentText = text;
-            const patches: JsonPatch[] = [];
-            for (const diff of diffs) {
-              const path = getJsonPathFromDiff(diff, currentNestedData);
-              if (!path) continue;
-              
-              let op: 'remove' | 'add' | 'replace';
-              if (diff.change === 'removed') {
-                op = 'remove';
-              } else if (diff.change === 'added') {
-                op = 'add';
-              } else {
-                op = 'replace';
-              }
-              
-              const patch: JsonPatch = {
-                op,
-                path
-              };
-              
-              if (op !== 'remove') {
-                patch.value = diff.newValue;
-              }
-              
-              patches.push(patch);
-            }
-            
-            if (patches.length > 0) {
-              const updatedText = applySelectiveUpdates(currentText, patches);
-              
-              if (updatedText !== currentText) {
-                // Try to capture scroll position, but don't fail if we can't
-                const scrollPos = captureScrollPosition();
-                
-                // Always restore using locked position logic
-                setTimeout(() => {
-                  restoreScrollPosition(scrollPos);
-                }, 0);
-                
-                setText(updatedText);
-                
-                previousNestedDataRef.current = currentNestedData;
-                previousValueRef.current = value;
-                return; // Skip full refresh
-              }
-            }
-          } catch (error) {
-            console.warn('Selective update failed, falling back to full refresh:', error);
-          }
-        }
-      }
-      
-      // Fallback to full refresh for all changes (current default) or when
-      // selective updates are disabled/fail
-      // Try to capture scroll position
       const scrollPos = captureScrollPosition();
-
-      const displayText = stableStringify(currentNestedData);
-      setText(displayText);
-
-      // Restore scroll position after text update
-      setTimeout(() => {
-        restoreScrollPosition(scrollPos);
-      }, 0);
-      
-      previousNestedDataRef.current = currentNestedData;
+      // Display flat format - nodes, connections, groupings only (no zones)
+      const displayData: DiagramData = {
+        nodes: value.nodes || [],
+        connections: value.connections || [],
+        groupings: value.groupings,
+        layers: value.layers,
+      };
+      setText(stableStringify(displayData));
+      setTimeout(() => restoreScrollPosition(scrollPos), 0);
       previousValueRef.current = value;
-    }, 16); // ~60fps for smoother updates
+    }, 16);
     
     // Cleanup timeout on unmount
     return () => {
@@ -226,7 +117,7 @@ export function JsonEditorPanel({
         clearTimeout(updateTimeoutRef.current);
       }
     };
-  }, [value, isNestedFormat, isUpdating, text]);
+  }, [value, isUpdating]);
 
   // Helper function to capture scroll position (doesn't update locked position)
   const captureScrollPosition = React.useCallback(() => {
@@ -289,37 +180,6 @@ export function JsonEditorPanel({
     }, 50);
   }, []);
 
-  // Helper function to convert diff to JSON path
-  const getJsonPathFromDiff = (diff: JsonDiff, data: HierarchicalDiagramData): string => {
-    if (diff.type === 'connection') {
-      const id = diff.id || '';
-      const [from, to] = id.split('-');
-      const index = data.connections.findIndex(c => c.from === from && c.to === to);
-      return index >= 0 ? `/connections/${index}` : '';
-    }
-    
-    if (diff.type === 'zone' || diff.type === 'node') {
-      if (diff.path && diff.path.length > 0) {
-        // Nested item - find zone and child indices
-        const zoneId = diff.path[0];
-        const zoneIndex = data.zones.findIndex(z => z.id === zoneId);
-        if (zoneIndex === -1) return '';
-        
-        const zone = data.zones[zoneIndex];
-        if (!zone.children) return `/zones/${zoneIndex}`;
-        
-        const childIndex = zone.children.findIndex(c => c.id === diff.id);
-        return childIndex >= 0 ? `/zones/${zoneIndex}/children/${childIndex}` : `/zones/${zoneIndex}`;
-      } else {
-        // Root zone
-        const index = data.zones.findIndex(z => z.id === diff.id);
-        return index >= 0 ? `/zones/${index}` : '';
-      }
-    }
-    
-    return '';
-  };
-
   const handleChange = (newText: string) => {
     // Skip handling if read-only mode is enabled
     if (isReadOnly) return;
@@ -329,34 +189,10 @@ export function JsonEditorPanel({
     // Only update the text state, don't push to canvas yet
     setText(newText);
     
-    // Validate JSON to show errors, but don't apply
     try {
       const parsed = JSON.parse(newText);
-      
-      let validationError: any = null;
-
-      // Check if data is in nested format
-      if (isNestedFormat(parsed)) {
-        // Validate as nested format
-        const validationResult = HierarchicalDiagramDataSchema.safeParse(parsed);
-        if (!validationResult.success) {
-          validationError = validationResult.error;
-        }
-      } else {
-        // Data is in flat format, validate basic structure
-        if (!parsed || typeof parsed !== 'object' || (!parsed.nodes && !parsed.zones && !parsed.connections)) {
-          validationError = { message: 'Invalid diagram data structure' };
-        }
-      }
-      
-      if (validationError) {
-        const errorMessage = validationError.issues
-          ? validationError.issues.map((issue: any) => `${issue.path.join('.')}: ${issue.message}`).join(', ')
-          : validationError.message || 'Unknown validation error';
-        setError(`Schema validation failed: ${errorMessage}`);
-      } else {
-        setError(null);
-      }
+      const hasValidStructure = parsed && typeof parsed === 'object' && (parsed.nodes || parsed.zones || parsed.connections);
+      setError(hasValidStructure ? null : 'Invalid diagram data structure');
     } catch (e: any) {
       setError(e?.message || 'Invalid JSON');
     }
@@ -370,38 +206,22 @@ export function JsonEditorPanel({
       let finalData: DiagramData | null = null;
       let validationError: any = null;
 
-      // Check if data is in nested format
-      if (isNestedFormat(parsed)) {
-        // Validate as nested format
-        const validationResult = HierarchicalDiagramDataSchema.safeParse(parsed);
-        
-        if (validationResult.success) {
-          // Convert nested to flat for application
-          finalData = convertFromNestedHierarchy(parsed);
-        } else {
-          validationError = validationResult.error;
+      // Flatten on import - strips zones and extracts nodes with absolute positions
+      if (parsed && typeof parsed === 'object' && (parsed.nodes || parsed.zones || parsed.connections)) {
+        try {
+          finalData = flattenDiagramOnImport(parsed as RawDiagramData);
+        } catch (e) {
+          validationError = e;
         }
       } else {
-        // Data is already in flat format, just validate basic structure
-        if (parsed && typeof parsed === 'object' && (parsed.nodes || parsed.zones || parsed.connections)) {
-          finalData = {
-            nodes: parsed.nodes || [],
-            zones: parsed.zones || [],
-            connections: parsed.connections || []
-          };
-        } else {
-          validationError = { message: 'Invalid diagram data structure' };
-        }
+        validationError = { message: 'Invalid diagram data structure' };
       }
       
       if (!validationError && finalData) {
         setError(null);
         onValidJsonChange(finalData);
         
-        // Update display text to match the validated data format
-        const displayText = stableStringify(
-          isNestedFormat(parsed) ? parsed : convertToNestedHierarchy(finalData)
-        );
+        const displayText = stableStringify(finalData);
         if (displayText !== text) {
           // Try to capture scroll position
           const scrollPos = captureScrollPosition();

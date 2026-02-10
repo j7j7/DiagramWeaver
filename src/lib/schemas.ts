@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { flattenDiagramOnImport } from './flatten-on-import';
 
 // Schema for DiagramNodeData based on actual types
 export const DiagramNodeDataSchema = z.object({
@@ -156,16 +157,21 @@ export const LayersConfigSchema = z.object({
   defaultLayerId: z.string(), // Always 'background'
 });
 
-// Main DiagramData schema
+// Main DiagramData schema - zones stripped on parse via flattenDiagramOnImport
 export const DiagramDataSchema = z.object({
   nodes: z.array(DiagramNodeDataSchema).default([]),
   connections: z.array(DiagramConnectionDataSchema).default([]),
-  zones: z.array(DiagramGroupDataSchema).default([]),
-  groupings: z.array(DiagramGroupingDataSchema).optional(), // Optional groupings for coordinated movement
-  layers: LayersConfigSchema.optional(), // Optional layers configuration
+  groupings: z.array(DiagramGroupingDataSchema).optional(),
+  layers: LayersConfigSchema.optional(),
 });
 
 export type DiagramDataValidated = z.infer<typeof DiagramDataSchema>;
+
+/** Parse diagram JSON - if zones present, flattens automatically */
+export function parseDiagramJson(raw: unknown): DiagramDataValidated {
+  const flattened = flattenDiagramOnImport((raw || {}) as Parameters<typeof flattenDiagramOnImport>[0]);
+  return DiagramDataSchema.parse(flattened) as DiagramDataValidated;
+}
 
 // Schema for nested node items
 export const DiagramNodeItemSchema = z.object({

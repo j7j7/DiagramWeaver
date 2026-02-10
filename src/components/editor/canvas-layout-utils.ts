@@ -982,7 +982,7 @@ export function calculateLayout(diagramData: DiagramData): {
   height: number;
 } {
   let nodes: DiagramNodeData[] = JSON.parse(JSON.stringify(diagramData.nodes || []));
-  let zones: DiagramZoneData[] = JSON.parse(JSON.stringify(diagramData.zones || []));
+  let zones: DiagramZoneData[] = JSON.parse(JSON.stringify(diagramData.zones ?? []));
   
   // Extract nodes that are nested as objects in zones' children arrays
   // This handles data structures where nodes are objects in children instead of just IDs

@@ -28,14 +28,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramConnectionData } from '@/lib/types';
+import type { DiagramData, DiagramNodeData, DiagramConnectionData } from '@/lib/types';
 import { generateSequentialId } from '@/lib/id-generator';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useDiagramTabs } from '@/hooks/use-diagram-tabs';
 import { useLayers } from '@/hooks/use-layers';
-import { convertFromNestedHierarchy, convertToNestedHierarchy } from '@/lib/nested-hierarchy';
-import { DiagramDataSchema, HierarchicalDiagramDataSchema } from '@/lib/schemas';
+import { flattenDiagramOnImport, type RawDiagramData } from '@/lib/flatten-on-import';
+import { DiagramDataSchema } from '@/lib/schemas';
 import { themeManager } from '@/lib/theme-manager';
 import { DiagramTheme } from '@/lib/theme-types';
 import { LayersPanel } from './editor/layers-panel';
@@ -51,8 +51,7 @@ import {
   ungroup, 
   getItemGroup,
   getGroupMembers,
-  handleItemDeletion as cleanupGroupsAfterDeletion,
-  cleanupEmptyZones
+  handleItemDeletion as cleanupGroupsAfterDeletion
 } from '@/lib/grouping-utils';
 import { 
   moveItemToBack,
@@ -63,7 +62,6 @@ import {
   getItemCount
 } from '@/lib/rendering-order-utils';
 import { performAutoLayout } from '@/lib/auto-layout';
-import { applyZoneLayout, cycleZoneItems } from '@/lib/zone-layout-utils';
 
 export type SelectedItem = (
   | (DiagramNodeData & {
@@ -106,11 +104,6 @@ export type SelectedItem = (
       tag?: string,
       tagPosition?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right'
     })
-  | (DiagramZoneData & { 
-      itemType: 'zone', 
-      id: string,
-      subType?: 'zone' | 'group'
-    })
   | (DiagramConnectionData & { 
       itemType: 'edge', 
       id: string,
@@ -136,20 +129,6 @@ interface PaletteSelection {
 
 function createPaletteItem(resource: PaletteResource, provider: string, category: string) {
   const derivedSlug = resource.name.replace(/\s+/g, '-').toLowerCase();
-  const isZoneResource = (provider === 'generic' && category === 'grouping') || resource.type === 'zone';
-
-  if (isZoneResource) {
-    const subType = resource.name.toLowerCase();
-    return {
-      type: 'zone',
-      subType,
-      label: resource.name,
-      provider,
-      category,
-      file: resource.file,
-    };
-  }
-
   return {
     type: `${provider}.${category}.${derivedSlug}`,
     label: resource.name,
@@ -259,8 +238,8 @@ export default function DiagramEditor() {
   });
 
   // Sync active tab state to local state for component use
-  const diagramData = activeTab?.diagramData || { nodes: [], connections: [], zones: [], groupings: [] };
-  const history = activeTab?.history || [JSON.stringify({ nodes: [], connections: [], zones: [], groupings: [] })];
+  const diagramData = activeTab?.diagramData || { nodes: [], connections: [], groupings: [] };
+  const history = activeTab?.history || [JSON.stringify({ nodes: [], connections: [], groupings: [] })];
   const historyIndex = activeTab?.historyIndex || 0;
   const historyRef = React.useRef(getHistoryRef(activeTabId || '') || { history: [], index: 0 });
   const selectedItem = activeTab?.selectedItem || null;
@@ -510,16 +489,12 @@ export default function DiagramEditor() {
       return;
     }
     
-    // Find all items
+    // Find all items (nodes only - zones removed)
     const items: SelectedItem[] = [];
     itemIds.forEach(id => {
       const node = diagramData.nodes.find(n => n.id === id);
-      const zone = diagramData.zones?.find(g => g.id === id);
-      
       if (node) {
         items.push({ ...node, itemType: 'node' as const });
-      } else if (zone) {
-        items.push({ ...zone, itemType: 'zone' as const });
       }
     });
     
@@ -531,71 +506,8 @@ export default function DiagramEditor() {
   };
   
   const handleItemUpdate = (updatedItem: SelectedItem) => {
-    if (updatedItem.itemType === 'zone') {
-        setDiagramData(prevData => {
-            const currentZone = (prevData.zones || []).find(g => g.id === updatedItem.id);
-            const orientationChanged = currentZone && currentZone.orientation !== updatedItem.orientation;
-            
-            // Preserve existing zone properties and merge with updates
-            const mergedZone = { ...currentZone, ...updatedItem } as DiagramZoneData;
-            
-            let newZones = (prevData.zones || []).map(g => g.id === updatedItem.id ? mergedZone : g);
-            let newNodes = prevData.nodes;
-            
-            // If orientation changed, reset positions of child items to trigger re-layout
-            if (orientationChanged) {
-                const zoneData = mergedZone as DiagramZoneData;
-                
-                // Reset positions of child nodes
-                newNodes = prevData.nodes.map(node => {
-                    if ((zoneData.children || []).includes(node.id)) {
-                        return { ...node, x: undefined, y: undefined };
-                    }
-                    return node;
-                });
-                
-                // Reset positions of child zones recursively
-                const resetChildZonePositions = (zoneId: string, visited: Set<string> = new Set()) => {
-                    if (visited.has(zoneId)) {
-                        return; // Prevent infinite recursion
-                    }
-                    visited.add(zoneId);
-                    
-                    newZones = newZones.map(g => {
-                        if (g.id === zoneId) {
-                            return { ...g, x: undefined, y: undefined };
-                        }
-                        return g;
-                    });
-                    
-                    // Recursively reset children of this zone
-                    const zone = newZones.find(g => g.id === zoneId);
-                    if (zone && zone.children) {
-                        zone.children.forEach((childId: string) => {
-                            const childZone = newZones.find(g => g.id === childId);
-                            if (childZone) {
-                                resetChildZonePositions(childId, visited);
-                            }
-                        });
-                    }
-                };
-                
-                (zoneData.children || []).forEach((nodeId: string) => {
-                    const childZone = newZones.find(g => g.id === nodeId);
-                    if (childZone) {
-                        resetChildZonePositions(nodeId);
-                    }
-                });
-            }
-            
-            return {
-                ...prevData,
-                zones: newZones,
-                nodes: newNodes
-            };
-        });
-    } else {
-        setDiagramData(prevData => {
+    if (updatedItem.itemType === 'edge') return;
+    setDiagramData(prevData => {
             // Find the existing node to preserve its properties
             const existingNode = prevData.nodes.find(n => n.id === updatedItem.id);
             
@@ -622,8 +534,7 @@ export default function DiagramEditor() {
                 ...prevData,
                 nodes: prevData.nodes.map(n => n.id === updatedItem.id ? mergedNode : n)
             };
-        });
-    }
+    });
 
     // Also update the selected item state if it's the one being edited
     if (selectedItem?.id === updatedItem.id) {
@@ -655,18 +566,6 @@ export default function DiagramEditor() {
     }
   }
 
-  const handleZoneTagUpdate = (zoneId: string, newTag: string) => {
-    setDiagramData(prevData => ({
-      ...prevData,
-      zones: prevData.zones?.map(z => z.id === zoneId ? { ...z, tag: newTag } : z)
-    }));
-
-    // Also update the selected item if it's the one being edited
-    if (selectedItem?.id === zoneId && selectedItem.itemType === 'zone') {
-      setSelectedItem({ ...selectedItem, tag: newTag });
-    }
-  }
-
   const handleResourceSelect = (resource: { name: string; file: string; type?: string; hasWhiteVariant?: boolean; format?: string }, provider: string, category: string) => {
     // Track the currently selected resource from the sidebar for copy/paste
     setSelectedResource({ resource, provider, category });
@@ -685,30 +584,19 @@ export default function DiagramEditor() {
   const handleItemDelete = (itemToDelete: SelectedItem) => {
     setDiagramData(prevData => {
       let newNodes = prevData.nodes;
-      let newZones = prevData.zones || [];
       let newConnections = prevData.connections;
 
       if (itemToDelete.itemType === 'node') {
         newNodes = prevData.nodes.filter(n => n.id !== itemToDelete.id);
-        newConnections = prevData.connections.filter((e: any) => e.from !== itemToDelete.id && e.to !== itemToDelete.id);
-      } else if (itemToDelete.itemType === 'zone') {
-        newZones = newZones.filter(g => g.id !== itemToDelete.id);
+        newConnections = prevData.connections.filter((e: { from: string; to: string }) => e.from !== itemToDelete.id && e.to !== itemToDelete.id);
       } else if (itemToDelete.itemType === 'edge') {
-        newConnections = prevData.connections.filter((e: any) => 
+        newConnections = prevData.connections.filter((e: { from: string; to: string }) => 
           !(e.from === itemToDelete.from && e.to === itemToDelete.to)
         );
       }
 
-      newZones = newZones.map(g => ({
-        ...g,
-        children: (g.children || []).filter((nodeId: string) => nodeId !== itemToDelete.id)
-      }));
-
-      const updatedData = { ...prevData, nodes: newNodes, zones: newZones, connections: newConnections };
-      
-      // Clean up groupings (old system) and empty zones (new system)
-      const withGroupingsCleaned = cleanupGroupsAfterDeletion([itemToDelete.id], updatedData);
-      return cleanupEmptyZones(withGroupingsCleaned);
+      const updatedData = { ...prevData, nodes: newNodes, connections: newConnections };
+      return cleanupGroupsAfterDeletion([itemToDelete.id], updatedData);
     });
     setSelectedItem(null);
   };
@@ -806,8 +694,8 @@ export default function DiagramEditor() {
     }
   };
 
-  const handleConnect = (targetItem: DiagramNodeData | DiagramZoneData) => {
-    if (!isConnectMode || !selectedItem || (selectedItem.itemType !== 'node' && selectedItem.itemType !== 'zone') || selectedItem.id === targetItem.id) {
+  const handleConnect = (targetItem: DiagramNodeData) => {
+    if (!isConnectMode || !selectedItem || selectedItem.itemType !== 'node' || selectedItem.id === targetItem.id) {
       setIsConnectMode(false);
       return;
     }
@@ -842,7 +730,7 @@ export default function DiagramEditor() {
   };
 
   const startConnecting = (connectionOptions?: { style?: 'pathways' | 'bezier', curvature?: number }) => {
-    if (selectedItem && (selectedItem.itemType === 'node' || selectedItem.itemType === 'zone')) {
+    if (selectedItem && selectedItem.itemType === 'node') {
       setIsConnectMode(true);
       // Store connection options for use when connection is created
       (window as any).pendingConnectionOptions = connectionOptions;
@@ -850,7 +738,7 @@ export default function DiagramEditor() {
   }
 
   const disconnectSelected = () => {
-    if (!selectedItem || (selectedItem.itemType !== 'node' && selectedItem.itemType !== 'zone')) return;
+    if (!selectedItem || selectedItem.itemType !== 'node') return;
     const id = selectedItem.id;
     setDiagramData(prevData => ({
       ...prevData,
@@ -873,8 +761,7 @@ export default function DiagramEditor() {
   
   const handleSave = async () => {
     if (!activeTabId || !activeTab) return;
-    const nestedData = convertToNestedHierarchy(diagramData);
-    const jsonString = JSON.stringify(nestedData, null, 2);
+    const jsonString = JSON.stringify(diagramData, null, 2);
 
     // Try to use the File System Access API if available (Chromium browsers)
     if ('showSaveFilePicker' in window) {
@@ -918,86 +805,34 @@ export default function DiagramEditor() {
     fileInputRef.current?.click();
   };
 
-  // Helper function to parse unknown JSON to DiagramData
   const parseUnknownJsonToDiagramData = React.useCallback((json: unknown): DiagramData => {
-    // Check if this is hierarchical format (has groups with nested children)
-    const isHierarchical = typeof json === 'object' && json !== null &&
-      'zones' in json && Array.isArray((json as any).zones) &&
-      (json as any).zones.some((zone: any) => zone.children && Array.isArray(zone.children) &&
-        zone.children.some((child: any) => child && typeof child === 'object'));
-
-    let dataToValidate: unknown = json;
-
-    if (isHierarchical) {
-      console.log('[Load] Detected hierarchical format, converting to flat...');
-      // Validate hierarchical format first
-      const hierarchicalResult = HierarchicalDiagramDataSchema.safeParse(json);
-      if (!hierarchicalResult.success) {
-        console.error('[Load] Hierarchical validation failed:', hierarchicalResult.error);
-        throw new Error(`Invalid hierarchical diagram format: ${hierarchicalResult.error.message}`);
-      }
-      console.log('[Load] Hierarchical validation passed');
-      // Convert hierarchical to flat format
-      dataToValidate = convertFromNestedHierarchy(hierarchicalResult.data);
-      console.log('[Load] Converted to flat format:', {
-        nodes: (dataToValidate as any).nodes?.length,
-        zones: (dataToValidate as any).zones?.length,
-        connections: (dataToValidate as any).connections?.length
-      });
-    } else {
-      console.log('[Load] Detected flat format');
+    const flattened = flattenDiagramOnImport((json || {}) as RawDiagramData);
+    const result = DiagramDataSchema.safeParse(flattened);
+    if (!result.success) {
+      throw new Error(`Invalid diagram format: ${result.error.message}`);
     }
-
-    // Validate flat format
-    const flatResult = DiagramDataSchema.safeParse(dataToValidate);
-    if (!flatResult.success) {
-      console.error('[Load] Flat validation failed:', flatResult.error);
-      throw new Error(`Invalid diagram format: ${flatResult.error.message}`);
-    }
-    console.log('[Load] Flat validation passed');
-
-    // Ensure all required arrays are present
-    const result = {
-      nodes: flatResult.data.nodes || [],
-      connections: flatResult.data.connections || [],
-      zones: flatResult.data.zones || [],
-      groupings: flatResult.data.groupings || [],
-      rootZoneId: (dataToValidate as any).rootZoneId,
-      layers: flatResult.data.layers,
+    return {
+      nodes: result.data.nodes || [],
+      connections: result.data.connections || [],
+      groupings: result.data.groupings,
+      layers: result.data.layers,
     };
-    
-    console.log('[Load] Final result:', {
-      nodes: result.nodes.length,
-      zones: result.zones.length,
-      connections: result.connections.length,
-      hasLayers: !!result.layers
-    });
-    
-    return result;
   }, []);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      console.log('[Load] Loading file:', file.name);
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
           const text = e.target?.result;
           if (typeof text === 'string') {
-            console.log('[Load] File read successfully, parsing JSON...');
             const jsonData = JSON.parse(text);
-            console.log('[Load] JSON parsed successfully, converting to DiagramData...');
             const completeData = parseUnknownJsonToDiagramData(jsonData);
-            console.log('[Load] Conversion successful, updating state...');
-            
-            // Clear existing data first to ensure clean load
-            setDiagramData({ nodes: [], connections: [], zones: [], groupings: [] });
-            // Then set the loaded data
+            setDiagramData({ nodes: [], connections: [], groupings: [] });
             setTimeout(() => {
               setDiagramData(completeData);
               setSelectedItem(null);
-              console.log('[Load] State updated successfully');
               toast({ title: 'Diagram Loaded', description: 'Your diagram has been successfully loaded.' });
               
               // Fit diagram to view after loading
@@ -1007,7 +842,7 @@ export default function DiagramEditor() {
             }, 0);
           }
         } catch (error) {
-          console.error('[Load] Error loading file:', error);
+          // Load error handled below via toast
           const message = error instanceof Error ? error.message : "An unknown error occurred";
           toast({
               variant: 'destructive',
@@ -1090,39 +925,20 @@ export default function DiagramEditor() {
   const handleSelectAll = () => {
     const allIds = new Set<string>();
     
-    // Add all node IDs
     diagramData.nodes.forEach(node => allIds.add(node.id));
-    
-    // Add all group IDs
-    diagramData.zones.forEach(zone => allIds.add(zone.id));
-    
-    // Add all connection IDs
     diagramData.connections.forEach(connection => {
-      const connectionId = `${connection.from}-${connection.to}`;
-      allIds.add(connectionId);
+      allIds.add(`${connection.from}-${connection.to}`);
     });
     
     setSelectedItemIds(allIds);
     
-    // Set the first item as the primary selected item if there are any items
     if (allIds.size > 0) {
       const firstId = Array.from(allIds)[0];
-      
-      // Try to find the item in nodes first
       const nodeItem = diagramData.nodes.find(node => node.id === firstId);
       if (nodeItem) {
         setSelectedItem({ ...nodeItem, itemType: 'node' });
         return;
       }
-      
-      // Then try groups
-      const groupItem = diagramData.zones.find(zone => zone.id === firstId);
-      if (groupItem) {
-        setSelectedItem({ ...groupItem, itemType: 'zone' });
-        return;
-      }
-      
-      // Finally try connections
       const connection = diagramData.connections.find(conn => `${conn.from}-${conn.to}` === firstId);
       if (connection) {
         setSelectedItem({ ...connection, itemType: 'edge', id: firstId });
@@ -1194,14 +1010,6 @@ export default function DiagramEditor() {
         return node;
       });
       
-      // Update groups
-      updatedDiagramData.zones = updatedDiagramData.zones.map(zone => {
-        if (selectedItemIds.has(zone.id)) {
-          return themeManager.applyThemeToItem(zone, theme) as DiagramZoneData;
-        }
-        return zone;
-      });
-      
       // Update connections
       updatedDiagramData.connections = updatedDiagramData.connections.map(connection => {
         const connectionId = `${connection.from}-${connection.to}`;
@@ -1252,13 +1060,9 @@ export default function DiagramEditor() {
     // We need to find the actual first selected item from the diagram data
     const firstSelectedId = Array.from(selectedItemIds)[0];
     const referenceNode = diagramData.nodes.find(n => n.id === firstSelectedId);
-    const referenceGroup = diagramData.zones?.find(g => g.id === firstSelectedId);
+    if (!referenceNode) return;
     
-    if (!referenceNode && !referenceGroup) return;
-    
-    const referenceItem = referenceNode 
-      ? { ...referenceNode, itemType: 'node' } as SelectedItem
-      : { ...referenceGroup!, itemType: 'zone' } as SelectedItem;
+    const referenceItem = { ...referenceNode, itemType: 'node' } as SelectedItem;
     
     // Helper function to get object dimensions
     const getObjectDimensions = (item: SelectedItem): { width: number; height: number } => {
@@ -1298,11 +1102,6 @@ export default function DiagramEditor() {
         
         // Default for icon nodes
         return { width: 80, height: 50 };
-      } else if (item.itemType === 'zone') {
-        return { 
-          width: (item as any).width || 300, 
-          height: (item as any).height || 220 
-        };
       }
       return { width: 80, height: 50 };
     };
@@ -1351,7 +1150,7 @@ export default function DiagramEditor() {
     // Handle distribute operations
     if (alignment === 'distribute-v' || alignment === 'distribute-h') {
       // Get all selected items with their positions and dimensions
-      const selectedItems: Array<{id: string, x: number, y: number, width: number, height: number, itemType: 'node' | 'zone', index: number}> = [];
+      const selectedItems: Array<{id: string, x: number, y: number, width: number, height: number, itemType: 'node', index: number}> = [];
       
       selectedItemIds.forEach(id => {
         const node = diagramData.nodes.find(n => n.id === id);
@@ -1365,20 +1164,6 @@ export default function DiagramEditor() {
             height: dims.height,
             itemType: 'node',
             index: diagramData.nodes.findIndex(n => n.id === id)
-          });
-        }
-        
-        const zone = diagramData.zones?.find(g => g.id === id);
-        if (zone) {
-          const dims = getObjectDimensions({ ...zone, itemType: 'zone' } as SelectedItem);
-          selectedItems.push({
-            id,
-            x: zone.x || 0,
-            y: zone.y || 0,
-            width: dims.width,
-            height: dims.height,
-            itemType: 'zone',
-            index: (diagramData.zones || []).findIndex(g => g.id === id)
           });
         }
       });
@@ -1427,39 +1212,20 @@ export default function DiagramEditor() {
       // Apply the new positions
       setDiagramData(prevData => {
         const newNodes = [...prevData.nodes];
-        const newZones = [...(prevData.zones || [])];
-
         newPositions.forEach(pos => {
-          // Update nodes
           const nodeIndex = newNodes.findIndex(n => n.id === pos.id);
           if (nodeIndex !== -1) {
             newNodes[nodeIndex] = { ...newNodes[nodeIndex], ...pos };
           }
-
-          // Update groups
-          const groupIndex = newZones.findIndex(g => g.id === pos.id);
-          if (groupIndex !== -1) {
-            newZones[groupIndex] = { ...newZones[groupIndex], ...pos };
-          }
         });
-
-        return {
-          ...prevData,
-          nodes: newNodes,
-          zones: newZones
-        };
+        return { ...prevData, nodes: newNodes };
       });
 
-      // Update selected item states
       const updatedSelectedItems: SelectedItem[] = [];
       selectedItemIds.forEach(id => {
         const updatedNode = diagramData.nodes.find(n => n.id === id);
-        const updatedGroup = diagramData.zones?.find(g => g.id === id);
-        
         if (updatedNode) {
           updatedSelectedItems.push({ ...updatedNode, itemType: 'node' } as SelectedItem);
-        } else if (updatedGroup) {
-          updatedSelectedItems.push({ ...updatedGroup, itemType: 'zone' } as SelectedItem);
         }
       });
 
@@ -1477,21 +1243,17 @@ export default function DiagramEditor() {
     // Align all selected items
     setDiagramData(prevData => {
       const newNodes = [...prevData.nodes];
-      const newZones = [...(prevData.zones || [])];
 
       selectedItemIds.forEach(id => {
-        if (id === firstSelectedId) return; // Skip reference item
+        if (id === firstSelectedId) return;
 
-        // Find and update node
         const nodeIndex = newNodes.findIndex(n => n.id === id);
         if (nodeIndex !== -1) {
           const node = newNodes[nodeIndex];
           const nodeDims = getObjectDimensions({ ...node, itemType: 'node' } as SelectedItem);
-          
           let newX = node.x;
           let newY = node.y;
           
-          // Handle vertical alignment
           switch (alignment) {
             case 'top':
               newY = referenceY;
@@ -1504,7 +1266,6 @@ export default function DiagramEditor() {
               break;
           }
           
-          // Handle horizontal alignment
           switch (alignment) {
             case 'left':
               newX = referenceX;
@@ -1516,75 +1277,22 @@ export default function DiagramEditor() {
               newX = referenceX - nodeDims.width;
               break;
             case 'center':
-              // For vertical center alignment, align X to center
               newX = referenceX - (nodeDims.width / 2);
               break;
           }
           
           newNodes[nodeIndex] = { ...node, x: newX, y: newY };
-          return;
-        }
-
-        // Find and update group
-        const groupIndex = newZones.findIndex(g => g.id === id);
-        if (groupIndex !== -1) {
-          const zone = newZones[groupIndex];
-          const groupDims = getObjectDimensions({ ...zone, itemType: 'zone' } as SelectedItem);
-          
-          let newX = zone.x;
-          let newY = zone.y;
-          
-          // Handle vertical alignment
-          switch (alignment) {
-            case 'top':
-              newY = referenceY;
-              break;
-            case 'v-middle':
-              newY = referenceY - (groupDims.height / 2);
-              break;
-            case 'bottom':
-              newY = referenceY - groupDims.height;
-              break;
-          }
-          
-          // Handle horizontal alignment
-          switch (alignment) {
-            case 'left':
-              newX = referenceX;
-              break;
-            case 'h-center':
-              newX = referenceX - (groupDims.width / 2);
-              break;
-            case 'right':
-              newX = referenceX - groupDims.width;
-              break;
-            case 'center':
-              // For vertical center alignment, align X to center
-              newX = referenceX - (groupDims.width / 2);
-              break;
-          }
-          
-          newZones[groupIndex] = { ...zone, x: newX, y: newY };
         }
       });
 
-      return {
-        ...prevData,
-        nodes: newNodes,
-        zones: newZones
-      };
+      return { ...prevData, nodes: newNodes };
     });
 
-    // Update selected item states to reflect new positions
     const updatedSelectedItems: SelectedItem[] = [];
     selectedItemIds.forEach(id => {
       const updatedNode = diagramData.nodes.find(n => n.id === id);
-      const updatedGroup = diagramData.zones?.find(g => g.id === id);
-      
       if (updatedNode) {
         updatedSelectedItems.push({ ...updatedNode, itemType: 'node' } as SelectedItem);
-      } else if (updatedGroup) {
-        updatedSelectedItems.push({ ...updatedGroup, itemType: 'zone' } as SelectedItem);
       }
     });
 
@@ -1715,7 +1423,7 @@ export default function DiagramEditor() {
         if (isConnectMode) {
           // Cancel connect mode
           setIsConnectMode(false);
-        } else if (selectedItem && (selectedItem.itemType === 'node' || selectedItem.itemType === 'zone')) {
+        } else if (selectedItem && selectedItem.itemType === 'node') {
           // Start connect mode
           startConnecting();
         }
@@ -1761,10 +1469,7 @@ export default function DiagramEditor() {
         
         setDiagramData(prevData => {
           const newNodes = [...prevData.nodes];
-          const newZones = [...(prevData.zones || [])];
-          
           unlockedItemIds.forEach(id => {
-            // Update nodes
             const nodeIndex = newNodes.findIndex(n => n.id === id);
             if (nodeIndex !== -1) {
               const node = newNodes[nodeIndex];
@@ -1774,45 +1479,19 @@ export default function DiagramEditor() {
                 y: Math.round(((node.y || 0) + deltaY) / gridSize) * gridSize
               };
             }
-            
-            // Update zones
-            const zoneIndex = newZones.findIndex(g => g.id === id);
-            if (zoneIndex !== -1) {
-              const zone = newZones[zoneIndex];
-              newZones[zoneIndex] = { 
-                ...zone, 
-                x: Math.round(((zone.x || 0) + deltaX) / gridSize) * gridSize,
-                y: Math.round(((zone.y || 0) + deltaY) / gridSize) * gridSize
-              };
-            }
           });
-          
-          return {
-            ...prevData,
-            nodes: newNodes,
-            zones: newZones
-          };
+          return { ...prevData, nodes: newNodes };
         });
         
-        // Update selected item states to reflect new positions
         const updatedSelectedItems: SelectedItem[] = [];
         unlockedItemIds.forEach(id => {
           const updatedNode = diagramData.nodes.find(n => n.id === id);
-          const updatedZone = diagramData.zones?.find(g => g.id === id);
-          
           if (updatedNode) {
             updatedSelectedItems.push({ 
               ...updatedNode, 
               itemType: 'node',
               x: Math.round(((updatedNode.x || 0) + deltaX) / gridSize) * gridSize,
               y: Math.round(((updatedNode.y || 0) + deltaY) / gridSize) * gridSize
-            } as SelectedItem);
-          } else if (updatedZone) {
-            updatedSelectedItems.push({ 
-              ...updatedZone, 
-              itemType: 'zone',
-              x: Math.round(((updatedZone.x || 0) + deltaX) / gridSize) * gridSize,
-              y: Math.round(((updatedZone.y || 0) + deltaY) / gridSize) * gridSize
             } as SelectedItem);
           }
         });
@@ -1849,29 +1528,6 @@ export default function DiagramEditor() {
       localStorage.setItem('dw:alignmentGuides:enabled', String(alignmentGuidesEnabled));
     }
   }, [alignmentGuidesEnabled, isClient]);
-
-  const handleZoneLayoutChange = (zoneId: string, layoutType: 'grid' | 'circular') => {
-    setDiagramData(prevData => {
-      return applyZoneLayout(zoneId, {
-        ...prevData,
-        zones: (prevData.zones || []).map(z => z.id === zoneId ? { ...z, layoutType } : z)
-      });
-    });
-  };
-
-  const handleZoneCycle = (zoneId: string) => {
-    setDiagramData(prevData => cycleZoneItems(zoneId, prevData));
-  };
-
-  const handleZoneSort = (zoneId: string, sorting: 'alpha-asc' | 'alpha-desc') => {
-    setDiagramData(prevData => {
-      const updatedData = {
-        ...prevData,
-        zones: (prevData.zones || []).map(z => z.id === zoneId ? { ...z, sorting } : z)
-      };
-      return applyZoneLayout(zoneId, updatedData);
-    });
-  };
 
   const canPasteFromMenu = paletteClipboardItem != null || canPaste;
 
@@ -1948,10 +1604,8 @@ export default function DiagramEditor() {
         handleTabClose={handleTabClose}
         fileInputRef={fileInputRef}
         handleFileChange={handleFileChange}
-        jsonPanelOpen={jsonPanelOpen}
         diagramData={diagramData}
         handleJsonValidChange={handleJsonValidChange}
-        toggleJsonPanel={toggleJsonPanel}
         exportDialogOpen={exportDialogOpen}
         setExportDialogOpen={setExportDialogOpen}
         handleExport={handleExport}
@@ -1974,7 +1628,6 @@ export default function DiagramEditor() {
         disconnectSelected={disconnectSelected}
         handleLabelUpdate={handleLabelUpdate}
         handleTagUpdate={handleTagUpdate}
-        handleZoneTagUpdate={handleZoneTagUpdate}
         setIsDragging={setIsDragging}
         setCanPaste={setCanPaste}
         setMousePosition={setMousePosition}
@@ -1986,11 +1639,9 @@ export default function DiagramEditor() {
         handleMoveToFront={handleMoveToFront}
         handleMoveOneBack={handleMoveOneBack}
         handleMoveOneForward={handleMoveOneForward}
-        handleZoneLayoutChange={handleZoneLayoutChange}
-        handleZoneCycle={handleZoneCycle}
-        handleZoneSort={handleZoneSort}
         canvasRefreshKey={canvasRefreshKey}
         activeTab={activeTab}
+        toast={toast}
       />
       <TutorialOverlay />
     </TutorialProvider>
@@ -2086,7 +1737,6 @@ function DiagramEditorInner({
   disconnectSelected,
   handleLabelUpdate,
   handleTagUpdate,
-  handleZoneTagUpdate,
   setIsDragging,
   setCanPaste,
   setMousePosition,
@@ -2098,11 +1748,9 @@ function DiagramEditorInner({
   handleMoveToFront,
   handleMoveOneBack,
   handleMoveOneForward,
-  handleZoneLayoutChange,
-  handleZoneCycle,
-  handleZoneSort,
   canvasRefreshKey,
   activeTab,
+  toast,
 }: any) {
   const { start } = useTutorial();
   
@@ -2286,7 +1934,7 @@ function DiagramEditorInner({
                     onDisconnect={() => {
                              // Remove all connections from selected item
                              if (selectedItem) {
-                                 setDiagramData(prevData => ({
+                                 setDiagramData((prevData: DiagramData) => ({
                                      ...prevData,
                                      connections: prevData.connections?.filter((e: any) => e.from !== selectedItem.id && e.to !== selectedItem.id) || []
                                  }));
@@ -2301,7 +1949,6 @@ function DiagramEditorInner({
                      onTransformChange={setCanvasTransform}
                      onLabelUpdate={handleLabelUpdate}
                      onTagUpdate={handleTagUpdate}
-                     onZoneTagUpdate={handleZoneTagUpdate}
                      onDraggingChange={setIsDragging}
                     onClipboardChange={setCanPaste}
                     onMousePositionChange={setMousePosition}
@@ -2328,9 +1975,6 @@ function DiagramEditorInner({
                     onMoveToFront={handleMoveToFront}
                     onMoveOneBack={handleMoveOneBack}
                     onMoveOneForward={handleMoveOneForward}
-                    onZoneLayoutChange={handleZoneLayoutChange}
-                    onZoneCycle={handleZoneCycle}
-                    onZoneSort={handleZoneSort}
                     isReadOnly={isReadOnly}
                     alignmentGuidesEnabled={alignmentGuidesEnabled}
                     />
@@ -2355,7 +1999,7 @@ function DiagramEditorInner({
                         onClose={layers.toggleLayersPanel}
                         getLayerItemCount={(layerId: string) => {
                           const items = layers.getLayerItems(layerId);
-                          return (items.nodes?.length || 0) + (items.zones?.length || 0);
+                          return (items.nodes?.length || 0);
                         }}
                       />
                     </div>

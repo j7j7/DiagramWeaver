@@ -286,7 +286,7 @@ export interface DiagramZoneData {
 export interface DiagramGroupingData {
   id: string;
   type: 'grouping';
-  memberIds: string[]; // IDs of nodes/zones that are grouped together
+  memberIds: string[]; // IDs of nodes that are grouped together (for coordinated movement)
   label?: string; // Optional group name
   locked?: boolean; // If true, prevent ungrouping or modifications
 }
@@ -309,30 +309,22 @@ export interface LayersConfig {
 export interface DiagramData {
   nodes: DiagramNodeData[];
   connections: DiagramConnectionData[];
-  zones: DiagramZoneData[]; // Always present - even single nodes are in zones
-  groupings?: DiagramGroupingData[]; // Optional groupings for coordinated movement
-  rootZoneId?: string; // Optional reference to root zone
-  layers?: LayersConfig; // Optional layers configuration
+  /** @deprecated Zones removed - always empty, used only for parse/backward compat */
+  zones?: DiagramZoneData[];
+  groupings?: DiagramGroupingData[];
+  layers?: LayersConfig;
 }
 
-// Hierarchical format is now the standard format
+/** @deprecated Zones removed - kept only for flatten-on-import of legacy JSON */
 export interface HierarchicalDiagramData {
-  zones: DiagramZoneItem[]; // Nested format with DiagramZoneItem
+  zones: DiagramZoneItem[];
   connections: DiagramConnectionData[];
-  groupings?: DiagramGroupingData[]; // Optional groupings for coordinated movement
-  metadata?: any;
-  layers?: LayersConfig; // Optional layers configuration
+  groupings?: DiagramGroupingData[];
+  metadata?: unknown;
+  layers?: LayersConfig;
 }
 
-// Backward compatibility aliases
-// Legacy type alias - use DiagramZoneData directly
+/** @deprecated Zones removed - use DiagramData without zones */
 export type DiagramGroupData = DiagramZoneData;
+/** @deprecated Zones removed */
 export type DiagramGroupItem = DiagramZoneItem;
-
-// Legacy support for existing data
-export interface LegacyDiagramData {
-  nodes: DiagramNodeData[];
-  connections: DiagramConnectionData[];
-  zones: DiagramZoneData[];
-  rootZoneId?: string; // Root zone identifier
-}
