@@ -1,80 +1,1240 @@
 {
   "name": "Google Cloud Platform",
   "icon": "gcp.png",
-  "totalResources": 38,
+  "totalResources": 230,
   "categories": {
-    "compute": {
-      "name": "Compute",
-      "path": "gcp/compute",
+    "aimachinelearning": {
+      "name": "AI + Machine Learning",
+      "path": "gcp/aimachinelearning",
       "resources": [
-         {"name": "Compute Engine", "file": "compute-engine.png", "type": "service"},
-         {"name": "Kubernetes Engine", "file": "kubernetes-engine.png", "type": "service"},
-         {"name": "App Engine", "file": "app-engine.png", "type": "service"},
-         {"name": "Cloud Functions", "file": "functions.png", "type": "service"},
-         {"name": "Cloud Run", "file": "run.png", "type": "service"},
-         {"name": "GKE On-Prem", "file": "gke-on-prem.png", "type": "service"},
-         {"name": "GPU", "file": "gpu.png", "type": "service"},
-         {"name": "Container Optimized OS", "file": "container-optimized-os.png", "type": "service"}
-      ]
-    },
-    "storage": {
-      "name": "Storage",
-      "path": "gcp/storage",
-      "resources": [
-         {"name": "Cloud Storage", "file": "storage.png", "type": "service"},
-         {"name": "Filestore", "file": "filestore.png", "type": "service"},
-         {"name": "Persistent Disk", "file": "persistent-disk.png", "type": "service"},
-         {"name": "Local SSD", "file": "local-ssd.png", "type": "service"},
-         {"name": "Cloud Storage Bucket", "file": "storage-bucket.png", "type": "resource"}
-      ]
-    },
-    "database": {
-      "name": "Database",
-      "path": "gcp/database",
-      "resources": [
-         {"name": "Cloud SQL", "file": "sql.png", "type": "service"},
-         {"name": "Spanner", "file": "spanner.png", "type": "service"},
-         {"name": "Bigtable", "file": "bigtable.png", "type": "service"},
-          {"name": "Firestore", "file": "firestore.png", "type": "service"},
-         {"name": "BigQuery", "file": "bigquery.png", "type": "service"},
-         {"name": "Cloud Memorystore", "file": "memorystore.png", "type": "service"}
-      ]
-    },
-    "network": {
-      "name": "Networking",
-      "path": "gcp/network",
-      "resources": [
-         {"name": "VPC Network", "file": "vpc-network.png", "type": "service"},
-         {"name": "Cloud CDN", "file": "cdn.png", "type": "service"},
-         {"name": "Cloud Load Balancing", "file": "load-balancing.png", "type": "service"},
-         {"name": "Cloud DNS", "file": "dns.png", "type": "service"},
-         {"name": "Cloud Interconnect", "file": "interconnect.png", "type": "service"},
-         {"name": "Cloud Armor", "file": "cloud-armor.png", "type": "service"}
+        {
+          "name": "Advanced Agent Modeling",
+          "file": "gcp/google-cloud-legacy-icons/advanced_agent_modeling/advanced_agent_modeling.svg",
+          "type": "service"
+        },
+        {
+          "name": "Agent Assist",
+          "file": "gcp/google-cloud-legacy-icons/agent_assist/agent_assist.svg",
+          "type": "service"
+        },
+        {
+          "name": "AI Hub",
+          "file": "gcp/google-cloud-legacy-icons/ai_hub/ai_hub.svg",
+          "type": "service"
+        },
+        {
+          "name": "AI Platform",
+          "file": "gcp/google-cloud-legacy-icons/ai_platform/ai_platform.svg",
+          "type": "service"
+        },
+        {
+          "name": "AI Platform Unified",
+          "file": "gcp/google-cloud-legacy-icons/ai_platform_unified/ai_platform_unified.svg",
+          "type": "service"
+        },
+        {
+          "name": "Automl",
+          "file": "gcp/google-cloud-legacy-icons/automl/automl.svg",
+          "type": "service"
+        },
+        {
+          "name": "Automl Natural Language",
+          "file": "gcp/google-cloud-legacy-icons/automl_natural_language/automl_natural_language.svg",
+          "type": "service"
+        },
+        {
+          "name": "Automl Tables",
+          "file": "gcp/google-cloud-legacy-icons/automl_tables/automl_tables.svg",
+          "type": "service"
+        },
+        {
+          "name": "Automl Translation",
+          "file": "gcp/google-cloud-legacy-icons/automl_translation/automl_translation.svg",
+          "type": "service"
+        },
+        {
+          "name": "Automl Video Intelligence",
+          "file": "gcp/google-cloud-legacy-icons/automl_video_intelligence/automl_video_intelligence.svg",
+          "type": "service"
+        },
+        {
+          "name": "Automl Vision",
+          "file": "gcp/google-cloud-legacy-icons/automl_vision/automl_vision.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Inference API",
+          "file": "gcp/google-cloud-legacy-icons/cloud_inference_api/cloud_inference_api.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Natural Language API",
+          "file": "gcp/google-cloud-legacy-icons/cloud_natural_language_api/cloud_natural_language_api.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Optimization AI",
+          "file": "gcp/google-cloud-legacy-icons/cloud_optimization_ai/cloud_optimization_ai.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Optimization AI Fleet Routing API",
+          "file": "gcp/google-cloud-legacy-icons/cloud_optimization_ai_-_fleet_routing_api/cloud_optimization_ai_-_fleet_routing_api.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Translation API",
+          "file": "gcp/google-cloud-legacy-icons/cloud_translation_api/cloud_translation_api.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Vision API",
+          "file": "gcp/google-cloud-legacy-icons/cloud_vision_api/cloud_vision_api.svg",
+          "type": "service"
+        },
+        {
+          "name": "Contact Center AI",
+          "file": "gcp/google-cloud-legacy-icons/contact_center_ai/contact_center_ai.svg",
+          "type": "service"
+        },
+        {
+          "name": "Document AI",
+          "file": "gcp/google-cloud-legacy-icons/document_ai/document_ai.svg",
+          "type": "service"
+        },
+        {
+          "name": "Media Translation API",
+          "file": "gcp/google-cloud-legacy-icons/media_translation_api/media_translation_api.svg",
+          "type": "service"
+        },
+        {
+          "name": "Recommendations AI",
+          "file": "gcp/google-cloud-legacy-icons/recommendations_ai/recommendations_ai.svg",
+          "type": "service"
+        },
+        {
+          "name": "Retail API",
+          "file": "gcp/google-cloud-legacy-icons/retail_api/retail_api.svg",
+          "type": "service"
+        },
+        {
+          "name": "Speech To Text",
+          "file": "gcp/google-cloud-legacy-icons/speech-to-text/speech-to-text.svg",
+          "type": "service"
+        },
+        {
+          "name": "Text To Speech",
+          "file": "gcp/google-cloud-legacy-icons/text-to-speech/text-to-speech.svg",
+          "type": "service"
+        },
+        {
+          "name": "Vertexai",
+          "file": "gcp/google-cloud-legacy-icons/vertexai/vertexai.svg",
+          "type": "service"
+        },
+        {
+          "name": "Aihypercomputer",
+          "file": "gcp/Unique Icons/AI Hypercomputer/SVG/AIHypercomputer-512-color.svg",
+          "type": "service"
+        }
       ]
     },
     "analytics": {
       "name": "Analytics",
       "path": "gcp/analytics",
       "resources": [
-         {"name": "BigQuery", "file": "bigquery.png", "type": "service"},
-         {"name": "Dataflow", "file": "dataflow.png", "type": "service"},
-         {"name": "Dataproc", "file": "dataproc.png", "type": "service"},
-         {"name": "Pub/Sub", "file": "pubsub.png", "type": "service"},
-         {"name": "Data Studio", "file": "data-studio.png", "type": "service"}
+        {
+          "name": "Analytics Hub",
+          "file": "gcp/google-cloud-legacy-icons/analytics_hub/analytics_hub.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Composer",
+          "file": "gcp/google-cloud-legacy-icons/cloud_composer/cloud_composer.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Data Fusion",
+          "file": "gcp/google-cloud-legacy-icons/cloud_data_fusion/cloud_data_fusion.svg",
+          "type": "service"
+        },
+        {
+          "name": "Data Catalog",
+          "file": "gcp/google-cloud-legacy-icons/data_catalog/data_catalog.svg",
+          "type": "service"
+        },
+        {
+          "name": "Data Studio",
+          "file": "gcp/google-cloud-legacy-icons/data_studio/data_studio.svg",
+          "type": "service"
+        },
+        {
+          "name": "Dataflow",
+          "file": "gcp/google-cloud-legacy-icons/dataflow/dataflow.svg",
+          "type": "service"
+        },
+        {
+          "name": "Dataproc",
+          "file": "gcp/google-cloud-legacy-icons/dataproc/dataproc.svg",
+          "type": "service"
+        },
+        {
+          "name": "Dataproc Metastore",
+          "file": "gcp/google-cloud-legacy-icons/dataproc_metastore/dataproc_metastore.svg",
+          "type": "service"
+        },
+        {
+          "name": "Datastream",
+          "file": "gcp/google-cloud-legacy-icons/datastream/datastream.svg",
+          "type": "service"
+        },
+        {
+          "name": "Pubsub",
+          "file": "gcp/google-cloud-legacy-icons/pubsub/pubsub.svg",
+          "type": "service"
+        }
       ]
     },
-    "aimachinelearning": {
-      "name": "AI + Machine Learning",
-      "path": "gcp/aimachinelearning",
+    "compute": {
+      "name": "Compute",
+      "path": "gcp/compute",
       "resources": [
-         {"name": "Vertex AI", "file": "vertex-ai.png", "type": "service"},
-         {"name": "AutoML", "file": "automl.png", "type": "service"},
-         {"name": "AI Platform", "file": "ai-platform.png", "type": "service"},
-         {"name": "Speech-to-Text", "file": "speech-to-text.png", "type": "service"},
-         {"name": "Text-to-Speech", "file": "text-to-speech.png", "type": "service"},
-         {"name": "Natural Language", "file": "natural-language.png", "type": "service"},
-         {"name": "Vision AI", "file": "vision-ai.png", "type": "service"},
-         {"name": "Translation", "file": "translation.png", "type": "service"}
+        {
+          "name": "App Engine",
+          "file": "gcp/google-cloud-legacy-icons/app_engine/app_engine.svg",
+          "type": "service"
+        },
+        {
+          "name": "Bare Metal Solutions",
+          "file": "gcp/google-cloud-legacy-icons/bare_metal_solutions/bare_metal_solutions.svg",
+          "type": "service"
+        },
+        {
+          "name": "Batch",
+          "file": "gcp/google-cloud-legacy-icons/batch/batch.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Build",
+          "file": "gcp/google-cloud-legacy-icons/cloud_build/cloud_build.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Deployment Manager",
+          "file": "gcp/google-cloud-legacy-icons/cloud_deployment_manager/cloud_deployment_manager.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Functions",
+          "file": "gcp/google-cloud-legacy-icons/cloud_functions/cloud_functions.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud GPU",
+          "file": "gcp/google-cloud-legacy-icons/cloud_gpu/cloud_gpu.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Run",
+          "file": "gcp/google-cloud-legacy-icons/cloud_run/cloud_run.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Run For Anthos",
+          "file": "gcp/google-cloud-legacy-icons/cloud_run_for_anthos/cloud_run_for_anthos.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Scheduler",
+          "file": "gcp/google-cloud-legacy-icons/cloud_scheduler/cloud_scheduler.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Tasks",
+          "file": "gcp/google-cloud-legacy-icons/cloud_tasks/cloud_tasks.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Tpu",
+          "file": "gcp/google-cloud-legacy-icons/cloud_tpu/cloud_tpu.svg",
+          "type": "service"
+        },
+        {
+          "name": "Compute Engine",
+          "file": "gcp/google-cloud-legacy-icons/compute_engine/compute_engine.svg",
+          "type": "service"
+        },
+        {
+          "name": "Container Optimized OS",
+          "file": "gcp/google-cloud-legacy-icons/container_optimized_os/container_optimized_os.svg",
+          "type": "service"
+        },
+        {
+          "name": "Fleet Engine",
+          "file": "gcp/google-cloud-legacy-icons/fleet_engine/fleet_engine.svg",
+          "type": "service"
+        },
+        {
+          "name": "GKE On Prem",
+          "file": "gcp/google-cloud-legacy-icons/gke_on-prem/gke_on-prem.svg",
+          "type": "service"
+        },
+        {
+          "name": "Google Kubernetes Engine",
+          "file": "gcp/google-cloud-legacy-icons/google_kubernetes_engine/google_kubernetes_engine.svg",
+          "type": "service"
+        },
+        {
+          "name": "Kuberun",
+          "file": "gcp/google-cloud-legacy-icons/kuberun/kuberun.svg",
+          "type": "service"
+        },
+        {
+          "name": "Quantum Engine",
+          "file": "gcp/google-cloud-legacy-icons/quantum_engine/quantum_engine.svg",
+          "type": "service"
+        },
+        {
+          "name": "Runtime Config",
+          "file": "gcp/google-cloud-legacy-icons/runtime_config/runtime_config.svg",
+          "type": "service"
+        },
+        {
+          "name": "Vmware Engine",
+          "file": "gcp/google-cloud-legacy-icons/vmware_engine/vmware_engine.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloudrun",
+          "file": "gcp/Unique Icons/Cloud Run/SVG/CloudRun-512-color-rgb.svg",
+          "type": "service"
+        },
+        {
+          "name": "Computeengine",
+          "file": "gcp/Unique Icons/Compute Engine/SVG/ComputeEngine-512-color-rgb.svg",
+          "type": "service"
+        },
+        {
+          "name": "GKE",
+          "file": "gcp/Unique Icons/GKE/SVG/GKE-512-color.svg",
+          "type": "service"
+        }
+      ]
+    },
+    "containers": {
+      "name": "Containers",
+      "path": "gcp/containers",
+      "resources": [
+        {
+          "name": "Anthos",
+          "file": "gcp/google-cloud-legacy-icons/anthos/anthos.svg",
+          "type": "service"
+        },
+        {
+          "name": "Anthos Config Management",
+          "file": "gcp/google-cloud-legacy-icons/anthos_config_management/anthos_config_management.svg",
+          "type": "service"
+        },
+        {
+          "name": "Anthos Service Mesh",
+          "file": "gcp/google-cloud-legacy-icons/anthos_service_mesh/anthos_service_mesh.svg",
+          "type": "service"
+        },
+        {
+          "name": "Migrate For Anthos",
+          "file": "gcp/google-cloud-legacy-icons/migrate_for_anthos/migrate_for_anthos.svg",
+          "type": "service"
+        }
+      ]
+    },
+    "data": {
+      "name": "Data",
+      "path": "gcp/data",
+      "resources": [
+        {
+          "name": "Looker",
+          "file": "gcp/google-cloud-legacy-icons/looker/looker.svg",
+          "type": "service"
+        }
+      ]
+    },
+    "database": {
+      "name": "Database",
+      "path": "gcp/database",
+      "resources": [
+        {
+          "name": "Bigquery",
+          "file": "gcp/google-cloud-legacy-icons/bigquery/bigquery.svg",
+          "type": "service"
+        },
+        {
+          "name": "Bigtable",
+          "file": "gcp/google-cloud-legacy-icons/bigtable/bigtable.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Spanner",
+          "file": "gcp/google-cloud-legacy-icons/cloud_spanner/cloud_spanner.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud SQL",
+          "file": "gcp/google-cloud-legacy-icons/cloud_sql/cloud_sql.svg",
+          "type": "service"
+        },
+        {
+          "name": "Datastore",
+          "file": "gcp/google-cloud-legacy-icons/datastore/datastore.svg",
+          "type": "service"
+        },
+        {
+          "name": "Firestore",
+          "file": "gcp/google-cloud-legacy-icons/firestore/firestore.svg",
+          "type": "service"
+        },
+        {
+          "name": "Memorystore",
+          "file": "gcp/google-cloud-legacy-icons/memorystore/memorystore.svg",
+          "type": "service"
+        },
+        {
+          "name": "Alloydb",
+          "file": "gcp/Unique Icons/AlloyDB/SVG/AlloyDB-512-color.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloudsql",
+          "file": "gcp/Unique Icons/Cloud SQL/SVG/CloudSQL-512-color.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloudspanner",
+          "file": "gcp/Unique Icons/Cloud Spanner/SVG/CloudSpanner-512-color.svg",
+          "type": "service"
+        }
+      ]
+    },
+    "developertools": {
+      "name": "Developer Tools",
+      "path": "gcp/developertools",
+      "resources": [
+        {
+          "name": "API",
+          "file": "gcp/google-cloud-legacy-icons/api/api.svg",
+          "type": "service"
+        },
+        {
+          "name": "API Analytics",
+          "file": "gcp/google-cloud-legacy-icons/api_analytics/api_analytics.svg",
+          "type": "service"
+        },
+        {
+          "name": "API Monetization",
+          "file": "gcp/google-cloud-legacy-icons/api_monetization/api_monetization.svg",
+          "type": "service"
+        },
+        {
+          "name": "Apigee API Platform",
+          "file": "gcp/google-cloud-legacy-icons/apigee_api_platform/apigee_api_platform.svg",
+          "type": "service"
+        },
+        {
+          "name": "Apigee Sense",
+          "file": "gcp/google-cloud-legacy-icons/apigee_sense/apigee_sense.svg",
+          "type": "service"
+        },
+        {
+          "name": "Artifact Registry",
+          "file": "gcp/google-cloud-legacy-icons/artifact_registry/artifact_registry.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Apis",
+          "file": "gcp/google-cloud-legacy-icons/cloud_apis/cloud_apis.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Code",
+          "file": "gcp/google-cloud-legacy-icons/cloud_code/cloud_code.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Deploy",
+          "file": "gcp/google-cloud-legacy-icons/cloud_deploy/cloud_deploy.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Healthcare API",
+          "file": "gcp/google-cloud-legacy-icons/cloud_healthcare_api/cloud_healthcare_api.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Jobs API",
+          "file": "gcp/google-cloud-legacy-icons/cloud_jobs_api/cloud_jobs_api.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Test Lab",
+          "file": "gcp/google-cloud-legacy-icons/cloud_test_lab/cloud_test_lab.svg",
+          "type": "service"
+        },
+        {
+          "name": "Container Registry",
+          "file": "gcp/google-cloud-legacy-icons/container_registry/container_registry.svg",
+          "type": "service"
+        },
+        {
+          "name": "Data Loss Prevention API",
+          "file": "gcp/google-cloud-legacy-icons/data_loss_prevention_api/data_loss_prevention_api.svg",
+          "type": "service"
+        },
+        {
+          "name": "Healthcare Nlp API",
+          "file": "gcp/google-cloud-legacy-icons/healthcare_nlp_api/healthcare_nlp_api.svg",
+          "type": "service"
+        },
+        {
+          "name": "Video Intelligence API",
+          "file": "gcp/google-cloud-legacy-icons/video_intelligence_api/video_intelligence_api.svg",
+          "type": "service"
+        },
+        {
+          "name": "Apigee",
+          "file": "gcp/Unique Icons/Apigee/SVG/Apigee-512-color-rgb.svg",
+          "type": "service"
+        }
+      ]
+    },
+    "hybrid": {
+      "name": "Hybrid & Multi-Cloud",
+      "path": "gcp/hybrid",
+      "resources": [
+        {
+          "name": "Distributedcloud",
+          "file": "gcp/Unique Icons/Distributed Cloud/SVG/DistributedCloud-512-color.svg",
+          "type": "service"
+        }
+      ]
+    },
+    "management": {
+      "name": "Management",
+      "path": "gcp/management",
+      "resources": [
+        {
+          "name": "Administration",
+          "file": "gcp/google-cloud-legacy-icons/administration/administration.svg",
+          "type": "service"
+        },
+        {
+          "name": "Asset Inventory",
+          "file": "gcp/google-cloud-legacy-icons/asset_inventory/asset_inventory.svg",
+          "type": "service"
+        },
+        {
+          "name": "Billing",
+          "file": "gcp/google-cloud-legacy-icons/billing/billing.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Asset Inventory",
+          "file": "gcp/google-cloud-legacy-icons/cloud_asset_inventory/cloud_asset_inventory.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Audit Logs",
+          "file": "gcp/google-cloud-legacy-icons/cloud_audit_logs/cloud_audit_logs.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Logging",
+          "file": "gcp/google-cloud-legacy-icons/cloud_logging/cloud_logging.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Monitoring",
+          "file": "gcp/google-cloud-legacy-icons/cloud_monitoring/cloud_monitoring.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Ops",
+          "file": "gcp/google-cloud-legacy-icons/cloud_ops/cloud_ops.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Shell",
+          "file": "gcp/google-cloud-legacy-icons/cloud_shell/cloud_shell.svg",
+          "type": "service"
+        },
+        {
+          "name": "Configuration Management",
+          "file": "gcp/google-cloud-legacy-icons/configuration_management/configuration_management.svg",
+          "type": "service"
+        },
+        {
+          "name": "Error Reporting",
+          "file": "gcp/google-cloud-legacy-icons/error_reporting/error_reporting.svg",
+          "type": "service"
+        },
+        {
+          "name": "GCE Systems Management",
+          "file": "gcp/google-cloud-legacy-icons/gce_systems_management/gce_systems_management.svg",
+          "type": "service"
+        },
+        {
+          "name": "OS Inventory Management",
+          "file": "gcp/google-cloud-legacy-icons/os_inventory_management/os_inventory_management.svg",
+          "type": "service"
+        },
+        {
+          "name": "Stackdriver",
+          "file": "gcp/google-cloud-legacy-icons/stackdriver/stackdriver.svg",
+          "type": "service"
+        }
+      ]
+    },
+    "migration": {
+      "name": "Migration",
+      "path": "gcp/migration",
+      "resources": [
+        {
+          "name": "Database Migration Service",
+          "file": "gcp/google-cloud-legacy-icons/database_migration_service/database_migration_service.svg",
+          "type": "service"
+        },
+        {
+          "name": "Migrate For Compute Engine",
+          "file": "gcp/google-cloud-legacy-icons/migrate_for_compute_engine/migrate_for_compute_engine.svg",
+          "type": "service"
+        }
+      ]
+    },
+    "network": {
+      "name": "Networking",
+      "path": "gcp/network",
+      "resources": [
+        {
+          "name": "Cloud API Gateway",
+          "file": "gcp/google-cloud-legacy-icons/cloud_api_gateway/cloud_api_gateway.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Armor",
+          "file": "gcp/google-cloud-legacy-icons/cloud_armor/cloud_armor.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud CDN",
+          "file": "gcp/google-cloud-legacy-icons/cloud_cdn/cloud_cdn.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud DNS",
+          "file": "gcp/google-cloud-legacy-icons/cloud_dns/cloud_dns.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Domains",
+          "file": "gcp/google-cloud-legacy-icons/cloud_domains/cloud_domains.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Endpoints",
+          "file": "gcp/google-cloud-legacy-icons/cloud_endpoints/cloud_endpoints.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud External Ip Addresses",
+          "file": "gcp/google-cloud-legacy-icons/cloud_external_ip_addresses/cloud_external_ip_addresses.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Firewall Rules",
+          "file": "gcp/google-cloud-legacy-icons/cloud_firewall_rules/cloud_firewall_rules.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Interconnect",
+          "file": "gcp/google-cloud-legacy-icons/cloud_interconnect/cloud_interconnect.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Load Balancing",
+          "file": "gcp/google-cloud-legacy-icons/cloud_load_balancing/cloud_load_balancing.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud NAT",
+          "file": "gcp/google-cloud-legacy-icons/cloud_nat/cloud_nat.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Network",
+          "file": "gcp/google-cloud-legacy-icons/cloud_network/cloud_network.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Router",
+          "file": "gcp/google-cloud-legacy-icons/cloud_router/cloud_router.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Routes",
+          "file": "gcp/google-cloud-legacy-icons/cloud_routes/cloud_routes.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud VPN",
+          "file": "gcp/google-cloud-legacy-icons/cloud_vpn/cloud_vpn.svg",
+          "type": "service"
+        },
+        {
+          "name": "Connectivity Test",
+          "file": "gcp/google-cloud-legacy-icons/connectivity_test/connectivity_test.svg",
+          "type": "service"
+        },
+        {
+          "name": "Network Connectivity Center",
+          "file": "gcp/google-cloud-legacy-icons/network_connectivity_center/network_connectivity_center.svg",
+          "type": "service"
+        },
+        {
+          "name": "Network Intelligence Center",
+          "file": "gcp/google-cloud-legacy-icons/network_intelligence_center/network_intelligence_center.svg",
+          "type": "service"
+        },
+        {
+          "name": "Network Security",
+          "file": "gcp/google-cloud-legacy-icons/network_security/network_security.svg",
+          "type": "service"
+        },
+        {
+          "name": "Network Tiers",
+          "file": "gcp/google-cloud-legacy-icons/network_tiers/network_tiers.svg",
+          "type": "service"
+        },
+        {
+          "name": "Network Topology",
+          "file": "gcp/google-cloud-legacy-icons/network_topology/network_topology.svg",
+          "type": "service"
+        },
+        {
+          "name": "Premium Network Tier",
+          "file": "gcp/google-cloud-legacy-icons/premium_network_tier/premium_network_tier.svg",
+          "type": "service"
+        },
+        {
+          "name": "Private Service Connect",
+          "file": "gcp/google-cloud-legacy-icons/private_service_connect/private_service_connect.svg",
+          "type": "service"
+        },
+        {
+          "name": "Standard Network Tier",
+          "file": "gcp/google-cloud-legacy-icons/standard_network_tier/standard_network_tier.svg",
+          "type": "service"
+        },
+        {
+          "name": "Workload Identity Pool",
+          "file": "gcp/google-cloud-legacy-icons/workload_identity_pool/workload_identity_pool.svg",
+          "type": "service"
+        }
+      ]
+    },
+    "other": {
+      "name": "Other",
+      "path": "gcp/other",
+      "resources": [
+        {
+          "name": "Advanced Solutions Lab",
+          "file": "gcp/google-cloud-legacy-icons/advanced_solutions_lab/advanced_solutions_lab.svg",
+          "type": "service"
+        },
+        {
+          "name": "Catalog",
+          "file": "gcp/google-cloud-legacy-icons/catalog/catalog.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud For Marketing",
+          "file": "gcp/google-cloud-legacy-icons/cloud_for_marketing/cloud_for_marketing.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Generic",
+          "file": "gcp/google-cloud-legacy-icons/cloud_generic/cloud_generic.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Healthcare Marketplace",
+          "file": "gcp/google-cloud-legacy-icons/cloud_healthcare_marketplace/cloud_healthcare_marketplace.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Media Edge",
+          "file": "gcp/google-cloud-legacy-icons/cloud_media_edge/cloud_media_edge.svg",
+          "type": "service"
+        },
+        {
+          "name": "Connectors",
+          "file": "gcp/google-cloud-legacy-icons/connectors/connectors.svg",
+          "type": "service"
+        },
+        {
+          "name": "Data Labeling",
+          "file": "gcp/google-cloud-legacy-icons/data_labeling/data_labeling.svg",
+          "type": "service"
+        },
+        {
+          "name": "Data Layers",
+          "file": "gcp/google-cloud-legacy-icons/data_layers/data_layers.svg",
+          "type": "service"
+        },
+        {
+          "name": "Data Qna",
+          "file": "gcp/google-cloud-legacy-icons/data_qna/data_qna.svg",
+          "type": "service"
+        },
+        {
+          "name": "Data Transfer",
+          "file": "gcp/google-cloud-legacy-icons/data_transfer/data_transfer.svg",
+          "type": "service"
+        },
+        {
+          "name": "Datalab",
+          "file": "gcp/google-cloud-legacy-icons/datalab/datalab.svg",
+          "type": "service"
+        },
+        {
+          "name": "Dataplex",
+          "file": "gcp/google-cloud-legacy-icons/dataplex/dataplex.svg",
+          "type": "service"
+        },
+        {
+          "name": "Datapol",
+          "file": "gcp/google-cloud-legacy-icons/datapol/datapol.svg",
+          "type": "service"
+        },
+        {
+          "name": "Dataprep",
+          "file": "gcp/google-cloud-legacy-icons/dataprep/dataprep.svg",
+          "type": "service"
+        },
+        {
+          "name": "Datashare",
+          "file": "gcp/google-cloud-legacy-icons/datashare/datashare.svg",
+          "type": "service"
+        },
+        {
+          "name": "Debugger",
+          "file": "gcp/google-cloud-legacy-icons/debugger/debugger.svg",
+          "type": "service"
+        },
+        {
+          "name": "Developer Portal",
+          "file": "gcp/google-cloud-legacy-icons/developer_portal/developer_portal.svg",
+          "type": "service"
+        },
+        {
+          "name": "Dialogflow",
+          "file": "gcp/google-cloud-legacy-icons/dialogflow/dialogflow.svg",
+          "type": "service"
+        },
+        {
+          "name": "Dialogflow Cx",
+          "file": "gcp/google-cloud-legacy-icons/dialogflow_cx/dialogflow_cx.svg",
+          "type": "service"
+        },
+        {
+          "name": "Dialogflow Insights",
+          "file": "gcp/google-cloud-legacy-icons/dialogflow_insights/dialogflow_insights.svg",
+          "type": "service"
+        },
+        {
+          "name": "Early Access Center",
+          "file": "gcp/google-cloud-legacy-icons/early_access_center/early_access_center.svg",
+          "type": "service"
+        },
+        {
+          "name": "Eventarc",
+          "file": "gcp/google-cloud-legacy-icons/eventarc/eventarc.svg",
+          "type": "service"
+        },
+        {
+          "name": "Financial Services Marketplace",
+          "file": "gcp/google-cloud-legacy-icons/financial_services_marketplace/financial_services_marketplace.svg",
+          "type": "service"
+        },
+        {
+          "name": "Free Trial",
+          "file": "gcp/google-cloud-legacy-icons/free_trial/free_trial.svg",
+          "type": "service"
+        },
+        {
+          "name": "Game Servers",
+          "file": "gcp/google-cloud-legacy-icons/game_servers/game_servers.svg",
+          "type": "service"
+        },
+        {
+          "name": "Genomics",
+          "file": "gcp/google-cloud-legacy-icons/genomics/genomics.svg",
+          "type": "service"
+        },
+        {
+          "name": "Google Cloud Marketplace",
+          "file": "gcp/google-cloud-legacy-icons/google_cloud_marketplace/google_cloud_marketplace.svg",
+          "type": "service"
+        },
+        {
+          "name": "Google Maps Platform",
+          "file": "gcp/google-cloud-legacy-icons/google_maps_platform/google_maps_platform.svg",
+          "type": "service"
+        },
+        {
+          "name": "Home",
+          "file": "gcp/google-cloud-legacy-icons/home/home.svg",
+          "type": "service"
+        },
+        {
+          "name": "Identity And Access Management",
+          "file": "gcp/google-cloud-legacy-icons/identity_and_access_management/identity_and_access_management.svg",
+          "type": "service"
+        },
+        {
+          "name": "Identity Platform",
+          "file": "gcp/google-cloud-legacy-icons/identity_platform/identity_platform.svg",
+          "type": "service"
+        },
+        {
+          "name": "Iot Core",
+          "file": "gcp/google-cloud-legacy-icons/iot_core/iot_core.svg",
+          "type": "service"
+        },
+        {
+          "name": "Iot Edge",
+          "file": "gcp/google-cloud-legacy-icons/iot_edge/iot_edge.svg",
+          "type": "service"
+        },
+        {
+          "name": "Key Access Justifications",
+          "file": "gcp/google-cloud-legacy-icons/key_access_justifications/key_access_justifications.svg",
+          "type": "service"
+        },
+        {
+          "name": "Launcher",
+          "file": "gcp/google-cloud-legacy-icons/launcher/launcher.svg",
+          "type": "service"
+        },
+        {
+          "name": "Managed Service For Microsoft Active Directory",
+          "file": "gcp/google-cloud-legacy-icons/managed_service_for_microsoft_active_directory/managed_service_for_microsoft_active_directory.svg",
+          "type": "service"
+        },
+        {
+          "name": "My Cloud",
+          "file": "gcp/google-cloud-legacy-icons/my_cloud/my_cloud.svg",
+          "type": "service"
+        },
+        {
+          "name": "Onboarding",
+          "file": "gcp/google-cloud-legacy-icons/onboarding/onboarding.svg",
+          "type": "service"
+        },
+        {
+          "name": "OS Configuration Management",
+          "file": "gcp/google-cloud-legacy-icons/os_configuration_management/os_configuration_management.svg",
+          "type": "service"
+        },
+        {
+          "name": "OS Patch Management",
+          "file": "gcp/google-cloud-legacy-icons/os_patch_management/os_patch_management.svg",
+          "type": "service"
+        },
+        {
+          "name": "Partner Interconnect",
+          "file": "gcp/google-cloud-legacy-icons/partner_interconnect/partner_interconnect.svg",
+          "type": "service"
+        },
+        {
+          "name": "Partner Portal",
+          "file": "gcp/google-cloud-legacy-icons/partner_portal/partner_portal.svg",
+          "type": "service"
+        },
+        {
+          "name": "Performance Dashboard",
+          "file": "gcp/google-cloud-legacy-icons/performance_dashboard/performance_dashboard.svg",
+          "type": "service"
+        },
+        {
+          "name": "Permissions",
+          "file": "gcp/google-cloud-legacy-icons/permissions/permissions.svg",
+          "type": "service"
+        },
+        {
+          "name": "Phishing Protection",
+          "file": "gcp/google-cloud-legacy-icons/phishing_protection/phishing_protection.svg",
+          "type": "service"
+        },
+        {
+          "name": "Policy Analyzer",
+          "file": "gcp/google-cloud-legacy-icons/policy_analyzer/policy_analyzer.svg",
+          "type": "service"
+        },
+        {
+          "name": "Private Connectivity",
+          "file": "gcp/google-cloud-legacy-icons/private_connectivity/private_connectivity.svg",
+          "type": "service"
+        },
+        {
+          "name": "Producer Portal",
+          "file": "gcp/google-cloud-legacy-icons/producer_portal/producer_portal.svg",
+          "type": "service"
+        },
+        {
+          "name": "Profiler",
+          "file": "gcp/google-cloud-legacy-icons/profiler/profiler.svg",
+          "type": "service"
+        },
+        {
+          "name": "Project",
+          "file": "gcp/google-cloud-legacy-icons/project/project.svg",
+          "type": "service"
+        },
+        {
+          "name": "Quotas",
+          "file": "gcp/google-cloud-legacy-icons/quotas/quotas.svg",
+          "type": "service"
+        },
+        {
+          "name": "Real World Insights",
+          "file": "gcp/google-cloud-legacy-icons/real-world_insights/real-world_insights.svg",
+          "type": "service"
+        },
+        {
+          "name": "Release Notes",
+          "file": "gcp/google-cloud-legacy-icons/release_notes/release_notes.svg",
+          "type": "service"
+        },
+        {
+          "name": "Risk Manager",
+          "file": "gcp/google-cloud-legacy-icons/risk_manager/risk_manager.svg",
+          "type": "service"
+        },
+        {
+          "name": "Service Discovery",
+          "file": "gcp/google-cloud-legacy-icons/service_discovery/service_discovery.svg",
+          "type": "service"
+        },
+        {
+          "name": "Stream Suite",
+          "file": "gcp/google-cloud-legacy-icons/stream_suite/stream_suite.svg",
+          "type": "service"
+        },
+        {
+          "name": "Support",
+          "file": "gcp/google-cloud-legacy-icons/support/support.svg",
+          "type": "service"
+        },
+        {
+          "name": "Tensorflow Enterprise",
+          "file": "gcp/google-cloud-legacy-icons/tensorflow_enterprise/tensorflow_enterprise.svg",
+          "type": "service"
+        },
+        {
+          "name": "Tools For Powershell",
+          "file": "gcp/google-cloud-legacy-icons/tools_for_powershell/tools_for_powershell.svg",
+          "type": "service"
+        },
+        {
+          "name": "Trace",
+          "file": "gcp/google-cloud-legacy-icons/trace/trace.svg",
+          "type": "service"
+        },
+        {
+          "name": "Traffic Director",
+          "file": "gcp/google-cloud-legacy-icons/traffic_director/traffic_director.svg",
+          "type": "service"
+        },
+        {
+          "name": "Transfer",
+          "file": "gcp/google-cloud-legacy-icons/transfer/transfer.svg",
+          "type": "service"
+        },
+        {
+          "name": "User Preferences",
+          "file": "gcp/google-cloud-legacy-icons/user_preferences/user_preferences.svg",
+          "type": "service"
+        },
+        {
+          "name": "Virtual Private Cloud",
+          "file": "gcp/google-cloud-legacy-icons/virtual_private_cloud/virtual_private_cloud.svg",
+          "type": "service"
+        },
+        {
+          "name": "Visual Inspection",
+          "file": "gcp/google-cloud-legacy-icons/visual_inspection/visual_inspection.svg",
+          "type": "service"
+        },
+        {
+          "name": "Web Risk",
+          "file": "gcp/google-cloud-legacy-icons/web_risk/web_risk.svg",
+          "type": "service"
+        },
+        {
+          "name": "Workflows",
+          "file": "gcp/google-cloud-legacy-icons/workflows/workflows.svg",
+          "type": "service"
+        }
+      ]
+    },
+    "security": {
+      "name": "Security",
+      "path": "gcp/security",
+      "resources": [
+        {
+          "name": "Access Context Manager",
+          "file": "gcp/google-cloud-legacy-icons/access_context_manager/access_context_manager.svg",
+          "type": "service"
+        },
+        {
+          "name": "Assured Workloads",
+          "file": "gcp/google-cloud-legacy-icons/assured_workloads/assured_workloads.svg",
+          "type": "service"
+        },
+        {
+          "name": "Beyondcorp",
+          "file": "gcp/google-cloud-legacy-icons/beyondcorp/beyondcorp.svg",
+          "type": "service"
+        },
+        {
+          "name": "Binary Authorization",
+          "file": "gcp/google-cloud-legacy-icons/binary_authorization/binary_authorization.svg",
+          "type": "service"
+        },
+        {
+          "name": "Certificate Authority Service",
+          "file": "gcp/google-cloud-legacy-icons/certificate_authority_service/certificate_authority_service.svg",
+          "type": "service"
+        },
+        {
+          "name": "Certificate Manager",
+          "file": "gcp/google-cloud-legacy-icons/certificate_manager/certificate_manager.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Ekm",
+          "file": "gcp/google-cloud-legacy-icons/cloud_ekm/cloud_ekm.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Hsm",
+          "file": "gcp/google-cloud-legacy-icons/cloud_hsm/cloud_hsm.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Ids",
+          "file": "gcp/google-cloud-legacy-icons/cloud_ids/cloud_ids.svg",
+          "type": "service"
+        },
+        {
+          "name": "Cloud Security Scanner",
+          "file": "gcp/google-cloud-legacy-icons/cloud_security_scanner/cloud_security_scanner.svg",
+          "type": "service"
+        },
+        {
+          "name": "Identity Aware Proxy",
+          "file": "gcp/google-cloud-legacy-icons/identity-aware_proxy/identity-aware_proxy.svg",
+          "type": "service"
+        },
+        {
+          "name": "Key Management Service",
+          "file": "gcp/google-cloud-legacy-icons/key_management_service/key_management_service.svg",
+          "type": "service"
+        },
+        {
+          "name": "Secret Manager",
+          "file": "gcp/google-cloud-legacy-icons/secret_manager/secret_manager.svg",
+          "type": "service"
+        },
+        {
+          "name": "Security",
+          "file": "gcp/google-cloud-legacy-icons/security/security.svg",
+          "type": "service"
+        },
+        {
+          "name": "Security Command Center",
+          "file": "gcp/google-cloud-legacy-icons/security_command_center/security_command_center.svg",
+          "type": "service"
+        },
+        {
+          "name": "Security Health Advisor",
+          "file": "gcp/google-cloud-legacy-icons/security_health_advisor/security_health_advisor.svg",
+          "type": "service"
+        },
+        {
+          "name": "Security Key Enforcement",
+          "file": "gcp/google-cloud-legacy-icons/security_key_enforcement/security_key_enforcement.svg",
+          "type": "service"
+        },
+        {
+          "name": "Web Security Scanner",
+          "file": "gcp/google-cloud-legacy-icons/web_security_scanner/web_security_scanner.svg",
+          "type": "service"
+        },
+        {
+          "name": "Mandiant",
+          "file": "gcp/Unique Icons/Mandiant/SVG/Mandiant-512-color.svg",
+          "type": "service"
+        },
+        {
+          "name": "Securitycommandcenter",
+          "file": "gcp/Unique Icons/Security Command Center/SVG/SecurityCommandCenter-512-color.svg",
+          "type": "service"
+        },
+        {
+          "name": "Secops",
+          "file": "gcp/Unique Icons/Security Operations/SVG/SecOps-512-color-rgb.svg",
+          "type": "service"
+        },
+        {
+          "name": "Threatintelligence",
+          "file": "gcp/Unique Icons/Threat Intelligence/SVG/ThreatIntelligence-512-color.svg",
+          "type": "service"
+        }
+      ]
+    },
+    "storage": {
+      "name": "Storage",
+      "path": "gcp/storage",
+      "resources": [
+        {
+          "name": "Cloud Storage",
+          "file": "gcp/google-cloud-legacy-icons/cloud_storage/cloud_storage.svg",
+          "type": "service"
+        },
+        {
+          "name": "Filestore",
+          "file": "gcp/google-cloud-legacy-icons/filestore/filestore.svg",
+          "type": "service"
+        },
+        {
+          "name": "Local SSD",
+          "file": "gcp/google-cloud-legacy-icons/local_ssd/local_ssd.svg",
+          "type": "service"
+        },
+        {
+          "name": "Persistent Disk",
+          "file": "gcp/google-cloud-legacy-icons/persistent_disk/persistent_disk.svg",
+          "type": "service"
+        },
+        {
+          "name": "Transfer Appliance",
+          "file": "gcp/google-cloud-legacy-icons/transfer_appliance/transfer_appliance.svg",
+          "type": "service"
+        },
+        {
+          "name": "Hyperdisk",
+          "file": "gcp/Unique Icons/Hyperdisk/SVG/Hyperdisk-512-color.svg",
+          "type": "service"
+        }
       ]
     }
   }

@@ -86,7 +86,7 @@
        "icon": "firebase.png",
        "totalResources": 19,
       "file": "resource-firebase.json",
-      "enabled": true
+      "enabled": false
     },
      "digitalocean": {
        "name": "DigitalOcean",

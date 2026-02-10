@@ -1,15 +1,8 @@
 {
   "name": "Generic",
   "icon": "generic.png",
-   "totalResources": 34,
+   "totalResources": 29,
   "categories": {
-    "grouping": {
-      "name": "Grouping",
-      "path": "generic/grouping",
-      "resources": [
-          {"name": "Zone", "file": "zone.png", "type": "zone"}
-      ]
-    },
       "text": {
         "name": "Text",
         "path": "generic/text",

@@ -1,126 +1,1052 @@
 {
   "name": "On-Premise",
   "icon": "onprem.png",
-  "totalResources": 66,
+  "totalResources": 172,
   "categories": {
-    "compute": {
-      "name": "Compute",
-      "path": "onprem/compute",
+    "aggregator": {
+      "name": "Aggregator",
+      "path": "onprem/aggregator",
       "resources": [
-         {"name": "Server", "file": "server.png", "type": "hardware"},
-         {"name": "Nomad", "file": "nomad.png", "type": "software"}
-      ]
-    },
-    "network": {
-      "name": "Network",
-      "path": "onprem/network",
-      "resources": [
-         {"name": "Router", "file": "router.png", "type": "hardware"},
-         {"name": "Switch", "file": "switch.png", "type": "hardware"},
-         {"name": "Firewall", "file": "firewall.png", "type": "hardware"},
-         {"name": "Load Balancer", "file": "load-balancer.png", "type": "hardware"},
-         {"name": "Gateway", "file": "gateway.png", "type": "hardware"},
-         {"name": "Access Point", "file": "access-point.png", "type": "hardware"},
-         {"name": "Network Interface Card", "file": "nic.png", "type": "hardware"},
-         {"name": "Cable", "file": "cable.png", "type": "hardware"}
-      ]
-    },
-    "storage": {
-      "name": "Storage",
-      "path": "onprem/storage",
-      "resources": [
-         {"name": "Storage Array", "file": "storage-array.png", "type": "hardware"},
-         {"name": "SAN", "file": "san.png", "type": "hardware"},
-         {"name": "NAS", "file": "nas.png", "type": "hardware"},
-         {"name": "Tape Library", "file": "tape-library.png", "type": "hardware"},
-         {"name": "JBOD", "file": "jbod.png", "type": "hardware"},
-         {"name": "RAID", "file": "raid.png", "type": "hardware"}
-      ]
-    },
-    "database": {
-      "name": "Database",
-      "path": "onprem/database",
-      "resources": [
-         {"name": "Database Server", "file": "database-server.png", "type": "software"},
-         {"name": "MySQL", "file": "mysql.png", "type": "software"},
-         {"name": "PostgreSQL", "file": "postgresql.png", "type": "software"},
-         {"name": "Oracle", "file": "oracle.png", "type": "software"},
-         {"name": "SQL Server", "file": "sql-server.png", "type": "software"},
-         {"name": "MongoDB", "file": "mongodb.png", "type": "software"},
-         {"name": "Redis", "file": "redis.png", "type": "software"},
-         {"name": "Elasticsearch", "file": "elasticsearch.png", "type": "software"}
+        {
+          "name": "Fluentd",
+          "file": "fluentd.png",
+          "type": "software"
+        },
+        {
+          "name": "Vector",
+          "file": "vector.png",
+          "type": "software"
+        }
       ]
     },
     "analytics": {
       "name": "Analytics",
       "path": "onprem/analytics",
       "resources": [
-         {"name": "Data Warehouse", "file": "data-warehouse.png", "type": "software"},
-         {"name": "Hadoop", "file": "hadoop.png", "type": "software"},
-         {"name": "Spark", "file": "spark.png", "type": "software"},
-         {"name": "Kafka", "file": "kafka.png", "type": "software"},
-         {"name": "Flink", "file": "flink.png", "type": "software"},
-         {"name": "Tableau", "file": "tableau.png", "type": "software"},
-         {"name": "Power BI", "file": "powerbi.png", "type": "software"},
-         {"name": "Qlik", "file": "qlik.png", "type": "software"},
-         {"name": "Looker", "file": "looker.png", "type": "software"},
-         {"name": "Grafana", "file": "grafana.png", "type": "software"},
-         {"name": "Kibana", "file": "kibana.png", "type": "software"},
-         {"name": "Superset", "file": "superset.png", "type": "software"},
-         {"name": "Metabase", "file": "metabase.png", "type": "software"},
-         {"name": "Redash", "file": "redash.png", "type": "software"},
-         {"name": "Apache Drill", "file": "drill.png", "type": "software"},
-         {"name": "Presto", "file": "presto.png", "type": "software"},
-         {"name": "Trino", "file": "trino.png", "type": "software"}
-      ]
-    },
-    "ci": {
-      "name": "Continuous Integration",
-      "path": "onprem/ci",
-      "resources": [
-         {"name": "Jenkins", "file": "jenkins.png", "type": "software"},
-         {"name": "GitLab CI", "file": "gitlab-ci.png", "type": "software"},
-         {"name": "Bamboo", "file": "bamboo.png", "type": "software"},
-         {"name": "TeamCity", "file": "teamcity.png", "type": "software"},
-         {"name": "CircleCI", "file": "circleci.png", "type": "software"},
-         {"name": "Travis CI", "file": "travis.png", "type": "software"},
-         {"name": "Drone", "file": "drone.png", "type": "software"},
-         {"name": "Concourse", "file": "concourse.png", "type": "software"},
-         {"name": "GoCD", "file": "gocd.png", "type": "software"}
-      ]
-    },
-    "cd": {
-      "name": "Continuous Deployment",
-      "path": "onprem/cd",
-      "resources": [
-         {"name": "Spinnaker", "file": "spinnaker.png", "type": "software"},
-         {"name": "Argo CD", "file": "argocd.png", "type": "software"},
-         {"name": "Flux", "file": "flux.png", "type": "software"},
-         {"name": "Rancher", "file": "rancher.png", "type": "software"}
+        {
+          "name": "Beam",
+          "file": "beam.png",
+          "type": "software"
+        },
+        {
+          "name": "Databricks",
+          "file": "databricks.png",
+          "type": "software"
+        },
+        {
+          "name": "dbt",
+          "file": "dbt.png",
+          "type": "software"
+        },
+        {
+          "name": "Dremio",
+          "file": "dremio.png",
+          "type": "software"
+        },
+        {
+          "name": "Flink",
+          "file": "flink.png",
+          "type": "software"
+        },
+        {
+          "name": "Hadoop",
+          "file": "hadoop.png",
+          "type": "software"
+        },
+        {
+          "name": "Hive",
+          "file": "hive.png",
+          "type": "software"
+        },
+        {
+          "name": "Metabase",
+          "file": "metabase.png",
+          "type": "software"
+        },
+        {
+          "name": "Norikra",
+          "file": "norikra.png",
+          "type": "software"
+        },
+        {
+          "name": "Power BI",
+          "file": "powerbi.png",
+          "type": "software"
+        },
+        {
+          "name": "Presto",
+          "file": "presto.png",
+          "type": "software"
+        },
+        {
+          "name": "Singer",
+          "file": "singer.png",
+          "type": "software"
+        },
+        {
+          "name": "Spark",
+          "file": "spark.png",
+          "type": "software"
+        },
+        {
+          "name": "Storm",
+          "file": "storm.png",
+          "type": "software"
+        },
+        {
+          "name": "Superset",
+          "file": "superset.png",
+          "type": "software"
+        },
+        {
+          "name": "Tableau",
+          "file": "tableau.png",
+          "type": "software"
+        },
+        {
+          "name": "Trino",
+          "file": "trino.png",
+          "type": "software"
+        }
       ]
     },
     "auth": {
       "name": "Authentication",
       "path": "onprem/auth",
       "resources": [
-         {"name": "Active Directory", "file": "active-directory.png", "type": "software"},
-         {"name": "LDAP", "file": "ldap.png", "type": "software"},
-         {"name": "Kerberos", "file": "kerberos.png", "type": "software"},
-         {"name": "FreeIPA", "file": "freeipa.png", "type": "software"}
+        {
+          "name": "Boundary",
+          "file": "boundary.png",
+          "type": "software"
+        },
+        {
+          "name": "BuzzFeed SSO",
+          "file": "buzzfeed-sso.png",
+          "type": "software"
+        },
+        {
+          "name": "OAuth2 Proxy",
+          "file": "oauth2-proxy.png",
+          "type": "software"
+        }
+      ]
+    },
+    "cd": {
+      "name": "Continuous Deployment",
+      "path": "onprem/cd",
+      "resources": [
+        {
+          "name": "Spinnaker",
+          "file": "spinnaker.png",
+          "type": "software"
+        },
+        {
+          "name": "Tekton CLI",
+          "file": "tekton-cli.png",
+          "type": "software"
+        },
+        {
+          "name": "Tekton",
+          "file": "tekton.png",
+          "type": "software"
+        }
+      ]
+    },
+    "certificates": {
+      "name": "Certificates",
+      "path": "onprem/certificates",
+      "resources": [
+        {
+          "name": "Cert Manager",
+          "file": "cert-manager.png",
+          "type": "software"
+        },
+        {
+          "name": "Let's Encrypt",
+          "file": "lets-encrypt.png",
+          "type": "software"
+        }
+      ]
+    },
+    "ci": {
+      "name": "CI/CD",
+      "path": "onprem/ci",
+      "resources": [
+        {
+          "name": "CircleCI",
+          "file": "circleci.png",
+          "type": "software"
+        },
+        {
+          "name": "Concourse CI",
+          "file": "concourseci.png",
+          "type": "software"
+        },
+        {
+          "name": "Drone CI",
+          "file": "droneci.png",
+          "type": "software"
+        },
+        {
+          "name": "GitHub Actions",
+          "file": "github-actions.png",
+          "type": "software"
+        },
+        {
+          "name": "GitLab CI",
+          "file": "gitlabci.png",
+          "type": "software"
+        },
+        {
+          "name": "Jenkins",
+          "file": "jenkins.png",
+          "type": "software"
+        },
+        {
+          "name": "TeamCity",
+          "file": "teamcity.png",
+          "type": "software"
+        },
+        {
+          "name": "Travis CI",
+          "file": "travisci.png",
+          "type": "software"
+        },
+        {
+          "name": "Zuul CI",
+          "file": "zuulci.png",
+          "type": "software"
+        }
+      ]
+    },
+    "client": {
+      "name": "Client",
+      "path": "onprem/client",
+      "resources": [
+        {
+          "name": "Client",
+          "file": "client.png",
+          "type": "client"
+        },
+        {
+          "name": "User",
+          "file": "user.png",
+          "type": "client"
+        },
+        {
+          "name": "Users",
+          "file": "users.png",
+          "type": "client"
+        }
+      ]
+    },
+    "compute": {
+      "name": "Compute",
+      "path": "onprem/compute",
+      "resources": [
+        {
+          "name": "Nomad",
+          "file": "nomad.png",
+          "type": "software"
+        },
+        {
+          "name": "Server",
+          "file": "server.png",
+          "type": "hardware"
+        }
+      ]
+    },
+    "container": {
+      "name": "Container",
+      "path": "onprem/container",
+      "resources": [
+        {
+          "name": "containerd",
+          "file": "containerd.png",
+          "type": "software"
+        },
+        {
+          "name": "CRI-O",
+          "file": "crio.png",
+          "type": "software"
+        },
+        {
+          "name": "Docker",
+          "file": "docker.png",
+          "type": "software"
+        },
+        {
+          "name": "Firecracker",
+          "file": "firecracker.png",
+          "type": "software"
+        },
+        {
+          "name": "gVisor",
+          "file": "gvisor.png",
+          "type": "software"
+        },
+        {
+          "name": "K3s",
+          "file": "k3s.png",
+          "type": "software"
+        },
+        {
+          "name": "LXC",
+          "file": "lxc.png",
+          "type": "software"
+        },
+        {
+          "name": "rkt",
+          "file": "rkt.png",
+          "type": "software"
+        }
+      ]
+    },
+    "database": {
+      "name": "Database",
+      "path": "onprem/database",
+      "resources": [
+        {
+          "name": "Cassandra",
+          "file": "cassandra.png",
+          "type": "software"
+        },
+        {
+          "name": "ClickHouse",
+          "file": "clickhouse.png",
+          "type": "software"
+        },
+        {
+          "name": "CockroachDB",
+          "file": "cockroachdb.png",
+          "type": "software"
+        },
+        {
+          "name": "CouchBase",
+          "file": "couchbase.png",
+          "type": "software"
+        },
+        {
+          "name": "CouchDB",
+          "file": "couchdb.png",
+          "type": "software"
+        },
+        {
+          "name": "DGraph",
+          "file": "dgraph.png",
+          "type": "software"
+        },
+        {
+          "name": "Druid",
+          "file": "druid.png",
+          "type": "software"
+        },
+        {
+          "name": "DuckDB",
+          "file": "duckdb.png",
+          "type": "software"
+        },
+        {
+          "name": "HBase",
+          "file": "hbase.png",
+          "type": "software"
+        },
+        {
+          "name": "InfluxDB",
+          "file": "influxdb.png",
+          "type": "software"
+        },
+        {
+          "name": "JanusGraph",
+          "file": "janusgraph.png",
+          "type": "software"
+        },
+        {
+          "name": "MariaDB",
+          "file": "mariadb.png",
+          "type": "software"
+        },
+        {
+          "name": "MongoDB",
+          "file": "mongodb.png",
+          "type": "software"
+        },
+        {
+          "name": "MS SQL",
+          "file": "mssql.png",
+          "type": "software"
+        },
+        {
+          "name": "MySQL",
+          "file": "mysql.png",
+          "type": "software"
+        },
+        {
+          "name": "Neo4j",
+          "file": "neo4j.png",
+          "type": "software"
+        },
+        {
+          "name": "Oracle",
+          "file": "oracle.png",
+          "type": "software"
+        },
+        {
+          "name": "PostgreSQL",
+          "file": "postgresql.png",
+          "type": "software"
+        },
+        {
+          "name": "Qdrant",
+          "file": "qdrant.png",
+          "type": "software"
+        },
+        {
+          "name": "Scylla",
+          "file": "scylla.png",
+          "type": "software"
+        }
+      ]
+    },
+    "dns": {
+      "name": "DNS",
+      "path": "onprem/dns",
+      "resources": [
+        {
+          "name": "CoreDNS",
+          "file": "coredns.png",
+          "type": "software"
+        },
+        {
+          "name": "PowerDNS",
+          "file": "powerdns.png",
+          "type": "software"
+        }
+      ]
+    },
+    "etl": {
+      "name": "ETL",
+      "path": "onprem/etl",
+      "resources": [
+        {
+          "name": "Embulk",
+          "file": "embulk.png",
+          "type": "software"
+        }
+      ]
+    },
+    "gitops": {
+      "name": "GitOps",
+      "path": "onprem/gitops",
+      "resources": [
+        {
+          "name": "Argo CD",
+          "file": "argocd.png",
+          "type": "software"
+        },
+        {
+          "name": "Flagger",
+          "file": "flagger.png",
+          "type": "software"
+        },
+        {
+          "name": "Flux",
+          "file": "flux.png",
+          "type": "software"
+        }
+      ]
+    },
+    "groupware": {
+      "name": "Groupware",
+      "path": "onprem/groupware",
+      "resources": [
+        {
+          "name": "Nextcloud",
+          "file": "nextcloud.png",
+          "type": "software"
+        }
+      ]
+    },
+    "iac": {
+      "name": "Infrastructure as Code",
+      "path": "onprem/iac",
+      "resources": [
+        {
+          "name": "Ansible",
+          "file": "ansible.png",
+          "type": "software"
+        },
+        {
+          "name": "Atlantis",
+          "file": "atlantis.png",
+          "type": "software"
+        },
+        {
+          "name": "AWX",
+          "file": "awx.png",
+          "type": "software"
+        },
+        {
+          "name": "Pulumi",
+          "file": "pulumi.png",
+          "type": "software"
+        },
+        {
+          "name": "Puppet",
+          "file": "puppet.png",
+          "type": "software"
+        },
+        {
+          "name": "Terraform",
+          "file": "terraform.png",
+          "type": "software"
+        }
+      ]
+    },
+    "identity": {
+      "name": "Identity",
+      "path": "onprem/identity",
+      "resources": [
+        {
+          "name": "Dex",
+          "file": "dex.png",
+          "type": "software"
+        }
+      ]
+    },
+    "inmemory": {
+      "name": "In-Memory",
+      "path": "onprem/inmemory",
+      "resources": [
+        {
+          "name": "Aerospike",
+          "file": "aerospike.png",
+          "type": "software"
+        },
+        {
+          "name": "Hazelcast",
+          "file": "hazelcast.png",
+          "type": "software"
+        },
+        {
+          "name": "Memcached",
+          "file": "memcached.png",
+          "type": "software"
+        },
+        {
+          "name": "Redis",
+          "file": "redis.png",
+          "type": "software"
+        }
+      ]
+    },
+    "logging": {
+      "name": "Logging",
+      "path": "onprem/logging",
+      "resources": [
+        {
+          "name": "Fluent Bit",
+          "file": "fluentbit.png",
+          "type": "software"
+        },
+        {
+          "name": "Graylog",
+          "file": "graylog.png",
+          "type": "software"
+        },
+        {
+          "name": "Loki",
+          "file": "loki.png",
+          "type": "software"
+        },
+        {
+          "name": "rsyslog",
+          "file": "rsyslog.png",
+          "type": "software"
+        },
+        {
+          "name": "syslog-ng",
+          "file": "syslog-ng.png",
+          "type": "software"
+        }
+      ]
+    },
+    "messaging": {
+      "name": "Messaging",
+      "path": "onprem/messaging",
+      "resources": [
+        {
+          "name": "Centrifugo",
+          "file": "centrifugo.png",
+          "type": "software"
+        }
+      ]
+    },
+    "mlops": {
+      "name": "MLOps",
+      "path": "onprem/mlops",
+      "resources": [
+        {
+          "name": "MLflow",
+          "file": "mlflow.png",
+          "type": "software"
+        },
+        {
+          "name": "Polyaxon",
+          "file": "polyaxon.png",
+          "type": "software"
+        }
       ]
     },
     "monitoring": {
       "name": "Monitoring",
       "path": "onprem/monitoring",
       "resources": [
-         {"name": "Nagios", "file": "nagios.png", "type": "software"},
-         {"name": "Zabbix", "file": "zabbix.png", "type": "software"},
-         {"name": "Prometheus", "file": "prometheus.png", "type": "software"},
-        {"name": "Grafana", "file": "grafana.png", "type": "software"},
-        {"name": "ELK Stack", "file": "elk-stack.png", "type": "software"},
-        {"name": "Splunk", "file": "splunk.png", "type": "software"},
-        {"name": "Datadog", "file": "datadog.png", "type": "software"},
-        {"name": "New Relic", "file": "newrelic.png", "type": "software"}
+        {
+          "name": "Cortex",
+          "file": "cortex.png",
+          "type": "software"
+        },
+        {
+          "name": "Datadog",
+          "file": "datadog.png",
+          "type": "software"
+        },
+        {
+          "name": "Dynatrace",
+          "file": "dynatrace.png",
+          "type": "software"
+        },
+        {
+          "name": "Grafana",
+          "file": "grafana.png",
+          "type": "software"
+        },
+        {
+          "name": "Humio",
+          "file": "humio.png",
+          "type": "software"
+        },
+        {
+          "name": "Mimir",
+          "file": "mimir.png",
+          "type": "software"
+        },
+        {
+          "name": "Nagios",
+          "file": "nagios.png",
+          "type": "software"
+        },
+        {
+          "name": "New Relic",
+          "file": "newrelic.png",
+          "type": "software"
+        },
+        {
+          "name": "Prometheus Operator",
+          "file": "prometheus-operator.png",
+          "type": "software"
+        },
+        {
+          "name": "Prometheus",
+          "file": "prometheus.png",
+          "type": "software"
+        },
+        {
+          "name": "Sentry",
+          "file": "sentry.png",
+          "type": "software"
+        },
+        {
+          "name": "Splunk",
+          "file": "splunk.png",
+          "type": "software"
+        },
+        {
+          "name": "Thanos",
+          "file": "thanos.png",
+          "type": "software"
+        },
+        {
+          "name": "Zabbix",
+          "file": "zabbix.png",
+          "type": "software"
+        }
+      ]
+    },
+    "network": {
+      "name": "Network",
+      "path": "onprem/network",
+      "resources": [
+        {
+          "name": "Ambassador",
+          "file": "ambassador.png",
+          "type": "software"
+        },
+        {
+          "name": "Apache",
+          "file": "apache.png",
+          "type": "software"
+        },
+        {
+          "name": "BIND 9",
+          "file": "bind-9.png",
+          "type": "software"
+        },
+        {
+          "name": "Caddy",
+          "file": "caddy.png",
+          "type": "software"
+        },
+        {
+          "name": "Cisco Router",
+          "file": "cisco-router.png",
+          "type": "software"
+        },
+        {
+          "name": "Cisco Switch L2",
+          "file": "cisco-switch-l2.png",
+          "type": "software"
+        },
+        {
+          "name": "Cisco Switch L3",
+          "file": "cisco-switch-l3.png",
+          "type": "software"
+        },
+        {
+          "name": "Consul",
+          "file": "consul.png",
+          "type": "software"
+        },
+        {
+          "name": "Envoy",
+          "file": "envoy.png",
+          "type": "software"
+        },
+        {
+          "name": "etcd",
+          "file": "etcd.png",
+          "type": "software"
+        },
+        {
+          "name": "GlassFish",
+          "file": "glassfish.png",
+          "type": "software"
+        },
+        {
+          "name": "Gunicorn",
+          "file": "gunicorn.png",
+          "type": "software"
+        },
+        {
+          "name": "HAProxy",
+          "file": "haproxy.png",
+          "type": "software"
+        },
+        {
+          "name": "Internet",
+          "file": "internet.png",
+          "type": "software"
+        },
+        {
+          "name": "Istio",
+          "file": "istio.png",
+          "type": "software"
+        },
+        {
+          "name": "JBoss AS",
+          "file": "jbossas.png",
+          "type": "software"
+        },
+        {
+          "name": "Jetty",
+          "file": "jetty.png",
+          "type": "software"
+        },
+        {
+          "name": "Kong",
+          "file": "kong.png",
+          "type": "software"
+        },
+        {
+          "name": "Linkerd",
+          "file": "linkerd.png",
+          "type": "software"
+        },
+        {
+          "name": "MikroTik",
+          "file": "mikrotik.png",
+          "type": "software"
+        },
+        {
+          "name": "Nginx",
+          "file": "nginx.png",
+          "type": "software"
+        },
+        {
+          "name": "Ocelot",
+          "file": "ocelot.png",
+          "type": "software"
+        },
+        {
+          "name": "Open Service Mesh",
+          "file": "open-service-mesh.png",
+          "type": "software"
+        },
+        {
+          "name": "OPNsense",
+          "file": "opnsense.png",
+          "type": "software"
+        },
+        {
+          "name": "pfSense",
+          "file": "pfsense.png",
+          "type": "software"
+        },
+        {
+          "name": "Pomerium",
+          "file": "pomerium.png",
+          "type": "software"
+        },
+        {
+          "name": "PowerDNS",
+          "file": "powerdns.png",
+          "type": "software"
+        },
+        {
+          "name": "Tomcat",
+          "file": "tomcat.png",
+          "type": "software"
+        },
+        {
+          "name": "Traefik",
+          "file": "traefik.png",
+          "type": "software"
+        },
+        {
+          "name": "Tyk",
+          "file": "tyk.png",
+          "type": "software"
+        },
+        {
+          "name": "VyOS",
+          "file": "vyos.png",
+          "type": "software"
+        },
+        {
+          "name": "WildFly",
+          "file": "wildfly.png",
+          "type": "software"
+        },
+        {
+          "name": "YARP",
+          "file": "yarp.png",
+          "type": "software"
+        },
+        {
+          "name": "Zookeeper",
+          "file": "zookeeper.png",
+          "type": "software"
+        }
+      ]
+    },
+    "proxmox": {
+      "name": "Proxmox",
+      "path": "onprem/proxmox",
+      "resources": [
+        {
+          "name": "Proxmox VE",
+          "file": "pve.png",
+          "type": "software"
+        }
+      ]
+    },
+    "queue": {
+      "name": "Message Queue",
+      "path": "onprem/queue",
+      "resources": [
+        {
+          "name": "ActiveMQ",
+          "file": "activemq.png",
+          "type": "software"
+        },
+        {
+          "name": "Celery",
+          "file": "celery.png",
+          "type": "software"
+        },
+        {
+          "name": "EMQX",
+          "file": "emqx.png",
+          "type": "software"
+        },
+        {
+          "name": "Kafka",
+          "file": "kafka.png",
+          "type": "software"
+        },
+        {
+          "name": "NATS",
+          "file": "nats.png",
+          "type": "software"
+        },
+        {
+          "name": "RabbitMQ",
+          "file": "rabbitmq.png",
+          "type": "software"
+        },
+        {
+          "name": "ZeroMQ",
+          "file": "zeromq.png",
+          "type": "software"
+        }
+      ]
+    },
+    "registry": {
+      "name": "Container Registry",
+      "path": "onprem/registry",
+      "resources": [
+        {
+          "name": "Harbor",
+          "file": "harbor.png",
+          "type": "software"
+        },
+        {
+          "name": "JFrog",
+          "file": "jfrog.png",
+          "type": "software"
+        }
+      ]
+    },
+    "search": {
+      "name": "Search",
+      "path": "onprem/search",
+      "resources": [
+        {
+          "name": "Solr",
+          "file": "solr.png",
+          "type": "software"
+        }
+      ]
+    },
+    "security": {
+      "name": "Security",
+      "path": "onprem/security",
+      "resources": [
+        {
+          "name": "Bitwarden",
+          "file": "bitwarden.png",
+          "type": "software"
+        },
+        {
+          "name": "Trivy",
+          "file": "trivy.png",
+          "type": "software"
+        },
+        {
+          "name": "Vault",
+          "file": "vault.png",
+          "type": "software"
+        }
+      ]
+    },
+    "storage": {
+      "name": "Storage",
+      "path": "onprem/storage",
+      "resources": [
+        {
+          "name": "Ceph OSD",
+          "file": "ceph-osd.png",
+          "type": "software"
+        },
+        {
+          "name": "Ceph",
+          "file": "ceph.png",
+          "type": "software"
+        },
+        {
+          "name": "GlusterFS",
+          "file": "glusterfs.png",
+          "type": "software"
+        },
+        {
+          "name": "Portworx",
+          "file": "portworx.png",
+          "type": "software"
+        }
+      ]
+    },
+    "tracing": {
+      "name": "Tracing",
+      "path": "onprem/tracing",
+      "resources": [
+        {
+          "name": "Jaeger",
+          "file": "jaeger.png",
+          "type": "software"
+        },
+        {
+          "name": "Tempo",
+          "file": "tempo.png",
+          "type": "software"
+        }
+      ]
+    },
+    "vcs": {
+      "name": "Version Control",
+      "path": "onprem/vcs",
+      "resources": [
+        {
+          "name": "Git",
+          "file": "git.png",
+          "type": "software"
+        },
+        {
+          "name": "Gitea",
+          "file": "gitea.png",
+          "type": "software"
+        },
+        {
+          "name": "GitHub",
+          "file": "github.png",
+          "type": "software"
+        },
+        {
+          "name": "GitLab",
+          "file": "gitlab.png",
+          "type": "software"
+        },
+        {
+          "name": "SVN",
+          "file": "svn.png",
+          "type": "software"
+        }
+      ]
+    },
+    "workflow": {
+      "name": "Workflow",
+      "path": "onprem/workflow",
+      "resources": [
+        {
+          "name": "Airflow",
+          "file": "airflow.png",
+          "type": "software"
+        },
+        {
+          "name": "Digdag",
+          "file": "digdag.png",
+          "type": "software"
+        },
+        {
+          "name": "Kubeflow",
+          "file": "kubeflow.png",
+          "type": "software"
+        },
+        {
+          "name": "NiFi",
+          "file": "nifi.png",
+          "type": "software"
+        }
       ]
     }
   }

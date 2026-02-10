@@ -1,106 +1,395 @@
 {
   "name": "Programming",
   "icon": "programming.png",
-  "totalResources": 76,
+  "totalResources": 73,
   "categories": {
-    "language": {
-      "name": "Programming Languages",
-      "path": "programming/language",
+    "flowchart": {
+      "name": "Flowchart",
+      "path": "programming/flowchart",
       "resources": [
-         {"name": "JavaScript", "file": "javascript.png", "type": "language"},
-         {"name": "TypeScript", "file": "typescript.png", "type": "language"},
-         {"name": "Python", "file": "python.png", "type": "language"},
-         {"name": "Java", "file": "java.png", "type": "language"},
-         {"name": "C++", "file": "cpp.png", "type": "language"},
-         {"name": "C#", "file": "csharp.png", "type": "language"},
-         {"name": "Go", "file": "go.png", "type": "language"},
-         {"name": "Rust", "file": "rust.png", "type": "language"},
-         {"name": "Ruby", "file": "ruby.png", "type": "language"},
-         {"name": "PHP", "file": "php.png", "type": "language"},
-         {"name": "Swift", "file": "swift.png", "type": "language"},
-         {"name": "Kotlin", "file": "kotlin.png", "type": "language"},
-         {"name": "Scala", "file": "scala.png", "type": "language"},
-         {"name": "R", "file": "r.png", "type": "language"},
-         {"name": "MATLAB", "file": "matlab.png", "type": "language"},
-         {"name": "Perl", "file": "perl.png", "type": "language"},
-         {"name": "Lua", "file": "lua.png", "type": "language"},
-         {"name": "Dart", "file": "dart.png", "type": "language"},
-         {"name": "Elixir", "file": "elixir.png", "type": "language"},
-         {"name": "Haskell", "file": "haskell.png", "type": "language"},
-         {"name": "Clojure", "file": "clojure.png", "type": "language"},
-         {"name": "F#", "file": "fsharp.png", "type": "language"},
-         {"name": "Objective-C", "file": "objectivec.png", "type": "language"}
+        {
+          "name": "Action",
+          "file": "action.png",
+          "type": "flowchart"
+        },
+        {
+          "name": "Collate",
+          "file": "collate.png",
+          "type": "flowchart"
+        },
+        {
+          "name": "Database",
+          "file": "database.png",
+          "type": "flowchart"
+        },
+        {
+          "name": "Decision",
+          "file": "decision.png",
+          "type": "flowchart"
+        },
+        {
+          "name": "Delay",
+          "file": "delay.png",
+          "type": "flowchart"
+        },
+        {
+          "name": "Display",
+          "file": "display.png",
+          "type": "flowchart"
+        },
+        {
+          "name": "Document",
+          "file": "document.png",
+          "type": "flowchart"
+        },
+        {
+          "name": "Input/Output",
+          "file": "input-output.png",
+          "type": "flowchart"
+        },
+        {
+          "name": "Inspection",
+          "file": "inspection.png",
+          "type": "flowchart"
+        },
+        {
+          "name": "Internal Storage",
+          "file": "internal-storage.png",
+          "type": "flowchart"
+        },
+        {
+          "name": "Loop Limit",
+          "file": "loop-limit.png",
+          "type": "flowchart"
+        },
+        {
+          "name": "Manual Input",
+          "file": "manual-input.png",
+          "type": "flowchart"
+        },
+        {
+          "name": "Manual Loop",
+          "file": "manual-loop.png",
+          "type": "flowchart"
+        },
+        {
+          "name": "Merge",
+          "file": "merge.png",
+          "type": "flowchart"
+        },
+        {
+          "name": "Multiple Documents",
+          "file": "multiple-documents.png",
+          "type": "flowchart"
+        },
+        {
+          "name": "Off-Page Connector (Left)",
+          "file": "off-page-connector-left.png",
+          "type": "flowchart"
+        },
+        {
+          "name": "Off-Page Connector (Right)",
+          "file": "off-page-connector-right.png",
+          "type": "flowchart"
+        },
+        {
+          "name": "Or",
+          "file": "or.png",
+          "type": "flowchart"
+        },
+        {
+          "name": "Predefined Process",
+          "file": "predefined-process.png",
+          "type": "flowchart"
+        },
+        {
+          "name": "Preparation",
+          "file": "preparation.png",
+          "type": "flowchart"
+        },
+        {
+          "name": "Sort",
+          "file": "sort.png",
+          "type": "flowchart"
+        },
+        {
+          "name": "Start/End",
+          "file": "start-end.png",
+          "type": "flowchart"
+        },
+        {
+          "name": "Stored Data",
+          "file": "stored-data.png",
+          "type": "flowchart"
+        },
+        {
+          "name": "Summing Junction",
+          "file": "summing-junction.png",
+          "type": "flowchart"
+        }
       ]
     },
     "framework": {
       "name": "Frameworks",
       "path": "programming/framework",
       "resources": [
-         {"name": "React", "file": "react.png", "type": "framework"},
-         {"name": "Vue.js", "file": "vue.png", "type": "framework"},
-         {"name": "Angular", "file": "angular.png", "type": "framework"},
-         {"name": "Next.js", "file": "nextjs.png", "type": "framework"},
-         {"name": "Nuxt.js", "file": "nuxtjs.png", "type": "framework"},
-         {"name": "Svelte", "file": "svelte.png", "type": "framework"},
-         {"name": "Express.js", "file": "express.png", "type": "framework"},
-         {"name": "FastAPI", "file": "fastapi.png", "type": "framework"},
-         {"name": "Django", "file": "django.png", "type": "framework"},
-         {"name": "Flask", "file": "flask.png", "type": "framework"},
-         {"name": "Spring Boot", "file": "springboot.png", "type": "framework"},
-         {"name": "Laravel", "file": "laravel.png", "type": "framework"},
-         {"name": "Ruby on Rails", "file": "rails.png", "type": "framework"},
-         {"name": "ASP.NET", "file": "aspnet.png", "type": "framework"},
-         {"name": "NestJS", "file": "nestjs.png", "type": "framework"},
-         {"name": "Gatsby", "file": "gatsby.png", "type": "framework"},
-         {"name": "Remix", "file": "remix.png", "type": "framework"},
-         {"name": "Solid.js", "file": "solid.png", "type": "framework"},
-         {"name": "Qwik", "file": "qwik.png", "type": "framework"},
-         {"name": "Astro", "file": "astro.png", "type": "framework"},
-         {"name": "Alpine.js", "file": "alpine.png", "type": "framework"},
-         {"name": "HTMX", "file": "htmx.png", "type": "framework"},
-         {"name": "Tailwind CSS", "file": "tailwind.png", "type": "framework"},
-         {"name": "Bootstrap", "file": "bootstrap.png", "type": "framework"},
-         {"name": "Material-UI", "file": "materialui.png", "type": "framework"}
+        {
+          "name": "Angular",
+          "file": "angular.png",
+          "type": "framework"
+        },
+        {
+          "name": "Backbone",
+          "file": "backbone.png",
+          "type": "framework"
+        },
+        {
+          "name": "Camel",
+          "file": "camel.png",
+          "type": "framework"
+        },
+        {
+          "name": "Django",
+          "file": "django.png",
+          "type": "framework"
+        },
+        {
+          "name": ".NET",
+          "file": "dotnet.png",
+          "type": "framework"
+        },
+        {
+          "name": "Ember",
+          "file": "ember.png",
+          "type": "framework"
+        },
+        {
+          "name": "Fastapi",
+          "file": "fastapi.png",
+          "type": "framework"
+        },
+        {
+          "name": "Flask",
+          "file": "flask.png",
+          "type": "framework"
+        },
+        {
+          "name": "Flutter",
+          "file": "flutter.png",
+          "type": "framework"
+        },
+        {
+          "name": "GraphQL",
+          "file": "graphql.png",
+          "type": "framework"
+        },
+        {
+          "name": "Hibernate",
+          "file": "hibernate.png",
+          "type": "framework"
+        },
+        {
+          "name": "Jhipster",
+          "file": "jhipster.png",
+          "type": "framework"
+        },
+        {
+          "name": "Laravel",
+          "file": "laravel.png",
+          "type": "framework"
+        },
+        {
+          "name": "Micronaut",
+          "file": "micronaut.png",
+          "type": "framework"
+        },
+        {
+          "name": "Next.js",
+          "file": "nextjs.png",
+          "type": "framework"
+        },
+        {
+          "name": "Phoenix",
+          "file": "phoenix.png",
+          "type": "framework"
+        },
+        {
+          "name": "Quarkus",
+          "file": "quarkus.png",
+          "type": "framework"
+        },
+        {
+          "name": "Rails",
+          "file": "rails.png",
+          "type": "framework"
+        },
+        {
+          "name": "React",
+          "file": "react.png",
+          "type": "framework"
+        },
+        {
+          "name": "Spring",
+          "file": "spring.png",
+          "type": "framework"
+        },
+        {
+          "name": "SQLPage",
+          "file": "sqlpage.png",
+          "type": "framework"
+        },
+        {
+          "name": "Starlette",
+          "file": "starlette.png",
+          "type": "framework"
+        },
+        {
+          "name": "Svelte",
+          "file": "svelte.png",
+          "type": "framework"
+        },
+        {
+          "name": "Vercel",
+          "file": "vercel.png",
+          "type": "framework"
+        },
+        {
+          "name": "Vue",
+          "file": "vue.png",
+          "type": "framework"
+        }
       ]
     },
-    "flowchart": {
-      "name": "Flowchart",
-      "path": "programming/flowchart",
+    "language": {
+      "name": "Programming Languages",
+      "path": "programming/language",
       "resources": [
-         {"name": "Start/End", "file": "start-end.png", "type": "flowchart"},
-         {"name": "Process", "file": "process.png", "type": "flowchart"},
-          {"name": "Decision", "file": "decision.png", "type": "flowchart"},
-          {"name": "Pyramid", "file": "pyramid.png", "type": "flowchart"},
-          {"name": "Input/Output", "file": "input-output.png", "type": "flowchart"},
-         {"name": "Subroutine", "file": "subroutine.png", "type": "flowchart"},
-         {"name": "Loop", "file": "loop.png", "type": "flowchart"},
-         {"name": "Connector", "file": "connector.png", "type": "flowchart"},
-         {"name": "Delay", "file": "delay.png", "type": "flowchart"},
-         {"name": "Preparation", "file": "preparation.png", "type": "flowchart"},
-         {"name": "Manual Operation", "file": "manual-operation.png", "type": "flowchart"},
-         {"name": "Display", "file": "display.png", "type": "flowchart"},
-         {"name": "Document", "file": "document.png", "type": "flowchart"},
-         {"name": "Data", "file": "data.png", "type": "flowchart"},
-         {"name": "Database", "file": "database.png", "type": "flowchart"},
-         {"name": "Hard Disk", "file": "hard-disk.png", "type": "flowchart"},
-         {"name": "Internal Storage", "file": "internal-storage.png", "type": "flowchart"},
-         {"name": "Manual Input", "file": "manual-input.png", "type": "flowchart"},
-         {"name": "Card", "file": "card.png", "type": "flowchart"},
-         {"name": "Paper Tape", "file": "paper-tape.png", "type": "flowchart"},
-         {"name": "Magnetic Tape", "file": "magnetic-tape.png", "type": "flowchart"},
-         {"name": "Magnetic Disk", "file": "magnetic-disk.png", "type": "flowchart"},
-         {"name": "Magnetic Drum", "file": "magnetic-drum.png", "type": "flowchart"},
-         {"name": "Offline Storage", "file": "offline-storage.png", "type": "flowchart"},
-         {"name": "Online Storage", "file": "online-storage.png", "type": "flowchart"}
+        {
+          "name": "Bash",
+          "file": "bash.png",
+          "type": "language"
+        },
+        {
+          "name": "C",
+          "file": "c.png",
+          "type": "language"
+        },
+        {
+          "name": "C++",
+          "file": "cpp.png",
+          "type": "language"
+        },
+        {
+          "name": "C#",
+          "file": "csharp.png",
+          "type": "language"
+        },
+        {
+          "name": "Dart",
+          "file": "dart.png",
+          "type": "language"
+        },
+        {
+          "name": "Elixir",
+          "file": "elixir.png",
+          "type": "language"
+        },
+        {
+          "name": "Erlang",
+          "file": "erlang.png",
+          "type": "language"
+        },
+        {
+          "name": "Go",
+          "file": "go.png",
+          "type": "language"
+        },
+        {
+          "name": "Java",
+          "file": "java.png",
+          "type": "language"
+        },
+        {
+          "name": "JavaScript",
+          "file": "javascript.png",
+          "type": "language"
+        },
+        {
+          "name": "Kotlin",
+          "file": "kotlin.png",
+          "type": "language"
+        },
+        {
+          "name": "LaTeX",
+          "file": "latex.png",
+          "type": "language"
+        },
+        {
+          "name": "MATLAB",
+          "file": "matlab.png",
+          "type": "language"
+        },
+        {
+          "name": "Node.js",
+          "file": "nodejs.png",
+          "type": "language"
+        },
+        {
+          "name": "PHP",
+          "file": "php.png",
+          "type": "language"
+        },
+        {
+          "name": "Python",
+          "file": "python.png",
+          "type": "language"
+        },
+        {
+          "name": "R",
+          "file": "r.png",
+          "type": "language"
+        },
+        {
+          "name": "Ruby",
+          "file": "ruby.png",
+          "type": "language"
+        },
+        {
+          "name": "Rust",
+          "file": "rust.png",
+          "type": "language"
+        },
+        {
+          "name": "Scala",
+          "file": "scala.png",
+          "type": "language"
+        },
+        {
+          "name": "SQL",
+          "file": "sql.png",
+          "type": "language"
+        },
+        {
+          "name": "Swift",
+          "file": "swift.png",
+          "type": "language"
+        },
+        {
+          "name": "TypeScript",
+          "file": "typescript.png",
+          "type": "language"
+        }
       ]
     },
     "runtime": {
       "name": "Runtime",
       "path": "programming/runtime",
       "resources": [
-         {"name": "Node.js", "file": "nodejs.png", "type": "runtime"},
-         {"name": "Deno", "file": "deno.png", "type": "runtime"},
-         {"name": "Bun", "file": "bun.png", "type": "runtime"}
+        {
+          "name": "DAPR",
+          "file": "dapr.png",
+          "type": "runtime"
+        }
       ]
     }
   }

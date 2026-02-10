@@ -1,60 +1,249 @@
 {
   "name": "Kubernetes",
   "icon": "k8s.png",
-  "totalResources": 24,
+  "totalResources": 39,
   "categories": {
     "compute": {
       "name": "Compute",
       "path": "k8s/compute",
       "resources": [
-         {"name": "Kubernetes", "file": "kubernetes.png", "type": "service"},
-         {"name": "Pod", "file": "pod.png", "type": "resource"},
-         {"name": "Deployment", "file": "deploy.png", "type": "resource"},
-         {"name": "StatefulSet", "file": "sts.png", "type": "resource"},
-         {"name": "DaemonSet", "file": "ds.png", "type": "resource"},
-         {"name": "Job", "file": "job.png", "type": "resource"},
-         {"name": "CronJob", "file": "cronjob.png", "type": "resource"},
-         {"name": "ReplicaSet", "file": "rs.png", "type": "resource"}
-      ]
-    },
-    "network": {
-      "name": "Networking",
-      "path": "k8s/network",
-      "resources": [
-         {"name": "Service", "file": "svc.png", "type": "resource"},
-         {"name": "Ingress", "file": "ing.png", "type": "resource"},
-         {"name": "NetworkPolicy", "file": "netpol.png", "type": "resource"},
-         {"name": "Endpoint", "file": "ep.png", "type": "resource"}
-      ]
-    },
-    "storage": {
-      "name": "Storage",
-      "path": "k8s/storage",
-      "resources": [
-         {"name": "PersistentVolume", "file": "pv.png", "type": "resource"},
-         {"name": "PersistentVolumeClaim", "file": "pvc.png", "type": "resource"},
-         {"name": "StorageClass", "file": "sc.png", "type": "resource"},
-         {"name": "Volume", "file": "vol.png", "type": "resource"}
+        {
+          "name": "CronJob",
+          "file": "k8s/resources/labeled/cronjob.svg",
+          "type": "resource"
+        },
+        {
+          "name": "Deployment",
+          "file": "k8s/resources/labeled/deploy.svg",
+          "type": "resource"
+        },
+        {
+          "name": "DaemonSet",
+          "file": "k8s/resources/labeled/ds.svg",
+          "type": "resource"
+        },
+        {
+          "name": "Job",
+          "file": "k8s/resources/labeled/job.svg",
+          "type": "resource"
+        },
+        {
+          "name": "Pod",
+          "file": "k8s/resources/labeled/pod.svg",
+          "type": "resource"
+        },
+        {
+          "name": "ReplicaSet",
+          "file": "k8s/resources/labeled/rs.svg",
+          "type": "resource"
+        },
+        {
+          "name": "StatefulSet",
+          "file": "k8s/resources/labeled/sts.svg",
+          "type": "resource"
+        }
       ]
     },
     "config": {
       "name": "Configuration",
-      "path": "k8s/podconfig",
+      "path": "k8s/config",
       "resources": [
-         {"name": "ConfigMap", "file": "cm.png", "type": "resource"},
-         {"name": "Secret", "file": "secret.png", "type": "resource"}
+        {
+          "name": "ConfigMap",
+          "file": "k8s/resources/labeled/cm.svg",
+          "type": "resource"
+        },
+        {
+          "name": "Namespace",
+          "file": "k8s/resources/labeled/ns.svg",
+          "type": "resource"
+        },
+        {
+          "name": "ServiceAccount",
+          "file": "k8s/resources/labeled/sa.svg",
+          "type": "resource"
+        },
+        {
+          "name": "Secret",
+          "file": "k8s/resources/labeled/secret.svg",
+          "type": "resource"
+        }
       ]
     },
     "controlplane": {
       "name": "Control Plane",
       "path": "k8s/controlplane",
       "resources": [
-         {"name": "API Server", "file": "api.png", "type": "component"},
-         {"name": "Scheduler", "file": "sched.png", "type": "component"},
-         {"name": "Controller Manager", "file": "c-m.png", "type": "component"},
-         {"name": "Cloud Controller Manager", "file": "c-c-m.png", "type": "component"},
-         {"name": "kube-proxy", "file": "k-proxy.png", "type": "component"},
-         {"name": "kubelet", "file": "kubelet.png", "type": "component"}
+        {
+          "name": "API Server",
+          "file": "k8s/control_plane_components/labeled/api.svg",
+          "type": "component"
+        },
+        {
+          "name": "Cloud Controller Manager",
+          "file": "k8s/control_plane_components/labeled/c-c-m.svg",
+          "type": "component"
+        },
+        {
+          "name": "Controller Manager",
+          "file": "k8s/control_plane_components/labeled/c-m.svg",
+          "type": "component"
+        },
+        {
+          "name": "kube-proxy",
+          "file": "k8s/control_plane_components/labeled/k-proxy.svg",
+          "type": "component"
+        },
+        {
+          "name": "kubelet",
+          "file": "k8s/control_plane_components/labeled/kubelet.svg",
+          "type": "component"
+        },
+        {
+          "name": "Scheduler",
+          "file": "k8s/control_plane_components/labeled/sched.svg",
+          "type": "component"
+        }
+      ]
+    },
+    "extensions": {
+      "name": "Extensions",
+      "path": "k8s/extensions",
+      "resources": [
+        {
+          "name": "CustomResourceDefinition",
+          "file": "k8s/resources/labeled/crd.svg",
+          "type": "resource"
+        },
+        {
+          "name": "HorizontalPodAutoscaler",
+          "file": "k8s/resources/labeled/hpa.svg",
+          "type": "resource"
+        },
+        {
+          "name": "LimitRange",
+          "file": "k8s/resources/labeled/limits.svg",
+          "type": "resource"
+        },
+        {
+          "name": "PodSecurityPolicy",
+          "file": "k8s/resources/labeled/psp.svg",
+          "type": "resource"
+        },
+        {
+          "name": "ResourceQuota",
+          "file": "k8s/resources/labeled/quota.svg",
+          "type": "resource"
+        }
+      ]
+    },
+    "infrastructure": {
+      "name": "Infrastructure",
+      "path": "k8s/infrastructure",
+      "resources": [
+        {
+          "name": "Control Plane",
+          "file": "k8s/infrastructure_components/labeled/control-plane.svg",
+          "type": "component"
+        },
+        {
+          "name": "etcd",
+          "file": "k8s/infrastructure_components/labeled/etcd.svg",
+          "type": "component"
+        },
+        {
+          "name": "Node",
+          "file": "k8s/infrastructure_components/labeled/node.svg",
+          "type": "component"
+        }
+      ]
+    },
+    "network": {
+      "name": "Networking",
+      "path": "k8s/network",
+      "resources": [
+        {
+          "name": "Endpoint",
+          "file": "k8s/resources/labeled/ep.svg",
+          "type": "resource"
+        },
+        {
+          "name": "Ingress",
+          "file": "k8s/resources/labeled/ing.svg",
+          "type": "resource"
+        },
+        {
+          "name": "NetworkPolicy",
+          "file": "k8s/resources/labeled/netpol.svg",
+          "type": "resource"
+        },
+        {
+          "name": "Service",
+          "file": "k8s/resources/labeled/svc.svg",
+          "type": "resource"
+        }
+      ]
+    },
+    "rbac": {
+      "name": "RBAC",
+      "path": "k8s/rbac",
+      "resources": [
+        {
+          "name": "ClusterRole",
+          "file": "k8s/resources/labeled/c-role.svg",
+          "type": "resource"
+        },
+        {
+          "name": "ClusterRoleBinding",
+          "file": "k8s/resources/labeled/crb.svg",
+          "type": "resource"
+        },
+        {
+          "name": "Group",
+          "file": "k8s/resources/labeled/group.svg",
+          "type": "resource"
+        },
+        {
+          "name": "RoleBinding",
+          "file": "k8s/resources/labeled/rb.svg",
+          "type": "resource"
+        },
+        {
+          "name": "Role",
+          "file": "k8s/resources/labeled/role.svg",
+          "type": "resource"
+        },
+        {
+          "name": "User",
+          "file": "k8s/resources/labeled/user.svg",
+          "type": "resource"
+        }
+      ]
+    },
+    "storage": {
+      "name": "Storage",
+      "path": "k8s/storage",
+      "resources": [
+        {
+          "name": "PersistentVolume",
+          "file": "k8s/resources/labeled/pv.svg",
+          "type": "resource"
+        },
+        {
+          "name": "PersistentVolumeClaim",
+          "file": "k8s/resources/labeled/pvc.svg",
+          "type": "resource"
+        },
+        {
+          "name": "StorageClass",
+          "file": "k8s/resources/labeled/sc.svg",
+          "type": "resource"
+        },
+        {
+          "name": "Volume",
+          "file": "k8s/resources/labeled/vol.svg",
+          "type": "resource"
+        }
       ]
     }
   }
