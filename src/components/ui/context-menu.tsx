@@ -20,8 +20,6 @@ interface ContextMenuProps {
   itemType?: 'node' | 'zone';
   itemId?: string;
   nodeType?: string;
-  onToggleFreeflow?: () => void;
-  isFreeflow?: boolean;
   onTextStyling?: () => void;
   onVisualStyling?: () => void;
   onLineStyling?: () => void;
@@ -71,8 +69,6 @@ export function ContextMenu({
   connections = [],
   itemType = 'node',
   nodeType,
-  onToggleFreeflow,
-  isFreeflow = false,
   onTextStyling,
   onVisualStyling,
   onLineStyling,
@@ -437,23 +433,6 @@ export function ContextMenu({
             </div>
           )}
         </div>
-      )}
-
-      {itemType === 'node' && nodeType && !isShapeNodeType(nodeType) && !isLineNodeType(nodeType) && (
-        <>
-          <div className="border-t border-border my-1" />
-          
-          <button
-            className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
-            onClick={() => {
-              onToggleFreeflow?.();
-              onClose();
-            }}
-          >
-            <Move3D className="w-4 h-4" />
-            {isFreeflow ? 'Disable Freeflow' : 'Enable Freeflow'}
-          </button>
-        </>
       )}
 
       {(itemType === 'node' || itemType === 'zone') && !isLineNodeType(nodeType) && (

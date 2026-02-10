@@ -25,7 +25,6 @@ interface UseCanvasOperationsOptions {
   onItemSelect: (item: any | null) => void;
   toast: (options: { variant?: 'destructive' | 'default'; title: string; description: string }) => void;
   iconBackgroundEnabled?: boolean;
-  defaultFreeflowEnabled?: boolean;
 }
 
 export function useCanvasOperations({
@@ -35,7 +34,6 @@ export function useCanvasOperations({
   onItemSelect,
   toast,
   iconBackgroundEnabled = true,
-  defaultFreeflowEnabled = false,
 }: UseCanvasOperationsOptions) {
   // Function to get random theme for shapes
   const getRandomTheme = () => {
@@ -156,7 +154,7 @@ export function useCanvasOperations({
       } else if (!existingNode) {
         // For resource items from the sidebar, use type from drag item
         // NEVER store file in node - ResourceIcon looks up file from resource catalog
-        // Special handling for shape resources - make them resizable and freeflow
+        // Special handling for shape resources - make them resizable
         const newNode: DiagramNodeData = {
           id: generateSequentialId(itemType, prevData),
           type: itemType,
@@ -166,7 +164,6 @@ export function useCanvasOperations({
           ...(itemType !== 'generic.text.text' && itemType !== 'generic.text.textbox' && !isShapeResource && {
             info: item.provider ? `${itemLabel} from ${item.provider}` : `A new ${itemLabel}`
           }),
-          freeflow: isShapeResource ? true : (defaultFreeflowEnabled ? true : false), // Shapes are always freeflow, otherwise use default preference
           sizeMode: (isShapeResource || isTextboxResource) ? 'custom' : undefined, // Shapes and textboxes use custom sizing
            width: isShapeResource ? (
              itemType === 'generic.object.point' ? 20 :
@@ -228,11 +225,11 @@ export function useCanvasOperations({
         newItemId = newNode.id;
       }
       
-      // Don't add freeflow shape nodes to groups
+      // All nodes/zones use free placement - never auto-add to groups on drop
       const addedItem = newNodes.find(n => n.id === newItemId) || newZones.find(zone => zone.id === newItemId);
-      const isFreeflowShape = ((addedItem as any)?.freeflow === true || isShapeNodeType((addedItem as any)?.type)) && isShapeResource;
+      const shouldAddToGroup = false; // Disabled: objects always placed at drop position
       
-      if (targetGroupId && !isFreeflowShape) {
+      if (shouldAddToGroup && targetGroupId && addedItem) {
         // Get the target zone to calculate relative position
         const targetZone = newZones.find(z => z.id === targetGroupId);
         if (targetZone && addedItem) {
@@ -298,14 +295,11 @@ export function useCanvasOperations({
           return obstacles.some(o => !(x + rectA.width <= o.x || o.x + o.width <= x || y + rectA.height <= o.y || o.y + o.height <= y));
         };
 
-        // Check if the new node should be freeflow (skip overlap prevention)
-        const addedItem = newNodes.find(n => n.id === newItemId) || newZones.find(zone => zone.id === newItemId);
-        const isFreeflowNewItem = (addedItem as any)?.freeflow || isShapeNodeType((addedItem as any)?.type);
-
-        // nudge search (spiral-ish) up to 50 attempts (skip for freeflow items)
+        const addedItemForPos = newNodes.find(n => n.id === newItemId) || newZones.find(zone => zone.id === newItemId);
+        // All items use free placement - skip overlap nudging
         const dirs = [ [1,0],[0,1],[-1,0],[0,-1] ];
         let step = 1; let attempts = 0; let dirIdx = 0; let movesInDir = 0; let changes = 0;
-        while (!isFreeflowNewItem && isOverlapAt(posX, posY) && attempts < 50) {
+        while (false && isOverlapAt(posX, posY) && attempts < 50) {
           // Use 10px increments for nudging (smaller step size)
           const nudgeStep = 10;
           posX += dirs[dirIdx][0] * nudgeStep;
@@ -318,9 +312,9 @@ export function useCanvasOperations({
           attempts++;
         }
 
-        if (addedItem) {
-          (addedItem as any).x = posX;
-          (addedItem as any).y = posY;
+        if (addedItemForPos) {
+          (addedItemForPos as any).x = posX;
+          (addedItemForPos as any).y = posY;
         }
       }
 
@@ -547,7 +541,7 @@ export function useCanvasOperations({
         
         const oldParentId = currentZones.find(zone => zone.children.includes(item.id))?.id;
         const node = currentNodes.find(n => n.id === item.id);
-        const isFreeflowNode = node?.freeflow || isShapeNodeType(node?.type || '');
+        const isFreeflowNode = true; // All nodes use free placement
 
         // Handle re-parenting
         if (oldParentId !== targetGroupId) {
@@ -704,9 +698,7 @@ export function useCanvasOperations({
         }
       }
 
-      // Check if item is a freeflow node (shapes are always freeflow)
-      const node = currentNodes.find(n => n.id === item.id);
-      const isFreeflowNode = node?.freeflow || isShapeNodeType(node?.type || '');
+      const isFreeflowNode = true; // All nodes use free placement
 
       // If target is a group and item is NOT freeflow, set ordering within that group (reorder or insert)
       if (targetGroupId && !isFreeflowNode) {
@@ -763,12 +755,9 @@ export function useCanvasOperations({
   
       // Handle positioning
       if (item.type === ItemTypes.CANVAS_NODE || item.type === ItemTypes.ZONE) {
-        // Check if item is a freeflow node (shapes are always freeflow)
-        const node = currentNodes.find(n => n.id === item.id);
-        const isFreeflowNode = node?.freeflow || isShapeNodeType(node?.type || '');
+        const isFreeflowNode = true; // All nodes use free placement
 
-        // If item is (now) a child and NOT freeflow, its position is auto-calculated, so remove explicit coords.
-        // Freeflow nodes always maintain their coordinates even if dropped over a group.
+        // All nodes maintain their coordinates (free placement within grid)
         if (targetGroupId && !isFreeflowNode) {
           if (item.type === ItemTypes.CANVAS_NODE) {
             currentNodes = currentNodes.map(n => n.id === item.id ? { ...n, x: undefined, y: undefined } : n);
@@ -815,8 +804,8 @@ export function useCanvasOperations({
             return obstacles.some(o => !(x + rectA.width <= o.x || o.x + o.width <= x || y + rectA.height <= o.y || o.y + o.height <= y));
           };
 
-          // Skip overlap prevention for freeflow nodes
-          if (!isFreeflowNode && isOverlapAt(snappedX, snappedY)) {
+          // Overlap allowed - all nodes use free placement within grid
+          if (false && isOverlapAt(snappedX, snappedY)) {
             // Abort move if overlapping; user must choose a free grid cell
             return prevData;
           }

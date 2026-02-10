@@ -81,8 +81,6 @@ This document outlines all required libraries and dependencies to build and run 
 - **lucide-react**: ^0.475.0 - Icon library
 - **html-to-image**: ^1.11.13 - Convert DOM to image
 - **dotenv**: ^16.5.0 - Environment variable management
-- **patch-package**: ^8.0.0 - Package patching utility
-
 ### Data Visualization & UI Components
 - **recharts**: ^2.15.1 - Chart library
 - **react-resizable-panels**: ^3.0.6 - Resizable panel components

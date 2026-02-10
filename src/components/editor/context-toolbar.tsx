@@ -15,7 +15,6 @@ import {
   AlignVerticalJustifyStart,
   AlignVerticalJustifyCenter,
   AlignVerticalJustifyEnd,
-  Move3D,
   Image as ImageIcon,
   RotateCw,
   GripVertical,
@@ -574,12 +573,6 @@ export function ContextToolbar({
   };
 
 
-
-  const toggleFreeflow = () => {
-    if (selectedItem.itemType === 'node') {
-      onItemUpdate?.({ ...selectedItem, freeflow: !selectedItem.freeflow } as SelectedItem);
-    }
-  };
 
   const toggleNoIconBackground = () => {
     if (!selectedItem) return;
@@ -2081,23 +2074,6 @@ export function ContextToolbar({
 
 
 
-
-        {/* Freeflow Toggle (Nodes) - Hidden for shape nodes */}
-        {isNode && !isShapeNode && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                variant={(selectedItem as any).freeflow ? "default" : "ghost"} 
-                size="sm" 
-                className="h-8 px-2"
-                onClick={toggleFreeflow}
-              >
-                <Move3D className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Freeflow Mode</TooltipContent>
-          </Tooltip>
-        )}
 
         {/* Remove Icon Background (Non-text, non-shape nodes) */}
         {isNode && !isTextNode && !isShapeNode && (

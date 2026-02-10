@@ -395,28 +395,19 @@ function layoutZone(
   allItems: { [id: string]: DiagramNodeData | DiagramZoneData | PositionedNode | PositionedGroup },
   measureNodeDimsFn: (n: PositionedNode) => { width: number; height: number }
 ): { width: number; height: number } {
-  // Check if zone contains freeflow nodes with absolute positions - treat as free layout
+  // Check if zone contains nodes with explicit positions - treat as free layout and preserve them
   const checkChildNodes = zone.children
     .map((id: string) => allItems[id])
     .filter(Boolean)
     .filter((c: any) => !c.type || c.type !== 'zone') as DiagramNodeData[];
   
-  const hasFreeflowWithAbsolutePositions = checkChildNodes.some(node => 
-    node.freeflow === true && 
-    ((node.x !== undefined && node.x !== null) || (node.y !== undefined && node.y !== null))
-  );
-  
-  // Check if any nodes have explicit positions set (relative positions from user drops)
-  // If nodes have positions set, preserve them instead of applying grid layout
-  const hasNodesWithPositions = checkChildNodes.some(node => 
+  const hasNodesWithExplicitPositions = checkChildNodes.some(node => 
     (node.x !== undefined && node.x !== null) && 
-    (node.y !== undefined && node.y !== null) &&
-    !node.freeflow // Regular nodes with positions should be preserved
+    (node.y !== undefined && node.y !== null)
   );
   
-  // If zone has free layout mode, circular layout, contains freeflow nodes with absolute positions,
-  // or has nodes with explicit positions, respect existing positions and just calculate size
-  if (zone.layoutMode === 'free' || zone.layoutType === 'circular' || hasFreeflowWithAbsolutePositions || hasNodesWithPositions) {
+  // If zone has free layout mode, circular layout, or nodes with explicit positions, respect existing positions
+  if (zone.layoutMode === 'free' || zone.layoutType === 'circular' || hasNodesWithExplicitPositions) {
     const childNodes = zone.children
       .map((id: string) => allItems[id])
       .filter(Boolean)
@@ -485,11 +476,10 @@ function layoutZone(
 
     // Shift children to align them within the bounds
     // For circular zones: DO NOT modify child positions - they are already set by applyZoneLayout
-    // For free layout zones: align with padding, BUT preserve positions for freeflow nodes and nodes with explicit positions
-    if (zone.layoutMode === 'free' || hasFreeflowWithAbsolutePositions || hasNodesWithPositions) {
-        // If zone was treated as free layout due to freeflow nodes with absolute positions or nodes with positions, never shift
-        // Only shift if it's explicitly free layout mode without positioned nodes
-        if (zone.layoutMode === 'free' && !hasFreeflowWithAbsolutePositions && !hasNodesWithPositions) {
+    // For free layout zones: align with padding, BUT preserve positions when nodes have explicit positions
+    if (zone.layoutMode === 'free' || hasNodesWithExplicitPositions) {
+        // If zone has nodes with explicit positions, never shift - preserve their positions
+        if (zone.layoutMode === 'free' && !hasNodesWithExplicitPositions) {
             const shiftX = ZONE_PADDING - minX;
             const shiftY = ZONE_PADDING - minY;
 
@@ -500,7 +490,7 @@ function layoutZone(
                 });
             }
         }
-        // If hasFreeflowWithAbsolutePositions or hasNodesWithPositions is true, positions should be preserved - don't shift
+        // If hasNodesWithExplicitPositions is true, positions should be preserved - don't shift
     }
     // For circular zones, we do NOT modify child positions here
     // They are already correctly positioned relative to zone by applyZoneLayout
@@ -979,8 +969,6 @@ function setAbsolutePositionsForZone(
       const zoneY = zone.y ?? 0;
       
       // Always convert relative to absolute for nodes that are children of zones
-      // The only exception is freeflow nodes that might have absolute positions,
-      // but those shouldn't be in zones anyway (they're filtered out in addNode)
       child.x = currentX + zoneX;
       child.y = currentY + zoneY;
     }

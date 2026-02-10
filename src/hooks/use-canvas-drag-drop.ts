@@ -6,7 +6,6 @@ import type { Transform } from "./use-canvas-transform";
 import type { PositionedNode, PositionedGroup } from "@/components/editor/canvas-constants";
 import type { DiagramData } from "@/lib/types";
 import { getItemGroup, getGroupMembers } from "@/lib/grouping-utils";
-import { isShapeNodeType } from "@/lib/utils";
 
 type DropItem = { 
   id?: string; 
@@ -182,13 +181,11 @@ export function useCanvasDragDrop({
         onDraggingChange?.(true);
       }
 
-      // Check if item is a freeflow node (shapes are always freeflow)
-      const isFreeflowNode = item.id && (nodesById[item.id]?.freeflow || isShapeNodeType(item.type || ''));
-
+      // All nodes use free placement - never add to zones on drop
+      const isFreeflowNode = true;
       let targetGroupId: string | null = null;
 
-      // Only check for group highlighting if item is NOT a freeflow node
-      if (!isFreeflowNode) {
+      if (false) { // Zone highlighting disabled - all nodes use free placement
         // Collect all candidate zones that contain the point, then prefer the
         // smallest one (so child zones win over parents when nested).
         const candidateZones: { id: string; area: number }[] = [];
@@ -212,7 +209,7 @@ export function useCanvasDragDrop({
                 return childZone ? checkDescendants(childZone.id) : false;
               });
             };
-            isAncestor = checkDescendants(item.id);
+            isAncestor = checkDescendants(item.id!);
           }
           if (isAncestor) continue;
 
@@ -297,9 +294,8 @@ export function useCanvasDragDrop({
         return;
       }
 
-      // Check if item is a freeflow node (shapes are always freeflow)
-      const isFreeflowNode = item.id && (nodesById[item.id]?.freeflow || isShapeNodeType(item.type || ''));
-      const targetGroupIdForFreeflow = isFreeflowNode ? null : hoveredGroupId;
+      // All nodes use free placement - never add to zones on drop
+      const targetGroupIdForFreeflow: string | null = null;
       
       if (itemType === ItemTypes.DIAGRAM_NODE) { 
         // Pass full item data to preserve resource information

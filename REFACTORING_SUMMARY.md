@@ -40,7 +40,6 @@ Successfully refactored the `editor-canvas.tsx` file by extracting functionality
   - Clipboard state
   - Copy/paste operations
   - Multi-item clipboard support
-  - Freeflow toggle
 
 - **`src/hooks/use-canvas-export.ts`** (143 lines)
   - PNG export functionality

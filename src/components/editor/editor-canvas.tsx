@@ -71,7 +71,6 @@ interface EditorCanvasProps {
   hoverEnabled?: boolean;
   selectionAnimationEnabled?: boolean;
   iconBackgroundEnabled?: boolean;
-  defaultFreeflowEnabled?: boolean;
   onSelectAll?: () => void;
   onTriggerTextStylingPanel?: () => void;
   onTriggerVisualStylingPanel?: () => void;
@@ -109,7 +108,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, externalTransform,      onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, selectionAnimationEnabled = false, iconBackgroundEnabled = true, defaultFreeflowEnabled = false, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true }: EditorCanvasProps,
+   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, externalTransform,      onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, selectionAnimationEnabled = false, iconBackgroundEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true }: EditorCanvasProps,
   ref
 ) {
   // ============================================================================
@@ -497,7 +496,6 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     onItemSelect,
     toast,
     iconBackgroundEnabled,
-    defaultFreeflowEnabled,
   });
 
   // Wrapper functions for multi-item resize
@@ -753,10 +751,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   // Handles copy, paste, and clipboard operations
   // - handleCopy: Copies selected item(s) to clipboard
   // - handlePaste: Pastes clipboard content at mouse position
-  // - handleToggleFreeflow: Toggles freeflow mode for nodes
   // - canPaste: Checks if clipboard has content to paste
   // See: src/hooks/use-canvas-clipboard.ts
-  const { clipboard, handleCopy, handlePaste, handleToggleFreeflow, canPaste } = useCanvasClipboard({
+  const { clipboard, handleCopy, handlePaste, canPaste } = useCanvasClipboard({
     diagramData,
     selectedItemIds,
     setDiagramData,
@@ -1535,13 +1532,6 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               closeContextMenu();
             }}
             nodeType={contextMenu.itemType === 'node' ? (diagramData.nodes.find(n => n.id === contextMenu.itemId)?.type) : undefined}
-            onToggleFreeflow={() => {
-              if (contextMenu.itemType === 'node') {
-                handleToggleFreeflow(contextMenu.itemId);
-              }
-              closeContextMenu();
-            }}
-            isFreeflow={contextMenu.itemType === 'node' ? (diagramData.nodes.find(n => n.id === contextMenu.itemId)?.freeflow || false) : false}
             onToggleLock={() => {
               if (contextMenu.itemType === 'node') {
                 const node = diagramData.nodes.find(n => n.id === contextMenu.itemId);

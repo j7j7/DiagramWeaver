@@ -301,30 +301,6 @@ export function useCanvasClipboard({
     }
   }, [selectedItemIds, diagramData, onClipboardChange, toast]);
 
-  const handleToggleFreeflow = useCallback((itemId: string) => {
-    const node = diagramData.nodes.find(n => n.id === itemId);
-    if (node) {
-      const newFreeflowState = !(node.freeflow || false);
-      setDiagramData(prev => ({
-        ...prev,
-        nodes: prev.nodes.map(n => 
-          n.id === itemId ? { ...n, freeflow: newFreeflowState } : n
-        )
-      }));
-
-      // Update selected item if it's the one being toggled
-      const selectedItem = diagramData.nodes.find(n => n.id === itemId);
-      if (selectedItem) {
-        onItemSelect({ ...selectedItem, itemType: 'node', freeflow: newFreeflowState });
-      }
-
-      toast({
-        title: `Freeflow ${newFreeflowState ? 'Enabled' : 'Disabled'}`,
-        description: `The node can ${newFreeflowState ? 'now' : 'no longer'} be placed anywhere without joining groups.`,
-      });
-    }
-  }, [diagramData, setDiagramData, onItemSelect, toast]);
-
   const handlePaste = useCallback(() => {
     if (!clipboard) return;
 
@@ -739,7 +715,6 @@ export function useCanvasClipboard({
     clipboard,
     handleCopy,
     handlePaste,
-    handleToggleFreeflow,
     canPaste,
   };
 }

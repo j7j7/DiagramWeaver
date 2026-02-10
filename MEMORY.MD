@@ -42,6 +42,7 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
 - **Icon Persistence**: Fixes ensure icons remain visible after connections and selections
 
 ### Recent Updates and Fixes
+- **2025-02-10 – Freeflow Option Removal**: Removed the freeflow toggle and default freeflow preference. Objects and nodes are now always allowed to move anywhere within the grid. No more zone absorption on drop—all items use free placement. Removed: context toolbar freeflow button, context menu freeflow option, View menu default freeflow toggle, handleToggleFreeflow from clipboard, defaultFreeflowEnabled state.
 - **2025-02-10 – AI/Ollama/Firebase Removal**: Removed all AI generation features, Ollama integration, Firebase SDK, and genkit-cli. Diagram creation is now JSON/drag-and-drop only. See AI_REMOVAL_PLAN.md.
 - **2026-01-26 – Line Shape Feature** (Corrected Implementation): Added a new line shape type that works fundamentally differently from other shapes:
   - **Unique Object Type**: Lines are NOT regular shapes - they're a special diagram element with their own behavior

@@ -120,14 +120,12 @@ The `editor-canvas.tsx` component orchestrates multiple specialized hooks, utili
 **Features:**
 - Copies selected items to clipboard
 - Pastes items from clipboard
-- Handles toggle freeflow for nodes
 - Manages clipboard state (for enabling/disabling paste button)
 - Generates new IDs for pasted items
 
 **Key Functions:**
 - `handleCopy()` - Copies selected item(s) to clipboard
 - `handlePaste()` - Pastes clipboard content at current mouse position
-- `handleToggleFreeflow()` - Toggles freeflow mode for nodes
 - `canPaste()` - Checks if clipboard has content
 
 ---
