@@ -207,29 +207,19 @@ export function useCanvasOperations({
     setDiagramData(prevData => {
       const updatedNodes = prevData.nodes?.map(node => {
         if (node.id === nodeId) {
-          // Calculate minimum size based on node type
+          const isShapeNode = isShapeNodeType(node.type);
+          const isTextboxNode = node.type === 'generic.text.textbox';
+          const isTextNode = node.type === 'generic.text.text';
+          const isIconNode = !isShapeNode && !isTextboxNode && !isTextNode && node.type !== 'generic.object.line' && !node.type?.endsWith?.('.line');
+
+          if (isIconNode) {
+            const minLabelWidth = 80;
+            const labelWidth = snapDimensionToGrid(Math.max(minLabelWidth, newWidth), minLabelWidth);
+            return { ...node, labelWidth };
+          }
+
           let minWidth = 80;
           let minHeight = 40;
-          
-           const isShapeNode = node.type === 'generic.object.square' ||
-                              node.type === 'generic.object.circle' ||
-                              node.type === 'generic.object.point' ||
-                              node.type === 'generic.object.rectangle' ||
-                              node.type === 'generic.object.rounded-rectangle' ||
-                              node.type === 'generic.object.triangle' ||
-                              node.type === 'generic.object.star' ||
-                              node.type === 'generic.object.cloud' ||
-                              node.type === 'generic.object.chevron' ||
-                              node.type?.endsWith('.square') ||
-                              node.type?.endsWith('.circle') ||
-                              node.type?.endsWith('.point') ||
-                              node.type?.endsWith('.rectangle') ||
-                              node.type?.endsWith('.rounded-rectangle') ||
-                              node.type?.endsWith('.triangle') ||
-                              node.type?.endsWith('.star') ||
-                              node.type?.endsWith('.cloud') ||
-                              node.type?.endsWith('.chevron');
-          
           if (node.type === 'generic.text.textbox') {
             minWidth = 40;
             minHeight = 40;
@@ -240,7 +230,6 @@ export function useCanvasOperations({
             minWidth = 20;
             minHeight = 20;
           }
-          
           return {
             ...node,
             width: snapDimensionToGrid(Math.max(minWidth, newWidth), minWidth),

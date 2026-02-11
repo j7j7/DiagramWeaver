@@ -3,6 +3,7 @@ import { BezierConnection, determineConnectionEdges, getOptimalConnectionPoints,
 import type { DiagramData, DiagramConnectionData } from "@/lib/types";
 import { measureNodeDims, type PositionedNode, type PositionedGroup, NODE_WIDTH, BASE_NODE_HEIGHT, TEXT_NODE_HEIGHT, EXTRA_LINE_HEIGHT } from "./canvas-constants";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface CanvasConnectionsProps {
   width: number;
@@ -319,6 +320,7 @@ export function CanvasConnections({
       })}
     </svg>
     {/* Render delete buttons outside SVG so they're clickable */}
+    <TooltipProvider>
     {(diagramData.connections || []).map((edge: any, index: any) => {
       const fromItem = nodesById[edge.from] || zonesById[edge.from];
       const toItem = nodesById[edge.to] || zonesById[edge.to];
@@ -476,26 +478,26 @@ export function CanvasConnections({
       const centerPoint = getBezierPoint(0.5, fromX, fromY, cp1X, cp1Y, cp2X, cp2Y, toX, toY);
 
       return (
-        <div
-          key={`delete-${edge.from}-${edge.to}-${index}`}
-          className="absolute cursor-pointer"
-          style={{
-            zIndex: 15,
-            left: `${centerPoint.x - 12}px`,
-            top: `${centerPoint.y - 12}px`,
-            width: '24px',
-            height: '24px',
-          }}
-          onMouseDown={(e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            if (onConnectionDelete) {
-              onConnectionDelete(edge.from, edge.to);
-            }
-          }}
-          title="Remove connection"
-        >
-          <svg
+        <Tooltip key={`delete-${edge.from}-${edge.to}-${index}`}>
+            <TooltipTrigger asChild>
+              <div
+                className="absolute cursor-pointer"
+                style={{
+                  zIndex: 15,
+                  left: `${centerPoint.x - 12}px`,
+                  top: `${centerPoint.y - 12}px`,
+                  width: '24px',
+                  height: '24px',
+                }}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  if (onConnectionDelete) {
+                    onConnectionDelete(edge.from, edge.to);
+                  }
+                }}
+              >
+                <svg
             width="24"
             height="24"
             className="pointer-events-none"
@@ -516,9 +518,15 @@ export function CanvasConnections({
               <line x1="6" y1="18" x2="18" y2="6" />
             </g>
           </svg>
-        </div>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              Remove connection
+            </TooltipContent>
+          </Tooltip>
       );
     })}
+    </TooltipProvider>
     </>
   );
 }

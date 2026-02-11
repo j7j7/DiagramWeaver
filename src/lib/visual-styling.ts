@@ -14,6 +14,7 @@ export interface VisualStyling {
   borderWidth?: number; // Border thickness
   roundedEdges?: boolean; // Whether to apply rounded edges to shapes
   iconColor?: string; // Color for Lucide icons (context-aware, icons only)
+  noIconBackground?: boolean; // Remove background from icon/resource nodes
 }
 
 // Predefined visual styles for dropdown selection

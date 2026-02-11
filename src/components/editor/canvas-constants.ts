@@ -199,7 +199,15 @@ export const measureNodeDims = (n: PositionedNode) => {
 
     return { width: snapDimensionToGrid(calculatedWidth, 40), height: snapDimensionToGrid(height, 40) };
   } else {
-    return { width: NODE_WIDTH, height: NODE_HEIGHT };
+    // Icon/resource nodes: width can include wider label via labelWidth
+    const iconWidth = 80;
+    const effectiveLabelWidth = (n as any).labelWidth ? snapDimensionToGrid(Math.max(iconWidth, (n as any).labelWidth), iconWidth) : undefined;
+    const nodeWidth = effectiveLabelWidth ?? iconWidth;
+    const hasLabel = label.trim().length > 0;
+    const maxCharsPerLine = effectiveLabelWidth ? Math.floor(effectiveLabelWidth / 8) : 12;
+    const labelLines = hasLabel ? Math.max(1, Math.ceil(label.length / maxCharsPerLine)) : 1;
+    const nodeHeight = NODE_HEIGHT + (labelLines - 1) * EXTRA_LINE_HEIGHT;
+    return { width: nodeWidth, height: snapDimensionToGrid(nodeHeight, 40) };
   }
 };
 

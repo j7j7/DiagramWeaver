@@ -44,6 +44,7 @@ export const DiagramNodeDataSchema = z.object({
   height: z.number().optional(), // Custom height - when set, overrides auto-calculated height
   sizeMode: z.enum(['auto', 'custom']).optional(), // Whether to use auto-calculated or custom dimensions
   noIconBackground: z.boolean().optional(), // If true, removes the white background from icon nodes
+  labelWidth: z.number().optional(), // Label width for icon nodes - allows label wider than icon
   // Text justification for text resources
   textJustify: z.enum(['left', 'center', 'right', 'full']).optional(), // Text justification for text/textbox nodes
   textVerticalPosition: z.enum(['top', 'middle', 'bottom']).optional(), // Vertical position of text in textbox/shape nodes
@@ -224,6 +225,7 @@ export const DiagramNodeItemSchema = z.object({
   height: z.number().optional(), // Custom height - when set, overrides auto-calculated height
   sizeMode: z.enum(['auto', 'custom']).optional(), // Whether to use auto-calculated or custom dimensions
   noIconBackground: z.boolean().optional(), // If true, removes the white background from icon nodes
+  labelWidth: z.number().optional(), // Label width for icon nodes - allows label wider than icon
   // Text justification for text resources
   textJustify: z.enum(['left', 'center', 'right', 'full']).optional(), // Text justification for text/textbox nodes
   textVerticalPosition: z.enum(['top', 'middle', 'bottom']).optional(), // Vertical position of text in textbox/shape nodes

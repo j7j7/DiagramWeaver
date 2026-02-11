@@ -43,6 +43,7 @@ export interface DiagramNodeData {
   height?: number; // Custom height - when set, overrides auto-calculated height
   sizeMode?: 'auto' | 'custom'; // Whether to use auto-calculated or custom dimensions
   noIconBackground?: boolean; // If true, removes the white background from icon nodes
+  labelWidth?: number; // Label width for icon/resource nodes - allows label wider than 80px icon
   // Text justification for text resources
   textJustify?: 'left' | 'center' | 'right' | 'full'; // Text justification for text/textbox nodes
   textVerticalPosition?: 'top' | 'middle' | 'bottom'; // Vertical position of text in textbox nodes
@@ -154,6 +155,7 @@ export interface DiagramNodeItem {
   height?: number; // Custom height - when set, overrides auto-calculated height
   sizeMode?: 'auto' | 'custom'; // Whether to use auto-calculated or custom dimensions
   noIconBackground?: boolean; // If true, removes the white background from icon nodes
+  labelWidth?: number; // Label width for icon/resource nodes - allows label wider than 80px icon
   // Text justification for text resources
   textJustify?: 'left' | 'center' | 'right' | 'full'; // Text justification for text/textbox nodes
   textVerticalPosition?: 'top' | 'middle' | 'bottom'; // Vertical position of text in textbox nodes

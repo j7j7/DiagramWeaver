@@ -14,6 +14,8 @@ interface ResizeHandlesProps {
   disabled?: boolean;
   zIndexClass?: string;
   className?: string;
+  /** When set, only show these handles (e.g. ['right'] for icon node label width) */
+  handles?: ('right' | 'bottom' | 'bottom-right')[];
 }
 
 export function ResizeHandles({
@@ -24,6 +26,7 @@ export function ResizeHandles({
   disabled = false,
   zIndexClass = "z-50",
   className,
+  handles = ['right', 'bottom', 'bottom-right'],
 }: ResizeHandlesProps) {
   const [localHoveredHandle, setLocalHoveredHandle] = useState<ResizeHandleType>(null);
 
@@ -59,9 +62,14 @@ export function ResizeHandles({
   const isHovered = (handle: ResizeHandleType) => effectiveHoveredHandle === handle;
   const isHighlighted = (handle: ResizeHandleType) => isActive(handle) || isHovered(handle);
 
+  const showRight = handles.includes('right');
+  const showBottom = handles.includes('bottom');
+  const showBottomRight = handles.includes('bottom-right');
+
   return (
     <>
-      {/* Right edge handle */}
+      {showRight && (
+      /* Right edge handle */
       <div
         className={cn(
           "dw-resize-handle dw-resize-rail dw-resize-rail-right",
@@ -89,8 +97,10 @@ export function ResizeHandles({
         <div className="dw-resize-indicator dw-resize-indicator-rail" />
         <ArrowRight className="absolute top-1/2 right-0 transform translate-x-1/2 -translate-y-1/2 w-3 h-3 text-green-700 pointer-events-none" />
       </div>
+      )}
 
-      {/* Bottom edge handle */}
+      {showBottom && (
+      /* Bottom edge handle */
       <div
         className={cn(
           "dw-resize-handle dw-resize-rail dw-resize-rail-bottom",
@@ -118,8 +128,10 @@ export function ResizeHandles({
         <div className="dw-resize-indicator dw-resize-indicator-rail" />
         <ArrowDown className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 w-3 h-3 text-green-700 pointer-events-none" />
       </div>
+      )}
 
-      {/* Bottom-right corner handle */}
+      {showBottomRight && (
+      /* Bottom-right corner handle */
       <div
         className={cn(
           "dw-resize-handle dw-resize-knob",
@@ -148,6 +160,7 @@ export function ResizeHandles({
         <div className="dw-resize-indicator dw-resize-indicator-knob" />
         <MoveDiagonal2 className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4 h-4 text-green-700 pointer-events-none" />
       </div>
+      )}
     </>
   );
 }

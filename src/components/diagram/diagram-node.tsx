@@ -15,7 +15,7 @@ import { TextboxRichEditor } from "./textbox-rich-editor";
 import { TextboxRichDisplay } from "./textbox-rich-display";
 import { cn } from "@/lib/utils";
 import { ItemTypes } from "../editor/draggable-item";
-import { snapToGrid, snapDimensionToGrid } from "@/components/editor/canvas-constants";
+import { snapToGrid, snapDimensionToGrid, measureNodeDims } from "@/components/editor/canvas-constants";
 import { getTextStylingCSS, extractTextStylingFromNode } from "@/lib/text-styling";
 import {
   SquareShape,
@@ -470,7 +470,9 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
   const isPointNode = node.type === 'generic.object.point' || node.type?.endsWith('.point');
   const isLineNode = node.type === 'generic.object.line' || node.type?.endsWith('.line');
   const isRotatableNode = (isTextNode || isTextboxNode || isShapeNode) && !isLineNode;
+  const isIconNode = !isTextNode && !isTextboxNode && !isShapeNode && !isLineNode;
   const nodeHeight = calculateNodeHeight(node.label || '', node.type, node.sizeMode, node.height);
+  const iconNodeDims = isIconNode ? measureNodeDims(node as any) : null;
   const rotation = (node as any).rotation || 0;
   const isLocked = node.locked || false;
   
@@ -519,8 +521,8 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
     
     setIsResizing(true);
     setResizeHandle(handle);
-    const startWidth = node.width || (isTextboxNode ? 40 : 80);
-    const startHeight = node.height || nodeHeight;
+    const startWidth = isIconNode ? (iconNodeDims?.width ?? (node as any).labelWidth ?? 80) : (node.width || (isTextboxNode ? 40 : 80));
+    const startHeight = isIconNode ? (iconNodeDims?.height ?? nodeHeight) : (node.height || nodeHeight);
     
     // Store original dimensions for multi-resize
     (node as any).originalWidth = startWidth;
@@ -918,19 +920,20 @@ return (
          width: isLineNode ? 'auto' : // Lines don't need a fixed width container
                 (isShapeNode ? (node.width || 60) :
                 (isRotatableNode || isTextboxNode ? 
-                 (node.sizeMode === 'custom' && node.width ? node.width : 'auto') : NODE_WIDTH)),
+                 (node.sizeMode === 'custom' && node.width ? node.width : 'auto') : 
+                 (iconNodeDims ? iconNodeDims.width : NODE_WIDTH))),
          minWidth: isLineNode ? 0 : // Lines don't need min width
                    (isShapeNode ? (node.width || 60) :
                     isTextboxNode ? 40 :
-                   isRotatableNode ? 80 : NODE_WIDTH),
+                   isRotatableNode ? 80 : (isIconNode ? 80 : NODE_WIDTH)),
          maxWidth: isLineNode ? 'none' : // Lines don't need max width
                    (isShapeNode ? (node.width || 60) :
                     isTextboxNode ? (node.sizeMode === 'custom' ? 'none' : 400) :
-                   isRotatableNode ? 200 : NODE_WIDTH),
+                   isRotatableNode ? 200 : (isIconNode ? 400 : NODE_WIDTH)),
          height: isLineNode ? 'auto' : // Lines don't need a fixed height container
                  (isShapeNode ? (node.height || 60) :
                  isTextboxNode && node.sizeMode === 'custom' ? (node.height || 40) :
-                 (isRotatableNode || isTextboxNode) ? nodeHeight : 'auto'),
+                 (isRotatableNode || isTextboxNode) ? nodeHeight : (iconNodeDims ? iconNodeDims.height : 'auto')),
         touchAction: 'none',
         transform: rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
         transformOrigin: 'center',
@@ -1084,7 +1087,7 @@ return (
                 // For top/bottom, use flex-col with order
                 return (
                   <div className={cn(
-                    "flex flex-col items-center justify-center",
+                    "flex flex-col items-center justify-center w-full",
                     isMiddle && "relative"
                   )}>
                     {/* Icon container */}
@@ -1176,9 +1179,9 @@ return (
         )}
        </Popover>
 
-       {/* Resize handles - show for text resources (textbox always, others only in custom mode), or for shapes (except points and lines) */}
+       {/* Resize handles - textbox, text (custom), shapes, or icon nodes (label width) */}
         {!isReadOnly && (isResizing || isSelected || isMultiSelected) &&
-         (isTextboxNode || ((isTextNode ) && node.sizeMode === 'custom') || (isShapeNode && !isPointNode && !isLineNode)) && (
+         (isTextboxNode || ((isTextNode ) && node.sizeMode === 'custom') || (isShapeNode && !isPointNode && !isLineNode) || isIconNode) && (
           <ResizeHandles
             visible={true}
             activeHandle={resizeHandle}
@@ -1186,6 +1189,7 @@ return (
             onStart={handleResizeStart}
             disabled={false}
             zIndexClass="z-50"
+            handles={isIconNode ? ['right'] : undefined}
           />
        )}
        

@@ -1,6 +1,5 @@
 "use client";
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import Draggable from 'react-draggable';
 import { createPortal } from 'react-dom';
 import {
   Type,
@@ -17,7 +16,6 @@ import {
   AlignVerticalJustifyEnd,
   Image as ImageIcon,
   RotateCw,
-  GripVertical,
   Square,
   Grid3x3,
   Maximize2,
@@ -109,8 +107,6 @@ export function ContextToolbar({
   const [lineStylingOpen, setLineStylingOpen] = useState(false);
   const [draggedConnectionIndex, setDraggedConnectionIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-  const [connectionsPosition, setConnectionsPosition] = useState({ x: 0, y: 0 });
-  const [isConnectionsMounted, setIsConnectionsMounted] = useState(false);
   const textStylingPanelRef = useRef<HTMLDivElement>(null);
   const connectionsPanelRef = useRef(null);
   const visualStylingPanelRef = useRef<HTMLDivElement>(null);
@@ -553,15 +549,6 @@ export function ContextToolbar({
   const handleShapeTextPlacementChange = (value: 'above' | 'center' | 'under') => {
     onItemUpdate?.({ ...selectedItem, textPosition: value } as SelectedItem);
   };
-
-  const handleEdgePositionChange = (value: string) => {
-    onItemUpdate?.({ 
-      ...selectedItem, 
-      edgePosition: value === 'none' ? undefined : value as 'top' | 'bottom' | 'left' | 'right'
-    } as SelectedItem);
-  };
-
-
 
   const toggleNoIconBackground = () => {
     if (!selectedItem) return;
@@ -1173,37 +1160,27 @@ export function ContextToolbar({
 
         {/* Connections Arrow Toggle - Show if there are multiple connections */}
         {isNode && getAllConnections.length > 0 && (
-          <>
+          <Popover open={connectionsOpen} onOpenChange={setConnectionsOpen}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-8 px-2"
-                  onClick={() => setConnectionsOpen(!connectionsOpen)}
-                >
-                  <ArrowRight className="h-4 w-4" />
-                  {getAllConnections.length > 1 && (
-                    <span className="ml-1 text-xs">({getAllConnections.length})</span>
-                  )}
-                </Button>
+                <PopoverTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-8 px-2"
+                  >
+                    <ArrowRight className="h-4 w-4" />
+                    {getAllConnections.length > 1 && (
+                      <span className="ml-1 text-xs">({getAllConnections.length})</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
               </TooltipTrigger>
-              <TooltipContent>Connection Settings</TooltipContent>
+              <TooltipContent>Connections</TooltipContent>
             </Tooltip>
-            {connectionsOpen && (
-              <Draggable 
-                handle=".connections-handle" 
-                nodeRef={connectionsPanelRef}
-                defaultPosition={connectionsPosition}
-                onStop={(e, data) => {
-                  setConnectionsPosition({ x: data.x, y: data.y });
-                }}
-              >
-                <div ref={connectionsPanelRef} className="fixed top-20 right-20 z-50 w-80 bg-white border rounded-lg shadow-lg">
-                <div className="connections-handle flex items-center justify-between p-4 border-b cursor-move">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold">Connections</h3>
-                  </div>
+            <PopoverContent ref={connectionsPanelRef} className="w-80 p-0" align="end" side="bottom">
+                <div className="flex items-center justify-between p-3 border-b">
+                  <h3 className="font-semibold">Connections</h3>
                   <Button variant="ghost" size="sm" onClick={() => setConnectionsOpen(false)}>
                     <X className="w-4 h-4" />
                   </Button>
@@ -1416,22 +1393,23 @@ export function ContextToolbar({
                                 />
                                 <span className="text-xs text-muted-foreground shrink-0">px</span>
                               </div>
-                              <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0 ml-2">Shadow:</label>
-                              <Button
-                                variant={(connInfo.connection.shadow || false) ? "default" : "outline"}
-                                size="sm"
-                                className="h-7 px-2 shrink-0"
-                                onClick={() => {
-                                  if (onConnectionUpdate) {
-                                    onConnectionUpdate(
-                                      connInfo.connection.from,
-                                      connInfo.connection.to,
-                                      { shadow: !(connInfo.connection.shadow || false) }
-                                    );
-                                  }
-                                }}
-                              >
-                                <svg
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant={(connInfo.connection.shadow || false) ? "default" : "outline"}
+                                    size="sm"
+                                    className="h-7 px-2 shrink-0"
+                                    onClick={() => {
+                                      if (onConnectionUpdate) {
+                                        onConnectionUpdate(
+                                          connInfo.connection.from,
+                                          connInfo.connection.to,
+                                          { shadow: !(connInfo.connection.shadow || false) }
+                                        );
+                                      }
+                                    }}
+                                  >
+                                    <svg
                                   width="12"
                                   height="12"
                                   viewBox="0 0 12 12"
@@ -1457,7 +1435,10 @@ export function ContextToolbar({
                                     strokeWidth="0.3"
                                   />
                                 </svg>
-                              </Button>
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Depth effect</TooltipContent>
+                              </Tooltip>
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -1479,10 +1460,8 @@ export function ContextToolbar({
                       })
                     )}
                   </div>
-                </div>
-              </Draggable>
-            )}
-          </>
+            </PopoverContent>
+          </Popover>
         )}
 
 
@@ -1907,42 +1886,6 @@ export function ContextToolbar({
                       <div className="px-2 py-1 text-xs font-semibold text-muted-foreground mt-2">Inside</div>
                       <SelectItem value="inside">Inside Zone</SelectItem>
                     </div>
-                  </SelectContent>
-                </Select>
-              </div>
-            </PopoverContent>
-          </Popover>
-        )}
-
-        {/* Edge Position (Nodes in groups) - Hide for lines */}
-        {selectedItem && isNode && !isTextTypeNode && !isLineNode && (
-          <Popover>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 px-2">
-                    <GripVertical className="h-4 w-4" />
-                  </Button>
-                </PopoverTrigger>
-              </TooltipTrigger>
-              <TooltipContent>Edge Position</TooltipContent>
-            </Tooltip>
-            <PopoverContent className="w-48">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Edge Position</label>
-                <Select 
-                  value={(selectedItem as DiagramNodeData).edgePosition || 'none'} 
-                  onValueChange={handleEdgePositionChange}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Normal (Inside)</SelectItem>
-                    <SelectItem value="top">Top Edge</SelectItem>
-                    <SelectItem value="bottom">Bottom Edge</SelectItem>
-                    <SelectItem value="left">Left Edge</SelectItem>
-                    <SelectItem value="right">Right Edge</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
