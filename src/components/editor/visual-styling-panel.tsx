@@ -24,9 +24,14 @@ interface VisualStylingPanelProps {
   onTagPositionChange?: (position: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right') => void;
   /** When true, shows Icon Color control (Lucide icons only) */
   isLucideIcon?: boolean;
+  /** When true, shows Remove background toggle (resource items and Lucide icons) */
+  showRemoveBackground?: boolean;
+  noIconBackground?: boolean;
+  /** When true, shows full styling (Preset, Border, Background, Effects, Tags) - shapes and text nodes */
+  showFullStyling?: boolean;
 }
 
-export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false }: VisualStylingPanelProps) {
+export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showRemoveBackground = false, noIconBackground = false, showFullStyling = true }: VisualStylingPanelProps) {
   const [position, setPosition] = useState({ x: 200, y: 100 });
   const [isMounted, setIsMounted] = useState(false);
   const nodeRef = useRef(null);
@@ -116,7 +121,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
         setPosition({ x: data.x, y: data.y });
       }}
     >
-      <div ref={nodeRef} className={`fixed top-20 left-20 z-50 bg-white border rounded-lg shadow-lg cursor-move ${isLucideIcon ? 'w-[16rem]' : 'w-[24rem]'}`}>
+      <div ref={nodeRef} className={`fixed top-20 left-20 z-50 bg-white border rounded-lg shadow-lg cursor-move ${showFullStyling ? 'w-[24rem]' : 'w-[16rem]'}`}>
         <div className="flex items-center justify-between p-3 border-b">
           <div className="flex items-center gap-2">
             <Palette className="w-4 h-4 text-blue-600" />
@@ -161,8 +166,21 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
             </div>
           )}
 
-          {/* Preset, Border, Background, Effects, Tags - hidden for Lucide icons */}
-          {!isLucideIcon && (
+          {/* Remove background - for resource items and Lucide icons */}
+          {showRemoveBackground && (
+            <div className="bg-slate-50 rounded-md p-2 border border-slate-200/50">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold text-slate-700">Remove background</Label>
+                <Switch
+                  checked={noIconBackground}
+                  onCheckedChange={(checked) => onStylingChange({ noIconBackground: checked })}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Preset, Border, Background, Effects, Tags - shapes and text nodes only */}
+          {showFullStyling && (
           <>
           {/* Style Preset */}
           <div className="bg-slate-50 rounded-md p-2">

@@ -55,6 +55,7 @@ const isLineNodeType = (nodeType?: string): boolean => {
   return nodeType === 'generic.object.line' || (nodeType?.endsWith('.line') ?? false);
 };
 
+
 export function ContextMenu({ 
   x, 
   y, 
@@ -179,7 +180,15 @@ export function ContextMenu({
         </button>
       )}
 
-      {onVisualStyling && !isLineNodeType(nodeType) && (
+      {onVisualStyling && (() => {
+        const t = nodeType || '';
+        const isEmoji = t.startsWith('generic.emoji.');
+        const isShape = isShapeNodeType(t);
+        const isText = t.startsWith('generic.text.');
+        const isLucide = t.startsWith('generic.icon.');
+        const isResourceItem = !isShape && !isText && !isLineNodeType(t);
+        return !isEmoji && (isShape || isText || isLucide || isResourceItem);
+      })() && (
         <button
           className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
           onClick={() => {

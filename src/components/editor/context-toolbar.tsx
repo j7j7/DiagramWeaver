@@ -1525,8 +1525,16 @@ export function ContextToolbar({
           </>
         )}
 
-        {/* Visual Styling Button */}
-        {selectedItem && isNode && !isLineNode && (
+        {/* Visual Styling Button - shapes and text (full), Lucide (Icon Color + Remove bg), resource items (Remove bg only) */}
+        {selectedItem && isNode && !isLineNode && (() => {
+          const t = (selectedItem as any)?.type || '';
+          const isEmoji = t.startsWith('generic.emoji.');
+          const isShape = isShapeNodeType(t);
+          const isText = t.startsWith('generic.text.');
+          const isLucide = t.startsWith('generic.icon.') || (selectedItem as any)?.iconType === 'lucide';
+          const isResourceItem = !isShape && !isText;
+          return !isEmoji && (isShape || isText || isLucide || isResourceItem);
+        })() && (
           <>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -1558,6 +1566,27 @@ export function ContextToolbar({
                   onTagChange={(tag) => onItemUpdate?.({ ...selectedItem, tag } as SelectedItem)}
                   onTagPositionChange={(tagPosition) => onItemUpdate?.({ ...selectedItem, tagPosition } as SelectedItem)}
                   isLucideIcon={(selectedItem as any)?.type?.startsWith?.('generic.icon.') || (selectedItem as any)?.iconType === 'lucide'}
+                  showRemoveBackground={(() => {
+                    const t = (selectedItem as any)?.type || '';
+                    const isShape = isShapeNodeType(t);
+                    const isText = t.startsWith('generic.text.');
+                    const isLucide = t.startsWith('generic.icon.') || (selectedItem as any)?.iconType === 'lucide';
+                    const isResourceItem = !isShape && !isText;
+                    return isLucide || isResourceItem;
+                  })()}
+                  showFullStyling={(() => {
+                    const t = (selectedItem as any)?.type || '';
+                    const isShape = isShapeNodeType(t);
+                    const isText = t.startsWith('generic.text.');
+                    return isShape || isText;
+                  })()}
+                  noIconBackground={(() => {
+                    if (!selectedItem || !diagramData) return false;
+                    const item = selectedItemIds && selectedItemIds.size > 1
+                      ? diagramData.nodes.find(n => n.id === selectedItem.id) || selectedItem
+                      : selectedItem;
+                    return !!(item as any)?.noIconBackground;
+                  })()}
                 />
               </div>,
               document.body
