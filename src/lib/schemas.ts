@@ -7,6 +7,7 @@ const RichTextRunSchema = z.object({
   bold: z.boolean().optional(),
   italic: z.boolean().optional(),
   underline: z.boolean().optional(),
+  listType: z.enum(["bullet", "numbered"]).optional(),
 });
 
 // Schema for DiagramNodeData based on actual types

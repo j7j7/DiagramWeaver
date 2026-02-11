@@ -1161,20 +1161,13 @@ return (
             )}
           </div>
         </PopoverTrigger>
-        {(node.info || node.label) && (
+        {node.info && (
           <PopoverContent
             side="top"
             align="center"
             className="w-64 bg-popover text-popover-foreground shadow-xl border-accent"
           >
-            <div className="space-y-2">
-              {node.info ? (
-                <p className="text-sm font-medium">{node.info}</p>
-              ) : null}
-              {node.label && (
-                <p className={cn("text-sm", node.info && "text-muted-foreground")}>{node.label}</p>
-              )}
-            </div>
+            <p className="text-sm">{node.info}</p>
           </PopoverContent>
         )}
        </Popover>

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useEffect } from "react";
-import { Bold, Italic, Underline } from "lucide-react";
+import { Bold, Italic, Underline, List, ListOrdered } from "lucide-react";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import {
   runsToHtml,
@@ -48,7 +48,7 @@ export function TextboxRichEditor({
     onSubmit(plainText, normRuns);
   };
 
-  const applyFormat = (command: "bold" | "italic" | "underline", e: React.MouseEvent) => {
+  const applyFormat = (command: "bold" | "italic" | "underline" | "insertUnorderedList" | "insertOrderedList", e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     document.execCommand(command, false);
@@ -87,6 +87,22 @@ export function TextboxRichEditor({
           className="p-1 rounded hover:bg-muted transition-colors"
         >
           <Underline className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          title="Bullet list"
+          onMouseDown={(e) => applyFormat("insertUnorderedList", e)}
+          className="p-1 rounded hover:bg-muted transition-colors"
+        >
+          <List className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          title="Numbered list"
+          onMouseDown={(e) => applyFormat("insertOrderedList", e)}
+          className="p-1 rounded hover:bg-muted transition-colors"
+        >
+          <ListOrdered className="h-3.5 w-3.5" />
         </button>
       </div>
 

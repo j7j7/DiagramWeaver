@@ -23,18 +23,43 @@ export function labelToRuns(label: string | undefined): RichTextRun[] {
   return [{ text: label }];
 }
 
+function wrapRun(run: RichTextRun): string {
+  let html = escapeHtml(run.text).replace(/\n/g, "<br>");
+  if (run.underline) html = `<u>${html}</u>`;
+  if (run.italic) html = `<i>${html}</i>`;
+  if (run.bold) html = `<b>${html}</b>`;
+  return html;
+}
+
 /** Convert runs to HTML for contentEditable */
 export function runsToHtml(runs: RichTextRun[]): string {
   if (runs.length === 0) return "";
-  return runs
-    .map((run) => {
-      let html = escapeHtml(run.text).replace(/\n/g, "<br>");
-      if (run.underline) html = `<u>${html}</u>`;
-      if (run.italic) html = `<i>${html}</i>`;
-      if (run.bold) html = `<b>${html}</b>`;
-      return html;
-    })
-    .join("");
+  const parts: string[] = [];
+  let i = 0;
+
+  while (i < runs.length) {
+    const run = runs[i];
+    if (run.listType === "bullet" || run.listType === "numbered") {
+      const listTag = run.listType === "bullet" ? "ul" : "ol";
+      const items: string[] = [];
+      while (i < runs.length) {
+        const r = runs[i];
+        if (r.listType === run.listType) {
+          items.push(`<li>${wrapRun(r)}</li>`);
+          i++;
+        } else if (r.text === "\n" && i + 1 < runs.length && runs[i + 1].listType === run.listType) {
+          i++;
+        } else {
+          break;
+        }
+      }
+      parts.push(`<${listTag}>${items.join("")}</${listTag}>`);
+      continue;
+    }
+    parts.push(wrapRun(run));
+    i++;
+  }
+  return parts.join("");
 }
 
 /** Parse contentEditable HTML back to runs */
@@ -48,9 +73,12 @@ export function htmlToRuns(html: string): RichTextRun[] {
   if (!root) return [];
 
   const runs: RichTextRun[] = [];
-  const stack: { bold: boolean; italic: boolean; underline: boolean }[] = [
-    { bold: false, italic: false, underline: false },
-  ];
+  const stack: {
+    bold: boolean;
+    italic: boolean;
+    underline: boolean;
+    listType?: "bullet" | "numbered";
+  }[] = [{ bold: false, italic: false, underline: false }];
 
   function visit(node: Node) {
     if (node.nodeType === Node.TEXT_NODE) {
@@ -62,6 +90,7 @@ export function htmlToRuns(html: string): RichTextRun[] {
           bold: fmt.bold || undefined,
           italic: fmt.italic || undefined,
           underline: fmt.underline || undefined,
+          listType: fmt.listType,
         });
       }
       return;
@@ -75,12 +104,17 @@ export function htmlToRuns(html: string): RichTextRun[] {
     if (BOLD_TAGS.includes(tag)) fmt.bold = true;
     else if (ITALIC_TAGS.includes(tag)) fmt.italic = true;
     else if (UNDERLINE_TAGS.includes(tag)) fmt.underline = true;
-    else if (tag === "br") {
+    else if (tag === "ul") fmt.listType = "bullet";
+    else if (tag === "ol") fmt.listType = "numbered";
+    else if (tag === "li") {
+      // listType inherited from parent ul/ol via stack
+    } else if (tag === "br") {
       runs.push({
         text: "\n",
         bold: fmt.bold || undefined,
         italic: fmt.italic || undefined,
         underline: fmt.underline || undefined,
+        listType: fmt.listType,
       });
       return;
     } else if (["div", "p"].includes(tag) && runs.length > 0) {
@@ -89,6 +123,7 @@ export function htmlToRuns(html: string): RichTextRun[] {
         bold: fmt.bold || undefined,
         italic: fmt.italic || undefined,
         underline: fmt.underline || undefined,
+        listType: fmt.listType,
       });
     }
 
@@ -112,9 +147,11 @@ export function normalizeRuns(runs: RichTextRun[]): RichTextRun[] {
     const sameFmt =
       (current.bold ?? false) === (r.bold ?? false) &&
       (current.italic ?? false) === (r.italic ?? false) &&
-      (current.underline ?? false) === (r.underline ?? false);
+      (current.underline ?? false) === (r.underline ?? false) &&
+      (current.listType ?? null) === (r.listType ?? null);
+    const canMerge = sameFmt && !current.listType; // never merge list items
 
-    if (sameFmt) {
+    if (canMerge) {
       current.text += r.text;
     } else {
       result.push(current);

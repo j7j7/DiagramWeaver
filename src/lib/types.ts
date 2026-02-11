@@ -1,9 +1,11 @@
-/** Rich text run - segment with optional bold/italic/underline */
+/** Rich text run - segment with optional bold/italic/underline/list */
 export interface RichTextRun {
   text: string;
   bold?: boolean;
   italic?: boolean;
   underline?: boolean;
+  /** bullet list item or numbered list item */
+  listType?: "bullet" | "numbered";
 }
 
 export interface DiagramNodeData {

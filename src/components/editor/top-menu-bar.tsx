@@ -26,6 +26,8 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { DiagramTheme } from '@/lib/theme-types';
 
+const truncateName = (s: string, max = 20) => (s.length > max ? `${s.slice(0, max - 3)}...` : s);
+
 interface TopMenuBarProps {
   onNew: () => void;
   onLoad: () => void;
@@ -641,8 +643,8 @@ export function TopMenuBar({
           {selectedItemIds.size > 1 
             ? `${selectedItemIds.size} items selected`
             : selectedItem?.itemType === 'edge' 
-              ? `Selected: Connection ${selectedItem.from} → ${selectedItem.to}`
-              : `Selected: ${selectedItem?.label || selectedItem?.id || 'Item'}`
+              ? `Selected: Connection ${truncateName(`${selectedItem.from} → ${selectedItem.to}`)}`
+              : `Selected: ${truncateName(selectedItem?.label || selectedItem?.id || 'Item')}`
           }
         </div>
       )}
