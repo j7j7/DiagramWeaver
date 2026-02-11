@@ -43,6 +43,8 @@ import { CanvasRotationOverlay } from "./canvas-rotation-overlay";
 import { measureNodeDims } from "./canvas-constants";
 import { useAlignmentGuides } from "@/hooks/use-alignment-guides";
 import { CanvasAlignmentGuides } from "./canvas-alignment-guides";
+import { SearchResourcesModal } from "./search-resources-modal";
+import { snapToGrid } from "./canvas-constants";
 
 interface EditorCanvasProps {
   diagramData: DiagramData;
@@ -95,6 +97,13 @@ interface EditorCanvasProps {
   onZoneSort?: (zoneId: string, order: 'alpha-asc' | 'alpha-desc') => void;
   isReadOnly?: boolean;
   alignmentGuidesEnabled?: boolean;
+  onResourceActivateAtPosition?: (
+    resource: { name: string; file?: string; type?: string; hasWhiteVariant?: boolean; format?: string; iconType?: string; iconName?: string; emoji?: string },
+    provider: string,
+    category: string,
+    position: { x: number; y: number },
+    fullItem?: object
+  ) => void;
 }
 
 
@@ -104,11 +113,11 @@ export type EditorCanvasHandle = {
   copy: () => void;
   paste: () => void;
   canPaste: () => boolean;
-  pastePaletteItem: (item: any) => void;
+  pastePaletteItem: (item: any, position?: { x: number; y: number }) => void;
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, externalTransform,      onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, selectionAnimationEnabled = false, iconBackgroundEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true }: EditorCanvasProps,
+   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, externalTransform,      onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, selectionAnimationEnabled = false, iconBackgroundEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition }: EditorCanvasProps,
   ref
 ) {
   // ============================================================================
@@ -749,6 +758,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   // See: src/hooks/use-canvas-context-menu.ts
   const { contextMenu, handleContextMenu, closeContextMenu } = useCanvasContextMenu({ isReadOnly });
   const [lastRightClickItemId, setLastRightClickItemId] = React.useState<string | null>(null);
+  const [searchModalOpen, setSearchModalOpen] = React.useState(false);
+  const [searchModalPosition, setSearchModalPosition] = React.useState({ x: 0, y: 0 });
+  const [searchModalDiagramPosition, setSearchModalDiagramPosition] = React.useState<{ x: number; y: number } | null>(null);
 
 
 
@@ -828,6 +840,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     setTransform,
     isConnectMode,
     onMousePositionChange,
+    disableRightClickPan: !!onResourceActivateAtPosition,
   });
 
 
@@ -1054,9 +1067,15 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     }
   }, [canPaste, handlePaste]);
 
-  const pastePaletteItemHandler = useCallback((item: any) => {
+  const pastePaletteItemHandler = useCallback((item: any, position?: { x: number; y: number }) => {
     if (!canvasRef.current) return;
     const rect = canvasRef.current.getBoundingClientRect();
+
+    // If diagram-space position provided (e.g. from right-click search modal), use it
+    if (position && typeof position.x === 'number' && typeof position.y === 'number') {
+      operations.addNode(item, { x: position.x, y: position.y }, null);
+      return;
+    }
 
     // Use the same zoom/viewport center reference as useCanvasTransform
     if (typeof window !== 'undefined') {
@@ -1141,10 +1160,21 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
           onContextMenu={(e) => {
-            // Only prevent default on empty canvas
-            // Nodes and zones handle their own context menus and call stopPropagation
-            // So if event reaches here, it's empty canvas - prevent browser context menu
             e.preventDefault();
+            // Nodes and zones handle their own context menus and call stopPropagation
+            // If we reach here, it's empty canvas - show search resources modal
+            const target = e.target as HTMLElement;
+            if (target.closest('[data-node-id]') || target.closest('[data-zone-id]')) return;
+            if (isReadOnly || !onResourceActivateAtPosition) return;
+            if (!canvasRef.current) return;
+            const rect = canvasRef.current.getBoundingClientRect();
+            const canvasRelativeX = e.clientX - rect.left;
+            const canvasRelativeY = e.clientY - rect.top;
+            const diagramX = snapToGrid((canvasRelativeX - transform.x) / transform.k);
+            const diagramY = snapToGrid((canvasRelativeY - transform.y) / transform.k);
+            setSearchModalPosition({ x: e.clientX, y: e.clientY });
+            setSearchModalDiagramPosition({ x: diagramX, y: diagramY });
+            setSearchModalOpen(true);
           }}
         >
           {/* ====================================================================
@@ -1587,6 +1617,20 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             onCycleItems={() => onZoneCycle?.(contextMenu.itemId)}
             onSortItems={(order) => onZoneSort?.(contextMenu.itemId, order)}
           />
+          {onResourceActivateAtPosition && (
+            <SearchResourcesModal
+              open={searchModalOpen}
+              onOpenChange={(open) => {
+                setSearchModalOpen(open);
+                if (!open) setSearchModalDiagramPosition(null);
+              }}
+              position={searchModalPosition}
+              onResourceActivate={(resource, provider, category, fullItem) => {
+                const pos = searchModalDiagramPosition;
+                if (pos) onResourceActivateAtPosition(resource as any, provider, category, pos, fullItem);
+              }}
+            />
+          )}
         </div>
     </div>
   );

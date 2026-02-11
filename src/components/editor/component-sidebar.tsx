@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { DraggableItem } from './draggable-item';
 import type { DiagramNodeData, DiagramGroupData, DiagramData } from '@/lib/types';
 import { Label } from '../ui/label';
@@ -33,12 +34,14 @@ interface ComponentSidebarProps {
   transform?: { x: number; y: number; k: number };
   onTransformChange?: (transform: { x: number; y: number; k: number }) => void;
   isReadOnly?: boolean;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 
 
 
-export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onResourceSelect, onResourceActivate, onToggleJsonPanel, jsonPanelOpen, onFitToView, onConnectionUpdate, onConnectionDisconnect, onCloseSidebar, isMobile, transform, onTransformChange, isReadOnly = false }: ComponentSidebarProps) {
+export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onResourceSelect, onResourceActivate, onToggleJsonPanel, jsonPanelOpen, onFitToView, onConnectionUpdate, onConnectionDisconnect, onCloseSidebar, isMobile, transform, onTransformChange, isReadOnly = false, collapsed = false, onToggleCollapse }: ComponentSidebarProps) {
   const { register, reset, getValues } = useForm();
   
 
@@ -136,8 +139,38 @@ export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, 
   }, [selectedItem, diagramData]);
 
 
-return (
-    <aside className="w-80 bg-card border-r flex flex-col h-full">
+  if (collapsed) {
+    return (
+      <aside className="w-12 bg-card border-r flex flex-col h-full flex-shrink-0">
+        <div className="flex flex-col items-center p-2 gap-2">
+          <button
+            onClick={onToggleCollapse}
+            className="p-2 rounded-md hover:bg-muted touch-target"
+            aria-label="Expand sidebar"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+          <span className="text-[10px] font-medium [writing-mode:vertical-rl] rotate-180 py-2 text-muted-foreground whitespace-nowrap">Diagram Weaver</span>
+        </div>
+      </aside>
+    );
+  }
+
+  return (
+    <aside className="w-80 bg-card border-r flex flex-col h-full flex-shrink-0">
+      {/* Header: app name + collapse button */}
+      <div className="flex items-center justify-between px-4 py-3 border-b flex-shrink-0">
+        <h1 className="font-semibold text-base">Diagram Weaver</h1>
+        {onToggleCollapse && (
+          <button
+            onClick={onToggleCollapse}
+            className="p-2 rounded-md hover:bg-muted -mr-2 touch-target"
+            aria-label="Collapse sidebar"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+        )}
+      </div>
       {/* Mobile close button */}
       {isMobile && onCloseSidebar && (
         <div className="flex justify-end p-2 border-b md:hidden">
@@ -153,13 +186,6 @@ return (
           </button>
         </div>
       )}
-
-
-
-
-
-
-      
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         <ResourceBrowser
           onResourceSelect={onResourceSelect}

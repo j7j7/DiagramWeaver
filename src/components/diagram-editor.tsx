@@ -163,6 +163,7 @@ export default function DiagramEditor() {
   const [closeTabDialogOpen, setCloseTabDialogOpen] = React.useState(false);
   const [pendingCloseTabId, setPendingCloseTabId] = React.useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = React.useState<boolean>(false);
+  const [leftPanelCollapsed, setLeftPanelCollapsed] = React.useState<boolean>(false);
   // Initialize scratchpad visibility from localStorage
   const [scratchPadOpen, setScratchPadOpen] = React.useState<boolean>(() => {
     if (typeof window !== 'undefined') {
@@ -603,6 +604,21 @@ export default function DiagramEditor() {
     setPaletteClipboardItem(item);
     if (editorRef.current) {
       editorRef.current.pastePaletteItem(item);
+    }
+  };
+
+  const handleResourceActivateAtPosition = (
+    resource: { name: string; file?: string; type?: string; hasWhiteVariant?: boolean; format?: string; iconType?: string; iconName?: string; emoji?: string },
+    provider: string,
+    category: string,
+    position: { x: number; y: number },
+    fullItem?: object
+  ) => {
+    const item = (fullItem as { type: string; label: string; provider: string; category: string }) ?? createPaletteItem(resource as PaletteResource, provider, category);
+    setSelectedResource({ resource, provider, category });
+    setPaletteClipboardItem(item);
+    if (editorRef.current) {
+      editorRef.current.pastePaletteItem(item, position);
     }
   };
 
@@ -1569,6 +1585,8 @@ export default function DiagramEditor() {
         isMobile={isMobile}
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
+        leftPanelCollapsed={leftPanelCollapsed}
+        setLeftPanelCollapsed={setLeftPanelCollapsed}
         selectedItem={selectedItem}
         selectedItemIds={selectedItemIds}
         handleItemUpdate={handleItemUpdate}
@@ -1576,6 +1594,7 @@ export default function DiagramEditor() {
         handleItemDelete={handleItemDelete}
         handleResourceSelect={handleResourceSelect}
         handleResourceActivate={handleResourceActivate}
+        handleResourceActivateAtPosition={handleResourceActivateAtPosition}
         toggleJsonPanel={toggleJsonPanel}
         jsonPanelOpen={jsonPanelOpen}
         editorRef={editorRef}
@@ -1676,6 +1695,8 @@ function DiagramEditorInner({
   isMobile,
   sidebarOpen,
   setSidebarOpen,
+  leftPanelCollapsed,
+  setLeftPanelCollapsed,
   selectedItem,
   selectedItemIds,
   handleItemUpdate,
@@ -1683,6 +1704,7 @@ function DiagramEditorInner({
   handleItemDelete,
   handleResourceSelect,
   handleResourceActivate,
+  handleResourceActivateAtPosition,
   toggleJsonPanel,
   jsonPanelOpen,
   editorRef,
@@ -1818,7 +1840,7 @@ function DiagramEditorInner({
         )}
         
         {/* Sidebar - fixed on mobile, normal on desktop */}
-        <div className={`${isMobile ? 'fixed left-0 top-0 h-full z-50 transform transition-transform duration-300 ease-in-out' : ''} ${isMobile && !sidebarOpen ? '-translate-x-full' : ''} ${isMobile ? 'w-80' : ''}`}>
+        <div className={`${isMobile ? 'fixed left-0 top-0 h-full z-50 transform transition-transform duration-300 ease-in-out' : ''} ${isMobile && !sidebarOpen ? '-translate-x-full' : ''} ${isMobile ? (leftPanelCollapsed ? 'w-12' : 'w-80') : ''}`}>
  <ComponentSidebar
     selectedItem={selectedItem}
     selectedItemIds={selectedItemIds}
@@ -1838,6 +1860,8 @@ function DiagramEditorInner({
     isMobile={isMobile}
     transform={canvasTransform}
     onTransformChange={setCanvasTransform}
+    collapsed={leftPanelCollapsed}
+    onToggleCollapse={() => setLeftPanelCollapsed(!leftPanelCollapsed)}
   />
         </div>
         
@@ -2000,6 +2024,7 @@ function DiagramEditorInner({
                     onMoveOneForward={handleMoveOneForward}
                     isReadOnly={isReadOnly}
                     alignmentGuidesEnabled={alignmentGuidesEnabled}
+                    onResourceActivateAtPosition={handleResourceActivateAtPosition}
                     />
                   </div>
                   

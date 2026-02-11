@@ -8,6 +8,7 @@ interface UseCanvasInteractionsOptions {
   setTransform: (transform: Transform) => void;
   isConnectMode: boolean;
   onMousePositionChange?: (position: { x: number; y: number } | null) => void;
+  disableRightClickPan?: boolean;
 }
 
 export function useCanvasInteractions({
@@ -16,6 +17,7 @@ export function useCanvasInteractions({
   setTransform,
   isConnectMode,
   onMousePositionChange,
+  disableRightClickPan = false,
 }: UseCanvasInteractionsOptions) {
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
@@ -37,12 +39,12 @@ export function useCanvasInteractions({
                          target.closest('[data-zone-id]') ||
                          target.closest('.absolute');
     
-    if (e.button === 2 && !isNodeOrZone) {
+    if (e.button === 2 && !isNodeOrZone && !disableRightClickPan) {
       e.preventDefault(); // Prevent context menu only on empty canvas
       setIsPanning(true);
       setPanStart({ x: e.clientX - transform.x, y: e.clientY - transform.y });
     }
-  }, [isConnectMode, transform]);
+  }, [isConnectMode, transform, disableRightClickPan]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     // Track mouse position for display (throttled to avoid performance warnings)
