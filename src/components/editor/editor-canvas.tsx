@@ -171,7 +171,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   const { toast } = useToast();
   const canvasRef = useRef<HTMLDivElement>(null);
   const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 });
-  
+  const [searchModalOpen, setSearchModalOpen] = React.useState(false);
+
   // Client-side rendering state
   const [isClient, setIsClient] = useState(false);
 
@@ -490,6 +491,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     canvasRef,
     processedNodes,
     processedZones,
+    wheelZoomDisabled: searchModalOpen,
   });
 
   // ============================================================================
@@ -758,7 +760,6 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   // See: src/hooks/use-canvas-context-menu.ts
   const { contextMenu, handleContextMenu, closeContextMenu } = useCanvasContextMenu({ isReadOnly });
   const [lastRightClickItemId, setLastRightClickItemId] = React.useState<string | null>(null);
-  const [searchModalOpen, setSearchModalOpen] = React.useState(false);
   const [searchModalPosition, setSearchModalPosition] = React.useState({ x: 0, y: 0 });
   const [searchModalDiagramPosition, setSearchModalDiagramPosition] = React.useState<{ x: number; y: number } | null>(null);
 

@@ -13,6 +13,8 @@ interface UseCanvasTransformOptions {
   canvasRef: React.RefObject<HTMLDivElement | null>;
   processedNodes: PositionedNode[];
   processedZones: PositionedGroup[];
+  /** When true, wheel zoom is disabled (e.g. when search modal or overlay is open) */
+  wheelZoomDisabled?: boolean;
 }
 
 export function useCanvasTransform({
@@ -21,6 +23,7 @@ export function useCanvasTransform({
   canvasRef,
   processedNodes,
   processedZones,
+  wheelZoomDisabled = false,
 }: UseCanvasTransformOptions) {
   const [internalTransform, setInternalTransform] = useState<Transform>({ x: 0, y: 0, k: 1 });
   const transform = externalTransform || internalTransform;
@@ -34,7 +37,7 @@ export function useCanvasTransform({
   }, [onTransformChange]);
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
-    if (!canvasRef.current) return;
+    if (wheelZoomDisabled || !canvasRef.current) return;
     const { deltaY } = e;
     const rect = canvasRef.current.getBoundingClientRect();
     const s = Math.pow(0.9975, deltaY); // More precise zoom (twice as precise)
@@ -68,7 +71,7 @@ export function useCanvasTransform({
       setTransform({ x: newX, y: newY, k: newK });
     }
     // If zoom didn't change (at limit), do nothing - no position updates
-  }, [transform, canvasRef, setTransform]);
+  }, [transform, canvasRef, setTransform, wheelZoomDisabled]);
 
   const handleFitToView = useCallback(() => {
     if (!canvasRef.current) return;
@@ -239,6 +242,7 @@ export function useCanvasTransform({
     if (!canvas) return;
 
     const handleWheelEvent = (e: WheelEvent) => {
+      if (wheelZoomDisabled) return;
       e.preventDefault();
       const { deltaY } = e;
       const rect = canvas.getBoundingClientRect();
@@ -276,7 +280,7 @@ export function useCanvasTransform({
     return () => {
       canvas.removeEventListener('wheel', handleWheelEvent);
     };
-  }, [transform, canvasRef, setTransform]);
+  }, [transform, canvasRef, setTransform, wheelZoomDisabled]);
 
   return {
     transform,

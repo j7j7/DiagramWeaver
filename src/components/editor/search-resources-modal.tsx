@@ -3,7 +3,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { Search, Box, ChevronLeft, ChevronRight } from "lucide-react";
 import { Input } from "../ui/input";
-import { ScrollArea } from "../ui/scroll-area";
 import { TooltipProvider } from "../ui/tooltip";
 import { Button } from "../ui/button";
 import { DraggableResourceItem } from "./draggable-resource-item";
@@ -159,8 +158,12 @@ export function SearchResourcesModal({
     setPage(0);
   }, [term]);
 
+  /** Order: shapes first (generic.object), then icons, then rest */
   const paginatedResources = useMemo(() => {
-    const all = [...filteredResources, ...filteredIcons.map((i) => ({ _icon: i }))];
+    const shapes = filteredResources.filter((f) => f.provider === "generic" && f.category === "object");
+    const rest = filteredResources.filter((f) => !(f.provider === "generic" && f.category === "object"));
+    const icons = filteredIcons.map((i) => ({ _icon: i }));
+    const all = [...shapes, ...icons, ...rest];
     const start = page * ITEMS_PER_PAGE;
     return all.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredResources, filteredIcons, page]);
@@ -227,7 +230,10 @@ export function SearchResourcesModal({
             onKeyDown={(e) => e.stopPropagation()}
           />
         </div>
-        <ScrollArea className="flex-1 p-2" style={{ height: 320 }}>
+        <div
+          className="flex-1 overflow-y-auto overflow-x-hidden p-2 overscroll-contain"
+          style={{ height: 320, minHeight: 320 }}
+        >
           {isLoading ? (
             <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
               Loading...
@@ -262,7 +268,7 @@ export function SearchResourcesModal({
               )}
             </div>
           )}
-        </ScrollArea>
+        </div>
         {!isLoading && totalItems > 0 && (
           <div className="flex items-center justify-between gap-2 border-t px-3 py-2">
             <span className="text-xs text-muted-foreground">
