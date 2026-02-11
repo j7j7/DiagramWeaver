@@ -177,8 +177,8 @@ export function ShapePreview({
       );
     }
 
-    // Star
-    if (type === 'generic.object.star' || type?.endsWith('.star')) {
+    // Star (exclude icon/emoji - generic.icon.star is Lucide icon, not polygon)
+    if ((type === 'generic.object.star' || type?.endsWith('.star')) && !type?.startsWith('generic.icon.') && !type?.startsWith('generic.emoji.')) {
       const coords = getGradientCoordinates(gradientAngle);
       return (
         <svg {...commonSvgProps}>
@@ -218,8 +218,8 @@ export function ShapePreview({
       );
     }
 
-    // Cloud
-    if (type === 'generic.object.cloud' || type?.endsWith('.cloud')) {
+    // Cloud (exclude icon/emoji)
+    if ((type === 'generic.object.cloud' || type?.endsWith('.cloud')) && !type?.startsWith('generic.icon.') && !type?.startsWith('generic.emoji.')) {
       const coords = getGradientCoordinates(gradientAngle);
       return (
         <svg {...commonSvgProps}>

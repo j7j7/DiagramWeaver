@@ -47,7 +47,7 @@ import type { DiagramData, DiagramNodeData, DiagramZoneData } from '@/lib/types'
 import { DiagramTheme } from '@/lib/theme-types';
 import { themeManager } from '@/lib/theme-manager';
 import { extractTextStylingFromNode, extractTextStylingFromGroup, applyTextStylingToZone, applyTextStylingToNode } from '@/lib/text-styling';
-import { isShapeNodeType } from '@/lib/utils';
+import { isShapeNodeType, isIconOrEmojiType } from '@/lib/utils';
 import { extractVisualStylingFromNode, extractVisualStylingFromGroup } from '@/lib/visual-styling';
 import { extractLineStylingFromNode, applyLineStylingToNode } from '@/lib/line-styling';
 
@@ -955,7 +955,7 @@ export function ContextToolbar({
   const isTextNode = isNode && selectedItem.type?.startsWith('generic.text');
   const isTextboxNode = isNode && selectedItem.type === 'generic.text.textbox';
   const isPlainTextNode = isNode && selectedItem.type === 'generic.text.text';
-    const isShapeNode = isNode && (selectedItem.type === 'generic.object.square' ||
+    const isShapeNode = isNode && !isIconOrEmojiType(selectedItem.type) && (selectedItem.type === 'generic.object.square' ||
                                    selectedItem.type === 'generic.object.circle' ||
                                    selectedItem.type === 'generic.object.point' ||
                                    selectedItem.type === 'generic.object.rectangle' ||
@@ -1504,15 +1504,16 @@ export function ContextToolbar({
           </>
         )}
 
-        {/* Visual Styling Button - shapes and text (full), Lucide (Icon Color + Remove bg), resource items (Remove bg only) */}
+        {/* Visual Styling Button - shapes and textbox (full), Lucide (Icon Color + Remove bg), resource items (Remove bg only). generic.text.text excluded. */}
         {selectedItem && isNode && !isLineNode && (() => {
           const t = (selectedItem as any)?.type || '';
           const isEmoji = t.startsWith('generic.emoji.');
           const isShape = isShapeNodeType(t);
-          const isText = t.startsWith('generic.text.');
+          const isTextbox = t === 'generic.text.textbox';
           const isLucide = t.startsWith('generic.icon.') || (selectedItem as any)?.iconType === 'lucide';
+          const isText = t.startsWith('generic.text.');
           const isResourceItem = !isShape && !isText;
-          return !isEmoji && (isShape || isText || isLucide || isResourceItem);
+          return !isEmoji && (isShape || isTextbox || isLucide || isResourceItem);
         })() && (
           <>
             <Tooltip>
@@ -1556,8 +1557,8 @@ export function ContextToolbar({
                   showFullStyling={(() => {
                     const t = (selectedItem as any)?.type || '';
                     const isShape = isShapeNodeType(t);
-                    const isText = t.startsWith('generic.text.');
-                    return isShape || isText;
+                    const isTextbox = t === 'generic.text.textbox';
+                    return isShape || isTextbox;
                   })()}
                   noIconBackground={(() => {
                     if (!selectedItem || !diagramData) return false;

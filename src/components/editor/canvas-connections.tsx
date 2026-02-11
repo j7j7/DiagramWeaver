@@ -2,7 +2,7 @@ import React from "react";
 import { BezierConnection, determineConnectionEdges, getOptimalConnectionPoints, calculateBezierControlPoints, getBezierPoint } from "../diagram/bezier-connection";
 import type { DiagramData, DiagramConnectionData } from "@/lib/types";
 import { measureNodeDims, type PositionedNode, type PositionedGroup, NODE_WIDTH, BASE_NODE_HEIGHT, TEXT_NODE_HEIGHT, EXTRA_LINE_HEIGHT } from "./canvas-constants";
-import { cn } from "@/lib/utils";
+import { cn, isIconOrEmojiType } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface CanvasConnectionsProps {
@@ -15,6 +15,8 @@ interface CanvasConnectionsProps {
   onItemSelect: (item: any | null) => void;
   closeContextMenu: () => void;
   onConnectionDelete?: (from: string, to: string) => void;
+  /** When set, only render connections whose index is in this set (for order-aware layering) */
+  connectionIndices?: Set<number>;
 }
 
 export function CanvasConnections({
@@ -27,6 +29,7 @@ export function CanvasConnections({
   onItemSelect,
   closeContextMenu,
   onConnectionDelete,
+  connectionIndices,
 }: CanvasConnectionsProps) {
   // Pre-calculate edge information for all connections
   const connectionEdgeInfo = new Map<string, { fromEdge: string; toEdge: string }>();
@@ -79,7 +82,7 @@ export function CanvasConnections({
       width={width}
       height={height}
       className="absolute top-0 left-0 overflow-visible pointer-events-none"
-      style={{ zIndex: 1 }}
+      style={{ zIndex: connectionIndices !== undefined ? -1 : 0 }}
     >
       <defs>
         <marker
@@ -95,7 +98,10 @@ export function CanvasConnections({
         </marker>
       </defs>
       {/* Count connections per edge for distribution */}
-      {(diagramData.connections || []).map((edge: any, index: any) => {
+      {(diagramData.connections || [])
+        .map((edge: any, index: number) => (connectionIndices ? { edge, index } : { edge, index }))
+        .filter(({ index }: { index: number }) => !connectionIndices || connectionIndices.has(index))
+        .map(({ edge, index }: { edge: any; index: number }) => {
         const fromItem = nodesById[edge.from] || zonesById[edge.from];
         const toItem = nodesById[edge.to] || zonesById[edge.to];
         if (!fromItem || !toItem) return null;
@@ -158,13 +164,13 @@ export function CanvasConnections({
 
         // Calculate center point for delete button
         // Reuse similar logic from bezier-connection.tsx for calculating connection points
-        const isFromShape = (fromPos.type === 'generic.object.square' || fromPos.type === 'generic.object.circle' ||
+        const isFromShape = !isIconOrEmojiType(fromPos.type) && (fromPos.type === 'generic.object.square' || fromPos.type === 'generic.object.circle' ||
                              fromPos.type === 'generic.object.point' || fromPos.type === 'generic.object.rectangle' || fromPos.type === 'generic.object.rounded-rectangle' || fromPos.type === 'generic.object.triangle' ||
                              fromPos.type === 'generic.object.star' || fromPos.type === 'generic.object.cloud' ||
                              fromPos.type?.endsWith('.square') || fromPos.type?.endsWith('.circle') ||
                              fromPos.type?.endsWith('.point') || fromPos.type?.endsWith('.rectangle') || fromPos.type?.endsWith('.rounded-rectangle') || fromPos.type?.endsWith('.triangle') ||
                              fromPos.type?.endsWith('.star') || fromPos.type?.endsWith('.cloud'));
-        const isToShape = (toPos.type === 'generic.object.square' || toPos.type === 'generic.object.circle' ||
+        const isToShape = !isIconOrEmojiType(toPos.type) && (toPos.type === 'generic.object.square' || toPos.type === 'generic.object.circle' ||
                           toPos.type === 'generic.object.point' || toPos.type === 'generic.object.rectangle' || toPos.type === 'generic.object.rounded-rectangle' || toPos.type === 'generic.object.triangle' ||
                           toPos.type === 'generic.object.star' || toPos.type === 'generic.object.cloud' ||
                           toPos.type?.endsWith('.square') || toPos.type?.endsWith('.circle') ||
@@ -321,7 +327,10 @@ export function CanvasConnections({
     </svg>
     {/* Render delete buttons outside SVG so they're clickable */}
     <TooltipProvider>
-    {(diagramData.connections || []).map((edge: any, index: any) => {
+    {(diagramData.connections || [])
+      .map((edge: any, index: number) => ({ edge, index }))
+      .filter(({ index }: { index: number }) => !connectionIndices || connectionIndices.has(index))
+      .map(({ edge, index }: { edge: any; index: number }) => {
       const fromItem = nodesById[edge.from] || zonesById[edge.from];
       const toItem = nodesById[edge.to] || zonesById[edge.to];
       if (!fromItem || !toItem) return null;
@@ -369,13 +378,13 @@ export function CanvasConnections({
       };
 
       // Calculate center point (simplified - reuse same calculation logic)
-      const isFromShape = (fromPos.type === 'generic.object.square' || fromPos.type === 'generic.object.circle' ||
+      const isFromShape = !isIconOrEmojiType(fromPos.type) && (fromPos.type === 'generic.object.square' || fromPos.type === 'generic.object.circle' ||
                            fromPos.type === 'generic.object.point' || fromPos.type === 'generic.object.rectangle' || fromPos.type === 'generic.object.rounded-rectangle' || fromPos.type === 'generic.object.triangle' ||
                            fromPos.type === 'generic.object.star' || fromPos.type === 'generic.object.cloud' ||
                            fromPos.type?.endsWith('.square') || fromPos.type?.endsWith('.circle') ||
                            fromPos.type?.endsWith('.point') || fromPos.type?.endsWith('.rectangle') || fromPos.type?.endsWith('.rounded-rectangle') || fromPos.type?.endsWith('.triangle') ||
                            fromPos.type?.endsWith('.star') || fromPos.type?.endsWith('.cloud'));
-      const isToShape = (toPos.type === 'generic.object.square' || toPos.type === 'generic.object.circle' ||
+      const isToShape = !isIconOrEmojiType(toPos.type) && (toPos.type === 'generic.object.square' || toPos.type === 'generic.object.circle' ||
                         toPos.type === 'generic.object.point' || toPos.type === 'generic.object.rectangle' || toPos.type === 'generic.object.rounded-rectangle' || toPos.type === 'generic.object.triangle' ||
                         toPos.type === 'generic.object.star' || toPos.type === 'generic.object.cloud' ||
                         toPos.type?.endsWith('.square') || toPos.type?.endsWith('.circle') ||

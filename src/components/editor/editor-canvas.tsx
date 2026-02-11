@@ -38,6 +38,7 @@ import { useNodeAnimationOffsets } from "@/hooks/use-sine-wave-animation";
 import { CanvasArrowToggles } from "./canvas-arrow-toggles";
 import { CanvasConnectionText } from "./canvas-connection-text";
 import { getItemGroup } from "@/lib/grouping-utils";
+import { computeConnectionSlots } from "@/lib/connection-order-utils";
 import { CanvasRotationOverlay } from "./canvas-rotation-overlay";
 import { measureNodeDims } from "./canvas-constants";
 import { useAlignmentGuides } from "@/hooks/use-alignment-guides";
@@ -140,6 +141,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       return acc;
     }, {} as Record<string, PositionedGroup>);
   }, [processedZones]);
+
+  // Connection order: which connections render in which slot (between items) for proper z-order
+  const connectionSlots = useMemo(
+    () =>
+      computeConnectionSlots(diagramData, processedNodes, processedZones, nodesById, zonesById),
+    [diagramData, processedNodes, processedZones, nodesById, zonesById]
+  );
   
   // Get the currently selected item (node or zone) for internal use
   const selectedItem = useMemo(() => {
@@ -1158,90 +1166,93 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             {/* Zones removed - diagram is flat (nodes only) */}
 
             {/* ================================================================
-                NODES (Foreground Layer)
+                NODES + CONNECTIONS (Order-aware layering)
                 ================================================================
-                Nodes are rendered after zones so they appear on top.
-                They are sorted by layer order to ensure proper layering.
-                Each node represents a diagram element (text, shape, etc.)
-                See: src/components/diagram/diagram-node.tsx
+                Connections are interleaved with nodes so they respect z-order:
+                - Connections go behind shapes that are "in front" of both endpoints
+                - Connections go in front of shapes that are "behind" both endpoints
+                See: src/lib/connection-order-utils.ts
             */}
-            {(() => {
-              // Get layer order from layers configuration
-              const layerOrder = new Map<string, number>();
-              if (diagramData.layers?.layers) {
-                diagramData.layers.layers.forEach((layer, index) => {
-                  layerOrder.set(layer.id, index);
-                });
-              }
-
-              // Sort nodes by layer order
-              const sortedNodes = [...processedNodes].sort((a, b) => {
-                const layerA = layerOrder.get(a.layer || 'background') ?? 0;
-                const layerB = layerOrder.get(b.layer || 'background') ?? 0;
-                return layerA - layerB;
-              });
-
-              return sortedNodes.map((node) => {
-                const isNodeSelected = selectedItemId === node.id || (selectedItemIds?.has(node.id) ?? false);
-                const selectedGroup = selectedItemId ? getItemGroup(selectedItemId, diagramData) : null;
-                const itemGroup = getItemGroup(node.id, diagramData);
-                const isInGroup = selectedItemId !== node.id &&
-                                  selectedItemId !== undefined &&
-                                  selectedGroup !== null &&
-                                  itemGroup !== null &&
-                                  selectedGroup.id === itemGroup.id;
-
-                // Use display node from pre-calculated map (includes drag position)
-                const displayNode = displayNodesById[node.id] || node;
-
-                return (
-                  <DiagramNode
-                    key={node.id}
-                    node={displayNode}
-                    isSelected={isNodeSelected}
-                    isMultiSelected={selectedItemIds?.has(node.id) && (selectedItemIds?.size ?? 0) > 1}
-                    isGroupMember={isInGroup}
-                     onClick={(e: React.MouseEvent) => handleNodeClick(e, node)}
-                     onContextMenu={(e: React.MouseEvent) => handleNodeContextMenu(e, node)}
-                     onResize={handleNodeResize}
-                     onResizeStart={handleResizeStart}
-                     onResizeEnd={handleResizeEnd}
-                     onLabelUpdate={onLabelUpdate}
-                     onTagUpdate={onTagUpdate}
-                     onDraggingChange={onDraggingChange}
-                     onUpdate={handleNodeUpdate}
-                    hoverEnabled={hoverEnabled}
-                    selectionAnimationEnabled={selectionAnimationEnabled}
-                    animationOffset={selectionAnimationEnabled ? (animationOffsets[node.id] || { x: 0, y: 0 }) : { x: 0, y: 0 }}
-                    isReadOnly={isReadOnly}
-                    onHoverChange={handleHoverChange}
-                    onConnect={onConnect}
-                    isConnectMode={isConnectMode && isNodeSelected}
-                    transform={transform}
-                    canvasRef={canvasRef}
+            {connectionSlots.sortedItemIds.flatMap((itemId, i) => {
+              const slotConnections = connectionSlots.connectionsBySlot.get(i);
+              const connIndices = slotConnections?.length
+                ? new Set(slotConnections)
+                : undefined;
+              const node = nodesById[itemId];
+              const zone = zonesById[itemId];
+              const nodeEl = node ? (
+                <DiagramNode
+                  key={node.id}
+                  node={displayNodesById[node.id] || node}
+                  isSelected={selectedItemId === node.id || (selectedItemIds?.has(node.id) ?? false)}
+                  isMultiSelected={selectedItemIds?.has(node.id) && (selectedItemIds?.size ?? 0) > 1}
+                  isGroupMember={
+                    selectedItemId !== node.id &&
+                    selectedItemId !== undefined &&
+                    getItemGroup(selectedItemId, diagramData) !== null &&
+                    getItemGroup(node.id, diagramData) !== null &&
+                    getItemGroup(selectedItemId, diagramData)?.id === getItemGroup(node.id, diagramData)?.id
+                  }
+                  onClick={(e: React.MouseEvent) => handleNodeClick(e, node)}
+                  onContextMenu={(e: React.MouseEvent) => handleNodeContextMenu(e, node)}
+                  onResize={handleNodeResize}
+                  onResizeStart={handleResizeStart}
+                  onResizeEnd={handleResizeEnd}
+                  onLabelUpdate={onLabelUpdate}
+                  onTagUpdate={onTagUpdate}
+                  onDraggingChange={onDraggingChange}
+                  onUpdate={handleNodeUpdate}
+                  hoverEnabled={hoverEnabled}
+                  selectionAnimationEnabled={selectionAnimationEnabled}
+                  animationOffset={selectionAnimationEnabled ? (animationOffsets[node.id] || { x: 0, y: 0 }) : { x: 0, y: 0 }}
+                  isReadOnly={isReadOnly}
+                  onHoverChange={handleHoverChange}
+                  onConnect={onConnect}
+                  isConnectMode={isConnectMode && selectedItemId === node.id}
+                  transform={transform}
+                  canvasRef={canvasRef}
+                />
+              ) : zone ? null : null;
+              return [
+                connIndices ? (
+                  <CanvasConnections
+                    key={`conn-slot-${i}`}
+                    width={width}
+                    height={height}
+                    diagramData={diagramData}
+                    nodesById={displayNodesById}
+                    zonesById={displayZonesById}
+                    selectedItemId={selectedItemId}
+                    onItemSelect={onItemSelect}
+                    closeContextMenu={closeContextMenu}
+                    onConnectionDelete={onConnectionDelete}
+                    connectionIndices={connIndices}
                   />
-                );
-              });
+                ) : null,
+                nodeEl,
+              ].filter(Boolean);
+            })}
+            {/* Connections that render after the last item (in front of everything) */}
+            {(() => {
+              const n = connectionSlots.sortedItemIds.length;
+              const lastSlot = connectionSlots.connectionsBySlot.get(n);
+              if (!lastSlot?.length) return null;
+              return (
+                <CanvasConnections
+                  key="conn-slot-last"
+                  width={width}
+                  height={height}
+                  diagramData={diagramData}
+                  nodesById={displayNodesById}
+                  zonesById={displayZonesById}
+                  selectedItemId={selectedItemId}
+                  onItemSelect={onItemSelect}
+                  closeContextMenu={closeContextMenu}
+                  onConnectionDelete={onConnectionDelete}
+                  connectionIndices={new Set(lastSlot)}
+                />
+              );
             })()}
-
-            {/* ================================================================
-                CONNECTIONS
-                ================================================================
-                Renders bezier curves connecting nodes/zones
-                Handles connection selection and highlighting
-                See: src/components/editor/canvas-connections.tsx
-            */}
-            <CanvasConnections
-              width={width}
-              height={height}
-              diagramData={diagramData}
-              nodesById={displayNodesById}
-              zonesById={displayZonesById}
-              selectedItemId={selectedItemId}
-              onItemSelect={onItemSelect}
-              closeContextMenu={closeContextMenu}
-              onConnectionDelete={onConnectionDelete}
-            />
 
             {/* ================================================================
                 ARROW TOGGLES

@@ -1,4 +1,5 @@
 import type { DiagramNodeData, DiagramZoneData } from "@/lib/types";
+import { isIconOrEmojiType } from "@/lib/utils";
 
 // Canvas constants
 export const NODE_WIDTH = 80;
@@ -34,7 +35,7 @@ export const measureNodeDims = (n: PositionedNode) => {
   const isTextNode = n.type === 'generic.text.text';
   const isTextboxNode = n.type === 'generic.text.textbox';
   const isLineNode = n.type === 'generic.object.line' || n.type?.endsWith('.line');
-   const isShapeNode =
+   const isShapeNode = !isIconOrEmojiType(n.type) && (
      n.type === 'generic.object.square' ||
      n.type === 'generic.object.circle' ||
      n.type === 'generic.object.point' ||
@@ -52,7 +53,7 @@ export const measureNodeDims = (n: PositionedNode) => {
      n.type?.endsWith('.triangle') ||
      n.type?.endsWith('.star') ||
      n.type?.endsWith('.cloud') ||
-     n.type?.endsWith('.chevron');
+     n.type?.endsWith('.chevron'));
   const label = (n.label || '').toString();
 
   // Line nodes calculate dimensions from startPos/endPos

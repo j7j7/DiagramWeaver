@@ -169,13 +169,14 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
   }
 
 
-  // Handle shape types
-  if (type.startsWith('generic.object.') || type?.endsWith('.square') || type?.endsWith('.circle') ||
+  // Handle shape types (exclude icon/emoji - those use Lucide/emoji above)
+  if (!type.startsWith('generic.icon.') && !type.startsWith('generic.emoji.') &&
+      (type.startsWith('generic.object.') || type?.endsWith('.square') || type?.endsWith('.circle') ||
       type?.endsWith('.point') || type?.endsWith('.rectangle') || type?.endsWith('.rounded-rectangle') || type?.endsWith('.triangle') ||
       type?.endsWith('.star') || type?.endsWith('.cloud') || type?.endsWith('.parallelogram') ||
       type?.endsWith('.trapezoid') || type?.endsWith('.kite') || type?.endsWith('.hexagon') ||
       type?.endsWith('.pentagon') || type?.endsWith('.octagon') || type?.endsWith('.jigsaw') ||
-      type?.endsWith('.arrowhead') || type?.endsWith('.chevron') || type?.endsWith('.line')) {
+      type?.endsWith('.arrowhead') || type?.endsWith('.chevron') || type?.endsWith('.line'))) {
     
     // Render different shapes based on type
     const shapeType = type.split('.').pop() || 'square';

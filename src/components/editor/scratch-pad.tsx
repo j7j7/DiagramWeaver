@@ -16,6 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { TextStylingPanel } from './text-styling-panel';
 import { VisualStylingPanel } from './visual-styling-panel';
 import { processImportedItems, getResourcePath } from '@/lib/resource-mapping';
+import { isIconOrEmojiType } from '@/lib/utils';
 import { ResourceIcon } from '@/components/diagram/resource-icon';
 import { ShapePreview } from './shape-preview';
 import { Card, CardContent } from '@/components/ui/card';
@@ -597,8 +598,8 @@ const renderIcon = (item: ScratchPadItem) => {
                       fromScratchPad: true 
                     };
                     
-                    // Check if this is a shape item
-                    const isShape = item.type.startsWith('generic.object.') || 
+                    // Check if this is a shape item (exclude icon/emoji - generic.icon.star is Lucide icon)
+                    const isShape = !isIconOrEmojiType(item.type) && (item.type.startsWith('generic.object.') || 
                       item.type?.endsWith('.square') || item.type?.endsWith('.circle') || 
                       item.type?.endsWith('.point') || item.type?.endsWith('.rectangle') || 
                       item.type?.endsWith('.triangle') || item.type?.endsWith('.star') || 
@@ -606,7 +607,7 @@ const renderIcon = (item: ScratchPadItem) => {
                       item.type?.endsWith('.trapezoid') || item.type?.endsWith('.kite') || 
                       item.type?.endsWith('.hexagon') || item.type?.endsWith('.pentagon') || 
                       item.type?.endsWith('.octagon') || item.type?.endsWith('.jigsaw') ||
-                      item.type?.endsWith('.arrowhead') || item.type?.endsWith('.chevron');
+                      item.type?.endsWith('.arrowhead') || item.type?.endsWith('.chevron'));
                     
                     return (
                     <div key={item.id} className="relative group">
@@ -663,8 +664,8 @@ const renderIcon = (item: ScratchPadItem) => {
                       fromScratchPad: true 
                     };
                     
-                    // Check if this is a shape item
-                    const isShape = item.type.startsWith('generic.object.') || 
+                    // Check if this is a shape item (exclude icon/emoji)
+                    const isShape = !isIconOrEmojiType(item.type) && (item.type.startsWith('generic.object.') || 
                       item.type?.endsWith('.square') || item.type?.endsWith('.circle') || 
                       item.type?.endsWith('.point') || item.type?.endsWith('.rectangle') || 
                       item.type?.endsWith('.triangle') || item.type?.endsWith('.star') || 
@@ -672,7 +673,7 @@ const renderIcon = (item: ScratchPadItem) => {
                       item.type?.endsWith('.trapezoid') || item.type?.endsWith('.kite') || 
                       item.type?.endsWith('.hexagon') || item.type?.endsWith('.pentagon') || 
                       item.type?.endsWith('.octagon') || item.type?.endsWith('.jigsaw') ||
-                      item.type?.endsWith('.arrowhead') || item.type?.endsWith('.chevron');
+                      item.type?.endsWith('.arrowhead') || item.type?.endsWith('.chevron'));
                     
                     return (
                         <div key={item.id} className="relative group">

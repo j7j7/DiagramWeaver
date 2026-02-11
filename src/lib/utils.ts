@@ -5,7 +5,13 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/** Icon/emoji types (generic.icon.*, generic.emoji.*) are never object shapes - they render as Lucide/emoji. */
+export function isIconOrEmojiType(type: string | undefined): boolean {
+  return !!(type?.startsWith('generic.icon.') || type?.startsWith('generic.emoji.'))
+}
+
 export function isShapeNodeType(nodeType: string): boolean {
+  if (isIconOrEmojiType(nodeType)) return false
   return nodeType === 'generic.object.square' ||
          nodeType === 'generic.object.circle' ||
          nodeType === 'generic.object.point' ||

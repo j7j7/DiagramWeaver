@@ -3,6 +3,7 @@
 import type { DiagramNodeData, DiagramGroupData, DiagramConnectionData } from "@/lib/types";
 import React from "react";
 import { measureNodeDims } from "@/components/editor/canvas-constants";
+import { isIconOrEmojiType } from "@/lib/utils";
 
 const NODE_WIDTH = 80;
 const NODE_HEIGHT = 80;
@@ -352,13 +353,13 @@ function calculateBezierPath(fromX: number, fromY: number, toX: number, toY: num
 
 export function BezierConnection({ from, to, connectionColor, connectionData, onClick }: BezierConnectionProps) {
   // Use measureNodeDims-like logic for shapes to get actual dimensions
-  const isFromShape = (from.type === 'generic.object.square' || from.type === 'generic.object.circle' ||
+  const isFromShape = !isIconOrEmojiType(from.type) && (from.type === 'generic.object.square' || from.type === 'generic.object.circle' ||
                         from.type === 'generic.object.point' || from.type === 'generic.object.rectangle' || from.type === 'generic.object.rounded-rectangle' || from.type === 'generic.object.triangle' ||
                         from.type === 'generic.object.star' || from.type === 'generic.object.cloud' ||
                         from.type?.endsWith('.square') || from.type?.endsWith('.circle') ||
                         from.type?.endsWith('.point') || from.type?.endsWith('.rectangle') || from.type?.endsWith('.rounded-rectangle') || from.type?.endsWith('.triangle') ||
                         from.type?.endsWith('.star') || from.type?.endsWith('.cloud'));
-  const isToShape = (to.type === 'generic.object.square' || to.type === 'generic.object.circle' ||
+  const isToShape = !isIconOrEmojiType(to.type) && (to.type === 'generic.object.square' || to.type === 'generic.object.circle' ||
                      to.type === 'generic.object.point' || to.type === 'generic.object.rectangle' || to.type === 'generic.object.rounded-rectangle' || to.type === 'generic.object.triangle' ||
                      to.type === 'generic.object.star' || to.type === 'generic.object.cloud' ||
                      to.type?.endsWith('.square') || to.type?.endsWith('.circle') ||
@@ -681,13 +682,13 @@ export function BezierConnectionText({ connectionData, from, to, connectionColor
     
     // Calculate icon-only heights for connection text positioning (same logic as main connection)
     // BUT: Groups/zones should use full height, not icon height
-    const isFromShape = (from.type === 'generic.object.square' || from.type === 'generic.object.circle' || 
+    const isFromShape = !isIconOrEmojiType(from.type) && (from.type === 'generic.object.square' || from.type === 'generic.object.circle' || 
                           from.type === 'generic.object.point' || from.type === 'generic.object.rectangle' || from.type === 'generic.object.triangle' ||
                           from.type === 'generic.object.star' || from.type === 'generic.object.cloud' ||
                           from.type?.endsWith('.square') || from.type?.endsWith('.circle') ||
                           from.type?.endsWith('.point') || from.type?.endsWith('.rectangle') || from.type?.endsWith('.triangle') ||
                           from.type?.endsWith('.star') || from.type?.endsWith('.cloud'));
-    const isToShape = (to.type === 'generic.object.square' || to.type === 'generic.object.circle' || 
+    const isToShape = !isIconOrEmojiType(to.type) && (to.type === 'generic.object.square' || to.type === 'generic.object.circle' || 
                        to.type === 'generic.object.point' || to.type === 'generic.object.rectangle' || to.type === 'generic.object.triangle' ||
                        to.type === 'generic.object.star' || to.type === 'generic.object.cloud' ||
                        to.type?.endsWith('.square') || to.type?.endsWith('.circle') ||

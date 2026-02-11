@@ -14,7 +14,7 @@ import {
   type PositionedNode,
   type PositionedGroup,
 } from "./canvas-constants";
-import { isShapeNodeType } from "@/lib/utils";
+import { isShapeNodeType, isIconOrEmojiType } from "@/lib/utils";
 // Zones removed - no zone layout
 
 interface UseCanvasOperationsOptions {
@@ -79,7 +79,8 @@ export function useCanvasOperations({
       }
       
       // Check if this is a shape resource (needed for freeflow and group exclusion)
-      const isShapeResource = itemType === 'generic.object.square' ||
+      // Exclude icon/emoji types - generic.icon.star is Lucide icon, not polygon shape
+      const isShapeResource = !isIconOrEmojiType(itemType) && (itemType === 'generic.object.square' ||
                                 itemType === 'generic.object.circle' ||
                                 itemType === 'generic.object.point' ||
                                 itemType === 'generic.object.rectangle' ||
@@ -113,7 +114,7 @@ export function useCanvasOperations({
                                 itemType?.endsWith('.octagon') ||
                                 itemType?.endsWith('.jigsaw') ||
                                 itemType?.endsWith('.arrowhead') ||
-                                itemType?.endsWith('.line');
+                                itemType?.endsWith('.line'));
       
       // Check if this is a textbox resource
       const isTextboxResource = itemType === 'generic.text.textbox' || itemType?.endsWith('.textbox');
@@ -268,7 +269,7 @@ export function useCanvasOperations({
                              node.type === 'generic.object.star' ||
                              node.type === 'generic.object.cloud' ||
                              node.type === 'generic.object.chevron' ||
-                             node.type?.endsWith('.square') ||
+                             !isIconOrEmojiType(node.type) && (node.type?.endsWith('.square') ||
                              node.type?.endsWith('.circle') ||
                              node.type?.endsWith('.point') ||
                              node.type?.endsWith('.rectangle') ||
@@ -276,7 +277,7 @@ export function useCanvasOperations({
                              node.type?.endsWith('.triangle') ||
                              node.type?.endsWith('.star') ||
                              node.type?.endsWith('.cloud') ||
-                             node.type?.endsWith('.chevron');
+                             node.type?.endsWith('.chevron'));
           
           if (node.type === 'generic.text.textbox') {
             minWidth = 40;

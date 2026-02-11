@@ -184,10 +184,11 @@ export function ContextMenu({
         const t = nodeType || '';
         const isEmoji = t.startsWith('generic.emoji.');
         const isShape = isShapeNodeType(t);
-        const isText = t.startsWith('generic.text.');
+        const isTextbox = t === 'generic.text.textbox';
         const isLucide = t.startsWith('generic.icon.');
+        const isText = t.startsWith('generic.text.');
         const isResourceItem = !isShape && !isText && !isLineNodeType(t);
-        return !isEmoji && (isShape || isText || isLucide || isResourceItem);
+        return !isEmoji && (isShape || isTextbox || isLucide || isResourceItem);
       })() && (
         <button
           className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
