@@ -149,7 +149,7 @@ export function DraggableResourceItem({ resource, provider, category, icon, onCl
         }
       }}
       style={{ opacity: (isDragging || isTouchDragging) ? 0.5 : 1 }}
-      className={`cursor-move ${isSelected ? 'ring-2 ring-primary ring-offset-2' : ''}`}
+      className={`cursor-move min-w-0 ${isSelected ? 'ring-2 ring-primary ring-offset-2' : ''}`}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -159,9 +159,9 @@ export function DraggableResourceItem({ resource, provider, category, icon, onCl
       {isCompact ? (
         <Tooltip>
           <TooltipTrigger asChild>
-            <Card className="hover:bg-accent hover:text-accent-foreground transition-colors w-full">
-              <CardContent className="p-1.5 flex flex-col items-center justify-center gap-0.5 text-center h-12">
-                <div className="w-5 h-5 flex items-center justify-center">
+            <Card className="hover:bg-accent hover:text-accent-foreground transition-colors w-full min-w-0">
+              <CardContent className="p-1.5 flex flex-col items-center justify-center gap-0.5 text-center h-12 min-w-0 w-full">
+                <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
                   {!imageError && iconPath ? (
                     <img
                       src={iconPath}
@@ -184,9 +184,11 @@ export function DraggableResourceItem({ resource, provider, category, icon, onCl
           </TooltipContent>
         </Tooltip>
       ) : (
-        <Card className="hover:bg-accent hover:text-accent-foreground transition-colors">
-          <CardContent className="p-2 flex flex-col items-center justify-center gap-1 text-center h-16">
-                <div className="w-6 h-6 flex items-center justify-center">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Card className="hover:bg-accent hover:text-accent-foreground transition-colors min-w-0">
+              <CardContent className="p-2 flex flex-col items-center justify-center gap-1 text-center h-16 min-w-0 w-full">
+                <div className="w-6 h-6 flex items-center justify-center flex-shrink-0">
                   {!imageError && iconPath ? (
                     <img
                       src={iconPath}
@@ -197,15 +199,22 @@ export function DraggableResourceItem({ resource, provider, category, icon, onCl
                   ) : (
                     icon
                   )}
-            </div>
-            <span className="font-medium text-xs leading-tight">
-              {resource.name}
-            </span>
-            {resource.hasWhiteVariant && (
-              <div className="text-xs text-muted-foreground">White</div>
-            )}
-          </CardContent>
-        </Card>
+                </div>
+                <div className="w-full min-w-0 overflow-hidden">
+                  <span className="font-medium text-xs leading-tight truncate block">
+                    {resource.name}
+                  </span>
+                </div>
+                {resource.hasWhiteVariant && (
+                  <div className="text-xs text-muted-foreground">White</div>
+                )}
+              </CardContent>
+            </Card>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{resource.name}</p>
+          </TooltipContent>
+        </Tooltip>
       )}
     </div>
   );

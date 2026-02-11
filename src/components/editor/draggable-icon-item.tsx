@@ -83,7 +83,7 @@ export function DraggableIconItem({
         <div
           ref={(node) => { if (node) drag(node); }}
           style={{ opacity: isDragging ? 0.5 : 1 }}
-          className="cursor-move"
+          className="cursor-move min-w-0"
           onClick={() => onClick?.(dragItem)}
           onDoubleClick={() => onDoubleClick?.(dragItem)}
         >
@@ -100,14 +100,16 @@ export function DraggableIconItem({
               </CardContent>
             </Card>
           ) : (
-            <Card className="hover:bg-accent hover:text-accent-foreground transition-colors">
-              <CardContent className="p-2 flex flex-col items-center justify-center gap-1 text-center h-16">
-                <div className="w-6 h-6 flex items-center justify-center">
+            <Card className="hover:bg-accent hover:text-accent-foreground transition-colors min-w-0">
+              <CardContent className="p-2 flex flex-col items-center justify-center gap-1 text-center h-16 min-w-0 w-full">
+                <div className="w-6 h-6 flex items-center justify-center flex-shrink-0">
                   {content}
                 </div>
-                <span className="font-medium text-xs leading-tight">
-                  {iconItem.name}
-                </span>
+                <div className="w-full min-w-0 overflow-hidden">
+                  <span className="font-medium text-xs leading-tight truncate block">
+                    {iconItem.name}
+                  </span>
+                </div>
               </CardContent>
             </Card>
           )}
