@@ -1104,6 +1104,7 @@ return (
                         iconType={node.iconType}
                         iconName={node.iconName}
                         emoji={node.emoji}
+                        iconColor={node.iconColor}
                         width="70" 
                         height="70" 
                         className="w-[70px] h-[70px]" 

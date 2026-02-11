@@ -22,9 +22,11 @@ interface VisualStylingPanelProps {
   tagPosition?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right';
   onTagChange?: (tag: string) => void;
   onTagPositionChange?: (position: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right') => void;
+  /** When true, shows Icon Color control (Lucide icons only) */
+  isLucideIcon?: boolean;
 }
 
-export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange }: VisualStylingPanelProps) {
+export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false }: VisualStylingPanelProps) {
   const [position, setPosition] = useState({ x: 200, y: 100 });
   const [isMounted, setIsMounted] = useState(false);
   const nodeRef = useRef(null);
@@ -114,11 +116,11 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
         setPosition({ x: data.x, y: data.y });
       }}
     >
-      <div ref={nodeRef} className="fixed top-20 left-20 z-50 bg-white border rounded-lg shadow-lg w-[24rem] cursor-move">
+      <div ref={nodeRef} className={`fixed top-20 left-20 z-50 bg-white border rounded-lg shadow-lg cursor-move ${isLucideIcon ? 'w-[16rem]' : 'w-[24rem]'}`}>
         <div className="flex items-center justify-between p-3 border-b">
           <div className="flex items-center gap-2">
             <Palette className="w-4 h-4 text-blue-600" />
-            <h3 className="font-semibold text-slate-800 text-sm">Visual Styling</h3>
+            <h3 className="font-semibold text-slate-800 text-sm">{isLucideIcon ? 'Icon Styling' : 'Visual Styling'}</h3>
           </div>
           {onClose && (
             <Button
@@ -132,6 +134,36 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
           )}
         </div>
         <div className="p-3 space-y-2">
+          {/* Icon Color - only for Lucide icons; when icon mode, hide other sections */}
+          {isLucideIcon && (
+            <div className="bg-blue-50/50 rounded-md p-2 border border-blue-200/50">
+              <div className="flex items-center gap-1.5 mb-2">
+                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                <Label className="text-xs font-semibold text-slate-700">Icon Color</Label>
+              </div>
+              <div className="flex gap-1">
+                <Input
+                  type="color"
+                  value={styling.iconColor || '#374151'}
+                  onChange={(e) => handlePropertyChange('iconColor', (e.target as HTMLInputElement).value)}
+                  onMouseUp={(e) => handlePropertyChange('iconColor', (e.target as HTMLInputElement).value, true)}
+                  onBlur={(e) => handlePropertyChange('iconColor', (e.target as HTMLInputElement).value, true)}
+                  className="h-6 w-8 p-0.5"
+                />
+                <Input
+                  type="text"
+                  value={styling.iconColor || ''}
+                  onChange={(e) => handlePropertyChange('iconColor', e.target.value)}
+                  placeholder="#374151"
+                  className="h-6 text-xs flex-1"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Preset, Border, Background, Effects, Tags - hidden for Lucide icons */}
+          {!isLucideIcon && (
+          <>
           {/* Style Preset */}
           <div className="bg-slate-50 rounded-md p-2">
             <div className="flex items-center gap-1.5 mb-2">
@@ -489,6 +521,8 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
               </div>
             </div>
           </div>
+          </>
+          )}
         </div>
        </div>
      </Draggable>

@@ -13,6 +13,7 @@ export interface VisualStyling {
   shadow?: boolean;
   borderWidth?: number; // Border thickness
   roundedEdges?: boolean; // Whether to apply rounded edges to shapes
+  iconColor?: string; // Color for Lucide icons (context-aware, icons only)
 }
 
 // Predefined visual styles for dropdown selection
@@ -177,7 +178,8 @@ export function extractVisualStylingFromNode(node: DiagramNodeData | DiagramNode
     gradientAngle: node.gradientAngle,
     shadow: node.shadow,
     borderWidth: node.borderWidth,
-    roundedEdges: (node as any).roundedEdges
+    roundedEdges: (node as any).roundedEdges,
+    iconColor: (node as DiagramNodeData).iconColor
   };
 }
 
@@ -216,7 +218,8 @@ export function applyVisualStylingToNode(
     gradientAngle: styling.gradientAngle ?? node.gradientAngle,
     shadow: styling.shadow ?? node.shadow,
     borderWidth: styling.borderWidth ?? node.borderWidth,
-    roundedEdges: styling.roundedEdges ?? (node as any).roundedEdges
+    roundedEdges: styling.roundedEdges ?? (node as any).roundedEdges,
+    iconColor: styling.iconColor !== undefined ? styling.iconColor : (node as DiagramNodeData).iconColor
   } as DiagramNodeData | DiagramNodeItem;
 }
 

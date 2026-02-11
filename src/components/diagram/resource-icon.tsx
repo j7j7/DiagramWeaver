@@ -14,9 +14,10 @@ interface ResourceIconProps extends React.SVGProps<SVGSVGElement> {
   iconType?: "lucide" | "emoji"; // For standard icons from Icons section
   iconName?: string; // Lucide icon name (e.g. "Home", "Shield")
   emoji?: string; // Emoji character for emoji icons
+  iconColor?: string; // Color for Lucide icons
 }
 
-export function ResourceIcon({ type, imagePath, provider, category, file, iconType, iconName, emoji, ...props }: ResourceIconProps) {
+export function ResourceIcon({ type, imagePath, provider, category, file, iconType, iconName, emoji, iconColor, ...props }: ResourceIconProps) {
   const [resourceFile, setResourceFile] = useState<string | null>(null);
 
   // Render standard icons (Lucide symbols or emojis) - same square size as other items (70x70)
@@ -44,7 +45,7 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
     const nameToUse = iconName || type.split(".").pop()?.split("-").map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join("") || "";
     const LucideIcon = getLucideIcon(nameToUse);
     if (LucideIcon) {
-      return <LucideIcon {...props} />;
+      return <LucideIcon {...props} color={iconColor || undefined} />;
     }
   }
   if (type.startsWith("generic.icon.") || type.startsWith("generic.emoji.")) {
@@ -70,7 +71,7 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
     const pascalName = iconPart.split("-").map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join("");
     const LucideIcon = getLucideIcon(pascalName);
     if (LucideIcon) {
-      return <LucideIcon {...props} />;
+      return <LucideIcon {...props} color={iconColor || undefined} />;
     }
   }
 

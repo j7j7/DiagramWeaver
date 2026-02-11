@@ -719,7 +719,8 @@ export function ContextToolbar({
       backgroundColors: undefined,
       gradientAngle: undefined,
       shadow: undefined,
-      borderWidth: undefined
+      borderWidth: undefined,
+      iconColor: undefined
     };
     
     // Check if multiple items are selected
@@ -1556,6 +1557,7 @@ export function ContextToolbar({
                   tagPosition={(selectedItem as any)?.tagPosition}
                   onTagChange={(tag) => onItemUpdate?.({ ...selectedItem, tag } as SelectedItem)}
                   onTagPositionChange={(tagPosition) => onItemUpdate?.({ ...selectedItem, tagPosition } as SelectedItem)}
+                  isLucideIcon={(selectedItem as any)?.type?.startsWith?.('generic.icon.') || (selectedItem as any)?.iconType === 'lucide'}
                 />
               </div>,
               document.body

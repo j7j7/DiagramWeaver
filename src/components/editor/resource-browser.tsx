@@ -44,7 +44,7 @@ const setBrowserState = (state: ResourceBrowserState) => {
     console.warn('Failed to save resource browser state to cookie:', error);
   }
 };
-import { ChevronDown, ChevronRight, Search, Package, Server, Database, Globe, Cloud, Cpu, Shield, BarChart3, Layers, Box, Network, Maximize2, Minimize2, Type, LayoutGrid, List, Smile } from 'lucide-react';
+import { ChevronDown, ChevronRight, Search, Package, Server, Database, Globe, Cloud, Cpu, Shield, BarChart3, Layers, Box, Network, Maximize2, Minimize2, Type, LayoutGrid, List } from 'lucide-react';
 import { DraggableIconItem } from './draggable-icon-item';
 import { SYMBOL_ICON_SECTIONS, EMOJI_ICONS } from '@/lib/icon-resources';
 import { Input } from '../ui/input';
@@ -215,7 +215,6 @@ export function ResourceBrowser({ onResourceSelect, onResourceActivate }: Resour
   // Use fixed defaults for initial render to avoid hydration mismatch (cookies only exist on client)
   const [expandedProviders, setExpandedProviders] = useState<Set<string>>(new Set());
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
-  const [expandedIconsSection, setExpandedIconsSection] = useState(true);
   const [expandedIconCategories, setExpandedIconCategories] = useState<Set<string>>(() =>
     new Set(['People', 'Places', 'Tech', 'Emojis'])
   );
@@ -268,13 +267,17 @@ export function ResourceBrowser({ onResourceSelect, onResourceActivate }: Resour
           }
 
           const providerData = providers[Array.from(newExpandedProviders)[0]];
+          const defaultProviderKey = Array.from(newExpandedProviders)[0];
           if (providerData?.categories && newExpandedCategories.size === 0) {
             const categoriesToExpand = ['grouping', 'text', 'compute', 'database', 'network'];
             Object.keys(providerData.categories).forEach(categoryKey => {
               if (categoriesToExpand.includes(categoryKey)) {
-                newExpandedCategories.add(`${Array.from(newExpandedProviders)[0]}-${categoryKey}`);
+                newExpandedCategories.add(`${defaultProviderKey}-${categoryKey}`);
               }
             });
+            if (defaultProviderKey === 'generic') {
+              newExpandedCategories.add('generic-icons');
+            }
           }
 
           setExpandedProviders(newExpandedProviders);
@@ -543,103 +546,6 @@ return (
         <ScrollArea className="h-full">
           <TooltipProvider>
           <div className="p-2">
-            {/* Icons Section - Standard symbols and emojis */}
-            {(Object.keys(filteredIconItems.symbolSections).length > 0 || filteredIconItems.emoji.length > 0) && (
-            <div className="mb-2 rounded-md border bg-amber-500/5 border-amber-500/15">
-              <Collapsible open={expandedIconsSection} onOpenChange={setExpandedIconsSection}>
-                <CollapsibleTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-between p-3 h-auto hover:bg-accent/50 hover:text-accent-foreground touch-target"
-                  >
-                    <div className="flex items-center gap-2">
-                      {expandedIconsSection ? (
-                        <ChevronDown className="w-4 h-4" />
-                      ) : (
-                        <ChevronRight className="w-4 h-4" />
-                      )}
-                      <Smile className="w-4 h-4" />
-                      <span className="font-medium">Icons</span>
-                      <Badge variant="secondary" className="ml-auto">
-                        {Object.values(filteredIconItems.symbolSections).flat().length + filteredIconItems.emoji.length}
-                      </Badge>
-                    </div>
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="ml-4 pl-2 border-l-2 border-muted">
-                    {/* Symbol sections (Lucide) */}
-                    {Object.entries(filteredIconItems.symbolSections).map(([sectionName, icons]) => (
-                      <div key={sectionName} className="mb-1 rounded-md border bg-slate-500/5 border-slate-500/10">
-                        <Collapsible open={expandedIconCategories.has(sectionName)} onOpenChange={() => toggleIconCategory(sectionName)}>
-                          <CollapsibleTrigger asChild>
-                            <Button variant="ghost" className="w-full justify-between p-2 h-auto hover:bg-accent/40 hover:text-accent-foreground touch-target">
-                              <div className="flex items-center gap-1">
-                                {expandedIconCategories.has(sectionName) ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                                <span className="text-sm">{sectionName}</span>
-                                <Badge variant="outline" className="ml-auto text-xs">{icons.length}</Badge>
-                              </div>
-                            </Button>
-                          </CollapsibleTrigger>
-                          <CollapsibleContent>
-                            <div className={`ml-4 grid touch-spacing ${
-                              viewMode === 'compact'
-                                ? 'grid-cols-[repeat(auto-fill,minmax(56px,1fr))] gap-1 p-1'
-                                : 'grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-2 p-2'
-                            }`}>
-                              {icons.map((iconItem, index) => (
-                                <DraggableIconItem
-                                  key={`${sectionName}-${index}`}
-                                  iconItem={iconItem}
-                                  onClick={(dragItem) => handleIconSelect(dragItem)}
-                                  onDoubleClick={(dragItem) => handleIconActivate(dragItem)}
-                                  viewMode={viewMode}
-                                />
-                              ))}
-                            </div>
-                          </CollapsibleContent>
-                        </Collapsible>
-                      </div>
-                    ))}
-                    {/* Emoji Icons */}
-                    {filteredIconItems.emoji.length > 0 && (
-                    <div className="mb-1 rounded-md border bg-slate-500/5 border-slate-500/10">
-                      <Collapsible open={expandedIconCategories.has('Emojis')} onOpenChange={() => toggleIconCategory('Emojis')}>
-                        <CollapsibleTrigger asChild>
-                          <Button variant="ghost" className="w-full justify-between p-2 h-auto hover:bg-accent/40 hover:text-accent-foreground touch-target">
-                            <div className="flex items-center gap-1">
-                              {expandedIconCategories.has('Emojis') ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                              <span className="text-sm">Emojis</span>
-                              <Badge variant="outline" className="ml-auto text-xs">{filteredIconItems.emoji.length}</Badge>
-                            </div>
-                          </Button>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <div className={`ml-4 grid touch-spacing ${
-                            viewMode === 'compact'
-                              ? 'grid-cols-[repeat(auto-fill,minmax(56px,1fr))] gap-1 p-1'
-                              : 'grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-2 p-2'
-                          }`}>
-                            {filteredIconItems.emoji.map((iconItem, index) => (
-                              <DraggableIconItem
-                                key={`emoji-${index}`}
-                                iconItem={iconItem}
-                                onClick={(dragItem) => handleIconSelect(dragItem)}
-                                onDoubleClick={(dragItem) => handleIconActivate(dragItem)}
-                                viewMode={viewMode}
-                              />
-                            ))}
-                          </div>
-                        </CollapsibleContent>
-                      </Collapsible>
-                    </div>
-                    )}
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            </div>
-            )}
-
             {isLoading ? (
               <div className="flex items-center justify-center h-32">
                 <div className="text-sm text-muted-foreground">Loading resources...</div>
@@ -684,9 +590,15 @@ return (
 
                       <CollapsibleContent>
                         <div className="ml-4 pl-2 border-l-2 border-muted">
-                          {Object.entries(provider.categories).map(([categoryKey, category]) => {
+                          {[
+                            ...Object.entries(provider.categories),
+                            ...(providerKey === 'generic' && (Object.keys(filteredIconItems.symbolSections).length > 0 || filteredIconItems.emoji.length > 0)
+                              ? [['icons', { name: 'Icons', path: '', resources: [] as ResourceItem[], _isIconCategory: true }] as const]
+                              : []),
+                          ].map(([categoryKey, category]) => {
                             const categoryFullKey = `${providerKey}-${categoryKey}`;
                             const isExpanded = expandedCategories.has(categoryFullKey);
+                            const isIconCategory = (category as ResourceCategory & { _isIconCategory?: boolean })._isIconCategory;
 
                             return (
                               <div key={categoryKey} className={`mb-1 rounded-md border ${getCategoryTintClasses(categoryKey)}`}>
@@ -704,13 +616,77 @@ return (
                                         )}
                                         <span className="text-sm">{category.name}</span>
                                         <Badge variant="outline" className="ml-auto text-xs">
-                                          {category.resources.length}
+                                          {isIconCategory ? Object.values(filteredIconItems.symbolSections).flat().length + filteredIconItems.emoji.length : category.resources.length}
                                         </Badge>
                                       </div>
                                     </Button>
                                   </CollapsibleTrigger>
 
                                   <CollapsibleContent>
+                                    {isIconCategory ? (
+                                      <div className="ml-4 pl-2 border-l-2 border-muted space-y-1">
+                                        {Object.entries(filteredIconItems.symbolSections).map(([sectionName, icons]) => (
+                                          <div key={sectionName} className="rounded-md border bg-slate-500/5 border-slate-500/10">
+                                            <Collapsible open={expandedIconCategories.has(sectionName)} onOpenChange={() => toggleIconCategory(sectionName)}>
+                                              <CollapsibleTrigger asChild>
+                                                <Button variant="ghost" className="w-full justify-between p-2 h-auto hover:bg-accent/40 hover:text-accent-foreground touch-target">
+                                                  <div className="flex items-center gap-1">
+                                                    {expandedIconCategories.has(sectionName) ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                                                    <span className="text-sm">{sectionName}</span>
+                                                    <Badge variant="outline" className="ml-auto text-xs">{icons.length}</Badge>
+                                                  </div>
+                                                </Button>
+                                              </CollapsibleTrigger>
+                                              <CollapsibleContent>
+                                                <div className={`ml-4 grid touch-spacing ${
+                                                  viewMode === 'compact' ? 'grid-cols-[repeat(auto-fill,minmax(56px,1fr))] gap-1 p-1' : 'grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-2 p-2'
+                                                }`}>
+                                                  {icons.map((iconItem, index) => (
+                                                    <DraggableIconItem
+                                                      key={`${sectionName}-${index}`}
+                                                      iconItem={iconItem}
+                                                      onClick={(dragItem) => handleIconSelect(dragItem)}
+                                                      onDoubleClick={(dragItem) => handleIconActivate(dragItem)}
+                                                      viewMode={viewMode}
+                                                    />
+                                                  ))}
+                                                </div>
+                                              </CollapsibleContent>
+                                            </Collapsible>
+                                          </div>
+                                        ))}
+                                        {filteredIconItems.emoji.length > 0 && (
+                                          <div className="rounded-md border bg-slate-500/5 border-slate-500/10">
+                                            <Collapsible open={expandedIconCategories.has('Emojis')} onOpenChange={() => toggleIconCategory('Emojis')}>
+                                              <CollapsibleTrigger asChild>
+                                                <Button variant="ghost" className="w-full justify-between p-2 h-auto hover:bg-accent/40 hover:text-accent-foreground touch-target">
+                                                  <div className="flex items-center gap-1">
+                                                    {expandedIconCategories.has('Emojis') ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                                                    <span className="text-sm">Emojis</span>
+                                                    <Badge variant="outline" className="ml-auto text-xs">{filteredIconItems.emoji.length}</Badge>
+                                                  </div>
+                                                </Button>
+                                              </CollapsibleTrigger>
+                                              <CollapsibleContent>
+                                                <div className={`ml-4 grid touch-spacing ${
+                                                  viewMode === 'compact' ? 'grid-cols-[repeat(auto-fill,minmax(56px,1fr))] gap-1 p-1' : 'grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-2 p-2'
+                                                }`}>
+                                                  {filteredIconItems.emoji.map((iconItem, index) => (
+                                                    <DraggableIconItem
+                                                      key={`emoji-${index}`}
+                                                      iconItem={iconItem}
+                                                      onClick={(dragItem) => handleIconSelect(dragItem)}
+                                                      onDoubleClick={(dragItem) => handleIconActivate(dragItem)}
+                                                      viewMode={viewMode}
+                                                    />
+                                                  ))}
+                                                </div>
+                                              </CollapsibleContent>
+                                            </Collapsible>
+                                          </div>
+                                        )}
+                                      </div>
+                                    ) : (
                                     <div className={`ml-4 grid touch-spacing ${
                                       viewMode === 'compact' 
                                         ? 'grid-cols-[repeat(auto-fill,minmax(56px,1fr))] gap-1 p-1' 
@@ -729,6 +705,7 @@ return (
                                         />
                                       ))}
                                     </div>
+                                    )}
                                   </CollapsibleContent>
                                 </Collapsible>
                               </div>

@@ -71,6 +71,15 @@ export const DiagramNodeDataSchema = z.object({
   
   // Lock property - prevents movement when true
   locked: z.boolean().optional(), // If true, node cannot be moved
+
+  // Standard icons (Lucide/emoji) - from Icons section under Generic
+  provider: z.string().optional(),
+  category: z.string().optional(),
+  file: z.string().optional(),
+  iconType: z.enum(['lucide', 'emoji']).optional(),
+  iconName: z.string().optional(),
+  emoji: z.string().optional(),
+  iconColor: z.string().optional(), // Color for Lucide icons (hex)
 });
 
 // Schema for DiagramConnectionData 

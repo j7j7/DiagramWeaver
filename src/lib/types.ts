@@ -81,6 +81,7 @@ export interface DiagramNodeData {
   iconType?: 'lucide' | 'emoji'; // Render as Lucide icon or emoji
   iconName?: string; // Lucide icon name (e.g. 'Home', 'Shield')
   emoji?: string; // Emoji character for emoji icons
+  iconColor?: string; // Color for Lucide icons (hex, e.g. '#3b82f6')
 }
 
 export interface ScratchPadItem {
