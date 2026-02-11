@@ -336,7 +336,11 @@ export function ContextToolbar({
   }
 
   const handleLabelChange = (value: string) => {
-    onItemUpdate?.({ ...selectedItem, label: value } as SelectedItem);
+    const updated = { ...selectedItem, label: value } as SelectedItem;
+    if (selectedItem?.type === 'generic.text.textbox') {
+      (updated as any).richLabel = undefined;
+    }
+    onItemUpdate?.(updated);
   };
 
   const handleTagChange = (value: string) => {

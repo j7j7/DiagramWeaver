@@ -1,7 +1,17 @@
+/** Rich text run - segment with optional bold/italic/underline */
+export interface RichTextRun {
+  text: string;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+}
+
 export interface DiagramNodeData {
   id: string;
   type: string; // Format: provider.category.resourcename (e.g., aws.compute.ec2)
   label?: string;
+  /** Rich formatting for textbox nodes - per-segment bold/italic/underline. When set, used for display instead of plain label. */
+  richLabel?: RichTextRun[];
   tag?: string;
   tagPosition?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right';
   info?: string;

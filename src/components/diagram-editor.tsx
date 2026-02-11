@@ -542,10 +542,14 @@ export default function DiagramEditor() {
     }
   }
 
-  const handleLabelUpdate = (nodeId: string, newLabel: string) => {
+  const handleLabelUpdate = (nodeId: string, newLabel: string, richLabel?: import("@/lib/types").RichTextRun[]) => {
     setDiagramData(prevData => ({
       ...prevData,
-      nodes: prevData.nodes.map(n => n.id === nodeId ? { ...n, label: newLabel } : n)
+      nodes: prevData.nodes.map(n =>
+        n.id === nodeId
+          ? { ...n, label: newLabel, richLabel: richLabel ?? undefined }
+          : n
+      ),
     }));
 
     // Also update the selected item if it's the one being edited

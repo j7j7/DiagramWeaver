@@ -9,7 +9,10 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ResourceIcon } from "./resource-icon";
-import type { DiagramNodeData } from "@/lib/types";
+import type { DiagramNodeData, RichTextRun } from "@/lib/types";
+import { labelToRuns } from "@/lib/rich-text";
+import { TextboxRichEditor } from "./textbox-rich-editor";
+import { TextboxRichDisplay } from "./textbox-rich-display";
 import { cn } from "@/lib/utils";
 import { ItemTypes } from "../editor/draggable-item";
 import { snapToGrid, snapDimensionToGrid } from "@/components/editor/canvas-constants";
@@ -146,7 +149,7 @@ interface DiagramNodeProps {
   isGroupMember?: boolean;
   onClick?: (e: React.MouseEvent, node: DiagramNodeData) => void;
   onContextMenu?: (e: React.MouseEvent, node: DiagramNodeData) => void;
-  onLabelUpdate?: (nodeId: string, newLabel: string) => void;
+  onLabelUpdate?: (nodeId: string, newLabel: string, richLabel?: RichTextRun[]) => void;
   onTagUpdate?: (nodeId: string, newTag: string) => void;
   onResize?: (nodeId: string, newWidth: number, newHeight: number) => void;
   onResizeStart?: (nodeId: string, width: number, height: number) => void;
@@ -170,6 +173,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [isEditingTag, setIsEditingTag] = useState(false);
   const [editText, setEditText] = useState(node.label || '');
+  const [editRuns, setEditRuns] = useState<RichTextRun[]>([]);
   const [editTagText, setEditTagText] = useState(node.tag || '');
   
   // Resize state
@@ -192,6 +196,9 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
     setIsEditingLabel(true);
     setIsOpen(false); // Close popup when editing starts
     setEditText(node.label || '');
+    if (node.type === 'generic.text.textbox') {
+      setEditRuns(node.richLabel ?? labelToRuns(node.label));
+    }
     setTimeout(() => {
       const ref = isTextboxNode ? textareaRef.current : inputRef.current;
       if (ref) {
@@ -204,6 +211,13 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
   const handleLabelSubmit = () => {
     if (onLabelUpdate && editText.trim() !== node.label) {
       onLabelUpdate(node.id, editText.trim());
+    }
+    setIsEditingLabel(false);
+  };
+
+  const handleRichLabelSubmit = (plainText: string, runs: RichTextRun[]) => {
+    if (onLabelUpdate) {
+      onLabelUpdate(node.id, plainText.trim(), runs);
     }
     setIsEditingLabel(false);
   };
@@ -1028,29 +1042,24 @@ return (
                  }}
               >
                 {isEditingLabel ? (
-                  <textarea
-                    ref={textareaRef}
-                    id={`node-input-${node.id}`}
-                    value={editText}
-                    onChange={(e) => setEditText(e.target.value)}
-                    onBlur={handleLabelSubmit}
-                    onKeyDown={(e) => handleLabelKeyDown(e, true)}
-                    className="text-sm font-medium bg-transparent border border-primary rounded px-2 py-2 w-full h-full outline-none resize-none"
-                    onClick={(e) => e.stopPropagation()}
-                    rows={4}
-                  />
+                  <div className={`w-full flex-1 flex flex-col min-h-0 ${getVerticalJustifyClass((node as any).textVerticalPosition)} ${node.sizeMode === 'custom' ? 'px-1 py-0.5' : 'px-2 py-2'}`}>
+                    <TextboxRichEditor
+                      node={node}
+                      runs={editRuns}
+                      onSubmit={handleRichLabelSubmit}
+                      onKeyDown={(e) => handleLabelKeyDown(e, true)}
+                    />
+                  </div>
                 ) : (
                     <div 
                       className={`w-full flex-1 flex flex-col ${getVerticalJustifyClass((node as any).textVerticalPosition)} ${node.sizeMode === 'custom' ? 'px-1 py-0.5' : 'px-2 py-2'}`}
                     >
-                      <p 
-                        className={`${getTextJustifyClass((node as any).textJustify)} break-words leading-normal cursor-text hover:bg-background/50 rounded whitespace-pre-wrap w-full`}
-                        style={{ ...getTextStylingForNode(node), display: 'block' }}
+                      <TextboxRichDisplay
+                        node={node}
+                        runs={node.richLabel ?? labelToRuns(node.label)}
                         onDoubleClick={handleLabelDoubleClick}
-                      >
-                        {node.label || 'Enter text...'}
-                       </p>
-                         </div>
+                      />
+                    </div>
                      )}
                </div>
                );
@@ -1159,8 +1168,12 @@ return (
             className="w-64 bg-popover text-popover-foreground shadow-xl border-accent"
           >
             <div className="space-y-2">
-               {node.label && <h4 className="font-semibold font-headline text-primary">{node.label}</h4>}
-              {node.info && <p className="text-sm">{node.info}</p>}
+              {node.info ? (
+                <p className="text-sm font-medium">{node.info}</p>
+              ) : null}
+              {node.label && (
+                <p className={cn("text-sm", node.info && "text-muted-foreground")}>{node.label}</p>
+              )}
             </div>
           </PopoverContent>
         )}

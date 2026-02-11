@@ -1,11 +1,20 @@
 import { z } from 'zod';
 import { flattenDiagramOnImport } from './flatten-on-import';
 
+// Rich text run schema for textbox nodes
+const RichTextRunSchema = z.object({
+  text: z.string(),
+  bold: z.boolean().optional(),
+  italic: z.boolean().optional(),
+  underline: z.boolean().optional(),
+});
+
 // Schema for DiagramNodeData based on actual types
 export const DiagramNodeDataSchema = z.object({
   id: z.string(),
   type: z.string(),
   label: z.string().optional(),
+  richLabel: z.array(RichTextRunSchema).optional(),
   tag: z.string().optional(),
   tagPosition: z.enum(['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right']).optional(),
   info: z.string().optional(),
