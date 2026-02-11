@@ -17,6 +17,8 @@ interface CanvasConnectionsProps {
   onConnectionDelete?: (from: string, to: string) => void;
   /** When set, only render connections whose index is in this set (for order-aware layering) */
   connectionIndices?: Set<number>;
+  /** Z-index for this connection layer when using order-aware layering (enables interleaving with nodes) */
+  stackZIndex?: number;
 }
 
 export function CanvasConnections({
@@ -30,6 +32,7 @@ export function CanvasConnections({
   closeContextMenu,
   onConnectionDelete,
   connectionIndices,
+  stackZIndex,
 }: CanvasConnectionsProps) {
   // Pre-calculate edge information for all connections
   const connectionEdgeInfo = new Map<string, { fromEdge: string; toEdge: string }>();
@@ -82,7 +85,7 @@ export function CanvasConnections({
       width={width}
       height={height}
       className="absolute top-0 left-0 overflow-visible pointer-events-none"
-      style={{ zIndex: connectionIndices !== undefined ? -1 : 0 }}
+      style={{ zIndex: stackZIndex ?? (connectionIndices !== undefined ? 0 : 1) }}
     >
       <defs>
         <marker

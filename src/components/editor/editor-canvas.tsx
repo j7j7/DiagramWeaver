@@ -835,13 +835,12 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   // - handleTouchStart/Move/End: Handles touch gestures for mobile
   // - isPanning: Whether canvas is currently being panned
   // See: src/hooks/use-canvas-interactions.ts
-  const { isPanning, handleMouseDown: handleInteractionsMouseDown, handleMouseMove: handleInteractionsMouseMove, handleMouseUpOrLeave: handleInteractionsMouseUpOrLeave, handleTouchStart, handleTouchMove, handleTouchEnd } = useCanvasInteractions({
+  const { isPanning, handleMouseDown: handleInteractionsMouseDown, handleMouseMove: handleInteractionsMouseMove, handleMouseUpOrLeave: handleInteractionsMouseUpOrLeave, handleTouchStart, handleTouchMove, handleTouchEnd, wasLastRightClickAPan } = useCanvasInteractions({
     canvasRef,
     transform,
     setTransform,
     isConnectMode,
     onMousePositionChange,
-    disableRightClickPan: !!onResourceActivateAtPosition,
   });
 
 
@@ -1162,6 +1161,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           onTouchEnd={handleTouchEnd}
           onContextMenu={(e) => {
             e.preventDefault();
+            // If user right-click-dragged to pan, don't show search - they wanted to pan
+            if (wasLastRightClickAPan()) return;
             // Nodes and zones handle their own context menus and call stopPropagation
             // If we reach here, it's empty canvas - show search resources modal
             const target = e.target as HTMLElement;
@@ -1211,10 +1212,14 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 : undefined;
               const node = nodesById[itemId];
               const zone = zonesById[itemId];
+              // Z-indices interleave: conn-slot-i (2*i) behind node-i (2*i+1), enabling order-aware line layering
+              const connZIndex = 2 * i;
+              const nodeZIndex = 2 * i + 1;
               const nodeEl = node ? (
                 <DiagramNode
                   key={node.id}
                   node={displayNodesById[node.id] || node}
+                  stackZIndex={nodeZIndex}
                   isSelected={selectedItemId === node.id || (selectedItemIds?.has(node.id) ?? false)}
                   isMultiSelected={selectedItemIds?.has(node.id) && (selectedItemIds?.size ?? 0) > 1}
                   isGroupMember={
@@ -1258,6 +1263,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     closeContextMenu={closeContextMenu}
                     onConnectionDelete={onConnectionDelete}
                     connectionIndices={connIndices}
+                    stackZIndex={connZIndex}
                   />
                 ) : null,
                 nodeEl,
@@ -1281,6 +1287,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   closeContextMenu={closeContextMenu}
                   onConnectionDelete={onConnectionDelete}
                   connectionIndices={new Set(lastSlot)}
+                  stackZIndex={2 * n}
                 />
               );
             })()}

@@ -166,9 +166,11 @@ interface DiagramNodeProps {
   isConnectMode?: boolean;
   transform?: { x: number; y: number; k: number }; // Canvas transform for coordinate conversion
   canvasRef?: React.RefObject<HTMLDivElement | null>; // Canvas ref for coordinate conversion
+  /** Z-index for order-aware connection layering (when set, overrides default 2) */
+  stackZIndex?: number;
 }
 
-export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onResizeStart, onResizeEnd, onPositionUpdate, onDraggingChange, onUpdate, hoverEnabled = true, selectionAnimationEnabled = false, animationOffset = { x: 0, y: 0 }, isReadOnly = false, onHoverChange, onConnect, isConnectMode, transform, canvasRef }: DiagramNodeProps) {
+export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onResizeStart, onResizeEnd, onPositionUpdate, onDraggingChange, onUpdate, hoverEnabled = true, selectionAnimationEnabled = false, animationOffset = { x: 0, y: 0 }, isReadOnly = false, onHoverChange, onConnect, isConnectMode, transform, canvasRef, stackZIndex }: DiagramNodeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [isEditingTag, setIsEditingTag] = useState(false);
@@ -910,7 +912,7 @@ return (
       onClick={isLineNode ? undefined : (e) => onClick && onClick(e, node)} // Lines handle clicks in their SVG (not on container)
       onContextMenu={isLineNode ? undefined : (e) => onContextMenu && onContextMenu(e, node)} // Lines handle context menu in their SVG (not on container)
       style={{
-        zIndex: 2,
+        zIndex: stackZIndex ?? 2,
         // For lines during drag, keep container position stable (use initial position)
         // This prevents handles from drifting - they're positioned relative to stable container
         left: isLineNode && isDraggingLineEndpoint && initialContainerPosRef.current

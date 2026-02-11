@@ -8,7 +8,6 @@ interface UseCanvasInteractionsOptions {
   setTransform: (transform: Transform) => void;
   isConnectMode: boolean;
   onMousePositionChange?: (position: { x: number; y: number } | null) => void;
-  disableRightClickPan?: boolean;
 }
 
 export function useCanvasInteractions({
@@ -17,7 +16,6 @@ export function useCanvasInteractions({
   setTransform,
   isConnectMode,
   onMousePositionChange,
-  disableRightClickPan = false,
 }: UseCanvasInteractionsOptions) {
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
@@ -27,6 +25,10 @@ export function useCanvasInteractions({
   // Throttle mouse position updates to avoid performance warnings
   const mousePositionThrottleRef = useRef<number | null>(null);
   const lastMousePositionRef = useRef<{ x: number; y: number } | null>(null);
+  // Track if last right-click was used for panning (drag) - if so, don't show context menu
+  const rightClickPanningRef = useRef(false);
+  const rightClickDidPanRef = useRef(false);
+  const lastRightClickWasPanRef = useRef(false);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (isConnectMode) return;
@@ -39,12 +41,14 @@ export function useCanvasInteractions({
                          target.closest('[data-zone-id]') ||
                          target.closest('.absolute');
     
-    if (e.button === 2 && !isNodeOrZone && !disableRightClickPan) {
+    if (e.button === 2 && !isNodeOrZone) {
       e.preventDefault(); // Prevent context menu only on empty canvas
       setIsPanning(true);
       setPanStart({ x: e.clientX - transform.x, y: e.clientY - transform.y });
+      rightClickPanningRef.current = true;
+      rightClickDidPanRef.current = false;
     }
-  }, [isConnectMode, transform, disableRightClickPan]);
+  }, [isConnectMode, transform]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     // Track mouse position for display (throttled to avoid performance warnings)
@@ -76,10 +80,16 @@ export function useCanvasInteractions({
     }
     
     if (!isPanning) return;
+    rightClickDidPanRef.current = true; // User dragged - this was a pan, not a context-menu click
     setTransform({ ...transform, x: e.clientX - panStart.x, y: e.clientY - panStart.y });
   }, [canvasRef, transform, onMousePositionChange, isPanning, panStart, setTransform]);
 
   const handleMouseUpOrLeave = useCallback(() => {
+    if (rightClickPanningRef.current) {
+      lastRightClickWasPanRef.current = rightClickDidPanRef.current;
+      rightClickPanningRef.current = false;
+      rightClickDidPanRef.current = false;
+    }
     setIsPanning(false);
     // Clean up any pending mouse position update
     if (mousePositionThrottleRef.current !== null) {
@@ -175,6 +185,11 @@ export function useCanvasInteractions({
     handleTouchStart,
     handleTouchMove,
     handleTouchEnd,
+    wasLastRightClickAPan: () => {
+      const v = lastRightClickWasPanRef.current;
+      lastRightClickWasPanRef.current = false;
+      return v;
+    },
   };
 }
 
