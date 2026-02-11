@@ -16,9 +16,18 @@ export const RULER_SIZE = 24;
 export type PositionedNode = DiagramNodeData & { x: number; y: number; };
 export type PositionedGroup = DiagramZoneData & { x: number; y: number; width: number; height: number; };
 
+// Grid step for position and dimension alignment (10px) - ensures right/bottom edges tessellate
+const GRID_STEP = 10;
+
 // Custom snap function: snaps to 10px increments
 export const snapToGrid = (v: number): number => {
-  return Math.round(v / 10) * 10;
+  return Math.round(v / GRID_STEP) * GRID_STEP;
+};
+
+/** Snaps width/height to grid so right (x+width) and bottom (y+height) edges align for tessellation */
+export const snapDimensionToGrid = (v: number, minVal = 20): number => {
+  const snapped = Math.round(v / GRID_STEP) * GRID_STEP;
+  return Math.max(minVal, snapped);
 };
 
 export const measureNodeDims = (n: PositionedNode) => {
@@ -54,22 +63,20 @@ export const measureNodeDims = (n: PositionedNode) => {
     const minY = Math.min(startPos.y, endPos.y);
     const maxX = Math.max(startPos.x, endPos.x);
     const maxY = Math.max(startPos.y, endPos.y);
-    // Add padding for caps and text
     const padding = 30;
-    return { 
-      width: Math.max(150, maxX - minX + padding * 2), 
-      height: Math.max(100, maxY - minY + padding * 2) 
-    };
+    const w = Math.max(150, maxX - minX + padding * 2);
+    const h = Math.max(100, maxY - minY + padding * 2);
+    return { width: snapDimensionToGrid(w, 150), height: snapDimensionToGrid(h, 100) };
   }
 
   // Use custom dimensions if sizeMode is 'custom' and dimensions are provided
   if ((isTextNode  || isTextboxNode || isShapeNode) && n.sizeMode === 'custom' && n.width && n.height) {
-    return { width: n.width, height: n.height };
+    return { width: snapDimensionToGrid(n.width), height: snapDimensionToGrid(n.height) };
   }
   
   // Shapes always use their custom width/height if set
   if (isShapeNode && n.width && n.height) {
-    return { width: n.width, height: n.height };
+    return { width: snapDimensionToGrid(n.width), height: snapDimensionToGrid(n.height) };
   }
 
   if (isTextboxNode) {
@@ -103,7 +110,7 @@ export const measureNodeDims = (n: PositionedNode) => {
     const textLines = Math.max(1, Math.ceil(label.length / maxCharsPerLine));
     const height = minHeight + (textLines - 1) * EXTRA_LINE_HEIGHT;
 
-    return { width: calculatedWidth, height };
+    return { width: snapDimensionToGrid(calculatedWidth, minWidth), height: snapDimensionToGrid(height, minHeight) };
   } else if (isTextboxNode) {
     const avgCharWidth = 8;
     const padding = 24;
@@ -135,7 +142,7 @@ export const measureNodeDims = (n: PositionedNode) => {
     const textLines = Math.max(1, Math.ceil(label.length / maxCharsPerLine));
     const height = minHeight + (textLines - 1) * EXTRA_LINE_HEIGHT;
 
-    return { width: calculatedWidth, height };
+    return { width: snapDimensionToGrid(calculatedWidth, minWidth), height: snapDimensionToGrid(height, minHeight) };
   } else if (isTextNode  || isShapeNode) {
     const avgCharWidth = 8;
 
@@ -190,7 +197,7 @@ export const measureNodeDims = (n: PositionedNode) => {
       height = NODE_HEIGHT + (shapeLines - 1) * EXTRA_LINE_HEIGHT;
     }
 
-    return { width: calculatedWidth, height };
+    return { width: snapDimensionToGrid(calculatedWidth, 40), height: snapDimensionToGrid(height, 40) };
   } else {
     return { width: NODE_WIDTH, height: NODE_HEIGHT };
   }

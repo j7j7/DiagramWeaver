@@ -4,9 +4,10 @@ import { ItemTypes } from "./draggable-item";
 import { generateGroupId, generateSequentialId } from "@/lib/id-generator";
 import { DEFAULT_THEMES } from "@/lib/theme-manager";
 import { DEFAULT_TEXT_STYLING } from "@/lib/text-styling";
-import { 
+import {
   NODE_WIDTH, 
-  NODE_HEIGHT, 
+  NODE_HEIGHT,
+  snapDimensionToGrid,
   ZONE_PADDING,
   snapToGrid, 
   measureNodeDims,
@@ -49,9 +50,6 @@ export function useCanvasOperations({
       const itemType = item.originalType || item.type || '';
       const itemLabel = item.label || '';
       
-      // Debug logging for all items to see what we're getting
-      console.log('addNode called with:', { itemType, itemLabel, item });
-      
       // Check if this is a scratchpad item that already exists on canvas
       const isFromScratchPad = item.fromScratchPad || item.data?.fromScratchPad;
       const importId = item.importId || item.data?.importId;
@@ -63,7 +61,6 @@ export function useCanvasOperations({
       
       // If item exists and is from scratchpad, create a copy with new ID
       if (existingNode) {
-        console.log('Creating copy of existing scratchpad item:', existingNode.id);
         // We'll create a new node based on the existing one but with a new ID
         const copyNode: DiagramNodeData = {
           ...existingNode,
@@ -128,29 +125,29 @@ export function useCanvasOperations({
         const newNode: DiagramNodeData = {
           id: generateSequentialId(itemType, prevData),
           type: itemType,
-          // Set label based on type - shapes get blank by default, unless it's a configured item (e.g. from Scratch Pad)
-          label: (isShapeResource && !item.label) ? '' : itemLabel,
+          // Set label based on type - shapes get no default text (never use resource name like "Rectangle", "Circle")
+          label: isShapeResource ? '' : itemLabel,
           // Don't set info/description for text and textbox resource types, or shapes
           ...(itemType !== 'generic.text.text' && itemType !== 'generic.text.textbox' && !isShapeResource && {
             info: item.provider ? `${itemLabel} from ${item.provider}` : `A new ${itemLabel}`
           }),
           sizeMode: (isShapeResource || isTextboxResource) ? 'custom' : undefined, // Shapes and textboxes use custom sizing
-           width: isShapeResource ? (
+           width: isShapeResource ? snapDimensionToGrid(
              itemType === 'generic.object.point' ? 20 :
              itemType === 'generic.object.rectangle' ? 80 :
              itemType === 'generic.object.rounded-rectangle' ? 80 :
              itemType === 'generic.object.cloud' ? 80 :
              itemType === 'generic.object.line' ? 150 :
              60
-           ) : isTextboxResource ? 120 : undefined, // Initial width - larger for textbox
-           height: isShapeResource ? (
+           ) : isTextboxResource ? snapDimensionToGrid(120, 40) : undefined, // Initial width - larger for textbox
+           height: isShapeResource ? snapDimensionToGrid(
              itemType === 'generic.object.point' ? 20 :
              itemType === 'generic.object.rectangle' ? 50 :
              itemType === 'generic.object.rounded-rectangle' ? 50 :
              itemType === 'generic.object.cloud' ? 50 :
              itemType === 'generic.object.line' ? 100 :
              60
-           ) : isTextboxResource ? 80 : undefined, // Initial height - larger for textbox
+           ) : isTextboxResource ? snapDimensionToGrid(80, 40) : undefined, // Initial height - larger for textbox
           // Apply default text color for text resources
           ...((itemType === 'generic.text.text' || itemType === 'generic.text.textbox') && {
             textColor: DEFAULT_TEXT_STYLING.textColor
@@ -246,8 +243,8 @@ export function useCanvasOperations({
           
           return {
             ...node,
-            width: Math.max(minWidth, newWidth),
-            height: Math.max(minHeight, newHeight),
+            width: snapDimensionToGrid(Math.max(minWidth, newWidth), minWidth),
+            height: snapDimensionToGrid(Math.max(minHeight, newHeight), minHeight),
             sizeMode: 'custom' as const
           };
         }
@@ -300,8 +297,8 @@ export function useCanvasOperations({
             minHeight = 20;
           }
           
-          const newWidth = Math.max(minWidth, Math.round(currentWidth * scaleX / 20) * 20);
-          const newHeight = Math.max(minHeight, Math.round(currentHeight * scaleY / 20) * 20);
+          const newWidth = snapDimensionToGrid(currentWidth * scaleX, minWidth);
+          const newHeight = snapDimensionToGrid(currentHeight * scaleY, minHeight);
           
           return {
             ...node,

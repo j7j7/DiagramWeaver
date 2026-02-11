@@ -216,37 +216,53 @@ export async function processImportedItems(json: any[]): Promise<MappedImportIte
 }
 
 /**
+ * Builds the correct icon URL from provider, category, and file.
+ * Handles both:
+ * - Simple filenames: provider/category/file (e.g. generic/text/text.png)
+ * - Full paths in file: when file starts with "provider/" it's already the path from resources
+ */
+export function buildResourceIconPath(provider: string, category: string, file: string): string {
+  if (!file) return '';
+  // If file already contains full path from resources root (e.g. aws/Resource-Icons_.../Res_Analytics/...)
+  const providerPrefix = `${provider}/`;
+  if (file.startsWith(providerPrefix) && file.includes('/')) {
+    return `/resources/${file}`;
+  }
+  return `/resources/${provider}/${category}/${file}`;
+}
+
+/**
  * Gets the resource path for an item's icon
  */
 export function getResourcePath(item: any): string | null {
   // Check if item has resourceMapping (for imports)
   if (item.resourceMapping) {
     const { provider, category, file } = item.resourceMapping;
-    return `/resources/${provider}/${category}/${file}`;
+    return buildResourceIconPath(provider, category, file);
   }
   
   // Check if data has resource mapping
   if (item.data?.resourceMapping) {
     const { provider, category, file } = item.data.resourceMapping;
-    return `/resources/${provider}/${category}/${file}`;
+    return buildResourceIconPath(provider, category, file);
   }
   
   // Check legacy scratchpad format
   if (item.data?.scratchpad) {
     const { provider, category, file } = item.data.scratchpad;
     if (provider && category && file) {
-      return `/resources/${provider}/${category}/${file}`;
+      return buildResourceIconPath(provider, category, file);
     }
   }
   
   // Check if the item itself has the resource info (for favorites from sidebar)
   if (item.data?.provider && item.data?.category && item.data?.file) {
-    return `/resources/${item.data.provider}/${item.data.category}/${item.data.file}`;
+    return buildResourceIconPath(item.data.provider, item.data.category, item.data.file);
   }
   
   // Check if the item itself has the resource info (for direct drag from sidebar and canvas nodes)
   if (item.provider && item.category && item.file) {
-    return `/resources/${item.provider}/${item.category}/${item.file}`;
+    return buildResourceIconPath(item.provider, item.category, item.file);
   }
   
   return null;

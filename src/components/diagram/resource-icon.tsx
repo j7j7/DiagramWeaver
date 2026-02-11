@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { Server, User } from "lucide-react";
+import { buildResourceIconPath } from "@/lib/resource-mapping";
 
 interface ResourceIconProps extends React.SVGProps<SVGSVGElement> {
   type: string; // Format: provider.category.resourcename (e.g., aws.compute.ec2)
@@ -79,14 +80,14 @@ export function ResourceIcon({ type, imagePath, provider, category, file, ...pro
     
     // If direct provider info is provided, use it
     if (provider && category && resourceFile) {
-      return `/resources/${provider}/${category}/${resourceFile}`;
+      return buildResourceIconPath(provider, category, resourceFile);
     }
     
     // Only use resource catalog lookup - no fallbacks
     if (resourceFile && parts.length >= 3) {
       const typeProvider = parts[0];
       const typeCategory = parts[1];
-      return `/resources/${typeProvider}/${typeCategory}/${resourceFile}`;
+      return buildResourceIconPath(typeProvider, typeCategory, resourceFile);
     }
     
     return null;

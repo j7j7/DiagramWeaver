@@ -4,6 +4,7 @@ import { useDrag } from 'react-dnd';
 import { Card, CardContent } from '../ui/card';
 import { DraggableItem, ItemTypes } from './draggable-item';
 import { Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip';
+import { buildResourceIconPath } from '@/lib/resource-mapping';
 
 interface DraggableResourceItemProps {
   resource: {
@@ -27,7 +28,7 @@ export function DraggableResourceItem({ resource, provider, category, icon, onCl
 
   // Icon path for display in sidebar - NEVER passed to node
   const iconPath = useMemo(() => {
-    return `/resources/${provider}/${category}/${resource.file}`;
+    return buildResourceIconPath(provider, category, resource.file);
   }, [provider, category, resource.file]);
   
   const item = useMemo(() => {

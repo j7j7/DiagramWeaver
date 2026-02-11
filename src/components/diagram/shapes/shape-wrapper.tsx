@@ -63,31 +63,35 @@ export function ShapeWrapper({
   const height = node.height || defaultHeight;
   const roundedEdges = nodeAny.roundedEdges || false;
 
+  // Skip border/background styling when skipWrapperStyling is true (for SVG shapes)
+  const shouldSkipStyling = skipWrapperStyling || useSvgShadow;
+
+  // Extend shape by full border width with negative margin so adjacent borders overlap on same pixels
+  const borderWidth = !shouldSkipStyling && styles.borderWidth ? parseInt(String(styles.borderWidth), 10) || 2 : 0;
+  const overlap = borderWidth > 0 ? borderWidth : 0;
+
   // Calculate borderRadius when roundedEdges is enabled
-  // Use 6% of the smaller dimension for subtle rounding
   const calculatedBorderRadius = roundedEdges 
     ? `${Math.min(width, height) * 0.06}px` 
     : borderRadius;
-
-  // Skip border/background styling when skipWrapperStyling is true (for SVG shapes)
-  // or when useSvgShadow is true (for SVG shapes with shadow)
-  const shouldSkipStyling = skipWrapperStyling || useSvgShadow;
 
   return (
     <div
       key={`gradient-${nodeAny.gradientAngle || 135}`}
       className="relative"
       style={{
+        boxSizing: 'border-box',
         background: !shouldSkipStyling ? styles.background : undefined,
         borderWidth: !shouldSkipStyling ? styles.borderWidth : undefined,
         borderStyle: !shouldSkipStyling ? styles.borderStyle : undefined,
         borderColor: !shouldSkipStyling ? styles.borderColor : undefined,
         borderRadius: calculatedBorderRadius,
-        width,
-        height,
-        minWidth: width,
-        minHeight: height,
-        margin: styles.shadow ? 4 : 0,
+        width: width + overlap,
+        height: height + overlap,
+        minWidth: width + overlap,
+        minHeight: height + overlap,
+        marginRight: overlap ? -overlap : 0,
+        marginBottom: overlap ? -overlap : 0,
         ...(styles.shadow && !useSvgShadow && {
           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
         }),

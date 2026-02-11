@@ -9,102 +9,102 @@
       "resources": [
         {
           "name": "Clean Rooms",
-          "file": "64/Arch_AWS-Clean-Rooms_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Analytics/64/Arch_AWS-Clean-Rooms_64.svg",
           "type": "architecture"
         },
         {
           "name": "Data Exchange",
-          "file": "64/Arch_AWS-Data-Exchange_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Analytics/64/Arch_AWS-Data-Exchange_64.svg",
           "type": "architecture"
         },
         {
           "name": "Entity Resolution",
-          "file": "64/Arch_AWS-Entity-Resolution_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Analytics/64/Arch_AWS-Entity-Resolution_64.svg",
           "type": "architecture"
         },
         {
           "name": "Glue Databrew",
-          "file": "64/Arch_AWS-Glue-DataBrew_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Analytics/64/Arch_AWS-Glue-DataBrew_64.svg",
           "type": "architecture"
         },
         {
           "name": "Glue",
-          "file": "64/Arch_AWS-Glue_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Analytics/64/Arch_AWS-Glue_64.svg",
           "type": "architecture"
         },
         {
           "name": "Lake Formation",
-          "file": "64/Arch_AWS-Lake-Formation_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Analytics/64/Arch_AWS-Lake-Formation_64.svg",
           "type": "architecture"
         },
         {
           "name": "Athena",
-          "file": "64/Arch_Amazon-Athena_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Analytics/64/Arch_Amazon-Athena_64.svg",
           "type": "architecture"
         },
         {
           "name": "Cloudsearch",
-          "file": "64/Arch_Amazon-CloudSearch_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Analytics/64/Arch_Amazon-CloudSearch_64.svg",
           "type": "architecture"
         },
         {
           "name": "Data Firehose",
-          "file": "64/Arch_Amazon-Data-Firehose_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Analytics/64/Arch_Amazon-Data-Firehose_64.svg",
           "type": "architecture"
         },
         {
           "name": "Datazone",
-          "file": "64/Arch_Amazon-DataZone_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Analytics/64/Arch_Amazon-DataZone_64.svg",
           "type": "architecture"
         },
         {
           "name": "EMR",
-          "file": "64/Arch_Amazon-EMR_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Analytics/64/Arch_Amazon-EMR_64.svg",
           "type": "architecture"
         },
         {
           "name": "Finspace",
-          "file": "64/Arch_Amazon-FinSpace_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Analytics/64/Arch_Amazon-FinSpace_64.svg",
           "type": "architecture"
         },
         {
           "name": "Kinesis Data Streams",
-          "file": "64/Arch_Amazon-Kinesis-Data-Streams_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Analytics/64/Arch_Amazon-Kinesis-Data-Streams_64.svg",
           "type": "architecture"
         },
         {
           "name": "Kinesis Video Streams",
-          "file": "64/Arch_Amazon-Kinesis-Video-Streams_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Analytics/64/Arch_Amazon-Kinesis-Video-Streams_64.svg",
           "type": "architecture"
         },
         {
           "name": "Kinesis",
-          "file": "64/Arch_Amazon-Kinesis_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Analytics/64/Arch_Amazon-Kinesis_64.svg",
           "type": "architecture"
         },
         {
           "name": "Managed Service For Apache Flink",
-          "file": "64/Arch_Amazon-Managed-Service-for-Apache-Flink_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Analytics/64/Arch_Amazon-Managed-Service-for-Apache-Flink_64.svg",
           "type": "architecture"
         },
         {
           "name": "Managed Streaming For Apache Kafka",
-          "file": "64/Arch_Amazon-Managed-Streaming-for-Apache-Kafka_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Analytics/64/Arch_Amazon-Managed-Streaming-for-Apache-Kafka_64.svg",
           "type": "architecture"
         },
         {
           "name": "Opensearch Service",
-          "file": "64/Arch_Amazon-OpenSearch-Service_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Analytics/64/Arch_Amazon-OpenSearch-Service_64.svg",
           "type": "architecture"
         },
         {
           "name": "Redshift",
-          "file": "64/Arch_Amazon-Redshift_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Analytics/64/Arch_Amazon-Redshift_64.svg",
           "type": "architecture"
         },
         {
           "name": "Sagemaker",
-          "file": "64/Arch_Amazon-SageMaker_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Analytics/64/Arch_Amazon-SageMaker_64.svg",
           "type": "architecture"
         },
         {
@@ -270,52 +270,52 @@
       "resources": [
         {
           "name": "Appsync",
-          "file": "64/Arch_AWS-AppSync_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Application-Integration/64/Arch_AWS-AppSync_64.svg",
           "type": "architecture"
         },
         {
           "name": "B2b Data Interchange",
-          "file": "64/Arch_AWS-B2B-Data-Interchange_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Application-Integration/64/Arch_AWS-B2B-Data-Interchange_64.svg",
           "type": "architecture"
         },
         {
           "name": "Express Workflows",
-          "file": "64/Arch_AWS-Express-Workflows_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Application-Integration/64/Arch_AWS-Express-Workflows_64.svg",
           "type": "architecture"
         },
         {
           "name": "Step Functions",
-          "file": "64/Arch_AWS-Step-Functions_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Application-Integration/64/Arch_AWS-Step-Functions_64.svg",
           "type": "architecture"
         },
         {
           "name": "Appflow",
-          "file": "64/Arch_Amazon-AppFlow_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Application-Integration/64/Arch_Amazon-AppFlow_64.svg",
           "type": "architecture"
         },
         {
           "name": "Eventbridge",
-          "file": "64/Arch_Amazon-EventBridge_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Application-Integration/64/Arch_Amazon-EventBridge_64.svg",
           "type": "architecture"
         },
         {
           "name": "MQ",
-          "file": "64/Arch_Amazon-MQ_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Application-Integration/64/Arch_Amazon-MQ_64.svg",
           "type": "architecture"
         },
         {
           "name": "Managed Workflows For Apache Airflow",
-          "file": "64/Arch_Amazon-Managed-Workflows-for-Apache-Airflow_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Application-Integration/64/Arch_Amazon-Managed-Workflows-for-Apache-Airflow_64.svg",
           "type": "architecture"
         },
         {
           "name": "Simple Notification Service",
-          "file": "64/Arch_Amazon-Simple-Notification-Service_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Application-Integration/64/Arch_Amazon-Simple-Notification-Service_64.svg",
           "type": "architecture"
         },
         {
           "name": "Simple Queue Service",
-          "file": "64/Arch_Amazon-Simple-Queue-Service_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Application-Integration/64/Arch_Amazon-Simple-Queue-Service_64.svg",
           "type": "architecture"
         },
         {
@@ -401,202 +401,202 @@
       "resources": [
         {
           "name": "App Studio",
-          "file": "64/Arch_AWS-App-Studio_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_AWS-App-Studio_64.svg",
           "type": "architecture"
         },
         {
           "name": "Deep Learning Amis",
-          "file": "64/Arch_AWS-Deep-Learning-AMIs_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_AWS-Deep-Learning-AMIs_64.svg",
           "type": "architecture"
         },
         {
           "name": "Deep Learning Containers",
-          "file": "64/Arch_AWS-Deep-Learning-Containers_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_AWS-Deep-Learning-Containers_64.svg",
           "type": "architecture"
         },
         {
           "name": "Deepracer",
-          "file": "64/Arch_AWS-DeepRacer_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_AWS-DeepRacer_64.svg",
           "type": "architecture"
         },
         {
           "name": "Healthimaging",
-          "file": "64/Arch_AWS-HealthImaging_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_AWS-HealthImaging_64.svg",
           "type": "architecture"
         },
         {
           "name": "Healthlake",
-          "file": "64/Arch_AWS-HealthLake_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_AWS-HealthLake_64.svg",
           "type": "architecture"
         },
         {
           "name": "Healthomics",
-          "file": "64/Arch_AWS-HealthOmics_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_AWS-HealthOmics_64.svg",
           "type": "architecture"
         },
         {
           "name": "Healthscribe",
-          "file": "64/Arch_AWS-HealthScribe_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_AWS-HealthScribe_64.svg",
           "type": "architecture"
         },
         {
           "name": "Neuron",
-          "file": "64/Arch_AWS-Neuron_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_AWS-Neuron_64.svg",
           "type": "architecture"
         },
         {
           "name": "Panorama",
-          "file": "64/Arch_AWS-Panorama_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_AWS-Panorama_64.svg",
           "type": "architecture"
         },
         {
           "name": "Augmented Ai A2i",
-          "file": "64/Arch_Amazon-Augmented-AI-A2I_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_Amazon-Augmented-AI-A2I_64.svg",
           "type": "architecture"
         },
         {
           "name": "Bedrock Agentcore",
-          "file": "64/Arch_Amazon-Bedrock-AgentCore_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_Amazon-Bedrock-AgentCore_64.svg",
           "type": "architecture"
         },
         {
           "name": "Bedrock",
-          "file": "64/Arch_Amazon-Bedrock_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_Amazon-Bedrock_64.svg",
           "type": "architecture"
         },
         {
           "name": "Codeguru",
-          "file": "64/Arch_Amazon-CodeGuru_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_Amazon-CodeGuru_64.svg",
           "type": "architecture"
         },
         {
           "name": "Codewhisperer",
-          "file": "64/Arch_Amazon-CodeWhisperer_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_Amazon-CodeWhisperer_64.svg",
           "type": "architecture"
         },
         {
           "name": "Comprehend Medical",
-          "file": "64/Arch_Amazon-Comprehend-Medical_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_Amazon-Comprehend-Medical_64.svg",
           "type": "architecture"
         },
         {
           "name": "Comprehend",
-          "file": "64/Arch_Amazon-Comprehend_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_Amazon-Comprehend_64.svg",
           "type": "architecture"
         },
         {
           "name": "Devops Guru",
-          "file": "64/Arch_Amazon-DevOps-Guru_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_Amazon-DevOps-Guru_64.svg",
           "type": "architecture"
         },
         {
           "name": "Elastic Inference",
-          "file": "64/Arch_Amazon-Elastic-Inference_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_Amazon-Elastic-Inference_64.svg",
           "type": "architecture"
         },
         {
           "name": "Forecast",
-          "file": "64/Arch_Amazon-Forecast_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_Amazon-Forecast_64.svg",
           "type": "architecture"
         },
         {
           "name": "Fraud Detector",
-          "file": "64/Arch_Amazon-Fraud-Detector_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_Amazon-Fraud-Detector_64.svg",
           "type": "architecture"
         },
         {
           "name": "Kendra",
-          "file": "64/Arch_Amazon-Kendra_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_Amazon-Kendra_64.svg",
           "type": "architecture"
         },
         {
           "name": "Lex",
-          "file": "64/Arch_Amazon-Lex_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_Amazon-Lex_64.svg",
           "type": "architecture"
         },
         {
           "name": "Lookout For Equipment",
-          "file": "64/Arch_Amazon-Lookout-for-Equipment_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_Amazon-Lookout-for-Equipment_64.svg",
           "type": "architecture"
         },
         {
           "name": "Lookout For Vision",
-          "file": "64/Arch_Amazon-Lookout-for-Vision_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_Amazon-Lookout-for-Vision_64.svg",
           "type": "architecture"
         },
         {
           "name": "Monitron",
-          "file": "64/Arch_Amazon-Monitron_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_Amazon-Monitron_64.svg",
           "type": "architecture"
         },
         {
           "name": "Nova",
-          "file": "64/Arch_Amazon-Nova_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_Amazon-Nova_64.svg",
           "type": "architecture"
         },
         {
           "name": "Personalize",
-          "file": "64/Arch_Amazon-Personalize_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_Amazon-Personalize_64.svg",
           "type": "architecture"
         },
         {
           "name": "Polly",
-          "file": "64/Arch_Amazon-Polly_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_Amazon-Polly_64.svg",
           "type": "architecture"
         },
         {
           "name": "Q",
-          "file": "64/Arch_Amazon-Q_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_Amazon-Q_64.svg",
           "type": "architecture"
         },
         {
           "name": "Rekognition",
-          "file": "64/Arch_Amazon-Rekognition_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_Amazon-Rekognition_64.svg",
           "type": "architecture"
         },
         {
           "name": "Sagemaker Ai",
-          "file": "64/Arch_Amazon-SageMaker-AI_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_Amazon-SageMaker-AI_64.svg",
           "type": "architecture"
         },
         {
           "name": "Sagemaker Ground Truth",
-          "file": "64/Arch_Amazon-SageMaker-Ground-Truth_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_Amazon-SageMaker-Ground-Truth_64.svg",
           "type": "architecture"
         },
         {
           "name": "Sagemaker Studio Lab",
-          "file": "64/Arch_Amazon-SageMaker-Studio-Lab_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_Amazon-SageMaker-Studio-Lab_64.svg",
           "type": "architecture"
         },
         {
           "name": "Textract",
-          "file": "64/Arch_Amazon-Textract_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_Amazon-Textract_64.svg",
           "type": "architecture"
         },
         {
           "name": "Transcribe",
-          "file": "64/Arch_Amazon-Transcribe_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_Amazon-Transcribe_64.svg",
           "type": "architecture"
         },
         {
           "name": "Translate",
-          "file": "64/Arch_Amazon-Translate_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_Amazon-Translate_64.svg",
           "type": "architecture"
         },
         {
           "name": "Apache Mxnet On AWS",
-          "file": "64/Arch_Apache-MXNet-on-AWS_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_Apache-MXNet-on-AWS_64.svg",
           "type": "architecture"
         },
         {
           "name": "Pytorch On AWS",
-          "file": "64/Arch_PyTorch-on-AWS_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_PyTorch-on-AWS_64.svg",
           "type": "architecture"
         },
         {
           "name": "Tensorflow On AWS",
-          "file": "64/Arch_TensorFlow-on-AWS_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Artificial-Intelligence/64/Arch_TensorFlow-on-AWS_64.svg",
           "type": "architecture"
         },
         {
@@ -657,7 +657,7 @@
       "resources": [
         {
           "name": "Managed Blockchain",
-          "file": "64/Arch_Amazon-Managed-Blockchain_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Blockchain/64/Arch_Amazon-Managed-Blockchain_64.svg",
           "type": "architecture"
         },
         {
@@ -673,72 +673,72 @@
       "resources": [
         {
           "name": "Appfabric",
-          "file": "64/Arch_AWS-AppFabric_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Business-Applications/64/Arch_AWS-AppFabric_64.svg",
           "type": "architecture"
         },
         {
           "name": "End User Messaging",
-          "file": "64/Arch_AWS-End-User-Messaging_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Business-Applications/64/Arch_AWS-End-User-Messaging_64.svg",
           "type": "architecture"
         },
         {
           "name": "Supply Chain",
-          "file": "64/Arch_AWS-Supply-Chain_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Business-Applications/64/Arch_AWS-Supply-Chain_64.svg",
           "type": "architecture"
         },
         {
           "name": "Wickr",
-          "file": "64/Arch_AWS-Wickr_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Business-Applications/64/Arch_AWS-Wickr_64.svg",
           "type": "architecture"
         },
         {
           "name": "Chime SDK",
-          "file": "64/Arch_Amazon-Chime-SDK_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Business-Applications/64/Arch_Amazon-Chime-SDK_64.svg",
           "type": "architecture"
         },
         {
           "name": "Chime",
-          "file": "64/Arch_Amazon-Chime_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Business-Applications/64/Arch_Amazon-Chime_64.svg",
           "type": "architecture"
         },
         {
           "name": "Connect",
-          "file": "64/Arch_Amazon-Connect_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Business-Applications/64/Arch_Amazon-Connect_64.svg",
           "type": "architecture"
         },
         {
           "name": "Pinpoint Apis",
-          "file": "64/Arch_Amazon-Pinpoint-APIs_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Business-Applications/64/Arch_Amazon-Pinpoint-APIs_64.svg",
           "type": "architecture"
         },
         {
           "name": "Pinpoint",
-          "file": "64/Arch_Amazon-Pinpoint_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Business-Applications/64/Arch_Amazon-Pinpoint_64.svg",
           "type": "architecture"
         },
         {
           "name": "Quick Suite",
-          "file": "64/Arch_Amazon-Quick-Suite_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Business-Applications/64/Arch_Amazon-Quick-Suite_64.svg",
           "type": "architecture"
         },
         {
           "name": "Simple Email Service",
-          "file": "64/Arch_Amazon-Simple-Email-Service_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Business-Applications/64/Arch_Amazon-Simple-Email-Service_64.svg",
           "type": "architecture"
         },
         {
           "name": "Workdocs SDK",
-          "file": "64/Arch_Amazon-WorkDocs-SDK_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Business-Applications/64/Arch_Amazon-WorkDocs-SDK_64.svg",
           "type": "architecture"
         },
         {
           "name": "Workdocs",
-          "file": "64/Arch_Amazon-WorkDocs_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Business-Applications/64/Arch_Amazon-WorkDocs_64.svg",
           "type": "architecture"
         },
         {
           "name": "Workmail",
-          "file": "64/Arch_Amazon-WorkMail_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Business-Applications/64/Arch_Amazon-WorkMail_64.svg",
           "type": "architecture"
         },
         {
@@ -759,32 +759,32 @@
       "resources": [
         {
           "name": "Billing Conductor",
-          "file": "64/Arch_AWS-Billing-Conductor_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Cloud-Financial-Management/64/Arch_AWS-Billing-Conductor_64.svg",
           "type": "architecture"
         },
         {
           "name": "Budgets",
-          "file": "64/Arch_AWS-Budgets_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Cloud-Financial-Management/64/Arch_AWS-Budgets_64.svg",
           "type": "architecture"
         },
         {
           "name": "Cost Explorer",
-          "file": "64/Arch_AWS-Cost-Explorer_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Cloud-Financial-Management/64/Arch_AWS-Cost-Explorer_64.svg",
           "type": "architecture"
         },
         {
           "name": "Cost And Usage Report",
-          "file": "64/Arch_AWS-Cost-and-Usage-Report_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Cloud-Financial-Management/64/Arch_AWS-Cost-and-Usage-Report_64.svg",
           "type": "architecture"
         },
         {
           "name": "Reserved Instance Reporting",
-          "file": "64/Arch_Reserved-Instance-Reporting_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Cloud-Financial-Management/64/Arch_Reserved-Instance-Reporting_64.svg",
           "type": "architecture"
         },
         {
           "name": "Savings Plans",
-          "file": "64/Arch_Savings-Plans_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Cloud-Financial-Management/64/Arch_Savings-Plans_64.svg",
           "type": "architecture"
         }
       ]
@@ -795,122 +795,122 @@
       "resources": [
         {
           "name": "App Runner",
-          "file": "64/Arch_AWS-App-Runner_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Compute/64/Arch_AWS-App-Runner_64.svg",
           "type": "architecture"
         },
         {
           "name": "Batch",
-          "file": "64/Arch_AWS-Batch_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Compute/64/Arch_AWS-Batch_64.svg",
           "type": "architecture"
         },
         {
           "name": "Compute Optimizer",
-          "file": "64/Arch_AWS-Compute-Optimizer_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Compute/64/Arch_AWS-Compute-Optimizer_64.svg",
           "type": "architecture"
         },
         {
           "name": "Elastic Beanstalk",
-          "file": "64/Arch_AWS-Elastic-Beanstalk_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Compute/64/Arch_AWS-Elastic-Beanstalk_64.svg",
           "type": "architecture"
         },
         {
           "name": "Lambda",
-          "file": "64/Arch_AWS-Lambda_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Compute/64/Arch_AWS-Lambda_64.svg",
           "type": "architecture"
         },
         {
           "name": "Local Zones",
-          "file": "64/Arch_AWS-Local-Zones_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Compute/64/Arch_AWS-Local-Zones_64.svg",
           "type": "architecture"
         },
         {
           "name": "Nitro Enclaves",
-          "file": "64/Arch_AWS-Nitro-Enclaves_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Compute/64/Arch_AWS-Nitro-Enclaves_64.svg",
           "type": "architecture"
         },
         {
           "name": "Outposts Family",
-          "file": "64/Arch_AWS-Outposts-family_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Compute/64/Arch_AWS-Outposts-family_64.svg",
           "type": "architecture"
         },
         {
           "name": "Outposts Rack",
-          "file": "64/Arch_AWS-Outposts-rack_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Compute/64/Arch_AWS-Outposts-rack_64.svg",
           "type": "architecture"
         },
         {
           "name": "Outposts Servers",
-          "file": "64/Arch_AWS-Outposts-servers_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Compute/64/Arch_AWS-Outposts-servers_64.svg",
           "type": "architecture"
         },
         {
           "name": "Parallel Cluster",
-          "file": "64/Arch_AWS-Parallel-Cluster_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Compute/64/Arch_AWS-Parallel-Cluster_64.svg",
           "type": "architecture"
         },
         {
           "name": "Parallel Computing Service",
-          "file": "64/Arch_AWS-Parallel-Computing-Service_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Compute/64/Arch_AWS-Parallel-Computing-Service_64.svg",
           "type": "architecture"
         },
         {
           "name": "Serverless Application Repository",
-          "file": "64/Arch_AWS-Serverless-Application-Repository_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Compute/64/Arch_AWS-Serverless-Application-Repository_64.svg",
           "type": "architecture"
         },
         {
           "name": "Simspace Weaver",
-          "file": "64/Arch_AWS-SimSpace-Weaver_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Compute/64/Arch_AWS-SimSpace-Weaver_64.svg",
           "type": "architecture"
         },
         {
           "name": "Wavelength",
-          "file": "64/Arch_AWS-Wavelength_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Compute/64/Arch_AWS-Wavelength_64.svg",
           "type": "architecture"
         },
         {
           "name": "Dcv",
-          "file": "64/Arch_Amazon-DCV_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Compute/64/Arch_Amazon-DCV_64.svg",
           "type": "architecture"
         },
         {
           "name": "EC2 Auto Scaling",
-          "file": "64/Arch_Amazon-EC2-Auto-Scaling_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Compute/64/Arch_Amazon-EC2-Auto-Scaling_64.svg",
           "type": "architecture"
         },
         {
           "name": "EC2 Image Builder",
-          "file": "64/Arch_Amazon-EC2-Image-Builder_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Compute/64/Arch_Amazon-EC2-Image-Builder_64.svg",
           "type": "architecture"
         },
         {
           "name": "EC2",
-          "file": "64/Arch_Amazon-EC2_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Compute/64/Arch_Amazon-EC2_64.svg",
           "type": "architecture"
         },
         {
           "name": "Elastic Vmware Service",
-          "file": "64/Arch_Amazon-Elastic-VMware-Service_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Compute/64/Arch_Amazon-Elastic-VMware-Service_64.svg",
           "type": "architecture"
         },
         {
           "name": "Lightsail For Research",
-          "file": "64/Arch_Amazon-Lightsail-for-Research_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Compute/64/Arch_Amazon-Lightsail-for-Research_64.svg",
           "type": "architecture"
         },
         {
           "name": "Lightsail",
-          "file": "64/Arch_Amazon-Lightsail_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Compute/64/Arch_Amazon-Lightsail_64.svg",
           "type": "architecture"
         },
         {
           "name": "Bottlerocket",
-          "file": "64/Arch_Bottlerocket_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Compute/64/Arch_Bottlerocket_64.svg",
           "type": "architecture"
         },
         {
           "name": "Elastic Fabric Adapter",
-          "file": "64/Arch_Elastic-Fabric-Adapter_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Compute/64/Arch_Elastic-Fabric-Adapter_64.svg",
           "type": "architecture"
         },
         {
@@ -986,42 +986,42 @@
       "resources": [
         {
           "name": "Fargate",
-          "file": "64/Arch_AWS-Fargate_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Containers/64/Arch_AWS-Fargate_64.svg",
           "type": "architecture"
         },
         {
           "name": "ECS Anywhere",
-          "file": "64/Arch_Amazon-ECS-Anywhere_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Containers/64/Arch_Amazon-ECS-Anywhere_64.svg",
           "type": "architecture"
         },
         {
           "name": "EKS Anywhere",
-          "file": "64/Arch_Amazon-EKS-Anywhere_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Containers/64/Arch_Amazon-EKS-Anywhere_64.svg",
           "type": "architecture"
         },
         {
           "name": "EKS Distro",
-          "file": "64/Arch_Amazon-EKS-Distro_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Containers/64/Arch_Amazon-EKS-Distro_64.svg",
           "type": "architecture"
         },
         {
           "name": "Elastic Container Registry",
-          "file": "64/Arch_Amazon-Elastic-Container-Registry_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Containers/64/Arch_Amazon-Elastic-Container-Registry_64.svg",
           "type": "architecture"
         },
         {
           "name": "Elastic Container Service",
-          "file": "64/Arch_Amazon-Elastic-Container-Service_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Containers/64/Arch_Amazon-Elastic-Container-Service_64.svg",
           "type": "architecture"
         },
         {
           "name": "Elastic Kubernetes Service",
-          "file": "64/Arch_Amazon-Elastic-Kubernetes-Service_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Containers/64/Arch_Amazon-Elastic-Kubernetes-Service_64.svg",
           "type": "architecture"
         },
         {
           "name": "Red Hat Openshift Service On AWS",
-          "file": "64/Arch_Red-Hat-OpenShift-Service-on-AWS_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Containers/64/Arch_Red-Hat-OpenShift-Service-on-AWS_64.svg",
           "type": "architecture"
         },
         {
@@ -1082,42 +1082,42 @@
       "resources": [
         {
           "name": "Activate",
-          "file": "64/Arch_AWS-Activate_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Customer-Enablement/64/Arch_AWS-Activate_64.svg",
           "type": "architecture"
         },
         {
           "name": "Iq",
-          "file": "64/Arch_AWS-IQ_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Customer-Enablement/64/Arch_AWS-IQ_64.svg",
           "type": "architecture"
         },
         {
           "name": "Managed Services",
-          "file": "64/Arch_AWS-Managed-Services_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Customer-Enablement/64/Arch_AWS-Managed-Services_64.svg",
           "type": "architecture"
         },
         {
           "name": "Professional Services",
-          "file": "64/Arch_AWS-Professional-Services_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Customer-Enablement/64/Arch_AWS-Professional-Services_64.svg",
           "type": "architecture"
         },
         {
           "name": "Support",
-          "file": "64/Arch_AWS-Support_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Customer-Enablement/64/Arch_AWS-Support_64.svg",
           "type": "architecture"
         },
         {
           "name": "Training Certification",
-          "file": "64/Arch_AWS-Training-Certification_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Customer-Enablement/64/Arch_AWS-Training-Certification_64.svg",
           "type": "architecture"
         },
         {
           "name": "Repost Private",
-          "file": "64/Arch_AWS-rePost-Private_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Customer-Enablement/64/Arch_AWS-rePost-Private_64.svg",
           "type": "architecture"
         },
         {
           "name": "Repost",
-          "file": "64/Arch_AWS-rePost_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Customer-Enablement/64/Arch_AWS-rePost_64.svg",
           "type": "architecture"
         }
       ]
@@ -1128,57 +1128,57 @@
       "resources": [
         {
           "name": "Database Migration Service",
-          "file": "64/Arch_AWS-Database-Migration-Service_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Databases/64/Arch_AWS-Database-Migration-Service_64.svg",
           "type": "architecture"
         },
         {
           "name": "Aurora",
-          "file": "64/Arch_Amazon-Aurora_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Databases/64/Arch_Amazon-Aurora_64.svg",
           "type": "architecture"
         },
         {
           "name": "Documentdb",
-          "file": "64/Arch_Amazon-DocumentDB_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Databases/64/Arch_Amazon-DocumentDB_64.svg",
           "type": "architecture"
         },
         {
           "name": "Dynamodb",
-          "file": "64/Arch_Amazon-DynamoDB_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Databases/64/Arch_Amazon-DynamoDB_64.svg",
           "type": "architecture"
         },
         {
           "name": "Elasticache",
-          "file": "64/Arch_Amazon-ElastiCache_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Databases/64/Arch_Amazon-ElastiCache_64.svg",
           "type": "architecture"
         },
         {
           "name": "Keyspaces",
-          "file": "64/Arch_Amazon-Keyspaces_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Databases/64/Arch_Amazon-Keyspaces_64.svg",
           "type": "architecture"
         },
         {
           "name": "Memorydb",
-          "file": "64/Arch_Amazon-MemoryDB_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Databases/64/Arch_Amazon-MemoryDB_64.svg",
           "type": "architecture"
         },
         {
           "name": "Neptune",
-          "file": "64/Arch_Amazon-Neptune_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Databases/64/Arch_Amazon-Neptune_64.svg",
           "type": "architecture"
         },
         {
           "name": "RDS",
-          "file": "64/Arch_Amazon-RDS_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Databases/64/Arch_Amazon-RDS_64.svg",
           "type": "architecture"
         },
         {
           "name": "Timestream",
-          "file": "64/Arch_Amazon-Timestream_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Databases/64/Arch_Amazon-Timestream_64.svg",
           "type": "architecture"
         },
         {
           "name": "Oracle Database At AWS",
-          "file": "64/Arch_Oracle-Database-at-AWS_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Databases/64/Arch_Oracle-Database-at-AWS_64.svg",
           "type": "architecture"
         },
         {
@@ -1384,82 +1384,82 @@
       "resources": [
         {
           "name": "Cloud Control API",
-          "file": "64/Arch_AWS-Cloud-Control-API_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Developer-Tools/64/Arch_AWS-Cloud-Control-API_64.svg",
           "type": "architecture"
         },
         {
           "name": "Cloud Development Kit",
-          "file": "64/Arch_AWS-Cloud-Development-Kit_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Developer-Tools/64/Arch_AWS-Cloud-Development-Kit_64.svg",
           "type": "architecture"
         },
         {
           "name": "Cloud9",
-          "file": "64/Arch_AWS-Cloud9_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Developer-Tools/64/Arch_AWS-Cloud9_64.svg",
           "type": "architecture"
         },
         {
           "name": "Cloudshell",
-          "file": "64/Arch_AWS-CloudShell_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Developer-Tools/64/Arch_AWS-CloudShell_64.svg",
           "type": "architecture"
         },
         {
           "name": "Codeartifact",
-          "file": "64/Arch_AWS-CodeArtifact_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Developer-Tools/64/Arch_AWS-CodeArtifact_64.svg",
           "type": "architecture"
         },
         {
           "name": "Codebuild",
-          "file": "64/Arch_AWS-CodeBuild_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Developer-Tools/64/Arch_AWS-CodeBuild_64.svg",
           "type": "architecture"
         },
         {
           "name": "Codecommit",
-          "file": "64/Arch_AWS-CodeCommit_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Developer-Tools/64/Arch_AWS-CodeCommit_64.svg",
           "type": "architecture"
         },
         {
           "name": "Codedeploy",
-          "file": "64/Arch_AWS-CodeDeploy_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Developer-Tools/64/Arch_AWS-CodeDeploy_64.svg",
           "type": "architecture"
         },
         {
           "name": "Codepipeline",
-          "file": "64/Arch_AWS-CodePipeline_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Developer-Tools/64/Arch_AWS-CodePipeline_64.svg",
           "type": "architecture"
         },
         {
           "name": "Command Line Interface",
-          "file": "64/Arch_AWS-Command-Line-Interface_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Developer-Tools/64/Arch_AWS-Command-Line-Interface_64.svg",
           "type": "architecture"
         },
         {
           "name": "Fault Injection Service",
-          "file": "64/Arch_AWS-Fault-Injection-Service_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Developer-Tools/64/Arch_AWS-Fault-Injection-Service_64.svg",
           "type": "architecture"
         },
         {
           "name": "Infrastructure Composer",
-          "file": "64/Arch_AWS-Infrastructure-Composer_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Developer-Tools/64/Arch_AWS-Infrastructure-Composer_64.svg",
           "type": "architecture"
         },
         {
           "name": "Tools And Sdks",
-          "file": "64/Arch_AWS-Tools-and-SDKs_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Developer-Tools/64/Arch_AWS-Tools-and-SDKs_64.svg",
           "type": "architecture"
         },
         {
           "name": "X Ray",
-          "file": "64/Arch_AWS-X-Ray_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Developer-Tools/64/Arch_AWS-X-Ray_64.svg",
           "type": "architecture"
         },
         {
           "name": "Codecatalyst",
-          "file": "64/Arch_Amazon-CodeCatalyst_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Developer-Tools/64/Arch_Amazon-CodeCatalyst_64.svg",
           "type": "architecture"
         },
         {
           "name": "Corretto",
-          "file": "64/Arch_Amazon-Corretto_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Developer-Tools/64/Arch_Amazon-Corretto_64.svg",
           "type": "architecture"
         },
         {
@@ -1475,7 +1475,7 @@
       "resources": [
         {
           "name": "Workspaces",
-          "file": "64/Arch_Amazon-WorkSpaces_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_End-User-Computing/64/Arch_Amazon-WorkSpaces_64.svg",
           "type": "architecture"
         }
       ]
@@ -1486,17 +1486,17 @@
       "resources": [
         {
           "name": "Amplify",
-          "file": "64/Arch_AWS-Amplify_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Front-End-Web-Mobile/64/Arch_AWS-Amplify_64.svg",
           "type": "architecture"
         },
         {
           "name": "Device Farm",
-          "file": "64/Arch_AWS-Device-Farm_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Front-End-Web-Mobile/64/Arch_AWS-Device-Farm_64.svg",
           "type": "architecture"
         },
         {
           "name": "Location Service",
-          "file": "64/Arch_Amazon-Location-Service_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Front-End-Web-Mobile/64/Arch_Amazon-Location-Service_64.svg",
           "type": "architecture"
         },
         {
@@ -1537,17 +1537,17 @@
       "resources": [
         {
           "name": "Gamelift Servers",
-          "file": "64/Arch_Amazon-GameLift-Servers_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Games/64/Arch_Amazon-GameLift-Servers_64.svg",
           "type": "architecture"
         },
         {
           "name": "Gamelift Streams",
-          "file": "64/Arch_Amazon-GameLift-Streams_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Games/64/Arch_Amazon-GameLift-Streams_64.svg",
           "type": "architecture"
         },
         {
           "name": "Open 3d Engine",
-          "file": "64/Arch_Open-3D-Engine_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Games/64/Arch_Open-3D-Engine_64.svg",
           "type": "architecture"
         }
       ]
@@ -1558,12 +1558,12 @@
       "resources": [
         {
           "name": "Marketplace_dark",
-          "file": "64/Arch_AWS-Marketplace_Dark_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_General-Icons/64/Arch_AWS-Marketplace_Dark_64.svg",
           "type": "architecture"
         },
         {
           "name": "Marketplace_light",
-          "file": "64/Arch_AWS-Marketplace_Light_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_General-Icons/64/Arch_AWS-Marketplace_Light_64.svg",
           "type": "architecture"
         }
       ]
@@ -1574,52 +1574,52 @@
       "resources": [
         {
           "name": "IoT Core",
-          "file": "64/Arch_AWS-IoT-Core_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Internet-of-Things/64/Arch_AWS-IoT-Core_64.svg",
           "type": "architecture"
         },
         {
           "name": "IoT Device Defender",
-          "file": "64/Arch_AWS-IoT-Device-Defender_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Internet-of-Things/64/Arch_AWS-IoT-Device-Defender_64.svg",
           "type": "architecture"
         },
         {
           "name": "IoT Device Management",
-          "file": "64/Arch_AWS-IoT-Device-Management_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Internet-of-Things/64/Arch_AWS-IoT-Device-Management_64.svg",
           "type": "architecture"
         },
         {
           "name": "IoT Events",
-          "file": "64/Arch_AWS-IoT-Events_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Internet-of-Things/64/Arch_AWS-IoT-Events_64.svg",
           "type": "architecture"
         },
         {
           "name": "IoT Expresslink",
-          "file": "64/Arch_AWS-IoT-ExpressLink_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Internet-of-Things/64/Arch_AWS-IoT-ExpressLink_64.svg",
           "type": "architecture"
         },
         {
           "name": "IoT Fleetwise",
-          "file": "64/Arch_AWS-IoT-FleetWise_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Internet-of-Things/64/Arch_AWS-IoT-FleetWise_64.svg",
           "type": "architecture"
         },
         {
           "name": "IoT Greengrass",
-          "file": "64/Arch_AWS-IoT-Greengrass_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Internet-of-Things/64/Arch_AWS-IoT-Greengrass_64.svg",
           "type": "architecture"
         },
         {
           "name": "IoT Sitewise",
-          "file": "64/Arch_AWS-IoT-SiteWise_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Internet-of-Things/64/Arch_AWS-IoT-SiteWise_64.svg",
           "type": "architecture"
         },
         {
           "name": "IoT Twinmaker",
-          "file": "64/Arch_AWS-IoT-TwinMaker_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Internet-of-Things/64/Arch_AWS-IoT-TwinMaker_64.svg",
           "type": "architecture"
         },
         {
           "name": "Freertos",
-          "file": "64/Arch_FreeRTOS_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Internet-of-Things/64/Arch_FreeRTOS_64.svg",
           "type": "architecture"
         },
         {
@@ -2005,207 +2005,207 @@
       "resources": [
         {
           "name": "Cloudformation_change Set",
-          "file": "Res_AWS-CloudFormation_Change-Set_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_AWS-CloudFormation_Change-Set_48.svg",
           "type": "resource"
         },
         {
           "name": "Cloudformation_stack",
-          "file": "Res_AWS-CloudFormation_Stack_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_AWS-CloudFormation_Stack_48.svg",
           "type": "resource"
         },
         {
           "name": "Cloudformation_template",
-          "file": "Res_AWS-CloudFormation_Template_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_AWS-CloudFormation_Template_48.svg",
           "type": "resource"
         },
         {
           "name": "Cloudtrail_cloudtrail Lake",
-          "file": "Res_AWS-CloudTrail_CloudTrail-Lake_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_AWS-CloudTrail_CloudTrail-Lake_48.svg",
           "type": "resource"
         },
         {
           "name": "License Manager_application Discovery",
-          "file": "Res_AWS-License-Manager_Application-Discovery_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_AWS-License-Manager_Application-Discovery_48.svg",
           "type": "resource"
         },
         {
           "name": "License Manager_license Blending",
-          "file": "Res_AWS-License-Manager_License-Blending_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_AWS-License-Manager_License-Blending_48.svg",
           "type": "resource"
         },
         {
           "name": "Organizations_account",
-          "file": "Res_AWS-Organizations_Account_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_AWS-Organizations_Account_48.svg",
           "type": "resource"
         },
         {
           "name": "Organizations_management Account",
-          "file": "Res_AWS-Organizations_Management-Account_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_AWS-Organizations_Management-Account_48.svg",
           "type": "resource"
         },
         {
           "name": "Organizations_organizational Unit",
-          "file": "Res_AWS-Organizations_Organizational-Unit_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_AWS-Organizations_Organizational-Unit_48.svg",
           "type": "resource"
         },
         {
           "name": "Systems Manager_application Manager",
-          "file": "Res_AWS-Systems-Manager_Application-Manager_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_AWS-Systems-Manager_Application-Manager_48.svg",
           "type": "resource"
         },
         {
           "name": "Systems Manager_automation",
-          "file": "Res_AWS-Systems-Manager_Automation_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_AWS-Systems-Manager_Automation_48.svg",
           "type": "resource"
         },
         {
           "name": "Systems Manager_change Calendar",
-          "file": "Res_AWS-Systems-Manager_Change-Calendar_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_AWS-Systems-Manager_Change-Calendar_48.svg",
           "type": "resource"
         },
         {
           "name": "Systems Manager_change Manager",
-          "file": "Res_AWS-Systems-Manager_Change-Manager_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_AWS-Systems-Manager_Change-Manager_48.svg",
           "type": "resource"
         },
         {
           "name": "Systems Manager_compliance",
-          "file": "Res_AWS-Systems-Manager_Compliance_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_AWS-Systems-Manager_Compliance_48.svg",
           "type": "resource"
         },
         {
           "name": "Systems Manager_distributor",
-          "file": "Res_AWS-Systems-Manager_Distributor_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_AWS-Systems-Manager_Distributor_48.svg",
           "type": "resource"
         },
         {
           "name": "Systems Manager_documents",
-          "file": "Res_AWS-Systems-Manager_Documents_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_AWS-Systems-Manager_Documents_48.svg",
           "type": "resource"
         },
         {
           "name": "Systems Manager_incident Manager",
-          "file": "Res_AWS-Systems-Manager_Incident-Manager_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_AWS-Systems-Manager_Incident-Manager_48.svg",
           "type": "resource"
         },
         {
           "name": "Systems Manager_inventory",
-          "file": "Res_AWS-Systems-Manager_Inventory_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_AWS-Systems-Manager_Inventory_48.svg",
           "type": "resource"
         },
         {
           "name": "Systems Manager_maintenance Windows",
-          "file": "Res_AWS-Systems-Manager_Maintenance-Windows_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_AWS-Systems-Manager_Maintenance-Windows_48.svg",
           "type": "resource"
         },
         {
           "name": "Systems Manager_opscenter",
-          "file": "Res_AWS-Systems-Manager_OpsCenter_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_AWS-Systems-Manager_OpsCenter_48.svg",
           "type": "resource"
         },
         {
           "name": "Systems Manager_parameter Store",
-          "file": "Res_AWS-Systems-Manager_Parameter-Store_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_AWS-Systems-Manager_Parameter-Store_48.svg",
           "type": "resource"
         },
         {
           "name": "Systems Manager_patch Manager",
-          "file": "Res_AWS-Systems-Manager_Patch-Manager_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_AWS-Systems-Manager_Patch-Manager_48.svg",
           "type": "resource"
         },
         {
           "name": "Systems Manager_run Command",
-          "file": "Res_AWS-Systems-Manager_Run-Command_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_AWS-Systems-Manager_Run-Command_48.svg",
           "type": "resource"
         },
         {
           "name": "Systems Manager_session Manager",
-          "file": "Res_AWS-Systems-Manager_Session-Manager_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_AWS-Systems-Manager_Session-Manager_48.svg",
           "type": "resource"
         },
         {
           "name": "Systems Manager_state Manager",
-          "file": "Res_AWS-Systems-Manager_State-Manager_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_AWS-Systems-Manager_State-Manager_48.svg",
           "type": "resource"
         },
         {
           "name": "Trusted Advisor_checklist Cost",
-          "file": "Res_AWS-Trusted-Advisor_Checklist-Cost_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_AWS-Trusted-Advisor_Checklist-Cost_48.svg",
           "type": "resource"
         },
         {
           "name": "Trusted Advisor_checklist Fault Tolerant",
-          "file": "Res_AWS-Trusted-Advisor_Checklist-Fault-Tolerant_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_AWS-Trusted-Advisor_Checklist-Fault-Tolerant_48.svg",
           "type": "resource"
         },
         {
           "name": "Trusted Advisor_checklist Performance",
-          "file": "Res_AWS-Trusted-Advisor_Checklist-Performance_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_AWS-Trusted-Advisor_Checklist-Performance_48.svg",
           "type": "resource"
         },
         {
           "name": "Trusted Advisor_checklist Security",
-          "file": "Res_AWS-Trusted-Advisor_Checklist-Security_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_AWS-Trusted-Advisor_Checklist-Security_48.svg",
           "type": "resource"
         },
         {
           "name": "Trusted Advisor_checklist",
-          "file": "Res_AWS-Trusted-Advisor_Checklist_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_AWS-Trusted-Advisor_Checklist_48.svg",
           "type": "resource"
         },
         {
           "name": "Cloudwatch_alarm",
-          "file": "Res_Amazon-CloudWatch_Alarm_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_Amazon-CloudWatch_Alarm_48.svg",
           "type": "resource"
         },
         {
           "name": "Cloudwatch_cross Account Observability",
-          "file": "Res_Amazon-CloudWatch_Cross-account-Observability_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_Amazon-CloudWatch_Cross-account-Observability_48.svg",
           "type": "resource"
         },
         {
           "name": "Cloudwatch_data Protection",
-          "file": "Res_Amazon-CloudWatch_Data-Protection_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_Amazon-CloudWatch_Data-Protection_48.svg",
           "type": "resource"
         },
         {
           "name": "Cloudwatch_event Event Based",
-          "file": "Res_Amazon-CloudWatch_Event-Event-Based_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_Amazon-CloudWatch_Event-Event-Based_48.svg",
           "type": "resource"
         },
         {
           "name": "Cloudwatch_event Time Based",
-          "file": "Res_Amazon-CloudWatch_Event-Time-Based_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_Amazon-CloudWatch_Event-Time-Based_48.svg",
           "type": "resource"
         },
         {
           "name": "Cloudwatch_evidently",
-          "file": "Res_Amazon-CloudWatch_Evidently_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_Amazon-CloudWatch_Evidently_48.svg",
           "type": "resource"
         },
         {
           "name": "Cloudwatch_logs",
-          "file": "Res_Amazon-CloudWatch_Logs_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_Amazon-CloudWatch_Logs_48.svg",
           "type": "resource"
         },
         {
           "name": "Cloudwatch_metrics Insights",
-          "file": "Res_Amazon-CloudWatch_Metrics-Insights_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_Amazon-CloudWatch_Metrics-Insights_48.svg",
           "type": "resource"
         },
         {
           "name": "Cloudwatch_rum",
-          "file": "Res_Amazon-CloudWatch_RUM_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_Amazon-CloudWatch_RUM_48.svg",
           "type": "resource"
         },
         {
           "name": "Cloudwatch_rule",
-          "file": "Res_Amazon-CloudWatch_Rule_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_Amazon-CloudWatch_Rule_48.svg",
           "type": "resource"
         },
         {
           "name": "Cloudwatch_synthetics",
-          "file": "Res_Amazon-CloudWatch_Synthetics_48.svg",
+          "file": "aws/Resource-Icons_01302026/Res_Management-Governance/Res_Amazon-CloudWatch_Synthetics_48.svg",
           "type": "resource"
         }
       ]
@@ -2216,162 +2216,162 @@
       "resources": [
         {
           "name": "Appconfig",
-          "file": "64/Arch_AWS-AppConfig_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_AWS-AppConfig_64.svg",
           "type": "architecture"
         },
         {
           "name": "Application Auto Scaling",
-          "file": "64/Arch_AWS-Application-Auto-Scaling_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_AWS-Application-Auto-Scaling_64.svg",
           "type": "architecture"
         },
         {
           "name": "Auto Scaling",
-          "file": "64/Arch_AWS-Auto-Scaling_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_AWS-Auto-Scaling_64.svg",
           "type": "architecture"
         },
         {
           "name": "Backint Agent",
-          "file": "64/Arch_AWS-Backint-Agent_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_AWS-Backint-Agent_64.svg",
           "type": "architecture"
         },
         {
           "name": "Chatbot",
-          "file": "64/Arch_AWS-Chatbot_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_AWS-Chatbot_64.svg",
           "type": "architecture"
         },
         {
           "name": "Cloudformation",
-          "file": "64/Arch_AWS-CloudFormation_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_AWS-CloudFormation_64.svg",
           "type": "architecture"
         },
         {
           "name": "Cloudtrail",
-          "file": "64/Arch_AWS-CloudTrail_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_AWS-CloudTrail_64.svg",
           "type": "architecture"
         },
         {
           "name": "Compute Optimizer",
-          "file": "64/Arch_AWS-Compute-Optimizer_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_AWS-Compute-Optimizer_64.svg",
           "type": "architecture"
         },
         {
           "name": "Config",
-          "file": "64/Arch_AWS-Config_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_AWS-Config_64.svg",
           "type": "architecture"
         },
         {
           "name": "Console Mobile Application",
-          "file": "64/Arch_AWS-Console-Mobile-Application_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_AWS-Console-Mobile-Application_64.svg",
           "type": "architecture"
         },
         {
           "name": "Control Tower",
-          "file": "64/Arch_AWS-Control-Tower_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_AWS-Control-Tower_64.svg",
           "type": "architecture"
         },
         {
           "name": "Devops Agent",
-          "file": "64/Arch_AWS-DevOps-Agent_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_AWS-DevOps-Agent_64.svg",
           "type": "architecture"
         },
         {
           "name": "Distro For Opentelemetry",
-          "file": "64/Arch_AWS-Distro-for-OpenTelemetry_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_AWS-Distro-for-OpenTelemetry_64.svg",
           "type": "architecture"
         },
         {
           "name": "Health Dashboard",
-          "file": "64/Arch_AWS-Health-Dashboard_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_AWS-Health-Dashboard_64.svg",
           "type": "architecture"
         },
         {
           "name": "Launch Wizard",
-          "file": "64/Arch_AWS-Launch-Wizard_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_AWS-Launch-Wizard_64.svg",
           "type": "architecture"
         },
         {
           "name": "License Manager",
-          "file": "64/Arch_AWS-License-Manager_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_AWS-License-Manager_64.svg",
           "type": "architecture"
         },
         {
           "name": "Management Console",
-          "file": "64/Arch_AWS-Management-Console_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_AWS-Management-Console_64.svg",
           "type": "architecture"
         },
         {
           "name": "Organizations",
-          "file": "64/Arch_AWS-Organizations_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_AWS-Organizations_64.svg",
           "type": "architecture"
         },
         {
           "name": "Partner Central",
-          "file": "64/Arch_AWS-Partner-Central_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_AWS-Partner-Central_64.svg",
           "type": "architecture"
         },
         {
           "name": "Proton",
-          "file": "64/Arch_AWS-Proton_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_AWS-Proton_64.svg",
           "type": "architecture"
         },
         {
           "name": "Resilience Hub",
-          "file": "64/Arch_AWS-Resilience-Hub_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_AWS-Resilience-Hub_64.svg",
           "type": "architecture"
         },
         {
           "name": "Resource Explorer",
-          "file": "64/Arch_AWS-Resource-Explorer_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_AWS-Resource-Explorer_64.svg",
           "type": "architecture"
         },
         {
           "name": "Service Catalog",
-          "file": "64/Arch_AWS-Service-Catalog_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_AWS-Service-Catalog_64.svg",
           "type": "architecture"
         },
         {
           "name": "Service Management Connector",
-          "file": "64/Arch_AWS-Service-Management-Connector_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_AWS-Service-Management-Connector_64.svg",
           "type": "architecture"
         },
         {
           "name": "Systems Manager",
-          "file": "64/Arch_AWS-Systems-Manager_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_AWS-Systems-Manager_64.svg",
           "type": "architecture"
         },
         {
           "name": "Telco Network Builder",
-          "file": "64/Arch_AWS-Telco-Network-Builder_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_AWS-Telco-Network-Builder_64.svg",
           "type": "architecture"
         },
         {
           "name": "Trusted Advisor",
-          "file": "64/Arch_AWS-Trusted-Advisor_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_AWS-Trusted-Advisor_64.svg",
           "type": "architecture"
         },
         {
           "name": "User Notifications",
-          "file": "64/Arch_AWS-User-Notifications_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_AWS-User-Notifications_64.svg",
           "type": "architecture"
         },
         {
           "name": "Well Architected Tool",
-          "file": "64/Arch_AWS-Well-Architected-Tool_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_AWS-Well-Architected-Tool_64.svg",
           "type": "architecture"
         },
         {
           "name": "Cloudwatch",
-          "file": "64/Arch_Amazon-CloudWatch_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_Amazon-CloudWatch_64.svg",
           "type": "architecture"
         },
         {
           "name": "Managed Grafana",
-          "file": "64/Arch_Amazon-Managed-Grafana_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_Amazon-Managed-Grafana_64.svg",
           "type": "architecture"
         },
         {
           "name": "Managed Service For Prometheus",
-          "file": "64/Arch_Amazon-Managed-Service-for-Prometheus_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Management-Tools/64/Arch_Amazon-Managed-Service-for-Prometheus_64.svg",
           "type": "architecture"
         }
       ]
@@ -2382,102 +2382,102 @@
       "resources": [
         {
           "name": "Deadline Cloud",
-          "file": "64/Arch_AWS-Deadline-Cloud_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Media-Services/64/Arch_AWS-Deadline-Cloud_64.svg",
           "type": "architecture"
         },
         {
           "name": "Elemental Appliances & Software",
-          "file": "64/Arch_AWS-Elemental-Appliances-&-Software_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Media-Services/64/Arch_AWS-Elemental-Appliances-&-Software_64.svg",
           "type": "architecture"
         },
         {
           "name": "Elemental Conductor",
-          "file": "64/Arch_AWS-Elemental-Conductor_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Media-Services/64/Arch_AWS-Elemental-Conductor_64.svg",
           "type": "architecture"
         },
         {
           "name": "Elemental Delta",
-          "file": "64/Arch_AWS-Elemental-Delta_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Media-Services/64/Arch_AWS-Elemental-Delta_64.svg",
           "type": "architecture"
         },
         {
           "name": "Elemental Link",
-          "file": "64/Arch_AWS-Elemental-Link_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Media-Services/64/Arch_AWS-Elemental-Link_64.svg",
           "type": "architecture"
         },
         {
           "name": "Elemental Live",
-          "file": "64/Arch_AWS-Elemental-Live_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Media-Services/64/Arch_AWS-Elemental-Live_64.svg",
           "type": "architecture"
         },
         {
           "name": "Elemental Mediaconnect",
-          "file": "64/Arch_AWS-Elemental-MediaConnect_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Media-Services/64/Arch_AWS-Elemental-MediaConnect_64.svg",
           "type": "architecture"
         },
         {
           "name": "Elemental Mediaconvert",
-          "file": "64/Arch_AWS-Elemental-MediaConvert_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Media-Services/64/Arch_AWS-Elemental-MediaConvert_64.svg",
           "type": "architecture"
         },
         {
           "name": "Elemental Medialive",
-          "file": "64/Arch_AWS-Elemental-MediaLive_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Media-Services/64/Arch_AWS-Elemental-MediaLive_64.svg",
           "type": "architecture"
         },
         {
           "name": "Elemental Mediapackage",
-          "file": "64/Arch_AWS-Elemental-MediaPackage_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Media-Services/64/Arch_AWS-Elemental-MediaPackage_64.svg",
           "type": "architecture"
         },
         {
           "name": "Elemental Mediastore",
-          "file": "64/Arch_AWS-Elemental-MediaStore_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Media-Services/64/Arch_AWS-Elemental-MediaStore_64.svg",
           "type": "architecture"
         },
         {
           "name": "Elemental Mediatailor",
-          "file": "64/Arch_AWS-Elemental-MediaTailor_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Media-Services/64/Arch_AWS-Elemental-MediaTailor_64.svg",
           "type": "architecture"
         },
         {
           "name": "Elemental Server",
-          "file": "64/Arch_AWS-Elemental-Server_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Media-Services/64/Arch_AWS-Elemental-Server_64.svg",
           "type": "architecture"
         },
         {
           "name": "Thinkbox Deadline",
-          "file": "64/Arch_AWS-Thinkbox-Deadline_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Media-Services/64/Arch_AWS-Thinkbox-Deadline_64.svg",
           "type": "architecture"
         },
         {
           "name": "Thinkbox Frost",
-          "file": "64/Arch_AWS-Thinkbox-Frost_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Media-Services/64/Arch_AWS-Thinkbox-Frost_64.svg",
           "type": "architecture"
         },
         {
           "name": "Thinkbox Krakatoa",
-          "file": "64/Arch_AWS-Thinkbox-Krakatoa_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Media-Services/64/Arch_AWS-Thinkbox-Krakatoa_64.svg",
           "type": "architecture"
         },
         {
           "name": "Thinkbox Stoke",
-          "file": "64/Arch_AWS-Thinkbox-Stoke_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Media-Services/64/Arch_AWS-Thinkbox-Stoke_64.svg",
           "type": "architecture"
         },
         {
           "name": "Thinkbox Xmesh",
-          "file": "64/Arch_AWS-Thinkbox-XMesh_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Media-Services/64/Arch_AWS-Thinkbox-XMesh_64.svg",
           "type": "architecture"
         },
         {
           "name": "Interactive Video Service",
-          "file": "64/Arch_Amazon-Interactive-Video-Service_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Media-Services/64/Arch_Amazon-Interactive-Video-Service_64.svg",
           "type": "architecture"
         },
         {
           "name": "Kinesis Video Streams",
-          "file": "64/Arch_Amazon-Kinesis-Video-Streams_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Media-Services/64/Arch_Amazon-Kinesis-Video-Streams_64.svg",
           "type": "architecture"
         },
         {
@@ -2498,47 +2498,47 @@
       "resources": [
         {
           "name": "Application Discovery Service",
-          "file": "64/Arch_AWS-Application-Discovery-Service_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Migration-Modernization/64/Arch_AWS-Application-Discovery-Service_64.svg",
           "type": "architecture"
         },
         {
           "name": "Application Migration Service",
-          "file": "64/Arch_AWS-Application-Migration-Service_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Migration-Modernization/64/Arch_AWS-Application-Migration-Service_64.svg",
           "type": "architecture"
         },
         {
           "name": "Data Transfer Terminal",
-          "file": "64/Arch_AWS-Data-Transfer-Terminal_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Migration-Modernization/64/Arch_AWS-Data-Transfer-Terminal_64.svg",
           "type": "architecture"
         },
         {
           "name": "Datasync",
-          "file": "64/Arch_AWS-DataSync_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Migration-Modernization/64/Arch_AWS-DataSync_64.svg",
           "type": "architecture"
         },
         {
           "name": "Mainframe Modernization",
-          "file": "64/Arch_AWS-Mainframe-Modernization_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Migration-Modernization/64/Arch_AWS-Mainframe-Modernization_64.svg",
           "type": "architecture"
         },
         {
           "name": "Migration Evaluator",
-          "file": "64/Arch_AWS-Migration-Evaluator_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Migration-Modernization/64/Arch_AWS-Migration-Evaluator_64.svg",
           "type": "architecture"
         },
         {
           "name": "Migration Hub",
-          "file": "64/Arch_AWS-Migration-Hub_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Migration-Modernization/64/Arch_AWS-Migration-Hub_64.svg",
           "type": "architecture"
         },
         {
           "name": "Transfer Family",
-          "file": "64/Arch_AWS-Transfer-Family_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Migration-Modernization/64/Arch_AWS-Transfer-Family_64.svg",
           "type": "architecture"
         },
         {
           "name": "Transform",
-          "file": "64/Arch_AWS-Transform_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Migration-Modernization/64/Arch_AWS-Transform_64.svg",
           "type": "architecture"
         },
         {
@@ -2634,92 +2634,92 @@
       "resources": [
         {
           "name": "App Mesh",
-          "file": "64/Arch_AWS-App-Mesh_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Networking-Content-Delivery/64/Arch_AWS-App-Mesh_64.svg",
           "type": "architecture"
         },
         {
           "name": "Client VPN",
-          "file": "64/Arch_AWS-Client-VPN_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Networking-Content-Delivery/64/Arch_AWS-Client-VPN_64.svg",
           "type": "architecture"
         },
         {
           "name": "Cloud Map",
-          "file": "64/Arch_AWS-Cloud-Map_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Networking-Content-Delivery/64/Arch_AWS-Cloud-Map_64.svg",
           "type": "architecture"
         },
         {
           "name": "Cloud Wan",
-          "file": "64/Arch_AWS-Cloud-WAN_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Networking-Content-Delivery/64/Arch_AWS-Cloud-WAN_64.svg",
           "type": "architecture"
         },
         {
           "name": "Direct Connect",
-          "file": "64/Arch_AWS-Direct-Connect_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Networking-Content-Delivery/64/Arch_AWS-Direct-Connect_64.svg",
           "type": "architecture"
         },
         {
           "name": "Global Accelerator",
-          "file": "64/Arch_AWS-Global-Accelerator_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Networking-Content-Delivery/64/Arch_AWS-Global-Accelerator_64.svg",
           "type": "architecture"
         },
         {
           "name": "Privatelink",
-          "file": "64/Arch_AWS-PrivateLink_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Networking-Content-Delivery/64/Arch_AWS-PrivateLink_64.svg",
           "type": "architecture"
         },
         {
           "name": "Rtb Fabric",
-          "file": "64/Arch_AWS-RTB-Fabric_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Networking-Content-Delivery/64/Arch_AWS-RTB-Fabric_64.svg",
           "type": "architecture"
         },
         {
           "name": "Site To Site VPN",
-          "file": "64/Arch_AWS-Site-to-Site-VPN_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Networking-Content-Delivery/64/Arch_AWS-Site-to-Site-VPN_64.svg",
           "type": "architecture"
         },
         {
           "name": "Transit Gateway",
-          "file": "64/Arch_AWS-Transit-Gateway_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Networking-Content-Delivery/64/Arch_AWS-Transit-Gateway_64.svg",
           "type": "architecture"
         },
         {
           "name": "Verified Access",
-          "file": "64/Arch_AWS-Verified-Access_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Networking-Content-Delivery/64/Arch_AWS-Verified-Access_64.svg",
           "type": "architecture"
         },
         {
           "name": "API Gateway",
-          "file": "64/Arch_Amazon-API-Gateway_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Networking-Content-Delivery/64/Arch_Amazon-API-Gateway_64.svg",
           "type": "architecture"
         },
         {
           "name": "Application Recovery Controller",
-          "file": "64/Arch_Amazon-Application-Recovery-Controller_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Networking-Content-Delivery/64/Arch_Amazon-Application-Recovery-Controller_64.svg",
           "type": "architecture"
         },
         {
           "name": "Cloudfront",
-          "file": "64/Arch_Amazon-CloudFront_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Networking-Content-Delivery/64/Arch_Amazon-CloudFront_64.svg",
           "type": "architecture"
         },
         {
           "name": "Route 53",
-          "file": "64/Arch_Amazon-Route-53_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Networking-Content-Delivery/64/Arch_Amazon-Route-53_64.svg",
           "type": "architecture"
         },
         {
           "name": "VPC Lattice",
-          "file": "64/Arch_Amazon-VPC-Lattice_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Networking-Content-Delivery/64/Arch_Amazon-VPC-Lattice_64.svg",
           "type": "architecture"
         },
         {
           "name": "Virtual Private Cloud",
-          "file": "64/Arch_Amazon-Virtual-Private-Cloud_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Networking-Content-Delivery/64/Arch_Amazon-Virtual-Private-Cloud_64.svg",
           "type": "architecture"
         },
         {
           "name": "Elastic Load Balancing",
-          "file": "64/Arch_Elastic-Load-Balancing_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Networking-Content-Delivery/64/Arch_Elastic-Load-Balancing_64.svg",
           "type": "architecture"
         },
         {
@@ -2960,7 +2960,7 @@
       "resources": [
         {
           "name": "Braket",
-          "file": "64/Arch_Amazon-Braket_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Quantum-Technologies/64/Arch_Amazon-Braket_64.svg",
           "type": "architecture"
         },
         {
@@ -3036,7 +3036,7 @@
       "resources": [
         {
           "name": "Ground Station",
-          "file": "64/Arch_AWS-Ground-Station_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Satellite/64/Arch_AWS-Ground-Station_64.svg",
           "type": "architecture"
         }
       ]
@@ -3047,142 +3047,142 @@
       "resources": [
         {
           "name": "Artifact",
-          "file": "64/Arch_AWS-Artifact_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Security-Identity/64/Arch_AWS-Artifact_64.svg",
           "type": "architecture"
         },
         {
           "name": "Audit Manager",
-          "file": "64/Arch_AWS-Audit-Manager_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Security-Identity/64/Arch_AWS-Audit-Manager_64.svg",
           "type": "architecture"
         },
         {
           "name": "Certificate Manager",
-          "file": "64/Arch_AWS-Certificate-Manager_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Security-Identity/64/Arch_AWS-Certificate-Manager_64.svg",
           "type": "architecture"
         },
         {
           "name": "Cloudhsm",
-          "file": "64/Arch_AWS-CloudHSM_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Security-Identity/64/Arch_AWS-CloudHSM_64.svg",
           "type": "architecture"
         },
         {
           "name": "Directory Service",
-          "file": "64/Arch_AWS-Directory-Service_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Security-Identity/64/Arch_AWS-Directory-Service_64.svg",
           "type": "architecture"
         },
         {
           "name": "Firewall Manager",
-          "file": "64/Arch_AWS-Firewall-Manager_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Security-Identity/64/Arch_AWS-Firewall-Manager_64.svg",
           "type": "architecture"
         },
         {
           "name": "IAM Identity Center",
-          "file": "64/Arch_AWS-IAM-Identity-Center_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Security-Identity/64/Arch_AWS-IAM-Identity-Center_64.svg",
           "type": "architecture"
         },
         {
           "name": "Identity And Access Management",
-          "file": "64/Arch_AWS-Identity-and-Access-Management_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Security-Identity/64/Arch_AWS-Identity-and-Access-Management_64.svg",
           "type": "architecture"
         },
         {
           "name": "Key Management Service",
-          "file": "64/Arch_AWS-Key-Management-Service_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Security-Identity/64/Arch_AWS-Key-Management-Service_64.svg",
           "type": "architecture"
         },
         {
           "name": "Network Firewall",
-          "file": "64/Arch_AWS-Network-Firewall_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Security-Identity/64/Arch_AWS-Network-Firewall_64.svg",
           "type": "architecture"
         },
         {
           "name": "Payment Cryptography",
-          "file": "64/Arch_AWS-Payment-Cryptography_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Security-Identity/64/Arch_AWS-Payment-Cryptography_64.svg",
           "type": "architecture"
         },
         {
           "name": "Private Certificate Authority",
-          "file": "64/Arch_AWS-Private-Certificate-Authority_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Security-Identity/64/Arch_AWS-Private-Certificate-Authority_64.svg",
           "type": "architecture"
         },
         {
           "name": "Resource Access Manager",
-          "file": "64/Arch_AWS-Resource-Access-Manager_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Security-Identity/64/Arch_AWS-Resource-Access-Manager_64.svg",
           "type": "architecture"
         },
         {
           "name": "Secrets Manager",
-          "file": "64/Arch_AWS-Secrets-Manager_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Security-Identity/64/Arch_AWS-Secrets-Manager_64.svg",
           "type": "architecture"
         },
         {
           "name": "Security Agent",
-          "file": "64/Arch_AWS-Security-Agent_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Security-Identity/64/Arch_AWS-Security-Agent_64.svg",
           "type": "architecture"
         },
         {
           "name": "Security Hub",
-          "file": "64/Arch_AWS-Security-Hub_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Security-Identity/64/Arch_AWS-Security-Hub_64.svg",
           "type": "architecture"
         },
         {
           "name": "Security Incident Response",
-          "file": "64/Arch_AWS-Security-Incident-Response_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Security-Identity/64/Arch_AWS-Security-Incident-Response_64.svg",
           "type": "architecture"
         },
         {
           "name": "Shield",
-          "file": "64/Arch_AWS-Shield_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Security-Identity/64/Arch_AWS-Shield_64.svg",
           "type": "architecture"
         },
         {
           "name": "Signer",
-          "file": "64/Arch_AWS-Signer_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Security-Identity/64/Arch_AWS-Signer_64.svg",
           "type": "architecture"
         },
         {
           "name": "WAF",
-          "file": "64/Arch_AWS-WAF_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Security-Identity/64/Arch_AWS-WAF_64.svg",
           "type": "architecture"
         },
         {
           "name": "Cloud Directory",
-          "file": "64/Arch_Amazon-Cloud-Directory_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Security-Identity/64/Arch_Amazon-Cloud-Directory_64.svg",
           "type": "architecture"
         },
         {
           "name": "Cognito",
-          "file": "64/Arch_Amazon-Cognito_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Security-Identity/64/Arch_Amazon-Cognito_64.svg",
           "type": "architecture"
         },
         {
           "name": "Detective",
-          "file": "64/Arch_Amazon-Detective_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Security-Identity/64/Arch_Amazon-Detective_64.svg",
           "type": "architecture"
         },
         {
           "name": "Guardduty",
-          "file": "64/Arch_Amazon-GuardDuty_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Security-Identity/64/Arch_Amazon-GuardDuty_64.svg",
           "type": "architecture"
         },
         {
           "name": "Inspector",
-          "file": "64/Arch_Amazon-Inspector_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Security-Identity/64/Arch_Amazon-Inspector_64.svg",
           "type": "architecture"
         },
         {
           "name": "Macie",
-          "file": "64/Arch_Amazon-Macie_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Security-Identity/64/Arch_Amazon-Macie_64.svg",
           "type": "architecture"
         },
         {
           "name": "Security Lake",
-          "file": "64/Arch_Amazon-Security-Lake_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Security-Identity/64/Arch_Amazon-Security-Lake_64.svg",
           "type": "architecture"
         },
         {
           "name": "Verified Permissions",
-          "file": "64/Arch_Amazon-Verified-Permissions_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Security-Identity/64/Arch_Amazon-Verified-Permissions_64.svg",
           "type": "architecture"
         },
         {
@@ -3333,82 +3333,82 @@
       "resources": [
         {
           "name": "Backup",
-          "file": "64/Arch_AWS-Backup_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Storage/64/Arch_AWS-Backup_64.svg",
           "type": "architecture"
         },
         {
           "name": "Elastic Disaster Recovery",
-          "file": "64/Arch_AWS-Elastic-Disaster-Recovery_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Storage/64/Arch_AWS-Elastic-Disaster-Recovery_64.svg",
           "type": "architecture"
         },
         {
           "name": "Snowball Edge",
-          "file": "64/Arch_AWS-Snowball-Edge_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Storage/64/Arch_AWS-Snowball-Edge_64.svg",
           "type": "architecture"
         },
         {
           "name": "Snowball",
-          "file": "64/Arch_AWS-Snowball_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Storage/64/Arch_AWS-Snowball_64.svg",
           "type": "architecture"
         },
         {
           "name": "Storage Gateway",
-          "file": "64/Arch_AWS-Storage-Gateway_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Storage/64/Arch_AWS-Storage-Gateway_64.svg",
           "type": "architecture"
         },
         {
           "name": "EFS",
-          "file": "64/Arch_Amazon-EFS_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Storage/64/Arch_Amazon-EFS_64.svg",
           "type": "architecture"
         },
         {
           "name": "Elastic Block Store",
-          "file": "64/Arch_Amazon-Elastic-Block-Store_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Storage/64/Arch_Amazon-Elastic-Block-Store_64.svg",
           "type": "architecture"
         },
         {
           "name": "FSx For Lustre",
-          "file": "64/Arch_Amazon-FSx-for-Lustre_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Storage/64/Arch_Amazon-FSx-for-Lustre_64.svg",
           "type": "architecture"
         },
         {
           "name": "FSx For Netapp Ontap",
-          "file": "64/Arch_Amazon-FSx-for-NetApp-ONTAP_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Storage/64/Arch_Amazon-FSx-for-NetApp-ONTAP_64.svg",
           "type": "architecture"
         },
         {
           "name": "FSx For Openzfs",
-          "file": "64/Arch_Amazon-FSx-for-OpenZFS_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Storage/64/Arch_Amazon-FSx-for-OpenZFS_64.svg",
           "type": "architecture"
         },
         {
           "name": "FSx For Wfs",
-          "file": "64/Arch_Amazon-FSx-for-WFS_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Storage/64/Arch_Amazon-FSx-for-WFS_64.svg",
           "type": "architecture"
         },
         {
           "name": "FSx",
-          "file": "64/Arch_Amazon-FSx_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Storage/64/Arch_Amazon-FSx_64.svg",
           "type": "architecture"
         },
         {
           "name": "File Cache",
-          "file": "64/Arch_Amazon-File-Cache_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Storage/64/Arch_Amazon-File-Cache_64.svg",
           "type": "architecture"
         },
         {
           "name": "S3 On Outposts",
-          "file": "64/Arch_Amazon-S3-on-Outposts_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Storage/64/Arch_Amazon-S3-on-Outposts_64.svg",
           "type": "architecture"
         },
         {
           "name": "Simple Storage Service Glacier",
-          "file": "64/Arch_Amazon-Simple-Storage-Service-Glacier_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Storage/64/Arch_Amazon-Simple-Storage-Service-Glacier_64.svg",
           "type": "architecture"
         },
         {
           "name": "Simple Storage Service",
-          "file": "64/Arch_Amazon-Simple-Storage-Service_64.svg",
+          "file": "aws/Architecture-Service-Icons_01302026/Arch_Storage/64/Arch_Amazon-Simple-Storage-Service_64.svg",
           "type": "architecture"
         },
         {

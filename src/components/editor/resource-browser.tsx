@@ -207,15 +207,10 @@ export function ResourceBrowser({ onResourceSelect, onResourceActivate }: Resour
   const [isLoading, setIsLoading] = useState(true);
   const [resourceIndex, setResourceIndex] = useState<ResourceIndex | null>(null);
   
-  // Initialize state from cookies or defaults
-  const savedState = getBrowserState();
-  const [expandedProviders, setExpandedProviders] = useState<Set<string>>(
-    new Set(savedState.expandedProviders)
-  );
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
-    new Set(savedState.expandedCategories)
-  );
-  const [viewMode, setViewMode] = useState<'normal' | 'compact'>(savedState.viewMode || 'normal');
+  // Use fixed defaults for initial render to avoid hydration mismatch (cookies only exist on client)
+  const [expandedProviders, setExpandedProviders] = useState<Set<string>>(new Set());
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<'normal' | 'compact'>('normal');
 
   useEffect(() => {
     const loadAll = async () => {
@@ -245,13 +240,15 @@ export function ResourceBrowser({ onResourceSelect, onResourceActivate }: Resour
         }
         setFullProviders(providers);
 
-        // Use saved state or default to Generic provider
+        // Hydrate from cookie (client-only) and apply saved state or defaults
+        const savedState = getBrowserState();
+        setViewMode(savedState.viewMode || 'normal');
+
         if (Object.keys(providers).length > 0) {
-          let defaultProvider = 'generic'; // Default to Generic
+          let defaultProvider = 'generic';
           let newExpandedProviders = new Set<string>(savedState.expandedProviders);
           let newExpandedCategories = new Set<string>(savedState.expandedCategories);
-          
-          // If no saved state or Generic not available, use first available provider
+
           if (newExpandedProviders.size === 0 || !providers[defaultProvider]) {
             if (providers[defaultProvider]) {
               newExpandedProviders = new Set([defaultProvider]);
@@ -260,8 +257,7 @@ export function ResourceBrowser({ onResourceSelect, onResourceActivate }: Resour
               newExpandedProviders = new Set([defaultProvider]);
             }
           }
-          
-          // Auto-expand some categories for the default/first provider
+
           const providerData = providers[Array.from(newExpandedProviders)[0]];
           if (providerData?.categories && newExpandedCategories.size === 0) {
             const categoriesToExpand = ['grouping', 'text', 'compute', 'database', 'network'];

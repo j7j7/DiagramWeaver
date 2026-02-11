@@ -12,7 +12,7 @@ import { ResourceIcon } from "./resource-icon";
 import type { DiagramNodeData } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { ItemTypes } from "../editor/draggable-item";
-import { snapToGrid } from "@/components/editor/canvas-constants";
+import { snapToGrid, snapDimensionToGrid } from "@/components/editor/canvas-constants";
 import { getTextStylingCSS, extractTextStylingFromNode } from "@/lib/text-styling";
 import {
   SquareShape,
@@ -552,13 +552,9 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
         break;
     }
     
-    // Snap to grid first
-    newWidth = Math.round(newWidth / 20) * 20;
-    newHeight = Math.round(newHeight / 20) * 20;
-    
-    // Then apply minimum constraints (after grid snapping)
-    newWidth = Math.max(minWidth, newWidth);
-    newHeight = Math.max(minHeight, newHeight);
+    // Snap dimensions to grid so right/bottom edges tessellate correctly
+    newWidth = snapDimensionToGrid(newWidth, minWidth);
+    newHeight = snapDimensionToGrid(newHeight, minHeight);
     
     onResize(node.id, newWidth, newHeight);
   };
@@ -1026,7 +1022,6 @@ return (
                    }),
                     color: (node as any).textColor || '#374151',
                     ...(node.sizeMode === 'custom' ? {} : { minHeight: '120px' }),
-                    margin: hasShadow ? 4 : 0,
                    ...(hasShadow && { 
                      boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
                    })
