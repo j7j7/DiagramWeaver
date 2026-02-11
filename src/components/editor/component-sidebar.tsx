@@ -21,8 +21,8 @@ interface ComponentSidebarProps {
   onDisconnect: () => void;
   onItemDelete: (itemToDelete: SelectedItem) => void;
   diagramData: DiagramData;
-  onResourceSelect: (resource: { name: string; file: string; type?: string; hasWhiteVariant?: boolean; format?: string }, provider: string, category: string) => void;
-  onResourceActivate?: (resource: { name: string; file: string; type?: string; hasWhiteVariant?: boolean; format?: string }, provider: string, category: string) => void;
+  onResourceSelect: (resource: { name: string; file?: string; type?: string; hasWhiteVariant?: boolean; format?: string; iconType?: string; iconName?: string; emoji?: string }, provider: string, category: string) => void;
+  onResourceActivate?: (resource: { name: string; file?: string; type?: string; hasWhiteVariant?: boolean; format?: string; iconType?: string; iconName?: string; emoji?: string }, provider: string, category: string, fullItem?: object) => void;
   onToggleJsonPanel?: () => void;
   jsonPanelOpen?: boolean;
   onFitToView?: () => void;

@@ -1101,6 +1101,9 @@ return (
                         provider={node.provider}
                         category={node.category}
                         file={node.file}
+                        iconType={node.iconType}
+                        iconName={node.iconName}
+                        emoji={node.emoji}
                         width="70" 
                         height="70" 
                         className="w-[70px] h-[70px]" 

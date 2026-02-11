@@ -44,7 +44,9 @@ const setBrowserState = (state: ResourceBrowserState) => {
     console.warn('Failed to save resource browser state to cookie:', error);
   }
 };
-import { ChevronDown, ChevronRight, Search, Package, Server, Database, Globe, Cloud, Cpu, Shield, BarChart3, Layers, Box, Network, Maximize2, Minimize2, Type, LayoutGrid, List } from 'lucide-react';
+import { ChevronDown, ChevronRight, Search, Package, Server, Database, Globe, Cloud, Cpu, Shield, BarChart3, Layers, Box, Network, Maximize2, Minimize2, Type, LayoutGrid, List, Smile } from 'lucide-react';
+import { DraggableIconItem } from './draggable-icon-item';
+import { SYMBOL_ICON_SECTIONS, EMOJI_ICONS } from '@/lib/icon-resources';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { ScrollArea } from '../ui/scroll-area';
@@ -60,10 +62,13 @@ import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '../ui/
 // ResourceItem interface kept for backward compatibility and internal use
 interface ResourceItem {
   name: string;
-  file: string;
+  file?: string; // Optional for icon resources
   type?: string;
   hasWhiteVariant?: boolean;
   format?: string;
+  iconType?: string;
+  iconName?: string;
+  emoji?: string;
 }
 
 interface ResourceCategory {
@@ -95,8 +100,8 @@ interface ResourceIndex {
 }
 
 interface ResourceBrowserProps {
-  onResourceSelect: (resource: { name: string; file: string; type?: string; hasWhiteVariant?: boolean; format?: string }, provider: string, category: string) => void;
-  onResourceActivate?: (resource: { name: string; file: string; type?: string; hasWhiteVariant?: boolean; format?: string }, provider: string, category: string) => void;
+  onResourceSelect: (resource: ResourceItem, provider: string, category: string) => void;
+  onResourceActivate?: (resource: ResourceItem, provider: string, category: string, fullItem?: object) => void;
 }
 
 // Icon mapping for different resource types
@@ -210,6 +215,10 @@ export function ResourceBrowser({ onResourceSelect, onResourceActivate }: Resour
   // Use fixed defaults for initial render to avoid hydration mismatch (cookies only exist on client)
   const [expandedProviders, setExpandedProviders] = useState<Set<string>>(new Set());
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [expandedIconsSection, setExpandedIconsSection] = useState(true);
+  const [expandedIconCategories, setExpandedIconCategories] = useState<Set<string>>(() =>
+    new Set(['People', 'Places', 'Tech', 'Emojis'])
+  );
   const [viewMode, setViewMode] = useState<'normal' | 'compact'>('normal');
 
   useEffect(() => {
@@ -361,6 +370,17 @@ export function ResourceBrowser({ onResourceSelect, onResourceActivate }: Resour
     });
   };
 
+  const filteredIconItems = useMemo(() => {
+    const term = searchTerm?.toLowerCase() || '';
+    const filteredSections: Record<string, typeof SYMBOL_ICON_SECTIONS[string]> = {};
+    Object.entries(SYMBOL_ICON_SECTIONS).forEach(([sectionName, icons]) => {
+      const filtered = term ? icons.filter((i) => i.name.toLowerCase().includes(term)) : icons;
+      if (filtered.length > 0) filteredSections[sectionName] = filtered;
+    });
+    const filteredEmoji = term ? EMOJI_ICONS.filter((i) => i.name.toLowerCase().includes(term)) : EMOJI_ICONS;
+    return { symbolSections: filteredSections, emoji: filteredEmoji };
+  }, [searchTerm]);
+
   const filteredProviders = useMemo(() => {
     if (isLoading || Object.keys(fullProviders).length === 0) return {};
     const providers = fullProviders;
@@ -431,6 +451,30 @@ export function ResourceBrowser({ onResourceSelect, onResourceActivate }: Resour
     onResourceActivate?.(resource, provider, category);
   };
 
+  const handleIconSelect = (dragItem: { type: string; label: string; provider: string; category: string; iconType?: string; iconName?: string; emoji?: string }) => {
+    onResourceSelect?.(
+      { name: dragItem.label, type: 'icon', iconType: dragItem.iconType, iconName: dragItem.iconName, emoji: dragItem.emoji } satisfies ResourceItem,
+      'generic',
+      dragItem.category
+    );
+  };
+
+  const handleIconActivate = (dragItem: { type: string; label: string; provider: string; category: string; iconType?: string; iconName?: string; emoji?: string }) => {
+    onResourceActivate?.(
+      { name: dragItem.label, type: 'icon', iconType: dragItem.iconType, iconName: dragItem.iconName, emoji: dragItem.emoji } satisfies ResourceItem,
+      'generic',
+      dragItem.category,
+      dragItem
+    );
+  };
+
+  const toggleIconCategory = (key: string) => {
+    const next = new Set(expandedIconCategories);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    setExpandedIconCategories(next);
+  };
+
 return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Search Bar */}
@@ -497,7 +541,105 @@ return (
       {/* Resource Tree - Vertical Scroll */}
       <div className="flex-1 min-h-0 overflow-hidden">
         <ScrollArea className="h-full">
+          <TooltipProvider>
           <div className="p-2">
+            {/* Icons Section - Standard symbols and emojis */}
+            {(Object.keys(filteredIconItems.symbolSections).length > 0 || filteredIconItems.emoji.length > 0) && (
+            <div className="mb-2 rounded-md border bg-amber-500/5 border-amber-500/15">
+              <Collapsible open={expandedIconsSection} onOpenChange={setExpandedIconsSection}>
+                <CollapsibleTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-between p-3 h-auto hover:bg-accent/50 hover:text-accent-foreground touch-target"
+                  >
+                    <div className="flex items-center gap-2">
+                      {expandedIconsSection ? (
+                        <ChevronDown className="w-4 h-4" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4" />
+                      )}
+                      <Smile className="w-4 h-4" />
+                      <span className="font-medium">Icons</span>
+                      <Badge variant="secondary" className="ml-auto">
+                        {Object.values(filteredIconItems.symbolSections).flat().length + filteredIconItems.emoji.length}
+                      </Badge>
+                    </div>
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="ml-4 pl-2 border-l-2 border-muted">
+                    {/* Symbol sections (Lucide) */}
+                    {Object.entries(filteredIconItems.symbolSections).map(([sectionName, icons]) => (
+                      <div key={sectionName} className="mb-1 rounded-md border bg-slate-500/5 border-slate-500/10">
+                        <Collapsible open={expandedIconCategories.has(sectionName)} onOpenChange={() => toggleIconCategory(sectionName)}>
+                          <CollapsibleTrigger asChild>
+                            <Button variant="ghost" className="w-full justify-between p-2 h-auto hover:bg-accent/40 hover:text-accent-foreground touch-target">
+                              <div className="flex items-center gap-1">
+                                {expandedIconCategories.has(sectionName) ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                                <span className="text-sm">{sectionName}</span>
+                                <Badge variant="outline" className="ml-auto text-xs">{icons.length}</Badge>
+                              </div>
+                            </Button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <div className={`ml-4 grid touch-spacing ${
+                              viewMode === 'compact'
+                                ? 'grid-cols-[repeat(auto-fill,minmax(56px,1fr))] gap-1 p-1'
+                                : 'grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-2 p-2'
+                            }`}>
+                              {icons.map((iconItem, index) => (
+                                <DraggableIconItem
+                                  key={`${sectionName}-${index}`}
+                                  iconItem={iconItem}
+                                  onClick={(dragItem) => handleIconSelect(dragItem)}
+                                  onDoubleClick={(dragItem) => handleIconActivate(dragItem)}
+                                  viewMode={viewMode}
+                                />
+                              ))}
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      </div>
+                    ))}
+                    {/* Emoji Icons */}
+                    {filteredIconItems.emoji.length > 0 && (
+                    <div className="mb-1 rounded-md border bg-slate-500/5 border-slate-500/10">
+                      <Collapsible open={expandedIconCategories.has('Emojis')} onOpenChange={() => toggleIconCategory('Emojis')}>
+                        <CollapsibleTrigger asChild>
+                          <Button variant="ghost" className="w-full justify-between p-2 h-auto hover:bg-accent/40 hover:text-accent-foreground touch-target">
+                            <div className="flex items-center gap-1">
+                              {expandedIconCategories.has('Emojis') ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                              <span className="text-sm">Emojis</span>
+                              <Badge variant="outline" className="ml-auto text-xs">{filteredIconItems.emoji.length}</Badge>
+                            </div>
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className={`ml-4 grid touch-spacing ${
+                            viewMode === 'compact'
+                              ? 'grid-cols-[repeat(auto-fill,minmax(56px,1fr))] gap-1 p-1'
+                              : 'grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-2 p-2'
+                          }`}>
+                            {filteredIconItems.emoji.map((iconItem, index) => (
+                              <DraggableIconItem
+                                key={`emoji-${index}`}
+                                iconItem={iconItem}
+                                onClick={(dragItem) => handleIconSelect(dragItem)}
+                                onDoubleClick={(dragItem) => handleIconActivate(dragItem)}
+                                viewMode={viewMode}
+                              />
+                            ))}
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </div>
+                    )}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+            )}
+
             {isLoading ? (
               <div className="flex items-center justify-center h-32">
                 <div className="text-sm text-muted-foreground">Loading resources...</div>
@@ -516,7 +658,7 @@ return (
                 </div>
               </div>
             ) : (
-              <TooltipProvider>
+                <>
                 {Object.entries(filteredProviders).map(([providerKey, provider]) => (
                   <div key={providerKey} className={`mb-2 rounded-md border ${getProviderTintClasses(providerKey)}`}>
                     <Collapsible open={expandedProviders.has(providerKey)} onOpenChange={() => toggleProvider(providerKey)}>
@@ -597,9 +739,10 @@ return (
                     </Collapsible>
                   </div>
                 ))}
-              </TooltipProvider>
+                </>
             )}
           </div>
+          </TooltipProvider>
         </ScrollArea>
       </div>
     </div>

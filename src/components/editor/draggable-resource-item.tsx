@@ -9,7 +9,7 @@ import { buildResourceIconPath } from '@/lib/resource-mapping';
 interface DraggableResourceItemProps {
   resource: {
     name: string;
-    file: string;
+    file?: string; // Optional for icon resources (icons use DraggableIconItem)
     type?: string;
     hasWhiteVariant?: boolean;
     format?: string;
@@ -28,6 +28,7 @@ export function DraggableResourceItem({ resource, provider, category, icon, onCl
 
   // Icon path for display in sidebar - NEVER passed to node
   const iconPath = useMemo(() => {
+    if (!resource.file) return '';
     return buildResourceIconPath(provider, category, resource.file);
   }, [provider, category, resource.file]);
   
@@ -161,7 +162,7 @@ export function DraggableResourceItem({ resource, provider, category, icon, onCl
             <Card className="hover:bg-accent hover:text-accent-foreground transition-colors w-full">
               <CardContent className="p-1.5 flex flex-col items-center justify-center gap-0.5 text-center h-12">
                 <div className="w-5 h-5 flex items-center justify-center">
-                  {!imageError ? (
+                  {!imageError && iconPath ? (
                     <img
                       src={iconPath}
                       alt={resource.name}
@@ -185,17 +186,17 @@ export function DraggableResourceItem({ resource, provider, category, icon, onCl
       ) : (
         <Card className="hover:bg-accent hover:text-accent-foreground transition-colors">
           <CardContent className="p-2 flex flex-col items-center justify-center gap-1 text-center h-16">
-            <div className="w-6 h-6 flex items-center justify-center">
-              {!imageError ? (
-                <img
-                  src={iconPath}
-                  alt={resource.name}
-                  className="w-6 h-6 object-contain"
-                  onError={handleImageError}
-                />
-              ) : (
-                icon
-              )}
+                <div className="w-6 h-6 flex items-center justify-center">
+                  {!imageError && iconPath ? (
+                    <img
+                      src={iconPath}
+                      alt={resource.name}
+                      className="w-6 h-6 object-contain"
+                      onError={handleImageError}
+                    />
+                  ) : (
+                    icon
+                  )}
             </div>
             <span className="font-medium text-xs leading-tight">
               {resource.name}

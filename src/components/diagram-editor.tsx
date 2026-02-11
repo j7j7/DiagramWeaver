@@ -115,10 +115,13 @@ export type SelectedItem = (
 
 interface PaletteResource {
   name: string;
-  file: string;
+  file?: string; // Optional for icon resources (symbols/emojis)
   type?: string;
   hasWhiteVariant?: boolean;
   format?: string;
+  iconType?: string;
+  iconName?: string;
+  emoji?: string;
 }
 
 interface PaletteSelection {
@@ -127,14 +130,27 @@ interface PaletteSelection {
   category: string;
 }
 
-function createPaletteItem(resource: PaletteResource, provider: string, category: string) {
-  const derivedSlug = resource.name.replace(/\s+/g, '-').toLowerCase();
+function createPaletteItem(
+  resource: PaletteResource | { name: string; iconType?: string; iconName?: string; emoji?: string },
+  provider: string,
+  category: string
+) {
+  const r = resource as { name: string; iconType?: string; iconName?: string; emoji?: string; file?: string };
+  if (r.iconType === 'lucide' && r.iconName) {
+    const slug = r.iconName.toLowerCase().replace(/\s+/g, '-');
+    return { type: `generic.icon.${slug}`, label: r.name, provider: 'generic', category: 'icon', iconType: 'lucide', iconName: r.iconName };
+  }
+  if (r.iconType === 'emoji' && r.emoji) {
+    const slug = r.name.replace(/\s+/g, '-').toLowerCase();
+    return { type: `generic.emoji.${slug}`, label: r.name, provider: 'generic', category: 'emoji', iconType: 'emoji', emoji: r.emoji };
+  }
+  const derivedSlug = (resource as PaletteResource).name.replace(/\s+/g, '-').toLowerCase();
   return {
     type: `${provider}.${category}.${derivedSlug}`,
-    label: resource.name,
+    label: (resource as PaletteResource).name,
     provider,
     category,
-    file: resource.file,
+    file: (resource as PaletteResource).file,
   };
 }
 
@@ -576,8 +592,13 @@ export default function DiagramEditor() {
     console.log('Resource selected:', { resource, provider, category });
   };
 
-  const handleResourceActivate = (resource: { name: string; file: string; type?: string; hasWhiteVariant?: boolean; format?: string }, provider: string, category: string) => {
-    const item = createPaletteItem(resource, provider, category);
+  const handleResourceActivate = (
+    resource: { name: string; file?: string; type?: string; hasWhiteVariant?: boolean; format?: string; iconType?: string; iconName?: string; emoji?: string },
+    provider: string,
+    category: string,
+    fullItem?: { type: string; label: string; provider: string; category: string; iconType?: string; iconName?: string; emoji?: string }
+  ) => {
+    const item = fullItem ?? createPaletteItem(resource as PaletteResource, provider, category);
     setSelectedResource({ resource, provider, category });
     setPaletteClipboardItem(item);
     if (editorRef.current) {

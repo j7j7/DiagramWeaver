@@ -77,6 +77,10 @@ export interface DiagramNodeData {
   provider?: string; // Provider name (e.g., 'aws', 'azure', 'gcp')
   category?: string; // Category name (e.g., 'compute', 'storage', 'network')
   file?: string; // Resource filename (e.g., 'ec2.png', 's3.png')
+  // Standard icons from Icons section (Lucide symbols or emojis)
+  iconType?: 'lucide' | 'emoji'; // Render as Lucide icon or emoji
+  iconName?: string; // Lucide icon name (e.g. 'Home', 'Shield')
+  emoji?: string; // Emoji character for emoji icons
 }
 
 export interface ScratchPadItem {

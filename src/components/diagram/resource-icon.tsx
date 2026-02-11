@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Server, User } from "lucide-react";
 import { buildResourceIconPath } from "@/lib/resource-mapping";
+import { getLucideIcon } from "@/lib/icon-resources";
 
 interface ResourceIconProps extends React.SVGProps<SVGSVGElement> {
   type: string; // Format: provider.category.resourcename (e.g., aws.compute.ec2)
@@ -10,10 +11,68 @@ interface ResourceIconProps extends React.SVGProps<SVGSVGElement> {
   provider?: string; // Direct provider info for icon lookup
   category?: string; // Direct category info for icon lookup  
   file?: string; // Direct file info for icon lookup
+  iconType?: "lucide" | "emoji"; // For standard icons from Icons section
+  iconName?: string; // Lucide icon name (e.g. "Home", "Shield")
+  emoji?: string; // Emoji character for emoji icons
 }
 
-export function ResourceIcon({ type, imagePath, provider, category, file, ...props }: ResourceIconProps) {
+export function ResourceIcon({ type, imagePath, provider, category, file, iconType, iconName, emoji, ...props }: ResourceIconProps) {
   const [resourceFile, setResourceFile] = useState<string | null>(null);
+
+  // Render standard icons (Lucide symbols or emojis) - same square size as other items (70x70)
+  if (iconType === "emoji" && emoji) {
+    const size = typeof props.width === "number" ? props.width : parseInt(String(props.width || 70), 10) || 70;
+    return (
+      <span
+        role="img"
+        aria-label={type}
+        style={{
+          fontSize: `${size}px`,
+          lineHeight: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: `${size}px`,
+          height: `${size}px`,
+        }}
+      >
+        {emoji}
+      </span>
+    );
+  }
+  if (iconType === "lucide") {
+    const nameToUse = iconName || type.split(".").pop()?.split("-").map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join("") || "";
+    const LucideIcon = getLucideIcon(nameToUse);
+    if (LucideIcon) {
+      return <LucideIcon {...props} />;
+    }
+  }
+  if (type.startsWith("generic.icon.") || type.startsWith("generic.emoji.")) {
+    // Fallback when node has type but no iconType/iconName/emoji passed (e.g. from JSON)
+    if (type.startsWith("generic.emoji.")) {
+      const slug = type.replace("generic.emoji.", "");
+      const emojiMap: Record<string, string> = {
+        house: "🏠", shield: "🛡️", person: "👤", office: "🏢", heart: "❤️", star: "⭐",
+        lock: "🔒", key: "🔑", email: "📧", phone: "📱", globe: "🌐", gear: "⚙️",
+        people: "👥", warning: "⚠️", check: "✅", info: "ℹ️", x: "❌", lightning: "⚡",
+        cloud: "☁️", database: "🗄️", computer: "💻", rocket: "🚀", bell: "🔔",
+        bookmark: "🔖", camera: "📷", document: "📄", folder: "📁", gift: "🎁", location: "📍",
+      };
+      const emojiChar = emojiMap[slug] || "📌";
+      const size = typeof props.width === "number" ? props.width : parseInt(String(props.width || 70), 10) || 70;
+      return (
+        <span role="img" aria-label={type} style={{ fontSize: `${size}px`, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", width: `${size}px`, height: `${size}px` }}>
+          {emojiChar}
+        </span>
+      );
+    }
+    const iconPart = type.replace("generic.icon.", "");
+    const pascalName = iconPart.split("-").map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join("");
+    const LucideIcon = getLucideIcon(pascalName);
+    if (LucideIcon) {
+      return <LucideIcon {...props} />;
+    }
+  }
 
   // Look up file from resource catalog based on type or direct provider info
   useEffect(() => {
