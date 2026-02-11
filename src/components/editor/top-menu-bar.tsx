@@ -20,9 +20,6 @@ import { AboutDialog } from './about-dialog';
 import { ViewerUrlDialog } from './viewer-url-dialog';
 import type { SelectedItem } from '../diagram-editor';
 import type { DiagramData } from '@/lib/types';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { DiagramTheme } from '@/lib/theme-types';
 
@@ -461,86 +458,6 @@ export function TopMenuBar({
                     </>
                   )}
                 </MenubarItem>
-              </>
-            )}
-            {onTransformChange && (
-              <>
-                {(onUndo || onRedo || onFitToView) && <MenubarSeparator />}
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <MenubarItem onSelect={(e) => e.preventDefault()}>
-                      <Move className="mr-2 h-4 w-4" />
-                      Canvas Transform
-                    </MenubarItem>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-64" align="start">
-                    <div className="space-y-3">
-                      <div>
-                        <Label htmlFor="transform-x">X Position</Label>
-                        <Input
-                          id="transform-x"
-                          type="number"
-                          value={transform?.x || 0}
-                          onChange={(e) => onTransformChange({ 
-                            x: parseFloat(e.target.value) || 0,
-                            y: transform?.y || 0,
-                            k: transform?.k || 1
-                          })}
-                          className="w-full"
-                        />
-                      </div>
-                      
-                      <div>
-                        <Label htmlFor="transform-y">Y Position</Label>
-                        <Input
-                          id="transform-y"
-                          type="number"
-                          value={transform?.y || 0}
-                          onChange={(e) => onTransformChange({ 
-                            x: transform?.x || 0,
-                            y: parseFloat(e.target.value) || 0,
-                            k: transform?.k || 1
-                          })}
-                          className="w-full"
-                        />
-                      </div>
-                      
-                      <div>
-                        <Label htmlFor="transform-zoom">Zoom Level</Label>
-                        <Input
-                          id="transform-zoom"
-                          type="number"
-                          step="0.1"
-                          min="0.1"
-                          max="2.5"
-                          value={transform?.k || 1}
-                          onChange={(e) => onTransformChange({ 
-                            x: transform?.x || 0,
-                            y: transform?.y || 0,
-                            k: parseFloat(e.target.value) || 1
-                          })}
-                          className="w-full"
-                        />
-                      </div>
-                      
-                      <div className="pt-2">
-                        <Button 
-                          variant="outline" 
-                          onClick={() => onTransformChange({ x: 0, y: 0, k: 1 })}
-                          className="w-full"
-                        >
-                          Reset Transform
-                        </Button>
-                      </div>
-                      
-                      <div className="text-xs text-muted-foreground space-y-1">
-                        <p><strong>X:</strong> Horizontal pan position</p>
-                        <p><strong>Y:</strong> Vertical pan position</p>
-                        <p><strong>Zoom:</strong> Scale factor (1.0 = 100%)</p>
-                      </div>
-                    </div>
-                  </PopoverContent>
-                </Popover>
               </>
             )}
           </MenubarContent>

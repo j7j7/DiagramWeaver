@@ -1,6 +1,9 @@
 # MEMORY.MD
 
-## DiagramWeaver - Latest Features and Functions (Updated 2025-11-17)
+## DiagramWeaver - Latest Features and Functions (Updated 2025-02-11)
+
+### 2025-02-11 – README Update
+README.md fully updated with all latest functions and features: canvas & editor, resource browser, node types (shapes, line, textbox, icons), connections, selection/multi-select, groupings, styling panels, alignment, auto layout, JSON editor, export, keyboard shortcuts, development commands.
 
 ### Project Overview
 DiagramWeaver is a Next.js 15 application for creating interactive architecture diagrams. It supports drag-and-drop design and integration with multiple cloud providers. Users can build, edit, and visualize complex system architectures with Bezier curve connections.
