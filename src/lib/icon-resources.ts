@@ -68,6 +68,21 @@ import {
   Clock,
   Eye,
   EyeOff,
+  // Additional icons
+  UserPlus,
+  AtSign,
+  ThumbsUp,
+  ThumbsDown,
+  Smartphone,
+  Box,
+  Router,
+  FolderOpen,
+  Image,
+  Power,
+  RefreshCw,
+  RotateCw,
+  Timer,
+  History,
 } from "lucide-react";
 
 export type IconKind = "lucide" | "emoji";
@@ -96,6 +111,8 @@ const LUCIDE_ICONS: Record<string, LucideIcon> = {
   Unlock, HelpCircle, MessageSquare, Code, Bug, Terminal, GitBranch, Layers,
   Link, Share2, Copy, Plus, Minus, Filter, MoreHorizontal, Calendar, Clock,
   Eye, EyeOff,
+  UserPlus, AtSign, ThumbsUp, ThumbsDown, Smartphone, Box, Router,
+  FolderOpen, Image, Power, RefreshCw, RotateCw, Timer, History,
 };
 
 const icon = (name: string, iconName: string, IconComponent: LucideIcon): SymbolIconItem =>
@@ -107,6 +124,7 @@ export const SYMBOL_ICON_SECTIONS: Record<string, SymbolIconItem[]> = {
     icon("Person", "User", User),
     icon("Users", "Users", Users),
     icon("User Circle", "UserCircle", UserCircle),
+    icon("User Plus", "UserPlus", UserPlus),
     icon("Eye", "Eye", Eye),
     icon("Eye Off", "EyeOff", EyeOff),
   ],
@@ -120,6 +138,7 @@ export const SYMBOL_ICON_SECTIONS: Record<string, SymbolIconItem[]> = {
   Communication: [
     icon("Mail", "Mail", Mail),
     icon("Phone", "Phone", Phone),
+    icon("At Sign", "AtSign", AtSign),
     icon("Message", "MessageCircle", MessageCircle),
     icon("Message Square", "MessageSquare", MessageSquare),
     icon("Send", "Send", Send),
@@ -139,12 +158,17 @@ export const SYMBOL_ICON_SECTIONS: Record<string, SymbolIconItem[]> = {
     icon("Alert", "AlertTriangle", AlertTriangle),
     icon("Info", "Info", Info),
     icon("Help", "HelpCircle", HelpCircle),
+    icon("Thumbs Up", "ThumbsUp", ThumbsUp),
+    icon("Thumbs Down", "ThumbsDown", ThumbsDown),
   ],
   "Tech": [
     icon("Server", "Server", Server),
     icon("Database", "Database", Database),
     icon("Cloud", "Cloud", Cloud),
     icon("Wifi", "Wifi", Wifi),
+    icon("Smartphone", "Smartphone", Smartphone),
+    icon("Box", "Box", Box),
+    icon("Router", "Router", Router),
     icon("CPU", "Cpu", Cpu),
     icon("Hard Drive", "HardDrive", HardDrive),
     icon("Monitor", "Monitor", Monitor),
@@ -154,7 +178,9 @@ export const SYMBOL_ICON_SECTIONS: Record<string, SymbolIconItem[]> = {
     icon("File", "File", File),
     icon("File Text", "FileText", FileText),
     icon("Folder", "Folder", Folder),
+    icon("Folder Open", "FolderOpen", FolderOpen),
     icon("Clipboard", "Clipboard", Clipboard),
+    icon("Image", "Image", Image),
   ],
   "Code": [
     icon("Code", "Code", Code),
@@ -169,6 +195,8 @@ export const SYMBOL_ICON_SECTIONS: Record<string, SymbolIconItem[]> = {
     icon("Camera", "Camera", Camera),
     icon("Gift", "Gift", Gift),
     icon("Zap", "Zap", Zap),
+    icon("Power", "Power", Power),
+    icon("Refresh", "RefreshCw", RefreshCw),
     icon("Search", "Search", Search),
     icon("Filter", "Filter", Filter),
   ],
@@ -179,6 +207,7 @@ export const SYMBOL_ICON_SECTIONS: Record<string, SymbolIconItem[]> = {
     icon("Download", "Download", Download),
     icon("Upload", "Upload", Upload),
     icon("Wrench", "Wrench", Wrench),
+    icon("Rotate", "RotateCw", RotateCw),
     icon("Plus", "Plus", Plus),
     icon("Minus", "Minus", Minus),
     icon("More", "MoreHorizontal", MoreHorizontal),
@@ -186,6 +215,8 @@ export const SYMBOL_ICON_SECTIONS: Record<string, SymbolIconItem[]> = {
   "Time": [
     icon("Calendar", "Calendar", Calendar),
     icon("Clock", "Clock", Clock),
+    icon("Timer", "Timer", Timer),
+    icon("History", "History", History),
     icon("Star", "Star", Star),
     icon("Heart", "Heart", Heart),
   ],
