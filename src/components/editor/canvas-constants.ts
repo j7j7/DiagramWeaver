@@ -192,8 +192,8 @@ export const measureNodeDims = (n: PositionedNode) => {
         calculatedWidth = Math.max(shapeSize, 80);
       }
 
-      const maxCharsPerLine = 12;
-      const shapeLines = Math.max(1, Math.ceil(label.length / maxCharsPerLine));
+      const explicitLines = label.split('\n');
+      const shapeLines = Math.max(1, explicitLines.length);
       height = NODE_HEIGHT + (shapeLines - 1) * EXTRA_LINE_HEIGHT;
     }
 

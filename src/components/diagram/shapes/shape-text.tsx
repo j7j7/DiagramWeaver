@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useEffect } from "react";
 import type { DiagramNodeData } from "@/lib/types";
 import {
   getTextStylingForNode,
@@ -32,8 +32,15 @@ export function ShapeText({
   onLabelKeyDown,
   onLabelDoubleClick,
 }: ShapeTextProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const nodeAny = node as any;
+
+  useEffect(() => {
+    if (isEditingLabel && textareaRef.current) {
+      textareaRef.current.focus();
+      textareaRef.current.select();
+    }
+  }, [isEditingLabel]);
   const styles = getShapeStyles(node);
   const verticalPosition = nodeAny.textVerticalPosition;
   const textPosition = nodeAny.textPosition;
@@ -76,15 +83,15 @@ export function ShapeText({
       <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass(effectivePosition)}`}>
         {isEditingLabel ? (
           <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass(effectivePosition)} px-1`}>
-            <input
-              ref={inputRef}
+            <textarea
+              ref={textareaRef}
               id={`node-input-${node.id}`}
-              type="text"
               value={editText}
               onChange={(e) => onLabelTextChange(e.target.value)}
               onBlur={onLabelSubmit}
               onKeyDown={onLabelKeyDown}
-              className={`text-xs ${getTextJustifyClass(nodeAny.textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none`}
+              rows={3}
+              className={`text-xs ${getTextJustifyClass(nodeAny.textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none resize-none`}
               style={{
                 ...getTextStylingForNode(node),
                 color: getTextColorForBackground(styles.backgroundColor, nodeAny.textColor)
@@ -95,7 +102,7 @@ export function ShapeText({
         ) : (
           <div className={`w-full h-full flex flex-col ${getVerticalJustifyClass(effectivePosition)} px-1`}>
             <p
-              className={`text-xs ${getTextJustifyClass(nodeAny.textJustify)} break-words leading-tight cursor-text w-full`}
+              className={`text-xs ${getTextJustifyClass(nodeAny.textJustify)} break-words leading-tight cursor-text w-full whitespace-pre-wrap`}
               style={{
                 ...getTextStylingForNode(node),
                 color: getTextColorForBackground(styles.backgroundColor, nodeAny.textColor),
@@ -134,15 +141,15 @@ export function ShapeText({
       style={outsideStyle}
     >
       {isEditingLabel ? (
-        <input
-          ref={inputRef}
+        <textarea
+          ref={textareaRef}
           id={`node-input-${node.id}`}
-          type="text"
           value={editText}
           onChange={(e) => onLabelTextChange(e.target.value)}
           onBlur={onLabelSubmit}
           onKeyDown={onLabelKeyDown}
-          className={`text-xs ${getTextJustifyClass(nodeAny.textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none`}
+          rows={3}
+          className={`text-xs ${getTextJustifyClass(nodeAny.textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none resize-none`}
           style={{
             ...getTextStylingForNode(node),
             color: nodeAny.textColor || '#374151',
@@ -152,7 +159,7 @@ export function ShapeText({
         />
       ) : (
         <p
-          className={`text-xs ${getTextJustifyClass(nodeAny.textJustify)} break-words leading-tight cursor-text w-full`}
+          className={`text-xs ${getTextJustifyClass(nodeAny.textJustify)} break-words leading-tight cursor-text w-full whitespace-pre-wrap`}
           style={{
             ...getTextStylingForNode(node),
             color: nodeAny.textColor || '#374151',

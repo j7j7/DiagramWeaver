@@ -307,7 +307,7 @@ export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isM
       editText,
       onLabelTextChange: setEditText,
       onLabelSubmit: handleLabelSubmit,
-      onLabelKeyDown: (e: React.KeyboardEvent) => handleLabelKeyDown(e, false),
+      onLabelKeyDown: (e: React.KeyboardEvent) => handleLabelKeyDown(e, true),
       onLabelDoubleClick: handleLabelDoubleClick,
     };
 
