@@ -23,6 +23,7 @@ import {
   ChevronDown,
   Palette,
   GripHorizontal,
+  Plus,
   X,
   ArrowUp,
   ArrowDown,
@@ -60,6 +61,8 @@ interface ContextToolbarProps {
   onDelete?: () => void;
   onConnectionUpdate?: (from: string, to: string, updates: { arrow?: boolean; text?: string; textPosition?: number; color?: string; lineWidth?: number; shadow?: boolean; [key: string]: any }) => void;
   onConnectionDisconnect?: (from: string, to: string) => void;
+  onConnectionWaypointAdd?: (from: string, to: string) => void;
+  onConnectionWaypointRemove?: (from: string, to: string, index: number) => void;
   diagramData?: DiagramData;
   onDiagramDataUpdate?: (newDiagramData: DiagramData) => void;
   onAlignObjects?: (alignment: 'top' | 'center' | 'bottom' | 'v-middle' | 'left' | 'h-center' | 'right' | 'distribute-v' | 'distribute-h') => void;
@@ -84,6 +87,8 @@ export function ContextToolbar({
   onDelete,
   onConnectionUpdate,
   onConnectionDisconnect,
+  onConnectionWaypointAdd,
+  onConnectionWaypointRemove,
   diagramData,
   onDiagramDataUpdate,
   onAlignObjects,
@@ -293,63 +298,24 @@ export function ContextToolbar({
     setConnectionsOpen(connectionSettingsPanelOpen);
   }, [connectionSettingsPanelOpen]);
 
-  if (!selectedItem) {
-    return null;
-  }
-
-  // Handle edge/connection selection
-  if (selectedItem.itemType === 'edge') {
-    const isEdge = selectedItem.itemType === 'edge';
-    const hasArrow = selectedItem.arrow === true || selectedItem.toArrow === true;
-
-    const handleArrowToggle = () => {
-      if (onConnectionUpdate && isEdge) {
-        // Toggle arrow - if arrow is true, set to false, otherwise set to true
-        onConnectionUpdate(selectedItem.from, selectedItem.to, {
-          arrow: !hasArrow,
-          toArrow: !hasArrow
-        });
-      }
-    };
-
-    return (
-      <div className="flex items-center gap-1 px-2 border-l border-border min-h-[2.5rem] shrink-0">
-        {/* Arrow Toggle Button */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button 
-              variant={hasArrow ? "default" : "ghost"} 
-              size="sm" 
-              className="h-8 px-2"
-              onClick={handleArrowToggle}
-            >
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{hasArrow ? 'Hide Arrow' : 'Show Arrow'}</TooltipContent>
-        </Tooltip>
-
-      </div>
-    );
-  }
-
   const prevSelectedIdRef = useRef<string | undefined>(undefined);
   const prevLabelOpenRef = useRef(false);
   useEffect(() => {
-    if (selectedItem && (prevSelectedIdRef.current !== selectedItem.id || (labelOpen && !prevLabelOpenRef.current))) {
-      setLabelInputValue(selectedItem.label || '');
+    if (selectedItem && selectedItem.itemType !== 'edge' && (prevSelectedIdRef.current !== selectedItem.id || (labelOpen && !prevLabelOpenRef.current))) {
+      setLabelInputValue((selectedItem as { label?: string }).label || '');
       prevSelectedIdRef.current = selectedItem.id;
     }
     prevLabelOpenRef.current = labelOpen;
-  }, [selectedItem?.id, selectedItem?.label, labelOpen]);
+  }, [selectedItem?.id, selectedItem && selectedItem.itemType !== 'edge' ? (selectedItem as { label?: string }).label : undefined, selectedItem?.itemType, labelOpen]);
 
+  // All hooks must run unconditionally (Rules of Hooks) - move before early returns
   const flushLabelChange = useCallback(() => {
     if (labelDebounceRef.current) {
       clearTimeout(labelDebounceRef.current);
       labelDebounceRef.current = null;
     }
     const value = labelInputValue.trim();
-    if (selectedItem && value !== (selectedItem.label || '')) {
+    if (selectedItem && selectedItem.itemType !== 'edge' && value !== ((selectedItem as { label?: string }).label || '')) {
       const updated = { ...selectedItem, label: value } as SelectedItem;
       if (selectedItem.type === 'generic.text.textbox') {
         (updated as any).richLabel = undefined;
@@ -365,7 +331,7 @@ export function ContextToolbar({
     }
     labelDebounceRef.current = setTimeout(() => {
       labelDebounceRef.current = null;
-      if (selectedItem && value.trim() !== (selectedItem.label || '')) {
+      if (selectedItem && selectedItem.itemType !== 'edge' && value.trim() !== ((selectedItem as { label?: string }).label || '')) {
         const updated = { ...selectedItem, label: value.trim() } as SelectedItem;
         if (selectedItem.type === 'generic.text.textbox') {
           (updated as any).richLabel = undefined;
@@ -388,6 +354,121 @@ export function ContextToolbar({
     }
   }, [flushLabelChange]);
 
+  const colorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const connectionColorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleColorChange = useCallback((property: 'borderColor' | 'backgroundColor' | 'textColor' | 'lineColor', value: string) => {
+    if (colorTimeoutRef.current) {
+      clearTimeout(colorTimeoutRef.current);
+    }
+    colorTimeoutRef.current = setTimeout(() => {
+      if (selectedItem && selectedItem.itemType !== 'edge') {
+        onItemUpdate?.({ ...selectedItem, [property]: value } as SelectedItem);
+      }
+    }, 150);
+  }, [selectedItem, onItemUpdate]);
+
+  const handleColorChangeImmediate = useCallback((property: 'borderColor' | 'backgroundColor' | 'textColor' | 'lineColor', value: string) => {
+    if (colorTimeoutRef.current) {
+      clearTimeout(colorTimeoutRef.current);
+    }
+    if (selectedItem && selectedItem.itemType !== 'edge') {
+      onItemUpdate?.({ ...selectedItem, [property]: value } as SelectedItem);
+    }
+  }, [selectedItem, onItemUpdate]);
+
+  useEffect(() => {
+    return () => {
+      if (colorTimeoutRef.current) clearTimeout(colorTimeoutRef.current);
+      if (connectionColorTimeoutRef.current) clearTimeout(connectionColorTimeoutRef.current);
+      if (labelDebounceRef.current) clearTimeout(labelDebounceRef.current);
+    };
+  }, []);
+
+  if (!selectedItem) {
+    return null;
+  }
+
+  // Handle edge/connection selection
+  if (selectedItem.itemType === 'edge') {
+    const isEdge = selectedItem.itemType === 'edge';
+    const hasArrow = selectedItem.arrow === true || selectedItem.toArrow === true;
+
+    const handleArrowToggle = () => {
+      if (onConnectionUpdate && isEdge) {
+        // Toggle arrow - if arrow is true, set to false, otherwise set to true
+        onConnectionUpdate(selectedItem.from, selectedItem.to, {
+          arrow: !hasArrow,
+          toArrow: !hasArrow
+        });
+      }
+    };
+
+    const waypoints = (selectedItem as any).waypoints ?? [];
+    const canAddWaypoint = !!onConnectionWaypointAdd && !isReadOnly;
+    const canRemoveWaypoint = !!onConnectionWaypointRemove && !isReadOnly;
+
+    return (
+      <div className="flex items-center gap-1 px-2 border-l border-border min-h-[2.5rem] shrink-0">
+        {/* Arrow Toggle Button */}
+        <Button
+          variant={hasArrow ? "default" : "ghost"}
+          size="sm"
+          className="h-8 px-2"
+          onClick={handleArrowToggle}
+          title={hasArrow ? "Hide Arrow" : "Show Arrow"}
+        >
+          <ArrowRight className="h-4 w-4" />
+        </Button>
+
+        {/* Add Waypoint - click to add a waypoint for routing connection around obstacles */}
+        {canAddWaypoint && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 px-2"
+            onClick={() => onConnectionWaypointAdd?.(selectedItem.from, selectedItem.to)}
+            title="Add waypoint to route connection around obstacles"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        )}
+
+        {/* Waypoints list with remove */}
+        {waypoints.length > 0 && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 px-2" title={`${waypoints.length} waypoint(s)`}>
+                <GripHorizontal className="h-4 w-4" />
+                <span className="text-xs ml-1">{waypoints.length}</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-2" align="start">
+              <div className="text-xs text-muted-foreground mb-2">Waypoints — drag on canvas to move</div>
+              <div className="space-y-1 max-h-40 overflow-y-auto">
+                {waypoints.map((wp: { x: number; y: number; id?: string }, idx: number) => (
+                  <div key={wp.id ?? idx} className="flex items-center justify-between gap-2 py-1 px-2 rounded hover:bg-accent/50">
+                    <span className="text-xs font-mono truncate">Waypoint {idx + 1}</span>
+                    {canRemoveWaypoint && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                        onClick={() => onConnectionWaypointRemove?.(selectedItem.from, selectedItem.to, idx)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+      </div>
+    );
+  }
+
   const handleTagChange = (value: string) => {
     onItemUpdate?.({ ...selectedItem, tag: value } as SelectedItem);
   };
@@ -395,46 +476,6 @@ export function ContextToolbar({
   const handleInfoChange = (value: string) => {
     onItemUpdate?.({ ...selectedItem, info: value } as SelectedItem);
   };
-
-  // Debounced color change to prevent excessive updates during dragging
-  const colorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  // Connection color timeout ref
-  const connectionColorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
-  const handleColorChange = useCallback((property: 'borderColor' | 'backgroundColor' | 'textColor' | 'lineColor', value: string) => {
-    // Clear existing timeout
-    if (colorTimeoutRef.current) {
-      clearTimeout(colorTimeoutRef.current);
-    }
-    
-    // Set new timeout to update after 150ms of no changes
-    colorTimeoutRef.current = setTimeout(() => {
-      onItemUpdate?.({ ...selectedItem, [property]: value } as SelectedItem);
-    }, 150);
-  }, [selectedItem, onItemUpdate]);
-
-  // Immediate color change for final value (when input is released)
-  const handleColorChangeImmediate = useCallback((property: 'borderColor' | 'backgroundColor' | 'textColor' | 'lineColor', value: string) => {
-    if (colorTimeoutRef.current) {
-      clearTimeout(colorTimeoutRef.current);
-    }
-    onItemUpdate?.({ ...selectedItem, [property]: value } as SelectedItem);
-  }, [selectedItem, onItemUpdate]);
-
-  // Cleanup timeouts on unmount
-  useEffect(() => {
-    return () => {
-      if (colorTimeoutRef.current) {
-        clearTimeout(colorTimeoutRef.current);
-      }
-      if (connectionColorTimeoutRef.current) {
-        clearTimeout(connectionColorTimeoutRef.current);
-      }
-      if (labelDebounceRef.current) {
-        clearTimeout(labelDebounceRef.current);
-      }
-    };
-  }, []);
 
   const handleMaxItemsPerRowChange = (value: number) => {
     // Check if multiple items are selected

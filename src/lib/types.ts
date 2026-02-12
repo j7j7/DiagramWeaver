@@ -123,6 +123,9 @@ export interface DiagramConnectionData {
   totalConnections?: number; // Total number of connections on the same edge of the from node
   toConnectionIndex?: number; // Index of this connection among multiple connections on the same edge of the to node (0-based)
   toTotalConnections?: number; // Total number of connections on the same edge of the to node
+
+  // Optional waypoints for routing connection around obstacles (absolute canvas coordinates)
+  waypoints?: Array<{ x: number; y: number; id?: string }>;
 }
 
 export interface DiagramNodeItem {

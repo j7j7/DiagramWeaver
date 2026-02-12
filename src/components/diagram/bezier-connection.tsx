@@ -428,6 +428,119 @@ function calculateBezierPath(fromX: number, fromY: number, toX: number, toY: num
   return `M ${fromX} ${fromY} C ${cp1X} ${cp1Y}, ${cp2X} ${cp2Y}, ${toX} ${toY}`;
 }
 
+/** Unit vector for angle in degrees (0=up, 90=right, 180=down, 270=left) */
+function angleToUnitVector(angle: number): { x: number; y: number } {
+  const rad = (angle * Math.PI) / 180;
+  return { x: Math.sin(rad), y: -Math.cos(rad) };
+}
+
+/**
+ * Builds a smooth multi-point bezier path through waypoints.
+ * Uses Catmull-Rom style tangents for C1 continuity at each waypoint.
+ */
+function calculateMultiPointBezierPath(
+  fromX: number, fromY: number,
+  toX: number, toY: number,
+  waypoints: Array<{ x: number; y: number }>,
+  curvature: number,
+  fromAngle: number,
+  toAngle: number
+): string {
+  if (!waypoints.length) {
+    return calculateBezierPath(fromX, fromY, toX, toY, curvature, fromAngle, toAngle);
+  }
+
+  const distance = Math.sqrt((toX - fromX) ** 2 + (toY - fromY) ** 2);
+  const offset = Math.min(curvature * distance * 0.25, 40);
+
+  const fromVec = angleToUnitVector(fromAngle);
+  const toVec = angleToUnitVector(toAngle);
+  const pBefore = { x: fromX - fromVec.x * offset, y: fromY - fromVec.y * offset };
+  const pAfter = { x: toX + toVec.x * offset, y: toY + toVec.y * offset };
+
+  const points: Array<{ x: number; y: number }> = [
+    { x: fromX, y: fromY },
+    ...waypoints,
+    { x: toX, y: toY }
+  ];
+
+  const d = 1 / 6;
+  const parts: string[] = [];
+
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = i === 0 ? pBefore : points[i - 1];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = i === points.length - 2 ? pAfter : points[i + 2];
+
+    const cp1X = p1.x + (p2.x - p0.x) * d;
+    const cp1Y = p1.y + (p2.y - p0.y) * d;
+    const cp2X = p2.x - (p3.x - p1.x) * d;
+    const cp2Y = p2.y - (p3.y - p1.y) * d;
+
+    if (i === 0) {
+      parts.push(`M ${p1.x} ${p1.y} C ${cp1X} ${cp1Y}, ${cp2X} ${cp2Y}, ${p2.x} ${p2.y}`);
+    } else {
+      parts.push(`C ${cp1X} ${cp1Y}, ${cp2X} ${cp2Y}, ${p2.x} ${p2.y}`);
+    }
+  }
+
+  return parts.join(' ');
+}
+
+/**
+ * Returns control points for segment i of a multi-point path (for getPointOnPath).
+ */
+function getSegmentControlPoints(
+  fromX: number, fromY: number, toX: number, toY: number,
+  waypoints: Array<{ x: number; y: number }>,
+  curvature: number, fromAngle: number, toAngle: number,
+  segmentIndex: number
+): { p0x: number; p0y: number; cp1x: number; cp1y: number; cp2x: number; cp2y: number; p3x: number; p3y: number } | null {
+  if (!waypoints.length) return null;
+  const offset = Math.min(curvature * Math.sqrt((toX - fromX) ** 2 + (toY - fromY) ** 2) * 0.25, 40);
+  const fromVec = angleToUnitVector(fromAngle);
+  const toVec = angleToUnitVector(toAngle);
+  const pBefore = { x: fromX - fromVec.x * offset, y: fromY - fromVec.y * offset };
+  const pAfter = { x: toX + toVec.x * offset, y: toY + toVec.y * offset };
+  const points = [{ x: fromX, y: fromY }, ...waypoints, { x: toX, y: toY }];
+  const d = 1 / 6;
+  if (segmentIndex < 0 || segmentIndex >= points.length - 1) return null;
+  const p0 = segmentIndex === 0 ? pBefore : points[segmentIndex - 1];
+  const p1 = points[segmentIndex];
+  const p2 = points[segmentIndex + 1];
+  const p3 = segmentIndex === points.length - 2 ? pAfter : points[segmentIndex + 2];
+  return {
+    p0x: p1.x, p0y: p1.y,
+    cp1x: p1.x + (p2.x - p0.x) * d, cp1y: p1.y + (p2.y - p0.y) * d,
+    cp2x: p2.x - (p3.x - p1.x) * d, cp2y: p2.y - (p3.y - p1.y) * d,
+    p3x: p2.x, p3y: p2.y
+  };
+}
+
+/**
+ * Get point on connection path at t in [0, 1]. Works for both single and multi-waypoint paths.
+ */
+export function getPointOnConnectionPath(
+  t: number,
+  fromX: number, fromY: number, toX: number, toY: number,
+  fromAngle: number, toAngle: number,
+  curvature: number,
+  waypoints?: Array<{ x: number; y: number }>
+): { x: number; y: number } {
+  if (!waypoints?.length) {
+    const { cp1X, cp1Y, cp2X, cp2Y } = calculateBezierControlPoints(fromX, fromY, toX, toY, curvature, fromAngle, toAngle);
+    return getBezierPoint(t, fromX, fromY, cp1X, cp1Y, cp2X, cp2Y, toX, toY);
+  }
+  const points = [{ x: fromX, y: fromY }, ...waypoints, { x: toX, y: toY }];
+  const numSegments = points.length - 1;
+  const segmentIndex = Math.min(Math.floor(t * numSegments), numSegments - 1);
+  const localT = numSegments <= 1 ? t : (t - segmentIndex / numSegments) * numSegments;
+  const seg = getSegmentControlPoints(fromX, fromY, toX, toY, waypoints, curvature, fromAngle, toAngle, segmentIndex);
+  if (!seg) return { x: toX, y: toY };
+  return getBezierPoint(localT, seg.p0x, seg.p0y, seg.cp1x, seg.cp1y, seg.cp2x, seg.cp2y, seg.p3x, seg.p3y);
+}
+
 export function BezierConnection({ from, to, connectionColor, connectionData, onClick }: BezierConnectionProps) {
   // Use measureNodeDims-like logic for shapes to get actual dimensions
   const isFromShape = !isIconOrEmojiType(from.type) && (from.type === 'generic.object.square' || from.type === 'generic.object.circle' ||
@@ -566,7 +679,10 @@ export function BezierConnection({ from, to, connectionColor, connectionData, on
   const { fromX, fromY, toX, toY, fromAngle, toAngle } = connectionPoints;
 
   const curvature = connectionData?.curvature || 0.6;
-  const pathData = calculateBezierPath(fromX, fromY, toX, toY, curvature, fromAngle, toAngle);
+  const waypoints = connectionData?.waypoints;
+  const pathData = waypoints?.length
+    ? calculateMultiPointBezierPath(fromX, fromY, toX, toY, waypoints, curvature, fromAngle, toAngle)
+    : calculateBezierPath(fromX, fromY, toX, toY, curvature, fromAngle, toAngle);
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -642,14 +758,13 @@ export function BezierConnection({ from, to, connectionColor, connectionData, on
         )}
       </defs>
       
-      <g>
+      <g style={{ pointerEvents: 'auto' }} onClick={handleClick}>
         <path
           d={pathData}
           stroke={finalConnectionColor}
           className="cursor-pointer hover:stroke-opacity-80"
           strokeWidth={connectionData?.lineWidth || 2.5}
           fill="none"
-          onClick={handleClick}
           markerStart={showStartArrow ? `url(#${startMarkerId})` : undefined}
           markerEnd={showEndArrow ? `url(#${endMarkerId})` : undefined}
           filter={hasShadow ? `url(#${shadowFilterId})` : undefined}
@@ -818,63 +933,9 @@ export function BezierConnectionText({ connectionData, from, to, connectionColor
     const { fromX, fromY, toX, toY, fromAngle, toAngle } = connectionPoints;
 
     const curvature = connectionData?.curvature || 0.6;
-    const dx = toX - fromX;
-    const dy = toY - fromY;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    const adjustedCurvature = Math.min(curvature, distance / 4);
-    const controlOffset = adjustedCurvature * distance;
-
-    // Calculate control points based on exit/entry angles
-    let cp1X, cp1Y, cp2X, cp2Y;
-    
-    switch (fromAngle) {
-      case 0: // Top
-        cp1X = fromX;
-        cp1Y = fromY - controlOffset;
-        break;
-      case 90: // Right
-        cp1X = fromX + controlOffset;
-        cp1Y = fromY;
-        break;
-      case 180: // Bottom
-        cp1X = fromX;
-        cp1Y = fromY + controlOffset;
-        break;
-      case 270: // Left
-        cp1X = fromX - controlOffset;
-        cp1Y = fromY;
-        break;
-      default:
-        cp1X = fromX + controlOffset;
-        cp1Y = fromY;
-    }
-    
-    switch (toAngle) {
-      case 0: // Top
-        cp2X = toX;
-        cp2Y = toY - controlOffset;
-        break;
-      case 90: // Right
-        cp2X = toX + controlOffset;
-        cp2Y = toY;
-        break;
-      case 180: // Bottom
-        cp2X = toX;
-        cp2Y = toY + controlOffset;
-        break;
-      case 270: // Left
-        cp2X = toX - controlOffset;
-        cp2Y = toY;
-        break;
-      default:
-        cp2X = toX - controlOffset;
-        cp2Y = toY;
-    }
-
-    // Get the actual point on the bezier curve at the specified text position
-    const textPositionPercent = connectionData.textPosition || 50; // Default to 50%
-    const t = textPositionPercent / 100; // Convert percentage to 0-1 range
-    const textPoint = getBezierPoint(t, fromX, fromY, cp1X, cp1Y, cp2X, cp2Y, toX, toY);
+    const textPositionPercent = connectionData.textPosition || 50;
+    const t = textPositionPercent / 100;
+    const textPoint = getPointOnConnectionPath(t, fromX, fromY, toX, toY, fromAngle, toAngle, curvature, connectionData.waypoints);
     textX = textPoint.x;
     textY = textPoint.y;
   }

@@ -44,6 +44,7 @@ const ScratchPad = dynamic(() => import('./editor/scratch-pad').then(mod => ({ d
 });
 import { TutorialProvider, useTutorial } from './tutorial/tutorial-provider';
 import { TutorialOverlay } from './tutorial/tutorial-overlay';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { 
   createGroup, 
   addToGroup,
@@ -901,7 +902,7 @@ export default function DiagramEditor() {
     }
   };
 
-  const handleConnectionUpdate = (from: string, to: string, updates: { text?: string; color?: string; textPosition?: number; lineWidth?: number; shadow?: boolean; style?: 'bezier'; curvature?: number; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean; arrow?: boolean }) => {
+  const handleConnectionUpdate = (from: string, to: string, updates: { text?: string; color?: string; textPosition?: number; lineWidth?: number; shadow?: boolean; style?: 'bezier'; curvature?: number; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean; arrow?: boolean; waypoints?: Array<{ x: number; y: number; id?: string }> }) => {
     setDiagramData(prevData => ({
       ...prevData,
       connections: prevData.connections.map(conn => 
@@ -914,6 +915,56 @@ export default function DiagramEditor() {
     if (selectedItem && selectedItem.itemType === 'edge' && selectedItem.from === from && selectedItem.to === to) {
       setSelectedItem({ ...selectedItem, ...updates });
     }
+  };
+
+  const handleConnectionWaypointMove = (from: string, to: string, index: number, newPos: { x: number; y: number }) => {
+    setDiagramData(prevData => ({
+      ...prevData,
+      connections: prevData.connections.map(conn => {
+        if (conn.from !== from || conn.to !== to || !conn.waypoints) return conn;
+        const updated = [...conn.waypoints];
+        if (index >= 0 && index < updated.length) {
+          updated[index] = { ...updated[index], x: newPos.x, y: newPos.y };
+        }
+        return { ...conn, waypoints: updated };
+      })
+    }));
+  };
+
+  const handleConnectionWaypointAdd = (from: string, to: string) => {
+    const conn = diagramData.connections.find((c) => c.from === from && c.to === to);
+    if (!conn) return;
+    const existing = conn.waypoints ?? [];
+    const fromNode = diagramData.nodes.find((n) => n.id === from) || diagramData.zones?.find((z) => z.id === from);
+    const toNode = diagramData.nodes.find((n) => n.id === to) || diagramData.zones?.find((z) => z.id === to);
+    let midX: number;
+    let midY: number;
+    if (existing.length > 0) {
+      const last = existing[existing.length - 1];
+      const tx = ((toNode as any)?.x ?? 100) + (((toNode as any)?.width ?? 80) / 2);
+      const ty = ((toNode as any)?.y ?? 80) + (((toNode as any)?.height ?? 80) / 2);
+      midX = (last.x + tx) / 2;
+      midY = (last.y + ty) / 2;
+    } else if (fromNode && toNode) {
+      const fx = ((fromNode as any).x ?? 0) + (((fromNode as any).width ?? 80) / 2);
+      const fy = ((fromNode as any).y ?? 0) + (((fromNode as any).height ?? 80) / 2);
+      const tx = ((toNode as any).x ?? 100) + (((toNode as any).width ?? 80) / 2);
+      const ty = ((toNode as any).y ?? 80) + (((toNode as any).height ?? 80) / 2);
+      midX = (fx + tx) / 2;
+      midY = (fy + ty) / 2;
+    } else {
+      midX = 200;
+      midY = 150;
+    }
+    const newWaypoint = { x: Math.round(midX), y: Math.round(midY), id: `wp-${Date.now()}` };
+    handleConnectionUpdate(from, to, { waypoints: [...existing, newWaypoint] });
+  };
+
+  const handleConnectionWaypointRemove = (from: string, to: string, index: number) => {
+    const conn = diagramData.connections.find((c) => c.from === from && c.to === to);
+    if (!conn?.waypoints) return;
+    const updated = conn.waypoints.filter((_, i) => i !== index);
+    handleConnectionUpdate(from, to, { waypoints: updated.length ? updated : undefined });
   };
 
   const handleNew = () => {
@@ -1567,6 +1618,7 @@ export default function DiagramEditor() {
   }, []);
 
   return (
+    <TooltipProvider>
     <TutorialProvider>
       <DiagramEditorInner
         canPasteFromMenu={canPasteFromMenu}
@@ -1588,6 +1640,9 @@ export default function DiagramEditor() {
         editorRef={editorRef}
         handleConnectionUpdate={handleConnectionUpdate}
         disconnectConnection={disconnectConnection}
+        handleConnectionWaypointAdd={handleConnectionWaypointAdd}
+        handleConnectionWaypointRemove={handleConnectionWaypointRemove}
+        handleConnectionWaypointMove={handleConnectionWaypointMove}
         setDiagramData={setDiagramData}
         layers={layers}
         canvasTransform={canvasTransform}
@@ -1673,6 +1728,7 @@ export default function DiagramEditor() {
       />
       <TutorialOverlay />
     </TutorialProvider>
+    </TooltipProvider>
   );
 }
 
@@ -1696,6 +1752,9 @@ function DiagramEditorInner({
   editorRef,
   handleConnectionUpdate,
   disconnectConnection,
+  handleConnectionWaypointAdd,
+  handleConnectionWaypointRemove,
+  handleConnectionWaypointMove,
   setDiagramData,
   layers,
   canvasTransform,
@@ -1901,6 +1960,8 @@ function DiagramEditorInner({
                     }}
                     onConnectionUpdate={handleConnectionUpdate}
                     onConnectionDisconnect={disconnectConnection}
+                    onConnectionWaypointAdd={handleConnectionWaypointAdd}
+                    onConnectionWaypointRemove={handleConnectionWaypointRemove}
                     diagramData={activeTab?.diagramData}
                     onDiagramDataUpdate={setDiagramData}
                     mousePosition={mousePosition}
@@ -1974,6 +2035,7 @@ function DiagramEditorInner({
                              }
                         }}
                     onConnectionDelete={disconnectConnection}
+                    onConnectionWaypointMove={handleConnectionWaypointMove}
                     externalTransform={canvasTransform}
                      onTransformChange={setCanvasTransform}
                      onLabelUpdate={handleLabelUpdate}

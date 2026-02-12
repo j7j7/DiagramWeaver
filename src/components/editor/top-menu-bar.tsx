@@ -56,6 +56,8 @@ interface TopMenuBarProps {
   onDelete?: () => void;
   onConnectionUpdate?: (from: string, to: string, updates: { arrow?: boolean; text?: string; textPosition?: number; color?: string; [key: string]: any }) => void;
   onConnectionDisconnect?: (from: string, to: string) => void;
+  onConnectionWaypointAdd?: (from: string, to: string) => void;
+  onConnectionWaypointRemove?: (from: string, to: string, index: number) => void;
   diagramData?: DiagramData;
   onDiagramDataUpdate?: (newDiagramData: DiagramData) => void;
   mousePosition?: { x: number; y: number } | null;
@@ -114,6 +116,8 @@ export function TopMenuBar({
   onDelete,
   onConnectionUpdate,
   onConnectionDisconnect,
+  onConnectionWaypointAdd,
+  onConnectionWaypointRemove,
   diagramData,
   onDiagramDataUpdate,
   mousePosition,
@@ -517,6 +521,8 @@ export function TopMenuBar({
             onDelete={onDelete}
             onConnectionUpdate={onConnectionUpdate}
             onConnectionDisconnect={onConnectionDisconnect}
+            onConnectionWaypointAdd={onConnectionWaypointAdd}
+            onConnectionWaypointRemove={onConnectionWaypointRemove}
             diagramData={diagramData}
             onDiagramDataUpdate={onDiagramDataUpdate}
             onAlignObjects={onAlignObjects}

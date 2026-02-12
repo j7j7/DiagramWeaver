@@ -58,7 +58,8 @@ DiagramWeaver uses a JSON structure with three main components:
       "style": "bezier",
       "curvature": "number",
       "lineWidth": "number",
-      "shadow": "boolean"
+      "shadow": "boolean",
+      "waypoints": [{ "x": "number", "y": "number", "id": "string (optional)" }]
     }
   ],
   "groups": [
@@ -241,6 +242,12 @@ Resource nodes follow the pattern: `{provider}.{category}.{resource}`
 
 ### Connection Styles
 - `bezier` - Curved connection with adjustable curvature
+
+### Connection Waypoints
+- `waypoints`: Optional array of `{ x, y, id? }` in absolute canvas coordinates
+- Route connections around obstacles by adding intermediate points
+- Path remains smooth (Catmull-Rom style bezier chain)
+- Add/remove via UI when connection is selected; drag to reposition
 
 ### Entry/Exit Points
 - `top` - Connect from/to top edge

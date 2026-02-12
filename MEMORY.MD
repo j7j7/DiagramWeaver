@@ -2,6 +2,21 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-02-12)
 
+### 2026-02-12 – Node/Shape and Connection Line Clickability Fix
+Some nodes/shapes were unselectable because connection SVGs (full canvas size) were layered above nodes and captured clicks. **Fix**: (1) Added pointer-events-none to the connection SVG in canvas-connections.tsx so the transparent background passes clicks through to nodes below. (2) In BezierConnection, wrapped the path in a `<g style={{ pointerEvents: 'auto' }}>` with onClick so the connection line opts back into hit-testing and remains clickable—children of pointer-events-none can receive events when they set pointer-events: auto. Note: pointer-events-stroke is not a valid Tailwind class; use inline style for SVG pointer-events. Modified: canvas-connections.tsx, bezier-connection.tsx.
+
+### 2026-02-12 – ContextToolbar Hooks Order Fix
+Fixed React "change in the order of Hooks" error in ContextToolbar: when an edge was selected, the component returned early and skipped hooks (flushLabelChange, handleLabelChange, colorTimeoutRef, etc.), causing hook order to differ between edge and node selection. Moved all hooks (flushLabelChange, handleLabelChange, handleLabelBlur, handleLabelKeyDown, colorTimeoutRef, connectionColorTimeoutRef, handleColorChange, handleColorChangeImmediate, cleanup useEffect) above the early returns so they run unconditionally. Added selectedItem.itemType !== 'edge' guards inside callbacks and type assertions for selectedItem.label (edge has no label). Modified: context-toolbar.tsx.
+
+### 2026-02-12 – Bezier Connection Waypoints
+Optional waypoints for routing connections around obstacles:
+- **Types**: `waypoints?: Array<{ x: number; y: number; id?: string }>` on DiagramConnectionData
+- **Path**: Multi-segment smooth cubic Bezier via Catmull-Rom style tangents (C1 continuity at each waypoint)
+- **Add**: When connection selected, click + button in context toolbar
+- **Remove**: Waypoints popover lists each waypoint with X to remove
+- **Drag**: Waypoint handles (circles) appear when connection selected; drag to reposition
+- **Components**: BezierConnection uses calculateMultiPointBezierPath when waypoints exist; BezierConnectionText uses getPointOnConnectionPath for text positioning; ConnectionWaypointHandles for drag UI
+
 ### 2026-02-12 – Connection Alignment and Node Size (Half/Quarter)
 Connection alignment and node sizing now respect `nodeSize` (normal/half/quarter) throughout editor and viewer:
 - **BezierConnection**: Replaced hardcoded `ICON_SIZE = 80` with `getNodeSizeDimensions(nodeSize).container` (40 for half, 20 for quarter).

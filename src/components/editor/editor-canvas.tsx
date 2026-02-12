@@ -44,6 +44,7 @@ import { useAlignmentGuides } from "@/hooks/use-alignment-guides";
 import { CanvasAlignmentGuides } from "./canvas-alignment-guides";
 import { SearchResourcesModal } from "./search-resources-modal";
 import { snapToGrid } from "./canvas-constants";
+import { ConnectionWaypointHandles } from "../diagram/connection-waypoint-handles";
 
 interface EditorCanvasProps {
   diagramData: DiagramData;
@@ -59,6 +60,7 @@ interface EditorCanvasProps {
   onConnect?: (connectionOptions?: { style?: 'pathways' | 'bezier', curvature?: number }) => void;
   onDisconnect?: () => void;
   onConnectionDelete?: (from: string, to: string) => void;
+  onConnectionWaypointMove?: (from: string, to: string, index: number, newPos: { x: number; y: number }) => void;
   externalTransform?: { x: number; y: number; k: number };
   onTransformChange?: (transform: { x: number; y: number; k: number }) => void;
    onLabelUpdate?: (nodeId: string, newLabel: string) => void;
@@ -115,7 +117,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, externalTransform,      onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition }: EditorCanvasProps,
+   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, externalTransform,      onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition }: EditorCanvasProps,
   ref
 ) {
   // ============================================================================
@@ -1285,6 +1287,33 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               zonesById={displayZonesById}
               processedZones={processedZones}
             />
+
+            {/* ================================================================
+                CONNECTION WAYPOINT HANDLES
+                Renders draggable waypoint handles when a connection is selected
+            */}
+            {(() => {
+              if (isReadOnly || !onConnectionWaypointMove || !selectedItemId) return null;
+              const conn = diagramData.connections.find(
+                (c) => `${c.from}-${c.to}` === selectedItemId && c.waypoints?.length
+              );
+              if (!conn?.waypoints?.length) return null;
+              const fromNode = displayNodesById[conn.from] || displayZonesById[conn.from];
+              const toNode = displayNodesById[conn.to] || displayZonesById[conn.to];
+              const fromItem = fromNode || diagramData.nodes.find((n) => n.id === conn.from);
+              const toItem = toNode || diagramData.nodes.find((n) => n.id === conn.to);
+              const connColor = conn.color || (toItem as any)?.lineColor || (fromItem as any)?.lineColor || "#6b7280";
+              return (
+                <ConnectionWaypointHandles
+                  connection={conn}
+                  waypoints={conn.waypoints}
+                  connectionColor={connColor}
+                  transform={transform}
+                  onWaypointMove={onConnectionWaypointMove}
+                  disabled={isReadOnly}
+                />
+              );
+            })()}
 
             {/* ================================================================
                 ALIGNMENT GUIDES
