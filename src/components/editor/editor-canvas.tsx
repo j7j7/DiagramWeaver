@@ -1271,18 +1271,19 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             {/* ================================================================
                 ARROW TOGGLES
                 ================================================================
-                Renders arrow toggle buttons on selected connections
-                Allows toggling arrow direction (from/to/both)
-                See: src/components/editor/canvas-arrow-toggles.tsx
+                Renders arrow toggle buttons only when a connection is selected
+                (not when a node/shape is selected). See: canvas-arrow-toggles.tsx
             */}
-            <CanvasArrowToggles
-              selectedItemId={selectedItemId}
-              diagramData={diagramData}
-              nodesById={displayNodesById}
-              zonesById={displayZonesById}
-              setDiagramData={setDiagramData}
-              isReadOnly={isReadOnly}
-            />
+            {selectedItem?.itemType === 'edge' && (
+              <CanvasArrowToggles
+                selectedItemId={selectedItemId}
+                diagramData={diagramData}
+                nodesById={displayNodesById}
+                zonesById={displayZonesById}
+                setDiagramData={setDiagramData}
+                isReadOnly={isReadOnly}
+              />
+            )}
 
             {/* ================================================================
                 CONNECTION TEXT
