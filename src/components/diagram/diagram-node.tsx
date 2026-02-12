@@ -997,7 +997,7 @@ return (
          minWidth: isLineNode ? 0 : // Lines don't need min width
                    (isShapeNode ? (node.width || 60) :
                     isTextboxNode ? 40 :
-                   isRotatableNode ? 80 : (isIconNode ? 80 : NODE_WIDTH)),
+                   isRotatableNode ? 80 : (isIconNode ? (iconNodeDims?.width ?? getNodeSizeDimensions((node as any).nodeSize).container) : NODE_WIDTH)),
          maxWidth: isLineNode ? 'none' : // Lines don't need max width
                    (isShapeNode ? (node.width || 60) :
                     isTextboxNode ? (node.sizeMode === 'custom' ? 'none' : 400) :

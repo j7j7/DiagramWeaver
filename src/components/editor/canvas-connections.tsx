@@ -2,6 +2,7 @@ import React from "react";
 import { BezierConnection, determineConnectionEdges, getOptimalConnectionPoints, calculateBezierControlPoints, getBezierPoint } from "../diagram/bezier-connection";
 import type { DiagramData, DiagramConnectionData } from "@/lib/types";
 import { measureNodeDims, type PositionedNode, type PositionedGroup, NODE_WIDTH, BASE_NODE_HEIGHT, TEXT_NODE_HEIGHT, EXTRA_LINE_HEIGHT } from "./canvas-constants";
+import { getNodeSizeDimensions } from "@/lib/visual-styling";
 import { cn, isIconOrEmojiType } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -292,13 +293,18 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
         let fromIconOffset: number | undefined;
         let toIconOffset: number | undefined;
         
+        const isFromIconNode = !isFromGroup && !isFromShape && !isFromTextType;
+        const isToIconNode = !isToGroup && !isToShape && !isToTextType;
+        const fromIconContainer = isFromIconNode ? getNodeSizeDimensions((fromPos as any).nodeSize).container : undefined;
+        const toIconContainer = isToIconNode ? getNodeSizeDimensions((toPos as any).nodeSize).container : undefined;
+
         if (!isFromGroup) {
           if (isFromShape) {
             fromIconHeight = (fromPos as any).height || 48;
           } else if (isFromTextType) {
             fromIconHeight = fromCalculatedHeight;
           } else {
-            fromIconHeight = BASE_NODE_HEIGHT;
+            fromIconHeight = fromIconContainer ?? BASE_NODE_HEIGHT;
             const textVerticalPosition = (fromPos as any).textVerticalPosition || 'bottom';
             if (textVerticalPosition === 'top' && (fromPos as any).label && ((fromPos as any).label || '').trim().length > 0) {
               const maxCharsPerLine = 16;
@@ -314,7 +320,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
           } else if (isToTextType) {
             toIconHeight = toCalculatedHeight;
           } else {
-            toIconHeight = BASE_NODE_HEIGHT;
+            toIconHeight = toIconContainer ?? BASE_NODE_HEIGHT;
             const textVerticalPosition = (toPos as any).textVerticalPosition || 'bottom';
             if (textVerticalPosition === 'top' && (toPos as any).label && ((toPos as any).label || '').trim().length > 0) {
               const maxCharsPerLine = 16;
@@ -323,9 +329,14 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
             }
           }
         }
-        
+
+        const fromIconWidth = isFromIconNode && fromIconContainer && fromWidth > fromIconContainer ? fromIconContainer : undefined;
+        const fromIconOffsetX = fromIconWidth ? (fromWidth - fromIconWidth) / 2 : undefined;
+        const toIconWidth = isToIconNode && toIconContainer && toWidth > toIconContainer ? toIconContainer : undefined;
+        const toIconOffsetX = toIconWidth ? (toWidth - toIconWidth) / 2 : undefined;
+
         // Calculate connection points
-        const connectionPoints = getOptimalConnectionPoints(fromPos, toPos, fromWidth, fromHeight, toWidth, toHeight, enhancedEdge, fromIconHeight, toIconHeight, fromIconOffset, toIconOffset);
+        const connectionPoints = getOptimalConnectionPoints(fromPos, toPos, fromWidth, fromHeight, toWidth, toHeight, enhancedEdge, fromIconHeight, toIconHeight, fromIconOffset, toIconOffset, fromIconWidth, fromIconOffsetX, toIconWidth, toIconOffsetX);
         const { fromX, fromY, toX, toY, fromAngle, toAngle } = connectionPoints;
         
         // Calculate control points for bezier curve
@@ -484,6 +495,11 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
       const toWidth = isToGroup ? ((toPos as any).width || 300) : (isToShape && (toPos as any).width ? (toPos as any).width : ((toPos as any).width || NODE_WIDTH));
       const toHeight = isToGroup ? ((toPos as any).height || 220) : (isToShape && (toPos as any).height ? (toPos as any).height : (toCalculatedHeight + toTextUnderHeight));
       
+      const isFromIconNode = !isFromGroup && !isFromShape && !isFromTextType;
+      const isToIconNode = !isToGroup && !isToShape && !isToTextType;
+      const fromIconContainer = isFromIconNode ? getNodeSizeDimensions((fromPos as any).nodeSize).container : undefined;
+      const toIconContainer = isToIconNode ? getNodeSizeDimensions((toPos as any).nodeSize).container : undefined;
+
       let fromIconHeight: number | undefined;
       let toIconHeight: number | undefined;
       let fromIconOffset: number | undefined;
@@ -495,7 +511,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
         } else if (isFromTextType) {
           fromIconHeight = fromCalculatedHeight;
         } else {
-          fromIconHeight = BASE_NODE_HEIGHT;
+          fromIconHeight = fromIconContainer ?? BASE_NODE_HEIGHT;
           const textVerticalPosition = (fromPos as any).textVerticalPosition || 'bottom';
           if (textVerticalPosition === 'top' && (fromPos as any).label && ((fromPos as any).label || '').trim().length > 0) {
             const maxCharsPerLine = 16;
@@ -511,7 +527,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
         } else if (isToTextType) {
           toIconHeight = toCalculatedHeight;
         } else {
-          toIconHeight = BASE_NODE_HEIGHT;
+          toIconHeight = toIconContainer ?? BASE_NODE_HEIGHT;
           const textVerticalPosition = (toPos as any).textVerticalPosition || 'bottom';
           if (textVerticalPosition === 'top' && (toPos as any).label && ((toPos as any).label || '').trim().length > 0) {
             const maxCharsPerLine = 16;
@@ -520,8 +536,13 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
           }
         }
       }
+
+      const fromIconWidth = isFromIconNode && fromIconContainer && fromWidth > fromIconContainer ? fromIconContainer : undefined;
+      const fromIconOffsetX = fromIconWidth ? (fromWidth - fromIconWidth) / 2 : undefined;
+      const toIconWidth = isToIconNode && toIconContainer && toWidth > toIconContainer ? toIconContainer : undefined;
+      const toIconOffsetX = toIconWidth ? (toWidth - toIconWidth) / 2 : undefined;
       
-      const connectionPoints = getOptimalConnectionPoints(fromPos, toPos, fromWidth, fromHeight, toWidth, toHeight, enhancedEdge, fromIconHeight, toIconHeight, fromIconOffset, toIconOffset);
+      const connectionPoints = getOptimalConnectionPoints(fromPos, toPos, fromWidth, fromHeight, toWidth, toHeight, enhancedEdge, fromIconHeight, toIconHeight, fromIconOffset, toIconOffset, fromIconWidth, fromIconOffsetX, toIconWidth, toIconOffsetX);
       const { fromX, fromY, toX, toY, fromAngle, toAngle } = connectionPoints;
       const curvature = edge?.curvature || 0.6;
       const { cp1X, cp1Y, cp2X, cp2Y } = calculateBezierControlPoints(fromX, fromY, toX, toY, curvature, fromAngle, toAngle);

@@ -205,7 +205,28 @@ export const measureNodeDims = (n: PositionedNode) => {
     // Icon/resource nodes: width can include wider label via labelWidth; nodeSize scales base
     const { container: iconContainer } = getNodeSizeDimensions((n as any).nodeSize);
     const iconWidth = iconContainer;
-    const effectiveLabelWidth = (n as any).labelWidth ? snapDimensionToGrid(Math.max(iconWidth, (n as any).labelWidth), iconWidth) : undefined;
+    let effectiveLabelWidth: number | undefined = (n as any).labelWidth ? snapDimensionToGrid(Math.max(iconWidth, (n as any).labelWidth), iconWidth) : undefined;
+    // When no labelWidth persisted, derive width from label so text doesn't fragment in viewer
+    if (!effectiveLabelWidth && label.trim().length > 0) {
+      const avgCharWidth = 8;
+      const padding = 24;
+      const words = label.split(' ');
+      const maxCharsPerLine = 12; // Same as legacy fallback for line count
+      const lines: string[] = [];
+      let currentLine = '';
+      for (const word of words) {
+        if ((currentLine + ' ' + word).trim().length <= maxCharsPerLine) {
+          currentLine = (currentLine + ' ' + word).trim();
+        } else {
+          if (currentLine) lines.push(currentLine);
+          currentLine = word;
+        }
+      }
+      if (currentLine) lines.push(currentLine);
+      const maxLineLength = Math.max(...lines.map((l) => l.length), 1);
+      const labelBasedWidth = Math.max(iconWidth, Math.min(400, maxLineLength * avgCharWidth + padding));
+      effectiveLabelWidth = snapDimensionToGrid(labelBasedWidth, iconWidth);
+    }
     const nodeWidth = effectiveLabelWidth ?? iconWidth;
     const hasLabel = label.trim().length > 0;
     const maxCharsPerLine = effectiveLabelWidth ? Math.floor(effectiveLabelWidth / 8) : 12;

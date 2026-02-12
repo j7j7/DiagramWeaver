@@ -2,6 +2,18 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-02-12)
 
+### 2026-02-12 – Connection Alignment and Node Size (Half/Quarter)
+Connection alignment and node sizing now respect `nodeSize` (normal/half/quarter) throughout editor and viewer:
+- **BezierConnection**: Replaced hardcoded `ICON_SIZE = 80` with `getNodeSizeDimensions(nodeSize).container` (40 for half, 20 for quarter).
+- **canvas-connections.tsx**: Uses `getNodeSizeDimensions` for icon heights and passes icon width/offset to `getOptimalConnectionPoints`; fixes delete button placement and connection paths.
+- **canvas-arrow-toggles.tsx**: Same nodeSize-aware icon dimensions and width/offset for arrow toggle positioning.
+- **bezier-connection.tsx (BezierConnectionText)**: Icon height and width/offset from `getNodeSizeDimensions` for connection text placement.
+- **diagram-node.tsx**: Icon node `minWidth` now uses `iconNodeDims.width` or `getNodeSizeDimensions(nodeSize).container` instead of hardcoded 80, so half/quarter nodes render correctly.
+Viewer uses same components as editor, so all fixes apply to both.
+
+### 2026-02-12 – Viewer Mode Layer Visibility
+When a diagram has layers defined in its JSON, the viewer mode now shows a Layers button in the controls panel. Users can toggle layer visibility (eye/eye-off) to show or hide nodes in each layer. Background layer cannot be hidden. Uses `filterByVisibleLayers` from layers-utils; ViewerLayersPanel is a read-only popover with visibility toggles. Added: viewer-layers-panel.tsx; modified: viewer/page.tsx, viewer-controls.tsx.
+
 ### 2026-02-12 – Connector Order by Relative Target Position
 When multiple connectors exit the same edge of a node, their order was based on JSON connection order, causing overlapping lines when targets were at different vertical positions. Now edge groups are sorted by the relative position of the other endpoint: for outgoing connections, by target center (Y for left/right edges, X for top/bottom); for incoming connections, by source center. This fans out connectors toward their destinations and reduces overlap. Modified: canvas-connections.tsx (edgeGroups sort after build).
 
@@ -75,6 +87,7 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
 - **Icon Persistence**: Fixes ensure icons remain visible after connections and selections
 
 ### Recent Updates and Fixes
+- **2026-02-12 – Viewer Mode Layer Visibility**: When a diagram has layers defined in its JSON (2+ layers), viewer mode shows a Layers button in the control panel. Users can toggle layer visibility (eye/eye-off) to show/hide nodes per layer. Background layer cannot be hidden. New: viewer-layers-panel.tsx; modified: viewer/page.tsx, viewer-controls.tsx.
 - **2025-02-11 – Resource Name Truncation**: Long resource names in the left panel are truncated with ellipsis so they fit within the card width. Hover shows a Tooltip with the full name. Applies to both DraggableResourceItem (cloud resources) and DraggableIconItem (icons). Modified: draggable-resource-item.tsx, draggable-icon-item.tsx.
 - **2025-02-11 – Right-Click Search + Pan Coexist**: Right-click on empty canvas: **right-click + hold + drag** pans the canvas; **right-click + release** (without dragging) opens the Search Resources modal. Modal has a search input that filters resources as you type, with a scrollable icon list similar to the left panel. Users can click or drag items onto the canvas; click places at the right-click position, drag uses normal drop position. Modal positioned near cursor, responsive. uses `wasLastRightClickAPan()` in use-canvas-interactions to distinguish pan vs context-menu intent. Modified: editor-canvas.tsx, use-canvas-interactions.ts.
 - **2025-02-11 – Left Panel Branding & Collapse**: Added "Diagram Weaver" app name at top left of the left side panel above the search bar. Added collapse/expand toggle (chevron) for the whole left panel; when collapsed shows narrow strip (48px) with vertical app name and expand button; when expanded shows full panel with title and collapse button. Modified: component-sidebar.tsx, diagram-editor.tsx.

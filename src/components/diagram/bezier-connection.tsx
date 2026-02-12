@@ -772,13 +772,18 @@ export function BezierConnectionText({ connectionData, from, to, connectionColor
     const isFromTextType = from.type === 'generic.text.text' || from.type === 'generic.text.textbox';
     const isToTextType = to.type === 'generic.text.text' || to.type === 'generic.text.textbox';
     
+    const isFromIconNode = !isFromGroup && !isFromShape && !isFromTextType;
+    const isToIconNode = !isToGroup && !isToShape && !isToTextType;
+    const fromIconContainer = isFromIconNode ? getNodeSizeDimensions((from as any).nodeSize).container : undefined;
+    const toIconContainer = isToIconNode ? getNodeSizeDimensions((to as any).nodeSize).container : undefined;
+
     let fromIconHeight: number | undefined;
     let toIconHeight: number | undefined;
     let fromIconOffset: number | undefined;
     let toIconOffset: number | undefined;
     
     if (!isFromGroup) {
-      fromIconHeight = isFromShape ? (from.height || 48) : (isFromTextType ? fromHeight : BASE_NODE_HEIGHT);
+      fromIconHeight = isFromShape ? (from.height || 48) : (isFromTextType ? fromHeight : (fromIconContainer ?? BASE_NODE_HEIGHT));
       // Calculate icon offset if text is positioned above (for regular nodes only)
       if (!isFromShape && !isFromTextType) {
         const textVerticalPosition = (from as any).textVerticalPosition || 'bottom';
@@ -792,7 +797,7 @@ export function BezierConnectionText({ connectionData, from, to, connectionColor
     // If isFromGroup, fromIconHeight remains undefined, so full height will be used
     
     if (!isToGroup) {
-      toIconHeight = isToShape ? (to.height || 48) : (isToTextType ? toHeight : BASE_NODE_HEIGHT);
+      toIconHeight = isToShape ? (to.height || 48) : (isToTextType ? toHeight : (toIconContainer ?? BASE_NODE_HEIGHT));
       // Calculate icon offset if text is positioned above (for regular nodes only)
       if (!isToShape && !isToTextType) {
         const textVerticalPosition = (to as any).textVerticalPosition || 'bottom';
@@ -805,7 +810,11 @@ export function BezierConnectionText({ connectionData, from, to, connectionColor
     }
     // If isToGroup, toIconHeight remains undefined, so full height will be used
     
-    const connectionPoints = getOptimalConnectionPoints(from, to, fromWidth, fromHeight, toWidth, toHeight, connectionData, fromIconHeight, toIconHeight, fromIconOffset, toIconOffset);
+    const fromIconWidth = isFromIconNode && fromIconContainer && fromWidth > fromIconContainer ? fromIconContainer : undefined;
+    const fromIconOffsetX = fromIconWidth ? (fromWidth - fromIconWidth) / 2 : undefined;
+    const toIconWidth = isToIconNode && toIconContainer && toWidth > toIconContainer ? toIconContainer : undefined;
+    const toIconOffsetX = toIconWidth ? (toWidth - toIconWidth) / 2 : undefined;
+    const connectionPoints = getOptimalConnectionPoints(from, to, fromWidth, fromHeight, toWidth, toHeight, connectionData, fromIconHeight, toIconHeight, fromIconOffset, toIconOffset, fromIconWidth, fromIconOffsetX, toIconWidth, toIconOffsetX);
     const { fromX, fromY, toX, toY, fromAngle, toAngle } = connectionPoints;
 
     const curvature = connectionData?.curvature || 0.6;

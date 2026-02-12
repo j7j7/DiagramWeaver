@@ -12,6 +12,7 @@ import {
   type PositionedNode,
   type PositionedGroup,
 } from "./canvas-constants";
+import { getNodeSizeDimensions } from "@/lib/visual-styling";
 import { isIconOrEmojiType } from "@/lib/utils";
 
 interface CanvasArrowTogglesProps {
@@ -187,7 +188,12 @@ function CanvasArrowTogglesInner(props: CanvasArrowTogglesProps) {
           ? ((toItem as any).height || 220)
           : (isToShape && (toItem as any).height ? (toItem as any).height : (toCalculatedHeight + toTextUnderHeight));
         
-        // Calculate icon heights and offsets
+        const isFromIconNode = !isFromGroup && !isFromShape && !isFromTextType;
+        const isToIconNode = !isToGroup && !isToShape && !isToTextType;
+        const fromIconContainer = isFromIconNode ? getNodeSizeDimensions((fromItem as any).nodeSize).container : undefined;
+        const toIconContainer = isToIconNode ? getNodeSizeDimensions((toItem as any).nodeSize).container : undefined;
+
+        // Calculate icon heights and offsets (respect nodeSize: half=40, quarter=20)
         let fromIconHeight: number | undefined;
         let toIconHeight: number | undefined;
         let fromIconOffset: number | undefined;
@@ -199,8 +205,7 @@ function CanvasArrowTogglesInner(props: CanvasArrowTogglesProps) {
           } else if (isFromTextType) {
             fromIconHeight = fromCalculatedHeight;
           } else {
-            fromIconHeight = BASE_NODE_HEIGHT;
-            // Calculate icon offset if text is positioned above
+            fromIconHeight = fromIconContainer ?? BASE_NODE_HEIGHT;
             const textVerticalPosition = (fromItem as any).textVerticalPosition || 'bottom';
             if (textVerticalPosition === 'top' && (fromItem as any).label && ((fromItem as any).label || '').trim().length > 0) {
               const maxCharsPerLine = 16;
@@ -216,8 +221,7 @@ function CanvasArrowTogglesInner(props: CanvasArrowTogglesProps) {
           } else if (isToTextType) {
             toIconHeight = toCalculatedHeight;
           } else {
-            toIconHeight = BASE_NODE_HEIGHT;
-            // Calculate icon offset if text is positioned above
+            toIconHeight = toIconContainer ?? BASE_NODE_HEIGHT;
             const textVerticalPosition = (toItem as any).textVerticalPosition || 'bottom';
             if (textVerticalPosition === 'top' && (toItem as any).label && ((toItem as any).label || '').trim().length > 0) {
               const maxCharsPerLine = 16;
@@ -226,6 +230,11 @@ function CanvasArrowTogglesInner(props: CanvasArrowTogglesProps) {
             }
           }
         }
+
+        const fromIconWidth = isFromIconNode && fromIconContainer && fromWidth > fromIconContainer ? fromIconContainer : undefined;
+        const fromIconOffsetX = fromIconWidth ? (fromWidth - fromIconWidth) / 2 : undefined;
+        const toIconWidth = isToIconNode && toIconContainer && toWidth > toIconContainer ? toIconContainer : undefined;
+        const toIconOffsetX = toIconWidth ? (toWidth - toIconWidth) / 2 : undefined;
         
         // Get edge information for this connection using the same key format as connection rendering
         const connKey = `${conn.from}-${conn.to}-${originalIndex}`;
@@ -279,7 +288,11 @@ function CanvasArrowTogglesInner(props: CanvasArrowTogglesProps) {
           fromIconHeight, 
           toIconHeight,
           fromIconOffset,
-          toIconOffset
+          toIconOffset,
+          fromIconWidth,
+          fromIconOffsetX,
+          toIconWidth,
+          toIconOffsetX
         );
         const { fromX, fromY, toX, toY, fromAngle, toAngle } = connectionPoints;
         

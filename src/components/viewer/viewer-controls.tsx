@@ -8,6 +8,7 @@ interface ViewerControlsProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onFitToView: () => void;
+  additionalControls?: React.ReactNode;
   className?: string;
 }
 
@@ -15,6 +16,7 @@ export function ViewerControls({
   onZoomIn,
   onZoomOut,
   onFitToView,
+  additionalControls,
   className,
 }: ViewerControlsProps) {
   return (
@@ -40,7 +42,13 @@ export function ViewerControls({
       >
         <ZoomOut className="w-4 h-4" />
       </button>
-      <div className="h-px bg-border my-1" />
+      {additionalControls && (
+        <>
+          <div className="h-px bg-border my-1" />
+          {additionalControls}
+          <div className="h-px bg-border my-1" />
+        </>
+      )}
       <button
         onClick={onFitToView}
         className="p-2 hover:bg-accent rounded-md transition-colors"

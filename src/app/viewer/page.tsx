@@ -1,21 +1,52 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, Suspense } from "react";
+import React, { useState, useEffect, useCallback, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { ViewerCanvas } from "@/components/viewer/viewer-canvas";
 import { ViewerControls } from "@/components/viewer/viewer-controls";
+import { ViewerLayersPanel } from "@/components/viewer/viewer-layers-panel";
 import { loadViewerData, parseViewerParams } from "@/lib/viewer-utils";
-import type { DiagramData } from "@/lib/types";
+import { filterByVisibleLayers, toggleLayerVisibility, validateLayersConfig } from "@/lib/layers-utils";
+import type { DiagramData, LayersConfig } from "@/lib/types";
 import type { Transform } from "@/hooks/use-canvas-transform";
 
 function ViewerPageContent() {
   const searchParams = useSearchParams();
   const [diagramData, setDiagramData] = useState<DiagramData | null>(null);
+  const [layersConfig, setLayersConfig] = useState<LayersConfig | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [transform, setTransform] = useState<Transform>({ x: 0, y: 0, k: 1 });
+
+  // Sync layers config from diagram data when it has valid layers
+  useEffect(() => {
+    if (diagramData?.layers && validateLayersConfig(diagramData.layers)) {
+      setLayersConfig(diagramData.layers);
+    } else {
+      setLayersConfig(null);
+    }
+  }, [diagramData?.layers]);
+
+  const handleToggleLayerVisibility = useCallback((layerId: string) => {
+    setLayersConfig((prev) => {
+      if (!prev) return prev;
+      try {
+        return toggleLayerVisibility(prev, layerId);
+      } catch {
+        return prev;
+      }
+    });
+  }, []);
+
+  const filteredDiagramData = useMemo(() => {
+    if (!diagramData) return null;
+    if (!layersConfig || layersConfig.layers.length <= 1) return diagramData;
+    return filterByVisibleLayers({ ...diagramData, layers: layersConfig });
+  }, [diagramData, layersConfig]);
+
+  const hasLayers = diagramData?.layers && validateLayersConfig(diagramData.layers) && diagramData.layers.layers.length > 1;
 
   useEffect(() => {
     async function loadDiagram() {
@@ -92,11 +123,13 @@ function ViewerPageContent() {
     );
   }
 
+  const displayData = filteredDiagramData ?? diagramData;
+
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="relative w-full h-screen bg-background overflow-hidden">
         <ViewerCanvas
-          diagramData={diagramData}
+          diagramData={displayData}
           transform={transform}
           onTransformChange={setTransform}
           onFitToView={handleFitToView}
@@ -105,6 +138,15 @@ function ViewerPageContent() {
           onZoomIn={handleZoomIn}
           onZoomOut={handleZoomOut}
           onFitToView={handleFitToView}
+          additionalControls={
+            hasLayers && layersConfig && diagramData ? (
+              <ViewerLayersPanel
+                layers={layersConfig.layers}
+                diagramData={diagramData}
+                onToggleVisibility={handleToggleLayerVisibility}
+              />
+            ) : undefined
+          }
         />
       </div>
     </DndProvider>
