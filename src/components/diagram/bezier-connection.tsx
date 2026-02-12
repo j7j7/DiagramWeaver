@@ -552,12 +552,14 @@ export function BezierConnection({ from, to, connectionColor, connectionData, on
   }
   // If isToGroup, toIconHeight remains undefined, so full height will be used
 
-  // For icon nodes with labelWidth > 80: connections attach to icon (80px), not the full node
-  const ICON_SIZE = 80;
-  const fromIconWidth = isFromIconNode && fromWidth > ICON_SIZE ? ICON_SIZE : undefined;
-  const fromIconOffsetX = fromIconWidth ? (fromWidth - ICON_SIZE) / 2 : undefined;
-  const toIconWidth = isToIconNode && toWidth > ICON_SIZE ? ICON_SIZE : undefined;
-  const toIconOffsetX = toIconWidth ? (toWidth - ICON_SIZE) / 2 : undefined;
+  // For icon nodes with labelWidth > icon container: connections attach to icon, not the full node
+  // Use getNodeSizeDimensions so half/quarter nodeSize is respected
+  const fromIconSize = isFromIconNode ? fromIconContainer ?? 80 : undefined;
+  const toIconSize = isToIconNode ? toIconContainer ?? 80 : undefined;
+  const fromIconWidth = isFromIconNode && fromIconSize && fromWidth > fromIconSize ? fromIconSize : undefined;
+  const fromIconOffsetX = fromIconWidth ? (fromWidth - fromIconWidth) / 2 : undefined;
+  const toIconWidth = isToIconNode && toIconSize && toWidth > toIconSize ? toIconSize : undefined;
+  const toIconOffsetX = toIconWidth ? (toWidth - toIconWidth) / 2 : undefined;
 
   // Use icon-only heights for connection point calculations (undefined for groups/zones = use full height)
   const connectionPoints = getOptimalConnectionPoints(from, to, fromWidth, fromHeight, toWidth, toHeight, connectionData, fromIconHeight, toIconHeight, fromIconOffset, toIconOffset, fromIconWidth, fromIconOffsetX, toIconWidth, toIconOffsetX);
