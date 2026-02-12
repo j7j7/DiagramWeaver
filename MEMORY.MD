@@ -1,6 +1,9 @@
 # MEMORY.MD
 
-## DiagramWeaver - Latest Features and Functions (Updated 2025-02-12)
+## DiagramWeaver - Latest Features and Functions (Updated 2026-02-12)
+
+### 2026-02-12 – Connector Order by Relative Target Position
+When multiple connectors exit the same edge of a node, their order was based on JSON connection order, causing overlapping lines when targets were at different vertical positions. Now edge groups are sorted by the relative position of the other endpoint: for outgoing connections, by target center (Y for left/right edges, X for top/bottom); for incoming connections, by source center. This fans out connectors toward their destinations and reduces overlap. Modified: canvas-connections.tsx (edgeGroups sort after build).
 
 ### 2026-02-12 – Connection Alignment Uses Icon-Only Bounds
 Fixed connector alignment for icon/resource nodes with labels (for example, multi-line labels under icons). Updated `bezier-connection.tsx` geometry helpers (`determineConnectionEdges`, `getOptimalConnectionPoints`, and `getConnectionPoint`) so icon-like nodes automatically use icon container dimensions from `nodeSize` for anchor/edge center calculations. Label text width/height is now ignored for connector bounding alignment; textbox/text node behavior remains unchanged.

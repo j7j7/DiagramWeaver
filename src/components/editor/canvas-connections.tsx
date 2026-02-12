@@ -89,17 +89,32 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     const connKey = `${conn.from}-${conn.to}-${connIndex}`;
     connectionEdgeInfo.set(connKey, edges);
     
+    // Compute center for sorting by relative target position
+    const toCenterY = (toPos as any).y + ((toPos as any).height ?? toItemDims.height) / 2;
+    const toCenterX = (toPos as any).x + ((toPos as any).width ?? toItemDims.width) / 2;
+    const fromCenterY = (fromPos as any).y + ((fromPos as any).height ?? fromItemDims.height) / 2;
+    const fromCenterX = (fromPos as any).x + ((fromPos as any).width ?? fromItemDims.width) / 2;
+
     // Group connections by from node + from edge
     if (!edgeGroups.has(edgeKey)) {
       edgeGroups.set(edgeKey, []);
     }
-    edgeGroups.get(edgeKey)!.push({ conn, connIndex, isFrom: true });
-    
+    // For from edge: sort by target position so connections fan out toward their destinations
+    const fromSortCoord = edges.fromEdge === 'left' || edges.fromEdge === 'right' ? toCenterY : toCenterX;
+    edgeGroups.get(edgeKey)!.push({ conn, connIndex, isFrom: true, sortCoord: fromSortCoord });
+
     // Group connections by to node + to edge
     if (!edgeGroups.has(toEdgeKey)) {
       edgeGroups.set(toEdgeKey, []);
     }
-    edgeGroups.get(toEdgeKey)!.push({ conn, connIndex, isFrom: false });
+    // For to edge: sort by source position so incoming connections align with their origins
+    const toSortCoord = edges.toEdge === 'left' || edges.toEdge === 'right' ? fromCenterY : fromCenterX;
+    edgeGroups.get(toEdgeKey)!.push({ conn, connIndex, isFrom: false, sortCoord: toSortCoord });
+  });
+
+  // Sort each edge group by relative position to reduce overlapping lines
+  edgeGroups.forEach((arr) => {
+    arr.sort((a: { sortCoord: number }, b: { sortCoord: number }) => a.sortCoord - b.sortCoord);
   });
   
   return (
