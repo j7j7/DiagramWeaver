@@ -10,8 +10,8 @@ Optimizations to implement one at a time. Build → test → move to next.
 |---|--------------|------|
 | 1 | Debounce context toolbar label updates | ☑ |
 | 2 | Throttle drag position updates | ☑ |
-| 3 | Memoize DiagramNode | ☐ |
-| 4 | Stabilize callback references in editor-canvas | ☐ |
+| 3 | Memoize DiagramNode | ☑ |
+| 4 | Stabilize callback references in editor-canvas | ☑ |
 | 5 | Memoize CanvasConnections | ☐ |
 | 6 | Memoize CanvasArrowToggles | ☐ |
 | 7 | Memoize CanvasConnectionText | ☐ |

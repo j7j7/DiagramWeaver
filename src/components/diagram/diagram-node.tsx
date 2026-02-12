@@ -170,7 +170,54 @@ interface DiagramNodeProps {
   stackZIndex?: number;
 }
 
-export function DiagramNode({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onResizeStart, onResizeEnd, onPositionUpdate, onDraggingChange, onUpdate, hoverEnabled = true, selectionAnimationEnabled = false, animationOffset = { x: 0, y: 0 }, isReadOnly = false, onHoverChange, onConnect, isConnectMode, transform, canvasRef, stackZIndex }: DiagramNodeProps) {
+function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps): boolean {
+  if (prev.node !== next.node) {
+    const p = prev.node;
+    const n = next.node;
+    if (p.id !== n.id || p.x !== n.x || p.y !== n.y || p.label !== n.label ||
+        p.width !== n.width || p.height !== n.height || p.type !== n.type ||
+        (p as any).rotation !== (n as any).rotation || p.tag !== n.tag) {
+      return false;
+    }
+    const pLine = p as any;
+    const nLine = n as any;
+    if (pLine.startPos && nLine.startPos) {
+      if (pLine.startPos.x !== nLine.startPos.x || pLine.startPos.y !== nLine.startPos.y ||
+          pLine.endPos.x !== nLine.endPos.x || pLine.endPos.y !== nLine.endPos.y) {
+        return false;
+      }
+    } else if (pLine.startPos !== nLine.startPos) {
+      return false;
+    }
+  }
+  return prev.isSelected === next.isSelected &&
+    prev.isMultiSelected === next.isMultiSelected &&
+    prev.isGroupMember === next.isGroupMember &&
+    prev.stackZIndex === next.stackZIndex &&
+    prev.animationOffset?.x === next.animationOffset?.x &&
+    prev.animationOffset?.y === next.animationOffset?.y &&
+    prev.hoverEnabled === next.hoverEnabled &&
+    prev.selectionAnimationEnabled === next.selectionAnimationEnabled &&
+    prev.isReadOnly === next.isReadOnly &&
+    prev.transform?.x === next.transform?.x &&
+    prev.transform?.y === next.transform?.y &&
+    prev.transform?.k === next.transform?.k &&
+    prev.onClick === next.onClick &&
+    prev.onContextMenu === next.onContextMenu &&
+    prev.onLabelUpdate === next.onLabelUpdate &&
+    prev.onTagUpdate === next.onTagUpdate &&
+    prev.onResize === next.onResize &&
+    prev.onResizeStart === next.onResizeStart &&
+    prev.onResizeEnd === next.onResizeEnd &&
+    prev.onUpdate === next.onUpdate &&
+    prev.onPositionUpdate === next.onPositionUpdate &&
+    prev.onDraggingChange === next.onDraggingChange &&
+    prev.onHoverChange === next.onHoverChange &&
+    prev.onConnect === next.onConnect &&
+    prev.isConnectMode === next.isConnectMode;
+}
+
+function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onResizeStart, onResizeEnd, onPositionUpdate, onDraggingChange, onUpdate, hoverEnabled = true, selectionAnimationEnabled = false, animationOffset = { x: 0, y: 0 }, isReadOnly = false, onHoverChange, onConnect, isConnectMode, transform, canvasRef, stackZIndex }: DiagramNodeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [isEditingTag, setIsEditingTag] = useState(false);
@@ -1253,3 +1300,5 @@ return (
     </div>
   );
 }
+
+export const DiagramNode = React.memo(DiagramNodeInner, areDiagramNodePropsEqual);

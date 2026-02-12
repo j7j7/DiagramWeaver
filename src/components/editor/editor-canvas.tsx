@@ -869,7 +869,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   // NODE/ZONE EVENT HANDLERS
   // ============================================================================
   // Handles clicks and context menus for individual nodes and zones
-  const handleNodeClick = (e: React.MouseEvent, node: DiagramNodeData) => {
+  // Wrapped in useCallback for stable references (enables DiagramNode memoization)
+  const handleNodeClick = useCallback((e: React.MouseEvent, node: DiagramNodeData) => {
     e.stopPropagation();
     closeContextMenu();
     onResetConnectionSettingsTrigger?.(); // Reset connection settings panel when clicking on a node
@@ -878,9 +879,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     } else {
       onItemSelect({ ...node, itemType: 'node' }, e.shiftKey); // Normal selection
     }
-  }
+  }, [closeContextMenu, onResetConnectionSettingsTrigger, isConnectMode, onNodeClickInConnectMode, onItemSelect]);
 
-  const handleNodeContextMenu = (e: React.MouseEvent, node: DiagramNodeData) => {
+  const handleNodeContextMenu = useCallback((e: React.MouseEvent, node: DiagramNodeData) => {
     e.stopPropagation();
     e.preventDefault();
     // If multiple items are selected and this node is already in the selection, preserve the selection
@@ -894,9 +895,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     onResetConnectionSettingsTrigger?.();
     setLastRightClickItemId(node.id);
     handleContextMenu(e, node.id, 'node'); // Opens context menu
-  }
+  }, [selectedItemIds, selectedItemId, onItemSelect, onResetConnectionSettingsTrigger, handleContextMenu]);
 
-  const handleZoneClick = (e: React.MouseEvent, zone: DiagramZoneData) => {
+  const handleZoneClick = useCallback((e: React.MouseEvent, zone: DiagramZoneData) => {
     e.stopPropagation();
     closeContextMenu();
     onResetConnectionSettingsTrigger?.(); // Reset connection settings panel when clicking on a zone
@@ -905,9 +906,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     } else {
       onItemSelect({ ...zone, itemType: 'node' } as Parameters<typeof onItemSelect>[0], e.shiftKey);
     }
-  }
+  }, [closeContextMenu, onResetConnectionSettingsTrigger, isConnectMode, onNodeClickInConnectMode, onItemSelect]);
 
-  const handleZoneContextMenu = (e: React.MouseEvent, zone: DiagramZoneData) => {
+  const handleZoneContextMenu = useCallback((e: React.MouseEvent, zone: DiagramZoneData) => {
     e.stopPropagation();
     e.preventDefault();
     // If multiple items are selected and this zone is already in the selection, preserve the selection
@@ -921,7 +922,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     onResetConnectionSettingsTrigger?.();
     setLastRightClickItemId(zone.id);
     handleContextMenu(e, zone.id, 'zone');
-  };
+  }, [selectedItemIds, selectedItemId, onItemSelect, onResetConnectionSettingsTrigger, handleContextMenu]);
 
   // ============================================================================
   // DRAG AND DROP SETUP
