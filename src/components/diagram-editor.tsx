@@ -2025,16 +2025,17 @@ function DiagramEditorInner({
             <div className="flex-1 flex flex-col">
                 <div className={`flex flex-1 ${jsonPanelOpen ? 'overflow-x-auto' : ''}`}>
                   <div className={`flex-1 h-full min-w-0 ${jsonPanelOpen ? 'mr-2' : ''}`}>
-                <EditorCanvas 
+                <EditorCanvas
                     key={canvasRefreshKey}
                     ref={editorRef}
-                    diagramData={layers.filteredDiagramData} 
+                    diagramData={layers.filteredDiagramData}
                     setDiagramData={setDiagramData}
                     onItemSelect={handleItemSelect}
                     onBatchSelect={handleBatchSelect}
                     setSelectedItemIds={setSelectedItemIds}
                     setSelectedItem={setSelectedItem as any}
                     selectedItemId={selectedItem?.id}
+                    selectedItem={selectedItem}
                     selectedItemIds={selectedItemIds}
                     isConnectMode={isConnectMode}
                     onNodeClickInConnectMode={handleConnect}
@@ -2054,6 +2055,8 @@ function DiagramEditorInner({
                         }}
                     onConnectionDelete={disconnectConnection}
                     onConnectionWaypointMove={handleConnectionWaypointMove}
+                    onConnectionUpdate={handleConnectionUpdate}
+                    onConnectionWaypointAdd={handleConnectionWaypointAdd}
                     onConnectionContextMenu={handleConnectionContextMenu}
                     externalTransform={canvasTransform}
                      onTransformChange={setCanvasTransform}

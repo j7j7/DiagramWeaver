@@ -54,6 +54,7 @@ interface EditorCanvasProps {
   setSelectedItemIds: React.Dispatch<React.SetStateAction<Set<string>>>;
   setSelectedItem: React.Dispatch<React.SetStateAction<SelectedItem | null>>;
   selectedItemId?: string;
+  selectedItem?: SelectedItem;
   selectedItemIds?: Set<string>;
   isConnectMode: boolean;
   onNodeClickInConnectMode: (node: DiagramNodeData) => void;
@@ -61,6 +62,8 @@ interface EditorCanvasProps {
   onDisconnect?: () => void;
   onConnectionDelete?: (from: string, to: string) => void;
   onConnectionWaypointMove?: (from: string, to: string, index: number, newPos: { x: number; y: number }) => void;
+  onConnectionUpdate?: (from: string, to: string, updates: Record<string, unknown>) => void;
+  onConnectionWaypointAdd?: (from: string, to: string) => void;
   onConnectionContextMenu?: (e: React.MouseEvent, connection: DiagramConnectionData) => void;
   externalTransform?: { x: number; y: number; k: number };
   onTransformChange?: (transform: { x: number; y: number; k: number }) => void;
@@ -118,7 +121,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionContextMenu, externalTransform,      onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition }: EditorCanvasProps,
+   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionContextMenu, externalTransform,      onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition }: EditorCanvasProps,
   ref
 ) {
   // ============================================================================
@@ -159,7 +162,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   );
   
   // Get the currently selected item (node or zone) for internal use
-  const selectedItem = useMemo(() => {
+  const selectedNodeOrZone = useMemo(() => {
     if (!selectedItemId) return null;
     const node = nodesById[selectedItemId];
     if (node) return { ...node, itemType: 'node' as const };
@@ -345,10 +348,10 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     });
 
     // Update selectedItem if it's the rotated item
-    if (selectedItem?.id === targetId) {
-      setSelectedItem({ ...selectedItem, rotation: normalizedRotation } as any);
+    if (selectedNodeOrZone?.id === targetId) {
+      setSelectedItem({ ...selectedNodeOrZone, rotation: normalizedRotation } as any);
     }
-  }, [setDiagramData, selectedItem, setSelectedItem, selectedItemIds]);
+  }, [setDiagramData, selectedNodeOrZone, setSelectedItem]);
 
   // Handle rotation handle pointer down
   const handleRotationHandlePointerDown = useCallback((e: React.PointerEvent, corner: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right') => {
@@ -1224,10 +1227,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     nodesById={displayNodesById}
                     zonesById={displayZonesById}
                     selectedItemId={selectedItemId}
+                    selectedItem={selectedItem}
                     onItemSelect={onItemSelect}
                     closeContextMenu={closeContextMenu}
                     onConnectionDelete={onConnectionDelete}
                     onConnectionContextMenu={onConnectionContextMenu}
+                    onConnectionUpdate={onConnectionUpdate}
+                    onConnectionWaypointAdd={onConnectionWaypointAdd}
                     connectionIndices={connIndices}
                     stackZIndex={connZIndex}
                   />
@@ -1249,10 +1255,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   nodesById={displayNodesById}
                   zonesById={displayZonesById}
                   selectedItemId={selectedItemId}
+                  selectedItem={selectedItem}
                   onItemSelect={onItemSelect}
                   closeContextMenu={closeContextMenu}
                   onConnectionDelete={onConnectionDelete}
                   onConnectionContextMenu={onConnectionContextMenu}
+                  onConnectionUpdate={onConnectionUpdate}
+                  onConnectionWaypointAdd={onConnectionWaypointAdd}
                   connectionIndices={new Set(lastSlot)}
                   stackZIndex={2 * n}
                 />

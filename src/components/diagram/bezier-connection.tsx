@@ -803,6 +803,12 @@ export function BezierConnection({ from, to, connectionColor, connectionData, on
       <g style={{ pointerEvents: 'auto' }} onClick={handleClick} onContextMenu={handleContextMenu}>
         <path
           d={pathData}
+          stroke="transparent"
+          strokeWidth={20}
+          fill="none"
+        />
+        <path
+          d={pathData}
           stroke={finalConnectionColor}
           className="cursor-pointer hover:stroke-opacity-80"
           strokeWidth={connectionData?.lineWidth || 2.5}

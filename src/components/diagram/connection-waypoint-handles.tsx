@@ -106,25 +106,27 @@ export function ConnectionWaypointHandles({
 
   if (!waypoints.length || disabled) return null;
 
-  const handleSize = 20;
+  const handleSize = 32;
   const halfSize = handleSize / 2;
+  const HANDLE_Z_INDEX = 40;
 
   return (
     <>
       {waypoints.map((wp, index) => (
         <div
           key={wp.id ?? `wp-${index}`}
-          className="absolute rounded-full border-2 cursor-move hover:scale-110 transition-transform"
+          className="absolute rounded-full border-4 cursor-move hover:scale-110 transition-transform"
           style={{
             left: `${wp.x - halfSize}px`,
             top: `${wp.y - halfSize}px`,
             width: `${handleSize}px`,
             height: `${handleSize}px`,
             borderColor: connectionColor,
-            backgroundColor: draggingIndex === index ? connectionColor : "white",
+            backgroundColor: draggingIndex === index ? connectionColor : "#f3f4f6",
             opacity: draggingIndex === index ? 0.9 : 1,
-            zIndex: 20,
+            zIndex: HANDLE_Z_INDEX,
             pointerEvents: "auto",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
           }}
           onPointerDown={(e) => handlePointerDown(e, index)}
           onPointerMove={handlePointerMove}

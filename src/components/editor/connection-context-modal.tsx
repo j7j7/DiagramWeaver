@@ -149,7 +149,7 @@ export function ConnectionContextModal({
       >
         <div
           ref={panelRef}
-          className="fixed w-80 rounded-md border border-border bg-popover shadow-lg p-0 animate-in fade-in-0 zoom-in-95 z-[70]"
+          className="fixed w-80 rounded-md border border-border bg-popover shadow-lg p-0 z-[70]"
         >
       <div className="connection-modal-drag-handle flex items-center justify-between p-3 border-b cursor-move">
         <h3 className="font-semibold text-sm truncate" title={`${connection.from} → ${connection.to}`}>

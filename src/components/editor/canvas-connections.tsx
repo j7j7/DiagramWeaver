@@ -13,11 +13,16 @@ interface CanvasConnectionsProps {
   nodesById: Record<string, PositionedNode>;
   zonesById: Record<string, PositionedGroup>;
   selectedItemId?: string;
+  selectedItem?: any;
   onItemSelect: (item: any | null) => void;
   closeContextMenu: () => void;
   onConnectionDelete?: (from: string, to: string) => void;
   /** Called when user right-clicks on a connection line */
   onConnectionContextMenu?: (e: React.MouseEvent, connection: DiagramConnectionData) => void;
+  /** Called when connection properties need to be updated */
+  onConnectionUpdate?: (from: string, to: string, updates: Record<string, unknown>) => void;
+  /** Called when a waypoint needs to be added */
+  onConnectionWaypointAdd?: (from: string, to: string) => void;
   /** When set, only render connections whose index is in this set (for order-aware layering) */
   connectionIndices?: Set<number>;
   /** Z-index for this connection layer when using order-aware layering (enables interleaving with nodes) */
@@ -55,10 +60,13 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     nodesById,
     zonesById,
     selectedItemId,
+    selectedItem,
     onItemSelect,
     closeContextMenu,
     onConnectionDelete,
     onConnectionContextMenu,
+    onConnectionUpdate,
+    onConnectionWaypointAdd,
     connectionIndices,
     stackZIndex,
   } = props;
@@ -610,6 +618,340 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
               Remove connection
             </TooltipContent>
           </Tooltip>
+      );
+    })}
+    </TooltipProvider>
+    {/* Render action buttons for selected connections */}
+    <TooltipProvider>
+    {(diagramData.connections || [])
+      .map((edge: any, index: number) => ({ edge, index }))
+      .filter(({ index }: { index: number }) => !connectionIndices || connectionIndices.has(index))
+      .map(({ edge, index }: { edge: any; index: number }) => {
+      const fromItem = nodesById[edge.from] || zonesById[edge.from];
+      const toItem = nodesById[edge.to] || zonesById[edge.to];
+      if (!fromItem || !toItem) return null;
+
+      const edgeId = `${edge.from}-${edge.to}`;
+      const isConnectionSelected = selectedItem?.itemType === 'edge' && selectedItem?.id === edgeId;
+      
+      if (!isConnectionSelected) return null;
+
+      const fromItemDims = 'type' in fromItem ? measureNodeDims(fromItem as PositionedNode) : { width: (fromItem as any).width, height: (fromItem as any).height };
+      const toItemDims = 'type' in toItem ? measureNodeDims(toItem as PositionedNode) : { width: (toItem as any).width, height: (toItem as any).height };
+      
+      const fromPos: any = {
+        ...fromItem,
+        width: 'width' in fromItem ? (fromItem as any).width : fromItemDims.width,
+        height: 'height' in fromItem ? (fromItem as any).height : fromItemDims.height,
+      };
+      const toPos: any = {
+        ...toItem,
+        width: 'width' in toItem ? (toItem as any).width : toItemDims.width,
+        height: 'height' in toItem ? (toItem as any).height : toItemDims.height,
+      };
+      
+      fromPos.lineColor = (fromItem as any).lineColor;
+      toPos.lineColor = (toItem as any).lineColor;
+      
+      const connKey = `${edge.from}-${edge.to}-${index}`;
+      const edges = connectionEdgeInfo.get(connKey) || determineConnectionEdges(fromPos, toPos, edge, fromItemDims.width, fromItemDims.height, toItemDims.width, toItemDims.height);
+      
+      const fromEdgeKey = `${edge.from}-${edges.fromEdge}`;
+      const toEdgeKey = `${edge.to}-${edges.toEdge}`;
+      const fromEdgeConnections = edgeGroups.get(fromEdgeKey) || [];
+      const toEdgeConnections = edgeGroups.get(toEdgeKey) || [];
+      const fromEdgeIndex = fromEdgeConnections.findIndex((item: any) => item.connIndex === index);
+      const toEdgeIndex = toEdgeConnections.findIndex((item: any) => item.connIndex === index);
+      
+      const enhancedEdge = {
+        ...edge,
+        fromPreferredExit: edges.fromEdge,
+        toPreferredEntry: edges.toEdge,
+        connectionIndex: fromEdgeIndex >= 0 ? fromEdgeIndex : 0,
+        totalConnections: fromEdgeConnections.length > 0 ? fromEdgeConnections.length : 1,
+        toConnectionIndex: toEdgeIndex >= 0 ? toEdgeIndex : 0,
+        toTotalConnections: toEdgeConnections.length > 0 ? toEdgeConnections.length : 1,
+      };
+
+      const isFromShape = !isIconOrEmojiType(fromPos.type) && (fromPos.type === 'generic.object.square' || fromPos.type === 'generic.object.circle' ||
+                           fromPos.type === 'generic.object.point' || fromPos.type === 'generic.object.rectangle' || fromPos.type === 'generic.object.rounded-rectangle' || fromPos.type === 'generic.object.triangle' ||
+                           fromPos.type === 'generic.object.star' || fromPos.type === 'generic.object.cloud' ||
+                           fromPos.type?.endsWith('.square') || fromPos.type?.endsWith('.circle') ||
+                           fromPos.type?.endsWith('.point') || fromPos.type?.endsWith('.rectangle') || fromPos.type?.endsWith('.rounded-rectangle') || fromPos.type?.endsWith('.triangle') ||
+                           fromPos.type?.endsWith('.star') || fromPos.type?.endsWith('.cloud'));
+      const isToShape = !isIconOrEmojiType(toPos.type) && (toPos.type === 'generic.object.square' || toPos.type === 'generic.object.circle' ||
+                        toPos.type === 'generic.object.point' || toPos.type === 'generic.object.rectangle' || toPos.type === 'generic.object.rounded-rectangle' || toPos.type === 'generic.object.triangle' ||
+                        toPos.type === 'generic.object.star' || toPos.type === 'generic.object.cloud' ||
+                        toPos.type?.endsWith('.square') || toPos.type?.endsWith('.circle') ||
+                        toPos.type?.endsWith('.point') || toPos.type?.endsWith('.rectangle') || toPos.type?.endsWith('.rounded-rectangle') || toPos.type?.endsWith('.triangle') ||
+                        toPos.type?.endsWith('.star') || toPos.type?.endsWith('.cloud'));
+      const isFromTextType = fromPos.type === 'generic.text.text' || fromPos.type === 'generic.text.textbox';
+      const isToTextType = toPos.type === 'generic.text.text' || toPos.type === 'generic.text.textbox';
+      const isFromGroup = fromPos.type === 'group' || fromPos.subType === 'zone';
+      const isToGroup = toPos.type === 'group' || toPos.subType === 'zone';
+      
+      const calculateNodeHeight = (label: string = '', nodeType: string, sizeMode?: string, customHeight?: number) => {
+        if (sizeMode === 'custom' && customHeight) return customHeight;
+        if (nodeType === 'generic.text.textbox') {
+          const maxCharsPerLine = 30;
+          const lines = Math.max(1, Math.ceil(label.length / maxCharsPerLine));
+          return 40 + ((lines - 1) * EXTRA_LINE_HEIGHT);
+        } else if (nodeType === 'generic.text.text') {
+          const maxCharsPerLine = 20;
+          const lines = Math.ceil(label.length / maxCharsPerLine);
+          return TEXT_NODE_HEIGHT + ((lines - 1) * EXTRA_LINE_HEIGHT);
+        } else {
+          const maxCharsPerLine = 12;
+          const lines = Math.ceil(label.length / maxCharsPerLine);
+          return BASE_NODE_HEIGHT + ((lines - 1) * EXTRA_LINE_HEIGHT);
+        }
+      };
+      
+      const fromCalculatedHeight = calculateNodeHeight((fromPos as any).label || '', fromPos.type, (fromPos as any).sizeMode, (fromPos as any).height);
+      const toCalculatedHeight = calculateNodeHeight((toPos as any).label || '', toPos.type, (toPos as any).sizeMode, (toPos as any).height);
+      
+      let fromTextUnderHeight = 0;
+      let toTextUnderHeight = 0;
+      if (isFromShape && (fromPos as any).label && ((fromPos as any).textPosition === 'under' || !(fromPos as any).textPosition)) {
+        const maxCharsPerLine = 16;
+        const lines = Math.ceil(((fromPos as any).label || '').length / maxCharsPerLine);
+        fromTextUnderHeight = lines * 20;
+      }
+      if (isToShape && (toPos as any).label && ((toPos as any).textPosition === 'under' || !(toPos as any).textPosition)) {
+        const maxCharsPerLine = 16;
+        const lines = Math.ceil(((toPos as any).label || '').length / maxCharsPerLine);
+        toTextUnderHeight = lines * 20;
+      }
+      if (!isFromShape && !isFromTextType && (fromPos as any).label && ((fromPos as any).label || '').trim().length > 0) {
+        const maxCharsPerLine = 16;
+        const lines = Math.ceil(((fromPos as any).label || '').length / maxCharsPerLine);
+        fromTextUnderHeight = 20 + ((lines - 1) * 8);
+      }
+      if (!isToShape && !isToTextType && (toPos as any).label && ((toPos as any).label || '').trim().length > 0) {
+        const maxCharsPerLine = 16;
+        const lines = Math.ceil(((toPos as any).label || '').length / maxCharsPerLine);
+        toTextUnderHeight = 20 + ((lines - 1) * 8);
+      }
+      
+      const fromWidth = isFromGroup ? ((fromPos as any).width || 300) : (isFromShape && (fromPos as any).width ? (fromPos as any).width : ((fromPos as any).width || NODE_WIDTH));
+      const fromHeight = isFromGroup ? ((fromPos as any).height || 220) : (isFromShape && (fromPos as any).height ? (fromPos as any).height : (fromCalculatedHeight + fromTextUnderHeight));
+      const toWidth = isToGroup ? ((toPos as any).width || 300) : (isToShape && (toPos as any).width ? (toPos as any).width : ((toPos as any).width || NODE_WIDTH));
+      const toHeight = isToGroup ? ((toPos as any).height || 220) : (isToShape && (toPos as any).height ? (toPos as any).height : (toCalculatedHeight + toTextUnderHeight));
+      
+      const isFromIconNode = !isFromGroup && !isFromShape && !isFromTextType;
+      const isToIconNode = !isToGroup && !isToShape && !isToTextType;
+      const fromIconContainer = isFromIconNode ? getNodeSizeDimensions((fromPos as any).nodeSize).container : undefined;
+      const toIconContainer = isToIconNode ? getNodeSizeDimensions((toPos as any).nodeSize).container : undefined;
+
+      let fromIconHeight: number | undefined;
+      let toIconHeight: number | undefined;
+      let fromIconOffset: number | undefined;
+      let toIconOffset: number | undefined;
+      
+      if (!isFromGroup) {
+        if (isFromShape) {
+          fromIconHeight = (fromPos as any).height || 48;
+        } else if (isFromTextType) {
+          fromIconHeight = fromCalculatedHeight;
+        } else {
+          fromIconHeight = fromIconContainer ?? BASE_NODE_HEIGHT;
+          const textVerticalPosition = (fromPos as any).textVerticalPosition || 'bottom';
+          if (textVerticalPosition === 'top' && (fromPos as any).label && ((fromPos as any).label || '').trim().length > 0) {
+            const maxCharsPerLine = 16;
+            const lines = Math.ceil(((fromPos as any).label || '').length / maxCharsPerLine);
+            fromIconOffset = 20 + ((lines - 1) * 8);
+          }
+        }
+      }
+      
+      if (!isToGroup) {
+        if (isToShape) {
+          toIconHeight = (toPos as any).height || 48;
+        } else if (isToTextType) {
+          toIconHeight = toCalculatedHeight;
+        } else {
+          toIconHeight = toIconContainer ?? BASE_NODE_HEIGHT;
+          const textVerticalPosition = (toPos as any).textVerticalPosition || 'bottom';
+          if (textVerticalPosition === 'top' && (toPos as any).label && ((toPos as any).label || '').trim().length > 0) {
+            const maxCharsPerLine = 16;
+            const lines = Math.ceil(((toPos as any).label || '').length / maxCharsPerLine);
+            toIconOffset = 20 + ((lines - 1) * 8);
+          }
+        }
+      }
+
+      const fromIconWidth = isFromIconNode && fromIconContainer && fromWidth > fromIconContainer ? fromIconContainer : undefined;
+      const fromIconOffsetX = fromIconWidth ? (fromWidth - fromIconWidth) / 2 : undefined;
+      const toIconWidth = isToIconNode && toIconContainer && toWidth > toIconContainer ? toIconContainer : undefined;
+      const toIconOffsetX = toIconWidth ? (toWidth - toIconWidth) / 2 : undefined;
+      
+      const connectionPoints = getOptimalConnectionPoints(fromPos, toPos, fromWidth, fromHeight, toWidth, toHeight, enhancedEdge, fromIconHeight, toIconHeight, fromIconOffset, toIconOffset, fromIconWidth, fromIconOffsetX, toIconWidth, toIconOffsetX);
+      const { fromX, fromY, toX, toY, fromAngle, toAngle } = connectionPoints;
+      const curvature = edge?.curvature || 0.6;
+      const { cp1X, cp1Y, cp2X, cp2Y } = calculateBezierControlPoints(fromX, fromY, toX, toY, curvature, fromAngle, toAngle);
+      const centerPoint = getBezierPoint(0.5, fromX, fromY, cp1X, cp1Y, cp2X, cp2Y, toX, toY);
+      const arrowPoint = getBezierPoint(0.9, fromX, fromY, cp1X, cp1Y, cp2X, cp2Y, toX, toY);
+      const hasArrow = edge.toArrow === true || edge.arrow === true;
+
+      const buttonOffset = 30;
+
+      const BUTTON_Z_INDEX = 30;
+
+      return (
+        <React.Fragment key={`actions-${edge.from}-${edge.to}-${index}`}>
+          {/* Arrow toggle button - positioned at 90% along the line */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div
+                className="absolute cursor-pointer"
+                style={{
+                  zIndex: BUTTON_Z_INDEX,
+                  left: `${arrowPoint.x - 12}px`,
+                  top: `${arrowPoint.y - 12}px`,
+                  width: '24px',
+                  height: '24px',
+                }}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  if (onConnectionUpdate) {
+                    onConnectionUpdate(edge.from, edge.to, {
+                      arrow: !hasArrow,
+                      toArrow: !hasArrow,
+                    });
+                  }
+                }}
+              >
+                <svg
+                  width="24"
+                  height="24"
+                  className="pointer-events-none"
+                >
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="12"
+                    fill={hasArrow ? "#22c55e" : "white"}
+                    stroke="#6b7280"
+                    strokeWidth="2"
+                    style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
+                  />
+                  <path
+                    d="M 6 12 L 16 12 M 11 7 L 16 12 L 11 17"
+                    stroke={hasArrow ? "white" : "#6b7280"}
+                    strokeWidth="2"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              {hasArrow ? "Remove arrow" : "Add arrow"}
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Add waypoint button - at center left */}
+          {onConnectionWaypointAdd && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div
+                  className="absolute cursor-pointer"
+                  style={{
+                    zIndex: BUTTON_Z_INDEX,
+                    left: `${centerPoint.x - buttonOffset - 12}px`,
+                    top: `${centerPoint.y - 12}px`,
+                    width: '24px',
+                    height: '24px',
+                  }}
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (onConnectionWaypointAdd) {
+                      onConnectionWaypointAdd(edge.from, edge.to);
+                    }
+                  }}
+                >
+                  <svg
+                    width="24"
+                    height="24"
+                    className="pointer-events-none"
+                  >
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="12"
+                      fill="white"
+                      stroke="#6b7280"
+                      strokeWidth="2"
+                      style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
+                    />
+                    <path
+                      d="M 12 7 L 12 17 M 7 12 L 17 12"
+                      stroke="#6b7280"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                Add waypoint
+              </TooltipContent>
+            </Tooltip>
+          )}
+
+          {/* Delete button - at center right */}
+          {onConnectionDelete && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div
+                  className="absolute cursor-pointer"
+                  style={{
+                    zIndex: BUTTON_Z_INDEX,
+                    left: `${centerPoint.x + buttonOffset - 12}px`,
+                    top: `${centerPoint.y - 12}px`,
+                    width: '24px',
+                    height: '24px',
+                  }}
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (onConnectionDelete) {
+                      onConnectionDelete(edge.from, edge.to);
+                    }
+                  }}
+                >
+                  <svg
+                    width="24"
+                    height="24"
+                    className="pointer-events-none"
+                  >
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="12"
+                      fill="white"
+                      stroke="#ef4444"
+                      strokeWidth="2"
+                      style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
+                    />
+                    <path
+                      d="M 8 8 L 16 16 M 16 8 L 8 16"
+                      stroke="#ef4444"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                Delete connection
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </React.Fragment>
       );
     })}
     </TooltipProvider>
