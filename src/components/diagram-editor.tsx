@@ -1458,19 +1458,6 @@ export default function DiagramEditor() {
         return;
       }
       
-      // 'c' key - Start connecting if item is selected, cancel if in connect mode
-      if (e.key.toLowerCase() === 'c' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
-        e.preventDefault();
-        if (isConnectMode) {
-          // Cancel connect mode
-          setIsConnectMode(false);
-        } else if (selectedItem && selectedItem.itemType === 'node') {
-          // Start connect mode
-          startConnecting();
-        }
-        return;
-      }
-      
       // Arrow keys - Move selected items by 10px grid
       if ((e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') && selectedItem && selectedItem.itemType !== 'edge') {
         e.preventDefault();
