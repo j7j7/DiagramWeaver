@@ -191,7 +191,6 @@ export default function DiagramEditor() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [mousePosition, setMousePosition] = React.useState<{ x: number; y: number } | null>(null);
   const [hoverEnabled, setHoverEnabled] = React.useState<boolean>(false);
-  const [selectionAnimationEnabled, setSelectionAnimationEnabled] = React.useState<boolean>(false);
   const [iconBackgroundEnabled, setIconBackgroundEnabled] = React.useState<boolean>(true);
   const [alignmentGuidesEnabled, setAlignmentGuidesEnabled] = React.useState<boolean>(() => {
     if (typeof window !== 'undefined') {
@@ -1610,8 +1609,6 @@ export default function DiagramEditor() {
         mousePosition={mousePosition}
         hoverEnabled={hoverEnabled}
         setHoverEnabled={setHoverEnabled}
-        selectionAnimationEnabled={selectionAnimationEnabled}
-        setSelectionAnimationEnabled={setSelectionAnimationEnabled}
         iconBackgroundEnabled={iconBackgroundEnabled}
         setIconBackgroundEnabled={setIconBackgroundEnabled}
         alignmentGuidesEnabled={alignmentGuidesEnabled}
@@ -1720,8 +1717,6 @@ function DiagramEditorInner({
   mousePosition,
   hoverEnabled,
   setHoverEnabled,
-  selectionAnimationEnabled,
-  setSelectionAnimationEnabled,
   iconBackgroundEnabled,
   setIconBackgroundEnabled,
   alignmentGuidesEnabled,
@@ -1911,8 +1906,6 @@ function DiagramEditorInner({
                     mousePosition={mousePosition}
                     hoverEnabled={hoverEnabled}
                     onToggleHover={() => setHoverEnabled(!hoverEnabled)}
-                    selectionAnimationEnabled={selectionAnimationEnabled}
-                    onToggleSelectionAnimation={() => setSelectionAnimationEnabled(!selectionAnimationEnabled)}
                     iconBackgroundEnabled={iconBackgroundEnabled}
                     onToggleIconBackground={() => setIconBackgroundEnabled(!iconBackgroundEnabled)}
                     alignmentGuidesEnabled={alignmentGuidesEnabled}
@@ -1990,7 +1983,6 @@ function DiagramEditorInner({
                     onMousePositionChange={setMousePosition}
                     onExportComplete={() => setExportDialogOpen(false)}
                     hoverEnabled={hoverEnabled}
-                    selectionAnimationEnabled={selectionAnimationEnabled}
                     iconBackgroundEnabled={iconBackgroundEnabled}
                     onSelectAll={handleSelectAll}
                     onTriggerTextStylingPanel={() => setTriggerTextStylingPanel(true)}

@@ -159,8 +159,6 @@ interface DiagramNodeProps {
   onDraggingChange?: (isDragging: boolean) => void;
   onUpdate?: (node: DiagramNodeData) => void;
   hoverEnabled?: boolean;
-  selectionAnimationEnabled?: boolean;
-  animationOffset?: { x: number; y: number };
   isReadOnly?: boolean;
   onHoverChange?: (id: string, itemType: 'node' | 'zone', isHovered: boolean) => void;
   onConnect?: (connectionOptions?: { style?: 'pathways' | 'bezier', curvature?: number }) => void;
@@ -195,10 +193,7 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
     prev.isMultiSelected === next.isMultiSelected &&
     prev.isGroupMember === next.isGroupMember &&
     prev.stackZIndex === next.stackZIndex &&
-    prev.animationOffset?.x === next.animationOffset?.x &&
-    prev.animationOffset?.y === next.animationOffset?.y &&
     prev.hoverEnabled === next.hoverEnabled &&
-    prev.selectionAnimationEnabled === next.selectionAnimationEnabled &&
     prev.isReadOnly === next.isReadOnly &&
     prev.transform?.x === next.transform?.x &&
     prev.transform?.y === next.transform?.y &&
@@ -218,7 +213,7 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
     prev.isConnectMode === next.isConnectMode;
 }
 
-function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onResizeStart, onResizeEnd, onPositionUpdate, onDraggingChange, onUpdate, hoverEnabled = true, selectionAnimationEnabled = false, animationOffset = { x: 0, y: 0 }, isReadOnly = false, onHoverChange, onConnect, isConnectMode, transform, canvasRef, stackZIndex }: DiagramNodeProps) {
+function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onResizeStart, onResizeEnd, onPositionUpdate, onDraggingChange, onUpdate, hoverEnabled = true, isReadOnly = false, onHoverChange, onConnect, isConnectMode, transform, canvasRef, stackZIndex }: DiagramNodeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [isEditingTag, setIsEditingTag] = useState(false);
@@ -977,8 +972,8 @@ return (
         "absolute group transition-transform duration-200 ease-in-out rounded-lg",
         // Hover and selection effects - not for lines, and not when locked
         !isLineNode && !(isDragging || isTouchDragging) && !(isSelected || isHighlighted || isMultiSelected) && !isLocked && "hover:scale-105",
-        !isLineNode && (isSelected || isHighlighted || isMultiSelected) && `${selectionAnimationEnabled ? "node-glow-pulse" : "node-glow-static"} drop-shadow-md`,
-        !isLineNode && isGroupMember && !isSelected && !isHighlighted && !isMultiSelected && `${selectionAnimationEnabled ? "node-glow-green-pulse" : "node-glow-green-static"} drop-shadow-md`,
+        !isLineNode && (isSelected || isHighlighted || isMultiSelected) && "node-glow-static drop-shadow-md",
+        !isLineNode && isGroupMember && !isSelected && !isHighlighted && !isMultiSelected && "node-glow-green-static drop-shadow-md",
         (isDragging || isTouchDragging) && "cursor-grabbing",
         isTargetable && "cursor-crosshair opacity-70 hover:opacity-100"
         )}
@@ -989,11 +984,11 @@ return (
         // For lines during drag, keep container position stable (use initial position)
         // This prevents handles from drifting - they're positioned relative to stable container
         left: isLineNode && isDraggingLineEndpoint && initialContainerPosRef.current
-          ? initialContainerPosRef.current.x + animationOffset.x
-          : node.x + animationOffset.x,
+          ? initialContainerPosRef.current.x
+          : node.x,
         top: isLineNode && isDraggingLineEndpoint && initialContainerPosRef.current
-          ? initialContainerPosRef.current.y + animationOffset.y
-          : node.y + animationOffset.y,
+          ? initialContainerPosRef.current.y
+          : node.y,
          width: isLineNode ? 'auto' : (typeof displayWidth === 'number' ? displayWidth :
                 (isShapeNode ? (node.width || 60) :
                 (isRotatableNode || isTextboxNode ? 

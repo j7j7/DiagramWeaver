@@ -113,7 +113,6 @@ Additional providers available (can be enabled): Alibaba Cloud, OCI, SaaS, Elast
 - **Layers Panel**: Toggle layer visibility
 - **Scratch Pad**: Notes area
 - **Hover Text**: Toggle node labels on hover
-- **Selection Animation**: Toggle selection highlight animation
 - **Icon Background**: Toggle background on resource icons
 - **Alignment Guides**: Snap guides when dragging
 - **Read-Only Mode**: Disable editing

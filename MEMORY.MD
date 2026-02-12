@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2025-02-12)
 
+### 2025-02-12 – Selection Animation Removal
+Removed the "Enable Selection Animation" feature from the editor. The View menu no longer includes the toggle; nodes always use static glow (node-glow-static, node-glow-green-static) for selection/group-member highlighting. Removed: useNodeAnimationOffsets from editor-canvas, animatedNodesById/animatedZonesById (display now uses nodesById/zonesById directly), selectionAnimationEnabled/animationOffset from diagram-node, TopMenuBar toggle. Modified: top-menu-bar.tsx, diagram-editor.tsx, editor-canvas.tsx, diagram-node.tsx, README.md.
+
 ### 2025-02-12 – Resize Responsiveness
 Resize drag handles (rectangles, textboxes, shapes) now update instantly during drag. Uses local state `resizeDimensions` in diagram-node for optimistic display; parent `onResize` called only on pointer up. ShapeWrapper and SvgShapeBase accept `overrideWidth`/`overrideHeight` for live shape resizing. Modified: diagram-node.tsx, shape-wrapper.tsx, svg-shape-base.tsx.
 

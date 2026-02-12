@@ -61,8 +61,6 @@ interface TopMenuBarProps {
   mousePosition?: { x: number; y: number } | null;
   hoverEnabled?: boolean;
   onToggleHover?: () => void;
-  selectionAnimationEnabled?: boolean;
-  onToggleSelectionAnimation?: () => void;
   iconBackgroundEnabled?: boolean;
   onToggleIconBackground?: () => void;
   alignmentGuidesEnabled?: boolean;
@@ -121,8 +119,6 @@ export function TopMenuBar({
   mousePosition,
   hoverEnabled,
   onToggleHover,
-  selectionAnimationEnabled,
-  onToggleSelectionAnimation,
   iconBackgroundEnabled,
   onToggleIconBackground,
   alignmentGuidesEnabled,
@@ -388,27 +384,9 @@ export function TopMenuBar({
                 </MenubarItem>
               </>
             )}
-            {onToggleSelectionAnimation !== undefined && (
-              <>
-                {(onUndo || onRedo || onFitToView || onToggleHover) && <MenubarSeparator />}
-                <MenubarItem onClick={onToggleSelectionAnimation}>
-                  {selectionAnimationEnabled ? (
-                    <>
-                      <Move className="mr-2 h-4 w-4" />
-                      Disable Selection Animation
-                    </>
-                  ) : (
-                    <>
-                      <Move className="mr-2 h-4 w-4" />
-                      Enable Selection Animation
-                    </>
-                  )}
-                </MenubarItem>
-              </>
-            )}
             {onToggleIconBackground !== undefined && (
               <>
-                {(onUndo || onRedo || onFitToView || onToggleHover || onToggleSelectionAnimation) && <MenubarSeparator />}
+                {(onUndo || onRedo || onFitToView || onToggleHover) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleIconBackground}>
                   {iconBackgroundEnabled ? (
                     <>
@@ -426,7 +404,7 @@ export function TopMenuBar({
             )}
             {onToggleAlignmentGuides !== undefined && (
               <>
-                {(onUndo || onRedo || onFitToView || onToggleHover || onToggleSelectionAnimation || onToggleIconBackground) && <MenubarSeparator />}
+                {(onUndo || onRedo || onFitToView || onToggleHover || onToggleIconBackground) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleAlignmentGuides}>
                   {alignmentGuidesEnabled ? (
                     <>
@@ -444,7 +422,7 @@ export function TopMenuBar({
             )}
             {onToggleReadOnly !== undefined && (
               <>
-                {(onUndo || onRedo || onFitToView || onToggleHover || onToggleSelectionAnimation || onToggleIconBackground || onToggleAlignmentGuides) && <MenubarSeparator />}
+                {(onUndo || onRedo || onFitToView || onToggleHover || onToggleIconBackground || onToggleAlignmentGuides) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleReadOnly}>
                   {isReadOnly ? (
                     <>

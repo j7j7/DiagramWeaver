@@ -34,7 +34,6 @@ import { useCanvasExport } from "@/hooks/use-canvas-export";
 import { useCanvasContextMenu } from "@/hooks/use-canvas-context-menu";
 import { useCanvasOperations } from "./canvas-operations";
 import { CanvasConnections } from "./canvas-connections";
-import { useNodeAnimationOffsets } from "@/hooks/use-sine-wave-animation";
 import { CanvasArrowToggles } from "./canvas-arrow-toggles";
 import { CanvasConnectionText } from "./canvas-connection-text";
 import { getItemGroup } from "@/lib/grouping-utils";
@@ -71,7 +70,6 @@ interface EditorCanvasProps {
   onSelectionChange?: (selection: { start: { x: number; y: number } | null; end: { x: number; y: number } | null }) => void;
   onExportComplete?: () => void;
   hoverEnabled?: boolean;
-  selectionAnimationEnabled?: boolean;
   iconBackgroundEnabled?: boolean;
   onSelectAll?: () => void;
   onTriggerTextStylingPanel?: () => void;
@@ -117,7 +115,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, externalTransform,      onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, selectionAnimationEnabled = false, iconBackgroundEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition }: EditorCanvasProps,
+   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, externalTransform,      onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition }: EditorCanvasProps,
   ref
 ) {
   // ============================================================================
@@ -440,40 +438,6 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     };
   }, [rotationDragState, setRotationForItem]);
   
-  // Animation offsets for selected nodes
-  const animationOffsets = useNodeAnimationOffsets(processedNodes, selectedItemIds);
-  
-  // Create animated versions of nodes and zones lookup maps
-  const animatedNodesById = useMemo(() => {
-    const result = { ...nodesById };
-    if (selectionAnimationEnabled) {
-      Object.entries(animationOffsets).forEach(([nodeId, offset]) => {
-        const node = result[nodeId];
-        if (node) {
-          result[nodeId] = {
-            ...node,
-            x: node.x + offset.x,
-            y: node.y + offset.y
-          };
-        }
-      });
-    }
-    return result;
-  }, [nodesById, animationOffsets, selectionAnimationEnabled]);
-
-  const animatedZonesById = useMemo(() => {
-    const result = { ...zonesById };
-    if (selectionAnimationEnabled) {
-      Object.entries(animationOffsets).forEach(([nodeId, offset]) => {
-        // Check if this is a zone that contains animated nodes
-        const zone = Object.values(result).find(z => 
-          z.type === 'zone' && (z as any).children?.includes(nodeId)
-        );
-        // For now, we'll skip zone animation as it's more complex
-      });
-    }
-    return result;
-  }, [zonesById, animationOffsets, selectionAnimationEnabled]);
   
   // ============================================================================
   // HOOK: useCanvasTransform
@@ -617,7 +581,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
 
   // Create display versions of nodes and zones lookup maps that include drag overrides
   const displayNodesById = useMemo(() => {
-    const result = { ...animatedNodesById };
+    const result = { ...nodesById };
     
     // Apply single item drag override
     if (dragPosition?.itemId && result[dragPosition.itemId]) {
@@ -699,10 +663,10 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     }
     
     return result;
-  }, [animatedNodesById, dragPosition, multiDragPositions, nodesById]);
+  }, [nodesById, dragPosition, multiDragPositions]);
 
   const displayZonesById = useMemo(() => {
-    const result = { ...animatedZonesById };
+    const result = { ...zonesById };
     
     // Apply single item drag override
     if (dragPosition?.itemId && result[dragPosition.itemId]) {
@@ -727,7 +691,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     }
     
     return result;
-  }, [animatedZonesById, dragPosition, multiDragPositions]);
+  }, [zonesById, dragPosition, multiDragPositions]);
 
   // ============================================================================
   // HOOK: useAlignmentGuides
@@ -1239,8 +1203,6 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   onDraggingChange={onDraggingChange}
                   onUpdate={handleNodeUpdate}
                   hoverEnabled={hoverEnabled}
-                  selectionAnimationEnabled={selectionAnimationEnabled}
-                  animationOffset={selectionAnimationEnabled ? (animationOffsets[node.id] || { x: 0, y: 0 }) : { x: 0, y: 0 }}
                   isReadOnly={isReadOnly}
                   onHoverChange={handleHoverChange}
                   onConnect={onConnect}
