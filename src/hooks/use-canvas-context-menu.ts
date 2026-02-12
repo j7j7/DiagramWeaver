@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 interface ContextMenuState {
   visible: boolean;
@@ -71,9 +71,9 @@ export function useCanvasContextMenu({ isReadOnly = false }: UseCanvasContextMen
     });
   };
 
-  const closeContextMenu = () => {
+  const closeContextMenu = useCallback(() => {
     setContextMenu(prev => ({ ...prev, visible: false }));
-  };
+  }, []);
 
   // Close context menu when clicking outside
   useEffect(() => {

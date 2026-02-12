@@ -50,6 +50,11 @@ export function useCanvasDragDrop({
   const isDraggingRef = useRef(false);
   const multiDragStartPositions = useRef<{ [itemId: string]: { x: number; y: number } } | null>(null);
   const isDroppingOnScratchpadRef = useRef(false);
+  const pendingDragRef = useRef<{
+    single: { x: number; y: number; itemId?: string; deltaX?: number; deltaY?: number } | null;
+    multi: { [itemId: string]: { x: number; y: number } } | null;
+  } | null>(null);
+  const dragRafIdRef = useRef<number | null>(null);
 
   const noOpDrop = () => {};
 
@@ -141,6 +146,7 @@ export function useCanvasDragDrop({
       }
       
       // Handle multi-item dragging (either grouped or multi-selected)
+      let newMulti: { [itemId: string]: { x: number; y: number } } | null = null;
       if (item.id && itemsToMove.size > 1) {
         // Initialize start positions if not already done
         if (!multiDragStartPositions.current) {
@@ -154,27 +160,36 @@ export function useCanvasDragDrop({
         }
         
         // Calculate positions for all items
-        const newPositions: { [itemId: string]: { x: number; y: number } } = {};
+        newMulti = {};
         itemsToMove.forEach(id => {
           const startPos = multiDragStartPositions.current![id];
           if (startPos) {
-            newPositions[id] = {
+            newMulti![id] = {
               x: snapToGrid(startPos.x + deltaX),
               y: snapToGrid(startPos.y + deltaY)
             };
           }
         });
-        
-        setMultiDragPositions(newPositions);
       } else {
-        // Single item drag
-        setMultiDragPositions(null);
         multiDragStartPositions.current = null;
       }
       
-      // Don't update drag position if we're dropping on scratchpad
+      // Throttle: store in ref, schedule RAF to flush (max once per frame)
       if (!isDroppingOnScratchpadRef.current) {
-        setDragPosition({ x: snappedX, y: snappedY, itemId: item.id, deltaX, deltaY });
+        pendingDragRef.current = {
+          single: { x: snappedX, y: snappedY, itemId: item.id, deltaX, deltaY },
+          multi: newMulti,
+        };
+        if (dragRafIdRef.current === null) {
+          dragRafIdRef.current = requestAnimationFrame(() => {
+            dragRafIdRef.current = null;
+            const pending = pendingDragRef.current;
+            if (pending) {
+              setDragPosition(pending.single);
+              setMultiDragPositions(pending.multi);
+            }
+          });
+        }
       }
       if (!isDraggingRef.current) {
         isDraggingRef.current = true;
@@ -278,7 +293,11 @@ export function useCanvasDragDrop({
 
       // If dropped on scratchpad, clear drag state to let item return to data position
       if (isDroppedOnScratchpad && item.id && (itemType === ItemTypes.CANVAS_NODE || itemType === ItemTypes.ZONE)) {
-        // Clear all drag state
+        if (dragRafIdRef.current !== null) {
+          cancelAnimationFrame(dragRafIdRef.current);
+          dragRafIdRef.current = null;
+        }
+        pendingDragRef.current = null;
         setDragPosition(null);
         setMultiDragPositions(null);
         multiDragStartPositions.current = null;
@@ -358,7 +377,12 @@ export function useCanvasDragDrop({
         }
       }
       
-      // Clear drag position display after drop
+      // Clear drag position display after drop; cancel any pending RAF
+      if (dragRafIdRef.current !== null) {
+        cancelAnimationFrame(dragRafIdRef.current);
+        dragRafIdRef.current = null;
+      }
+      pendingDragRef.current = null;
       setDragPosition(null);
       setMultiDragPositions(null);
       multiDragStartPositions.current = null;
@@ -376,13 +400,24 @@ export function useCanvasDragDrop({
   useEffect(() => {
     const handleGlobalMouseUp = () => {
       if (isDraggingRef.current) {
+        if (dragRafIdRef.current !== null) {
+          cancelAnimationFrame(dragRafIdRef.current);
+          dragRafIdRef.current = null;
+        }
+        pendingDragRef.current = null;
         setMultiDragPositions(null);
         multiDragStartPositions.current = null;
       }
     };
     
     document.addEventListener('mouseup', handleGlobalMouseUp);
-    return () => document.removeEventListener('mouseup', handleGlobalMouseUp);
+    return () => {
+      document.removeEventListener('mouseup', handleGlobalMouseUp);
+      if (dragRafIdRef.current !== null) {
+        cancelAnimationFrame(dragRafIdRef.current);
+        dragRafIdRef.current = null;
+      }
+    };
   }, []);
 
   return {

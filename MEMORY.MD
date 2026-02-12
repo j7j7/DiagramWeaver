@@ -1,6 +1,9 @@
 # MEMORY.MD
 
-## DiagramWeaver - Latest Features and Functions (Updated 2025-02-11)
+## DiagramWeaver - Latest Features and Functions (Updated 2025-02-12)
+
+### 2025-02-12 – Infinite Loops / Memory Leaks Audit
+Created `docs/INFINITE-LOOPS-MEMORY-LEAKS-ANALYSIS.md` – codebase audit for infinite loops, excessive re-renders, and memory leaks. No critical infinite loops found. Issues: (1) viewer-canvas assigns `__viewerFitToView`/`__viewerZoomIn`/`__viewerZoomOut` to `window` without cleanup on unmount; (2) carousel `reInit` listener not unsubscribed; (3) use-canvas-context-menu `closeContextMenu` should be `useCallback` to avoid effect thrashing. Most patterns (event listeners, ResizeObserver, RAF, subscriptions) have proper cleanup.
 
 ### 2025-02-11 – README Update
 README.md fully updated with all latest functions and features: canvas & editor, resource browser, node types (shapes, line, textbox, icons), connections, selection/multi-select, groupings, styling panels, alignment, auto layout, JSON editor, export, keyboard shortcuts, development commands.
@@ -525,6 +528,14 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
 - Enhance mobile experience
 - Integrate more providers and update resource counts
 - Optimize performance for large diagrams
+
+### 2025-02-12 – Canvas Responsiveness Optimization Plan
+Created `docs/CANVAS-RESPONSIVENESS-PLAN.md` – a detailed, step-by-step plan for improving editor responsiveness. Each of 12 optimizations is documented with:
+- Implementation steps and file/line references
+- Before/after measurement instructions (React DevTools Profiler, Performance tab, manual feel tests)
+- Validation checklists
+- Status checkboxes (implement one by one, measure individually)
+Baseline measurement and a measurement log template are included. Recommended order: 1 (debounce label) → 2 (throttle drag) → 4 (stable callbacks) → 3 (memo DiagramNode) → 5–7 (memo connections) → 8–12.
 
 ### Editor Canvas Refactoring (2025-11-15)
 Successfully refactored `editor-canvas.tsx` from ~4100 lines to **513 lines** (87.5% reduction).

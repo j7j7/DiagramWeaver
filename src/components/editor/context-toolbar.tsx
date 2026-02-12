@@ -99,6 +99,8 @@ export function ContextToolbar({
   isReadOnly = false,
 }: ContextToolbarProps) {
   const [labelOpen, setLabelOpen] = useState(false);
+  const [labelInputValue, setLabelInputValue] = useState('');
+  const labelDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const [tagOpen, setTagOpen] = useState(false);
   const [descriptionOpen, setDescriptionOpen] = useState(false);
   const [connectionsOpen, setConnectionsOpen] = useState(false);
@@ -331,13 +333,60 @@ export function ContextToolbar({
     );
   }
 
-  const handleLabelChange = (value: string) => {
-    const updated = { ...selectedItem, label: value } as SelectedItem;
-    if (selectedItem?.type === 'generic.text.textbox') {
-      (updated as any).richLabel = undefined;
+  const prevSelectedIdRef = useRef<string | undefined>(undefined);
+  const prevLabelOpenRef = useRef(false);
+  useEffect(() => {
+    if (selectedItem && (prevSelectedIdRef.current !== selectedItem.id || (labelOpen && !prevLabelOpenRef.current))) {
+      setLabelInputValue(selectedItem.label || '');
+      prevSelectedIdRef.current = selectedItem.id;
     }
-    onItemUpdate?.(updated);
-  };
+    prevLabelOpenRef.current = labelOpen;
+  }, [selectedItem?.id, selectedItem?.label, labelOpen]);
+
+  const flushLabelChange = useCallback(() => {
+    if (labelDebounceRef.current) {
+      clearTimeout(labelDebounceRef.current);
+      labelDebounceRef.current = null;
+    }
+    const value = labelInputValue.trim();
+    if (selectedItem && value !== (selectedItem.label || '')) {
+      const updated = { ...selectedItem, label: value } as SelectedItem;
+      if (selectedItem.type === 'generic.text.textbox') {
+        (updated as any).richLabel = undefined;
+      }
+      onItemUpdate?.(updated);
+    }
+  }, [labelInputValue, selectedItem, onItemUpdate]);
+
+  const handleLabelChange = useCallback((value: string) => {
+    setLabelInputValue(value);
+    if (labelDebounceRef.current) {
+      clearTimeout(labelDebounceRef.current);
+    }
+    labelDebounceRef.current = setTimeout(() => {
+      labelDebounceRef.current = null;
+      if (selectedItem && value.trim() !== (selectedItem.label || '')) {
+        const updated = { ...selectedItem, label: value.trim() } as SelectedItem;
+        if (selectedItem.type === 'generic.text.textbox') {
+          (updated as any).richLabel = undefined;
+        }
+        onItemUpdate?.(updated);
+      }
+    }, 350);
+  }, [selectedItem, onItemUpdate]);
+
+  const handleLabelBlur = useCallback(() => {
+    flushLabelChange();
+    setLabelOpen(false);
+  }, [flushLabelChange]);
+
+  const handleLabelKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      flushLabelChange();
+      setLabelOpen(false);
+    }
+  }, [flushLabelChange]);
 
   const handleTagChange = (value: string) => {
     onItemUpdate?.({ ...selectedItem, tag: value } as SelectedItem);
@@ -380,6 +429,9 @@ export function ContextToolbar({
       }
       if (connectionColorTimeoutRef.current) {
         clearTimeout(connectionColorTimeoutRef.current);
+      }
+      if (labelDebounceRef.current) {
+        clearTimeout(labelDebounceRef.current);
       }
     };
   }, []);
@@ -1076,10 +1128,11 @@ export function ContextToolbar({
             <div className="space-y-2">
               <label className="text-sm font-medium">Label</label>
               <Input
-                value={selectedItem.label || ''}
+                value={labelInputValue}
                 onChange={(e) => handleLabelChange(e.target.value)}
+                onBlur={handleLabelBlur}
+                onKeyDown={handleLabelKeyDown}
                 placeholder="Enter label"
-                onBlur={() => setLabelOpen(false)}
               />
             </div>
           </PopoverContent>

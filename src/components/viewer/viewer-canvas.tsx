@@ -59,9 +59,11 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
   // Expose fitToView to parent
   useEffect(() => {
     if (onFitToView) {
-      // Store the fitToView function reference
       (window as any).__viewerFitToView = handleFitToView;
     }
+    return () => {
+      delete (window as any).__viewerFitToView;
+    };
   }, [handleFitToView, onFitToView]);
 
   // Handle mouse drag for panning
@@ -175,6 +177,11 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
     (window as any).__viewerZoomIn = handleZoomIn;
     (window as any).__viewerZoomOut = handleZoomOut;
     (window as any).__viewerFitToView = handleFitToView;
+    return () => {
+      delete (window as any).__viewerZoomIn;
+      delete (window as any).__viewerZoomOut;
+      delete (window as any).__viewerFitToView;
+    };
   }, [handleZoomIn, handleZoomOut, handleFitToView]);
 
   if (!isClient) {
