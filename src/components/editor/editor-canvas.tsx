@@ -61,6 +61,7 @@ interface EditorCanvasProps {
   onDisconnect?: () => void;
   onConnectionDelete?: (from: string, to: string) => void;
   onConnectionWaypointMove?: (from: string, to: string, index: number, newPos: { x: number; y: number }) => void;
+  onConnectionContextMenu?: (e: React.MouseEvent, connection: DiagramConnectionData) => void;
   externalTransform?: { x: number; y: number; k: number };
   onTransformChange?: (transform: { x: number; y: number; k: number }) => void;
    onLabelUpdate?: (nodeId: string, newLabel: string) => void;
@@ -117,7 +118,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, externalTransform,      onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition }: EditorCanvasProps,
+   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionContextMenu, externalTransform,      onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition }: EditorCanvasProps,
   ref
 ) {
   // ============================================================================
@@ -1226,6 +1227,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     onItemSelect={onItemSelect}
                     closeContextMenu={closeContextMenu}
                     onConnectionDelete={onConnectionDelete}
+                    onConnectionContextMenu={onConnectionContextMenu}
                     connectionIndices={connIndices}
                     stackZIndex={connZIndex}
                   />
@@ -1250,6 +1252,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   onItemSelect={onItemSelect}
                   closeContextMenu={closeContextMenu}
                   onConnectionDelete={onConnectionDelete}
+                  onConnectionContextMenu={onConnectionContextMenu}
                   connectionIndices={new Set(lastSlot)}
                   stackZIndex={2 * n}
                 />

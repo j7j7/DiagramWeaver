@@ -1,10 +1,12 @@
 "use client";
 import React, { useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Panel, Group as PanelGroup } from 'react-resizable-panels';
 import { ComponentSidebar } from './editor/component-sidebar';
 import { EditorCanvas, type EditorCanvasHandle } from './editor/editor-canvas';
+import { ConnectionContextModal } from './editor/connection-context-modal';
 import { JsonEditorPanel } from './editor/json-editor-panel';
 import dynamic from 'next/dynamic';
 
@@ -205,6 +207,12 @@ export default function DiagramEditor() {
   const [triggerVisualStylingPanel, setTriggerVisualStylingPanel] = React.useState<boolean>(false);
   const [triggerLineStylingPanel, setTriggerLineStylingPanel] = React.useState<boolean>(false);
   const [triggerConnectionSettingsPanel, setTriggerConnectionSettingsPanel] = React.useState<boolean>(false);
+  const [connectionContextModal, setConnectionContextModal] = React.useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    connection: import('@/lib/types').DiagramConnectionData | null;
+  }>({ visible: false, x: 0, y: 0, connection: null });
   const [lastRightClickItemId, setLastRightClickItemId] = React.useState<string | null>(null);
   const [selectedResource, setSelectedResource] = React.useState<PaletteSelection | null>(null);
   const [paletteClipboardItem, setPaletteClipboardItem] = React.useState<any | null>(null);
@@ -967,6 +975,10 @@ export default function DiagramEditor() {
     handleConnectionUpdate(from, to, { waypoints: updated.length ? updated : undefined });
   };
 
+  const handleConnectionContextMenu = useCallback((e: React.MouseEvent, connection: DiagramConnectionData) => {
+    setConnectionContextModal({ visible: true, x: e.clientX, y: e.clientY, connection });
+  }, []);
+
   const handleNew = () => {
     createTab();
   };
@@ -1643,6 +1655,9 @@ export default function DiagramEditor() {
         handleConnectionWaypointAdd={handleConnectionWaypointAdd}
         handleConnectionWaypointRemove={handleConnectionWaypointRemove}
         handleConnectionWaypointMove={handleConnectionWaypointMove}
+        handleConnectionContextMenu={handleConnectionContextMenu}
+        connectionContextModal={connectionContextModal}
+        setConnectionContextModal={setConnectionContextModal}
         setDiagramData={setDiagramData}
         layers={layers}
         canvasTransform={canvasTransform}
@@ -1755,6 +1770,9 @@ function DiagramEditorInner({
   handleConnectionWaypointAdd,
   handleConnectionWaypointRemove,
   handleConnectionWaypointMove,
+  handleConnectionContextMenu,
+  connectionContextModal,
+  setConnectionContextModal,
   setDiagramData,
   layers,
   canvasTransform,
@@ -2036,6 +2054,7 @@ function DiagramEditorInner({
                         }}
                     onConnectionDelete={disconnectConnection}
                     onConnectionWaypointMove={handleConnectionWaypointMove}
+                    onConnectionContextMenu={handleConnectionContextMenu}
                     externalTransform={canvasTransform}
                      onTransformChange={setCanvasTransform}
                      onLabelUpdate={handleLabelUpdate}
@@ -2116,6 +2135,22 @@ function DiagramEditorInner({
           onOpenChange={setExportDialogOpen}
           onExport={handleExport}
         />
+        {connectionContextModal.connection && typeof window !== 'undefined' && createPortal(
+          <ConnectionContextModal
+            x={connectionContextModal.x}
+            y={connectionContextModal.y}
+            visible={connectionContextModal.visible}
+            onClose={() => setConnectionContextModal({ visible: false, x: 0, y: 0, connection: null })}
+            connection={connectionContextModal.connection}
+            diagramData={diagramData}
+            onConnectionUpdate={handleConnectionUpdate}
+            onConnectionDisconnect={disconnectConnection}
+            onConnectionWaypointAdd={handleConnectionWaypointAdd}
+            onConnectionWaypointRemove={handleConnectionWaypointRemove}
+            isReadOnly={isReadOnly}
+          />,
+          document.body
+        )}
         <ScratchPad 
           isOpen={scratchPadOpen} 
           onClose={() => setScratchPadOpen(false)} 

@@ -43,6 +43,7 @@ interface BezierConnectionProps {
   connectionColor?: string; // Specific color for this connection
   connectionData?: DiagramConnectionData; // Full connection data including text
   onClick?: (connection: DiagramConnectionData) => void; // Click handler
+  onContextMenu?: (e: React.MouseEvent, connection: DiagramConnectionData) => void;
 }
 
 interface BezierConnectionTextProps {
@@ -574,7 +575,7 @@ export function getPointOnConnectionPath(
   return getBezierPoint(localT, seg.p0x, seg.p0y, seg.cp1x, seg.cp1y, seg.cp2x, seg.cp2y, seg.p3x, seg.p3y);
 }
 
-export function BezierConnection({ from, to, connectionColor, connectionData, onClick }: BezierConnectionProps) {
+export function BezierConnection({ from, to, connectionColor, connectionData, onClick, onContextMenu }: BezierConnectionProps) {
   // Use measureNodeDims-like logic for shapes to get actual dimensions
   const isFromShape = !isIconOrEmojiType(from.type) && (from.type === 'generic.object.square' || from.type === 'generic.object.circle' ||
                         from.type === 'generic.object.point' || from.type === 'generic.object.rectangle' || from.type === 'generic.object.rounded-rectangle' || from.type === 'generic.object.triangle' ||
@@ -724,6 +725,14 @@ export function BezierConnection({ from, to, connectionColor, connectionData, on
     }
   };
 
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (onContextMenu && connectionData) {
+      onContextMenu(e, connectionData);
+    }
+  };
+
   // Use connection color first, then 'to' node, fallback to 'from' node, then default
   const finalConnectionColor = connectionColor || to.lineColor || from.lineColor || '#6b7280';
   
@@ -791,7 +800,7 @@ export function BezierConnection({ from, to, connectionColor, connectionData, on
         )}
       </defs>
       
-      <g style={{ pointerEvents: 'auto' }} onClick={handleClick}>
+      <g style={{ pointerEvents: 'auto' }} onClick={handleClick} onContextMenu={handleContextMenu}>
         <path
           d={pathData}
           stroke={finalConnectionColor}

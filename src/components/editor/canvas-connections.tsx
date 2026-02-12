@@ -16,6 +16,8 @@ interface CanvasConnectionsProps {
   onItemSelect: (item: any | null) => void;
   closeContextMenu: () => void;
   onConnectionDelete?: (from: string, to: string) => void;
+  /** Called when user right-clicks on a connection line */
+  onConnectionContextMenu?: (e: React.MouseEvent, connection: DiagramConnectionData) => void;
   /** When set, only render connections whose index is in this set (for order-aware layering) */
   connectionIndices?: Set<number>;
   /** Z-index for this connection layer when using order-aware layering (enables interleaving with nodes) */
@@ -41,6 +43,7 @@ function areCanvasConnectionsPropsEqual(prev: CanvasConnectionsProps, next: Canv
     prev.onItemSelect === next.onItemSelect &&
     prev.closeContextMenu === next.closeContextMenu &&
     prev.onConnectionDelete === next.onConnectionDelete &&
+    prev.onConnectionContextMenu === next.onConnectionContextMenu &&
     setsEqual(prev.connectionIndices, next.connectionIndices);
 }
 
@@ -55,6 +58,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     onItemSelect,
     closeContextMenu,
     onConnectionDelete,
+    onConnectionContextMenu,
     connectionIndices,
     stackZIndex,
   } = props;
@@ -371,6 +375,17 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                     id: `${connection.from}-${connection.to}`
                   });
                 }
+              }}
+              onContextMenu={(e, connection) => {
+                closeContextMenu();
+                if (onItemSelect) {
+                  onItemSelect({
+                    ...connection,
+                    itemType: 'edge',
+                    id: `${connection.from}-${connection.to}`
+                  });
+                }
+                onConnectionContextMenu?.(e, connection);
               }}
             />
           </g>

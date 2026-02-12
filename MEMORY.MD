@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-02-12)
 
+### 2026-02-12 – Connection Line Right-Click Context Modal
+Right-clicking a selected connection line opens a context modal (matches Visual Styling panel UX). Shows: Text, Color, Text Position (slider), Line Thickness, Arrow toggle, Shadow (depth effect), Disconnect, and Add/Remove waypoints. Context-aware for the specific connection. **Behavior**: Full-screen overlay with pointer-events: auto (like Visual Styling), draggable via header (react-draggable, handle=".connection-modal-drag-handle"), live connection data from diagramData so form inputs stay in sync. Click outside or Escape to close. **Components**: ConnectionContextModal (connection-context-modal.tsx), BezierConnection onContextMenu, CanvasConnections onConnectionContextMenu prop. Modified: bezier-connection.tsx, canvas-connections.tsx, editor-canvas.tsx, diagram-editor.tsx.
+
 ### 2026-02-12 – Node/Shape and Connection Line Clickability Fix
 Some nodes/shapes were unselectable because connection SVGs (full canvas size) were layered above nodes and captured clicks. **Fix**: (1) Added pointer-events-none to the connection SVG in canvas-connections.tsx so the transparent background passes clicks through to nodes below. (2) In BezierConnection, wrapped the path in a `<g style={{ pointerEvents: 'auto' }}>` with onClick so the connection line opts back into hit-testing and remains clickable—children of pointer-events-none can receive events when they set pointer-events: auto. Note: pointer-events-stroke is not a valid Tailwind class; use inline style for SVG pointer-events. Modified: canvas-connections.tsx, bezier-connection.tsx.
 
