@@ -16,6 +16,7 @@ Optional waypoints for routing connections around obstacles:
 - **Remove**: Waypoints popover lists each waypoint with X to remove
 - **Drag**: Waypoint handles (circles) appear when connection selected; drag to reposition
 - **Components**: BezierConnection uses calculateMultiPointBezierPath when waypoints exist; BezierConnectionText uses getPointOnConnectionPath for text positioning; ConnectionWaypointHandles for drag UI
+- **Edge inference**: When waypoints exist, `determineConnectionEdges` uses first waypoint vs from-node center for fromEdge and last waypoint vs to-node center for toEdge; connector exits/enters the edge closest to the waypoint (e.g. waypoint below node → bottom edge). No change to existing logic when no waypoints.
 
 ### 2026-02-12 – Connection Alignment and Node Size (Half/Quarter)
 Connection alignment and node sizing now respect `nodeSize` (normal/half/quarter) throughout editor and viewer:

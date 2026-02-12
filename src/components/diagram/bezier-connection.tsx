@@ -167,7 +167,7 @@ export function determineConnectionEdges(
   toWidth?: number,
   toHeight?: number
 ): { fromEdge: 'top' | 'bottom' | 'left' | 'right' | 'center'; toEdge: 'top' | 'bottom' | 'left' | 'right' | 'center' } {
-  // Use preferred edges if specified
+  // Use preferred edges if explicitly specified (user override)
   if (connectionData?.fromPreferredExit && connectionData?.toPreferredEntry) {
     return {
       fromEdge: connectionData.fromPreferredExit,
@@ -175,7 +175,40 @@ export function determineConnectionEdges(
     };
   }
 
-  // Auto-determine edges based on icon-only centers for icon/resource nodes.
+  // When waypoints exist, use first/last waypoint to determine which edge the connector should exit/enter
+  const waypoints = connectionData?.waypoints;
+  if (waypoints?.length) {
+    const resolvedFromWidth = fromWidth || from.width;
+    const resolvedFromHeight = fromHeight || from.height;
+    const resolvedToWidth = toWidth || to.width;
+    const resolvedToHeight = toHeight || to.height;
+    const fromCenterX = from.x + (resolvedFromWidth || 0) / 2;
+    const fromCenterY = from.y + (resolvedFromHeight || 0) / 2;
+    const toCenterX = to.x + (resolvedToWidth || 0) / 2;
+    const toCenterY = to.y + (resolvedToHeight || 0) / 2;
+
+    const firstWp = waypoints[0];
+    const lastWp = waypoints[waypoints.length - 1];
+
+    const fromDx = firstWp.x - fromCenterX;
+    const fromDy = firstWp.y - fromCenterY;
+    const toDx = lastWp.x - toCenterX;
+    const toDy = lastWp.y - toCenterY;
+
+    const fromIsHorizontal = Math.abs(fromDx) > Math.abs(fromDy);
+    const toIsHorizontal = Math.abs(toDx) > Math.abs(toDy);
+
+    const fromEdge: 'top' | 'bottom' | 'left' | 'right' = fromIsHorizontal
+      ? fromDx > 0 ? 'right' : 'left'
+      : fromDy > 0 ? 'bottom' : 'top';
+    const toEdge: 'top' | 'bottom' | 'left' | 'right' = toIsHorizontal
+      ? toDx > 0 ? 'right' : 'left'
+      : toDy > 0 ? 'bottom' : 'top';
+
+    return { fromEdge, toEdge };
+  }
+
+  // Auto-determine edges based on icon-only centers for icon/resource nodes (no waypoints).
   const resolvedFromWidth = fromWidth || from.width;
   const resolvedFromHeight = fromHeight || from.height;
   const resolvedToWidth = toWidth || to.width;

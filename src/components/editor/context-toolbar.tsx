@@ -385,6 +385,115 @@ export function ContextToolbar({
     };
   }, []);
 
+  // All hooks must run unconditionally (Rules of Hooks) - before any early returns
+  const isNode = selectedItem?.itemType === 'node';
+  const isTextNode = isNode && (selectedItem as any)?.type?.startsWith('generic.text');
+  const isTextboxNode = isNode && (selectedItem as any)?.type === 'generic.text.textbox';
+  const isPlainTextNode = isNode && (selectedItem as any)?.type === 'generic.text.text';
+  const isShapeNode = isNode && !isIconOrEmojiType((selectedItem as any)?.type) && (
+    (selectedItem as any)?.type === 'generic.object.square' ||
+    (selectedItem as any)?.type === 'generic.object.circle' ||
+    (selectedItem as any)?.type === 'generic.object.point' ||
+    (selectedItem as any)?.type === 'generic.object.rectangle' ||
+    (selectedItem as any)?.type === 'generic.object.rounded-rectangle' ||
+    (selectedItem as any)?.type === 'generic.object.triangle' ||
+    (selectedItem as any)?.type === 'generic.object.star' ||
+    (selectedItem as any)?.type === 'generic.object.cloud' ||
+    (selectedItem as any)?.type === 'generic.object.parallelogram' ||
+    (selectedItem as any)?.type === 'generic.object.trapezoid' ||
+    (selectedItem as any)?.type === 'generic.object.kite' ||
+    (selectedItem as any)?.type === 'generic.object.hexagon' ||
+    (selectedItem as any)?.type === 'generic.object.pentagon' ||
+    (selectedItem as any)?.type === 'generic.object.octagon' ||
+    (selectedItem as any)?.type === 'generic.object.jigsaw' ||
+    (selectedItem as any)?.type === 'generic.object.arrowhead' ||
+    (selectedItem as any)?.type === 'generic.object.chevron' ||
+    (selectedItem as any)?.type === 'generic.object.line' ||
+    (selectedItem as any)?.type?.endsWith('.square') ||
+    (selectedItem as any)?.type?.endsWith('.circle') ||
+    (selectedItem as any)?.type?.endsWith('.point') ||
+    (selectedItem as any)?.type?.endsWith('.rectangle') ||
+    (selectedItem as any)?.type?.endsWith('.rounded-rectangle') ||
+    (selectedItem as any)?.type?.endsWith('.triangle') ||
+    (selectedItem as any)?.type?.endsWith('.star') ||
+    (selectedItem as any)?.type?.endsWith('.cloud') ||
+    (selectedItem as any)?.type?.endsWith('.parallelogram') ||
+    (selectedItem as any)?.type?.endsWith('.trapezoid') ||
+    (selectedItem as any)?.type?.endsWith('.kite') ||
+    (selectedItem as any)?.type?.endsWith('.hexagon') ||
+    (selectedItem as any)?.type?.endsWith('.pentagon') ||
+    (selectedItem as any)?.type?.endsWith('.octagon') ||
+    (selectedItem as any)?.type?.endsWith('.jigsaw') ||
+    (selectedItem as any)?.type?.endsWith('.arrowhead') ||
+    (selectedItem as any)?.type?.endsWith('.chevron') ||
+    (selectedItem as any)?.type?.endsWith('.line')
+  );
+  const isLineNode = isNode && ((selectedItem as any)?.type === 'generic.object.line' || (selectedItem as any)?.type?.endsWith('.line'));
+
+  const getCurrentTextStyling = useMemo(() => {
+    if (!selectedItem || !diagramData) return {};
+    let currentItem = selectedItem;
+    if (selectedItemIds && selectedItemIds.size > 1) {
+      if (isNode) {
+        const foundNode = diagramData.nodes.find(n => n.id === selectedItem.id);
+        currentItem = foundNode ? { ...foundNode, itemType: 'node' as const } : selectedItem;
+      }
+    }
+    if (isNode) {
+      return extractTextStylingFromNode(currentItem as any);
+    }
+    return {};
+  }, [selectedItem, isNode, selectedItemIds, diagramData]);
+
+  const getCurrentVisualStyling = useMemo(() => {
+    if (!selectedItem || !diagramData) return {};
+    let currentItem = selectedItem;
+    if (selectedItemIds && selectedItemIds.size > 1) {
+      if (isNode) {
+        const foundNode = diagramData.nodes.find(n => n.id === selectedItem.id);
+        currentItem = foundNode ? { ...foundNode, itemType: 'node' as const } : selectedItem;
+      }
+    }
+    if (isNode) {
+      return extractVisualStylingFromNode(currentItem as any);
+    }
+    return {};
+  }, [selectedItem, isNode, selectedItemIds, diagramData]);
+
+  const getCurrentLineStyling = useMemo(() => {
+    if (!selectedItem || !diagramData) return {};
+    if (!isNode || !isLineNode) return {};
+    let currentItem = selectedItem;
+    if (selectedItemIds && selectedItemIds.size > 1) {
+      const foundNode = diagramData.nodes.find(n => n.id === selectedItem.id);
+      currentItem = foundNode ? { ...foundNode, itemType: 'node' as const } : selectedItem;
+    }
+    return extractLineStylingFromNode(currentItem as any);
+  }, [selectedItem, isNode, isLineNode, selectedItemIds, diagramData]);
+
+  const getAllConnections = useMemo(() => {
+    if (!selectedItem || !diagramData) return [];
+    const itemId = selectedItem.id;
+    const nodesById = new Map(diagramData.nodes.map(n => [n.id, n]));
+    const zonesById = new Map((diagramData.zones || []).map(zone => [zone.id, zone]));
+    const allConnections = (diagramData.connections || []).filter((edge: any) =>
+      edge.from === itemId || edge.to === itemId
+    ).map((edge: any) => {
+      const isOutgoing = edge.from === itemId;
+      const targetId = isOutgoing ? edge.to : edge.from;
+      const targetItem = nodesById.get(targetId) || zonesById.get(targetId);
+      const targetLabel = targetItem?.label || targetId;
+      return {
+        connection: edge,
+        targetId,
+        targetLabel,
+        isOutgoing,
+        direction: isOutgoing ? '→' : '←'
+      };
+    });
+    return allConnections;
+  }, [selectedItem, diagramData]);
+
   if (!selectedItem) {
     return null;
   }
@@ -1007,136 +1116,9 @@ export function ContextToolbar({
     setDragOverIndex(null);
   };
 
-  const isNode = selectedItem.itemType === 'node';
-
-  const getCurrentTextStyling = useMemo(() => {
-    if (!selectedItem || !diagramData) return {};
-    
-    // In multi-select scenarios, get fresh data from diagramData to avoid stale references
-    let currentItem = selectedItem;
-    if (selectedItemIds && selectedItemIds.size > 1) {
-      // Find the current version of the selected item in diagramData
-      if (isNode) {
-        const foundNode = diagramData.nodes.find(n => n.id === selectedItem.id);
-        currentItem = foundNode ? { ...foundNode, itemType: 'node' as const } : selectedItem;
-      }
-    }
-    
-    if (isNode) {
-      return extractTextStylingFromNode(currentItem as any);
-    }
-    return {};
-  }, [selectedItem, isNode, selectedItemIds, diagramData]);
-
-  const getCurrentVisualStyling = useMemo(() => {
-    if (!selectedItem || !diagramData) return {};
-    
-    // In multi-select scenarios, get fresh data from diagramData to avoid stale references
-    let currentItem = selectedItem;
-    if (selectedItemIds && selectedItemIds.size > 1) {
-      // Find the current version of the selected item in diagramData
-      if (isNode) {
-        const foundNode = diagramData.nodes.find(n => n.id === selectedItem.id);
-        currentItem = foundNode ? { ...foundNode, itemType: 'node' as const } : selectedItem;
-      }
-    }
-    
-    if (isNode) {
-      return extractVisualStylingFromNode(currentItem as any);
-    }
-    return {};
-  }, [selectedItem, isNode, selectedItemIds, diagramData]);
-  const isTextNode = isNode && selectedItem.type?.startsWith('generic.text');
-  const isTextboxNode = isNode && selectedItem.type === 'generic.text.textbox';
-  const isPlainTextNode = isNode && selectedItem.type === 'generic.text.text';
-    const isShapeNode = isNode && !isIconOrEmojiType(selectedItem.type) && (selectedItem.type === 'generic.object.square' ||
-                                   selectedItem.type === 'generic.object.circle' ||
-                                   selectedItem.type === 'generic.object.point' ||
-                                   selectedItem.type === 'generic.object.rectangle' ||
-                                   selectedItem.type === 'generic.object.rounded-rectangle' ||
-                                   selectedItem.type === 'generic.object.triangle' ||
-                                   selectedItem.type === 'generic.object.star' ||
-                                   selectedItem.type === 'generic.object.cloud' ||
-                                   selectedItem.type === 'generic.object.parallelogram' ||
-                                   selectedItem.type === 'generic.object.trapezoid' ||
-                                   selectedItem.type === 'generic.object.kite' ||
-                                   selectedItem.type === 'generic.object.hexagon' ||
-                                   selectedItem.type === 'generic.object.pentagon' ||
-                                   selectedItem.type === 'generic.object.octagon' ||
-                                   selectedItem.type === 'generic.object.jigsaw' ||
-                                   selectedItem.type === 'generic.object.arrowhead' ||
-                                   selectedItem.type === 'generic.object.chevron' ||
-                                   selectedItem.type === 'generic.object.line' ||
-                                   selectedItem.type?.endsWith('.square') ||
-                                   selectedItem.type?.endsWith('.circle') ||
-                                   selectedItem.type?.endsWith('.point') ||
-                                   selectedItem.type?.endsWith('.rectangle') ||
-                                   selectedItem.type?.endsWith('.rounded-rectangle') ||
-                                   selectedItem.type?.endsWith('.triangle') ||
-                                   selectedItem.type?.endsWith('.star') ||
-                                   selectedItem.type?.endsWith('.cloud') ||
-                                   selectedItem.type?.endsWith('.parallelogram') ||
-                                   selectedItem.type?.endsWith('.trapezoid') ||
-                                   selectedItem.type?.endsWith('.kite') ||
-                                   selectedItem.type?.endsWith('.hexagon') ||
-                                   selectedItem.type?.endsWith('.pentagon') ||
-                                   selectedItem.type?.endsWith('.octagon') ||
-                                   selectedItem.type?.endsWith('.jigsaw') ||
-                                   selectedItem.type?.endsWith('.arrowhead') ||
-                                   selectedItem.type?.endsWith('.chevron') ||
-                                   selectedItem.type?.endsWith('.line'));
-    const isLineNode = isNode && (selectedItem.type === 'generic.object.line' || selectedItem.type?.endsWith('.line'));
-
-  const getCurrentLineStyling = useMemo(() => {
-    if (!selectedItem || !diagramData) return {};
-    
-    // Only for line nodes
-    if (!isNode || !isLineNode) return {};
-    
-    // In multi-select scenarios, get fresh data from diagramData to avoid stale references
-    let currentItem = selectedItem;
-    if (selectedItemIds && selectedItemIds.size > 1) {
-      const foundNode = diagramData.nodes.find(n => n.id === selectedItem.id);
-      currentItem = foundNode ? { ...foundNode, itemType: 'node' as const } : selectedItem;
-    }
-    
-    return extractLineStylingFromNode(currentItem as any);
-  }, [selectedItem, isNode, isLineNode, selectedItemIds, diagramData]);
-  
-
   const isLabelOrTextbox = isTextboxNode;
   // Text type nodes that should hide certain controls
   const isTextTypeNode = isTextNode; // includes all generic.text nodes
-
-  // Get all connections for the selected node/zone
-  const getAllConnections = useMemo(() => {
-    if (!selectedItem || !diagramData) {
-      return [];
-    }
-
-    const itemId = selectedItem.id;
-    const nodesById = new Map(diagramData.nodes.map(n => [n.id, n]));
-    const zonesById = new Map((diagramData.zones || []).map(zone => [zone.id, zone]));
-
-    const allConnections = (diagramData.connections || []).filter((edge: any) => 
-      edge.from === itemId || edge.to === itemId
-    ).map((edge: any) => {
-      const isOutgoing = edge.from === itemId;
-      const targetId = isOutgoing ? edge.to : edge.from;
-      const targetItem = nodesById.get(targetId) || zonesById.get(targetId);
-      const targetLabel = targetItem?.label || targetId;
-      
-      return {
-        connection: edge,
-        targetId,
-        targetLabel,
-        isOutgoing,
-        direction: isOutgoing ? '→' : '←'
-      };
-    });
-
-    return allConnections;
-  }, [selectedItem, diagramData]);
 
   return (
     <TooltipProvider>
