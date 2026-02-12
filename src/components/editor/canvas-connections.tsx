@@ -21,19 +21,42 @@ interface CanvasConnectionsProps {
   stackZIndex?: number;
 }
 
-export function CanvasConnections({
-  width,
-  height,
-  diagramData,
-  nodesById,
-  zonesById,
-  selectedItemId,
-  onItemSelect,
-  closeContextMenu,
-  onConnectionDelete,
-  connectionIndices,
-  stackZIndex,
-}: CanvasConnectionsProps) {
+function setsEqual(a: Set<number> | undefined, b: Set<number> | undefined): boolean {
+  if (a === b) return true;
+  if (!a || !b) return a === b;
+  if (a.size !== b.size) return false;
+  for (const v of a) if (!b.has(v)) return false;
+  return true;
+}
+
+function areCanvasConnectionsPropsEqual(prev: CanvasConnectionsProps, next: CanvasConnectionsProps): boolean {
+  return prev.width === next.width &&
+    prev.height === next.height &&
+    prev.selectedItemId === next.selectedItemId &&
+    prev.stackZIndex === next.stackZIndex &&
+    prev.diagramData === next.diagramData &&
+    prev.nodesById === next.nodesById &&
+    prev.zonesById === next.zonesById &&
+    prev.onItemSelect === next.onItemSelect &&
+    prev.closeContextMenu === next.closeContextMenu &&
+    prev.onConnectionDelete === next.onConnectionDelete &&
+    setsEqual(prev.connectionIndices, next.connectionIndices);
+}
+
+function CanvasConnectionsInner(props: CanvasConnectionsProps) {
+  const {
+    width,
+    height,
+    diagramData,
+    nodesById,
+    zonesById,
+    selectedItemId,
+    onItemSelect,
+    closeContextMenu,
+    onConnectionDelete,
+    connectionIndices,
+    stackZIndex,
+  } = props;
   // Pre-calculate edge information for all connections
   const connectionEdgeInfo = new Map<string, { fromEdge: string; toEdge: string }>();
   const edgeGroups = new Map<string, any[]>();
@@ -542,4 +565,6 @@ export function CanvasConnections({
     </>
   );
 }
+
+export const CanvasConnections = React.memo(CanvasConnectionsInner, areCanvasConnectionsPropsEqual);
 

@@ -23,14 +23,24 @@ interface CanvasArrowTogglesProps {
   isReadOnly?: boolean;
 }
 
-export function CanvasArrowToggles({
-  selectedItemId,
-  diagramData,
-  nodesById,
-  zonesById,
-  setDiagramData,
-  isReadOnly = false,
-}: CanvasArrowTogglesProps) {
+function areCanvasArrowTogglesPropsEqual(prev: CanvasArrowTogglesProps, next: CanvasArrowTogglesProps): boolean {
+  return prev.selectedItemId === next.selectedItemId &&
+    prev.diagramData === next.diagramData &&
+    prev.nodesById === next.nodesById &&
+    prev.zonesById === next.zonesById &&
+    prev.setDiagramData === next.setDiagramData &&
+    prev.isReadOnly === next.isReadOnly;
+}
+
+function CanvasArrowTogglesInner(props: CanvasArrowTogglesProps) {
+  const {
+    selectedItemId,
+    diagramData,
+    nodesById,
+    zonesById,
+    setDiagramData,
+    isReadOnly = false,
+  } = props;
   if (!selectedItemId) return null;
 
   // Reuse the same edge calculation that was used for rendering connections
@@ -372,4 +382,6 @@ export function CanvasArrowToggles({
     </>
   );
 }
+
+export const CanvasArrowToggles = React.memo(CanvasArrowTogglesInner, areCanvasArrowTogglesPropsEqual);
 

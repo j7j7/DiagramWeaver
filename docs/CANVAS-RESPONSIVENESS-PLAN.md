@@ -12,10 +12,10 @@ Optimizations to implement one at a time. Build → test → move to next.
 | 2 | Throttle drag position updates | ☑ |
 | 3 | Memoize DiagramNode | ☑ |
 | 4 | Stabilize callback references in editor-canvas | ☑ |
-| 5 | Memoize CanvasConnections | ☐ |
-| 6 | Memoize CanvasArrowToggles | ☐ |
-| 7 | Memoize CanvasConnectionText | ☐ |
-| 8 | Use React.startTransition for label updates | ☐ |
+| 5 | Memoize CanvasConnections | ☑ |
+| 6 | Memoize CanvasArrowToggles | ☑ |
+| 7 | Memoize CanvasConnectionText | ☑ |
+| 8 | Use React.startTransition for label updates | ☑ |
 | 9 | Throttle alignment guide calculation | ☐ |
 | 10 | Memoize layout / connection slots | ☐ |
 | 11 | Selection animation: reduce update rate | ☐ |

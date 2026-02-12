@@ -560,19 +560,21 @@ export default function DiagramEditor() {
   }
 
   const handleLabelUpdate = (nodeId: string, newLabel: string, richLabel?: import("@/lib/types").RichTextRun[]) => {
-    setDiagramData(prevData => ({
-      ...prevData,
-      nodes: prevData.nodes.map(n =>
-        n.id === nodeId
-          ? { ...n, label: newLabel, richLabel: richLabel ?? undefined }
-          : n
-      ),
-    }));
+    React.startTransition(() => {
+      setDiagramData(prevData => ({
+        ...prevData,
+        nodes: prevData.nodes.map(n =>
+          n.id === nodeId
+            ? { ...n, label: newLabel, richLabel: richLabel ?? undefined }
+            : n
+        ),
+      }));
 
-    // Also update the selected item if it's the one being edited
-    if (selectedItem?.id === nodeId && selectedItem.itemType === 'node') {
-      setSelectedItem({ ...selectedItem, label: newLabel });
-    }
+      // Also update the selected item if it's the one being edited
+      if (selectedItem?.id === nodeId && selectedItem.itemType === 'node') {
+        setSelectedItem({ ...selectedItem, label: newLabel });
+      }
+    });
   }
 
   const handleTagUpdate = (nodeId: string, newTag: string) => {

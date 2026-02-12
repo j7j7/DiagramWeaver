@@ -13,14 +13,17 @@ interface CanvasConnectionTextProps {
   processedZones: PositionedGroup[];
 }
 
-export function CanvasConnectionText({
-  width,
-  height,
-  diagramData,
-  nodesById,
-  zonesById,
-  processedZones,
-}: CanvasConnectionTextProps) {
+function areCanvasConnectionTextPropsEqual(prev: CanvasConnectionTextProps, next: CanvasConnectionTextProps): boolean {
+  return prev.width === next.width &&
+    prev.height === next.height &&
+    prev.diagramData === next.diagramData &&
+    prev.nodesById === next.nodesById &&
+    prev.zonesById === next.zonesById &&
+    prev.processedZones === next.processedZones;
+}
+
+function CanvasConnectionTextInner(props: CanvasConnectionTextProps) {
+  const { width, height, diagramData, nodesById, zonesById, processedZones } = props;
   return (
     <svg
       width={width}
@@ -72,4 +75,6 @@ export function CanvasConnectionText({
     </svg>
   );
 }
+
+export const CanvasConnectionText = React.memo(CanvasConnectionTextInner, areCanvasConnectionTextPropsEqual);
 
