@@ -12,6 +12,9 @@ interface ShapeWrapperProps {
   children?: React.ReactNode;
   defaultWidth?: number;
   defaultHeight?: number;
+  /** Override dimensions during resize for instant visual feedback */
+  overrideWidth?: number;
+  overrideHeight?: number;
   borderRadius?: string;
   useSvgShadow?: boolean;
   skipWrapperStyling?: boolean; // When true, skip border/background styling on wrapper (for SVG shapes)
@@ -39,6 +42,8 @@ export function ShapeWrapper({
   children,
   defaultWidth = 60,
   defaultHeight = 60,
+  overrideWidth,
+  overrideHeight,
   borderRadius,
   useSvgShadow = false,
   skipWrapperStyling = false,
@@ -63,8 +68,8 @@ export function ShapeWrapper({
   const scale = getNodeSizeMultiplier(nodeAny.nodeSize);
   const baseWidth = node.width ?? defaultWidth;
   const baseHeight = node.height ?? defaultHeight;
-  const width = node.width != null ? node.width : Math.round(baseWidth * scale);
-  const height = node.height != null ? node.height : Math.round(baseHeight * scale);
+  const width = overrideWidth ?? (node.width != null ? node.width : Math.round(baseWidth * scale));
+  const height = overrideHeight ?? (node.height != null ? node.height : Math.round(baseHeight * scale));
   const roundedEdges = nodeAny.roundedEdges || false;
 
   // Skip border/background styling when skipWrapperStyling is true (for SVG shapes)

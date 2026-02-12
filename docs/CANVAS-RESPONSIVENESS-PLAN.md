@@ -19,8 +19,8 @@ Optimizations to implement one at a time. Build → test → move to next.
 | 9 | Throttle alignment guide calculation | ☐ (reverted: RAF+setState caused infinite loop)
 | 10 | Memoize layout / connection slots | ☑ |
 | 11 | Selection animation: reduce update rate | ☐ |
-| 12 | Memoize layers getFilteredDiagramData | ☐ |
-| 13 | Throttle resize updates (text/shapes) | ☐ |
+| 12 | Memoize layers getFilteredDiagramData | ☑ |
+| 13 | Throttle resize updates (text/shapes) | ☑ |
 
 ---
 
@@ -160,17 +160,19 @@ Optimizations to implement one at a time. Build → test → move to next.
 
 ---
 
-## 13. Throttle resize updates (text/shapes)
+## 13. Resize responsiveness (text/shapes) ✅
 
-**Problem**: When resizing text nodes or shapes via drag handles, responsiveness is slow. Each pointer move during resize calls `onResize` → `handleNodeResize` → `resizeNode`/`resizeMultipleNodes` → `setDiagramData`, causing full diagram re-render on every mouse move.
+**Problem**: When resizing text nodes or shapes via drag handles, responsiveness was slow. RAF throttling (previous approach) delayed visual updates until next frame and still caused parent re-renders.
 
-**Files**: `src/components/diagram/diagram-node.tsx`, `src/components/diagram/resize-handles.tsx` (if used), `src/components/editor/editor-canvas.tsx`
+**Solution (implemented)**: Local optimistic state during resize. `resizeDimensions` state in diagram-node updates on every mouse move; container and shapes use these for instant visual feedback. `onResize` is called only on resize end, so no parent/diagram updates during drag.
 
-**Tasks**:
-- Throttle resize position updates with `requestAnimationFrame` (same pattern as drag in Optimization 2)
-- In `handleResizeMove` (diagram-node): compute new dimensions, store in ref; schedule RAF to call `onResize` at most once per frame
-- Alternative: use local/optimistic width/height state during resize; commit to `onResize` only on pointer up (defer updates until resize end)
-- Ensure final dimensions are correct on resize end; cancel any pending RAF on end
+**Files**: `src/components/diagram/diagram-node.tsx`, `src/components/diagram/shapes/shape-wrapper.tsx`, `src/components/diagram/shapes/svg-shape-base.tsx`
+
+**Changes**:
+- Added `resizeDimensions: { width, height } | null` state; `displayWidth`/`displayHeight` computed from it when set
+- Container style uses `displayWidth`/`displayHeight` when resizing
+- ShapeWrapper and SvgShapeBase accept `overrideWidth`/`overrideHeight` for instant shape resize
+- `handleResizeMove` calls `setResizeDimensions` on every move; `handleResizeEnd` flushes to `onResize` and clears
 
 ---
 

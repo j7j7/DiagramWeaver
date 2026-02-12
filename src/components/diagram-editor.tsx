@@ -1956,7 +1956,7 @@ function DiagramEditorInner({
                 <EditorCanvas 
                     key={canvasRefreshKey}
                     ref={editorRef}
-                    diagramData={layers.getFilteredDiagramData()} 
+                    diagramData={layers.filteredDiagramData} 
                     setDiagramData={setDiagramData}
                     onItemSelect={handleItemSelect}
                     onBatchSelect={handleBatchSelect}

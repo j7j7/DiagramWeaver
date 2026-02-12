@@ -12,6 +12,8 @@ interface SvgShapeBaseProps {
   svgContent: React.ReactNode;
   defaultWidth?: number;
   defaultHeight?: number;
+  overrideWidth?: number;
+  overrideHeight?: number;
   tag?: string;
   tagPosition?: string;
   isEditingTag: boolean;
@@ -35,14 +37,16 @@ export function SvgShapeBase({
   svgContent,
   defaultWidth = 60,
   defaultHeight = 60,
+  overrideWidth,
+  overrideHeight,
   ...rest
 }: SvgShapeBaseProps) {
   const nodeAny = node as any;
   const scale = getNodeSizeMultiplier(nodeAny.nodeSize);
   const baseWidth = node.width ?? defaultWidth;
   const baseHeight = node.height ?? defaultHeight;
-  const width = node.width != null ? node.width : Math.round(baseWidth * scale);
-  const height = node.height != null ? node.height : Math.round(baseHeight * scale);
+  const width = overrideWidth ?? (node.width != null ? node.width : Math.round(baseWidth * scale));
+  const height = overrideHeight ?? (node.height != null ? node.height : Math.round(baseHeight * scale));
   const styles = getShapeStyles(node);
 
   return (
@@ -50,6 +54,8 @@ export function SvgShapeBase({
       node={node}
       defaultWidth={defaultWidth}
       defaultHeight={defaultHeight}
+      overrideWidth={overrideWidth}
+      overrideHeight={overrideHeight}
       useSvgShadow={styles.shadow}
       skipWrapperStyling={true}
       {...rest}

@@ -233,6 +233,9 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
   const [isHovered, setIsHovered] = useState(false);
   const resizeStartPos = useRef<{ x: number; y: number; startWidth: number; startHeight: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Local dimensions during resize for instant visual feedback (no parent update until end)
+  const [resizeDimensions, setResizeDimensions] = useState<{ width: number; height: number } | null>(null);
+  const latestResizeDimensionsRef = useRef<{ width: number; height: number } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
   
@@ -359,6 +362,8 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     const nodeAny = node as any;
     const shapeProps = {
       node,
+      overrideWidth: typeof displayWidth === 'number' ? displayWidth : undefined,
+      overrideHeight: typeof displayHeight === 'number' ? displayHeight : undefined,
       tag: nodeAny.tag,
       tagPosition: nodeAny.tagPosition,
       isEditingTag,
@@ -525,6 +530,17 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
   const nodeHeight = calculateNodeHeight(node.label || '', node.type, node.sizeMode, node.height);
   const iconNodeDims = isIconNode ? measureNodeDims(node as any) : null;
   const rotation = (node as any).rotation || 0;
+  // During resize, use local dimensions for instant visual feedback
+  const displayWidth = resizeDimensions ? resizeDimensions.width : (
+    isShapeNode ? (node.width || 60) :
+    (isRotatableNode || isTextboxNode) ? (node.sizeMode === 'custom' && node.width ? node.width : undefined) :
+    undefined
+  );
+  const displayHeight = resizeDimensions ? resizeDimensions.height : (
+    isShapeNode ? (node.height || 60) :
+    (isTextboxNode && node.sizeMode === 'custom') ? (node.height || 40) :
+    undefined
+  );
   const isLocked = node.locked || false;
   
   const [{ isDragging }, drag, preview] = useDrag(() => ({
@@ -593,15 +609,18 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
   };
 
   const handleResizeMove = (e: React.MouseEvent) => {
-    if (!isResizing || !resizeStartPos.current || !resizeHandle || !onResize) return;
+    if (!isResizing || !resizeStartPos.current || !resizeHandle) return;
     
-    const deltaX = e.clientX - resizeStartPos.current.x;
-    const deltaY = e.clientY - resizeStartPos.current.y;
+    let deltaX = e.clientX - resizeStartPos.current.x;
+    let deltaY = e.clientY - resizeStartPos.current.y;
+    if (transform) {
+      deltaX = deltaX / transform.k;
+      deltaY = deltaY / transform.k;
+    }
     
     let newWidth = resizeStartPos.current.startWidth;
     let newHeight = resizeStartPos.current.startHeight;
     
-    // Calculate minimum size based on node type
     const minWidth = isTextboxNode ? 40 : isShapeNode ? 20 : 80;
     const minHeight = isTextboxNode ? 40 : isShapeNode ? 20 : 40;
     
@@ -613,27 +632,33 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
         newHeight = resizeStartPos.current.startHeight + deltaY;
         break;
       case 'bottom-right':
-        // Dragging bottom-right corner - increase both width and height
         newWidth = resizeStartPos.current.startWidth + deltaX;
         newHeight = resizeStartPos.current.startHeight + deltaY;
         break;
     }
     
-    // Snap dimensions to grid so right/bottom edges tessellate correctly
     newWidth = snapDimensionToGrid(newWidth, minWidth);
     newHeight = snapDimensionToGrid(newHeight, minHeight);
     
-    onResize(node.id, newWidth, newHeight);
+    const dims = { width: newWidth, height: newHeight };
+    latestResizeDimensionsRef.current = dims;
+    setResizeDimensions(dims);
   };
 
   const handleResizeEnd = () => {
+    const dimensions = latestResizeDimensionsRef.current ?? resizeStartPos.current;
+    latestResizeDimensionsRef.current = null;
+    setResizeDimensions(null);
     setIsResizing(false);
     setResizeHandle(null);
     resizeStartPos.current = null;
-    // Clear original dimensions used for multi-resize
     delete (node as any).originalWidth;
     delete (node as any).originalHeight;
-    // Notify parent to clear original dimensions
+    if (dimensions && onResize) {
+      const w = 'width' in dimensions ? dimensions.width : dimensions.startWidth;
+      const h = 'height' in dimensions ? dimensions.height : dimensions.startHeight;
+      onResize(node.id, w, h);
+    }
     if (onResizeEnd) {
       onResizeEnd();
     }
@@ -778,7 +803,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
   useEffect(() => {
     if (isResizing) {
       const handleGlobalMouseMove = (e: MouseEvent) => {
-        if (!isResizing || !resizeStartPos.current || !resizeHandle || !onResize) return;
+        if (!resizeStartPos.current || !resizeHandle) return;
         handleResizeMove(e as any);
       };
       
@@ -796,7 +821,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
         document.removeEventListener('mouseup', handleGlobalMouseUp, true);
       };
     }
-  }, [isResizing, resizeHandle, node.id, onResize]);
+  }, [isResizing, resizeHandle, node.id]);
   
   // Global mouse events for line endpoint dragging
   useEffect(() => {
@@ -969,11 +994,11 @@ return (
         top: isLineNode && isDraggingLineEndpoint && initialContainerPosRef.current
           ? initialContainerPosRef.current.y + animationOffset.y
           : node.y + animationOffset.y,
-         width: isLineNode ? 'auto' : // Lines don't need a fixed width container
+         width: isLineNode ? 'auto' : (typeof displayWidth === 'number' ? displayWidth :
                 (isShapeNode ? (node.width || 60) :
                 (isRotatableNode || isTextboxNode ? 
                  (node.sizeMode === 'custom' && node.width ? node.width : 'auto') : 
-                 (iconNodeDims ? iconNodeDims.width : NODE_WIDTH))),
+                 (iconNodeDims ? iconNodeDims.width : NODE_WIDTH)))),
          minWidth: isLineNode ? 0 : // Lines don't need min width
                    (isShapeNode ? (node.width || 60) :
                     isTextboxNode ? 40 :
@@ -982,10 +1007,10 @@ return (
                    (isShapeNode ? (node.width || 60) :
                     isTextboxNode ? (node.sizeMode === 'custom' ? 'none' : 400) :
                    isRotatableNode ? 200 : (isIconNode ? 400 : NODE_WIDTH)),
-         height: isLineNode ? 'auto' : // Lines don't need a fixed height container
+         height: isLineNode ? 'auto' : (typeof displayHeight === 'number' ? displayHeight :
                  (isShapeNode ? (node.height || 60) :
                  isTextboxNode && node.sizeMode === 'custom' ? (node.height || 40) :
-                 (isRotatableNode || isTextboxNode) ? nodeHeight : (iconNodeDims ? iconNodeDims.height : 'auto')),
+                 (isRotatableNode || isTextboxNode) ? nodeHeight : (iconNodeDims ? iconNodeDims.height : 'auto'))),
         touchAction: 'none',
         transform: rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
         transformOrigin: 'center',
@@ -1121,8 +1146,9 @@ return (
                 })()
              ) : isShapeNode ? (
               // Shape node - render pure shape with text in different positions (resizable)
-                <div className="flex flex-col items-center justify-center h-full w-full relative">
-                  <div className="flex items-center justify-center" style={{ width: '100%', height: '100%' }}>
+              // Use justify-start/items-start so resize extends right/down from fixed top-left (like textbox)
+                <div className="flex flex-col items-start justify-start h-full w-full relative">
+                  <div className="flex items-start justify-start" style={{ width: '100%', height: '100%' }}>
                     {renderShape()}
                   </div>
                 </div>

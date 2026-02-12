@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import type { DiagramData, LayersConfig, LayerInfo, DiagramNodeData, DiagramZoneData } from '@/lib/types';
 import { 
   getDefaultLayersConfig, 
@@ -293,10 +293,13 @@ export function useLayers({ diagramData, setDiagramData, toast }: UseLayersOptio
     }
   }, [diagramData, setDiagramData, toast]);
 
-  // Filter diagram data by visible layers
-  const getFilteredDiagramData = useCallback(() => {
-    return filterByVisibleLayers(diagramData);
-  }, [diagramData]);
+  // Filter diagram data by visible layers (memoized to avoid new object on every render)
+  const filteredDiagramData = useMemo(
+    () => filterByVisibleLayers(diagramData),
+    [diagramData]
+  );
+
+  const getFilteredDiagramData = useCallback(() => filteredDiagramData, [filteredDiagramData]);
 
   // Update active layer based on selected items
   const updateActiveLayerFromSelection = useCallback((itemIds: Set<string>) => {
@@ -377,6 +380,7 @@ export function useLayers({ diagramData, setDiagramData, toast }: UseLayersOptio
     
     // Data operations
     getFilteredDiagramData,
+    filteredDiagramData,
     migrateLegacy,
     
     // UI
