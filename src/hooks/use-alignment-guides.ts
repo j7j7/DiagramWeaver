@@ -253,128 +253,83 @@ export function useAlignmentGuides({
   const guides = useMemo(() => {
     if (!enabled) return [];
 
-    // Determine which items are being dragged
     const isDragging = draggedItemId !== null || draggedItemIds.size > 0;
     if (!isDragging) return [];
 
-    // Calculate bounding box for dragged item(s)
     let draggedBox: BoundingBox | null = null;
 
     if (draggedItemIds.size > 1) {
-      // Multi-select: calculate union bounding box
       const draggedBoxes: BoundingBox[] = [];
-      
       draggedItemIds.forEach(id => {
         const node = displayNodesById[id];
         if (node) {
           draggedBoxes.push(calculateNodeBoundingBox(node));
         } else {
           const zone = displayZonesById[id];
-          if (zone) {
-            draggedBoxes.push(calculateZoneBoundingBox(zone));
-          }
+          if (zone) draggedBoxes.push(calculateZoneBoundingBox(zone));
         }
       });
-
       draggedBox = calculateUnionBoundingBox(draggedBoxes);
     } else if (draggedItemId) {
-      // Single item drag
       const node = displayNodesById[draggedItemId];
       if (node) {
         draggedBox = calculateNodeBoundingBox(node);
       } else {
         const zone = displayZonesById[draggedItemId];
-        if (zone) {
-          draggedBox = calculateZoneBoundingBox(zone);
-        }
+        if (zone) draggedBox = calculateZoneBoundingBox(zone);
       }
     }
 
     if (!draggedBox) return [];
 
-    // Collect all reference items (exclude dragged items)
-    // Apply viewport culling and spatial partitioning for performance
     const referenceBoxes: Array<{ box: BoundingBox; id: string }> = [];
 
-    // Add nodes as reference items
     Object.entries(displayNodesById).forEach(([id, node]) => {
-      if (draggedItemId === id || draggedItemIds.has(id)) return; // Skip dragged items
-      if (node.locked) return; // Skip locked items (optional, but good UX)
-      
+      if (draggedItemId === id || draggedItemIds.has(id)) return;
+      if (node.locked) return;
       const box = calculateNodeBoundingBox(node);
-      
-      // Viewport culling: skip items outside viewport (with margin)
       if (!isInViewport(box, transform)) return;
-      
-      // Spatial partitioning: only check items within reasonable distance
-      if (isWithinCheckDistance(draggedBox!, box)) {
-        referenceBoxes.push({ box, id });
-      }
+      if (isWithinCheckDistance(draggedBox!, box)) referenceBoxes.push({ box, id });
     });
 
-    // Add zones as reference items
     Object.entries(displayZonesById).forEach(([id, zone]) => {
-      if (draggedItemId === id || draggedItemIds.has(id)) return; // Skip dragged items
-      
+      if (draggedItemId === id || draggedItemIds.has(id)) return;
       const box = calculateZoneBoundingBox(zone);
-      
-      // Viewport culling: skip items outside viewport (with margin)
       if (!isInViewport(box, transform)) return;
-      
-      // Spatial partitioning: only check items within reasonable distance
-      if (isWithinCheckDistance(draggedBox!, box)) {
-        referenceBoxes.push({ box, id });
-      }
+      if (isWithinCheckDistance(draggedBox!, box)) referenceBoxes.push({ box, id });
     });
 
-    // Detect alignments with all reference items
     const allGuides: AlignmentGuide[] = [];
-    
     referenceBoxes.forEach(({ box, id }) => {
-      const detectedGuides = detectAlignments(draggedBox!, box, id);
-      allGuides.push(...detectedGuides);
+      allGuides.push(...detectAlignments(draggedBox!, box, id));
     });
 
-    // Prioritize and filter guides
-    // 1. Prioritize center alignments over edge alignments
-    // 2. For same axis, keep only the most relevant (closest) guide
     const horizontalGuides: AlignmentGuide[] = [];
     const verticalGuides: AlignmentGuide[] = [];
-
     allGuides.forEach(guide => {
-      if (guide.type === 'horizontal') {
-        horizontalGuides.push(guide);
-      } else {
-        verticalGuides.push(guide);
-      }
+      if (guide.type === 'horizontal') horizontalGuides.push(guide);
+      else verticalGuides.push(guide);
     });
 
-    // Sort guides by priority (center > edges) and distance
-    const prioritizeGuides = (guides: AlignmentGuide[]): AlignmentGuide[] => {
-      return guides
+    const prioritizeGuides = (guides: AlignmentGuide[]): AlignmentGuide[] =>
+      guides
         .sort((a, b) => {
-          // Center alignments first
           if (a.alignmentType === 'center' && b.alignmentType !== 'center') return -1;
           if (a.alignmentType !== 'center' && b.alignmentType === 'center') return 1;
-          // Then by distance from dragged item center
           const distA = Math.abs(a.position - (a.type === 'horizontal' ? draggedBox!.centerY : draggedBox!.centerX));
           const distB = Math.abs(b.position - (b.type === 'horizontal' ? draggedBox!.centerY : draggedBox!.centerX));
           return distA - distB;
         })
-        .slice(0, 2); // Limit to 2 guides per axis (max 4 total)
-    };
+        .slice(0, 2);
 
-    const prioritizedHorizontal = prioritizeGuides(horizontalGuides);
-    const prioritizedVertical = prioritizeGuides(verticalGuides);
-
-    return [...prioritizedHorizontal, ...prioritizedVertical];
+    return [...prioritizeGuides(horizontalGuides), ...prioritizeGuides(verticalGuides)];
   }, [
     enabled,
     draggedItemId,
     draggedItemIds,
     displayNodesById,
     displayZonesById,
-    transform.k, // Include zoom in deps to recalculate when zoom changes
+    transform.k,
   ]);
 
   return { guides };

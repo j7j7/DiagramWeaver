@@ -16,10 +16,11 @@ Optimizations to implement one at a time. Build → test → move to next.
 | 6 | Memoize CanvasArrowToggles | ☑ |
 | 7 | Memoize CanvasConnectionText | ☑ |
 | 8 | Use React.startTransition for label updates | ☑ |
-| 9 | Throttle alignment guide calculation | ☐ |
-| 10 | Memoize layout / connection slots | ☐ |
+| 9 | Throttle alignment guide calculation | ☐ (reverted: RAF+setState caused infinite loop)
+| 10 | Memoize layout / connection slots | ☑ |
 | 11 | Selection animation: reduce update rate | ☐ |
 | 12 | Memoize layers getFilteredDiagramData | ☐ |
+| 13 | Throttle resize updates (text/shapes) | ☐ |
 
 ---
 
@@ -120,9 +121,11 @@ Optimizations to implement one at a time. Build → test → move to next.
 
 **File**: `src/hooks/use-alignment-guides.ts`
 
-**Tasks**:
-- Throttle guide computation with `requestAnimationFrame` (max once per frame)
-- Store last computed guides in ref; batch updates
+**Status**: Reverted. RAF + setState caused infinite loop (setState → re-render → new displayNodesById ref → effect deps change → effect runs → setState…).
+
+**Tasks** (if retried):
+- Alternative: throttle at call site (e.g. parent passes throttled input refs)
+- Or: move guide computation to a worker (complex)
 
 ---
 
@@ -157,6 +160,20 @@ Optimizations to implement one at a time. Build → test → move to next.
 
 ---
 
+## 13. Throttle resize updates (text/shapes)
+
+**Problem**: When resizing text nodes or shapes via drag handles, responsiveness is slow. Each pointer move during resize calls `onResize` → `handleNodeResize` → `resizeNode`/`resizeMultipleNodes` → `setDiagramData`, causing full diagram re-render on every mouse move.
+
+**Files**: `src/components/diagram/diagram-node.tsx`, `src/components/diagram/resize-handles.tsx` (if used), `src/components/editor/editor-canvas.tsx`
+
+**Tasks**:
+- Throttle resize position updates with `requestAnimationFrame` (same pattern as drag in Optimization 2)
+- In `handleResizeMove` (diagram-node): compute new dimensions, store in ref; schedule RAF to call `onResize` at most once per frame
+- Alternative: use local/optimistic width/height state during resize; commit to `onResize` only on pointer up (defer updates until resize end)
+- Ensure final dimensions are correct on resize end; cancel any pending RAF on end
+
+---
+
 ## Order
 
-1 → 2 → 4 → 3 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12
+1 → 2 → 4 → 3 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13

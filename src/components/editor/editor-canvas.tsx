@@ -153,9 +153,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
 
   // Connection order: which connections render in which slot (between items) for proper z-order
   const connectionSlots = useMemo(
-    () =>
-      computeConnectionSlots(diagramData, processedNodes, processedZones, nodesById, zonesById),
-    [diagramData, processedNodes, processedZones, nodesById, zonesById]
+    () => computeConnectionSlots(diagramData, processedNodes, processedZones),
+    [diagramData, processedNodes, processedZones]
   );
   
   // Get the currently selected item (node or zone) for internal use

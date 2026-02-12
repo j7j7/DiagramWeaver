@@ -20,9 +20,7 @@ export interface ConnectionSlotResult {
 export function computeConnectionSlots(
   diagramData: DiagramData,
   processedNodes: PositionedNode[],
-  processedZones: PositionedGroup[],
-  nodesById: Record<string, PositionedNode>,
-  zonesById: Record<string, PositionedGroup>
+  processedZones: PositionedGroup[]
 ): ConnectionSlotResult {
   const connections = diagramData.connections || [];
 
