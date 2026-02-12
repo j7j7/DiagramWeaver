@@ -2,6 +2,7 @@
 
 import React from "react";
 import type { DiagramNodeData } from "@/lib/types";
+import { getNodeSizeMultiplier } from "@/lib/visual-styling";
 import { ShapeWrapper } from "./shape-wrapper";
 import { getGradientWithAngle, getShapeStyles } from "./shape-utils";
 
@@ -36,10 +37,13 @@ export function SvgShapeBase({
   defaultHeight = 60,
   ...rest
 }: SvgShapeBaseProps) {
-  const width = node.width || defaultWidth;
-  const height = node.height || defaultHeight;
-  const styles = getShapeStyles(node);
   const nodeAny = node as any;
+  const scale = getNodeSizeMultiplier(nodeAny.nodeSize);
+  const baseWidth = node.width ?? defaultWidth;
+  const baseHeight = node.height ?? defaultHeight;
+  const width = node.width != null ? node.width : Math.round(baseWidth * scale);
+  const height = node.height != null ? node.height : Math.round(baseHeight * scale);
+  const styles = getShapeStyles(node);
 
   return (
     <ShapeWrapper

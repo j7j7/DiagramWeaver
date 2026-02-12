@@ -2,6 +2,7 @@
 
 import React from "react";
 import type { DiagramNodeData } from "@/lib/types";
+import { getNodeSizeMultiplier } from "@/lib/visual-styling";
 import { getShapeStyles } from "./shape-utils";
 import { ShapeTag } from "./shape-tag";
 import { ShapeText } from "./shape-text";
@@ -59,8 +60,11 @@ export function ShapeWrapper({
 }: ShapeWrapperProps) {
   const styles = getShapeStyles(node);
   const nodeAny = node as any;
-  const width = node.width || defaultWidth;
-  const height = node.height || defaultHeight;
+  const scale = getNodeSizeMultiplier(nodeAny.nodeSize);
+  const baseWidth = node.width ?? defaultWidth;
+  const baseHeight = node.height ?? defaultHeight;
+  const width = node.width != null ? node.width : Math.round(baseWidth * scale);
+  const height = node.height != null ? node.height : Math.round(baseHeight * scale);
   const roundedEdges = nodeAny.roundedEdges || false;
 
   // Skip border/background styling when skipWrapperStyling is true (for SVG shapes)

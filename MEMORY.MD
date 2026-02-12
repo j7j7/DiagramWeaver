@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2025-02-12)
 
+### 2025-02-12 – Node/Icon Size (normal, half, quarter)
+Added `nodeSize` property for nodes and icons: `'normal' | 'half' | 'quarter'`. Available in the Visual Styling modal (context toolbar). Normal = 80×80 container, 70×70 icon; half = 40×40/35×35; quarter = 20×20/18×18. Applies to icons (Lucide, resource, emoji), shapes, and JSON schema. Modified: visual-styling.ts (interface, extract, apply, getNodeSizeDimensions, getNodeSizeMultiplier), types.ts, schemas.ts, visual-styling-panel.tsx, diagram-node.tsx, canvas-constants.ts, shape-wrapper.tsx, svg-shape-base.tsx, context-toolbar.tsx (handleVisualStylingReset), nested-hierarchy.ts, AI_SCHEMA.md.
+
 ### 2025-02-12 – Infinite Loops / Memory Leaks Audit
 Created `docs/INFINITE-LOOPS-MEMORY-LEAKS-ANALYSIS.md` – codebase audit for infinite loops, excessive re-renders, and memory leaks. No critical infinite loops found. Issues: (1) viewer-canvas assigns `__viewerFitToView`/`__viewerZoomIn`/`__viewerZoomOut` to `window` without cleanup on unmount; (2) carousel `reInit` listener not unsubscribed; (3) use-canvas-context-menu `closeContextMenu` should be `useCallback` to avoid effect thrashing. Most patterns (event listeners, ResizeObserver, RAF, subscriptions) have proper cleanup.
 

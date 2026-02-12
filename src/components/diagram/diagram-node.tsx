@@ -17,6 +17,7 @@ import { cn, isIconOrEmojiType } from "@/lib/utils";
 import { ItemTypes } from "../editor/draggable-item";
 import { snapToGrid, snapDimensionToGrid, measureNodeDims } from "@/components/editor/canvas-constants";
 import { getTextStylingCSS, extractTextStylingFromNode } from "@/lib/text-styling";
+import { getNodeSizeDimensions } from "@/lib/visual-styling";
 import {
   SquareShape,
   RectangleShape,
@@ -1129,6 +1130,7 @@ return (
               // Regular icon node - support vertical text positioning
               (() => {
                 const nodeAny = node as any;
+                const { container, icon } = getNodeSizeDimensions(nodeAny.nodeSize);
                 const textVerticalPosition = nodeAny.textVerticalPosition || 'bottom'; // Default to bottom for backward compatibility
                 const isMiddle = textVerticalPosition === 'middle';
                 const isTop = textVerticalPosition === 'top';
@@ -1143,13 +1145,14 @@ return (
                   )}>
                     {/* Icon container */}
                     <div className={cn(
-                      "flex items-center justify-center w-20 h-20 transition-colors flex-shrink-0",
+                      "flex items-center justify-center transition-colors flex-shrink-0",
                       (node as any).noIconBackground ? "" : "rounded-lg shadow-md border bg-card",
                       isSelected ? "border-primary" : (node as any).noIconBackground || (isDragging || isTouchDragging) ? "" : "group-hover:border-accent",
                       isTargetable && "border-dashed border-primary",
                       isTop && "order-2", // Icon comes after text when text is on top
                       isBottom && "order-1" // Icon comes before text when text is on bottom (default)
-                    )}>
+                    )}
+                    style={{ width: container, height: container }}>
                       <ResourceIcon 
                         type={node.type} 
                         provider={node.provider}
@@ -1159,9 +1162,9 @@ return (
                         iconName={node.iconName}
                         emoji={node.emoji}
                         iconColor={node.iconColor}
-                        width="70" 
-                        height="70" 
-                        className="w-[70px] h-[70px]" 
+                        width={icon} 
+                        height={icon} 
+                        style={{ width: icon, height: icon }}
                       />
                     </div>
                     
@@ -1178,14 +1181,16 @@ return (
                         className={cn(
                           "text-sm text-center bg-transparent border border-primary rounded outline-none",
                           node.sizeMode === 'custom' ? 'px-1 py-0.5' : 'px-1 py-0.5',
-                          isMiddle ? "absolute w-20 h-20 flex items-center justify-center pointer-events-auto left-0 top-0" : "w-full",
+                          isMiddle ? "absolute flex items-center justify-center pointer-events-auto left-0 top-0" : "w-full",
                           isTop && "order-1", // Text comes before icon when on top
                           isBottom && "order-2" // Text comes after icon when on bottom (default)
                         )}
                         style={isMiddle ? {
                           ...getTextStylingForNode(node),
                           backgroundColor: 'transparent',
-                          zIndex: 10
+                          zIndex: 10,
+                          width: container,
+                          height: container
                         } : getTextStylingForNode(node)}
                         onClick={(e) => e.stopPropagation()}
                       />
@@ -1193,7 +1198,7 @@ return (
                       <p 
                         className={cn(
                           "text-center break-words leading-tight cursor-text hover:bg-background/50 rounded px-1 py-0.5",
-                          isMiddle ? "absolute w-20 h-20 flex items-center justify-center pointer-events-auto left-0 top-0 -mx-0 -my-0" : "-mx-1 -my-0.5 w-full",
+                          isMiddle ? "absolute flex items-center justify-center pointer-events-auto left-0 top-0 -mx-0 -my-0" : "-mx-1 -my-0.5 w-full",
                           isTop && "order-1", // Text comes before icon when on top
                           isBottom && "order-2" // Text comes after icon when on bottom (default)
                         )}
@@ -1203,7 +1208,9 @@ return (
                           zIndex: 10,
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center'
+                          justifyContent: 'center',
+                          width: container,
+                          height: container
                         } : {
                           ...getTextStylingForNode(node),
                           display: 'block'

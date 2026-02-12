@@ -15,6 +15,7 @@ export interface VisualStyling {
   roundedEdges?: boolean; // Whether to apply rounded edges to shapes
   iconColor?: string; // Color for Lucide icons (context-aware, icons only)
   noIconBackground?: boolean; // Remove background from icon/resource nodes
+  nodeSize?: 'normal' | 'half' | 'quarter'; // Size mode for nodes and icons
 }
 
 // Predefined visual styles for dropdown selection
@@ -180,8 +181,25 @@ export function extractVisualStylingFromNode(node: DiagramNodeData | DiagramNode
     shadow: node.shadow,
     borderWidth: node.borderWidth,
     roundedEdges: (node as any).roundedEdges,
-    iconColor: (node as DiagramNodeData).iconColor
+    iconColor: (node as DiagramNodeData).iconColor,
+    noIconBackground: (node as any).noIconBackground,
+    nodeSize: (node as any).nodeSize
   };
+}
+
+/** Size multiplier for nodeSize: normal=1, half=0.5, quarter=0.25 */
+export function getNodeSizeMultiplier(nodeSize?: 'normal' | 'half' | 'quarter'): number {
+  switch (nodeSize) {
+    case 'half': return 0.5;
+    case 'quarter': return 0.25;
+    default: return 1;
+  }
+}
+
+/** Icon/container dimensions in px for a given nodeSize */
+export function getNodeSizeDimensions(nodeSize?: 'normal' | 'half' | 'quarter'): { container: number; icon: number } {
+  const m = getNodeSizeMultiplier(nodeSize);
+  return { container: Math.round(80 * m), icon: Math.round(70 * m) };
 }
 
 /**
@@ -220,7 +238,9 @@ export function applyVisualStylingToNode(
     shadow: styling.shadow ?? node.shadow,
     borderWidth: styling.borderWidth ?? node.borderWidth,
     roundedEdges: styling.roundedEdges ?? (node as any).roundedEdges,
-    iconColor: styling.iconColor !== undefined ? styling.iconColor : (node as DiagramNodeData).iconColor
+    iconColor: styling.iconColor !== undefined ? styling.iconColor : (node as DiagramNodeData).iconColor,
+    noIconBackground: styling.noIconBackground !== undefined ? styling.noIconBackground : (node as any).noIconBackground,
+    nodeSize: styling.nodeSize !== undefined ? styling.nodeSize : (node as any).nodeSize
   } as DiagramNodeData | DiagramNodeItem;
 }
 

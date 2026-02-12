@@ -1,5 +1,6 @@
 import type { DiagramNodeData, DiagramZoneData } from "@/lib/types";
 import { isIconOrEmojiType } from "@/lib/utils";
+import { getNodeSizeDimensions, getNodeSizeMultiplier } from "@/lib/visual-styling";
 
 // Canvas constants
 export const NODE_WIDTH = 80;
@@ -180,7 +181,8 @@ export const measureNodeDims = (n: PositionedNode) => {
       const textLines = Math.max(1, Math.ceil(label.length / textMaxCharsPerLine));
       height = TEXT_NODE_HEIGHT + (textLines - 1) * EXTRA_LINE_HEIGHT;
     } else {
-      const shapeSize = 48;
+      const scale = getNodeSizeMultiplier((n as any).nodeSize);
+      const shapeSize = Math.round(48 * scale);
       const textPadding = 16;
       const textPosition = (n as any).textPosition || 'under';
 
@@ -190,24 +192,25 @@ export const measureNodeDims = (n: PositionedNode) => {
         const textWidth = Math.min(120, Math.max(40, label.length * avgCharWidth + textPadding));
         calculatedWidth = Math.max(shapeSize, textWidth);
       } else {
-        calculatedWidth = Math.max(shapeSize, 80);
+        calculatedWidth = Math.max(shapeSize, Math.round(80 * scale));
       }
 
       const explicitLines = label.split('\n');
       const shapeLines = Math.max(1, explicitLines.length);
-      height = NODE_HEIGHT + (shapeLines - 1) * EXTRA_LINE_HEIGHT;
+      height = Math.round(NODE_HEIGHT * scale) + (shapeLines - 1) * EXTRA_LINE_HEIGHT;
     }
 
     return { width: snapDimensionToGrid(calculatedWidth, 40), height: snapDimensionToGrid(height, 40) };
   } else {
-    // Icon/resource nodes: width can include wider label via labelWidth
-    const iconWidth = 80;
+    // Icon/resource nodes: width can include wider label via labelWidth; nodeSize scales base
+    const { container: iconContainer } = getNodeSizeDimensions((n as any).nodeSize);
+    const iconWidth = iconContainer;
     const effectiveLabelWidth = (n as any).labelWidth ? snapDimensionToGrid(Math.max(iconWidth, (n as any).labelWidth), iconWidth) : undefined;
     const nodeWidth = effectiveLabelWidth ?? iconWidth;
     const hasLabel = label.trim().length > 0;
     const maxCharsPerLine = effectiveLabelWidth ? Math.floor(effectiveLabelWidth / 8) : 12;
     const labelLines = hasLabel ? Math.max(1, Math.ceil(label.length / maxCharsPerLine)) : 1;
-    const nodeHeight = NODE_HEIGHT + (labelLines - 1) * EXTRA_LINE_HEIGHT;
+    const nodeHeight = iconContainer + (labelLines - 1) * EXTRA_LINE_HEIGHT;
     return { width: nodeWidth, height: snapDimensionToGrid(nodeHeight, 40) };
   }
 };

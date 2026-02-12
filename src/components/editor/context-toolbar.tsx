@@ -759,7 +759,8 @@ export function ContextToolbar({
       gradientAngle: undefined,
       shadow: undefined,
       borderWidth: undefined,
-      iconColor: undefined
+      iconColor: undefined,
+      nodeSize: undefined
     };
     
     // Check if multiple items are selected
@@ -1557,7 +1558,7 @@ export function ContextToolbar({
           </>
         )}
 
-        {/* Visual Styling Button - shapes and textbox (full), Lucide (Icon Color + Remove bg), resource items (Remove bg only). generic.text.text excluded. */}
+        {/* Visual Styling Button - shapes and textbox (full), Lucide (Icon Color + Remove bg), resource items (Remove bg only), emojis (Size + Remove bg). generic.text.text excluded. */}
         {selectedItem && isNode && !isLineNode && (() => {
           const t = (selectedItem as any)?.type || '';
           const isEmoji = t.startsWith('generic.emoji.');
@@ -1566,7 +1567,7 @@ export function ContextToolbar({
           const isLucide = t.startsWith('generic.icon.') || (selectedItem as any)?.iconType === 'lucide';
           const isText = t.startsWith('generic.text.');
           const isResourceItem = !isShape && !isText;
-          return !isEmoji && (isShape || isTextbox || isLucide || isResourceItem);
+          return isShape || isTextbox || isLucide || isResourceItem || isEmoji;
         })() && (
           <>
             <Tooltip>
@@ -1604,8 +1605,9 @@ export function ContextToolbar({
                     const isShape = isShapeNodeType(t);
                     const isText = t.startsWith('generic.text.');
                     const isLucide = t.startsWith('generic.icon.') || (selectedItem as any)?.iconType === 'lucide';
+                    const isEmoji = t.startsWith('generic.emoji.') || (selectedItem as any)?.iconType === 'emoji';
                     const isResourceItem = !isShape && !isText;
-                    return isLucide || isResourceItem;
+                    return isLucide || isResourceItem || isEmoji;
                   })()}
                   showFullStyling={(() => {
                     const t = (selectedItem as any)?.type || '';

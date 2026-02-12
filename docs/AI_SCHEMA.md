@@ -39,7 +39,8 @@ DiagramWeaver uses a JSON structure with three main components:
       "width": "number",
       "height": "number",
       "sizeMode": "auto|custom",
-      "noIconBackground": "boolean"
+      "noIconBackground": "boolean",
+      "nodeSize": "normal|half|quarter"
     }
   ],
   "connections": [

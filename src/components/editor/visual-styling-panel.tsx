@@ -179,6 +179,27 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
             </div>
           )}
 
+          {/* Size - for nodes and icons: normal, half, quarter */}
+          <div className="bg-slate-50 rounded-md p-2 border border-slate-200/50">
+            <div className="flex items-center gap-1.5 mb-2">
+              <div className="w-1.5 h-1.5 bg-slate-500 rounded-full"></div>
+              <Label className="text-xs font-semibold text-slate-700">Size</Label>
+            </div>
+            <Select
+              value={styling.nodeSize || 'normal'}
+              onValueChange={(value) => onStylingChange({ nodeSize: value as 'normal' | 'half' | 'quarter' })}
+            >
+              <SelectTrigger className="h-7 text-xs">
+                <SelectValue placeholder="Normal" />
+              </SelectTrigger>
+              <SelectContent className="z-[70]">
+                <SelectItem value="normal" className="text-xs">Normal</SelectItem>
+                <SelectItem value="half" className="text-xs">Half</SelectItem>
+                <SelectItem value="quarter" className="text-xs">Quarter</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Preset, Border, Background, Effects, Tags - shapes and text nodes only */}
           {showFullStyling && (
           <>

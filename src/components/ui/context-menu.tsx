@@ -188,7 +188,7 @@ export function ContextMenu({
         const isLucide = t.startsWith('generic.icon.');
         const isText = t.startsWith('generic.text.');
         const isResourceItem = !isShape && !isText && !isLineNodeType(t);
-        return !isEmoji && (isShape || isTextbox || isLucide || isResourceItem);
+        return isShape || isTextbox || isLucide || isResourceItem || isEmoji;
       })() && (
         <button
           className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
