@@ -2,6 +2,21 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2025-02-12)
 
+### 2026-02-12 – Connection Alignment Uses Icon-Only Bounds
+Fixed connector alignment for icon/resource nodes with labels (for example, multi-line labels under icons). Updated `bezier-connection.tsx` geometry helpers (`determineConnectionEdges`, `getOptimalConnectionPoints`, and `getConnectionPoint`) so icon-like nodes automatically use icon container dimensions from `nodeSize` for anchor/edge center calculations. Label text width/height is now ignored for connector bounding alignment; textbox/text node behavior remains unchanged.
+
+### 2026-02-12 – Connection Path Anchors Forced to Inner Icon Geometry
+Further tightened connector alignment in the actual rendered path math (`BezierConnection`) for icon/resource nodes. Connection height now uses icon container size (not text-inflated node height), and top-label offset is derived from measured outer-vs-icon delta so lines attach to the inner icon body consistently. No textbox/text behavior changes.
+
+### 2026-02-12 – Icon Width Fallback in Shared Connection Geometry
+Updated shared connection helpers in `bezier-connection.tsx` so icon-like nodes derive icon width from icon geometry even when callers only provide icon height. This prevents horizontal anchor math from falling back to outer text-inflated width in partial call paths.
+
+### 2026-02-12 – Icon Node Stack Anchored Top For Connection Consistency
+Adjusted icon/resource node layout in `diagram-node.tsx` so non-middle text modes use a full-height wrapper anchored from the top instead of vertical centering. This removes center drift when labels increase container height and keeps icon position stable for connection anchor alignment.
+
+### 2025-02-12 – Connection Alignment Ignores Text (Icon-Only Bounding Box)
+Connection lines attach to the node element (icon) only, ignoring text labels. Added `measureNodeDimsForConnections()` which returns icon-only dimensions for icon/resource nodes. Connection point calculations, edge determination, and BezierConnection now use icon-only dims so lines align to the purple icon square, not the full box including "Glue Databrew"-style labels. Text nodes, textboxes, shapes, and groups unchanged. Modified: canvas-constants.ts (measureNodeDimsForConnections), canvas-connections.tsx, bezier-connection.tsx, canvas-arrow-toggles.tsx, canvas-connection-text.tsx.
+
 ### 2025-02-12 – Selection Animation Removal
 Removed the "Enable Selection Animation" feature from the editor. The View menu no longer includes the toggle; nodes always use static glow (node-glow-static, node-glow-green-static) for selection/group-member highlighting. Removed: useNodeAnimationOffsets from editor-canvas, animatedNodesById/animatedZonesById (display now uses nodesById/zonesById directly), selectionAnimationEnabled/animationOffset from diagram-node, TopMenuBar toggle. Modified: top-menu-bar.tsx, diagram-editor.tsx, editor-canvas.tsx, diagram-node.tsx, README.md.
 

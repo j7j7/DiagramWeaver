@@ -1161,8 +1161,8 @@ return (
                 // For top/bottom, use flex-col with order
                 return (
                   <div className={cn(
-                    "flex flex-col items-center justify-center w-full",
-                    isMiddle && "relative"
+                    "flex flex-col items-center w-full h-full",
+                    isMiddle ? "relative justify-center" : "justify-start"
                   )}>
                     {/* Icon container */}
                     <div className={cn(
