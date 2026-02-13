@@ -46,6 +46,14 @@ export const measureNodeDims = (n: PositionedNode) => {
      n.type === 'generic.object.star' ||
      n.type === 'generic.object.cloud' ||
      n.type === 'generic.object.chevron' ||
+     n.type === 'generic.object.parallelogram' ||
+     n.type === 'generic.object.trapezoid' ||
+     n.type === 'generic.object.kite' ||
+     n.type === 'generic.object.hexagon' ||
+     n.type === 'generic.object.pentagon' ||
+     n.type === 'generic.object.octagon' ||
+     n.type === 'generic.object.jigsaw' ||
+     n.type === 'generic.object.arrowhead' ||
      n.type?.endsWith('.square') ||
      n.type?.endsWith('.circle') ||
      n.type?.endsWith('.point') ||
@@ -54,7 +62,15 @@ export const measureNodeDims = (n: PositionedNode) => {
      n.type?.endsWith('.triangle') ||
      n.type?.endsWith('.star') ||
      n.type?.endsWith('.cloud') ||
-     n.type?.endsWith('.chevron'));
+     n.type?.endsWith('.chevron') ||
+     n.type?.endsWith('.parallelogram') ||
+     n.type?.endsWith('.trapezoid') ||
+     n.type?.endsWith('.kite') ||
+     n.type?.endsWith('.hexagon') ||
+     n.type?.endsWith('.pentagon') ||
+     n.type?.endsWith('.octagon') ||
+     n.type?.endsWith('.jigsaw') ||
+     n.type?.endsWith('.arrowhead'));
   const label = (n.label || '').toString();
 
   // Line nodes calculate dimensions from startPos/endPos

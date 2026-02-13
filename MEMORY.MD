@@ -1,6 +1,9 @@
 # MEMORY.MD
 
-## DiagramWeaver - Latest Features and Functions (Updated 2026-02-12)
+## DiagramWeaver - Latest Features and Functions (Updated 2026-02-13)
+
+### 2026-02-13 – Connector Entry Points for Polygon Shapes
+Connector lines were appearing to emerge from within polygon shapes (octagon, hexagon, pentagon, etc.) instead of at their visible boundary. **Cause**: `getConnectionPoint` used the rectangular bounding box for all shapes; polygons don't fill their viewBox and have angled edges. **Fix**: Added `shape-connection-bounds.ts` with viewBox-based edge geometry for octagon, hexagon, pentagon, kite, trapezoid, parallelogram, chevron, arrowhead, triangle, star. `getConnectionPoint` now uses `getShapeEdgeBounds` + `shapeEdgeToPoint` for object nodes so connectors land on the actual shape edge. Also extended `measureNodeDims` in canvas-constants to include octagon and other polygon types as shape nodes. Modified: bezier-connection.tsx, canvas-constants.ts. Added: shape-connection-bounds.ts.
 
 ### 2026-02-12 – Connection Line Right-Click Context Modal
 Right-clicking a selected connection line opens a context modal (matches Visual Styling panel UX). Shows: Text, Color, Text Position (slider), Line Thickness, Arrow toggle, Shadow (depth effect), Disconnect, and Add/Remove waypoints. Context-aware for the specific connection. **Behavior**: Full-screen overlay with pointer-events: auto (like Visual Styling), draggable via header (react-draggable, handle=".connection-modal-drag-handle"), live connection data from diagramData so form inputs stay in sync. Click outside or Escape to close. **Components**: ConnectionContextModal (connection-context-modal.tsx), BezierConnection onContextMenu, CanvasConnections onConnectionContextMenu prop. Modified: bezier-connection.tsx, canvas-connections.tsx, editor-canvas.tsx, diagram-editor.tsx.

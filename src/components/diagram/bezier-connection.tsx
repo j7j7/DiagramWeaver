@@ -5,6 +5,7 @@ import React from "react";
 import { measureNodeDims } from "@/components/editor/canvas-constants";
 import { isIconOrEmojiType } from "@/lib/utils";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
+import { getShapeEdgeBounds, shapeEdgeToPoint } from "@/lib/shape-connection-bounds";
 
 const NODE_WIDTH = 80;
 const NODE_HEIGHT = 80;
@@ -122,6 +123,20 @@ export function getConnectionPoint(obj: any, width: number, height: number, poin
       offsetX = Math.cos(angle) * radius;
       offsetY = Math.sin(angle) * radius;
     }
+  }
+
+  // For polygon shapes (octagon, hexagon, pentagon, etc.), use shape-specific edge geometry
+  // so connectors land on the visible boundary instead of the rectangular bounding box
+  const shapeBounds = isObjectNode ? getShapeEdgeBounds(obj.type) : null;
+  if (shapeBounds && point !== 'center') {
+    const pt = shapeEdgeToPoint(shapeBounds, obj, width, height, point);
+    // Apply multi-connection offset along the edge
+    if (point === 'top' || point === 'bottom') {
+      pt.x += offsetX;
+    } else {
+      pt.y += offsetY;
+    }
+    return pt;
   }
 
   switch (point) {
