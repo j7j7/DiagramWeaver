@@ -639,7 +639,6 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                       cy="12"
                       r="12"
                       fill="#22c55e"
-                      style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
                     />
                     <rect x="10.5" y="6" width="3" height="12" fill="white" rx="0.5" />
                     <rect x="6" y="10.5" width="12" height="3" fill="white" rx="0.5" />
