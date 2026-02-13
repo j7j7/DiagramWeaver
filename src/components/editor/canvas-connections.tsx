@@ -3,7 +3,7 @@ import { BezierConnection, determineConnectionEdges, getOptimalConnectionPoints,
 import type { DiagramData, DiagramConnectionData } from "@/lib/types";
 import { measureNodeDims, type PositionedNode, type PositionedGroup, NODE_WIDTH, BASE_NODE_HEIGHT, TEXT_NODE_HEIGHT, EXTRA_LINE_HEIGHT } from "./canvas-constants";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
-import { cn, isIconOrEmojiType } from "@/lib/utils";
+import { cn, isIconOrEmojiType, isShapeNodeType } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface CanvasConnectionsProps {
@@ -218,18 +218,8 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
 
         // Calculate center point for delete button
         // Reuse similar logic from bezier-connection.tsx for calculating connection points
-        const isFromShape = !isIconOrEmojiType(fromPos.type) && (fromPos.type === 'generic.object.square' || fromPos.type === 'generic.object.circle' ||
-                             fromPos.type === 'generic.object.point' || fromPos.type === 'generic.object.rectangle' || fromPos.type === 'generic.object.rounded-rectangle' || fromPos.type === 'generic.object.triangle' ||
-                             fromPos.type === 'generic.object.star' || fromPos.type === 'generic.object.cloud' ||
-                             fromPos.type?.endsWith('.square') || fromPos.type?.endsWith('.circle') ||
-                             fromPos.type?.endsWith('.point') || fromPos.type?.endsWith('.rectangle') || fromPos.type?.endsWith('.rounded-rectangle') || fromPos.type?.endsWith('.triangle') ||
-                             fromPos.type?.endsWith('.star') || fromPos.type?.endsWith('.cloud'));
-        const isToShape = !isIconOrEmojiType(toPos.type) && (toPos.type === 'generic.object.square' || toPos.type === 'generic.object.circle' ||
-                          toPos.type === 'generic.object.point' || toPos.type === 'generic.object.rectangle' || toPos.type === 'generic.object.rounded-rectangle' || toPos.type === 'generic.object.triangle' ||
-                          toPos.type === 'generic.object.star' || toPos.type === 'generic.object.cloud' ||
-                          toPos.type?.endsWith('.square') || toPos.type?.endsWith('.circle') ||
-                          toPos.type?.endsWith('.point') || toPos.type?.endsWith('.rectangle') || toPos.type?.endsWith('.rounded-rectangle') || toPos.type?.endsWith('.triangle') ||
-                          toPos.type?.endsWith('.star') || toPos.type?.endsWith('.cloud'));
+        const isFromShape = isShapeNodeType(fromPos.type);
+        const isToShape = isShapeNodeType(toPos.type);
         
         const isFromTextType = fromPos.type === 'generic.text.text' || fromPos.type === 'generic.text.textbox';
         const isToTextType = toPos.type === 'generic.text.text' || toPos.type === 'generic.text.textbox';
@@ -452,18 +442,8 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
         toTotalConnections: toEdgeConnections.length > 0 ? toEdgeConnections.length : 1,
       };
 
-      const isFromShape = !isIconOrEmojiType(fromPos.type) && (fromPos.type === 'generic.object.square' || fromPos.type === 'generic.object.circle' ||
-                           fromPos.type === 'generic.object.point' || fromPos.type === 'generic.object.rectangle' || fromPos.type === 'generic.object.rounded-rectangle' || fromPos.type === 'generic.object.triangle' ||
-                           fromPos.type === 'generic.object.star' || fromPos.type === 'generic.object.cloud' ||
-                           fromPos.type?.endsWith('.square') || fromPos.type?.endsWith('.circle') ||
-                           fromPos.type?.endsWith('.point') || fromPos.type?.endsWith('.rectangle') || fromPos.type?.endsWith('.rounded-rectangle') || fromPos.type?.endsWith('.triangle') ||
-                           fromPos.type?.endsWith('.star') || fromPos.type?.endsWith('.cloud'));
-      const isToShape = !isIconOrEmojiType(toPos.type) && (toPos.type === 'generic.object.square' || toPos.type === 'generic.object.circle' ||
-                        toPos.type === 'generic.object.point' || toPos.type === 'generic.object.rectangle' || toPos.type === 'generic.object.rounded-rectangle' || toPos.type === 'generic.object.triangle' ||
-                        toPos.type === 'generic.object.star' || toPos.type === 'generic.object.cloud' ||
-                        toPos.type?.endsWith('.square') || toPos.type?.endsWith('.circle') ||
-                        toPos.type?.endsWith('.point') || toPos.type?.endsWith('.rectangle') || toPos.type?.endsWith('.rounded-rectangle') || toPos.type?.endsWith('.triangle') ||
-                        toPos.type?.endsWith('.star') || toPos.type?.endsWith('.cloud'));
+      const isFromShape = isShapeNodeType(fromPos.type);
+      const isToShape = isShapeNodeType(toPos.type);
       const isFromTextType = fromPos.type === 'generic.text.text' || fromPos.type === 'generic.text.textbox';
       const isToTextType = toPos.type === 'generic.text.text' || toPos.type === 'generic.text.textbox';
       const isFromGroup = fromPos.type === 'group' || fromPos.subType === 'zone';

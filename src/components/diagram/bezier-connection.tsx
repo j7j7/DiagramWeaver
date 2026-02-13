@@ -3,7 +3,7 @@
 import type { DiagramNodeData, DiagramGroupData, DiagramConnectionData } from "@/lib/types";
 import React from "react";
 import { measureNodeDims } from "@/components/editor/canvas-constants";
-import { isIconOrEmojiType } from "@/lib/utils";
+import { isIconOrEmojiType, isShapeNodeType } from "@/lib/utils";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
 import { getShapeEdgeBounds, shapeEdgeToPoint } from "@/lib/shape-connection-bounds";
 
@@ -592,18 +592,8 @@ export function getPointOnConnectionPath(
 
 export function BezierConnection({ from, to, connectionColor, connectionData, onClick, onContextMenu }: BezierConnectionProps) {
   // Use measureNodeDims-like logic for shapes to get actual dimensions
-  const isFromShape = !isIconOrEmojiType(from.type) && (from.type === 'generic.object.square' || from.type === 'generic.object.circle' ||
-                        from.type === 'generic.object.point' || from.type === 'generic.object.rectangle' || from.type === 'generic.object.rounded-rectangle' || from.type === 'generic.object.triangle' ||
-                        from.type === 'generic.object.star' || from.type === 'generic.object.cloud' ||
-                        from.type?.endsWith('.square') || from.type?.endsWith('.circle') ||
-                        from.type?.endsWith('.point') || from.type?.endsWith('.rectangle') || from.type?.endsWith('.rounded-rectangle') || from.type?.endsWith('.triangle') ||
-                        from.type?.endsWith('.star') || from.type?.endsWith('.cloud'));
-  const isToShape = !isIconOrEmojiType(to.type) && (to.type === 'generic.object.square' || to.type === 'generic.object.circle' ||
-                     to.type === 'generic.object.point' || to.type === 'generic.object.rectangle' || to.type === 'generic.object.rounded-rectangle' || to.type === 'generic.object.triangle' ||
-                     to.type === 'generic.object.star' || to.type === 'generic.object.cloud' ||
-                     to.type?.endsWith('.square') || to.type?.endsWith('.circle') ||
-                     to.type?.endsWith('.point') || to.type?.endsWith('.rectangle') || to.type?.endsWith('.rounded-rectangle') || to.type?.endsWith('.triangle') ||
-                     to.type?.endsWith('.star') || to.type?.endsWith('.cloud'));
+  const isFromShape = isShapeNodeType(from.type);
+  const isToShape = isShapeNodeType(to.type);
   
   // Calculate dynamic heights for text nodes to account for multi-line text
   const fromCalculatedHeight = calculateNodeHeight(from.label || '', from.type, from.sizeMode, from.height);
@@ -935,18 +925,8 @@ export function BezierConnectionText({ connectionData, from, to, connectionColor
     
     // Calculate icon-only heights for connection text positioning (same logic as main connection)
     // BUT: Groups/zones should use full height, not icon height
-    const isFromShape = !isIconOrEmojiType(from.type) && (from.type === 'generic.object.square' || from.type === 'generic.object.circle' || 
-                          from.type === 'generic.object.point' || from.type === 'generic.object.rectangle' || from.type === 'generic.object.triangle' ||
-                          from.type === 'generic.object.star' || from.type === 'generic.object.cloud' ||
-                          from.type?.endsWith('.square') || from.type?.endsWith('.circle') ||
-                          from.type?.endsWith('.point') || from.type?.endsWith('.rectangle') || from.type?.endsWith('.triangle') ||
-                          from.type?.endsWith('.star') || from.type?.endsWith('.cloud'));
-    const isToShape = !isIconOrEmojiType(to.type) && (to.type === 'generic.object.square' || to.type === 'generic.object.circle' || 
-                       to.type === 'generic.object.point' || to.type === 'generic.object.rectangle' || to.type === 'generic.object.triangle' ||
-                       to.type === 'generic.object.star' || to.type === 'generic.object.cloud' ||
-                       to.type?.endsWith('.square') || to.type?.endsWith('.circle') ||
-                       to.type?.endsWith('.point') || to.type?.endsWith('.rectangle') || to.type?.endsWith('.triangle') ||
-                       to.type?.endsWith('.star') || to.type?.endsWith('.cloud'));
+    const isFromShape = isShapeNodeType(from.type);
+    const isToShape = isShapeNodeType(to.type);
     const isFromTextType = from.type === 'generic.text.text' || from.type === 'generic.text.textbox';
     const isToTextType = to.type === 'generic.text.text' || to.type === 'generic.text.textbox';
     
