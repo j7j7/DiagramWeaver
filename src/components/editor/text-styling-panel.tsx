@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
+import { ColorPicker } from "@/components/ui/color-picker";
 import { TextStyling, COMMON_FONT_FAMILIES } from "@/lib/text-styling";
 import { Type, AlignLeft, AlignCenter, AlignRight, AlignJustify, ArrowUp, Circle, ArrowDown, RotateCcw, Move3D, Box, X } from "lucide-react";
 import Draggable from 'react-draggable';
@@ -391,22 +392,13 @@ if (textPosition?.startsWith('outside-') || textPosition === 'outside') {
           {/* Text Color */}
           <div className="space-y-2">
             <Label htmlFor="text-color" className="text-xs font-medium">Text Color</Label>
-            <div className="flex gap-2">
-              <Input
-                id="text-color"
-                type="color"
-                value={styling.textColor || '#000000'}
-                onChange={(e) => handlePropertyChange('textColor', e.target.value)}
-                className="h-8 w-16 p-1"
-              />
-              <Input
-                type="text"
-                value={styling.textColor || ''}
-                onChange={(e) => handlePropertyChange('textColor', e.target.value)}
-                placeholder="#000000"
-                className="h-8 text-xs flex-1"
-              />
-            </div>
+            <ColorPicker
+              value={styling.textColor || '#000000'}
+              onChange={(value) => handlePropertyChange('textColor', value)}
+              placeholder="#000000"
+              showAlpha={true}
+              allowTransparent={true}
+            />
           </div>
         </div>
       </div>

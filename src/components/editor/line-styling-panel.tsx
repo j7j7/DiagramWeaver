@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
+import { ColorPicker } from "@/components/ui/color-picker";
 import { LineStyling } from "@/lib/line-styling";
 import { COMMON_FONT_FAMILIES } from "@/lib/text-styling";
 import { Minus, ArrowRight, Circle, Square, RotateCcw, X, ArrowUp, ArrowDown } from "lucide-react";
@@ -213,22 +214,13 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
             {/* Line Color */}
             <div className="space-y-1">
               <Label htmlFor="line-color" className="text-xs text-slate-600">Color</Label>
-              <div className="flex gap-1">
-                <Input
-                  id="line-color"
-                  type="color"
-                  value={styling.lineColor || '#000000'}
-                  onChange={(e) => handlePropertyChange('lineColor', e.target.value)}
-                  className="h-6 w-8 p-0.5"
-                />
-                <Input
-                  type="text"
-                  value={styling.lineColor || ''}
-                  onChange={(e) => handlePropertyChange('lineColor', e.target.value)}
-                  placeholder="#000000"
-                  className="h-6 text-xs flex-1"
-                />
-              </div>
+              <ColorPicker
+                value={styling.lineColor || '#000000'}
+                onChange={(value) => handlePropertyChange('lineColor', value)}
+                placeholder="#000000"
+                showAlpha={true}
+                allowTransparent={true}
+              />
             </div>
           </div>
 
@@ -309,22 +301,13 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
             </div>
             <div className="space-y-2 mb-2">
               <Label htmlFor="text-color" className="text-xs text-slate-600">Color</Label>
-              <div className="flex gap-1">
-                <Input
-                  id="text-color"
-                  type="color"
-                  value={styling.textColor || '#000000'}
-                  onChange={(e) => handlePropertyChange('textColor', e.target.value)}
-                  className="h-6 w-8 p-0.5"
-                />
-                <Input
-                  type="text"
-                  value={styling.textColor || ''}
-                  onChange={(e) => handlePropertyChange('textColor', e.target.value)}
-                  placeholder="#000000"
-                  className="h-6 text-xs flex-1"
-                />
-              </div>
+              <ColorPicker
+                value={styling.textColor || '#000000'}
+                onChange={(value) => handlePropertyChange('textColor', value)}
+                placeholder="#000000"
+                showAlpha={true}
+                allowTransparent={true}
+              />
             </div>
             <div className="grid grid-cols-2 gap-2 mb-2">
               <div className="space-y-1">

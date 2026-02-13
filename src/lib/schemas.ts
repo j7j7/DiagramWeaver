@@ -186,6 +186,7 @@ export const DiagramDataSchema = z.object({
   connections: z.array(DiagramConnectionDataSchema).default([]),
   groupings: z.array(DiagramGroupingDataSchema).optional(),
   layers: LayersConfigSchema.optional(),
+  recentColors: z.array(z.string()).optional(),
 });
 
 export type DiagramDataValidated = z.infer<typeof DiagramDataSchema>;
@@ -322,4 +323,5 @@ export const HierarchicalDiagramDataSchema = z.object({
   connections: z.array(DiagramConnectionDataSchema).default([]),
   groupings: z.array(DiagramGroupingDataSchema).optional(), // Optional groupings for coordinated movement
   layers: LayersConfigSchema.optional(), // Optional layers configuration
+  recentColors: z.array(z.string()).optional(),
 });

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ColorPicker } from "@/components/ui/color-picker";
 import type { DiagramConnectionData, DiagramData } from "@/lib/types";
 
 interface ConnectionContextModalProps {
@@ -185,21 +186,13 @@ export function ConnectionContextModal({
 
         <div className="flex items-center gap-2">
           <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Color:</label>
-          <div className="flex items-center gap-1.5 flex-1 min-w-0">
-            <Input
-              type="color"
-              value={connectionColor}
-              onChange={(e) => handleColorChange((e.target as HTMLInputElement).value)}
-              className="h-7 w-12 p-1 cursor-pointer shrink-0"
-            />
-            <Input
-              type="text"
-              value={connectionColor}
-              onChange={(e) => handleColorChange((e.target as HTMLInputElement).value)}
-              className="h-7 flex-1 min-w-0 text-xs font-mono"
-              placeholder="#6b7280"
-            />
-          </div>
+          <ColorPicker
+            value={connectionColor}
+            onChange={handleColorChange}
+            placeholder="#6b7280"
+            showAlpha={true}
+            allowTransparent={true}
+          />
         </div>
 
         <div className="flex items-center gap-2">

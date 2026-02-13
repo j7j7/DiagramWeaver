@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { ColorPicker } from "@/components/ui/color-picker";
 import { VisualStyling, VISUAL_STYLES, getPredefinedVisualStyle, findClosestPredefinedStyle } from "@/lib/visual-styling";
 import { Palette, RotateCcw, X } from "lucide-react";
 import Draggable from 'react-draggable';
@@ -29,9 +30,11 @@ interface VisualStylingPanelProps {
   noIconBackground?: boolean;
   /** When true, shows full styling (Preset, Border, Background, Effects, Tags) - shapes and text nodes */
   showFullStyling?: boolean;
+  /** When true, hides Size control - shapes */
+  isShape?: boolean;
 }
 
-export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showRemoveBackground = false, noIconBackground = false, showFullStyling = true }: VisualStylingPanelProps) {
+export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false }: VisualStylingPanelProps) {
   const [position, setPosition] = useState({ x: 200, y: 100 });
   const [isMounted, setIsMounted] = useState(false);
   const nodeRef = useRef(null);
@@ -146,23 +149,13 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                 <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
                 <Label className="text-xs font-semibold text-slate-700">Icon Color</Label>
               </div>
-              <div className="flex gap-1">
-                <Input
-                  type="color"
-                  value={styling.iconColor || '#374151'}
-                  onChange={(e) => handlePropertyChange('iconColor', (e.target as HTMLInputElement).value)}
-                  onMouseUp={(e) => handlePropertyChange('iconColor', (e.target as HTMLInputElement).value, true)}
-                  onBlur={(e) => handlePropertyChange('iconColor', (e.target as HTMLInputElement).value, true)}
-                  className="h-6 w-8 p-0.5"
-                />
-                <Input
-                  type="text"
-                  value={styling.iconColor || ''}
-                  onChange={(e) => handlePropertyChange('iconColor', e.target.value)}
-                  placeholder="#374151"
-                  className="h-6 text-xs flex-1"
-                />
-              </div>
+              <ColorPicker
+                value={styling.iconColor || '#374151'}
+                onChange={(value) => handlePropertyChange('iconColor', value)}
+                placeholder="#374151"
+                showAlpha={false}
+                allowTransparent={false}
+              />
             </div>
           )}
 
@@ -180,6 +173,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
           )}
 
           {/* Size - for nodes and icons: normal, half, quarter */}
+          {!isShape && (
           <div className="bg-slate-50 rounded-md p-2 border border-slate-200/50">
             <div className="flex items-center gap-1.5 mb-2">
               <div className="w-1.5 h-1.5 bg-slate-500 rounded-full"></div>
@@ -199,6 +193,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
               </SelectContent>
             </Select>
           </div>
+          )}
 
           {/* Preset, Border, Background, Effects, Tags - shapes and text nodes only */}
           {showFullStyling && (
@@ -280,83 +275,41 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                 </Label>
                 {styling.borderStyle === 'gradient' ? (
                   <div className="grid grid-cols-2 gap-2">
-                    <div className="flex gap-1">
-                      <Input
-                        type="color"
-                        value={(styling.borderColors?.[0] || '#6b7280')}
-                        onChange={(e) => {
+                    <div className="flex flex-col gap-2">
+                      <Label className="text-xs text-slate-500">Start</Label>
+                      <ColorPicker
+                        value={styling.borderColors?.[0] || '#6b7280'}
+                        onChange={(value) => {
                           const currentColors = styling.borderColors || ['#6b7280', '#3b82f6'];
-                          handlePropertyChange('borderColors', [(e.target as HTMLInputElement).value, currentColors[1]]);
-                        }}
-                        onMouseUp={(e) => {
-                          const currentColors = styling.borderColors || ['#6b7280', '#3b82f6'];
-                          handlePropertyChange('borderColors', [(e.target as HTMLInputElement).value, currentColors[1]], true);
-                        }}
-                        onBlur={(e) => {
-                          const currentColors = styling.borderColors || ['#6b7280', '#3b82f6'];
-                          handlePropertyChange('borderColors', [(e.target as HTMLInputElement).value, currentColors[1]], true);
-                        }}
-                        className="h-6 w-8 p-0.5"
-                      />
-                      <Input
-                        type="text"
-                        value={styling.borderColors?.[0] || ''}
-                        onChange={(e) => {
-                          const currentColors = styling.borderColors || ['#6b7280', '#3b82f6'];
-                          handlePropertyChange('borderColors', [(e.target as HTMLInputElement).value, currentColors[1]]);
+                          handlePropertyChange('borderColors', [value, currentColors[1]]);
                         }}
                         placeholder="#6b7280"
-                        className="h-6 text-xs flex-1"
+                        showAlpha={true}
+                        allowTransparent={true}
                       />
                     </div>
-                    <div className="flex gap-1">
-                      <Input
-                        type="color"
-                        value={(styling.borderColors?.[1] || '#3b82f6')}
-                        onChange={(e) => {
+                    <div className="flex flex-col gap-2">
+                      <Label className="text-xs text-slate-500">End</Label>
+                      <ColorPicker
+                        value={styling.borderColors?.[1] || '#3b82f6'}
+                        onChange={(value) => {
                           const currentColors = styling.borderColors || ['#6b7280', '#3b82f6'];
-                          handlePropertyChange('borderColors', [currentColors[0], (e.target as HTMLInputElement).value]);
-                        }}
-                        onMouseUp={(e) => {
-                          const currentColors = styling.borderColors || ['#6b7280', '#3b82f6'];
-                          handlePropertyChange('borderColors', [currentColors[0], (e.target as HTMLInputElement).value], true);
-                        }}
-                        onBlur={(e) => {
-                          const currentColors = styling.borderColors || ['#6b7280', '#3b82f6'];
-                          handlePropertyChange('borderColors', [currentColors[0], (e.target as HTMLInputElement).value], true);
-                        }}
-                        className="h-6 w-8 p-0.5"
-                      />
-                      <Input
-                        type="text"
-                        value={styling.borderColors?.[1] || ''}
-                        onChange={(e) => {
-                          const currentColors = styling.borderColors || ['#6b7280', '#3b82f6'];
-                          handlePropertyChange('borderColors', [currentColors[0], (e.target as HTMLInputElement).value]);
+                          handlePropertyChange('borderColors', [currentColors[0], value]);
                         }}
                         placeholder="#3b82f6"
-                        className="h-6 text-xs flex-1"
+                        showAlpha={true}
+                        allowTransparent={true}
                       />
                     </div>
                   </div>
                 ) : (
-                  <div className="flex gap-1">
-                    <Input
-                      type="color"
-                      value={styling.borderColor || '#d1d5db'}
-                      onChange={(e) => handlePropertyChange('borderColor', (e.target as HTMLInputElement).value)}
-                      onMouseUp={(e) => handlePropertyChange('borderColor', (e.target as HTMLInputElement).value, true)}
-                      onBlur={(e) => handlePropertyChange('borderColor', (e.target as HTMLInputElement).value, true)}
-                      className="h-6 w-8 p-0.5"
-                    />
-                    <Input
-                      type="text"
-                      value={styling.borderColor || ''}
-                      onChange={(e) => handlePropertyChange('borderColor', e.target.value)}
-                      placeholder="#d1d5db"
-                      className="h-6 text-xs flex-1"
-                    />
-                  </div>
+                  <ColorPicker
+                    value={styling.borderColor || '#d1d5db'}
+                    onChange={(value) => handlePropertyChange('borderColor', value)}
+                    placeholder="#d1d5db"
+                    showAlpha={true}
+                    allowTransparent={true}
+                  />
                 )}
               </div>
             )}
@@ -414,83 +367,41 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                 </Label>
                 {styling.backgroundStyle === 'gradient' ? (
                   <div className="grid grid-cols-2 gap-2">
-                    <div className="flex gap-1">
-                      <Input
-                        type="color"
-                        value={(styling.backgroundColors?.[0] || '#f3f4f6')}
-                        onChange={(e) => {
+                    <div className="flex flex-col gap-2">
+                      <Label className="text-xs text-slate-500">Start</Label>
+                      <ColorPicker
+                        value={styling.backgroundColors?.[0] || '#f3f4f6'}
+                        onChange={(value) => {
                           const currentColors = styling.backgroundColors || ['#f3f4f6', '#e5e7eb'];
-                          handlePropertyChange('backgroundColors', [(e.target as HTMLInputElement).value, currentColors[1]]);
-                        }}
-                        onMouseUp={(e) => {
-                          const currentColors = styling.backgroundColors || ['#f3f4f6', '#e5e7eb'];
-                          handlePropertyChange('backgroundColors', [(e.target as HTMLInputElement).value, currentColors[1]], true);
-                        }}
-                        onBlur={(e) => {
-                          const currentColors = styling.backgroundColors || ['#f3f4f6', '#e5e7eb'];
-                          handlePropertyChange('backgroundColors', [(e.target as HTMLInputElement).value, currentColors[1]], true);
-                        }}
-                        className="h-6 w-8 p-0.5"
-                      />
-                      <Input
-                        type="text"
-                        value={styling.backgroundColors?.[0] || ''}
-                        onChange={(e) => {
-                          const currentColors = styling.backgroundColors || ['#f3f4f6', '#e5e7eb'];
-                          handlePropertyChange('backgroundColors', [(e.target as HTMLInputElement).value, currentColors[1]]);
+                          handlePropertyChange('backgroundColors', [value, currentColors[1]]);
                         }}
                         placeholder="#f3f4f6"
-                        className="h-6 text-xs flex-1"
+                        showAlpha={true}
+                        allowTransparent={true}
                       />
                     </div>
-                    <div className="flex gap-1">
-                      <Input
-                        type="color"
-                        value={(styling.backgroundColors?.[1] || '#e5e7eb')}
-                        onChange={(e) => {
+                    <div className="flex flex-col gap-2">
+                      <Label className="text-xs text-slate-500">End</Label>
+                      <ColorPicker
+                        value={styling.backgroundColors?.[1] || '#e5e7eb'}
+                        onChange={(value) => {
                           const currentColors = styling.backgroundColors || ['#f3f4f6', '#e5e7eb'];
-                          handlePropertyChange('backgroundColors', [currentColors[0], (e.target as HTMLInputElement).value]);
-                        }}
-                        onMouseUp={(e) => {
-                          const currentColors = styling.backgroundColors || ['#f3f4f6', '#e5e7eb'];
-                          handlePropertyChange('backgroundColors', [currentColors[0], (e.target as HTMLInputElement).value], true);
-                        }}
-                        onBlur={(e) => {
-                          const currentColors = styling.backgroundColors || ['#f3f4f6', '#e5e7eb'];
-                          handlePropertyChange('backgroundColors', [currentColors[0], (e.target as HTMLInputElement).value], true);
-                        }}
-                        className="h-6 w-8 p-0.5"
-                      />
-                      <Input
-                        type="text"
-                        value={styling.backgroundColors?.[1] || ''}
-                        onChange={(e) => {
-                          const currentColors = styling.backgroundColors || ['#f3f4f6', '#e5e7eb'];
-                          handlePropertyChange('backgroundColors', [currentColors[0], (e.target as HTMLInputElement).value]);
+                          handlePropertyChange('backgroundColors', [currentColors[0], value]);
                         }}
                         placeholder="#e5e7eb"
-                        className="h-6 text-xs flex-1"
+                        showAlpha={true}
+                        allowTransparent={true}
                       />
                     </div>
                   </div>
                 ) : (
-                  <div className="flex gap-1">
-                    <Input
-                      type="color"
-                      value={styling.backgroundColor || '#f3f4f6'}
-                      onChange={(e) => handlePropertyChange('backgroundColor', e.target.value)}
-                      onMouseUp={(e) => handlePropertyChange('backgroundColor', (e.target as HTMLInputElement).value, true)}
-                      onBlur={(e) => handlePropertyChange('backgroundColor', (e.target as HTMLInputElement).value, true)}
-                      className="h-6 w-8 p-0.5"
-                    />
-                    <Input
-                      type="text"
-                      value={styling.backgroundColor || ''}
-                      onChange={(e) => handlePropertyChange('backgroundColor', e.target.value)}
-                      placeholder="#f3f4f6"
-                      className="h-6 text-xs flex-1"
-                    />
-                  </div>
+                  <ColorPicker
+                    value={styling.backgroundColor || '#f3f4f6'}
+                    onChange={(value) => handlePropertyChange('backgroundColor', value)}
+                    placeholder="#f3f4f6"
+                    showAlpha={true}
+                    allowTransparent={true}
+                  />
                 )}
               </div>
             )}

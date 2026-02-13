@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { ColorPicker } from '@/components/ui/color-picker';
 import { 
   Palette, 
   Copy, 
@@ -501,18 +502,22 @@ export function ThemeEditor({ open, onOpenChange, onThemeSelect, isReadOnly = fa
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <Label>Background Color</Label>
-                          <Input
-                            type="color"
+                          <ColorPicker
                             value={editingTheme.properties.backgroundColor || '#eff6ff'}
-                            onChange={(e) => handlePropertyChange('properties.backgroundColor', e.target.value)}
+                            onChange={(value) => handlePropertyChange('properties.backgroundColor', value)}
+                            placeholder="#eff6ff"
+                            showAlpha={true}
+                            allowTransparent={true}
                           />
                         </div>
                         <div>
                           <Label>Border Color</Label>
-                          <Input
-                            type="color"
+                          <ColorPicker
                             value={editingTheme.properties.borderColor || '#3b82f6'}
-                            onChange={(e) => handlePropertyChange('properties.borderColor', e.target.value)}
+                            onChange={(value) => handlePropertyChange('properties.borderColor', value)}
+                            placeholder="#3b82f6"
+                            showAlpha={true}
+                            allowTransparent={true}
                           />
                         </div>
                       </div>
@@ -520,18 +525,22 @@ export function ThemeEditor({ open, onOpenChange, onThemeSelect, isReadOnly = fa
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <Label>Text Color</Label>
-                          <Input
-                            type="color"
+                          <ColorPicker
                             value={editingTheme.properties.textColor || '#1e40af'}
-                            onChange={(e) => handlePropertyChange('properties.textColor', e.target.value)}
+                            onChange={(value) => handlePropertyChange('properties.textColor', value)}
+                            placeholder="#1e40af"
+                            showAlpha={true}
+                            allowTransparent={true}
                           />
                         </div>
                         <div>
                           <Label>Line Color</Label>
-                          <Input
-                            type="color"
+                          <ColorPicker
                             value={editingTheme.properties.lineColor || '#3b82f6'}
-                            onChange={(e) => handlePropertyChange('properties.lineColor', e.target.value)}
+                            onChange={(value) => handlePropertyChange('properties.lineColor', value)}
+                            placeholder="#3b82f6"
+                            showAlpha={true}
+                            allowTransparent={true}
                           />
                         </div>
                       </div>
@@ -573,26 +582,30 @@ export function ThemeEditor({ open, onOpenChange, onThemeSelect, isReadOnly = fa
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <Label>Gradient Start Color</Label>
-                            <Input
-                              type="color"
+                            <ColorPicker
                               value={editingTheme.properties.backgroundColors?.[0] || '#eff6ff'}
-                              onChange={(e) => {
+                              onChange={(value) => {
                                 const colors = [...(editingTheme.properties.backgroundColors || ['#eff6ff', '#dbeafe'])];
-                                colors[0] = e.target.value;
+                                colors[0] = value;
                                 handlePropertyChange('properties.backgroundColors', colors);
                               }}
+                              placeholder="#eff6ff"
+                              showAlpha={true}
+                              allowTransparent={true}
                             />
                           </div>
                           <div>
                             <Label>Gradient End Color</Label>
-                            <Input
-                              type="color"
+                            <ColorPicker
                               value={editingTheme.properties.backgroundColors?.[1] || '#dbeafe'}
-                              onChange={(e) => {
+                              onChange={(value) => {
                                 const colors = [...(editingTheme.properties.backgroundColors || ['#eff6ff', '#dbeafe'])];
-                                colors[1] = e.target.value;
+                                colors[1] = value;
                                 handlePropertyChange('properties.backgroundColors', colors);
                               }}
+                              placeholder="#dbeafe"
+                              showAlpha={true}
+                              allowTransparent={true}
                             />
                           </div>
                         </div>
@@ -602,26 +615,30 @@ export function ThemeEditor({ open, onOpenChange, onThemeSelect, isReadOnly = fa
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <Label>Border Start Color</Label>
-                            <Input
-                              type="color"
+                            <ColorPicker
                               value={editingTheme.properties.borderColors?.[0] || '#3b82f6'}
-                              onChange={(e) => {
+                              onChange={(value) => {
                                 const colors = [...(editingTheme.properties.borderColors || ['#3b82f6', '#1d4ed8'])];
-                                colors[0] = e.target.value;
+                                colors[0] = value;
                                 handlePropertyChange('properties.borderColors', colors);
                               }}
+                              placeholder="#3b82f6"
+                              showAlpha={true}
+                              allowTransparent={true}
                             />
                           </div>
                           <div>
                             <Label>Border End Color</Label>
-                            <Input
-                              type="color"
+                            <ColorPicker
                               value={editingTheme.properties.borderColors?.[1] || '#1d4ed8'}
-                              onChange={(e) => {
+                              onChange={(value) => {
                                 const colors = [...(editingTheme.properties.borderColors || ['#3b82f6', '#1d4ed8'])];
-                                colors[1] = e.target.value;
+                                colors[1] = value;
                                 handlePropertyChange('properties.borderColors', colors);
                               }}
+                              placeholder="#1d4ed8"
+                              showAlpha={true}
+                              allowTransparent={true}
                             />
                           </div>
                         </div>

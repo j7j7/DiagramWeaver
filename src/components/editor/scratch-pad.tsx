@@ -763,12 +763,24 @@ const renderIcon = (item: ScratchPadItem) => {
                             />
                         </TabsContent>
                         <TabsContent value="visual" className="py-4">
-                            <VisualStylingPanel 
-                                styling={editingItem.data} 
+                            <VisualStylingPanel
+                                styling={editingItem.data}
                                 onStylingChange={(changes) => setEditingItem({
                                     ...editingItem,
                                     data: { ...editingItem.data, ...changes }
                                 })}
+                                isShape={(() => {
+                                    const t = editingItem.type || '';
+                                    return !isIconOrEmojiType(t) && (t.startsWith('generic.object.') ||
+                                      t?.endsWith('.square') || t?.endsWith('.circle') ||
+                                      t?.endsWith('.point') || t?.endsWith('.rectangle') ||
+                                      t?.endsWith('.triangle') || t?.endsWith('.star') ||
+                                      t?.endsWith('.cloud') || t?.endsWith('.parallelogram') ||
+                                      t?.endsWith('.trapezoid') || t?.endsWith('.kite') ||
+                                      t?.endsWith('.hexagon') || t?.endsWith('.pentagon') ||
+                                      t?.endsWith('.octagon') || t?.endsWith('.jigsaw') ||
+                                      t?.endsWith('.arrowhead') || t?.endsWith('.chevron'));
+                                })()}
                             />
                         </TabsContent>
                     </Tabs>

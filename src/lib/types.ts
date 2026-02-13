@@ -338,6 +338,7 @@ export interface DiagramData {
   zones?: DiagramZoneData[];
   groupings?: DiagramGroupingData[];
   layers?: LayersConfig;
+  recentColors?: string[];
 }
 
 /** @deprecated Zones removed - kept only for flatten-on-import of legacy JSON */
@@ -347,6 +348,7 @@ export interface HierarchicalDiagramData {
   groupings?: DiagramGroupingData[];
   metadata?: unknown;
   layers?: LayersConfig;
+  recentColors?: string[];
 }
 
 /** @deprecated Zones removed - use DiagramData without zones */

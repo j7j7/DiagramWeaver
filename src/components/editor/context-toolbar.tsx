@@ -39,6 +39,7 @@ import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Slider } from '@/components/ui/slider';
+import { ColorPicker } from '@/components/ui/color-picker';
 
 import { TextStylingPanel } from './text-styling-panel';
 import { VisualStylingPanel } from './visual-styling-panel';
@@ -1403,26 +1404,13 @@ export function ContextToolbar({
                             </div>
                             <div className="flex items-center gap-2 pt-1 border-t border-border/50">
                               <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Color:</label>
-                              <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                                <Input
-                                  type="color"
-                                  value={connectionColor}
-                                  onChange={(e) => handleConnectionColorChange((e.target as HTMLInputElement).value)}
-                                  onMouseUp={(e) => handleConnectionColorChange((e.target as HTMLInputElement).value, true)}
-                                  onBlur={(e) => handleConnectionColorChange((e.target as HTMLInputElement).value, true)}
-                                  className="h-7 w-12 p-1 cursor-pointer shrink-0"
-                                  title="Pick color"
-              style={{ pointerEvents: 'auto' }}
-                                />
-                                <Input
-                                  type="text"
-                                  value={connectionColor}
-                                  onChange={(e) => handleConnectionColorChange((e.target as HTMLInputElement).value)}
-                                  className="h-7 flex-1 min-w-0 text-xs font-mono"
-                                  placeholder="#6b7280"
-                                  title="Hex color code"
-                                />
-                              </div>
+                              <ColorPicker
+                                value={connectionColor}
+                                onChange={handleConnectionColorChange}
+                                placeholder="#6b7280"
+                                showAlpha={true}
+                                allowTransparent={true}
+                              />
                             </div>
                             <div className="flex items-center gap-2 pt-1 border-t border-border/50">
                               <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Text Position:</label>
@@ -1637,6 +1625,10 @@ export function ContextToolbar({
                     const isShape = isShapeNodeType(t);
                     const isTextbox = t === 'generic.text.textbox';
                     return isShape || isTextbox;
+                  })()}
+                  isShape={(() => {
+                    const t = (selectedItem as any)?.type || '';
+                    return isShapeNodeType(t);
                   })()}
                   noIconBackground={(() => {
                     if (!selectedItem || !diagramData) return false;
