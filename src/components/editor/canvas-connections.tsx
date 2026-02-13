@@ -552,9 +552,10 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
       const arrowPoint = getBezierPoint(0.9, fromX, fromY, cp1X, cp1Y, cp2X, cp2Y, toX, toY);
       const hasArrow = edge.toArrow === true || edge.arrow === true;
 
-      const buttonOffset = 30;
-
-      const BUTTON_Z_INDEX = 30;
+      const buttonOffset = 36;
+      const ICON_SIZE = 29; // 24 * 1.2 ~20% bigger
+      const ICON_HALF = Math.round(ICON_SIZE / 2);
+      const BUTTON_Z_INDEX = 50;
 
       return (
         <React.Fragment key={`actions-${edge.from}-${edge.to}-${index}`}>
@@ -565,10 +566,10 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                 className="absolute cursor-pointer"
                 style={{
                   zIndex: BUTTON_Z_INDEX,
-                  left: `${arrowPoint.x - 12}px`,
-                  top: `${arrowPoint.y - 12}px`,
-                  width: '24px',
-                  height: '24px',
+                  left: `${arrowPoint.x - ICON_HALF}px`,
+                  top: `${arrowPoint.y - ICON_HALF}px`,
+                  width: `${ICON_SIZE}px`,
+                  height: `${ICON_SIZE}px`,
                 }}
                 onMouseDown={(e) => {
                   e.stopPropagation();
@@ -582,32 +583,27 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                 }}
               >
                 <svg
-                  width="24"
-                  height="24"
+                  width={ICON_SIZE}
+                  height={ICON_SIZE}
+                  viewBox="0 0 24 24"
                   className="pointer-events-none"
                 >
                   <circle
                     cx="12"
                     cy="12"
                     r="12"
-                    fill={hasArrow ? "#22c55e" : "white"}
-                    stroke="#6b7280"
-                    strokeWidth="2"
-                    style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
+                    fill="#22c55e"
                   />
-                  <path
-                    d="M 6 12 L 16 12 M 11 7 L 16 12 L 11 17"
-                    stroke={hasArrow ? "white" : "#6b7280"}
-                    strokeWidth="2"
-                    fill="none"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
+                  {hasArrow ? (
+                    <path d="M 11 7 L 17 12 L 11 17 Z" fill="white" />
+                  ) : (
+                    <rect x="6" y="10.5" width="12" height="3" fill="white" rx="0.5" />
+                  )}
                 </svg>
               </div>
             </TooltipTrigger>
             <TooltipContent side="top">
-              {hasArrow ? "Remove arrow" : "Add arrow"}
+              Toggle arrow
             </TooltipContent>
           </Tooltip>
 
@@ -619,10 +615,10 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                   className="absolute cursor-pointer"
                   style={{
                     zIndex: BUTTON_Z_INDEX,
-                    left: `${centerPoint.x - buttonOffset - 12}px`,
-                    top: `${centerPoint.y - 12}px`,
-                    width: '24px',
-                  height: '24px',
+                    left: `${centerPoint.x - buttonOffset - ICON_HALF}px`,
+                    top: `${centerPoint.y - ICON_HALF}px`,
+                    width: `${ICON_SIZE}px`,
+                    height: `${ICON_SIZE}px`,
                   }}
                   onMouseDown={(e) => {
                     e.stopPropagation();
@@ -633,25 +629,20 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                   }}
                 >
                   <svg
-                    width="24"
-                    height="24"
+                    width={ICON_SIZE}
+                    height={ICON_SIZE}
+                    viewBox="0 0 24 24"
                     className="pointer-events-none"
                   >
                     <circle
                       cx="12"
                       cy="12"
                       r="12"
-                      fill="white"
-                      stroke="#6b7280"
-                      strokeWidth="2"
+                      fill="#22c55e"
                       style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
                     />
-                    <path
-                      d="M 12 7 L 12 17 M 7 12 L 17 12"
-                      stroke="#6b7280"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                    />
+                    <rect x="10.5" y="6" width="3" height="12" fill="white" rx="0.5" />
+                    <rect x="6" y="10.5" width="12" height="3" fill="white" rx="0.5" />
                   </svg>
                 </div>
               </TooltipTrigger>
@@ -669,10 +660,10 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                   className="absolute cursor-pointer"
                   style={{
                     zIndex: BUTTON_Z_INDEX,
-                    left: `${centerPoint.x + buttonOffset - 12}px`,
-                    top: `${centerPoint.y - 12}px`,
-                    width: '24px',
-                  height: '24px',
+                    left: `${centerPoint.x + buttonOffset - ICON_HALF}px`,
+                    top: `${centerPoint.y - ICON_HALF}px`,
+                    width: `${ICON_SIZE}px`,
+                    height: `${ICON_SIZE}px`,
                   }}
                   onMouseDown={(e) => {
                     e.stopPropagation();
@@ -683,22 +674,20 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                   }}
                 >
                   <svg
-                    width="24"
-                    height="24"
+                    width={ICON_SIZE}
+                    height={ICON_SIZE}
+                    viewBox="0 0 24 24"
                     className="pointer-events-none"
                   >
                     <circle
                       cx="12"
-                    cy="12"
+                      cy="12"
                       r="12"
-                      fill="white"
-                      stroke="#ef4444"
-                      strokeWidth="2"
-                      style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
+                      fill="#ef4444"
                     />
                     <path
                       d="M 8 8 L 16 16 M 16 8 L 8 16"
-                      stroke="#ef4444"
+                      stroke="white"
                       strokeWidth="2.5"
                       strokeLinecap="round"
                     />

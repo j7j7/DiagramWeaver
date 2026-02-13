@@ -1,5 +1,6 @@
 import React from "react";
 import { ArrowToggle } from "../diagram/arrow-toggle";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { determineConnectionEdges, getOptimalConnectionPoints, calculateBezierControlPoints, getBezierPoint } from "../diagram/bezier-connection";
 import type { DiagramData } from "@/lib/types";
 import { 
@@ -345,41 +346,49 @@ function CanvasArrowTogglesInner(props: CanvasArrowTogglesProps) {
           });
         };
 
+        const iconSize = 48; // 40 * 1.2 ~20% bigger
+        const iconHalf = iconSize / 2;
+
         return (
-          <div
-            key={`arrow-toggle-${conn.from}-${conn.to}-${originalIndex}`}
-            className={`absolute ${isReadOnly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-            style={{ 
-              zIndex: 15,
-              left: `${midX - 20}px`,
-              top: `${midY - 20}px`,
-              width: '40px',
-              height: '40px'
-            }}
-            onMouseDown={(e) => {
-              if (isReadOnly) {
-                e.stopPropagation();
-                e.preventDefault();
-                return;
-              }
-              e.stopPropagation();
-              e.preventDefault();
-              handleArrowToggle(conn, originalIndex, !conn.toArrow && !conn.arrow);
-            }}
-          >
-            <svg
-              width="40"
-              height="40"
-              className="pointer-events-none"
-            >
-              <ArrowToggle
-                x={20}
-                y={20}
-                connection={conn}
-                isActive={conn.toArrow === true || conn.arrow === true}
-              />
-            </svg>
-          </div>
+          <Tooltip key={`arrow-toggle-${conn.from}-${conn.to}-${originalIndex}`}>
+            <TooltipTrigger asChild>
+              <div
+                className={`absolute ${isReadOnly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                style={{ 
+                  zIndex: 50,
+                  left: `${midX - iconHalf}px`,
+                  top: `${midY - iconHalf}px`,
+                  width: `${iconSize}px`,
+                  height: `${iconSize}px`,
+                }}
+                  onMouseDown={(e) => {
+                    if (isReadOnly) {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      return;
+                    }
+                    e.stopPropagation();
+                    e.preventDefault();
+                    handleArrowToggle(conn, originalIndex, !conn.toArrow && !conn.arrow);
+                  }}
+                >
+                  <svg
+                    width={iconSize}
+                    height={iconSize}
+                    viewBox="0 0 40 40"
+                    className="pointer-events-none"
+                  >
+                    <ArrowToggle
+                      x={20}
+                      y={20}
+                      connection={conn}
+                      isActive={conn.toArrow === true || conn.arrow === true}
+                    />
+                  </svg>
+                </div>
+              </TooltipTrigger>
+            <TooltipContent side="top">Toggle arrow</TooltipContent>
+          </Tooltip>
         );
       })}
     </>
