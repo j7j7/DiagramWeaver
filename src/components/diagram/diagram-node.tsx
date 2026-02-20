@@ -971,7 +971,7 @@ return (
       className={cn(
         "absolute group transition-transform duration-200 ease-in-out rounded-lg",
         // Hover and selection effects - not for lines, and not when locked
-        !isLineNode && !(isDragging || isTouchDragging) && !(isSelected || isHighlighted || isMultiSelected) && !isLocked && "hover:scale-105",
+        !isLineNode && !(isDragging || isTouchDragging) && !(isSelected || isHighlighted || isMultiSelected) && !isLocked && "hover:scale-[1.02]",
         !isLineNode && (isSelected || isHighlighted || isMultiSelected) && "node-glow-static drop-shadow-md",
         !isLineNode && isGroupMember && !isSelected && !isHighlighted && !isMultiSelected && "node-glow-green-static drop-shadow-md",
         (isDragging || isTouchDragging) && "cursor-grabbing",
