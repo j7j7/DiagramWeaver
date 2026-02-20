@@ -146,17 +146,20 @@ export const getShapeStyles = (node: DiagramNodeData & { width?: number; height?
   const gradientAngle = nodeAny.gradientAngle || 135;
   const borderStyle = nodeAny.borderStyle || 'solid';
   const borderColor = nodeAny.borderColor || '#6b7280';
+  const borderColors = nodeAny.borderColors || [nodeAny.borderColor || '#6b7280', nodeAny.borderColor || '#6b7280'];
   const borderWidth = nodeAny.borderWidth || 2;
   const shadow = nodeAny.shadow || false;
   const roundedEdges = nodeAny.roundedEdges || false;
 
   return {
-    background: backgroundStyle === 'gradient' 
+    background: backgroundStyle === 'gradient'
       ? getGradientWithAngle(backgroundColors, gradientAngle)
       : backgroundColor,
     borderWidth: borderStyle === 'none' ? '0' : `${borderWidth}px`,
     borderStyle: borderStyle === 'gradient' ? 'solid' : borderStyle,
-    borderColor,
+    borderColor: borderStyle === 'gradient' ? 'transparent' : borderColor,
+    borderColors,
+    borderImage: borderStyle === 'gradient' ? `${getGradientWithAngle(borderColors, gradientAngle)} 1` : undefined,
     shadow,
     roundedEdges,
     backgroundColor: backgroundStyle === 'gradient' ? backgroundColors[0] : backgroundColor,

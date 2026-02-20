@@ -63,7 +63,7 @@ npm i baseline-browser-mapping@latest -D
 
 # Fix security vulnerabilities
 echo "[audit] Running npm audit fix"
-npm audit fix
+npm audit fix || true
 
 # Kill anything already on the specified port to avoid conflicts
 kill_port() {

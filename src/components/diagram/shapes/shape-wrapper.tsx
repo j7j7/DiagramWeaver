@@ -80,9 +80,18 @@ export function ShapeWrapper({
   const overlap = borderWidth > 0 ? borderWidth : 0;
 
   // Calculate borderRadius when roundedEdges is enabled
-  const calculatedBorderRadius = roundedEdges 
-    ? `${Math.min(width, height) * 0.06}px` 
+  const calculatedBorderRadius = roundedEdges
+    ? `${Math.min(width, height) * 0.06}px`
     : borderRadius;
+
+  // Handle border image for gradient borders
+  const borderImage = styles.borderImage;
+  const borderColorForBorder = borderImage ? 'transparent' : styles.borderColor;
+  const borderColors = styles.borderColors;
+
+  // Check if we need special handling for rounded gradient borders
+  // border-image doesn't work with border-radius, so we use padding approach
+  const needsGradientBorderRounding = roundedEdges && borderImage && borderColors && calculatedBorderRadius;
 
   return (
     <div
@@ -90,48 +99,77 @@ export function ShapeWrapper({
       className="relative"
       style={{
         boxSizing: 'border-box',
-        background: !shouldSkipStyling ? styles.background : undefined,
-        borderWidth: !shouldSkipStyling ? styles.borderWidth : undefined,
-        borderStyle: !shouldSkipStyling ? styles.borderStyle : undefined,
-        borderColor: !shouldSkipStyling ? styles.borderColor : undefined,
-        borderRadius: calculatedBorderRadius,
+        borderRadius: needsGradientBorderRounding ? calculatedBorderRadius : undefined,
         width: width + overlap,
         height: height + overlap,
         minWidth: width + overlap,
         minHeight: height + overlap,
         marginRight: overlap ? -overlap : 0,
         marginBottom: overlap ? -overlap : 0,
-        ...(styles.shadow && !useSvgShadow && {
+        ...(styles.shadow && !useSvgShadow && !needsGradientBorderRounding ? {
           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
-        }),
-        ...(styles.shadow && useSvgShadow && {
+        } : {}),
+        ...(styles.shadow && useSvgShadow && !needsGradientBorderRounding ? {
           filter: 'drop-shadow(0 20px 25px rgba(0, 0, 0, 0.2)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.04))'
-        })
+        } : {})
       }}
     >
-      {children ?? null}
-      
-      <ShapeTag
-        tag={tag ?? ''}
-        tagPosition={tagPosition ?? 'top-left'}
-        isEditingTag={isEditingTag}
-        editTagText={editTagText}
-        onTagTextChange={onTagTextChange}
-        onTagSubmit={onTagSubmit}
-        onTagKeyDown={onTagKeyDown}
-        onTagDoubleClick={onTagDoubleClick}
-      />
+      {needsGradientBorderRounding ? (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: borderImage,
+            borderRadius: calculatedBorderRadius,
+            pointerEvents: 'none',
+          }}
+        />
+      ) : null}
 
-      <ShapeText
-        node={node}
-        label={label}
-        isEditingLabel={isEditingLabel}
-        editText={editText}
-        onLabelTextChange={onLabelTextChange}
-        onLabelSubmit={onLabelSubmit}
-        onLabelKeyDown={onLabelKeyDown}
-        onLabelDoubleClick={onLabelDoubleClick}
-      />
+      <div
+        style={{
+          boxSizing: 'border-box',
+          background: !shouldSkipStyling && !needsGradientBorderRounding ? styles.background : undefined,
+          borderWidth: !shouldSkipStyling && !needsGradientBorderRounding ? styles.borderWidth : undefined,
+          borderStyle: !shouldSkipStyling && !needsGradientBorderRounding ? styles.borderStyle : undefined,
+          borderColor: !shouldSkipStyling && !needsGradientBorderRounding ? borderColorForBorder : undefined,
+          borderImage: !shouldSkipStyling && !needsGradientBorderRounding ? borderImage : undefined,
+          borderRadius: !needsGradientBorderRounding ? calculatedBorderRadius : undefined,
+          width: needsGradientBorderRounding ? `calc(100% - ${styles.borderWidth})` : '100%',
+          height: needsGradientBorderRounding ? `calc(100% - ${styles.borderWidth})` : '100%',
+          margin: needsGradientBorderRounding ? `calc(${styles.borderWidth} / 2)` : 0,
+          ...(styles.shadow && !useSvgShadow && needsGradientBorderRounding ? {
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+          } : {}),
+          ...(styles.shadow && useSvgShadow && needsGradientBorderRounding ? {
+            filter: 'drop-shadow(0 20px 25px rgba(0, 0, 0, 0.2)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.04))'
+          } : {})
+        }}
+      >
+        {children ?? null}
+
+        <ShapeTag
+          tag={tag ?? ''}
+          tagPosition={tagPosition ?? 'top-left'}
+          isEditingTag={isEditingTag}
+          editTagText={editTagText}
+          onTagTextChange={onTagTextChange}
+          onTagSubmit={onTagSubmit}
+          onTagKeyDown={onTagKeyDown}
+          onTagDoubleClick={onTagDoubleClick}
+        />
+
+        <ShapeText
+          node={node}
+          label={label}
+          isEditingLabel={isEditingLabel}
+          editText={editText}
+          onLabelTextChange={onLabelTextChange}
+          onLabelSubmit={onLabelSubmit}
+          onLabelKeyDown={onLabelKeyDown}
+          onLabelDoubleClick={onLabelDoubleClick}
+        />
+      </div>
     </div>
   );
 }

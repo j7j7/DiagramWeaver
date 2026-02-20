@@ -8,6 +8,7 @@ import { useCanvasTransform, type Transform } from "@/hooks/use-canvas-transform
 import { CanvasConnections } from "../editor/canvas-connections";
 import { RULER_SIZE, type PositionedNode, type PositionedGroup } from "../editor/canvas-constants";
 import { CanvasRulers } from "../editor/canvas-rulers";
+import { computeConnectionSlots } from "@/lib/connection-order-utils";
 
 interface ViewerCanvasProps {
   diagramData: DiagramData;
@@ -36,6 +37,11 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
       return acc;
     }, {} as Record<string, PositionedGroup>);
   }, [processedZones]);
+
+  const connectionSlots = useMemo(
+    () => computeConnectionSlots(diagramData, processedNodes, processedZones),
+    [diagramData, processedNodes, processedZones]
+  );
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 });
@@ -211,7 +217,7 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
         canvasHeight={canvasDimensions.height}
       />
 
-      {/* Canvas content */}
+        {/* Canvas content */}
       <div
         className="absolute dot-grid"
         style={{
@@ -224,36 +230,70 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
       >
         {/* Zones removed - diagram is flat (nodes only) */}
 
-        {/* Render nodes */}
-        {processedNodes.map((node) => {
-          const nodeData = nodesById[node.id];
-          if (!nodeData) return null;
-
-          return (
+        {/* Nodes + Connections (Order-aware layering) */}
+        {connectionSlots.sortedItemIds.flatMap((itemId, i) => {
+          const slotConnections = connectionSlots.connectionsBySlot.get(i);
+          const connIndices = slotConnections?.length
+            ? new Set(slotConnections)
+            : undefined;
+          const node = nodesById[itemId];
+          const zone = zonesById[itemId];
+          const connZIndex = 2 * i;
+          const nodeZIndex = 2 * i + 1;
+          const nodeEl = node ? (
             <DiagramNode
               key={node.id}
-              node={nodeData}
+              node={node}
+              stackZIndex={nodeZIndex}
               isSelected={false}
               isMultiSelected={false}
               isReadOnly={true}
               onHoverChange={handleNodeHover}
               onClick={handleNodeClick}
             />
-          );
+          ) : null;
+          return [
+            connIndices ? (
+              <CanvasConnections
+                key={`conn-slot-${i}`}
+                width={width}
+                height={height}
+                diagramData={diagramData}
+                nodesById={nodesById}
+                zonesById={zonesById}
+                selectedItemId={undefined}
+                onItemSelect={() => {}}
+                closeContextMenu={() => {}}
+                onConnectionDelete={undefined}
+                connectionIndices={connIndices}
+                stackZIndex={connZIndex}
+              />
+            ) : null,
+            nodeEl,
+          ].filter(Boolean);
         })}
-
-        {/* Render connections */}
-        <CanvasConnections
-          width={width}
-          height={height}
-          diagramData={diagramData}
-          nodesById={nodesById}
-          zonesById={zonesById}
-          selectedItemId={undefined}
-          onItemSelect={() => {}}
-          closeContextMenu={() => {}}
-          onConnectionDelete={undefined}
-        />
+        {/* Connections that render after the last item (in front of everything) */}
+        {(() => {
+          const n = connectionSlots.sortedItemIds.length;
+          const lastSlot = connectionSlots.connectionsBySlot.get(n);
+          if (!lastSlot?.length) return null;
+          return (
+            <CanvasConnections
+              key="conn-slot-last"
+              width={width}
+              height={height}
+              diagramData={diagramData}
+              nodesById={nodesById}
+              zonesById={zonesById}
+              selectedItemId={undefined}
+              onItemSelect={() => {}}
+              closeContextMenu={() => {}}
+              onConnectionDelete={undefined}
+              connectionIndices={new Set(lastSlot)}
+              stackZIndex={2 * n}
+            />
+          );
+        })()}
       </div>
     </div>
   );
