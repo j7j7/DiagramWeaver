@@ -1253,7 +1253,7 @@ return (
             align="center"
             className="w-64 bg-popover text-popover-foreground shadow-xl border-accent"
           >
-            <p className="text-sm">{node.info}</p>
+            <p className="text-sm whitespace-pre-wrap">{node.info}</p>
           </PopoverContent>
         )}
        </Popover>
