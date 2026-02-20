@@ -1681,6 +1681,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             onSortItems={(order) => onZoneSort?.(contextMenu.itemId, order)}
           />
           {metadataPopupRect &&
+            !contextMenu.visible &&
             selectedItem &&
             "metaData" in selectedItem &&
             selectedItem.metaData &&
