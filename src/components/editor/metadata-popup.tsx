@@ -4,7 +4,8 @@ import React, { useState } from "react";
 import { cn } from "@/lib/utils";
 
 const GAP = 8;
-const POPUP_WIDTH = 220;
+const MAX_POPUP_WIDTH = 320;
+const POPUP_WIDTH = 240;
 const COLLAPSED_MAX_HEIGHT = 88;
 const EXPANDED_MAX_HEIGHT = 280;
 
@@ -37,9 +38,10 @@ export function MetadataPopup({
   let left = anchorRect.right + GAP;
   let top = anchorRect.top;
 
+  const popupWidthForPosition = entries.length >= 4 ? MAX_POPUP_WIDTH : POPUP_WIDTH;
   // Constrain horizontal: if no room on right, show to left of object
-  if (left + POPUP_WIDTH > vw - pad) {
-    left = anchorRect.left - POPUP_WIDTH - GAP;
+  if (left + popupWidthForPosition > vw - pad) {
+    left = anchorRect.left - popupWidthForPosition - GAP;
   }
   if (left < pad) left = pad;
 
@@ -50,6 +52,8 @@ export function MetadataPopup({
   if (top < pad) top = pad;
 
   const hasMore = entries.length > 2;
+  const useCardGrid = entries.length >= 4;
+  const popupWidth = useCardGrid ? MAX_POPUP_WIDTH : POPUP_WIDTH;
 
   return (
     <div
@@ -63,7 +67,7 @@ export function MetadataPopup({
       style={{
         top: `${top}px`,
         left: `${left}px`,
-        width: `${POPUP_WIDTH}px`,
+        width: `${popupWidth}px`,
         maxHeight: isHovered ? `${EXPANDED_MAX_HEIGHT}px` : `${COLLAPSED_MAX_HEIGHT}px`,
       }}
       onMouseEnter={() => setIsHovered(true)}
@@ -71,23 +75,32 @@ export function MetadataPopup({
     >
       <div
         className={cn(
-          "space-y-1.5 pr-0.5",
-          isHovered ? "overflow-y-auto" : "overflow-hidden"
+          "pr-0.5",
+          isHovered ? "overflow-y-auto" : "overflow-hidden",
+          useCardGrid ? "grid grid-cols-2 gap-2" : "grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1.5"
         )}
       >
-        {entries.map(([key, value]) => (
-          <div
-            key={key}
-            className="flex flex-col gap-0.5 break-words"
-          >
-            <span className="font-medium text-zinc-400 truncate" title={key}>
-              {key}
-            </span>
-            <span className={cn("text-zinc-200", !isHovered && "truncate")} title={value}>
-              {value}
-            </span>
-          </div>
-        ))}
+        {entries.map(([key, value]) =>
+          useCardGrid ? (
+            <div key={key} className="flex flex-col gap-0.5 rounded bg-zinc-700/50 px-2 py-1.5 min-w-0">
+              <span className="font-medium text-zinc-400 truncate text-[10px]" title={key}>
+                {key}
+              </span>
+              <span className={cn("text-zinc-200 break-words", !isHovered && "truncate")} title={value}>
+                {value}
+              </span>
+            </div>
+          ) : (
+            <React.Fragment key={key}>
+              <span className="font-medium text-zinc-400 truncate shrink-0" title={key}>
+                {key}
+              </span>
+              <span className={cn("text-zinc-200 break-words min-w-0", !isHovered && "truncate")} title={value}>
+                {value}
+              </span>
+            </React.Fragment>
+          )
+        )}
       </div>
       {hasMore && !isHovered && (
         <span className="absolute bottom-1 right-2 text-[10px] text-zinc-500">⋯</span>
