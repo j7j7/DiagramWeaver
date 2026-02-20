@@ -2,6 +2,47 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-02-20)
 
+### 2026-02-20 – Rules Engine
+User-definable validation rules for diagram content. **Edit → Rules** opens the Rules Editor dialog. Rules check nodes on the diagram against user-defined criteria; pass = green tick, fail = red cross.
+
+**Menu**: Edit → Rules (opens Rules Editor dialog).
+
+**Rule operators** (dropdown):
+- Must have at least 1 – diagram must contain ≥1 node of the given type
+- Must have at least N – diagram must contain ≥N nodes of the type (N from count input)
+- Must have more than N – diagram must contain >N nodes of the type
+- Must have exactly N – diagram must contain exactly N nodes of the type
+- Must have all types – diagram must contain at least 1 of each type listed (one per line)
+
+**Type matching**:
+- Exact – select from dropdown (all resource types + Lucide icons + emojis)
+- Pattern – use `*` wildcard, e.g. `aws.database.*` (any AWS database), `*.database.*` (any database from any provider)
+
+**Example rules**:
+- Must have web, database, firewall → use "Must have all types" with `aws.compute.ec2-instance`, `aws.database.rds`, `generic.object.cloud` (or equivalents)
+- Must have a `<type>` object → "Must have at least 1" + select type
+- Must have more than X of `<type>` → "Must have more than N" + type + count
+
+**Export/Import**: Rules saved as separate JSON file (`diagram-rules.json`); Import loads rules from a JSON file. Rules are session-only unless exported.
+
+**JSON rules file format**:
+```json
+{ "version": "1.0", "name": "Diagram Rules", "rules": [{ "id": "...", "name": "...", "operator": "must_have", "typeValue": "aws.database.rds", "typeMatch": "exact" }] }
+```
+
+**Optional**: Rules are optional; diagrams work without any rules defined.
+
+**Evaluation**: Rules are checked against `diagramData.nodes` (flat node list; zones excluded). Evaluation runs when the Rules Editor is open and diagramData changes.
+
+**Persistence**: Rules live in editor state; they are lost on page refresh. Use Export to save, Import to restore.
+
+**Key files**:
+- `src/lib/rules-types.ts` – DiagramRule, RulesFile, RuleResult types
+- `src/lib/rules-engine.ts` – evaluateRule, evaluateRules, typeMatchesPattern, getDiagramNodes
+- `src/components/editor/rules-editor.tsx` – Rules Editor dialog UI
+- `src/hooks/use-resource-types.ts` – loads resource types for type dropdown (providers + icons + emojis)
+- **Modified**: top-menu-bar.tsx (Edit → Rules menu item), diagram-editor.tsx (rules, rulesEditorOpen state)
+
 ### 2026-02-20 – Metadata for Diagram Items
 Added optional `metaData?: Record<string, string>` (key/value pairs) to nodes, connections, zones, and groupings. Users can add custom properties like "IP Address: 192.168.1.1" to any item.
 

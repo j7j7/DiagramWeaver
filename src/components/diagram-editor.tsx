@@ -173,6 +173,32 @@ export default function DiagramEditor() {
   const [metadataPopupsEnabled, setMetadataPopupsEnabled] = React.useState<boolean>(true);
   const [propertiesPanelVisible, setPropertiesPanelVisible] = React.useState<boolean>(true);
   const [scratchPadOpen, setScratchPadOpen] = React.useState<boolean>(false);
+  const [rulesEditorOpen, setRulesEditorOpen] = React.useState<boolean>(false);
+  const [rules, setRules] = React.useState<import('@/lib/rules-types').DiagramRule[]>([]);
+
+  // Restore rules from localStorage after hydration
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const saved = localStorage.getItem('dw:rules');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        const rulesArray = Array.isArray(parsed?.rules) ? parsed.rules : Array.isArray(parsed) ? parsed : [];
+        if (rulesArray.length > 0 && rulesArray.every((r: any) => r && typeof r.id === 'string' && r.operator)) {
+          setRules(rulesArray);
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }, []);
+
+  // Save rules to localStorage when they change
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dw:rules', JSON.stringify({ version: '1.0', rules }));
+    }
+  }, [rules]);
 
   // Restore scratchpad visibility from localStorage after hydration
   React.useEffect(() => {
@@ -1745,6 +1771,10 @@ export default function DiagramEditor() {
         setTriggerConnectionSettingsPanel={setTriggerConnectionSettingsPanel}
         setScratchPadOpen={setScratchPadOpen}
         scratchPadOpen={scratchPadOpen}
+        rulesEditorOpen={rulesEditorOpen}
+        setRulesEditorOpen={setRulesEditorOpen}
+        rules={rules}
+        setRules={setRules}
         tabs={tabs}
         activeTabId={activeTabId}
         switchTab={switchTab}
@@ -1866,6 +1896,10 @@ function DiagramEditorInner({
   setTriggerConnectionSettingsPanel,
   setScratchPadOpen,
   scratchPadOpen,
+  rulesEditorOpen,
+  setRulesEditorOpen,
+  rules,
+  setRules,
   tabs,
   activeTabId,
   switchTab,
@@ -2061,6 +2095,11 @@ function DiagramEditorInner({
                     }}
                     onToggleScratchPad={() => setScratchPadOpen(!scratchPadOpen)}
                     scratchPadOpen={scratchPadOpen}
+                    onToggleRulesEditor={() => setRulesEditorOpen(true)}
+                    onRulesEditorOpenChange={setRulesEditorOpen}
+                    rulesEditorOpen={rulesEditorOpen}
+                    rules={rules}
+                    onRulesChange={setRules}
                     onStartTutorial={handleStartTutorial}
                 />
                 {activeTabId && (

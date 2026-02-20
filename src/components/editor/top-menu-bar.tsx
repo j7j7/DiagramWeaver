@@ -12,9 +12,10 @@ import {
   MenubarSubTrigger,
   MenubarSubContent,
 } from '@/components/ui/menubar';
-import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight } from 'lucide-react';
+import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
 import { ThemeEditor } from './theme-editor';
+import { RulesEditor } from './rules-editor';
 import { ThemeMenuSelector } from './theme-menu-selector';
 import { AboutDialog } from './about-dialog';
 import { ViewerUrlDialog } from './viewer-url-dialog';
@@ -86,6 +87,11 @@ interface TopMenuBarProps {
   onAutoLayout?: () => void;
   onToggleScratchPad?: () => void;
   scratchPadOpen?: boolean;
+  onToggleRulesEditor?: () => void;
+  onRulesEditorOpenChange?: (open: boolean) => void;
+  rulesEditorOpen?: boolean;
+  rules?: import('@/lib/rules-types').DiagramRule[];
+  onRulesChange?: (rules: import('@/lib/rules-types').DiagramRule[]) => void;
   isReadOnly?: boolean;
   onToggleReadOnly?: () => void;
   onStartTutorial?: () => void;
@@ -152,6 +158,11 @@ export function TopMenuBar({
   onAutoLayout,
   onToggleScratchPad,
   scratchPadOpen,
+  onToggleRulesEditor,
+  onRulesEditorOpenChange,
+  rulesEditorOpen,
+  rules = [],
+  onRulesChange,
   isReadOnly = false,
   onToggleReadOnly,
   onStartTutorial,
@@ -396,6 +407,15 @@ export function TopMenuBar({
                 </MenubarItem>
               </>
             )}
+            {onToggleRulesEditor && (
+              <>
+                {(onUndo || onRedo || onFitToView || onToggleLayersPanel || onToggleScratchPad || onTogglePropertiesPanel) && <MenubarSeparator />}
+                <MenubarItem onClick={() => onToggleRulesEditor?.()}>
+                  <ListChecks className="mr-2 h-4 w-4" />
+                  Rules
+                </MenubarItem>
+              </>
+            )}
             {onToggleHover !== undefined && (
               <>
                 {(onUndo || onRedo || onFitToView || onToggleLayersPanel || onToggleScratchPad || onTogglePropertiesPanel) && <MenubarSeparator />}
@@ -607,6 +627,16 @@ export function TopMenuBar({
           open={viewerUrlDialogOpen}
           onOpenChange={setViewerUrlDialogOpen}
           diagramData={diagramData}
+        />
+      )}
+      {/* Rules Editor */}
+      {onToggleRulesEditor && (
+        <RulesEditor
+          open={rulesEditorOpen ?? false}
+          onOpenChange={(open) => onRulesEditorOpenChange?.(open)}
+          rules={rules ?? []}
+          onRulesChange={onRulesChange ?? (() => {})}
+          diagramData={diagramData ?? undefined}
         />
       )}
     </div>
