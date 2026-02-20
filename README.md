@@ -108,6 +108,16 @@ Additional providers available (can be enabled): Alibaba Cloud, OCI, SaaS, Elast
 - **Copy Viewer URL**: Shareable URL for read-only viewer
 - **Examples**: Built-in example diagrams (File → Examples)
 
+### Viewer
+
+- **Read-Only Mode**: Share diagrams via URL without editing (File → Copy Viewer URL)
+- **URL Parameters**: `?json=` (base64-encoded diagram) or `?url=` (URL to fetch JSON from a remote host)
+- **Controls**: Zoom in/out, Fit to View, Properties panel toggle, metadata popup toggle
+- **Selection**: Click nodes or connections to view name, type, and metadata in the Properties panel
+- **Metadata Popups**: Compact popup under selected item shows key/value pairs (toggle in controls)
+- **Layers Panel**: When diagram has 2+ layers, toggle layer visibility (eye/eye-off)
+- **Limits**: 5MB JSON max; 10s timeout for remote `url=` fetch
+
 ### View Options
 
 - **Layers Panel**: Toggle layer visibility
@@ -116,6 +126,24 @@ Additional providers available (can be enabled): Alibaba Cloud, OCI, SaaS, Elast
 - **Icon Background**: Toggle background on resource icons
 - **Alignment Guides**: Snap guides when dragging
 - **Read-Only Mode**: Disable editing
+
+### Rules Engine
+
+- **Edit → Rules**: Define validation rules for diagram content; pass (✓) or fail (✗) per rule
+- **Operators**: Must have at least 1, at least N, more than N, exactly N, or must have all types
+- **Type Matching**: Exact (searchable dropdown) or pattern with substring/`*` wildcard (e.g. `firewall` or `aws.database.*`)
+- **Export/Import**: Save rules to JSON file (native Save As dialog in Chrome/Edge); import from file
+- **Persistence**: Rules stored in localStorage and survive browser refresh
+- **Optional**: Diagrams work without rules; rules are user-defined checks only
+
+### Metadata
+
+- **`metaData`**: Optional key/value pairs (e.g. `"IP Address": "192.168.1.1"`) on nodes, connections, zones, and groupings
+- **Properties Panel**: Right panel shows selected item name, type, and metadata; add/edit/remove via UI (Edit → Toggle Properties)
+- **Metadata Popup**: Compact popup under selected node/connection shows key/value pairs; Edit → Enable Properties toggles it
+- **Key Suggestions**: Input suggests previously used keys across the diagram for consistent property names
+- **JSON Storage**: Stored in diagram JSON as `metaData: { "Key": "value", ... }`; export/import preserves metadata
+- **Viewer**: Properties panel and popup available in read-only mode
 
 ### Theme
 

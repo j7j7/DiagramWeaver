@@ -15,15 +15,15 @@ User-definable validation rules for diagram content. **Edit → Rules** opens th
 - Must have all types – diagram must contain at least 1 of each type listed (one per line)
 
 **Type matching**:
-- Exact – select from dropdown (all resource types + Lucide icons + emojis)
-- Pattern – use `*` wildcard, e.g. `aws.database.*` (any AWS database), `*.database.*` (any database from any provider)
+- Exact – select from searchable combobox (all resource types + Lucide icons + emojis; filters to 60 results)
+- Pattern – substring match when no `*` (e.g. `firewall` matches `aws.securityidentity.firewall-manager`); use `*` wildcard for `aws.database.*`, `*.database.*`
 
 **Example rules**:
 - Must have web, database, firewall → use "Must have all types" with `aws.compute.ec2-instance`, `aws.database.rds`, `generic.object.cloud` (or equivalents)
 - Must have a `<type>` object → "Must have at least 1" + select type
 - Must have more than X of `<type>` → "Must have more than N" + type + count
 
-**Export/Import**: Rules saved as separate JSON file (`diagram-rules.json`); Import loads rules from a JSON file. Rules are session-only unless exported.
+**Export/Import**: Export uses `showSaveFilePicker()` (Chrome/Edge) for native Save As dialog; fallback blob download. Import uses file input for standard Open dialog. Rules file format: `{ version: "1.0", rules: [...] }`.
 
 **JSON rules file format**:
 ```json
@@ -34,7 +34,9 @@ User-definable validation rules for diagram content. **Edit → Rules** opens th
 
 **Evaluation**: Rules are checked against `diagramData.nodes` (flat node list; zones excluded). Evaluation runs when the Rules Editor is open and diagramData changes.
 
-**Persistence**: Rules live in editor state; they are lost on page refresh. Use Export to save, Import to restore.
+**Persistence**: Rules saved to localStorage (`dw:rules`) and survive browser refresh. Export/Import for backup or sharing.
+
+**UI**: Modal scrolls vertically (`overflow-y-auto`); new rules added at top of list; Count (N) uses text input (no spinner arrows, allows empty/backspace, no `01` glitch); memoized evaluation and searchable type combobox for performance.
 
 **Key files**:
 - `src/lib/rules-types.ts` – DiagramRule, RulesFile, RuleResult types
