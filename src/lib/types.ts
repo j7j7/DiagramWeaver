@@ -84,6 +84,9 @@ export interface DiagramNodeData {
   iconName?: string; // Lucide icon name (e.g. 'Home', 'Shield')
   emoji?: string; // Emoji character for emoji icons
   iconColor?: string; // Color for Lucide icons (hex, e.g. '#3b82f6')
+
+  /** Optional metadata as key/value pairs (e.g. IP Address: 192.168.1.1) */
+  metaData?: Record<string, string>;
 }
 
 export interface ScratchPadItem {
@@ -126,6 +129,9 @@ export interface DiagramConnectionData {
 
   // Optional waypoints for routing connection around obstacles (absolute canvas coordinates)
   waypoints?: Array<{ x: number; y: number; id?: string }>;
+
+  /** Optional metadata as key/value pairs */
+  metaData?: Record<string, string>;
 }
 
 export interface DiagramNodeItem {
@@ -190,6 +196,9 @@ export interface DiagramNodeItem {
   
   // Lock property - prevents movement when true
   locked?: boolean; // If true, node cannot be moved
+
+  /** Optional metadata as key/value pairs */
+  metaData?: Record<string, string>;
 }
 
 export interface DiagramZoneItem {
@@ -246,6 +255,9 @@ export interface DiagramZoneItem {
     tag?: string; // Tag text for zone identification
     tagPosition?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right'; // Tag position relative to zone
     groupId?: string; // Reference to grouping this zone belongs to
+
+    /** Optional metadata as key/value pairs */
+    metaData?: Record<string, string>;
   }
 
 export interface DiagramZoneData {
@@ -306,6 +318,9 @@ export interface DiagramZoneData {
   layoutMode?: 'grid' | 'free'; // Layout mode for children: 'grid' (default) or 'free' (preserve x/y)
   layoutType?: 'grid' | 'circular'; // Visual layout arrangement
   sorting?: 'manual' | 'alpha-asc' | 'alpha-desc'; // Sorting order for children
+
+  /** Optional metadata as key/value pairs */
+  metaData?: Record<string, string>;
 }
 
 export interface DiagramGroupingData {
@@ -314,6 +329,9 @@ export interface DiagramGroupingData {
   memberIds: string[]; // IDs of nodes that are grouped together (for coordinated movement)
   label?: string; // Optional group name
   locked?: boolean; // If true, prevent ungrouping or modifications
+
+  /** Optional metadata as key/value pairs */
+  metaData?: Record<string, string>;
 }
 
 // Layer management interfaces

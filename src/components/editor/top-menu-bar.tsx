@@ -12,7 +12,7 @@ import {
   MenubarSubTrigger,
   MenubarSubContent,
 } from '@/components/ui/menubar';
-import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink } from 'lucide-react';
+import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
 import { ThemeEditor } from './theme-editor';
 import { ThemeMenuSelector } from './theme-menu-selector';
@@ -35,6 +35,8 @@ interface TopMenuBarProps {
   onExportPng?: () => void;
   onToggleJsonPanel?: () => void;
   jsonPanelOpen?: boolean;
+  onTogglePropertiesPanel?: () => void;
+  propertiesPanelVisible?: boolean;
   onToggleLayersPanel?: () => void;
   layersPanelOpen?: boolean;
   onFitToView?: () => void;
@@ -97,6 +99,8 @@ export function TopMenuBar({
   onExportPng,
   onToggleJsonPanel,
   jsonPanelOpen,
+  onTogglePropertiesPanel,
+  propertiesPanelVisible,
   onFitToView,
   onCopy,
   onPaste,
@@ -352,9 +356,18 @@ export function TopMenuBar({
                 </MenubarItem>
               </>
             )}
-            {onToggleLayersPanel && (
+            {onTogglePropertiesPanel && (
               <>
                 {(onUndo || onRedo || onFitToView) && <MenubarSeparator />}
+                <MenubarItem onClick={onTogglePropertiesPanel}>
+                  <PanelRight className="mr-2 h-4 w-4" />
+                  {propertiesPanelVisible ? 'Hide Properties' : 'Show Properties'}
+                </MenubarItem>
+              </>
+            )}
+            {onToggleLayersPanel && (
+              <>
+                {(onUndo || onRedo || onFitToView || onTogglePropertiesPanel) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleLayersPanel}>
                   <Layers className="mr-2 h-4 w-4" />
                   {layersPanelOpen ? 'Hide Layers' : 'Show Layers'}
@@ -363,7 +376,7 @@ export function TopMenuBar({
             )}
             {onToggleScratchPad && (
               <>
-                {(onUndo || onRedo || onFitToView || onToggleLayersPanel) && <MenubarSeparator />}
+                {(onUndo || onRedo || onFitToView || onToggleLayersPanel || onTogglePropertiesPanel) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleScratchPad}>
                   <Clipboard className="mr-2 h-4 w-4" />
                   {scratchPadOpen ? 'Hide Scratch Pad' : 'Show Scratch Pad'}
@@ -372,7 +385,7 @@ export function TopMenuBar({
             )}
             {onToggleHover !== undefined && (
               <>
-                {(onUndo || onRedo || onFitToView || onToggleLayersPanel || onToggleScratchPad) && <MenubarSeparator />}
+                {(onUndo || onRedo || onFitToView || onToggleLayersPanel || onToggleScratchPad || onTogglePropertiesPanel) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleHover}>
                   {hoverEnabled ? (
                     <>
@@ -390,7 +403,7 @@ export function TopMenuBar({
             )}
             {onToggleIconBackground !== undefined && (
               <>
-                {(onUndo || onRedo || onFitToView || onToggleHover) && <MenubarSeparator />}
+                {(onUndo || onRedo || onFitToView || onToggleHover || onTogglePropertiesPanel) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleIconBackground}>
                   {iconBackgroundEnabled ? (
                     <>
@@ -408,7 +421,7 @@ export function TopMenuBar({
             )}
             {onToggleAlignmentGuides !== undefined && (
               <>
-                {(onUndo || onRedo || onFitToView || onToggleHover || onToggleIconBackground) && <MenubarSeparator />}
+                {(onUndo || onRedo || onFitToView || onToggleHover || onToggleIconBackground || onTogglePropertiesPanel) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleAlignmentGuides}>
                   {alignmentGuidesEnabled ? (
                     <>

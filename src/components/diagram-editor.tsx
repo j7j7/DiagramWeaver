@@ -41,6 +41,7 @@ import { DiagramDataSchema } from '@/lib/schemas';
 import { themeManager } from '@/lib/theme-manager';
 import { DiagramTheme } from '@/lib/theme-types';
 import { LayersPanel } from './editor/layers-panel';
+import { PropertiesPanel } from './editor/properties-panel';
 const ScratchPad = dynamic(() => import('./editor/scratch-pad').then(mod => ({ default: mod.ScratchPad })), {
   ssr: false,
 });
@@ -167,6 +168,20 @@ export default function DiagramEditor() {
   const [pendingCloseTabId, setPendingCloseTabId] = React.useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = React.useState<boolean>(false);
   const [leftPanelCollapsed, setLeftPanelCollapsed] = React.useState<boolean>(false);
+  const [rightPanelCollapsed, setRightPanelCollapsed] = React.useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('dw:propertiesPanel:collapsed');
+      if (saved !== null) return saved === 'true';
+    }
+    return false;
+  });
+  const [propertiesPanelVisible, setPropertiesPanelVisible] = React.useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('dw:propertiesPanel:visible');
+      if (saved !== null) return saved !== 'false';
+    }
+    return true;
+  });
   // Initialize scratchpad visibility from localStorage
   const [scratchPadOpen, setScratchPadOpen] = React.useState<boolean>(() => {
     if (typeof window !== 'undefined') {
@@ -910,7 +925,7 @@ export default function DiagramEditor() {
     }
   };
 
-  const handleConnectionUpdate = (from: string, to: string, updates: { text?: string; color?: string; textPosition?: number; lineWidth?: number; shadow?: boolean; style?: 'bezier'; curvature?: number; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean; arrow?: boolean; waypoints?: Array<{ x: number; y: number; id?: string }> }) => {
+  const handleConnectionUpdate = (from: string, to: string, updates: { text?: string; color?: string; textPosition?: number; lineWidth?: number; shadow?: boolean; style?: 'bezier'; curvature?: number; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean; arrow?: boolean; waypoints?: Array<{ x: number; y: number; id?: string }>; metaData?: Record<string, string> }) => {
     setDiagramData(prevData => ({
       ...prevData,
       connections: prevData.connections.map(conn => 
@@ -1621,6 +1636,24 @@ export default function DiagramEditor() {
     }
   }, [alignmentGuidesEnabled, isClient]);
 
+  // Persist properties panel collapse state
+  React.useEffect(() => {
+    if (isClient) {
+      localStorage.setItem('dw:propertiesPanel:collapsed', String(rightPanelCollapsed));
+    }
+  }, [rightPanelCollapsed, isClient]);
+
+  // Persist properties panel visibility
+  React.useEffect(() => {
+    if (isClient) {
+      localStorage.setItem('dw:propertiesPanel:visible', String(propertiesPanelVisible));
+    }
+  }, [propertiesPanelVisible, isClient]);
+
+  const togglePropertiesPanel = React.useCallback(() => {
+    setPropertiesPanelVisible(prev => !prev);
+  }, []);
+
   const canPasteFromMenu = paletteClipboardItem != null || canPaste;
 
   // Tutorial integration
@@ -1639,6 +1672,10 @@ export default function DiagramEditor() {
         setSidebarOpen={setSidebarOpen}
         leftPanelCollapsed={leftPanelCollapsed}
         setLeftPanelCollapsed={setLeftPanelCollapsed}
+        rightPanelCollapsed={rightPanelCollapsed}
+        setRightPanelCollapsed={setRightPanelCollapsed}
+        propertiesPanelVisible={propertiesPanelVisible}
+        onTogglePropertiesPanel={togglePropertiesPanel}
         selectedItem={selectedItem}
         selectedItemIds={selectedItemIds}
         handleItemUpdate={handleItemUpdate}
@@ -1754,6 +1791,10 @@ function DiagramEditorInner({
   setSidebarOpen,
   leftPanelCollapsed,
   setLeftPanelCollapsed,
+  rightPanelCollapsed,
+  setRightPanelCollapsed,
+  propertiesPanelVisible,
+  onTogglePropertiesPanel,
   selectedItem,
   selectedItemIds,
   handleItemUpdate,
@@ -1942,7 +1983,7 @@ function DiagramEditorInner({
           </button>
         )}
         
-        <main className={`flex-1 flex flex-col ${isMobile ? 'w-full' : ''} ${isMobile && sidebarOpen ? 'pointer-events-none' : ''} ${jsonPanelOpen ? 'min-w-0' : ''}`}>
+        <main className={`flex-1 flex flex-col ${isMobile ? 'w-full' : ''} ${isMobile && sidebarOpen ? 'pointer-events-none' : ''} ${(jsonPanelOpen || propertiesPanelVisible) ? 'min-w-0' : ''}`}>
             <header className="flex flex-col border-b bg-card">
                 <TopMenuBar
                     onNew={handleNew}
@@ -1953,6 +1994,8 @@ function DiagramEditorInner({
                     onExportSvg={handleExportSvg}
                     onToggleJsonPanel={toggleJsonPanel}
                     jsonPanelOpen={jsonPanelOpen}
+                    onTogglePropertiesPanel={onTogglePropertiesPanel}
+                    propertiesPanelVisible={propertiesPanelVisible}
                     onToggleLayersPanel={layers.toggleLayersPanel}
                     layersPanelOpen={layers.layersPanelOpen}
                     onFitToView={() => editorRef.current?.fitToView()}
@@ -2023,8 +2066,8 @@ function DiagramEditorInner({
                 />
             </header>
             <div className="flex-1 flex flex-col">
-                <div className={`flex flex-1 ${jsonPanelOpen ? 'overflow-x-auto' : ''}`}>
-                  <div className={`flex-1 h-full min-w-0 ${jsonPanelOpen ? 'mr-2' : ''}`}>
+                <div className={`flex flex-1 ${(jsonPanelOpen || propertiesPanelVisible) ? 'overflow-x-auto' : ''}`}>
+                  <div className={`flex-1 h-full min-w-0 ${(jsonPanelOpen || propertiesPanelVisible) ? 'mr-2' : ''}`}>
                 <EditorCanvas
                     key={canvasRefreshKey}
                     ref={editorRef}
@@ -2092,6 +2135,19 @@ function DiagramEditorInner({
                     onResourceActivateAtPosition={handleResourceActivateAtPosition}
                     />
                   </div>
+
+                  {/* Properties Panel (metadata, item name/type) */}
+                  {propertiesPanelVisible && (
+                  <PropertiesPanel
+                    selectedItem={selectedItem}
+                    diagramData={diagramData}
+                    onItemUpdate={handleItemUpdate}
+                    onConnectionUpdate={handleConnectionUpdate}
+                    collapsed={rightPanelCollapsed}
+                    onToggleCollapse={() => setRightPanelCollapsed((prev: boolean) => !prev)}
+                    isReadOnly={isReadOnly}
+                  />
+                  )}
                   
                   {/* Layers Panel */}
                   {layers.layersPanelOpen && (

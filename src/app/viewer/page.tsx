@@ -4,9 +4,10 @@ import React, { useState, useEffect, useCallback, useMemo, Suspense } from "reac
 import { useSearchParams } from "next/navigation";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
-import { ViewerCanvas } from "@/components/viewer/viewer-canvas";
+import { ViewerCanvas, type ViewerSelectedItem } from "@/components/viewer/viewer-canvas";
 import { ViewerControls } from "@/components/viewer/viewer-controls";
 import { ViewerLayersPanel } from "@/components/viewer/viewer-layers-panel";
+import { PropertiesPanel } from "@/components/editor/properties-panel";
 import { loadViewerData, parseViewerParams } from "@/lib/viewer-utils";
 import { filterByVisibleLayers, toggleLayerVisibility, validateLayersConfig } from "@/lib/layers-utils";
 import type { DiagramData, LayersConfig } from "@/lib/types";
@@ -19,6 +20,8 @@ function ViewerPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [transform, setTransform] = useState<Transform>({ x: 0, y: 0, k: 1 });
+  const [selectedItem, setSelectedItem] = useState<ViewerSelectedItem | null>(null);
+  const [propertiesPanelVisible, setPropertiesPanelVisible] = useState(true);
 
   // Sync layers config from diagram data when it has valid layers
   useEffect(() => {
@@ -124,21 +127,27 @@ function ViewerPageContent() {
   }
 
   const displayData = filteredDiagramData ?? diagramData;
+  const selectedItemId = selectedItem?.itemType === "node" ? selectedItem.id : selectedItem?.itemType === "edge" ? selectedItem.id : undefined;
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="relative w-full h-screen bg-background overflow-hidden">
-        <ViewerCanvas
-          diagramData={displayData}
-          transform={transform}
-          onTransformChange={setTransform}
-          onFitToView={handleFitToView}
-        />
-        <ViewerControls
-          onZoomIn={handleZoomIn}
-          onZoomOut={handleZoomOut}
-          onFitToView={handleFitToView}
-          additionalControls={
+      <div className="flex w-full h-screen bg-background overflow-hidden">
+        <div className="flex-1 relative min-w-0">
+          <ViewerCanvas
+            diagramData={displayData}
+            transform={transform}
+            onTransformChange={setTransform}
+            onFitToView={handleFitToView}
+            selectedItemId={selectedItemId}
+            onItemSelect={setSelectedItem}
+          />
+          <ViewerControls
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onFitToView={handleFitToView}
+            onTogglePropertiesPanel={() => setPropertiesPanelVisible((v) => !v)}
+            propertiesPanelVisible={propertiesPanelVisible}
+            additionalControls={
             hasLayers && layersConfig && diagramData ? (
               <ViewerLayersPanel
                 layers={layersConfig.layers}
@@ -148,6 +157,15 @@ function ViewerPageContent() {
             ) : undefined
           }
         />
+        </div>
+        {propertiesPanelVisible && (
+          <PropertiesPanel
+            selectedItem={selectedItem as Parameters<typeof PropertiesPanel>[0]["selectedItem"]}
+            diagramData={displayData}
+            onItemUpdate={() => {}}
+            isReadOnly={true}
+          />
+        )}
       </div>
     </DndProvider>
   );

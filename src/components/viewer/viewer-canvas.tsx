@@ -10,14 +10,20 @@ import { RULER_SIZE, type PositionedNode, type PositionedGroup } from "../editor
 import { CanvasRulers } from "../editor/canvas-rulers";
 import { computeConnectionSlots } from "@/lib/connection-order-utils";
 
+export type ViewerSelectedItem =
+  | (DiagramData["nodes"][number] & { itemType: "node" })
+  | (DiagramData["connections"][number] & { itemType: "edge"; id: string });
+
 interface ViewerCanvasProps {
   diagramData: DiagramData;
   onFitToView?: () => void;
   transform?: Transform;
   onTransformChange?: (transform: Transform) => void;
+  selectedItemId?: string;
+  onItemSelect?: (item: ViewerSelectedItem | null) => void;
 }
 
-export function ViewerCanvas({ diagramData, onFitToView, transform: externalTransform, onTransformChange }: ViewerCanvasProps) {
+export function ViewerCanvas({ diagramData, onFitToView, transform: externalTransform, onTransformChange, selectedItemId, onItemSelect }: ViewerCanvasProps) {
   // Calculate layout for all nodes and zones
   const { processedNodes, processedZones, width, height } = useMemo(() => {
     return calculateLayout(diagramData);
@@ -72,9 +78,14 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
     };
   }, [handleFitToView, onFitToView]);
 
-  // Handle mouse drag for panning
+  // Handle mouse drag for panning (only when clicking background, not nodes/connections)
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return; // Only left mouse button
+    const target = e.target as HTMLElement;
+    const bgEl = target.closest?.("[data-viewer-background]");
+    const isBackground = bgEl === target;
+    if (!isBackground) return; // Click on node/connection - let selection handle it
+    onItemSelect?.(null); // Clear selection when clicking background
     setIsDragging(true);
     dragStartRef.current = {
       x: e.clientX,
@@ -82,7 +93,7 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
       transform: { ...transform },
     };
     e.preventDefault();
-  }, [transform]);
+  }, [transform, onItemSelect]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!isDragging || !dragStartRef.current) return;
@@ -169,13 +180,22 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
     // No state needed here for viewer mode
   }, []);
 
-  // No-op handlers for viewer mode (no editing)
-  const handleNodeClick = useCallback(() => {
-    // No selection in viewer mode
-  }, []);
+  const handleNodeClick = useCallback(
+    (_e: React.MouseEvent, node: import("@/lib/types").DiagramNodeData) => {
+      onItemSelect?.({ ...node, itemType: "node" } as ViewerSelectedItem);
+    },
+    [onItemSelect]
+  );
+
+  const handleViewerItemSelect = useCallback(
+    (item: ViewerSelectedItem | null) => {
+      onItemSelect?.(item);
+    },
+    [onItemSelect]
+  );
 
   const handleZoneClick = useCallback(() => {
-    // No selection in viewer mode
+    // Zones removed from flat diagram
   }, []);
 
   // Expose zoom controls to parent (must be before any conditional returns)
@@ -220,6 +240,7 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
         {/* Canvas content */}
       <div
         className="absolute dot-grid"
+        data-viewer-background
         style={{
           width: `${width}px`,
           height: `${height}px`,
@@ -245,7 +266,7 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
               key={node.id}
               node={node}
               stackZIndex={nodeZIndex}
-              isSelected={false}
+              isSelected={selectedItemId === node.id}
               isMultiSelected={false}
               isReadOnly={true}
               onHoverChange={handleNodeHover}
@@ -261,8 +282,8 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
                 diagramData={diagramData}
                 nodesById={nodesById}
                 zonesById={zonesById}
-                selectedItemId={undefined}
-                onItemSelect={() => {}}
+                selectedItemId={selectedItemId}
+                onItemSelect={handleViewerItemSelect}
                 closeContextMenu={() => {}}
                 onConnectionDelete={undefined}
                 connectionIndices={connIndices}
@@ -285,8 +306,8 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
               diagramData={diagramData}
               nodesById={nodesById}
               zonesById={zonesById}
-              selectedItemId={undefined}
-              onItemSelect={() => {}}
+              selectedItemId={selectedItemId}
+              onItemSelect={handleViewerItemSelect}
               closeContextMenu={() => {}}
               onConnectionDelete={undefined}
               connectionIndices={new Set(lastSlot)}

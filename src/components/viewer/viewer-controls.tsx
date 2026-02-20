@@ -1,13 +1,15 @@
 "use client";
 
 import React from "react";
-import { ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
+import { ZoomIn, ZoomOut, Maximize2, PanelRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ViewerControlsProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onFitToView: () => void;
+  onTogglePropertiesPanel?: () => void;
+  propertiesPanelVisible?: boolean;
   additionalControls?: React.ReactNode;
   className?: string;
 }
@@ -16,6 +18,8 @@ export function ViewerControls({
   onZoomIn,
   onZoomOut,
   onFitToView,
+  onTogglePropertiesPanel,
+  propertiesPanelVisible,
   additionalControls,
   className,
 }: ViewerControlsProps) {
@@ -42,6 +46,19 @@ export function ViewerControls({
       >
         <ZoomOut className="w-4 h-4" />
       </button>
+      {onTogglePropertiesPanel && (
+        <>
+          <div className="h-px bg-border my-1" />
+          <button
+            onClick={onTogglePropertiesPanel}
+            className="p-2 hover:bg-accent rounded-md transition-colors"
+            title={propertiesPanelVisible ? "Hide Properties" : "Show Properties"}
+            aria-label={propertiesPanelVisible ? "Hide Properties" : "Show Properties"}
+          >
+            <PanelRight className="w-4 h-4" />
+          </button>
+        </>
+      )}
       {additionalControls && (
         <>
           <div className="h-px bg-border my-1" />

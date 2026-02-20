@@ -104,7 +104,8 @@ export function convertToNestedHierarchy(data: DiagramData): HierarchicalDiagram
          lineThickness: node.lineThickness,
          lineTextVerticalPosition: node.lineTextVerticalPosition,
          // Lock property
-         locked: node.locked
+         locked: node.locked,
+         metaData: node.metaData
        }))
     };
     nestedGroups.push(orphanGroup);
@@ -190,7 +191,8 @@ function convertGroupToNested(
          lineThickness: node.lineThickness,
          lineTextVerticalPosition: node.lineTextVerticalPosition,
          // Lock property
-         locked: node.locked
+         locked: node.locked,
+         metaData: node.metaData
       });
     } else {
       // This is a nested group
@@ -245,7 +247,8 @@ function convertGroupToNested(
      textTransform: zone.textTransform,
      letterSpacing: zone.letterSpacing,
      lineHeight: zone.lineHeight,
-     textOpacity: zone.textOpacity
+     textOpacity: zone.textOpacity,
+     metaData: zone.metaData
    };
 }
 
@@ -324,7 +327,8 @@ export function convertFromNestedHierarchy(nestedData: HierarchicalDiagramData):
              lineThickness: nodeChild.lineThickness,
              lineTextVerticalPosition: nodeChild.lineTextVerticalPosition,
              // Lock property
-             locked: nodeChild.locked
+             locked: nodeChild.locked,
+             metaData: nodeChild.metaData
           };
           nodes.push(node);
           nodeMap.set(nodeChild.id, node);
@@ -414,9 +418,10 @@ function processNestedGroup(
      fontStyle: zone.fontStyle,
      textDecoration: zone.textDecoration,
      textTransform: zone.textTransform,
-     letterSpacing: zone.letterSpacing,
-     lineHeight: zone.lineHeight,
-     textOpacity: zone.textOpacity
+    letterSpacing: zone.letterSpacing,
+    lineHeight: zone.lineHeight,
+    textOpacity: zone.textOpacity,
+    metaData: zone.metaData
   };
   
   zones.push(flatZone);
@@ -492,7 +497,8 @@ function processNestedGroup(
          lineThickness: nodeChild.lineThickness,
          lineTextVerticalPosition: nodeChild.lineTextVerticalPosition,
          // Lock property
-         locked: nodeChild.locked
+         locked: nodeChild.locked,
+         metaData: nodeChild.metaData
       };
     
       nodes.push(node);

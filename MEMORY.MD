@@ -1,5 +1,18 @@
 # MEMORY.MD
 
+## DiagramWeaver - Latest Features and Functions (Updated 2026-02-20)
+
+### 2026-02-20 – Metadata for Diagram Items
+Added optional `metaData?: Record<string, string>` (key/value pairs) to nodes, connections, zones, and groupings. Users can add custom properties like "IP Address: 192.168.1.1" to any item.
+
+**Properties Panel** (right side, collapsible): Shows selected item name, type, and metadata. Add/edit/remove metadata via UI. Collapsed state persisted to localStorage (`dw:propertiesPanel:collapsed`). **Edit → Toggle Properties** shows/hides the panel; visibility persisted to localStorage (`dw:propertiesPanel:visible`). **Viewer**: Properties panel toggle icon (PanelRight) in the viewer controls (top-right); click nodes/connections to select and view metadata; read-only.
+
+**Key suggestions for consistency**: When adding a new metadata property, the Key input suggests previously used keys from the diagram (nodes, connections, zones, groupings) via native HTML datalist. Encourages consistent property names across items.
+
+**JSON storage**: `metaData` is stored in diagram JSON. Each node/connection/zone/grouping object can include `metaData: { "Key": "value", ... }`. Exported and imported diagrams preserve all metadata.
+
+Types: `DiagramNodeData`, `DiagramConnectionData`, `DiagramZoneData`, `DiagramGroupingData`; schemas updated. New: `properties-panel.tsx`; modified: `types.ts`, `schemas.ts`, `diagram-editor.tsx`. `handleConnectionUpdate` extended to accept `metaData` in updates.
+
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-02-13)
 
 ### 2026-02-13 – Connector Entry Points for Polygon Shapes

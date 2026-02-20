@@ -82,6 +82,8 @@ export const DiagramNodeDataSchema = z.object({
   iconName: z.string().optional(),
   emoji: z.string().optional(),
   iconColor: z.string().optional(), // Color for Lucide icons (hex)
+
+  metaData: z.record(z.string(), z.string()).optional(), // Key/value metadata
 });
 
 // Schema for DiagramConnectionData 
@@ -103,6 +105,8 @@ export const DiagramConnectionDataSchema = z.object({
   shadow: z.boolean().optional(), // Whether to show shadow around the connection line
   // Optional waypoints for routing connection around obstacles (absolute canvas coordinates)
   waypoints: z.array(z.object({ x: z.number(), y: z.number(), id: z.string().optional() })).optional(),
+
+  metaData: z.record(z.string(), z.string()).optional(), // Key/value metadata
 });
 
 // Schema for DiagramGroupData
@@ -153,6 +157,7 @@ export const DiagramGroupDataSchema = z.object({
   lineHeight: z.number().optional(), // Line height as a multiplier (e.g., 1.2, 1.5)
   textOpacity: z.number().optional(), // Text opacity (0-1)
   groupId: z.string().optional(), // Reference to grouping this zone belongs to
+  metaData: z.record(z.string(), z.string()).optional(), // Key/value metadata
 });
 
 // Schema for DiagramGroupingData
@@ -162,6 +167,7 @@ export const DiagramGroupingDataSchema = z.object({
   memberIds: z.array(z.string()), // IDs of nodes/zones that are grouped together
   label: z.string().optional(), // Optional group name
   locked: z.boolean().optional(), // If true, prevent ungrouping or modifications
+  metaData: z.record(z.string(), z.string()).optional(), // Key/value metadata
 });
 
 // Schema for LayerInfo
@@ -258,6 +264,7 @@ export const DiagramNodeItemSchema = z.object({
   
   // Lock property - prevents movement when true
   locked: z.boolean().optional(), // If true, node cannot be moved
+  metaData: z.record(z.string(), z.string()).optional(), // Key/value metadata
 });
 
 // Schema for nested group items in hierarchical format
@@ -315,6 +322,7 @@ export const DiagramGroupItemSchema = z.object({
    rotation: z.number().optional(), // Rotation angle in degrees (0, 45, -45, 90, -90)
    borderWidth: z.number().optional(), // Border thickness for groups/zones
    groupId: z.string().optional(), // Reference to grouping this zone belongs to
+  metaData: z.record(z.string(), z.string()).optional(), // Key/value metadata
 });
 
 // Schema for nested hierarchical diagram data
