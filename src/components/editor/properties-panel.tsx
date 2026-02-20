@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useCallback, useMemo } from "react";
-import { ChevronLeft, ChevronRight, Plus, Trash2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -293,75 +294,88 @@ export function PropertiesPanel({
                     Object.entries(metaData).map(([key, value]) => (
                       <div
                         key={key}
-                        className="flex gap-2 items-center p-2 rounded-md border bg-background"
+                        className="flex gap-2 items-start p-2 rounded-md border bg-background"
                       >
                         {editingKey === key && editingDraft ? (
-                          <>
-                            <Input
-                              value={editingDraft.key}
-                              onChange={(e) =>
-                                setEditingDraft((p) =>
-                                  p ? { ...p, key: e.target.value } : null
-                                )}
-                              className="h-8 text-sm flex-1"
-                              list="metadata-key-suggestions"
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  handleUpdateMetaData(key, editingDraft.key, editingDraft.value);
+                          <div className="flex flex-col gap-3 w-full min-w-0 flex-1 p-3 rounded-md bg-muted/50 border-2 border-border">
+                            <div className="space-y-1">
+                              <Label className="text-[10px] font-medium text-foreground">Key</Label>
+                              <Textarea
+                                value={editingDraft.key}
+                                onChange={(e) =>
+                                  setEditingDraft((p) =>
+                                    p ? { ...p, key: e.target.value } : null
+                                  )}
+                                className="min-h-[2.5rem] py-1.5 text-sm w-full min-w-0 border-border bg-white resize-y"
+                                placeholder="Key"
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleUpdateMetaData(key, editingDraft.key, editingDraft.value);
+                                  }
+                                  if (e.key === "Escape") {
+                                    setEditingKey(null);
+                                    setEditingDraft(null);
+                                  }
+                                }}
+                                autoFocus
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-[10px] font-medium text-foreground">Value</Label>
+                              <Textarea
+                                value={editingDraft.value}
+                                onChange={(e) =>
+                                  setEditingDraft((p) =>
+                                    p ? { ...p, value: e.target.value } : null
+                                  )}
+                                className="min-h-[2.5rem] py-1.5 text-sm w-full min-w-0 border-border bg-white resize-y"
+                                placeholder="Value"
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleUpdateMetaData(key, editingDraft.key, editingDraft.value);
+                                  }
+                                  if (e.key === "Escape") {
+                                    setEditingKey(null);
+                                    setEditingDraft(null);
+                                  }
+                                }}
+                              />
+                            </div>
+                            <div className="flex justify-end">
+                              <Button
+                                variant="default"
+                                size="sm"
+                                className="h-8"
+                                onClick={() =>
+                                  handleUpdateMetaData(key, editingDraft.key, editingDraft.value)
                                 }
-                                if (e.key === "Escape") {
-                                  setEditingKey(null);
-                                  setEditingDraft(null);
-                                }
-                              }}
-                              autoFocus
-                            />
-                            <Input
-                              value={editingDraft.value}
-                              onChange={(e) =>
-                                setEditingDraft((p) =>
-                                  p ? { ...p, value: e.target.value } : null
-                                )}
-                              className="h-8 text-sm flex-1"
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  handleUpdateMetaData(key, editingDraft.key, editingDraft.value);
-                                }
-                                if (e.key === "Escape") {
-                                  setEditingKey(null);
-                                  setEditingDraft(null);
-                                }
-                              }}
-                            />
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 shrink-0"
-                              onClick={() =>
-                                handleUpdateMetaData(key, editingDraft.key, editingDraft.value)
-                              }
-                            >
-                              Done
-                            </Button>
-                          </>
+                              >
+                                Done
+                              </Button>
+                            </div>
+                          </div>
                         ) : (
                           <>
                             <div className="flex-1 min-w-0">
-                              <div className="text-xs font-medium text-muted-foreground truncate">
+                              <div className="text-xs font-medium text-muted-foreground truncate" title={key}>
                                 {key}
                               </div>
-                              <div className="text-sm truncate">{value}</div>
+                              <div className="text-sm break-words" title={value}>
+                                {value}
+                              </div>
                             </div>
                             {!isReadOnly && (
                               <>
                                 <Button
                                   variant="ghost"
-                                  size="sm"
-                                  className="h-8 shrink-0"
+                                  size="icon"
+                                  className="h-8 w-8 shrink-0"
                                   onClick={() => handleStartEdit(key)}
                                   aria-label="Edit metadata"
                                 >
-                                  Edit
+                                  <Pencil className="h-4 w-4" />
                                 </Button>
                                 <Button
                                   variant="ghost"
