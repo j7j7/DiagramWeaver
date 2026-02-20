@@ -168,34 +168,24 @@ export default function DiagramEditor() {
   const [pendingCloseTabId, setPendingCloseTabId] = React.useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = React.useState<boolean>(false);
   const [leftPanelCollapsed, setLeftPanelCollapsed] = React.useState<boolean>(false);
-  const [rightPanelCollapsed, setRightPanelCollapsed] = React.useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('dw:propertiesPanel:collapsed');
-      if (saved !== null) return saved === 'true';
-    }
-    return false;
-  });
-  const [propertiesPanelVisible, setPropertiesPanelVisible] = React.useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('dw:propertiesPanel:visible');
-      if (saved !== null) return saved !== 'false';
-    }
-    return true;
-  });
-  // Initialize scratchpad visibility from localStorage
-  const [scratchPadOpen, setScratchPadOpen] = React.useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      const savedVisibility = localStorage.getItem('dw:scratchpad:visible');
-      if (savedVisibility) {
-        try {
-          return JSON.parse(savedVisibility);
-        } catch (e) {
-          console.error('Failed to load scratchpad visibility', e);
-        }
+  // Use fixed defaults for SSR/hydration; restore from localStorage in useEffect
+  const [rightPanelCollapsed, setRightPanelCollapsed] = React.useState<boolean>(true);
+  const [metadataPopupsEnabled, setMetadataPopupsEnabled] = React.useState<boolean>(true);
+  const [propertiesPanelVisible, setPropertiesPanelVisible] = React.useState<boolean>(true);
+  const [scratchPadOpen, setScratchPadOpen] = React.useState<boolean>(false);
+
+  // Restore scratchpad visibility from localStorage after hydration
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const saved = localStorage.getItem('dw:scratchpad:visible');
+    if (saved) {
+      try {
+        setScratchPadOpen(JSON.parse(saved));
+      } catch {
+        // ignore
       }
     }
-    return false;
-  });
+  }, []);
 
   // Save scratchpad visibility to localStorage when it changes
   React.useEffect(() => {
@@ -210,13 +200,7 @@ export default function DiagramEditor() {
   const [mousePosition, setMousePosition] = React.useState<{ x: number; y: number } | null>(null);
   const [hoverEnabled, setHoverEnabled] = React.useState<boolean>(false);
   const [iconBackgroundEnabled, setIconBackgroundEnabled] = React.useState<boolean>(true);
-  const [alignmentGuidesEnabled, setAlignmentGuidesEnabled] = React.useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('dw:alignmentGuides:enabled');
-      return saved !== 'false'; // Default to enabled
-    }
-    return true;
-  });
+  const [alignmentGuidesEnabled, setAlignmentGuidesEnabled] = React.useState<boolean>(true);
   const [isReadOnly, setIsReadOnly] = React.useState<boolean>(false);
   const [triggerTextStylingPanel, setTriggerTextStylingPanel] = React.useState<boolean>(false);
   const [triggerVisualStylingPanel, setTriggerVisualStylingPanel] = React.useState<boolean>(false);
@@ -1636,6 +1620,19 @@ export default function DiagramEditor() {
     }
   }, [alignmentGuidesEnabled, isClient]);
 
+  // Restore panel state from localStorage after hydration (avoids hydration mismatch)
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const savedCollapsed = localStorage.getItem('dw:propertiesPanel:collapsed');
+    if (savedCollapsed !== null) setRightPanelCollapsed(savedCollapsed === 'true');
+    const savedVisible = localStorage.getItem('dw:propertiesPanel:visible');
+    if (savedVisible !== null) setPropertiesPanelVisible(savedVisible !== 'false');
+    const savedPopups = localStorage.getItem('dw:metadataPopups:enabled');
+    if (savedPopups !== null) setMetadataPopupsEnabled(savedPopups !== 'false');
+    const savedGuides = localStorage.getItem('dw:alignmentGuides:enabled');
+    if (savedGuides !== null) setAlignmentGuidesEnabled(savedGuides !== 'false');
+  }, []);
+
   // Persist properties panel collapse state
   React.useEffect(() => {
     if (isClient) {
@@ -1650,8 +1647,19 @@ export default function DiagramEditor() {
     }
   }, [propertiesPanelVisible, isClient]);
 
+  // Persist metadata popups enabled
+  React.useEffect(() => {
+    if (isClient) {
+      localStorage.setItem('dw:metadataPopups:enabled', String(metadataPopupsEnabled));
+    }
+  }, [metadataPopupsEnabled, isClient]);
+
   const togglePropertiesPanel = React.useCallback(() => {
     setPropertiesPanelVisible(prev => !prev);
+  }, []);
+
+  const toggleMetadataPopups = React.useCallback(() => {
+    setMetadataPopupsEnabled(prev => !prev);
   }, []);
 
   const canPasteFromMenu = paletteClipboardItem != null || canPaste;
@@ -1676,6 +1684,8 @@ export default function DiagramEditor() {
         setRightPanelCollapsed={setRightPanelCollapsed}
         propertiesPanelVisible={propertiesPanelVisible}
         onTogglePropertiesPanel={togglePropertiesPanel}
+        metadataPopupsEnabled={metadataPopupsEnabled}
+        onToggleMetadataPopups={toggleMetadataPopups}
         selectedItem={selectedItem}
         selectedItemIds={selectedItemIds}
         handleItemUpdate={handleItemUpdate}
@@ -1795,6 +1805,8 @@ function DiagramEditorInner({
   setRightPanelCollapsed,
   propertiesPanelVisible,
   onTogglePropertiesPanel,
+  metadataPopupsEnabled,
+  onToggleMetadataPopups,
   selectedItem,
   selectedItemIds,
   handleItemUpdate,
@@ -1996,6 +2008,8 @@ function DiagramEditorInner({
                     jsonPanelOpen={jsonPanelOpen}
                     onTogglePropertiesPanel={onTogglePropertiesPanel}
                     propertiesPanelVisible={propertiesPanelVisible}
+                    onToggleMetadataPopups={onToggleMetadataPopups}
+                    metadataPopupsEnabled={metadataPopupsEnabled}
                     onToggleLayersPanel={layers.toggleLayersPanel}
                     layersPanelOpen={layers.layersPanelOpen}
                     onFitToView={() => editorRef.current?.fitToView()}
@@ -2133,6 +2147,7 @@ function DiagramEditorInner({
                     isReadOnly={isReadOnly}
                     alignmentGuidesEnabled={alignmentGuidesEnabled}
                     onResourceActivateAtPosition={handleResourceActivateAtPosition}
+                    metadataPopupsEnabled={metadataPopupsEnabled}
                     />
                   </div>
 

@@ -22,6 +22,8 @@ function ViewerPageContent() {
   const [transform, setTransform] = useState<Transform>({ x: 0, y: 0, k: 1 });
   const [selectedItem, setSelectedItem] = useState<ViewerSelectedItem | null>(null);
   const [propertiesPanelVisible, setPropertiesPanelVisible] = useState(true);
+  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(true);
+  const [metadataPopupsEnabled, setMetadataPopupsEnabled] = useState(true);
 
   // Sync layers config from diagram data when it has valid layers
   useEffect(() => {
@@ -139,7 +141,9 @@ function ViewerPageContent() {
             onTransformChange={setTransform}
             onFitToView={handleFitToView}
             selectedItemId={selectedItemId}
+            selectedItem={selectedItem}
             onItemSelect={setSelectedItem}
+            metadataPopupsEnabled={metadataPopupsEnabled}
           />
           <ViewerControls
             onZoomIn={handleZoomIn}
@@ -147,6 +151,8 @@ function ViewerPageContent() {
             onFitToView={handleFitToView}
             onTogglePropertiesPanel={() => setPropertiesPanelVisible((v) => !v)}
             propertiesPanelVisible={propertiesPanelVisible}
+            onToggleMetadataPopups={() => setMetadataPopupsEnabled((v) => !v)}
+            metadataPopupsEnabled={metadataPopupsEnabled}
             additionalControls={
             hasLayers && layersConfig && diagramData ? (
               <ViewerLayersPanel
@@ -163,6 +169,8 @@ function ViewerPageContent() {
             selectedItem={selectedItem as Parameters<typeof PropertiesPanel>[0]["selectedItem"]}
             diagramData={displayData}
             onItemUpdate={() => {}}
+            collapsed={rightPanelCollapsed}
+            onToggleCollapse={() => setRightPanelCollapsed((v) => !v)}
             isReadOnly={true}
           />
         )}

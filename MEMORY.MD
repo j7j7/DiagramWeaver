@@ -9,6 +9,14 @@ Added optional `metaData?: Record<string, string>` (key/value pairs) to nodes, c
 
 **Key suggestions for consistency**: When adding a new metadata property, the Key input suggests previously used keys from the diagram (nodes, connections, zones, groupings) via native HTML datalist. Encourages consistent property names across items.
 
+**Metadata popup under selected item**: When an item (node or connection) with metadata is selected, a compact popup appears below it showing key/value pairs. Popup is window-aware (flips above if near bottom, shifts horizontally to stay in viewport). **Edit → Enable Properties** toggles these popups (default: shown). Persisted to `dw:metadataPopups:enabled`.
+
+**Properties panel default state**: Right Properties panel now starts **collapsed** (narrow strip with expand button) when editor or viewer loads, unless user previously expanded it (persisted to `dw:propertiesPanel:collapsed`).
+
+**Hydration fix**: Panel/collapse state no longer read from localStorage during initial render—fixed defaults used for SSR, then restored from localStorage in useEffect to avoid server/client mismatch.
+
+**Metadata popup size reactive**: Popup shows partial info (~2–3 entries) by default; hover to expand and reveal all entries. Uses transition for max-height; "⋯" hint when more content is available.
+
 **JSON storage**: `metaData` is stored in diagram JSON. Each node/connection/zone/grouping object can include `metaData: { "Key": "value", ... }`. Exported and imported diagrams preserve all metadata.
 
 Types: `DiagramNodeData`, `DiagramConnectionData`, `DiagramZoneData`, `DiagramGroupingData`; schemas updated. New: `properties-panel.tsx`; modified: `types.ts`, `schemas.ts`, `diagram-editor.tsx`. `handleConnectionUpdate` extended to accept `metaData` in updates.

@@ -37,6 +37,8 @@ interface TopMenuBarProps {
   jsonPanelOpen?: boolean;
   onTogglePropertiesPanel?: () => void;
   propertiesPanelVisible?: boolean;
+  onToggleMetadataPopups?: () => void;
+  metadataPopupsEnabled?: boolean;
   onToggleLayersPanel?: () => void;
   layersPanelOpen?: boolean;
   onFitToView?: () => void;
@@ -101,6 +103,8 @@ export function TopMenuBar({
   jsonPanelOpen,
   onTogglePropertiesPanel,
   propertiesPanelVisible,
+  onToggleMetadataPopups,
+  metadataPopupsEnabled = true,
   onFitToView,
   onCopy,
   onPaste,
@@ -365,9 +369,18 @@ export function TopMenuBar({
                 </MenubarItem>
               </>
             )}
-            {onToggleLayersPanel && (
+            {onToggleMetadataPopups && (
               <>
                 {(onUndo || onRedo || onFitToView || onTogglePropertiesPanel) && <MenubarSeparator />}
+                <MenubarItem onClick={onToggleMetadataPopups}>
+                  <Info className="mr-2 h-4 w-4" />
+                  {metadataPopupsEnabled ? 'Disable Properties' : 'Enable Properties'}
+                </MenubarItem>
+              </>
+            )}
+            {onToggleLayersPanel && (
+              <>
+                {(onUndo || onRedo || onFitToView || onTogglePropertiesPanel || onToggleMetadataPopups) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleLayersPanel}>
                   <Layers className="mr-2 h-4 w-4" />
                   {layersPanelOpen ? 'Hide Layers' : 'Show Layers'}

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ZoomIn, ZoomOut, Maximize2, PanelRight } from "lucide-react";
+import { ZoomIn, ZoomOut, Maximize2, PanelRight, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ViewerControlsProps {
@@ -10,6 +10,8 @@ interface ViewerControlsProps {
   onFitToView: () => void;
   onTogglePropertiesPanel?: () => void;
   propertiesPanelVisible?: boolean;
+  onToggleMetadataPopups?: () => void;
+  metadataPopupsEnabled?: boolean;
   additionalControls?: React.ReactNode;
   className?: string;
 }
@@ -20,6 +22,8 @@ export function ViewerControls({
   onFitToView,
   onTogglePropertiesPanel,
   propertiesPanelVisible,
+  onToggleMetadataPopups,
+  metadataPopupsEnabled = true,
   additionalControls,
   className,
 }: ViewerControlsProps) {
@@ -56,6 +60,22 @@ export function ViewerControls({
             aria-label={propertiesPanelVisible ? "Hide Properties" : "Show Properties"}
           >
             <PanelRight className="w-4 h-4" />
+          </button>
+        </>
+      )}
+      {onToggleMetadataPopups && (
+        <>
+          <div className="h-px bg-border my-1" />
+          <button
+            onClick={onToggleMetadataPopups}
+            className={cn(
+              "p-2 hover:bg-accent rounded-md transition-colors",
+              !metadataPopupsEnabled && "opacity-50"
+            )}
+            title={metadataPopupsEnabled ? "Disable Properties popups" : "Enable Properties popups"}
+            aria-label={metadataPopupsEnabled ? "Disable Properties popups" : "Enable Properties popups"}
+          >
+            <Info className="w-4 h-4" />
           </button>
         </>
       )}

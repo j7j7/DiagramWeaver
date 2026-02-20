@@ -16,7 +16,8 @@
  * See tree.md for detailed documentation of all modules.
  */
 
-import React, { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import React, { useState, useMemo, useRef, useCallback, useEffect, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import { DiagramNode } from "../diagram/diagram-node";
 import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramConnectionData } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
@@ -43,6 +44,7 @@ import { measureNodeDims } from "./canvas-constants";
 import { useAlignmentGuides } from "@/hooks/use-alignment-guides";
 import { CanvasAlignmentGuides } from "./canvas-alignment-guides";
 import { SearchResourcesModal } from "./search-resources-modal";
+import { MetadataPopup } from "./metadata-popup";
 import { snapToGrid } from "./canvas-constants";
 import { ConnectionWaypointHandles } from "../diagram/connection-waypoint-handles";
 
@@ -108,6 +110,7 @@ interface EditorCanvasProps {
     position: { x: number; y: number },
     fullItem?: object
   ) => void;
+  metadataPopupsEnabled?: boolean;
 }
 
 
@@ -121,7 +124,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionContextMenu, externalTransform,      onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition }: EditorCanvasProps,
+   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionContextMenu, externalTransform,      onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true }: EditorCanvasProps,
   ref
 ) {
   // ============================================================================
@@ -175,6 +178,14 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   const canvasRef = useRef<HTMLDivElement>(null);
   const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 });
   const [searchModalOpen, setSearchModalOpen] = React.useState(false);
+  const [metadataPopupRect, setMetadataPopupRect] = useState<{
+    top: number;
+    left: number;
+    right: number;
+    width: number;
+    height: number;
+    bottom: number;
+  } | null>(null);
 
   // Client-side rendering state
   const [isClient, setIsClient] = useState(false);
@@ -462,6 +473,46 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     processedZones,
     wheelZoomDisabled: searchModalOpen,
   });
+
+  // Measure selected item rect for metadata popup (anchored to object)
+  useLayoutEffect(() => {
+    if (!metadataPopupsEnabled || !selectedItemId || !selectedItem) {
+      setMetadataPopupRect(null);
+      return;
+    }
+    const metaData = selectedItem && "metaData" in selectedItem ? selectedItem.metaData : undefined;
+    if (!metaData || Object.keys(metaData).length === 0) {
+      setMetadataPopupRect(null);
+      return;
+    }
+    const container = canvasRef.current;
+    if (!container) {
+      setMetadataPopupRect(null);
+      return;
+    }
+    const isEdge = selectedItem?.itemType === "edge";
+    const selector = isEdge ? `[data-connection-id="${selectedItemId}"]` : `[data-node-id="${selectedItemId}"]`;
+    const el = container.querySelector(selector);
+    if (!el) {
+      setMetadataPopupRect(null);
+      return;
+    }
+    const measure = () => {
+      const rect = el.getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) return;
+      setMetadataPopupRect({
+        top: rect.top,
+        left: rect.left,
+        right: rect.right,
+        width: rect.width,
+        height: rect.height,
+        bottom: rect.bottom,
+      });
+    };
+    measure();
+    const raf = requestAnimationFrame(measure);
+    return () => cancelAnimationFrame(raf);
+  }, [metadataPopupsEnabled, selectedItemId, selectedItem, transform.x, transform.y, transform.k]);
 
   // ============================================================================
   // HOOK: useCanvasOperations
@@ -1629,6 +1680,18 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             onCycleItems={() => onZoneCycle?.(contextMenu.itemId)}
             onSortItems={(order) => onZoneSort?.(contextMenu.itemId, order)}
           />
+          {metadataPopupRect &&
+            selectedItem &&
+            "metaData" in selectedItem &&
+            selectedItem.metaData &&
+            Object.keys(selectedItem.metaData).length > 0 &&
+            createPortal(
+              <MetadataPopup
+                anchorRect={metadataPopupRect}
+                metaData={selectedItem.metaData}
+              />,
+              document.body
+            )}
           {onResourceActivateAtPosition && (
             <SearchResourcesModal
               open={searchModalOpen}

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import React, { useState, useMemo, useRef, useCallback, useEffect, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import { DiagramNode } from "../diagram/diagram-node";
 import type { DiagramData } from "@/lib/types";
 import { calculateLayout } from "../editor/canvas-layout-utils";
@@ -9,6 +10,7 @@ import { CanvasConnections } from "../editor/canvas-connections";
 import { RULER_SIZE, type PositionedNode, type PositionedGroup } from "../editor/canvas-constants";
 import { CanvasRulers } from "../editor/canvas-rulers";
 import { computeConnectionSlots } from "@/lib/connection-order-utils";
+import { MetadataPopup } from "../editor/metadata-popup";
 
 export type ViewerSelectedItem =
   | (DiagramData["nodes"][number] & { itemType: "node" })
@@ -20,10 +22,12 @@ interface ViewerCanvasProps {
   transform?: Transform;
   onTransformChange?: (transform: Transform) => void;
   selectedItemId?: string;
+  selectedItem?: ViewerSelectedItem | null;
   onItemSelect?: (item: ViewerSelectedItem | null) => void;
+  metadataPopupsEnabled?: boolean;
 }
 
-export function ViewerCanvas({ diagramData, onFitToView, transform: externalTransform, onTransformChange, selectedItemId, onItemSelect }: ViewerCanvasProps) {
+export function ViewerCanvas({ diagramData, onFitToView, transform: externalTransform, onTransformChange, selectedItemId, selectedItem, onItemSelect, metadataPopupsEnabled = true }: ViewerCanvasProps) {
   // Calculate layout for all nodes and zones
   const { processedNodes, processedZones, width, height } = useMemo(() => {
     return calculateLayout(diagramData);
@@ -51,6 +55,14 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 });
+  const [metadataPopupRect, setMetadataPopupRect] = useState<{
+    top: number;
+    left: number;
+    right: number;
+    width: number;
+    height: number;
+    bottom: number;
+  } | null>(null);
   const [isClient, setIsClient] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef<{ x: number; y: number; transform: Transform } | null>(null);
@@ -67,6 +79,46 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
 
   const transform = externalTransform || internalTransform;
   const setTransform = onTransformChange || setInternalTransform;
+
+  // Measure selected item rect for metadata popup (anchored to object)
+  useLayoutEffect(() => {
+    if (!metadataPopupsEnabled || !selectedItemId || !selectedItem) {
+      setMetadataPopupRect(null);
+      return;
+    }
+    const metaData = selectedItem && "metaData" in selectedItem ? selectedItem.metaData : undefined;
+    if (!metaData || Object.keys(metaData).length === 0) {
+      setMetadataPopupRect(null);
+      return;
+    }
+    const container = canvasRef.current;
+    if (!container) {
+      setMetadataPopupRect(null);
+      return;
+    }
+    const isEdge = selectedItem?.itemType === "edge";
+    const selector = isEdge ? `[data-connection-id="${selectedItemId}"]` : `[data-node-id="${selectedItemId}"]`;
+    const el = container.querySelector(selector);
+    if (!el) {
+      setMetadataPopupRect(null);
+      return;
+    }
+    const measure = () => {
+      const rect = el.getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) return;
+      setMetadataPopupRect({
+        top: rect.top,
+        left: rect.left,
+        right: rect.right,
+        width: rect.width,
+        height: rect.height,
+        bottom: rect.bottom,
+      });
+    };
+    measure();
+    const raf = requestAnimationFrame(measure);
+    return () => cancelAnimationFrame(raf);
+  }, [metadataPopupsEnabled, selectedItemId, selectedItem, transform.x, transform.y, transform.k]);
 
   // Expose fitToView to parent
   useEffect(() => {
@@ -219,6 +271,19 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
   }
 
   return (
+    <>
+      {metadataPopupRect &&
+        selectedItem &&
+        "metaData" in selectedItem &&
+        selectedItem.metaData &&
+        Object.keys(selectedItem.metaData).length > 0 &&
+        createPortal(
+          <MetadataPopup
+            anchorRect={metadataPopupRect}
+            metaData={selectedItem.metaData}
+          />,
+          document.body
+        )}
     <div
       ref={canvasRef}
       className="relative w-full h-full overflow-hidden bg-background"
@@ -317,6 +382,7 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
         })()}
       </div>
     </div>
+    </>
   );
 }
 

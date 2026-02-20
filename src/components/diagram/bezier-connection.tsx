@@ -805,7 +805,7 @@ export function BezierConnection({ from, to, connectionColor, connectionData, on
         )}
       </defs>
       
-      <g style={{ pointerEvents: 'auto' }} onClick={handleClick} onContextMenu={handleContextMenu}>
+      <g style={{ pointerEvents: 'auto' }} onClick={handleClick} onContextMenu={handleContextMenu} data-connection-id={connectionData?.from && connectionData?.to ? `${connectionData.from}-${connectionData.to}` : undefined}>
         <path
           d={pathData}
           stroke="transparent"
