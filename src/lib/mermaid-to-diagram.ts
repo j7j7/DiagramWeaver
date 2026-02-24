@@ -93,8 +93,6 @@ function edgeLabelToColor(label: string): string | undefined {
   }
 }
 
-const DECISION_SHAPE_MULTIPLIER = 3; // Decision nodes (diamond) 3x larger
-
 /**
  * Convert parsed Mermaid flowchart to DiagramWeaver DiagramData.
  * Uses generic.object.* shapes, dagre/elkjs for Mermaid-compatible layout.
@@ -108,12 +106,12 @@ export async function mermaidToDiagramData(parsed: ParsedMermaid): Promise<Diagr
 
   const allNodeIds = Array.from(new Set<string>([...nodes.map(n => n.id), ...edges.flatMap(e => [e.from, e.to])]));
 
-  // Compute dimensions from labels; decision nodes (diamond) are 3x larger
+  // Compute dimensions from labels; diamond (kite) nodes use square dims same size as process nodes
   const nodeDimensions = new Map<string, { width: number; height: number }>();
   nodes.forEach((n) => {
     let dims = estimateNodeDimensions(n.label || n.id);
     if (n.shape === 'diamond') {
-      const baseSize = snapToGrid(Math.max(dims.width, dims.height) * DECISION_SHAPE_MULTIPLIER);
+      const baseSize = snapToGrid(Math.max(dims.width, dims.height));
       dims = { width: baseSize, height: baseSize };
     }
     nodeDimensions.set(n.id, dims);
@@ -123,7 +121,7 @@ export async function mermaidToDiagramData(parsed: ParsedMermaid): Promise<Diagr
       const mNode = nodesById.get(id);
       let dims = estimateNodeDimensions(mNode?.label ?? id);
       if (mNode?.shape === 'diamond') {
-        const baseSize = snapToGrid(Math.max(dims.width, dims.height) * DECISION_SHAPE_MULTIPLIER);
+        const baseSize = snapToGrid(Math.max(dims.width, dims.height));
         dims = { width: baseSize, height: baseSize };
       }
       nodeDimensions.set(id, dims);

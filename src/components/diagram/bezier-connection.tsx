@@ -125,13 +125,24 @@ export function getConnectionPoint(obj: any, width: number, height: number, poin
     }
   }
 
-  // Kite: parametric placement along edges with edge-aligned angles
+  // Kite: parametric placement along edges with edge-aligned angles.
+  // Match sort order: connections are sorted by target/source position (left→right for top/bottom, top→bottom for left/right).
+  // Bottom and left edges have path orientation reversed: invert t so leftmost/topmost destination gets the correct slot.
   if (isKiteShapeType(obj.type) && point !== 'center' && (point === 'top' || point === 'bottom' || point === 'left' || point === 'right')) {
     const effectiveIndex = (isToNode && toConnectionIndex !== undefined) ? toConnectionIndex : connectionIndex;
     const effectiveTotal = (isToNode && toTotalConnections !== undefined) ? toTotalConnections : totalConnections;
-    const t = (effectiveIndex !== undefined && effectiveTotal !== undefined && effectiveTotal >= 1)
-      ? (effectiveIndex + 1) / (effectiveTotal + 1)
-      : 0.5;
+    let t: number;
+    if (effectiveIndex !== undefined && effectiveTotal !== undefined && effectiveTotal >= 1) {
+      const n = effectiveTotal;
+      const i = effectiveIndex;
+      if (point === 'bottom' || point === 'left') {
+        t = (n - i) / (n + 1); // inverted: low index (leftmost/topmost dest) → high t → correct slot
+      } else {
+        t = (i + 1) / (n + 1); // top/right: low index → low t
+      }
+    } else {
+      t = 0.5;
+    }
     const result = getKiteConnectionPoint(point, t, obj, width, height);
     return { x: result.x, y: result.y, angleDeg: result.angleDeg };
   }

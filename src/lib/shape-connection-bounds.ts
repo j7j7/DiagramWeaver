@@ -123,9 +123,13 @@ export function getKiteEdgeAngleAtT(edge: KiteEdge, t: number): number {
   return ((mathDeg + 90) % 360 + 360) % 360; // convert to 0=up, 90=right
 }
 
+/** Outward offset for kite connectors as % of size - scales with kite so larger kites get more clearance */
+const KITE_CONNECTOR_OFFSET_RATIO = 0.02;
+
 /**
  * Connection point on kite edge at parametric t, with screen coords and exit angle.
- * Uses SVG "meet" scaling to match rendered kite.
+ * Uses SVG "meet" scaling to match rendered kite. Applies outward offset (2% of size) so
+ * connectors don't sit exactly on the boundary; scales when kite is resized.
  */
 export function getKiteConnectionPoint(
   edge: KiteEdge,
@@ -140,9 +144,13 @@ export function getKiteConnectionPoint(
   const scale = Math.min(width / w, height / h);
   const offsetX = (width - scale * w) / 2;
   const offsetY = (height - scale * h) / 2;
-  const x = obj.x + offsetX + pt.x * scale;
-  const y = obj.y + offsetY + pt.y * scale;
+  let x = obj.x + offsetX + pt.x * scale;
+  let y = obj.y + offsetY + pt.y * scale;
   const angleDeg = getKiteEdgeAngleAtT(edge, t);
+  const rad = (angleDeg * Math.PI) / 180;
+  const offsetPx = Math.min(width, height) * KITE_CONNECTOR_OFFSET_RATIO;
+  x += offsetPx * Math.sin(rad);
+  y -= offsetPx * Math.cos(rad);
   return { x, y, angleDeg };
 }
 
