@@ -6,8 +6,12 @@ set -e
 
 cd "$(dirname "$0")"
 
-echo "[1/3] Installing dependencies..."
-npm ci 2>/dev/null || npm install
+if [ -d "node_modules" ] && [ -f "package-lock.json" ]; then
+  echo "[1/3] Dependencies already installed, skipping..."
+else
+  echo "[1/3] Installing dependencies..."
+  npm ci 2>/dev/null || npm install
+fi
 
 echo "[2/3] Building..."
 npm run build

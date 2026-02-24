@@ -24,7 +24,7 @@ export function ColorPicker({
   const [isTransparent, setIsTransparent] = useState(false);
   const [inputId] = useState(() => `color-picker-input-${Math.random().toString(36).slice(2)}`);
   const colorInputRef = useRef<HTMLInputElement>(null);
-  const { recentColors, addColor, setColorAt, removeColor } = useRecentColors();
+  const { recentColors, setColorAt, removeColor } = useRecentColors();
 
   useEffect(() => {
     if (value === 'transparent') {
@@ -66,7 +66,7 @@ export function ColorPicker({
   const handleColorCommit = (newColor: string) => {
     setColor(newColor);
     if (!isTransparent) {
-      updateColor(newColor, alpha, true);
+      updateColor(newColor, alpha);
     }
   };
 
@@ -82,36 +82,29 @@ export function ColorPicker({
     const newAlphaValue = newAlpha[0];
     setAlpha(newAlphaValue);
     if (!isTransparent) {
-      updateColor(color, newAlphaValue, true);
+      updateColor(color, newAlphaValue);
     }
   };
 
   const handleTransparentToggle = () => {
     if (isTransparent) {
       setIsTransparent(false);
-      updateColor(color, alpha, true);
+      updateColor(color, alpha);
     } else {
       setIsTransparent(true);
       onChange('transparent');
-      addColor('transparent');
     }
   };
 
-  const updateColor = (hexColor: string, alphaValue: number, commit = false) => {
+  const updateColor = (hexColor: string, alphaValue: number) => {
     if (alphaValue === 1) {
       onChange(hexColor);
-      if (commit) {
-        addColor(hexColor);
-      }
     } else {
       const r = parseInt(hexColor.slice(1, 3), 16);
       const g = parseInt(hexColor.slice(3, 5), 16);
       const b = parseInt(hexColor.slice(5, 7), 16);
       const rgbaValue = `rgba(${r}, ${g}, ${b}, ${alphaValue})`;
       onChange(rgbaValue);
-      if (commit) {
-        addColor(rgbaValue);
-      }
     }
   };
 

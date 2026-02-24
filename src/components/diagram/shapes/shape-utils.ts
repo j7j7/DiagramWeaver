@@ -311,6 +311,51 @@ export const polygonToRoundedPath = (
 };
 
 /**
+ * Convert gradient angle to SVG linear gradient coordinates
+ * @param angle - Gradient angle in degrees (0-360)
+ * @returns SVG gradient coordinates object with x1, y1, x2, y2 as percentage strings
+ */
+export const getGradientCoordinates = (angle: number = 135) => {
+  const radians = (angle * Math.PI) / 180;
+  const x2 = 50 + 50 * Math.cos(radians);
+  const y2 = 50 + 50 * Math.sin(radians);
+  const x1 = 50 - 50 * Math.cos(radians);
+  const y1 = 50 - 50 * Math.sin(radians);
+  return {
+    x1: `${x1}%`,
+    y1: `${y1}%`,
+    x2: `${x2}%`,
+    y2: `${y2}%`
+  };
+};
+
+/**
+ * Generate SVG gradient coordinate data (no JSX - for use in .ts files)
+ * @param gradientId - Unique ID for the gradient
+ * @param colors - Array of two colors for the gradient
+ * @param angle - Gradient angle in degrees (default: 135)
+ * @param borderGradientId - Optional unique ID for border gradient
+ * @param borderColors - Optional array of two colors for border gradient
+ */
+export const createSvgGradientData = (
+  gradientId: string,
+  colors: string[],
+  angle: number = 135,
+  borderGradientId?: string,
+  borderColors?: string[]
+) => {
+  const coords = getGradientCoordinates(angle);
+  return {
+    gradientData: { id: gradientId, ...coords, color1: colors[0], color2: colors[1] },
+    borderGradientData: borderGradientId && borderColors
+      ? { id: borderGradientId, ...coords, color1: borderColors[0], color2: borderColors[1] }
+      : undefined,
+    fillRef: `url(#${gradientId})`,
+    strokeRef: borderGradientId ? `url(#${borderGradientId})` : undefined
+  };
+};
+
+/**
  * Get SVG stroke properties for rounded edges (for path-based shapes)
  * Returns strokeLinejoin and strokeLinecap properties when roundedEdges is enabled
  */

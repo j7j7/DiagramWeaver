@@ -3,7 +3,8 @@
 import React from "react";
 import type { DiagramNodeData } from "@/lib/types";
 import { SvgShapeBase } from "./svg-shape-base";
-import { getGradientWithAngle, getShapeStyles, polygonToRoundedPath } from "./shape-utils";
+import { getShapeStyles, polygonToRoundedPath } from "./shape-utils";
+import { useSvgGradient } from "@/hooks/use-svg-gradient";
 
 interface KiteShapeProps {
   node: DiagramNodeData & { width?: number; height?: number };
@@ -32,12 +33,23 @@ export function KiteShape(props: KiteShapeProps) {
   const points = "30,5 50,30 30,55 10,30";
   const viewBox: [number, number] = [60, 60];
 
-  const fillColor = nodeAny.backgroundStyle === 'gradient'
-    ? getGradientWithAngle(nodeAny.backgroundColors || [nodeAny.backgroundColor || '#6b7280'], nodeAny.gradientAngle || 135)
-    : nodeAny.backgroundColor || '#6b7280';
-  
-  const strokeColor = nodeAny.borderColor || '#6b7280';
-  const strokeWidth = nodeAny.borderStyle === 'none' ? '0' : (nodeAny.borderWidth || 2);
+  const backgroundColors = nodeAny.backgroundColors || [nodeAny.backgroundColor || '#6b7280'];
+  const borderColors = nodeAny.borderColors || [nodeAny.borderColor || '#6b7280'];
+  const gradientAngle = nodeAny.gradientAngle || 135;
+  const backgroundStyle = nodeAny.backgroundStyle || 'solid';
+  const borderStyle = nodeAny.borderStyle || 'solid';
+
+  const { defs, fillRef, strokeRef } = useSvgGradient({
+    colors: backgroundStyle === 'gradient' ? backgroundColors : [backgroundColors[0]],
+    angle: gradientAngle,
+    borderColors: borderStyle === 'gradient' ? borderColors : undefined,
+    enabled: backgroundStyle === 'gradient' || borderStyle === 'gradient'
+  });
+
+  const fillColor = backgroundStyle === 'gradient' ? fillRef : (nodeAny.backgroundColor || '#6b7280');
+  const strokeColor = borderStyle === 'gradient' ? strokeRef : (nodeAny.borderColor || '#6b7280');
+  const strokeWidth = borderStyle === 'none' ? '0' : (nodeAny.borderWidth || 2);
+  const strokeDasharray = borderStyle === 'dotted' ? '3,3' : undefined;
 
   return (
     <SvgShapeBase
@@ -45,12 +57,15 @@ export function KiteShape(props: KiteShapeProps) {
       viewBox="0 0 60 60"
       preserveAspectRatio="xMidYMid meet"
       svgContent={
-        roundedEdges ? (
+        <>
+          {defs}
+          {roundedEdges ? (
           <path
             d={polygonToRoundedPath(points, undefined, viewBox)}
             fill={fillColor}
             stroke={strokeColor}
             strokeWidth={strokeWidth}
+            strokeDasharray={strokeDasharray}
             strokeLinejoin="round"
             strokeLinecap="round"
           />
@@ -60,8 +75,10 @@ export function KiteShape(props: KiteShapeProps) {
             fill={fillColor}
             stroke={strokeColor}
             strokeWidth={strokeWidth}
+            strokeDasharray={strokeDasharray}
           />
-        )
+        )}
+        </>
       }
     />
   );
