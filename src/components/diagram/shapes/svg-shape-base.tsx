@@ -10,6 +10,8 @@ interface SvgShapeBaseProps {
   node: DiagramNodeData & { width?: number; height?: number };
   viewBox: string;
   svgContent: React.ReactNode;
+  /** e.g. "xMidYMid meet" for proportion-preserving shapes like kite */
+  preserveAspectRatio?: string;
   defaultWidth?: number;
   defaultHeight?: number;
   overrideWidth?: number;
@@ -35,6 +37,7 @@ export function SvgShapeBase({
   node,
   viewBox,
   svgContent,
+  preserveAspectRatio,
   defaultWidth = 60,
   defaultHeight = 60,
   overrideWidth,
@@ -60,7 +63,7 @@ export function SvgShapeBase({
       skipWrapperStyling={true}
       {...rest}
     >
-      <svg width={width} height={height} viewBox={viewBox} className="absolute inset-0">
+      <svg width={width} height={height} viewBox={viewBox} preserveAspectRatio={preserveAspectRatio} className="absolute inset-0">
         {svgContent}
       </svg>
     </ShapeWrapper>

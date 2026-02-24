@@ -618,22 +618,31 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     
     const minWidth = isTextboxNode ? 40 : isShapeNode ? 20 : 80;
     const minHeight = isTextboxNode ? 40 : isShapeNode ? 20 : 40;
+    const isKiteNode = node.type === 'generic.object.kite' || node.type?.endsWith?.('.kite');
     
     switch (resizeHandle) {
       case 'right':
         newWidth = resizeStartPos.current.startWidth + deltaX;
+        if (isKiteNode) newHeight = newWidth;
         break;
       case 'bottom':
         newHeight = resizeStartPos.current.startHeight + deltaY;
+        if (isKiteNode) newWidth = newHeight;
         break;
       case 'bottom-right':
         newWidth = resizeStartPos.current.startWidth + deltaX;
         newHeight = resizeStartPos.current.startHeight + deltaY;
+        if (isKiteNode) {
+          const size = Math.max(newWidth, newHeight);
+          newWidth = size;
+          newHeight = size;
+        }
         break;
     }
     
     newWidth = snapDimensionToGrid(newWidth, minWidth);
     newHeight = snapDimensionToGrid(newHeight, minHeight);
+    if (isKiteNode) newHeight = newWidth; // ensure square after snap
     
     const dims = { width: newWidth, height: newHeight };
     latestResizeDimensionsRef.current = dims;

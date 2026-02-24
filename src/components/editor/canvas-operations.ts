@@ -231,10 +231,18 @@ export function useCanvasOperations({
             minWidth = 20;
             minHeight = 20;
           }
+          const isKiteNode = node.type === 'generic.object.kite' || node.type?.endsWith?.('.kite');
+          let finalWidth = snapDimensionToGrid(Math.max(minWidth, newWidth), minWidth);
+          let finalHeight = snapDimensionToGrid(Math.max(minHeight, newHeight), minHeight);
+          if (isKiteNode) {
+            const size = Math.max(finalWidth, finalHeight);
+            finalWidth = size;
+            finalHeight = size;
+          }
           return {
             ...node,
-            width: snapDimensionToGrid(Math.max(minWidth, newWidth), minWidth),
-            height: snapDimensionToGrid(Math.max(minHeight, newHeight), minHeight),
+            width: finalWidth,
+            height: finalHeight,
             sizeMode: 'custom' as const
           };
         }
@@ -287,9 +295,14 @@ export function useCanvasOperations({
             minHeight = 20;
           }
           
-          const newWidth = snapDimensionToGrid(currentWidth * scaleX, minWidth);
-          const newHeight = snapDimensionToGrid(currentHeight * scaleY, minHeight);
-          
+          let newWidth = snapDimensionToGrid(currentWidth * scaleX, minWidth);
+          let newHeight = snapDimensionToGrid(currentHeight * scaleY, minHeight);
+          const isKiteNode = node.type === 'generic.object.kite' || node.type?.endsWith?.('.kite');
+          if (isKiteNode) {
+            const size = Math.max(newWidth, newHeight);
+            newWidth = size;
+            newHeight = size;
+          }
           return {
             ...node,
             width: newWidth,

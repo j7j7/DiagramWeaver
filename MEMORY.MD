@@ -678,6 +678,9 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
   - Users can successfully create container zones that hold child items
   - Clean, maintainable code with unified naming conventions
 
+### Kite Shape Fix (2026-02-24) – Implemented
+All phases from `docs/KITE-SHAPE-FIX-PLAN.md` implemented. (1) **Resize**: Kite locks to square in diagram-node handleResizeMove and canvas-operations resizeNode/resizeMultipleNodes. (2) **Connectors**: shape-connection-bounds.ts adds getKiteEdgePath, getKiteConnectionPoint, getKiteEdgeAngleAtT, isKiteShapeType; bezier-connection uses kite parametric placement (t = (index+1)/(total+1)) and edge-aligned angles; calculateBezierPath/calculateBezierControlPoints support arbitrary angles via angleToUnitVector. (3) **Mermaid**: diamond nodes get square dims (max×3). (4) **SVG**: KiteShape passes preserveAspectRatio="xMidYMid meet" to SvgShapeBase.
+
 ### Next Steps for Future Development
 - Add export formats (PNG, SVG, PDF)
 - Enhance mobile experience

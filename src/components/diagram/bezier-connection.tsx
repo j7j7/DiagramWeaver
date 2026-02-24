@@ -5,7 +5,7 @@ import React from "react";
 import { measureNodeDims } from "@/components/editor/canvas-constants";
 import { isIconOrEmojiType, isShapeNodeType } from "@/lib/utils";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
-import { getShapeEdgeBounds, shapeEdgeToPoint } from "@/lib/shape-connection-bounds";
+import { getShapeEdgeBounds, shapeEdgeToPoint, isKiteShapeType, getKiteConnectionPoint } from "@/lib/shape-connection-bounds";
 
 const NODE_WIDTH = 80;
 const NODE_HEIGHT = 80;
@@ -54,7 +54,7 @@ interface BezierConnectionTextProps {
   connectionColor?: string;
 }
 
-export function getConnectionPoint(obj: any, width: number, height: number, point: 'top' | 'bottom' | 'left' | 'right' | 'center', iconHeight?: number, connectionIndex?: number, totalConnections?: number, isToNode: boolean = false, toConnectionIndex?: number, toTotalConnections?: number, iconOffset?: number, iconWidth?: number, iconOffsetX?: number): { x: number; y: number } {
+export function getConnectionPoint(obj: any, width: number, height: number, point: 'top' | 'bottom' | 'left' | 'right' | 'center', iconHeight?: number, connectionIndex?: number, totalConnections?: number, isToNode: boolean = false, toConnectionIndex?: number, toTotalConnections?: number, iconOffset?: number, iconWidth?: number, iconOffsetX?: number): { x: number; y: number; angleDeg?: number } {
   const isGroup = obj.type === 'group' || obj.subType === 'zone';
   const isTextNode = obj.type === 'generic.text.text' || obj.type === 'generic.text.textbox';
   const isObjectNode = obj.type?.startsWith('generic.object.');
@@ -123,6 +123,17 @@ export function getConnectionPoint(obj: any, width: number, height: number, poin
       offsetX = Math.cos(angle) * radius;
       offsetY = Math.sin(angle) * radius;
     }
+  }
+
+  // Kite: parametric placement along edges with edge-aligned angles
+  if (isKiteShapeType(obj.type) && point !== 'center' && (point === 'top' || point === 'bottom' || point === 'left' || point === 'right')) {
+    const effectiveIndex = (isToNode && toConnectionIndex !== undefined) ? toConnectionIndex : connectionIndex;
+    const effectiveTotal = (isToNode && toTotalConnections !== undefined) ? toTotalConnections : totalConnections;
+    const t = (effectiveIndex !== undefined && effectiveTotal !== undefined && effectiveTotal >= 1)
+      ? (effectiveIndex + 1) / (effectiveTotal + 1)
+      : 0.5;
+    const result = getKiteConnectionPoint(point, t, obj, width, height);
+    return { x: result.x, y: result.y, angleDeg: result.angleDeg };
   }
 
   // For polygon shapes (octagon, hexagon, pentagon, etc.), use shape-specific edge geometry
@@ -334,8 +345,8 @@ export function getOptimalConnectionPoints(from: any, to: any, fromWidth: number
   if (connectionData?.fromPreferredExit && connectionData?.toPreferredEntry) {
     const fromPoint = getConnectionPoint(from, fromWidth, fromHeight, connectionData.fromPreferredExit, resolvedFromIconHeight, connectionData?.connectionIndex, connectionData?.totalConnections, false, undefined, undefined, resolvedFromIconOffset, resolvedFromIconWidth, resolvedFromIconOffsetX);
     const toPoint = getConnectionPoint(to, toWidth, toHeight, connectionData.toPreferredEntry, resolvedToIconHeight, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, true, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, resolvedToIconOffset, resolvedToIconWidth, resolvedToIconOffsetX);
-    const fromAngle = getExitAngle(connectionData.fromPreferredExit);
-    const toAngle = getExitAngle(connectionData.toPreferredEntry);
+    const fromAngle = fromPoint.angleDeg ?? getExitAngle(connectionData.fromPreferredExit);
+    const toAngle = toPoint.angleDeg ?? getExitAngle(connectionData.toPreferredEntry);
     return { fromX: fromPoint.x, fromY: fromPoint.y, toX: toPoint.x, toY: toPoint.y, fromAngle, toAngle };
   }
 
@@ -401,8 +412,8 @@ export function getOptimalConnectionPoints(from: any, to: any, fromWidth: number
   const fromConnectionPoint = getConnectionPoint(from, fromWidth, fromHeight, safeFromPoint, resolvedFromIconHeight, connectionData?.connectionIndex, connectionData?.totalConnections, false, undefined, undefined, resolvedFromIconOffset, resolvedFromIconWidth, resolvedFromIconOffsetX);
   const toConnectionPoint = getConnectionPoint(to, toWidth, toHeight, safeToPoint, resolvedToIconHeight, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, true, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, resolvedToIconOffset, resolvedToIconWidth, resolvedToIconOffsetX);
   
-  const fromAngle = getExitAngle(safeFromPoint);
-  const toAngle = getExitAngle(safeToPoint);
+  const fromAngle = fromConnectionPoint.angleDeg ?? getExitAngle(safeFromPoint);
+  const toAngle = toConnectionPoint.angleDeg ?? getExitAngle(safeToPoint);
 
   return {
     fromX: fromConnectionPoint.x,
@@ -445,10 +456,11 @@ function calculateBezierPath(fromX: number, fromY: number, toX: number, toY: num
       cp1X = fromX - controlOffset;
       cp1Y = fromY;
       break;
-    default:
-      // Fallback to original logic
-      cp1X = fromX + controlOffset;
-      cp1Y = fromY;
+    default: {
+      const uv = angleToUnitVector(fromAngle);
+      cp1X = fromX + controlOffset * uv.x;
+      cp1Y = fromY + controlOffset * uv.y;
+    }
   }
   
   switch (toAngle) {
@@ -468,10 +480,11 @@ function calculateBezierPath(fromX: number, fromY: number, toX: number, toY: num
       cp2X = toX - controlOffset;
       cp2Y = toY;
       break;
-    default:
-      // Fallback to original logic
-      cp2X = toX - controlOffset;
-      cp2Y = toY;
+    default: {
+      const uv = angleToUnitVector(toAngle);
+      cp2X = toX + controlOffset * uv.x;
+      cp2Y = toY + controlOffset * uv.y;
+    }
   }
   
   return `M ${fromX} ${fromY} C ${cp1X} ${cp1Y}, ${cp2X} ${cp2Y}, ${toX} ${toY}`;
@@ -873,10 +886,11 @@ export function calculateBezierControlPoints(fromX: number, fromY: number, toX: 
       cp1X = fromX - controlOffset;
       cp1Y = fromY;
       break;
-    default:
-      // Fallback to original logic
-      cp1X = fromX + controlOffset;
-      cp1Y = fromY;
+    default: {
+      const uv = angleToUnitVector(fromAngle);
+      cp1X = fromX + controlOffset * uv.x;
+      cp1Y = fromY + controlOffset * uv.y;
+    }
   }
   
   switch (toAngle) {
@@ -896,10 +910,11 @@ export function calculateBezierControlPoints(fromX: number, fromY: number, toX: 
       cp2X = toX - controlOffset;
       cp2Y = toY;
       break;
-    default:
-      // Fallback to original logic
-      cp2X = toX - controlOffset;
-      cp2Y = toY;
+    default: {
+      const uv = angleToUnitVector(toAngle);
+      cp2X = toX + controlOffset * uv.x;
+      cp2Y = toY + controlOffset * uv.y;
+    }
   }
   
   return { cp1X, cp1Y, cp2X, cp2Y };

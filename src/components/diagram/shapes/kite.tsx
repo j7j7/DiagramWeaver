@@ -43,6 +43,7 @@ export function KiteShape(props: KiteShapeProps) {
     <SvgShapeBase
       {...props}
       viewBox="0 0 60 60"
+      preserveAspectRatio="xMidYMid meet"
       svgContent={
         roundedEdges ? (
           <path

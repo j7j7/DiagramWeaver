@@ -113,10 +113,8 @@ export async function mermaidToDiagramData(parsed: ParsedMermaid): Promise<Diagr
   nodes.forEach((n) => {
     let dims = estimateNodeDimensions(n.label || n.id);
     if (n.shape === 'diamond') {
-      dims = {
-        width: snapToGrid(dims.width * DECISION_SHAPE_MULTIPLIER),
-        height: snapToGrid(dims.height * DECISION_SHAPE_MULTIPLIER),
-      };
+      const baseSize = snapToGrid(Math.max(dims.width, dims.height) * DECISION_SHAPE_MULTIPLIER);
+      dims = { width: baseSize, height: baseSize };
     }
     nodeDimensions.set(n.id, dims);
   });
@@ -125,10 +123,8 @@ export async function mermaidToDiagramData(parsed: ParsedMermaid): Promise<Diagr
       const mNode = nodesById.get(id);
       let dims = estimateNodeDimensions(mNode?.label ?? id);
       if (mNode?.shape === 'diamond') {
-        dims = {
-          width: snapToGrid(dims.width * DECISION_SHAPE_MULTIPLIER),
-          height: snapToGrid(dims.height * DECISION_SHAPE_MULTIPLIER),
-        };
+        const baseSize = snapToGrid(Math.max(dims.width, dims.height) * DECISION_SHAPE_MULTIPLIER);
+        dims = { width: baseSize, height: baseSize };
       }
       nodeDimensions.set(id, dims);
     }

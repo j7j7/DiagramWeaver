@@ -86,6 +86,73 @@ export function getShapeEdgeBounds(shapeType: string | undefined): ShapeEdgeBoun
  * Compute connection point (x,y) for a shape's edge using its viewBox geometry.
  * Uses SVG preserveAspectRatio "meet" scaling.
  */
+/** Kite viewBox 60×60, vertices: Top(30,5), Right(50,30), Bottom(30,55), Left(10,30) */
+const KITE_VIEWBOX = { w: 60, h: 60 };
+const KITE_CENTER = { x: 30, y: 30 };
+
+type KiteEdge = 'top' | 'right' | 'bottom' | 'left';
+
+/** Returns the 3 points of the kite edge path in viewBox coords (polyline of 2 segments) */
+export function getKiteEdgePath(edge: KiteEdge): Array<{ x: number; y: number }> {
+  switch (edge) {
+    case 'top': return [{ x: 10, y: 30 }, { x: 30, y: 5 }, { x: 50, y: 30 }];
+    case 'right': return [{ x: 30, y: 5 }, { x: 50, y: 30 }, { x: 30, y: 55 }];
+    case 'bottom': return [{ x: 50, y: 30 }, { x: 30, y: 55 }, { x: 10, y: 30 }];
+    case 'left': return [{ x: 30, y: 55 }, { x: 10, y: 30 }, { x: 30, y: 5 }];
+  }
+}
+
+/** Linear interpolation: t∈[0,1] along polyline with 3 points (2 segments). t=0.5 is middle vertex. */
+function interpolateKitePath(path: Array<{ x: number; y: number }>, t: number): { x: number; y: number } {
+  if (t <= 0.5) {
+    const u = t * 2; // 0..1 on first segment
+    return { x: path[0].x + (path[1].x - path[0].x) * u, y: path[0].y + (path[1].y - path[0].y) * u };
+  } else {
+    const u = (t - 0.5) * 2; // 0..1 on second segment
+    return { x: path[1].x + (path[2].x - path[1].x) * u, y: path[1].y + (path[2].y - path[1].y) * u };
+  }
+}
+
+/** Outward normal angle in degrees (for bezier: 0=up, 90=right, 180=down, 270=left). Point is on edge; outward = from center to point. */
+export function getKiteEdgeAngleAtT(edge: KiteEdge, t: number): number {
+  const path = getKiteEdgePath(edge);
+  const pt = interpolateKitePath(path, t);
+  const dx = pt.x - KITE_CENTER.x;
+  const dy = pt.y - KITE_CENTER.y;
+  const mathDeg = (Math.atan2(dy, dx) * 180) / Math.PI; // 0=right, 90=down
+  return ((mathDeg + 90) % 360 + 360) % 360; // convert to 0=up, 90=right
+}
+
+/**
+ * Connection point on kite edge at parametric t, with screen coords and exit angle.
+ * Uses SVG "meet" scaling to match rendered kite.
+ */
+export function getKiteConnectionPoint(
+  edge: KiteEdge,
+  t: number,
+  obj: { x: number; y: number },
+  width: number,
+  height: number
+): { x: number; y: number; angleDeg: number } {
+  const path = getKiteEdgePath(edge);
+  const pt = interpolateKitePath(path, t);
+  const { w, h } = KITE_VIEWBOX;
+  const scale = Math.min(width / w, height / h);
+  const offsetX = (width - scale * w) / 2;
+  const offsetY = (height - scale * h) / 2;
+  const x = obj.x + offsetX + pt.x * scale;
+  const y = obj.y + offsetY + pt.y * scale;
+  const angleDeg = getKiteEdgeAngleAtT(edge, t);
+  return { x, y, angleDeg };
+}
+
+/** Check if type is kite for connection logic */
+export function isKiteShapeType(shapeType: string | undefined): boolean {
+  if (!shapeType?.startsWith?.('generic.object.')) return false;
+  const suffix = shapeType.replace(/^generic\.object\./, '').split('.').pop() || '';
+  return suffix === 'kite';
+}
+
 export function shapeEdgeToPoint(
   bounds: ShapeEdgeBounds,
   obj: { x: number; y: number },
