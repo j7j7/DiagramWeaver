@@ -3,6 +3,8 @@
  * Maps Mermaid shapes to generic.object.* types, uses dagre/elkjs for
  * Mermaid-compatible layout, and creates connections.
  * Node dimensions are computed from labels so text is not truncated.
+ * Theme colours: decision/kite and other shapes use Forest Green;
+ * standard box (rect) uses Ocean Blue.
  */
 
 import type { DiagramData, DiagramNodeData, DiagramConnectionData } from '@/lib/types';
@@ -35,6 +37,39 @@ function estimateNodeDimensions(label: string): { width: number; height: number 
   );
   const height = snapToGrid(BASE_HEIGHT + (lines.length - 1) * 18);
   return { width, height };
+}
+
+/** Inline theme properties for Mermaid import (no external deps) */
+const MERMAID_OCEAN_BLUE = {
+  borderStyle: 'solid' as const,
+  borderColor: '#3b82f6',
+  borderWidth: 1,
+  backgroundStyle: 'solid' as const,
+  backgroundColor: '#eff6ff',
+  shadow: true,
+  textColor: '#1e40af',
+  gradientAngle: 135,
+};
+
+const MERMAID_FOREST_GREEN = {
+  borderStyle: 'solid' as const,
+  borderColor: '#16a34a',
+  borderWidth: 1,
+  backgroundStyle: 'solid' as const,
+  backgroundColor: '#f0fdf4',
+  shadow: true,
+  textColor: '#14532d',
+  gradientAngle: 90,
+};
+
+/** Get theme for Mermaid shape: standard box (rect/default) = Ocean Blue; decision/kite/shapes = Forest Green */
+function getMermaidThemeForShape(shape: MermaidNode['shape']) {
+  return (shape === 'rect' || shape === 'default') ? MERMAID_OCEAN_BLUE : MERMAID_FOREST_GREEN;
+}
+
+/** Apply theme properties to a node */
+function applyMermaidTheme(node: DiagramNodeData, theme: typeof MERMAID_OCEAN_BLUE): DiagramNodeData {
+  return { ...node, ...theme };
 }
 
 /** Map Mermaid shape to DiagramWeaver generic.object.* or generic.text.* type */
@@ -138,7 +173,7 @@ export async function mermaidToDiagramData(parsed: ParsedMermaid): Promise<Diagr
     const dims = nodeDimensions.get(mNode.id)!;
     const pos = positions.get(mNode.id) ?? { x: idx * (dims.width + fallbackSpacing), y: 0 };
     const type = mermaidShapeToDiagramType(mNode.shape);
-    diagramNodes.push({
+    const baseNode: DiagramNodeData = {
       id: diagramId,
       type,
       label: mNode.label || mNode.id,
@@ -147,10 +182,11 @@ export async function mermaidToDiagramData(parsed: ParsedMermaid): Promise<Diagr
       width: dims.width,
       height: dims.height,
       sizeMode: 'custom',
-    });
+    };
+    diagramNodes.push(applyMermaidTheme(baseNode, getMermaidThemeForShape(mNode.shape)));
   });
 
-  // Add nodes that were only referenced in edges (implicit nodes)
+  // Add nodes that were only referenced in edges (implicit nodes) - standard box = Ocean Blue
   let implicitIdx = 0;
   Array.from(allNodeIds).forEach(mId => {
     if (nodesById.has(mId)) return;
@@ -158,7 +194,7 @@ export async function mermaidToDiagramData(parsed: ParsedMermaid): Promise<Diagr
     idMap.set(mId, diagramId);
     const dims = nodeDimensions.get(mId)!;
     const pos = positions.get(mId) ?? { x: diagramNodes.length * (dims.width + fallbackSpacing), y: 0 };
-    diagramNodes.push({
+    const baseNode: DiagramNodeData = {
       id: diagramId,
       type: 'generic.object.rectangle',
       label: mId,
@@ -167,7 +203,8 @@ export async function mermaidToDiagramData(parsed: ParsedMermaid): Promise<Diagr
       width: dims.width,
       height: dims.height,
       sizeMode: 'custom',
-    });
+    };
+    diagramNodes.push(applyMermaidTheme(baseNode, MERMAID_OCEAN_BLUE));
   });
 
   const connections: DiagramConnectionData[] = edges

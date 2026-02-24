@@ -63,7 +63,7 @@ export function SvgShapeBase({
       skipWrapperStyling={true}
       {...rest}
     >
-      <svg width={width} height={height} viewBox={viewBox} preserveAspectRatio={preserveAspectRatio} className="absolute inset-0">
+      <svg width={width} height={height} viewBox={viewBox} preserveAspectRatio={preserveAspectRatio ?? "none"} className="absolute inset-0">
         {svgContent}
       </svg>
     </ShapeWrapper>

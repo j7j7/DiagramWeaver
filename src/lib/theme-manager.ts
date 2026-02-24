@@ -14,7 +14,7 @@ export const DEFAULT_THEMES: DiagramTheme[] = [
     properties: {
       borderStyle: 'solid',
       borderColor: '#3b82f6',
-      borderWidth: 2,
+      borderWidth: 1,
       backgroundStyle: 'solid',
       backgroundColor: '#eff6ff',
       backgroundOpacity: 1,
@@ -39,7 +39,7 @@ export const DEFAULT_THEMES: DiagramTheme[] = [
     properties: {
       borderStyle: 'gradient',
       borderColors: ['#f97316', '#ea580c'],
-      borderWidth: 2,
+      borderWidth: 1,
       backgroundStyle: 'gradient',
       backgroundColors: ['#fed7aa', '#ffedd5'],
       backgroundOpacity: 1,
@@ -64,7 +64,7 @@ export const DEFAULT_THEMES: DiagramTheme[] = [
     properties: {
       borderStyle: 'solid',
       borderColor: '#16a34a',
-      borderWidth: 2,
+      borderWidth: 1,
       backgroundStyle: 'solid',
       backgroundColor: '#f0fdf4',
       backgroundOpacity: 1,
@@ -89,7 +89,7 @@ export const DEFAULT_THEMES: DiagramTheme[] = [
     properties: {
       borderStyle: 'gradient',
       borderColors: ['#9333ea', '#7c3aed'],
-      borderWidth: 3,
+      borderWidth: 1,
       backgroundStyle: 'gradient',
       backgroundColors: ['#f3e8ff', '#ede9fe'],
       backgroundOpacity: 1,
@@ -139,7 +139,7 @@ export const DEFAULT_THEMES: DiagramTheme[] = [
     properties: {
       borderStyle: 'solid',
       borderColor: '#f43f5e',
-      borderWidth: 2,
+      borderWidth: 1,
       backgroundStyle: 'solid',
       backgroundColor: '#fff1f2',
       backgroundOpacity: 1,
@@ -164,7 +164,7 @@ export const DEFAULT_THEMES: DiagramTheme[] = [
     properties: {
       borderStyle: 'dotted',
       borderColor: '#06b6d4',
-      borderWidth: 2,
+      borderWidth: 1,
       backgroundStyle: 'solid',
       backgroundColor: '#ecfeff',
       backgroundOpacity: 1,
@@ -189,7 +189,7 @@ export const DEFAULT_THEMES: DiagramTheme[] = [
     properties: {
       borderStyle: 'gradient',
       borderColors: ['#facc15', '#f59e0b'],
-      borderWidth: 3,
+      borderWidth: 1,
       backgroundStyle: 'gradient',
       backgroundColors: ['#fefce8', '#fef3c7'],
       backgroundOpacity: 1,
@@ -214,7 +214,7 @@ export const DEFAULT_THEMES: DiagramTheme[] = [
     properties: {
       borderStyle: 'solid',
       borderColor: '#1f2937',
-      borderWidth: 2,
+      borderWidth: 1,
       backgroundStyle: 'solid',
       backgroundColor: '#111827',
       backgroundOpacity: 1,
@@ -239,7 +239,7 @@ export const DEFAULT_THEMES: DiagramTheme[] = [
     properties: {
       borderStyle: 'solid',
       borderColor: '#f472b6',
-      borderWidth: 2,
+      borderWidth: 1,
       backgroundStyle: 'gradient',
       backgroundColors: ['#fdf2f8', '#fce7f3'],
       backgroundOpacity: 1,

@@ -638,15 +638,23 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
         newHeight = resizeStartPos.current.startHeight + deltaY;
         if (isKiteNode) newWidth = newHeight;
         break;
-      case 'bottom-right':
-        newWidth = resizeStartPos.current.startWidth + deltaX;
-        newHeight = resizeStartPos.current.startHeight + deltaY;
+      case 'bottom-right': {
+        // Proportional resize: maintain aspect ratio (both dimensions scale together)
+        const rawW = resizeStartPos.current.startWidth + deltaX;
+        const rawH = resizeStartPos.current.startHeight + deltaY;
+        // Use the larger scale so the shape fills the dragged area
+        const scaleFromW = rawW / resizeStartPos.current.startWidth;
+        const scaleFromH = rawH / resizeStartPos.current.startHeight;
+        const scale = Math.max(scaleFromW, scaleFromH, minWidth / resizeStartPos.current.startWidth, minHeight / resizeStartPos.current.startHeight);
+        newWidth = resizeStartPos.current.startWidth * scale;
+        newHeight = resizeStartPos.current.startHeight * scale;
         if (isKiteNode) {
           const size = Math.max(newWidth, newHeight);
           newWidth = size;
           newHeight = size;
         }
         break;
+      }
       case 'top':
         // Drag up = increase height (bottom stays fixed), drag down = decrease
         newHeight = Math.max(minHeight, resizeStartPos.current.startHeight - deltaY);

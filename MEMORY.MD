@@ -2,6 +2,12 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-02-24)
 
+### 2026-02-24 – Proportional Bottom-Right Resize
+The bottom-right corner resize handle now maintains aspect ratio: both width and height scale together proportionally. Uses the larger of the two dimension scales so the shape fills the dragged area. Multi-select resize from corner is also proportional. Width, height, and sizeMode: 'custom' are already persisted in diagram JSON (save/load) and used by the viewer via measureNodeDims. Modified: `diagram-node.tsx`.
+
+### 2026-02-24 – Shape Backing Box No Blank Areas
+Polygon shapes (trapezoid, hexagon, parallelogram, etc.) were letterboxed when resized to a different aspect ratio than their viewBox, creating blank areas above/below the shape. **Cause**: SVG default preserveAspectRatio "xMidYMid meet" scales uniformly and centers, leaving gaps. **Fix**: SvgShapeBase defaults to preserveAspectRatio="none" when not specified, so shapes stretch to fill their container. Circle and kite keep explicit "xMidYMid meet" for their fixed proportions. Modified: `svg-shape-base.tsx`.
+
 ### 2026-02-24 – Top and Left Resize Handles
 Shapes can now be resized from top and left edges in addition to right, bottom, and bottom-right. **Top**: Drag upward to expand (bottom edge stays fixed), downward to shrink. **Left**: Drag left to expand (right edge stays fixed), right to shrink. Connect (+ connector) handle moved from top-center to top-right to accommodate top resize. Multi-select resize from top/left anchors at bottom/right respectively. Modified: `resize-handles.tsx`, `connect-handle.tsx`, `diagram-node.tsx`, `canvas-operations.ts`, `editor-canvas.tsx`, `globals.css`.
 
@@ -36,7 +42,7 @@ Import Mermaid flowchart (`.mmd`, `.mermaid`) files into DiagramWeaver. Converts
 
 **Validation**: Full error output logs to browser console (`[Mermaid Import]` / `[Mermaid Load]`). Use `npm run validate-mermaid` or `GET /api/validate-mermaid` (when dev server running) to validate examples.
 
-**Import styling**: Connectors with labels get auto-colored: Yes/Low=green (#22c55e), No/Critical=red (#ef4444), High=orange (#f97316), Medium/Medium-Low=amber (#f59e0b). Decision nodes (diamond `{...}`) use square dimensions same size as process nodes.
+**Import styling**: Connectors with labels get auto-colored: Yes/Low=green (#22c55e), No/Critical=red (#ef4444), High=orange (#f97316), Medium/Medium-Low=amber (#f59e0b). Decision nodes (diamond `{...}`) use square dimensions same size as process nodes. Shape themes (inline in mermaid-to-diagram, no theme-manager dep): decision/kite and other shapes (circle, hexagon, parallelogram, trapezoid, rounded, etc.) use Forest Green (#16a34a border, #f0fdf4 bg); standard box (`rect`/`default`) uses Ocean Blue (#3b82f6 border, #eff6ff bg). Applies to both File→Import Mermaid and File→Load (.mmd).
 
 **Export to Mermaid**: Planned as a separate phase.
 
