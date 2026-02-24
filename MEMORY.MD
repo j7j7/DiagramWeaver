@@ -30,9 +30,9 @@ Connections to the circle were attaching to the rectangular bounding box instead
 Border and background now support separate gradient directions: `gradientAngle` (background) and `borderGradientAngle` (border). When unset, `borderGradientAngle` falls back to `gradientAngle`. Visual Styling panel: border direction picker is on the same line as Width for gradient borders; "Colors" headings removed from Border and Background for a more compact layout.
 
 ### 2026-02-24 – Mermaid Diagram Import
-Import Mermaid flowchart (`.mmd`, `.mermaid`) files into DiagramWeaver. Converts nodes to shapes and text, edges to connectors with optional labels.
+Import Mermaid flowchart (`.mmd`, `.mermaid`) and class diagram files into DiagramWeaver. Converts nodes to shapes and text, edges to connectors with optional labels.
 
-**How to import**: File → Load, File → Import Mermaid, or File → Examples → Mermaid Simple / Mermaid Complex.
+**How to import**: File → Load, File → Import Mermaid, or File → Examples → Mermaid Simple / Mermaid Class Diagram / Mermaid Complex.
 
 **Mermaid layout config** (from YAML frontmatter): Matches Mermaid standard. Uses `@dagrejs/dagre` for default/dagre layout, `elkjs` when `layout: elk`. Supports `nodeSpacing`, `rankSpacing` (default 50), and `elk.nodePlacementStrategy`, `elk.mergeEdges`, `elk.cycleBreakingStrategy` for ELK.
 
@@ -40,6 +40,15 @@ Import Mermaid flowchart (`.mmd`, `.mermaid`) files into DiagramWeaver. Converts
 - **Node shapes** (mapped to `generic.object.*`): `[rect]`, `(rounded)`, `((circle))`, `{diamond}`→kite, `[[subroutine]]`, `{{hexagon}}`, `[/parallelogram/]`, `[\parallelogram\]`, `[/trapezoid\]`, `[\trapezoid/]`, `[(cylinder)]`→rounded-rectangle, `([stadium])`→rounded-rectangle
 - **Connectors**: `-->`, `---`, `-.->`, `==>`, with optional labels `|label|` or `-- label --`
 - **Directions**: `flowchart TD`, `flowchart LR`, `flowchart BT`, `flowchart RL`
+
+**Mermaid class diagram** (`classDiagram`):
+- Classes rendered as UML-style boxes with three compartments: name (top), attributes (middle), methods (bottom), separated by horizontal divider lines
+- Node type: `generic.object.uml-class` with `umlClass: { name, attributes[], methods[] }`
+- **UML Class in sidebar**: Draggable from Generic → Object section. Icon: `uml-class.png` (rect with two horizontal dividers). Added to `resource-generic.json`; `resource-icon.tsx` has uml-class SVG fallback; `shape-preview.tsx` has Visual Styling preview. **Tag support**: UML class shape supports tag/tagPosition (like rectangle); persisted in JSON, shown in editor and viewer via ShapeTag. **Right-click → Edit UML Class**: Opens modal for full edit (name, add/remove attributes, add/remove methods). **Inline editing**: Double-click name, attributes, or methods section to edit; Enter to submit (Ctrl+Enter for attributes/methods); Escape to cancel. **Dynamic sizing**: Box height grows/shrinks with attribute and method count (1 line per attribute/method). New UML class nodes get default placeholders: name "name", attributes ["attributes"], methods ["methods"]. Key: `uml-class-editor-modal.tsx`, `uml-utils.ts`
+- Inheritance: `Parent <|-- Child` → connection from child to parent with arrow at parent
+- Colon syntax: `ClassName : +int age`, `ClassName: +methodName()`
+- Block syntax: `class Duck{ +String beakColor +swim() +quack() }`
+- Example: File → Examples → Mermaid Class Diagram, or import `class-diagram.mmd`
 
 **Key files**:
 - `src/lib/mermaid-parser.ts` – Parse flowchart syntax, YAML frontmatter config

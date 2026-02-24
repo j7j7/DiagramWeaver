@@ -97,6 +97,7 @@ export function useCanvasOperations({
                                 itemType === 'generic.object.jigsaw' ||
                                 itemType === 'generic.object.arrowhead' ||
                                 itemType === 'generic.object.chevron' ||
+                                itemType === 'generic.object.uml-class' ||
                                 itemType === 'generic.object.line' ||
                                 itemType?.endsWith('.square') ||
                                 itemType?.endsWith('.circle') ||
@@ -114,6 +115,7 @@ export function useCanvasOperations({
                                 itemType?.endsWith('.octagon') ||
                                 itemType?.endsWith('.jigsaw') ||
                                 itemType?.endsWith('.arrowhead') ||
+                                itemType?.endsWith('.uml-class') ||
                                 itemType?.endsWith('.line'));
       
       // Check if this is a textbox resource
@@ -136,6 +138,7 @@ export function useCanvasOperations({
            width: isShapeResource ? snapDimensionToGrid(
              itemType === 'generic.object.point' ? 20 :
              itemType === 'generic.object.rectangle' ? 80 :
+             itemType === 'generic.object.uml-class' ? 120 :
              itemType === 'generic.object.rounded-rectangle' ? 80 :
              itemType === 'generic.object.cloud' ? 80 :
              itemType === 'generic.object.line' ? 150 :
@@ -144,6 +147,7 @@ export function useCanvasOperations({
            height: isShapeResource ? snapDimensionToGrid(
              itemType === 'generic.object.point' ? 20 :
              itemType === 'generic.object.rectangle' ? 50 :
+             itemType === 'generic.object.uml-class' ? 80 :
              itemType === 'generic.object.rounded-rectangle' ? 50 :
              itemType === 'generic.object.cloud' ? 50 :
              itemType === 'generic.object.line' ? 100 :
@@ -174,6 +178,10 @@ export function useCanvasOperations({
             endCap: 'none',
             lineThickness: 2.5,
             lineColor: '#6b7280',
+          }),
+          // Default placeholder text for UML class (only if not from scratchpad)
+          ...((itemType === 'generic.object.uml-class' || itemType?.endsWith('.uml-class')) && !isFromScratchPad && {
+            umlClass: { name: 'name', attributes: ['attributes'], methods: ['methods'] },
           }),
           // Apply icon background setting
           ...(!iconBackgroundEnabled && {

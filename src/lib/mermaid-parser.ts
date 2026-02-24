@@ -280,6 +280,159 @@ function parseFrontmatterConfig(text: string): MermaidFlowchartConfig | undefine
   }
 }
 
+// -------- Class Diagram --------
+
+export interface MermaidClassNode {
+  id: string;
+  name: string;
+  attributes: string[];
+  methods: string[];
+}
+
+export interface MermaidClassEdge {
+  from: string; // child
+  to: string;   // parent
+  type: 'inheritance';
+}
+
+export interface ParsedMermaidClassDiagram {
+  classes: MermaidClassNode[];
+  edges: MermaidClassEdge[];
+  errors: string[];
+}
+
+const CLASS_DIAGRAM_RE = /^\s*classDiagram\s*$/i;
+const INHERITANCE_RE = /^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*<\|--\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*$/;
+// ClassName : member or ClassName: member
+const COLON_MEMBER_RE = /^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:\s*(.+)$/;
+// class ClassName { ... } - single line
+const CLASS_BLOCK_RE = /^\s*class\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\{([^}]*)\}\s*$/;
+// class ClassName { - start of multi-line block
+const CLASS_BLOCK_START_RE = /^\s*class\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\{\s*$/;
+
+/** Detect Mermaid diagram type from first lines of text */
+export function detectMermaidDiagramType(text: string): 'flowchart' | 'classDiagram' | null {
+  const trimmed = text.trim();
+  const firstLines = trimmed.split(/\r?\n/).slice(0, 20);
+  for (const line of firstLines) {
+    const t = line.trim();
+    if (CLASS_DIAGRAM_RE.test(t)) return 'classDiagram';
+    if (/^\s*(?:flowchart|graph)\s+(TD|TB|BT|RL|LR)\s*$/i.test(t)) return 'flowchart';
+  }
+  return null;
+}
+
+function parseClassMember(member: string): { type: 'attr' | 'method'; text: string } {
+  const s = member.trim();
+  if (!s) return { type: 'attr', text: '' };
+  const hasParens = /\([^)]*\)\s*$/.test(s);
+  return { type: hasParens ? 'method' : 'attr', text: s };
+}
+
+/**
+ * Parse Mermaid classDiagram syntax into classes and inheritance edges.
+ * Supports both single-line and multi-line class blocks.
+ */
+export function parseMermaidClassDiagram(text: string): ParsedMermaidClassDiagram {
+  const errors: string[] = [];
+  const classMap = new Map<string, MermaidClassNode>();
+  const edges: MermaidClassEdge[] = [];
+  const lines = text.split(/\r?\n/);
+  let blockClassName: string | null = null;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    if (blockClassName !== null) {
+      if (trimmed === '}') {
+        blockClassName = null;
+      } else if (trimmed) {
+        const node = ensureClass(classMap, blockClassName);
+        const { type, text } = parseClassMember(trimmed);
+        if (text) {
+          if (type === 'attr') node.attributes.push(text);
+          else node.methods.push(text);
+        }
+      }
+      continue;
+    }
+
+    if (!trimmed) continue;
+    if (COMMENT_RE.test(trimmed)) continue;
+    if (trimmed === '---' || trimmed.startsWith('---')) continue;
+
+    if (CLASS_DIAGRAM_RE.test(trimmed)) continue;
+
+    const inhMatch = trimmed.match(INHERITANCE_RE);
+    if (inhMatch) {
+      const [, parent, child] = inhMatch;
+      if (parent && child) {
+        edges.push({ from: child, to: parent, type: 'inheritance' });
+        ensureClass(classMap, parent);
+        ensureClass(classMap, child);
+      }
+      continue;
+    }
+
+    const colonMatch = trimmed.match(COLON_MEMBER_RE);
+    if (colonMatch) {
+      const [, className, memberStr] = colonMatch;
+      if (className && memberStr) {
+        const node = ensureClass(classMap, className);
+        const { type, text } = parseClassMember(memberStr);
+        if (text) {
+          if (type === 'attr') node.attributes.push(text);
+          else node.methods.push(text);
+        }
+      }
+      continue;
+    }
+
+    const blockStartMatch = trimmed.match(CLASS_BLOCK_START_RE);
+    if (blockStartMatch) {
+      blockClassName = blockStartMatch[1];
+      ensureClass(classMap, blockClassName);
+      continue;
+    }
+
+    const blockMatch = trimmed.match(CLASS_BLOCK_RE);
+    if (blockMatch) {
+      const [, className, body] = blockMatch;
+      if (className && body !== undefined) {
+        const node = ensureClass(classMap, className);
+        const memberLines = body.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+        for (const m of memberLines) {
+          const { type, text } = parseClassMember(m);
+          if (text) {
+            if (type === 'attr') node.attributes.push(text);
+            else node.methods.push(text);
+          }
+        }
+      }
+      continue;
+    }
+
+    if (trimmed.length > 0 && !trimmed.startsWith('%%')) {
+      errors.push(`Line ${i + 1}: Could not parse "${trimmed.slice(0, 50)}${trimmed.length > 50 ? '...' : ''}"`);
+    }
+  }
+
+  const classes = Array.from(classMap.values());
+  return { classes, edges, errors };
+}
+
+function ensureClass(map: Map<string, MermaidClassNode>, id: string): MermaidClassNode {
+  let node = map.get(id);
+  if (!node) {
+    node = { id, name: id, attributes: [], methods: [] };
+    map.set(id, node);
+  }
+  return node;
+}
+
+// -------- Flowchart --------
+
 /**
  * Parse Mermaid flowchart syntax into structured nodes and edges.
  */

@@ -176,7 +176,7 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
       type?.endsWith('.star') || type?.endsWith('.cloud') || type?.endsWith('.parallelogram') ||
       type?.endsWith('.trapezoid') || type?.endsWith('.kite') || type?.endsWith('.hexagon') ||
       type?.endsWith('.pentagon') || type?.endsWith('.octagon') || type?.endsWith('.jigsaw') ||
-      type?.endsWith('.arrowhead') || type?.endsWith('.chevron') || type?.endsWith('.line'))) {
+      type?.endsWith('.arrowhead') || type?.endsWith('.chevron') || type?.endsWith('.uml-class') || type?.endsWith('.line'))) {
     
     // Render different shapes based on type
     const shapeType = type.split('.').pop() || 'square';
@@ -223,6 +223,14 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
         return (
           <svg {...props} viewBox="0 0 24 24" fill={props.fill || "currentColor"} stroke={props.stroke || "none"} strokeWidth={props.strokeWidth || 2}>
             <rect x="4" y="6" width="16" height="12" rx="2" ry="2" />
+          </svg>
+        );
+      case 'uml-class':
+        return (
+          <svg {...props} viewBox="0 0 24 24" fill={props.fill || "currentColor"} stroke={props.stroke || "currentColor"} strokeWidth={props.strokeWidth ?? 1}>
+            <rect x="4" y="4" width="16" height="16" />
+            <line x1="4" y1="9" x2="20" y2="9" />
+            <line x1="4" y1="14" x2="20" y2="14" />
           </svg>
         );
       default: // square, parallelogram, trapezoid, kite, hexagon, pentagon, octagon, jigsaw, arrowhead, chevron

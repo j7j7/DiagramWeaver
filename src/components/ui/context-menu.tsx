@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { cn, isShapeNodeType } from '@/lib/utils';
-import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup, Plus, ArrowUp, ArrowDown, ChevronUp, ChevronDown, Circle, RotateCw, ArrowDownAZ, ArrowUpAZ, Minus, Lock, Unlock } from 'lucide-react';
+import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup, Plus, ArrowUp, ArrowDown, ChevronUp, ChevronDown, Circle, RotateCw, ArrowDownAZ, ArrowUpAZ, Minus, Lock, Unlock, FileEdit } from 'lucide-react';
 
 
 interface ContextMenuProps {
@@ -48,11 +48,16 @@ interface ContextMenuProps {
   canMoveOneForward?: boolean;
   onToggleLock?: () => void;
   isLocked?: boolean;
+  onEditUmlClass?: () => void;
 }
 
 // Helper function to check if a node type is a line
 const isLineNodeType = (nodeType?: string): boolean => {
   return nodeType === 'generic.object.line' || (nodeType?.endsWith('.line') ?? false);
+};
+
+const isUmlClassNodeType = (nodeType?: string): boolean => {
+  return nodeType === 'generic.object.uml-class' || (nodeType?.endsWith('.uml-class') ?? false);
 };
 
 
@@ -98,7 +103,8 @@ export function ContextMenu({
   onCycleItems,
   onSortItems,
   onToggleLock,
-  isLocked = false
+  isLocked = false,
+  onEditUmlClass,
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [layerSubmenuOpen, setLayerSubmenuOpen] = useState(false);
@@ -166,6 +172,19 @@ export function ContextMenu({
         <Copy className="w-4 h-4" />
         Copy
       </button>
+
+      {onEditUmlClass && isUmlClassNodeType(nodeType) && (
+        <button
+          className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+          onClick={() => {
+            onEditUmlClass();
+            onClose();
+          }}
+        >
+          <FileEdit className="w-4 h-4" />
+          Edit UML Class
+        </button>
+      )}
 
       {onTextStyling && !isLineNodeType(nodeType) && (
         <button

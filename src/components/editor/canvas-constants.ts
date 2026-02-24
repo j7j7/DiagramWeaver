@@ -1,6 +1,7 @@
 import type { DiagramNodeData, DiagramZoneData } from "@/lib/types";
 import { isIconOrEmojiType } from "@/lib/utils";
 import { getNodeSizeDimensions, getNodeSizeMultiplier } from "@/lib/visual-styling";
+import { computeUmlClassDimensions } from "@/lib/uml-utils";
 
 // Canvas constants
 export const NODE_WIDTH = 80;
@@ -41,6 +42,7 @@ export const measureNodeDims = (n: PositionedNode) => {
      n.type === 'generic.object.circle' ||
      n.type === 'generic.object.point' ||
      n.type === 'generic.object.rectangle' ||
+     n.type === 'generic.object.uml-class' ||
      n.type === 'generic.object.rounded-rectangle' ||
      n.type === 'generic.object.triangle' ||
      n.type === 'generic.object.star' ||
@@ -58,6 +60,7 @@ export const measureNodeDims = (n: PositionedNode) => {
      n.type?.endsWith('.circle') ||
      n.type?.endsWith('.point') ||
      n.type?.endsWith('.rectangle') ||
+     n.type?.endsWith('.uml-class') ||
      n.type?.endsWith('.rounded-rectangle') ||
      n.type?.endsWith('.triangle') ||
      n.type?.endsWith('.star') ||
@@ -92,6 +95,17 @@ export const measureNodeDims = (n: PositionedNode) => {
     return { width: snapDimensionToGrid(n.width), height: snapDimensionToGrid(n.height) };
   }
   
+  // UML class: compute dimensions from umlClass content when not explicitly set
+  const isUmlClass = n.type === 'generic.object.uml-class' || n.type?.endsWith('.uml-class');
+  if (isUmlClass) {
+    const uml = (n as any).umlClass;
+    const name = uml?.name ?? 'name';
+    const attrs = uml?.attributes ?? ['attributes'];
+    const methods = uml?.methods ?? ['methods'];
+    const dims = computeUmlClassDimensions(name, attrs, methods);
+    return { width: snapDimensionToGrid(n.width ?? dims.width), height: snapDimensionToGrid(n.height ?? dims.height) };
+  }
+
   // Shapes always use their custom width/height if set
   if (isShapeNode && n.width && n.height) {
     return { width: snapDimensionToGrid(n.width), height: snapDimensionToGrid(n.height) };

@@ -16,6 +16,8 @@ export function isShapeNodeType(nodeType: string): boolean {
          nodeType === 'generic.object.circle' ||
          nodeType === 'generic.object.point' ||
          nodeType === 'generic.object.rectangle' ||
+         nodeType === 'generic.object.uml-class' ||
+         nodeType?.endsWith('.uml-class') ||
          nodeType === 'generic.object.rounded-rectangle' ||
          nodeType === 'generic.object.triangle' ||
          nodeType === 'generic.object.star' ||

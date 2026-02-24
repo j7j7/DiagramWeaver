@@ -86,6 +86,33 @@ export const DiagramNodeDataSchema = z.object({
   iconColor: z.string().optional(), // Color for Lucide icons (hex)
 
   metaData: z.record(z.string(), z.string()).optional(), // Key/value metadata
+
+  umlClass: z.object({
+    name: z.string(),
+    attributes: z.array(z.string()),
+    methods: z.array(z.string()),
+  }).optional(),
+  umlClassStyle: z.object({
+    name: z.object({
+      fontFamily: z.string().optional(),
+      fontSize: z.number().optional(),
+      textJustify: z.string().optional(),
+      textColor: z.string().optional(),
+    }).optional(),
+    attributes: z.object({
+      fontFamily: z.string().optional(),
+      fontSize: z.number().optional(),
+      textJustify: z.string().optional(),
+      textColor: z.string().optional(),
+    }).optional(),
+    methods: z.object({
+      fontFamily: z.string().optional(),
+      fontSize: z.number().optional(),
+      textJustify: z.string().optional(),
+      textColor: z.string().optional(),
+    }).optional(),
+    dividerLineWidth: z.number().optional(),
+  }).optional(),
 });
 
 // Schema for DiagramConnectionData 

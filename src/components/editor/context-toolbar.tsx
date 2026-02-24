@@ -42,6 +42,7 @@ import { Slider } from '@/components/ui/slider';
 import { ColorPicker } from '@/components/ui/color-picker';
 
 import { TextStylingPanel } from './text-styling-panel';
+import { UmlClassTextStylingPanel } from './uml-class-text-styling-panel';
 import { VisualStylingPanel } from './visual-styling-panel';
 import { LineStylingPanel } from './line-styling-panel';
 import type { SelectedItem } from '../diagram-editor';
@@ -49,6 +50,7 @@ import type { DiagramData, DiagramNodeData, DiagramZoneData } from '@/lib/types'
 import { DiagramTheme } from '@/lib/theme-types';
 import { themeManager } from '@/lib/theme-manager';
 import { extractTextStylingFromNode, extractTextStylingFromGroup, applyTextStylingToZone, applyTextStylingToNode } from '@/lib/text-styling';
+import { extractUmlClassTextStylingFromNode, applyUmlClassTextStylingToNode, DEFAULT_UML_CLASS_TEXT_STYLING } from '@/lib/uml-text-styling';
 import { isShapeNodeType, isIconOrEmojiType } from '@/lib/utils';
 import { extractVisualStylingFromNode, extractVisualStylingFromGroup } from '@/lib/visual-styling';
 import { extractLineStylingFromNode, applyLineStylingToNode } from '@/lib/line-styling';
@@ -396,6 +398,7 @@ export function ContextToolbar({
     (selectedItem as any)?.type === 'generic.object.circle' ||
     (selectedItem as any)?.type === 'generic.object.point' ||
     (selectedItem as any)?.type === 'generic.object.rectangle' ||
+    (selectedItem as any)?.type === 'generic.object.uml-class' ||
     (selectedItem as any)?.type === 'generic.object.rounded-rectangle' ||
     (selectedItem as any)?.type === 'generic.object.triangle' ||
     (selectedItem as any)?.type === 'generic.object.star' ||
@@ -430,6 +433,17 @@ export function ContextToolbar({
     (selectedItem as any)?.type?.endsWith('.line')
   );
   const isLineNode = isNode && ((selectedItem as any)?.type === 'generic.object.line' || (selectedItem as any)?.type?.endsWith('.line'));
+  const isUmlClassNode = isNode && ((selectedItem as any)?.type === 'generic.object.uml-class' || (selectedItem as any)?.type?.endsWith('.uml-class'));
+
+  const getCurrentUmlClassTextStyling = useMemo(() => {
+    if (!selectedItem || !isUmlClassNode) return {};
+    let item = selectedItem;
+    if (selectedItemIds && selectedItemIds.size > 1 && diagramData) {
+      const found = diagramData.nodes.find(n => n.id === selectedItem.id);
+      item = found ? { ...found, itemType: 'node' as const } : selectedItem;
+    }
+    return extractUmlClassTextStylingFromNode(item as any);
+  }, [selectedItem, isUmlClassNode, selectedItemIds, diagramData]);
 
   const getCurrentTextStyling = useMemo(() => {
     if (!selectedItem || !diagramData) return {};
@@ -820,6 +834,26 @@ export function ContextToolbar({
         onItemUpdate?.({ ...selectedItem as SelectedItem, ...styling } as SelectedItem);
       }
     }
+  };
+
+  const handleUmlClassTextStylingChange = (styling: any) => {
+    if (selectedItemIds && selectedItemIds.size > 1 && diagramData && onDiagramDataUpdate) {
+      const updated = { ...diagramData };
+      updated.nodes = updated.nodes.map(node => {
+        if (selectedItemIds.has(node.id)) {
+          return applyUmlClassTextStylingToNode(node, styling);
+        }
+        return node;
+      });
+      onDiagramDataUpdate(updated);
+    } else if (isNode) {
+      const updatedNode = applyUmlClassTextStylingToNode(selectedItem as any, styling);
+      onItemUpdate?.({ ...updatedNode, itemType: 'node' } as SelectedItem);
+    }
+  };
+
+  const handleUmlClassTextStylingReset = () => {
+    handleUmlClassTextStylingChange(DEFAULT_UML_CLASS_TEXT_STYLING);
   };
 
   const handleTextStylingReset = () => {
@@ -1546,7 +1580,7 @@ export function ContextToolbar({
                   <Type className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Text Styling</TooltipContent>
+              <TooltipContent>{isUmlClassNode ? 'UML Class Text' : 'Text Styling'}</TooltipContent>
             </Tooltip>
             {textStylingOpen && typeof window !== 'undefined' && createPortal(
               <div 
@@ -1554,15 +1588,24 @@ export function ContextToolbar({
                 className="fixed top-0 left-0 h-screen z-[60]"
                 style={{ pointerEvents: 'auto' }}
               >
-                <TextStylingPanel
-                  styling={getCurrentTextStyling}
-                  onStylingChange={handleTextStylingChange}
-                  onReset={handleTextStylingReset}
-                  selectedItem={selectedItem}
-                  selectedItemIds={selectedItemIds}
-                  textPosition={selectedItem?.textPosition}
-                  onTextPositionChange={handleTextPositionChange}
-                />
+                {isUmlClassNode ? (
+                  <UmlClassTextStylingPanel
+                    styling={getCurrentUmlClassTextStyling}
+                    onStylingChange={handleUmlClassTextStylingChange}
+                    onReset={handleUmlClassTextStylingReset}
+                    onClose={() => handleTextStylingOpenChange(false)}
+                  />
+                ) : (
+                  <TextStylingPanel
+                    styling={getCurrentTextStyling}
+                    onStylingChange={handleTextStylingChange}
+                    onReset={handleTextStylingReset}
+                    selectedItem={selectedItem}
+                    selectedItemIds={selectedItemIds}
+                    textPosition={selectedItem?.textPosition}
+                    onTextPositionChange={handleTextPositionChange}
+                  />
+                )}
               </div>,
               document.body
             )}

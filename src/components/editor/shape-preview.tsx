@@ -661,6 +661,42 @@ export function ShapePreview({
       );
     }
 
+    // UML Class (rectangle with compartment dividers)
+    if (type === 'generic.object.uml-class' || type?.endsWith('.uml-class')) {
+      const coords = getGradientCoordinates(gradientAngle);
+      const sw = borderStyle === 'none' ? 0 : strokeWidth;
+      return (
+        <svg {...commonSvgProps}>
+          <defs>
+            {effectiveBackgroundStyle === 'gradient' && (
+              <linearGradient id={gradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+                <stop offset="0%" stopColor={bgColors[0]} />
+                <stop offset="100%" stopColor={bgColors[1]} />
+              </linearGradient>
+            )}
+            {borderStyle === 'gradient' && (
+              <linearGradient id={borderGradientId} x1={borderCoords.x1} y1={borderCoords.y1} x2={borderCoords.x2} y2={borderCoords.y2}>
+                <stop offset="0%" stopColor={borderColorArray[0]} />
+                <stop offset="100%" stopColor={borderColorArray[1]} />
+              </linearGradient>
+            )}
+          </defs>
+          <rect
+            x={sw / 2}
+            y={sw / 2}
+            width={Math.max(0, displayWidth - sw)}
+            height={Math.max(0, displayHeight - sw)}
+            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
+            stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
+            strokeWidth={sw}
+            strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
+          />
+          <line x1={sw} y1={displayHeight / 3} x2={displayWidth - sw} y2={displayHeight / 3} stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : effectiveBorderColor} strokeWidth={1} />
+          <line x1={sw} y1={(2 * displayHeight) / 3} x2={displayWidth - sw} y2={(2 * displayHeight) / 3} stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : effectiveBorderColor} strokeWidth={1} />
+        </svg>
+      );
+    }
+
     // Rectangle / Square (Default)
     const coords = getGradientCoordinates(gradientAngle);
     // Calculate borderRadius when roundedEdges is enabled (6% of smaller dimension)

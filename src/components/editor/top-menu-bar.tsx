@@ -269,6 +269,9 @@ export function TopMenuBar({
                     <MenubarItem onClick={() => onLoadExample('simple')}>
                       Mermaid Simple
                     </MenubarItem>
+                    <MenubarItem onClick={() => onLoadExample('class-diagram')}>
+                      Mermaid Class Diagram
+                    </MenubarItem>
                     <MenubarItem onClick={() => onLoadExample('complex')}>
                       Mermaid Complex
                     </MenubarItem>

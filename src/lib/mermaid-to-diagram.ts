@@ -8,7 +8,7 @@
  */
 
 import type { DiagramData, DiagramNodeData, DiagramConnectionData } from '@/lib/types';
-import type { ParsedMermaid, MermaidNode, MermaidEdge } from './mermaid-parser';
+import type { ParsedMermaid, MermaidNode, MermaidEdge, ParsedMermaidClassDiagram, MermaidClassNode } from './mermaid-parser';
 import { computeMermaidLayout } from './mermaid-layout';
 
 const GRID_SNAP = 20; // Match canvas-constants; dimensions/positions align for straight connectors
@@ -237,6 +237,168 @@ export async function mermaidToDiagramData(parsed: ParsedMermaid): Promise<Diagr
         if (color) conn.color = color;
       }
       return conn;
+    })
+    .filter((c): c is DiagramConnectionData => c !== null);
+
+  return {
+    nodes: diagramNodes,
+    connections,
+    groupings: undefined,
+  };
+}
+
+/**
+ * Build multi-line label for a class node (name + attributes + methods).
+ */
+function buildClassLabel(cls: MermaidClassNode): string {
+  const parts: string[] = [cls.name];
+  if (cls.attributes.length) parts.push(...cls.attributes);
+  if (cls.methods.length) parts.push(...cls.methods);
+  return parts.join('\n');
+}
+
+const CLASS_RANK_SPACING = 60;
+const CLASS_CHILD_SPACING = 40;
+
+/**
+ * Deterministic layout for class diagrams: parent(s) centered at top, children in a horizontal row below.
+ * Child order follows inheritance definition order (Duck, Fish, Zebra).
+ */
+function computeClassDiagramLayout(
+  classIds: string[],
+  edges: { from: string; to: string }[],
+  nodeDimensions: Map<string, { width: number; height: number }>
+): Map<string, { x: number; y: number }> {
+  const positions = new Map<string, { x: number; y: number }>();
+  const parentIds = new Set(edges.map(e => e.to));
+  const childOrder = edges.map(e => e.from);
+  const childIds = Array.from(new Set(childOrder));
+  const parentIdsList = Array.from(parentIds);
+
+  if (parentIdsList.length === 0 && childIds.length === 0) {
+    classIds.forEach((id, i) => {
+      const dims = nodeDimensions.get(id) ?? { width: 100, height: 60 };
+      positions.set(id, { x: i * (dims.width + CLASS_CHILD_SPACING), y: 0 });
+    });
+    return positions;
+  }
+
+  let childY = 0;
+  if (parentIdsList.length > 0) {
+    const maxParentHeight = Math.max(
+      ...parentIdsList.map(id => (nodeDimensions.get(id) ?? { height: 60 }).height)
+    );
+    childY = maxParentHeight + CLASS_RANK_SPACING;
+  }
+
+  let childX = 0;
+  childIds.forEach((id) => {
+    const dims = nodeDimensions.get(id) ?? { width: 100, height: 60 };
+    positions.set(id, { x: childX, y: childY });
+    childX += dims.width + CLASS_CHILD_SPACING;
+  });
+
+  const childrenTotalWidth = childX - (childIds.length > 0 ? CLASS_CHILD_SPACING : 0);
+  const childrenCenterX = childrenTotalWidth / 2;
+
+  parentIdsList.forEach((id) => {
+    const dims = nodeDimensions.get(id) ?? { width: 100, height: 60 };
+    const parentX = childrenCenterX - dims.width / 2;
+    positions.set(id, { x: parentX, y: 0 });
+  });
+
+  const orphanIds = classIds.filter(id => !parentIds.has(id) && !childIds.includes(id));
+  let orphanX = childX + CLASS_CHILD_SPACING;
+  orphanIds.forEach((id) => {
+    const dims = nodeDimensions.get(id) ?? { width: 100, height: 60 };
+    positions.set(id, { x: orphanX, y: childY });
+    orphanX += dims.width + CLASS_CHILD_SPACING;
+  });
+
+  return positions;
+}
+
+/**
+ * Convert parsed Mermaid classDiagram to DiagramWeaver DiagramData.
+ * Classes become simple rectangles with multi-line labels (name, attributes, methods).
+ * Inheritance edges connect child to parent with arrow at parent.
+ * Layout: parent above, children below in a horizontal row (Duck, Fish, Zebra).
+ */
+export function classDiagramToDiagramData(parsed: ParsedMermaidClassDiagram): DiagramData {
+  const { classes, edges } = parsed;
+  const idMap = new Map<string, string>();
+  const diagramNodes: DiagramNodeData[] = [];
+  const classesById = new Map<string, MermaidClassNode>();
+  classes.forEach(c => classesById.set(c.id, c));
+
+  const allClassIds = Array.from(new Set<string>([
+    ...classes.map(c => c.id),
+    ...edges.flatMap(e => [e.from, e.to]),
+  ]));
+
+  const nodeDimensions = new Map<string, { width: number; height: number }>();
+  allClassIds.forEach((id) => {
+    const cls = classesById.get(id);
+    const label = cls ? buildClassLabel(cls) : id;
+    nodeDimensions.set(id, estimateNodeDimensions(label));
+  });
+
+  const positions = computeClassDiagramLayout(allClassIds, edges, nodeDimensions);
+
+  const fallbackSpacing = 80;
+  classes.forEach((cls, idx) => {
+    const diagramId = `${sanitizeId(cls.id)}-${idx + 1}`;
+    idMap.set(cls.id, diagramId);
+    const dims = nodeDimensions.get(cls.id)!;
+    const layoutPos = positions.get(cls.id) ?? { x: idx * (dims.width + fallbackSpacing), y: 0 };
+    const centerX = layoutPos.x + dims.width / 2;
+    const centerY = layoutPos.y + dims.height / 2;
+    const pos = centerToPosition(centerX, centerY, dims.width, dims.height);
+    const baseNode: DiagramNodeData = {
+      id: diagramId,
+      type: 'generic.object.uml-class',
+      label: cls.name,
+      umlClass: { name: cls.name, attributes: cls.attributes, methods: cls.methods },
+      x: pos.x,
+      y: pos.y,
+      width: dims.width,
+      height: dims.height,
+      sizeMode: 'custom',
+    };
+    diagramNodes.push(applyMermaidTheme(baseNode, MERMAID_OCEAN_BLUE));
+  });
+
+  // Classes only in edges (implicit)
+  let implicitIdx = 0;
+  allClassIds.forEach((mId) => {
+    if (classesById.has(mId)) return;
+    const diagramId = `class-${sanitizeId(mId)}-${++implicitIdx}`;
+    idMap.set(mId, diagramId);
+    const dims = nodeDimensions.get(mId)!;
+    const layoutPos = positions.get(mId) ?? { x: diagramNodes.length * (dims.width + fallbackSpacing), y: 0 };
+    const centerX = layoutPos.x + dims.width / 2;
+    const centerY = layoutPos.y + dims.height / 2;
+    const pos = centerToPosition(centerX, centerY, dims.width, dims.height);
+    const baseNode: DiagramNodeData = {
+      id: diagramId,
+      type: 'generic.object.uml-class',
+      label: mId,
+      umlClass: { name: mId, attributes: [], methods: [] },
+      x: pos.x,
+      y: pos.y,
+      width: dims.width,
+      height: dims.height,
+      sizeMode: 'custom',
+    };
+    diagramNodes.push(applyMermaidTheme(baseNode, MERMAID_OCEAN_BLUE));
+  });
+
+  const connections: DiagramConnectionData[] = edges
+    .map((e): DiagramConnectionData | null => {
+      const fromId = idMap.get(e.from);
+      const toId = idMap.get(e.to);
+      if (!fromId || !toId) return null;
+      return { from: fromId, to: toId, toArrow: true };
     })
     .filter((c): c is DiagramConnectionData => c !== null);
 

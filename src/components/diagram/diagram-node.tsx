@@ -37,11 +37,13 @@ import {
   ArrowheadShape,
   ChevronShape,
   LineShape,
+  UmlClassShape,
 } from "./shapes";
 import { ResizeHandles } from "./resize-handles";
 import { LineEndpointHandles } from "./line-endpoint-handles";
 import { ConnectHandle } from "./connect-handle";
 import { CornerRadiusHandle } from "./corner-radius-handle";
+import { computeUmlClassDimensions } from "@/lib/uml-utils";
 
 const NODE_WIDTH = 80;
 const BASE_NODE_HEIGHT = 80;
@@ -180,6 +182,9 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
         (p as any).cornerRadius !== (n as any).cornerRadius) {
       return false;
     }
+    const pUml = (p as any).umlClass;
+    const nUml = (n as any).umlClass;
+    if (JSON.stringify(pUml) !== JSON.stringify(nUml)) return false;
     const pLine = p as any;
     const nLine = n as any;
     if (pLine.startPos && nLine.startPos) {
@@ -388,6 +393,34 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     const nodeType = node.type;
     if (nodeType === 'generic.object.square' || nodeType?.endsWith('.square')) {
       return <SquareShape {...shapeProps} />;
+    } else if (nodeType === 'generic.object.uml-class' || nodeType?.endsWith('.uml-class')) {
+      const nodeAny = node as any;
+      return (
+        <UmlClassShape
+          node={node}
+          overrideWidth={shapeProps.overrideWidth}
+          overrideHeight={shapeProps.overrideHeight}
+          label={shapeProps.label}
+          tag={shapeProps.tag}
+          tagPosition={shapeProps.tagPosition}
+          isEditingTag={shapeProps.isEditingTag}
+          editTagText={shapeProps.editTagText}
+          onTagTextChange={shapeProps.onTagTextChange}
+          onTagSubmit={shapeProps.onTagSubmit}
+          onTagKeyDown={shapeProps.onTagKeyDown}
+          onTagDoubleClick={shapeProps.onTagDoubleClick}
+          onUmlClassUpdate={onUpdate ? (umlClass) => {
+            const merged = { ...(nodeAny.umlClass || {}), ...umlClass };
+            const dims = computeUmlClassDimensions(
+              merged.name ?? 'name',
+              merged.attributes ?? ['attributes'],
+              merged.methods ?? ['methods']
+            );
+            onUpdate({ ...node, umlClass: merged, width: dims.width, height: dims.height });
+          } : undefined}
+          isReadOnly={isReadOnly}
+        />
+      );
     } else if (nodeType === 'generic.object.rectangle' || nodeType?.endsWith('.rectangle')) {
       return <RectangleShape {...shapeProps} />;
     } else if (nodeType === 'generic.object.rounded-rectangle' || nodeType?.endsWith('.rounded-rectangle')) {
@@ -528,7 +561,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
 
    const isTextNode = node.type === 'generic.text.text';
   const isTextboxNode = node.type === 'generic.text.textbox';
-   const isShapeNode = !isIconOrEmojiType(node.type) && (node.type === 'generic.object.square' || node.type === 'generic.object.circle' || node.type === 'generic.object.point' || node.type === 'generic.object.rectangle' || node.type === 'generic.object.rounded-rectangle' || node.type === 'generic.object.triangle' || node.type === 'generic.object.star' || node.type === 'generic.object.cloud' || node.type === 'generic.object.parallelogram' || node.type === 'generic.object.trapezoid' || node.type === 'generic.object.kite' || node.type === 'generic.object.hexagon' || node.type === 'generic.object.pentagon' || node.type === 'generic.object.octagon' || node.type === 'generic.object.jigsaw' || node.type === 'generic.object.arrowhead' || node.type === 'generic.object.chevron' ||
+   const isShapeNode = !isIconOrEmojiType(node.type) && (node.type === 'generic.object.square' || node.type === 'generic.object.circle' || node.type === 'generic.object.point' || node.type === 'generic.object.rectangle' || node.type === 'generic.object.uml-class' || node.type === 'generic.object.rounded-rectangle' || node.type === 'generic.object.triangle' || node.type === 'generic.object.star' || node.type === 'generic.object.cloud' || node.type === 'generic.object.parallelogram' || node.type === 'generic.object.trapezoid' || node.type === 'generic.object.kite' || node.type === 'generic.object.hexagon' || node.type === 'generic.object.pentagon' || node.type === 'generic.object.octagon' || node.type === 'generic.object.jigsaw' || node.type === 'generic.object.arrowhead' || node.type === 'generic.object.chevron' ||
                        node.type?.endsWith('.square') || node.type?.endsWith('.circle') || node.type?.endsWith('.point') || node.type?.endsWith('.rectangle') || node.type?.endsWith('.rounded-rectangle') || node.type?.endsWith('.triangle') || node.type?.endsWith('.star') || node.type?.endsWith('.cloud') || node.type?.endsWith('.parallelogram') || node.type?.endsWith('.trapezoid') || node.type?.endsWith('.kite') || node.type?.endsWith('.hexagon') || node.type?.endsWith('.pentagon') || node.type?.endsWith('.octagon') || node.type?.endsWith('.jigsaw') || node.type?.endsWith('.arrowhead') || node.type?.endsWith('.chevron') || node.type === 'generic.object.line' || node.type?.endsWith('.line'));
   const isPointNode = node.type === 'generic.object.point' || node.type?.endsWith('.point');
   const isLineNode = node.type === 'generic.object.line' || node.type?.endsWith('.line');

@@ -14,6 +14,7 @@ export function isBorderShapeNode(type?: string): boolean {
   return (
     type === "generic.object.square" ||
     type === "generic.object.rectangle" ||
+    type === "generic.object.uml-class" ||
     type === "generic.object.rounded-rectangle" ||
     type === "generic.object.circle" ||
     type === "generic.object.point" ||

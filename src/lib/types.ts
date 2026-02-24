@@ -89,6 +89,20 @@ export interface DiagramNodeData {
 
   /** Optional metadata as key/value pairs (e.g. IP Address: 192.168.1.1) */
   metaData?: Record<string, string>;
+
+  /** UML class diagram compartments: name, attributes, methods in separate sections */
+  umlClass?: {
+    name: string;
+    attributes: string[];
+    methods: string[];
+  };
+  /** Per-compartment text styling for UML class shape */
+  umlClassStyle?: {
+    name?: { fontFamily?: string; fontSize?: number; textJustify?: string; textColor?: string };
+    attributes?: { fontFamily?: string; fontSize?: number; textJustify?: string; textColor?: string };
+    methods?: { fontFamily?: string; fontSize?: number; textJustify?: string; textColor?: string };
+    dividerLineWidth?: number;
+  };
 }
 
 export interface ScratchPadItem {

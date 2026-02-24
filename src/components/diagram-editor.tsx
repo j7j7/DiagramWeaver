@@ -7,6 +7,8 @@ import { Panel, Group as PanelGroup } from 'react-resizable-panels';
 import { ComponentSidebar } from './editor/component-sidebar';
 import { EditorCanvas, type EditorCanvasHandle } from './editor/editor-canvas';
 import { ConnectionContextModal } from './editor/connection-context-modal';
+import { UmlClassEditorModal } from './editor/uml-class-editor-modal';
+import { computeUmlClassDimensions } from '@/lib/uml-utils';
 import { JsonEditorPanel } from './editor/json-editor-panel';
 import dynamic from 'next/dynamic';
 
@@ -38,8 +40,8 @@ import { useDiagramTabs } from '@/hooks/use-diagram-tabs';
 import { useLayers } from '@/hooks/use-layers';
 import { flattenDiagramOnImport, type RawDiagramData } from '@/lib/flatten-on-import';
 import { DiagramDataSchema } from '@/lib/schemas';
-import { parseMermaidFlowchart } from '@/lib/mermaid-parser';
-import { mermaidToDiagramData } from '@/lib/mermaid-to-diagram';
+import { parseMermaidFlowchart, parseMermaidClassDiagram, detectMermaidDiagramType } from '@/lib/mermaid-parser';
+import { mermaidToDiagramData, classDiagramToDiagramData } from '@/lib/mermaid-to-diagram';
 import { themeManager } from '@/lib/theme-manager';
 import { DiagramTheme } from '@/lib/theme-types';
 import { LayersPanel } from './editor/layers-panel';
@@ -241,6 +243,12 @@ export default function DiagramEditor() {
     y: number;
     connection: import('@/lib/types').DiagramConnectionData | null;
   }>({ visible: false, x: 0, y: 0, connection: null });
+  const [umlClassEditorModal, setUmlClassEditorModal] = React.useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    itemId: string;
+  }>({ visible: false, x: 0, y: 0, itemId: '' });
   const [lastRightClickItemId, setLastRightClickItemId] = React.useState<string | null>(null);
   const [selectedResource, setSelectedResource] = React.useState<PaletteSelection | null>(null);
   const [paletteClipboardItem, setPaletteClipboardItem] = React.useState<any | null>(null);
@@ -896,6 +904,27 @@ export default function DiagramEditor() {
       try {
         const text = e.target?.result;
         if (typeof text !== 'string') return;
+        const diagramType = detectMermaidDiagramType(text);
+        if (diagramType === 'classDiagram') {
+          const parsed = parseMermaidClassDiagram(text);
+          if (parsed.classes.length === 0 && parsed.edges.length === 0) {
+            throw new Error('No valid class diagram content found. Expected: classDiagram followed by class and inheritance definitions.');
+          }
+          if (parsed.errors.length > 0) {
+            const errMsg = parsed.errors.join('; ');
+            console.error('[Mermaid Import] Class diagram parse issues:', { errors: parsed.errors });
+            throw new Error(`Class diagram parse issues: ${errMsg}`);
+          }
+          let completeData = classDiagramToDiagramData(parsed);
+          setDiagramData({ nodes: [], connections: [], groupings: [] });
+          setTimeout(() => {
+            setDiagramData(completeData);
+            setSelectedItem(null);
+            toast({ title: 'Mermaid Imported', description: 'Your class diagram has been successfully imported.' });
+            setTimeout(() => editorRef.current?.fitToView(), 100);
+          }, 0);
+          return;
+        }
         const parsed = parseMermaidFlowchart(text);
         if (parsed.nodes.length === 0 && parsed.edges.length === 0) {
           throw new Error('No valid flowchart content found. Expected: flowchart TD or flowchart LR followed by node and edge definitions.');
@@ -912,7 +941,7 @@ export default function DiagramEditor() {
           completeData = {
             ...completeData,
             nodes: completeData.nodes.map((n) => {
-              const theme = n.type === 'generic.object.rectangle' ? oceanBlue : forestGreen;
+              const theme = (n.type === 'generic.object.rectangle' || n.type === 'generic.object.uml-class') ? oceanBlue : forestGreen;
               return themeManager.applyThemeToItem(n, theme) as DiagramNodeData;
             }),
           };
@@ -958,11 +987,23 @@ export default function DiagramEditor() {
           const text = e.target?.result;
           if (typeof text !== 'string') return;
           const ext = file.name.toLowerCase().slice(-5);
+          const diagramType = detectMermaidDiagramType(text);
           const isMermaid = /\.(mmd|mermaid)$/.test(file.name.toLowerCase())
-            || /^\s*(flowchart|graph)\s+(TD|TB|BT|RL|LR)\s*$/im.test(text.trim());
+            || diagramType !== null;
           let completeData: DiagramData;
 
-          if (isMermaid) {
+          if (isMermaid && diagramType === 'classDiagram') {
+            const parsed = parseMermaidClassDiagram(text);
+            if (parsed.classes.length === 0 && parsed.edges.length === 0) {
+              throw new Error('No valid class diagram content found. Expected: classDiagram followed by class and inheritance definitions.');
+            }
+            if (parsed.errors.length > 0) {
+              const errMsg = parsed.errors.join('; ');
+              console.error('[Mermaid Load] Class diagram parse issues:', { errors: parsed.errors });
+              throw new Error(`Class diagram parse issues: ${errMsg}`);
+            }
+            completeData = classDiagramToDiagramData(parsed);
+          } else if (isMermaid) {
             const parsed = parseMermaidFlowchart(text);
             if (parsed.nodes.length === 0 && parsed.edges.length === 0) {
               throw new Error('No valid flowchart content found. Expected: flowchart TD or flowchart LR followed by node and edge definitions.');
@@ -979,7 +1020,7 @@ export default function DiagramEditor() {
               mermaidData = {
                 ...mermaidData,
                 nodes: mermaidData.nodes.map((n) => {
-                  const theme = n.type === 'generic.object.rectangle' ? oceanBlue : forestGreen;
+                  const theme = (n.type === 'generic.object.rectangle' || n.type === 'generic.object.uml-class') ? oceanBlue : forestGreen;
                   return themeManager.applyThemeToItem(n, theme) as DiagramNodeData;
                 }),
               };
@@ -1088,7 +1129,7 @@ export default function DiagramEditor() {
 
   const handleLoadExample = React.useCallback(async (exampleId: string) => {
     try {
-      const isMermaid = exampleId === 'simple' || exampleId === 'complex';
+      const isMermaid = exampleId === 'simple' || exampleId === 'complex' || exampleId === 'class-diagram';
       const res = await fetch(`/examples/${exampleId}.${isMermaid ? 'mmd' : 'json'}`);
       if (!res.ok) {
         throw new Error(`Failed to load example: ${res.statusText}`);
@@ -1097,18 +1138,28 @@ export default function DiagramEditor() {
       let diagram: DiagramData;
 
       if (isMermaid) {
-        const parsed = parseMermaidFlowchart(text);
-        if (parsed.nodes.length === 0 && parsed.edges.length === 0) {
-          throw new Error('No valid flowchart content in Mermaid example.');
+        const diagramType = detectMermaidDiagramType(text);
+        let mermaidData: DiagramData;
+        if (diagramType === 'classDiagram') {
+          const parsed = parseMermaidClassDiagram(text);
+          if (parsed.classes.length === 0 && parsed.edges.length === 0) {
+            throw new Error('No valid class diagram content in Mermaid example.');
+          }
+          mermaidData = classDiagramToDiagramData(parsed);
+        } else {
+          const parsed = parseMermaidFlowchart(text);
+          if (parsed.nodes.length === 0 && parsed.edges.length === 0) {
+            throw new Error('No valid flowchart content in Mermaid example.');
+          }
+          mermaidData = await mermaidToDiagramData(parsed);
         }
-        let mermaidData = await mermaidToDiagramData(parsed);
         const oceanBlue = themeManager.getThemes().find(t => t.id === 'default-blue');
         const forestGreen = themeManager.getThemes().find(t => t.id === 'forest-green');
-        if (oceanBlue && forestGreen) {
+        if (oceanBlue && forestGreen && diagramType !== 'classDiagram') {
           mermaidData = {
             ...mermaidData,
             nodes: mermaidData.nodes.map((n) => {
-              const theme = n.type === 'generic.object.rectangle' ? oceanBlue : forestGreen;
+              const theme = (n.type === 'generic.object.rectangle' || n.type === 'generic.object.uml-class') ? oceanBlue : forestGreen;
               return themeManager.applyThemeToItem(n, theme) as DiagramNodeData;
             }),
           };
@@ -1120,7 +1171,8 @@ export default function DiagramEditor() {
       }
 
       const exampleName = exampleId === 'example1' ? 'Example 1' : exampleId === 'example2' ? 'Example 2'
-        : exampleId === 'simple' ? 'Mermaid Simple' : exampleId === 'complex' ? 'Mermaid Complex' : `Example: ${exampleId}`;
+        : exampleId === 'simple' ? 'Mermaid Simple' : exampleId === 'complex' ? 'Mermaid Complex'
+        : exampleId === 'class-diagram' ? 'Mermaid Class Diagram' : `Example: ${exampleId}`;
       createTab({ name: exampleName, diagramData: diagram });
 
       toast({ title: 'Example Loaded', description: `${exampleName} has been loaded in a new tab.` });
@@ -1299,6 +1351,7 @@ export default function DiagramEditor() {
                            node.type === 'generic.object.circle' ||
                            node.type === 'generic.object.point' ||
                            node.type === 'generic.object.rectangle' ||
+                           node.type === 'generic.object.uml-class' ||
                            node.type === 'generic.object.rounded-rectangle' ||
                            node.type === 'generic.object.triangle' ||
                            node.type === 'generic.object.star' ||
@@ -1826,6 +1879,8 @@ export default function DiagramEditor() {
         handleConnectionContextMenu={handleConnectionContextMenu}
         connectionContextModal={connectionContextModal}
         setConnectionContextModal={setConnectionContextModal}
+        umlClassEditorModal={umlClassEditorModal}
+        setUmlClassEditorModal={setUmlClassEditorModal}
         setDiagramData={setDiagramData}
         layers={layers}
         canvasTransform={canvasTransform}
@@ -1954,6 +2009,8 @@ function DiagramEditorInner({
   handleConnectionContextMenu,
   connectionContextModal,
   setConnectionContextModal,
+  umlClassEditorModal,
+  setUmlClassEditorModal,
   setDiagramData,
   layers,
   canvasTransform,
@@ -2296,6 +2353,7 @@ function DiagramEditorInner({
                     alignmentGuidesEnabled={alignmentGuidesEnabled}
                     onResourceActivateAtPosition={handleResourceActivateAtPosition}
                     metadataPopupsEnabled={metadataPopupsEnabled}
+                    setUmlClassEditorModal={setUmlClassEditorModal}
                     />
                   </div>
 
@@ -2357,6 +2415,27 @@ function DiagramEditorInner({
           onOpenChange={setExportDialogOpen}
           onExport={handleExport}
         />
+        {umlClassEditorModal.visible && umlClassEditorModal.itemId && typeof window !== 'undefined' && createPortal(
+          <UmlClassEditorModal
+            x={umlClassEditorModal.x}
+            y={umlClassEditorModal.y}
+            visible={umlClassEditorModal.visible}
+            onClose={() => setUmlClassEditorModal({ visible: false, x: 0, y: 0, itemId: '' })}
+            node={diagramData.nodes?.find((n: DiagramNodeData) => n.id === umlClassEditorModal.itemId) ?? null}
+            onSave={(nodeId, umlClass) => {
+              const dims = computeUmlClassDimensions(umlClass.name, umlClass.attributes, umlClass.methods);
+              setDiagramData((prev: DiagramData) => ({
+                ...prev,
+                nodes: prev.nodes?.map((n: DiagramNodeData) =>
+                  n.id === nodeId ? { ...n, umlClass, width: dims.width, height: dims.height } : n
+                ) ?? [],
+              }));
+              setUmlClassEditorModal({ visible: false, x: 0, y: 0, itemId: '' });
+            }}
+            isReadOnly={isReadOnly}
+          />,
+          document.body
+        )}
         {connectionContextModal.connection && typeof window !== 'undefined' && createPortal(
           <ConnectionContextModal
             x={connectionContextModal.x}
