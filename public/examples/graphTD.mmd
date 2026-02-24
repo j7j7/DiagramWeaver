@@ -1,0 +1,11 @@
+graph TD
+  User[User Interface] --> OMS[Order Management System]
+  OMS --> EMS[Execution Management System]
+  OMS --> Risk[Risk Management Module]
+  EMS --> Exchange[Exchange / Liquidity Providers]
+  Exchange --> MarketData[Market Data Feed]
+  MarketData --> UI[Market Data Display]
+  EMS --> DB[(Trade Database)]
+  Risk --> Compliance[Compliance & Regulatory Reporting]
+  DB --> Reporting[Reporting & Analytics]
+  Reporting --> Surveillance[Trade Surveillance]

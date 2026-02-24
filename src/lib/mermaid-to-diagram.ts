@@ -8,7 +8,7 @@
  */
 
 import type { DiagramData, DiagramNodeData, DiagramConnectionData } from '@/lib/types';
-import type { ParsedMermaid, MermaidNode, MermaidEdge, ParsedMermaidClassDiagram, MermaidClassNode } from './mermaid-parser';
+import type { ParsedMermaid, MermaidNode, MermaidEdge, ParsedMermaidClassDiagram, MermaidClassNode, ParsedMermaidSequenceDiagram, MermaidSequenceParticipant, MermaidSequenceMessage } from './mermaid-parser';
 import { computeMermaidLayout } from './mermaid-layout';
 
 const GRID_SNAP = 20; // Match canvas-constants; dimensions/positions align for straight connectors
@@ -73,6 +73,20 @@ const MERMAID_FOREST_GREEN = {
   textColor: '#14532d',
   gradientAngle: 90,
 };
+
+/** Distinct themes for sequence diagram participants (top and bottom use same theme per participant) */
+const SEQ_PARTICIPANT_THEMES = [
+  { borderStyle: 'solid' as const, borderColor: '#3b82f6', borderWidth: 1, backgroundStyle: 'solid' as const, backgroundColor: '#eff6ff', shadow: true, textColor: '#1e40af', gradientAngle: 135 },
+  { borderStyle: 'solid' as const, borderColor: '#16a34a', borderWidth: 1, backgroundStyle: 'solid' as const, backgroundColor: '#f0fdf4', shadow: true, textColor: '#14532d', gradientAngle: 90 },
+  { borderStyle: 'solid' as const, borderColor: '#f97316', borderWidth: 1, backgroundStyle: 'solid' as const, backgroundColor: '#fff7ed', shadow: true, textColor: '#9a3412', gradientAngle: 135 },
+  { borderStyle: 'solid' as const, borderColor: '#9333ea', borderWidth: 1, backgroundStyle: 'solid' as const, backgroundColor: '#faf5ff', shadow: true, textColor: '#581c87', gradientAngle: 45 },
+  { borderStyle: 'solid' as const, borderColor: '#06b6d4', borderWidth: 1, backgroundStyle: 'solid' as const, backgroundColor: '#ecfeff', shadow: true, textColor: '#0e7490', gradientAngle: 135 },
+  { borderStyle: 'solid' as const, borderColor: '#e11d48', borderWidth: 1, backgroundStyle: 'solid' as const, backgroundColor: '#fff1f2', shadow: true, textColor: '#9f1239', gradientAngle: 90 },
+];
+
+function getSeqParticipantTheme(participantIndex: number) {
+  return SEQ_PARTICIPANT_THEMES[participantIndex % SEQ_PARTICIPANT_THEMES.length];
+}
 
 /** Get theme for Mermaid shape: standard box (rect/default) = Ocean Blue; decision/kite/shapes = Forest Green */
 function getMermaidThemeForShape(shape: MermaidNode['shape']) {
@@ -401,6 +415,168 @@ export function classDiagramToDiagramData(parsed: ParsedMermaidClassDiagram): Di
       return { from: fromId, to: toId, toArrow: true };
     })
     .filter((c): c is DiagramConnectionData => c !== null);
+
+  return {
+    nodes: diagramNodes,
+    connections,
+    groupings: undefined,
+  };
+}
+
+// -------- Sequence Diagram --------
+
+const SEQ_PARTICIPANT_WIDTH = 120;
+const SEQ_PARTICIPANT_HEIGHT = 40;
+const SEQ_PARTICIPANT_SPACING = 100;
+const SEQ_TOP_OFFSET = 80; // Space between participants and first message
+const SEQ_MESSAGE_SPACING = 70;
+const SEQ_ARROW_INSET = 12; // Inset so arrow tip stops at participant edge
+const SEQ_LOOP_WIDTH = 55;
+const SEQ_LOOP_HEIGHT = 65;
+const SEQ_LINE_OFFSET = 20;
+const SEQ_BOTTOM_GAP = 40; // Gap between last message and bottom participants
+
+/**
+ * Convert parsed Mermaid sequenceDiagram to DiagramWeaver DiagramData.
+ * Participants become rounded-rectangles; inter-participant messages become line objects;
+ * self-loops become loop objects.
+ */
+export function sequenceDiagramToDiagramData(parsed: ParsedMermaidSequenceDiagram): DiagramData {
+  const { participants, messages } = parsed;
+  const idMap = new Map<string, string>();
+  const diagramNodes: DiagramNodeData[] = [];
+  const connections: DiagramConnectionData[] = [];
+
+  const participantIndex = new Map<string, number>();
+  participants.forEach((p, i) => participantIndex.set(p.id, i));
+
+  const partDims = { width: SEQ_PARTICIPANT_WIDTH, height: SEQ_PARTICIPANT_HEIGHT };
+  const lastMsgY = messages.length > 0
+    ? SEQ_TOP_OFFSET + (messages.length - 1) * SEQ_MESSAGE_SPACING
+    : SEQ_TOP_OFFSET;
+  const bottomParticipantsY = lastMsgY + SEQ_MESSAGE_SPACING + SEQ_BOTTOM_GAP;
+
+  const topParticipantNodes: DiagramNodeData[] = [];
+  participants.forEach((p, idx) => {
+    const diagramId = `seq-${sanitizeId(p.id)}-${idx + 1}`;
+    idMap.set(p.id, diagramId);
+    const x = idx * (SEQ_PARTICIPANT_WIDTH + SEQ_PARTICIPANT_SPACING);
+    const theme = getSeqParticipantTheme(idx);
+    topParticipantNodes.push({
+      id: diagramId,
+      type: 'generic.object.rounded-rectangle',
+      label: p.label || p.id,
+      x: snapPosToGrid(x),
+      y: snapPosToGrid(0),
+      width: partDims.width,
+      height: partDims.height,
+      sizeMode: 'custom',
+      ...theme,
+    } as DiagramNodeData);
+  });
+
+  const getParticipantLeft = (partId: string): number => {
+    const idx = participantIndex.get(partId) ?? 0;
+    return idx * (SEQ_PARTICIPANT_WIDTH + SEQ_PARTICIPANT_SPACING);
+  };
+
+  const getParticipantRight = (partId: string): number => {
+    return getParticipantLeft(partId) + SEQ_PARTICIPANT_WIDTH;
+  };
+
+  const getParticipantCenterX = (partId: string): number => {
+    return getParticipantLeft(partId) + SEQ_PARTICIPANT_WIDTH / 2;
+  };
+
+  participants.forEach((p, idx) => {
+    const topId = `seq-${sanitizeId(p.id)}-${idx + 1}`;
+    const bottomId = `seq-bottom-${sanitizeId(p.id)}-${idx + 1}`;
+    connections.push({
+      from: topId,
+      to: bottomId,
+      fromPreferredExit: 'bottom',
+      toPreferredEntry: 'top',
+      toArrow: false,
+      color: '#9ca3af',
+      style: 'bezier',
+      curvature: 0,
+      lineWidth: 1.5,
+    });
+  });
+
+  const bottomParticipantNodes: DiagramNodeData[] = [];
+  participants.forEach((p, idx) => {
+    const x = idx * (SEQ_PARTICIPANT_WIDTH + SEQ_PARTICIPANT_SPACING);
+    const theme = getSeqParticipantTheme(idx);
+    bottomParticipantNodes.push({
+      id: `seq-bottom-${sanitizeId(p.id)}-${idx + 1}`,
+      type: 'generic.object.rounded-rectangle',
+      label: p.label || p.id,
+      x: snapPosToGrid(x),
+      y: snapPosToGrid(bottomParticipantsY),
+      width: partDims.width,
+      height: partDims.height,
+      sizeMode: 'custom',
+      ...theme,
+    } as DiagramNodeData);
+  });
+
+  const messageNodes: DiagramNodeData[] = [];
+  messages.forEach((msg, msgIdx) => {
+    const msgY = SEQ_TOP_OFFSET + msg.orderIndex * SEQ_MESSAGE_SPACING;
+    const fromIdx = participantIndex.get(msg.from) ?? 0;
+    const toIdx = participantIndex.get(msg.to) ?? 0;
+
+    if (msg.from === msg.to) {
+      const centerX = getParticipantCenterX(msg.from);
+      const loopX = centerX;
+      const loopY = msgY - SEQ_LOOP_HEIGHT / 2;
+      const diagramId = `seq-loop-${msgIdx + 1}`;
+      messageNodes.push({
+        id: diagramId,
+        type: 'generic.object.loop',
+        label: msg.label ?? '',
+        x: snapPosToGrid(loopX),
+        y: snapPosToGrid(loopY),
+        width: SEQ_LOOP_WIDTH,
+        height: SEQ_LOOP_HEIGHT,
+        sizeMode: 'custom',
+        lineColor: '#6b7280',
+        lineType: msg.lineType,
+        endCap: msg.hasArrow ? 'arrow' : 'none',
+        lineThickness: 2.5,
+      } as DiagramNodeData);
+    } else {
+      const fromCenterX = getParticipantCenterX(msg.from);
+      const toCenterX = getParticipantCenterX(msg.to);
+      const startPos = { x: fromCenterX, y: msgY };
+      const endPos = fromIdx < toIdx
+        ? { x: toCenterX - SEQ_ARROW_INSET, y: msgY }
+        : { x: toCenterX + SEQ_ARROW_INSET, y: msgY };
+      const diagramId = `seq-line-${msgIdx + 1}`;
+      const minX = Math.min(startPos.x, endPos.x);
+      const minY = Math.min(startPos.y, endPos.y);
+      messageNodes.push({
+        id: diagramId,
+        type: 'generic.object.line',
+        label: msg.label ?? '',
+        x: minX,
+        y: minY,
+        startPos,
+        endPos,
+        startCap: 'none',
+        endCap: msg.hasArrow ? 'arrow' : 'none',
+        lineType: msg.lineType,
+        lineThickness: 2.5,
+        lineColor: '#6b7280',
+        lineTextPosition: 50,
+        lineTextVerticalPosition: 'above',
+        lineTextHorizontal: true,
+      } as DiagramNodeData);
+    }
+  });
+
+  diagramNodes.push(...topParticipantNodes, ...bottomParticipantNodes, ...messageNodes);
 
   return {
     nodes: diagramNodes,

@@ -40,8 +40,8 @@ import { useDiagramTabs } from '@/hooks/use-diagram-tabs';
 import { useLayers } from '@/hooks/use-layers';
 import { flattenDiagramOnImport, type RawDiagramData } from '@/lib/flatten-on-import';
 import { DiagramDataSchema } from '@/lib/schemas';
-import { parseMermaidFlowchart, parseMermaidClassDiagram, detectMermaidDiagramType } from '@/lib/mermaid-parser';
-import { mermaidToDiagramData, classDiagramToDiagramData } from '@/lib/mermaid-to-diagram';
+import { parseMermaidFlowchart, parseMermaidClassDiagram, parseMermaidSequenceDiagram, detectMermaidDiagramType } from '@/lib/mermaid-parser';
+import { mermaidToDiagramData, classDiagramToDiagramData, sequenceDiagramToDiagramData } from '@/lib/mermaid-to-diagram';
 import { themeManager } from '@/lib/theme-manager';
 import { DiagramTheme } from '@/lib/theme-types';
 import { LayersPanel } from './editor/layers-panel';
@@ -905,6 +905,26 @@ export default function DiagramEditor() {
         const text = e.target?.result;
         if (typeof text !== 'string') return;
         const diagramType = detectMermaidDiagramType(text);
+        if (diagramType === 'sequenceDiagram') {
+          const parsed = parseMermaidSequenceDiagram(text);
+          if (parsed.participants.length === 0 && parsed.messages.length === 0) {
+            throw new Error('No valid sequence diagram content found. Expected: sequenceDiagram followed by participant and message definitions.');
+          }
+          if (parsed.errors.length > 0) {
+            const errMsg = parsed.errors.join('; ');
+            console.error('[Mermaid Import] Sequence diagram parse issues:', { errors: parsed.errors });
+            throw new Error(`Sequence diagram parse issues: ${errMsg}`);
+          }
+          const completeData = sequenceDiagramToDiagramData(parsed);
+          setDiagramData({ nodes: [], connections: [], groupings: [] });
+          setTimeout(() => {
+            setDiagramData(completeData);
+            setSelectedItem(null);
+            toast({ title: 'Mermaid Imported', description: 'Your sequence diagram has been successfully imported.' });
+            setTimeout(() => editorRef.current?.fitToView(), 100);
+          }, 0);
+          return;
+        }
         if (diagramType === 'classDiagram') {
           const parsed = parseMermaidClassDiagram(text);
           if (parsed.classes.length === 0 && parsed.edges.length === 0) {
@@ -992,7 +1012,16 @@ export default function DiagramEditor() {
             || diagramType !== null;
           let completeData: DiagramData;
 
-          if (isMermaid && diagramType === 'classDiagram') {
+          if (isMermaid && diagramType === 'sequenceDiagram') {
+            const parsed = parseMermaidSequenceDiagram(text);
+            if (parsed.participants.length === 0 && parsed.messages.length === 0) {
+              throw new Error('No valid sequence diagram content found.');
+            }
+            if (parsed.errors.length > 0) {
+              throw new Error(`Sequence diagram parse issues: ${parsed.errors.join('; ')}`);
+            }
+            completeData = sequenceDiagramToDiagramData(parsed);
+          } else if (isMermaid && diagramType === 'classDiagram') {
             const parsed = parseMermaidClassDiagram(text);
             if (parsed.classes.length === 0 && parsed.edges.length === 0) {
               throw new Error('No valid class diagram content found. Expected: classDiagram followed by class and inheritance definitions.');
@@ -1129,7 +1158,7 @@ export default function DiagramEditor() {
 
   const handleLoadExample = React.useCallback(async (exampleId: string) => {
     try {
-      const isMermaid = exampleId === 'simple' || exampleId === 'complex' || exampleId === 'class-diagram';
+      const isMermaid = exampleId === 'simple' || exampleId === 'complex' || exampleId === 'class-diagram' || exampleId === 'sequence-diagram';
       const res = await fetch(`/examples/${exampleId}.${isMermaid ? 'mmd' : 'json'}`);
       if (!res.ok) {
         throw new Error(`Failed to load example: ${res.statusText}`);
@@ -1140,7 +1169,13 @@ export default function DiagramEditor() {
       if (isMermaid) {
         const diagramType = detectMermaidDiagramType(text);
         let mermaidData: DiagramData;
-        if (diagramType === 'classDiagram') {
+        if (diagramType === 'sequenceDiagram') {
+          const parsed = parseMermaidSequenceDiagram(text);
+          if (parsed.participants.length === 0 && parsed.messages.length === 0) {
+            throw new Error('No valid sequence diagram content in Mermaid example.');
+          }
+          mermaidData = sequenceDiagramToDiagramData(parsed);
+        } else if (diagramType === 'classDiagram') {
           const parsed = parseMermaidClassDiagram(text);
           if (parsed.classes.length === 0 && parsed.edges.length === 0) {
             throw new Error('No valid class diagram content in Mermaid example.');
@@ -1155,7 +1190,7 @@ export default function DiagramEditor() {
         }
         const oceanBlue = themeManager.getThemes().find(t => t.id === 'default-blue');
         const forestGreen = themeManager.getThemes().find(t => t.id === 'forest-green');
-        if (oceanBlue && forestGreen && diagramType !== 'classDiagram') {
+        if (oceanBlue && forestGreen && diagramType !== 'classDiagram' && diagramType !== 'sequenceDiagram') {
           mermaidData = {
             ...mermaidData,
             nodes: mermaidData.nodes.map((n) => {
@@ -1172,7 +1207,8 @@ export default function DiagramEditor() {
 
       const exampleName = exampleId === 'example1' ? 'Example 1' : exampleId === 'example2' ? 'Example 2'
         : exampleId === 'simple' ? 'Mermaid Simple' : exampleId === 'complex' ? 'Mermaid Complex'
-        : exampleId === 'class-diagram' ? 'Mermaid Class Diagram' : `Example: ${exampleId}`;
+        : exampleId === 'class-diagram' ? 'Mermaid Class Diagram'
+        : exampleId === 'sequence-diagram' ? 'Mermaid Sequence Diagram' : `Example: ${exampleId}`;
       createTab({ name: exampleName, diagramData: diagram });
 
       toast({ title: 'Example Loaded', description: `${exampleName} has been loaded in a new tab.` });

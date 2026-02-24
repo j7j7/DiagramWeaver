@@ -53,10 +53,11 @@ export const measureNodeDims = (n: PositionedNode) => {
      n.type === 'generic.object.kite' ||
      n.type === 'generic.object.hexagon' ||
      n.type === 'generic.object.pentagon' ||
-     n.type === 'generic.object.octagon' ||
-     n.type === 'generic.object.jigsaw' ||
-     n.type === 'generic.object.arrowhead' ||
-     n.type?.endsWith('.square') ||
+    n.type === 'generic.object.octagon' ||
+    n.type === 'generic.object.jigsaw' ||
+    n.type === 'generic.object.arrowhead' ||
+    n.type === 'generic.object.loop' ||
+    n.type?.endsWith('.square') ||
      n.type?.endsWith('.circle') ||
      n.type?.endsWith('.point') ||
      n.type?.endsWith('.rectangle') ||
@@ -72,8 +73,9 @@ export const measureNodeDims = (n: PositionedNode) => {
      n.type?.endsWith('.hexagon') ||
      n.type?.endsWith('.pentagon') ||
      n.type?.endsWith('.octagon') ||
-     n.type?.endsWith('.jigsaw') ||
-     n.type?.endsWith('.arrowhead'));
+    n.type?.endsWith('.jigsaw') ||
+    n.type?.endsWith('.arrowhead') ||
+    n.type?.endsWith('.loop'));
   const label = (n.label || '').toString();
 
   // Line nodes calculate dimensions from startPos/endPos

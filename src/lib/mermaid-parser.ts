@@ -310,16 +310,121 @@ const CLASS_BLOCK_RE = /^\s*class\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\{([^}]*)\}\s*$/;
 // class ClassName { - start of multi-line block
 const CLASS_BLOCK_START_RE = /^\s*class\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\{\s*$/;
 
+// -------- Sequence Diagram --------
+
+export interface MermaidSequenceParticipant {
+  id: string;
+  label: string; // Display name (from "as" or id)
+}
+
+export interface MermaidSequenceMessage {
+  from: string;
+  to: string;
+  label?: string;
+  /** Solid (->>) or dashed (-->>) */
+  lineType: 'solid' | 'dashed';
+  /** Arrow at end (->> style) */
+  hasArrow: boolean;
+  /** Order index for vertical layout */
+  orderIndex: number;
+}
+
+export interface ParsedMermaidSequenceDiagram {
+  participants: MermaidSequenceParticipant[];
+  messages: MermaidSequenceMessage[];
+  errors: string[];
+}
+
+const SEQUENCE_DIAGRAM_RE = /^\s*sequenceDiagram\s*$/i;
+const PARTICIPANT_SIMPLE_RE = /^\s*participant\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*$/i;
+// A->>B: msg (solid+arrow), A-->>B: msg (dashed+arrow), A->B, A-->B
+const MESSAGE_RE = /^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*(-{1,2})(>{0,2})\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:?\s*(.*)$/;
+
 /** Detect Mermaid diagram type from first lines of text */
-export function detectMermaidDiagramType(text: string): 'flowchart' | 'classDiagram' | null {
+export function detectMermaidDiagramType(text: string): 'flowchart' | 'classDiagram' | 'sequenceDiagram' | null {
   const trimmed = text.trim();
   const firstLines = trimmed.split(/\r?\n/).slice(0, 20);
   for (const line of firstLines) {
     const t = line.trim();
+    if (SEQUENCE_DIAGRAM_RE.test(t)) return 'sequenceDiagram';
     if (CLASS_DIAGRAM_RE.test(t)) return 'classDiagram';
     if (/^\s*(?:flowchart|graph)\s+(TD|TB|BT|RL|LR)\s*$/i.test(t)) return 'flowchart';
   }
   return null;
+}
+
+/**
+ * Parse Mermaid sequenceDiagram syntax into participants and messages.
+ */
+export function parseMermaidSequenceDiagram(text: string): ParsedMermaidSequenceDiagram {
+  const errors: string[] = [];
+  const participantMap = new Map<string, MermaidSequenceParticipant>();
+  const messages: MermaidSequenceMessage[] = [];
+  const lines = text.split(/\r?\n/);
+  let messageOrder = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    if (!trimmed) continue;
+    if (COMMENT_RE.test(trimmed)) continue;
+
+    if (SEQUENCE_DIAGRAM_RE.test(trimmed)) continue;
+
+    // participant Id as DisplayName
+    const partAsMatch = trimmed.match(/^\s*participant\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+as\s+(.+)$/i);
+    if (partAsMatch) {
+      const id = partAsMatch[1];
+      const label = unquoteLabel(partAsMatch[2].trim());
+      participantMap.set(id, { id, label });
+      continue;
+    }
+
+    // participant Id
+    const partMatch = trimmed.match(PARTICIPANT_SIMPLE_RE);
+    if (partMatch) {
+      const id = partMatch[1];
+      if (!participantMap.has(id)) {
+        participantMap.set(id, { id, label: id });
+      }
+      continue;
+    }
+
+    // Message: A->>B: label or A-->>B: label
+    const msgMatch = trimmed.match(MESSAGE_RE);
+    if (msgMatch) {
+      const [, from, dashes, arrows, to, labelRaw] = msgMatch;
+      if (!from || !to) continue;
+      const isDashed = dashes === '--';
+      const hasArrow = (arrows?.length ?? 0) > 0;
+      const label = labelRaw?.trim() || undefined;
+
+      if (!participantMap.has(from)) {
+        participantMap.set(from, { id: from, label: from });
+      }
+      if (!participantMap.has(to)) {
+        participantMap.set(to, { id: to, label: to });
+      }
+
+      messages.push({
+        from,
+        to,
+        label: label || undefined,
+        lineType: isDashed ? 'dashed' : 'solid',
+        hasArrow,
+        orderIndex: messageOrder++,
+      });
+      continue;
+    }
+
+    if (trimmed.length > 0 && !trimmed.startsWith('%%')) {
+      errors.push(`Line ${i + 1}: Could not parse "${trimmed.slice(0, 50)}${trimmed.length > 50 ? '...' : ''}"`);
+    }
+  }
+
+  const participants = Array.from(participantMap.values());
+  return { participants, messages, errors };
 }
 
 function parseClassMember(member: string): { type: 'attr' | 'method'; text: string } {

@@ -16,6 +16,7 @@ export { JigsawShape } from './jigsaw';
 export { ArrowheadShape } from './arrowhead';
 export { ChevronShape } from './chevron';
 export { LineShape } from './line';
+export { LoopShape } from './loop';
 export { UmlClassShape } from './uml-class';
 export { ShapeWrapper } from './shape-wrapper';
 export { ShapeTag } from './shape-tag';

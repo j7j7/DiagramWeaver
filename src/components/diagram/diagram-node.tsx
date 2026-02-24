@@ -37,6 +37,7 @@ import {
   ArrowheadShape,
   ChevronShape,
   LineShape,
+  LoopShape,
   UmlClassShape,
 } from "./shapes";
 import { ResizeHandles } from "./resize-handles";
@@ -456,15 +457,16 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
       return <ArrowheadShape {...shapeProps} />;
     } else if (nodeType === 'generic.object.chevron' || nodeType?.endsWith('.chevron')) {
       return <ChevronShape {...shapeProps} />;
-    } else       if (nodeType === 'generic.object.line' || nodeType?.endsWith('.line')) {
-        // Pass local positions for smooth dragging (if available)
-        const lineNodeWithLocalPos = {
-          ...node,
-          ...(localStartPos && { __localStartPos: localStartPos }),
-          ...(localEndPos && { __localEndPos: localEndPos })
-        };
-        return <LineShape {...shapeProps} node={lineNodeWithLocalPos} onClick={onClick} onContextMenu={onContextMenu} />;
-      }
+    } else if (nodeType === 'generic.object.line' || nodeType?.endsWith('.line')) {
+      const lineNodeWithLocalPos = {
+        ...node,
+        ...(localStartPos && { __localStartPos: localStartPos }),
+        ...(localEndPos && { __localEndPos: localEndPos })
+      };
+      return <LineShape {...shapeProps} node={lineNodeWithLocalPos} onClick={onClick} onContextMenu={onContextMenu} />;
+    } else if (nodeType === 'generic.object.loop' || nodeType?.endsWith('.loop')) {
+      return <LoopShape {...shapeProps} node={node} onClick={onClick} onContextMenu={onContextMenu} />;
+    }
     return null;
   };
   
@@ -561,8 +563,8 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
 
    const isTextNode = node.type === 'generic.text.text';
   const isTextboxNode = node.type === 'generic.text.textbox';
-   const isShapeNode = !isIconOrEmojiType(node.type) && (node.type === 'generic.object.square' || node.type === 'generic.object.circle' || node.type === 'generic.object.point' || node.type === 'generic.object.rectangle' || node.type === 'generic.object.uml-class' || node.type === 'generic.object.rounded-rectangle' || node.type === 'generic.object.triangle' || node.type === 'generic.object.star' || node.type === 'generic.object.cloud' || node.type === 'generic.object.parallelogram' || node.type === 'generic.object.trapezoid' || node.type === 'generic.object.kite' || node.type === 'generic.object.hexagon' || node.type === 'generic.object.pentagon' || node.type === 'generic.object.octagon' || node.type === 'generic.object.jigsaw' || node.type === 'generic.object.arrowhead' || node.type === 'generic.object.chevron' ||
-                       node.type?.endsWith('.square') || node.type?.endsWith('.circle') || node.type?.endsWith('.point') || node.type?.endsWith('.rectangle') || node.type?.endsWith('.rounded-rectangle') || node.type?.endsWith('.triangle') || node.type?.endsWith('.star') || node.type?.endsWith('.cloud') || node.type?.endsWith('.parallelogram') || node.type?.endsWith('.trapezoid') || node.type?.endsWith('.kite') || node.type?.endsWith('.hexagon') || node.type?.endsWith('.pentagon') || node.type?.endsWith('.octagon') || node.type?.endsWith('.jigsaw') || node.type?.endsWith('.arrowhead') || node.type?.endsWith('.chevron') || node.type === 'generic.object.line' || node.type?.endsWith('.line'));
+   const isShapeNode = !isIconOrEmojiType(node.type) && (node.type === 'generic.object.square' || node.type === 'generic.object.circle' || node.type === 'generic.object.point' || node.type === 'generic.object.rectangle' || node.type === 'generic.object.uml-class' || node.type === 'generic.object.rounded-rectangle' || node.type === 'generic.object.triangle' || node.type === 'generic.object.star' || node.type === 'generic.object.cloud' || node.type === 'generic.object.parallelogram' || node.type === 'generic.object.trapezoid' || node.type === 'generic.object.kite' || node.type === 'generic.object.hexagon' || node.type === 'generic.object.pentagon' || node.type === 'generic.object.octagon' || node.type === 'generic.object.jigsaw' || node.type === 'generic.object.arrowhead' || node.type === 'generic.object.chevron' || node.type === 'generic.object.line' || node.type === 'generic.object.loop' ||
+                       node.type?.endsWith('.square') || node.type?.endsWith('.circle') || node.type?.endsWith('.point') || node.type?.endsWith('.rectangle') || node.type?.endsWith('.rounded-rectangle') || node.type?.endsWith('.triangle') || node.type?.endsWith('.star') || node.type?.endsWith('.cloud') || node.type?.endsWith('.parallelogram') || node.type?.endsWith('.trapezoid') || node.type?.endsWith('.kite') || node.type?.endsWith('.hexagon') || node.type?.endsWith('.pentagon') || node.type?.endsWith('.octagon') || node.type?.endsWith('.jigsaw') || node.type?.endsWith('.arrowhead') || node.type?.endsWith('.chevron') || node.type?.endsWith('.line') || node.type?.endsWith('.loop'));
   const isPointNode = node.type === 'generic.object.point' || node.type?.endsWith('.point');
   const isLineNode = node.type === 'generic.object.line' || node.type?.endsWith('.line');
   const isRoundedRectangleNode = node.type === 'generic.object.rounded-rectangle' || node.type?.endsWith('.rounded-rectangle');

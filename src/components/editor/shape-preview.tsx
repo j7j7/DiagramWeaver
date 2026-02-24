@@ -342,6 +342,24 @@ export function ShapePreview({
       );
     }
 
+    // Loop (sequence diagram self-loop - curved path)
+    if (type === 'generic.object.loop' || type?.endsWith('.loop')) {
+      const lineColor = stroke || '#6b7280';
+      const pathD = `M 0 0 C ${displayWidth} 0, ${displayWidth} ${displayHeight}, 0 ${displayHeight}`;
+      return (
+        <svg {...commonSvgProps}>
+          <path
+            d={pathD}
+            fill="none"
+            stroke={lineColor}
+            strokeWidth={strokeWidth || 2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      );
+    }
+
     // Trapezoid
     if (type === 'generic.object.trapezoid' || type?.endsWith('.trapezoid')) {
       const coords = getGradientCoordinates(gradientAngle);

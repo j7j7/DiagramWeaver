@@ -30,9 +30,9 @@ Connections to the circle were attaching to the rectangular bounding box instead
 Border and background now support separate gradient directions: `gradientAngle` (background) and `borderGradientAngle` (border). When unset, `borderGradientAngle` falls back to `gradientAngle`. Visual Styling panel: border direction picker is on the same line as Width for gradient borders; "Colors" headings removed from Border and Background for a more compact layout.
 
 ### 2026-02-24 – Mermaid Diagram Import
-Import Mermaid flowchart (`.mmd`, `.mermaid`) and class diagram files into DiagramWeaver. Converts nodes to shapes and text, edges to connectors with optional labels.
+Import Mermaid flowchart (`.mmd`, `.mermaid`), class diagram, and sequence diagram files into DiagramWeaver. Converts nodes to shapes and text, edges to connectors with optional labels.
 
-**How to import**: File → Load, File → Import Mermaid, or File → Examples → Mermaid Simple / Mermaid Class Diagram / Mermaid Complex.
+**How to import**: File → Load, File → Import Mermaid, or File → Examples → Mermaid Simple / Mermaid Class Diagram / Mermaid Sequence Diagram / Mermaid Complex.
 
 **Mermaid layout config** (from YAML frontmatter): Matches Mermaid standard. Uses `@dagrejs/dagre` for default/dagre layout, `elkjs` when `layout: elk`. Supports `nodeSpacing`, `rankSpacing` (default 50), and `elk.nodePlacementStrategy`, `elk.mergeEdges`, `elk.cycleBreakingStrategy` for ELK.
 
@@ -40,6 +40,13 @@ Import Mermaid flowchart (`.mmd`, `.mermaid`) and class diagram files into Diagr
 - **Node shapes** (mapped to `generic.object.*`): `[rect]`, `(rounded)`, `((circle))`, `{diamond}`→kite, `[[subroutine]]`, `{{hexagon}}`, `[/parallelogram/]`, `[\parallelogram\]`, `[/trapezoid\]`, `[\trapezoid/]`, `[(cylinder)]`→rounded-rectangle, `([stadium])`→rounded-rectangle
 - **Connectors**: `-->`, `---`, `-.->`, `==>`, with optional labels `|label|` or `-- label --`
 - **Directions**: `flowchart TD`, `flowchart LR`, `flowchart BT`, `flowchart RL`
+
+**Mermaid sequence diagram** (`sequenceDiagram`):
+- Participants rendered as rounded-rectangles in a horizontal row
+- Inter-participant messages use `generic.object.line` with startPos/endPos, arrow at target
+- Self-loops (A->>A) use new `generic.object.loop` shape (curved path with arrow)
+- Message syntax: `A->>B: label` (solid arrow), `A-->>B: label` (dashed)
+- Example: File → Examples → Mermaid Sequence Diagram
 
 **Mermaid class diagram** (`classDiagram`):
 - Classes rendered as UML-style boxes with three compartments: name (top), attributes (middle), methods (bottom), separated by horizontal divider lines

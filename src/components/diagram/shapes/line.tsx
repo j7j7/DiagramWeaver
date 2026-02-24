@@ -115,6 +115,12 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
   const angleToEnd = Math.atan2(dy, dx) * (180 / Math.PI);
   const angleToStart = angleToEnd + 180;
   const lineAngleRad = Math.atan2(dy, dx);
+  // Keep text upright for right-to-left lines (angle ~180° would flip text upside down)
+  const absAngle = Math.abs(angleToEnd);
+  const wouldFlipUpsideDown = absAngle > 90 && absAngle < 270;
+  const textRotation = (node as any).lineTextHorizontal === true || wouldFlipUpsideDown
+    ? 0
+    : angleToEnd;
   
   // Line caps
   const startCap = node.startCap || 'none';
@@ -279,7 +285,7 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
         
         {/* Text label */}
         {label && textLines.length > 0 && (
-          <g transform={`translate(${finalTextX - svgMinX}, ${finalTextY - svgMinY}) rotate(${angleToEnd})`}>
+          <g transform={`translate(${finalTextX - svgMinX}, ${finalTextY - svgMinY}) rotate(${textRotation})`}>
             {textLines.map((line, index) => {
               const lineHeightValue = textStyling.lineHeight || 1.4;
               const lineHeightPx = fontSize * lineHeightValue;

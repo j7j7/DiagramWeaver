@@ -73,6 +73,7 @@ export interface DiagramNodeData {
   lineType?: 'solid' | 'dashed' | 'dotted'; // Line type/style for line shapes
   lineTextPosition?: number; // Text position along line (0-100%, default 50%)
   lineTextVerticalPosition?: 'above' | 'middle' | 'below'; // Text position relative to line
+  lineTextHorizontal?: boolean; // When true, keep text horizontal (readable) for right-to-left lines
   
   // Lock property - prevents movement when true
   locked?: boolean; // If true, node cannot be moved
