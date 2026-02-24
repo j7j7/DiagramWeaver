@@ -469,6 +469,7 @@ const DraggableShape = ({ item, data }: { item: ScratchPadItem; data: any }) => 
             textDecoration={itemData.textDecoration}
             shadow={itemData.shadow}
             roundedEdges={(itemData as { roundedEdges?: boolean }).roundedEdges}
+            cornerRadius={(itemData as { cornerRadius?: number }).cornerRadius}
           />
         </CardContent>
       </Card>

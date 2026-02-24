@@ -25,6 +25,7 @@ interface ShapePreviewProps {
   textDecoration?: string;
   shadow?: boolean;
   roundedEdges?: boolean;
+  cornerRadius?: number; // Rounded-rectangle only: 0=straight, 1=full
 }
 
 // Helper function to convert gradient angle to SVG coordinates
@@ -65,7 +66,8 @@ export function ShapePreview({
   fontStyle,
   textDecoration,
   shadow = false,
-  roundedEdges = false
+  roundedEdges = false,
+  cornerRadius = 0.5
 }: ShapePreviewProps) {
   const gradientId = useId();
   const borderGradientId = useId();
@@ -625,7 +627,8 @@ export function ShapePreview({
     // Rounded Rectangle
     if (type === 'generic.object.rounded-rectangle' || type?.endsWith('.rounded-rectangle')) {
       const coords = getGradientCoordinates(gradientAngle);
-      const radius = Math.min(displayWidth, displayHeight) * 0.1; // 10% corner radius
+      const cr = Math.max(0, Math.min(1, cornerRadius));
+      const radius = cr * Math.min(displayWidth, displayHeight) * 0.5; // 0=straight, 1=full pill
       return (
         <svg {...commonSvgProps}>
           <defs>

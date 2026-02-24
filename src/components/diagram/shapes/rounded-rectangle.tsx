@@ -26,7 +26,6 @@ interface RoundedRectangleShapeProps {
 
 const VIEWBOX_W = 80;
 const VIEWBOX_H = 50;
-const RX = 6; // ~12% corner radius for rounded appearance
 
 export function RoundedRectangleShape(props: RoundedRectangleShapeProps) {
   const { node } = props;
@@ -41,6 +40,19 @@ export function RoundedRectangleShape(props: RoundedRectangleShapeProps) {
 
   const strokeWidth = borderStyle === "none" ? 0 : (parseInt(String(nodeAny.borderWidth || 2), 10) || 2);
   const half = strokeWidth / 2;
+
+  const w = node.width ?? VIEWBOX_W;
+  const h = node.height ?? VIEWBOX_H;
+  const scaleX = Math.max(0.01, w / VIEWBOX_W);
+  const scaleY = Math.max(0.01, h / VIEWBOX_H);
+  const minDim = Math.min(w, h);
+  // cornerRadius 0=straight, 1=full pill (radius=minDim/2); 0.5 default gives moderate curve
+  const cornerRadius = Math.max(0, Math.min(1, nodeAny.cornerRadius ?? 0.5));
+  const targetRadiusPx = cornerRadius * (minDim / 2);
+  const rectW = Math.max(0, VIEWBOX_W - strokeWidth);
+  const rectH = Math.max(0, VIEWBOX_H - strokeWidth);
+  const rx = Math.min(targetRadiusPx / scaleX, rectW / 2, rectH / 2);
+  const ry = Math.min(targetRadiusPx / scaleY, rectW / 2, rectH / 2);
 
   const { defs, fillRef, strokeRef } = useSvgGradient({
     colors: backgroundStyle === "gradient" ? backgroundColors : [backgroundColors[0]],
@@ -68,8 +80,8 @@ export function RoundedRectangleShape(props: RoundedRectangleShapeProps) {
             y={half}
             width={Math.max(0, VIEWBOX_W - strokeWidth)}
             height={Math.max(0, VIEWBOX_H - strokeWidth)}
-            rx={Math.min(RX, (VIEWBOX_W - strokeWidth) / 2, (VIEWBOX_H - strokeWidth) / 2)}
-            ry={Math.min(RX, (VIEWBOX_W - strokeWidth) / 2, (VIEWBOX_H - strokeWidth) / 2)}
+            rx={rx}
+            ry={ry}
             fill={fillColor}
             stroke={strokeColor}
             strokeWidth={strokeWidth}

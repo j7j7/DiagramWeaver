@@ -2,8 +2,11 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-02-24)
 
+### 2026-02-24 – Rounded-Rectangle Corner Radius Modifier
+Rounded-rectangle now has a draggable corner-radius handle (green icon at bottom-right, like resize): drag left/right to adjust curve from straight (0) to full round (1). Value stored in JSON as `cornerRadius` (0–1), works in editor and viewer. Handle: `corner-radius-handle.tsx`; persisted via schema; RoundedRectangleShape uses it for rx/ry. Modified: `diagram-node.tsx`, `rounded-rectangle.tsx`, `corner-radius-handle.tsx`, `schemas.ts`, `types.ts`, `shape-preview.tsx`, `globals.css`.
+
 ### 2026-02-24 – Rounded-Rectangle SVG Conversion
-Rounded-rectangle was using ShapeWrapper (div with CSS border-radius), which caused background bleeding at edges and gradient/complex border styles reverting corners to square (border-image doesn't work with border-radius). Converted to SvgShapeBase with SVG `<rect rx/ry>` like circle/kite—proper gradient fills, gradient borders, dotted borders, and crisp rounded corners. **Uniform border**: Uses `vector-effect="non-scaling-stroke"` so stroke stays same pixel width irrespective of shape size (thin, tall, wide). Modified: `rounded-rectangle.tsx`.
+Rounded-rectangle was using ShapeWrapper (div with CSS border-radius), which caused background bleeding at edges and gradient/complex border styles reverting corners to square (border-image doesn't work with border-radius). Converted to SvgShapeBase with SVG `<rect rx/ry>` like circle/kite—proper gradient fills, gradient borders, dotted borders, and crisp rounded corners. **Uniform border**: Uses `vector-effect="non-scaling-stroke"` so stroke stays same pixel width irrespective of shape size (thin, tall, wide). **Uniform corners**: Corner radius (rx/ry) computed so corners render at fixed ~8px regardless of shape dimensions—avoids squashed/elongated curves on thin shapes. Modified: `rounded-rectangle.tsx`.
 
 ### 2026-02-24 – Hexagon Text Padding (like Kite)
 Hexagon labels now use the same left/right padding as kite: text container constrained to max-w-[70%] with mx-auto so text wraps better within the angled hexagon shape. Modified: `shape-text.tsx`.

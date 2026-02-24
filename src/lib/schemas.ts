@@ -40,6 +40,7 @@ export const DiagramNodeDataSchema = z.object({
   textPosition: z.enum(['above', 'center', 'under']).optional(), // Text position for shape nodes
   freeflow: z.boolean().optional(), // If true, node can be placed anywhere without joining groups/zones
   borderWidth: z.number().optional(), // Border thickness for shapes
+  cornerRadius: z.number().min(0).max(1).optional(), // Rounded-rectangle only: 0=straight, 1=full round
   // Custom sizing properties for textbox nodes
   width: z.number().optional(), // Custom width - when set, overrides auto-calculated width
   height: z.number().optional(), // Custom height - when set, overrides auto-calculated height
@@ -233,6 +234,7 @@ export const DiagramNodeItemSchema = z.object({
   textPosition: z.enum(['above', 'center', 'under']).optional(), // Text position for shape nodes
   freeflow: z.boolean().optional(), // If true, node can be placed anywhere without joining groups/zones
   borderWidth: z.number().optional(), // Border thickness for shapes
+  cornerRadius: z.number().min(0).max(1).optional(), // Rounded-rectangle only: 0=straight, 1=full round
   // Custom sizing properties for textbox nodes
   width: z.number().optional(), // Custom width - when set, overrides auto-calculated width
   height: z.number().optional(), // Custom height - when set, overrides auto-calculated height

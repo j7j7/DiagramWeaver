@@ -37,6 +37,7 @@ export interface DiagramNodeData {
   textPosition?: 'above' | 'center' | 'under'; // Text position for shape nodes
   freeflow?: boolean; // If true, node can be placed anywhere without joining groups/zones
   borderWidth?: number; // Border thickness for shapes
+  cornerRadius?: number; // Rounded-rectangle only: 0=straight, 1=full round
   objectStyle?: string; // Predefined visual style key (e.g., 'solid', 'gradient', 'modern', etc.)
   
   // Custom sizing properties for textbox nodes
@@ -160,6 +161,7 @@ export interface DiagramNodeItem {
   textPosition?: 'above' | 'center' | 'under'; // Text position for shape nodes
   freeflow?: boolean; // If true, node can be placed anywhere without joining groups/zones
   borderWidth?: number; // Border thickness for shapes
+  cornerRadius?: number; // Rounded-rectangle only: 0=straight, 1=full round
   objectStyle?: string; // Predefined visual style key (e.g., 'solid', 'gradient', 'modern', etc.)
   
   // Custom sizing properties for textbox nodes

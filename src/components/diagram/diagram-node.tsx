@@ -41,6 +41,7 @@ import {
 import { ResizeHandles } from "./resize-handles";
 import { LineEndpointHandles } from "./line-endpoint-handles";
 import { ConnectHandle } from "./connect-handle";
+import { CornerRadiusHandle } from "./corner-radius-handle";
 
 const NODE_WIDTH = 80;
 const BASE_NODE_HEIGHT = 80;
@@ -175,7 +176,8 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
     const n = next.node;
     if (p.id !== n.id || p.x !== n.x || p.y !== n.y || p.label !== n.label ||
         p.width !== n.width || p.height !== n.height || p.type !== n.type ||
-        (p as any).rotation !== (n as any).rotation || p.tag !== n.tag) {
+        (p as any).rotation !== (n as any).rotation || p.tag !== n.tag ||
+        (p as any).cornerRadius !== (n as any).cornerRadius) {
       return false;
     }
     const pLine = p as any;
@@ -239,6 +241,12 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
   const [isDraggingLineEndpoint, setIsDraggingLineEndpoint] = useState(false);
   const [lineEndpointHandle, setLineEndpointHandle] = useState<'start' | 'end' | null>(null);
   const lineEndpointStartPos = useRef<{ x: number; y: number; startPoint: { x: number; y: number }; endPoint: { x: number; y: number } } | null>(null);
+
+  // Corner radius drag state (rounded-rectangle only)
+  const [isDraggingCornerRadius, setIsDraggingCornerRadius] = useState(false);
+  const [localCornerRadius, setLocalCornerRadius] = useState<number | null>(null);
+  const cornerRadiusDragRef = useRef<{ startX: number; startValue: number } | null>(null);
+  const latestCornerRadiusRef = useRef<number>(0);
 
   const handleLabelDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -383,7 +391,10 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     } else if (nodeType === 'generic.object.rectangle' || nodeType?.endsWith('.rectangle')) {
       return <RectangleShape {...shapeProps} />;
     } else if (nodeType === 'generic.object.rounded-rectangle' || nodeType?.endsWith('.rounded-rectangle')) {
-      return <RoundedRectangleShape {...shapeProps} />;
+      const roundedNode = isDraggingCornerRadius && localCornerRadius !== null
+        ? { ...node, cornerRadius: localCornerRadius }
+        : node;
+      return <RoundedRectangleShape {...shapeProps} node={roundedNode} />;
     } else if (nodeType === 'generic.object.circle' || nodeType?.endsWith('.circle')) {
       return <CircleShape {...shapeProps} />;
     } else if (nodeType === 'generic.object.point' || nodeType?.endsWith('.point')) {
@@ -521,6 +532,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
                        node.type?.endsWith('.square') || node.type?.endsWith('.circle') || node.type?.endsWith('.point') || node.type?.endsWith('.rectangle') || node.type?.endsWith('.rounded-rectangle') || node.type?.endsWith('.triangle') || node.type?.endsWith('.star') || node.type?.endsWith('.cloud') || node.type?.endsWith('.parallelogram') || node.type?.endsWith('.trapezoid') || node.type?.endsWith('.kite') || node.type?.endsWith('.hexagon') || node.type?.endsWith('.pentagon') || node.type?.endsWith('.octagon') || node.type?.endsWith('.jigsaw') || node.type?.endsWith('.arrowhead') || node.type?.endsWith('.chevron') || node.type === 'generic.object.line' || node.type?.endsWith('.line'));
   const isPointNode = node.type === 'generic.object.point' || node.type?.endsWith('.point');
   const isLineNode = node.type === 'generic.object.line' || node.type?.endsWith('.line');
+  const isRoundedRectangleNode = node.type === 'generic.object.rounded-rectangle' || node.type?.endsWith('.rounded-rectangle');
   const isRotatableNode = (isTextNode || isTextboxNode || isShapeNode) && !isLineNode;
   const isIconNode = !isTextNode && !isTextboxNode && !isShapeNode && !isLineNode;
   const nodeHeight = calculateNodeHeight(node.label || '', node.type, node.sizeMode, node.height);
@@ -890,6 +902,52 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
       };
     }
   }, [isDraggingLineEndpoint, lineEndpointHandle, handleLineEndpointDragMove, handleLineEndpointDragEnd, localStartPos, localEndPos, onUpdate, node]);
+
+  // Corner radius drag handlers (rounded-rectangle only)
+  const handleCornerRadiusDragStart = useCallback((e: React.MouseEvent) => {
+    if (isReadOnly || !onUpdate || !isRoundedRectangleNode) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const startValue = Math.max(0, Math.min(1, (node as any).cornerRadius ?? 0.5));
+    cornerRadiusDragRef.current = { startX: e.clientX, startValue };
+    latestCornerRadiusRef.current = startValue;
+    setLocalCornerRadius(startValue);
+    setIsDraggingCornerRadius(true);
+    onDraggingChange?.(true);
+  }, [isReadOnly, onUpdate, isRoundedRectangleNode, node, onDraggingChange]);
+
+  const handleCornerRadiusDragMove = useCallback((e: MouseEvent) => {
+    if (!cornerRadiusDragRef.current) return;
+    const { startX, startValue } = cornerRadiusDragRef.current;
+    let deltaX = e.clientX - startX;
+    if (transform) deltaX = deltaX / transform.k;
+    const sensitivity = 80; // pixels for full 0->1 range
+    const newValue = Math.max(0, Math.min(1, startValue + deltaX / sensitivity));
+    latestCornerRadiusRef.current = newValue;
+    setLocalCornerRadius(newValue);
+  }, [transform]);
+
+  const handleCornerRadiusDragEnd = useCallback(() => {
+    if (onUpdate) {
+      const finalValue = localCornerRadius ?? latestCornerRadiusRef.current;
+      onUpdate({ ...node, cornerRadius: finalValue });
+    }
+    cornerRadiusDragRef.current = null;
+    setLocalCornerRadius(null);
+    setIsDraggingCornerRadius(false);
+    onDraggingChange?.(false);
+  }, [onUpdate, node, localCornerRadius, onDraggingChange]);
+
+  useEffect(() => {
+    if (isDraggingCornerRadius) {
+      document.addEventListener('mousemove', handleCornerRadiusDragMove, true);
+      document.addEventListener('mouseup', handleCornerRadiusDragEnd, true);
+      return () => {
+        document.removeEventListener('mousemove', handleCornerRadiusDragMove, true);
+        document.removeEventListener('mouseup', handleCornerRadiusDragEnd, true);
+      };
+    }
+  }, [isDraggingCornerRadius, handleCornerRadiusDragMove, handleCornerRadiusDragEnd]);
 
   // Global click handler to clear resize state when clicking outside
   useEffect(() => {
@@ -1374,6 +1432,16 @@ return (
            onConnect={() => onConnect({ style: 'bezier', curvature: 0.6 })}
            isConnectMode={isConnectMode}
            disabled={false}
+           zIndexClass="z-50"
+         />
+       )}
+
+       {/* Corner radius handle - rounded-rectangle only, single select */}
+       {!isReadOnly && isSelected && !isMultiSelected && isRoundedRectangleNode && onUpdate && (
+         <CornerRadiusHandle
+           visible={true}
+           onMouseDown={handleCornerRadiusDragStart}
+           disabled={isDraggingCornerRadius}
            zIndexClass="z-50"
          />
        )}
