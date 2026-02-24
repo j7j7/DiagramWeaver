@@ -29,6 +29,10 @@ export function getShapeEdgeBounds(shapeType: string | undefined): ShapeEdgeBoun
   const suffix = base.includes('.') ? base.split('.').pop()! : base;
 
   switch (suffix) {
+    case 'circle':
+      // viewBox 60x60, center (30,30), radius ~29. Top (30,1), Bottom (30,59), Left (1,30), Right (59,30)
+      return { topY: 1, bottomY: 59, leftX: 1, rightX: 59, viewBoxW: 60, viewBoxH: 60 };
+
     case 'octagon':
       // viewBox 60x60, points "20,5 40,5 55,20 55,40 40,55 20,55 5,40 5,20"
       // Top edge y=5 center x=30, Bottom y=55 x=30, Left x=5 y=30, Right x=55 y=30

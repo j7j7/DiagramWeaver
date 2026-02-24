@@ -5,6 +5,9 @@
 ### 2026-02-24 – Circle Shape Square Border Fix
 Circle shape was rendered via `ShapeWrapper` (CSS div with background/border-radius), which produced a visible rectangular bounding box. Converted to `SvgShapeBase` with an SVG `<circle>` element, matching kite and other polygon shapes. Circle now renders with no visible square border; supports gradients, border styles, and shadow. Modified: `src/components/diagram/shapes/circle.tsx`.
 
+### 2026-02-24 – Circle Connection Points on Shape Edge
+Connections to the circle were attaching to the rectangular bounding box instead of the circular boundary. Added circle to `getShapeEdgeBounds` in `shape-connection-bounds.ts` so connector entry/exit points land on the actual circle edge (top/bottom/left/right centers at viewBox coords 1,59,1,59). Matches behavior of kite, hexagon, octagon, etc. Modified: `src/lib/shape-connection-bounds.ts`.
+
 ### 2026-02-24 – Gradient Direction (Border vs Background)
 Border and background now support separate gradient directions: `gradientAngle` (background) and `borderGradientAngle` (border). When unset, `borderGradientAngle` falls back to `gradientAngle`. Visual Styling panel: border direction picker is on the same line as Width for gradient borders; "Colors" headings removed from Border and Background for a more compact layout.
 
