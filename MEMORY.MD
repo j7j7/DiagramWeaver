@@ -679,7 +679,7 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
   - Clean, maintainable code with unified naming conventions
 
 ### Kite Shape Fix (2026-02-24) – Implemented
-All phases from `docs/KITE-SHAPE-FIX-PLAN.md` implemented. (1) **Resize**: Kite locks to square in diagram-node handleResizeMove and canvas-operations resizeNode/resizeMultipleNodes. (2) **Connectors**: shape-connection-bounds.ts adds getKiteEdgePath, getKiteConnectionPoint, getKiteEdgeAngleAtT, isKiteShapeType; bezier-connection uses kite parametric placement (t = (index+1)/(total+1)) and edge-aligned angles; calculateBezierPath/calculateBezierControlPoints support arbitrary angles via angleToUnitVector. (3) **Mermaid**: diamond nodes get square dims (max×3). (4) **SVG**: KiteShape passes preserveAspectRatio="xMidYMid meet" to SvgShapeBase.
+All phases from `docs/KITE-SHAPE-FIX-PLAN.md` implemented. (1) **Resize**: Kite locks to square in diagram-node handleResizeMove and canvas-operations resizeNode/resizeMultipleNodes. (2) **Connectors**: shape-connection-bounds.ts adds getKiteEdgePath, getKiteConnectionPoint, getKiteEdgeAngleAtT, isKiteShapeType; bezier-connection uses kite parametric placement (t = (index+1)/(total+1)) and edge-aligned angles; calculateBezierPath/calculateBezierControlPoints support arbitrary angles via angleToUnitVector. (3) **Mermaid**: diamond nodes get square dims (max×3). (4) **SVG**: KiteShape passes preserveAspectRatio="xMidYMid meet" to SvgShapeBase. (5) **Text wrapping**: ShapeText constrains kite label container to max-w-[70%] so text wraps at spaces within the diamond (uses break-words, whitespace-pre-wrap).
 
 ### Next Steps for Future Development
 - Add export formats (PNG, SVG, PDF)
