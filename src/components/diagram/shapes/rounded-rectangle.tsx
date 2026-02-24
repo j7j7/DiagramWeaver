@@ -39,6 +39,9 @@ export function RoundedRectangleShape(props: RoundedRectangleShapeProps) {
   const backgroundStyle = nodeAny.backgroundStyle || "solid";
   const borderStyle = nodeAny.borderStyle || "solid";
 
+  const strokeWidth = borderStyle === "none" ? 0 : (parseInt(String(nodeAny.borderWidth || 2), 10) || 2);
+  const half = strokeWidth / 2;
+
   const { defs, fillRef, strokeRef } = useSvgGradient({
     colors: backgroundStyle === "gradient" ? backgroundColors : [backgroundColors[0]],
     angle: gradientAngle,
@@ -49,11 +52,7 @@ export function RoundedRectangleShape(props: RoundedRectangleShapeProps) {
 
   const fillColor = backgroundStyle === "gradient" ? fillRef : (nodeAny.backgroundColor || "#6b7280");
   const strokeColor = borderStyle === "gradient" ? strokeRef : (nodeAny.borderColor || "#6b7280");
-  const strokeWidth = borderStyle === "none" ? "0" : (nodeAny.borderWidth || 2);
   const strokeDasharray = borderStyle === "dotted" ? "3,3" : undefined;
-
-  const s = parseInt(String(strokeWidth), 10) || 2;
-  const half = borderStyle === "none" ? 0 : s / 2;
 
   return (
     <SvgShapeBase
@@ -67,14 +66,15 @@ export function RoundedRectangleShape(props: RoundedRectangleShapeProps) {
           <rect
             x={half}
             y={half}
-            width={Math.max(0, VIEWBOX_W - s)}
-            height={Math.max(0, VIEWBOX_H - s)}
-            rx={Math.min(RX, (VIEWBOX_W - s) / 2, (VIEWBOX_H - s) / 2)}
-            ry={Math.min(RX, (VIEWBOX_W - s) / 2, (VIEWBOX_H - s) / 2)}
+            width={Math.max(0, VIEWBOX_W - strokeWidth)}
+            height={Math.max(0, VIEWBOX_H - strokeWidth)}
+            rx={Math.min(RX, (VIEWBOX_W - strokeWidth) / 2, (VIEWBOX_H - strokeWidth) / 2)}
+            ry={Math.min(RX, (VIEWBOX_W - strokeWidth) / 2, (VIEWBOX_H - strokeWidth) / 2)}
             fill={fillColor}
             stroke={strokeColor}
             strokeWidth={strokeWidth}
             strokeDasharray={strokeDasharray}
+            {...(strokeWidth > 0 ? { vectorEffect: "non-scaling-stroke" as const } : {})}
           />
         </>
       }

@@ -3,7 +3,7 @@
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-02-24)
 
 ### 2026-02-24 – Rounded-Rectangle SVG Conversion
-Rounded-rectangle was using ShapeWrapper (div with CSS border-radius), which caused background bleeding at edges and gradient/complex border styles reverting corners to square (border-image doesn't work with border-radius). Converted to SvgShapeBase with SVG `<rect rx/ry>` like circle/kite—proper gradient fills, gradient borders, dotted borders, and crisp rounded corners. Modified: `rounded-rectangle.tsx`.
+Rounded-rectangle was using ShapeWrapper (div with CSS border-radius), which caused background bleeding at edges and gradient/complex border styles reverting corners to square (border-image doesn't work with border-radius). Converted to SvgShapeBase with SVG `<rect rx/ry>` like circle/kite—proper gradient fills, gradient borders, dotted borders, and crisp rounded corners. **Uniform border**: Uses `vector-effect="non-scaling-stroke"` so stroke stays same pixel width irrespective of shape size (thin, tall, wide). Modified: `rounded-rectangle.tsx`.
 
 ### 2026-02-24 – Hexagon Text Padding (like Kite)
 Hexagon labels now use the same left/right padding as kite: text container constrained to max-w-[70%] with mx-auto so text wraps better within the angled hexagon shape. Modified: `shape-text.tsx`.
