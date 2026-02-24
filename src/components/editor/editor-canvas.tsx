@@ -79,6 +79,7 @@ interface EditorCanvasProps {
   onExportComplete?: () => void;
   hoverEnabled?: boolean;
   iconBackgroundEnabled?: boolean;
+  connectionsBehindNodesEnabled?: boolean;
   onSelectAll?: () => void;
   onTriggerTextStylingPanel?: () => void;
   onTriggerVisualStylingPanel?: () => void;
@@ -125,7 +126,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal }: EditorCanvasProps,
+   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, connectionsBehindNodesEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal }: EditorCanvasProps,
   ref
 ) {
   // ============================================================================
@@ -1222,28 +1223,41 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             {/* Zones removed - diagram is flat (nodes only) */}
 
             {/* ================================================================
-                NODES + CONNECTIONS (Order-aware layering)
+                NODES + CONNECTIONS (layering mode)
                 ================================================================
-                Connections are interleaved with nodes so they respect z-order:
-                - Connections go behind shapes that are "in front" of both endpoints
-                - Connections go in front of shapes that are "behind" both endpoints
-                See: src/lib/connection-order-utils.ts
+                connectionsBehindNodesEnabled=true: All connections first (z=0),
+                then nodes on top. Lines never overlap rectangles.
+                connectionsBehindNodesEnabled=false: Order-aware interleaving per
+                connection-order-utils (conns can pass in front of/behind nodes).
             */}
-            {connectionSlots.sortedItemIds.flatMap((itemId, i) => {
-              const slotConnections = connectionSlots.connectionsBySlot.get(i);
-              const connIndices = slotConnections?.length
-                ? new Set(slotConnections)
-                : undefined;
-              const node = nodesById[itemId];
-              const zone = zonesById[itemId];
-              // Z-indices interleave: conn-slot-i (2*i) behind node-i (2*i+1), enabling order-aware line layering
-              const connZIndex = 2 * i;
-              const nodeZIndex = 2 * i + 1;
-              const nodeEl = node ? (
-                <DiagramNode
-                  key={node.id}
-                  node={displayNodesById[node.id] || node}
-                  stackZIndex={nodeZIndex}
+            {connectionsBehindNodesEnabled ? (
+              <>
+                <CanvasConnections
+                  key="conn-all"
+                  width={width}
+                  height={height}
+                  diagramData={diagramData}
+                  nodesById={displayNodesById}
+                  zonesById={displayZonesById}
+                  selectedItemId={selectedItemId}
+                  selectedItem={selectedItem}
+                  onItemSelect={onItemSelect}
+                  closeContextMenu={closeContextMenu}
+                  onConnectionDelete={onConnectionDelete}
+                  onConnectionContextMenu={onConnectionContextMenu}
+                  onConnectionUpdate={onConnectionUpdate}
+                  onConnectionWaypointAdd={onConnectionWaypointAdd}
+                  stackZIndex={0}
+                />
+                {connectionSlots.sortedItemIds.map((itemId, i) => {
+                  const node = nodesById[itemId];
+                  const zone = zonesById[itemId];
+                  const nodeZIndex = 10 + i;
+                  const nodeEl = node ? (
+                    <DiagramNode
+                      key={node.id}
+                      node={displayNodesById[node.id] || node}
+                      stackZIndex={nodeZIndex}
                   isSelected={selectedItemId === node.id || (selectedItemIds?.has(node.id) ?? false)}
                   isMultiSelected={selectedItemIds?.has(node.id) && (selectedItemIds?.size ?? 0) > 1}
                   isGroupMember={
@@ -1271,32 +1285,77 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   canvasRef={canvasRef}
                 />
               ) : zone ? null : null;
-              return [
-                connIndices ? (
-                  <CanvasConnections
-                    key={`conn-slot-${i}`}
-                    width={width}
-                    height={height}
-                    diagramData={diagramData}
-                    nodesById={displayNodesById}
-                    zonesById={displayZonesById}
-                    selectedItemId={selectedItemId}
-                    selectedItem={selectedItem}
-                    onItemSelect={onItemSelect}
-                    closeContextMenu={closeContextMenu}
-                    onConnectionDelete={onConnectionDelete}
-                    onConnectionContextMenu={onConnectionContextMenu}
-                    onConnectionUpdate={onConnectionUpdate}
-                    onConnectionWaypointAdd={onConnectionWaypointAdd}
-                    connectionIndices={connIndices}
-                    stackZIndex={connZIndex}
+                  return nodeEl;
+                })}
+              </>
+            ) : (
+              connectionSlots.sortedItemIds.flatMap((itemId, i) => {
+                const slotConnections = connectionSlots.connectionsBySlot.get(i);
+                const connIndices = slotConnections?.length
+                  ? new Set(slotConnections)
+                  : undefined;
+                const node = nodesById[itemId];
+                const zone = zonesById[itemId];
+                const connZIndex = 2 * i;
+                const nodeZIndex = 2 * i + 1;
+                const nodeEl = node ? (
+                  <DiagramNode
+                    key={node.id}
+                    node={displayNodesById[node.id] || node}
+                    stackZIndex={nodeZIndex}
+                    isSelected={selectedItemId === node.id || (selectedItemIds?.has(node.id) ?? false)}
+                    isMultiSelected={selectedItemIds?.has(node.id) && (selectedItemIds?.size ?? 0) > 1}
+                    isGroupMember={
+                      selectedItemId !== node.id &&
+                      selectedItemId !== undefined &&
+                      getItemGroup(selectedItemId, diagramData) !== null &&
+                      getItemGroup(node.id, diagramData) !== null &&
+                      getItemGroup(selectedItemId, diagramData)?.id === getItemGroup(node.id, diagramData)?.id
+                    }
+                    onClick={(e: React.MouseEvent) => handleNodeClick(e, node)}
+                    onContextMenu={(e: React.MouseEvent) => handleNodeContextMenu(e, node)}
+                    onResize={handleNodeResize}
+                    onResizeStart={handleResizeStart}
+                    onResizeEnd={handleResizeEnd}
+                    onLabelUpdate={onLabelUpdate}
+                    onTagUpdate={onTagUpdate}
+                    onDraggingChange={onDraggingChange}
+                    onUpdate={handleNodeUpdate}
+                    hoverEnabled={hoverEnabled}
+                    isReadOnly={isReadOnly}
+                    onHoverChange={handleHoverChange}
+                    onConnect={onConnect}
+                    isConnectMode={isConnectMode && selectedItemId === node.id}
+                    transform={transform}
+                    canvasRef={canvasRef}
                   />
-                ) : null,
-                nodeEl,
-              ].filter(Boolean);
-            })}
-            {/* Connections that render after the last item (in front of everything) */}
-            {(() => {
+                ) : zone ? null : null;
+                return [
+                  connIndices ? (
+                    <CanvasConnections
+                      key={`conn-slot-${i}`}
+                      width={width}
+                      height={height}
+                      diagramData={diagramData}
+                      nodesById={displayNodesById}
+                      zonesById={displayZonesById}
+                      selectedItemId={selectedItemId}
+                      selectedItem={selectedItem}
+                      onItemSelect={onItemSelect}
+                      closeContextMenu={closeContextMenu}
+                      onConnectionDelete={onConnectionDelete}
+                      onConnectionContextMenu={onConnectionContextMenu}
+                      onConnectionUpdate={onConnectionUpdate}
+                      onConnectionWaypointAdd={onConnectionWaypointAdd}
+                      connectionIndices={connIndices}
+                      stackZIndex={connZIndex}
+                    />
+                  ) : null,
+                  nodeEl,
+                ].filter(Boolean);
+              })
+            )}
+            {!connectionsBehindNodesEnabled && (() => {
               const n = connectionSlots.sortedItemIds.length;
               const lastSlot = connectionSlots.connectionsBySlot.get(n);
               if (!lastSlot?.length) return null;

@@ -1,5 +1,7 @@
 # Mermaid Class Diagram Import Plan
 
+**Status: Implemented** (2026-02-24). See `docs/MERMAID-IMPORT.md` and MEMORY.MD for current behavior.
+
 ## Goal
 
 Support Mermaid `classDiagram` syntax in addition to existing `flowchart` support. Class diagrams produce UML-style class boxes (name, attributes, methods) with inheritance relationships. **Do not break existing flowchart import.**

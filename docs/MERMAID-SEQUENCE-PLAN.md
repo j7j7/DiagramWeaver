@@ -1,5 +1,7 @@
 # Mermaid Sequence Diagram Import Plan
 
+**Status: Implemented** (2026-02-24). See `docs/MERMAID-IMPORT.md` and MEMORY.MD for current behavior.
+
 ## Goal
 
 Support Mermaid `sequenceDiagram` syntax in addition to existing flowchart and classDiagram support. Sequence diagrams display participants (actors) with message flow between them. **Do not break existing flowchart or class diagram import.**

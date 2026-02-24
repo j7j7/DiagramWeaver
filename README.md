@@ -101,10 +101,22 @@ Additional providers available (can be enabled): Alibaba Cloud, OCI, SaaS, Elast
 - **Type Expansion**: Abbreviated types (e.g. `aws.c.ec2`) expand to full form
 - **Resizable**: Collapsible panel with localStorage persistence
 
+### Mermaid Import
+
+- **Import Mermaid**: File → Import Mermaid or File → Load (.mmd, .mermaid files)
+- **Supported types**: Flowchart, class diagram, sequence diagram
+- **Flowchart**: Node shapes (rect, rounded, circle, diamond, hexagon, parallelogram, trapezoid, etc.), connectors with labels, directions TD/LR/BT/RL, YAML frontmatter for layout (dagre/elk)
+- **Class diagram**: UML-style classes (name, attributes, methods), inheritance (`Parent <|-- Child`)
+- **Sequence diagram**: Participants as rounded-rectangles, messages as lines, self-loops as loop shapes
+- **Examples**: File → Examples → Mermaid Simple / Mermaid Complex / Mermaid Class Diagram / Mermaid Sequence Diagram
+- **Validation**: `npm run validate-mermaid` or `GET /api/validate-mermaid` when dev server running
+
+See `docs/MERMAID-IMPORT.md` for full syntax and mapping.
+
 ### Export & Persistence
 
 - **Export PNG**: Viewport export via html-to-image
-- **Save/Load**: JSON file save and load
+- **Save/Load**: JSON file save and load (JSON + .mmd/.mermaid)
 - **Copy Viewer URL**: Shareable URL for read-only viewer
 - **Examples**: Built-in example diagrams (File → Examples)
 
@@ -219,5 +231,6 @@ src/
 ## Documentation
 
 - `docs/RESOURCES.md` – Resource and icon system
+- `docs/MERMAID-IMPORT.md` – Mermaid flowchart, class diagram, and sequence diagram import
 - `AGENTS.md` – Build commands and code style
 - `MEMORY.MD` – Detailed feature history and implementation notes

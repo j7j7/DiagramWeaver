@@ -12,7 +12,7 @@ import {
   MenubarSubTrigger,
   MenubarSubContent,
 } from '@/components/ui/menubar';
-import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks } from 'lucide-react';
+import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks, Network } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
 import { ThemeEditor } from './theme-editor';
 import { RulesEditor } from './rules-editor';
@@ -73,6 +73,8 @@ interface TopMenuBarProps {
   onToggleIconBackground?: () => void;
   alignmentGuidesEnabled?: boolean;
   onToggleAlignmentGuides?: () => void;
+  connectionsBehindNodesEnabled?: boolean;
+  onToggleConnectionsBehindNodes?: () => void;
   onAlignObjects?: (alignment: 'top' | 'center' | 'bottom' | 'v-middle' | 'left' | 'h-center' | 'right' | 'distribute-v' | 'distribute-h') => void;
   onThemeApplyToSelected?: (theme: DiagramTheme) => void;
   triggerTextStylingPanel?: boolean;
@@ -143,6 +145,8 @@ export function TopMenuBar({
   onToggleIconBackground,
   alignmentGuidesEnabled,
   onToggleAlignmentGuides,
+  connectionsBehindNodesEnabled,
+  onToggleConnectionsBehindNodes,
   onAlignObjects,
   onThemeApplyToSelected,
   triggerTextStylingPanel = false,
@@ -472,9 +476,27 @@ export function TopMenuBar({
                 </MenubarItem>
               </>
             )}
-            {onToggleAlignmentGuides !== undefined && (
+            {onToggleConnectionsBehindNodes !== undefined && (
               <>
                 {(onUndo || onRedo || onFitToView || onToggleHover || onToggleIconBackground || onTogglePropertiesPanel) && <MenubarSeparator />}
+                <MenubarItem onClick={onToggleConnectionsBehindNodes}>
+                  {connectionsBehindNodesEnabled ? (
+                    <>
+                      <Network className="mr-2 h-4 w-4" />
+                      Lines Behind Nodes
+                    </>
+                  ) : (
+                    <>
+                      <Network className="mr-2 h-4 w-4" />
+                      Order-Aware Connection Lines
+                    </>
+                  )}
+                </MenubarItem>
+              </>
+            )}
+            {onToggleAlignmentGuides !== undefined && (
+              <>
+                {(onUndo || onRedo || onFitToView || onToggleHover || onToggleIconBackground || onTogglePropertiesPanel || onToggleConnectionsBehindNodes) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleAlignmentGuides}>
                   {alignmentGuidesEnabled ? (
                     <>

@@ -25,9 +25,20 @@ interface ViewerCanvasProps {
   selectedItem?: ViewerSelectedItem | null;
   onItemSelect?: (item: ViewerSelectedItem | null) => void;
   metadataPopupsEnabled?: boolean;
+  /** When true, connection lines render behind all nodes. When false, order-aware interleaving. Default from localStorage. */
+  connectionsBehindNodesEnabled?: boolean;
 }
 
-export function ViewerCanvas({ diagramData, onFitToView, transform: externalTransform, onTransformChange, selectedItemId, selectedItem, onItemSelect, metadataPopupsEnabled = true }: ViewerCanvasProps) {
+export function ViewerCanvas({ diagramData, onFitToView, transform: externalTransform, onTransformChange, selectedItemId, selectedItem, onItemSelect, metadataPopupsEnabled = true, connectionsBehindNodesEnabled: connectionsBehindNodesProp }: ViewerCanvasProps) {
+  const [connectionsBehindNodesEnabled, setConnectionsBehindNodesEnabled] = useState(true);
+  useEffect(() => {
+    if (connectionsBehindNodesProp !== undefined) {
+      setConnectionsBehindNodesEnabled(connectionsBehindNodesProp);
+    } else if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("dw:connectionsBehindNodes:enabled");
+      if (saved !== null) setConnectionsBehindNodesEnabled(saved !== "false");
+    }
+  }, [connectionsBehindNodesProp]);
   // Calculate layout for all nodes and zones
   const { processedNodes, processedZones, width, height } = useMemo(() => {
     return calculateLayout(diagramData);
@@ -316,56 +327,10 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
       >
         {/* Zones removed - diagram is flat (nodes only) */}
 
-        {/* Nodes + Connections (Order-aware layering) */}
-        {connectionSlots.sortedItemIds.flatMap((itemId, i) => {
-          const slotConnections = connectionSlots.connectionsBySlot.get(i);
-          const connIndices = slotConnections?.length
-            ? new Set(slotConnections)
-            : undefined;
-          const node = nodesById[itemId];
-          const zone = zonesById[itemId];
-          const connZIndex = 2 * i;
-          const nodeZIndex = 2 * i + 1;
-          const nodeEl = node ? (
-            <DiagramNode
-              key={node.id}
-              node={node}
-              stackZIndex={nodeZIndex}
-              isSelected={selectedItemId === node.id}
-              isMultiSelected={false}
-              isReadOnly={true}
-              onHoverChange={handleNodeHover}
-              onClick={handleNodeClick}
-            />
-          ) : null;
-          return [
-            connIndices ? (
-              <CanvasConnections
-                key={`conn-slot-${i}`}
-                width={width}
-                height={height}
-                diagramData={diagramData}
-                nodesById={nodesById}
-                zonesById={zonesById}
-                selectedItemId={selectedItemId}
-                onItemSelect={handleViewerItemSelect}
-                closeContextMenu={() => {}}
-                onConnectionDelete={undefined}
-                connectionIndices={connIndices}
-                stackZIndex={connZIndex}
-              />
-            ) : null,
-            nodeEl,
-          ].filter(Boolean);
-        })}
-        {/* Connections that render after the last item (in front of everything) */}
-        {(() => {
-          const n = connectionSlots.sortedItemIds.length;
-          const lastSlot = connectionSlots.connectionsBySlot.get(n);
-          if (!lastSlot?.length) return null;
-          return (
+        {connectionsBehindNodesEnabled ? (
+          <>
             <CanvasConnections
-              key="conn-slot-last"
+              key="conn-all"
               width={width}
               height={height}
               diagramData={diagramData}
@@ -375,11 +340,91 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
               onItemSelect={handleViewerItemSelect}
               closeContextMenu={() => {}}
               onConnectionDelete={undefined}
-              connectionIndices={new Set(lastSlot)}
-              stackZIndex={2 * n}
+              stackZIndex={0}
             />
-          );
-        })()}
+            {connectionSlots.sortedItemIds.map((itemId, i) => {
+              const node = nodesById[itemId];
+              const zone = zonesById[itemId];
+              const nodeZIndex = 10 + i;
+              const nodeEl = node ? (
+                <DiagramNode
+                  key={node.id}
+                  node={node}
+                  stackZIndex={nodeZIndex}
+                  isSelected={selectedItemId === node.id}
+                  isMultiSelected={false}
+                  isReadOnly={true}
+                  onHoverChange={handleNodeHover}
+                  onClick={handleNodeClick}
+                />
+              ) : null;
+              return nodeEl;
+            })}
+          </>
+        ) : (
+          <>
+            {connectionSlots.sortedItemIds.flatMap((itemId, i) => {
+              const slotConnections = connectionSlots.connectionsBySlot.get(i);
+              const connIndices = slotConnections?.length ? new Set(slotConnections) : undefined;
+              const node = nodesById[itemId];
+              const zone = zonesById[itemId];
+              const connZIndex = 2 * i;
+              const nodeZIndex = 2 * i + 1;
+              const nodeEl = node ? (
+                <DiagramNode
+                  key={node.id}
+                  node={node}
+                  stackZIndex={nodeZIndex}
+                  isSelected={selectedItemId === node.id}
+                  isMultiSelected={false}
+                  isReadOnly={true}
+                  onHoverChange={handleNodeHover}
+                  onClick={handleNodeClick}
+                />
+              ) : null;
+              return [
+                connIndices ? (
+                  <CanvasConnections
+                    key={`conn-slot-${i}`}
+                    width={width}
+                    height={height}
+                    diagramData={diagramData}
+                    nodesById={nodesById}
+                    zonesById={zonesById}
+                    selectedItemId={selectedItemId}
+                    onItemSelect={handleViewerItemSelect}
+                    closeContextMenu={() => {}}
+                    onConnectionDelete={undefined}
+                    connectionIndices={connIndices}
+                    stackZIndex={connZIndex}
+                  />
+                ) : null,
+                nodeEl,
+              ].filter(Boolean);
+            })}
+            {(() => {
+              const n = connectionSlots.sortedItemIds.length;
+              const lastSlot = connectionSlots.connectionsBySlot.get(n);
+              if (!lastSlot?.length) return null;
+              return (
+                <CanvasConnections
+                  key="conn-slot-last"
+                  width={width}
+                  height={height}
+                  diagramData={diagramData}
+                  nodesById={nodesById}
+                  zonesById={zonesById}
+                  selectedItemId={selectedItemId}
+                  onItemSelect={handleViewerItemSelect}
+                  closeContextMenu={() => {}}
+                  onConnectionDelete={undefined}
+                  connectionIndices={new Set(lastSlot)}
+                  stackZIndex={2 * n}
+                />
+              );
+            })()}
+          </>
+        )}
       </div>
     </div>
     </>

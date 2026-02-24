@@ -232,6 +232,7 @@ export default function DiagramEditor() {
   const [hoverEnabled, setHoverEnabled] = React.useState<boolean>(false);
   const [iconBackgroundEnabled, setIconBackgroundEnabled] = React.useState<boolean>(true);
   const [alignmentGuidesEnabled, setAlignmentGuidesEnabled] = React.useState<boolean>(true);
+  const [connectionsBehindNodesEnabled, setConnectionsBehindNodesEnabled] = React.useState<boolean>(true);
   const [isReadOnly, setIsReadOnly] = React.useState<boolean>(false);
   const [triggerTextStylingPanel, setTriggerTextStylingPanel] = React.useState<boolean>(false);
   const [triggerVisualStylingPanel, setTriggerVisualStylingPanel] = React.useState<boolean>(false);
@@ -1808,7 +1809,16 @@ export default function DiagramEditor() {
     if (savedPopups !== null) setMetadataPopupsEnabled(savedPopups !== 'false');
     const savedGuides = localStorage.getItem('dw:alignmentGuides:enabled');
     if (savedGuides !== null) setAlignmentGuidesEnabled(savedGuides !== 'false');
+    const savedConnectionsBehind = localStorage.getItem('dw:connectionsBehindNodes:enabled');
+    if (savedConnectionsBehind !== null) setConnectionsBehindNodesEnabled(savedConnectionsBehind !== 'false');
   }, []);
+
+  // Persist connections-behind-nodes preference
+  React.useEffect(() => {
+    if (isClient) {
+      localStorage.setItem('dw:connectionsBehindNodes:enabled', String(connectionsBehindNodesEnabled));
+    }
+  }, [connectionsBehindNodesEnabled, isClient]);
 
   // Persist properties panel collapse state
   React.useEffect(() => {
@@ -1912,6 +1922,8 @@ export default function DiagramEditor() {
         setIconBackgroundEnabled={setIconBackgroundEnabled}
         alignmentGuidesEnabled={alignmentGuidesEnabled}
         setAlignmentGuidesEnabled={setAlignmentGuidesEnabled}
+        connectionsBehindNodesEnabled={connectionsBehindNodesEnabled}
+        setConnectionsBehindNodesEnabled={setConnectionsBehindNodesEnabled}
         isReadOnly={isReadOnly}
         setIsReadOnly={setIsReadOnly}
         handleAlignObjects={handleAlignObjects}
@@ -2042,6 +2054,8 @@ function DiagramEditorInner({
   setIconBackgroundEnabled,
   alignmentGuidesEnabled,
   setAlignmentGuidesEnabled,
+  connectionsBehindNodesEnabled,
+  setConnectionsBehindNodesEnabled,
   isReadOnly,
   setIsReadOnly,
   handleAlignObjects,
@@ -2242,6 +2256,8 @@ function DiagramEditorInner({
                     onToggleIconBackground={() => setIconBackgroundEnabled(!iconBackgroundEnabled)}
                     alignmentGuidesEnabled={alignmentGuidesEnabled}
                     onToggleAlignmentGuides={() => setAlignmentGuidesEnabled(!alignmentGuidesEnabled)}
+                    connectionsBehindNodesEnabled={connectionsBehindNodesEnabled}
+                    onToggleConnectionsBehindNodes={() => setConnectionsBehindNodesEnabled(!connectionsBehindNodesEnabled)}
                     isReadOnly={isReadOnly}
                     onToggleReadOnly={() => setIsReadOnly(!isReadOnly)}
                     onAlignObjects={handleAlignObjects}
@@ -2354,6 +2370,7 @@ function DiagramEditorInner({
                     onMoveOneForward={handleMoveOneForward}
                     isReadOnly={isReadOnly}
                     alignmentGuidesEnabled={alignmentGuidesEnabled}
+                    connectionsBehindNodesEnabled={connectionsBehindNodesEnabled}
                     onResourceActivateAtPosition={handleResourceActivateAtPosition}
                     metadataPopupsEnabled={metadataPopupsEnabled}
                     setUmlClassEditorModal={setUmlClassEditorModal}

@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-02-24)
 
+### 2026-02-24 – Connection Lines Layering Toggle
+**Edit → Lines Behind Nodes / Order-Aware Connection Lines** toggle controls how connector lines render relative to nodes. **Lines Behind Nodes** (default): All connections render first (z-index 0), nodes on top; lines never overlap rectangles. **Order-Aware Connection Lines**: Interleaved z-ordering per connection-order-utils (connections can pass in front of/behind nodes based on endpoint positions). Preference persisted to localStorage (`dw:connectionsBehindNodes:enabled`). Viewer reads same localStorage. Modified: diagram-editor.tsx, top-menu-bar.tsx, editor-canvas.tsx, viewer-canvas.tsx.
+
 ### 2026-02-24 – Rounded-Rectangle Corner Radius Modifier
 Rounded-rectangle now has a draggable corner-radius handle (green icon at bottom-right, like resize): drag left/right to adjust curve from straight (0) to full round (1). Value stored in JSON as `cornerRadius` (0–1), works in editor and viewer. Handle: `corner-radius-handle.tsx`; persisted via schema; RoundedRectangleShape uses it for rx/ry. Modified: `diagram-node.tsx`, `rounded-rectangle.tsx`, `corner-radius-handle.tsx`, `schemas.ts`, `types.ts`, `shape-preview.tsx`, `globals.css`.
 
@@ -37,16 +40,19 @@ Import Mermaid flowchart (`.mmd`, `.mermaid`), class diagram, and sequence diagr
 **Mermaid layout config** (from YAML frontmatter): Matches Mermaid standard. Uses `@dagrejs/dagre` for default/dagre layout, `elkjs` when `layout: elk`. Supports `nodeSpacing`, `rankSpacing` (default 50), and `elk.nodePlacementStrategy`, `elk.mergeEdges`, `elk.cycleBreakingStrategy` for ELK.
 
 **Supported Mermaid flowchart elements**:
+- **Header**: `flowchart TD|LR|BT|RL` or `graph TD|LR|BT|RL` (TB maps to TD)
 - **Node shapes** (mapped to `generic.object.*`): `[rect]`, `(rounded)`, `((circle))`, `{diamond}`→kite, `[[subroutine]]`, `{{hexagon}}`, `[/parallelogram/]`, `[\parallelogram\]`, `[/trapezoid\]`, `[\trapezoid/]`, `[(cylinder)]`→rounded-rectangle, `([stadium])`→rounded-rectangle
 - **Connectors**: `-->`, `---`, `-.->`, `==>`, with optional labels `|label|` or `-- label --`
-- **Directions**: `flowchart TD`, `flowchart LR`, `flowchart BT`, `flowchart RL`
+- **Directions**: TD (top-down), LR (left-right), BT (bottom-top), RL (right-left)
 
 **Mermaid sequence diagram** (`sequenceDiagram`):
-- Participants rendered as rounded-rectangles in a horizontal row
+- Participants rendered as rounded-rectangles in a horizontal row (left-to-right definition order)
 - Inter-participant messages use `generic.object.line` with startPos/endPos, arrow at target
-- Self-loops (A->>A) use new `generic.object.loop` shape (curved path with arrow)
+- Self-loops (A->>A) use `generic.object.loop` shape (curved path with optional arrow)
+- Lifelines: vertical dashed connections from top participant to bottom participant
 - Message syntax: `A->>B: label` (solid arrow), `A-->>B: label` (dashed)
-- Example: File → Examples → Mermaid Sequence Diagram
+- Participant syntax: `participant Id` or `participant Id as Display Label`
+- Example: File → Examples → Mermaid Sequence Diagram, or import `sequence-diagram.mmd`
 
 **Mermaid class diagram** (`classDiagram`):
 - Classes rendered as UML-style boxes with three compartments: name (top), attributes (middle), methods (bottom), separated by horizontal divider lines
@@ -55,23 +61,27 @@ Import Mermaid flowchart (`.mmd`, `.mermaid`), class diagram, and sequence diagr
 - Inheritance: `Parent <|-- Child` → connection from child to parent with arrow at parent
 - Colon syntax: `ClassName : +int age`, `ClassName: +methodName()`
 - Block syntax: `class Duck{ +String beakColor +swim() +quack() }`
+- Visibility: `+` public, `-` private, `#` protected, `~` package
 - Example: File → Examples → Mermaid Class Diagram, or import `class-diagram.mmd`
 
+**Examples**: `public/examples/simple.mmd`, `complex.mmd`, `graphTD.mmd`, `class-diagram.mmd`, `sequence-diagram.mmd`
+
 **Key files**:
-- `src/lib/mermaid-parser.ts` – Parse flowchart syntax, YAML frontmatter config
+- `src/lib/mermaid-parser.ts` – Parse flowchart, class, sequence syntax; YAML frontmatter config
 - `src/lib/mermaid-layout.ts` – Dagre/ELK layout (Mermaid-compatible)
 - `src/lib/mermaid-to-diagram.ts` – Convert to DiagramData (shapes, connections)
-- `public/examples/simple.mmd`, `public/examples/complex.mmd` – Example Mermaid files
-- `src/app/api/validate-mermaid/route.ts` – API for validating .mmd files
-- `scripts/validate-mermaid.mjs` – Standalone Node validation script
+- `src/app/api/validate-mermaid/route.ts` – API for validating .mmd files (flowchart parser)
+- `scripts/validate-mermaid.mjs` – Standalone Node validation script (flowchart)
 
-**Validation**: Full error output logs to browser console (`[Mermaid Import]` / `[Mermaid Load]`). Use `npm run validate-mermaid` or `GET /api/validate-mermaid` (when dev server running) to validate examples.
+**Validation**: Full error output logs to browser console (`[Mermaid Import]` / `[Mermaid Load]`). Use `npm run validate-mermaid` or `GET /api/validate-mermaid` (when dev server running). Note: API/script validate flowcharts only; class and sequence are parsed on import.
 
-**Import styling**: Connectors with labels get auto-colored: Yes/Low=green (#22c55e), No/Critical=red (#ef4444), High=orange (#f97316), Medium/Medium-Low=amber (#f59e0b). Decision nodes (diamond `{...}`) use square dimensions same size as process nodes. Shape themes (inline in mermaid-to-diagram, no theme-manager dep): decision/kite and other shapes (circle, hexagon, parallelogram, trapezoid, rounded, etc.) use Forest Green (#16a34a border, #f0fdf4 bg); standard box (`rect`/`default`) uses Ocean Blue (#3b82f6 border, #eff6ff bg). Applies to both File→Import Mermaid and File→Load (.mmd).
+**Import styling**: Connectors with labels get auto-colored: Yes/Low=green (#22c55e), No/Critical=red (#ef4444), High=orange (#f97316), Medium/Medium-Low=amber (#f59e0b). Decision nodes (diamond `{...}`) use square dimensions same size as process nodes. Shape themes (inline in mermaid-to-diagram, no theme-manager dep): decision/kite and other shapes (circle, hexagon, parallelogram, trapezoid, rounded, etc.) use Forest Green (#16a34a border, #f0fdf4 bg); standard box (`rect`/`default`) uses Ocean Blue (#3b82f6 border, #eff6ff bg); last nodes in chain use Royal Purple (#9333ea). Sequence diagram participants use alternating themes. Applies to both File→Import Mermaid and File→Load (.mmd).
 
 **Grid alignment for straight connectors**: Mermaid import dimensions snap to GRID_SNAP (20px) and are forced even for proper centering. Positions are computed by snapping layout center points to the grid, then deriving top-left from snapped center minus half-dimensions, so vertically stacked nodes align and connectors stay straight.
 
 **Export to Mermaid**: Planned as a separate phase.
+
+**Full documentation**: `docs/MERMAID-IMPORT.md`
 
 ### 2026-02-20 – Rules Engine
 User-definable validation rules for diagram content. **Edit → Rules** opens the Rules Editor dialog. Rules check nodes on the diagram against user-defined criteria; pass = green tick, fail = red cross.
