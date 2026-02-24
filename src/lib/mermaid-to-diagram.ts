@@ -74,6 +74,17 @@ const MERMAID_FOREST_GREEN = {
   gradientAngle: 90,
 };
 
+const MERMAID_ROYAL_PURPLE = {
+  borderStyle: 'solid' as const,
+  borderColor: '#9333ea',
+  borderWidth: 1,
+  backgroundStyle: 'solid' as const,
+  backgroundColor: '#faf5ff',
+  shadow: true,
+  textColor: '#581c87',
+  gradientAngle: 135,
+};
+
 /** Distinct themes for sequence diagram participants (top and bottom use same theme per participant) */
 const SEQ_PARTICIPANT_THEMES = [
   { borderStyle: 'solid' as const, borderColor: '#3b82f6', borderWidth: 1, backgroundStyle: 'solid' as const, backgroundColor: '#eff6ff', shadow: true, textColor: '#1e40af', gradientAngle: 135 },
@@ -167,6 +178,9 @@ export async function mermaidToDiagramData(parsed: ParsedMermaid): Promise<Diagr
 
   const allNodeIds = Array.from(new Set<string>([...nodes.map(n => n.id), ...edges.flatMap(e => [e.from, e.to])]));
 
+  // Find nodes that have outgoing edges (not last in chain)
+  const nodesWithOutgoingEdges = new Set<string>(edges.map(e => e.from));
+
   // Compute dimensions from labels; diamond (kite) nodes use square dims same size as process nodes
   const nodeDimensions = new Map<string, { width: number; height: number }>();
   nodes.forEach((n) => {
@@ -212,10 +226,13 @@ export async function mermaidToDiagramData(parsed: ParsedMermaid): Promise<Diagr
       height: dims.height,
       sizeMode: 'custom',
     };
-    diagramNodes.push(applyMermaidTheme(baseNode, getMermaidThemeForShape(mNode.shape)));
+    // Use Royal Purple for last nodes in chain (no outgoing edges), otherwise use shape-based theme
+    const isLastInChain = !nodesWithOutgoingEdges.has(mNode.id);
+    const theme = isLastInChain ? MERMAID_ROYAL_PURPLE : getMermaidThemeForShape(mNode.shape);
+    diagramNodes.push(applyMermaidTheme(baseNode, theme));
   });
 
-  // Add nodes that were only referenced in edges (implicit nodes) - standard box = Ocean Blue
+  // Add nodes that were only referenced in edges (implicit nodes) - use Royal Purple for last nodes
   let implicitIdx = 0;
   Array.from(allNodeIds).forEach(mId => {
     if (nodesById.has(mId)) return;
@@ -236,7 +253,10 @@ export async function mermaidToDiagramData(parsed: ParsedMermaid): Promise<Diagr
       height: dims.height,
       sizeMode: 'custom',
     };
-    diagramNodes.push(applyMermaidTheme(baseNode, MERMAID_OCEAN_BLUE));
+    // Use Royal Purple for last nodes in chain (no outgoing edges), otherwise use Ocean Blue
+    const isLastInChain = !nodesWithOutgoingEdges.has(mId);
+    const theme = isLastInChain ? MERMAID_ROYAL_PURPLE : MERMAID_OCEAN_BLUE;
+    diagramNodes.push(applyMermaidTheme(baseNode, theme));
   });
 
   const connections: DiagramConnectionData[] = edges

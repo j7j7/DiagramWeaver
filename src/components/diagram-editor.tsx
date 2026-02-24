@@ -955,17 +955,6 @@ export default function DiagramEditor() {
           throw new Error(`Mermaid parse issues: ${errMsg}`);
         }
         let completeData = await mermaidToDiagramData(parsed);
-        const oceanBlue = themeManager.getThemes().find(t => t.id === 'default-blue');
-        const forestGreen = themeManager.getThemes().find(t => t.id === 'forest-green');
-        if (oceanBlue && forestGreen) {
-          completeData = {
-            ...completeData,
-            nodes: completeData.nodes.map((n) => {
-              const theme = (n.type === 'generic.object.rectangle' || n.type === 'generic.object.uml-class') ? oceanBlue : forestGreen;
-              return themeManager.applyThemeToItem(n, theme) as DiagramNodeData;
-            }),
-          };
-        }
         setDiagramData({ nodes: [], connections: [], groupings: [] });
         setTimeout(() => {
           setDiagramData(completeData);
@@ -1043,17 +1032,6 @@ export default function DiagramEditor() {
               throw new Error(`Mermaid parse issues: ${errMsg}`);
             }
             let mermaidData = await mermaidToDiagramData(parsed);
-            const oceanBlue = themeManager.getThemes().find(t => t.id === 'default-blue');
-            const forestGreen = themeManager.getThemes().find(t => t.id === 'forest-green');
-            if (oceanBlue && forestGreen) {
-              mermaidData = {
-                ...mermaidData,
-                nodes: mermaidData.nodes.map((n) => {
-                  const theme = (n.type === 'generic.object.rectangle' || n.type === 'generic.object.uml-class') ? oceanBlue : forestGreen;
-                  return themeManager.applyThemeToItem(n, theme) as DiagramNodeData;
-                }),
-              };
-            }
             completeData = mermaidData;
           } else {
             const jsonData = JSON.parse(text);
@@ -1187,17 +1165,6 @@ export default function DiagramEditor() {
             throw new Error('No valid flowchart content in Mermaid example.');
           }
           mermaidData = await mermaidToDiagramData(parsed);
-        }
-        const oceanBlue = themeManager.getThemes().find(t => t.id === 'default-blue');
-        const forestGreen = themeManager.getThemes().find(t => t.id === 'forest-green');
-        if (oceanBlue && forestGreen && diagramType !== 'classDiagram' && diagramType !== 'sequenceDiagram') {
-          mermaidData = {
-            ...mermaidData,
-            nodes: mermaidData.nodes.map((n) => {
-              const theme = (n.type === 'generic.object.rectangle' || n.type === 'generic.object.uml-class') ? oceanBlue : forestGreen;
-              return themeManager.applyThemeToItem(n, theme) as DiagramNodeData;
-            }),
-          };
         }
         diagram = mermaidData;
       } else {
