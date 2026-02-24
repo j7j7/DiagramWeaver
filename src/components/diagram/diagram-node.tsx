@@ -1087,6 +1087,7 @@ return (
                 const backgroundColors = (node as any).backgroundColors || [(node as any).backgroundColor || '#ffffff', (node as any).backgroundColor || '#ffffff'];
                 const backgroundColor = (node as any).backgroundColor || '#ffffff';
                 const gradientAngle = (node as any).gradientAngle || 135;
+                const borderGradientAngle = (node as any).borderGradientAngle ?? gradientAngle;
                 const hasShadow = (node as any).shadow || false;
                 
                 return (
@@ -1110,7 +1111,7 @@ return (
                        ? `linear-gradient(${gradientAngle}deg, ${backgroundColors[0]}, ${backgroundColors[1]})`
                        : backgroundColor,
                    ...(borderStyle === 'none' ? {} : borderStyle === 'gradient' ? {
-                     borderImage: `${getGradientWithAngle(borderColors, gradientAngle)} 1`,
+                     borderImage: `${getGradientWithAngle(borderColors, borderGradientAngle)} 1`,
                      borderColor: 'transparent'
                    } : borderStyle === 'dotted' ? {
                      borderColor: borderColor,

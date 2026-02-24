@@ -36,6 +36,7 @@ export function KiteShape(props: KiteShapeProps) {
   const backgroundColors = nodeAny.backgroundColors || [nodeAny.backgroundColor || '#6b7280'];
   const borderColors = nodeAny.borderColors || [nodeAny.borderColor || '#6b7280'];
   const gradientAngle = nodeAny.gradientAngle || 135;
+  const borderGradientAngle = nodeAny.borderGradientAngle ?? gradientAngle;
   const backgroundStyle = nodeAny.backgroundStyle || 'solid';
   const borderStyle = nodeAny.borderStyle || 'solid';
 
@@ -43,6 +44,7 @@ export function KiteShape(props: KiteShapeProps) {
     colors: backgroundStyle === 'gradient' ? backgroundColors : [backgroundColors[0]],
     angle: gradientAngle,
     borderColors: borderStyle === 'gradient' ? borderColors : undefined,
+    borderAngle: borderStyle === 'gradient' ? borderGradientAngle : undefined,
     enabled: backgroundStyle === 'gradient' || borderStyle === 'gradient'
   });
 

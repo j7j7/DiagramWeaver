@@ -95,7 +95,7 @@ export function ShapeWrapper({
 
   return (
     <div
-      key={`gradient-${nodeAny.gradientAngle || 135}`}
+      key={`gradient-${nodeAny.gradientAngle || 135}-${nodeAny.borderGradientAngle ?? nodeAny.gradientAngle ?? 135}`}
       className="relative"
       style={{
         boxSizing: 'border-box',

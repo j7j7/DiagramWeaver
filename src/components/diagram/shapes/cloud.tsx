@@ -3,7 +3,8 @@
 import React from "react";
 import type { DiagramNodeData } from "@/lib/types";
 import { SvgShapeBase } from "./svg-shape-base";
-import { getGradientWithAngle, getRoundedEdgesProps } from "./shape-utils";
+import { getRoundedEdgesProps } from "./shape-utils";
+import { useSvgGradient } from "@/hooks/use-svg-gradient";
 
 interface CloudShapeProps {
   node: DiagramNodeData & { width?: number; height?: number };
@@ -29,6 +30,26 @@ export function CloudShape(props: CloudShapeProps) {
   const nodeAny = node as any;
   const roundedEdges = nodeAny.roundedEdges || false;
 
+  const backgroundColors = nodeAny.backgroundColors || [nodeAny.backgroundColor || '#6b7280'];
+  const borderColors = nodeAny.borderColors || [nodeAny.borderColor || '#6b7280'];
+  const gradientAngle = nodeAny.gradientAngle || 135;
+  const borderGradientAngle = nodeAny.borderGradientAngle ?? gradientAngle;
+  const backgroundStyle = nodeAny.backgroundStyle || 'solid';
+  const borderStyle = nodeAny.borderStyle || 'solid';
+
+  const { defs, fillRef, strokeRef } = useSvgGradient({
+    colors: backgroundStyle === 'gradient' ? backgroundColors : [backgroundColors[0]],
+    angle: gradientAngle,
+    borderColors: borderStyle === 'gradient' ? borderColors : undefined,
+    borderAngle: borderStyle === 'gradient' ? borderGradientAngle : undefined,
+    enabled: backgroundStyle === 'gradient' || borderStyle === 'gradient'
+  });
+
+  const fillColor = backgroundStyle === 'gradient' ? fillRef : (nodeAny.backgroundColor || '#6b7280');
+  const strokeColor = borderStyle === 'gradient' ? strokeRef : (nodeAny.borderColor || '#6b7280');
+  const strokeWidth = borderStyle === 'none' ? '0' : (nodeAny.borderWidth || 2);
+  const strokeDasharray = borderStyle === 'dotted' ? '3,3' : undefined;
+
   return (
     <SvgShapeBase
       {...props}
@@ -36,32 +57,34 @@ export function CloudShape(props: CloudShapeProps) {
       defaultWidth={100}
       defaultHeight={60}
       svgContent={
-        <path
-          d="M 20,42
-             C 12,42 8,38 8,32
-             C 8,26 12,22 18,22
-             C 18,16 22,10 30,10
-             C 35,10 39,13 41,17
-             C 44,12 49,8 58,8
-             C 68,8 74,14 76,22
-             C 79,20 82,19 86,19
-             C 92,19 96,23 96,29
-             C 96,35 92,39 86,40
-             C 84,44 80,48 74,48
-             C 70,48 67,47 64,45
-             C 60,47 55,49 48,49
-             C 40,49 34,47 30,45
-             C 27,47 23,48 20,48
-             C 20,46 20,44 20,42 Z"
-          fill={nodeAny.backgroundStyle === 'gradient'
-            ? getGradientWithAngle(nodeAny.backgroundColors || [nodeAny.backgroundColor || '#6b7280'], nodeAny.gradientAngle || 135)
-            : nodeAny.backgroundColor || '#6b7280'}
-          stroke={nodeAny.borderColor || '#6b7280'}
-          strokeWidth={nodeAny.borderStyle === 'none' ? '0' : (nodeAny.borderWidth || 2)}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          {...getRoundedEdgesProps(roundedEdges)}
-        />
+        <>
+          {defs}
+          <path
+            d="M 20,42
+               C 12,42 8,38 8,32
+               C 8,26 12,22 18,22
+               C 18,16 22,10 30,10
+               C 35,10 39,13 41,17
+               C 44,12 49,8 58,8
+               C 68,8 74,14 76,22
+               C 79,20 82,19 86,19
+               C 92,19 96,23 96,29
+               C 96,35 92,39 86,40
+               C 84,44 80,48 74,48
+               C 70,48 67,47 64,45
+               C 60,47 55,49 48,49
+               C 40,49 34,47 30,45
+               C 27,47 23,48 20,48
+               C 20,46 20,44 20,42 Z"
+            fill={fillColor}
+            stroke={strokeColor}
+            strokeWidth={strokeWidth}
+            strokeDasharray={strokeDasharray}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            {...getRoundedEdgesProps(roundedEdges)}
+          />
+        </>
       }
     />
   );

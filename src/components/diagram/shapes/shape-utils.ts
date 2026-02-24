@@ -144,6 +144,7 @@ export const getShapeStyles = (node: DiagramNodeData & { width?: number; height?
   const backgroundColors = nodeAny.backgroundColors || [nodeAny.backgroundColor || '#6b7280', nodeAny.backgroundColor || '#6b7280'];
   const backgroundColor = nodeAny.backgroundColor || '#6b7280';
   const gradientAngle = nodeAny.gradientAngle || 135;
+  const borderGradientAngle = nodeAny.borderGradientAngle ?? nodeAny.gradientAngle ?? 135;
   const borderStyle = nodeAny.borderStyle || 'solid';
   const borderColor = nodeAny.borderColor || '#6b7280';
   const borderColors = nodeAny.borderColors || [nodeAny.borderColor || '#6b7280', nodeAny.borderColor || '#6b7280'];
@@ -159,7 +160,7 @@ export const getShapeStyles = (node: DiagramNodeData & { width?: number; height?
     borderStyle: borderStyle === 'gradient' ? 'solid' : borderStyle,
     borderColor: borderStyle === 'gradient' ? 'transparent' : borderColor,
     borderColors,
-    borderImage: borderStyle === 'gradient' ? `${getGradientWithAngle(borderColors, gradientAngle)} 1` : undefined,
+    borderImage: borderStyle === 'gradient' ? `${getGradientWithAngle(borderColors, borderGradientAngle)} 1` : undefined,
     shadow,
     roundedEdges,
     backgroundColor: backgroundStyle === 'gradient' ? backgroundColors[0] : backgroundColor,
@@ -333,22 +334,27 @@ export const getGradientCoordinates = (angle: number = 135) => {
  * Generate SVG gradient coordinate data (no JSX - for use in .ts files)
  * @param gradientId - Unique ID for the gradient
  * @param colors - Array of two colors for the gradient
- * @param angle - Gradient angle in degrees (default: 135)
+ * @param angle - Fill gradient angle in degrees (default: 135)
  * @param borderGradientId - Optional unique ID for border gradient
  * @param borderColors - Optional array of two colors for border gradient
+ * @param borderAngle - Border gradient angle in degrees (defaults to fill angle)
  */
 export const createSvgGradientData = (
   gradientId: string,
   colors: string[],
   angle: number = 135,
   borderGradientId?: string,
-  borderColors?: string[]
+  borderColors?: string[],
+  borderAngle?: number
 ) => {
   const coords = getGradientCoordinates(angle);
+  const borderCoords = borderGradientId && borderColors
+    ? getGradientCoordinates(borderAngle ?? angle)
+    : undefined;
   return {
     gradientData: { id: gradientId, ...coords, color1: colors[0], color2: colors[1] },
-    borderGradientData: borderGradientId && borderColors
-      ? { id: borderGradientId, ...coords, color1: borderColors[0], color2: borderColors[1] }
+    borderGradientData: borderGradientId && borderColors && borderCoords
+      ? { id: borderGradientId, ...borderCoords, color1: borderColors[0], color2: borderColors[1] }
       : undefined,
     fillRef: `url(#${gradientId})`,
     strokeRef: borderGradientId ? `url(#${borderGradientId})` : undefined

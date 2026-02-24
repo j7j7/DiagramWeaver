@@ -15,6 +15,7 @@ interface ShapePreviewProps {
   backgroundColors?: string[];
   borderColors?: string[];
   gradientAngle?: number;
+  borderGradientAngle?: number;
   label?: string;
   textColor?: string;
   fontFamily?: string;
@@ -55,6 +56,7 @@ export function ShapePreview({
   backgroundColors,
   borderColors,
   gradientAngle = 135,
+  borderGradientAngle,
   label,
   textColor = '#000000',
   fontFamily,
@@ -97,6 +99,8 @@ export function ShapePreview({
     style: { display: 'block' }
   };
 
+  const borderCoords = getGradientCoordinates(borderGradientAngle ?? gradientAngle);
+
   const renderShape = () => {
     // Circle
     if (type === 'generic.object.circle' || type?.endsWith('.circle')) {
@@ -113,7 +117,7 @@ export function ShapePreview({
               </linearGradient>
             )}
             {borderStyle === 'gradient' && (
-              <linearGradient id={borderGradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+              <linearGradient id={borderGradientId} x1={borderCoords.x1} y1={borderCoords.y1} x2={borderCoords.x2} y2={borderCoords.y2}>
                 <stop offset="0%" stopColor={borderColorArray[0]} />
                 <stop offset="100%" stopColor={borderColorArray[1]} />
               </linearGradient>
@@ -148,7 +152,7 @@ export function ShapePreview({
               </linearGradient>
             )}
             {borderStyle === 'gradient' && (
-              <linearGradient id={borderGradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+              <linearGradient id={borderGradientId} x1={borderCoords.x1} y1={borderCoords.y1} x2={borderCoords.x2} y2={borderCoords.y2}>
                 <stop offset="0%" stopColor={borderColorArray[0]} />
                 <stop offset="100%" stopColor={borderColorArray[1]} />
               </linearGradient>
@@ -190,7 +194,7 @@ export function ShapePreview({
               </linearGradient>
             )}
             {borderStyle === 'gradient' && (
-              <linearGradient id={borderGradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+              <linearGradient id={borderGradientId} x1={borderCoords.x1} y1={borderCoords.y1} x2={borderCoords.x2} y2={borderCoords.y2}>
                 <stop offset="0%" stopColor={borderColorArray[0]} />
                 <stop offset="100%" stopColor={borderColorArray[1]} />
               </linearGradient>
@@ -231,7 +235,7 @@ export function ShapePreview({
               </linearGradient>
             )}
             {borderStyle === 'gradient' && (
-              <linearGradient id={borderGradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+              <linearGradient id={borderGradientId} x1={borderCoords.x1} y1={borderCoords.y1} x2={borderCoords.x2} y2={borderCoords.y2}>
                 <stop offset="0%" stopColor={borderColorArray[0]} />
                 <stop offset="100%" stopColor={borderColorArray[1]} />
               </linearGradient>
@@ -281,7 +285,7 @@ export function ShapePreview({
               </linearGradient>
             )}
             {borderStyle === 'gradient' && (
-              <linearGradient id={borderGradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+              <linearGradient id={borderGradientId} x1={borderCoords.x1} y1={borderCoords.y1} x2={borderCoords.x2} y2={borderCoords.y2}>
                 <stop offset="0%" stopColor={borderColorArray[0]} />
                 <stop offset="100%" stopColor={borderColorArray[1]} />
               </linearGradient>
@@ -313,7 +317,7 @@ export function ShapePreview({
               </linearGradient>
             )}
             {borderStyle === 'gradient' && (
-              <linearGradient id={borderGradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+              <linearGradient id={borderGradientId} x1={borderCoords.x1} y1={borderCoords.y1} x2={borderCoords.x2} y2={borderCoords.y2}>
                 <stop offset="0%" stopColor={borderColorArray[0]} />
                 <stop offset="100%" stopColor={borderColorArray[1]} />
               </linearGradient>
@@ -349,7 +353,7 @@ export function ShapePreview({
               </linearGradient>
             )}
             {borderStyle === 'gradient' && (
-              <linearGradient id={borderGradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+              <linearGradient id={borderGradientId} x1={borderCoords.x1} y1={borderCoords.y1} x2={borderCoords.x2} y2={borderCoords.y2}>
                 <stop offset="0%" stopColor={borderColorArray[0]} />
                 <stop offset="100%" stopColor={borderColorArray[1]} />
               </linearGradient>
@@ -381,7 +385,7 @@ export function ShapePreview({
               </linearGradient>
             )}
             {borderStyle === 'gradient' && (
-              <linearGradient id={borderGradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+              <linearGradient id={borderGradientId} x1={borderCoords.x1} y1={borderCoords.y1} x2={borderCoords.x2} y2={borderCoords.y2}>
                 <stop offset="0%" stopColor={borderColorArray[0]} />
                 <stop offset="100%" stopColor={borderColorArray[1]} />
               </linearGradient>
@@ -427,7 +431,7 @@ export function ShapePreview({
               </linearGradient>
             )}
             {borderStyle === 'gradient' && (
-              <linearGradient id={borderGradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+              <linearGradient id={borderGradientId} x1={borderCoords.x1} y1={borderCoords.y1} x2={borderCoords.x2} y2={borderCoords.y2}>
                 <stop offset="0%" stopColor={borderColorArray[0]} />
                 <stop offset="100%" stopColor={borderColorArray[1]} />
               </linearGradient>
@@ -473,7 +477,7 @@ export function ShapePreview({
               </linearGradient>
             )}
             {borderStyle === 'gradient' && (
-              <linearGradient id={borderGradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+              <linearGradient id={borderGradientId} x1={borderCoords.x1} y1={borderCoords.y1} x2={borderCoords.x2} y2={borderCoords.y2}>
                 <stop offset="0%" stopColor={borderColorArray[0]} />
                 <stop offset="100%" stopColor={borderColorArray[1]} />
               </linearGradient>
@@ -519,7 +523,7 @@ export function ShapePreview({
               </linearGradient>
             )}
             {borderStyle === 'gradient' && (
-              <linearGradient id={borderGradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+              <linearGradient id={borderGradientId} x1={borderCoords.x1} y1={borderCoords.y1} x2={borderCoords.x2} y2={borderCoords.y2}>
                 <stop offset="0%" stopColor={borderColorArray[0]} />
                 <stop offset="100%" stopColor={borderColorArray[1]} />
               </linearGradient>
@@ -551,7 +555,7 @@ export function ShapePreview({
               </linearGradient>
             )}
             {borderStyle === 'gradient' && (
-              <linearGradient id={borderGradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+              <linearGradient id={borderGradientId} x1={borderCoords.x1} y1={borderCoords.y1} x2={borderCoords.x2} y2={borderCoords.y2}>
                 <stop offset="0%" stopColor={borderColorArray[0]} />
                 <stop offset="100%" stopColor={borderColorArray[1]} />
               </linearGradient>
@@ -595,7 +599,7 @@ export function ShapePreview({
               </linearGradient>
             )}
             {borderStyle === 'gradient' && (
-              <linearGradient id={borderGradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+              <linearGradient id={borderGradientId} x1={borderCoords.x1} y1={borderCoords.y1} x2={borderCoords.x2} y2={borderCoords.y2}>
                 <stop offset="0%" stopColor={borderColorArray[0]} />
                 <stop offset="100%" stopColor={borderColorArray[1]} />
               </linearGradient>
@@ -632,7 +636,7 @@ export function ShapePreview({
               </linearGradient>
             )}
             {borderStyle === 'gradient' && (
-              <linearGradient id={borderGradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+              <linearGradient id={borderGradientId} x1={borderCoords.x1} y1={borderCoords.y1} x2={borderCoords.x2} y2={borderCoords.y2}>
                   <stop offset="0%" stopColor={borderColorArray[0]} />
                   <stop offset="100%" stopColor={borderColorArray[1]} />
               </linearGradient>
@@ -668,7 +672,7 @@ export function ShapePreview({
             </linearGradient>
           )}
           {borderStyle === 'gradient' && (
-            <linearGradient id={borderGradientId} x1={coords.x1} y1={coords.y1} x2={coords.x2} y2={coords.y2}>
+            <linearGradient id={borderGradientId} x1={borderCoords.x1} y1={borderCoords.y1} x2={borderCoords.x2} y2={borderCoords.y2}>
                 <stop offset="0%" stopColor={borderColorArray[0]} />
                 <stop offset="100%" stopColor={borderColorArray[1]} />
             </linearGradient>

@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { ColorPicker } from "@/components/ui/color-picker";
 import { VisualStyling, VISUAL_STYLES, getPredefinedVisualStyle, findClosestPredefinedStyle } from "@/lib/visual-styling";
 import { Palette, RotateCcw, X } from "lucide-react";
+import { GradientAnglePicker } from "./gradient-angle-picker";
 import Draggable from 'react-draggable';
 
 interface VisualStylingPanelProps {
@@ -255,24 +256,30 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                 </Select>
               </div>
               {styling.borderStyle && styling.borderStyle !== 'none' && (
-                <div className="space-y-1">
-                  <Label className="text-xs text-slate-600">Width: {styling.borderWidth || 2}px</Label>
-                  <Slider
-                    min={0}
-                    max={20}
-                    step={1}
-                    value={[styling.borderWidth || 2]}
-                    onValueChange={([value]) => handlePropertyChange('borderWidth', value)}
-                    className="w-full"
-                  />
+                <div className="space-y-1 flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs text-slate-600 shrink-0">Width: {styling.borderWidth || 2}px</Label>
+                    <Slider
+                      min={0}
+                      max={20}
+                      step={1}
+                      value={[styling.borderWidth || 2]}
+                      onValueChange={([value]) => handlePropertyChange('borderWidth', value)}
+                      className="flex-1 min-w-0"
+                    />
+                    {styling.borderStyle === 'gradient' && (
+                      <GradientAnglePicker
+                        value={styling.borderGradientAngle ?? styling.gradientAngle ?? 135}
+                        onChange={(angle) => handlePropertyChange('borderGradientAngle', angle)}
+                        label="Dir"
+                      />
+                    )}
+                  </div>
                 </div>
               )}
             </div>
             {styling.borderStyle && styling.borderStyle !== 'none' && (
               <div className="space-y-2">
-                <Label className="text-xs text-slate-600">
-                  {styling.borderStyle === 'gradient' ? 'Colors' : 'Color'}
-                </Label>
                 {styling.borderStyle === 'gradient' ? (
                   <div className="grid grid-cols-2 gap-2">
                     <div className="flex flex-col gap-2">
@@ -338,33 +345,16 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                   </SelectContent>
                 </Select>
               </div>
-              {(styling.borderStyle === 'gradient' || styling.backgroundStyle === 'gradient') && (
-                <div className="space-y-1">
-                  <Label className="text-xs text-slate-600">Angle</Label>
-                  <Select
-                    value={String(styling.gradientAngle || 135)}
-                    onValueChange={(value) => handlePropertyChange('gradientAngle', parseInt(value))}
-                  >
-                    <SelectTrigger className="h-7 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="z-[70]">
-                      <SelectItem value="-45" className="text-xs">↗</SelectItem>
-                      <SelectItem value="0" className="text-xs">→</SelectItem>
-                      <SelectItem value="45" className="text-xs">↘</SelectItem>
-                      <SelectItem value="90" className="text-xs">↓</SelectItem>
-                      <SelectItem value="135" className="text-xs">↙</SelectItem>
-                      <SelectItem value="180" className="text-xs">←</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              {styling.backgroundStyle === 'gradient' && (
+                <GradientAnglePicker
+                  value={styling.gradientAngle ?? 135}
+                  onChange={(angle) => handlePropertyChange('gradientAngle', angle)}
+                  label="Direction"
+                />
               )}
             </div>
             {styling.backgroundStyle && styling.backgroundStyle !== 'none' && (
               <div className="space-y-2">
-                <Label className="text-xs text-slate-600">
-                  {styling.backgroundStyle === 'gradient' ? 'Colors' : 'Color'}
-                </Label>
                 {styling.backgroundStyle === 'gradient' ? (
                   <div className="grid grid-cols-2 gap-2">
                     <div className="flex flex-col gap-2">

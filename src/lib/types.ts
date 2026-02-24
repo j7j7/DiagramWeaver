@@ -30,7 +30,8 @@ export interface DiagramNodeData {
   borderColors?: string[]; // Border colors for gradient [startColor, endColor]
   backgroundStyle?: 'solid' | 'gradient' | 'none'; // Background style for label/textbox/shape nodes
   backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
-  gradientAngle?: number; // Gradient angle in degrees (0, 45, -45, 90, 180)
+  gradientAngle?: number; // Background gradient angle in degrees
+  borderGradientAngle?: number; // Border gradient angle in degrees
   shadow?: boolean; // Whether to show shadow around label/textbox nodes
   rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
   textPosition?: 'above' | 'center' | 'under'; // Text position for shape nodes
@@ -151,7 +152,8 @@ export interface DiagramNodeItem {
   borderColors?: string[]; // Border colors for gradient [startColor, endColor]
   backgroundStyle?: 'solid' | 'gradient' | 'none'; // Background style for label/textbox/shape nodes
   backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
-  gradientAngle?: number; // Gradient angle in degrees (0, 45, -45, 90, 180)
+  gradientAngle?: number; // Background gradient angle in degrees
+  borderGradientAngle?: number; // Border gradient angle in degrees
   shadow?: boolean; // Whether to show shadow around label/textbox nodes
   roundedEdges?: boolean; // Whether to apply rounded edges to shapes
   rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
@@ -219,7 +221,8 @@ export interface DiagramZoneItem {
   borderColors?: string[]; // Border colors for gradient [startColor, endColor]
   backgroundStyle?: 'solid' | 'gradient' | 'none'; // Background style
   backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
-  gradientAngle?: number; // Gradient angle in degrees (0, 45, -45, 90, 180)
+  gradientAngle?: number; // Background gradient angle in degrees
+  borderGradientAngle?: number; // Border gradient angle in degrees
   orientation?: 'horizontal' | 'vertical' | 'square'; // Zone shape orientation
   maxItemsPerRow?: number; // Maximum items per row (for grid layouts)
   lineColor?: string; // Color for connections from this zone
@@ -278,7 +281,8 @@ export interface DiagramZoneData {
   borderColors?: string[]; // Border colors for gradient [startColor, endColor]
   backgroundStyle?: 'solid' | 'gradient' | 'none'; // Background style
   backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
-  gradientAngle?: number; // Gradient angle in degrees (0, 45, -45, 90, 180)
+  gradientAngle?: number; // Background gradient angle in degrees
+  borderGradientAngle?: number; // Border gradient angle in degrees
   orientation?: 'horizontal' | 'vertical' | 'square'; // Zone shape orientation
   maxItemsPerRow?: number; // Maximum items per row (for grid layouts)
   lineColor?: string; // Color for connections from this zone

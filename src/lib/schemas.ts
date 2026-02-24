@@ -33,7 +33,8 @@ export const DiagramNodeDataSchema = z.object({
   borderColors: z.array(z.string()).optional(), // Border colors for gradient [startColor, endColor]
   backgroundStyle: z.enum(['solid', 'gradient', 'none']).optional(), // Background style for label/textbox/shape nodes
   backgroundColors: z.array(z.string()).optional(), // Background colors for gradient [startColor, endColor]
-  gradientAngle: z.number().optional(), // Gradient angle in degrees (0, 45, -45, 90, 180)
+  gradientAngle: z.number().optional(), // Background gradient angle in degrees
+  borderGradientAngle: z.number().optional(), // Border gradient angle in degrees
   shadow: z.boolean().optional(), // Whether to show shadow around label/textbox nodes
   rotation: z.number().optional(), // Rotation angle in degrees (0, 45, -45, 90, -90)
   textPosition: z.enum(['above', 'center', 'under']).optional(), // Text position for shape nodes
@@ -128,7 +129,8 @@ export const DiagramGroupDataSchema = z.object({
   borderColors: z.array(z.string()).optional(), // [startColor, endColor]
   backgroundStyle: z.enum(['solid', 'gradient', 'none']).optional(),
   backgroundColors: z.array(z.string()).optional(), // [startColor, endColor]
-  gradientAngle: z.number().optional(), // Gradient angle in degrees (0, 45, -45, 90, 180)
+  gradientAngle: z.number().optional(), // Background gradient angle in degrees
+  borderGradientAngle: z.number().optional(), // Border gradient angle in degrees
   orientation: z.enum(['horizontal', 'vertical', 'square']).optional(),
   maxItemsPerRow: z.number().optional(),
   lineColor: z.string().optional(),
@@ -224,7 +226,8 @@ export const DiagramNodeItemSchema = z.object({
   borderColors: z.array(z.string()).optional(), // Border colors for gradient [startColor, endColor]
   backgroundStyle: z.enum(['solid', 'gradient', 'none']).optional(), // Background style for label/textbox/shape nodes
   backgroundColors: z.array(z.string()).optional(), // Background colors for gradient [startColor, endColor]
-  gradientAngle: z.number().optional(), // Gradient angle in degrees (0, 45, -45, 90, 180)
+  gradientAngle: z.number().optional(), // Background gradient angle in degrees
+  borderGradientAngle: z.number().optional(), // Border gradient angle in degrees
   shadow: z.boolean().optional(), // Whether to show shadow around label/textbox nodes
   rotation: z.number().optional(), // Rotation angle in degrees (0, 45, -45, 90, -90)
   textPosition: z.enum(['above', 'center', 'under']).optional(), // Text position for shape nodes
@@ -288,7 +291,8 @@ export const DiagramGroupItemSchema = z.object({
   borderColors: z.array(z.string()).optional(), // Border colors for gradient [startColor, endColor]
   backgroundStyle: z.enum(['solid', 'gradient', 'none']).optional(), // Background style
   backgroundColors: z.array(z.string()).optional(), // Background colors for gradient [startColor, endColor]
-  gradientAngle: z.number().optional(), // Gradient angle in degrees (0, 45, -45, 90, 180)
+  gradientAngle: z.number().optional(), // Background gradient angle in degrees
+  borderGradientAngle: z.number().optional(), // Border gradient angle in degrees
   orientation: z.enum(['horizontal', 'vertical', 'square']).optional(), // Group shape orientation
   maxItemsPerRow: z.number().optional(), // Maximum items per row (for grid layouts)
   lineColor: z.string().optional(), // Color for connections from this group

@@ -7,6 +7,7 @@ interface UseSvgGradientOptions {
   colors: string[];
   angle?: number;
   borderColors?: string[];
+  borderAngle?: number;
   enabled?: boolean;
 }
 
@@ -24,6 +25,7 @@ export function useSvgGradient({
   colors,
   angle = 135,
   borderColors,
+  borderAngle,
   enabled = true
 }: UseSvgGradientOptions): UseSvgGradientResult {
   const gradientId = useId();
@@ -42,7 +44,8 @@ export function useSvgGradient({
     colors,
     angle,
     borderGradientId,
-    borderColors
+    borderColors,
+    borderAngle
   );
 
   const defs = (

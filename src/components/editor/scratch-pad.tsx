@@ -151,6 +151,7 @@ export function ScratchPad({ isOpen, onClose, diagramData, setDiagramData, onCan
               backgroundStyle: child.backgroundStyle,
               backgroundColors: child.backgroundColors,
               gradientAngle: child.gradientAngle,
+              borderGradientAngle: child.borderGradientAngle,
               shadow: child.shadow,
               rotation: child.rotation,
               textPosition: child.textPosition,
@@ -211,6 +212,7 @@ export function ScratchPad({ isOpen, onClose, diagramData, setDiagramData, onCan
           backgroundStyle: item.backgroundStyle,
           backgroundColors: item.backgroundColors,
           gradientAngle: item.gradientAngle,
+          borderGradientAngle: item.borderGradientAngle,
           shadow: item.shadow,
           rotation: item.rotation,
           textPosition: item.textPosition,
@@ -457,6 +459,7 @@ const DraggableShape = ({ item, data }: { item: ScratchPadItem; data: any }) => 
             backgroundColors={itemData.backgroundColors}
             borderColors={itemData.borderColors}
             gradientAngle={itemData.gradientAngle}
+            borderGradientAngle={itemData.borderGradientAngle}
             label={item.label}
             textColor={itemData.textColor}
             fontFamily={itemData.fontFamily}

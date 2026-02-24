@@ -9,7 +9,8 @@ export interface VisualStyling {
   backgroundStyle?: 'solid' | 'gradient' | 'none';
   backgroundColor?: string;
   backgroundColors?: string[]; // For gradient backgrounds [startColor, endColor]
-  gradientAngle?: number; // Gradient angle in degrees (0, 45, -45, 90, 180)
+  gradientAngle?: number; // Background gradient angle in degrees
+  borderGradientAngle?: number; // Border gradient angle in degrees
   shadow?: boolean;
   borderWidth?: number; // Border thickness
   roundedEdges?: boolean; // Whether to apply rounded edges to shapes
@@ -53,6 +54,7 @@ export const VISUAL_STYLES = {
     borderColors: ['#6b7280', '#3b82f6'],
     backgroundColors: ['#f3f4f6', '#e5e7eb'],
     gradientAngle: 135,
+    borderGradientAngle: 135,
     shadow: false
   },
   gradientWithShadow: {
@@ -63,6 +65,7 @@ export const VISUAL_STYLES = {
     borderColors: ['#6b7280', '#3b82f6'],
     backgroundColors: ['#f3f4f6', '#e5e7eb'],
     gradientAngle: 135,
+    borderGradientAngle: 135,
     shadow: true
   },
   borderOnly: {
@@ -108,6 +111,7 @@ export const VISUAL_STYLES = {
     borderColors: ['#8b5cf6', '#3b82f6'],
     backgroundColors: ['#ddd6fe', '#dbeafe'],
     gradientAngle: 45,
+    borderGradientAngle: 45,
     shadow: true
   }
 };
@@ -127,6 +131,7 @@ export function getVisualStyling(
     backgroundColor: node?.backgroundColor || theme?.backgroundColor || '#f3f4f6',
     backgroundColors: node?.backgroundColors || theme?.backgroundColors,
     gradientAngle: node?.gradientAngle || theme?.gradientAngle || 135,
+    borderGradientAngle: node?.borderGradientAngle ?? theme?.borderGradientAngle ?? node?.gradientAngle ?? theme?.gradientAngle ?? 135,
     shadow: node?.shadow ?? theme?.shadow ?? false,
     borderWidth: node?.borderWidth ?? theme?.borderWidth ?? 2,
     roundedEdges: node?.roundedEdges ?? theme?.roundedEdges ?? false
@@ -144,7 +149,7 @@ export function getVisualStylingCSS(styling: VisualStyling): React.CSSProperties
     css.border = 'none';
   } else if (styling.borderStyle === 'gradient' && styling.borderColors) {
     css.border = `${styling.borderWidth || 2}px solid`;
-    css.borderImage = `linear-gradient(${styling.gradientAngle || 135}deg, ${styling.borderColors[0]}, ${styling.borderColors[1]}) 1`;
+    css.borderImage = `linear-gradient(${styling.borderGradientAngle ?? styling.gradientAngle ?? 135}deg, ${styling.borderColors[0]}, ${styling.borderColors[1]}) 1`;
   } else if (styling.borderStyle === 'solid' || styling.borderStyle === 'dotted') {
     css.border = `${styling.borderWidth || 2}px ${styling.borderStyle} ${styling.borderColor || '#d1d5db'}`;
   }
@@ -178,6 +183,7 @@ export function extractVisualStylingFromNode(node: DiagramNodeData | DiagramNode
     backgroundColor: node.backgroundColor,
     backgroundColors: node.backgroundColors,
     gradientAngle: node.gradientAngle,
+    borderGradientAngle: node.borderGradientAngle,
     shadow: node.shadow,
     borderWidth: node.borderWidth,
     roundedEdges: (node as any).roundedEdges,
@@ -214,6 +220,7 @@ export function extractVisualStylingFromGroup(group: DiagramGroupData | DiagramG
     backgroundColor: group.backgroundColor,
     backgroundColors: group.backgroundColors,
     gradientAngle: group.gradientAngle,
+    borderGradientAngle: group.borderGradientAngle,
     shadow: group.shadow,
     borderWidth: group.borderWidth
   };
@@ -235,6 +242,7 @@ export function applyVisualStylingToNode(
     backgroundColor: styling.backgroundColor ?? node.backgroundColor,
     backgroundColors: styling.backgroundColors ?? node.backgroundColors,
     gradientAngle: styling.gradientAngle ?? node.gradientAngle,
+    borderGradientAngle: styling.borderGradientAngle ?? node.borderGradientAngle ?? node.gradientAngle,
     shadow: styling.shadow ?? node.shadow,
     borderWidth: styling.borderWidth ?? node.borderWidth,
     roundedEdges: styling.roundedEdges ?? (node as any).roundedEdges,
@@ -260,6 +268,7 @@ export function applyVisualStylingToGroup(
     backgroundColor: styling.backgroundColor ?? group.backgroundColor,
     backgroundColors: styling.backgroundColors ?? group.backgroundColors,
     gradientAngle: styling.gradientAngle ?? group.gradientAngle,
+    borderGradientAngle: styling.borderGradientAngle ?? group.borderGradientAngle ?? group.gradientAngle,
     shadow: styling.shadow ?? group.shadow,
     borderWidth: styling.borderWidth ?? group.borderWidth
   };

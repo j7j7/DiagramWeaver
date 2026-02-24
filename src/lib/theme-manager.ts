@@ -528,9 +528,12 @@ class ThemeManager {
       (updated as any).textColor = properties.textColor;
     }
 
-    // Apply gradient angle
+    // Apply gradient angles
     if (properties.gradientAngle !== undefined) {
       (updated as any).gradientAngle = properties.gradientAngle;
+    }
+    if (properties.borderGradientAngle !== undefined) {
+      (updated as any).borderGradientAngle = properties.borderGradientAngle;
     }
 
     return updated;
