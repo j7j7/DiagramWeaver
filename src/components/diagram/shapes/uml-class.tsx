@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import type { DiagramNodeData } from "@/lib/types";
-import { getShapeStyles } from "./shape-utils";
+import { getShapeStyles, getGradientWithAngle } from "./shape-utils";
 import { getTextColorForBackground } from "./shape-utils";
 import { ShapeTag } from "./shape-tag";
 import { UML_NAME_HEIGHT, UML_LINE_HEIGHT } from "@/lib/uml-utils";
@@ -75,6 +75,14 @@ export function UmlClassShape({
   const fallbackColor = getTextColorForBackground(bgColor, nodeAny.textColor);
   const dividerColor = styles.borderColor ?? "#000000";
   const dividerWidth = umlStyle?.dividerLineWidth ?? 1;
+  const roundedEdges = nodeAny.roundedEdges || false;
+  const borderRadius = roundedEdges
+    ? `${Math.min(width, height) * 0.06}px`
+    : "6px";
+  const borderImage = styles.borderImage;
+  const borderColors = styles.borderColors;
+  const borderGradientAngle = nodeAny.borderGradientAngle ?? nodeAny.gradientAngle ?? 135;
+  const needsGradientBorderRounding = borderImage && borderColors && borderRadius;
 
   const nameStyle = getCompartmentStyle(umlStyle?.name, fallbackColor);
   const attrStyle = getCompartmentStyle(umlStyle?.attributes, fallbackColor);
@@ -139,15 +147,45 @@ export function UmlClassShape({
   );
 
   return (
-    <div className="relative" style={{ width, height }}>
+    <div
+      className="relative"
+      style={{
+        width,
+        height,
+        boxSizing: "border-box",
+        borderRadius: needsGradientBorderRounding ? borderRadius : undefined,
+        ...(styles.shadow ? { boxShadow: "0 2px 8px rgba(0,0,0,0.15)" } : {}),
+      }}
+    >
+      {needsGradientBorderRounding && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: getGradientWithAngle(borderColors, borderGradientAngle),
+            borderRadius,
+            pointerEvents: "none",
+          }}
+        />
+      )}
       <div
         className="relative overflow-hidden flex flex-col w-full h-full"
         style={{
           boxSizing: "border-box",
-          border: `${styles.borderWidth ?? 1}px ${styles.borderStyle ?? "solid"} ${dividerColor}`,
-          background: styles.background ?? nodeAny.backgroundColor ?? "#ffffff",
-          borderRadius: 2,
-          ...(styles.shadow ? { boxShadow: "0 2px 8px rgba(0,0,0,0.15)" } : {}),
+          ...(needsGradientBorderRounding
+            ? {
+                width: `calc(100% - ${styles.borderWidth})`,
+                height: `calc(100% - ${styles.borderWidth})`,
+                margin: `calc(${styles.borderWidth} / 2)`,
+                background: styles.background ?? nodeAny.backgroundColor ?? "#ffffff",
+              }
+            : {
+                borderWidth: styles.borderWidth,
+                borderStyle: styles.borderStyle ?? "solid",
+                borderColor: dividerColor,
+                background: styles.background ?? nodeAny.backgroundColor ?? "#ffffff",
+                borderRadius,
+              }),
         }}
       >
         {/* Name section - fixed single-line height */}

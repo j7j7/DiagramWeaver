@@ -1,0 +1,20 @@
+sequenceDiagram
+    participant Customer
+    participant Website
+    participant PaymentGateway as Payment Gateway
+    participant Warehouse
+
+    Customer->>Website: Browse and select items
+    Website->>Website: Add items to cart
+    Customer->>Website: Proceed to checkout
+    Website->>Customer: Display order summary
+    Customer->>Website: Enter shipping & payment info
+    Website->>PaymentGateway: Submit payment request
+    PaymentGateway->>PaymentGateway: Process payment
+    PaymentGateway->>Website: Payment confirmed
+    Website->>Website: Create order record
+    Website->>Warehouse: Send order details
+    Warehouse->>Warehouse: Pick and pack items
+    Warehouse->>Website: Order ready for shipment
+    Website->>Customer: Order confirmation email
+    Customer->>Customer: Order placed successfully
