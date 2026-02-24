@@ -31,6 +31,7 @@ interface TopMenuBarProps {
   onLoad: () => void;
   onSave: () => void;
   onLoadExample?: (exampleId: string) => void;
+  onImportMermaid?: () => void;
   onNewTab?: () => void;
   onExportSvg?: () => void;
   onExportPng?: () => void;
@@ -102,6 +103,7 @@ export function TopMenuBar({
   onLoad,
   onSave,
   onLoadExample,
+  onImportMermaid,
   onNewTab,
   onExportSvg,
   onExportPng,
@@ -241,6 +243,12 @@ export function TopMenuBar({
               Load
               <MenubarShortcut>Ctrl+O</MenubarShortcut>
             </MenubarItem>
+            {onImportMermaid && (
+              <MenubarItem onClick={onImportMermaid}>
+                <Upload className="mr-2 h-4 w-4" />
+                Import Mermaid
+              </MenubarItem>
+            )}
             <MenubarItem onClick={onSave}>
               <Download className="mr-2 h-4 w-4" />
               Save
@@ -257,6 +265,12 @@ export function TopMenuBar({
                     </MenubarItem>
                     <MenubarItem onClick={() => onLoadExample('example2')}>
                       Example 2
+                    </MenubarItem>
+                    <MenubarItem onClick={() => onLoadExample('simple')}>
+                      Mermaid Simple
+                    </MenubarItem>
+                    <MenubarItem onClick={() => onLoadExample('complex')}>
+                      Mermaid Complex
                     </MenubarItem>
                   </MenubarSubContent>
                 </MenubarSub>

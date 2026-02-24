@@ -1,0 +1,14 @@
+%% Complex Mermaid flowchart - demonstrates shapes and connectors
+%% Shapes: rectangle, rounded, circle, diamond, hexagon, parallelogram, trapezoid
+flowchart LR
+    A[Web Client] --> B{Load Balancer}
+    B --> C[(Database)]
+    B --> D[API Server]
+    D --> E[[Backend Service]]
+    E --> F{{Cache Layer}}
+    F -.-> G[/Redis/]
+    G --> H[\Queue\]
+    H ==> I[/Worker\]
+    A -.-> D
+    C --> D
+    I --> C

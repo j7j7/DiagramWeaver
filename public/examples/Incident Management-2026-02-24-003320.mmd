@@ -1,0 +1,41 @@
+flowchart TD
+    A[Incident Detected] --> B{Severity Assessment}
+    B -->|Critical| C[Page On-Call Engineer]
+    B -->|High| D[Alert Engineering Team]
+    B -->|Medium/Low| E[Create Ticket]
+    C --> F[Incident Response Team Assembled]
+    D --> F
+    E --> F
+    F --> G[Establish War Room/Communication Channel]
+    G --> H[Gather Initial Information]
+    H --> I[Identify Root Cause]
+    I --> J{Workaround Available?}
+    J -->|Yes| K[Implement Temporary Fix]
+    J -->|No| L[Begin Permanent Fix Development]
+    K --> L
+    L --> M[Code Review & Testing]
+    M --> N{Tests Pass?}
+    N -->|No| O[Debug & Iterate]
+    O --> M
+    N -->|Yes| P[Deploy to Production]
+    P --> Q{Incident Resolved?}
+    Q -->|No| R[Rollback & Reassess]
+    R --> L
+    Q -->|Yes| S[Monitor for Stability]
+    S --> T{System Stable?}
+    T -->|No| U[Investigate Further]
+    U --> L
+    T -->|Yes| V[Close Incident]
+    V --> W[Schedule Post-Mortem]
+    W --> X[Document Timeline & Actions]
+    X --> Y[Root Cause Analysis]
+    Y --> Z[Identify Action Items]
+    Z --> AA[Create Follow-up Tasks]
+    AA --> AB[Conduct Post-Mortem Meeting]
+    AB --> AC[Distribute Findings]
+    AC --> AD[Track Preventive Measures]
+    AD --> AE[End]
+    style A fill:#ff6b6b
+    style V fill:#51cf66
+    style AB fill:#4dabf7
+    style AE fill:#95e1d3

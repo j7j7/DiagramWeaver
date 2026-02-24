@@ -38,6 +38,8 @@ import { useDiagramTabs } from '@/hooks/use-diagram-tabs';
 import { useLayers } from '@/hooks/use-layers';
 import { flattenDiagramOnImport, type RawDiagramData } from '@/lib/flatten-on-import';
 import { DiagramDataSchema } from '@/lib/schemas';
+import { parseMermaidFlowchart } from '@/lib/mermaid-parser';
+import { mermaidToDiagramData } from '@/lib/mermaid-to-diagram';
 import { themeManager } from '@/lib/theme-manager';
 import { DiagramTheme } from '@/lib/theme-types';
 import { LayersPanel } from './editor/layers-panel';
@@ -223,6 +225,7 @@ export default function DiagramEditor() {
   const [isDragging, setIsDragging] = React.useState<boolean>(false);
   const [canPaste, setCanPaste] = React.useState<boolean>(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const mermaidInputRef = React.useRef<HTMLInputElement>(null);
   const [mousePosition, setMousePosition] = React.useState<{ x: number; y: number } | null>(null);
   const [hoverEnabled, setHoverEnabled] = React.useState<boolean>(false);
   const [iconBackgroundEnabled, setIconBackgroundEnabled] = React.useState<boolean>(true);
@@ -881,6 +884,46 @@ export default function DiagramEditor() {
     fileInputRef.current?.click();
   };
 
+  const handleMermaidImportClick = () => {
+    mermaidInputRef.current?.click();
+  };
+
+  const handleMermaidFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const text = e.target?.result;
+        if (typeof text !== 'string') return;
+        const parsed = parseMermaidFlowchart(text);
+        if (parsed.nodes.length === 0 && parsed.edges.length === 0) {
+          throw new Error('No valid flowchart content found. Expected: flowchart TD or flowchart LR followed by node and edge definitions.');
+        }
+        if (parsed.errors.length > 0) {
+          const errMsg = parsed.errors.join('; ');
+          console.error('[Mermaid Import] Parse issues:', { errors: parsed.errors, nodes: parsed.nodes.length, edges: parsed.edges.length });
+          throw new Error(`Mermaid parse issues: ${errMsg}`);
+        }
+        const completeData = await mermaidToDiagramData(parsed);
+        setDiagramData({ nodes: [], connections: [], groupings: [] });
+        setTimeout(() => {
+          setDiagramData(completeData);
+          setSelectedItem(null);
+          toast({ title: 'Mermaid Imported', description: 'Your diagram has been successfully imported.' });
+          setTimeout(() => editorRef.current?.fitToView(), 100);
+        }, 0);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'An unknown error occurred';
+        const stack = error instanceof Error ? error.stack : undefined;
+        console.error('[Mermaid Import] Error:', { message, stack, file: file?.name });
+        toast({ variant: 'destructive', title: 'Error Importing Mermaid', description: message });
+      }
+    };
+    reader.readAsText(file);
+    if (event.target) event.target.value = '';
+  };
+
   const parseUnknownJsonToDiagramData = React.useCallback((json: unknown): DiagramData => {
     const flattened = flattenDiagramOnImport((json || {}) as RawDiagramData);
     const result = DiagramDataSchema.safeParse(flattened);
@@ -899,40 +942,52 @@ export default function DiagramEditor() {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         try {
           const text = e.target?.result;
-          if (typeof text === 'string') {
+          if (typeof text !== 'string') return;
+          const ext = file.name.toLowerCase().slice(-5);
+          const isMermaid = /\.(mmd|mermaid)$/.test(file.name.toLowerCase())
+            || /^\s*(flowchart|graph)\s+(TD|TB|BT|RL|LR)\s*$/im.test(text.trim());
+          let completeData: DiagramData;
+
+          if (isMermaid) {
+            const parsed = parseMermaidFlowchart(text);
+            if (parsed.nodes.length === 0 && parsed.edges.length === 0) {
+              throw new Error('No valid flowchart content found. Expected: flowchart TD or flowchart LR followed by node and edge definitions.');
+            }
+            if (parsed.errors.length > 0) {
+              const errMsg = parsed.errors.join('; ');
+              console.error('[Mermaid Load] Parse issues:', { errors: parsed.errors, nodes: parsed.nodes.length, edges: parsed.edges.length });
+              throw new Error(`Mermaid parse issues: ${errMsg}`);
+            }
+            completeData = await mermaidToDiagramData(parsed);
+          } else {
             const jsonData = JSON.parse(text);
-            const completeData = parseUnknownJsonToDiagramData(jsonData);
-            setDiagramData({ nodes: [], connections: [], groupings: [] });
-            setTimeout(() => {
-              setDiagramData(completeData);
-              setSelectedItem(null);
-              toast({ title: 'Diagram Loaded', description: 'Your diagram has been successfully loaded.' });
-              
-              // Fit diagram to view after loading
-              setTimeout(() => {
-                editorRef.current?.fitToView();
-              }, 100);
-            }, 0);
+            completeData = parseUnknownJsonToDiagramData(jsonData);
           }
+
+          setDiagramData({ nodes: [], connections: [], groupings: [] });
+          setTimeout(() => {
+            setDiagramData(completeData);
+            setSelectedItem(null);
+            toast({ title: 'Diagram Loaded', description: 'Your diagram has been successfully loaded.' });
+            setTimeout(() => editorRef.current?.fitToView(), 100);
+          }, 0);
         } catch (error) {
-          // Load error handled below via toast
           const message = error instanceof Error ? error.message : "An unknown error occurred";
+          const stack = error instanceof Error ? error.stack : undefined;
+          console.error('[Diagram Load] Error:', { message, stack, file: file?.name });
           toast({
-              variant: 'destructive',
-              title: 'Error Loading Diagram',
-              description: `Could not load or parse the file. ${message}`,
+            variant: 'destructive',
+            title: 'Error Loading Diagram',
+            description: `Could not load or parse the file. ${message}`,
           });
         }
       };
       reader.readAsText(file);
     }
-    // Reset file input to allow loading the same file again
-    if(event.target) {
-        event.target.value = '';
-    }
+    if (event.target) event.target.value = '';
   };
 
   const handleConnectionUpdate = (from: string, to: string, updates: { text?: string; color?: string; textPosition?: number; lineWidth?: number; shadow?: boolean; style?: 'bezier'; curvature?: number; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean; arrow?: boolean; waypoints?: Array<{ x: number; y: number; id?: string }>; metaData?: Record<string, string> }) => {
@@ -1010,28 +1065,33 @@ export default function DiagramEditor() {
 
   const handleLoadExample = React.useCallback(async (exampleId: string) => {
     try {
-      const res = await fetch(`/examples/${exampleId}.json`);
+      const isMermaid = exampleId === 'simple' || exampleId === 'complex';
+      const res = await fetch(`/examples/${exampleId}.${isMermaid ? 'mmd' : 'json'}`);
       if (!res.ok) {
         throw new Error(`Failed to load example: ${res.statusText}`);
       }
-      const json = await res.json();
-      const diagram = parseUnknownJsonToDiagramData(json);
-      
-      // Create a new tab with the example data
-      const exampleName = exampleId === 'example1' ? 'Example 1' : exampleId === 'example2' ? 'Example 2' : `Example: ${exampleId}`;
+      const text = await res.text();
+      let diagram: DiagramData;
+
+      if (isMermaid) {
+        const parsed = parseMermaidFlowchart(text);
+        if (parsed.nodes.length === 0 && parsed.edges.length === 0) {
+          throw new Error('No valid flowchart content in Mermaid example.');
+        }
+        diagram = await mermaidToDiagramData(parsed);
+      } else {
+        const json = JSON.parse(text);
+        diagram = parseUnknownJsonToDiagramData(json);
+      }
+
+      const exampleName = exampleId === 'example1' ? 'Example 1' : exampleId === 'example2' ? 'Example 2'
+        : exampleId === 'simple' ? 'Mermaid Simple' : exampleId === 'complex' ? 'Mermaid Complex' : `Example: ${exampleId}`;
       createTab({ name: exampleName, diagramData: diagram });
-      
-      toast({ 
-        title: 'Example Loaded', 
-        description: `${exampleName} has been loaded in a new tab.` 
-      });
+
+      toast({ title: 'Example Loaded', description: `${exampleName} has been loaded in a new tab.` });
     } catch (error) {
       const message = error instanceof Error ? error.message : "An unknown error occurred";
-      toast({
-        variant: 'destructive',
-        title: 'Error Loading Example',
-        description: `Could not load example. ${message}`,
-      });
+      toast({ variant: 'destructive', title: 'Error Loading Example', description: `Could not load example. ${message}` });
     }
   }, [parseUnknownJsonToDiagramData, createTab, toast]);
 
@@ -1737,6 +1797,9 @@ export default function DiagramEditor() {
         setCanvasTransform={setCanvasTransform}
         handleNew={handleNew}
         handleLoadClick={handleLoadClick}
+        handleMermaidImportClick={handleMermaidImportClick}
+        handleMermaidFileChange={handleMermaidFileChange}
+        mermaidInputRef={mermaidInputRef}
         handleSave={handleSave}
         handleLoadExample={handleLoadExample}
         createTab={createTab}
@@ -1862,6 +1925,9 @@ function DiagramEditorInner({
   setCanvasTransform,
   handleNew,
   handleLoadClick,
+  handleMermaidImportClick,
+  handleMermaidFileChange,
+  mermaidInputRef,
   handleSave,
   handleLoadExample,
   createTab,
@@ -2034,6 +2100,7 @@ function DiagramEditorInner({
                 <TopMenuBar
                     onNew={handleNew}
                     onLoad={handleLoadClick}
+                    onImportMermaid={handleMermaidImportClick}
                     onSave={handleSave}
                     onLoadExample={handleLoadExample}
                     onNewTab={createTab}
@@ -2114,7 +2181,14 @@ function DiagramEditorInner({
                     type="file"
                     ref={fileInputRef}
                     onChange={handleFileChange}
-                    accept="application/json"
+                    accept=".json,application/json,.mmd,.mermaid,text/plain"
+                    style={{ display: 'none' }}
+                />
+                <input
+                    type="file"
+                    ref={mermaidInputRef}
+                    onChange={handleMermaidFileChange}
+                    accept=".mmd,.mermaid,text/plain"
                     style={{ display: 'none' }}
                 />
             </header>

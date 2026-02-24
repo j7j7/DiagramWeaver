@@ -1,6 +1,32 @@
 # MEMORY.MD
 
-## DiagramWeaver - Latest Features and Functions (Updated 2026-02-20)
+## DiagramWeaver - Latest Features and Functions (Updated 2026-02-24)
+
+### 2026-02-24 – Mermaid Diagram Import
+Import Mermaid flowchart (`.mmd`, `.mermaid`) files into DiagramWeaver. Converts nodes to shapes and text, edges to connectors with optional labels.
+
+**How to import**: File → Load, File → Import Mermaid, or File → Examples → Mermaid Simple / Mermaid Complex.
+
+**Mermaid layout config** (from YAML frontmatter): Matches Mermaid standard. Uses `@dagrejs/dagre` for default/dagre layout, `elkjs` when `layout: elk`. Supports `nodeSpacing`, `rankSpacing` (default 50), and `elk.nodePlacementStrategy`, `elk.mergeEdges`, `elk.cycleBreakingStrategy` for ELK.
+
+**Supported Mermaid flowchart elements**:
+- **Node shapes** (mapped to `generic.object.*`): `[rect]`, `(rounded)`, `((circle))`, `{diamond}`→kite, `[[subroutine]]`, `{{hexagon}}`, `[/parallelogram/]`, `[\parallelogram\]`, `[/trapezoid\]`, `[\trapezoid/]`, `[(cylinder)]`→rounded-rectangle, `([stadium])`→rounded-rectangle
+- **Connectors**: `-->`, `---`, `-.->`, `==>`, with optional labels `|label|` or `-- label --`
+- **Directions**: `flowchart TD`, `flowchart LR`, `flowchart BT`, `flowchart RL`
+
+**Key files**:
+- `src/lib/mermaid-parser.ts` – Parse flowchart syntax, YAML frontmatter config
+- `src/lib/mermaid-layout.ts` – Dagre/ELK layout (Mermaid-compatible)
+- `src/lib/mermaid-to-diagram.ts` – Convert to DiagramData (shapes, connections)
+- `public/examples/simple.mmd`, `public/examples/complex.mmd` – Example Mermaid files
+- `src/app/api/validate-mermaid/route.ts` – API for validating .mmd files
+- `scripts/validate-mermaid.mjs` – Standalone Node validation script
+
+**Validation**: Full error output logs to browser console (`[Mermaid Import]` / `[Mermaid Load]`). Use `npm run validate-mermaid` or `GET /api/validate-mermaid` (when dev server running) to validate examples.
+
+**Import styling**: Connectors with labels get auto-colored: Yes/Low=green (#22c55e), No/Critical=red (#ef4444), High=orange (#f97316), Medium/Medium-Low=amber (#f59e0b). Decision nodes (diamond `{...}`) are 3× larger than process nodes.
+
+**Export to Mermaid**: Planned as a separate phase.
 
 ### 2026-02-20 – Rules Engine
 User-definable validation rules for diagram content. **Edit → Rules** opens the Rules Editor dialog. Rules check nodes on the diagram against user-defined criteria; pass = green tick, fail = red cross.

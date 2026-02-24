@@ -1,0 +1,8 @@
+%% Simple Mermaid flowchart - for import testing
+%% DiagramWeaver supports: shapes, text, connectors with labels
+flowchart TD
+    Start[Start] --> Process{Decision}
+    Process -->|Yes| Action1[Do Something]
+    Process -->|No| Action2[Do Other]
+    Action1 --> End((End))
+    Action2 --> End
