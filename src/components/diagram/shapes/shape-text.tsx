@@ -77,17 +77,18 @@ export function ShapeText({
   const shapeHeight = node.height || 60;
   const spacing = 4; // Spacing between shape and text
 
-  // Kite (diamond) has a narrower usable width - constrain text so it wraps at spaces
+  // Kite (diamond) and hexagon have narrower usable width - constrain text so it wraps at spaces with left/right padding
   const isKite = node.type === 'generic.object.kite' || node.type?.endsWith('.kite');
+  const isHexagon = node.type === 'generic.object.hexagon' || node.type?.endsWith('.hexagon');
+  const narrowShapeClass = isKite || isHexagon ? ' max-w-[70%] mx-auto min-w-0' : '';
 
   // Render text inside the shape (middle position)
   if (isInside) {
     const innerClass = `w-full h-full flex flex-col ${getVerticalJustifyClass(effectivePosition)} px-1`;
-    const kiteClass = isKite ? ' max-w-[70%] mx-auto min-w-0' : '';
     return (
       <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass(effectivePosition)}`}>
         {isEditingLabel ? (
-          <div className={innerClass + kiteClass}>
+          <div className={innerClass + narrowShapeClass}>
             <textarea
               ref={textareaRef}
               id={`node-input-${node.id}`}
@@ -105,7 +106,7 @@ export function ShapeText({
             />
           </div>
         ) : (
-          <div className={innerClass + kiteClass}>
+          <div className={innerClass + narrowShapeClass}>
             <p
               className={`text-xs ${getTextJustifyClass(nodeAny.textJustify)} break-words leading-tight cursor-text w-full whitespace-pre-wrap`}
               style={{

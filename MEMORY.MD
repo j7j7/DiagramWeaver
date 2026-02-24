@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-02-24)
 
+### 2026-02-24 – Hexagon Text Padding (like Kite)
+Hexagon labels now use the same left/right padding as kite: text container constrained to max-w-[70%] with mx-auto so text wraps better within the angled hexagon shape. Modified: `shape-text.tsx`.
+
 ### 2026-02-24 – Proportional Bottom-Right Resize
 The bottom-right corner resize handle now maintains aspect ratio: both width and height scale together proportionally. Uses the larger of the two dimension scales so the shape fills the dragged area. Multi-select resize from corner is also proportional. Width, height, and sizeMode: 'custom' are already persisted in diagram JSON (save/load) and used by the viewer via measureNodeDims. Modified: `diagram-node.tsx`.
 
@@ -43,6 +46,8 @@ Import Mermaid flowchart (`.mmd`, `.mermaid`) files into DiagramWeaver. Converts
 **Validation**: Full error output logs to browser console (`[Mermaid Import]` / `[Mermaid Load]`). Use `npm run validate-mermaid` or `GET /api/validate-mermaid` (when dev server running) to validate examples.
 
 **Import styling**: Connectors with labels get auto-colored: Yes/Low=green (#22c55e), No/Critical=red (#ef4444), High=orange (#f97316), Medium/Medium-Low=amber (#f59e0b). Decision nodes (diamond `{...}`) use square dimensions same size as process nodes. Shape themes (inline in mermaid-to-diagram, no theme-manager dep): decision/kite and other shapes (circle, hexagon, parallelogram, trapezoid, rounded, etc.) use Forest Green (#16a34a border, #f0fdf4 bg); standard box (`rect`/`default`) uses Ocean Blue (#3b82f6 border, #eff6ff bg). Applies to both File→Import Mermaid and File→Load (.mmd).
+
+**Grid alignment for straight connectors**: Mermaid import dimensions snap to GRID_SNAP (20px) and are forced even for proper centering. Positions are computed by snapping layout center points to the grid, then deriving top-left from snapped center minus half-dimensions, so vertically stacked nodes align and connectors stay straight.
 
 **Export to Mermaid**: Planned as a separate phase.
 

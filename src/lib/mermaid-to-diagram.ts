@@ -11,31 +11,43 @@ import type { DiagramData, DiagramNodeData, DiagramConnectionData } from '@/lib/
 import type { ParsedMermaid, MermaidNode, MermaidEdge } from './mermaid-parser';
 import { computeMermaidLayout } from './mermaid-layout';
 
-const GRID_STEP = 10;
-const GRID_SNAP = 20; // Match canvas-constants for position alignment
+const GRID_SNAP = 20; // Match canvas-constants; dimensions/positions align for straight connectors
 const AVG_CHAR_WIDTH = 8;
 const TEXT_PADDING = 20;
 const MIN_WIDTH = 80;
 const MAX_WIDTH = 220;
-const BASE_HEIGHT = 56;
+const BASE_HEIGHT = 60;
 
-function snapToGrid(v: number, minVal = 20): number {
-  const snapped = Math.round(v / GRID_STEP) * GRID_STEP;
-  return Math.max(minVal, snapped);
+/** Snap dimension to GRID_SNAP, ensuring result is divisible by 2 for proper centering */
+function snapDimensionToGrid(v: number, minVal = MIN_WIDTH): number {
+  const snapped = Math.round(v / GRID_SNAP) * GRID_SNAP;
+  const result = Math.max(minVal, snapped);
+  return result % 2 === 0 ? result : result + 1;
 }
 
+/** Snap position to GRID_SNAP */
 function snapPosToGrid(v: number): number {
   return Math.round(v / GRID_SNAP) * GRID_SNAP;
 }
 
-/** Estimate node dimensions from label so text fits (no truncation) */
+/** Snap a center point to grid, then return top-left position for given dimensions */
+function centerToPosition(centerX: number, centerY: number, width: number, height: number): { x: number; y: number } {
+  const snappedCenterX = snapPosToGrid(centerX);
+  const snappedCenterY = snapPosToGrid(centerY);
+  return {
+    x: snappedCenterX - width / 2,
+    y: snappedCenterY - height / 2,
+  };
+}
+
+/** Estimate node dimensions from label so text fits (no truncation). Dimensions are grid-aligned and even for centering. */
 function estimateNodeDimensions(label: string): { width: number; height: number } {
   const lines = (label || '').split('\n');
   const maxLineLen = Math.max(...lines.map((l) => l.length), 1);
-  const width = snapToGrid(
+  const width = snapDimensionToGrid(
     Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, maxLineLen * AVG_CHAR_WIDTH + TEXT_PADDING))
   );
-  const height = snapToGrid(BASE_HEIGHT + (lines.length - 1) * 18);
+  const height = snapDimensionToGrid(BASE_HEIGHT + (lines.length - 1) * 18);
   return { width, height };
 }
 
@@ -146,7 +158,7 @@ export async function mermaidToDiagramData(parsed: ParsedMermaid): Promise<Diagr
   nodes.forEach((n) => {
     let dims = estimateNodeDimensions(n.label || n.id);
     if (n.shape === 'diamond') {
-      const baseSize = snapToGrid(Math.max(dims.width, dims.height));
+      const baseSize = snapDimensionToGrid(Math.max(dims.width, dims.height));
       dims = { width: baseSize, height: baseSize };
     }
     nodeDimensions.set(n.id, dims);
@@ -156,7 +168,7 @@ export async function mermaidToDiagramData(parsed: ParsedMermaid): Promise<Diagr
       const mNode = nodesById.get(id);
       let dims = estimateNodeDimensions(mNode?.label ?? id);
       if (mNode?.shape === 'diamond') {
-        const baseSize = snapToGrid(Math.max(dims.width, dims.height));
+        const baseSize = snapDimensionToGrid(Math.max(dims.width, dims.height));
         dims = { width: baseSize, height: baseSize };
       }
       nodeDimensions.set(id, dims);
@@ -171,14 +183,17 @@ export async function mermaidToDiagramData(parsed: ParsedMermaid): Promise<Diagr
     const diagramId = `${sanitizeId(mNode.id)}-${idx + 1}`;
     idMap.set(mNode.id, diagramId);
     const dims = nodeDimensions.get(mNode.id)!;
-    const pos = positions.get(mNode.id) ?? { x: idx * (dims.width + fallbackSpacing), y: 0 };
+    const layoutPos = positions.get(mNode.id) ?? { x: idx * (dims.width + fallbackSpacing), y: 0 };
+    const centerX = layoutPos.x + dims.width / 2;
+    const centerY = layoutPos.y + dims.height / 2;
+    const pos = centerToPosition(centerX, centerY, dims.width, dims.height);
     const type = mermaidShapeToDiagramType(mNode.shape);
     const baseNode: DiagramNodeData = {
       id: diagramId,
       type,
       label: mNode.label || mNode.id,
-      x: snapPosToGrid(pos.x),
-      y: snapPosToGrid(pos.y),
+      x: pos.x,
+      y: pos.y,
       width: dims.width,
       height: dims.height,
       sizeMode: 'custom',
@@ -193,13 +208,16 @@ export async function mermaidToDiagramData(parsed: ParsedMermaid): Promise<Diagr
     const diagramId = `mermaid-${sanitizeId(mId)}-${++implicitIdx}`;
     idMap.set(mId, diagramId);
     const dims = nodeDimensions.get(mId)!;
-    const pos = positions.get(mId) ?? { x: diagramNodes.length * (dims.width + fallbackSpacing), y: 0 };
+    const layoutPos = positions.get(mId) ?? { x: diagramNodes.length * (dims.width + fallbackSpacing), y: 0 };
+    const centerX = layoutPos.x + dims.width / 2;
+    const centerY = layoutPos.y + dims.height / 2;
+    const pos = centerToPosition(centerX, centerY, dims.width, dims.height);
     const baseNode: DiagramNodeData = {
       id: diagramId,
       type: 'generic.object.rectangle',
       label: mId,
-      x: snapPosToGrid(pos.x),
-      y: snapPosToGrid(pos.y),
+      x: pos.x,
+      y: pos.y,
       width: dims.width,
       height: dims.height,
       sizeMode: 'custom',
