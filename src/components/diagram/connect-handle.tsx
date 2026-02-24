@@ -54,11 +54,11 @@ export function ConnectHandle({
       style={{
         position: 'absolute',
         top: 0,
-        left: '50%',
-        transform: 'translateX(-50%)',
+        right: 0,
         width: '24px',
         height: '24px',
         marginTop: '-18px',
+        marginRight: '-12px',
         cursor: 'pointer',
       }}
       onMouseEnter={() => setIsHovered(true)}

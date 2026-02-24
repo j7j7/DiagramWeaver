@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-02-24)
 
+### 2026-02-24 – Top and Left Resize Handles
+Shapes can now be resized from top and left edges in addition to right, bottom, and bottom-right. **Top**: Drag upward to expand (bottom edge stays fixed), downward to shrink. **Left**: Drag left to expand (right edge stays fixed), right to shrink. Connect (+ connector) handle moved from top-center to top-right to accommodate top resize. Multi-select resize from top/left anchors at bottom/right respectively. Modified: `resize-handles.tsx`, `connect-handle.tsx`, `diagram-node.tsx`, `canvas-operations.ts`, `editor-canvas.tsx`, `globals.css`.
+
 ### 2026-02-24 – Circle Shape Square Border Fix
 Circle shape was rendered via `ShapeWrapper` (CSS div with background/border-radius), which produced a visible rectangular bounding box. Converted to `SvgShapeBase` with an SVG `<circle>` element, matching kite and other polygon shapes. Circle now renders with no visible square border; supports gradients, border styles, and shadow. Modified: `src/components/diagram/shapes/circle.tsx`.
 

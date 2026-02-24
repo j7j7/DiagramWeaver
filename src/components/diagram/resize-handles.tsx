@@ -2,20 +2,20 @@
 
 import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { ArrowRight, ArrowDown, MoveDiagonal2 } from "lucide-react";
+import { ArrowRight, ArrowDown, ArrowUp, ArrowLeft, MoveDiagonal2 } from "lucide-react";
 
-export type ResizeHandleType = 'right' | 'bottom' | 'bottom-right' | null;
+export type ResizeHandleType = 'top' | 'left' | 'right' | 'bottom' | 'bottom-right' | null;
 
 interface ResizeHandlesProps {
   visible: boolean;
   activeHandle: ResizeHandleType;
   hoveredHandle: ResizeHandleType;
-  onStart: (event: React.MouseEvent, handle: 'right' | 'bottom' | 'bottom-right') => void;
+  onStart: (event: React.MouseEvent, handle: 'top' | 'left' | 'right' | 'bottom' | 'bottom-right') => void;
   disabled?: boolean;
   zIndexClass?: string;
   className?: string;
   /** When set, only show these handles (e.g. ['right'] for icon node label width) */
-  handles?: ('right' | 'bottom' | 'bottom-right')[];
+  handles?: ('top' | 'left' | 'right' | 'bottom' | 'bottom-right')[];
 }
 
 export function ResizeHandles({
@@ -26,7 +26,7 @@ export function ResizeHandles({
   disabled = false,
   zIndexClass = "z-50",
   className,
-  handles = ['right', 'bottom', 'bottom-right'],
+  handles = ['top', 'left', 'right', 'bottom', 'bottom-right'],
 }: ResizeHandlesProps) {
   const [localHoveredHandle, setLocalHoveredHandle] = useState<ResizeHandleType>(null);
 
@@ -52,7 +52,7 @@ export function ResizeHandles({
     setLocalHoveredHandle(null);
   };
 
-  const handleMouseDown = (e: React.MouseEvent, handle: 'right' | 'bottom' | 'bottom-right') => {
+  const handleMouseDown = (e: React.MouseEvent, handle: 'top' | 'left' | 'right' | 'bottom' | 'bottom-right') => {
     e.stopPropagation();
     e.preventDefault();
     onStart(e, handle);
@@ -62,12 +62,76 @@ export function ResizeHandles({
   const isHovered = (handle: ResizeHandleType) => effectiveHoveredHandle === handle;
   const isHighlighted = (handle: ResizeHandleType) => isActive(handle) || isHovered(handle);
 
+  const showTop = handles.includes('top');
+  const showLeft = handles.includes('left');
   const showRight = handles.includes('right');
   const showBottom = handles.includes('bottom');
   const showBottomRight = handles.includes('bottom-right');
 
   return (
     <>
+      {showTop && (
+      /* Top edge handle - drag up to expand (bottom stays fixed), drag down to shrink */
+      <div
+        className={cn(
+          "dw-resize-handle dw-resize-rail dw-resize-rail-top",
+          zIndexClass,
+          isHighlighted('top') && "dw-resize-handle-highlighted",
+          isActive('top') && "dw-resize-handle-active",
+          className
+        )}
+        data-handle="top"
+        data-active={isActive('top')}
+        data-hovered={isHovered('top')}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '12px',
+          marginTop: '-10px',
+          cursor: 'ns-resize',
+        }}
+        onMouseEnter={() => handleMouseEnter('top')}
+        onMouseLeave={handleMouseLeave}
+        onMouseDown={(e) => handleMouseDown(e, 'top')}
+      >
+        <div className="dw-resize-indicator dw-resize-indicator-rail" />
+        <ArrowUp className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 text-green-700 pointer-events-none" />
+      </div>
+      )}
+
+      {showLeft && (
+      /* Left edge handle - drag left to expand (right stays fixed), drag right to shrink */
+      <div
+        className={cn(
+          "dw-resize-handle dw-resize-rail dw-resize-rail-left",
+          zIndexClass,
+          isHighlighted('left') && "dw-resize-handle-highlighted",
+          isActive('left') && "dw-resize-handle-active",
+          className
+        )}
+        data-handle="left"
+        data-active={isActive('left')}
+        data-hovered={isHovered('left')}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '12px',
+          height: '100%',
+          marginLeft: '-10px',
+          cursor: 'ew-resize',
+        }}
+        onMouseEnter={() => handleMouseEnter('left')}
+        onMouseLeave={handleMouseLeave}
+        onMouseDown={(e) => handleMouseDown(e, 'left')}
+      >
+        <div className="dw-resize-indicator dw-resize-indicator-rail" />
+        <ArrowLeft className="absolute top-1/2 left-0 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 text-green-700 pointer-events-none" />
+      </div>
+      )}
+
       {showRight && (
       /* Right edge handle */
       <div

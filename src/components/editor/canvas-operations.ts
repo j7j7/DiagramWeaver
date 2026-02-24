@@ -204,7 +204,7 @@ export function useCanvasOperations({
     });
   }, [setDiagramData]);
 
-  const resizeNode = useCallback((nodeId: string, newWidth: number, newHeight: number) => {
+  const resizeNode = useCallback((nodeId: string, newWidth: number, newHeight: number, newX?: number, newY?: number) => {
     setDiagramData(prevData => {
       const updatedNodes = prevData.nodes?.map(node => {
         if (node.id === nodeId) {
@@ -224,9 +224,6 @@ export function useCanvasOperations({
           if (node.type === 'generic.text.textbox') {
             minWidth = 40;
             minHeight = 40;
-          } else if (node.type === 'generic.text.textbox') {
-            minWidth = 40;
-            minHeight = 40;
           } else if (isShapeNode) {
             minWidth = 20;
             minHeight = 20;
@@ -239,12 +236,14 @@ export function useCanvasOperations({
             finalWidth = size;
             finalHeight = size;
           }
-          return {
-            ...node,
+          const updates: Partial<DiagramNodeData> = {
             width: finalWidth,
             height: finalHeight,
             sizeMode: 'custom' as const
           };
+          if (newX !== undefined) updates.x = snapToGrid(newX);
+          if (newY !== undefined) updates.y = snapToGrid(newY);
+          return { ...node, ...updates };
         }
         return node;
       }) || [];
@@ -253,40 +252,28 @@ export function useCanvasOperations({
     });
   }, [setDiagramData]);
 
-  const resizeMultipleNodes = useCallback((nodeIds: string[], scaleX: number, scaleY: number, originalDimensions?: Map<string, { width: number; height: number }>) => {
+  const resizeMultipleNodes = useCallback((
+    nodeIds: string[],
+    scaleX: number,
+    scaleY: number,
+    originalDimensions?: Map<string, { width: number; height: number }>,
+    options?: { anchorX?: 'left' | 'right'; anchorY?: 'top' | 'bottom' }
+  ) => {
+    const anchorX = options?.anchorX ?? 'left';
+    const anchorY = options?.anchorY ?? 'top';
     setDiagramData(prevData => {
       const updatedNodes = prevData.nodes?.map(node => {
         if (nodeIds.includes(node.id)) {
-          // Use original dimensions from ref if provided, otherwise use current dimensions
           const originalDims = originalDimensions?.get(node.id);
           const originalWidth = originalDims?.width ?? (node.width || 80);
           const originalHeight = originalDims?.height ?? (node.height || 80);
-          const currentWidth = originalWidth;
-          const currentHeight = originalHeight;
-          
-          // Calculate minimum size based on node type
+          const nodeX = node.x ?? 0;
+          const nodeY = node.y ?? 0;
+
           let minWidth = 80;
           let minHeight = 40;
-          
-          const isShapeNode = node.type === 'generic.object.square' ||
-                             node.type === 'generic.object.circle' ||
-                             node.type === 'generic.object.point' ||
-                             node.type === 'generic.object.rectangle' ||
-                             node.type === 'generic.object.rounded-rectangle' ||
-                             node.type === 'generic.object.triangle' ||
-                             node.type === 'generic.object.star' ||
-                             node.type === 'generic.object.cloud' ||
-                             node.type === 'generic.object.chevron' ||
-                             !isIconOrEmojiType(node.type) && (node.type?.endsWith('.square') ||
-                             node.type?.endsWith('.circle') ||
-                             node.type?.endsWith('.point') ||
-                             node.type?.endsWith('.rectangle') ||
-                             node.type?.endsWith('.rounded-rectangle') ||
-                             node.type?.endsWith('.triangle') ||
-                             node.type?.endsWith('.star') ||
-                             node.type?.endsWith('.cloud') ||
-                             node.type?.endsWith('.chevron'));
-          
+          const isShapeNode = isShapeNodeType(node.type);
+
           if (node.type === 'generic.text.textbox') {
             minWidth = 40;
             minHeight = 40;
@@ -294,17 +281,29 @@ export function useCanvasOperations({
             minWidth = 20;
             minHeight = 20;
           }
-          
-          let newWidth = snapDimensionToGrid(currentWidth * scaleX, minWidth);
-          let newHeight = snapDimensionToGrid(currentHeight * scaleY, minHeight);
+
+          let newWidth = snapDimensionToGrid(originalWidth * scaleX, minWidth);
+          let newHeight = snapDimensionToGrid(originalHeight * scaleY, minHeight);
           const isKiteNode = node.type === 'generic.object.kite' || node.type?.endsWith?.('.kite');
           if (isKiteNode) {
             const size = Math.max(newWidth, newHeight);
             newWidth = size;
             newHeight = size;
           }
+
+          let newX = nodeX;
+          let newY = nodeY;
+          if (anchorX === 'right') {
+            newX = snapToGrid(nodeX + originalWidth - newWidth);
+          }
+          if (anchorY === 'bottom') {
+            newY = snapToGrid(nodeY + originalHeight - newHeight);
+          }
+
           return {
             ...node,
+            x: newX,
+            y: newY,
             width: newWidth,
             height: newHeight,
             sizeMode: 'custom' as const
@@ -312,7 +311,7 @@ export function useCanvasOperations({
         }
         return node;
       }) || [];
-      
+
       return { ...prevData, nodes: updatedNodes };
     });
   }, [setDiagramData]);

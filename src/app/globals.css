@@ -276,6 +276,20 @@
   height: 4px;
 }
 
+.dw-resize-rail-top .dw-resize-indicator-rail {
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+}
+
+.dw-resize-rail-left .dw-resize-indicator-rail {
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+}
+
 /* Hovered rail - brighter and slightly thicker */
 .dw-resize-handle[data-hovered="true"] .dw-resize-indicator-rail,
 .dw-resize-handle[data-active="true"] .dw-resize-indicator-rail {
@@ -289,8 +303,15 @@
 }
 
 .dw-resize-handle[data-hovered="true"].dw-resize-rail-bottom .dw-resize-indicator-rail,
-.dw-resize-handle[data-active="true"].dw-resize-rail-bottom .dw-resize-indicator-rail {
+.dw-resize-handle[data-active="true"].dw-resize-rail-bottom .dw-resize-indicator-rail,
+.dw-resize-handle[data-hovered="true"].dw-resize-rail-top .dw-resize-indicator-rail,
+.dw-resize-handle[data-active="true"].dw-resize-rail-top .dw-resize-indicator-rail {
   height: 5px;
+}
+
+.dw-resize-handle[data-hovered="true"].dw-resize-rail-left .dw-resize-indicator-rail,
+.dw-resize-handle[data-active="true"].dw-resize-rail-left .dw-resize-indicator-rail {
+  width: 5px;
 }
 
 /* Knob indicator (for corner handle) */

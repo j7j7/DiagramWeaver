@@ -544,18 +544,20 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     }));
   }, [setDiagramData]);
 
-  const handleNodeResize = useCallback((nodeId: string, newWidth: number, newHeight: number) => {
+  const handleNodeResize = useCallback((nodeId: string, newWidth: number, newHeight: number, newX?: number, newY?: number) => {
     if (selectedItemIds.size > 1 && selectedItemIds.has(nodeId)) {
       // Multi-select resize: calculate scale factors from the dragged node
       const draggedOriginal = originalDimensionsRef.current.get(nodeId);
       if (draggedOriginal) {
         const scaleX = draggedOriginal.width > 0 ? newWidth / draggedOriginal.width : 1;
         const scaleY = draggedOriginal.height > 0 ? newHeight / draggedOriginal.height : 1;
-        
+        const anchorX = newX !== undefined ? ('right' as const) : undefined;
+        const anchorY = newY !== undefined ? ('bottom' as const) : undefined;
+
         // Separate nodes and zones
         const selectedNodeIds: string[] = [];
         const selectedZoneIds: string[] = [];
-        
+
         selectedItemIds.forEach(id => {
           if (nodesById[id]) {
             selectedNodeIds.push(id);
@@ -563,18 +565,18 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             selectedZoneIds.push(id);
           }
         });
-        
+
         if (selectedNodeIds.length > 0) {
-          operations.resizeMultipleNodes(selectedNodeIds, scaleX, scaleY, originalDimensionsRef.current);
+          operations.resizeMultipleNodes(selectedNodeIds, scaleX, scaleY, originalDimensionsRef.current, { anchorX, anchorY });
         }
         if (selectedZoneIds.length > 0) {
           operations.resizeMultipleGroups(selectedZoneIds, scaleX, scaleY, originalDimensionsRef.current);
         }
       } else {
-        operations.resizeNode(nodeId, newWidth, newHeight);
+        operations.resizeNode(nodeId, newWidth, newHeight, newX, newY);
       }
     } else {
-      operations.resizeNode(nodeId, newWidth, newHeight);
+      operations.resizeNode(nodeId, newWidth, newHeight, newX, newY);
     }
   }, [selectedItemIds, nodesById, zonesById, operations]);
 

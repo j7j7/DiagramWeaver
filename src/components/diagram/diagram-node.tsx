@@ -152,7 +152,7 @@ interface DiagramNodeProps {
   onContextMenu?: (e: React.MouseEvent, node: DiagramNodeData) => void;
   onLabelUpdate?: (nodeId: string, newLabel: string, richLabel?: RichTextRun[]) => void;
   onTagUpdate?: (nodeId: string, newTag: string) => void;
-  onResize?: (nodeId: string, newWidth: number, newHeight: number) => void;
+  onResize?: (nodeId: string, newWidth: number, newHeight: number, newX?: number, newY?: number) => void;
   onResizeStart?: (nodeId: string, width: number, height: number) => void;
   onResizeEnd?: () => void;
   onPositionUpdate?: (nodeId: string, x: number, y: number) => void;
@@ -223,14 +223,15 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
   
   // Resize state
   const [isResizing, setIsResizing] = useState(false);
-  const [resizeHandle, setResizeHandle] = useState<'right' | 'bottom' | 'bottom-right' | null>(null);
-  const [hoveredHandle, setHoveredHandle] = useState<'right' | 'bottom' | 'bottom-right' | null>(null);
+  const [resizeHandle, setResizeHandle] = useState<'top' | 'left' | 'right' | 'bottom' | 'bottom-right' | null>(null);
+  const [hoveredHandle, setHoveredHandle] = useState<'top' | 'left' | 'right' | 'bottom' | 'bottom-right' | null>(null);
   const [isHovered, setIsHovered] = useState(false);
-  const resizeStartPos = useRef<{ x: number; y: number; startWidth: number; startHeight: number } | null>(null);
+  const resizeStartPos = useRef<{ x: number; y: number; startX: number; startY: number; startWidth: number; startHeight: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   // Local dimensions during resize for instant visual feedback (no parent update until end)
   const [resizeDimensions, setResizeDimensions] = useState<{ width: number; height: number } | null>(null);
-  const latestResizeDimensionsRef = useRef<{ width: number; height: number } | null>(null);
+  const [resizePosition, setResizePosition] = useState<{ x: number; y: number } | null>(null);
+  const latestResizeDimensionsRef = useRef<{ width: number; height: number; x?: number; y?: number } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
   
@@ -572,7 +573,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
   const [tempPosition] = useState<{ x: number; y: number } | null>(null);
   
   // Resize handlers
-  const handleResizeStart = (e: React.MouseEvent, handle: 'right' | 'bottom' | 'bottom-right') => {
+  const handleResizeStart = (e: React.MouseEvent, handle: 'top' | 'left' | 'right' | 'bottom' | 'bottom-right') => {
     if (isReadOnly) {
       e.stopPropagation();
       e.preventDefault();
@@ -583,6 +584,8 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     
     setIsResizing(true);
     setResizeHandle(handle);
+    const startX = node.x ?? 0;
+    const startY = node.y ?? 0;
     const startWidth = isIconNode ? (iconNodeDims?.width ?? (node as any).labelWidth ?? 80) : (node.width || (isTextboxNode ? 40 : 80));
     const startHeight = isIconNode ? (iconNodeDims?.height ?? nodeHeight) : (node.height || nodeHeight);
     
@@ -598,6 +601,8 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     resizeStartPos.current = {
       x: e.clientX,
       y: e.clientY,
+      startX,
+      startY,
       startWidth,
       startHeight
     };
@@ -620,6 +625,10 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     const minHeight = isTextboxNode ? 40 : isShapeNode ? 20 : 40;
     const isKiteNode = node.type === 'generic.object.kite' || node.type?.endsWith?.('.kite');
     
+    let newX: number | undefined;
+    let newY: number | undefined;
+    const { startX, startY } = resizeStartPos.current;
+
     switch (resizeHandle) {
       case 'right':
         newWidth = resizeStartPos.current.startWidth + deltaX;
@@ -638,30 +647,54 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
           newHeight = size;
         }
         break;
+      case 'top':
+        // Drag up = increase height (bottom stays fixed), drag down = decrease
+        newHeight = Math.max(minHeight, resizeStartPos.current.startHeight - deltaY);
+        if (isKiteNode) newWidth = newHeight;
+        newY = startY + (resizeStartPos.current.startHeight - newHeight);
+        break;
+      case 'left':
+        // Drag left = increase width (right stays fixed), drag right = decrease
+        newWidth = Math.max(minWidth, resizeStartPos.current.startWidth - deltaX);
+        if (isKiteNode) newHeight = newWidth;
+        newX = startX + (resizeStartPos.current.startWidth - newWidth);
+        break;
     }
-    
+
     newWidth = snapDimensionToGrid(newWidth, minWidth);
     newHeight = snapDimensionToGrid(newHeight, minHeight);
     if (isKiteNode) newHeight = newWidth; // ensure square after snap
-    
-    const dims = { width: newWidth, height: newHeight };
+
+    // Recompute position for top/left after snapping (keep anchor edge fixed)
+    if (resizeHandle === 'top' && newY !== undefined) {
+      newY = startY + (resizeStartPos.current.startHeight - newHeight);
+    }
+    if (resizeHandle === 'left' && newX !== undefined) {
+      newX = startX + (resizeStartPos.current.startWidth - newWidth);
+    }
+
+    const dims = { width: newWidth, height: newHeight, x: newX, y: newY };
     latestResizeDimensionsRef.current = dims;
-    setResizeDimensions(dims);
+    setResizeDimensions({ width: newWidth, height: newHeight });
+    setResizePosition(newX !== undefined || newY !== undefined ? { x: newX ?? startX, y: newY ?? startY } : null);
   };
 
   const handleResizeEnd = () => {
     const dimensions = latestResizeDimensionsRef.current ?? resizeStartPos.current;
     latestResizeDimensionsRef.current = null;
+    resizeStartPos.current = null;
     setResizeDimensions(null);
+    setResizePosition(null);
     setIsResizing(false);
     setResizeHandle(null);
-    resizeStartPos.current = null;
     delete (node as any).originalWidth;
     delete (node as any).originalHeight;
     if (dimensions && onResize) {
       const w = 'width' in dimensions ? dimensions.width : dimensions.startWidth;
       const h = 'height' in dimensions ? dimensions.height : dimensions.startHeight;
-      onResize(node.id, w, h);
+      const newX = dimensions && 'x' in dimensions ? dimensions.x : undefined;
+      const newY = dimensions && 'y' in dimensions ? dimensions.y : undefined;
+      onResize(node.id, w, h, newX, newY);
     }
     if (onResizeEnd) {
       onResizeEnd();
@@ -992,12 +1025,13 @@ return (
         zIndex: stackZIndex ?? 2,
         // For lines during drag, keep container position stable (use initial position)
         // This prevents handles from drifting - they're positioned relative to stable container
+        // For top/left resize, use resizePosition for instant feedback
         left: isLineNode && isDraggingLineEndpoint && initialContainerPosRef.current
           ? initialContainerPosRef.current.x
-          : node.x,
+          : (resizePosition?.x ?? node.x),
         top: isLineNode && isDraggingLineEndpoint && initialContainerPosRef.current
           ? initialContainerPosRef.current.y
-          : node.y,
+          : (resizePosition?.y ?? node.y),
          width: isLineNode ? 'auto' : (typeof displayWidth === 'number' ? displayWidth :
                 (isShapeNode ? (node.width || 60) :
                 (isRotatableNode || isTextboxNode ? 
