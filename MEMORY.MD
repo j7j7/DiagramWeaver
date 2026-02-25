@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-02-25)
 
+### 2026-02-25 – Non-Scaling Stroke and ViewBox for All SVG Shapes
+Applied the rounded-rectangle pattern to all SVG shapes: **1) Borders**: `vector-effect="non-scaling-stroke"` so stroke stays constant pixel width regardless of shape size. **2) ViewBox fit**: Polygon shapes pass `strokeWidth/2` as strokePadding to `getPolygonViewBoxAndPoints()` so the viewBox includes stroke overflow and the shape fills its container. Shapes updated: kite, triangle, hexagon, star, pentagon, octagon, trapezoid, parallelogram, arrowhead, chevron (polygon/path); circle, cloud, jigsaw (path). Modified: all shape components in `shapes/`.
+
 ### 2026-02-25 – Shape Container Alignment Fix (Rounded Rect, Kite, Triangle, etc.)
 Polygon shapes (kite, triangle, hexagon, star, octagon, pentagon, parallelogram, trapezoid, chevron, arrowhead) had oversized viewBoxes, causing the visible shape to appear smaller than its layout container and misalign with rectangles. **Fix**: Added `getPolygonViewBoxAndPoints()` in `shape-utils.ts` to compute a tight viewBox from the polygon’s bounding box and transform points to that space, so the shape fills the container. Connection bounds updated for stretch scaling (`stretchScaling: true`) in `shape-connection-bounds.ts`; kite’s `getKiteConnectionPoint` now uses the tight viewBox. **Rounded-rectangle fix**: viewBox expanded to include stroke overflow (`vbX=-half`, `vbY=-half`, `vbW=VIEWBOX_W+strokeWidth`, `vbH=VIEWBOX_H+strokeWidth`); rect drawn at (0,0) full size so the stroke's outer edge maps exactly to the container edge—eliminates visible gap between shape and selection/container box for correct alignment. Modified: `shape-utils.ts`, `shape-connection-bounds.ts`, `rounded-rectangle.tsx`, polygon shapes.
 

@@ -178,17 +178,19 @@ export const parsePoints = (points: string): [number, number][] => {
 };
 
 /**
- * Compute a tight viewBox and transformed points so the shape fills its container.
+ * Compute viewBox and transformed points so the shape fills its container.
  * Without this, shapes like kite/triangle use oversized viewBoxes which leave
  * visible padding and cause misalignment with other shapes (e.g. rectangles).
- * Points are transformed to (0,0)-origin space so viewBox stays "0 0 W H".
  * @param points - Polygon points string (e.g., "30,5 55,50 5,50")
  * @param strokePadding - Padding for stroke (default 1) so stroke isn't clipped
+ * @param targetSize - When provided, viewBox matches node size (w+2*pad, h+2*pad)
+ *   and points are scaled to fill; prevents scaling gaps when resizing
  * @returns viewBox string, dimensions, and transformed points for polygon/path
  */
 export const getPolygonViewBoxAndPoints = (
   points: string,
-  strokePadding = 1
+  strokePadding = 1,
+  targetSize?: { w: number; h: number }
 ): { viewBox: string; width: number; height: number; transformedPoints: string } => {
   const coords = parsePoints(points);
   if (coords.length < 3) {
@@ -202,11 +204,31 @@ export const getPolygonViewBoxAndPoints = (
     maxY = Math.max(maxY, y);
   }
   const pad = strokePadding;
-  const w = maxX - minX + 2 * pad;
-  const h = maxY - minY + 2 * pad;
-  const transformedPoints = coords
-    .map(([x, y]) => `${x - minX + pad},${y - minY + pad}`)
-    .join(" ");
+  const naturalW = maxX - minX;
+  const naturalH = maxY - minY;
+
+  let w: number;
+  let h: number;
+  let transformedPoints: string;
+
+  if (targetSize && naturalW > 0 && naturalH > 0) {
+    const tw = targetSize.w;
+    const th = targetSize.h;
+    w = tw + 2 * pad;
+    h = th + 2 * pad;
+    const scaleX = tw / naturalW;
+    const scaleY = th / naturalH;
+    transformedPoints = coords
+      .map(([x, y]) => `${(x - minX) * scaleX + pad},${(y - minY) * scaleY + pad}`)
+      .join(" ");
+  } else {
+    w = naturalW + 2 * pad;
+    h = naturalH + 2 * pad;
+    transformedPoints = coords
+      .map(([x, y]) => `${x - minX + pad},${y - minY + pad}`)
+      .join(" ");
+  }
+
   return { viewBox: `0 0 ${w} ${h}`, width: w, height: h, transformedPoints };
 };
 

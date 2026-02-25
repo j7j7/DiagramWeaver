@@ -30,14 +30,19 @@ export function HexagonShape(props: HexagonShapeProps) {
   const nodeAny = node as any;
   const roundedEdges = nodeAny.roundedEdges || false;
   const points = "30,5 50,17.5 50,42.5 30,55 10,42.5 10,17.5";
-  const { viewBox, width: vbW, height: vbH, transformedPoints } = getPolygonViewBoxAndPoints(points);
+  const defaultW = 42;
+  const defaultH = 52;
+  const w = node.width ?? defaultW;
+  const h = node.height ?? defaultH;
+  const borderStyle = nodeAny.borderStyle || 'solid';
+  const strokeWidthNum = borderStyle === 'none' ? 0 : (parseInt(String(nodeAny.borderWidth || 2), 10) || 2);
+  const { viewBox, width: vbW, height: vbH, transformedPoints } = getPolygonViewBoxAndPoints(points, strokeWidthNum / 2, { w, h });
 
   const backgroundColors = nodeAny.backgroundColors || [nodeAny.backgroundColor || '#6b7280'];
   const borderColors = nodeAny.borderColors || [nodeAny.borderColor || '#6b7280'];
   const gradientAngle = nodeAny.gradientAngle || 135;
   const borderGradientAngle = nodeAny.borderGradientAngle ?? gradientAngle;
   const backgroundStyle = nodeAny.backgroundStyle || 'solid';
-  const borderStyle = nodeAny.borderStyle || 'solid';
 
   const { defs, fillRef, strokeRef } = useSvgGradient({
     colors: backgroundStyle === 'gradient' ? backgroundColors : [backgroundColors[0]],
@@ -51,10 +56,13 @@ export function HexagonShape(props: HexagonShapeProps) {
   const strokeColor = borderStyle === 'gradient' ? strokeRef : (nodeAny.borderColor || '#6b7280');
   const strokeWidth = borderStyle === 'none' ? '0' : (nodeAny.borderWidth || 2);
   const strokeDasharray = borderStyle === 'dotted' ? '3,3' : undefined;
+  const strokeProps = strokeWidthNum > 0 ? { vectorEffect: "non-scaling-stroke" as const } : {};
 
   return (
     <SvgShapeBase
       {...props}
+      defaultWidth={defaultW}
+      defaultHeight={defaultH}
       viewBox={viewBox}
       svgContent={
         <>
@@ -68,6 +76,7 @@ export function HexagonShape(props: HexagonShapeProps) {
               strokeDasharray={strokeDasharray}
               strokeLinejoin="round"
               strokeLinecap="round"
+              {...strokeProps}
             />
           ) : (
             <polygon
@@ -76,6 +85,7 @@ export function HexagonShape(props: HexagonShapeProps) {
               stroke={strokeColor}
               strokeWidth={strokeWidth}
               strokeDasharray={strokeDasharray}
+              {...strokeProps}
             />
           )}
         </>

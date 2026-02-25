@@ -47,6 +47,7 @@ export function CircleShape(props: CircleShapeProps) {
   const strokeColor = borderStyle === "gradient" ? strokeRef : (nodeAny.borderColor || "#6b7280");
   const strokeWidth = borderStyle === "none" ? "0" : (nodeAny.borderWidth || 2);
   const strokeDasharray = borderStyle === "dotted" ? "3,3" : undefined;
+  const strokeWidthNum = borderStyle === "none" ? 0 : (parseInt(String(strokeWidth), 10) || 2);
 
   return (
     <SvgShapeBase
@@ -59,11 +60,12 @@ export function CircleShape(props: CircleShapeProps) {
           <circle
             cx={30}
             cy={30}
-            r={29 - (borderStyle === "none" ? 0 : (parseInt(String(strokeWidth), 10) || 2) / 2)}
+            r={29 - strokeWidthNum / 2}
             fill={fillColor}
             stroke={strokeColor}
             strokeWidth={strokeWidth}
             strokeDasharray={strokeDasharray}
+            {...(strokeWidthNum > 0 ? { vectorEffect: "non-scaling-stroke" as const } : {})}
           />
         </>
       }

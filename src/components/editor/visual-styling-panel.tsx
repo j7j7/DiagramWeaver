@@ -5,7 +5,6 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { ColorPicker } from "@/components/ui/color-picker";
@@ -258,14 +257,17 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
               {styling.borderStyle && styling.borderStyle !== 'none' && (
                 <div className="space-y-1 flex flex-col">
                   <div className="flex items-center gap-2">
-                    <Label className="text-xs text-slate-600 shrink-0">Width: {styling.borderWidth || 2}px</Label>
-                    <Slider
+                    <Label className="text-xs text-slate-600 shrink-0">Width</Label>
+                    <Input
+                      type="number"
                       min={0}
                       max={20}
-                      step={1}
-                      value={[styling.borderWidth || 2]}
-                      onValueChange={([value]) => handlePropertyChange('borderWidth', value)}
-                      className="flex-1 min-w-0"
+                      value={styling.borderWidth ?? 2}
+                      onChange={(e) => {
+                        const n = parseInt(e.target.value, 10);
+                        if (!isNaN(n)) handlePropertyChange('borderWidth', Math.min(20, Math.max(0, n)));
+                      }}
+                      className="h-7 w-14 text-xs"
                     />
                     {styling.borderStyle === 'gradient' && (
                       <GradientAnglePicker

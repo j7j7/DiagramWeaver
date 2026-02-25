@@ -49,6 +49,7 @@ export function JigsawShape(props: JigsawShapeProps) {
   const strokeColor = borderStyle === 'gradient' ? strokeRef : (nodeAny.borderColor || '#6b7280');
   const strokeWidth = borderStyle === 'none' ? '0' : (nodeAny.borderWidth || 2);
   const strokeDasharray = borderStyle === 'dotted' ? '3,3' : undefined;
+  const strokeWidthNum = borderStyle === 'none' ? 0 : (parseInt(String(strokeWidth), 10) || 2);
 
   return (
     <SvgShapeBase
@@ -85,6 +86,7 @@ export function JigsawShape(props: JigsawShapeProps) {
             strokeWidth={strokeWidth}
             strokeDasharray={strokeDasharray}
             strokeLinejoin="round"
+            {...(strokeWidthNum > 0 ? { vectorEffect: "non-scaling-stroke" as const } : {})}
             {...getRoundedEdgesProps(roundedEdges)}
           />
         </>

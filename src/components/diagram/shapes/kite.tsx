@@ -31,14 +31,19 @@ export function KiteShape(props: KiteShapeProps) {
   const styles = getShapeStyles(node);
   const roundedEdges = nodeAny.roundedEdges || false;
   const points = "30,5 50,30 30,55 10,30";
-  const { viewBox, width: vbW, height: vbH, transformedPoints } = getPolygonViewBoxAndPoints(points);
+  const defaultW = 42;
+  const defaultH = 52;
+  const w = node.width ?? defaultW;
+  const h = node.height ?? defaultH;
+  const borderStyle = nodeAny.borderStyle || 'solid';
+  const strokeWidthNum = borderStyle === 'none' ? 0 : (parseInt(String(nodeAny.borderWidth || 2), 10) || 2);
+  const { viewBox, width: vbW, height: vbH, transformedPoints } = getPolygonViewBoxAndPoints(points, strokeWidthNum / 2, { w, h });
 
   const backgroundColors = nodeAny.backgroundColors || [nodeAny.backgroundColor || '#6b7280'];
   const borderColors = nodeAny.borderColors || [nodeAny.borderColor || '#6b7280'];
   const gradientAngle = nodeAny.gradientAngle || 135;
   const borderGradientAngle = nodeAny.borderGradientAngle ?? gradientAngle;
   const backgroundStyle = nodeAny.backgroundStyle || 'solid';
-  const borderStyle = nodeAny.borderStyle || 'solid';
 
   const { defs, fillRef, strokeRef } = useSvgGradient({
     colors: backgroundStyle === 'gradient' ? backgroundColors : [backgroundColors[0]],
@@ -52,10 +57,13 @@ export function KiteShape(props: KiteShapeProps) {
   const strokeColor = borderStyle === 'gradient' ? strokeRef : (nodeAny.borderColor || '#6b7280');
   const strokeWidth = borderStyle === 'none' ? '0' : (nodeAny.borderWidth || 2);
   const strokeDasharray = borderStyle === 'dotted' ? '3,3' : undefined;
+  const strokeProps = strokeWidthNum > 0 ? { vectorEffect: "non-scaling-stroke" as const } : {};
 
   return (
     <SvgShapeBase
       {...props}
+      defaultWidth={defaultW}
+      defaultHeight={defaultH}
       viewBox={viewBox}
       svgContent={
         <>
@@ -69,6 +77,7 @@ export function KiteShape(props: KiteShapeProps) {
             strokeDasharray={strokeDasharray}
             strokeLinejoin="round"
             strokeLinecap="round"
+            {...strokeProps}
           />
         ) : (
           <polygon
@@ -77,6 +86,7 @@ export function KiteShape(props: KiteShapeProps) {
             stroke={strokeColor}
             strokeWidth={strokeWidth}
             strokeDasharray={strokeDasharray}
+            {...strokeProps}
           />
         )}
         </>
