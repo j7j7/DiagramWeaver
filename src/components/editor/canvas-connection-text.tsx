@@ -29,7 +29,7 @@ function CanvasConnectionTextInner(props: CanvasConnectionTextProps) {
       width={width}
       height={height}
       className="absolute top-0 left-0 overflow-visible pointer-events-none"
-      style={{ zIndex: 10 }}
+      style={{ zIndex: 9999 }}
     >
       {(diagramData.connections || []).map((edge: any, index: any) => {
         const fromItem = nodesById[edge.from] || zonesById[edge.from];
