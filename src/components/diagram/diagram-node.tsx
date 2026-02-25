@@ -943,7 +943,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     if (isReadOnly || !onUpdate || !isRoundedRectangleNode) return;
     e.preventDefault();
     e.stopPropagation();
-    const startValue = Math.max(0, Math.min(1, (node as any).cornerRadius ?? 0.5));
+    const startValue = Math.max(0, Math.min(1, (node as any).cornerRadius ?? 0.2));
     cornerRadiusDragRef.current = { startX: e.clientX, startValue };
     latestCornerRadiusRef.current = startValue;
     setLocalCornerRadius(startValue);

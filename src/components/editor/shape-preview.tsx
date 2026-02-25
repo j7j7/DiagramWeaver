@@ -67,7 +67,7 @@ export function ShapePreview({
   textDecoration,
   shadow = false,
   roundedEdges = false,
-  cornerRadius = 0.5
+  cornerRadius = 0.2
 }: ShapePreviewProps) {
   const gradientId = useId();
   const borderGradientId = useId();

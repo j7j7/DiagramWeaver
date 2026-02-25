@@ -785,6 +785,10 @@ const renderIcon = (item: ScratchPadItem) => {
                                       t?.endsWith('.octagon') || t?.endsWith('.jigsaw') ||
                                       t?.endsWith('.arrowhead') || t?.endsWith('.chevron'));
                                 })()}
+                                isRoundedRectangle={
+                                  editingItem.type === 'generic.object.rounded-rectangle' ||
+                                  editingItem.type?.endsWith?.('.rounded-rectangle')
+                                }
                             />
                         </TabsContent>
                     </Tabs>

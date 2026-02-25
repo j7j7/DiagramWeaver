@@ -32,9 +32,11 @@ interface VisualStylingPanelProps {
   showFullStyling?: boolean;
   /** When true, hides Size control - shapes */
   isShape?: boolean;
+  /** When true, shows corner radius control (rounded-rectangle only) */
+  isRoundedRectangle?: boolean;
 }
 
-export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false }: VisualStylingPanelProps) {
+export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false }: VisualStylingPanelProps) {
   const [position, setPosition] = useState({ x: 200, y: 100 });
   const [isMounted, setIsMounted] = useState(false);
   const nodeRef = useRef(null);
@@ -422,6 +424,23 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                     onCheckedChange={(checked) => handlePropertyChange('roundedEdges', checked)}
                   />
                 </div>
+                {isRoundedRectangle && (
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-xs text-slate-600">Corner radius</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={1}
+                      step={0.1}
+                      value={styling.cornerRadius ?? 0.2}
+                      onChange={(e) => {
+                        const n = parseFloat(e.target.value);
+                        if (!isNaN(n)) handlePropertyChange('cornerRadius', Math.min(1, Math.max(0, n)));
+                      }}
+                      className="h-7 w-14 text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 

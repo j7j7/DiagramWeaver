@@ -1673,6 +1673,10 @@ export function ContextToolbar({
                     const t = (selectedItem as any)?.type || '';
                     return isShapeNodeType(t);
                   })()}
+                  isRoundedRectangle={
+                    (selectedItem as any)?.type === 'generic.object.rounded-rectangle' ||
+                    (selectedItem as any)?.type?.endsWith?.('.rounded-rectangle')
+                  }
                   noIconBackground={(() => {
                     if (!selectedItem || !diagramData) return false;
                     const item = selectedItemIds && selectedItemIds.size > 1

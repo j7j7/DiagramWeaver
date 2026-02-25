@@ -45,7 +45,7 @@ export function RoundedRectangleShape(props: RoundedRectangleShapeProps) {
   const h = node.height ?? VIEWBOX_H;
   const minDim = Math.min(w, h);
   // cornerRadius 0=straight, 1=full pill; use rx=ry for uniform circular arcs
-  const cornerRadius = Math.max(0, Math.min(1, nodeAny.cornerRadius ?? 0.5));
+  const cornerRadius = Math.max(0, Math.min(1, nodeAny.cornerRadius ?? 0.2));
   const maxRadius = minDim / 2;
   const radius = cornerRadius * maxRadius;
   const rx = Math.min(radius, maxRadius);
