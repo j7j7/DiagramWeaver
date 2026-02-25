@@ -43,16 +43,17 @@ export function RoundedRectangleShape(props: RoundedRectangleShapeProps) {
 
   const w = node.width ?? VIEWBOX_W;
   const h = node.height ?? VIEWBOX_H;
-  const scaleX = Math.max(0.01, w / VIEWBOX_W);
-  const scaleY = Math.max(0.01, h / VIEWBOX_H);
   const minDim = Math.min(w, h);
-  // cornerRadius 0=straight, 1=full pill (radius=minDim/2); 0.5 default gives moderate curve
+  // cornerRadius 0=straight, 1=full pill; use rx=ry for uniform circular arcs
   const cornerRadius = Math.max(0, Math.min(1, nodeAny.cornerRadius ?? 0.5));
-  const targetRadiusPx = cornerRadius * (minDim / 2);
-  const rectW = Math.max(0, VIEWBOX_W - strokeWidth);
-  const rectH = Math.max(0, VIEWBOX_H - strokeWidth);
-  const rx = Math.min(targetRadiusPx / scaleX, rectW / 2, rectH / 2);
-  const ry = Math.min(targetRadiusPx / scaleY, rectW / 2, rectH / 2);
+  const maxRadius = minDim / 2;
+  const radius = cornerRadius * maxRadius;
+  const rx = Math.min(radius, maxRadius);
+  const ry = rx;
+
+  // viewBox matches actual node size so scaling is 1:1; stroke outer edge maps to container
+  const vbW = w + strokeWidth;
+  const vbH = h + strokeWidth;
 
   const { defs, fillRef, strokeRef } = useSvgGradient({
     colors: backgroundStyle === "gradient" ? backgroundColors : [backgroundColors[0]],
@@ -71,15 +72,15 @@ export function RoundedRectangleShape(props: RoundedRectangleShapeProps) {
       {...props}
       defaultWidth={VIEWBOX_W}
       defaultHeight={VIEWBOX_H}
-      viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`}
+      viewBox={`0 0 ${vbW} ${vbH}`}
       svgContent={
         <>
           {defs}
           <rect
             x={half}
             y={half}
-            width={Math.max(0, VIEWBOX_W - strokeWidth)}
-            height={Math.max(0, VIEWBOX_H - strokeWidth)}
+            width={w}
+            height={h}
             rx={rx}
             ry={ry}
             fill={fillColor}

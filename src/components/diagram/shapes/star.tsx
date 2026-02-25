@@ -3,7 +3,7 @@
 import React from "react";
 import type { DiagramNodeData } from "@/lib/types";
 import { SvgShapeBase } from "./svg-shape-base";
-import { polygonToRoundedPath } from "./shape-utils";
+import { polygonToRoundedPath, getPolygonViewBoxAndPoints } from "./shape-utils";
 import { useSvgGradient } from "@/hooks/use-svg-gradient";
 
 interface StarShapeProps {
@@ -30,7 +30,7 @@ export function StarShape(props: StarShapeProps) {
   const nodeAny = node as any;
   const roundedEdges = nodeAny.roundedEdges || false;
   const points = "30,2 38,22 58,22 42,36 50,56 30,44 10,56 18,36 2,22 22,22";
-  const viewBox: [number, number] = [60, 60];
+  const { viewBox, width: vbW, height: vbH, transformedPoints } = getPolygonViewBoxAndPoints(points);
 
   const backgroundColors = nodeAny.backgroundColors || [nodeAny.backgroundColor || '#6b7280'];
   const borderColors = nodeAny.borderColors || [nodeAny.borderColor || '#6b7280'];
@@ -55,13 +55,13 @@ export function StarShape(props: StarShapeProps) {
   return (
     <SvgShapeBase
       {...props}
-      viewBox="0 0 60 60"
+      viewBox={viewBox}
       svgContent={
         <>
           {defs}
           {roundedEdges ? (
             <path
-              d={polygonToRoundedPath(points, undefined, viewBox)}
+              d={polygonToRoundedPath(transformedPoints, undefined, [vbW, vbH])}
               fill={fillColor}
               stroke={strokeColor}
               strokeWidth={strokeWidth}
@@ -71,7 +71,7 @@ export function StarShape(props: StarShapeProps) {
             />
           ) : (
             <polygon
-              points={points}
+              points={transformedPoints}
               fill={fillColor}
               stroke={strokeColor}
               strokeWidth={strokeWidth}

@@ -3,7 +3,7 @@
 import React from "react";
 import type { DiagramNodeData } from "@/lib/types";
 import { SvgShapeBase } from "./svg-shape-base";
-import { polygonToRoundedPath } from "./shape-utils";
+import { polygonToRoundedPath, getPolygonViewBoxAndPoints } from "./shape-utils";
 import { useSvgGradient } from "@/hooks/use-svg-gradient";
 
 interface OctagonShapeProps {
@@ -30,7 +30,7 @@ export function OctagonShape(props: OctagonShapeProps) {
   const nodeAny = node as any;
   const roundedEdges = nodeAny.roundedEdges || false;
   const points = "20,5 40,5 55,20 55,40 40,55 20,55 5,40 5,20";
-  const viewBox: [number, number] = [60, 60];
+  const { viewBox, width: vbW, height: vbH, transformedPoints } = getPolygonViewBoxAndPoints(points);
 
   const backgroundColors = nodeAny.backgroundColors || [nodeAny.backgroundColor || '#6b7280'];
   const borderColors = nodeAny.borderColors || [nodeAny.borderColor || '#6b7280'];
@@ -55,13 +55,13 @@ export function OctagonShape(props: OctagonShapeProps) {
   return (
     <SvgShapeBase
       {...props}
-      viewBox="0 0 60 60"
+      viewBox={viewBox}
       svgContent={
         <>
           {defs}
           {roundedEdges ? (
             <path
-              d={polygonToRoundedPath(points, undefined, viewBox)}
+              d={polygonToRoundedPath(transformedPoints, undefined, [vbW, vbH])}
               fill={fillColor}
               stroke={strokeColor}
               strokeWidth={strokeWidth}
@@ -71,7 +71,7 @@ export function OctagonShape(props: OctagonShapeProps) {
             />
           ) : (
             <polygon
-              points={points}
+              points={transformedPoints}
               fill={fillColor}
               stroke={strokeColor}
               strokeWidth={strokeWidth}

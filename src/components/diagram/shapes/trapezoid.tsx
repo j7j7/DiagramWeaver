@@ -3,7 +3,7 @@
 import React from "react";
 import type { DiagramNodeData } from "@/lib/types";
 import { SvgShapeBase } from "./svg-shape-base";
-import { polygonToRoundedPath } from "./shape-utils";
+import { polygonToRoundedPath, getPolygonViewBoxAndPoints } from "./shape-utils";
 import { useSvgGradient } from "@/hooks/use-svg-gradient";
 
 interface TrapezoidShapeProps {
@@ -30,7 +30,7 @@ export function TrapezoidShape(props: TrapezoidShapeProps) {
   const nodeAny = node as any;
   const roundedEdges = nodeAny.roundedEdges || false;
   const points = "15,5 65,5 75,45 5,45";
-  const viewBox: [number, number] = [80, 50];
+  const { viewBox, width: vbW, height: vbH, transformedPoints } = getPolygonViewBoxAndPoints(points);
 
   const backgroundColors = nodeAny.backgroundColors || [nodeAny.backgroundColor || '#6b7280'];
   const borderColors = nodeAny.borderColors || [nodeAny.borderColor || '#6b7280'];
@@ -55,7 +55,7 @@ export function TrapezoidShape(props: TrapezoidShapeProps) {
   return (
     <SvgShapeBase
       {...props}
-      viewBox="0 0 80 50"
+      viewBox={viewBox}
       defaultWidth={80}
       defaultHeight={50}
       svgContent={
@@ -63,7 +63,7 @@ export function TrapezoidShape(props: TrapezoidShapeProps) {
           {defs}
           {roundedEdges ? (
             <path
-              d={polygonToRoundedPath(points, undefined, viewBox)}
+              d={polygonToRoundedPath(transformedPoints, undefined, [vbW, vbH])}
               fill={fillColor}
               stroke={strokeColor}
               strokeWidth={strokeWidth}
@@ -73,7 +73,7 @@ export function TrapezoidShape(props: TrapezoidShapeProps) {
             />
           ) : (
             <polygon
-              points={points}
+              points={transformedPoints}
               fill={fillColor}
               stroke={strokeColor}
               strokeWidth={strokeWidth}

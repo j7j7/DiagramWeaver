@@ -3,7 +3,7 @@
 import React from "react";
 import type { DiagramNodeData } from "@/lib/types";
 import { SvgShapeBase } from "./svg-shape-base";
-import { polygonToRoundedPath } from "./shape-utils";
+import { polygonToRoundedPath, getPolygonViewBoxAndPoints } from "./shape-utils";
 import { useSvgGradient } from "@/hooks/use-svg-gradient";
 
 interface HexagonShapeProps {
@@ -30,7 +30,7 @@ export function HexagonShape(props: HexagonShapeProps) {
   const nodeAny = node as any;
   const roundedEdges = nodeAny.roundedEdges || false;
   const points = "30,5 50,17.5 50,42.5 30,55 10,42.5 10,17.5";
-  const viewBox: [number, number] = [60, 60];
+  const { viewBox, width: vbW, height: vbH, transformedPoints } = getPolygonViewBoxAndPoints(points);
 
   const backgroundColors = nodeAny.backgroundColors || [nodeAny.backgroundColor || '#6b7280'];
   const borderColors = nodeAny.borderColors || [nodeAny.borderColor || '#6b7280'];
@@ -55,13 +55,13 @@ export function HexagonShape(props: HexagonShapeProps) {
   return (
     <SvgShapeBase
       {...props}
-      viewBox="0 0 60 60"
+      viewBox={viewBox}
       svgContent={
         <>
           {defs}
           {roundedEdges ? (
             <path
-              d={polygonToRoundedPath(points, undefined, viewBox)}
+              d={polygonToRoundedPath(transformedPoints, undefined, [vbW, vbH])}
               fill={fillColor}
               stroke={strokeColor}
               strokeWidth={strokeWidth}
@@ -71,7 +71,7 @@ export function HexagonShape(props: HexagonShapeProps) {
             />
           ) : (
             <polygon
-              points={points}
+              points={transformedPoints}
               fill={fillColor}
               stroke={strokeColor}
               strokeWidth={strokeWidth}

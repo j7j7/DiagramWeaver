@@ -20,6 +20,8 @@ export interface ShapeEdgeBounds {
   rightX: number;
   viewBoxW: number;
   viewBoxH: number;
+  /** When true, SVG uses preserveAspectRatio="none" (stretch to fill); use linear scaling */
+  stretchScaling?: boolean;
 }
 
 /** Returns edge bounds for a shape type; null means use full bounding box (rectangle behavior) */
@@ -34,52 +36,44 @@ export function getShapeEdgeBounds(shapeType: string | undefined): ShapeEdgeBoun
       return { topY: 1, bottomY: 59, leftX: 1, rightX: 59, viewBoxW: 60, viewBoxH: 60 };
 
     case 'octagon':
-      // viewBox 60x60, points "20,5 40,5 55,20 55,40 40,55 20,55 5,40 5,20"
-      // Top edge y=5 center x=30, Bottom y=55 x=30, Left x=5 y=30, Right x=55 y=30
-      return { topY: 5, bottomY: 55, leftX: 5, rightX: 55, viewBoxW: 60, viewBoxH: 60 };
+      // Tight viewBox 52x52, Top (26,1), Bottom (26,51), Left (1,26), Right (51,26)
+      return { topY: 1, bottomY: 51, leftX: 1, rightX: 51, viewBoxW: 52, viewBoxH: 52, stretchScaling: true };
 
     case 'hexagon':
-      // viewBox 60x60, points "30,5 50,17.5 50,42.5 30,55 10,42.5 10,17.5"
-      // Top vertex (30,5), Bottom (30,55), Left edge center (10,30), Right (50,30)
-      return { topY: 5, bottomY: 55, leftX: 10, rightX: 50, viewBoxW: 60, viewBoxH: 60 };
+      // Tight viewBox 42x52, Top (21,1), Bottom (21,51), Left (1,26), Right (41,26)
+      return { topY: 1, bottomY: 51, leftX: 1, rightX: 41, viewBoxW: 42, viewBoxH: 52, stretchScaling: true };
 
     case 'pentagon':
-      // viewBox 60x60, points "30,5 52,22 46,48 14,48 8,22"
-      // Top (30,5), Bottom flat edge (30,48), Left extent (8,~35), Right (52,~35)
-      return { topY: 5, bottomY: 48, leftX: 8, rightX: 52, viewBoxW: 60, viewBoxH: 60 };
+      // Tight viewBox 46x45, Top (23,1), Bottom (23,44), Left (1,25), Right (45,25)
+      return { topY: 1, bottomY: 44, leftX: 1, rightX: 45, viewBoxW: 46, viewBoxH: 45, stretchScaling: true };
 
     case 'kite':
-      // viewBox 60x60, points "30,5 50,30 30,55 10,30"
-      // Top (30,5), Bottom (30,55), Left (10,30), Right (50,30)
-      return { topY: 5, bottomY: 55, leftX: 10, rightX: 50, viewBoxW: 60, viewBoxH: 60 };
+      // Tight viewBox 42x52 (transformed from 60x60), Top (21,0), Bottom (21,50), Left (0,25), Right (40,25)
+      return { topY: 0, bottomY: 50, leftX: 0, rightX: 40, viewBoxW: 42, viewBoxH: 52, stretchScaling: true };
 
     case 'trapezoid':
-      // viewBox 80x50, points "15,5 65,5 75,45 5,45"
-      // Top (40,5), Bottom (40,45), Left (10,25), Right (70,25)
-      return { topY: 5, bottomY: 45, leftX: 10, rightX: 70, viewBoxW: 80, viewBoxH: 50 };
+      // Tight viewBox 72x42, Top (35,1), Bottom (35,41), Left (0,21), Right (70,21)
+      return { topY: 1, bottomY: 41, leftX: 0, rightX: 70, viewBoxW: 72, viewBoxH: 42, stretchScaling: true };
 
     case 'parallelogram':
-      // viewBox 80x50, points "20,5 75,5 60,45 5,45"
-      // Top center ~(47.5,5), Bottom ~(32.5,45), Left ~(12.5,25), Right ~(67.5,25)
-      return { topY: 5, bottomY: 45, leftX: 12.5, rightX: 67.5, viewBoxW: 80, viewBoxH: 50 };
+      // Tight viewBox 72x42, Top center ~(41,1), Bottom ~(26,41), Left ~(4,21), Right ~(68,21)
+      return { topY: 1, bottomY: 41, leftX: 4, rightX: 68, viewBoxW: 72, viewBoxH: 42, stretchScaling: true };
 
     case 'arrowhead':
-      // viewBox 60x40, points "5,5 45,5 45,15 55,20 45,25 45,35 5,35"
-      return { topY: 5, bottomY: 35, leftX: 5, rightX: 55, viewBoxW: 60, viewBoxH: 40 };
+      // Tight viewBox 52x32, Top (25,1), Bottom (25,31), Left (1,20), Right (51,20)
+      return { topY: 1, bottomY: 31, leftX: 1, rightX: 51, viewBoxW: 52, viewBoxH: 32, stretchScaling: true };
 
     case 'chevron':
-      // viewBox 60x40, points "5,5 25,5 35,20 25,35 5,35 15,20"
-      // Top center (15,5), Bottom (15,35), Left (5,20), Right (35,20)
-      return { topY: 5, bottomY: 35, leftX: 5, rightX: 35, viewBoxW: 60, viewBoxH: 40 };
+      // Tight viewBox 32x32, Top (15,1), Bottom (15,31), Left (1,16), Right (31,16)
+      return { topY: 1, bottomY: 31, leftX: 1, rightX: 31, viewBoxW: 32, viewBoxH: 32, stretchScaling: true };
 
     case 'triangle':
-      // viewBox 60x60, points "30,5 55,50 5,50"
-      // Top vertex (30,5), Bottom edge center (30,50), Left (5,50) and Right (55,50) - use corners
-      return { topY: 5, bottomY: 50, leftX: 5, rightX: 55, viewBoxW: 60, viewBoxH: 60 };
+      // Tight viewBox 52x47, Top (26,1), Bottom (26,46), Left (1,46), Right (51,46)
+      return { topY: 1, bottomY: 46, leftX: 1, rightX: 51, viewBoxW: 52, viewBoxH: 47, stretchScaling: true };
 
     case 'star':
-      // Complex - use approximate extent. viewBox 60x60
-      return { topY: 2, bottomY: 56, leftX: 2, rightX: 58, viewBoxW: 60, viewBoxH: 60 };
+      // Tight viewBox 58x56, approximate extent
+      return { topY: 1, bottomY: 55, leftX: 1, rightX: 57, viewBoxW: 58, viewBoxH: 56, stretchScaling: true };
 
     default:
       return null;
@@ -90,19 +84,19 @@ export function getShapeEdgeBounds(shapeType: string | undefined): ShapeEdgeBoun
  * Compute connection point (x,y) for a shape's edge using its viewBox geometry.
  * Uses SVG preserveAspectRatio "meet" scaling.
  */
-/** Kite viewBox 60×60, vertices: Top(30,5), Right(50,30), Bottom(30,55), Left(10,30) */
-const KITE_VIEWBOX = { w: 60, h: 60 };
-const KITE_CENTER = { x: 30, y: 30 };
+/** Kite tight viewBox 42×52 (transformed), vertices: Top(21,0), Right(41,26), Bottom(21,50), Left(1,26) */
+const KITE_VIEWBOX = { w: 42, h: 52 };
+const KITE_CENTER = { x: 21, y: 26 };
 
 type KiteEdge = 'top' | 'right' | 'bottom' | 'left';
 
 /** Returns the 3 points of the kite edge path in viewBox coords (polyline of 2 segments) */
 export function getKiteEdgePath(edge: KiteEdge): Array<{ x: number; y: number }> {
   switch (edge) {
-    case 'top': return [{ x: 10, y: 30 }, { x: 30, y: 5 }, { x: 50, y: 30 }];
-    case 'right': return [{ x: 30, y: 5 }, { x: 50, y: 30 }, { x: 30, y: 55 }];
-    case 'bottom': return [{ x: 50, y: 30 }, { x: 30, y: 55 }, { x: 10, y: 30 }];
-    case 'left': return [{ x: 30, y: 55 }, { x: 10, y: 30 }, { x: 30, y: 5 }];
+    case 'top': return [{ x: 1, y: 26 }, { x: 21, y: 0 }, { x: 41, y: 26 }];
+    case 'right': return [{ x: 21, y: 0 }, { x: 41, y: 26 }, { x: 21, y: 50 }];
+    case 'bottom': return [{ x: 41, y: 26 }, { x: 21, y: 50 }, { x: 1, y: 26 }];
+    case 'left': return [{ x: 21, y: 50 }, { x: 1, y: 26 }, { x: 21, y: 0 }];
   }
 }
 
@@ -132,8 +126,8 @@ const KITE_CONNECTOR_OFFSET_RATIO = 0.02;
 
 /**
  * Connection point on kite edge at parametric t, with screen coords and exit angle.
- * Uses SVG "meet" scaling to match rendered kite. Applies outward offset (2% of size) so
- * connectors don't sit exactly on the boundary; scales when kite is resized.
+ * Uses SVG stretch scaling (preserveAspectRatio="none") to match rendered kite.
+ * Applies outward offset (2% of size) so connectors don't sit exactly on the boundary.
  */
 export function getKiteConnectionPoint(
   edge: KiteEdge,
@@ -145,11 +139,8 @@ export function getKiteConnectionPoint(
   const path = getKiteEdgePath(edge);
   const pt = interpolateKitePath(path, t);
   const { w, h } = KITE_VIEWBOX;
-  const scale = Math.min(width / w, height / h);
-  const offsetX = (width - scale * w) / 2;
-  const offsetY = (height - scale * h) / 2;
-  let x = obj.x + offsetX + pt.x * scale;
-  let y = obj.y + offsetY + pt.y * scale;
+  let x = obj.x + (pt.x / w) * width;
+  let y = obj.y + (pt.y / h) * height;
   const angleDeg = getKiteEdgeAngleAtT(edge, t);
   const rad = (angleDeg * Math.PI) / 180;
   const offsetPx = Math.min(width, height) * KITE_CONNECTOR_OFFSET_RATIO;
@@ -172,7 +163,20 @@ export function shapeEdgeToPoint(
   height: number,
   edge: 'top' | 'bottom' | 'left' | 'right'
 ): { x: number; y: number } {
-  const { viewBoxW, viewBoxH } = bounds;
+  const { viewBoxW, viewBoxH, stretchScaling } = bounds;
+  if (stretchScaling) {
+    // SVG uses preserveAspectRatio="none" - linear stretch to fill
+    switch (edge) {
+      case 'top':
+        return { x: obj.x + (bounds.leftX + bounds.rightX) / 2 / viewBoxW * width, y: obj.y + bounds.topY / viewBoxH * height };
+      case 'bottom':
+        return { x: obj.x + (bounds.leftX + bounds.rightX) / 2 / viewBoxW * width, y: obj.y + bounds.bottomY / viewBoxH * height };
+      case 'left':
+        return { x: obj.x + bounds.leftX / viewBoxW * width, y: obj.y + (bounds.topY + bounds.bottomY) / 2 / viewBoxH * height };
+      case 'right':
+        return { x: obj.x + bounds.rightX / viewBoxW * width, y: obj.y + (bounds.topY + bounds.bottomY) / 2 / viewBoxH * height };
+    }
+  }
   const scale = Math.min(width / viewBoxW, height / viewBoxH);
   const offsetX = (width - scale * viewBoxW) / 2;
   const offsetY = (height - scale * viewBoxH) / 2;

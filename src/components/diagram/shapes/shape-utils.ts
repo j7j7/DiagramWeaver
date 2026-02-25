@@ -170,11 +170,44 @@ export const getShapeStyles = (node: DiagramNodeData & { width?: number; height?
 /**
  * Convert polygon points string to array of [x, y] coordinates
  */
-const parsePoints = (points: string): [number, number][] => {
+export const parsePoints = (points: string): [number, number][] => {
   return points.split(/\s+/).map(point => {
     const [x, y] = point.split(',').map(Number);
     return [x, y];
   });
+};
+
+/**
+ * Compute a tight viewBox and transformed points so the shape fills its container.
+ * Without this, shapes like kite/triangle use oversized viewBoxes which leave
+ * visible padding and cause misalignment with other shapes (e.g. rectangles).
+ * Points are transformed to (0,0)-origin space so viewBox stays "0 0 W H".
+ * @param points - Polygon points string (e.g., "30,5 55,50 5,50")
+ * @param strokePadding - Padding for stroke (default 1) so stroke isn't clipped
+ * @returns viewBox string, dimensions, and transformed points for polygon/path
+ */
+export const getPolygonViewBoxAndPoints = (
+  points: string,
+  strokePadding = 1
+): { viewBox: string; width: number; height: number; transformedPoints: string } => {
+  const coords = parsePoints(points);
+  if (coords.length < 3) {
+    return { viewBox: "0 0 60 60", width: 60, height: 60, transformedPoints: points };
+  }
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const [x, y] of coords) {
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x);
+    maxY = Math.max(maxY, y);
+  }
+  const pad = strokePadding;
+  const w = maxX - minX + 2 * pad;
+  const h = maxY - minY + 2 * pad;
+  const transformedPoints = coords
+    .map(([x, y]) => `${x - minX + pad},${y - minY + pad}`)
+    .join(" ");
+  return { viewBox: `0 0 ${w} ${h}`, width: w, height: h, transformedPoints };
 };
 
 /**

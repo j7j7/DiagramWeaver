@@ -1,6 +1,9 @@
 # MEMORY.MD
 
-## DiagramWeaver - Latest Features and Functions (Updated 2026-02-24)
+## DiagramWeaver - Latest Features and Functions (Updated 2026-02-25)
+
+### 2026-02-25 – Shape Container Alignment Fix (Rounded Rect, Kite, Triangle, etc.)
+Polygon shapes (kite, triangle, hexagon, star, octagon, pentagon, parallelogram, trapezoid, chevron, arrowhead) had oversized viewBoxes, causing the visible shape to appear smaller than its layout container and misalign with rectangles. **Fix**: Added `getPolygonViewBoxAndPoints()` in `shape-utils.ts` to compute a tight viewBox from the polygon’s bounding box and transform points to that space, so the shape fills the container. Connection bounds updated for stretch scaling (`stretchScaling: true`) in `shape-connection-bounds.ts`; kite’s `getKiteConnectionPoint` now uses the tight viewBox. **Rounded-rectangle fix**: viewBox expanded to include stroke overflow (`vbX=-half`, `vbY=-half`, `vbW=VIEWBOX_W+strokeWidth`, `vbH=VIEWBOX_H+strokeWidth`); rect drawn at (0,0) full size so the stroke's outer edge maps exactly to the container edge—eliminates visible gap between shape and selection/container box for correct alignment. Modified: `shape-utils.ts`, `shape-connection-bounds.ts`, `rounded-rectangle.tsx`, polygon shapes.
 
 ### 2026-02-24 – Connection Lines Layering Toggle
 **Edit → Lines Behind Nodes / Order-Aware Connection Lines** toggle controls how connector lines render relative to nodes. **Lines Behind Nodes** (default): All connections render first (z-index 0), nodes on top; lines never overlap rectangles. **Order-Aware Connection Lines**: Interleaved z-ordering per connection-order-utils (connections can pass in front of/behind nodes based on endpoint positions). Preference persisted to localStorage (`dw:connectionsBehindNodes:enabled`). Viewer reads same localStorage. Modified: diagram-editor.tsx, top-menu-bar.tsx, editor-canvas.tsx, viewer-canvas.tsx.
