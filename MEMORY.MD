@@ -1,6 +1,9 @@
 # MEMORY.MD
 
-## DiagramWeaver - Latest Features and Functions (Updated 2026-02-25)
+## DiagramWeaver - Latest Features and Functions (Updated 2026-02-26)
+
+### 2026-02-26 – Multi-Select Copy/Paste Fix
+When selecting multiple canvas items and copying (Cmd/Ctrl+C or Edit → Copy), only one item was pasted. **Cause**: Both `selectedItemId` (primary) and `selectedItemIds` are set during multi-select; the code checked `selectedItemId` first and called `handleCopy(selectedItemId)` for single-item copy. **Fix**: Prioritize multi-selection: when `selectedItemIds.size > 1`, call `handleCopy()` (no arg) to copy all selected items, connections, and groupings. Single-item path used only when one item selected. Modified: `editor-canvas.tsx` (copyHandler and keyboard handler).
 
 ### 2026-02-25 – Non-Scaling Stroke and ViewBox for All SVG Shapes
 Applied the rounded-rectangle pattern to all SVG shapes: **1) Borders**: `vector-effect="non-scaling-stroke"` so stroke stays constant pixel width regardless of shape size. **2) ViewBox fit**: Polygon shapes pass `strokeWidth/2` as strokePadding to `getPolygonViewBoxAndPoints()` so the viewBox includes stroke overflow and the shape fills its container. Shapes updated: kite, triangle, hexagon, star, pentagon, octagon, trapezoid, parallelogram, arrowhead, chevron (polygon/path); circle, cloud, jigsaw (path). Modified: all shape components in `shapes/`.

@@ -995,10 +995,12 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
         e.preventDefault();
-        if (selectedItemId) {
-          handleCopy(selectedItemId);
-        } else if (selectedItemIds && selectedItemIds.size > 0) {
+        // Multi-selection: copy all. Check first so we don't copy only primary when both are set.
+        if (selectedItemIds && selectedItemIds.size > 1) {
           handleCopy();
+        } else if (selectedItemId || (selectedItemIds && selectedItemIds.size > 0)) {
+          const idToCopy = selectedItemId || Array.from(selectedItemIds)[0];
+          handleCopy(idToCopy);
         }
       } else if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
         e.preventDefault();
@@ -1079,10 +1081,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   // Exposes methods that parent components can call via ref
   // Used by diagram-editor.tsx for menu bar actions and other external controls
   const copyHandler = useCallback(() => {
-    if (selectedItemId) {
-      handleCopy(selectedItemId);
-    } else if (selectedItemIds && selectedItemIds.size > 0) {
+    // Multi-selection: copy all items (including connections). Must check first so we
+    // don't fall through to single-item copy when selectedItemId is set as primary.
+    if (selectedItemIds && selectedItemIds.size > 1) {
       handleCopy();
+    } else if (selectedItemId || (selectedItemIds && selectedItemIds.size > 0)) {
+      const idToCopy = selectedItemId || Array.from(selectedItemIds)[0];
+      handleCopy(idToCopy);
     }
   }, [selectedItemId, selectedItemIds, handleCopy]);
 
