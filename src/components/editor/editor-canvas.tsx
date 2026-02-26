@@ -1302,7 +1302,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 const node = nodesById[itemId];
                 const zone = zonesById[itemId];
                 const connZIndex = 2 * i;
-                const nodeZIndex = 2 * i + 1;
+                // Node z must exceed all connection z (including last-slot 2*n) so labels stay on top
+                const NODE_LAYER_BASE = 100;
+                const nodeZIndex = NODE_LAYER_BASE + 2 * i + 1;
                 const nodeEl = node ? (
                   <DiagramNode
                     key={node.id}

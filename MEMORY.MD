@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-02-26)
 
+### 2026-02-26 – Node Labels Always On Top of Connectors
+When using **Order-Aware Connection Lines** (Edit → Lines Behind Nodes off), connector lines in the "last slot" or interleaved slots could render with higher z-index than nodes, causing labels (e.g. "EC2 Auto Scaling") to be obscured by incoming connector lines. **Fix**: In interleaved mode, nodes now use a base z-index (NODE_LAYER_BASE=100) so all nodes render above all connections (conn z=0,2,...,2n), ensuring labels are always visible on top. Modified: `editor-canvas.tsx`, `viewer-canvas.tsx`.
+
 ### 2026-02-26 – Multi-Select Copy/Paste Fix
 When selecting multiple canvas items and copying (Cmd/Ctrl+C or Edit → Copy), only one item was pasted. **Cause**: Both `selectedItemId` (primary) and `selectedItemIds` are set during multi-select; the code checked `selectedItemId` first and called `handleCopy(selectedItemId)` for single-item copy. **Fix**: Prioritize multi-selection: when `selectedItemIds.size > 1`, call `handleCopy()` (no arg) to copy all selected items, connections, and groupings. Single-item path used only when one item selected. Modified: `editor-canvas.tsx` (copyHandler and keyboard handler).
 
