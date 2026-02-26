@@ -10,6 +10,7 @@ import { CanvasConnections } from "../editor/canvas-connections";
 import { RULER_SIZE, type PositionedNode, type PositionedGroup } from "../editor/canvas-constants";
 import { CanvasRulers } from "../editor/canvas-rulers";
 import { computeConnectionSlots } from "@/lib/connection-order-utils";
+import { isShapeNodeType } from "@/lib/utils";
 import { MetadataPopup } from "../editor/metadata-popup";
 
 export type ViewerSelectedItem =
@@ -369,9 +370,10 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
               const node = nodesById[itemId];
               const zone = zonesById[itemId];
               const connZIndex = 2 * i;
-              // Node z must exceed all connection z (including last-slot 2*n) so labels stay on top
+              // Icon/text nodes: elevate z so labels stay on top of connectors. Shapes: keep original so lines can pass in front.
               const NODE_LAYER_BASE = 100;
-              const nodeZIndex = NODE_LAYER_BASE + 2 * i + 1;
+              const isShape = node && isShapeNodeType(node.type);
+              const nodeZIndex = isShape ? 2 * i + 1 : NODE_LAYER_BASE + 2 * i + 1;
               const nodeEl = node ? (
                 <DiagramNode
                   key={node.id}
