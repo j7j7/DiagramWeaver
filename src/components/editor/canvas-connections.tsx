@@ -27,6 +27,8 @@ interface CanvasConnectionsProps {
   connectionIndices?: Set<number>;
   /** Z-index for this connection layer when using order-aware layering (enables interleaving with nodes) */
   stackZIndex?: number;
+  /** During GIF export, advances animation deterministically per frame */
+  exportAnimationTimeSeconds?: number | null;
 }
 
 function setsEqual(a: Set<number> | undefined, b: Set<number> | undefined): boolean {
@@ -42,6 +44,7 @@ function areCanvasConnectionsPropsEqual(prev: CanvasConnectionsProps, next: Canv
     prev.height === next.height &&
     prev.selectedItemId === next.selectedItemId &&
     prev.stackZIndex === next.stackZIndex &&
+    prev.exportAnimationTimeSeconds === next.exportAnimationTimeSeconds &&
     prev.diagramData === next.diagramData &&
     prev.nodesById === next.nodesById &&
     prev.zonesById === next.zonesById &&
@@ -69,6 +72,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     onConnectionWaypointAdd,
     connectionIndices,
     stackZIndex,
+    exportAnimationTimeSeconds,
   } = props;
   // Pre-calculate edge information for all connections
   const connectionEdgeInfo = new Map<string, { fromEdge: string; toEdge: string }>();
@@ -363,6 +367,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
               to={toPos}
               connectionColor={edge.color}
               connectionData={enhancedEdge}
+              exportAnimationTimeSeconds={exportAnimationTimeSeconds}
               onClick={(connection) => {
                 // Select the connection when clicked
                 closeContextMenu();

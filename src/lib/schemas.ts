@@ -135,6 +135,17 @@ export const DiagramConnectionDataSchema = z.object({
   // Optional waypoints for routing connection around obstacles (absolute canvas coordinates)
   waypoints: z.array(z.object({ x: z.number(), y: z.number(), id: z.string().optional() })).optional(),
 
+  animation: z.object({
+    enabled: z.boolean().optional(),
+    shape: z.enum(['dot', 'square', 'arrow', 'triangle', 'hexagon']).optional(),
+    speed: z.number().min(-100).max(100).optional(),
+    size: z.number().min(0).max(10).optional(),
+    color: z.string().optional(),
+    autoCount: z.boolean().optional(),
+    shapeCount: z.number().min(0).max(2000).optional(),
+    spacing: z.number().min(0).max(10).optional(),
+  }).optional(),
+
   metaData: z.record(z.string(), z.string()).optional(), // Key/value metadata
 });
 

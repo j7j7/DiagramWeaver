@@ -45,8 +45,9 @@ import { TextStylingPanel } from './text-styling-panel';
 import { UmlClassTextStylingPanel } from './uml-class-text-styling-panel';
 import { VisualStylingPanel } from './visual-styling-panel';
 import { LineStylingPanel } from './line-styling-panel';
+import { ConnectionAnimationControls } from './connection-animation-controls';
 import type { SelectedItem } from '../diagram-editor';
-import type { DiagramData, DiagramNodeData, DiagramZoneData } from '@/lib/types';
+import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramConnectionData } from '@/lib/types';
 import { DiagramTheme } from '@/lib/theme-types';
 import { themeManager } from '@/lib/theme-manager';
 import { extractTextStylingFromNode, extractTextStylingFromGroup, applyTextStylingToZone, applyTextStylingToNode } from '@/lib/text-styling';
@@ -54,6 +55,7 @@ import { extractUmlClassTextStylingFromNode, applyUmlClassTextStylingToNode, DEF
 import { isShapeNodeType, isIconOrEmojiType } from '@/lib/utils';
 import { extractVisualStylingFromNode, extractVisualStylingFromGroup } from '@/lib/visual-styling';
 import { extractLineStylingFromNode, applyLineStylingToNode } from '@/lib/line-styling';
+import { toConnectionAnimationPatch } from '@/lib/connection-animation';
 
 interface ContextToolbarProps {
   selectedItem: SelectedItem | null;
@@ -508,6 +510,22 @@ export function ContextToolbar({
     });
     return allConnections;
   }, [selectedItem, diagramData]);
+
+  const handleBulkConnectionAnimationApply = useCallback((sourceId: string, direction: 'outbound' | 'inbound', animation: DiagramConnectionData['animation']) => {
+    if (!diagramData || !onDiagramDataUpdate) return;
+    const animationPatch = toConnectionAnimationPatch(animation);
+    onDiagramDataUpdate({
+      ...diagramData,
+      connections: (diagramData.connections || []).map((conn) => {
+        const shouldApply = direction === 'outbound' ? conn.from === sourceId : conn.to === sourceId;
+        if (!shouldApply) return conn;
+        return {
+          ...conn,
+          animation: animationPatch,
+        };
+      }),
+    });
+  }, [diagramData, onDiagramDataUpdate]);
 
   if (!selectedItem) {
     return null;
@@ -1468,6 +1486,16 @@ export function ContextToolbar({
                                 />
                                 <span className="text-xs text-muted-foreground shrink-0">%</span>
                               </div>
+                            </div>
+                            <div className="pt-1 border-t border-border/50">
+                              <ConnectionAnimationControls
+                                connection={connInfo.connection}
+                                inheritedConnectionColor={connectionColor}
+                                onConnectionUpdate={(from, to, updates) => onConnectionUpdate?.(from, to, updates)}
+                                onBulkApply={handleBulkConnectionAnimationApply}
+                                compact
+                                isReadOnly={isReadOnly}
+                              />
                             </div>
                             <div className="flex items-center gap-2 pt-1 border-t border-border/50">
                               <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Line Thickness:</label>

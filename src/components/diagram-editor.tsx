@@ -70,6 +70,7 @@ import {
   getItemCount
 } from '@/lib/rendering-order-utils';
 import { performAutoLayout } from '@/lib/auto-layout';
+import { DEFAULT_CONNECTION_ANIMATION, toConnectionAnimationPatch } from '@/lib/connection-animation';
 
 export type SelectedItem = (
   | (DiagramNodeData & {
@@ -168,6 +169,7 @@ export default function DiagramEditor() {
   const isMobile = useIsMobile();
   const editorRef = React.useRef<EditorCanvasHandle>(null);
   const [exportDialogOpen, setExportDialogOpen] = React.useState(false);
+  const [exportDialogFormat, setExportDialogFormat] = React.useState<'png' | 'gif'>('png');
   const [closeTabDialogOpen, setCloseTabDialogOpen] = React.useState(false);
   const [pendingCloseTabId, setPendingCloseTabId] = React.useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = React.useState<boolean>(false);
@@ -795,7 +797,8 @@ export default function DiagramEditor() {
       from: selectedItem.id, 
       to: targetItem.id,
       style: connectionOptions.style || 'bezier',
-      curvature: connectionOptions.style === 'bezier' ? (connectionOptions.curvature || 0.5) : undefined
+      curvature: connectionOptions.style === 'bezier' ? (connectionOptions.curvature || 0.5) : undefined,
+      animation: toConnectionAnimationPatch(DEFAULT_CONNECTION_ANIMATION),
     };
     
     // Clear stored connection options
@@ -1062,7 +1065,7 @@ export default function DiagramEditor() {
     if (event.target) event.target.value = '';
   };
 
-  const handleConnectionUpdate = (from: string, to: string, updates: { text?: string; color?: string; textPosition?: number; lineWidth?: number; shadow?: boolean; style?: 'bezier'; curvature?: number; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean; arrow?: boolean; waypoints?: Array<{ x: number; y: number; id?: string }>; metaData?: Record<string, string> }) => {
+  const handleConnectionUpdate = (from: string, to: string, updates: { text?: string; color?: string; textPosition?: number; lineWidth?: number; shadow?: boolean; style?: 'bezier'; curvature?: number; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean; arrow?: boolean; waypoints?: Array<{ x: number; y: number; id?: string }>; metaData?: Record<string, string>; animation?: DiagramConnectionData['animation'] }) => {
     setDiagramData(prevData => ({
       ...prevData,
       connections: prevData.connections.map(conn => 
@@ -1125,6 +1128,25 @@ export default function DiagramEditor() {
     if (!conn?.waypoints) return;
     const updated = conn.waypoints.filter((_, i) => i !== index);
     handleConnectionUpdate(from, to, { waypoints: updated.length ? updated : undefined });
+  };
+
+  const handleConnectionAnimationBulkApply = (
+    sourceId: string,
+    direction: 'outbound' | 'inbound',
+    animation: DiagramConnectionData['animation']
+  ) => {
+    const animationPatch = toConnectionAnimationPatch(animation);
+    setDiagramData((prevData) => ({
+      ...prevData,
+      connections: prevData.connections.map((conn) => {
+        const shouldApply = direction === 'outbound' ? conn.from === sourceId : conn.to === sourceId;
+        if (!shouldApply) return conn;
+        return {
+          ...conn,
+          animation: animationPatch,
+        };
+      }),
+    }));
   };
 
   const handleConnectionContextMenu = useCallback((e: React.MouseEvent, connection: DiagramConnectionData) => {
@@ -1229,14 +1251,35 @@ export default function DiagramEditor() {
     }
   };
 
-  const handleExportSvg = async () => {
+  const handleExportPng = async () => {
+    setExportDialogFormat('png');
     setExportDialogOpen(true);
   };
 
-  const handleExport = async (options: { backgroundColor: 'transparent' | 'white'; quality?: 'low' | 'medium' | 'high' }) => {
+  const handleExportGif = async () => {
+    setExportDialogFormat('gif');
+    setExportDialogOpen(true);
+  };
+
+  const handleExport = async (options: {
+    format: 'png' | 'gif';
+    backgroundColor: 'transparent' | 'white';
+    quality?: 'low' | 'medium' | 'high';
+    fps?: number;
+    durationSeconds?: number;
+  }) => {
     // Close dialog and export current viewport
     setExportDialogOpen(false);
     if (editorRef.current) {
+      if (options.format === 'gif') {
+        await editorRef.current.exportGif({
+          backgroundColor: options.backgroundColor,
+          quality: options.quality || 'medium',
+          fps: options.fps,
+          durationSeconds: options.durationSeconds,
+        });
+        return;
+      }
       await editorRef.current.exportPng({ 
         backgroundColor: options.backgroundColor,
         quality: options.quality || 'medium'
@@ -1906,7 +1949,8 @@ export default function DiagramEditor() {
         handleSave={handleSave}
         handleLoadExample={handleLoadExample}
         createTab={createTab}
-        handleExportSvg={handleExportSvg}
+        handleExportSvg={handleExportPng}
+        handleExportGif={handleExportGif}
         handleMenuCopy={handleMenuCopy}
         handleMenuPaste={handleMenuPaste}
         canPaste={canPaste}
@@ -1952,6 +1996,7 @@ export default function DiagramEditor() {
         diagramData={diagramData}
         handleJsonValidChange={handleJsonValidChange}
         exportDialogOpen={exportDialogOpen}
+        exportDialogFormat={exportDialogFormat}
         setExportDialogOpen={setExportDialogOpen}
         handleExport={handleExport}
         refreshCanvas={refreshCanvas}
@@ -2039,6 +2084,7 @@ function DiagramEditorInner({
   handleLoadExample,
   createTab,
   handleExportSvg,
+  handleExportGif,
   handleMenuCopy,
   handleMenuPaste,
   canPaste,
@@ -2086,6 +2132,7 @@ function DiagramEditorInner({
   handleJsonValidChange,
   toggleJsonPanel: toggleJsonPanelInner,
   exportDialogOpen,
+  exportDialogFormat,
   setExportDialogOpen,
   handleExport,
   refreshCanvas,
@@ -2214,6 +2261,7 @@ function DiagramEditorInner({
                     onLoadExample={handleLoadExample}
                     onNewTab={createTab}
                     onExportSvg={handleExportSvg}
+                    onExportGif={handleExportGif}
                     onToggleJsonPanel={toggleJsonPanel}
                     jsonPanelOpen={jsonPanelOpen}
                     onTogglePropertiesPanel={onTogglePropertiesPanel}
@@ -2433,6 +2481,7 @@ function DiagramEditorInner({
         <ExportDialog
           open={exportDialogOpen}
           onOpenChange={setExportDialogOpen}
+          initialFormat={exportDialogFormat}
           onExport={handleExport}
         />
         {umlClassEditorModal.visible && umlClassEditorModal.itemId && typeof window !== 'undefined' && createPortal(

@@ -119,6 +119,7 @@ interface EditorCanvasProps {
 export type EditorCanvasHandle = {
   fitToView: () => void;
   exportPng: (options?: { backgroundColor?: 'transparent' | 'white'; quality?: 'low' | 'medium' | 'high' }) => Promise<void>;
+  exportGif: (options?: { backgroundColor?: 'transparent' | 'white'; quality?: 'low' | 'medium' | 'high'; fps?: number; durationSeconds?: number }) => Promise<void>;
   copy: () => void;
   paste: () => void;
   canPaste: () => boolean;
@@ -129,6 +130,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
    { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, connectionsBehindNodesEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal }: EditorCanvasProps,
   ref
 ) {
+  const [gifExportAnimationTimeSeconds, setGifExportAnimationTimeSeconds] = React.useState<number | null>(null);
+
   // ============================================================================
   // LAYOUT CALCULATION
   // ============================================================================
@@ -816,7 +819,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   // - exportPng: Exports current viewport to PNG
   // - startExport: Starts export with quality settings
   // See: src/hooks/use-canvas-export.ts
-  const { exportPng, startExport } = useCanvasExport({
+  const { exportPng, exportGif, startExport } = useCanvasExport({
     canvasRef,
     transform,
     width,
@@ -826,6 +829,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     processedNodes,
     processedZones,
     selectedItemIds,
+    onGifAnimationTimeUpdate: setGifExportAnimationTimeSeconds,
   });
 
   // ============================================================================
@@ -1142,11 +1146,12 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   React.useImperativeHandle(ref, () => ({
     fitToView: handleFitToView, // Auto-fits diagram to viewport
     exportPng: (options?: { backgroundColor?: 'transparent' | 'white'; quality?: 'low' | 'medium' | 'high' }) => exportPng(options), // Exports current viewport to PNG
+    exportGif: (options?: { backgroundColor?: 'transparent' | 'white'; quality?: 'low' | 'medium' | 'high'; fps?: number; durationSeconds?: number }) => exportGif(options), // Exports current viewport to GIF
     copy: copyHandler, // Copies selected item(s)
     paste: pasteHandler, // Pastes from clipboard
     canPaste: canPasteHandler, // Checks if paste is available
     pastePaletteItem: pastePaletteItemHandler, // Pastes a new item from the sidebar palette
-  }), [handleFitToView, exportPng, copyHandler, pasteHandler, canPasteHandler, pastePaletteItemHandler]);
+  }), [handleFitToView, exportPng, exportGif, copyHandler, pasteHandler, canPasteHandler, pastePaletteItemHandler]);
 
   return (
     <div className="relative w-full h-full" data-tutorial-id="canvas">
@@ -1248,6 +1253,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   onConnectionUpdate={onConnectionUpdate}
                   onConnectionWaypointAdd={onConnectionWaypointAdd}
                   stackZIndex={0}
+                  exportAnimationTimeSeconds={gifExportAnimationTimeSeconds}
                 />
                 {connectionSlots.sortedItemIds.map((itemId, i) => {
                   const node = nodesById[itemId];
@@ -1349,6 +1355,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       onConnectionWaypointAdd={onConnectionWaypointAdd}
                       connectionIndices={connIndices}
                       stackZIndex={connZIndex}
+                      exportAnimationTimeSeconds={gifExportAnimationTimeSeconds}
                     />
                   ) : null,
                   nodeEl,
@@ -1377,6 +1384,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   onConnectionWaypointAdd={onConnectionWaypointAdd}
                   connectionIndices={new Set(lastSlot)}
                   stackZIndex={2 * n}
+                  exportAnimationTimeSeconds={gifExportAnimationTimeSeconds}
                 />
               );
             })()}

@@ -6,6 +6,7 @@ import { measureNodeDims } from "@/components/editor/canvas-constants";
 import { isIconOrEmojiType, isShapeNodeType } from "@/lib/utils";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
 import { getShapeEdgeBounds, shapeEdgeToPoint, isKiteShapeType, getKiteConnectionPoint } from "@/lib/shape-connection-bounds";
+import { clampConnectionAnimation } from "@/lib/connection-animation";
 
 const NODE_WIDTH = 80;
 const NODE_HEIGHT = 80;
@@ -43,6 +44,7 @@ interface BezierConnectionProps {
   to: Positionable & { lineColor?: string };
   connectionColor?: string; // Specific color for this connection
   connectionData?: DiagramConnectionData; // Full connection data including text
+  exportAnimationTimeSeconds?: number | null;
   onClick?: (connection: DiagramConnectionData) => void; // Click handler
   onContextMenu?: (e: React.MouseEvent, connection: DiagramConnectionData) => void;
 }
@@ -52,6 +54,154 @@ interface BezierConnectionTextProps {
   from?: Positionable & { lineColor?: string };
   to?: Positionable & { lineColor?: string };
   connectionColor?: string;
+}
+
+const MAX_RENDERED_ANIMATION_SHAPES = 2000;
+
+function formatAnimFloat(value: number): string {
+  return Number.isFinite(value) ? value.toFixed(6).replace(/0+$/, '').replace(/\.$/, '') || '0' : '0';
+}
+
+function getLoopedAnimationPathConfig(progress: number, speed: number): { keyPoints: string; keyTimes: string } {
+  const normalized = Math.max(0, Math.min(1, progress));
+
+  if (speed < 0) {
+    const jumpTime = normalized;
+    return {
+      keyPoints: `${formatAnimFloat(normalized)};0;1;${formatAnimFloat(normalized)}`,
+      keyTimes: `0;${formatAnimFloat(jumpTime)};${formatAnimFloat(jumpTime)};1`,
+    };
+  }
+
+  const jumpTime = 1 - normalized;
+  return {
+    keyPoints: `${formatAnimFloat(normalized)};1;0;${formatAnimFloat(normalized)}`,
+    keyTimes: `0;${formatAnimFloat(jumpTime)};${formatAnimFloat(jumpTime)};1`,
+  };
+}
+
+interface PathDistanceLookup {
+  totalLength: number;
+  resolveT: (distance: number, wrap?: boolean) => number;
+}
+
+function estimateConnectionPathLength(
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  fromAngle: number,
+  toAngle: number,
+  curvature: number,
+  waypoints?: Array<{ x: number; y: number }>
+): number {
+  const samples = 60;
+  let total = 0;
+  let previous = getPointOnConnectionPath(0, fromX, fromY, toX, toY, fromAngle, toAngle, curvature, waypoints);
+
+  for (let i = 1; i <= samples; i++) {
+    const t = i / samples;
+    const point = getPointOnConnectionPath(t, fromX, fromY, toX, toY, fromAngle, toAngle, curvature, waypoints);
+    const dx = point.x - previous.x;
+    const dy = point.y - previous.y;
+    total += Math.sqrt(dx * dx + dy * dy);
+    previous = point;
+  }
+
+  return total;
+}
+
+function buildPathDistanceLookup(
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  fromAngle: number,
+  toAngle: number,
+  curvature: number,
+  waypoints?: Array<{ x: number; y: number }>
+): PathDistanceLookup {
+  const samples = 180;
+  const distances: number[] = [0];
+  const tValues: number[] = [0];
+  let totalLength = 0;
+  let previous = getPointOnConnectionPath(0, fromX, fromY, toX, toY, fromAngle, toAngle, curvature, waypoints);
+
+  for (let i = 1; i <= samples; i++) {
+    const t = i / samples;
+    const point = getPointOnConnectionPath(t, fromX, fromY, toX, toY, fromAngle, toAngle, curvature, waypoints);
+    const dx = point.x - previous.x;
+    const dy = point.y - previous.y;
+    totalLength += Math.sqrt(dx * dx + dy * dy);
+    distances.push(totalLength);
+    tValues.push(t);
+    previous = point;
+  }
+
+  const resolveT = (distance: number, wrap: boolean = true): number => {
+    if (totalLength <= 0) return 0;
+
+    const targetDistance = wrap
+      ? ((distance % totalLength) + totalLength) % totalLength
+      : Math.max(0, Math.min(totalLength, distance));
+
+    let low = 0;
+    let high = distances.length - 1;
+
+    while (low < high) {
+      const mid = Math.floor((low + high) / 2);
+      if (distances[mid] < targetDistance) {
+        low = mid + 1;
+      } else {
+        high = mid;
+      }
+    }
+
+    const index = low;
+    if (index <= 0) return 0;
+
+    const d0 = distances[index - 1];
+    const d1 = distances[index];
+    const t0 = tValues[index - 1];
+    const t1 = tValues[index];
+
+    if (d1 <= d0) return t1;
+    const ratio = (targetDistance - d0) / (d1 - d0);
+    return t0 + (t1 - t0) * ratio;
+  };
+
+  return {
+    totalLength,
+    resolveT,
+  };
+}
+
+function renderAnimatedShape(shape: 'dot' | 'square' | 'arrow' | 'triangle' | 'hexagon', size: number, color: string) {
+  const half = size / 2;
+
+  if (shape === 'dot') {
+    return <circle cx={0} cy={0} r={half} fill={color} />;
+  }
+
+  if (shape === 'square') {
+    return <rect x={-half} y={-half} width={size} height={size} fill={color} />;
+  }
+
+  if (shape === 'triangle') {
+    return <polygon points={`0,${-half} ${half},${half} ${-half},${half}`} fill={color} />;
+  }
+
+  if (shape === 'hexagon') {
+    const q = half * 0.55;
+    return <polygon points={`${-half},0 ${-q},${-half} ${q},${-half} ${half},0 ${q},${half} ${-q},${half}`} fill={color} />;
+  }
+
+  return (
+    <path
+      d={`M ${-half} ${-half * 0.35} L ${half * 0.25} ${-half * 0.35} L ${half * 0.25} ${-half * 0.8} L ${half} 0 L ${half * 0.25} ${half * 0.8} L ${half * 0.25} ${half * 0.35} L ${-half} ${half * 0.35} Z`}
+      fill={color}
+    />
+  );
 }
 
 export function getConnectionPoint(obj: any, width: number, height: number, point: 'top' | 'bottom' | 'left' | 'right' | 'center', iconHeight?: number, connectionIndex?: number, totalConnections?: number, isToNode: boolean = false, toConnectionIndex?: number, toTotalConnections?: number, iconOffset?: number, iconWidth?: number, iconOffsetX?: number): { x: number; y: number; angleDeg?: number } {
@@ -614,7 +764,7 @@ export function getPointOnConnectionPath(
   return getBezierPoint(localT, seg.p0x, seg.p0y, seg.cp1x, seg.cp1y, seg.cp2x, seg.cp2y, seg.p3x, seg.p3y);
 }
 
-export function BezierConnection({ from, to, connectionColor, connectionData, onClick, onContextMenu }: BezierConnectionProps) {
+export function BezierConnection({ from, to, connectionColor, connectionData, exportAnimationTimeSeconds, onClick, onContextMenu }: BezierConnectionProps) {
   // Use measureNodeDims-like logic for shapes to get actual dimensions
   const isFromShape = isShapeNodeType(from.type);
   const isToShape = isShapeNodeType(to.type);
@@ -777,6 +927,42 @@ export function BezierConnection({ from, to, connectionColor, connectionData, on
   const endMarkerId = showEndArrow ? `arrowhead-end-${from.id}-${to.id}` : undefined;
   const hasShadow = connectionData?.shadow || false;
   const shadowFilterId = hasShadow ? `shadow-filter-${from.id}-${to.id}` : undefined;
+  const animation = clampConnectionAnimation(connectionData?.animation);
+  const shapeScale = animation.size === 0 ? 1 : animation.size;
+  const shapeSize = Math.max(connectionData?.lineWidth || 2.5, (connectionData?.lineWidth || 2.5) * shapeScale);
+  const spacingDistance = shapeSize * (1 + animation.spacing);
+  const pathDistanceLookup = buildPathDistanceLookup(fromX, fromY, toX, toY, fromAngle, toAngle, curvature, waypoints);
+  const pathLength = pathDistanceLookup.totalLength;
+  const maxShapeCountByLength = spacingDistance > 0 ? Math.floor(pathLength / spacingDistance) : 0;
+  const requestedShapeCount = animation.autoCount ? maxShapeCountByLength : animation.shapeCount;
+  const renderedShapeCount = Math.max(
+    0,
+    Math.min(
+      MAX_RENDERED_ANIMATION_SHAPES,
+      Math.min(requestedShapeCount, maxShapeCountByLength)
+    )
+  );
+  const distributedShapeSpacing = renderedShapeCount > 0 ? pathLength / renderedShapeCount : 0;
+  const speedMagnitude = Math.abs(animation.speed);
+  const shouldRenderAnimationShapes = animation.enabled && renderedShapeCount > 0 && pathLength > 0;
+  const shouldAnimateShapes = shouldRenderAnimationShapes && speedMagnitude > 0;
+  const hasExportAnimationTime = typeof exportAnimationTimeSeconds === 'number' && Number.isFinite(exportAnimationTimeSeconds);
+  const useStaticExportAnimation = shouldAnimateShapes && hasExportAnimationTime;
+  const animationDuration = shouldAnimateShapes ? pathLength / speedMagnitude : 0;
+  const animationColor = animation.color || finalConnectionColor;
+  const connectionKey = `${connectionData?.from ?? from.id}-${connectionData?.to ?? to.id}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const animationPhaseResetKey = [
+    animation.enabled ? '1' : '0',
+    animation.shape,
+    animation.speed,
+    animation.size,
+    animation.autoCount ? 'auto' : 'manual',
+    animation.shapeCount,
+    animation.spacing,
+    renderedShapeCount,
+    Math.round(pathLength),
+  ].join('-').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const motionPathId = `connection-motion-${connectionKey}-${animationPhaseResetKey}`;
 
   return (
     <>
@@ -830,6 +1016,9 @@ export function BezierConnection({ from, to, connectionColor, connectionData, on
       </defs>
       
       <g style={{ pointerEvents: 'auto' }} onClick={handleClick} onContextMenu={handleContextMenu} data-connection-id={connectionData?.from && connectionData?.to ? `${connectionData.from}-${connectionData.to}` : undefined}>
+        {shouldRenderAnimationShapes && (
+          <path id={motionPathId} d={pathData} fill="none" stroke="none" />
+        )}
         <path
           d={pathData}
           stroke="transparent"
@@ -846,6 +1035,51 @@ export function BezierConnection({ from, to, connectionColor, connectionData, on
           markerEnd={showEndArrow ? `url(#${endMarkerId})` : undefined}
           filter={hasShadow ? `url(#${shadowFilterId})` : undefined}
         />
+        {shouldRenderAnimationShapes && Array.from({ length: renderedShapeCount }).map((_, index) => {
+          const progress = renderedShapeCount > 0 ? index / renderedShapeCount : 0;
+
+          if (shouldAnimateShapes && !useStaticExportAnimation) {
+            const loopConfig = getLoopedAnimationPathConfig(progress, animation.speed);
+            return (
+              <g key={`animated-shape-${animationPhaseResetKey}-${index}`}>
+                {renderAnimatedShape(animation.shape, shapeSize, animationColor)}
+                <animateMotion
+                  dur={`${animationDuration}s`}
+                  begin="0s"
+                  repeatCount="indefinite"
+                  calcMode="linear"
+                  keyTimes={loopConfig.keyTimes}
+                  keyPoints={loopConfig.keyPoints}
+                  rotate={animation.shape === 'arrow' || animation.shape === 'triangle' ? 'auto' : undefined}
+                >
+                  <mpath href={`#${motionPathId}`} />
+                </animateMotion>
+              </g>
+            );
+          }
+
+          let effectiveProgress = progress;
+          if (useStaticExportAnimation && pathLength > 0 && exportAnimationTimeSeconds !== null && exportAnimationTimeSeconds !== undefined) {
+            const cyclesPerSecond = speedMagnitude / pathLength;
+            const direction = animation.speed < 0 ? -1 : 1;
+            const offset = exportAnimationTimeSeconds * cyclesPerSecond * direction;
+            const wrapped = (progress + offset) % 1;
+            effectiveProgress = wrapped < 0 ? wrapped + 1 : wrapped;
+          }
+
+          const distance = effectiveProgress * pathLength;
+          const t = pathDistanceLookup.resolveT(distance, false);
+          const point = getPointOnConnectionPath(t, fromX, fromY, toX, toY, fromAngle, toAngle, curvature, waypoints);
+          const tangentT = pathDistanceLookup.resolveT(distance + 2, false);
+          const tangentPoint = getPointOnConnectionPath(tangentT, fromX, fromY, toX, toY, fromAngle, toAngle, curvature, waypoints);
+          const angleDeg = Math.atan2(tangentPoint.y - point.y, tangentPoint.x - point.x) * (180 / Math.PI);
+
+          return (
+            <g key={`static-shape-${animationPhaseResetKey}-${index}`} transform={`translate(${point.x}, ${point.y}) rotate(${angleDeg})`}>
+              {renderAnimatedShape(animation.shape, shapeSize, animationColor)}
+            </g>
+          );
+        })}
       </g>
     </>
   );

@@ -149,6 +149,18 @@ export interface DiagramConnectionData {
 
   /** Optional metadata as key/value pairs */
   metaData?: Record<string, string>;
+
+  /** Per-connection animation settings */
+  animation?: {
+    enabled?: boolean; // Whether animated shapes are shown on this connection
+    shape?: 'dot' | 'square' | 'arrow' | 'triangle' | 'hexagon';
+    speed?: number; // -100 to 100, units/sec in connection coordinates
+    size?: number; // 0 to 10, scaled by line width (0 = 1x line width)
+    color?: string; // Fallback to connection color when not provided
+    autoCount?: boolean; // true: derive shape count from length + spacing
+    shapeCount?: number; // Manual mode: 0 to 2000 (effective max is dynamically clamped by path length/spacing)
+    spacing?: number; // Shape-size spacing ratio, 0 to 10
+  };
 }
 
 export interface DiagramNodeItem {
