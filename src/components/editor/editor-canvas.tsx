@@ -60,7 +60,7 @@ interface EditorCanvasProps {
   selectedItemIds?: Set<string>;
   isConnectMode: boolean;
   onNodeClickInConnectMode: (node: DiagramNodeData) => void;
-  onConnect?: (connectionOptions?: { style?: 'pathways' | 'bezier', curvature?: number }) => void;
+  onConnect?: (connectionOptions?: { style?: 'pathways' | 'bezier', curvature?: number; sourceItemId?: string }) => void;
   onDisconnect?: () => void;
   onConnectionDelete?: (from: string, to: string) => void;
   onConnectionWaypointMove?: (from: string, to: string, index: number, newPos: { x: number; y: number }) => void;
@@ -1585,7 +1585,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               }
 
               requestAnimationFrame(() => {
-                onConnect?.({ style: 'bezier', curvature: 0.6 });
+                onConnect?.({ style: 'bezier', curvature: 0.6, sourceItemId: targetId });
               });
               closeContextMenu();
             }}

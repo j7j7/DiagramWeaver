@@ -386,11 +386,16 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
               onContextMenu={(e, connection) => {
                 closeContextMenu();
                 if (onItemSelect) {
-                  onItemSelect({
-                    ...connection,
-                    itemType: 'edge',
-                    id: `${connection.from}-${connection.to}`
-                  });
+                  const edgeId = `${connection.from}-${connection.to}`;
+                  const isAlreadySelected = selectedItemIds?.has(edgeId) || selectedItemId === edgeId;
+
+                  if (!isAlreadySelected) {
+                    onItemSelect({
+                      ...connection,
+                      itemType: 'edge',
+                      id: edgeId
+                    });
+                  }
                 }
                 onConnectionContextMenu?.(e, connection);
               }}

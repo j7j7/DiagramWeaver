@@ -58,7 +58,7 @@ interface TopMenuBarProps {
   selectedItem?: SelectedItem | null;
   selectedItemIds?: Set<string>;
   onItemUpdate?: (updatedItem: SelectedItem) => void;
-  onConnect?: (connectionOptions?: { style?: 'bezier', curvature?: number }) => void;
+  onConnect?: (connectionOptions?: { style?: 'bezier', curvature?: number; sourceItemId?: string }) => void;
   onDisconnect?: () => void;
   onDelete?: () => void;
   onConnectionUpdate?: (from: string, to: string, updates: { arrow?: boolean; text?: string; textPosition?: number; color?: string; [key: string]: any }) => void;

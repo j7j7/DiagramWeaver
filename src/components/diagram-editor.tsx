@@ -821,7 +821,12 @@ export default function DiagramEditor() {
   };
 
   const handleConnect = (targetItem: DiagramNodeData) => {
-    if (!isConnectMode || !selectedItem || selectedItem.itemType !== 'node' || selectedItem.id === targetItem.id) {
+    const pendingSourceId = (window as any).pendingConnectionSourceId as string | undefined;
+    const sourceId = pendingSourceId || (selectedItem?.itemType === 'node' ? selectedItem.id : undefined);
+
+    if (!isConnectMode || !sourceId || sourceId === targetItem.id) {
+      delete (window as any).pendingConnectionSourceId;
+      delete (window as any).pendingConnectionOptions;
       setIsConnectMode(false);
       return;
     }
@@ -830,7 +835,7 @@ export default function DiagramEditor() {
     const connectionOptions = (window as any).pendingConnectionOptions || {};
     
     const newConnection: DiagramConnectionData = { 
-      from: selectedItem.id, 
+      from: sourceId,
       to: targetItem.id,
       style: connectionOptions.style || 'bezier',
       curvature: connectionOptions.style === 'bezier' ? (connectionOptions.curvature || 0.5) : undefined,
@@ -838,6 +843,7 @@ export default function DiagramEditor() {
     };
     
     // Clear stored connection options
+    delete (window as any).pendingConnectionSourceId;
     delete (window as any).pendingConnectionOptions;
     
     // Avoid creating duplicate connections
@@ -856,12 +862,14 @@ export default function DiagramEditor() {
     setSelectedItem(null); // Deselect after connecting
   };
 
-  const startConnecting = (connectionOptions?: { style?: 'pathways' | 'bezier', curvature?: number }) => {
-    if (selectedItem && selectedItem.itemType === 'node') {
-      setIsConnectMode(true);
-      // Store connection options for use when connection is created
-      (window as any).pendingConnectionOptions = connectionOptions;
-    }
+  const startConnecting = (connectionOptions?: { style?: 'pathways' | 'bezier', curvature?: number; sourceItemId?: string }) => {
+    const sourceItemId = connectionOptions?.sourceItemId || (selectedItem?.itemType === 'node' ? selectedItem.id : undefined);
+
+    if (!sourceItemId) return;
+
+    setIsConnectMode(true);
+    (window as any).pendingConnectionSourceId = sourceItemId;
+    (window as any).pendingConnectionOptions = connectionOptions;
   }
 
   const disconnectSelected = () => {
