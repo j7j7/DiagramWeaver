@@ -375,11 +375,12 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                 // Select the connection when clicked
                 closeContextMenu();
                 if (onItemSelect) {
+                  const isAdditiveSelection = event.shiftKey || event.ctrlKey || event.metaKey;
                   onItemSelect({
                     ...connection,
                     itemType: 'edge',
                     id: `${connection.from}-${connection.to}`
-                  }, event.shiftKey || event.ctrlKey || event.metaKey);
+                  }, isAdditiveSelection);
                 }
               }}
               onContextMenu={(e, connection) => {

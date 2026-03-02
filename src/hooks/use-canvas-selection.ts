@@ -33,12 +33,26 @@ export function useCanvasSelection({
   const [justCompletedSelection, setJustCompletedSelection] = useState(false);
 
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    const hasMultiSelectModifier = e.shiftKey || e.ctrlKey || e.metaKey;
+
     const target = e.target as HTMLElement;
-    if (target.closest('.absolute') === null && !justCompletedSelection) {
-      onItemSelect(null);
+    if (justCompletedSelection) return;
+
+    const clickedSelectable = target.closest(
+      '[data-node-id], [data-zone-id], [data-connection-id], [data-waypoint-id], [data-connection-waypoint-id], [data-resize-handle]'
+    );
+
+    if (clickedSelectable) return;
+
+    if (hasMultiSelectModifier) {
       closeContextMenu();
-      onCloseConnectionSettingsPanel?.();
+      return;
     }
+
+    onItemSelect(null);
+    closeContextMenu();
+    onCloseConnectionSettingsPanel?.();
   }, [justCompletedSelection, onItemSelect, closeContextMenu, onCloseConnectionSettingsPanel]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {

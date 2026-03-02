@@ -257,10 +257,12 @@ export default function DiagramEditor() {
   const [paletteClipboardItem, setPaletteClipboardItem] = React.useState<any | null>(null);
   const [animationSelectionDialogOpen, setAnimationSelectionDialogOpen] = React.useState(false);
   const [animationOverwriteDialogOpen, setAnimationOverwriteDialogOpen] = React.useState(false);
+  const [animationDisableConfirmDialogOpen, setAnimationDisableConfirmDialogOpen] = React.useState(false);
   const [animationCurrentOnlyDialogOpen, setAnimationCurrentOnlyDialogOpen] = React.useState(false);
   const [pendingAnimationUpdate, setPendingAnimationUpdate] = React.useState<{
     from: string;
     to: string;
+    mode: 'enable' | 'disable';
     updates: {
       text?: string;
       color?: string;
@@ -559,19 +561,9 @@ export default function DiagramEditor() {
       setSelectedItem(item);
     } else {
       setSelectedItem(item);
-      
+
       if (item) {
-        // If clicking on an item that's already in a multi-select, preserve the selection
-        // This allows dragging multi-selected items without clearing the selection
-        setSelectedItemIds(prev => {
-          if (prev.size > 1 && prev.has(item.id)) {
-            // Preserve multi-select if clicking on an already-selected item
-            return prev;
-          } else {
-            // Otherwise, select only the clicked item
-            return new Set([item.id]);
-          }
-        });
+        setSelectedItemIds(new Set([item.id]));
       } else {
         setSelectedItemIds(new Set());
       }
@@ -1202,6 +1194,7 @@ export default function DiagramEditor() {
   const resetPendingAnimationDialogs = React.useCallback(() => {
     setAnimationSelectionDialogOpen(false);
     setAnimationOverwriteDialogOpen(false);
+    setAnimationDisableConfirmDialogOpen(false);
     setPendingAnimationUpdate(null);
   }, []);
 
@@ -1209,25 +1202,29 @@ export default function DiagramEditor() {
     const currentConnectionId = `${from}-${to}`;
     const currentConnection = diagramData.connections.find((conn) => conn.from === from && conn.to === to);
     const isEnablingAnimation = updates.animation?.enabled === true && currentConnection?.animation?.enabled !== true;
+    const isDisablingAnimation = updates.animation?.enabled === false && currentConnection?.animation?.enabled === true;
+    const selectedConnectionIds = Array.from(selectedItemIds).filter((id) => {
+      if (id === currentConnectionId) return false;
+      return diagramData.connections.some((conn) => `${conn.from}-${conn.to}` === id);
+    });
 
-    if (isEnablingAnimation) {
-      const selectedConnectionIds = new Set(
-        Array.from(selectedItemIds).filter((id) => {
-          if (id === currentConnectionId) return false;
-          return diagramData.connections.some((conn) => `${conn.from}-${conn.to}` === id);
-        })
-      );
-
-      if (selectedConnectionIds.size > 0) {
+    if (isEnablingAnimation || isDisablingAnimation) {
+      if (selectedConnectionIds.length > 0) {
         setPendingAnimationUpdate({
           from,
           to,
+          mode: isDisablingAnimation ? 'disable' : 'enable',
           updates,
-          selectedConnectionIds: Array.from(selectedConnectionIds),
+          selectedConnectionIds,
         });
         setAnimationSelectionDialogOpen(true);
         return;
       }
+    }
+
+    if (updates.animation && selectedConnectionIds.length > 0) {
+      applyAnimationToCurrentAndSelected(from, to, updates, selectedConnectionIds);
+      return;
     }
 
     applyConnectionUpdates(from, to, updates);
@@ -1248,6 +1245,11 @@ export default function DiagramEditor() {
     if (!pendingAnimationUpdate) return;
     setAnimationSelectionDialogOpen(false);
 
+    if (pendingAnimationUpdate.mode === 'disable') {
+      setAnimationDisableConfirmDialogOpen(true);
+      return;
+    }
+
     const hasOtherExistingAnimation = diagramData.connections.some((conn) => {
       const connectionId = `${conn.from}-${conn.to}`;
       if (!pendingAnimationUpdate.selectedConnectionIds.includes(connectionId)) return false;
@@ -1267,6 +1269,17 @@ export default function DiagramEditor() {
     );
     resetPendingAnimationDialogs();
   }, [pendingAnimationUpdate, diagramData.connections, hasConnectionAnimationSettings, applyAnimationToCurrentAndSelected, resetPendingAnimationDialogs]);
+
+  const handleAnimationDisableConfirm = React.useCallback(() => {
+    if (!pendingAnimationUpdate) return;
+    applyAnimationToCurrentAndSelected(
+      pendingAnimationUpdate.from,
+      pendingAnimationUpdate.to,
+      pendingAnimationUpdate.updates,
+      pendingAnimationUpdate.selectedConnectionIds
+    );
+    resetPendingAnimationDialogs();
+  }, [pendingAnimationUpdate, applyAnimationToCurrentAndSelected, resetPendingAnimationDialogs]);
 
   const handleAnimationOverwriteConfirm = React.useCallback(() => {
     if (!pendingAnimationUpdate) return;
@@ -2209,10 +2222,13 @@ export default function DiagramEditor() {
         setAnimationSelectionDialogOpen={setAnimationSelectionDialogOpen}
         animationOverwriteDialogOpen={animationOverwriteDialogOpen}
         setAnimationOverwriteDialogOpen={setAnimationOverwriteDialogOpen}
+        animationDisableConfirmDialogOpen={animationDisableConfirmDialogOpen}
+        setAnimationDisableConfirmDialogOpen={setAnimationDisableConfirmDialogOpen}
         animationCurrentOnlyDialogOpen={animationCurrentOnlyDialogOpen}
         setAnimationCurrentOnlyDialogOpen={setAnimationCurrentOnlyDialogOpen}
         handleAnimationApplyCurrentOnly={handleAnimationApplyCurrentOnly}
         handleAnimationApplySelectedConfirm={handleAnimationApplySelectedConfirm}
+        handleAnimationDisableConfirm={handleAnimationDisableConfirm}
         handleAnimationOverwriteConfirm={handleAnimationOverwriteConfirm}
         handleItemSelect={handleItemSelect}
         handleBatchSelect={handleBatchSelect}
@@ -2354,10 +2370,13 @@ function DiagramEditorInner({
   setAnimationSelectionDialogOpen,
   animationOverwriteDialogOpen,
   setAnimationOverwriteDialogOpen,
+  animationDisableConfirmDialogOpen,
+  setAnimationDisableConfirmDialogOpen,
   animationCurrentOnlyDialogOpen,
   setAnimationCurrentOnlyDialogOpen,
   handleAnimationApplyCurrentOnly,
   handleAnimationApplySelectedConfirm,
+  handleAnimationDisableConfirm,
   handleAnimationOverwriteConfirm,
   handleItemSelect,
   handleBatchSelect,
@@ -2777,6 +2796,23 @@ function DiagramEditorInner({
             <AlertDialogFooter>
               <AlertDialogCancel onClick={handleAnimationApplyCurrentOnly}>Current Only</AlertDialogCancel>
               <AlertDialogAction onClick={handleAnimationOverwriteConfirm}>Overwrite and Apply</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        <AlertDialog
+          open={animationDisableConfirmDialogOpen}
+          onOpenChange={setAnimationDisableConfirmDialogOpen}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Disable animation for selected connections</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will disable animation for all currently selected connections. Continue?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={handleAnimationApplyCurrentOnly}>Current Only</AlertDialogCancel>
+              <AlertDialogAction onClick={handleAnimationDisableConfirm}>Disable and Apply</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

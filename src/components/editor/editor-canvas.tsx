@@ -905,7 +905,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     if (isConnectMode) {
       onNodeClickInConnectMode(node); // In connect mode, clicking creates connection
     } else {
-      onItemSelect({ ...node, itemType: 'node' }, e.shiftKey || e.ctrlKey || e.metaKey); // Normal selection
+      const isAdditiveSelection = e.shiftKey || e.ctrlKey || e.metaKey;
+      onItemSelect({ ...node, itemType: 'node' }, isAdditiveSelection); // Normal selection
     }
   }, [closeContextMenu, onResetConnectionSettingsTrigger, isConnectMode, onNodeClickInConnectMode, onItemSelect]);
 
@@ -932,7 +933,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     if (isConnectMode) {
       onNodeClickInConnectMode(zone as any); // Zones can also be connection targets
     } else {
-      onItemSelect({ ...zone, itemType: 'node' } as Parameters<typeof onItemSelect>[0], e.shiftKey || e.ctrlKey || e.metaKey);
+      const isAdditiveSelection = e.shiftKey || e.ctrlKey || e.metaKey;
+      onItemSelect({ ...zone, itemType: 'node' } as Parameters<typeof onItemSelect>[0], isAdditiveSelection);
     }
   }, [closeContextMenu, onResetConnectionSettingsTrigger, isConnectMode, onNodeClickInConnectMode, onItemSelect]);
 
@@ -1181,6 +1183,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           ref={canvasRef}
           id="canvas-container"
           className="relative w-full h-full overflow-hidden"
+          onClick={handleCanvasClick}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUpOrLeave}
@@ -1566,13 +1569,24 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               closeContextMenu();
             }}
             onConnect={() => {
-              // onConnect expects the item to already be selected, which we do in handleNodeContextMenu/handleZoneContextMenu
-              // Use setTimeout to ensure selection has been processed
-              setTimeout(() => {
-                if (onConnect) {
-                  onConnect({ style: 'bezier', curvature: 0.6 });
+              const targetId = contextMenu.itemId;
+              if (targetId) {
+                if (contextMenu.itemType === 'zone') {
+                  const zone = diagramData.zones?.find(z => z.id === targetId);
+                  if (zone) {
+                    onItemSelect({ ...(zone as any), itemType: 'node', id: zone.id } as Parameters<typeof onItemSelect>[0], false);
+                  }
+                } else {
+                  const node = diagramData.nodes.find(n => n.id === targetId);
+                  if (node) {
+                    onItemSelect({ ...node, itemType: 'node' }, false);
+                  }
                 }
-              }, 0);
+              }
+
+              requestAnimationFrame(() => {
+                onConnect?.({ style: 'bezier', curvature: 0.6 });
+              });
               closeContextMenu();
             }}
             onDisconnect={() => {
