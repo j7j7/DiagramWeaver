@@ -14,7 +14,8 @@ interface CanvasConnectionsProps {
   zonesById: Record<string, PositionedGroup>;
   selectedItemId?: string;
   selectedItem?: any;
-  onItemSelect: (item: any | null) => void;
+  selectedItemIds?: Set<string>;
+  onItemSelect: (item: any | null, multiSelectModifier?: boolean) => void;
   closeContextMenu: () => void;
   onConnectionDelete?: (from: string, to: string) => void;
   /** Called when user right-clicks on a connection line */
@@ -27,6 +28,8 @@ interface CanvasConnectionsProps {
   connectionIndices?: Set<number>;
   /** Z-index for this connection layer when using order-aware layering (enables interleaving with nodes) */
   stackZIndex?: number;
+  /** During GIF export, advances animation deterministically per frame */
+  exportAnimationTimeSeconds?: number | null;
 }
 
 function setsEqual(a: Set<number> | undefined, b: Set<number> | undefined): boolean {
@@ -41,7 +44,9 @@ function areCanvasConnectionsPropsEqual(prev: CanvasConnectionsProps, next: Canv
   return prev.width === next.width &&
     prev.height === next.height &&
     prev.selectedItemId === next.selectedItemId &&
+    prev.selectedItemIds === next.selectedItemIds &&
     prev.stackZIndex === next.stackZIndex &&
+    prev.exportAnimationTimeSeconds === next.exportAnimationTimeSeconds &&
     prev.diagramData === next.diagramData &&
     prev.nodesById === next.nodesById &&
     prev.zonesById === next.zonesById &&
@@ -61,6 +66,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     zonesById,
     selectedItemId,
     selectedItem,
+    selectedItemIds,
     onItemSelect,
     closeContextMenu,
     onConnectionDelete,
@@ -69,6 +75,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     onConnectionWaypointAdd,
     connectionIndices,
     stackZIndex,
+    exportAnimationTimeSeconds,
   } = props;
   // Pre-calculate edge information for all connections
   const connectionEdgeInfo = new Map<string, { fromEdge: string; toEdge: string }>();
@@ -211,7 +218,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
 
         // Check if this connection is selected (only highlight when connection itself is selected, not when a node is selected)
         const edgeId = `${edge.from}-${edge.to}`;
-        const isConnectionHighlighted = selectedItemId === edgeId;
+        const isConnectionHighlighted = selectedItemId === edgeId || (selectedItemIds?.has(edgeId) ?? false);
         
         // Only show delete button if a node/zone is selected and this connection is associated with it
         const shouldShowDeleteButton = selectedItemId && (selectedItemId === edge.from || selectedItemId === edge.to) && onConnectionDelete;
@@ -363,25 +370,32 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
               to={toPos}
               connectionColor={edge.color}
               connectionData={enhancedEdge}
-              onClick={(connection) => {
+              exportAnimationTimeSeconds={exportAnimationTimeSeconds}
+              onClick={(connection, event) => {
                 // Select the connection when clicked
                 closeContextMenu();
                 if (onItemSelect) {
+                  const isAdditiveSelection = event.shiftKey || event.ctrlKey || event.metaKey;
                   onItemSelect({
                     ...connection,
                     itemType: 'edge',
                     id: `${connection.from}-${connection.to}`
-                  });
+                  }, isAdditiveSelection);
                 }
               }}
               onContextMenu={(e, connection) => {
                 closeContextMenu();
                 if (onItemSelect) {
-                  onItemSelect({
-                    ...connection,
-                    itemType: 'edge',
-                    id: `${connection.from}-${connection.to}`
-                  });
+                  const edgeId = `${connection.from}-${connection.to}`;
+                  const isAlreadySelected = selectedItemIds?.has(edgeId) || selectedItemId === edgeId;
+
+                  if (!isAlreadySelected) {
+                    onItemSelect({
+                      ...connection,
+                      itemType: 'edge',
+                      id: edgeId
+                    });
+                  }
                 }
                 onConnectionContextMenu?.(e, connection);
               }}

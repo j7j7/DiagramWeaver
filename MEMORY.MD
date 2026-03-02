@@ -1,5 +1,10 @@
 # MEMORY.MD
 
+## DiagramWeaver - Latest Features and Functions (Updated 2026-03-02)
+
+### 2026-03-02 – Merged animated-connection into main
+Merged `animated-connection` branch into `main`. No conflicts. Features now in main: **Animated connection markers** (per-connection shape/speed/size/spacing via right-click context modal, bulk apply outbound/inbound), **GIF export** (File → Export, PNG or GIF with duration/FPS), **multiple connection selection fixes**. New: `connection-animation-controls.tsx`, `connection-animation.ts`, `gifenc` package. See `docs/MERGE-ANIMATED-CONNECTION-TO-MAIN.md`.
+
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-02-26)
 
 ### 2026-02-26 – Node Labels Always On Top of Connectors (Icon Nodes Only)

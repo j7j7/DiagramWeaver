@@ -33,12 +33,26 @@ export function useCanvasSelection({
   const [justCompletedSelection, setJustCompletedSelection] = useState(false);
 
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    const hasMultiSelectModifier = e.shiftKey || e.ctrlKey || e.metaKey;
+
     const target = e.target as HTMLElement;
-    if (target.closest('.absolute') === null && !justCompletedSelection) {
-      onItemSelect(null);
+    if (justCompletedSelection) return;
+
+    const clickedSelectable = target.closest(
+      '[data-node-id], [data-zone-id], [data-connection-id], [data-waypoint-id], [data-connection-waypoint-id], [data-resize-handle]'
+    );
+
+    if (clickedSelectable) return;
+
+    if (hasMultiSelectModifier) {
       closeContextMenu();
-      onCloseConnectionSettingsPanel?.();
+      return;
     }
+
+    onItemSelect(null);
+    closeContextMenu();
+    onCloseConnectionSettingsPanel?.();
   }, [justCompletedSelection, onItemSelect, closeContextMenu, onCloseConnectionSettingsPanel]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -51,6 +65,7 @@ export function useCanvasSelection({
       // Be more specific - only block selection for actual interactive elements
       if (target.closest('.absolute.group') || 
           target.closest('.absolute.rounded-lg') ||
+          target.closest('[data-connection-id]') ||
           target.closest('button') || 
           target.closest('input') || 
           target.closest('textarea') ||
@@ -108,10 +123,82 @@ export function useCanvasSelection({
   const handleMouseUpOrLeave = useCallback(async () => {
     // Handle regular selection completion (select items within selection rectangle)
     if (selectionStart && selectionEnd) {
+      const dragDeltaX = Math.abs(selectionEnd.x - selectionStart.x);
+      const dragDeltaY = Math.abs(selectionEnd.y - selectionStart.y);
+
+      // Treat click-like interactions as regular clicks, not marquee selection.
+      // This avoids clearing existing selection when clicking connections.
+      if (dragDeltaX < 2 && dragDeltaY < 2) {
+        setSelectionStart(null);
+        setSelectionEnd(null);
+        return;
+      }
+
       const x1 = Math.min(selectionStart.x, selectionEnd.x);
       const y1 = Math.min(selectionStart.y, selectionEnd.y);
       const x2 = Math.max(selectionStart.x, selectionEnd.x);
       const y2 = Math.max(selectionStart.y, selectionEnd.y);
+
+      const pointInRect = (x: number, y: number) => x >= x1 && x <= x2 && y >= y1 && y <= y2;
+
+      const getItemCenter = (id: string): { x: number; y: number } | null => {
+        const node = diagramData.nodes.find((n) => n.id === id);
+        if (node) {
+          const width = node.width || 80;
+          const height = node.height || 50;
+          return { x: (node.x || 0) + width / 2, y: (node.y || 0) + height / 2 };
+        }
+        const zone = diagramData.zones?.find((z) => z.id === id);
+        if (zone) {
+          const width = zone.width || 300;
+          const height = zone.height || 220;
+          return { x: (zone.x || 0) + width / 2, y: (zone.y || 0) + height / 2 };
+        }
+        return null;
+      };
+
+      const orientation = (ax: number, ay: number, bx: number, by: number, cx: number, cy: number) => {
+        const value = (by - ay) * (cx - bx) - (bx - ax) * (cy - by);
+        if (Math.abs(value) < 1e-9) return 0;
+        return value > 0 ? 1 : 2;
+      };
+
+      const onSegment = (ax: number, ay: number, bx: number, by: number, cx: number, cy: number) => (
+        bx <= Math.max(ax, cx) && bx >= Math.min(ax, cx) && by <= Math.max(ay, cy) && by >= Math.min(ay, cy)
+      );
+
+      const segmentsIntersect = (
+        p1x: number,
+        p1y: number,
+        q1x: number,
+        q1y: number,
+        p2x: number,
+        p2y: number,
+        q2x: number,
+        q2y: number
+      ) => {
+        const o1 = orientation(p1x, p1y, q1x, q1y, p2x, p2y);
+        const o2 = orientation(p1x, p1y, q1x, q1y, q2x, q2y);
+        const o3 = orientation(p2x, p2y, q2x, q2y, p1x, p1y);
+        const o4 = orientation(p2x, p2y, q2x, q2y, q1x, q1y);
+
+        if (o1 !== o2 && o3 !== o4) return true;
+        if (o1 === 0 && onSegment(p1x, p1y, p2x, p2y, q1x, q1y)) return true;
+        if (o2 === 0 && onSegment(p1x, p1y, q2x, q2y, q1x, q1y)) return true;
+        if (o3 === 0 && onSegment(p2x, p2y, p1x, p1y, q2x, q2y)) return true;
+        if (o4 === 0 && onSegment(p2x, p2y, q1x, q1y, q2x, q2y)) return true;
+        return false;
+      };
+
+      const segmentIntersectsRect = (xA: number, yA: number, xB: number, yB: number) => {
+        if (pointInRect(xA, yA) || pointInRect(xB, yB)) return true;
+        return (
+          segmentsIntersect(xA, yA, xB, yB, x1, y1, x2, y1) ||
+          segmentsIntersect(xA, yA, xB, yB, x2, y1, x2, y2) ||
+          segmentsIntersect(xA, yA, xB, yB, x2, y2, x1, y2) ||
+          segmentsIntersect(xA, yA, xB, yB, x1, y2, x1, y1)
+        );
+      };
       
       // Find all nodes and groups within the selection rectangle
       const selectedIds = new Set<string>();
@@ -137,6 +224,28 @@ export function useCanvasSelection({
         
         if (zoneX >= x1 && zoneX + zoneWidth <= x2 && zoneY >= y1 && zoneY + zoneHeight <= y2) {
           selectedIds.add(zone.id);
+        }
+      });
+
+      // Check connections (include if any segment intersects selection rectangle)
+      diagramData.connections?.forEach((connection) => {
+        const fromCenter = getItemCenter(connection.from);
+        const toCenter = getItemCenter(connection.to);
+        if (!fromCenter || !toCenter) return;
+
+        const points = [
+          fromCenter,
+          ...(connection.waypoints?.map((waypoint) => ({ x: waypoint.x, y: waypoint.y })) || []),
+          toCenter,
+        ];
+
+        for (let index = 0; index < points.length - 1; index += 1) {
+          const start = points[index];
+          const end = points[index + 1];
+          if (segmentIntersectsRect(start.x, start.y, end.x, end.y)) {
+            selectedIds.add(`${connection.from}-${connection.to}`);
+            break;
+          }
         }
       });
       

@@ -1,5 +1,5 @@
 # Build Commands
-- `npm run dev` - Start dev server (port 9002)
+- `npm run dev` - Start dev server (port 9003)
 - `npm run build` - Production build
 - `npm run lint` - Run ESLint
 - `npm run typecheck` - TypeScript type check

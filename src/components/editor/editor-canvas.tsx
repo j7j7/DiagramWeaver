@@ -61,7 +61,7 @@ interface EditorCanvasProps {
   selectedItemIds?: Set<string>;
   isConnectMode: boolean;
   onNodeClickInConnectMode: (node: DiagramNodeData) => void;
-  onConnect?: (connectionOptions?: { style?: 'pathways' | 'bezier', curvature?: number }) => void;
+  onConnect?: (connectionOptions?: { style?: 'pathways' | 'bezier', curvature?: number; sourceItemId?: string }) => void;
   onDisconnect?: () => void;
   onConnectionDelete?: (from: string, to: string) => void;
   onConnectionWaypointMove?: (from: string, to: string, index: number, newPos: { x: number; y: number }) => void;
@@ -120,6 +120,7 @@ interface EditorCanvasProps {
 export type EditorCanvasHandle = {
   fitToView: () => void;
   exportPng: (options?: { backgroundColor?: 'transparent' | 'white'; quality?: 'low' | 'medium' | 'high' }) => Promise<void>;
+  exportGif: (options?: { backgroundColor?: 'transparent' | 'white'; quality?: 'low' | 'medium' | 'high'; fps?: number; durationSeconds?: number }) => Promise<void>;
   copy: () => void;
   paste: () => void;
   canPaste: () => boolean;
@@ -130,6 +131,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
    { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, connectionsBehindNodesEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal }: EditorCanvasProps,
   ref
 ) {
+  const [gifExportAnimationTimeSeconds, setGifExportAnimationTimeSeconds] = React.useState<number | null>(null);
+
   // ============================================================================
   // LAYOUT CALCULATION
   // ============================================================================
@@ -817,7 +820,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   // - exportPng: Exports current viewport to PNG
   // - startExport: Starts export with quality settings
   // See: src/hooks/use-canvas-export.ts
-  const { exportPng, startExport } = useCanvasExport({
+  const { exportPng, exportGif, startExport } = useCanvasExport({
     canvasRef,
     transform,
     width,
@@ -827,6 +830,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     processedNodes,
     processedZones,
     selectedItemIds,
+    onGifAnimationTimeUpdate: setGifExportAnimationTimeSeconds,
   });
 
   // ============================================================================
@@ -902,7 +906,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     if (isConnectMode) {
       onNodeClickInConnectMode(node); // In connect mode, clicking creates connection
     } else {
-      onItemSelect({ ...node, itemType: 'node' }, e.shiftKey); // Normal selection
+      const isAdditiveSelection = e.shiftKey || e.ctrlKey || e.metaKey;
+      onItemSelect({ ...node, itemType: 'node' }, isAdditiveSelection); // Normal selection
     }
   }, [closeContextMenu, onResetConnectionSettingsTrigger, isConnectMode, onNodeClickInConnectMode, onItemSelect]);
 
@@ -929,7 +934,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     if (isConnectMode) {
       onNodeClickInConnectMode(zone as any); // Zones can also be connection targets
     } else {
-      onItemSelect({ ...zone, itemType: 'node' } as Parameters<typeof onItemSelect>[0], e.shiftKey);
+      const isAdditiveSelection = e.shiftKey || e.ctrlKey || e.metaKey;
+      onItemSelect({ ...zone, itemType: 'node' } as Parameters<typeof onItemSelect>[0], isAdditiveSelection);
     }
   }, [closeContextMenu, onResetConnectionSettingsTrigger, isConnectMode, onNodeClickInConnectMode, onItemSelect]);
 
@@ -1148,11 +1154,12 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   React.useImperativeHandle(ref, () => ({
     fitToView: handleFitToView, // Auto-fits diagram to viewport
     exportPng: (options?: { backgroundColor?: 'transparent' | 'white'; quality?: 'low' | 'medium' | 'high' }) => exportPng(options), // Exports current viewport to PNG
+    exportGif: (options?: { backgroundColor?: 'transparent' | 'white'; quality?: 'low' | 'medium' | 'high'; fps?: number; durationSeconds?: number }) => exportGif(options), // Exports current viewport to GIF
     copy: copyHandler, // Copies selected item(s)
     paste: pasteHandler, // Pastes from clipboard
     canPaste: canPasteHandler, // Checks if paste is available
     pastePaletteItem: pastePaletteItemHandler, // Pastes a new item from the sidebar palette
-  }), [handleFitToView, exportPng, copyHandler, pasteHandler, canPasteHandler, pastePaletteItemHandler]);
+  }), [handleFitToView, exportPng, exportGif, copyHandler, pasteHandler, canPasteHandler, pastePaletteItemHandler]);
 
   return (
     <div className="relative w-full h-full" data-tutorial-id="canvas">
@@ -1182,6 +1189,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           ref={canvasRef}
           id="canvas-container"
           className="relative w-full h-full overflow-hidden"
+          onClick={handleCanvasClick}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUpOrLeave}
@@ -1247,6 +1255,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   zonesById={displayZonesById}
                   selectedItemId={selectedItemId}
                   selectedItem={selectedItem}
+                  selectedItemIds={selectedItemIds}
                   onItemSelect={onItemSelect}
                   closeContextMenu={closeContextMenu}
                   onConnectionDelete={onConnectionDelete}
@@ -1254,6 +1263,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   onConnectionUpdate={onConnectionUpdate}
                   onConnectionWaypointAdd={onConnectionWaypointAdd}
                   stackZIndex={0}
+                  exportAnimationTimeSeconds={gifExportAnimationTimeSeconds}
                 />
                 {connectionSlots.sortedItemIds.map((itemId, i) => {
                   const node = nodesById[itemId];
@@ -1350,6 +1360,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       zonesById={displayZonesById}
                       selectedItemId={selectedItemId}
                       selectedItem={selectedItem}
+                      selectedItemIds={selectedItemIds}
                       onItemSelect={onItemSelect}
                       closeContextMenu={closeContextMenu}
                       onConnectionDelete={onConnectionDelete}
@@ -1358,6 +1369,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       onConnectionWaypointAdd={onConnectionWaypointAdd}
                       connectionIndices={connIndices}
                       stackZIndex={connZIndex}
+                      exportAnimationTimeSeconds={gifExportAnimationTimeSeconds}
                     />
                   ) : null,
                   nodeEl,
@@ -1378,6 +1390,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   zonesById={displayZonesById}
                   selectedItemId={selectedItemId}
                   selectedItem={selectedItem}
+                  selectedItemIds={selectedItemIds}
                   onItemSelect={onItemSelect}
                   closeContextMenu={closeContextMenu}
                   onConnectionDelete={onConnectionDelete}
@@ -1386,6 +1399,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   onConnectionWaypointAdd={onConnectionWaypointAdd}
                   connectionIndices={new Set(lastSlot)}
                   stackZIndex={2 * n}
+                  exportAnimationTimeSeconds={gifExportAnimationTimeSeconds}
                 />
               );
             })()}
@@ -1564,13 +1578,24 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               closeContextMenu();
             }}
             onConnect={() => {
-              // onConnect expects the item to already be selected, which we do in handleNodeContextMenu/handleZoneContextMenu
-              // Use setTimeout to ensure selection has been processed
-              setTimeout(() => {
-                if (onConnect) {
-                  onConnect({ style: 'bezier', curvature: 0.6 });
+              const targetId = contextMenu.itemId;
+              if (targetId) {
+                if (contextMenu.itemType === 'zone') {
+                  const zone = diagramData.zones?.find(z => z.id === targetId);
+                  if (zone) {
+                    onItemSelect({ ...(zone as any), itemType: 'node', id: zone.id } as Parameters<typeof onItemSelect>[0], false);
+                  }
+                } else {
+                  const node = diagramData.nodes.find(n => n.id === targetId);
+                  if (node) {
+                    onItemSelect({ ...node, itemType: 'node' }, false);
+                  }
                 }
-              }, 0);
+              }
+
+              requestAnimationFrame(() => {
+                onConnect?.({ style: 'bezier', curvature: 0.6, sourceItemId: targetId });
+              });
               closeContextMenu();
             }}
             onDisconnect={() => {

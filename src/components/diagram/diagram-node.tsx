@@ -165,7 +165,7 @@ interface DiagramNodeProps {
   hoverEnabled?: boolean;
   isReadOnly?: boolean;
   onHoverChange?: (id: string, itemType: 'node' | 'zone', isHovered: boolean) => void;
-  onConnect?: (connectionOptions?: { style?: 'pathways' | 'bezier', curvature?: number }) => void;
+  onConnect?: (connectionOptions?: { style?: 'pathways' | 'bezier', curvature?: number; sourceItemId?: string }) => void;
   isConnectMode?: boolean;
   transform?: { x: number; y: number; k: number }; // Canvas transform for coordinate conversion
   canvasRef?: React.RefObject<HTMLDivElement | null>; // Canvas ref for coordinate conversion

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack -p 9002",
+    "dev": "next dev --turbopack -p 9003",
     "build": "NODE_ENV=production next build",
     "start": "next start",
     "lint": "next lint",
@@ -46,6 +46,7 @@
     "dotenv": "^17.2.3",
     "elkjs": "^0.11.0",
     "embla-carousel-react": "^8.6.0",
+    "gifenc": "^1.0.3",
     "html-to-image": "^1.11.13",
     "js-yaml": "^4.1.1",
     "lucide-react": "^0.562.0",

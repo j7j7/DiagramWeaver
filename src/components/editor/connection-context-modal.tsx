@@ -9,6 +9,7 @@ import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ColorPicker } from "@/components/ui/color-picker";
 import type { DiagramConnectionData, DiagramData } from "@/lib/types";
+import { ConnectionAnimationControls } from "@/components/editor/connection-animation-controls";
 
 interface ConnectionContextModalProps {
   x: number;
@@ -18,6 +19,7 @@ interface ConnectionContextModalProps {
   connection: DiagramConnectionData;
   diagramData: DiagramData;
   onConnectionUpdate: (from: string, to: string, updates: Record<string, unknown>) => void;
+  onConnectionAnimationBulkApply?: (sourceId: string, direction: 'outbound' | 'inbound', animation: DiagramConnectionData['animation']) => void;
   onConnectionDisconnect?: (from: string, to: string) => void;
   onConnectionWaypointAdd?: (from: string, to: string) => void;
   onConnectionWaypointRemove?: (from: string, to: string, index: number) => void;
@@ -32,6 +34,7 @@ export function ConnectionContextModal({
   connection,
   diagramData,
   onConnectionUpdate,
+  onConnectionAnimationBulkApply,
   onConnectionDisconnect,
   onConnectionWaypointAdd,
   onConnectionWaypointRemove,
@@ -95,7 +98,7 @@ export function ConnectionContextModal({
   useEffect(() => {
     if (visible) {
       const modalWidth = 320;
-      const modalHeight = 360;
+      const modalHeight = 620;
       const padding = 8;
       let posX = x;
       let posY = y;
@@ -267,6 +270,16 @@ export function ConnectionContextModal({
               <Unlink className="h-3 w-3" />
             </Button>
           )}
+        </div>
+
+        <div className="border-t border-border pt-3 space-y-2">
+          <ConnectionAnimationControls
+            connection={liveConnection}
+            inheritedConnectionColor={connectionColor}
+            onConnectionUpdate={(from, to, updates) => onConnectionUpdate(from, to, updates as Record<string, unknown>)}
+            onBulkApply={onConnectionAnimationBulkApply}
+            isReadOnly={isReadOnly}
+          />
         </div>
 
         <div className="border-t border-border pt-3 space-y-2">

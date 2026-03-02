@@ -35,6 +35,7 @@ interface TopMenuBarProps {
   onNewTab?: () => void;
   onExportSvg?: () => void;
   onExportPng?: () => void;
+  onExportGif?: () => void;
   onToggleJsonPanel?: () => void;
   jsonPanelOpen?: boolean;
   onTogglePropertiesPanel?: () => void;
@@ -57,7 +58,7 @@ interface TopMenuBarProps {
   selectedItem?: SelectedItem | null;
   selectedItemIds?: Set<string>;
   onItemUpdate?: (updatedItem: SelectedItem) => void;
-  onConnect?: (connectionOptions?: { style?: 'bezier', curvature?: number }) => void;
+  onConnect?: (connectionOptions?: { style?: 'bezier', curvature?: number; sourceItemId?: string }) => void;
   onDisconnect?: () => void;
   onDelete?: () => void;
   onConnectionUpdate?: (from: string, to: string, updates: { arrow?: boolean; text?: string; textPosition?: number; color?: string; [key: string]: any }) => void;
@@ -109,6 +110,7 @@ export function TopMenuBar({
   onNewTab,
   onExportSvg,
   onExportPng,
+  onExportGif,
   onToggleJsonPanel,
   jsonPanelOpen,
   onTogglePropertiesPanel,
@@ -295,7 +297,7 @@ export function TopMenuBar({
                 </MenubarItem>
               </>
             )}
-            {(onExportSvg || onExportPng) && (
+            {(onExportSvg || onExportPng || onExportGif) && (
               <>
                 <MenubarSeparator />
                 {onExportSvg && (
@@ -308,6 +310,12 @@ export function TopMenuBar({
                   <MenubarItem onClick={onExportPng}>
                     <ImageDown className="mr-2 h-4 w-4" />
                     Export PNG
+                  </MenubarItem>
+                )}
+                {onExportGif && (
+                  <MenubarItem onClick={onExportGif}>
+                    <ImageDown className="mr-2 h-4 w-4" />
+                    Export GIF
                   </MenubarItem>
                 )}
               </>
