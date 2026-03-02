@@ -6,6 +6,8 @@ set -e
 
 cd "$(dirname "$0")"
 
+lsof -ti:3030 | xargs kill -9 2>/dev/null || true
+
 BUILD_FLAG=false
 
 for arg in "$@"; do
