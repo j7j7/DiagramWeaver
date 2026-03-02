@@ -45,7 +45,7 @@ interface BezierConnectionProps {
   connectionColor?: string; // Specific color for this connection
   connectionData?: DiagramConnectionData; // Full connection data including text
   exportAnimationTimeSeconds?: number | null;
-  onClick?: (connection: DiagramConnectionData) => void; // Click handler
+  onClick?: (connection: DiagramConnectionData, event: React.MouseEvent) => void; // Click handler
   onContextMenu?: (e: React.MouseEvent, connection: DiagramConnectionData) => void;
 }
 
@@ -900,7 +900,7 @@ export function BezierConnection({ from, to, connectionColor, connectionData, ex
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onClick && connectionData) {
-      onClick(connectionData);
+      onClick(connectionData, e);
     }
   };
 
@@ -928,8 +928,8 @@ export function BezierConnection({ from, to, connectionColor, connectionData, ex
   const hasShadow = connectionData?.shadow || false;
   const shadowFilterId = hasShadow ? `shadow-filter-${from.id}-${to.id}` : undefined;
   const animation = clampConnectionAnimation(connectionData?.animation);
-  const shapeScale = animation.size === 0 ? 1 : animation.size;
-  const shapeSize = Math.max(connectionData?.lineWidth || 2.5, (connectionData?.lineWidth || 2.5) * shapeScale);
+  const connectionThickness = connectionData?.lineWidth || 2.5;
+  const shapeSize = animation.size * 2 * connectionThickness;
   const spacingDistance = shapeSize * (1 + animation.spacing);
   const pathDistanceLookup = buildPathDistanceLookup(fromX, fromY, toX, toY, fromAngle, toAngle, curvature, waypoints);
   const pathLength = pathDistanceLookup.totalLength;
@@ -956,6 +956,8 @@ export function BezierConnection({ from, to, connectionColor, connectionData, ex
     animation.shape,
     animation.speed,
     animation.size,
+    connectionThickness,
+    Math.round(shapeSize * 100) / 100,
     animation.autoCount ? 'auto' : 'manual',
     animation.shapeCount,
     animation.spacing,

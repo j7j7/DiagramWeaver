@@ -118,6 +118,11 @@ export function ConnectionAnimationControls({
 
   const sectionClass = compact ? "space-y-2" : "space-y-3";
   const controlsDisabled = isReadOnly || !animation.enabled;
+  const connectionThickness = connection.lineWidth || 2.5;
+  const computedShapeWidth = animation.size * 2 * connectionThickness;
+  const formattedShapeWidth = Number.isInteger(computedShapeWidth)
+    ? computedShapeWidth.toString()
+    : computedShapeWidth.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
 
   return (
     <div className={sectionClass}>
@@ -191,6 +196,9 @@ export function ConnectionAnimationControls({
           disabled={controlsDisabled}
         />
       </div>
+      <p className="text-[11px] text-muted-foreground">
+        Shape width = size × 2 × connection thickness ({animation.size} × 2 × {connectionThickness} = {formattedShapeWidth}px)
+      </p>
 
       <div className="flex items-center gap-2">
         <Label className="text-xs text-muted-foreground whitespace-nowrap">Shape color</Label>

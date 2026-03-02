@@ -255,6 +255,31 @@ export default function DiagramEditor() {
   const [lastRightClickItemId, setLastRightClickItemId] = React.useState<string | null>(null);
   const [selectedResource, setSelectedResource] = React.useState<PaletteSelection | null>(null);
   const [paletteClipboardItem, setPaletteClipboardItem] = React.useState<any | null>(null);
+  const [animationSelectionDialogOpen, setAnimationSelectionDialogOpen] = React.useState(false);
+  const [animationOverwriteDialogOpen, setAnimationOverwriteDialogOpen] = React.useState(false);
+  const [animationCurrentOnlyDialogOpen, setAnimationCurrentOnlyDialogOpen] = React.useState(false);
+  const [pendingAnimationUpdate, setPendingAnimationUpdate] = React.useState<{
+    from: string;
+    to: string;
+    updates: {
+      text?: string;
+      color?: string;
+      textPosition?: number;
+      lineWidth?: number;
+      shadow?: boolean;
+      style?: 'bezier';
+      curvature?: number;
+      fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center';
+      fromArrow?: boolean;
+      toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center';
+      toArrow?: boolean;
+      arrow?: boolean;
+      waypoints?: Array<{ x: number; y: number; id?: string }>;
+      metaData?: Record<string, string>;
+      animation?: DiagramConnectionData['animation'];
+    };
+    selectedConnectionIds: string[];
+  } | null>(null);
   // Reset trigger states after they've been used
   React.useEffect(() => {
     if (triggerTextStylingPanel) {
@@ -517,6 +542,13 @@ export default function DiagramEditor() {
     if (shiftKey && item) {
       setSelectedItemIds(prev => {
         const newSet = new Set(prev);
+
+        // Preserve the currently selected item when entering additive selection
+        // from flows where selectedItemIds may not yet include selectedItem.
+        if (selectedItem?.id) {
+          newSet.add(selectedItem.id);
+        }
+
         if (newSet.has(item.id)) {
           newSet.delete(item.id);
         } else {
@@ -553,12 +585,24 @@ export default function DiagramEditor() {
       return;
     }
     
-    // Find all items (nodes only - zones removed)
+    // Find all selectable items (nodes, zones, and connections)
     const items: SelectedItem[] = [];
     itemIds.forEach(id => {
       const node = diagramData.nodes.find(n => n.id === id);
       if (node) {
         items.push({ ...node, itemType: 'node' as const });
+        return;
+      }
+
+      const zone = diagramData.zones?.find(z => z.id === id);
+      if (zone) {
+        items.push({ ...(zone as any), itemType: 'node' as const, id: zone.id } as SelectedItem);
+        return;
+      }
+
+      const connection = diagramData.connections.find(conn => `${conn.from}-${conn.to}` === id);
+      if (connection) {
+        items.push({ ...connection, itemType: 'edge' as const, id });
       }
     });
     
@@ -1065,20 +1109,175 @@ export default function DiagramEditor() {
     if (event.target) event.target.value = '';
   };
 
-  const handleConnectionUpdate = (from: string, to: string, updates: { text?: string; color?: string; textPosition?: number; lineWidth?: number; shadow?: boolean; style?: 'bezier'; curvature?: number; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean; arrow?: boolean; waypoints?: Array<{ x: number; y: number; id?: string }>; metaData?: Record<string, string>; animation?: DiagramConnectionData['animation'] }) => {
+  const hasConnectionAnimationSettings = React.useCallback((connection: DiagramConnectionData) => {
+    const animation = connection.animation;
+    if (!animation) return false;
+    return (
+      animation.enabled === true ||
+      animation.color !== undefined ||
+      animation.shape !== undefined ||
+      animation.speed !== undefined ||
+      animation.size !== undefined ||
+      animation.autoCount !== undefined ||
+      animation.shapeCount !== undefined ||
+      animation.spacing !== undefined
+    );
+  }, []);
+
+  const applyConnectionUpdates = React.useCallback((
+    from: string,
+    to: string,
+    updates: {
+      text?: string;
+      color?: string;
+      textPosition?: number;
+      lineWidth?: number;
+      shadow?: boolean;
+      style?: 'bezier';
+      curvature?: number;
+      fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center';
+      fromArrow?: boolean;
+      toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center';
+      toArrow?: boolean;
+      arrow?: boolean;
+      waypoints?: Array<{ x: number; y: number; id?: string }>;
+      metaData?: Record<string, string>;
+      animation?: DiagramConnectionData['animation'];
+    }
+  ) => {
     setDiagramData(prevData => ({
       ...prevData,
-      connections: prevData.connections.map(conn => 
-        (conn.from === from && conn.to === to) 
+      connections: prevData.connections.map(conn =>
+        (conn.from === from && conn.to === to)
           ? { ...conn, ...updates }
           : conn
       )
     }));
-    // Update selected item if it's the same connection
     if (selectedItem && selectedItem.itemType === 'edge' && selectedItem.from === from && selectedItem.to === to) {
       setSelectedItem({ ...selectedItem, ...updates });
     }
+  }, [selectedItem, setDiagramData, setSelectedItem]);
+
+  const applyAnimationToCurrentAndSelected = React.useCallback((
+    from: string,
+    to: string,
+    updates: {
+      text?: string;
+      color?: string;
+      textPosition?: number;
+      lineWidth?: number;
+      shadow?: boolean;
+      style?: 'bezier';
+      curvature?: number;
+      fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center';
+      fromArrow?: boolean;
+      toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center';
+      toArrow?: boolean;
+      arrow?: boolean;
+      waypoints?: Array<{ x: number; y: number; id?: string }>;
+      metaData?: Record<string, string>;
+      animation?: DiagramConnectionData['animation'];
+    },
+    selectedConnectionIds: string[]
+  ) => {
+    setDiagramData((prevData) => ({
+      ...prevData,
+      connections: prevData.connections.map((conn) => {
+        const connectionId = `${conn.from}-${conn.to}`;
+        if (conn.from === from && conn.to === to) {
+          return { ...conn, ...updates };
+        }
+        if (selectedConnectionIds.includes(connectionId) && updates.animation) {
+          return { ...conn, animation: updates.animation };
+        }
+        return conn;
+      }),
+    }));
+
+    if (selectedItem && selectedItem.itemType === 'edge' && selectedItem.from === from && selectedItem.to === to) {
+      setSelectedItem({ ...selectedItem, ...updates });
+    }
+  }, [selectedItem, setDiagramData, setSelectedItem]);
+
+  const resetPendingAnimationDialogs = React.useCallback(() => {
+    setAnimationSelectionDialogOpen(false);
+    setAnimationOverwriteDialogOpen(false);
+    setPendingAnimationUpdate(null);
+  }, []);
+
+  const handleConnectionUpdate = (from: string, to: string, updates: { text?: string; color?: string; textPosition?: number; lineWidth?: number; shadow?: boolean; style?: 'bezier'; curvature?: number; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean; arrow?: boolean; waypoints?: Array<{ x: number; y: number; id?: string }>; metaData?: Record<string, string>; animation?: DiagramConnectionData['animation'] }) => {
+    const currentConnectionId = `${from}-${to}`;
+    const currentConnection = diagramData.connections.find((conn) => conn.from === from && conn.to === to);
+    const isEnablingAnimation = updates.animation?.enabled === true && currentConnection?.animation?.enabled !== true;
+
+    if (isEnablingAnimation) {
+      const selectedConnectionIds = new Set(
+        Array.from(selectedItemIds).filter((id) => {
+          if (id === currentConnectionId) return false;
+          return diagramData.connections.some((conn) => `${conn.from}-${conn.to}` === id);
+        })
+      );
+
+      if (selectedConnectionIds.size > 0) {
+        setPendingAnimationUpdate({
+          from,
+          to,
+          updates,
+          selectedConnectionIds: Array.from(selectedConnectionIds),
+        });
+        setAnimationSelectionDialogOpen(true);
+        return;
+      }
+    }
+
+    applyConnectionUpdates(from, to, updates);
   };
+
+  const handleAnimationApplyCurrentOnly = React.useCallback(() => {
+    if (!pendingAnimationUpdate) return;
+    applyConnectionUpdates(
+      pendingAnimationUpdate.from,
+      pendingAnimationUpdate.to,
+      pendingAnimationUpdate.updates
+    );
+    resetPendingAnimationDialogs();
+    setAnimationCurrentOnlyDialogOpen(true);
+  }, [pendingAnimationUpdate, applyConnectionUpdates, resetPendingAnimationDialogs]);
+
+  const handleAnimationApplySelectedConfirm = React.useCallback(() => {
+    if (!pendingAnimationUpdate) return;
+    setAnimationSelectionDialogOpen(false);
+
+    const hasOtherExistingAnimation = diagramData.connections.some((conn) => {
+      const connectionId = `${conn.from}-${conn.to}`;
+      if (!pendingAnimationUpdate.selectedConnectionIds.includes(connectionId)) return false;
+      return hasConnectionAnimationSettings(conn);
+    });
+
+    if (hasOtherExistingAnimation) {
+      setAnimationOverwriteDialogOpen(true);
+      return;
+    }
+
+    applyAnimationToCurrentAndSelected(
+      pendingAnimationUpdate.from,
+      pendingAnimationUpdate.to,
+      pendingAnimationUpdate.updates,
+      pendingAnimationUpdate.selectedConnectionIds
+    );
+    resetPendingAnimationDialogs();
+  }, [pendingAnimationUpdate, diagramData.connections, hasConnectionAnimationSettings, applyAnimationToCurrentAndSelected, resetPendingAnimationDialogs]);
+
+  const handleAnimationOverwriteConfirm = React.useCallback(() => {
+    if (!pendingAnimationUpdate) return;
+    applyAnimationToCurrentAndSelected(
+      pendingAnimationUpdate.from,
+      pendingAnimationUpdate.to,
+      pendingAnimationUpdate.updates,
+      pendingAnimationUpdate.selectedConnectionIds
+    );
+    resetPendingAnimationDialogs();
+  }, [pendingAnimationUpdate, applyAnimationToCurrentAndSelected, resetPendingAnimationDialogs]);
 
   const handleConnectionWaypointMove = (from: string, to: string, index: number, newPos: { x: number; y: number }) => {
     setDiagramData(prevData => ({
@@ -2006,6 +2205,15 @@ export default function DiagramEditor() {
         pendingCloseTabId={pendingCloseTabId}
         setPendingCloseTabId={setPendingCloseTabId}
         handleCloseTabConfirm={handleCloseTabConfirm}
+        animationSelectionDialogOpen={animationSelectionDialogOpen}
+        setAnimationSelectionDialogOpen={setAnimationSelectionDialogOpen}
+        animationOverwriteDialogOpen={animationOverwriteDialogOpen}
+        setAnimationOverwriteDialogOpen={setAnimationOverwriteDialogOpen}
+        animationCurrentOnlyDialogOpen={animationCurrentOnlyDialogOpen}
+        setAnimationCurrentOnlyDialogOpen={setAnimationCurrentOnlyDialogOpen}
+        handleAnimationApplyCurrentOnly={handleAnimationApplyCurrentOnly}
+        handleAnimationApplySelectedConfirm={handleAnimationApplySelectedConfirm}
+        handleAnimationOverwriteConfirm={handleAnimationOverwriteConfirm}
         handleItemSelect={handleItemSelect}
         handleBatchSelect={handleBatchSelect}
         setSelectedItemIds={setSelectedItemIds}
@@ -2142,6 +2350,15 @@ function DiagramEditorInner({
   pendingCloseTabId,
   setPendingCloseTabId,
   handleCloseTabConfirm,
+  animationSelectionDialogOpen,
+  setAnimationSelectionDialogOpen,
+  animationOverwriteDialogOpen,
+  setAnimationOverwriteDialogOpen,
+  animationCurrentOnlyDialogOpen,
+  setAnimationCurrentOnlyDialogOpen,
+  handleAnimationApplyCurrentOnly,
+  handleAnimationApplySelectedConfirm,
+  handleAnimationOverwriteConfirm,
   handleItemSelect,
   handleBatchSelect,
   setSelectedItemIds,
@@ -2529,6 +2746,56 @@ function DiagramEditorInner({
           onCanvasRefresh={refreshCanvas}
           onHistoryUpdate={updateHistory}
         />
+        <AlertDialog
+          open={animationSelectionDialogOpen}
+          onOpenChange={setAnimationSelectionDialogOpen}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Apply animation setting</AlertDialogTitle>
+              <AlertDialogDescription>
+                Other selected connections are detected. Do you want to apply this animation setting to all selected connections, or only the current connection?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={handleAnimationApplyCurrentOnly}>Current Only</AlertDialogCancel>
+              <AlertDialogAction onClick={handleAnimationApplySelectedConfirm}>Apply to Selected</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        <AlertDialog
+          open={animationOverwriteDialogOpen}
+          onOpenChange={setAnimationOverwriteDialogOpen}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Overwrite animation setting</AlertDialogTitle>
+              <AlertDialogDescription>
+                Some selected connections already have animation settings. These settings will be overwritten by the new setting. Continue?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={handleAnimationApplyCurrentOnly}>Current Only</AlertDialogCancel>
+              <AlertDialogAction onClick={handleAnimationOverwriteConfirm}>Overwrite and Apply</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        <AlertDialog
+          open={animationCurrentOnlyDialogOpen}
+          onOpenChange={setAnimationCurrentOnlyDialogOpen}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Applied to current connection only</AlertDialogTitle>
+              <AlertDialogDescription>
+                Only the current connection will apply the animation setting.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={() => setAnimationCurrentOnlyDialogOpen(false)}>OK</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         <AlertDialog open={closeTabDialogOpen} onOpenChange={setCloseTabDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>

@@ -905,7 +905,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     if (isConnectMode) {
       onNodeClickInConnectMode(node); // In connect mode, clicking creates connection
     } else {
-      onItemSelect({ ...node, itemType: 'node' }, e.shiftKey); // Normal selection
+      onItemSelect({ ...node, itemType: 'node' }, e.shiftKey || e.ctrlKey || e.metaKey); // Normal selection
     }
   }, [closeContextMenu, onResetConnectionSettingsTrigger, isConnectMode, onNodeClickInConnectMode, onItemSelect]);
 
@@ -932,7 +932,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     if (isConnectMode) {
       onNodeClickInConnectMode(zone as any); // Zones can also be connection targets
     } else {
-      onItemSelect({ ...zone, itemType: 'node' } as Parameters<typeof onItemSelect>[0], e.shiftKey);
+      onItemSelect({ ...zone, itemType: 'node' } as Parameters<typeof onItemSelect>[0], e.shiftKey || e.ctrlKey || e.metaKey);
     }
   }, [closeContextMenu, onResetConnectionSettingsTrigger, isConnectMode, onNodeClickInConnectMode, onItemSelect]);
 
@@ -1246,6 +1246,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   zonesById={displayZonesById}
                   selectedItemId={selectedItemId}
                   selectedItem={selectedItem}
+                  selectedItemIds={selectedItemIds}
                   onItemSelect={onItemSelect}
                   closeContextMenu={closeContextMenu}
                   onConnectionDelete={onConnectionDelete}
@@ -1347,6 +1348,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       zonesById={displayZonesById}
                       selectedItemId={selectedItemId}
                       selectedItem={selectedItem}
+                      selectedItemIds={selectedItemIds}
                       onItemSelect={onItemSelect}
                       closeContextMenu={closeContextMenu}
                       onConnectionDelete={onConnectionDelete}
@@ -1376,6 +1378,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   zonesById={displayZonesById}
                   selectedItemId={selectedItemId}
                   selectedItem={selectedItem}
+                  selectedItemIds={selectedItemIds}
                   onItemSelect={onItemSelect}
                   closeContextMenu={closeContextMenu}
                   onConnectionDelete={onConnectionDelete}
