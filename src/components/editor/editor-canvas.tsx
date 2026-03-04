@@ -48,6 +48,7 @@ import { MetadataPopup } from "./metadata-popup";
 import { snapToGrid } from "./canvas-constants";
 import { ConnectionWaypointHandles } from "../diagram/connection-waypoint-handles";
 import { isShapeNodeType } from "@/lib/utils";
+import { getDownstreamAnimationChainNodes } from "@/lib/connection-animation";
 
 interface EditorCanvasProps {
   diagramData: DiagramData;
@@ -908,13 +909,14 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     closeContextMenu();
     onResetConnectionSettingsTrigger?.(); // Reset connection settings panel when clicking on a node
     
-    // Toggle animation for this node's outbound connections if mode is enabled
-    if (animationToggleOnClickEnabled && !isConnectMode && onAnimationDisabledSourcesChange) {
+    // Toggle animation for this node's downstream chain (not inbound) if mode is enabled
+    if (animationToggleOnClickEnabled && !isConnectMode && onAnimationDisabledSourcesChange && diagramData?.connections) {
+      const chainNodes = getDownstreamAnimationChainNodes(node.id, diagramData.connections);
       const next = new Set(animationDisabledSources);
       if (next.has(node.id)) {
-        next.delete(node.id);
+        chainNodes.forEach((id) => next.delete(id));
       } else {
-        next.add(node.id);
+        chainNodes.forEach((id) => next.add(id));
       }
       onAnimationDisabledSourcesChange(next);
     }
@@ -925,7 +927,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       const isAdditiveSelection = e.shiftKey || e.ctrlKey || e.metaKey;
       onItemSelect({ ...node, itemType: 'node' }, isAdditiveSelection); // Normal selection
     }
-  }, [closeContextMenu, onResetConnectionSettingsTrigger, animationToggleOnClickEnabled, isConnectMode, onNodeClickInConnectMode, onItemSelect, onAnimationDisabledSourcesChange, animationDisabledSources]);
+  }, [closeContextMenu, onResetConnectionSettingsTrigger, animationToggleOnClickEnabled, isConnectMode, onNodeClickInConnectMode, onItemSelect, onAnimationDisabledSourcesChange, animationDisabledSources, diagramData]);
 
   const handleNodeContextMenu = useCallback((e: React.MouseEvent, node: DiagramNodeData) => {
     e.stopPropagation();

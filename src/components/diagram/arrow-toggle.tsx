@@ -15,23 +15,19 @@ export function ArrowToggle({ x, y, connection, isActive }: ArrowToggleProps) {
     <g
       transform={`translate(${x}, ${y})`}
     >
-      {/* Solid green circle button */}
+      {/* Green when enabled, red when disabled */}
       <circle
         r="16"
-        fill="#22c55e"
+        fill={isActive ? "#22c55e" : "#ef4444"}
         className="transition-all duration-200 hover:opacity-90 cursor-pointer"
       />
       
-      {/* Solid arrow or line icon based on state */}
+      {/* Always show arrow icon */}
       <g
         transform={isActive ? "scale(1.2)" : "scale(0.9)"}
         className="transition-all duration-200 pointer-events-none"
       >
-        {isActive ? (
-          <path d="M -8 -4 L 4 0 L -8 4 Z" fill="white" />
-        ) : (
-          <rect x="-6" y="-2" width="12" height="4" fill="white" rx="0.5" />
-        )}
+        <path d="M -8 -4 L 4 0 L -8 4 Z" fill="white" />
       </g>
     </g>
   );

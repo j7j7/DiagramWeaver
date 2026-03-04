@@ -82,3 +82,30 @@ export function connectionAnimationStylePatch(connection: DiagramConnectionData)
     spacing: normalized.spacing,
   };
 }
+
+/**
+ * Returns the set of node IDs in the downstream animation chain from the given root.
+ * Includes rootId and all nodes reachable by following outbound connections that have animation defined.
+ * Used for click-to-toggle: when clicking a node, we enable/disable animations for the whole chain.
+ */
+export function getDownstreamAnimationChainNodes(
+  rootId: string,
+  connections: DiagramConnectionData[]
+): Set<string> {
+  const result = new Set<string>([rootId]);
+  const frontier: string[] = [rootId];
+  const visited = new Set<string>([rootId]);
+
+  while (frontier.length > 0) {
+    const current = frontier.shift()!;
+    for (const conn of connections) {
+      if (conn.from !== current) continue;
+      if (!clampConnectionAnimation(conn.animation).enabled) continue;
+      if (visited.has(conn.to)) continue;
+      visited.add(conn.to);
+      result.add(conn.to);
+      frontier.push(conn.to);
+    }
+  }
+  return result;
+}

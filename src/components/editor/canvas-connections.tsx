@@ -1,5 +1,5 @@
 import React from "react";
-import { BezierConnection, determineConnectionEdges, getOptimalConnectionPoints, calculateBezierControlPoints, getBezierPoint } from "../diagram/bezier-connection";
+import { BezierConnection, determineConnectionEdges, getOptimalConnectionPoints, calculateBezierControlPoints, getBezierPoint, getPointOnConnectionPath } from "../diagram/bezier-connection";
 import type { DiagramData, DiagramConnectionData } from "@/lib/types";
 import { measureNodeDims, type PositionedNode, type PositionedGroup, NODE_WIDTH, BASE_NODE_HEIGHT, TEXT_NODE_HEIGHT, EXTRA_LINE_HEIGHT } from "./canvas-constants";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
@@ -34,11 +34,21 @@ interface CanvasConnectionsProps {
   animationConnectionsEnabled?: boolean;
   /** When set, only show animations for connections from this source node ID */
   animationFilterSourceId?: string;
+  /** When set, only show animations for connections from these source node IDs (chain). Takes precedence over animationFilterSourceId. */
+  animationFilterSourceIds?: Set<string>;
   /** Set of node IDs whose outbound animations should be disabled */
   animationDisabledSources?: Set<string>;
 }
 
 function setsEqual(a: Set<number> | undefined, b: Set<number> | undefined): boolean {
+  if (a === b) return true;
+  if (!a || !b) return a === b;
+  if (a.size !== b.size) return false;
+  for (const v of a) if (!b.has(v)) return false;
+  return true;
+}
+
+function stringSetsEqual(a: Set<string> | undefined, b: Set<string> | undefined): boolean {
   if (a === b) return true;
   if (!a || !b) return a === b;
   if (a.size !== b.size) return false;
@@ -55,6 +65,7 @@ function areCanvasConnectionsPropsEqual(prev: CanvasConnectionsProps, next: Canv
     prev.exportAnimationTimeSeconds === next.exportAnimationTimeSeconds &&
     prev.animationConnectionsEnabled === next.animationConnectionsEnabled &&
     prev.animationFilterSourceId === next.animationFilterSourceId &&
+    stringSetsEqual(prev.animationFilterSourceIds, next.animationFilterSourceIds) &&
     prev.animationDisabledSources === next.animationDisabledSources &&
     prev.diagramData === next.diagramData &&
     prev.nodesById === next.nodesById &&
@@ -87,6 +98,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     exportAnimationTimeSeconds,
     animationConnectionsEnabled = true,
     animationFilterSourceId,
+    animationFilterSourceIds,
     animationDisabledSources = new Set(),
   } = props;
   // Pre-calculate edge information for all connections
@@ -383,7 +395,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
               connectionColor={edge.color}
               connectionData={enhancedEdge}
               exportAnimationTimeSeconds={exportAnimationTimeSeconds}
-              animationConnectionsEnabled={animationConnectionsEnabled && (!animationFilterSourceId || edge.from === animationFilterSourceId) && !animationDisabledSources.has(edge.from)}
+              animationConnectionsEnabled={animationConnectionsEnabled && (animationFilterSourceIds ? animationFilterSourceIds.has(edge.from) : (!animationFilterSourceId || edge.from === animationFilterSourceId)) && !animationDisabledSources.has(edge.from)}
               onClick={(connection, event) => {
                 // Select the connection when clicked
                 closeContextMenu();
@@ -574,19 +586,26 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
       const connectionPoints = getOptimalConnectionPoints(fromPos, toPos, fromWidth, fromHeight, toWidth, toHeight, enhancedEdge, fromIconHeight, toIconHeight, fromIconOffset, toIconOffset, fromIconWidth, fromIconOffsetX, toIconWidth, toIconOffsetX);
       const { fromX, fromY, toX, toY, fromAngle, toAngle } = connectionPoints;
       const curvature = edge?.curvature || 0.6;
-      const { cp1X, cp1Y, cp2X, cp2Y } = calculateBezierControlPoints(fromX, fromY, toX, toY, curvature, fromAngle, toAngle);
-      const centerPoint = getBezierPoint(0.5, fromX, fromY, cp1X, cp1Y, cp2X, cp2Y, toX, toY);
-      const arrowPoint = getBezierPoint(0.9, fromX, fromY, cp1X, cp1Y, cp2X, cp2Y, toX, toY);
+      const waypoints = edge?.waypoints;
+      const getPoint = (t: number) =>
+        waypoints?.length
+          ? getPointOnConnectionPath(t, fromX, fromY, toX, toY, fromAngle, toAngle, curvature, waypoints)
+          : (() => {
+              const { cp1X, cp1Y, cp2X, cp2Y } = calculateBezierControlPoints(fromX, fromY, toX, toY, curvature, fromAngle, toAngle);
+              return getBezierPoint(t, fromX, fromY, cp1X, cp1Y, cp2X, cp2Y, toX, toY);
+            })();
+      const startPoint = getPoint(0.1);
+      const centerPoint = getPoint(0.5);
+      const arrowPoint = getPoint(0.9);
       const hasArrow = edge.toArrow === true || edge.arrow === true;
 
-      const buttonOffset = 36;
       const ICON_SIZE = 29; // 24 * 1.2 ~20% bigger
       const ICON_HALF = Math.round(ICON_SIZE / 2);
       const BUTTON_Z_INDEX = 50;
 
       return (
         <React.Fragment key={`actions-${edge.from}-${edge.to}-${index}`}>
-          {/* Arrow toggle button - positioned at 90% along the line */}
+          {/* Arrow toggle button - positioned at 90% (destination) along the curve */}
           <Tooltip>
             <TooltipTrigger asChild>
               <div
@@ -619,13 +638,9 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                     cx="12"
                     cy="12"
                     r="12"
-                    fill="#22c55e"
+                    fill={hasArrow ? "#22c55e" : "#ef4444"}
                   />
-                  {hasArrow ? (
-                    <path d="M 11 7 L 17 12 L 11 17 Z" fill="white" />
-                  ) : (
-                    <rect x="6" y="10.5" width="12" height="3" fill="white" rx="0.5" />
-                  )}
+                  <path d="M 11 7 L 17 12 L 11 17 Z" fill="white" />
                 </svg>
               </div>
             </TooltipTrigger>
@@ -634,7 +649,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
             </TooltipContent>
           </Tooltip>
 
-          {/* Add waypoint button - at center left */}
+          {/* Add waypoint button - at center (50%) along the curve */}
           {onConnectionWaypointAdd && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -642,7 +657,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                   className="absolute cursor-pointer"
                   style={{
                     zIndex: BUTTON_Z_INDEX,
-                    left: `${centerPoint.x - buttonOffset - ICON_HALF}px`,
+                    left: `${centerPoint.x - ICON_HALF}px`,
                     top: `${centerPoint.y - ICON_HALF}px`,
                     width: `${ICON_SIZE}px`,
                     height: `${ICON_SIZE}px`,
@@ -678,7 +693,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
             </Tooltip>
           )}
 
-          {/* Delete button - at center right */}
+          {/* Delete button - at start (10%) along the curve */}
           {onConnectionDelete && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -686,8 +701,8 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                   className="absolute cursor-pointer"
                   style={{
                     zIndex: BUTTON_Z_INDEX,
-                    left: `${centerPoint.x + buttonOffset - ICON_HALF}px`,
-                    top: `${centerPoint.y - ICON_HALF}px`,
+                    left: `${startPoint.x - ICON_HALF}px`,
+                    top: `${startPoint.y - ICON_HALF}px`,
                     width: `${ICON_SIZE}px`,
                     height: `${ICON_SIZE}px`,
                   }}

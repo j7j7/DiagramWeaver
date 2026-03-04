@@ -154,7 +154,7 @@ export function ContextMenu({
     <div
       ref={menuRef}
       className={cn(
-        "fixed bg-popover border border-border rounded-md shadow-lg py-1 z-50 min-w-[150px]",
+        "context-menu fixed bg-popover border border-border rounded-md shadow-lg py-1 z-50 min-w-[150px]",
         "animate-in fade-in-0 zoom-in-95"
       )}
       style={{

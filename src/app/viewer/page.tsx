@@ -10,6 +10,7 @@ import { ViewerLayersPanel } from "@/components/viewer/viewer-layers-panel";
 import { PropertiesPanel } from "@/components/editor/properties-panel";
 import { loadViewerData, parseViewerParams } from "@/lib/viewer-utils";
 import { filterByVisibleLayers, toggleLayerVisibility, validateLayersConfig } from "@/lib/layers-utils";
+import { getDownstreamAnimationChainNodes } from "@/lib/connection-animation";
 import type { DiagramData, LayersConfig } from "@/lib/types";
 import type { Transform } from "@/hooks/use-canvas-transform";
 
@@ -219,6 +220,13 @@ function ViewerPageContent() {
   const displayData = filteredDiagramData ?? diagramData;
   const selectedItemId = selectedItem?.itemType === "node" ? selectedItem.id : selectedItem?.itemType === "edge" ? selectedItem.id : undefined;
 
+  // Show chain animations only when a node is selected. No animations when nothing selected.
+  const effectiveAnimationFilterIds = showAnimationsForSelectedOnly
+    ? (selectedItem?.itemType === "node" && selectedItemId && displayData?.connections
+        ? getDownstreamAnimationChainNodes(selectedItemId, displayData.connections)
+        : new Set<string>())  // Empty set = no animations when nothing selected
+    : undefined;
+
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="flex w-full h-screen bg-background overflow-hidden">
@@ -234,6 +242,7 @@ function ViewerPageContent() {
             metadataPopupsEnabled={metadataPopupsEnabled}
             animationConnectionsEnabled={animationConnectionsEnabled}
             showAnimationsForSelectedOnly={showAnimationsForSelectedOnly && animationConnectionsEnabled}
+            animationFilterSourceIds={effectiveAnimationFilterIds}
             animationToggleOnClickEnabled={animationToggleOnClickEnabled && animationConnectionsEnabled}
             animationDisabledSources={animationDisabledSources}
             onAnimationDisabledSourcesChange={setAnimationDisabledSources}

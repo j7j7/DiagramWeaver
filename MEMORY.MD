@@ -1,6 +1,21 @@
 # MEMORY.MD
 
-## DiagramWeaver - Latest Features and Functions (Updated 2026-03-02)
+## DiagramWeaver - Latest Features and Functions (Updated 2026-03-04)
+
+### 2026-03-04 – Viewer "Show Animations for Selected Only" Uses Chain (Same as Editor)
+In the viewer, when "Show animations for selected only" is on and a node is selected, animations now show the full downstream chain (B→C, C→D when selecting B), matching the editor. Added `animationFilterSourceIds` to CanvasConnections; viewer page computes chain via `getDownstreamAnimationChainNodes`. Modified: `canvas-connections.tsx`, `viewer/page.tsx`, `viewer-canvas.tsx`.
+
+### 2026-03-04 – No Animations When Nothing Selected (Viewer)
+In the viewer with "Show animations for selected only", animations are hidden when no item is selected (e.g. after clicking canvas). Animations show only when a node is selected (chain). Removed lastAnimationFilterNodeId. Modified: `viewer/page.tsx`.
+
+### 2026-03-04 – Animation Click-Toggle Follows Downstream Chain
+When animation toggle-on-click is enabled, clicking a node now enables/disables animations for the **entire downstream chain** (not just the direct outbound connection). E.g. A→B→C→D: clicking B toggles B→C and C→D, but not A→B. Chain follows only connections that have animation defined. Added `getDownstreamAnimationChainNodes()` in `connection-animation.ts`; updated `handleNodeClick` in `editor-canvas.tsx` and `viewer-canvas.tsx`.
+
+### 2026-03-04 – Connection Icons Aligned Along Bezier Curve
+When a connection is selected, the three action icons (arrow toggle, add waypoint, remove connection) could misalign on curved bezier lines because they used center ± horizontal offset. **Fix**: Icons are now positioned at fixed t-values along the curve: **Remove** at t=0.1 (start), **Add waypoint** at t=0.5 (center), **Arrow toggle** at t=0.9 (destination). Uses `getPointOnConnectionPath` when waypoints exist so icons follow multi-segment paths. Modified: `canvas-connections.tsx`.
+
+### 2026-03-04 – Context Menu Text/Visual Styling Panel Shows on First Click
+Right-click on a selected object → choose Text Styling or Visual Styling from the context menu: the modal did not show until a second click on the object. **Cause**: Clicking the context menu item bubbled to the canvas container, triggering `handleCanvasClick` which cleared selection (`onItemSelect(null)`); the ContextToolbar unmounted (it only renders when `selectedItem` exists), so the panel never appeared. **Fix**: Add `context-menu` class to the ContextMenu root div; in `use-canvas-selection` `handleCanvasClick`, skip clearing selection when the click target is inside `.context-menu`. Modified: `context-menu.tsx`, `use-canvas-selection.ts`.
 
 ### 2026-03-02 – Merged animated-connection into main
 Merged `animated-connection` branch into `main`. No conflicts. Features now in main: **Animated connection markers** (per-connection shape/speed/size/spacing via right-click context modal, bulk apply outbound/inbound), **GIF export** (File → Export, PNG or GIF with duration/FPS), **multiple connection selection fixes**. New: `connection-animation-controls.tsx`, `connection-animation.ts`, `gifenc` package. See `docs/MERGE-ANIMATED-CONNECTION-TO-MAIN.md`.

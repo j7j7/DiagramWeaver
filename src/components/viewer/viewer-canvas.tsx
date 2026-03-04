@@ -11,6 +11,7 @@ import { RULER_SIZE, type PositionedNode, type PositionedGroup } from "../editor
 import { CanvasRulers } from "../editor/canvas-rulers";
 import { computeConnectionSlots } from "@/lib/connection-order-utils";
 import { isShapeNodeType } from "@/lib/utils";
+import { getDownstreamAnimationChainNodes } from "@/lib/connection-animation";
 import { MetadataPopup } from "../editor/metadata-popup";
 
 export type ViewerSelectedItem =
@@ -32,6 +33,8 @@ interface ViewerCanvasProps {
   connectionsBehindNodesEnabled?: boolean;
   /** When true and a node is selected, only show animations from that node */
   showAnimationsForSelectedOnly?: boolean;
+  /** When set, only show animations for connections from these source node IDs (chain). Same as editor. */
+  animationFilterSourceIds?: Set<string>;
   /** When true, clicking nodes toggles their outbound animations */
   animationToggleOnClickEnabled?: boolean;
   /** Set of node IDs whose animations are disabled */
@@ -40,7 +43,7 @@ interface ViewerCanvasProps {
   onAnimationDisabledSourcesChange?: (sources: Set<string>) => void;
 }
 
-export function ViewerCanvas({ diagramData, onFitToView, transform: externalTransform, onTransformChange, selectedItemId, selectedItem, onItemSelect, metadataPopupsEnabled = true, animationConnectionsEnabled = true, connectionsBehindNodesEnabled: connectionsBehindNodesProp, showAnimationsForSelectedOnly = false, animationToggleOnClickEnabled = false, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange }: ViewerCanvasProps) {
+export function ViewerCanvas({ diagramData, onFitToView, transform: externalTransform, onTransformChange, selectedItemId, selectedItem, onItemSelect, metadataPopupsEnabled = true, animationConnectionsEnabled = true, connectionsBehindNodesEnabled: connectionsBehindNodesProp, showAnimationsForSelectedOnly = false, animationFilterSourceIds, animationToggleOnClickEnabled = false, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange }: ViewerCanvasProps) {
   const [connectionsBehindNodesEnabled, setConnectionsBehindNodesEnabled] = useState(true);
   useEffect(() => {
     if (connectionsBehindNodesProp !== undefined) {
@@ -256,20 +259,21 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
 
   const handleNodeClick = useCallback(
     (_e: React.MouseEvent, node: import("@/lib/types").DiagramNodeData) => {
-      // Handle animation toggling when click mode is enabled
-      if (animationToggleOnClickEnabled && onAnimationDisabledSourcesChange) {
+      // Handle animation toggling when click mode is enabled - follows the chain downstream
+      if (animationToggleOnClickEnabled && onAnimationDisabledSourcesChange && diagramData?.connections) {
+        const chainNodes = getDownstreamAnimationChainNodes(node.id, diagramData.connections);
         const newDisabledSources = new Set(animationDisabledSources);
         if (newDisabledSources.has(node.id)) {
-          newDisabledSources.delete(node.id);
+          chainNodes.forEach((id) => newDisabledSources.delete(id));
         } else {
-          newDisabledSources.add(node.id);
+          chainNodes.forEach((id) => newDisabledSources.add(id));
         }
         onAnimationDisabledSourcesChange(newDisabledSources);
       }
       
       onItemSelect?.({ ...node, itemType: "node" } as ViewerSelectedItem);
     },
-    [onItemSelect, animationToggleOnClickEnabled, animationDisabledSources, onAnimationDisabledSourcesChange]
+    [onItemSelect, animationToggleOnClickEnabled, animationDisabledSources, onAnimationDisabledSourcesChange, diagramData]
   );
 
   const handleViewerItemSelect = useCallback(
@@ -364,7 +368,7 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
               onConnectionDelete={undefined}
               stackZIndex={0}
               animationConnectionsEnabled={animationConnectionsEnabled}
-              animationFilterSourceId={showAnimationsForSelectedOnly && selectedItem?.itemType === "node" ? selectedItemId : undefined}
+              animationFilterSourceIds={animationFilterSourceIds}
               animationDisabledSources={animationDisabledSources}
             />
             {connectionSlots.sortedItemIds.map((itemId, i) => {
@@ -426,7 +430,7 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
                     connectionIndices={connIndices}
                     stackZIndex={connZIndex}
                     animationConnectionsEnabled={animationConnectionsEnabled}
-                    animationFilterSourceId={showAnimationsForSelectedOnly && selectedItem?.itemType === "node" ? selectedItemId : undefined}
+                    animationFilterSourceIds={animationFilterSourceIds}
                     animationDisabledSources={animationDisabledSources}
                   />
                 ) : null,
@@ -452,7 +456,7 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
                   connectionIndices={new Set(lastSlot)}
                   stackZIndex={2 * n}
                   animationConnectionsEnabled={animationConnectionsEnabled}
-                  animationFilterSourceId={showAnimationsForSelectedOnly && selectedItem?.itemType === "node" ? selectedItemId : undefined}
+                  animationFilterSourceIds={animationFilterSourceIds}
                   animationDisabledSources={animationDisabledSources}
                 />
               );

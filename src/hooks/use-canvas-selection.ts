@@ -39,6 +39,10 @@ export function useCanvasSelection({
     const target = e.target as HTMLElement;
     if (justCompletedSelection) return;
 
+    // Don't clear selection when clicking context menu (e.g. Text/Visual Styling)
+    // Otherwise the panel would unmount before it can show
+    if (target.closest('.context-menu')) return;
+
     const clickedSelectable = target.closest(
       '[data-node-id], [data-zone-id], [data-connection-id], [data-waypoint-id], [data-connection-waypoint-id], [data-resize-handle]'
     );
