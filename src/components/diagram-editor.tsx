@@ -235,6 +235,9 @@ export default function DiagramEditor() {
   const [iconBackgroundEnabled, setIconBackgroundEnabled] = React.useState<boolean>(true);
   const [alignmentGuidesEnabled, setAlignmentGuidesEnabled] = React.useState<boolean>(true);
   const [connectionsBehindNodesEnabled, setConnectionsBehindNodesEnabled] = React.useState<boolean>(true);
+  const [animationConnectionsEnabled, setAnimationConnectionsEnabled] = React.useState<boolean>(true);
+  const [animationToggleOnClickEnabled, setAnimationToggleOnClickEnabled] = React.useState<boolean>(false);
+  const [animationDisabledSources, setAnimationDisabledSources] = React.useState<Set<string>>(new Set());
   const [isReadOnly, setIsReadOnly] = React.useState<boolean>(false);
   const [triggerTextStylingPanel, setTriggerTextStylingPanel] = React.useState<boolean>(false);
   const [triggerVisualStylingPanel, setTriggerVisualStylingPanel] = React.useState<boolean>(false);
@@ -2074,6 +2077,10 @@ export default function DiagramEditor() {
     if (savedGuides !== null) setAlignmentGuidesEnabled(savedGuides !== 'false');
     const savedConnectionsBehind = localStorage.getItem('dw:connectionsBehindNodes:enabled');
     if (savedConnectionsBehind !== null) setConnectionsBehindNodesEnabled(savedConnectionsBehind !== 'false');
+    const savedAnimationConnections = localStorage.getItem('dw:animationConnections:enabled');
+    if (savedAnimationConnections !== null) setAnimationConnectionsEnabled(savedAnimationConnections !== 'false');
+    const savedAnimationToggleOnClick = localStorage.getItem('dw:animationToggleOnClick:enabled');
+    if (savedAnimationToggleOnClick !== null) setAnimationToggleOnClickEnabled(savedAnimationToggleOnClick === 'true');
   }, []);
 
   // Persist connections-behind-nodes preference
@@ -2082,6 +2089,42 @@ export default function DiagramEditor() {
       localStorage.setItem('dw:connectionsBehindNodes:enabled', String(connectionsBehindNodesEnabled));
     }
   }, [connectionsBehindNodesEnabled, isClient]);
+
+  // Persist animation connections preference
+  React.useEffect(() => {
+    if (isClient) {
+      localStorage.setItem('dw:animationConnections:enabled', String(animationConnectionsEnabled));
+    }
+  }, [animationConnectionsEnabled, isClient]);
+
+  // Persist animation toggle on click preference
+  React.useEffect(() => {
+    if (isClient) {
+      localStorage.setItem('dw:animationToggleOnClick:enabled', String(animationToggleOnClickEnabled));
+    }
+  }, [animationToggleOnClickEnabled, isClient]);
+
+  // Reset click-to-toggle disabled sources when it's enabled
+  React.useEffect(() => {
+    if (animationToggleOnClickEnabled) {
+      setAnimationDisabledSources(new Set());
+    }
+  }, [animationToggleOnClickEnabled]);
+
+  // Disable click-to-toggle when master animation toggle is off
+  React.useEffect(() => {
+    if (!animationConnectionsEnabled && animationToggleOnClickEnabled) {
+      setAnimationToggleOnClickEnabled(false);
+    }
+  }, [animationConnectionsEnabled, animationToggleOnClickEnabled]);
+
+  // Reset disabled animation sources when master animation toggle is re-enabled (only after client init)
+  React.useEffect(() => {
+    if (!isClient) return;
+    if (animationConnectionsEnabled) {
+      setAnimationDisabledSources(new Set());
+    }
+  }, [animationConnectionsEnabled, isClient]);
 
   // Persist properties panel collapse state
   React.useEffect(() => {
@@ -2188,6 +2231,12 @@ export default function DiagramEditor() {
         setAlignmentGuidesEnabled={setAlignmentGuidesEnabled}
         connectionsBehindNodesEnabled={connectionsBehindNodesEnabled}
         setConnectionsBehindNodesEnabled={setConnectionsBehindNodesEnabled}
+        animationConnectionsEnabled={animationConnectionsEnabled}
+        setAnimationConnectionsEnabled={setAnimationConnectionsEnabled}
+        animationToggleOnClickEnabled={animationToggleOnClickEnabled}
+        setAnimationToggleOnClickEnabled={setAnimationToggleOnClickEnabled}
+        animationDisabledSources={animationDisabledSources}
+        setAnimationDisabledSources={setAnimationDisabledSources}
         isReadOnly={isReadOnly}
         setIsReadOnly={setIsReadOnly}
         handleAlignObjects={handleAlignObjects}
@@ -2334,6 +2383,12 @@ function DiagramEditorInner({
   setAlignmentGuidesEnabled,
   connectionsBehindNodesEnabled,
   setConnectionsBehindNodesEnabled,
+  animationConnectionsEnabled,
+  setAnimationConnectionsEnabled,
+  animationToggleOnClickEnabled,
+  setAnimationToggleOnClickEnabled,
+  animationDisabledSources,
+  setAnimationDisabledSources,
   isReadOnly,
   setIsReadOnly,
   handleAlignObjects,
@@ -2550,6 +2605,10 @@ function DiagramEditorInner({
                     onToggleAlignmentGuides={() => setAlignmentGuidesEnabled(!alignmentGuidesEnabled)}
                     connectionsBehindNodesEnabled={connectionsBehindNodesEnabled}
                     onToggleConnectionsBehindNodes={() => setConnectionsBehindNodesEnabled(!connectionsBehindNodesEnabled)}
+                    animationConnectionsEnabled={animationConnectionsEnabled}
+                    onToggleAnimationConnections={() => setAnimationConnectionsEnabled(!animationConnectionsEnabled)}
+                    animationToggleOnClickEnabled={animationToggleOnClickEnabled}
+                    onToggleAnimationToggleOnClick={() => setAnimationToggleOnClickEnabled(!animationToggleOnClickEnabled)}
                     isReadOnly={isReadOnly}
                     onToggleReadOnly={() => setIsReadOnly(!isReadOnly)}
                     onAlignObjects={handleAlignObjects}
@@ -2663,6 +2722,10 @@ function DiagramEditorInner({
                     isReadOnly={isReadOnly}
                     alignmentGuidesEnabled={alignmentGuidesEnabled}
                     connectionsBehindNodesEnabled={connectionsBehindNodesEnabled}
+                    animationConnectionsEnabled={animationConnectionsEnabled}
+                    animationToggleOnClickEnabled={animationToggleOnClickEnabled}
+                    animationDisabledSources={animationDisabledSources}
+                    onAnimationDisabledSourcesChange={setAnimationDisabledSources}
                     onResourceActivateAtPosition={handleResourceActivateAtPosition}
                     metadataPopupsEnabled={metadataPopupsEnabled}
                     setUmlClassEditorModal={setUmlClassEditorModal}

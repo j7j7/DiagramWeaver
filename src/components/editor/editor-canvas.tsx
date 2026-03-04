@@ -81,6 +81,10 @@ interface EditorCanvasProps {
   hoverEnabled?: boolean;
   iconBackgroundEnabled?: boolean;
   connectionsBehindNodesEnabled?: boolean;
+  animationConnectionsEnabled?: boolean;
+  animationToggleOnClickEnabled?: boolean;
+  animationDisabledSources?: Set<string>;
+  onAnimationDisabledSourcesChange?: (sources: Set<string>) => void;
   onSelectAll?: () => void;
   onTriggerTextStylingPanel?: () => void;
   onTriggerVisualStylingPanel?: () => void;
@@ -128,7 +132,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, connectionsBehindNodesEnabled = true, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal }: EditorCanvasProps,
+   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, connectionsBehindNodesEnabled = true, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal }: EditorCanvasProps,
   ref
 ) {
   const [gifExportAnimationTimeSeconds, setGifExportAnimationTimeSeconds] = React.useState<number | null>(null);
@@ -903,13 +907,25 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     e.stopPropagation();
     closeContextMenu();
     onResetConnectionSettingsTrigger?.(); // Reset connection settings panel when clicking on a node
+    
+    // Toggle animation for this node's outbound connections if mode is enabled
+    if (animationToggleOnClickEnabled && !isConnectMode && onAnimationDisabledSourcesChange) {
+      const next = new Set(animationDisabledSources);
+      if (next.has(node.id)) {
+        next.delete(node.id);
+      } else {
+        next.add(node.id);
+      }
+      onAnimationDisabledSourcesChange(next);
+    }
+    
     if (isConnectMode) {
       onNodeClickInConnectMode(node); // In connect mode, clicking creates connection
     } else {
       const isAdditiveSelection = e.shiftKey || e.ctrlKey || e.metaKey;
       onItemSelect({ ...node, itemType: 'node' }, isAdditiveSelection); // Normal selection
     }
-  }, [closeContextMenu, onResetConnectionSettingsTrigger, isConnectMode, onNodeClickInConnectMode, onItemSelect]);
+  }, [closeContextMenu, onResetConnectionSettingsTrigger, animationToggleOnClickEnabled, isConnectMode, onNodeClickInConnectMode, onItemSelect, onAnimationDisabledSourcesChange, animationDisabledSources]);
 
   const handleNodeContextMenu = useCallback((e: React.MouseEvent, node: DiagramNodeData) => {
     e.stopPropagation();
@@ -1264,6 +1280,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   onConnectionWaypointAdd={onConnectionWaypointAdd}
                   stackZIndex={0}
                   exportAnimationTimeSeconds={gifExportAnimationTimeSeconds}
+                  animationConnectionsEnabled={animationConnectionsEnabled}
+                  animationDisabledSources={animationDisabledSources}
                 />
                 {connectionSlots.sortedItemIds.map((itemId, i) => {
                   const node = nodesById[itemId];
@@ -1370,6 +1388,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       connectionIndices={connIndices}
                       stackZIndex={connZIndex}
                       exportAnimationTimeSeconds={gifExportAnimationTimeSeconds}
+                      animationConnectionsEnabled={animationConnectionsEnabled}
+                      animationDisabledSources={animationDisabledSources}
                     />
                   ) : null,
                   nodeEl,
@@ -1400,6 +1420,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   connectionIndices={new Set(lastSlot)}
                   stackZIndex={2 * n}
                   exportAnimationTimeSeconds={gifExportAnimationTimeSeconds}
+                  animationConnectionsEnabled={animationConnectionsEnabled}
+                  animationDisabledSources={animationDisabledSources}
                 />
               );
             })()}

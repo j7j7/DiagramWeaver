@@ -24,6 +24,63 @@ function ViewerPageContent() {
   const [propertiesPanelVisible, setPropertiesPanelVisible] = useState(true);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(true);
   const [metadataPopupsEnabled, setMetadataPopupsEnabled] = useState(true);
+  const [animationConnectionsEnabled, setAnimationConnectionsEnabled] = useState(true);
+  const [showAnimationsForSelectedOnly, setShowAnimationsForSelectedOnly] = useState(false);
+  const [animationToggleOnClickEnabled, setAnimationToggleOnClickEnabled] = useState(false);
+  const [animationDisabledSources, setAnimationDisabledSources] = useState<Set<string>>(new Set());
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Persist master animation toggle setting
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("dw:viewer:animationConnections:enabled");
+      if (saved !== null) setAnimationConnectionsEnabled(saved === "true");
+      setIsInitialized(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("dw:viewer:animationConnections:enabled", String(animationConnectionsEnabled));
+    }
+  }, [animationConnectionsEnabled]);
+
+  // Reset selected-only filter and disabled sources when re-enabling animations (only after initialization)
+  useEffect(() => {
+    if (!isInitialized) return;
+    if (animationConnectionsEnabled) {
+      setShowAnimationsForSelectedOnly(false);
+      setAnimationDisabledSources(new Set());
+    }
+  }, [animationConnectionsEnabled, isInitialized]);
+
+  // Persist animation toggle on click setting
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("dw:viewer:animationToggleOnClick:enabled");
+      if (saved !== null) setAnimationToggleOnClickEnabled(saved === "true");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("dw:viewer:animationToggleOnClick:enabled", String(animationToggleOnClickEnabled));
+    }
+  }, [animationToggleOnClickEnabled]);
+
+  // Reset click-to-toggle disabled sources when it's enabled
+  useEffect(() => {
+    if (animationToggleOnClickEnabled) {
+      setAnimationDisabledSources(new Set());
+    }
+  }, [animationToggleOnClickEnabled]);
+
+  // Disable click-to-toggle when master animation toggle is off
+  useEffect(() => {
+    if (!animationConnectionsEnabled && animationToggleOnClickEnabled) {
+      setAnimationToggleOnClickEnabled(false);
+    }
+  }, [animationConnectionsEnabled, animationToggleOnClickEnabled]);
 
   // Sync layers config from diagram data when it has valid layers
   useEffect(() => {
@@ -144,6 +201,11 @@ function ViewerPageContent() {
             selectedItem={selectedItem}
             onItemSelect={setSelectedItem}
             metadataPopupsEnabled={metadataPopupsEnabled}
+            animationConnectionsEnabled={animationConnectionsEnabled}
+            showAnimationsForSelectedOnly={showAnimationsForSelectedOnly && animationConnectionsEnabled}
+            animationToggleOnClickEnabled={animationToggleOnClickEnabled && animationConnectionsEnabled}
+            animationDisabledSources={animationDisabledSources}
+            onAnimationDisabledSourcesChange={setAnimationDisabledSources}
           />
           <ViewerControls
             onZoomIn={handleZoomIn}
@@ -153,6 +215,12 @@ function ViewerPageContent() {
             propertiesPanelVisible={propertiesPanelVisible}
             onToggleMetadataPopups={() => setMetadataPopupsEnabled((v) => !v)}
             metadataPopupsEnabled={metadataPopupsEnabled}
+            onToggleAnimationConnections={() => setAnimationConnectionsEnabled((v) => !v)}
+            animationConnectionsEnabled={animationConnectionsEnabled}
+            onToggleAnimationsForSelected={() => setShowAnimationsForSelectedOnly((v) => !v)}
+            showAnimationsForSelectedOnly={showAnimationsForSelectedOnly && animationConnectionsEnabled}
+            onToggleAnimationClickMode={() => setAnimationToggleOnClickEnabled((v) => !v)}
+            animationToggleOnClickEnabled={animationToggleOnClickEnabled && animationConnectionsEnabled}
             additionalControls={
             hasLayers && layersConfig && diagramData ? (
               <ViewerLayersPanel

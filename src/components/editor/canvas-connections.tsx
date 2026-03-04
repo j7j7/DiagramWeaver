@@ -30,6 +30,12 @@ interface CanvasConnectionsProps {
   stackZIndex?: number;
   /** During GIF export, advances animation deterministically per frame */
   exportAnimationTimeSeconds?: number | null;
+  /** When false, hide all animation shapes on connections (default: true) */
+  animationConnectionsEnabled?: boolean;
+  /** When set, only show animations for connections from this source node ID */
+  animationFilterSourceId?: string;
+  /** Set of node IDs whose outbound animations should be disabled */
+  animationDisabledSources?: Set<string>;
 }
 
 function setsEqual(a: Set<number> | undefined, b: Set<number> | undefined): boolean {
@@ -47,6 +53,9 @@ function areCanvasConnectionsPropsEqual(prev: CanvasConnectionsProps, next: Canv
     prev.selectedItemIds === next.selectedItemIds &&
     prev.stackZIndex === next.stackZIndex &&
     prev.exportAnimationTimeSeconds === next.exportAnimationTimeSeconds &&
+    prev.animationConnectionsEnabled === next.animationConnectionsEnabled &&
+    prev.animationFilterSourceId === next.animationFilterSourceId &&
+    prev.animationDisabledSources === next.animationDisabledSources &&
     prev.diagramData === next.diagramData &&
     prev.nodesById === next.nodesById &&
     prev.zonesById === next.zonesById &&
@@ -76,6 +85,9 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     connectionIndices,
     stackZIndex,
     exportAnimationTimeSeconds,
+    animationConnectionsEnabled = true,
+    animationFilterSourceId,
+    animationDisabledSources = new Set(),
   } = props;
   // Pre-calculate edge information for all connections
   const connectionEdgeInfo = new Map<string, { fromEdge: string; toEdge: string }>();
@@ -371,6 +383,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
               connectionColor={edge.color}
               connectionData={enhancedEdge}
               exportAnimationTimeSeconds={exportAnimationTimeSeconds}
+              animationConnectionsEnabled={animationConnectionsEnabled && (!animationFilterSourceId || edge.from === animationFilterSourceId) && !animationDisabledSources.has(edge.from)}
               onClick={(connection, event) => {
                 // Select the connection when clicked
                 closeContextMenu();

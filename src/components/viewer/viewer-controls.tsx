@@ -12,6 +12,12 @@ interface ViewerControlsProps {
   propertiesPanelVisible?: boolean;
   onToggleMetadataPopups?: () => void;
   metadataPopupsEnabled?: boolean;
+  onToggleAnimationConnections?: () => void;
+  animationConnectionsEnabled?: boolean;
+  onToggleAnimationsForSelected?: () => void;
+  showAnimationsForSelectedOnly?: boolean;
+  onToggleAnimationClickMode?: () => void;
+  animationToggleOnClickEnabled?: boolean;
   additionalControls?: React.ReactNode;
   className?: string;
 }
@@ -24,6 +30,12 @@ export function ViewerControls({
   propertiesPanelVisible,
   onToggleMetadataPopups,
   metadataPopupsEnabled = true,
+  onToggleAnimationConnections,
+  animationConnectionsEnabled = true,
+  onToggleAnimationsForSelected,
+  showAnimationsForSelectedOnly = false,
+  onToggleAnimationClickMode,
+  animationToggleOnClickEnabled = false,
   additionalControls,
   className,
 }: ViewerControlsProps) {
@@ -76,6 +88,67 @@ export function ViewerControls({
             aria-label={metadataPopupsEnabled ? "Disable Properties popups" : "Enable Properties popups"}
           >
             <Info className="w-4 h-4" />
+          </button>
+        </>
+      )}
+      {onToggleAnimationConnections && (
+        <>
+          <div className="h-px bg-border my-1" />
+          <button
+            onClick={onToggleAnimationConnections}
+            className={cn(
+              "p-2 hover:bg-accent rounded-md transition-colors",
+              !animationConnectionsEnabled && "opacity-50"
+            )}
+            title={animationConnectionsEnabled ? "Disable all animations (Wave)" : "Enable all animations (Wave)"}
+            aria-label={animationConnectionsEnabled ? "Disable all animations (Wave)" : "Enable all animations (Wave)"}
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+            </svg>
+          </button>
+        </>
+      )}
+      {onToggleAnimationsForSelected && (
+        <>
+          <div className="h-px bg-border my-1" />
+          <button
+            onClick={onToggleAnimationsForSelected}
+            disabled={!animationConnectionsEnabled}
+            className={cn(
+              "p-2 hover:bg-accent rounded-md transition-colors",
+              showAnimationsForSelectedOnly && "bg-accent",
+              !animationConnectionsEnabled && "opacity-50 cursor-not-allowed"
+            )}
+            title={showAnimationsForSelectedOnly ? "Show all animations" : "Show animations from selected element only (Clock)"}
+            aria-label={showAnimationsForSelectedOnly ? "Show all animations" : "Show animations from selected element only (Clock)"}
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+          </button>
+        </>
+      )}
+      {onToggleAnimationClickMode && (
+        <>
+          <div className="h-px bg-border my-1" />
+          <button
+            onClick={onToggleAnimationClickMode}
+            disabled={!animationConnectionsEnabled}
+            className={cn(
+              "p-2 hover:bg-accent rounded-md transition-colors",
+              animationToggleOnClickEnabled && "bg-accent",
+              !animationConnectionsEnabled && "opacity-50 cursor-not-allowed"
+            )}
+            title={animationToggleOnClickEnabled ? "Disable click to toggle animations" : "Enable click to toggle animations"}
+            aria-label={animationToggleOnClickEnabled ? "Disable click to toggle animations" : "Enable click to toggle animations"}
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="22"/>
+            </svg>
           </button>
         </>
       )}

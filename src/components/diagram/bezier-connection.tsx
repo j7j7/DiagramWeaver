@@ -45,6 +45,7 @@ interface BezierConnectionProps {
   connectionColor?: string; // Specific color for this connection
   connectionData?: DiagramConnectionData; // Full connection data including text
   exportAnimationTimeSeconds?: number | null;
+  animationConnectionsEnabled?: boolean; // When false, hide all animation shapes
   onClick?: (connection: DiagramConnectionData, event: React.MouseEvent) => void; // Click handler
   onContextMenu?: (e: React.MouseEvent, connection: DiagramConnectionData) => void;
 }
@@ -764,7 +765,7 @@ export function getPointOnConnectionPath(
   return getBezierPoint(localT, seg.p0x, seg.p0y, seg.cp1x, seg.cp1y, seg.cp2x, seg.cp2y, seg.p3x, seg.p3y);
 }
 
-export function BezierConnection({ from, to, connectionColor, connectionData, exportAnimationTimeSeconds, onClick, onContextMenu }: BezierConnectionProps) {
+export function BezierConnection({ from, to, connectionColor, connectionData, exportAnimationTimeSeconds, animationConnectionsEnabled = true, onClick, onContextMenu }: BezierConnectionProps) {
   // Use measureNodeDims-like logic for shapes to get actual dimensions
   const isFromShape = isShapeNodeType(from.type);
   const isToShape = isShapeNodeType(to.type);
@@ -944,7 +945,7 @@ export function BezierConnection({ from, to, connectionColor, connectionData, ex
   );
   const distributedShapeSpacing = renderedShapeCount > 0 ? pathLength / renderedShapeCount : 0;
   const speedMagnitude = Math.abs(animation.speed);
-  const shouldRenderAnimationShapes = animation.enabled && renderedShapeCount > 0 && pathLength > 0;
+  const shouldRenderAnimationShapes = animationConnectionsEnabled && animation.enabled && renderedShapeCount > 0 && pathLength > 0;
   const shouldAnimateShapes = shouldRenderAnimationShapes && speedMagnitude > 0;
   const hasExportAnimationTime = typeof exportAnimationTimeSeconds === 'number' && Number.isFinite(exportAnimationTimeSeconds);
   const useStaticExportAnimation = shouldAnimateShapes && hasExportAnimationTime;

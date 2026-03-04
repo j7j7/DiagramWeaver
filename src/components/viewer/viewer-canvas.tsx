@@ -26,11 +26,21 @@ interface ViewerCanvasProps {
   selectedItem?: ViewerSelectedItem | null;
   onItemSelect?: (item: ViewerSelectedItem | null) => void;
   metadataPopupsEnabled?: boolean;
+  /** When true, show animations. When false, hide all animations */
+  animationConnectionsEnabled?: boolean;
   /** When true, connection lines render behind all nodes. When false, order-aware interleaving. Default from localStorage. */
   connectionsBehindNodesEnabled?: boolean;
+  /** When true and a node is selected, only show animations from that node */
+  showAnimationsForSelectedOnly?: boolean;
+  /** When true, clicking nodes toggles their outbound animations */
+  animationToggleOnClickEnabled?: boolean;
+  /** Set of node IDs whose animations are disabled */
+  animationDisabledSources?: Set<string>;
+  /** Callback to update disabled animation sources */
+  onAnimationDisabledSourcesChange?: (sources: Set<string>) => void;
 }
 
-export function ViewerCanvas({ diagramData, onFitToView, transform: externalTransform, onTransformChange, selectedItemId, selectedItem, onItemSelect, metadataPopupsEnabled = true, connectionsBehindNodesEnabled: connectionsBehindNodesProp }: ViewerCanvasProps) {
+export function ViewerCanvas({ diagramData, onFitToView, transform: externalTransform, onTransformChange, selectedItemId, selectedItem, onItemSelect, metadataPopupsEnabled = true, animationConnectionsEnabled = true, connectionsBehindNodesEnabled: connectionsBehindNodesProp, showAnimationsForSelectedOnly = false, animationToggleOnClickEnabled = false, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange }: ViewerCanvasProps) {
   const [connectionsBehindNodesEnabled, setConnectionsBehindNodesEnabled] = useState(true);
   useEffect(() => {
     if (connectionsBehindNodesProp !== undefined) {
@@ -246,9 +256,20 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
 
   const handleNodeClick = useCallback(
     (_e: React.MouseEvent, node: import("@/lib/types").DiagramNodeData) => {
+      // Handle animation toggling when click mode is enabled
+      if (animationToggleOnClickEnabled && onAnimationDisabledSourcesChange) {
+        const newDisabledSources = new Set(animationDisabledSources);
+        if (newDisabledSources.has(node.id)) {
+          newDisabledSources.delete(node.id);
+        } else {
+          newDisabledSources.add(node.id);
+        }
+        onAnimationDisabledSourcesChange(newDisabledSources);
+      }
+      
       onItemSelect?.({ ...node, itemType: "node" } as ViewerSelectedItem);
     },
-    [onItemSelect]
+    [onItemSelect, animationToggleOnClickEnabled, animationDisabledSources, onAnimationDisabledSourcesChange]
   );
 
   const handleViewerItemSelect = useCallback(
@@ -342,6 +363,9 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
               closeContextMenu={() => {}}
               onConnectionDelete={undefined}
               stackZIndex={0}
+              animationConnectionsEnabled={animationConnectionsEnabled}
+              animationFilterSourceId={showAnimationsForSelectedOnly && selectedItem?.itemType === "node" ? selectedItemId : undefined}
+              animationDisabledSources={animationDisabledSources}
             />
             {connectionSlots.sortedItemIds.map((itemId, i) => {
               const node = nodesById[itemId];
@@ -401,6 +425,9 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
                     onConnectionDelete={undefined}
                     connectionIndices={connIndices}
                     stackZIndex={connZIndex}
+                    animationConnectionsEnabled={animationConnectionsEnabled}
+                    animationFilterSourceId={showAnimationsForSelectedOnly && selectedItem?.itemType === "node" ? selectedItemId : undefined}
+                    animationDisabledSources={animationDisabledSources}
                   />
                 ) : null,
                 nodeEl,
@@ -424,6 +451,9 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
                   onConnectionDelete={undefined}
                   connectionIndices={new Set(lastSlot)}
                   stackZIndex={2 * n}
+                  animationConnectionsEnabled={animationConnectionsEnabled}
+                  animationFilterSourceId={showAnimationsForSelectedOnly && selectedItem?.itemType === "node" ? selectedItemId : undefined}
+                  animationDisabledSources={animationDisabledSources}
                 />
               );
             })()}

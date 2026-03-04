@@ -76,6 +76,10 @@ interface TopMenuBarProps {
   onToggleAlignmentGuides?: () => void;
   connectionsBehindNodesEnabled?: boolean;
   onToggleConnectionsBehindNodes?: () => void;
+  animationConnectionsEnabled?: boolean;
+  onToggleAnimationConnections?: () => void;
+  animationToggleOnClickEnabled?: boolean;
+  onToggleAnimationToggleOnClick?: () => void;
   onAlignObjects?: (alignment: 'top' | 'center' | 'bottom' | 'v-middle' | 'left' | 'h-center' | 'right' | 'distribute-v' | 'distribute-h') => void;
   onThemeApplyToSelected?: (theme: DiagramTheme) => void;
   triggerTextStylingPanel?: boolean;
@@ -149,6 +153,10 @@ export function TopMenuBar({
   onToggleAlignmentGuides,
   connectionsBehindNodesEnabled,
   onToggleConnectionsBehindNodes,
+  animationConnectionsEnabled,
+  onToggleAnimationConnections,
+  animationToggleOnClickEnabled,
+  onToggleAnimationToggleOnClick,
   onAlignObjects,
   onThemeApplyToSelected,
   triggerTextStylingPanel = false,
@@ -515,6 +523,42 @@ export function TopMenuBar({
                     <>
                       <Move className="mr-2 h-4 w-4" />
                       Show Alignment Guides
+                    </>
+                  )}
+                </MenubarItem>
+              </>
+            )}
+            {onToggleAnimationConnections !== undefined && (
+              <>
+                {(onUndo || onRedo || onFitToView || onToggleHover || onToggleIconBackground || onTogglePropertiesPanel || onToggleConnectionsBehindNodes || onToggleAlignmentGuides) && <MenubarSeparator />}
+                <MenubarItem onClick={onToggleAnimationConnections}>
+                  {animationConnectionsEnabled ? (
+                    <>
+                      <Network className="mr-2 h-4 w-4" />
+                      Disable Animation Connections
+                    </>
+                  ) : (
+                    <>
+                      <Network className="mr-2 h-4 w-4" />
+                      Enable Animation Connections
+                    </>
+                  )}
+                </MenubarItem>
+              </>
+            )}
+            {onToggleAnimationToggleOnClick !== undefined && (
+              <>
+                {(onUndo || onRedo || onFitToView || onToggleHover || onToggleIconBackground || onTogglePropertiesPanel || onToggleConnectionsBehindNodes || onToggleAlignmentGuides || onToggleAnimationConnections) && <MenubarSeparator />}
+                <MenubarItem onClick={onToggleAnimationToggleOnClick} disabled={!animationConnectionsEnabled}>
+                  {animationToggleOnClickEnabled ? (
+                    <>
+                      <Network className="mr-2 h-4 w-4" />
+                      Disable Click to Toggle Animations
+                    </>
+                  ) : (
+                    <>
+                      <Network className="mr-2 h-4 w-4" />
+                      Enable Click to Toggle Animations
                     </>
                   )}
                 </MenubarItem>
