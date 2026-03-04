@@ -155,6 +155,37 @@ function ViewerPageContent() {
     }
   }, []);
 
+  // Keyboard shortcuts for animation toggles
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isMac = navigator.userAgent.toUpperCase().includes('MAC');
+      
+      // Don't trigger shortcuts when typing in input fields
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      
+      // Ctrl+Alt+A (or Cmd+Option+A on Mac) - Toggle Animation Connections
+      if ((isMac ? e.metaKey : e.ctrlKey) && e.altKey && e.key.toLowerCase() === 'a') {
+        e.preventDefault();
+        setAnimationConnectionsEnabled(!animationConnectionsEnabled);
+        return;
+      }
+      
+      // Ctrl+Alt+C (or Cmd+Option+C on Mac) - Toggle Click to Toggle Animations
+      if ((isMac ? e.metaKey : e.ctrlKey) && e.altKey && e.key.toLowerCase() === 'c') {
+        e.preventDefault();
+        if (animationConnectionsEnabled) {
+          setAnimationToggleOnClickEnabled(!animationToggleOnClickEnabled);
+        }
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [animationConnectionsEnabled, setAnimationConnectionsEnabled, setAnimationToggleOnClickEnabled]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen w-screen bg-background">

@@ -536,11 +536,13 @@ export function TopMenuBar({
                     <>
                       <Network className="mr-2 h-4 w-4" />
                       Disable Animation Connections
+                      <MenubarShortcut>Ctrl+Alt+A</MenubarShortcut>
                     </>
                   ) : (
                     <>
                       <Network className="mr-2 h-4 w-4" />
                       Enable Animation Connections
+                      <MenubarShortcut>Ctrl+Alt+A</MenubarShortcut>
                     </>
                   )}
                 </MenubarItem>
@@ -554,11 +556,13 @@ export function TopMenuBar({
                     <>
                       <Network className="mr-2 h-4 w-4" />
                       Disable Click to Toggle Animations
+                      <MenubarShortcut>Ctrl+Alt+C</MenubarShortcut>
                     </>
                   ) : (
                     <>
                       <Network className="mr-2 h-4 w-4" />
                       Enable Click to Toggle Animations
+                      <MenubarShortcut>Ctrl+Alt+C</MenubarShortcut>
                     </>
                   )}
                 </MenubarItem>

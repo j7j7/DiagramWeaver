@@ -141,8 +141,8 @@ export function ViewerControls({
               animationToggleOnClickEnabled && "bg-accent",
               !animationConnectionsEnabled && "opacity-50 cursor-not-allowed"
             )}
-            title={animationToggleOnClickEnabled ? "Disable click to toggle animations" : "Enable click to toggle animations"}
-            aria-label={animationToggleOnClickEnabled ? "Disable click to toggle animations" : "Enable click to toggle animations"}
+            title={animationToggleOnClickEnabled ? "Disable click-to-toggle animations (Mic)" : "Enable click-to-toggle: click elements to toggle their animations on/off (Mic)"}
+            aria-label={animationToggleOnClickEnabled ? "Disable click-to-toggle animations (Mic)" : "Enable click-to-toggle: click elements to toggle their animations on/off (Mic)"}
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>

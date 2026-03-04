@@ -1965,6 +1965,22 @@ export default function DiagramEditor() {
         return;
       }
       
+      // Ctrl+Alt+A (or Cmd+Option+A on Mac) - Toggle Animation Connections
+      if ((isMac ? e.metaKey : e.ctrlKey) && e.altKey && e.key.toLowerCase() === 'a') {
+        e.preventDefault();
+        setAnimationConnectionsEnabled(!animationConnectionsEnabled);
+        return;
+      }
+      
+      // Ctrl+Alt+C (or Cmd+Option+C on Mac) - Toggle Click to Toggle Animations
+      if ((isMac ? e.metaKey : e.ctrlKey) && e.altKey && e.key.toLowerCase() === 'c') {
+        e.preventDefault();
+        if (animationConnectionsEnabled) {
+          setAnimationToggleOnClickEnabled(!animationToggleOnClickEnabled);
+        }
+        return;
+      }
+      
       // Arrow keys - Move selected items by 10px grid
       if ((e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') && selectedItem && selectedItem.itemType !== 'edge') {
         e.preventDefault();
@@ -2041,7 +2057,7 @@ export default function DiagramEditor() {
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [jsonPanelOpen, historyIndex, history, selectedItem, selectedItemIds, diagramData, setDiagramData, setSelectedItem]);
+  }, [jsonPanelOpen, historyIndex, history, selectedItem, selectedItemIds, diagramData, setDiagramData, setSelectedItem, animationConnectionsEnabled, setAnimationConnectionsEnabled, setAnimationToggleOnClickEnabled]);
 
   // Persist panel width
   React.useEffect(() => {
