@@ -37,6 +37,12 @@
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Shape shadow - dark shadow on light backgrounds */
+    --shape-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    --shape-shadow-drop: drop-shadow(0 20px 25px rgba(0, 0, 0, 0.2)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.04));
+    --shape-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.15);
+    --shape-shadow-preview: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+    --shape-text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
   }
   .dark {
     --background: 222 84% 4.9%;
@@ -71,6 +77,12 @@
     --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 217.2 32.6% 17.5%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Shape shadow - dark shadow + light glow for visibility on dark backgrounds */
+    --shape-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.2), 0 0 20px rgba(255, 255, 255, 0.12);
+    --shape-shadow-drop: drop-shadow(0 20px 25px rgba(0, 0, 0, 0.4)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.2)) drop-shadow(0 0 15px rgba(255, 255, 255, 0.15));
+    --shape-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35), 0 0 12px rgba(255, 255, 255, 0.1);
+    --shape-shadow-preview: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3)) drop-shadow(0 0 8px rgba(255, 255, 255, 0.2));
+    --shape-text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 0 4px rgba(255, 255, 255, 0.2);
   }
 }
 
@@ -98,6 +110,11 @@
   .diagram-node {
     position: relative;
     z-index: 100;
+  }
+
+  /* Icon container border glow in dark mode - subtle few-px glow for visibility */
+  .dark .dw-icon-container {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -2px rgba(0, 0, 0, 0.1), 0 0 4px rgba(255, 255, 255, 0.12);
   }
 
   .diagram-connections {

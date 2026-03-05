@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useTheme } from "@/components/theme-provider";
 import type { DiagramNodeData } from "@/lib/types";
 import { extractTextStylingFromNode } from "@/lib/text-styling";
 
@@ -88,6 +89,7 @@ const renderLineCap = (
 };
 
 export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, onClick, onContextMenu }: LineShapeProps) {
+  const { resolvedTheme } = useTheme();
   // Get absolute positions (required for lines)
   // Use local positions if available (for smooth dragging), otherwise use node positions
   const startPos = (node as any).__localStartPos || node.startPos || { x: (node.x || 0), y: (node.y || 0) };
@@ -317,7 +319,9 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
                   dominantBaseline="middle"
                   className="pointer-events-none select-none"
                   style={{
-                    textShadow: '0 0 3px rgba(255,255,255,1), 0 0 6px rgba(255,255,255,0.8), 1px 1px 4px rgba(255,255,255,1), -1px -1px 4px rgba(255,255,255,1), 1px -1px 4px rgba(255,255,255,1), -1px 1px 4px rgba(255,255,255,1)',
+                    textShadow: resolvedTheme === "dark"
+                      ? "0 0 3px rgba(0,0,0,1), 0 0 6px rgba(0,0,0,0.9), 1px 1px 4px rgba(0,0,0,0.9), -1px -1px 4px rgba(0,0,0,0.9), 1px -1px 4px rgba(0,0,0,0.9), -1px 1px 4px rgba(0,0,0,0.9)"
+                      : "0 0 3px rgba(255,255,255,1), 0 0 6px rgba(255,255,255,0.8), 1px 1px 4px rgba(255,255,255,1), -1px -1px 4px rgba(255,255,255,1), 1px -1px 4px rgba(255,255,255,1), -1px 1px 4px rgba(255,255,255,1)",
                     textDecoration: textStyling.textDecoration === 'underline' ? 'underline' : 
                                    textStyling.textDecoration === 'line-through' ? 'line-through' :
                                    textStyling.textDecoration === 'overline' ? 'overline' : 'none'

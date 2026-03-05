@@ -1257,7 +1257,7 @@ return (
                     color: (node as any).textColor || '#374151',
                     ...(node.sizeMode === 'custom' ? {} : { minHeight: '120px' }),
                    ...(hasShadow && { 
-                     boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                     boxShadow: 'var(--shape-shadow)'
                    })
                  }}
               >
@@ -1312,7 +1312,7 @@ return (
                     {/* Icon container */}
                     <div className={cn(
                       "flex items-center justify-center transition-colors flex-shrink-0",
-                      (node as any).noIconBackground ? "" : "rounded-lg shadow-md border bg-card",
+                      (node as any).noIconBackground ? "" : "rounded-lg shadow-md border bg-card dw-icon-container",
                       isSelected ? "border-primary" : (node as any).noIconBackground || (isDragging || isTouchDragging) ? "" : "group-hover:border-accent",
                       isTargetable && "border-dashed border-primary",
                       isTop && "order-2", // Icon comes after text when text is on top

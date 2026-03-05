@@ -2,6 +2,7 @@
 
 import type { DiagramNodeData, DiagramGroupData, DiagramConnectionData } from "@/lib/types";
 import React from "react";
+import { useTheme } from "@/components/theme-provider";
 import { measureNodeDims } from "@/components/editor/canvas-constants";
 import { isIconOrEmojiType, isShapeNodeType } from "@/lib/utils";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
@@ -943,8 +944,9 @@ export function BezierConnection({ from, to, connectionColor, connectionData, ex
   
   const startMarkerId = showStartArrow ? `arrowhead-start-${from.id}-${to.id}` : undefined;
   const endMarkerId = showEndArrow ? `arrowhead-end-${from.id}-${to.id}` : undefined;
+  const { resolvedTheme } = useTheme();
   const hasShadow = connectionData?.shadow || false;
-  const shadowFilterId = hasShadow ? `shadow-filter-${from.id}-${to.id}` : undefined;
+  const shadowFilterId = hasShadow ? `shadow-filter-${from.id}-${to.id}-${resolvedTheme}` : undefined;
   const animation = clampConnectionAnimation(connectionData?.animation);
   const connectionThickness = connectionData?.lineWidth || 2.5;
   const shapeSize = animation.size * 2 * connectionThickness;
@@ -992,12 +994,19 @@ export function BezierConnection({ from, to, connectionColor, connectionData, ex
           <filter id={shadowFilterId} x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
             <feOffset dx="0" dy="2" result="offsetblur"/>
-            <feComponentTransfer>
-              <feFuncA type="linear" slope="0.3"/>
+            <feComponentTransfer result="shadow">
+              <feFuncA type="linear" slope={resolvedTheme === "dark" ? "0.5" : "0.3"}/>
             </feComponentTransfer>
-            <feMerge> 
-              <feMergeNode/>
-              <feMergeNode in="SourceGraphic"/> 
+            {resolvedTheme === "dark" && (
+              <>
+                <feGaussianBlur in="SourceAlpha" stdDeviation="4" result="glur"/>
+                <feColorMatrix in="glur" type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.2 0" result="glow"/>
+              </>
+            )}
+            <feMerge>
+              {resolvedTheme === "dark" && <feMergeNode in="glow"/>}
+              <feMergeNode in="shadow"/>
+              <feMergeNode in="SourceGraphic"/>
             </feMerge>
           </filter>
         )}
@@ -1187,7 +1196,12 @@ export function calculateBezierControlPoints(fromX: number, fromY: number, toX: 
 
 // Helper function to render connection text separately
 export function BezierConnectionText({ connectionData, from, to, connectionColor }: BezierConnectionTextProps) {
+  const { resolvedTheme } = useTheme();
   if (!connectionData?.text) return null;
+
+  const connectionTextShadow = resolvedTheme === "dark"
+    ? "0 0 3px rgba(0,0,0,1), 0 0 6px rgba(0,0,0,0.9), 1px 1px 4px rgba(0,0,0,0.9), -1px -1px 4px rgba(0,0,0,0.9), 1px -1px 4px rgba(0,0,0,0.9), -1px 1px 4px rgba(0,0,0,0.9)"
+    : "0 0 3px rgba(255,255,255,1), 0 0 6px rgba(255,255,255,0.8), 1px 1px 4px rgba(255,255,255,1), -1px -1px 4px rgba(255,255,255,1), 1px -1px 4px rgba(255,255,255,1), -1px 1px 4px rgba(255,255,255,1)";
 
   // Calculate midpoint for text placement along the bezier curve
   let textX = 0, textY = 0;
@@ -1313,7 +1327,7 @@ export function BezierConnectionText({ connectionData, from, to, connectionColor
       dominantBaseline="middle"
       className="pointer-events-none select-none"
       style={{
-        textShadow: '0 0 3px rgba(255,255,255,1), 0 0 6px rgba(255,255,255,0.8), 1px 1px 4px rgba(255,255,255,1), -1px -1px 4px rgba(255,255,255,1), 1px -1px 4px rgba(255,255,255,1), -1px 1px 4px rgba(255,255,255,1)'
+        textShadow: connectionTextShadow
       }}
     >
       {line}

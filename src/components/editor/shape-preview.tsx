@@ -759,7 +759,7 @@ export function ShapePreview({
       style={{ 
         width: displayWidth, 
         height: displayHeight,
-        filter: shadow ? 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))' : undefined
+        filter: shadow ? 'var(--shape-shadow-preview)' : undefined
       }}
     >
       {renderShape()}
@@ -775,7 +775,7 @@ export function ShapePreview({
               fontStyle: fontStyle as any,
               textDecoration,
               fontSize: `${fontSize}px`,
-              textShadow: shadow ? '0 1px 2px rgba(0,0,0,0.3)' : undefined,
+              textShadow: shadow ? 'var(--shape-text-shadow)' : undefined,
               maxWidth: '100%',
               overflow: 'hidden',
               textOverflow: 'ellipsis',

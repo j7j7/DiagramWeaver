@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useTheme } from "@/components/theme-provider";
 import type { DiagramNodeData } from "@/lib/types";
 import { extractTextStylingFromNode } from "@/lib/text-styling";
 
@@ -19,6 +20,7 @@ interface LoopShapeProps {
  * with optional arrow at the end and label.
  */
 export function LoopShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, onClick, onContextMenu }: LoopShapeProps) {
+  const { resolvedTheme } = useTheme();
   const width = node.width ?? 60;
   const height = node.height ?? 80;
 
@@ -97,7 +99,9 @@ export function LoopShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
             fontWeight={textStyling.fontWeight || '500'}
             fontFamily={textStyling.fontFamily || 'Inter, system-ui, sans-serif'}
             style={{
-              textShadow: '0 0 3px rgba(255,255,255,1), 0 0 6px rgba(255,255,255,0.8)',
+              textShadow: resolvedTheme === "dark"
+                ? "0 0 3px rgba(0,0,0,1), 0 0 6px rgba(0,0,0,0.9)"
+                : "0 0 3px rgba(255,255,255,1), 0 0 6px rgba(255,255,255,0.8)",
               pointerEvents: 'none',
             }}
           >

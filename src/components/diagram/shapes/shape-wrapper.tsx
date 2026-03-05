@@ -107,10 +107,10 @@ export function ShapeWrapper({
         marginRight: overlap ? -overlap : 0,
         marginBottom: overlap ? -overlap : 0,
         ...(styles.shadow && !useSvgShadow && !needsGradientBorderRounding ? {
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+          boxShadow: 'var(--shape-shadow)'
         } : {}),
         ...(styles.shadow && useSvgShadow && !needsGradientBorderRounding ? {
-          filter: 'drop-shadow(0 20px 25px rgba(0, 0, 0, 0.2)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.04))'
+          filter: 'var(--shape-shadow-drop)'
         } : {})
       }}
     >
@@ -139,10 +139,10 @@ export function ShapeWrapper({
           height: needsGradientBorderRounding ? `calc(100% - ${styles.borderWidth})` : '100%',
           margin: needsGradientBorderRounding ? `calc(${styles.borderWidth} / 2)` : 0,
           ...(styles.shadow && !useSvgShadow && needsGradientBorderRounding ? {
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+            boxShadow: 'var(--shape-shadow)'
           } : {}),
           ...(styles.shadow && useSvgShadow && needsGradientBorderRounding ? {
-            filter: 'drop-shadow(0 20px 25px rgba(0, 0, 0, 0.2)) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.04))'
+            filter: 'var(--shape-shadow-drop)'
           } : {})
         }}
       >

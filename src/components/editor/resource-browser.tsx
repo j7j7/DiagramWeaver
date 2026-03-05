@@ -45,6 +45,7 @@ const setBrowserState = (state: ResourceBrowserState) => {
   }
 };
 import { ChevronDown, ChevronRight, Search, Package, Server, Database, Globe, Cloud, Cpu, Shield, BarChart3, Layers, Box, Network, Maximize2, Minimize2, Type, LayoutGrid, List } from 'lucide-react';
+import { ResourceIcon } from '@/components/diagram/resource-icon';
 import { DraggableIconItem } from './draggable-icon-item';
 import { SYMBOL_ICON_SECTIONS, EMOJI_ICONS } from '@/lib/icon-resources';
 import { Input } from '../ui/input';
@@ -441,8 +442,17 @@ export function ResourceBrowser({ onResourceSelect, onResourceActivate }: Resour
     return filtered;
   }, [searchTerm, fullProviders, isLoading]);
 
-  const getResourceIcon = (resource: ResourceItem) => {
-    // Return generic box icon (icon will be loaded from file)
+  const getResourceIcon = (resource: ResourceItem, provider: string, category: string) => {
+    // For generic object shapes, use ResourceIcon with theme-aware grey (works in light and dark mode)
+    if (provider === 'generic' && category === 'object' && resource.name) {
+      const slug = resource.name.replace(/\s+/g, '-').toLowerCase();
+      const type = `generic.object.${slug}`;
+      return (
+        <span className="text-muted-foreground inline-flex items-center justify-center">
+          <ResourceIcon type={type} className="w-6 h-6" stroke="currentColor" fill="currentColor" />
+        </span>
+      );
+    }
     return <Box className="w-6 h-6" />;
   };
 
@@ -698,7 +708,8 @@ return (
                                           resource={resource}
                                           provider={providerKey}
                                           category={categoryKey}
-                                          icon={getResourceIcon(resource)}
+                                          icon={getResourceIcon(resource, providerKey, categoryKey)}
+                                          invertInDarkMode={providerKey === 'generic' && categoryKey === 'object'}
                                           onClick={() => handleResourceClick(resource, providerKey, categoryKey)}
                                           onDoubleClick={() => handleResourceActivate(resource, providerKey, categoryKey)}
                                           viewMode={viewMode}

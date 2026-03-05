@@ -17,13 +17,15 @@ interface DraggableResourceItemProps {
   provider: string;
   category: string;
   icon: React.ReactNode;
+  /** When true, invert image in dark mode (for black shape icons) */
+  invertInDarkMode?: boolean;
   onClick?: (args: { resource: DraggableResourceItemProps['resource']; provider: string; category: string }) => void;
   onDoubleClick?: (args: { resource: DraggableResourceItemProps['resource']; provider: string; category: string }) => void;
   isSelected?: boolean;
   viewMode?: 'normal' | 'compact';
 }
 
-export function DraggableResourceItem({ resource, provider, category, icon, onClick, onDoubleClick, isSelected, viewMode = 'normal' }: DraggableResourceItemProps) {
+export function DraggableResourceItem({ resource, provider, category, icon, onClick, onDoubleClick, isSelected, viewMode = 'normal', invertInDarkMode = false }: DraggableResourceItemProps) {
   const [imageError, setImageError] = useState(false);
 
   // Icon path for display in sidebar - NEVER passed to node
@@ -161,7 +163,7 @@ export function DraggableResourceItem({ resource, provider, category, icon, onCl
           <TooltipTrigger asChild>
             <Card className="hover:bg-accent hover:text-accent-foreground transition-colors w-full min-w-0">
               <CardContent className="p-1.5 flex flex-col items-center justify-center gap-0.5 text-center h-12 min-w-0 w-full">
-                <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
+                <div className={`w-5 h-5 flex items-center justify-center flex-shrink-0 ${invertInDarkMode ? 'dark:[&_img]:invert' : ''}`}>
                   {!imageError && iconPath ? (
                     <img
                       src={iconPath}
@@ -188,7 +190,7 @@ export function DraggableResourceItem({ resource, provider, category, icon, onCl
           <TooltipTrigger asChild>
             <Card className="hover:bg-accent hover:text-accent-foreground transition-colors min-w-0">
               <CardContent className="p-2 flex flex-col items-center justify-center gap-1 text-center h-16 min-w-0 w-full">
-                <div className="w-6 h-6 flex items-center justify-center flex-shrink-0">
+                <div className={`w-6 h-6 flex items-center justify-center flex-shrink-0 ${invertInDarkMode ? 'dark:[&_img]:invert' : ''}`}>
                   {!imageError && iconPath ? (
                     <img
                       src={iconPath}

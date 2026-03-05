@@ -154,7 +154,7 @@ export function UmlClassShape({
           borderImage: styles.borderImage,
           background: styles.background ?? nodeAny.backgroundColor ?? "#ffffff",
           borderRadius,
-          ...(styles.shadow ? { boxShadow: "0 2px 8px rgba(0,0,0,0.15)" } : {}),
+          ...(styles.shadow ? { boxShadow: "var(--shape-shadow-sm)" } : {}),
         }}
       >
         {/* Name section - fixed single-line height */}
