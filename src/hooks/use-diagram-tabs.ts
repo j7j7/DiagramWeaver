@@ -197,6 +197,20 @@ export function useDiagramTabs({ isClient, onToast }: UseDiagramTabsOptions) {
     }));
   }, []);
 
+  const reorderTabs = useCallback((orderedTabIds: string[]) => {
+    setTabs(prev => {
+      const byId = new Map(prev.map(t => [t.id, t]));
+      const reordered: TabState[] = [];
+      for (const id of orderedTabIds) {
+        const tab = byId.get(id);
+        if (tab) reordered.push(tab);
+      }
+      const idsInOrder = new Set(orderedTabIds);
+      const appended = prev.filter(t => !idsInOrder.has(t.id));
+      return reordered.length > 0 ? [...reordered, ...appended] : prev;
+    });
+  }, []);
+
   const markTabAsSaved = useCallback((tabId?: string) => {
     const targetId = tabId ?? activeTabId;
     if (!targetId) return;
@@ -222,6 +236,7 @@ export function useDiagramTabs({ isClient, onToast }: UseDiagramTabsOptions) {
     updateActiveTab,
     updateTab,
     getTab,
+    reorderTabs,
     markTabAsSaved,
     getHistoryRef: (tabId: string) => historyRefs.current[tabId],
     setHistoryRef: (tabId: string, ref: { history: string[]; index: number }) => {

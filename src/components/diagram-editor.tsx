@@ -329,6 +329,7 @@ export default function DiagramEditor() {
     updateActiveTab,
     updateTab,
     getTab,
+    reorderTabs,
     markTabAsSaved,
     getHistoryRef,
     setHistoryRef,
@@ -2355,6 +2356,7 @@ export default function DiagramEditor() {
         activeTabId={activeTabId}
         switchTab={switchTab}
         handleTabClose={handleTabClose}
+        reorderTabs={reorderTabs}
         fileInputRef={fileInputRef}
         handleFileChange={handleFileChange}
         diagramData={diagramData}
@@ -2509,6 +2511,7 @@ function DiagramEditorInner({
   activeTabId,
   switchTab,
   handleTabClose,
+  reorderTabs,
   fileInputRef,
   handleFileChange,
   jsonPanelOpen: jsonPanelOpenInner,
@@ -2737,6 +2740,7 @@ function DiagramEditorInner({
                     activeTabId={activeTabId}
                     onTabSelect={switchTab}
                     onTabClose={handleTabClose}
+                    onTabReorder={reorderTabs}
                   />
                 )}
                 <input
