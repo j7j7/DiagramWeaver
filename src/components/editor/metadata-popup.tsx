@@ -58,10 +58,10 @@ export function MetadataPopup({
   return (
     <div
       className={cn(
-        "fixed z-[9999] rounded-lg border border-zinc-600/80 bg-zinc-800 px-2.5 py-2.5",
-        "shadow-xl shadow-black/30 ring-1 ring-zinc-500/20",
+        "fixed z-[9999] rounded-lg border border-border bg-popover px-2.5 py-2.5",
+        "shadow-xl shadow-black/30 ring-1 ring-border/50",
         "text-xs overflow-hidden transition-[max-height] duration-200 ease-out",
-        "text-zinc-100",
+        "text-popover-foreground",
         className
       )}
       style={{
@@ -82,20 +82,20 @@ export function MetadataPopup({
       >
         {entries.map(([key, value]) =>
           useCardGrid ? (
-            <div key={key} className="flex flex-col gap-0.5 rounded bg-zinc-700/50 px-2 py-1.5 min-w-0">
-              <span className="font-medium text-zinc-400 truncate text-[10px]" title={key}>
+            <div key={key} className="flex flex-col gap-0.5 rounded bg-muted/50 px-2 py-1.5 min-w-0">
+              <span className="font-medium text-muted-foreground truncate text-[10px]" title={key}>
                 {key}
               </span>
-              <span className={cn("text-zinc-200 break-words", !isHovered && "truncate")} title={value}>
+              <span className={cn("break-words", !isHovered && "truncate")} title={value}>
                 {value}
               </span>
             </div>
           ) : (
             <React.Fragment key={key}>
-              <span className="font-medium text-zinc-400 truncate shrink-0" title={key}>
+              <span className="font-medium text-muted-foreground truncate shrink-0" title={key}>
                 {key}
               </span>
-              <span className={cn("text-zinc-200 break-words min-w-0", !isHovered && "truncate")} title={value}>
+              <span className={cn("break-words min-w-0", !isHovered && "truncate")} title={value}>
                 {value}
               </span>
             </React.Fragment>
@@ -103,7 +103,7 @@ export function MetadataPopup({
         )}
       </div>
       {hasMore && !isHovered && (
-        <span className="absolute bottom-1 right-2 text-[10px] text-zinc-500">⋯</span>
+        <span className="absolute bottom-1 right-2 text-[10px] text-muted-foreground">⋯</span>
       )}
     </div>
   );

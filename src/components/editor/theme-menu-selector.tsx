@@ -143,7 +143,7 @@ export function ThemeMenuSelector({ onThemeSelect, onOpenEditor, isReadOnly = fa
                     onClick={(e) => handleToggleFavorite(theme.id, e)}
                   >
                     <Star 
-                      className="h-3 w-3 text-gray-400 hover:text-yellow-400" 
+                      className="h-3 w-3 text-muted-foreground hover:text-primary" 
                     />
                   </Button>
                   {renderThemePreview(theme)}

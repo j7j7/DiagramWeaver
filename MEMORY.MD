@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-05)
 
+### 2026-03-05 – Dark / Light Mode Toggle
+**System-wide theme toggle**: Dark and light mode now work across editor, viewer, menus, panels, and popups. **ThemeProvider** applies `dark` class to `<html>`, persisted to localStorage (`dw:theme`). Options: Light, Dark, System (follows OS `prefers-color-scheme`). **Toggle locations**: View menu (Light/Dark/System) in editor; theme button in viewer controls. **Colour-aware**: All UI uses semantic tokens (background, foreground, popover, muted, accent, border) – no dark-on-dark issues. **Updated panels**: text-styling, visual-styling, line-styling, layers, scratch-pad, uml-class-text-styling, properties, metadata-popup, tutorial-overlay, resource-browser, theme-selectors, shape-tag. Diagram node colours (user data) unchanged. Plan: `docs/DARK-LIGHT-MODE-PLAN.md`. Modified: `theme-provider.tsx`, `theme-toggle.tsx`, `layout.tsx`, `top-menu-bar.tsx`, `viewer-controls.tsx`, multiple panel/popup components.
+
 ### 2026-03-05 – Tab Close/Save: Unsaved Changes Prompt and Filename as Tab Name
 **Close tab with unsaved changes**: When closing a tab that has unsaved changes, a dialog offers **Save**, **Don't Save**, and **Cancel**. Save triggers the save-to-file flow, then closes the tab on success. **Tab name from filename**: When saving to file (File System Access API or download), the tab name updates to the chosen filename without extension. When loading a file, the active tab name updates to the loaded filename without extension. Modified: `use-diagram-tabs.ts` (added `getTab`, `updateTab`, `markTabAsSaved(tabId)`), `diagram-editor.tsx` (`handleSave(tabId?)`, `handleCloseTabSave`, `handleFileChange` sets tab name, close dialog buttons).
 

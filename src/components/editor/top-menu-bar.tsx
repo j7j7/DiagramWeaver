@@ -12,19 +12,43 @@ import {
   MenubarSubTrigger,
   MenubarSubContent,
 } from '@/components/ui/menubar';
-import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks, Network } from 'lucide-react';
+import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks, Network, Sun, Moon } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
 import { ThemeEditor } from './theme-editor';
 import { RulesEditor } from './rules-editor';
 import { ThemeMenuSelector } from './theme-menu-selector';
 import { AboutDialog } from './about-dialog';
 import { ViewerUrlDialog } from './viewer-url-dialog';
+import { useTheme } from '@/components/theme-provider';
 import type { SelectedItem } from '../diagram-editor';
 import type { DiagramData } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { DiagramTheme } from '@/lib/theme-types';
 
 const truncateName = (s: string, max = 20) => (s.length > max ? `${s.slice(0, max - 3)}...` : s);
+
+function ViewThemeSubmenu() {
+  const { theme, setTheme } = useTheme();
+  return (
+    <>
+      <MenubarItem onClick={() => setTheme("light")}>
+        <Sun className="mr-2 h-4 w-4" />
+        Light
+        {theme === "light" && <span className="ml-auto">✓</span>}
+      </MenubarItem>
+      <MenubarItem onClick={() => setTheme("dark")}>
+        <Moon className="mr-2 h-4 w-4" />
+        Dark
+        {theme === "dark" && <span className="ml-auto">✓</span>}
+      </MenubarItem>
+      <MenubarItem onClick={() => setTheme("system")}>
+        <span className="mr-2 h-4 w-4 inline-flex items-center justify-center text-xs">◐</span>
+        System
+        {theme === "system" && <span className="ml-auto">✓</span>}
+      </MenubarItem>
+    </>
+  );
+}
 
 interface TopMenuBarProps {
   onNew: () => void;
@@ -346,6 +370,13 @@ export function TopMenuBar({
                 </MenubarItem>
               </>
             )}
+            <MenubarSeparator />
+            <MenubarSub>
+              <MenubarSubTrigger>View</MenubarSubTrigger>
+              <MenubarSubContent>
+                <ViewThemeSubmenu />
+              </MenubarSubContent>
+            </MenubarSub>
             <MenubarSeparator />
             <MenubarItem onClick={() => setAboutOpen(true)}>
               <Info className="mr-2 h-4 w-4" />

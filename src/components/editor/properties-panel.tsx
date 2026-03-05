@@ -307,7 +307,7 @@ export function PropertiesPanel({
                                   setEditingDraft((p) =>
                                     p ? { ...p, key: e.target.value } : null
                                   )}
-                                className="min-h-[2.5rem] py-1.5 text-sm w-full min-w-0 border-border bg-white resize-y"
+                                className="min-h-[2.5rem] py-1.5 text-sm w-full min-w-0 border-border bg-background resize-y"
                                 placeholder="Key"
                                 onKeyDown={(e) => {
                                   if (e.key === "Enter" && !e.shiftKey) {
@@ -330,7 +330,7 @@ export function PropertiesPanel({
                                   setEditingDraft((p) =>
                                     p ? { ...p, value: e.target.value } : null
                                   )}
-                                className="min-h-[2.5rem] py-1.5 text-sm w-full min-w-0 border-border bg-white resize-y"
+                                className="min-h-[2.5rem] py-1.5 text-sm w-full min-w-0 border-border bg-background resize-y"
                                 placeholder="Value"
                                 onKeyDown={(e) => {
                                   if (e.key === "Enter" && !e.shiftKey) {

@@ -194,7 +194,7 @@ export function LayersPanel({
         setPosition({ x: data.x, y: data.y });
       }}
     >
-      <div ref={nodeRef} className={cn("fixed top-20 left-20 z-50 bg-white border rounded-lg shadow-lg w-80", className)}>
+      <div ref={nodeRef} className={cn("fixed top-20 left-20 z-50 bg-popover border border-border rounded-lg shadow-lg w-80", className)}>
         {/* Header */}
         <div className="layers-handle flex items-center justify-between p-4 border-b cursor-move">
           <div className="flex items-center gap-2">
@@ -224,7 +224,7 @@ export function LayersPanel({
 
       {/* Add Layer Form */}
       {showAddLayerForm && (
-        <div className="p-4 border-b bg-gray-50">
+        <div className="p-4 border-b border-border bg-muted/50">
           <div className="flex gap-2">
             <Input
               placeholder="Layer name..."
@@ -261,7 +261,7 @@ export function LayersPanel({
       {/* Layers List */}
       <div className="h-64 overflow-y-auto">
         {layers.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
+          <div className="p-8 text-center text-muted-foreground">
             <Layers className="w-12 h-12 mx-auto mb-2 opacity-50" />
             <p className="text-sm">No layers yet</p>
             <p className="text-xs mt-1">Click + to add your first layer</p>
@@ -276,8 +276,8 @@ export function LayersPanel({
                 onDragEnd={handleDragEnd}
                 className={cn(
                   "group flex items-center gap-2 p-2 rounded-md transition-colors",
-                  "hover:bg-gray-100",
-                  activeLayerId === layer.id && "bg-blue-50 border border-blue-200",
+                  "hover:bg-accent",
+                  activeLayerId === layer.id && "bg-accent border border-border",
                   draggedLayerIndex === index && "opacity-50"
                 )}
                 onClick={() => onSetActiveLayer(layer.id)}
@@ -319,7 +319,7 @@ export function LayersPanel({
                     <div className="flex items-center gap-2">
                       <span className={cn(
                         "text-sm font-medium truncate",
-                        !layer.visible && "text-gray-400"
+                        !layer.visible && "text-muted-foreground"
                       )}>
                         {layer.name}
                       </span>
@@ -327,8 +327,8 @@ export function LayersPanel({
                         <span className={cn(
                           "text-xs px-1.5 py-0.5 rounded",
                           layer.visible 
-                            ? "bg-gray-100 text-gray-600" 
-                            : "bg-gray-50 text-gray-400"
+? "bg-accent text-foreground"
+                            : "bg-muted/50 text-muted-foreground"
                         )}>
                           {getLayerItemCount(layer.id)}
                         </span>
@@ -337,8 +337,8 @@ export function LayersPanel({
                         <span className={cn(
                           "text-xs px-1.5 py-0.5 rounded",
                           layer.visible 
-                            ? "bg-blue-100 text-blue-700" 
-                            : "bg-gray-100 text-gray-500"
+? "bg-primary/20 text-primary"
+                            : "bg-accent text-muted-foreground"
                         )}>
                           {selectedItemsLayerIds.filter(id => id === layer.id).length}
                         </span>

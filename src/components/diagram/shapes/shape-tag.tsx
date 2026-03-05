@@ -32,7 +32,7 @@ export function ShapeTag({
 
   return (
     <div
-      className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-slate-100 border-slate-300 z-10 ${getTagPositionClasses(tagPosition)}`}
+      className={`absolute px-2 py-1 rounded-full text-xs font-medium border bg-muted border-border z-10 ${getTagPositionClasses(tagPosition)}`}
       style={{
         color: '#374151',
         whiteSpace: 'nowrap',

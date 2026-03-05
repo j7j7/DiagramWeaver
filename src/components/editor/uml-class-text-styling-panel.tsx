@@ -131,7 +131,7 @@ export const UmlClassTextStylingPanel = React.memo(function UmlClassTextStylingP
     >
       <div
         ref={nodeRef}
-        className="fixed top-20 left-20 z-50 bg-white border rounded-lg shadow-lg w-72 cursor-move"
+        className="fixed top-20 left-20 z-50 bg-popover border border-border rounded-lg shadow-lg w-72 cursor-move"
       >
         <div className="flex items-center justify-between p-2 border-b">
           <div className="flex items-center gap-2">

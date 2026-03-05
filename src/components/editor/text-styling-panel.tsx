@@ -118,7 +118,7 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
         setPosition({ x: data.x, y: data.y });
       }}
     >
-      <div ref={nodeRef} className="fixed top-20 left-20 z-50 bg-white border rounded-lg shadow-lg w-80 cursor-move">
+      <div ref={nodeRef} className="fixed top-20 left-20 z-50 bg-popover border border-border rounded-lg shadow-lg w-80 cursor-move">
         <div className="flex items-center justify-between p-4 border-b">
           <div className="flex items-center gap-2">
             <Type className="w-4 h-4" />

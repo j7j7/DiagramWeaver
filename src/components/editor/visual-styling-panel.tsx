@@ -126,11 +126,11 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
         setPosition({ x: data.x, y: data.y });
       }}
     >
-      <div ref={nodeRef} className={`fixed top-20 left-20 z-50 bg-white border rounded-lg shadow-lg cursor-move ${showFullStyling ? 'w-[24rem]' : 'w-[16rem]'}`}>
+      <div ref={nodeRef} className={`fixed top-20 left-20 z-50 bg-popover border border-border rounded-lg shadow-lg cursor-move ${showFullStyling ? 'w-[24rem]' : 'w-[16rem]'}`}>
         <div className="flex items-center justify-between p-3 border-b">
           <div className="flex items-center gap-2">
             <Palette className="w-4 h-4 text-blue-600" />
-            <h3 className="font-semibold text-slate-800 text-sm">{isLucideIcon ? 'Icon Styling' : 'Visual Styling'}</h3>
+            <h3 className="font-semibold text-foreground text-sm">{isLucideIcon ? 'Icon Styling' : 'Visual Styling'}</h3>
           </div>
           {onClose && (
             <Button
@@ -146,10 +146,10 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
         <div className="p-3 space-y-2">
           {/* Icon Color - only for Lucide icons; when icon mode, hide other sections */}
           {isLucideIcon && (
-            <div className="bg-blue-50/50 rounded-md p-2 border border-blue-200/50">
+            <div className="bg-muted/50 rounded-md p-2 border border-border">
               <div className="flex items-center gap-1.5 mb-2">
-                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-                <Label className="text-xs font-semibold text-slate-700">Icon Color</Label>
+                <div className="w-1.5 h-1.5 bg-primary rounded-full"></div>
+                <Label className="text-xs font-semibold text-foreground">Icon Color</Label>
               </div>
               <ColorPicker
                 value={styling.iconColor || '#374151'}
@@ -163,9 +163,9 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
 
           {/* Remove background - for resource items and Lucide icons */}
           {showRemoveBackground && (
-            <div className="bg-slate-50 rounded-md p-2 border border-slate-200/50">
+            <div className="bg-muted/50 rounded-md p-2 border border-border">
               <div className="flex items-center justify-between">
-                <Label className="text-xs font-semibold text-slate-700">Remove background</Label>
+                <Label className="text-xs font-semibold text-foreground">Remove background</Label>
                 <Switch
                   checked={noIconBackground}
                   onCheckedChange={(checked) => onStylingChange({ noIconBackground: checked })}
@@ -176,10 +176,10 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
 
           {/* Size - for nodes and icons: normal, half, quarter */}
           {!isShape && (
-          <div className="bg-slate-50 rounded-md p-2 border border-slate-200/50">
+          <div className="bg-muted/50 rounded-md p-2 border border-border">
             <div className="flex items-center gap-1.5 mb-2">
-              <div className="w-1.5 h-1.5 bg-slate-500 rounded-full"></div>
-              <Label className="text-xs font-semibold text-slate-700">Size</Label>
+              <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full"></div>
+              <Label className="text-xs font-semibold text-foreground">Size</Label>
             </div>
             <Select
               value={styling.nodeSize || 'normal'}
@@ -201,10 +201,10 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
           {showFullStyling && (
           <>
           {/* Style Preset */}
-          <div className="bg-slate-50 rounded-md p-2">
+          <div className="bg-muted/50 rounded-md p-2">
             <div className="flex items-center gap-1.5 mb-2">
-              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-              <Label className="text-xs font-semibold text-slate-700">Preset</Label>
+              <div className="w-1.5 h-1.5 bg-primary rounded-full"></div>
+              <Label className="text-xs font-semibold text-foreground">Preset</Label>
             </div>
             <Select
               value={currentPredefinedStyle || 'custom'}
@@ -236,11 +236,11 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
           <div className="bg-amber-50/50 rounded-md p-2 border border-amber-200/50">
             <div className="flex items-center gap-1.5 mb-2">
               <div className="w-1.5 h-1.5 bg-amber-500 rounded-full"></div>
-              <Label className="text-xs font-semibold text-slate-700">Border</Label>
+              <Label className="text-xs font-semibold text-foreground">Border</Label>
             </div>
             <div className="grid grid-cols-2 gap-2 mb-2">
               <div className="space-y-1">
-                <Label className="text-xs text-slate-600">Style</Label>
+                <Label className="text-xs text-muted-foreground">Style</Label>
                 <Select
                   value={styling.borderStyle || 'solid'}
                   onValueChange={(value) => handlePropertyChange('borderStyle', value as any)}
@@ -259,7 +259,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
               {styling.borderStyle && styling.borderStyle !== 'none' && (
                 <div className="space-y-1 flex flex-col">
                   <div className="flex items-center gap-2">
-                    <Label className="text-xs text-slate-600 shrink-0">Width</Label>
+                    <Label className="text-xs text-muted-foreground shrink-0">Width</Label>
                     <Input
                       type="number"
                       min={0}
@@ -287,7 +287,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                 {styling.borderStyle === 'gradient' ? (
                   <div className="grid grid-cols-2 gap-2">
                     <div className="flex flex-col gap-2">
-                      <Label className="text-xs text-slate-500">Start</Label>
+                      <Label className="text-xs text-muted-foreground">Start</Label>
                       <ColorPicker
                         value={styling.borderColors?.[0] || '#6b7280'}
                         onChange={(value) => {
@@ -300,7 +300,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                       />
                     </div>
                     <div className="flex flex-col gap-2">
-                      <Label className="text-xs text-slate-500">End</Label>
+                      <Label className="text-xs text-muted-foreground">End</Label>
                       <ColorPicker
                         value={styling.borderColors?.[1] || '#3b82f6'}
                         onChange={(value) => {
@@ -330,11 +330,11 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
           <div className="bg-emerald-50/50 rounded-md p-2 border border-emerald-200/50">
             <div className="flex items-center gap-1.5 mb-2">
               <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
-              <Label className="text-xs font-semibold text-slate-700">Background</Label>
+              <Label className="text-xs font-semibold text-foreground">Background</Label>
             </div>
             <div className="grid grid-cols-2 gap-2 mb-2">
               <div className="space-y-1">
-                <Label className="text-xs text-slate-600">Style</Label>
+                <Label className="text-xs text-muted-foreground">Style</Label>
                 <Select
                   value={styling.backgroundStyle || 'solid'}
                   onValueChange={(value) => handlePropertyChange('backgroundStyle', value as any)}
@@ -362,7 +362,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                 {styling.backgroundStyle === 'gradient' ? (
                   <div className="grid grid-cols-2 gap-2">
                     <div className="flex flex-col gap-2">
-                      <Label className="text-xs text-slate-500">Start</Label>
+                      <Label className="text-xs text-muted-foreground">Start</Label>
                       <ColorPicker
                         value={styling.backgroundColors?.[0] || '#f3f4f6'}
                         onChange={(value) => {
@@ -375,7 +375,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                       />
                     </div>
                     <div className="flex flex-col gap-2">
-                      <Label className="text-xs text-slate-500">End</Label>
+                      <Label className="text-xs text-muted-foreground">End</Label>
                       <ColorPicker
                         value={styling.backgroundColors?.[1] || '#e5e7eb'}
                         onChange={(value) => {
@@ -407,18 +407,18 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
             <div className="bg-purple-50/50 rounded-md p-2 border border-purple-200/50">
               <div className="flex items-center gap-1.5 mb-2">
                 <div className="w-1.5 h-1.5 bg-purple-500 rounded-full"></div>
-                <Label className="text-xs font-semibold text-slate-700">Effects</Label>
+                <Label className="text-xs font-semibold text-foreground">Effects</Label>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs text-slate-600">Shadow</Label>
+                  <Label className="text-xs text-muted-foreground">Shadow</Label>
                   <Switch
                     checked={styling.shadow || false}
                     onCheckedChange={(checked) => handlePropertyChange('shadow', checked)}
                   />
                 </div>
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs text-slate-600">Rounded Edges</Label>
+                  <Label className="text-xs text-muted-foreground">Rounded Edges</Label>
                   <Switch
                     checked={styling.roundedEdges || false}
                     onCheckedChange={(checked) => handlePropertyChange('roundedEdges', checked)}
@@ -426,7 +426,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                 </div>
                 {isRoundedRectangle && (
                   <div className="flex items-center justify-between gap-2">
-                    <Label className="text-xs text-slate-600">Corner radius</Label>
+                    <Label className="text-xs text-muted-foreground">Corner radius</Label>
                     <Input
                       type="number"
                       min={0}
@@ -448,11 +448,11 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
             <div className="bg-indigo-50/50 rounded-md p-2 border border-indigo-200/50">
               <div className="flex items-center gap-1.5 mb-2">
                 <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full"></div>
-                <Label className="text-xs font-semibold text-slate-700">Tags</Label>
+                <Label className="text-xs font-semibold text-foreground">Tags</Label>
               </div>
               <div className="space-y-2">
                 <div>
-                  <Label className="text-xs text-slate-600 mb-0.5 block">Text</Label>
+                  <Label className="text-xs text-muted-foreground mb-0.5 block">Text</Label>
                   <Input
                     value={tag || ''}
                     onChange={(e) => onTagChange?.(e.target.value)}
@@ -461,7 +461,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                   />
                 </div>
                 <div>
-                  <Label className="text-xs text-slate-600 mb-0.5 block">Position</Label>
+                  <Label className="text-xs text-muted-foreground mb-0.5 block">Position</Label>
                   <Select
                     value={tagPosition || 'top-center'}
                     onValueChange={(value) => onTagPositionChange?.(value as any)}

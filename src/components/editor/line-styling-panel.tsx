@@ -81,7 +81,7 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
         setPosition({ x: data.x, y: data.y });
       }}
     >
-      <div ref={nodeRef} className="fixed top-20 left-20 z-50 bg-white border rounded-lg shadow-lg w-[24rem] cursor-move">
+      <div ref={nodeRef} className="fixed top-20 left-20 z-50 bg-popover border border-border rounded-lg shadow-lg w-[24rem] cursor-move">
         <div className="flex items-center justify-between p-3 border-b">
           <div className="flex items-center gap-2">
             <Minus className="w-4 h-4 text-blue-600" />
@@ -100,9 +100,9 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
         </div>
         <div className="p-3 space-y-2 max-h-[80vh] overflow-y-auto">
           {/* Line Properties Section */}
-          <div className="bg-blue-50/50 rounded-md p-2 border border-blue-200/50">
+          <div className="bg-muted/50 rounded-md p-2 border border-border">
             <div className="flex items-center gap-1.5 mb-2">
-              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+              <div className="w-1.5 h-1.5 bg-primary rounded-full"></div>
               <Label className="text-xs font-semibold text-slate-700">Line</Label>
             </div>
             

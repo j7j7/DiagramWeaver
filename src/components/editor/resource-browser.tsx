@@ -179,8 +179,8 @@ function ProviderIcon({ provider }: { provider: string }) {
       gcp: <Cloud className="w-4 h-4 text-green-500" />,
       oci: <Cloud className="w-4 h-4 text-red-500" />,
       k8s: <Globe className="w-4 h-4 text-blue-600" />,
-      generic: <Box className="w-4 h-4 text-gray-500" />,
-      onprem: <Server className="w-4 h-4 text-gray-600" />,
+      generic: <Box className="w-4 h-4 text-muted-foreground" />,
+      onprem: <Server className="w-4 h-4 text-muted-foreground" />,
       saas: <Cloud className="w-4 h-4 text-purple-500" />,
       elastic: <Package className="w-4 h-4 text-yellow-500" />,
       firebase: <Cloud className="w-4 h-4 text-yellow-600" />,
@@ -626,7 +626,7 @@ return (
                                     {isIconCategory ? (
                                       <div className="ml-4 pl-2 border-l-2 border-muted space-y-1">
                                         {Object.entries(filteredIconItems.symbolSections).map(([sectionName, icons]) => (
-                                          <div key={sectionName} className="rounded-md border bg-slate-500/5 border-slate-500/10">
+                                          <div key={sectionName} className="rounded-md border bg-muted/5 border-border/50">
                                             <Collapsible open={expandedIconCategories.has(sectionName)} onOpenChange={() => toggleIconCategory(sectionName)}>
                                               <CollapsibleTrigger asChild>
                                                 <Button variant="ghost" className="w-full justify-between p-2 h-auto hover:bg-accent/40 hover:text-accent-foreground touch-target">
@@ -656,7 +656,7 @@ return (
                                           </div>
                                         ))}
                                         {filteredIconItems.emoji.length > 0 && (
-                                          <div className="rounded-md border bg-slate-500/5 border-slate-500/10">
+                                          <div className="rounded-md border bg-muted/5 border-border/50">
                                             <Collapsible open={expandedIconCategories.has('Emojis')} onOpenChange={() => toggleIconCategory('Emojis')}>
                                               <CollapsibleTrigger asChild>
                                                 <Button variant="ghost" className="w-full justify-between p-2 h-auto hover:bg-accent/40 hover:text-accent-foreground touch-target">

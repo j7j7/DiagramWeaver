@@ -518,7 +518,7 @@ const renderIcon = (item: ScratchPadItem) => {
         setPosition({ x: data.x, y: data.y });
       }}
     >
-      <div ref={nodeRef} data-testid="scratchpad" className="fixed top-20 right-20 z-50 w-80 bg-white border rounded-lg shadow-lg flex flex-col max-h-[600px]">
+      <div ref={nodeRef} data-testid="scratchpad" className="fixed top-20 right-20 z-50 w-80 bg-popover border border-border rounded-lg shadow-lg flex flex-col max-h-[600px]">
         <div className="scratchpad-handle flex items-center justify-between p-4 border-b cursor-move">
           <div className="flex items-center gap-2">
             <h3 className="font-semibold">Scratch Pad</h3>

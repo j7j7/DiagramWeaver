@@ -333,17 +333,17 @@ export function TutorialOverlay() {
             onClick={handleBackdropAreaClick}
           />
           
-          {/* Highlight ring around target */}
+          {/* Highlight ring around target - uses primary for theme awareness */}
           <div
-            className="absolute pointer-events-none"
+            className="absolute pointer-events-none border-primary"
             style={{
               left: `${targetRect.left - 4}px`,
               top: `${targetRect.top - 4}px`,
               width: `${targetRect.width + 8}px`,
               height: `${targetRect.height + 8}px`,
-              border: '3px solid #fbbf24',
+              borderWidth: '3px',
               borderRadius: '4px',
-              boxShadow: '0 0 0 2px rgba(251, 191, 36, 0.3), 0 0 20px rgba(251, 191, 36, 0.5)',
+              boxShadow: '0 0 0 2px hsl(var(--primary) / 0.3), 0 0 20px hsl(var(--primary) / 0.5)',
             }}
           />
         </>
@@ -357,7 +357,7 @@ export function TutorialOverlay() {
       {/* Popup */}
       {popupPosition && (
         <div
-          className="absolute bg-yellow-50 border-2 border-yellow-300 rounded-lg shadow-xl p-4 pointer-events-auto"
+          className="absolute bg-popover border-2 border-primary/50 rounded-lg shadow-xl p-4 pointer-events-auto text-popover-foreground"
           style={{
             left: `${popupPosition.x}px`,
             top: `${popupPosition.y}px`,
@@ -376,8 +376,8 @@ export function TutorialOverlay() {
                 top: '20px',
                 borderTop: '8px solid transparent',
                 borderBottom: '8px solid transparent',
-                borderRight: targetRect.right < popupPosition.x ? '8px solid #fef3c7' : 'none',
-                borderLeft: targetRect.right >= popupPosition.x ? '8px solid #fef3c7' : 'none',
+                borderRight: targetRect.right < popupPosition.x ? '8px solid hsl(var(--popover))' : 'none',
+                borderLeft: targetRect.right >= popupPosition.x ? '8px solid hsl(var(--popover))' : 'none',
               }}
             />
           )}
@@ -385,12 +385,12 @@ export function TutorialOverlay() {
           {/* Header */}
           <div className="flex items-start justify-between mb-2">
             <div className="flex-1">
-              <h3 className="font-semibold text-gray-900 text-sm">{currentStep.title}</h3>
-              <p className="text-xs text-gray-600 mt-1">{currentStep.body}</p>
+              <h3 className="font-semibold text-foreground text-sm">{currentStep.title}</h3>
+              <p className="text-xs text-muted-foreground mt-1">{currentStep.body}</p>
             </div>
             <button
               onClick={close}
-              className="ml-2 text-gray-400 hover:text-gray-600"
+              className="ml-2 text-muted-foreground hover:text-foreground"
               aria-label="Close tutorial"
             >
               <X className="h-4 w-4" />
@@ -398,12 +398,12 @@ export function TutorialOverlay() {
           </div>
 
           {/* Step counter */}
-          <div className="text-xs text-gray-500 mb-3">
+          <div className="text-xs text-muted-foreground mb-3">
             Step {currentIndex + 1} of {steps.length}
           </div>
 
           {targetMissing && (
-            <div className="mb-3 text-xs text-yellow-800 bg-yellow-100 border border-yellow-200 rounded p-2">
+            <div className="mb-3 text-xs bg-muted border border-border rounded p-2">
               Target not visible yet. If this step refers to a menu or panel, open it and the highlight will appear automatically.
             </div>
           )}
@@ -424,7 +424,7 @@ export function TutorialOverlay() {
               variant="default"
               size="sm"
               onClick={handleNext}
-              className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white"
+              className="flex-1"
             >
               {isLastStep ? 'Finish' : 'Next'}
               {!isLastStep && <ChevronRight className="h-4 w-4 ml-1" />}
@@ -432,7 +432,7 @@ export function TutorialOverlay() {
           </div>
 
           {requiresClick && (
-            <div className="mt-2 text-xs text-yellow-700 text-center">
+            <div className="mt-2 text-xs text-muted-foreground text-center">
               Click the highlighted element, or press Next to do it for you
             </div>
           )}

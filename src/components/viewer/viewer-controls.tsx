@@ -2,6 +2,7 @@
 
 import React from "react";
 import { ZoomIn, ZoomOut, Maximize2, PanelRight, Info } from "lucide-react";
+import { ThemeToggleButton } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
 interface ViewerControlsProps {
@@ -159,6 +160,8 @@ export function ViewerControls({
           <div className="h-px bg-border my-1" />
         </>
       )}
+      <div className="h-px bg-border my-1" />
+      <ThemeToggleButton className="w-full justify-center" />
       <button
         onClick={onFitToView}
         className="p-2 hover:bg-accent rounded-md transition-colors"
