@@ -220,6 +220,16 @@ function ViewerPageContent() {
   const displayData = filteredDiagramData ?? diagramData;
   const selectedItemId = selectedItem?.itemType === "node" ? selectedItem.id : selectedItem?.itemType === "edge" ? selectedItem.id : undefined;
 
+  const handleItemSelect = useCallback(
+    (item: ViewerSelectedItem | null) => {
+      if (!item && (animationToggleOnClickEnabled || showAnimationsForSelectedOnly)) {
+        setAnimationDisabledSources(new Set());
+      }
+      setSelectedItem(item);
+    },
+    [animationToggleOnClickEnabled, showAnimationsForSelectedOnly]
+  );
+
   // Show chain animations only when a node is selected. No animations when nothing selected.
   const effectiveAnimationFilterIds = showAnimationsForSelectedOnly
     ? (selectedItem?.itemType === "node" && selectedItemId && displayData?.connections
@@ -238,7 +248,7 @@ function ViewerPageContent() {
             onFitToView={handleFitToView}
             selectedItemId={selectedItemId}
             selectedItem={selectedItem}
-            onItemSelect={setSelectedItem}
+            onItemSelect={handleItemSelect}
             metadataPopupsEnabled={metadataPopupsEnabled}
             animationConnectionsEnabled={animationConnectionsEnabled}
             showAnimationsForSelectedOnly={showAnimationsForSelectedOnly && animationConnectionsEnabled}

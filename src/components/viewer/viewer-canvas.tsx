@@ -259,18 +259,14 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
 
   const handleNodeClick = useCallback(
     (_e: React.MouseEvent, node: import("@/lib/types").DiagramNodeData) => {
-      // Handle animation toggling when click mode is enabled - follows the chain downstream
+      // When animation mode is on: select = enable animations for this node's chain, deselect = stop.
       if (animationToggleOnClickEnabled && onAnimationDisabledSourcesChange && diagramData?.connections) {
         const chainNodes = getDownstreamAnimationChainNodes(node.id, diagramData.connections);
         const newDisabledSources = new Set(animationDisabledSources);
-        if (newDisabledSources.has(node.id)) {
-          chainNodes.forEach((id) => newDisabledSources.delete(id));
-        } else {
-          chainNodes.forEach((id) => newDisabledSources.add(id));
-        }
+        chainNodes.forEach((id) => newDisabledSources.delete(id));
         onAnimationDisabledSourcesChange(newDisabledSources);
       }
-      
+
       onItemSelect?.({ ...node, itemType: "node" } as ViewerSelectedItem);
     },
     [onItemSelect, animationToggleOnClickEnabled, animationDisabledSources, onAnimationDisabledSourcesChange, diagramData]

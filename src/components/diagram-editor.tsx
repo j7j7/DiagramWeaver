@@ -379,7 +379,7 @@ export default function DiagramEditor() {
     toast
   });
 
-  // When animation toggle-on-click mode is on: show animations for selected node's chain, or all when nothing selected.
+  // When animation toggle-on-click mode is on: show animations only for selected node's chain. Nothing selected = no animations.
   const effectiveAnimationFilterIds = React.useMemo(() => {
     if (!animationToggleOnClickEnabled || !animationConnectionsEnabled) return undefined;
     const displayData = layers.filteredDiagramData ?? diagramData;
@@ -387,7 +387,7 @@ export default function DiagramEditor() {
     if (selectedItem?.itemType === 'node' && selectedItem?.id && connections.length > 0) {
       return getDownstreamAnimationChainNodes(selectedItem.id, connections);
     }
-    return undefined; // No filter = show all animations when nothing selected
+    return new Set<string>(); // Empty set = no animations when nothing selected
   }, [animationToggleOnClickEnabled, animationConnectionsEnabled, selectedItem, layers.filteredDiagramData, diagramData]);
 
   const setSelectedItemIds = React.useCallback((updater: Set<string> | ((prev: Set<string>) => Set<string>)) => {
@@ -562,7 +562,11 @@ export default function DiagramEditor() {
     if (isConnectMode && !item) {
       setIsConnectMode(false);
     }
-    
+
+    if (!item && animationToggleOnClickEnabled) {
+      setAnimationDisabledSources(new Set());
+    }
+
     if (shiftKey && item) {
       setSelectedItemIds(prev => {
         const newSet = new Set(prev);
@@ -596,6 +600,7 @@ export default function DiagramEditor() {
     if (itemIds.length === 0) {
       setSelectedItem(null);
       setSelectedItemIds(new Set());
+      if (animationToggleOnClickEnabled) setAnimationDisabledSources(new Set());
       return;
     }
     

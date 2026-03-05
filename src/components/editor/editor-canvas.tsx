@@ -911,24 +911,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     closeContextMenu();
     onResetConnectionSettingsTrigger?.(); // Reset connection settings panel when clicking on a node
     
-    // Toggle animation for this node's downstream chain (not inbound) if mode is enabled.
-    // Only toggle when re-clicking an already-selected node. When selecting a node, ensure its chain is enabled
-    // so animations start immediately (matches viewer: select=show, deselect=stop).
+    // When animation mode is on: select = enable animations for this node's chain, deselect = stop.
+    // Ensure this node's chain is enabled (clear from disabled) so animations show when selecting.
     if (animationToggleOnClickEnabled && !isConnectMode && onAnimationDisabledSourcesChange && diagramData?.connections) {
       const chainNodes = getDownstreamAnimationChainNodes(node.id, diagramData.connections);
       const next = new Set(animationDisabledSources);
-      const isAlreadySelected = selectedItemId === node.id || selectedItemIds?.has(node.id);
-      if (isAlreadySelected) {
-        if (next.has(node.id)) {
-          chainNodes.forEach((id) => next.delete(id));
-        } else {
-          chainNodes.forEach((id) => next.add(id));
-        }
-        onAnimationDisabledSourcesChange(next);
-      } else {
-        chainNodes.forEach((id) => next.delete(id));
-        onAnimationDisabledSourcesChange(next);
-      }
+      chainNodes.forEach((id) => next.delete(id));
+      onAnimationDisabledSourcesChange(next);
     }
     
     if (isConnectMode) {
@@ -937,7 +926,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       const isAdditiveSelection = e.shiftKey || e.ctrlKey || e.metaKey;
       onItemSelect({ ...node, itemType: 'node' }, isAdditiveSelection); // Normal selection
     }
-  }, [closeContextMenu, onResetConnectionSettingsTrigger, animationToggleOnClickEnabled, isConnectMode, onNodeClickInConnectMode, onItemSelect, onAnimationDisabledSourcesChange, animationDisabledSources, diagramData, selectedItemId, selectedItemIds]);
+  }, [closeContextMenu, onResetConnectionSettingsTrigger, animationToggleOnClickEnabled, isConnectMode, onNodeClickInConnectMode, onItemSelect, onAnimationDisabledSourcesChange, animationDisabledSources, diagramData]);
 
   const handleNodeContextMenu = useCallback((e: React.MouseEvent, node: DiagramNodeData) => {
     e.stopPropagation();
