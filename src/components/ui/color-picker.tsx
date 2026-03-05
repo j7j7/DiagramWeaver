@@ -24,6 +24,8 @@ export function ColorPicker({
   const [isTransparent, setIsTransparent] = useState(false);
   const [inputId] = useState(() => `color-picker-input-${Math.random().toString(36).slice(2)}`);
   const colorInputRef = useRef<HTMLInputElement>(null);
+  const alphaRef = useRef(alpha);
+  alphaRef.current = alpha;
   const { recentColors, setColorAt, removeColor } = useRecentColors();
 
   useEffect(() => {
@@ -56,11 +58,28 @@ export function ColorPicker({
     }
   }, [value]);
 
+  useEffect(() => {
+    const el = colorInputRef.current;
+    if (!el || isTransparent) return;
+    const handleChange = () => {
+      const hex = el.value;
+      setColor(hex);
+      const a = alphaRef.current;
+      if (a === 1) {
+        onChange(hex);
+      } else {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        onChange(`rgba(${r}, ${g}, ${b}, ${a})`);
+      }
+    };
+    el.addEventListener('change', handleChange);
+    return () => el.removeEventListener('change', handleChange);
+  }, [isTransparent, onChange]);
+
   const handleColorChange = (newColor: string) => {
     setColor(newColor);
-    if (!isTransparent) {
-      updateColor(newColor, alpha);
-    }
   };
 
   const handleColorCommit = (newColor: string) => {
@@ -71,11 +90,7 @@ export function ColorPicker({
   };
 
   const handleAlphaChange = (newAlpha: number[]) => {
-    const newAlphaValue = newAlpha[0];
-    setAlpha(newAlphaValue);
-    if (!isTransparent) {
-      updateColor(color, newAlphaValue);
-    }
+    setAlpha(newAlpha[0]);
   };
 
   const handleAlphaCommit = (newAlpha: number[]) => {

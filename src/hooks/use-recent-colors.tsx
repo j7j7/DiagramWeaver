@@ -1,9 +1,21 @@
-import { useState, useEffect } from 'react';
+"use client";
+
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 const STORAGE_KEY = 'dw:recent-colors';
 const MAX_RECENT_COLORS = 8;
 
-export function useRecentColors() {
+type RecentColorsContextValue = {
+  recentColors: string[];
+  addColor: (color: string) => void;
+  setColorAt: (index: number, color: string) => void;
+  removeColor: (color: string) => void;
+  setColors: (colors: string[]) => void;
+};
+
+const RecentColorsContext = createContext<RecentColorsContextValue | null>(null);
+
+export function RecentColorsProvider({ children }: { children: React.ReactNode }) {
   const [recentColors, setRecentColors] = useState<string[]>([]);
 
   useEffect(() => {
@@ -22,7 +34,7 @@ export function useRecentColors() {
     }
   }, []);
 
-  const addColor = (color: string) => {
+  const addColor = useCallback((color: string) => {
     if (!color || color === 'transparent') return;
 
     setRecentColors(prev => {
@@ -39,9 +51,9 @@ export function useRecentColors() {
 
       return updated;
     });
-  };
+  }, []);
 
-  const setColorAt = (index: number, color: string) => {
+  const setColorAt = useCallback((index: number, color: string) => {
     if (!color || color === 'transparent') return;
     if (index < 0 || index >= MAX_RECENT_COLORS) return;
 
@@ -66,9 +78,9 @@ export function useRecentColors() {
 
       return updated;
     });
-  };
+  }, []);
 
-  const removeColor = (color: string) => {
+  const removeColor = useCallback((color: string) => {
     setRecentColors(prev => {
       const updated = prev.filter(c => c !== color);
 
@@ -82,9 +94,9 @@ export function useRecentColors() {
 
       return updated;
     });
-  };
+  }, []);
 
-  const setColors = (colors: string[]) => {
+  const setColors = useCallback((colors: string[]) => {
     const filtered = colors.filter(c => c && c !== 'transparent').slice(0, MAX_RECENT_COLORS);
     setRecentColors(filtered);
 
@@ -95,7 +107,20 @@ export function useRecentColors() {
         console.error('Failed to save recent colors', e);
       }
     }
-  };
+  }, []);
 
-  return { recentColors, addColor, setColorAt, removeColor, setColors };
+  const value: RecentColorsContextValue = { recentColors, addColor, setColorAt, removeColor, setColors };
+  return (
+    <RecentColorsContext.Provider value={value}>
+      {children}
+    </RecentColorsContext.Provider>
+  );
+}
+
+export function useRecentColors() {
+  const ctx = useContext(RecentColorsContext);
+  if (!ctx) {
+    throw new Error('useRecentColors must be used within RecentColorsProvider');
+  }
+  return ctx;
 }

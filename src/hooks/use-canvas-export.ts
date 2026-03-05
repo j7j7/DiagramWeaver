@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import type { Transform } from "./use-canvas-transform";
 import type { DiagramData } from "@/lib/types";
+import type { FileSystemFileHandle } from "@/types/file-system";
 import { measureNodeDims, type PositionedNode, type PositionedGroup } from "@/components/editor/canvas-constants";
 
 interface UseCanvasExportOptions {
@@ -269,6 +270,26 @@ export function useCanvasExport({
   const exportGif = useCallback(async (options?: { backgroundColor?: 'transparent' | 'white'; quality?: 'low' | 'medium' | 'high'; fps?: number; durationSeconds?: number }) => {
     if (!canvasRef.current) return;
 
+    // Show save dialog FIRST while user gesture is still active (required by File System Access API).
+    // Recording takes 3-30 seconds; by then the gesture expires and the dialog would fail.
+    let fileHandle: FileSystemFileHandle | null = null;
+    if ('showSaveFilePicker' in window) {
+      try {
+        fileHandle = await (window as any).showSaveFilePicker({
+          suggestedName: 'diagram.gif',
+          types: [{
+            description: 'GIF Images',
+            accept: { 'image/gif': ['.gif'] },
+          }],
+        });
+      } catch (error: any) {
+        if (error.name === 'AbortError') {
+          return; // User cancelled the save dialog
+        }
+        // API failed, will fall back to download at the end
+      }
+    }
+
     let gridElement: HTMLElement | null = null;
     let hadGridClass = false;
     try {
@@ -390,23 +411,16 @@ export function useCanvasExport({
         : (encoder as any).bytes();
       const blob = new Blob([bytes], { type: 'image/gif' });
 
-      if ('showSaveFilePicker' in window) {
+      if (fileHandle) {
         try {
-          const handle = await (window as any).showSaveFilePicker({
-            suggestedName: 'diagram.gif',
-            types: [{
-              description: 'GIF Images',
-              accept: { 'image/gif': ['.gif'] },
-            }],
-          });
-          const writable = await handle.createWritable();
+          const writable = await fileHandle.createWritable();
           await writable.write(blob);
           await writable.close();
           toast({ title: 'Exported', description: 'GIF exported successfully.' });
           return;
         } catch (error: any) {
           if (error.name !== 'AbortError') {
-            console.log('File System Access API failed, falling back to download:', error);
+            console.log('File System Access API write failed, falling back to download:', error);
           }
         }
       }

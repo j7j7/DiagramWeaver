@@ -2,6 +2,15 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-05)
 
+### 2026-03-05 – Tab Close/Save: Unsaved Changes Prompt and Filename as Tab Name
+**Close tab with unsaved changes**: When closing a tab that has unsaved changes, a dialog offers **Save**, **Don't Save**, and **Cancel**. Save triggers the save-to-file flow, then closes the tab on success. **Tab name from filename**: When saving to file (File System Access API or download), the tab name updates to the chosen filename without extension. When loading a file, the active tab name updates to the loaded filename without extension. Modified: `use-diagram-tabs.ts` (added `getTab`, `updateTab`, `markTabAsSaved(tabId)`), `diagram-editor.tsx` (`handleSave(tabId?)`, `handleCloseTabSave`, `handleFileChange` sets tab name, close dialog buttons).
+
+### 2026-03-05 – GIF Export: Full Save Dialog (Same as Load/Save)
+**Save file picker shown first**: GIF export now shows the full native save file/folder dialog at the start of the export flow, matching diagram Save and PNG export. Previously `showSaveFilePicker()` was called after 3–30 seconds of frame recording; by then the user gesture had expired, so the dialog could fail or fall back to download. **Fix**: Call `showSaveFilePicker` immediately when the user clicks Export (while the gesture is active), store the handle, then record frames and write to that handle. User cancelling the dialog aborts export. Modified: `use-canvas-export.ts`.
+
+### 2026-03-05 – Color Picker: Shared Recent Colours and Deferred Commit
+**Shared recent colours**: All colour pickers now share the same saved/recent colour palette. Added `RecentColorsContext` and `RecentColorsProvider` in root layout so every ColorPicker reads/writes the same recent colours from a single localStorage-backed store (`dw:recent-colors`). **Deferred commit**: The colour picker no longer saves/updates parent state while the user is browsing the native colour wheel—updates are only applied on commit (native input `onBlur`/`onMouseUp`, alpha Slider `onValueCommit`). Prevents slow UI and excessive undo/redo history during colour selection. Modified: `use-recent-colors.ts` → `use-recent-colors.tsx` (context + provider), `color-picker.tsx`, `layout.tsx`.
+
 ### 2026-03-05 – Connector Line Animation Defaults
 **Defaults updated**: anim size 2 (was 1), shape-size spacing 2 (was 1). Default animation colour when not set: 50% transparent of the line colour (via `colorWithHalfOpacity()`). Modified: `connection-animation.ts`, `bezier-connection.tsx`.
 

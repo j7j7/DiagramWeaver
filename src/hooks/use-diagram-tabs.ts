@@ -162,10 +162,6 @@ export function useDiagramTabs({ isClient, onToast }: UseDiagramTabsOptions) {
     setTabs(prev => prev.map(tab => {
       if (tab.id === activeTabId) {
         const updated = { ...tab, ...updates };
-        // Update savedDataHash if diagramData changed
-        if (updates.diagramData) {
-          updated.savedDataHash = JSON.stringify(updates.diagramData);
-        }
         return updated;
       }
       return tab;
@@ -187,11 +183,26 @@ export function useDiagramTabs({ isClient, onToast }: UseDiagramTabsOptions) {
     return tabs.find(t => t.id === activeTabId) || null;
   }, [tabs, activeTabId]);
 
-  const markTabAsSaved = useCallback(() => {
-    if (!activeTabId) return;
+  const getTab = useCallback((tabId: string): TabState | null => {
+    return tabs.find(t => t.id === tabId) || null;
+  }, [tabs]);
+
+  const updateTab = useCallback((tabId: string, updates: Partial<TabState>) => {
+    setTabs(prev => prev.map(tab => {
+      if (tab.id === tabId) {
+        const updated = { ...tab, ...updates };
+        return updated;
+      }
+      return tab;
+    }));
+  }, []);
+
+  const markTabAsSaved = useCallback((tabId?: string) => {
+    const targetId = tabId ?? activeTabId;
+    if (!targetId) return;
     
     setTabs(prev => prev.map(tab => {
-      if (tab.id === activeTabId) {
+      if (tab.id === targetId) {
         return {
           ...tab,
           savedDataHash: JSON.stringify(tab.diagramData),
@@ -209,6 +220,8 @@ export function useDiagramTabs({ isClient, onToast }: UseDiagramTabsOptions) {
     switchTab,
     closeTab,
     updateActiveTab,
+    updateTab,
+    getTab,
     markTabAsSaved,
     getHistoryRef: (tabId: string) => historyRefs.current[tabId],
     setHistoryRef: (tabId: string, ref: { history: string[]; index: number }) => {

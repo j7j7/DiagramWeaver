@@ -32,6 +32,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
 import type { DiagramData, DiagramNodeData, DiagramConnectionData } from '@/lib/types';
 import { generateSequentialId } from '@/lib/id-generator';
 import { useToast } from '@/hooks/use-toast';
@@ -325,6 +326,8 @@ export default function DiagramEditor() {
     switchTab,
     closeTab,
     updateActiveTab,
+    updateTab,
+    getTab,
     markTabAsSaved,
     getHistoryRef,
     setHistoryRef,
@@ -357,9 +360,10 @@ export default function DiagramEditor() {
   const setDiagramData = React.useCallback((updater: DiagramData | ((prev: DiagramData) => DiagramData)) => {
     if (!activeTabId) return;
     const newData = typeof updater === 'function' ? updater(diagramData) : updater;
-    // Ensure connections have ids (supports legacy JSON and undo/redo/paste)
-    const connections = ensureConnectionIds(newData.connections || []);
-    updateActiveTab({ diagramData: { ...newData, connections } });
+    const connections = newData.connections || [];
+    const needsIds = connections.some((c: DiagramConnectionData) => !(c as DiagramConnectionData).id);
+    const ensuredConnections = needsIds ? ensureConnectionIds(connections) : connections;
+    updateActiveTab({ diagramData: { ...newData, connections: ensuredConnections } });
   }, [activeTabId, diagramData, updateActiveTab]);
 
   const setSelectedItem = React.useCallback((updater: SelectedItem | null | ((prev: SelectedItem | null) => SelectedItem | null)) => {
@@ -375,8 +379,7 @@ export default function DiagramEditor() {
     toast
   });
 
-  // When animation toggle-on-click mode is on: show animations only for selected node's chain.
-  // Clicking canvas to deselect stops animations (same as viewer mode).
+  // When animation toggle-on-click mode is on: show animations for selected node's chain, or all when nothing selected.
   const effectiveAnimationFilterIds = React.useMemo(() => {
     if (!animationToggleOnClickEnabled || !animationConnectionsEnabled) return undefined;
     const displayData = layers.filteredDiagramData ?? diagramData;
@@ -384,7 +387,7 @@ export default function DiagramEditor() {
     if (selectedItem?.itemType === 'node' && selectedItem?.id && connections.length > 0) {
       return getDownstreamAnimationChainNodes(selectedItem.id, connections);
     }
-    return new Set<string>(); // Empty set = no animations when deselected
+    return undefined; // No filter = show all animations when nothing selected
   }, [animationToggleOnClickEnabled, animationConnectionsEnabled, selectedItem, layers.filteredDiagramData, diagramData]);
 
   const setSelectedItemIds = React.useCallback((updater: Set<string> | ((prev: Set<string>) => Set<string>)) => {
@@ -916,15 +919,23 @@ export default function DiagramEditor() {
     toast({ title: 'Connection Disconnected', description: 'Connection has been removed.' });
   };
   
-  const handleSave = async () => {
-    if (!activeTabId || !activeTab) return;
-    const jsonString = JSON.stringify(diagramData, null, 2);
+  const getFilenameStem = (filename: string) =>
+    filename.replace(/\.[^.]+$/, '') || filename;
+
+  const handleSave = async (tabId?: string): Promise<boolean> => {
+    const targetTabId = (typeof tabId === 'string' ? tabId : undefined) ?? activeTabId;
+    const targetTab = targetTabId ? getTab(targetTabId) : activeTab;
+    if (!targetTabId || !targetTab) return false;
+
+    const dataToSave = targetTab.diagramData;
+    const jsonString = JSON.stringify(dataToSave, null, 2);
+    const suggestedName = `${targetTab.name.replace(/\s+/g, '-').toLowerCase()}.json`;
 
     // Try to use the File System Access API if available (Chromium browsers)
     if ('showSaveFilePicker' in window) {
       try {
         const handle = await (window as any).showSaveFilePicker({
-          suggestedName: `${activeTab.name.replace(/\s+/g, '-').toLowerCase()}.json`,
+          suggestedName,
           types: [{
             description: 'JSON Files',
             accept: { 'application/json': ['.json'] }
@@ -933,14 +944,14 @@ export default function DiagramEditor() {
         const writable = await handle.createWritable();
         await writable.write(jsonString);
         await writable.close();
-        markTabAsSaved();
+        const fileName = 'name' in handle ? String(handle.name) : suggestedName;
+        updateTab(targetTabId, { name: getFilenameStem(fileName) });
+        markTabAsSaved(targetTabId);
         toast({ title: 'Diagram Saved', description: 'Your diagram has been saved successfully.' });
-        return;
+        return true;
       } catch (error: any) {
-        // User cancelled or API failed, fall back to download
-        if (error.name !== 'AbortError') {
-          console.log('File System Access API failed, falling back to download:', error);
-        }
+        if (error.name === 'AbortError') return false;
+        console.log('File System Access API failed, falling back to download:', error);
       }
     }
 
@@ -949,13 +960,15 @@ export default function DiagramEditor() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${activeTab.name.replace(/\s+/g, '-').toLowerCase()}.json`;
+    a.download = suggestedName;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    markTabAsSaved();
+    updateTab(targetTabId, { name: getFilenameStem(suggestedName) });
+    markTabAsSaved(targetTabId);
     toast({ title: 'Diagram Saved', description: 'Your diagram has been downloaded.' });
+    return true;
   };
 
   const handleLoadClick = () => {
@@ -1116,6 +1129,7 @@ export default function DiagramEditor() {
           setTimeout(() => {
             setDiagramData(completeData);
             setSelectedItem(null);
+            updateActiveTab({ name: getFilenameStem(file.name) });
             toast({ title: 'Diagram Loaded', description: 'Your diagram has been successfully loaded.' });
             setTimeout(() => editorRef.current?.fitToView(), 100);
           }, 0);
@@ -1578,6 +1592,16 @@ export default function DiagramEditor() {
       setPendingCloseTabId(null);
     }
     setCloseTabDialogOpen(false);
+  };
+
+  const handleCloseTabSave = async () => {
+    if (!pendingCloseTabId) return;
+    const saved = await handleSave(pendingCloseTabId);
+    if (saved) {
+      await closeTab(pendingCloseTabId, true);
+      setPendingCloseTabId(null);
+      setCloseTabDialogOpen(false);
+    }
   };
 
   const handleJsonValidChange = (newDiagramData: DiagramData) => {
@@ -2338,6 +2362,7 @@ export default function DiagramEditor() {
         pendingCloseTabId={pendingCloseTabId}
         setPendingCloseTabId={setPendingCloseTabId}
         handleCloseTabConfirm={handleCloseTabConfirm}
+        handleCloseTabSave={handleCloseTabSave}
         animationSelectionDialogOpen={animationSelectionDialogOpen}
         setAnimationSelectionDialogOpen={setAnimationSelectionDialogOpen}
         animationOverwriteDialogOpen={animationOverwriteDialogOpen}
@@ -2493,6 +2518,7 @@ function DiagramEditorInner({
   pendingCloseTabId,
   setPendingCloseTabId,
   handleCloseTabConfirm,
+  handleCloseTabSave,
   animationSelectionDialogOpen,
   setAnimationSelectionDialogOpen,
   animationOverwriteDialogOpen,
@@ -2973,7 +2999,7 @@ function DiagramEditorInner({
             <AlertDialogHeader>
               <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
               <AlertDialogDescription>
-                This tab has unsaved changes. Are you sure you want to close it? Your changes will be lost.
+                This tab has unsaved changes. Do you want to save them before closing?
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -2981,7 +3007,8 @@ function DiagramEditorInner({
                 setPendingCloseTabId(null);
                 setCloseTabDialogOpen(false);
               }}>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleCloseTabConfirm}>Close Tab</AlertDialogAction>
+              <Button variant="outline" onClick={handleCloseTabConfirm}>Don&apos;t Save</Button>
+              <Button onClick={handleCloseTabSave}>Save</Button>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

@@ -37,8 +37,8 @@ export function TabBar({ tabs, activeTabId, onTabSelect, onTabClose }: TabBarPro
           )}
         >
           <span className={cn("text-sm whitespace-nowrap", tab.isModified && "font-semibold")}>
+            {tab.isModified && <span className="mr-1 text-xs">●</span>}
             {tab.name}
-            {tab.isModified && <span className="ml-1 text-xs">●</span>}
           </span>
           <button
             onClick={(e) => handleClose(e, tab.id)}

@@ -2,6 +2,7 @@ import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { RecentColorsProvider } from "@/hooks/use-recent-colors";
 
 export const metadata: Metadata = {
   title: 'Diagram Weaver',
@@ -33,8 +34,10 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased overflow-hidden">
         <TooltipProvider>
-          {children}
-          <Toaster />
+          <RecentColorsProvider>
+            {children}
+            <Toaster />
+          </RecentColorsProvider>
         </TooltipProvider>
       </body>
     </html>
