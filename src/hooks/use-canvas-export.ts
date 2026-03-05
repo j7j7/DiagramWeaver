@@ -38,7 +38,7 @@ export function useCanvasExport({
   onGifAnimationTimeUpdate,
 }: UseCanvasExportOptions) {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
-  const [pendingExportOptions, setPendingExportOptions] = useState<{ backgroundColor?: 'transparent' | 'white'; useSelection: boolean } | null>(null);
+  const [pendingExportOptions, setPendingExportOptions] = useState<{ backgroundColor?: 'transparent' | 'white' | 'dark'; useSelection: boolean } | null>(null);
 
   // Calculate bounds of items (all items or selected items only)
   const calculateItemBounds = useCallback((itemIds?: Set<string>) => {
@@ -164,7 +164,7 @@ export function useCanvasExport({
     };
   }, [processedNodes, processedZones]);
 
-  const exportPng = useCallback(async (options?: { backgroundColor?: 'transparent' | 'white'; quality?: 'low' | 'medium' | 'high' }) => {
+  const exportPng = useCallback(async (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high' }) => {
     if (!canvasRef.current) return;
     
     try {
@@ -190,8 +190,11 @@ export function useCanvasExport({
       let exportElement = canvasRef.current;
 
       try {
-        const backgroundColor = options?.backgroundColor === 'transparent' ? 'transparent' : 
+        const isDark = document.documentElement.classList.contains('dark');
+        const backgroundColor = options?.backgroundColor === 'transparent' ? 'transparent' :
                                options?.backgroundColor === 'white' ? '#ffffff' :
+                               options?.backgroundColor === 'dark' ? '#0f172a' :
+                               isDark ? '#0f172a' :
                                getComputedStyle(document.documentElement).getPropertyValue('--background') || '#ffffff';
 
         // Set pixel ratio based on quality setting
@@ -267,7 +270,7 @@ export function useCanvasExport({
     }
   }, [toast, transform, width, height, canvasRef, calculateItemBounds, selectedItemIds, processedNodes, processedZones]);
 
-  const exportGif = useCallback(async (options?: { backgroundColor?: 'transparent' | 'white'; quality?: 'low' | 'medium' | 'high'; fps?: number; durationSeconds?: number }) => {
+  const exportGif = useCallback(async (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high'; fps?: number; durationSeconds?: number }) => {
     if (!canvasRef.current) return;
 
     // Show save dialog FIRST while user gesture is still active (required by File System Access API).
@@ -309,8 +312,11 @@ export function useCanvasExport({
 
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
+      const isDark = document.documentElement.classList.contains('dark');
       const backgroundColor = options?.backgroundColor === 'transparent' ? 'transparent' :
         options?.backgroundColor === 'white' ? '#ffffff' :
+        options?.backgroundColor === 'dark' ? '#0f172a' :
+        isDark ? '#0f172a' :
           getComputedStyle(document.documentElement).getPropertyValue('--background') || '#ffffff';
 
       const quality = options?.quality || 'medium';
@@ -446,7 +452,7 @@ export function useCanvasExport({
     }
   }, [toast, canvasRef, onGifAnimationTimeUpdate]);
 
-  const startExport = useCallback((options: { format?: 'png' | 'gif'; backgroundColor: 'transparent' | 'white'; quality?: 'low' | 'medium' | 'high'; fps?: number; durationSeconds?: number }) => {
+  const startExport = useCallback((options: { format?: 'png' | 'gif'; backgroundColor: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high'; fps?: number; durationSeconds?: number }) => {
     if (options.format === 'gif') {
       exportGif({
         backgroundColor: options.backgroundColor,

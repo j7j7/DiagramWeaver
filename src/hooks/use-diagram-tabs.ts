@@ -3,6 +3,13 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import type { DiagramData } from '@/lib/types';
 import type { SelectedItem } from '@/components/diagram-editor';
 import { ensureConnectionIds } from '@/lib/connection-order-utils';
+import {
+  loadTabsFromIndexedDB,
+  saveTabsToIndexedDB,
+  saveTabsToLocalStorage,
+  loadTabsFromLocalStorage,
+  clearTabsFromLocalStorage,
+} from '@/lib/tab-storage';
 
 export interface TabState {
   id: string;
@@ -23,80 +30,213 @@ interface UseDiagramTabsOptions {
   onToast: (message: { title: string; description: string }) => void;
 }
 
+function parseStoredTabs(
+  parsedTabs: (TabState & { historyRef?: { history: string[]; index: number } })[],
+  historyRefs: React.MutableRefObject<Record<string, { history: string[]; index: number }>>
+): TabState[] {
+  parsedTabs.forEach((tab) => {
+    if (tab.historyRef?.history?.length) {
+      historyRefs.current[tab.id] = tab.historyRef;
+    } else if (tab.diagramData) {
+      historyRefs.current[tab.id] = {
+        history: [JSON.stringify(tab.diagramData)],
+        index: 0,
+      };
+    }
+  });
+  return parsedTabs.map((tab: TabState & { historyRef?: unknown }) => {
+    const { historyRef: _, ...rest } = tab;
+    const diagramData = rest.diagramData
+      ? { ...rest.diagramData, connections: ensureConnectionIds(rest.diagramData.connections || []) }
+      : rest.diagramData;
+    return {
+      ...rest,
+      diagramData,
+      selectedItemIds: new Set(rest.selectedItemIds || []),
+      savedDataHash: JSON.stringify(rest.diagramData),
+    };
+  });
+}
+
 export function useDiagramTabs({ isClient, onToast }: UseDiagramTabsOptions) {
   const [tabs, setTabs] = useState<TabState[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
   const historyRefs = useRef<Record<string, { history: string[]; index: number }>>({});
+  const persistTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Initialize tabs from localStorage
+  // Initialize tabs from IndexedDB (with localStorage migration)
   useEffect(() => {
     if (!isClient) return;
 
-    try {
-      const savedTabs = localStorage.getItem('dw:tabs');
-      const savedActiveTabId = localStorage.getItem('dw:activeTabId');
-
-      if (savedTabs) {
-        const parsedTabs = JSON.parse(savedTabs);
-        // Restore history refs
-        parsedTabs.forEach((tab: TabState & { historyRef?: { history: string[]; index: number } }) => {
-          if (tab.historyRef) {
-            historyRefs.current[tab.id] = tab.historyRef;
-          }
-        });
-        // Remove historyRef from tabs (we store it separately)
-        const cleanedTabs = parsedTabs.map((tab: TabState & { historyRef?: any }) => {
-          const { historyRef, ...rest } = tab;
-          const diagramData = rest.diagramData
-            ? { ...rest.diagramData, connections: ensureConnectionIds(rest.diagramData.connections || []) }
-            : rest.diagramData;
-          return {
-            ...rest,
-            diagramData,
-            selectedItemIds: new Set(rest.selectedItemIds || []),
-            savedDataHash: JSON.stringify(rest.diagramData),
-          };
-        });
-        setTabs(cleanedTabs);
-        if (savedActiveTabId && cleanedTabs.some((t: TabState) => t.id === savedActiveTabId)) {
-          setActiveTabId(savedActiveTabId);
-        } else if (cleanedTabs.length > 0) {
-          setActiveTabId(cleanedTabs[0].id);
+    // No IndexedDB (e.g. old browser, worker): use localStorage fallback
+    if (typeof indexedDB === 'undefined') {
+      try {
+        const lsPayload = loadTabsFromLocalStorage();
+        if (lsPayload && lsPayload.tabs.length > 0) {
+          const cleanedTabs = parseStoredTabs(
+            lsPayload.tabs as (TabState & { historyRef?: { history: string[]; index: number } })[],
+            historyRefs
+          );
+          setTabs(cleanedTabs);
+          const active =
+            lsPayload.activeTabId && cleanedTabs.some((t) => t.id === lsPayload.activeTabId)
+              ? lsPayload.activeTabId
+              : cleanedTabs[0].id;
+          setActiveTabId(active);
+        } else {
+          const defaultTab = createNewTab('Diagram 1');
+          setTabs([defaultTab]);
+          setActiveTabId(defaultTab.id);
         }
-      } else {
-        // Create default tab
+      } catch {
         const defaultTab = createNewTab('Diagram 1');
         setTabs([defaultTab]);
         setActiveTabId(defaultTab.id);
       }
-    } catch (error) {
-      console.warn('Failed to load tabs from localStorage:', error);
-      // Create default tab on error
-      const defaultTab = createNewTab('Diagram 1');
-      setTabs([defaultTab]);
-      setActiveTabId(defaultTab.id);
+      setIsLoaded(true);
+      return;
     }
+
+    let cancelled = false;
+
+    async function load() {
+      try {
+        // 1. Try IndexedDB first
+        const idbPayload = await loadTabsFromIndexedDB();
+        if (cancelled) return;
+
+        if (idbPayload && idbPayload.tabs.length > 0) {
+          const cleanedTabs = parseStoredTabs(
+            idbPayload.tabs as (TabState & { historyRef?: { history: string[]; index: number } })[],
+            historyRefs
+          );
+          setTabs(cleanedTabs);
+          const active =
+            idbPayload.activeTabId && cleanedTabs.some((t) => t.id === idbPayload.activeTabId)
+              ? idbPayload.activeTabId
+              : cleanedTabs[0].id;
+          setActiveTabId(active);
+          setIsLoaded(true);
+          return;
+        }
+
+        // 2. Migrate from localStorage if IndexedDB empty
+        const lsPayload = loadTabsFromLocalStorage();
+        if (cancelled) return;
+
+        if (lsPayload && lsPayload.tabs.length > 0) {
+          const cleanedTabs = parseStoredTabs(
+            lsPayload.tabs as (TabState & { historyRef?: { history: string[]; index: number } })[],
+            historyRefs
+          );
+          setTabs(cleanedTabs);
+          const active =
+            lsPayload.activeTabId && cleanedTabs.some((t) => t.id === lsPayload.activeTabId)
+              ? lsPayload.activeTabId
+              : cleanedTabs[0].id;
+          setActiveTabId(active);
+          clearTabsFromLocalStorage();
+          // Persist to IndexedDB on next effect
+          setIsLoaded(true);
+          return;
+        }
+
+        // 3. Default tab
+        const defaultTab = createNewTab('Diagram 1');
+        setTabs([defaultTab]);
+        setActiveTabId(defaultTab.id);
+      } catch (error) {
+        console.warn('Failed to load tabs:', error);
+        const defaultTab = createNewTab('Diagram 1');
+        setTabs([defaultTab]);
+        setActiveTabId(defaultTab.id);
+      } finally {
+        if (!cancelled) setIsLoaded(true);
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
   }, [isClient]);
 
-  // Persist tabs to localStorage
+  // Persist tabs (IndexedDB when available, else localStorage)
   useEffect(() => {
-    if (!isClient || tabs.length === 0) return;
+    if (!isClient || !isLoaded || tabs.length === 0) return;
 
-    try {
-      // Store tabs with historyRefs
-      const tabsToStore = tabs.map(tab => ({
-        ...tab,
-        selectedItemIds: Array.from(tab.selectedItemIds),
-        historyRef: historyRefs.current[tab.id],
-      }));
-      localStorage.setItem('dw:tabs', JSON.stringify(tabsToStore));
-      if (activeTabId) {
-        localStorage.setItem('dw:activeTabId', activeTabId);
-      }
-    } catch (error) {
-      console.warn('Failed to save tabs to localStorage:', error);
+    const buildPayload = (includeHistory: boolean) => {
+      const tabsToStore = tabs.map((tab) => {
+        const base = {
+          ...tab,
+          selectedItemIds: Array.from(tab.selectedItemIds),
+        };
+        return includeHistory
+          ? { ...base, historyRef: historyRefs.current[tab.id] }
+          : base;
+      });
+      return { tabs: tabsToStore, activeTabId };
+    };
+
+    const PERSIST_DEBOUNCE_MS = 400;
+
+    if (persistTimeoutRef.current) {
+      clearTimeout(persistTimeoutRef.current);
     }
-  }, [tabs, activeTabId, isClient]);
+
+    persistTimeoutRef.current = setTimeout(async () => {
+      persistTimeoutRef.current = null;
+
+      if (typeof indexedDB === 'undefined') {
+        try {
+          saveTabsToLocalStorage(buildPayload(true));
+        } catch (error) {
+          const isQuotaExceeded =
+            error instanceof DOMException && error.name === 'QuotaExceededError';
+          if (isQuotaExceeded) {
+            try {
+              saveTabsToLocalStorage(buildPayload(false));
+            } catch {
+              onToast({
+                title: 'Storage full',
+                description:
+                  'Could not save tabs. Try closing some tabs, exporting diagrams, or clearing site data.',
+              });
+            }
+          }
+        }
+        return;
+      }
+
+      try {
+        await saveTabsToIndexedDB(buildPayload(true));
+      } catch (error) {
+        const isQuotaExceeded =
+          error instanceof DOMException && error.name === 'QuotaExceededError';
+        if (isQuotaExceeded) {
+          try {
+            await saveTabsToIndexedDB(buildPayload(false));
+          } catch {
+            onToast({
+              title: 'Storage full',
+              description:
+                'Could not save tabs. Try closing some tabs, exporting diagrams, or clearing site data.',
+            });
+          }
+        } else {
+          console.warn('Failed to save tabs to IndexedDB:', error);
+        }
+      }
+    }, PERSIST_DEBOUNCE_MS);
+
+    return () => {
+      if (persistTimeoutRef.current) {
+        clearTimeout(persistTimeoutRef.current);
+        persistTimeoutRef.current = null;
+      }
+    };
+  }, [tabs, activeTabId, isClient, isLoaded, onToast]);
 
   function createNewTab(name: string, diagramData?: DiagramData): TabState {
     const rawDiagram = diagramData || { nodes: [], connections: [], groupings: [] };
@@ -229,6 +369,7 @@ export function useDiagramTabs({ isClient, onToast }: UseDiagramTabsOptions) {
   return {
     tabs: tabs.map(t => ({ id: t.id, name: t.name, isModified: t.savedDataHash !== JSON.stringify(t.diagramData) })),
     activeTabId,
+    isLoaded,
     activeTab: getActiveTab(),
     createTab,
     switchTab,

@@ -19,7 +19,7 @@ interface ExportDialogProps {
   initialFormat?: 'png' | 'gif';
   onExport: (options: {
     format: 'png' | 'gif';
-    backgroundColor: 'transparent' | 'white';
+    backgroundColor: 'transparent' | 'white' | 'dark';
     quality: 'low' | 'medium' | 'high';
     fps?: number;
     durationSeconds?: number;
@@ -36,7 +36,7 @@ const MAX_GIF_FRAMES = 300;
 
 export function ExportDialog({ open, onOpenChange, initialFormat = 'png', onExport }: ExportDialogProps) {
   const [format, setFormat] = useState<'png' | 'gif'>(initialFormat);
-  const [backgroundColor, setBackgroundColor] = useState<'transparent' | 'white'>('white');
+  const [backgroundColor, setBackgroundColor] = useState<'transparent' | 'white' | 'dark'>('white');
   const [quality, setQuality] = useState<'low' | 'medium' | 'high'>('medium');
   const [gifDurationSeconds, setGifDurationSeconds] = useState<number>(DEFAULT_GIF_DURATION_SECONDS);
   const [gifFps, setGifFps] = useState<number>(DEFAULT_GIF_FPS);
@@ -45,6 +45,8 @@ export function ExportDialog({ open, onOpenChange, initialFormat = 'png', onExpo
   React.useEffect(() => {
     if (open) {
       setFormat(initialFormat);
+      const dark = document.documentElement.classList.contains('dark');
+      setBackgroundColor(initialFormat === 'gif' && dark ? 'dark' : 'white');
     }
   }, [open, initialFormat]);
 
@@ -100,14 +102,18 @@ export function ExportDialog({ open, onOpenChange, initialFormat = 'png', onExpo
           </div>
           <div className="space-y-3">
             <Label>Background</Label>
-            <RadioGroup value={backgroundColor} onValueChange={(value) => setBackgroundColor(value as 'transparent' | 'white')}>
+            <RadioGroup value={backgroundColor} onValueChange={(value) => setBackgroundColor(value as 'transparent' | 'white' | 'dark')}>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="white" id="white" />
-                <Label htmlFor="white" className="font-normal cursor-pointer">White Background</Label>
+                <Label htmlFor="white" className="font-normal cursor-pointer">White</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="dark" id="dark" />
+                <Label htmlFor="dark" className="font-normal cursor-pointer">Dark</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="transparent" id="transparent" />
-                <Label htmlFor="transparent" className="font-normal cursor-pointer">Transparent Background</Label>
+                <Label htmlFor="transparent" className="font-normal cursor-pointer">Transparent</Label>
               </div>
             </RadioGroup>
           </div>

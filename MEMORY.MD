@@ -2,6 +2,12 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-05)
 
+### 2026-03-05 – Tab Persistence: IndexedDB (Replaces localStorage)
+**IndexedDB for tabs**: Tab persistence moved from localStorage to IndexedDB to avoid ~5–10MB quota limits. IndexedDB typically allows hundreds of MB. **Migration**: On first load, existing `dw:tabs` / `dw:activeTabId` in localStorage are migrated to IndexedDB and localStorage keys cleared. **Fallbacks**: When IndexedDB unavailable (old browsers), uses localStorage; on QuotaExceededError (IndexedDB or localStorage), retries slim save (no undo history) and toasts if both fail. **Debounced persist** (400ms). Loading state shown in tab bar until hydrated. Modified: `src/lib/tab-storage.ts` (new), `use-diagram-tabs.ts`, `diagram-editor.tsx`.
+
+### 2026-03-05 – GIF/PNG Export: Dark Background in Dark Mode
+**Export respects theme**: When exporting GIF (or PNG) in dark mode, the background defaults to dark (#0f172a). Export dialog adds a "Dark" background option; when opening for GIF in dark mode, Dark is preselected. Users can still choose White or Transparent. Modified: `use-canvas-export.ts` (backgroundColor 'dark' support + isDark fallback), `export-dialog.tsx` (Dark option, default when GIF + dark), `diagram-editor.tsx`, `editor-canvas.tsx` (types).
+
 ### 2026-03-05 – Draggable Tab Reordering
 **Tab bar drag-and-drop**: Diagram tabs can be reordered by dragging. Each tab shows a grip icon when reordering is available (2+ tabs). Drag a tab onto another to insert before it. Uses native HTML5 drag-and-drop. Order persisted via localStorage (`dw:tabs`). Modified: `tab-bar.tsx` (onTabReorder, draggable, GripVertical), `use-diagram-tabs.ts` (reorderTabs), `diagram-editor.tsx` (pass reorderTabs).
 

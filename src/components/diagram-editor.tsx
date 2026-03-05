@@ -322,6 +322,7 @@ export default function DiagramEditor() {
   const {
     tabs,
     activeTabId,
+    isLoaded,
     activeTab,
     createTab,
     switchTab,
@@ -1556,7 +1557,7 @@ export default function DiagramEditor() {
 
   const handleExport = async (options: {
     format: 'png' | 'gif';
-    backgroundColor: 'transparent' | 'white';
+    backgroundColor: 'transparent' | 'white' | 'dark';
     quality?: 'low' | 'medium' | 'high';
     fps?: number;
     durationSeconds?: number;
@@ -2354,6 +2355,7 @@ export default function DiagramEditor() {
         setRules={setRules}
         tabs={tabs}
         activeTabId={activeTabId}
+        isLoaded={isLoaded}
         switchTab={switchTab}
         handleTabClose={handleTabClose}
         reorderTabs={reorderTabs}
@@ -2509,6 +2511,7 @@ function DiagramEditorInner({
   setRules,
   tabs,
   activeTabId,
+  isLoaded,
   switchTab,
   handleTabClose,
   reorderTabs,
@@ -2734,14 +2737,20 @@ function DiagramEditorInner({
                     onRulesChange={setRules}
                     onStartTutorial={handleStartTutorial}
                 />
-                {activeTabId && (
-                  <TabBar
-                    tabs={tabs}
-                    activeTabId={activeTabId}
-                    onTabSelect={switchTab}
-                    onTabClose={handleTabClose}
-                    onTabReorder={reorderTabs}
-                  />
+                {!isLoaded ? (
+                  <div className="flex items-center gap-1 border-b bg-card px-3 py-2 text-sm text-muted-foreground">
+                    Loading tabs…
+                  </div>
+                ) : (
+                  activeTabId && (
+                    <TabBar
+                      tabs={tabs}
+                      activeTabId={activeTabId}
+                      onTabSelect={switchTab}
+                      onTabClose={handleTabClose}
+                      onTabReorder={reorderTabs}
+                    />
+                  )
                 )}
                 <input
                     type="file"
