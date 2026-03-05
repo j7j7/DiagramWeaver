@@ -1,6 +1,18 @@
 import type { DiagramData, DiagramConnectionData } from "./types";
 import type { PositionedNode, PositionedGroup } from "@/components/editor/canvas-constants";
 
+/** Generate a unique connection id for new connections */
+export function generateConnectionId(): string {
+  return `conn-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
+/** Ensure all connections have unique ids. Mutates and returns connections. */
+export function ensureConnectionIds(connections: DiagramConnectionData[]): DiagramConnectionData[] {
+  return connections.map((c, idx) =>
+    c.id ? c : { ...c, id: `conn-${idx}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}` }
+  );
+}
+
 export interface ConnectionSlotResult {
   /** Sorted items (nodes, then zones) in visual order: index 0 = back, last = front */
   sortedItemIds: string[];

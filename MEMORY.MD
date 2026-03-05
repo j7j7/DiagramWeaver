@@ -1,6 +1,15 @@
 # MEMORY.MD
 
-## DiagramWeaver - Latest Features and Functions (Updated 2026-03-04)
+## DiagramWeaver - Latest Features and Functions (Updated 2026-03-05)
+
+### 2026-03-05 – Connector Line Animation Defaults
+**Defaults updated**: anim size 2 (was 1), shape-size spacing 2 (was 1). Default animation colour when not set: 50% transparent of the line colour (via `colorWithHalfOpacity()`). Modified: `connection-animation.ts`, `bezier-connection.tsx`.
+
+### 2026-03-05 – Multiple Same-Direction Connections (A > B and A > B)
+**Multiple connections** between the same two nodes (A→B and A→B) are now supported. Previously only A→B and B→A (bidirectional) were allowed. **Data model**: Added optional `id` to `DiagramConnectionData`; new connections get unique ids via `generateConnectionId()`; `ensureConnectionIds()` assigns ids where missing. **Backward compatibility with legacy JSON**: `ensureConnectionIds` runs in: `setDiagramData` (covers undo/redo, JSON edit, paste); `createNewTab` and tab restore from localStorage (`use-diagram-tabs`); `parseUnknownJsonToDiagramData` and Mermaid imports; `viewer-utils` on load. Existing diagrams without connection ids get ids assigned on load. **Selection/update/delete**: All handlers accept optional `connectionId` to target a specific connection. **JSON**: Connection `id` is persisted; load/save works. Modified: `types.ts`, `schemas.ts`, `connection-order-utils.ts`, `diagram-editor.tsx`, `use-diagram-tabs.ts`, `canvas-connections.tsx`, `context-toolbar.tsx`, `connection-context-modal.tsx`, `connection-waypoint-handles.tsx`, `viewer-utils.ts`, `properties-panel.tsx`, `component-sidebar.tsx`, `top-menu-bar.tsx`, `editor-canvas.tsx`.
+
+### 2026-03-05 – Editor Animation Connector: Click Canvas to Deselect Stops Animations (Same as Viewer)
+When **animation toggle-on-click** (Ctrl+Alt+C) is enabled in the editor, clicking the canvas to deselect now stops all connection animations—matching the viewer mode. Logic: when `animationToggleOnClickEnabled` is on, `animationFilterSourceIds` restricts animations to the selected node's chain; when selection is cleared (canvas click), an empty set is passed so no animations run. **Select/re-select fix**: Toggle runs only when re-clicking an already-selected node. When selecting a node (clicking when it wasn't selected), its chain is explicitly enabled so animations start immediately—avoids needing two clicks after deselect. Modified: `diagram-editor.tsx`, `editor-canvas.tsx`.
 
 ### 2026-03-04 – Viewer "Show Animations for Selected Only" Uses Chain (Same as Editor)
 In the viewer, when "Show animations for selected only" is on and a node is selected, animations now show the full downstream chain (B→C, C→D when selecting B), matching the editor. Added `animationFilterSourceIds` to CanvasConnections; viewer page computes chain via `getDownstreamAnimationChainNodes`. Modified: `canvas-connections.tsx`, `viewer/page.tsx`, `viewer-canvas.tsx`.

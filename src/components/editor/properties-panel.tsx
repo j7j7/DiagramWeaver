@@ -18,7 +18,8 @@ interface PropertiesPanelProps {
   onConnectionUpdate?: (
     from: string,
     to: string,
-    updates: { metaData?: Record<string, string> }
+    updates: { metaData?: Record<string, string> },
+    connectionId?: string
   ) => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -89,8 +90,8 @@ export function PropertiesPanel({
       if (selectedItem.itemType === "node") {
         onItemUpdate({ ...selectedItem, metaData: newMetaData });
       } else if (selectedItem.itemType === "edge" && onConnectionUpdate) {
-        const edge = selectedItem as { from: string; to: string };
-        onConnectionUpdate(edge.from, edge.to, { metaData: newMetaData });
+        const edge = selectedItem as { from: string; to: string; id?: string };
+        onConnectionUpdate(edge.from, edge.to, { metaData: newMetaData }, edge.id);
       }
     },
     [selectedItem, onItemUpdate, onConnectionUpdate, isReadOnly]

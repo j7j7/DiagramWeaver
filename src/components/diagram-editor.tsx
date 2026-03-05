@@ -70,7 +70,8 @@ import {
   getItemCount
 } from '@/lib/rendering-order-utils';
 import { performAutoLayout } from '@/lib/auto-layout';
-import { DEFAULT_CONNECTION_ANIMATION, toConnectionAnimationPatch } from '@/lib/connection-animation';
+import { generateConnectionId, ensureConnectionIds } from '@/lib/connection-order-utils';
+import { DEFAULT_CONNECTION_ANIMATION, toConnectionAnimationPatch, getDownstreamAnimationChainNodes } from '@/lib/connection-animation';
 
 export type SelectedItem = (
   | (DiagramNodeData & {
@@ -265,6 +266,7 @@ export default function DiagramEditor() {
   const [pendingAnimationUpdate, setPendingAnimationUpdate] = React.useState<{
     from: string;
     to: string;
+    connectionId?: string;
     mode: 'enable' | 'disable';
     updates: {
       text?: string;
@@ -355,7 +357,9 @@ export default function DiagramEditor() {
   const setDiagramData = React.useCallback((updater: DiagramData | ((prev: DiagramData) => DiagramData)) => {
     if (!activeTabId) return;
     const newData = typeof updater === 'function' ? updater(diagramData) : updater;
-    updateActiveTab({ diagramData: newData });
+    // Ensure connections have ids (supports legacy JSON and undo/redo/paste)
+    const connections = ensureConnectionIds(newData.connections || []);
+    updateActiveTab({ diagramData: { ...newData, connections } });
   }, [activeTabId, diagramData, updateActiveTab]);
 
   const setSelectedItem = React.useCallback((updater: SelectedItem | null | ((prev: SelectedItem | null) => SelectedItem | null)) => {
@@ -370,6 +374,18 @@ export default function DiagramEditor() {
     setDiagramData,
     toast
   });
+
+  // When animation toggle-on-click mode is on: show animations only for selected node's chain.
+  // Clicking canvas to deselect stops animations (same as viewer mode).
+  const effectiveAnimationFilterIds = React.useMemo(() => {
+    if (!animationToggleOnClickEnabled || !animationConnectionsEnabled) return undefined;
+    const displayData = layers.filteredDiagramData ?? diagramData;
+    const connections = displayData?.connections ?? [];
+    if (selectedItem?.itemType === 'node' && selectedItem?.id && connections.length > 0) {
+      return getDownstreamAnimationChainNodes(selectedItem.id, connections);
+    }
+    return new Set<string>(); // Empty set = no animations when deselected
+  }, [animationToggleOnClickEnabled, animationConnectionsEnabled, selectedItem, layers.filteredDiagramData, diagramData]);
 
   const setSelectedItemIds = React.useCallback((updater: Set<string> | ((prev: Set<string>) => Set<string>)) => {
     if (!activeTabId) return;
@@ -595,9 +611,12 @@ export default function DiagramEditor() {
         return;
       }
 
-      const connection = diagramData.connections.find(conn => `${conn.from}-${conn.to}` === id);
+      const connection = diagramData.connections.find(conn =>
+        (conn as DiagramConnectionData).id === id || `${conn.from}-${conn.to}` === id
+      );
       if (connection) {
-        items.push({ ...connection, itemType: 'edge' as const, id });
+        const connId = (connection as DiagramConnectionData).id ?? id;
+        items.push({ ...connection, itemType: 'edge' as const, id: connId });
       }
     });
     
@@ -719,9 +738,11 @@ export default function DiagramEditor() {
         newNodes = prevData.nodes.filter(n => n.id !== itemToDelete.id);
         newConnections = prevData.connections.filter((e: { from: string; to: string }) => e.from !== itemToDelete.id && e.to !== itemToDelete.id);
       } else if (itemToDelete.itemType === 'edge') {
-        newConnections = prevData.connections.filter((e: { from: string; to: string }) => 
-          !(e.from === itemToDelete.from && e.to === itemToDelete.to)
-        );
+        const edgeItem = itemToDelete as { from: string; to: string; id?: string };
+        newConnections = prevData.connections.filter((e: DiagramConnectionData) => {
+          if (edgeItem.id && (e as DiagramConnectionData).id) return (e as DiagramConnectionData).id !== edgeItem.id;
+          return !(e.from === edgeItem.from && e.to === edgeItem.to);
+        });
       }
 
       const updatedData = { ...prevData, nodes: newNodes, connections: newConnections };
@@ -838,6 +859,7 @@ export default function DiagramEditor() {
     const connectionOptions = (window as any).pendingConnectionOptions || {};
     
     const newConnection: DiagramConnectionData = { 
+      id: generateConnectionId(),
       from: sourceId,
       to: targetItem.id,
       style: connectionOptions.style || 'bezier',
@@ -849,17 +871,10 @@ export default function DiagramEditor() {
     delete (window as any).pendingConnectionSourceId;
     delete (window as any).pendingConnectionOptions;
     
-    // Avoid creating duplicate connections
-    const connectionExists = diagramData.connections.some(
-      (edge: any) => (edge.from === newConnection.from && edge.to === newConnection.to)
-    );
-
-    if (!connectionExists) {
-      setDiagramData(prevData => ({
-        ...prevData,
-        connections: [...prevData.connections, newConnection]
-      }));
-    }
+    setDiagramData(prevData => ({
+      ...prevData,
+      connections: [...prevData.connections, newConnection]
+    }));
     
     setIsConnectMode(false);
     setSelectedItem(null); // Deselect after connecting
@@ -885,14 +900,18 @@ export default function DiagramEditor() {
     toast({ title: 'Disconnected', description: 'All connections to/from this item have been removed.' });
   };
 
-  const disconnectConnection = (from: string, to: string) => {
+  const disconnectConnection = (from: string, to: string, connectionId?: string) => {
     setDiagramData(prevData => ({
       ...prevData,
-      connections: prevData.connections.filter((e: any) => !(e.from === from && e.to === to)),
+      connections: prevData.connections.filter((e: DiagramConnectionData) => {
+        if (connectionId && (e as DiagramConnectionData).id) return (e as DiagramConnectionData).id !== connectionId;
+        return !(e.from === from && e.to === to);
+      }),
     }));
-    // If this connection was selected, deselect it
-    if (selectedItem && selectedItem.itemType === 'edge' && selectedItem.from === from && selectedItem.to === to) {
-      setSelectedItem(null);
+    if (selectedItem && selectedItem.itemType === 'edge') {
+      const match = (selectedItem.from === from && selectedItem.to === to) &&
+        (!connectionId || (selectedItem as { id?: string }).id === connectionId);
+      if (match) setSelectedItem(null);
     }
     toast({ title: 'Connection Disconnected', description: 'Connection has been removed.' });
   };
@@ -967,6 +986,7 @@ export default function DiagramEditor() {
             throw new Error(`Sequence diagram parse issues: ${errMsg}`);
           }
           const completeData = sequenceDiagramToDiagramData(parsed);
+          completeData.connections = ensureConnectionIds(completeData.connections || []);
           setDiagramData({ nodes: [], connections: [], groupings: [] });
           setTimeout(() => {
             setDiagramData(completeData);
@@ -987,6 +1007,7 @@ export default function DiagramEditor() {
             throw new Error(`Class diagram parse issues: ${errMsg}`);
           }
           let completeData = classDiagramToDiagramData(parsed);
+          completeData.connections = ensureConnectionIds(completeData.connections || []);
           setDiagramData({ nodes: [], connections: [], groupings: [] });
           setTimeout(() => {
             setDiagramData(completeData);
@@ -1030,9 +1051,10 @@ export default function DiagramEditor() {
     if (!result.success) {
       throw new Error(`Invalid diagram format: ${result.error.message}`);
     }
+    const connections = ensureConnectionIds(result.data.connections || []);
     return {
       nodes: result.data.nodes || [],
-      connections: result.data.connections || [],
+      connections,
       groupings: result.data.groupings,
       layers: result.data.layers,
     };
@@ -1088,6 +1110,7 @@ export default function DiagramEditor() {
             const jsonData = JSON.parse(text);
             completeData = parseUnknownJsonToDiagramData(jsonData);
           }
+          completeData.connections = ensureConnectionIds(completeData.connections || []);
 
           setDiagramData({ nodes: [], connections: [], groupings: [] });
           setTimeout(() => {
@@ -1146,18 +1169,23 @@ export default function DiagramEditor() {
       waypoints?: Array<{ x: number; y: number; id?: string }>;
       metaData?: Record<string, string>;
       animation?: DiagramConnectionData['animation'];
-    }
+    },
+    connectionId?: string
   ) => {
     setDiagramData(prevData => ({
       ...prevData,
-      connections: prevData.connections.map(conn =>
-        (conn.from === from && conn.to === to)
-          ? { ...conn, ...updates }
-          : conn
-      )
+      connections: prevData.connections.map(conn => {
+        const match = connectionId
+          ? (conn as DiagramConnectionData).id === connectionId
+          : (conn.from === from && conn.to === to);
+        return match ? { ...conn, ...updates } : conn;
+      })
     }));
-    if (selectedItem && selectedItem.itemType === 'edge' && selectedItem.from === from && selectedItem.to === to) {
-      setSelectedItem({ ...selectedItem, ...updates });
+    if (selectedItem && selectedItem.itemType === 'edge') {
+      const match = connectionId
+        ? (selectedItem as { id?: string }).id === connectionId
+        : (selectedItem.from === from && selectedItem.to === to);
+      if (match) setSelectedItem({ ...selectedItem, ...updates });
     }
   }, [selectedItem, setDiagramData, setSelectedItem]);
 
@@ -1181,24 +1209,25 @@ export default function DiagramEditor() {
       metaData?: Record<string, string>;
       animation?: DiagramConnectionData['animation'];
     },
-    selectedConnectionIds: string[]
+    selectedConnectionIds: string[],
+    currentConnectionId?: string
   ) => {
     setDiagramData((prevData) => ({
       ...prevData,
       connections: prevData.connections.map((conn) => {
-        const connectionId = `${conn.from}-${conn.to}`;
-        if (conn.from === from && conn.to === to) {
-          return { ...conn, ...updates };
-        }
-        if (selectedConnectionIds.includes(connectionId) && updates.animation) {
+        const connId = (conn as DiagramConnectionData).id;
+        const isCurrent = currentConnectionId ? connId === currentConnectionId : (conn.from === from && conn.to === to);
+        if (isCurrent) return { ...conn, ...updates };
+        if (selectedConnectionIds.includes(connId ?? `${conn.from}-${conn.to}`) && updates.animation) {
           return { ...conn, animation: updates.animation };
         }
         return conn;
       }),
     }));
 
-    if (selectedItem && selectedItem.itemType === 'edge' && selectedItem.from === from && selectedItem.to === to) {
-      setSelectedItem({ ...selectedItem, ...updates });
+    if (selectedItem && selectedItem.itemType === 'edge') {
+      const match = currentConnectionId ? (selectedItem as { id?: string }).id === currentConnectionId : (selectedItem.from === from && selectedItem.to === to);
+      if (match) setSelectedItem({ ...selectedItem, ...updates });
     }
   }, [selectedItem, setDiagramData, setSelectedItem]);
 
@@ -1209,14 +1238,16 @@ export default function DiagramEditor() {
     setPendingAnimationUpdate(null);
   }, []);
 
-  const handleConnectionUpdate = (from: string, to: string, updates: { text?: string; color?: string; textPosition?: number; lineWidth?: number; shadow?: boolean; style?: 'bezier'; curvature?: number; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean; arrow?: boolean; waypoints?: Array<{ x: number; y: number; id?: string }>; metaData?: Record<string, string>; animation?: DiagramConnectionData['animation'] }) => {
-    const currentConnectionId = `${from}-${to}`;
-    const currentConnection = diagramData.connections.find((conn) => conn.from === from && conn.to === to);
+  const handleConnectionUpdate = (from: string, to: string, updates: { text?: string; color?: string; textPosition?: number; lineWidth?: number; shadow?: boolean; style?: 'bezier'; curvature?: number; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean; arrow?: boolean; waypoints?: Array<{ x: number; y: number; id?: string }>; metaData?: Record<string, string>; animation?: DiagramConnectionData['animation'] }, connectionId?: string) => {
+    const effectiveConnId = connectionId ?? (selectedItem?.itemType === 'edge' ? (selectedItem as { id?: string }).id : undefined);
+    const currentConnection = diagramData.connections.find((conn) =>
+      effectiveConnId ? (conn as DiagramConnectionData).id === effectiveConnId : (conn.from === from && conn.to === to)
+    );
     const isEnablingAnimation = updates.animation?.enabled === true && currentConnection?.animation?.enabled !== true;
     const isDisablingAnimation = updates.animation?.enabled === false && currentConnection?.animation?.enabled === true;
     const selectedConnectionIds = Array.from(selectedItemIds).filter((id) => {
-      if (id === currentConnectionId) return false;
-      return diagramData.connections.some((conn) => `${conn.from}-${conn.to}` === id);
+      if (effectiveConnId && id === effectiveConnId) return false;
+      return diagramData.connections.some((conn) => (conn as DiagramConnectionData).id === id || `${conn.from}-${conn.to}` === id);
     });
 
     if (isEnablingAnimation || isDisablingAnimation) {
@@ -1224,6 +1255,7 @@ export default function DiagramEditor() {
         setPendingAnimationUpdate({
           from,
           to,
+          connectionId: effectiveConnId,
           mode: isDisablingAnimation ? 'disable' : 'enable',
           updates,
           selectedConnectionIds,
@@ -1234,11 +1266,11 @@ export default function DiagramEditor() {
     }
 
     if (updates.animation && selectedConnectionIds.length > 0) {
-      applyAnimationToCurrentAndSelected(from, to, updates, selectedConnectionIds);
+      applyAnimationToCurrentAndSelected(from, to, updates, selectedConnectionIds, effectiveConnId);
       return;
     }
 
-    applyConnectionUpdates(from, to, updates);
+    applyConnectionUpdates(from, to, updates, effectiveConnId);
   };
 
   const handleAnimationApplyCurrentOnly = React.useCallback(() => {
@@ -1246,7 +1278,8 @@ export default function DiagramEditor() {
     applyConnectionUpdates(
       pendingAnimationUpdate.from,
       pendingAnimationUpdate.to,
-      pendingAnimationUpdate.updates
+      pendingAnimationUpdate.updates,
+      pendingAnimationUpdate.connectionId
     );
     resetPendingAnimationDialogs();
     setAnimationCurrentOnlyDialogOpen(true);
@@ -1262,8 +1295,8 @@ export default function DiagramEditor() {
     }
 
     const hasOtherExistingAnimation = diagramData.connections.some((conn) => {
-      const connectionId = `${conn.from}-${conn.to}`;
-      if (!pendingAnimationUpdate.selectedConnectionIds.includes(connectionId)) return false;
+      const connId = (conn as DiagramConnectionData).id ?? `${conn.from}-${conn.to}`;
+      if (!pendingAnimationUpdate.selectedConnectionIds.includes(connId)) return false;
       return hasConnectionAnimationSettings(conn);
     });
 
@@ -1276,7 +1309,8 @@ export default function DiagramEditor() {
       pendingAnimationUpdate.from,
       pendingAnimationUpdate.to,
       pendingAnimationUpdate.updates,
-      pendingAnimationUpdate.selectedConnectionIds
+      pendingAnimationUpdate.selectedConnectionIds,
+      pendingAnimationUpdate.connectionId
     );
     resetPendingAnimationDialogs();
   }, [pendingAnimationUpdate, diagramData.connections, hasConnectionAnimationSettings, applyAnimationToCurrentAndSelected, resetPendingAnimationDialogs]);
@@ -1287,7 +1321,8 @@ export default function DiagramEditor() {
       pendingAnimationUpdate.from,
       pendingAnimationUpdate.to,
       pendingAnimationUpdate.updates,
-      pendingAnimationUpdate.selectedConnectionIds
+      pendingAnimationUpdate.selectedConnectionIds,
+      pendingAnimationUpdate.connectionId
     );
     resetPendingAnimationDialogs();
   }, [pendingAnimationUpdate, applyAnimationToCurrentAndSelected, resetPendingAnimationDialogs]);
@@ -1298,16 +1333,18 @@ export default function DiagramEditor() {
       pendingAnimationUpdate.from,
       pendingAnimationUpdate.to,
       pendingAnimationUpdate.updates,
-      pendingAnimationUpdate.selectedConnectionIds
+      pendingAnimationUpdate.selectedConnectionIds,
+      pendingAnimationUpdate.connectionId
     );
     resetPendingAnimationDialogs();
   }, [pendingAnimationUpdate, applyAnimationToCurrentAndSelected, resetPendingAnimationDialogs]);
 
-  const handleConnectionWaypointMove = (from: string, to: string, index: number, newPos: { x: number; y: number }) => {
+  const handleConnectionWaypointMove = (from: string, to: string, index: number, newPos: { x: number; y: number }, connectionId?: string) => {
     setDiagramData(prevData => ({
       ...prevData,
       connections: prevData.connections.map(conn => {
-        if (conn.from !== from || conn.to !== to || !conn.waypoints) return conn;
+        const match = connectionId ? (conn as DiagramConnectionData).id === connectionId : (conn.from === from && conn.to === to);
+        if (!match || !conn.waypoints) return conn;
         const updated = [...conn.waypoints];
         if (index >= 0 && index < updated.length) {
           updated[index] = { ...updated[index], x: newPos.x, y: newPos.y };
@@ -1317,8 +1354,10 @@ export default function DiagramEditor() {
     }));
   };
 
-  const handleConnectionWaypointAdd = (from: string, to: string) => {
-    const conn = diagramData.connections.find((c) => c.from === from && c.to === to);
+  const handleConnectionWaypointAdd = (from: string, to: string, connectionId?: string) => {
+    const conn = diagramData.connections.find((c) =>
+      connectionId ? (c as DiagramConnectionData).id === connectionId : (c.from === from && c.to === to)
+    );
     if (!conn) return;
     const existing = conn.waypoints ?? [];
     const fromNode = diagramData.nodes.find((n) => n.id === from) || diagramData.zones?.find((z) => z.id === from);
@@ -1343,14 +1382,18 @@ export default function DiagramEditor() {
       midY = 150;
     }
     const newWaypoint = { x: Math.round(midX), y: Math.round(midY), id: `wp-${Date.now()}` };
-    handleConnectionUpdate(from, to, { waypoints: [...existing, newWaypoint] });
+    const connId = connectionId ?? (conn as DiagramConnectionData).id;
+    handleConnectionUpdate(from, to, { waypoints: [...existing, newWaypoint] }, connId);
   };
 
-  const handleConnectionWaypointRemove = (from: string, to: string, index: number) => {
-    const conn = diagramData.connections.find((c) => c.from === from && c.to === to);
+  const handleConnectionWaypointRemove = (from: string, to: string, index: number, connectionId?: string) => {
+    const conn = diagramData.connections.find((c) =>
+      connectionId ? (c as DiagramConnectionData).id === connectionId : (c.from === from && c.to === to)
+    );
     if (!conn?.waypoints) return;
     const updated = conn.waypoints.filter((_, i) => i !== index);
-    handleConnectionUpdate(from, to, { waypoints: updated.length ? updated : undefined });
+    const connId = connectionId ?? (conn as DiagramConnectionData).id;
+    handleConnectionUpdate(from, to, { waypoints: updated.length ? updated : undefined }, connId);
   };
 
   const handleConnectionAnimationBulkApply = (
@@ -1453,7 +1496,7 @@ export default function DiagramEditor() {
     
     diagramData.nodes.forEach(node => allIds.add(node.id));
     diagramData.connections.forEach(connection => {
-      allIds.add(`${connection.from}-${connection.to}`);
+      allIds.add((connection as DiagramConnectionData).id ?? `${connection.from}-${connection.to}`);
     });
     
     setSelectedItemIds(allIds);
@@ -1465,9 +1508,12 @@ export default function DiagramEditor() {
         setSelectedItem({ ...nodeItem, itemType: 'node' });
         return;
       }
-      const connection = diagramData.connections.find(conn => `${conn.from}-${conn.to}` === firstId);
+      const connection = diagramData.connections.find(conn =>
+        (conn as DiagramConnectionData).id === firstId || `${conn.from}-${conn.to}` === firstId
+      );
       if (connection) {
-        setSelectedItem({ ...connection, itemType: 'edge', id: firstId });
+        const connId = (connection as DiagramConnectionData).id ?? firstId;
+        setSelectedItem({ ...connection, itemType: 'edge' as const, id: connId });
       }
     } else {
       setSelectedItem(null);
@@ -1559,8 +1605,8 @@ export default function DiagramEditor() {
       
       // Update connections
       updatedDiagramData.connections = updatedDiagramData.connections.map(connection => {
-        const connectionId = `${connection.from}-${connection.to}`;
-        if (selectedItemIds.has(connectionId)) {
+        const connId = (connection as DiagramConnectionData).id ?? `${connection.from}-${connection.to}`;
+        if (selectedItemIds.has(connId)) {
           return themeManager.applyThemeToItem(connection, theme) as DiagramConnectionData;
         }
         return connection;
@@ -2251,6 +2297,7 @@ export default function DiagramEditor() {
         setAnimationConnectionsEnabled={setAnimationConnectionsEnabled}
         animationToggleOnClickEnabled={animationToggleOnClickEnabled}
         setAnimationToggleOnClickEnabled={setAnimationToggleOnClickEnabled}
+        effectiveAnimationFilterIds={effectiveAnimationFilterIds}
         animationDisabledSources={animationDisabledSources}
         setAnimationDisabledSources={setAnimationDisabledSources}
         isReadOnly={isReadOnly}
@@ -2403,6 +2450,7 @@ function DiagramEditorInner({
   setAnimationConnectionsEnabled,
   animationToggleOnClickEnabled,
   setAnimationToggleOnClickEnabled,
+  effectiveAnimationFilterIds,
   animationDisabledSources,
   setAnimationDisabledSources,
   isReadOnly,
@@ -2740,6 +2788,7 @@ function DiagramEditorInner({
                     connectionsBehindNodesEnabled={connectionsBehindNodesEnabled}
                     animationConnectionsEnabled={animationConnectionsEnabled}
                     animationToggleOnClickEnabled={animationToggleOnClickEnabled}
+                    animationFilterSourceIds={effectiveAnimationFilterIds}
                     animationDisabledSources={animationDisabledSources}
                     onAnimationDisabledSourcesChange={setAnimationDisabledSources}
                     onResourceActivateAtPosition={handleResourceActivateAtPosition}

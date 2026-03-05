@@ -121,6 +121,8 @@ export interface ScratchPadItem {
 }
 
 export interface DiagramConnectionData {
+  /** Unique identifier for the connection. Required when multiple connections exist between same nodes. */
+  id?: string;
   from: string;
   to: string;
   color?: string; // Line color for this specific connection

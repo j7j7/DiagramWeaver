@@ -18,11 +18,11 @@ interface ConnectionContextModalProps {
   onClose: () => void;
   connection: DiagramConnectionData;
   diagramData: DiagramData;
-  onConnectionUpdate: (from: string, to: string, updates: Record<string, unknown>) => void;
+  onConnectionUpdate: (from: string, to: string, updates: Record<string, unknown>, connectionId?: string) => void;
   onConnectionAnimationBulkApply?: (sourceId: string, direction: 'outbound' | 'inbound', animation: DiagramConnectionData['animation']) => void;
-  onConnectionDisconnect?: (from: string, to: string) => void;
-  onConnectionWaypointAdd?: (from: string, to: string) => void;
-  onConnectionWaypointRemove?: (from: string, to: string, index: number) => void;
+  onConnectionDisconnect?: (from: string, to: string, connectionId?: string) => void;
+  onConnectionWaypointAdd?: (from: string, to: string, connectionId?: string) => void;
+  onConnectionWaypointRemove?: (from: string, to: string, index: number, connectionId?: string) => void;
   isReadOnly?: boolean;
 }
 
@@ -43,9 +43,9 @@ export function ConnectionContextModal({
   const panelRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
 
-  // Use live connection from diagramData so inputs stay in sync when we update
-  const liveConnection = diagramData?.connections?.find(
-    (c) => c.from === connection.from && c.to === connection.to
+  const connId = connection.id;
+  const liveConnection = diagramData?.connections?.find((c) =>
+    connId ? c.id === connId : (c.from === connection.from && c.to === connection.to)
   ) ?? connection;
 
   const fromNode = diagramData?.nodes.find((n) => n.id === connection.from) ||
@@ -66,32 +66,27 @@ export function ConnectionContextModal({
   const canRemoveWaypoint = !!onConnectionWaypointRemove && !isReadOnly;
 
   const handleArrowToggle = () => {
-    onConnectionUpdate(connection.from, connection.to, {
-      arrow: !hasArrow,
-      toArrow: !hasArrow,
-    });
+    onConnectionUpdate(connection.from, connection.to, { arrow: !hasArrow, toArrow: !hasArrow }, connId);
   };
 
   const handleTextChange = (text: string) => {
-    onConnectionUpdate(connection.from, connection.to, { text });
+    onConnectionUpdate(connection.from, connection.to, { text }, connId);
   };
 
   const handleColorChange = (color: string) => {
-    onConnectionUpdate(connection.from, connection.to, { color });
+    onConnectionUpdate(connection.from, connection.to, { color }, connId);
   };
 
   const handleTextPositionChange = (value: number) => {
-    onConnectionUpdate(connection.from, connection.to, { textPosition: value });
+    onConnectionUpdate(connection.from, connection.to, { textPosition: value }, connId);
   };
 
   const handleLineWidthChange = (value: number) => {
-    onConnectionUpdate(connection.from, connection.to, { lineWidth: value });
+    onConnectionUpdate(connection.from, connection.to, { lineWidth: value }, connId);
   };
 
   const handleShadowToggle = () => {
-    onConnectionUpdate(connection.from, connection.to, {
-      shadow: !(liveConnection.shadow || false),
-    });
+    onConnectionUpdate(connection.from, connection.to, { shadow: !(liveConnection.shadow || false) }, connId);
   };
 
   // Initialize position from props when modal opens
@@ -263,7 +258,7 @@ export function ConnectionContextModal({
               size="sm"
               className="h-7 px-2 text-destructive hover:text-destructive shrink-0"
               onClick={() => {
-                onConnectionDisconnect(connection.from, connection.to);
+                onConnectionDisconnect(connection.from, connection.to, connId);
                 onClose();
               }}
             >
@@ -276,7 +271,7 @@ export function ConnectionContextModal({
           <ConnectionAnimationControls
             connection={liveConnection}
             inheritedConnectionColor={connectionColor}
-            onConnectionUpdate={(from, to, updates) => onConnectionUpdate(from, to, updates as Record<string, unknown>)}
+            onConnectionUpdate={(from, to, updates) => onConnectionUpdate(from, to, updates as Record<string, unknown>, connId)}
             onBulkApply={onConnectionAnimationBulkApply}
             isReadOnly={isReadOnly}
           />
@@ -291,7 +286,7 @@ export function ConnectionContextModal({
                 size="sm"
                 className="h-7 px-2"
                 onClick={() =>
-                  onConnectionWaypointAdd?.(connection.from, connection.to)
+                  onConnectionWaypointAdd?.(connection.from, connection.to, connId)
                 }
               >
                 <Plus className="h-3 w-3 mr-1" />
@@ -314,7 +309,7 @@ export function ConnectionContextModal({
                       size="sm"
                       className="h-6 w-6 p-0 text-destructive hover:text-destructive shrink-0"
                       onClick={() =>
-                        onConnectionWaypointRemove?.(connection.from, connection.to, idx)
+                        onConnectionWaypointRemove?.(connection.from, connection.to, idx, connId)
                       }
                     >
                       <X className="h-3 w-3" />

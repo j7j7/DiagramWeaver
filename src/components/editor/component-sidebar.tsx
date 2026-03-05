@@ -27,8 +27,8 @@ interface ComponentSidebarProps {
   onToggleJsonPanel?: () => void;
   jsonPanelOpen?: boolean;
   onFitToView?: () => void;
-  onConnectionUpdate?: (from: string, to: string, updates: { text?: string; textPosition?: number; color?: string; style?: 'bezier'; curvature?: number; preferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; arrow?: boolean; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean }) => void;
-  onConnectionDisconnect?: (from: string, to: string) => void;
+  onConnectionUpdate?: (from: string, to: string, updates: { text?: string; textPosition?: number; color?: string; style?: 'bezier'; curvature?: number; preferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; arrow?: boolean; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean }, connectionId?: string) => void;
+  onConnectionDisconnect?: (from: string, to: string, connectionId?: string) => void;
   onCloseSidebar?: () => void;
   isMobile?: boolean;
   transform?: { x: number; y: number; k: number };

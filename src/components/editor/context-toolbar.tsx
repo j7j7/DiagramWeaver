@@ -64,10 +64,10 @@ interface ContextToolbarProps {
   onConnect?: (connectionOptions?: { style?: 'bezier', curvature?: number; sourceItemId?: string }) => void;
   onDisconnect?: () => void;
   onDelete?: () => void;
-  onConnectionUpdate?: (from: string, to: string, updates: { arrow?: boolean; text?: string; textPosition?: number; color?: string; lineWidth?: number; shadow?: boolean; [key: string]: any }) => void;
-  onConnectionDisconnect?: (from: string, to: string) => void;
-  onConnectionWaypointAdd?: (from: string, to: string) => void;
-  onConnectionWaypointRemove?: (from: string, to: string, index: number) => void;
+  onConnectionUpdate?: (from: string, to: string, updates: { arrow?: boolean; text?: string; textPosition?: number; color?: string; lineWidth?: number; shadow?: boolean; [key: string]: any }, connectionId?: string) => void;
+  onConnectionDisconnect?: (from: string, to: string, connectionId?: string) => void;
+  onConnectionWaypointAdd?: (from: string, to: string, connectionId?: string) => void;
+  onConnectionWaypointRemove?: (from: string, to: string, index: number, connectionId?: string) => void;
   diagramData?: DiagramData;
   onDiagramDataUpdate?: (newDiagramData: DiagramData) => void;
   onAlignObjects?: (alignment: 'top' | 'center' | 'bottom' | 'v-middle' | 'left' | 'h-center' | 'right' | 'distribute-v' | 'distribute-h') => void;
@@ -538,11 +538,11 @@ export function ContextToolbar({
 
     const handleArrowToggle = () => {
       if (onConnectionUpdate && isEdge) {
-        // Toggle arrow - if arrow is true, set to false, otherwise set to true
+        const connId = (selectedItem as { id?: string }).id;
         onConnectionUpdate(selectedItem.from, selectedItem.to, {
           arrow: !hasArrow,
           toArrow: !hasArrow
-        });
+        }, connId);
       }
     };
 
@@ -569,7 +569,7 @@ export function ContextToolbar({
             variant="ghost"
             size="sm"
             className="h-8 px-2"
-            onClick={() => onConnectionWaypointAdd?.(selectedItem.from, selectedItem.to)}
+            onClick={() => onConnectionWaypointAdd?.(selectedItem.from, selectedItem.to, (selectedItem as { id?: string }).id)}
             title="Add waypoint to route connection around obstacles"
           >
             <Plus className="h-4 w-4" />
@@ -596,7 +596,7 @@ export function ContextToolbar({
                         variant="ghost"
                         size="sm"
                         className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-                        onClick={() => onConnectionWaypointRemove?.(selectedItem.from, selectedItem.to, idx)}
+                        onClick={() => onConnectionWaypointRemove?.(selectedItem.from, selectedItem.to, idx, (selectedItem as { id?: string }).id)}
                       >
                         <X className="h-3 w-3" />
                       </Button>
@@ -1130,25 +1130,24 @@ export function ContextToolbar({
       
 
       
-      // Find the actual indices in the full connections array
-      const draggedActualIndex = newConnections.findIndex(
-        c => (c.from === draggedConnInfo.connection.from && c.to === draggedConnInfo.connection.to) ||
-             (c.from === draggedConnInfo.connection.to && c.to === draggedConnInfo.connection.from)
+      const draggedConnId = (draggedConnInfo.connection as DiagramConnectionData).id;
+      const dropConnId = (dropConnInfo.connection as DiagramConnectionData).id;
+      const draggedActualIndex = newConnections.findIndex(c =>
+        draggedConnId ? (c as DiagramConnectionData).id === draggedConnId
+          : (c.from === draggedConnInfo.connection.from && c.to === draggedConnInfo.connection.to)
       );
-      
-      const dropActualIndex = newConnections.findIndex(
-        c => (c.from === dropConnInfo.connection.from && c.to === dropConnInfo.connection.to) ||
-             (c.from === dropConnInfo.connection.to && c.to === dropConnInfo.connection.from)
+      const dropActualIndex = newConnections.findIndex(c =>
+        dropConnId ? (c as DiagramConnectionData).id === dropConnId
+          : (c.from === dropConnInfo.connection.from && c.to === dropConnInfo.connection.to)
       );
       
 
       
       if (draggedActualIndex !== -1 && dropActualIndex !== -1) {
         const draggedConnection = newConnections[draggedActualIndex];
-        
-        // Remove the dragged connection and insert at new position
         newConnections.splice(draggedActualIndex, 1);
-        newConnections.splice(dropActualIndex, 0, draggedConnection);
+        const insertIndex = dropActualIndex > draggedActualIndex ? dropActualIndex - 1 : dropActualIndex;
+        newConnections.splice(insertIndex, 0, draggedConnection);
         
 
         
@@ -1336,15 +1335,14 @@ export function ContextToolbar({
                         const textPosition = connInfo.connection.textPosition ?? 50; // Default to 50%
                         const connectionText = connInfo.connection.text || '';
                         
+                        const connId = (connInfo.connection as DiagramConnectionData).id;
                         const handleConnectionArrowToggle = () => {
                           if (onConnectionUpdate) {
                             onConnectionUpdate(
                               connInfo.connection.from,
                               connInfo.connection.to,
-                              {
-                                arrow: !hasArrow,
-                                toArrow: !hasArrow
-                              }
+                              { arrow: !hasArrow, toArrow: !hasArrow },
+                              connId
                             );
                           }
                         };
@@ -1360,9 +1358,8 @@ export function ContextToolbar({
                               onConnectionUpdate(
                                 connInfo.connection.from,
                                 connInfo.connection.to,
-                                {
-                                  color: color
-                                }
+                                { color: color },
+                                connId
                               );
                             }
                           };
@@ -1379,9 +1376,8 @@ export function ContextToolbar({
                             onConnectionUpdate(
                               connInfo.connection.from,
                               connInfo.connection.to,
-                              {
-                                textPosition: value
-                              }
+                              { textPosition: value },
+                              connId
                             );
                           }
                         };
@@ -1391,9 +1387,8 @@ export function ContextToolbar({
                             onConnectionUpdate(
                               connInfo.connection.from,
                               connInfo.connection.to,
-                              {
-                                text: text
-                              }
+                              { text: text },
+                              connId
                             );
                           }
                         };
@@ -1491,7 +1486,7 @@ export function ContextToolbar({
                               <ConnectionAnimationControls
                                 connection={connInfo.connection}
                                 inheritedConnectionColor={connectionColor}
-                                onConnectionUpdate={(from, to, updates) => onConnectionUpdate?.(from, to, updates)}
+                                onConnectionUpdate={(from, to, updates) => onConnectionUpdate?.(from, to, updates, connId)}
                                 onBulkApply={handleBulkConnectionAnimationApply}
                                 compact
                                 isReadOnly={isReadOnly}
@@ -1511,7 +1506,8 @@ export function ContextToolbar({
                                       onConnectionUpdate(
                                         connInfo.connection.from,
                                         connInfo.connection.to,
-                                        { lineWidth: width }
+                                        { lineWidth: width },
+                                        connId
                                       );
                                     }
                                   }}
@@ -1531,7 +1527,8 @@ export function ContextToolbar({
                                         onConnectionUpdate(
                                           connInfo.connection.from,
                                           connInfo.connection.to,
-                                          { shadow: !(connInfo.connection.shadow || false) }
+                                          { shadow: !(connInfo.connection.shadow || false) },
+                                          connId
                                         );
                                       }
                                     }}
@@ -1574,7 +1571,8 @@ export function ContextToolbar({
                                   if (onConnectionDisconnect) {
                                     onConnectionDisconnect(
                                       connInfo.connection.from,
-                                      connInfo.connection.to
+                                      connInfo.connection.to,
+                                      connId
                                     );
                                   }
                                 }}

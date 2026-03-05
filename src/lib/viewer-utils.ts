@@ -1,6 +1,7 @@
 import type { DiagramData, HierarchicalDiagramData } from './types';
 import { DiagramDataSchema, HierarchicalDiagramDataSchema } from './schemas';
 import { convertFromNestedHierarchy } from './nested-hierarchy';
+import { ensureConnectionIds } from './connection-order-utils';
 
 const MAX_JSON_SIZE = 5 * 1024 * 1024; // 5MB limit
 
@@ -136,9 +137,10 @@ export function validateAndConvertJson(json: unknown): DiagramData {
     throw new Error(`Invalid diagram format: ${flatResult.error.message}`);
   }
 
+  const connections = ensureConnectionIds(flatResult.data.connections || []);
   return {
     nodes: flatResult.data.nodes || [],
-    connections: flatResult.data.connections || [],
+    connections,
     groupings: flatResult.data.groupings || [],
     layers: flatResult.data.layers,
   } as DiagramData;

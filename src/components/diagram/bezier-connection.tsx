@@ -59,6 +59,23 @@ interface BezierConnectionTextProps {
 
 const MAX_RENDERED_ANIMATION_SHAPES = 2000;
 
+/** Returns color at 50% opacity. Handles hex and rgb/rgba; falls back to original if unparseable. */
+function colorWithHalfOpacity(color: string): string {
+  const hexMatch = color.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
+  if (hexMatch) {
+    const hex = hexMatch[1];
+    const r = hex.length === 3 ? parseInt(hex[0] + hex[0], 16) : parseInt(hex.slice(0, 2), 16);
+    const g = hex.length === 3 ? parseInt(hex[1] + hex[1], 16) : parseInt(hex.slice(2, 4), 16);
+    const b = hex.length === 3 ? parseInt(hex[2] + hex[2], 16) : parseInt(hex.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, 0.5)`;
+  }
+  const rgbaMatch = color.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*[\d.]+)?\s*\)$/);
+  if (rgbaMatch) {
+    return `rgba(${rgbaMatch[1]}, ${rgbaMatch[2]}, ${rgbaMatch[3]}, 0.5)`;
+  }
+  return color;
+}
+
 function formatAnimFloat(value: number): string {
   return Number.isFinite(value) ? value.toFixed(6).replace(/0+$/, '').replace(/\.$/, '') || '0' : '0';
 }
@@ -950,7 +967,7 @@ export function BezierConnection({ from, to, connectionColor, connectionData, ex
   const hasExportAnimationTime = typeof exportAnimationTimeSeconds === 'number' && Number.isFinite(exportAnimationTimeSeconds);
   const useStaticExportAnimation = shouldAnimateShapes && hasExportAnimationTime;
   const animationDuration = shouldAnimateShapes ? pathLength / speedMagnitude : 0;
-  const animationColor = animation.color || finalConnectionColor;
+  const animationColor = animation.color ? animation.color : colorWithHalfOpacity(finalConnectionColor);
   const connectionKey = `${connectionData?.from ?? from.id}-${connectionData?.to ?? to.id}`.replace(/[^a-zA-Z0-9_-]/g, '_');
   const animationPhaseResetKey = [
     animation.enabled ? '1' : '0',

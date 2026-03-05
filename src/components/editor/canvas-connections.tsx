@@ -17,13 +17,13 @@ interface CanvasConnectionsProps {
   selectedItemIds?: Set<string>;
   onItemSelect: (item: any | null, multiSelectModifier?: boolean) => void;
   closeContextMenu: () => void;
-  onConnectionDelete?: (from: string, to: string) => void;
+  onConnectionDelete?: (from: string, to: string, connectionId?: string) => void;
   /** Called when user right-clicks on a connection line */
   onConnectionContextMenu?: (e: React.MouseEvent, connection: DiagramConnectionData) => void;
   /** Called when connection properties need to be updated */
-  onConnectionUpdate?: (from: string, to: string, updates: Record<string, unknown>) => void;
+  onConnectionUpdate?: (from: string, to: string, updates: Record<string, unknown>, connectionId?: string) => void;
   /** Called when a waypoint needs to be added */
-  onConnectionWaypointAdd?: (from: string, to: string) => void;
+  onConnectionWaypointAdd?: (from: string, to: string, connectionId?: string) => void;
   /** When set, only render connections whose index is in this set (for order-aware layering) */
   connectionIndices?: Set<number>;
   /** Z-index for this connection layer when using order-aware layering (enables interleaving with nodes) */
@@ -240,8 +240,8 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
           toTotalConnections: toEdgeTotal > 0 ? toEdgeTotal : 1,
         };
 
-        // Check if this connection is selected (only highlight when connection itself is selected, not when a node is selected)
-        const edgeId = `${edge.from}-${edge.to}`;
+        // Check if this connection is selected (use connection id for multiple same from-to)
+        const edgeId = (edge as { id?: string }).id ?? `${edge.from}-${edge.to}-${index}`;
         const isConnectionHighlighted = selectedItemId === edgeId || (selectedItemIds?.has(edgeId) ?? false);
         
         // Only show delete button if a node/zone is selected and this connection is associated with it
@@ -397,28 +397,28 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
               exportAnimationTimeSeconds={exportAnimationTimeSeconds}
               animationConnectionsEnabled={animationConnectionsEnabled && (animationFilterSourceIds ? animationFilterSourceIds.has(edge.from) : (!animationFilterSourceId || edge.from === animationFilterSourceId)) && !animationDisabledSources.has(edge.from)}
               onClick={(connection, event) => {
-                // Select the connection when clicked
                 closeContextMenu();
                 if (onItemSelect) {
                   const isAdditiveSelection = event.shiftKey || event.ctrlKey || event.metaKey;
+                  const connId = (connection as { id?: string }).id ?? `${connection.from}-${connection.to}-${index}`;
                   onItemSelect({
                     ...connection,
                     itemType: 'edge',
-                    id: `${connection.from}-${connection.to}`
+                    id: connId
                   }, isAdditiveSelection);
                 }
               }}
               onContextMenu={(e, connection) => {
                 closeContextMenu();
                 if (onItemSelect) {
-                  const edgeId = `${connection.from}-${connection.to}`;
-                  const isAlreadySelected = selectedItemIds?.has(edgeId) || selectedItemId === edgeId;
+                  const connId = (connection as { id?: string }).id ?? `${connection.from}-${connection.to}-${index}`;
+                  const isAlreadySelected = selectedItemIds?.has(connId) || selectedItemId === connId;
 
                   if (!isAlreadySelected) {
                     onItemSelect({
                       ...connection,
                       itemType: 'edge',
-                      id: edgeId
+                      id: connId
                     });
                   }
                 }
@@ -439,7 +439,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
       const toItem = nodesById[edge.to] || zonesById[edge.to];
       if (!fromItem || !toItem) return null;
 
-      const edgeId = `${edge.from}-${edge.to}`;
+      const edgeId = (edge as { id?: string }).id ?? `${edge.from}-${edge.to}-${index}`;
       const isConnectionSelected = selectedItem?.itemType === 'edge' && selectedItem?.id === edgeId;
       
       if (!isConnectionSelected) return null;
@@ -624,7 +624,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                     onConnectionUpdate(edge.from, edge.to, {
                       arrow: !hasArrow,
                       toArrow: !hasArrow,
-                    });
+                    }, (edge as { id?: string }).id);
                   }
                 }}
               >
@@ -666,7 +666,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                     e.stopPropagation();
                     e.preventDefault();
                     if (onConnectionWaypointAdd) {
-                      onConnectionWaypointAdd(edge.from, edge.to);
+                      onConnectionWaypointAdd(edge.from, edge.to, (edge as { id?: string }).id);
                     }
                   }}
                 >
@@ -710,7 +710,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                     e.stopPropagation();
                     e.preventDefault();
                     if (onConnectionDelete) {
-                      onConnectionDelete(edge.from, edge.to);
+                      onConnectionDelete(edge.from, edge.to, (edge as { id?: string }).id);
                     }
                   }}
                 >

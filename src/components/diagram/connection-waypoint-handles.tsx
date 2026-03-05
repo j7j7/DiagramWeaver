@@ -11,7 +11,7 @@ interface ConnectionWaypointHandlesProps {
   waypoints: Array<{ x: number; y: number; id?: string }>;
   connectionColor: string;
   transform: Transform;
-  onWaypointMove: (from: string, to: string, index: number, newPos: { x: number; y: number }) => void;
+  onWaypointMove: (from: string, to: string, index: number, newPos: { x: number; y: number }, connectionId?: string) => void;
   disabled?: boolean;
 }
 
@@ -52,7 +52,7 @@ export function ConnectionWaypointHandles({
       const deltaY = (e.clientY - dragStartRef.current.clientY) / transform.k;
       const newX = snapToGrid(dragStartRef.current.waypointX + deltaX);
       const newY = snapToGrid(dragStartRef.current.waypointY + deltaY);
-      onWaypointMove(connection.from, connection.to, draggingIndex, { x: newX, y: newY });
+      onWaypointMove(connection.from, connection.to, draggingIndex, { x: newX, y: newY }, connection.id);
       dragStartRef.current = {
         ...dragStartRef.current,
         clientX: e.clientX,
@@ -61,7 +61,7 @@ export function ConnectionWaypointHandles({
         waypointY: newY,
       };
     },
-    [draggingIndex, connection.from, connection.to, onWaypointMove, transform.k]
+    [draggingIndex, connection.from, connection.to, connection.id, onWaypointMove, transform.k]
   );
 
   const handlePointerUp = useCallback(
@@ -81,7 +81,7 @@ export function ConnectionWaypointHandles({
       const deltaY = (e.clientY - dragStartRef.current.clientY) / transform.k;
       const newX = snapToGrid(dragStartRef.current.waypointX + deltaX);
       const newY = snapToGrid(dragStartRef.current.waypointY + deltaY);
-      onWaypointMove(connection.from, connection.to, draggingIndex, { x: newX, y: newY });
+      onWaypointMove(connection.from, connection.to, draggingIndex, { x: newX, y: newY }, connection.id);
       dragStartRef.current = {
         ...dragStartRef.current,
         clientX: e.clientX,
@@ -102,7 +102,7 @@ export function ConnectionWaypointHandles({
       document.removeEventListener("pointerup", handleGlobalPointerUp, true);
       document.removeEventListener("pointercancel", handleGlobalPointerUp, true);
     };
-  }, [draggingIndex, connection.from, connection.to, onWaypointMove, transform.k]);
+  }, [draggingIndex, connection.from, connection.to, connection.id, onWaypointMove, transform.k]);
 
   if (!waypoints.length || disabled) return null;
 

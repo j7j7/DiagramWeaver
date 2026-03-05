@@ -2,6 +2,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { DiagramData } from '@/lib/types';
 import type { SelectedItem } from '@/components/diagram-editor';
+import { ensureConnectionIds } from '@/lib/connection-order-utils';
 
 export interface TabState {
   id: string;
@@ -46,9 +47,12 @@ export function useDiagramTabs({ isClient, onToast }: UseDiagramTabsOptions) {
         // Remove historyRef from tabs (we store it separately)
         const cleanedTabs = parsedTabs.map((tab: TabState & { historyRef?: any }) => {
           const { historyRef, ...rest } = tab;
-          // Convert selectedItemIds back to Set
+          const diagramData = rest.diagramData
+            ? { ...rest.diagramData, connections: ensureConnectionIds(rest.diagramData.connections || []) }
+            : rest.diagramData;
           return {
             ...rest,
+            diagramData,
             selectedItemIds: new Set(rest.selectedItemIds || []),
             savedDataHash: JSON.stringify(rest.diagramData),
           };
@@ -95,7 +99,8 @@ export function useDiagramTabs({ isClient, onToast }: UseDiagramTabsOptions) {
   }, [tabs, activeTabId, isClient]);
 
   function createNewTab(name: string, diagramData?: DiagramData): TabState {
-    const initialDiagram = diagramData || { nodes: [], connections: [], groupings: [] };
+    const rawDiagram = diagramData || { nodes: [], connections: [], groupings: [] };
+    const initialDiagram = { ...rawDiagram, connections: ensureConnectionIds(rawDiagram.connections || []) };
     const initialHistory = [JSON.stringify(initialDiagram)];
     const tabId = `tab-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     

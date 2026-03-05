@@ -117,6 +117,7 @@ export const DiagramNodeDataSchema = z.object({
 
 // Schema for DiagramConnectionData 
 export const DiagramConnectionDataSchema = z.object({
+  id: z.string().optional(), // Unique id for multiple connections between same nodes
   from: z.string(),
   to: z.string(),
   color: z.string().optional(), // Line color for this specific connection

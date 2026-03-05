@@ -61,7 +61,7 @@ interface TopMenuBarProps {
   onConnect?: (connectionOptions?: { style?: 'bezier', curvature?: number; sourceItemId?: string }) => void;
   onDisconnect?: () => void;
   onDelete?: () => void;
-  onConnectionUpdate?: (from: string, to: string, updates: { arrow?: boolean; text?: string; textPosition?: number; color?: string; [key: string]: any }) => void;
+  onConnectionUpdate?: (from: string, to: string, updates: { arrow?: boolean; text?: string; textPosition?: number; color?: string; [key: string]: any }, connectionId?: string) => void;
   onConnectionDisconnect?: (from: string, to: string) => void;
   onConnectionWaypointAdd?: (from: string, to: string) => void;
   onConnectionWaypointRemove?: (from: string, to: string, index: number) => void;

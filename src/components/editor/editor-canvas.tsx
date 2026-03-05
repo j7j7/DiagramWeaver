@@ -65,8 +65,8 @@ interface EditorCanvasProps {
   onConnect?: (connectionOptions?: { style?: 'pathways' | 'bezier', curvature?: number; sourceItemId?: string }) => void;
   onDisconnect?: () => void;
   onConnectionDelete?: (from: string, to: string) => void;
-  onConnectionWaypointMove?: (from: string, to: string, index: number, newPos: { x: number; y: number }) => void;
-  onConnectionUpdate?: (from: string, to: string, updates: Record<string, unknown>) => void;
+  onConnectionWaypointMove?: (from: string, to: string, index: number, newPos: { x: number; y: number }, connectionId?: string) => void;
+  onConnectionUpdate?: (from: string, to: string, updates: Record<string, unknown>, connectionId?: string) => void;
   onConnectionWaypointAdd?: (from: string, to: string) => void;
   onConnectionContextMenu?: (e: React.MouseEvent, connection: DiagramConnectionData) => void;
   externalTransform?: { x: number; y: number; k: number };
@@ -84,6 +84,8 @@ interface EditorCanvasProps {
   connectionsBehindNodesEnabled?: boolean;
   animationConnectionsEnabled?: boolean;
   animationToggleOnClickEnabled?: boolean;
+  /** When set, only show animations for connections from these source node IDs. Empty set = no animations (e.g. when deselected). */
+  animationFilterSourceIds?: Set<string>;
   animationDisabledSources?: Set<string>;
   onAnimationDisabledSourcesChange?: (sources: Set<string>) => void;
   onSelectAll?: () => void;
@@ -133,7 +135,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, connectionsBehindNodesEnabled = true, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal }: EditorCanvasProps,
+   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, connectionsBehindNodesEnabled = true, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal }: EditorCanvasProps,
   ref
 ) {
   const [gifExportAnimationTimeSeconds, setGifExportAnimationTimeSeconds] = React.useState<number | null>(null);
@@ -909,16 +911,24 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     closeContextMenu();
     onResetConnectionSettingsTrigger?.(); // Reset connection settings panel when clicking on a node
     
-    // Toggle animation for this node's downstream chain (not inbound) if mode is enabled
+    // Toggle animation for this node's downstream chain (not inbound) if mode is enabled.
+    // Only toggle when re-clicking an already-selected node. When selecting a node, ensure its chain is enabled
+    // so animations start immediately (matches viewer: select=show, deselect=stop).
     if (animationToggleOnClickEnabled && !isConnectMode && onAnimationDisabledSourcesChange && diagramData?.connections) {
       const chainNodes = getDownstreamAnimationChainNodes(node.id, diagramData.connections);
       const next = new Set(animationDisabledSources);
-      if (next.has(node.id)) {
-        chainNodes.forEach((id) => next.delete(id));
+      const isAlreadySelected = selectedItemId === node.id || selectedItemIds?.has(node.id);
+      if (isAlreadySelected) {
+        if (next.has(node.id)) {
+          chainNodes.forEach((id) => next.delete(id));
+        } else {
+          chainNodes.forEach((id) => next.add(id));
+        }
+        onAnimationDisabledSourcesChange(next);
       } else {
-        chainNodes.forEach((id) => next.add(id));
+        chainNodes.forEach((id) => next.delete(id));
+        onAnimationDisabledSourcesChange(next);
       }
-      onAnimationDisabledSourcesChange(next);
     }
     
     if (isConnectMode) {
@@ -927,7 +937,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       const isAdditiveSelection = e.shiftKey || e.ctrlKey || e.metaKey;
       onItemSelect({ ...node, itemType: 'node' }, isAdditiveSelection); // Normal selection
     }
-  }, [closeContextMenu, onResetConnectionSettingsTrigger, animationToggleOnClickEnabled, isConnectMode, onNodeClickInConnectMode, onItemSelect, onAnimationDisabledSourcesChange, animationDisabledSources, diagramData]);
+  }, [closeContextMenu, onResetConnectionSettingsTrigger, animationToggleOnClickEnabled, isConnectMode, onNodeClickInConnectMode, onItemSelect, onAnimationDisabledSourcesChange, animationDisabledSources, diagramData, selectedItemId, selectedItemIds]);
 
   const handleNodeContextMenu = useCallback((e: React.MouseEvent, node: DiagramNodeData) => {
     e.stopPropagation();
@@ -1283,6 +1293,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   stackZIndex={0}
                   exportAnimationTimeSeconds={gifExportAnimationTimeSeconds}
                   animationConnectionsEnabled={animationConnectionsEnabled}
+                  animationFilterSourceIds={animationFilterSourceIds}
                   animationDisabledSources={animationDisabledSources}
                 />
                 {connectionSlots.sortedItemIds.map((itemId, i) => {
@@ -1391,6 +1402,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       stackZIndex={connZIndex}
                       exportAnimationTimeSeconds={gifExportAnimationTimeSeconds}
                       animationConnectionsEnabled={animationConnectionsEnabled}
+                      animationFilterSourceIds={animationFilterSourceIds}
                       animationDisabledSources={animationDisabledSources}
                     />
                   ) : null,
@@ -1423,6 +1435,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   stackZIndex={2 * n}
                   exportAnimationTimeSeconds={gifExportAnimationTimeSeconds}
                   animationConnectionsEnabled={animationConnectionsEnabled}
+                  animationFilterSourceIds={animationFilterSourceIds}
                   animationDisabledSources={animationDisabledSources}
                 />
               );

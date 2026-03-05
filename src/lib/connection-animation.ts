@@ -17,10 +17,10 @@ export const DEFAULT_CONNECTION_ANIMATION: NormalizedConnectionAnimation = {
   enabled: false,
   shape: 'dot',
   speed: 20,
-  size: 1,
+  size: 2,
   autoCount: true,
   shapeCount: 5,
-  spacing: 1,
+  spacing: 2,
 };
 
 const roundToStep = (value: number, step: number) => Math.round(value / step) * step;
