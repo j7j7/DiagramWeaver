@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-05)
 
+### 2026-03-05 – JSON Panel Resizable
+**User-resizable JSON panel**: The JSON editor panel can be resized by dragging the left edge. Width is persisted to localStorage (`dw:jsonEditor:width`) and restored on load. Min width 280px, max 50% of viewport. Resize handle shows a subtle vertical indicator. Modified: `json-editor-panel.tsx` (resize handle, `onWidthChange`), `diagram-editor.tsx` (pass `jsonPanelWidth`/`setJsonPanelWidth`).
+
 ### 2026-03-05 – Dark / Light Mode Toggle
 **System-wide theme toggle**: Dark and light mode now work across editor, viewer, menus, panels, and popups. **ThemeProvider** applies `dark` class to `<html>`, persisted to localStorage (`dw:theme`). Options: Light, Dark, System (follows OS `prefers-color-scheme`). **Toggle locations**: View menu (Light/Dark/System) in editor; theme button in viewer controls. **Colour-aware**: All UI uses semantic tokens (background, foreground, popover, muted, accent, border) – no dark-on-dark issues. **Updated panels**: text-styling, visual-styling, line-styling, layers, scratch-pad, uml-class-text-styling, properties, metadata-popup, tutorial-overlay, resource-browser, theme-selectors, shape-tag. Diagram node colours (user data) unchanged. Plan: `docs/DARK-LIGHT-MODE-PLAN.md`. Modified: `theme-provider.tsx`, `theme-toggle.tsx`, `layout.tsx`, `top-menu-bar.tsx`, `viewer-controls.tsx`, multiple panel/popup components.
 

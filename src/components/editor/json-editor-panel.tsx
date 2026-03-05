@@ -15,8 +15,12 @@ type Props = {
   isOpen: boolean;
   onToggleOpen: () => void;
   widthPx: number;
+  onWidthChange?: (width: number) => void;
   isReadOnly?: boolean;
 };
+
+const MIN_WIDTH = 280;
+const MAX_WIDTH_RATIO = 0.5;
 
 export function JsonEditorPanel({
   value,
@@ -24,6 +28,7 @@ export function JsonEditorPanel({
   isOpen,
   onToggleOpen,
   widthPx,
+  onWidthChange,
   isReadOnly = false,
 }: Props) {
   const [text, setText] = React.useState(() => {
@@ -35,6 +40,7 @@ export function JsonEditorPanel({
   const editorContainerRef = React.useRef<HTMLDivElement>(null);
   const [editorHeight, setEditorHeight] = React.useState<number>(0);
   const [panelWidth, setPanelWidth] = React.useState<number>(widthPx);
+  const isResizingRef = React.useRef(false);
   const scrollPositionRef = React.useRef<{ scrollLeft: number; scrollTop: number }>({ scrollLeft: 0, scrollTop: 0 });
   const lockedScrollPosition = React.useRef<{ scrollLeft: number; scrollTop: number; isLocked: boolean }>({ scrollLeft: 0, scrollTop: 0, isLocked: false });
    
@@ -43,18 +49,56 @@ export function JsonEditorPanel({
   const [isUpdating, setIsUpdating] = React.useState(false);
   const isApplyingExternalUpdate = React.useRef(false);
 
-  // Responsive panel width based on viewport
+  // Responsive panel width based on viewport (skip during user resize)
   React.useEffect(() => {
+    if (isResizingRef.current) return;
     const updateWidth = () => {
       if (typeof window === 'undefined') return;
-      const maxWidth = Math.max(300, window.innerWidth * 0.35);
-      const clamped = Math.min(Math.max(280, widthPx), maxWidth);
+      const maxWidth = Math.max(300, window.innerWidth * MAX_WIDTH_RATIO);
+      const clamped = Math.min(Math.max(MIN_WIDTH, widthPx), maxWidth);
       setPanelWidth(clamped);
     };
     updateWidth();
     window.addEventListener('resize', updateWidth);
     return () => window.removeEventListener('resize', updateWidth);
   }, [widthPx]);
+
+  const resizeStartRef = React.useRef<{ startX: number; startWidth: number } | null>(null);
+  const latestWidthRef = React.useRef<number>(panelWidth);
+  latestWidthRef.current = panelWidth;
+
+  const handleResizeStart = React.useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      isResizingRef.current = true;
+      resizeStartRef.current = { startX: e.clientX, startWidth: panelWidth };
+      document.body.style.cursor = 'ew-resize';
+      document.body.style.userSelect = 'none';
+
+      const handleMove = (moveEvent: MouseEvent) => {
+        const start = resizeStartRef.current;
+        if (!start) return;
+        const deltaX = moveEvent.clientX - start.startX;
+        const rawWidth = start.startWidth - deltaX;
+        const maxWidth = typeof window !== 'undefined' ? Math.max(300, window.innerWidth * MAX_WIDTH_RATIO) : 800;
+        const clamped = Math.min(Math.max(MIN_WIDTH, rawWidth), maxWidth);
+        latestWidthRef.current = clamped;
+        setPanelWidth(clamped);
+      };
+      const handleUp = () => {
+        onWidthChange?.(latestWidthRef.current);
+        resizeStartRef.current = null;
+        isResizingRef.current = false;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        document.removeEventListener('mousemove', handleMove);
+        document.removeEventListener('mouseup', handleUp);
+      };
+      document.addEventListener('mousemove', handleMove);
+      document.addEventListener('mouseup', handleUp);
+    },
+    [panelWidth, onWidthChange]
+  );
 
   // Track editor container height for CodeMirror scrolling
   React.useEffect(() => {
@@ -248,9 +292,21 @@ export function JsonEditorPanel({
 
   return (
     <div
-      className="flex flex-col h-full max-h-full bg-background border-l overflow-y-auto"
+      className="flex h-full max-h-full bg-background"
       style={{ width: `${panelWidth}px` }}
     >
+      {onWidthChange && (
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-valuenow={panelWidth}
+          onMouseDown={handleResizeStart}
+          className="flex-shrink-0 w-1.5 cursor-ew-resize hover:bg-primary/20 active:bg-primary/30 flex items-center justify-center group border-l transition-colors"
+        >
+          <div className="w-0.5 h-full min-h-[2rem] bg-border group-hover:bg-primary/50 rounded-full opacity-60 group-hover:opacity-100 transition-opacity" />
+        </div>
+      )}
+      <div className="flex flex-col flex-1 min-w-0 overflow-y-auto border-l">
       {/* Header */}
       <div className="flex items-center justify-between p-2 border-b bg-muted/50 flex-shrink-0">
         <div className="text-sm font-medium">JSON Editor</div>
@@ -363,6 +419,7 @@ export function JsonEditorPanel({
           <div className="text-muted-foreground">{error}</div>
         </div>
       )}
+      </div>
     </div>
   );
 }

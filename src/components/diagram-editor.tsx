@@ -534,7 +534,10 @@ export default function DiagramEditor() {
     setIsClient(true);
     const savedWidth = localStorage.getItem('dw:jsonEditor:width');
     if (savedWidth !== null) {
-      setJsonPanelWidth(parseInt(savedWidth, 10));
+      const parsed = parseInt(savedWidth, 10);
+      if (!Number.isNaN(parsed) && parsed >= 280) {
+        setJsonPanelWidth(Math.min(parsed, Math.max(300, window.innerWidth * 0.5)));
+      }
     }
     // Load icon background preference
     const savedIconBackground = localStorage.getItem('dw:iconBackground:enabled');
@@ -2280,6 +2283,8 @@ export default function DiagramEditor() {
         handleResourceActivateAtPosition={handleResourceActivateAtPosition}
         toggleJsonPanel={toggleJsonPanel}
         jsonPanelOpen={jsonPanelOpen}
+        jsonPanelWidth={jsonPanelWidth}
+        setJsonPanelWidth={setJsonPanelWidth}
         editorRef={editorRef}
         handleConnectionUpdate={handleConnectionUpdate}
         disconnectConnection={disconnectConnection}
@@ -2509,6 +2514,8 @@ function DiagramEditorInner({
   fileInputRef,
   handleFileChange,
   jsonPanelOpen: jsonPanelOpenInner,
+  jsonPanelWidth,
+  setJsonPanelWidth,
   diagramData,
   handleJsonValidChange,
   toggleJsonPanel: toggleJsonPanelInner,
@@ -2873,7 +2880,8 @@ function DiagramEditorInner({
                         onValidJsonChange={handleJsonValidChange}
                         isOpen={jsonPanelOpen}
                         onToggleOpen={toggleJsonPanel}
-                        widthPx={400}
+                        widthPx={jsonPanelWidth}
+                        onWidthChange={setJsonPanelWidth}
                         isReadOnly={isReadOnly}
                       />
                     </div>
