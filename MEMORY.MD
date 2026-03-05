@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-05)
 
+### 2026-03-05 – Keyboard Shortcuts: Don't Intercept When Typing in Text Fields
+**Standard text-editing shortcuts** (copy, paste, cut, cursor keys, select-all) now work normally when the user is typing in any text input. Editor shortcuts (diagram copy/paste, delete item, arrow-key move, etc.) are skipped when the keydown originates from an editable element: `<input>`, `<textarea>`, `[contenteditable="true"]`, or CodeMirror (`.cm-editor`). Added shared `isEventFromEditableElement(e)` in `src/lib/keyboard-utils.ts`. Updated: `editor-canvas.tsx` (copy/paste/delete), `diagram-editor.tsx` (all shortcuts + arrow keys), `viewer/page.tsx`. Applies to: labels, tags, descriptions, metadata, layer names, properties panel, UML class compartments, textbox rich editor, JSON panel, search modal—everywhere.
+
 ### 2026-03-05 – JSON Panel Resizable
 **User-resizable JSON panel**: The JSON editor panel can be resized by dragging the left edge. Width is persisted to localStorage (`dw:jsonEditor:width`) and restored on load. Min width 280px, max 50% of viewport. Resize handle shows a subtle vertical indicator. Modified: `json-editor-panel.tsx` (resize handle, `onWidthChange`), `diagram-editor.tsx` (pass `jsonPanelWidth`/`setJsonPanelWidth`).
 

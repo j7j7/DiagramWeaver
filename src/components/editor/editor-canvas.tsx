@@ -48,6 +48,7 @@ import { MetadataPopup } from "./metadata-popup";
 import { snapToGrid } from "./canvas-constants";
 import { ConnectionWaypointHandles } from "../diagram/connection-waypoint-handles";
 import { isShapeNodeType } from "@/lib/utils";
+import { isEventFromEditableElement } from "@/lib/keyboard-utils";
 import { getDownstreamAnimationChainNodes } from "@/lib/connection-animation";
 
 interface EditorCanvasProps {
@@ -982,41 +983,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   // ============================================================================
   // KEYBOARD SHORTCUTS
   // ============================================================================
-  // Global keyboard shortcuts for common operations
-  // Helper function to check if any text is being edited
-  const isAnyTextBeingEdited = () => {
-    // Check if any input, textarea, or contentEditable element is focused
-    const activeElement = document.activeElement;
-    if (!activeElement) return false;
-    
-    // Check for input/textarea elements
-    if (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA') {
-      return true;
-    }
-    
-    // Check for contentEditable elements
-    if (activeElement.getAttribute('contenteditable') === 'true') {
-      return true;
-    }
-    
-    // Check for CodeMirror editor (JSON editor)
-    if (activeElement.closest('.cm-editor')) {
-      return true;
-    }
-    
-    // Check for any CodeMirror focused element
-    if (activeElement.classList.contains('cm-focused') || activeElement.closest('.cm-focused')) {
-      return true;
-    }
-    
-    return false;
-  };
-
   // - Cmd/Ctrl+C: Copy selected item(s)
   // - Cmd/Ctrl+V: Paste from clipboard
   // - Delete/Backspace: Delete selected item(s) (only when not editing text)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isEventFromEditableElement(e)) return;
+
       if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
         e.preventDefault();
         // Multi-selection: copy all. Check first so we don't copy only primary when both are set.
@@ -1032,12 +1005,6 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           handlePaste();
         }
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
-        // Prevent item deletion when editing text
-        if (isAnyTextBeingEdited()) {
-          // Allow normal text editing behavior (don't prevent default)
-          return;
-        }
-        
         e.preventDefault();
         // If there are multiple selected items, delete all of them
         if (selectedItemIds && selectedItemIds.size > 0) {

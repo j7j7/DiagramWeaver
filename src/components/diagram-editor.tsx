@@ -73,6 +73,7 @@ import {
 import { performAutoLayout } from '@/lib/auto-layout';
 import { generateConnectionId, ensureConnectionIds } from '@/lib/connection-order-utils';
 import { DEFAULT_CONNECTION_ANIMATION, toConnectionAnimationPatch, getDownstreamAnimationChainNodes } from '@/lib/connection-animation';
+import { isEventFromEditableElement } from '@/lib/keyboard-utils';
 
 export type SelectedItem = (
   | (DiagramNodeData & {
@@ -1961,11 +1962,8 @@ export default function DiagramEditor() {
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isMac = navigator.userAgent.toUpperCase().includes('MAC');
-      
-      // Don't trigger shortcuts when typing in input fields
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        return;
-      }
+
+      if (isEventFromEditableElement(e)) return;
       
       // Ctrl+Shift+J (or Cmd+Shift+J on Mac) - Toggle JSON Panel
       if ((isMac ? e.metaKey : e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'j') {

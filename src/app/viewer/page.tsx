@@ -11,6 +11,7 @@ import { PropertiesPanel } from "@/components/editor/properties-panel";
 import { loadViewerData, parseViewerParams } from "@/lib/viewer-utils";
 import { filterByVisibleLayers, toggleLayerVisibility, validateLayersConfig } from "@/lib/layers-utils";
 import { getDownstreamAnimationChainNodes } from "@/lib/connection-animation";
+import { isEventFromEditableElement } from "@/lib/keyboard-utils";
 import type { DiagramData, LayersConfig } from "@/lib/types";
 import type { Transform } from "@/hooks/use-canvas-transform";
 
@@ -160,11 +161,8 @@ function ViewerPageContent() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isMac = navigator.userAgent.toUpperCase().includes('MAC');
-      
-      // Don't trigger shortcuts when typing in input fields
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        return;
-      }
+
+      if (isEventFromEditableElement(e)) return;
       
       // Ctrl+Alt+A (or Cmd+Option+A on Mac) - Toggle Animation Connections
       if ((isMac ? e.metaKey : e.ctrlKey) && e.altKey && e.key.toLowerCase() === 'a') {
