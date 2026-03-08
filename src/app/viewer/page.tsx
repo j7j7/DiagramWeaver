@@ -157,6 +157,16 @@ function ViewerPageContent() {
     }
   }, []);
 
+  const handleItemSelect = useCallback(
+    (item: ViewerSelectedItem | null) => {
+      if (!item && (animationToggleOnClickEnabled || showAnimationsForSelectedOnly)) {
+        setAnimationDisabledSources(new Set());
+      }
+      setSelectedItem(item);
+    },
+    [animationToggleOnClickEnabled, showAnimationsForSelectedOnly]
+  );
+
   // Keyboard shortcuts for animation toggles
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -217,16 +227,6 @@ function ViewerPageContent() {
 
   const displayData = filteredDiagramData ?? diagramData;
   const selectedItemId = selectedItem?.itemType === "node" ? selectedItem.id : selectedItem?.itemType === "edge" ? selectedItem.id : undefined;
-
-  const handleItemSelect = useCallback(
-    (item: ViewerSelectedItem | null) => {
-      if (!item && (animationToggleOnClickEnabled || showAnimationsForSelectedOnly)) {
-        setAnimationDisabledSources(new Set());
-      }
-      setSelectedItem(item);
-    },
-    [animationToggleOnClickEnabled, showAnimationsForSelectedOnly]
-  );
 
   // Show chain animations only when a node is selected. No animations when nothing selected.
   const effectiveAnimationFilterIds = showAnimationsForSelectedOnly
