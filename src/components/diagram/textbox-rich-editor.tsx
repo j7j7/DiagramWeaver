@@ -12,7 +12,7 @@ import {
 import { getTextStylingForNode, getTextJustifyClass } from "@/components/diagram/shapes/shape-utils";
 import { cn } from "@/lib/utils";
 
-/** Vertical overhead: outer p-1 (8) + inner py-0.5 (4) + contentEditable border (2). scrollHeight already includes contentEditable padding. */
+/** Vertical overhead: outer p-1 (8) + inner py-0.5 (4) + contentEditable border (2). scrollHeight includes contentEditable padding (py-0.5 = 4). */
 const TEXTBOX_CONTENT_OVERHEAD = 14;
 
 interface TextboxRichEditorProps {
@@ -117,7 +117,7 @@ export function TextboxRichEditor({
     <div className="relative w-full h-full flex flex-col min-h-0">
       {/* Formatting toolbar - positioned OUTSIDE above textbox, so text stays in same place */}
       <div
-        className="absolute left-0 bottom-full mb-1 flex gap-0.5 rounded-md border border-border bg-background/95 px-1 py-1 shadow-sm z-10"
+        className="absolute left-0 bottom-full mb-2 flex gap-0.5 rounded-md border border-border bg-background/95 px-1 py-1 shadow-sm z-10"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <button
@@ -183,8 +183,9 @@ export function TextboxRichEditor({
         }}
         data-placeholder="Enter text..."
         className={cn(
-          "text-sm font-medium flex-1 min-h-0 overflow-auto outline-none rounded px-2 py-1",
-          "border border-primary rounded whitespace-pre-wrap break-words leading-normal",
+          "flex-1 min-h-0 overflow-auto outline-none rounded",
+          "border border-transparent whitespace-pre-wrap break-words leading-normal",
+          "cursor-text w-full",
           getTextJustifyClass((nodeAny.textJustify as string) || "left")
         )}
         style={{
