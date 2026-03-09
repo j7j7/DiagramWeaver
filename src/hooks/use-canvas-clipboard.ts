@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramConnectionData, DiagramGroupData, DiagramGroupingData } from "@/lib/types";
 import { generateSequentialId, generateGroupId } from "@/lib/id-generator";
+import { generateConnectionId } from "@/lib/connection-order-utils";
 
 interface ClipboardData {
   node?: DiagramNodeData;
@@ -429,7 +430,9 @@ export function useCanvasClipboard({
         }
       });
 
-      // Third pass: create new connections with updated IDs
+      // Third pass: create new connections with updated IDs and new unique connection ids
+      // Must assign fresh connection ids so pasted connections are independent (selection,
+      // delete, update by connectionId target only the pasted copy, not the original)
       const newConnections: DiagramConnectionData[] = [];
       connections.forEach(connection => {
         const newFromId = idMapping.get(connection.from);
@@ -437,8 +440,10 @@ export function useCanvasClipboard({
         
         // Only create connection if both endpoints are being copied
         if (newFromId && newToId) {
+          const { id: _oldId, ...rest } = connection;
           newConnections.push({
-            ...connection,
+            ...rest,
+            id: generateConnectionId(),
             from: newFromId,
             to: newToId
           });

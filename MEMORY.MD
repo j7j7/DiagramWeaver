@@ -1,6 +1,9 @@
 # MEMORY.MD
 
-## DiagramWeaver - Latest Features and Functions (Updated 2026-03-05)
+## DiagramWeaver - Latest Features and Functions (Updated 2026-03-09)
+
+### 2026-03-09 – Paste: New Unique Connection IDs for Pasted Connections
+When copying multiple shapes with connections (e.g. 2 shapes connected) and pasting, the pasted connection previously retained the **original connection id**, so it was "linked" to the source. Selection, delete, or update by connectionId could target both original and pasted copies. **Fix**: In `use-canvas-clipboard.ts` paste handler, pasted connections now get a fresh unique id via `generateConnectionId()`. The old id is omitted and replaced so each pasted connection is an independent reference. Modified: `use-canvas-clipboard.ts`.
 
 ### 2026-03-05 – Tab Persistence: IndexedDB (Replaces localStorage)
 **IndexedDB for tabs**: Tab persistence moved from localStorage to IndexedDB to avoid ~5–10MB quota limits. IndexedDB typically allows hundreds of MB. **Migration**: On first load, existing `dw:tabs` / `dw:activeTabId` in localStorage are migrated to IndexedDB and localStorage keys cleared. **Fallbacks**: When IndexedDB unavailable (old browsers), uses localStorage; on QuotaExceededError (IndexedDB or localStorage), retries slim save (no undo history) and toasts if both fail. **Debounced persist** (400ms). Loading state shown in tab bar until hydrated. Modified: `src/lib/tab-storage.ts` (new), `use-diagram-tabs.ts`, `diagram-editor.tsx`.
