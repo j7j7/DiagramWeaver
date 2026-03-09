@@ -177,6 +177,8 @@ export interface DiagramNodeItem {
   id: string;
   type: string; // Format: provider.category.resourcename (e.g., aws.compute.ec2)
   label?: string;
+  /** Rich formatting for textbox nodes - per-segment bold/italic/underline. When set, used for display instead of plain label. */
+  richLabel?: RichTextRun[];
   info?: string;
   x?: number;
   y?: number;
