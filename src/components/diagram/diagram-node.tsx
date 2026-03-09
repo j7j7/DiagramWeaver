@@ -1139,17 +1139,22 @@ return (
                  (node.sizeMode === 'custom' && node.width ? node.width : 'auto') : 
                  (iconNodeDims ? iconNodeDims.width : NODE_WIDTH)))),
          minWidth: isLineNode ? 0 : // Lines don't need min width
-                   (isShapeNode ? (node.width || 60) :
+                   (resizeDimensions ? (isShapeNode ? 20 : isTextboxNode ? 40 : 80) : // During resize: allow shrinking to match new dimensions (like textbox)
+                    isShapeNode ? (node.width || 60) :
                     isTextboxNode ? 40 :
                    isRotatableNode ? 80 : (isIconNode ? (iconNodeDims?.width ?? getNodeSizeDimensions((node as any).nodeSize).container) : NODE_WIDTH)),
          maxWidth: isLineNode ? 'none' : // Lines don't need max width
-                   (isShapeNode ? (node.width || 60) :
+                   (resizeDimensions ? 'none' : // During resize: allow growing without constraint
+                    isShapeNode ? (node.width || 60) :
                     isTextboxNode ? (node.sizeMode === 'custom' ? 'none' : 400) :
                    isRotatableNode ? 200 : (isIconNode ? 400 : NODE_WIDTH)),
          height: isLineNode ? 'auto' : (typeof displayHeight === 'number' ? displayHeight :
                  (isShapeNode ? (node.height || 60) :
                  isTextboxNode && node.sizeMode === 'custom' ? (node.height || 40) :
                  (isRotatableNode || isTextboxNode) ? nodeHeight : (iconNodeDims ? iconNodeDims.height : 'auto'))),
+         ...(resizeDimensions && !isLineNode && (isShapeNode || isTextboxNode) && {
+           minHeight: isShapeNode ? 20 : 40,
+         }),
         touchAction: 'none',
         transform: rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
         transformOrigin: 'center',
