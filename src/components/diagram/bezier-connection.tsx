@@ -51,6 +51,28 @@ interface BezierConnectionProps {
   onContextMenu?: (e: React.MouseEvent, connection: DiagramConnectionData) => void;
 }
 
+function positionableKey(p: BezierConnectionProps['from']): string {
+  return `${p?.id ?? ''}|${p?.x ?? ''}|${p?.y ?? ''}|${p?.width ?? ''}|${p?.height ?? ''}|${p?.type ?? ''}|${(p as any)?.label ?? ''}|${(p as any)?.lineColor ?? ''}|${(p as any)?.nodeSize ?? ''}|${(p as any)?.sizeMode ?? ''}|${(p as any)?.textPosition ?? ''}|${(p as any)?.textVerticalPosition ?? ''}|${(p as any)?.subType ?? ''}`;
+}
+
+function connectionDataKey(c?: DiagramConnectionData): string {
+  if (!c) return '';
+  const wp = c.waypoints?.map((w) => `${w.x},${w.y}`).join(';') ?? '';
+  const anim = c.animation ? JSON.stringify(c.animation) : '';
+  return `${c.from ?? ''}|${c.to ?? ''}|${(c as any).id ?? ''}|${c.curvature ?? ''}|${wp}|${c.lineWidth ?? ''}|${c.shadow ?? ''}|${c.fromArrow ?? ''}|${c.toArrow ?? ''}|${c.arrow ?? ''}|${anim}|${c.color ?? ''}`;
+}
+
+function areBezierConnectionPropsEqual(prev: BezierConnectionProps, next: BezierConnectionProps): boolean {
+  return (
+    positionableKey(prev.from) === positionableKey(next.from) &&
+    positionableKey(prev.to) === positionableKey(next.to) &&
+    prev.connectionColor === next.connectionColor &&
+    connectionDataKey(prev.connectionData) === connectionDataKey(next.connectionData) &&
+    prev.exportAnimationTimeSeconds === next.exportAnimationTimeSeconds &&
+    prev.animationConnectionsEnabled === next.animationConnectionsEnabled
+  );
+}
+
 interface BezierConnectionTextProps {
   connectionData?: DiagramConnectionData;
   from?: Positionable & { lineColor?: string };
@@ -104,7 +126,8 @@ interface PathDistanceLookup {
   resolveT: (distance: number, wrap?: boolean) => number;
 }
 
-function estimateConnectionPathLength(
+/** Lightweight path length estimate (60 samples). Use when only length is needed for live animation. */
+function computePathLengthLight(
   fromX: number,
   fromY: number,
   toX: number,
@@ -130,6 +153,7 @@ function estimateConnectionPathLength(
   return total;
 }
 
+/** Full path distance lookup for GIF export (needs resolveT). Uses 90 samples for simple paths, 180 for waypoints. */
 function buildPathDistanceLookup(
   fromX: number,
   fromY: number,
@@ -140,7 +164,7 @@ function buildPathDistanceLookup(
   curvature: number,
   waypoints?: Array<{ x: number; y: number }>
 ): PathDistanceLookup {
-  const samples = 180;
+  const samples = waypoints?.length ? 180 : 90;
   const distances: number[] = [0];
   const tValues: number[] = [0];
   let totalLength = 0;
@@ -783,7 +807,7 @@ export function getPointOnConnectionPath(
   return getBezierPoint(localT, seg.p0x, seg.p0y, seg.cp1x, seg.cp1y, seg.cp2x, seg.cp2y, seg.p3x, seg.p3y);
 }
 
-export function BezierConnection({ from, to, connectionColor, connectionData, exportAnimationTimeSeconds, animationConnectionsEnabled = true, onClick, onContextMenu }: BezierConnectionProps) {
+function BezierConnectionInner({ from, to, connectionColor, connectionData, exportAnimationTimeSeconds, animationConnectionsEnabled = true, onClick, onContextMenu }: BezierConnectionProps) {
   // Use measureNodeDims-like logic for shapes to get actual dimensions
   const isFromShape = isShapeNodeType(from.type);
   const isToShape = isShapeNodeType(to.type);
@@ -951,9 +975,9 @@ export function BezierConnection({ from, to, connectionColor, connectionData, ex
   const connectionThickness = connectionData?.lineWidth || 2.5;
   const shapeSize = animation.size * 2 * connectionThickness;
   const spacingDistance = shapeSize * (1 + animation.spacing);
-  const pathDistanceLookup = buildPathDistanceLookup(fromX, fromY, toX, toY, fromAngle, toAngle, curvature, waypoints);
-  const pathLength = pathDistanceLookup.totalLength;
-  const maxShapeCountByLength = spacingDistance > 0 ? Math.floor(pathLength / spacingDistance) : 0;
+  const hasExportAnimationTime = typeof exportAnimationTimeSeconds === 'number' && Number.isFinite(exportAnimationTimeSeconds);
+  const pathLengthForCount = computePathLengthLight(fromX, fromY, toX, toY, fromAngle, toAngle, curvature, waypoints);
+  const maxShapeCountByLength = spacingDistance > 0 ? Math.floor(pathLengthForCount / spacingDistance) : 0;
   const requestedShapeCount = animation.autoCount ? maxShapeCountByLength : animation.shapeCount;
   const renderedShapeCount = Math.max(
     0,
@@ -962,12 +986,20 @@ export function BezierConnection({ from, to, connectionColor, connectionData, ex
       Math.min(requestedShapeCount, maxShapeCountByLength)
     )
   );
-  const distributedShapeSpacing = renderedShapeCount > 0 ? pathLength / renderedShapeCount : 0;
+  const shouldRenderAnimationShapes = animationConnectionsEnabled && animation.enabled && renderedShapeCount > 0 && pathLengthForCount > 0;
   const speedMagnitude = Math.abs(animation.speed);
-  const shouldRenderAnimationShapes = animationConnectionsEnabled && animation.enabled && renderedShapeCount > 0 && pathLength > 0;
   const shouldAnimateShapes = shouldRenderAnimationShapes && speedMagnitude > 0;
-  const hasExportAnimationTime = typeof exportAnimationTimeSeconds === 'number' && Number.isFinite(exportAnimationTimeSeconds);
   const useStaticExportAnimation = shouldAnimateShapes && hasExportAnimationTime;
+  const needsPathDistanceLookup = useStaticExportAnimation || (shouldRenderAnimationShapes && !shouldAnimateShapes);
+  const waypointsKey = waypoints?.length ? waypoints.map((w) => `${w.x},${w.y}`).join(';') : '';
+  const pathDistanceLookup = needsPathDistanceLookup
+    ? React.useMemo(
+        () => buildPathDistanceLookup(fromX, fromY, toX, toY, fromAngle, toAngle, curvature, waypoints),
+        [fromX, fromY, toX, toY, fromAngle, toAngle, curvature, waypointsKey]
+      )
+    : null;
+  const pathLength = pathDistanceLookup ? pathDistanceLookup.totalLength : pathLengthForCount;
+  const distributedShapeSpacing = renderedShapeCount > 0 ? pathLength / renderedShapeCount : 0;
   const animationDuration = shouldAnimateShapes ? pathLength / speedMagnitude : 0;
   const animationColor = animation.color ? animation.color : colorWithHalfOpacity(finalConnectionColor);
   const connectionKey = `${connectionData?.from ?? from.id}-${connectionData?.to ?? to.id}`.replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -1097,9 +1129,10 @@ export function BezierConnection({ from, to, connectionColor, connectionData, ex
           }
 
           const distance = effectiveProgress * pathLength;
-          const t = pathDistanceLookup.resolveT(distance, false);
+          const lookup = pathDistanceLookup!;
+          const t = lookup.resolveT(distance, false);
           const point = getPointOnConnectionPath(t, fromX, fromY, toX, toY, fromAngle, toAngle, curvature, waypoints);
-          const tangentT = pathDistanceLookup.resolveT(distance + 2, false);
+          const tangentT = lookup.resolveT(distance + 2, false);
           const tangentPoint = getPointOnConnectionPath(tangentT, fromX, fromY, toX, toY, fromAngle, toAngle, curvature, waypoints);
           const angleDeg = Math.atan2(tangentPoint.y - point.y, tangentPoint.x - point.x) * (180 / Math.PI);
 
@@ -1113,6 +1146,8 @@ export function BezierConnection({ from, to, connectionColor, connectionData, ex
     </>
   );
 }
+
+export const BezierConnection = React.memo(BezierConnectionInner, areBezierConnectionPropsEqual);
 
 // Helper function to calculate bezier curve point at parameter t (0 to 1)
 export function getBezierPoint(t: number, fromX: number, fromY: number, cp1X: number, cp1Y: number, cp2X: number, cp2Y: number, toX: number, toY: number): { x: number; y: number } {

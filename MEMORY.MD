@@ -2,6 +2,12 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-09)
 
+### 2026-03-09 – GIF Export: Global Palette + Shadows Disabled
+GIF export previously used **per-frame quantization** (256-colour palette per frame), causing shadows to look more pronounced and textbox colours to shift. **Fixes**: (1) Use a single **global palette** built from the first frame and reuse it for all frames—consistent colours across the animation. (2) **Disable shadows during GIF export**—add `gif-export-active` class to `document.documentElement` while capturing; globals.css overrides `--shape-shadow`, `--shape-shadow-drop`, `--shape-shadow-sm`, `--shape-shadow-preview` to `none` and forces `filter: none` on SVG elements. Shadows remain in editor/PNG; GIF output has no shadows for cleaner 256-colour result. Modified: `use-canvas-export.ts`, `globals.css`.
+
+### 2026-03-09 – Connection Animation Performance (Implemented)
+Performance optimizations for connection line animations in `bezier-connection.tsx`. **Changes**: (1) Lightweight `computePathLengthLight` (60 samples) for live animation—full `buildPathDistanceLookup` only when static shapes need positioning (GIF export or speed=0). (2) `pathDistanceLookup` cached via `useMemo` during GIF export (path geometry deps; `exportAnimationTimeSeconds` excluded). (3) Reduced samples: 90 for simple paths (no waypoints), 180 for waypoints. (4) `BezierConnection` wrapped in `React.memo` with `areBezierConnectionPropsEqual`. Works in editor and viewer. Plan: `docs/CONNECTION-ANIMATION-PERFORMANCE-PLAN.md`.
+
 ### 2026-03-09 – Right-Click: Normal Browser Behavior in Text Edit
 When the user is in any text edit (input, textarea, contenteditable), right-click now shows the standard browser context menu (copy, paste, etc.) instead of diagram custom handlers. Uses existing `isEventFromEditableElement` from keyboard-utils. Applied to: right-click panning (use-canvas-interactions), canvas empty-area context menu, node context menu, zone context menu. When not in text edit, behavior unchanged (custom context menus, right-drag pan). Modified: use-canvas-interactions.ts, editor-canvas.tsx.
 

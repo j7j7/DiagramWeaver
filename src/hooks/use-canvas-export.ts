@@ -215,8 +215,6 @@ export function useCanvasExport({
             pixelRatio = 2;
         }
 
-        console.log('Exporting current viewport with quality:', quality, 'pixelRatio:', pixelRatio);
-
         let exportOptions: any = {
           pixelRatio: pixelRatio,
           cacheBust: true,
@@ -351,6 +349,8 @@ export function useCanvasExport({
       const frameDelayCs = Math.max(1, Math.round(frameDelayMs / 10));
 
       const exportElement = canvasRef.current;
+      document.documentElement.classList.add('gif-export-active');
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       toast({
         title: 'Recording GIF',
         description: `Capturing ${frameCount} frames at ${fps} fps...`,
@@ -377,6 +377,10 @@ export function useCanvasExport({
         skipFonts: true,
       };
 
+      // Use a single global palette for all frames to avoid color shift (shadows/textbox colours
+      // looked wrong when each frame had its own quantized palette). Build from first frame.
+      let globalPalette: number[][] | null = null;
+
       onGifAnimationTimeUpdate?.(0);
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
@@ -395,11 +399,13 @@ export function useCanvasExport({
         decodeCtx.drawImage(img, 0, 0, gifWidth, gifHeight);
         const rgbaFrame = decodeCtx.getImageData(0, 0, gifWidth, gifHeight).data;
 
-        const palette = quantize(rgbaFrame, 256);
-        const indexedFrame = applyPalette(rgbaFrame, palette);
+        if (globalPalette === null) {
+          globalPalette = quantize(rgbaFrame, 256, { format: 'rgb565' });
+        }
+        const indexedFrame = applyPalette(rgbaFrame, globalPalette, 'rgb565');
 
         encoder.writeFrame(indexedFrame, gifWidth, gifHeight, {
-          palette,
+          palette: globalPalette,
           delay: frameDelayCs,
         });
 
@@ -445,6 +451,7 @@ export function useCanvasExport({
       toast({ variant: 'destructive', title: 'Export failed', description: 'GIF export encountered an issue.' });
     } finally {
       onGifAnimationTimeUpdate?.(null);
+      document.documentElement.classList.remove('gif-export-active');
 
       if (hadGridClass && gridElement && !gridElement.classList.contains('dot-grid')) {
         gridElement.classList.add('dot-grid');
