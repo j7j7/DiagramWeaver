@@ -258,7 +258,23 @@ export const EMOJI_ICONS: EmojiIconItem[] = [
   { name: "Location", iconType: "emoji", emoji: "📍" },
 ];
 
+/** Slug derived from iconName (e.g. "FileText" -> "filetext") - matches type suffix in generic.icon.{slug} */
+function slugifyIconName(name: string): string {
+  return name.replace(/\s+/g, "-").toLowerCase();
+}
+
+/** Map type slug (e.g. "filetext") to Lucide iconName (e.g. "FileText") for correct lookup */
+const TYPE_SLUG_TO_ICON_NAME: Record<string, string> = Object.fromEntries(
+  SYMBOL_ICONS.map((item) => [slugifyIconName(item.iconName), item.iconName])
+);
+
 /** Get Lucide icon component by name (for dynamic lookups from stored type) */
 export function getLucideIcon(iconName: string): LucideIcon | null {
   return LUCIDE_ICONS[iconName] ?? null;
+}
+
+/** Get Lucide icon from type slug (e.g. "filetext" from generic.icon.filetext) when iconName not in JSON */
+export function getLucideIconFromTypeSlug(slug: string): LucideIcon | null {
+  const iconName = TYPE_SLUG_TO_ICON_NAME[slug];
+  return iconName ? getLucideIcon(iconName) : null;
 }

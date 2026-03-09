@@ -473,6 +473,173 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     }
     return null;
   };
+
+  // Textbox node content (avoids IIFE parsing issues in Turbopack)
+  const renderTextboxContent = () => {
+    const nodeAny = node as any;
+    const borderStyle = nodeAny.borderStyle || 'solid';
+    const borderColors = nodeAny.borderColors || [nodeAny.borderColor || '#d1d5db', nodeAny.borderColor || '#d1d5db'];
+    const backgroundStyle = nodeAny.backgroundStyle || 'solid';
+    const backgroundColors = nodeAny.backgroundColors || [nodeAny.backgroundColor || '#ffffff', nodeAny.backgroundColor || '#ffffff'];
+    const backgroundColor = nodeAny.backgroundColor || '#ffffff';
+    const gradientAngle = nodeAny.gradientAngle || 135;
+    const borderGradientAngle = nodeAny.borderGradientAngle ?? gradientAngle;
+    const hasShadow = nodeAny.shadow || false;
+    const borderColor = nodeAny.borderColor || '#d1d5db';
+
+    return (
+      <div
+        className={cn(
+          "flex flex-col h-full w-full rounded-lg transition-colors",
+          getVerticalPositionClass(nodeAny.textVerticalPosition),
+          node.sizeMode === 'custom' ? "p-1" : "p-4",
+          borderStyle !== 'none' && "border-2",
+          borderStyle === 'none' && (isSelected
+            ? "border border-dashed border-primary opacity-100"
+            : "opacity-100 hover:border hover:border-dashed hover:border-primary hover:bg-primary/5"),
+          isSelected && borderStyle !== 'none' ? "border-primary" : !(isDragging || isTouchDragging) && borderStyle !== 'none' && "group-hover:border-accent",
+          isTargetable && "border-dashed border-primary",
+          hasShadow && "shadow-[0_10px_15px_-3px_rgba(239,68,68,0.3),0_4px_6px_-2px_rgba(239,68,68,0.2)]"
+        )}
+        style={{
+          background: backgroundStyle === 'none'
+            ? 'transparent'
+            : backgroundStyle === 'gradient'
+              ? `linear-gradient(${gradientAngle}deg, ${backgroundColors[0]}, ${backgroundColors[1]})`
+              : backgroundColor,
+          ...(borderStyle === 'none' ? {} : borderStyle === 'gradient' ? {
+            borderImage: `${getGradientWithAngle(borderColors, borderGradientAngle)} 1`,
+            borderColor: 'transparent'
+          } : borderStyle === 'dotted' ? {
+            borderColor,
+            borderStyle: 'dotted'
+          } : {
+            borderColor
+          }),
+          color: nodeAny.textColor || '#374151',
+          ...(node.sizeMode === 'custom' ? {} : { minHeight: '120px' }),
+          ...(hasShadow && { boxShadow: 'var(--shape-shadow)' })
+        }}
+      >
+        {isEditingLabel ? (
+          <div className={`w-full flex-1 flex flex-col min-h-0 overflow-visible ${getVerticalJustifyClass(nodeAny.textVerticalPosition)} ${node.sizeMode === 'custom' ? 'px-1 py-0.5' : 'px-2 py-2'}`}>
+            <TextboxRichEditor
+              node={node}
+              runs={editRuns}
+              onSubmit={handleRichLabelSubmit}
+              onKeyDown={(e) => handleLabelKeyDown(e, true)}
+              onHeightChange={node.sizeMode === 'custom' && onUpdate && !isResizing ? (height) => {
+                const snapped = snapDimensionToGrid(height, 40);
+                const current = node.height ?? 40;
+                if (snapped === current) return;
+                onUpdate({ ...node, height: snapped, sizeMode: 'custom' });
+              } : undefined}
+            />
+          </div>
+        ) : (
+          <div className={`w-full flex-1 flex flex-col min-h-0 ${getVerticalJustifyClass(nodeAny.textVerticalPosition)} ${node.sizeMode === 'custom' ? 'px-1 py-0.5' : 'px-2 py-2'}`}>
+            <TextboxRichDisplay
+              node={node}
+              runs={node.richLabel ?? labelToRuns(node.label)}
+              onDoubleClick={handleLabelDoubleClick}
+            />
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Regular icon node content (avoids IIFE parsing issues in Turbopack)
+  const renderIconNodeContent = () => {
+    const nodeAny = node as any;
+    const { container, icon } = getNodeSizeDimensions(nodeAny.nodeSize);
+    const textVerticalPosition = nodeAny.textVerticalPosition || 'bottom';
+    const isMiddle = textVerticalPosition === 'middle';
+    const isTop = textVerticalPosition === 'top';
+    const isBottom = textVerticalPosition === 'bottom';
+
+    return (
+      <div className={cn(
+        "flex flex-col items-center w-full h-full",
+        isMiddle ? "relative justify-center" : "justify-start"
+      )}>
+        <div className={cn(
+          "flex items-center justify-center transition-colors flex-shrink-0",
+          nodeAny.noIconBackground ? "" : "rounded-lg shadow-md border bg-card dw-icon-container",
+          isSelected ? "border-primary" : nodeAny.noIconBackground || (isDragging || isTouchDragging) ? "" : "group-hover:border-accent",
+          isTargetable && "border-dashed border-primary",
+          isTop && "order-2",
+          isBottom && "order-1"
+        )}
+        style={{ width: container, height: container }}>
+          <ResourceIcon
+            type={node.type}
+            provider={node.provider}
+            category={node.category}
+            file={node.file}
+            iconType={node.iconType}
+            iconName={node.iconName}
+            emoji={node.emoji}
+            iconColor={node.iconColor}
+            width={icon}
+            height={icon}
+            style={{ width: icon, height: icon }}
+          />
+        </div>
+        {isEditingLabel ? (
+          <input
+            ref={inputRef}
+            id={`node-input-${node.id}`}
+            type="text"
+            value={editText}
+            onChange={(e) => setEditText(e.target.value)}
+            onBlur={handleLabelSubmit}
+            onKeyDown={(e) => handleLabelKeyDown(e, false)}
+            className={cn(
+              "text-sm text-center bg-transparent border border-primary rounded outline-none",
+              node.sizeMode === 'custom' ? 'px-1 py-0.5' : 'px-1 py-0.5',
+              isMiddle ? "absolute flex items-center justify-center pointer-events-auto left-0 top-0" : "w-full",
+              isTop && "order-1",
+              isBottom && "order-2"
+            )}
+            style={isMiddle ? {
+              ...getTextStylingForNode(node),
+              backgroundColor: 'transparent',
+              zIndex: 10,
+              width: container,
+              height: container
+            } : getTextStylingForNode(node)}
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : node.label ? (
+          <p
+            className={cn(
+              "text-center break-words leading-tight cursor-text hover:bg-background/50 rounded px-1 py-0.5",
+              isMiddle ? "absolute flex items-center justify-center pointer-events-auto left-0 top-0 -mx-0 -my-0" : "-mx-1 -my-0.5 w-full",
+              isTop && "order-1",
+              isBottom && "order-2"
+            )}
+            style={isMiddle ? {
+              ...getTextStylingForNode(node),
+              backgroundColor: 'transparent',
+              zIndex: 10,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: container,
+              height: container
+            } : {
+              ...getTextStylingForNode(node),
+              display: 'block'
+            }}
+            onDoubleClick={handleLabelDoubleClick}
+          >
+            {node.label}
+          </p>
+        ) : null}
+      </div>
+    );
+  };
   
   // Calculate dynamic height based on label length and node type
   const calculateNodeHeight = (label: string = '', nodeType: string, sizeMode?: string, customHeight?: number) => {
@@ -1187,91 +1354,13 @@ return (
         <PopoverTrigger asChild>
           <div className="flex flex-col items-center justify-center h-full w-full cursor-pointer">
             {node.type === 'generic.text.text' ? (
-              (() => {
-                // Text node - rich text with same toolbar as textbox
-                return (
-                  <div className={cn(
-                    "flex flex-col items-center justify-center h-full w-full px-2",
-                    isEditingLabel && "overflow-visible"
-                  )}>
-                    {isEditingLabel ? (
-                      <div className="w-full flex-1 flex flex-col min-h-0 overflow-visible">
-                        <TextboxRichEditor
-                          node={node}
-                          runs={editRuns}
-                          onSubmit={handleRichLabelSubmit}
-                          onKeyDown={(e) => handleLabelKeyDown(e, true)}
-                          onHeightChange={node.sizeMode === 'custom' && onUpdate && !isResizing ? (height) => {
-                            const snapped = snapDimensionToGrid(height, 40);
-                            const current = node.height ?? 40;
-                            if (snapped === current) return;
-                            onUpdate({ ...node, height: snapped, sizeMode: 'custom' });
-                          } : undefined}
-                        />
-                      </div>
-                    ) : (
-                      <div className="w-full flex-1 flex flex-col min-h-0">
-                        <TextboxRichDisplay
-                          node={node}
-                          runs={node.richLabel ?? labelToRuns(node.label)}
-                          onDoubleClick={handleLabelDoubleClick}
-                        />
-                      </div>
-                    )}
-                  </div>
-                );
-              })()
-            ) : node.type === 'generic.text.textbox' ? (
-              // Textbox node - larger multi-line text box
-              (() => {
-                const borderStyle = (node as any).borderStyle || 'solid';
-                const borderColors = (node as any).borderColors || [(node as any).borderColor || '#d1d5db', (node as any).borderColor || '#d1d5db'];
-                const borderColor = (node as any).borderColor || '#d1d5db';
-                const backgroundStyle = (node as any).backgroundStyle || 'solid';
-                const backgroundColors = (node as any).backgroundColors || [(node as any).backgroundColor || '#ffffff', (node as any).backgroundColor || '#ffffff'];
-                const backgroundColor = (node as any).backgroundColor || '#ffffff';
-                const gradientAngle = (node as any).gradientAngle || 135;
-                const borderGradientAngle = (node as any).borderGradientAngle ?? gradientAngle;
-                const hasShadow = (node as any).shadow || false;
-                
-                return (
-              <div 
-                  className={cn(
-                    "flex flex-col h-full w-full rounded-lg transition-colors",
-                    getVerticalPositionClass((node as any).textVerticalPosition),
-                    node.sizeMode === 'custom' ? "p-1" : "p-4",
-                   borderStyle !== 'none' && "border-2",
-                   borderStyle === 'none' && (isSelected 
-                      ? "border border-dashed border-primary opacity-100" 
-                      : "opacity-100 hover:border hover:border-dashed hover:border-primary hover:bg-primary/5"),
-                   isSelected && borderStyle !== 'none' ? "border-primary" : !(isDragging || isTouchDragging) && borderStyle !== 'none' && "group-hover:border-accent",
-                   isTargetable && "border-dashed border-primary",
-                   hasShadow && "shadow-[0_10px_15px_-3px_rgba(239,68,68,0.3),0_4px_6px_-2px_rgba(239,68,68,0.2)]"
-                 )}
-                 style={{
-                   background: backgroundStyle === 'none' 
-                     ? 'transparent'
-                     : backgroundStyle === 'gradient' 
-                       ? `linear-gradient(${gradientAngle}deg, ${backgroundColors[0]}, ${backgroundColors[1]})`
-                       : backgroundColor,
-                   ...(borderStyle === 'none' ? {} : borderStyle === 'gradient' ? {
-                     borderImage: `${getGradientWithAngle(borderColors, borderGradientAngle)} 1`,
-                     borderColor: 'transparent'
-                   } : borderStyle === 'dotted' ? {
-                     borderColor: borderColor,
-                     borderStyle: 'dotted'
-                   } : {
-                     borderColor: borderColor
-                   }),
-                    color: (node as any).textColor || '#374151',
-                    ...(node.sizeMode === 'custom' ? {} : { minHeight: '120px' }),
-                   ...(hasShadow && { 
-                     boxShadow: 'var(--shape-shadow)'
-                   })
-                 }}
-              >
+              // Text node - rich text with same toolbar as textbox
+              <div className={cn(
+                "flex flex-col items-center justify-center h-full w-full px-2",
+                isEditingLabel && "overflow-visible"
+              )}>
                 {isEditingLabel ? (
-                  <div className={`w-full flex-1 flex flex-col min-h-0 overflow-visible ${getVerticalJustifyClass((node as any).textVerticalPosition)} ${node.sizeMode === 'custom' ? 'px-1 py-0.5' : 'px-2 py-2'}`}>
+                  <div className="w-full flex-1 flex flex-col min-h-0 overflow-visible">
                     <TextboxRichEditor
                       node={node}
                       runs={editRuns}
@@ -1286,19 +1375,17 @@ return (
                     />
                   </div>
                 ) : (
-                    <div 
-                      className={`w-full flex-1 flex flex-col min-h-0 ${getVerticalJustifyClass((node as any).textVerticalPosition)} ${node.sizeMode === 'custom' ? 'px-1 py-0.5' : 'px-2 py-2'}`}
-                    >
-                      <TextboxRichDisplay
-                        node={node}
-                        runs={node.richLabel ?? labelToRuns(node.label)}
-                        onDoubleClick={handleLabelDoubleClick}
-                      />
-                    </div>
-                     )}
-               </div>
-               );
-                })()
+                  <div className="w-full flex-1 flex flex-col min-h-0">
+                    <TextboxRichDisplay
+                      node={node}
+                      runs={node.richLabel ?? labelToRuns(node.label)}
+                      onDoubleClick={handleLabelDoubleClick}
+                    />
+                  </div>
+                )}
+              </div>
+            ) : node.type === 'generic.text.textbox' ? (
+              renderTextboxContent()
              ) : isShapeNode ? (
               // Shape node - render pure shape with text in different positions (resizable)
               // Use justify-start/items-start so resize extends right/down from fixed top-left (like textbox)
@@ -1308,102 +1395,7 @@ return (
                   </div>
                 </div>
              ) : (
-              // Regular icon node - support vertical text positioning
-              (() => {
-                const nodeAny = node as any;
-                const { container, icon } = getNodeSizeDimensions(nodeAny.nodeSize);
-                const textVerticalPosition = nodeAny.textVerticalPosition || 'bottom'; // Default to bottom for backward compatibility
-                const isMiddle = textVerticalPosition === 'middle';
-                const isTop = textVerticalPosition === 'top';
-                const isBottom = textVerticalPosition === 'bottom';
-                
-                // For middle position, use relative container with absolute positioning
-                // For top/bottom, use flex-col with order
-                return (
-                  <div className={cn(
-                    "flex flex-col items-center w-full h-full",
-                    isMiddle ? "relative justify-center" : "justify-start"
-                  )}>
-                    {/* Icon container */}
-                    <div className={cn(
-                      "flex items-center justify-center transition-colors flex-shrink-0",
-                      (node as any).noIconBackground ? "" : "rounded-lg shadow-md border bg-card dw-icon-container",
-                      isSelected ? "border-primary" : (node as any).noIconBackground || (isDragging || isTouchDragging) ? "" : "group-hover:border-accent",
-                      isTargetable && "border-dashed border-primary",
-                      isTop && "order-2", // Icon comes after text when text is on top
-                      isBottom && "order-1" // Icon comes before text when text is on bottom (default)
-                    )}
-                    style={{ width: container, height: container }}>
-                      <ResourceIcon 
-                        type={node.type} 
-                        provider={node.provider}
-                        category={node.category}
-                        file={node.file}
-                        iconType={node.iconType}
-                        iconName={node.iconName}
-                        emoji={node.emoji}
-                        iconColor={node.iconColor}
-                        width={icon} 
-                        height={icon} 
-                        style={{ width: icon, height: icon }}
-                      />
-                    </div>
-                    
-                    {/* Text - positioned based on textVerticalPosition */}
-                    {isEditingLabel ? (
-                      <input
-                        ref={inputRef}
-                        id={`node-input-${node.id}`}
-                        type="text"
-                        value={editText}
-                        onChange={(e) => setEditText(e.target.value)}
-                        onBlur={handleLabelSubmit}
-                        onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                        className={cn(
-                          "text-sm text-center bg-transparent border border-primary rounded outline-none",
-                          node.sizeMode === 'custom' ? 'px-1 py-0.5' : 'px-1 py-0.5',
-                          isMiddle ? "absolute flex items-center justify-center pointer-events-auto left-0 top-0" : "w-full",
-                          isTop && "order-1", // Text comes before icon when on top
-                          isBottom && "order-2" // Text comes after icon when on bottom (default)
-                        )}
-                        style={isMiddle ? {
-                          ...getTextStylingForNode(node),
-                          backgroundColor: 'transparent',
-                          zIndex: 10,
-                          width: container,
-                          height: container
-                        } : getTextStylingForNode(node)}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    ) : node.label ? (
-                      <p 
-                        className={cn(
-                          "text-center break-words leading-tight cursor-text hover:bg-background/50 rounded px-1 py-0.5",
-                          isMiddle ? "absolute flex items-center justify-center pointer-events-auto left-0 top-0 -mx-0 -my-0" : "-mx-1 -my-0.5 w-full",
-                          isTop && "order-1", // Text comes before icon when on top
-                          isBottom && "order-2" // Text comes after icon when on bottom (default)
-                        )}
-                        style={isMiddle ? {
-                          ...getTextStylingForNode(node),
-                          backgroundColor: 'transparent',
-                          zIndex: 10,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          width: container,
-                          height: container
-                        } : {
-                          ...getTextStylingForNode(node),
-                          display: 'block'
-                        }}
-                        onDoubleClick={handleLabelDoubleClick}
-                      >
-                        {node.label}
-                      </p>
-                    ) : null}
-                  </div>
-                );
-              })()
+              renderIconNodeContent()
             )}
           </div>
         </PopoverTrigger>

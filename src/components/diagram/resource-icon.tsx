@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Server, User } from "lucide-react";
 import { buildResourceIconPath } from "@/lib/resource-mapping";
-import { getLucideIcon } from "@/lib/icon-resources";
+import { getLucideIcon, getLucideIconFromTypeSlug } from "@/lib/icon-resources";
 
 interface ResourceIconProps extends React.SVGProps<SVGSVGElement> {
   type: string; // Format: provider.category.resourcename (e.g., aws.compute.ec2)
@@ -68,8 +68,7 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
       );
     }
     const iconPart = type.replace("generic.icon.", "");
-    const pascalName = iconPart.split("-").map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join("");
-    const LucideIcon = getLucideIcon(pascalName);
+    const LucideIcon = getLucideIconFromTypeSlug(iconPart) ?? getLucideIcon(iconPart.split("-").map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(""));
     if (LucideIcon) {
       return <LucideIcon {...props} color={iconColor || undefined} />;
     }
@@ -77,6 +76,11 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
 
   // Look up file from resource catalog based on type or direct provider info
   useEffect(() => {
+    // Lucide icons and emojis don't use the resource catalog - skip lookup
+    if (type.startsWith("generic.icon.") || type.startsWith("generic.emoji.")) {
+      return;
+    }
+
     // If direct provider info is provided, use it immediately
     if (provider && category && file) {
       setResourceFile(file);
