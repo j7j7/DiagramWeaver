@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-09)
 
+### 2026-03-09 – Textbox Auto-Resize During Edit (Grow/Shrink with Content)
+When editing a textbox (double-click to edit), the textbox now auto-resizes vertically to fit content: **grows** when the user adds lines (e.g. Enter) and **shrinks** when they remove lines. Uses contentEditable `scrollHeight` + padding overhead (22px); height snapped to grid (min 40px). Only applies when `sizeMode === 'custom'`; manual resize is allowed and not overridden during active resize drag. MutationObserver + input events drive height checks via requestAnimationFrame. Modified: `textbox-rich-editor.tsx` (onHeightChange, measureAndReportHeight), `diagram-node.tsx` (wire onHeightChange to onUpdate).
+
 ### 2026-03-09 – Textbox WYSIWYG Toolbar Outside Textbox, No Layout Shift
 When double-clicking a textbox to edit, the formatting toolbar (bold, italic, underline, lists) previously sat inside the textbox at the top, covering text and pushing it down. **Fix**: Toolbar now floats above the textbox (`position: absolute; bottom: 100%`), outside the content bounds. Text stays in the same position whether editing or viewing—no layout shift. Inner wrapper gets `overflow-visible` when editing so the floating toolbar is visible. Modified: `textbox-rich-editor.tsx`, `diagram-node.tsx`.
 

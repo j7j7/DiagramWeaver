@@ -1273,6 +1273,12 @@ return (
                       runs={editRuns}
                       onSubmit={handleRichLabelSubmit}
                       onKeyDown={(e) => handleLabelKeyDown(e, true)}
+                      onHeightChange={node.sizeMode === 'custom' && onUpdate && !isResizing ? (height) => {
+                        const snapped = snapDimensionToGrid(height, 40);
+                        const current = node.height ?? 40;
+                        if (snapped === current) return;
+                        onUpdate({ ...node, height: snapped, sizeMode: 'custom' });
+                      } : undefined}
                     />
                   </div>
                 ) : (

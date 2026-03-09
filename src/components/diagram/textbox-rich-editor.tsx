@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useCallback } from "react";
 import { Bold, Italic, Underline, List, ListOrdered } from "lucide-react";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import {
@@ -12,12 +12,17 @@ import {
 import { getTextStylingForNode, getTextJustifyClass } from "@/components/diagram/shapes/shape-utils";
 import { cn } from "@/lib/utils";
 
+/** Vertical overhead: outer p-1 (8) + inner py-0.5 (4) + contentEditable border (2). scrollHeight already includes contentEditable padding. */
+const TEXTBOX_CONTENT_OVERHEAD = 14;
+
 interface TextboxRichEditorProps {
   node: DiagramNodeData;
   runs: RichTextRun[];
   onSubmit: (plainText: string, runs: RichTextRun[]) => void;
   onKeyDown: (e: React.KeyboardEvent) => void;
   onDoubleClick?: (e: React.MouseEvent) => void;
+  /** Callback when content height changes during edit - for auto-resize. Receives required node height. */
+  onHeightChange?: (height: number) => void;
 }
 
 export function TextboxRichEditor({
@@ -25,9 +30,14 @@ export function TextboxRichEditor({
   runs,
   onSubmit,
   onKeyDown,
+  onHeightChange,
 }: TextboxRichEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const hasInitialized = useRef(false);
+  const rafId = useRef<number | null>(null);
+  const lastReportedHeight = useRef<number | null>(null);
+  const onHeightChangeRef = useRef(onHeightChange);
+  onHeightChangeRef.current = onHeightChange;
 
   useEffect(() => {
     if (!editorRef.current || hasInitialized.current) return;
@@ -38,6 +48,52 @@ export function TextboxRichEditor({
   useEffect(() => {
     editorRef.current?.focus();
   }, []);
+
+  const measureAndReportHeight = useCallback(() => {
+    const el = editorRef.current;
+    const cb = onHeightChangeRef.current;
+    if (!el || !cb) return;
+    // Temporarily collapse to force scrollHeight to report content height, not container height
+    // (contentEditable can return clientHeight when content fits, causing unbounded growth)
+    const prevHeight = el.style.height;
+    const prevOverflow = el.style.overflow;
+    const prevMinHeight = el.style.minHeight;
+    el.style.height = "0px";
+    el.style.overflow = "hidden";
+    el.style.minHeight = "0";
+    const contentHeight = el.scrollHeight;
+    el.style.height = prevHeight;
+    el.style.overflow = prevOverflow;
+    el.style.minHeight = prevMinHeight;
+    const required = Math.max(40, TEXTBOX_CONTENT_OVERHEAD + contentHeight);
+    if (lastReportedHeight.current === required) return;
+    lastReportedHeight.current = required;
+    cb(required);
+  }, []);
+
+  const scheduleHeightCheck = useCallback(() => {
+    if (!onHeightChangeRef.current) return;
+    if (rafId.current !== null) cancelAnimationFrame(rafId.current);
+    rafId.current = requestAnimationFrame(() => {
+      rafId.current = null;
+      measureAndReportHeight();
+    });
+  }, [measureAndReportHeight]);
+
+  useEffect(() => {
+    const el = editorRef.current;
+    if (!el || !onHeightChange) return;
+    scheduleHeightCheck();
+    const mo = new MutationObserver(scheduleHeightCheck);
+    mo.observe(el, { childList: true, subtree: true, characterData: true });
+    const onInput = () => scheduleHeightCheck();
+    el.addEventListener("input", onInput);
+    return () => {
+      mo.disconnect();
+      el.removeEventListener("input", onInput);
+      if (rafId.current !== null) cancelAnimationFrame(rafId.current);
+    };
+  }, [onHeightChange, scheduleHeightCheck]);
 
   const handleBlur = () => {
     if (!editorRef.current) return;
@@ -119,6 +175,11 @@ export function TextboxRichEditor({
             return;
           }
           onKeyDown(e);
+        }}
+        onKeyUp={(e) => {
+          if (e.key === "Backspace" || e.key === "Delete") {
+            scheduleHeightCheck();
+          }
         }}
         data-placeholder="Enter text..."
         className={cn(

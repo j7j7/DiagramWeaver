@@ -279,6 +279,17 @@
           drop-shadow(0 0 24px rgba(59, 130, 246, 0.55));
 }
 
+/* Connection line hover glow - follows the path (group hover so hit area triggers it) */
+.group:hover .connection-glow-hover {
+  filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.6))
+          drop-shadow(0 0 16px rgba(59, 130, 246, 0.3));
+}
+
+.dark .group:hover .connection-glow-hover {
+  filter: drop-shadow(0 0 14px rgba(59, 130, 246, 0.95))
+          drop-shadow(0 0 28px rgba(59, 130, 246, 0.7));
+}
+
 /* Resize handles - visible rails and knobs */
 .dw-resize-handle {
   pointer-events: auto;

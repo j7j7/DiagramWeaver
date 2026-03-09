@@ -1044,7 +1044,7 @@ export function BezierConnection({ from, to, connectionColor, connectionData, ex
         )}
       </defs>
       
-      <g style={{ pointerEvents: 'auto' }} onClick={handleClick} onContextMenu={handleContextMenu} data-connection-id={connectionData?.from && connectionData?.to ? `${connectionData.from}-${connectionData.to}` : undefined}>
+      <g className="group" style={{ pointerEvents: 'auto' }} onClick={handleClick} onContextMenu={handleContextMenu} data-connection-id={connectionData?.from && connectionData?.to ? `${connectionData.from}-${connectionData.to}` : undefined}>
         {shouldRenderAnimationShapes && (
           <path id={motionPathId} d={pathData} fill="none" stroke="none" />
         )}
@@ -1057,7 +1057,7 @@ export function BezierConnection({ from, to, connectionColor, connectionData, ex
         <path
           d={pathData}
           stroke={finalConnectionColor}
-          className="cursor-pointer hover:stroke-opacity-80"
+          className="cursor-pointer connection-glow-hover transition-[filter] duration-200"
           strokeWidth={connectionData?.lineWidth || 2.5}
           fill="none"
           markerStart={showStartArrow ? `url(#${startMarkerId})` : undefined}
