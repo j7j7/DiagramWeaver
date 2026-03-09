@@ -597,7 +597,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
       originalType: node.type,
       label: node.label || '' 
     },
-    canDrag: () => !isLocked && !isReadOnly,
+    canDrag: () => !isLocked && !isReadOnly && !isEditingLabel && !isEditingTag,
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
@@ -607,7 +607,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     onDragEnd: () => {
       onDraggingChange?.(false);
     },
-  }), [node, node.id, node.x, node.y, onDraggingChange, isLocked, isReadOnly]);
+  }), [node, node.id, node.x, node.y, onDraggingChange, isLocked, isReadOnly, isEditingLabel, isEditingTag]);
 
   useEffect(() => {
     preview(getEmptyImage(), { captureDraggingState: true });
@@ -1279,6 +1279,7 @@ return (
                         if (snapped === current) return;
                         onUpdate({ ...node, height: snapped, sizeMode: 'custom' });
                       } : undefined}
+                      onTextJustifyChange={onUpdate ? (justify) => onUpdate({ ...node, textJustify: justify }) : undefined}
                     />
                   </div>
                 ) : (

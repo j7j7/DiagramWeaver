@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useEffect, useCallback } from "react";
-import { Bold, Italic, Underline, List, ListOrdered } from "lucide-react";
+import { Bold, Italic, Underline, List, ListOrdered, AlignLeft, AlignCenter, AlignRight, AlignJustify } from "lucide-react";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import {
   runsToHtml,
@@ -23,6 +23,8 @@ interface TextboxRichEditorProps {
   onDoubleClick?: (e: React.MouseEvent) => void;
   /** Callback when content height changes during edit - for auto-resize. Receives required node height. */
   onHeightChange?: (height: number) => void;
+  /** Callback when text justification changes. Updates node.textJustify. */
+  onTextJustifyChange?: (justify: "left" | "center" | "right" | "full") => void;
 }
 
 export function TextboxRichEditor({
@@ -31,6 +33,7 @@ export function TextboxRichEditor({
   onSubmit,
   onKeyDown,
   onHeightChange,
+  onTextJustifyChange,
 }: TextboxRichEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const hasInitialized = useRef(false);
@@ -109,9 +112,20 @@ export function TextboxRichEditor({
     e.stopPropagation();
     document.execCommand(command, false);
     editorRef.current?.focus();
+    scheduleHeightCheck();
+  };
+
+  const applyJustify = (justify: "left" | "center" | "right" | "full", e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const cmd = justify === "center" ? "justifyCenter" : justify === "right" ? "justifyRight" : justify === "full" ? "justifyFull" : "justifyLeft";
+    document.execCommand(cmd, false);
+    onTextJustifyChange?.(justify);
+    editorRef.current?.focus();
   };
 
   const nodeAny = node as unknown as Record<string, unknown>;
+  const currentJustify = (nodeAny.textJustify as string) || "left";
 
   return (
     <div className="relative w-full h-full flex flex-col min-h-0">
@@ -143,6 +157,38 @@ export function TextboxRichEditor({
           className="p-1 rounded hover:bg-muted transition-colors"
         >
           <Underline className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          title="Align left"
+          onMouseDown={(e) => applyJustify("left", e)}
+          className={cn("p-1 rounded hover:bg-muted transition-colors", currentJustify === "left" && "bg-muted")}
+        >
+          <AlignLeft className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          title="Align center"
+          onMouseDown={(e) => applyJustify("center", e)}
+          className={cn("p-1 rounded hover:bg-muted transition-colors", currentJustify === "center" && "bg-muted")}
+        >
+          <AlignCenter className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          title="Align right"
+          onMouseDown={(e) => applyJustify("right", e)}
+          className={cn("p-1 rounded hover:bg-muted transition-colors", currentJustify === "right" && "bg-muted")}
+        >
+          <AlignRight className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          title="Justify"
+          onMouseDown={(e) => applyJustify("full", e)}
+          className={cn("p-1 rounded hover:bg-muted transition-colors", currentJustify === "full" && "bg-muted")}
+        >
+          <AlignJustify className="h-3.5 w-3.5" />
         </button>
         <button
           type="button"
@@ -186,6 +232,9 @@ export function TextboxRichEditor({
           "flex-1 min-h-0 overflow-auto outline-none rounded",
           "border border-transparent whitespace-pre-wrap break-words leading-normal",
           "cursor-text w-full",
+          "[&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-1 [&_ul]:space-y-0.5",
+          "[&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-1 [&_ol]:space-y-0.5",
+          "[&_li]:leading-normal",
           getTextJustifyClass((nodeAny.textJustify as string) || "left")
         )}
         style={{
