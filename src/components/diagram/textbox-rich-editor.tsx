@@ -144,7 +144,7 @@ export function TextboxRichEditor({
     <div className="relative w-full h-full flex flex-col min-h-0">
       {/* Formatting toolbar - positioned OUTSIDE above textbox, so text stays in same place */}
       <div
-        className="absolute left-0 bottom-full mb-2 flex gap-0.5 rounded-md border border-border bg-background/95 px-1 py-1 shadow-sm z-10"
+        className="absolute left-0 bottom-full mb-3 flex gap-0.5 rounded-md border border-border bg-background/95 text-foreground px-1 py-1 shadow-sm z-10"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <button
@@ -257,8 +257,8 @@ export function TextboxRichEditor({
           "flex-1 min-h-0 overflow-auto outline-none rounded",
           "border border-transparent whitespace-pre-wrap break-words leading-normal",
           "cursor-text w-full",
-          "[&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-1 [&_ul]:space-y-0.5",
-          "[&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-1 [&_ol]:space-y-0.5",
+          "[&_ul]:list-disc [&_ul]:list-inside [&_ul]:pl-5 [&_ul]:my-1 [&_ul]:space-y-0.5",
+          "[&_ol]:list-decimal [&_ol]:list-inside [&_ol]:pl-5 [&_ol]:my-1 [&_ol]:space-y-0.5",
           "[&_li]:leading-normal",
           getTextJustifyClass((nodeAny.textJustify as string) || "left")
         )}
