@@ -233,7 +233,11 @@ export function htmlToRuns(html: string, node?: DiagramNodeData | null): RichTex
       const prevFirst = firstRunOfBlock;
       firstRunOfBlock = true;
       const lineFmt = getBlockLineFormat(el);
-      if (runs.length > 0) {
+      const onlyBr =
+        el.childNodes.length === 1 &&
+        el.childNodes[0].nodeType === Node.ELEMENT_NODE &&
+        (el.childNodes[0] as Element).tagName?.toLowerCase() === "br";
+      if (runs.length > 0 && !onlyBr) {
         runs.push({
           text: "\n",
           bold: fmt.bold || undefined,

@@ -67,10 +67,14 @@ export function TextboxRichDisplay({
         currentLine = [];
         lineFormat = null;
       }
-      lines.push({ runs: [], lineFormat: run });
+      if (i + 1 < runs.length && runs[i + 1].text === "\n") {
+        lines.push({ runs: [], lineFormat: run });
+        i++;
+      }
       continue;
     }
     const parts = run.text.split("\n");
+    const allEmpty = parts.every((s) => s === "");
     for (let p = 0; p < parts.length; p++) {
       if (p > 0) {
         if (currentLine.length > 0) {
@@ -78,7 +82,13 @@ export function TextboxRichDisplay({
           currentLine = [];
           lineFormat = null;
         }
-        lines.push({ runs: [], lineFormat: run });
+        if (parts[p] === "") {
+          if (allEmpty) {
+            if (p === 1) lines.push({ runs: [], lineFormat: run });
+          } else {
+            lines.push({ runs: [], lineFormat: run });
+          }
+        }
       }
       if (parts[p]) {
         if (currentLine.length === 0) lineFormat = run;
@@ -93,7 +103,11 @@ export function TextboxRichDisplay({
   numberedIndex = 0;
   const content = lines.map((line, lineIdx) => {
     if (line.runs.length === 0) {
-      return <div key={lineIdx} style={line.lineFormat ? getLineStyle(line.lineFormat, node) : getTextStylingForNode(node)} className="break-words leading-normal whitespace-pre-wrap" />;
+      return (
+        <div key={lineIdx} style={line.lineFormat ? getLineStyle(line.lineFormat, node) : getTextStylingForNode(node)} className="break-words leading-normal whitespace-pre-wrap">
+          <br />
+        </div>
+      );
     }
     const lineStyle = line.lineFormat ? getLineStyle(line.lineFormat, node) : getTextStylingForNode(node);
     const spans = line.runs.map((run, i) => {
@@ -131,10 +145,12 @@ export function TextboxRichDisplay({
     );
   });
 
+  const baseStyle = getTextStylingForNode(node);
+  const containerStyle = { ...baseStyle, display: "block" as const };
   return (
     <div
       className="break-words leading-normal cursor-text hover:bg-background/50 rounded w-full space-y-0.5"
-      style={getTextStylingForNode(node)}
+      style={containerStyle}
       onDoubleClick={onDoubleClick}
     >
       {content}
