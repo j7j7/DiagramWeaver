@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-09)
 
+### 2026-03-09 – Right-Click: Normal Browser Behavior in Text Edit
+When the user is in any text edit (input, textarea, contenteditable), right-click now shows the standard browser context menu (copy, paste, etc.) instead of diagram custom handlers. Uses existing `isEventFromEditableElement` from keyboard-utils. Applied to: right-click panning (use-canvas-interactions), canvas empty-area context menu, node context menu, zone context menu. When not in text edit, behavior unchanged (custom context menus, right-drag pan). Modified: use-canvas-interactions.ts, editor-canvas.tsx.
+
 ### 2026-03-09 – Viewer Mode: Rich Text (Textbox/Text) Styling
 **Viewer** now correctly displays rich text formatting (bold, italic, underline, justify, font size, lists) for textbox and text nodes. **Cause**: `richLabel` was not preserved when converting hierarchical diagram format to flat, and `DiagramNodeItemSchema` lacked `richLabel`. **Fix**: Added `richLabel` to `DiagramNodeItemSchema`; added `richLabel` preservation in `convertFromNestedHierarchy` (orphan nodes + processNestedGroup) and `convertToNestedHierarchy` / `convertGroupToNested`; `measureNodeDims` now uses `getPlainTextFromRuns(richLabel)` when present for correct layout; `areDiagramNodePropsEqual` checks richLabel. Modified: `schemas.ts`, `nested-hierarchy.ts`, `canvas-constants.ts`, `diagram-node.tsx`.
 

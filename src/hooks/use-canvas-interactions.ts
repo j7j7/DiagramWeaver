@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from "react";
 import type { Transform } from "./use-canvas-transform";
 import { snapToGrid } from "@/components/editor/canvas-constants";
+import { isEventFromEditableElement } from "@/lib/keyboard-utils";
 
 interface UseCanvasInteractionsOptions {
   canvasRef: React.RefObject<HTMLDivElement | null>;
@@ -33,7 +34,10 @@ export function useCanvasInteractions({
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (isConnectMode) return;
     const target = e.target as HTMLElement;
-    
+
+    // When in text edit (input, textarea, contenteditable), use normal browser behavior (e.g. right-click context menu)
+    if (isEventFromEditableElement(e)) return;
+
     // Handle panning with right mouse button (button === 2)
     // Only prevent default and start panning if NOT clicking on a node or zone
     // Check for nodes/zones by looking for data attributes or .absolute class

@@ -934,6 +934,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   }, [closeContextMenu, onResetConnectionSettingsTrigger, animationToggleOnClickEnabled, isConnectMode, onNodeClickInConnectMode, onItemSelect, onAnimationDisabledSourcesChange, animationDisabledSources, diagramData]);
 
   const handleNodeContextMenu = useCallback((e: React.MouseEvent, node: DiagramNodeData) => {
+    // When in text edit, use normal browser behavior (right-click context menu)
+    if (isEventFromEditableElement(e)) return;
     e.stopPropagation();
     e.preventDefault();
     // If multiple items are selected and this node is already in the selection, preserve the selection
@@ -962,6 +964,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   }, [closeContextMenu, onResetConnectionSettingsTrigger, isConnectMode, onNodeClickInConnectMode, onItemSelect]);
 
   const handleZoneContextMenu = useCallback((e: React.MouseEvent, zone: DiagramZoneData) => {
+    // When in text edit, use normal browser behavior (right-click context menu)
+    if (isEventFromEditableElement(e)) return;
     e.stopPropagation();
     e.preventDefault();
     // If multiple items are selected and this zone is already in the selection, preserve the selection
@@ -1187,6 +1191,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
           onContextMenu={(e) => {
+            // When in text edit, use normal browser behavior (right-click context menu)
+            if (isEventFromEditableElement(e)) return;
             e.preventDefault();
             // If user right-click-dragged to pan, don't show search - they wanted to pan
             if (wasLastRightClickAPan()) return;
