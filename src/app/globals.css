@@ -256,9 +256,10 @@
 }
 
 /* Subtle hover glow for unselected shapes/icons (replaces zoom) */
+/* Uses filter: drop-shadow so glow follows the actual shape outline (circle, triangle, etc.) */
 .node-glow-hover:hover {
-  box-shadow: 0 0 12px rgba(59, 130, 246, 0.4),
-              0 0 24px rgba(59, 130, 246, 0.2);
+  filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.6))
+          drop-shadow(0 0 16px rgba(59, 130, 246, 0.3));
 }
 
 /* Resize handles - visible rails and knobs */

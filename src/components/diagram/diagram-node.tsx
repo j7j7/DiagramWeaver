@@ -1112,7 +1112,7 @@ return (
         }
       }}
       className={cn(
-        "absolute group transition-[transform,box-shadow] duration-200 ease-in-out rounded-lg",
+        "absolute group transition-[transform,filter] duration-200 ease-in-out rounded-lg",
         // Hover and selection effects - not for lines, and not when locked
         !isLineNode && !(isDragging || isTouchDragging) && !(isSelected || isHighlighted || isMultiSelected) && !isLocked && "node-glow-hover",
         !isLineNode && (isSelected || isHighlighted || isMultiSelected) && "node-glow-static drop-shadow-md",
