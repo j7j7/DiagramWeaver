@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-09)
 
+### 2026-03-09 – Textbox WYSIWYG Toolbar Outside Textbox, No Layout Shift
+When double-clicking a textbox to edit, the formatting toolbar (bold, italic, underline, lists) previously sat inside the textbox at the top, covering text and pushing it down. **Fix**: Toolbar now floats above the textbox (`position: absolute; bottom: 100%`), outside the content bounds. Text stays in the same position whether editing or viewing—no layout shift. Inner wrapper gets `overflow-visible` when editing so the floating toolbar is visible. Modified: `textbox-rich-editor.tsx`, `diagram-node.tsx`.
+
 ### 2026-03-09 – Hover: Glow Instead of Zoom for Unselected Shapes/Icons
 Unselected shapes and icons on the canvas previously used `hover:scale-[1.02]` (zoom). Replaced with a subtle blue glow (`node-glow-hover`) so hovering shows a soft highlight instead of scaling. Applied to all non-line nodes when not selected, dragging, or locked. Modified: `diagram-node.tsx`, `globals.css` (added `.node-glow-hover:hover`).
 

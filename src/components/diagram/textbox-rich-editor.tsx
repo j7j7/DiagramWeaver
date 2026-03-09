@@ -58,10 +58,10 @@ export function TextboxRichEditor({
   const nodeAny = node as unknown as Record<string, unknown>;
 
   return (
-    <div className="w-full h-full flex flex-col">
-      {/* Formatting toolbar - use onMouseDown so selection stays in contentEditable */}
+    <div className="relative w-full h-full flex flex-col min-h-0">
+      {/* Formatting toolbar - positioned OUTSIDE above textbox, so text stays in same place */}
       <div
-        className="flex gap-0.5 pb-1 shrink-0"
+        className="absolute left-0 bottom-full mb-1 flex gap-0.5 rounded-md border border-border bg-background/95 px-1 py-1 shadow-sm z-10"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <button
@@ -106,7 +106,7 @@ export function TextboxRichEditor({
         </button>
       </div>
 
-      {/* contentEditable area */}
+      {/* contentEditable area - fills same space as display, no layout shift */}
       <div
         ref={editorRef}
         contentEditable
