@@ -55,6 +55,7 @@ export function convertToNestedHierarchy(data: DiagramData): HierarchicalDiagram
         id: node.id,
         type: node.type,
         label: node.label,
+        richLabel: node.richLabel,
         info: node.info,
         // Orphan nodes keep their x,y coordinates since they're not in a zone
         x: node.x,
@@ -145,6 +146,7 @@ function convertGroupToNested(
         id: node.id,
         type: node.type,
         label: node.label,
+        richLabel: node.richLabel,
         info: node.info,
         // x and y are omitted for hierarchical format - position is determined by zone layout
         lineColor: node.lineColor,
@@ -281,6 +283,7 @@ export function convertFromNestedHierarchy(nestedData: HierarchicalDiagramData):
             id: nodeChild.id,
             type: nodeChild.type,
             label: nodeChild.label,
+            richLabel: nodeChild.richLabel,
             info: nodeChild.info,
             // Orphan nodes should preserve their absolute x,y coordinates if present
             // Otherwise default to undefined to let calculateLayout position them
@@ -453,6 +456,7 @@ function processNestedGroup(
         id: nodeChild.id,
         type: nodeChild.type,
         label: nodeChild.label,
+        richLabel: nodeChild.richLabel,
         info: nodeChild.info,
         // In nested format, nodes inside zones don't have x,y coordinates
         // Use 0,0 as default relative position - layoutZone will recalculate proper grid positions

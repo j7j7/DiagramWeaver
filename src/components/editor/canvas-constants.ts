@@ -1,5 +1,6 @@
 import type { DiagramNodeData, DiagramZoneData } from "@/lib/types";
 import { isIconOrEmojiType } from "@/lib/utils";
+import { getPlainTextFromRuns } from "@/lib/rich-text";
 import { getNodeSizeDimensions, getNodeSizeMultiplier } from "@/lib/visual-styling";
 import { computeUmlClassDimensions } from "@/lib/uml-utils";
 
@@ -76,7 +77,7 @@ export const measureNodeDims = (n: PositionedNode) => {
     n.type?.endsWith('.jigsaw') ||
     n.type?.endsWith('.arrowhead') ||
     n.type?.endsWith('.loop'));
-  const label = (n.label || '').toString();
+  const label = (n.richLabel && n.richLabel.length > 0 ? getPlainTextFromRuns(n.richLabel) : (n.label || '')).toString();
 
   // Line nodes calculate dimensions from startPos/endPos
   if (isLineNode) {

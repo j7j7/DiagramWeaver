@@ -254,6 +254,7 @@ export const DiagramNodeItemSchema = z.object({
   id: z.string(),
   type: z.string(),
   label: z.string().optional(),
+  richLabel: z.array(RichTextRunSchema).optional(),
   tag: z.string().optional(),
   tagPosition: z.enum(['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right']).optional(),
   info: z.string().optional(),

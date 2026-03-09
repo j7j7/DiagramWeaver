@@ -2,6 +2,12 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-09)
 
+### 2026-03-09 – Viewer Mode: Rich Text (Textbox/Text) Styling
+**Viewer** now correctly displays rich text formatting (bold, italic, underline, justify, font size, lists) for textbox and text nodes. **Cause**: `richLabel` was not preserved when converting hierarchical diagram format to flat, and `DiagramNodeItemSchema` lacked `richLabel`. **Fix**: Added `richLabel` to `DiagramNodeItemSchema`; added `richLabel` preservation in `convertFromNestedHierarchy` (orphan nodes + processNestedGroup) and `convertToNestedHierarchy` / `convertGroupToNested`; `measureNodeDims` now uses `getPlainTextFromRuns(richLabel)` when present for correct layout; `areDiagramNodePropsEqual` checks richLabel. Modified: `schemas.ts`, `nested-hierarchy.ts`, `canvas-constants.ts`, `diagram-node.tsx`.
+
+### 2026-03-09 – Text Object Rich Controls (Same as Textbox)
+The **text** object (`generic.text.text`) now uses the same WYSIWYG controls as the textbox: bold, italic, underline, justify (left/center/right/full), font size, bullet/numbered lists. Replaces plain input with `TextboxRichEditor` / `TextboxRichDisplay`. Supports `richLabel`; backward compatible with plain `label`. Auto-resize when `sizeMode === 'custom'`. Modified: `diagram-node.tsx` (handleLabelDoubleClick sets editRuns for text; text block uses TextboxRichEditor/Display).
+
 ### 2026-03-09 – Textbox Per-Line Formatting (Justify, Font Size)
 Textbox now supports **per-line** text justification and font size. Each line can have different alignment (left/center/right/justify) and font size (12–24px). **Data model**: RichTextRun extended with `lineJustify`, `lineFontSize`, `lineFontWeight`, `lineFontFamily`. Node-level `textJustify`, `fontSize` remain as fallbacks. **rich-text.ts**: runsToHtml outputs line-based divs with inline styles; htmlToRuns parses block styles (text-align, font-size) into runs. **TextboxRichDisplay**: groups runs by lines, renders each line in a div with line-level style. **TextboxRichEditor**: justify buttons apply to current block via execCommand; font size buttons (12–24) apply to current block. Backward compatible: legacy runs without line-level format use node defaults. Modified: types.ts, schemas.ts, rich-text.ts, textbox-rich-display.tsx, textbox-rich-editor.tsx.
 

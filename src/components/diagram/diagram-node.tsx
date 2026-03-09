@@ -178,6 +178,7 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
     const p = prev.node;
     const n = next.node;
     if (p.id !== n.id || p.x !== n.x || p.y !== n.y || p.label !== n.label ||
+        JSON.stringify((p as any).richLabel) !== JSON.stringify((n as any).richLabel) ||
         p.width !== n.width || p.height !== n.height || p.type !== n.type ||
         (p as any).rotation !== (n as any).rotation || p.tag !== n.tag ||
         (p as any).cornerRadius !== (n as any).cornerRadius) {
@@ -259,11 +260,11 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     setIsEditingLabel(true);
     setIsOpen(false); // Close popup when editing starts
     setEditText(node.label || '');
-    if (node.type === 'generic.text.textbox') {
+    if (node.type === 'generic.text.textbox' || node.type === 'generic.text.text') {
       setEditRuns(node.richLabel ?? labelToRuns(node.label));
     }
     setTimeout(() => {
-      const ref = isTextboxNode ? textareaRef.current : inputRef.current;
+      const ref = (isTextboxNode || isTextNode) ? null : inputRef.current;
       if (ref) {
         ref.focus();
         ref.select();
@@ -321,6 +322,9 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     } else if (e.key === 'Escape') {
       setIsEditingLabel(false);
       setEditText(node.label || '');
+      if (node.type === 'generic.text.textbox' || node.type === 'generic.text.text') {
+        setEditRuns(node.richLabel ?? labelToRuns(node.label));
+      }
       // Also clear resize state when Escape is pressed
       if (isResizing) {
         handleResizeEnd();
@@ -1183,37 +1187,37 @@ return (
         <PopoverTrigger asChild>
           <div className="flex flex-col items-center justify-center h-full w-full cursor-pointer">
             {node.type === 'generic.text.text' ? (
-              // Text-only node - just show text without icon container
               (() => {
-                // For text nodes, use transparent background
-                const effectiveBgColor = 'transparent';
-                
+                // Text node - rich text with same toolbar as textbox
                 return (
-                  <div className="flex items-center justify-center h-full w-full px-2">
-                {isEditingLabel ? (
-                  <input
-                    ref={inputRef}
-                    id={`node-input-${node.id}`}
-                    type="text"
-                    value={editText}
-                    onChange={(e) => setEditText(e.target.value)}
-                    onBlur={handleLabelSubmit}
-                    onKeyDown={(e) => handleLabelKeyDown(e, false)}
-                    className="text-sm font-medium text-center bg-transparent border border-primary rounded px-1 py-0.5 w-full outline-none"
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                 ) : node.label ? (
-                             <p 
-                               className="text-center break-words leading-tight px-1 cursor-text"
-                               style={{ 
-                                 color: getTextColorForBackground(effectiveBgColor, (node as any).textColor),
-                                 ...getTextStylingForNode(node) 
-                               }}
-                               onDoubleClick={handleLabelDoubleClick}
-                             >
-                               {node.label}
-                              </p>
-                  ) : null}
+                  <div className={cn(
+                    "flex flex-col items-center justify-center h-full w-full px-2",
+                    isEditingLabel && "overflow-visible"
+                  )}>
+                    {isEditingLabel ? (
+                      <div className="w-full flex-1 flex flex-col min-h-0 overflow-visible">
+                        <TextboxRichEditor
+                          node={node}
+                          runs={editRuns}
+                          onSubmit={handleRichLabelSubmit}
+                          onKeyDown={(e) => handleLabelKeyDown(e, true)}
+                          onHeightChange={node.sizeMode === 'custom' && onUpdate && !isResizing ? (height) => {
+                            const snapped = snapDimensionToGrid(height, 40);
+                            const current = node.height ?? 40;
+                            if (snapped === current) return;
+                            onUpdate({ ...node, height: snapped, sizeMode: 'custom' });
+                          } : undefined}
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-full flex-1 flex flex-col min-h-0">
+                        <TextboxRichDisplay
+                          node={node}
+                          runs={node.richLabel ?? labelToRuns(node.label)}
+                          onDoubleClick={handleLabelDoubleClick}
+                        />
+                      </div>
+                    )}
                   </div>
                 );
               })()
