@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-09)
 
+### 2026-03-09 – Hover: Glow Instead of Zoom for Unselected Shapes/Icons
+Unselected shapes and icons on the canvas previously used `hover:scale-[1.02]` (zoom). Replaced with a subtle blue glow (`node-glow-hover`) so hovering shows a soft highlight instead of scaling. Applied to all non-line nodes when not selected, dragging, or locked. Modified: `diagram-node.tsx`, `globals.css` (added `.node-glow-hover:hover`).
+
 ### 2026-03-09 – Paste: New Unique Connection IDs for Pasted Connections
 When copying multiple shapes with connections (e.g. 2 shapes connected) and pasting, the pasted connection previously retained the **original connection id**, so it was "linked" to the source. Selection, delete, or update by connectionId could target both original and pasted copies. **Fix**: In `use-canvas-clipboard.ts` paste handler, pasted connections now get a fresh unique id via `generateConnectionId()`. The old id is omitted and replaced so each pasted connection is an independent reference. Modified: `use-canvas-clipboard.ts`.
 

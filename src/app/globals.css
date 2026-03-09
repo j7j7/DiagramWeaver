@@ -255,6 +255,12 @@
               0 0 40px rgba(34, 197, 94, 0.4);
 }
 
+/* Subtle hover glow for unselected shapes/icons (replaces zoom) */
+.node-glow-hover:hover {
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.4),
+              0 0 24px rgba(59, 130, 246, 0.2);
+}
+
 /* Resize handles - visible rails and knobs */
 .dw-resize-handle {
   pointer-events: auto;
