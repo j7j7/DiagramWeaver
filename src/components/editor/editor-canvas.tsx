@@ -262,17 +262,21 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       return null;
     }
     
-    // Helper to check if a node is a line (exclude from rotation)
+    // Helper to check if a node is a line or point (exclude from rotation)
     const isLineNode = (node: any) => {
       return node?.type === 'generic.object.line' || node?.type?.endsWith('.line');
     };
+    const isPointNode = (node: any) => {
+      return node?.type === 'generic.object.point' || node?.type?.endsWith('.point');
+    };
+    const excludeFromRotation = (node: any) => isLineNode(node) || isPointNode(node);
     
     // If hovering a selected item, use that (for multi-select, this provides better UX)
     if (hoveredItemId && hoveredItemType && selectedItemIds.has(hoveredItemId)) {
-      // Exclude line nodes from rotation
+      // Exclude line and point nodes from rotation
       if (hoveredItemType === 'node') {
         const node = nodesById[hoveredItemId];
-        if (node && isLineNode(node)) return null;
+        if (node && excludeFromRotation(node)) return null;
       }
       return { id: hoveredItemId, type: hoveredItemType };
     }
@@ -281,8 +285,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     if (selectedItemIds.size === 1 && selectedItemId) {
       const node = nodesById[selectedItemId];
       if (node) {
-        // Exclude line nodes from rotation
-        if (isLineNode(node)) return null;
+        // Exclude line and point nodes from rotation
+        if (excludeFromRotation(node)) return null;
         return { id: selectedItemId, type: 'node' as const };
       }
       const zone = zonesById[selectedItemId];
@@ -291,10 +295,10 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     
     // For multi-select, use the first selected item (persistent, won't flicker)
     if (selectedItemIds.size > 1) {
-      // Try to find first node (excluding lines)
+      // Try to find first node (excluding lines and points)
       for (const id of selectedItemIds) {
         const node = nodesById[id];
-        if (node && !isLineNode(node)) return { id, type: 'node' as const };
+        if (node && !excludeFromRotation(node)) return { id, type: 'node' as const };
       }
       // If no nodes, find first zone
       for (const id of selectedItemIds) {
