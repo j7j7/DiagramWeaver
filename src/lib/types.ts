@@ -1,4 +1,4 @@
-/** Rich text run - segment with optional bold/italic/underline/list */
+/** Rich text run - segment with optional bold/italic/underline/list and per-line formatting */
 export interface RichTextRun {
   text: string;
   bold?: boolean;
@@ -6,6 +6,14 @@ export interface RichTextRun {
   underline?: boolean;
   /** bullet list item or numbered list item */
   listType?: "bullet" | "numbered";
+  /** Per-line: text alignment for the line this run starts. Falls back to node.textJustify when unset. */
+  lineJustify?: "left" | "center" | "right" | "full";
+  /** Per-line: font size in px for the line this run starts. Falls back to node.fontSize when unset. */
+  lineFontSize?: number;
+  /** Per-line: font weight for the line this run starts. Falls back to node.fontWeight when unset. */
+  lineFontWeight?: string | number;
+  /** Per-line: font family for the line this run starts. Falls back to node.fontFamily when unset. */
+  lineFontFamily?: string;
 }
 
 export interface DiagramNodeData {

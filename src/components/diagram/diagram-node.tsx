@@ -1279,7 +1279,6 @@ return (
                         if (snapped === current) return;
                         onUpdate({ ...node, height: snapped, sizeMode: 'custom' });
                       } : undefined}
-                      onTextJustifyChange={onUpdate ? (justify) => onUpdate({ ...node, textJustify: justify }) : undefined}
                     />
                   </div>
                 ) : (

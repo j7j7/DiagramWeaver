@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-09)
 
+### 2026-03-09 – Textbox Per-Line Formatting (Justify, Font Size)
+Textbox now supports **per-line** text justification and font size. Each line can have different alignment (left/center/right/justify) and font size (12–24px). **Data model**: RichTextRun extended with `lineJustify`, `lineFontSize`, `lineFontWeight`, `lineFontFamily`. Node-level `textJustify`, `fontSize` remain as fallbacks. **rich-text.ts**: runsToHtml outputs line-based divs with inline styles; htmlToRuns parses block styles (text-align, font-size) into runs. **TextboxRichDisplay**: groups runs by lines, renders each line in a div with line-level style. **TextboxRichEditor**: justify buttons apply to current block via execCommand; font size buttons (12–24) apply to current block. Backward compatible: legacy runs without line-level format use node defaults. Modified: types.ts, schemas.ts, rich-text.ts, textbox-rich-display.tsx, textbox-rich-editor.tsx.
+
 ### 2026-03-09 – Textbox Auto-Resize During Edit (Grow/Shrink with Content)
 When editing a textbox (double-click to edit), the textbox now auto-resizes vertically to fit content: **grows** when the user adds lines (e.g. Enter) and **shrinks** when they remove lines. Uses contentEditable `scrollHeight` + padding overhead (22px); height snapped to grid (min 40px). Only applies when `sizeMode === 'custom'`; manual resize is allowed and not overridden during active resize drag. MutationObserver + input events drive height checks via requestAnimationFrame. Modified: `textbox-rich-editor.tsx` (onHeightChange, measureAndReportHeight), `diagram-node.tsx` (wire onHeightChange to onUpdate).
 

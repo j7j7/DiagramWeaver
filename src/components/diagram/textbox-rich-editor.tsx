@@ -23,8 +23,6 @@ interface TextboxRichEditorProps {
   onDoubleClick?: (e: React.MouseEvent) => void;
   /** Callback when content height changes during edit - for auto-resize. Receives required node height. */
   onHeightChange?: (height: number) => void;
-  /** Callback when text justification changes. Updates node.textJustify. */
-  onTextJustifyChange?: (justify: "left" | "center" | "right" | "full") => void;
 }
 
 export function TextboxRichEditor({
@@ -33,7 +31,6 @@ export function TextboxRichEditor({
   onSubmit,
   onKeyDown,
   onHeightChange,
-  onTextJustifyChange,
 }: TextboxRichEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const hasInitialized = useRef(false);
@@ -44,7 +41,7 @@ export function TextboxRichEditor({
 
   useEffect(() => {
     if (!editorRef.current || hasInitialized.current) return;
-    editorRef.current.innerHTML = runsToHtml(runs);
+    editorRef.current.innerHTML = runsToHtml(runs, node);
     hasInitialized.current = true;
   }, [runs]);
 
@@ -101,7 +98,7 @@ export function TextboxRichEditor({
   const handleBlur = () => {
     if (!editorRef.current) return;
     const html = editorRef.current.innerHTML;
-    const rawRuns = htmlToRuns(html);
+    const rawRuns = htmlToRuns(html, node);
     const normRuns = normalizeRuns(rawRuns);
     const plainText = getPlainTextFromRuns(normRuns);
     onSubmit(plainText, normRuns);
@@ -120,12 +117,28 @@ export function TextboxRichEditor({
     e.stopPropagation();
     const cmd = justify === "center" ? "justifyCenter" : justify === "right" ? "justifyRight" : justify === "full" ? "justifyFull" : "justifyLeft";
     document.execCommand(cmd, false);
-    onTextJustifyChange?.(justify);
     editorRef.current?.focus();
   };
 
+  const applyFontSize = (size: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const sel = window.getSelection();
+    if (!sel || !editorRef.current) return;
+    let block: HTMLElement | null = sel.anchorNode as HTMLElement;
+    while (block && block !== editorRef.current) {
+      if (block.nodeType === Node.ELEMENT_NODE && ["DIV", "P", "LI"].includes((block as Element).tagName)) {
+        (block as HTMLElement).style.fontSize = `${size}px`;
+        break;
+      }
+      block = block.parentElement;
+    }
+    editorRef.current?.focus();
+    scheduleHeightCheck();
+  };
+
   const nodeAny = node as unknown as Record<string, unknown>;
-  const currentJustify = (nodeAny.textJustify as string) || "left";
+  const FONT_SIZES = [12, 14, 16, 18, 20, 24];
 
   return (
     <div className="relative w-full h-full flex flex-col min-h-0">
@@ -162,7 +175,7 @@ export function TextboxRichEditor({
           type="button"
           title="Align left"
           onMouseDown={(e) => applyJustify("left", e)}
-          className={cn("p-1 rounded hover:bg-muted transition-colors", currentJustify === "left" && "bg-muted")}
+          className="p-1 rounded hover:bg-muted transition-colors"
         >
           <AlignLeft className="h-3.5 w-3.5" />
         </button>
@@ -170,7 +183,7 @@ export function TextboxRichEditor({
           type="button"
           title="Align center"
           onMouseDown={(e) => applyJustify("center", e)}
-          className={cn("p-1 rounded hover:bg-muted transition-colors", currentJustify === "center" && "bg-muted")}
+          className="p-1 rounded hover:bg-muted transition-colors"
         >
           <AlignCenter className="h-3.5 w-3.5" />
         </button>
@@ -178,7 +191,7 @@ export function TextboxRichEditor({
           type="button"
           title="Align right"
           onMouseDown={(e) => applyJustify("right", e)}
-          className={cn("p-1 rounded hover:bg-muted transition-colors", currentJustify === "right" && "bg-muted")}
+          className="p-1 rounded hover:bg-muted transition-colors"
         >
           <AlignRight className="h-3.5 w-3.5" />
         </button>
@@ -186,10 +199,22 @@ export function TextboxRichEditor({
           type="button"
           title="Justify"
           onMouseDown={(e) => applyJustify("full", e)}
-          className={cn("p-1 rounded hover:bg-muted transition-colors", currentJustify === "full" && "bg-muted")}
+          className="p-1 rounded hover:bg-muted transition-colors"
         >
           <AlignJustify className="h-3.5 w-3.5" />
         </button>
+        <span className="w-px bg-border mx-0.5 self-stretch" aria-hidden />
+        {FONT_SIZES.map((s) => (
+          <button
+            key={s}
+            type="button"
+            title={`Font size ${s}`}
+            onMouseDown={(e) => { e.stopPropagation(); applyFontSize(s, e); }}
+            className="p-1 rounded hover:bg-muted transition-colors text-[10px] min-w-[20px]"
+          >
+            {s}
+          </button>
+        ))}
         <button
           type="button"
           title="Bullet list"

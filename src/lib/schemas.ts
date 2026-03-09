@@ -8,6 +8,10 @@ const RichTextRunSchema = z.object({
   italic: z.boolean().optional(),
   underline: z.boolean().optional(),
   listType: z.enum(["bullet", "numbered"]).optional(),
+  lineJustify: z.enum(["left", "center", "right", "full"]).optional(),
+  lineFontSize: z.number().optional(),
+  lineFontWeight: z.union([z.string(), z.number()]).optional(),
+  lineFontFamily: z.string().optional(),
 });
 
 // Schema for DiagramNodeData based on actual types
