@@ -535,6 +535,7 @@ export function ContextToolbar({
   if (selectedItem.itemType === 'edge') {
     const isEdge = selectedItem.itemType === 'edge';
     const hasArrow = selectedItem.arrow === true || selectedItem.toArrow === true;
+    const lineStyle = (selectedItem as any).style ?? 'bezier';
 
     const handleArrowToggle = () => {
       if (onConnectionUpdate && isEdge) {
@@ -546,12 +547,41 @@ export function ContextToolbar({
       }
     };
 
+    const handleLineStyleChange = (style: 'bezier' | 'orthogonal') => {
+      if (onConnectionUpdate && isEdge) {
+        const connId = (selectedItem as { id?: string }).id;
+        onConnectionUpdate(selectedItem.from, selectedItem.to, { style }, connId);
+      }
+    };
+
     const waypoints = (selectedItem as any).waypoints ?? [];
-    const canAddWaypoint = !!onConnectionWaypointAdd && !isReadOnly;
+    const canAddWaypoint = !!onConnectionWaypointAdd && !isReadOnly && lineStyle !== 'orthogonal';
     const canRemoveWaypoint = !!onConnectionWaypointRemove && !isReadOnly;
 
     return (
       <div className="flex items-center gap-1 px-2 border-l border-border min-h-[2.5rem] shrink-0">
+        {/* Line Type Toggle */}
+        <div className="flex gap-0.5">
+          <Button
+            variant={lineStyle === 'bezier' ? 'default' : 'ghost'}
+            size="sm"
+            className="h-8 px-2"
+            onClick={() => handleLineStyleChange('bezier')}
+            title="Curved line"
+          >
+            <span className="text-xs">Curved</span>
+          </Button>
+          <Button
+            variant={lineStyle === 'orthogonal' ? 'default' : 'ghost'}
+            size="sm"
+            className="h-8 px-2"
+            onClick={() => handleLineStyleChange('orthogonal')}
+            title="Orthogonal line"
+          >
+            <span className="text-xs">Orthogonal</span>
+          </Button>
+        </div>
+
         {/* Arrow Toggle Button */}
         <Button
           variant={hasArrow ? "default" : "ghost"}
@@ -563,7 +593,7 @@ export function ContextToolbar({
           <ArrowRight className="h-4 w-4" />
         </Button>
 
-        {/* Add Waypoint - click to add a waypoint for routing connection around obstacles */}
+        {/* Add Waypoint - click to add a waypoint for routing connection around obstacles (bezier only) */}
         {canAddWaypoint && (
           <Button
             variant="ghost"
@@ -1437,6 +1467,27 @@ export function ContextToolbar({
                               >
                                 <ArrowRight className={`h-3 w-3 ${hasArrow ? '' : 'opacity-50'}`} />
                               </Button>
+                            </div>
+                            <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/50">
+                              <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Line type:</label>
+                              <div className="flex gap-1">
+                                <Button
+                                  variant={(connInfo.connection.style ?? 'bezier') === 'bezier' ? 'default' : 'outline'}
+                                  size="sm"
+                                  className="h-7 px-2"
+                                  onClick={() => onConnectionUpdate?.(connInfo.connection.from, connInfo.connection.to, { style: 'bezier' }, connId)}
+                                >
+                                  Curved
+                                </Button>
+                                <Button
+                                  variant={(connInfo.connection.style ?? 'bezier') === 'orthogonal' ? 'default' : 'outline'}
+                                  size="sm"
+                                  className="h-7 px-2"
+                                  onClick={() => onConnectionUpdate?.(connInfo.connection.from, connInfo.connection.to, { style: 'orthogonal' }, connId)}
+                                >
+                                  Orthogonal
+                                </Button>
+                              </div>
                             </div>
                             <div className="flex flex-col gap-1 pt-1 border-t border-border/50">
                               <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Text:</label>

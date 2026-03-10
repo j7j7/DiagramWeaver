@@ -276,7 +276,7 @@ export default function DiagramEditor() {
       textPosition?: number;
       lineWidth?: number;
       shadow?: boolean;
-      style?: 'bezier';
+      style?: 'bezier' | 'orthogonal';
       curvature?: number;
       fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center';
       fromArrow?: boolean;
@@ -1184,7 +1184,7 @@ export default function DiagramEditor() {
       textPosition?: number;
       lineWidth?: number;
       shadow?: boolean;
-      style?: 'bezier';
+      style?: 'bezier' | 'orthogonal';
       curvature?: number;
       fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center';
       fromArrow?: boolean;
@@ -1223,7 +1223,7 @@ export default function DiagramEditor() {
       textPosition?: number;
       lineWidth?: number;
       shadow?: boolean;
-      style?: 'bezier';
+      style?: 'bezier' | 'orthogonal';
       curvature?: number;
       fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center';
       fromArrow?: boolean;
@@ -1263,7 +1263,7 @@ export default function DiagramEditor() {
     setPendingAnimationUpdate(null);
   }, []);
 
-  const handleConnectionUpdate = (from: string, to: string, updates: { text?: string; color?: string; textPosition?: number; lineWidth?: number; shadow?: boolean; style?: 'bezier'; curvature?: number; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean; arrow?: boolean; waypoints?: Array<{ x: number; y: number; id?: string }>; metaData?: Record<string, string>; animation?: DiagramConnectionData['animation'] }, connectionId?: string) => {
+  const handleConnectionUpdate = (from: string, to: string, updates: { text?: string; color?: string; textPosition?: number; lineWidth?: number; shadow?: boolean; style?: 'bezier' | 'orthogonal'; curvature?: number; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean; arrow?: boolean; waypoints?: Array<{ x: number; y: number; id?: string }>; metaData?: Record<string, string>; animation?: DiagramConnectionData['animation'] }, connectionId?: string) => {
     const effectiveConnId = connectionId ?? (selectedItem?.itemType === 'edge' ? (selectedItem as { id?: string }).id : undefined);
     const currentConnection = diagramData.connections.find((conn) =>
       effectiveConnId ? (conn as DiagramConnectionData).id === effectiveConnId : (conn.from === from && conn.to === to)

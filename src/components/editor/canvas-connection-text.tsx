@@ -35,6 +35,8 @@ function CanvasConnectionTextInner(props: CanvasConnectionTextProps) {
         const fromItem = nodesById[edge.from] || zonesById[edge.from];
         const toItem = nodesById[edge.to] || zonesById[edge.to];
         if (!fromItem || !toItem || !edge.text) return null;
+        // Orthogonal connections render text inline; skip here
+        if (edge.style === 'orthogonal') return null;
 
         // Use measured dimensions for nodes to ensure proper connection alignment
         const fromItemDims = 'type' in fromItem ? measureNodeDims(fromItem as PositionedNode) : { width: (fromItem as any).width, height: (fromItem as any).height };
