@@ -48,7 +48,7 @@
         },
         {
           "id": "aws-general-internet-gateway-1",
-          "type": "aws.general.internet-gateway",
+          "type": "aws.networkingcontentdelivery.vpc_internet-gateway",
           "label": "Internet Gateway",
           "info": "Internet Gateway from aws",
           "x": 690,
@@ -124,7 +124,7 @@
         },
         {
           "id": "aws-database-rds-1",
-          "type": "aws.database.rds",
+          "type": "aws.databases.rds",
           "label": "RDS",
           "info": "RDS from aws",
           "x": 430,
@@ -134,7 +134,7 @@
         },
         {
           "id": "aws-storage-s3-1",
-          "type": "aws.storage.s3",
+          "type": "aws.storage.simple-storage-service",
           "label": "S3",
           "info": "S3 from aws",
           "x": 560,
@@ -187,7 +187,7 @@
         },
         {
           "id": "aws-network-alb-1",
-          "type": "aws.network.alb",
+          "type": "aws.networkingcontentdelivery.elastic-load-balancing",
           "label": "ALB",
           "info": "ALB from aws",
           "x": 490,
@@ -219,7 +219,7 @@
         },
         {
           "id": "aws-database-rds-2",
-          "type": "aws.database.rds",
+          "type": "aws.databases.rds",
           "label": "RDS",
           "info": "RDS from aws",
           "x": 830,
@@ -229,7 +229,7 @@
         },
         {
           "id": "aws-storage-s3-2",
-          "type": "aws.storage.s3",
+          "type": "aws.storage.simple-storage-service",
           "label": "S3",
           "info": "S3 from aws",
           "x": 960,
@@ -282,7 +282,7 @@
         },
         {
           "id": "aws-network-alb-2",
-          "type": "aws.network.alb",
+          "type": "aws.networkingcontentdelivery.elastic-load-balancing",
           "label": "ALB",
           "info": "ALB from aws",
           "x": 890,
@@ -291,7 +291,7 @@
         },
         {
           "id": "aws-network-vpc-1",
-          "type": "aws.network.vpc",
+          "type": "aws.networkingcontentdelivery.virtual-private-cloud",
           "label": "VPC",
           "info": "VPC from aws",
           "x": 1180,
@@ -301,7 +301,7 @@
         },
         {
           "id": "aws-network-direct-connect-1",
-          "type": "aws.network.direct-connect",
+          "type": "aws.networkingcontentdelivery.direct-connect",
           "label": "Direct Connect",
           "info": "Direct Connect from aws",
           "x": 1300,
@@ -311,7 +311,7 @@
         },
         {
           "id": "aws-network-transit-gateway-1",
-          "type": "aws.network.transit-gateway",
+          "type": "aws.networkingcontentdelivery.transit-gateway",
           "label": "Transit Gateway",
           "info": "Transit Gateway from aws",
           "x": 1580,

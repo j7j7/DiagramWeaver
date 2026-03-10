@@ -58,6 +58,7 @@ export function ConnectionContextModal({
     (toNode as any)?.lineColor ||
     (fromNode as any)?.lineColor ||
     "#6b7280";
+  const lineStyle = liveConnection.style ?? "bezier";
   const textPosition = liveConnection.textPosition ?? 50;
   const connectionText = liveConnection.text || "";
   const hasArrow = liveConnection.arrow === true || liveConnection.toArrow === true;
@@ -87,6 +88,10 @@ export function ConnectionContextModal({
 
   const handleShadowToggle = () => {
     onConnectionUpdate(connection.from, connection.to, { shadow: !(liveConnection.shadow || false) }, connId);
+  };
+
+  const handleLineStyleChange = (style: "bezier" | "orthogonal") => {
+    onConnectionUpdate(connection.from, connection.to, { style }, connId);
   };
 
   // Initialize position from props when modal opens
@@ -159,6 +164,28 @@ export function ConnectionContextModal({
         </Button>
       </div>
       <div className="p-4 space-y-3 max-h-80 overflow-y-auto">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs text-muted-foreground">Line type</span>
+          <div className="flex gap-1">
+            <Button
+              variant={lineStyle === "bezier" ? "default" : "outline"}
+              size="sm"
+              className="h-7 px-2"
+              onClick={() => handleLineStyleChange("bezier")}
+            >
+              Curved
+            </Button>
+            <Button
+              variant={lineStyle === "orthogonal" ? "default" : "outline"}
+              size="sm"
+              className="h-7 px-2"
+              onClick={() => handleLineStyleChange("orthogonal")}
+            >
+              Orthogonal
+            </Button>
+          </div>
+        </div>
+
         <div className="flex items-center justify-between gap-2">
           <span className="text-xs text-muted-foreground">Arrow</span>
           <Button
@@ -277,6 +304,7 @@ export function ConnectionContextModal({
           />
         </div>
 
+        {lineStyle !== "orthogonal" && (
         <div className="border-t border-border pt-3 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">Connection points</span>
@@ -320,6 +348,7 @@ export function ConnectionContextModal({
             </div>
           )}
         </div>
+        )}
       </div>
         </div>
       </Draggable>

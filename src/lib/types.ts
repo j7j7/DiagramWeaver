@@ -143,7 +143,7 @@ export interface DiagramConnectionData {
   arrow?: boolean; // Legacy arrow property - backward compatibility
   
   // Connection style options
-  style?: 'bezier'; // Connection rendering style
+  style?: 'bezier' | 'orthogonal'; // Connection rendering style (default: bezier)
   curvature?: number; // Bezier curve intensity (0.1 to 1.0)
   lineWidth?: number; // Line thickness for the connection (default: 2.5)
   shadow?: boolean; // Whether to show shadow around the connection line

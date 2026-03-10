@@ -38,7 +38,7 @@ const calculateNodeHeight = (label: string = '', nodeType: string, sizeMode?: st
   }
 };
 
-type Positionable = (DiagramNodeData | DiagramGroupData) & { x: number; y: number; width: number; height: number; subType?: string; };
+export type Positionable = (DiagramNodeData | DiagramGroupData) & { x: number; y: number; width: number; height: number; subType?: string; };
 
 interface BezierConnectionProps {
   from: Positionable & { lineColor?: string };
@@ -83,7 +83,7 @@ interface BezierConnectionTextProps {
 const MAX_RENDERED_ANIMATION_SHAPES = 2000;
 
 /** Returns color at 50% opacity. Handles hex and rgb/rgba; falls back to original if unparseable. */
-function colorWithHalfOpacity(color: string): string {
+export function colorWithHalfOpacity(color: string): string {
   const hexMatch = color.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
   if (hexMatch) {
     const hex = hexMatch[1];
@@ -103,7 +103,7 @@ function formatAnimFloat(value: number): string {
   return Number.isFinite(value) ? value.toFixed(6).replace(/0+$/, '').replace(/\.$/, '') || '0' : '0';
 }
 
-function getLoopedAnimationPathConfig(progress: number, speed: number): { keyPoints: string; keyTimes: string } {
+export function getLoopedAnimationPathConfig(progress: number, speed: number): { keyPoints: string; keyTimes: string } {
   const normalized = Math.max(0, Math.min(1, progress));
 
   if (speed < 0) {
@@ -219,7 +219,7 @@ function buildPathDistanceLookup(
   };
 }
 
-function renderAnimatedShape(shape: 'dot' | 'square' | 'arrow' | 'triangle' | 'hexagon', size: number, color: string) {
+export function renderAnimatedShape(shape: 'dot' | 'square' | 'arrow' | 'triangle' | 'hexagon', size: number, color: string) {
   const half = size / 2;
 
   if (shape === 'dot') {
