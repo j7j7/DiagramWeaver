@@ -45,7 +45,7 @@ import { useAlignmentGuides } from "@/hooks/use-alignment-guides";
 import { CanvasAlignmentGuides } from "./canvas-alignment-guides";
 import { SearchResourcesModal } from "./search-resources-modal";
 import { MetadataPopup } from "./metadata-popup";
-import { snapToGrid } from "./canvas-constants";
+import { snapToGrid, SELECTED_ITEM_Z_OFFSET } from "./canvas-constants";
 import { ConnectionWaypointHandles } from "../diagram/connection-waypoint-handles";
 import { isShapeNodeType } from "@/lib/utils";
 import { isEventFromEditableElement } from "@/lib/keyboard-utils";
@@ -1265,7 +1265,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 {connectionSlots.sortedItemIds.map((itemId, i) => {
                   const node = nodesById[itemId];
                   const zone = zonesById[itemId];
-                  const nodeZIndex = 10 + i;
+                  const isSelected = node && (selectedItemId === node.id || selectedItemIds?.has(node.id));
+                  const nodeZIndex = isSelected ? SELECTED_ITEM_Z_OFFSET + i : 10 + i;
                   const nodeEl = node ? (
                     <DiagramNode
                       key={node.id}
@@ -1313,7 +1314,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 // Icon/text nodes: elevate z so labels stay on top of connectors. Shapes: keep original so lines can pass in front.
                 const NODE_LAYER_BASE = 100;
                 const isShape = node && isShapeNodeType(node.type);
-                const nodeZIndex = isShape ? 2 * i + 1 : NODE_LAYER_BASE + 2 * i + 1;
+                const baseNodeZIndex = isShape ? 2 * i + 1 : NODE_LAYER_BASE + 2 * i + 1;
+                const isSelected = node && (selectedItemId === node.id || selectedItemIds?.has(node.id));
+                const nodeZIndex = isSelected ? SELECTED_ITEM_Z_OFFSET + i : baseNodeZIndex;
                 const nodeEl = node ? (
                   <DiagramNode
                     key={node.id}
