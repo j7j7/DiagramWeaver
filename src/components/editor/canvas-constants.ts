@@ -15,8 +15,6 @@ export const ZONE_NODE_SPACING = 30;
 export const MULTI_LINE_SPACING_BONUS = 25; // Extra spacing for nodes with 2+ lines of text
 export const GRID_SNAP = 20;
 export const RULER_SIZE = 24;
-/** Z-index offset for selected items - ensures they receive pointer events first when overlapping */
-export const SELECTED_ITEM_Z_OFFSET = 10000;
 
 // Types
 export type PositionedNode = DiagramNodeData & { x: number; y: number; };

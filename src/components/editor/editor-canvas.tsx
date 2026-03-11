@@ -45,7 +45,7 @@ import { useAlignmentGuides } from "@/hooks/use-alignment-guides";
 import { CanvasAlignmentGuides } from "./canvas-alignment-guides";
 import { SearchResourcesModal } from "./search-resources-modal";
 import { MetadataPopup } from "./metadata-popup";
-import { snapToGrid, SELECTED_ITEM_Z_OFFSET } from "./canvas-constants";
+import { snapToGrid } from "./canvas-constants";
 import { ConnectionWaypointHandles } from "../diagram/connection-waypoint-handles";
 import { isShapeNodeType } from "@/lib/utils";
 import { isEventFromEditableElement } from "@/lib/keyboard-utils";
@@ -177,7 +177,43 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     () => computeConnectionSlots(diagramData, processedNodes, processedZones),
     [diagramData, processedNodes, processedZones]
   );
-  
+
+  // When a selected item is behind others, items on top get pointer-events: none so resize/drag
+  // targets the selected item. Preserves visual stacking; allows operating on background when selected.
+  const pointerEventsPassThroughIds = useMemo(() => {
+    const passThrough = new Set<string>();
+    if (!selectedItemIds?.size || selectedItemIds.size === 0) return passThrough;
+    const sortedIds = connectionSlots.sortedItemIds;
+    const getBounds = (id: string) => {
+      const node = nodesById[id];
+      const zone = zonesById[id];
+      if (node) {
+        const dims = measureNodeDims(node as PositionedNode);
+        return { x: node.x ?? 0, y: node.y ?? 0, w: dims.width, h: dims.height };
+      }
+      if (zone) {
+        return { x: zone.x ?? 0, y: zone.y ?? 0, w: zone.width ?? 300, h: zone.height ?? 220 };
+      }
+      return null;
+    };
+    const overlaps = (a: { x: number; y: number; w: number; h: number }, b: { x: number; y: number; w: number; h: number }) =>
+      a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    for (let i = 0; i < sortedIds.length; i++) {
+      const id = sortedIds[i];
+      if (!selectedItemIds.has(id)) continue;
+      const selBounds = getBounds(id);
+      if (!selBounds) continue;
+      for (let j = i + 1; j < sortedIds.length; j++) {
+        const topId = sortedIds[j];
+        if (selectedItemIds.has(topId)) continue;
+        const topBounds = getBounds(topId);
+        if (!topBounds || !overlaps(selBounds, topBounds)) continue;
+        passThrough.add(topId);
+      }
+    }
+    return passThrough;
+  }, [connectionSlots.sortedItemIds, selectedItemIds, nodesById, zonesById]);
+
   // Get the currently selected item (node or zone) for internal use
   const selectedNodeOrZone = useMemo(() => {
     if (!selectedItemId) return null;
@@ -1265,8 +1301,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 {connectionSlots.sortedItemIds.map((itemId, i) => {
                   const node = nodesById[itemId];
                   const zone = zonesById[itemId];
-                  const isSelected = node && (selectedItemId === node.id || selectedItemIds?.has(node.id));
-                  const nodeZIndex = isSelected ? SELECTED_ITEM_Z_OFFSET + i : 10 + i;
+                  const nodeZIndex = 10 + i;
                   const nodeEl = node ? (
                     <DiagramNode
                       key={node.id}
@@ -1297,6 +1332,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   isConnectMode={isConnectMode && selectedItemId === node.id}
                   transform={transform}
                   canvasRef={canvasRef}
+                  pointerEventsPassThrough={pointerEventsPassThroughIds.has(node.id)}
                 />
               ) : zone ? null : null;
                   return nodeEl;
@@ -1314,9 +1350,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 // Icon/text nodes: elevate z so labels stay on top of connectors. Shapes: keep original so lines can pass in front.
                 const NODE_LAYER_BASE = 100;
                 const isShape = node && isShapeNodeType(node.type);
-                const baseNodeZIndex = isShape ? 2 * i + 1 : NODE_LAYER_BASE + 2 * i + 1;
-                const isSelected = node && (selectedItemId === node.id || selectedItemIds?.has(node.id));
-                const nodeZIndex = isSelected ? SELECTED_ITEM_Z_OFFSET + i : baseNodeZIndex;
+                const nodeZIndex = isShape ? 2 * i + 1 : NODE_LAYER_BASE + 2 * i + 1;
                 const nodeEl = node ? (
                   <DiagramNode
                     key={node.id}
@@ -1347,6 +1381,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     isConnectMode={isConnectMode && selectedItemId === node.id}
                     transform={transform}
                     canvasRef={canvasRef}
+                    pointerEventsPassThrough={pointerEventsPassThroughIds.has(node.id)}
                   />
                 ) : zone ? null : null;
                 return [

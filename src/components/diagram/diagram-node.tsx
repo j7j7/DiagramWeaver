@@ -171,6 +171,8 @@ interface DiagramNodeProps {
   canvasRef?: React.RefObject<HTMLDivElement | null>; // Canvas ref for coordinate conversion
   /** Z-index for order-aware connection layering (when set, overrides default 2) */
   stackZIndex?: number;
+  /** When true, pointer-events: none so clicks pass through to selected item below */
+  pointerEventsPassThrough?: boolean;
 }
 
 function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps): boolean {
@@ -202,6 +204,7 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
     prev.isMultiSelected === next.isMultiSelected &&
     prev.isGroupMember === next.isGroupMember &&
     prev.stackZIndex === next.stackZIndex &&
+    prev.pointerEventsPassThrough === next.pointerEventsPassThrough &&
     prev.hoverEnabled === next.hoverEnabled &&
     prev.isReadOnly === next.isReadOnly &&
     prev.transform?.x === next.transform?.x &&
@@ -222,7 +225,7 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
     prev.isConnectMode === next.isConnectMode;
 }
 
-function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onResizeStart, onResizeEnd, onPositionUpdate, onDraggingChange, onUpdate, hoverEnabled = true, isReadOnly = false, onHoverChange, onConnect, isConnectMode, transform, canvasRef, stackZIndex }: DiagramNodeProps) {
+function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onResizeStart, onResizeEnd, onPositionUpdate, onDraggingChange, onUpdate, hoverEnabled = true, isReadOnly = false, onHoverChange, onConnect, isConnectMode, transform, canvasRef, stackZIndex, pointerEventsPassThrough = false }: DiagramNodeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [isEditingTag, setIsEditingTag] = useState(false);
@@ -1330,7 +1333,9 @@ return (
         transform: rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
         transformOrigin: 'center',
         // For lines: container doesn't intercept clicks, but children (endpoint handles) can still receive events
-        ...(isLineNode && { pointerEvents: 'none' }), 
+        // pointerEventsPassThrough: when selected item is behind this, let clicks pass through to it for resize/drag
+        ...(isLineNode && { pointerEvents: 'none' }),
+        ...(pointerEventsPassThrough && { pointerEvents: 'none' }),
       }}
       onMouseEnter={() => { 
         if (!isDragging && !isEditingLabel && !isEditingTag) { 
