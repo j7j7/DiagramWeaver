@@ -1,6 +1,6 @@
 # Diagram Weaver
 
-An interactive diagram creation tool for building architecture and flow diagrams. Create diagrams by dragging resources from the sidebar or describing them in natural language. Diagrams use a flat node structure with JSON-based storage and export.
+An interactive diagram creation tool for building architecture and flow diagrams. Create diagrams by dragging resources from the sidebar, editing the JSON directly, or importing Mermaid files. Diagrams use a flat node structure with JSON-based storage and export.
 
 ## Tech Stack
 
@@ -60,8 +60,10 @@ Additional providers available (can be enabled): Alibaba Cloud, OCI, SaaS, Elast
 
 ### Connections
 
-- **Bezier Curves**: Smooth curved connections between nodes
-- **Per-Connection Controls**: Arrow toggle, color picker, text label, text position (0–100%)
+- **Curved & Orthogonal**: Choose **Curved** (bezier) or **Orthogonal** (90° axis-aligned) per connection; toggle via Connection Context Modal, Connections popover, or edge toolbar
+- **Connection Animations**: Animated shapes (dot, square, arrow, triangle, hexagon) along connection paths; per-connection shape, speed, size, spacing; bulk apply outbound/inbound
+- **Per-Connection Controls**: Arrow toggle, color picker, text label, text position (0–100%), line thickness, shadow
+- **Waypoints**: Add waypoints to route bezier connections around obstacles (Curved only)
 - **Direction Indicators**: Preferred exit/entry directions
 - **Connection Order**: Lines respect z-order (Move to Front/Back affects layering)
 - **Connections Panel**: Popover on Connections button; per-connection controls when node selected
@@ -115,7 +117,7 @@ See `docs/MERMAID-IMPORT.md` for full syntax and mapping.
 
 ### Export & Persistence
 
-- **Export PNG**: Viewport export via html-to-image
+- **Export PNG/GIF**: Viewport export via html-to-image; GIF supports animated connection lines (duration, FPS, background)
 - **Save/Load**: JSON file save and load (JSON + .mmd/.mermaid)
 - **Copy Viewer URL**: Shareable URL for read-only viewer
 - **Examples**: Built-in example diagrams (File → Examples)
@@ -124,7 +126,8 @@ See `docs/MERMAID-IMPORT.md` for full syntax and mapping.
 
 - **Read-Only Mode**: Share diagrams via URL without editing (File → Copy Viewer URL)
 - **URL Parameters**: `?json=` (base64-encoded diagram) or `?url=` (URL to fetch JSON from a remote host)
-- **Controls**: Zoom in/out, Fit to View, Properties panel toggle, metadata popup toggle
+- **Controls**: Zoom in/out, Fit to View, Properties panel toggle, metadata popup toggle, animation toggle
+- **Connection Animations**: Same animated shapes as editor; Show animations for selected only (downstream chain)
 - **Selection**: Click nodes or connections to view name, type, and metadata in the Properties panel
 - **Metadata Popups**: Compact popup under selected item shows key/value pairs (toggle in controls)
 - **Layers Panel**: When diagram has 2+ layers, toggle layer visibility (eye/eye-off)
@@ -132,8 +135,11 @@ See `docs/MERMAID-IMPORT.md` for full syntax and mapping.
 
 ### View Options
 
+- **Dark/Light Mode**: System-wide theme toggle (Light, Dark, System); persisted to localStorage
 - **Layers Panel**: Toggle layer visibility
 - **Scratch Pad**: Notes area
+- **Lines Behind Nodes**: Toggle connection line layering (behind nodes vs order-aware interleaving)
+- **Animation Connections**: Toggle animated shapes on connections (Ctrl+Alt+A)
 - **Hover Text**: Toggle node labels on hover
 - **Icon Background**: Toggle background on resource icons
 - **Alignment Guides**: Snap guides when dragging
@@ -184,6 +190,8 @@ See `docs/MERMAID-IMPORT.md` for full syntax and mapping.
 | Ctrl+Shift+Z | Redo |
 | Ctrl+Shift+J | Toggle JSON panel |
 | Ctrl+Shift+L | Auto Layout |
+| Ctrl+Alt+A | Toggle connection animations |
+| Ctrl+Alt+C | Toggle click-to-show animations |
 | Delete / Backspace | Delete selected |
 | Escape | Clear selection |
 
@@ -191,7 +199,7 @@ See `docs/MERMAID-IMPORT.md` for full syntax and mapping.
 
 ### Build Commands
 
-- `npm run dev` – Start dev server (port 9002)
+- `npm run dev` – Start dev server (port 9003)
 - `npm run build` – Production build
 - `npm run lint` – Run ESLint
 - `npm run typecheck` – TypeScript type check
