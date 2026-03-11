@@ -655,7 +655,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                   width: `${ICON_SIZE}px`,
                   height: `${ICON_SIZE}px`,
                 }}
-                onMouseDown={(e) => {
+                onClick={(e) => {
                   e.stopPropagation();
                   e.preventDefault();
                   if (onConnectionUpdate) {
@@ -664,6 +664,11 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                       toArrow: !hasArrow,
                     }, (edge as { id?: string }).id);
                   }
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onConnectionContextMenu?.(e, edge);
                 }}
               >
                 <svg
@@ -682,13 +687,13 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                 </svg>
               </div>
             </TooltipTrigger>
-            <TooltipContent side="top">
+            <TooltipContent side="top" className="z-[9999]">
               Toggle arrow
             </TooltipContent>
           </Tooltip>
 
-          {/* Add waypoint button - at center (50%) along the curve (bezier only; orthogonal auto-routes) */}
-          {onConnectionWaypointAdd && connStyle !== 'orthogonal' && (
+          {/* Add waypoint button - at center (50%) along the path (bezier and orthogonal) */}
+          {onConnectionWaypointAdd && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <div
@@ -700,12 +705,17 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                     width: `${ICON_SIZE}px`,
                     height: `${ICON_SIZE}px`,
                   }}
-                  onMouseDown={(e) => {
+                  onClick={(e) => {
                     e.stopPropagation();
                     e.preventDefault();
                     if (onConnectionWaypointAdd) {
                       onConnectionWaypointAdd(edge.from, edge.to, (edge as { id?: string }).id);
                     }
+                  }}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onConnectionContextMenu?.(e, edge);
                   }}
                 >
                   <svg
@@ -725,7 +735,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                   </svg>
                 </div>
               </TooltipTrigger>
-              <TooltipContent side="top">
+              <TooltipContent side="top" className="z-[9999]">
                 Add waypoint
               </TooltipContent>
             </Tooltip>
@@ -744,12 +754,17 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                     width: `${ICON_SIZE}px`,
                     height: `${ICON_SIZE}px`,
                   }}
-                  onMouseDown={(e) => {
+                  onClick={(e) => {
                     e.stopPropagation();
                     e.preventDefault();
                     if (onConnectionDelete) {
                       onConnectionDelete(edge.from, edge.to, (edge as { id?: string }).id);
                     }
+                  }}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onConnectionContextMenu?.(e, edge);
                   }}
                 >
                   <svg
@@ -773,7 +788,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                   </svg>
                 </div>
               </TooltipTrigger>
-              <TooltipContent side="top">
+              <TooltipContent side="top" className="z-[9999]">
                 Delete connection
               </TooltipContent>
             </Tooltip>

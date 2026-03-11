@@ -1483,10 +1483,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 Renders draggable waypoint handles when a connection is selected
             */}
             {(() => {
-              if (isReadOnly || !onConnectionWaypointMove || !selectedItemId) return null;
-              const conn = diagramData.connections.find(
-                (c) => `${c.from}-${c.to}` === selectedItemId && c.waypoints?.length
-              );
+              if (isReadOnly || !onConnectionWaypointMove) return null;
+              if (selectedItem?.itemType !== "edge" || !selectedItem) return null;
+              const connId = (selectedItem as { id?: string }).id;
+              const conn = diagramData.connections.find((c, idx) => {
+                const cid = (c as DiagramConnectionData & { id?: string }).id ?? `${c.from}-${c.to}-${idx}`;
+                return cid === connId;
+              });
               if (!conn?.waypoints?.length) return null;
               const fromNode = displayNodesById[conn.from] || displayZonesById[conn.from];
               const toNode = displayNodesById[conn.to] || displayZonesById[conn.to];

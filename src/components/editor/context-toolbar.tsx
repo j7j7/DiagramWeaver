@@ -119,6 +119,9 @@ export function ContextToolbar({
   const [lineStylingOpen, setLineStylingOpen] = useState(false);
   const [draggedConnectionIndex, setDraggedConnectionIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [connectionTextDrafts, setConnectionTextDrafts] = useState<Record<string, string>>({});
+  const [tagDraft, setTagDraft] = useState('');
+  const [descriptionDraft, setDescriptionDraft] = useState('');
   const textStylingPanelRef = useRef<HTMLDivElement>(null);
   const connectionsPanelRef = useRef(null);
   const visualStylingPanelRef = useRef<HTMLDivElement>(null);
@@ -302,6 +305,23 @@ export function ContextToolbar({
   useEffect(() => {
     setConnectionsOpen(connectionSettingsPanelOpen);
   }, [connectionSettingsPanelOpen]);
+
+  // Clear connection text drafts when Connections popover closes
+  useEffect(() => {
+    if (!connectionsOpen) setConnectionTextDrafts({});
+  }, [connectionsOpen]);
+
+  // Sync tag/description drafts when popovers open
+  useEffect(() => {
+    if (tagOpen && selectedItem && selectedItem.itemType !== 'edge') {
+      setTagDraft((selectedItem as { tag?: string }).tag || '');
+    }
+  }, [tagOpen, selectedItem?.id, selectedItem && selectedItem.itemType !== 'edge' ? (selectedItem as { tag?: string }).tag : undefined]);
+  useEffect(() => {
+    if (descriptionOpen && selectedItem && selectedItem.itemType !== 'edge') {
+      setDescriptionDraft(selectedItem.info || '');
+    }
+  }, [descriptionOpen, selectedItem?.id, selectedItem && selectedItem.itemType !== 'edge' ? (selectedItem as { info?: string }).info : undefined]);
 
   const prevSelectedIdRef = useRef<string | undefined>(undefined);
   const prevLabelOpenRef = useRef(false);
@@ -527,6 +547,22 @@ export function ContextToolbar({
     });
   }, [diagramData, onDiagramDataUpdate]);
 
+  const commitTagChange = useCallback((valueFromDom?: string) => {
+    const value = valueFromDom ?? tagDraft;
+    const item = selectedItem;
+    if (item && (item as { itemType: string }).itemType !== 'edge' && value !== ((item as { tag?: string }).tag || '')) {
+      onItemUpdate?.({ ...item, tag: value } as SelectedItem);
+    }
+  }, [tagDraft, selectedItem, onItemUpdate]);
+
+  const commitInfoChange = useCallback((valueFromDom?: string) => {
+    const value = valueFromDom ?? descriptionDraft;
+    const item = selectedItem;
+    if (item && (item as { itemType: string }).itemType !== 'edge' && value !== ((item as { info?: string }).info || '')) {
+      onItemUpdate?.({ ...item, info: value } as SelectedItem);
+    }
+  }, [descriptionDraft, selectedItem, onItemUpdate]);
+
   if (!selectedItem) {
     return null;
   }
@@ -555,7 +591,7 @@ export function ContextToolbar({
     };
 
     const waypoints = (selectedItem as any).waypoints ?? [];
-    const canAddWaypoint = !!onConnectionWaypointAdd && !isReadOnly && lineStyle !== 'orthogonal';
+    const canAddWaypoint = !!onConnectionWaypointAdd && !isReadOnly;
     const canRemoveWaypoint = !!onConnectionWaypointRemove && !isReadOnly;
 
     return (
@@ -640,14 +676,6 @@ export function ContextToolbar({
       </div>
     );
   }
-
-  const handleTagChange = (value: string) => {
-    onItemUpdate?.({ ...selectedItem, tag: value } as SelectedItem);
-  };
-
-  const handleInfoChange = (value: string) => {
-    onItemUpdate?.({ ...selectedItem, info: value } as SelectedItem);
-  };
 
   const handleMaxItemsPerRowChange = (value: number) => {
     // Check if multiple items are selected
@@ -1261,10 +1289,18 @@ export function ContextToolbar({
               <div className="space-y-2">
                 <label className="text-sm font-medium">Tag</label>
                 <Input
-                  value={(selectedItem as any).tag || ''}
-                  onChange={(e) => handleTagChange(e.target.value)}
+                  value={tagDraft}
+                  onChange={(e) => setTagDraft(e.target.value)}
+                  onBlur={(e) => { commitTagChange((e.target as HTMLInputElement).value); setTagOpen(false); }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      commitTagChange((e.target as HTMLInputElement).value);
+                      (e.target as HTMLInputElement).blur();
+                      setTagOpen(false);
+                    }
+                  }}
                   placeholder="Enter tag"
-                  onBlur={() => setTagOpen(false)}
                 />
               </div>
             </PopoverContent>
@@ -1288,11 +1324,11 @@ export function ContextToolbar({
             <div className="space-y-2">
               <label className="text-sm font-medium">Description</label>
               <Textarea
-                value={selectedItem.info || ''}
-                onChange={(e) => handleInfoChange(e.target.value)}
+                value={descriptionDraft}
+                onChange={(e) => setDescriptionDraft(e.target.value)}
+                onBlur={(e) => { commitInfoChange((e.target as HTMLTextAreaElement).value); setDescriptionOpen(false); }}
                 placeholder="Enter description"
                 rows={3}
-                onBlur={() => setDescriptionOpen(false)}
               />
             </div>
           </PopoverContent>
@@ -1412,14 +1448,21 @@ export function ContextToolbar({
                           }
                         };
 
-                        const handleTextChange = (text: string) => {
-                          if (onConnectionUpdate) {
+                        const displayConnectionText = (connectionTextDrafts[connId ?? ''] ?? connectionText);
+                        const commitConnectionText = (valueFromDom?: string) => {
+                          const value = valueFromDom ?? connectionTextDrafts[connId ?? ''] ?? connectionText;
+                          if (value !== connectionText && onConnectionUpdate) {
                             onConnectionUpdate(
                               connInfo.connection.from,
                               connInfo.connection.to,
-                              { text: text },
+                              { text: value },
                               connId
                             );
+                            setConnectionTextDrafts((d) => {
+                              const next = { ...d };
+                              if (connId) delete next[connId];
+                              return next;
+                            });
                           }
                         };
 
@@ -1493,8 +1536,16 @@ export function ContextToolbar({
                               <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Text:</label>
                               <Input
                                 type="text"
-                                value={connectionText}
-                                onChange={(e) => handleTextChange(e.target.value)}
+                                value={displayConnectionText}
+                                onChange={(e) => setConnectionTextDrafts((d) => ({ ...d, [connId ?? '']: e.target.value }))}
+                                onBlur={(e) => commitConnectionText((e.target as HTMLInputElement).value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    commitConnectionText((e.target as HTMLInputElement).value);
+                                    (e.target as HTMLInputElement).blur();
+                                  }
+                                }}
                                 placeholder="Enter connection text..."
                                 className="h-7 text-sm"
                                 title="Text displayed on connection line"

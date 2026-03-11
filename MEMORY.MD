@@ -2,6 +2,21 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-11)
 
+### 2026-03-11 – Orthogonal Waypoints
+Waypoints can now be added to **orthogonal** (90°) connection lines, same as bezier. The path routes through each waypoint in order, with segments staying orthogonal. **Data**: Same `waypoints` array on DiagramConnectionData; persisted and works in viewer. **Implementation**: `computeOrthogonalRoute` accepts optional `waypoints`; chains segment routing (from→wp0, wp0→wp1, …, wpN→to) with direction inference at each waypoint. Waypoints are snapped to the 10px grid. **UI**: Add waypoint button, context toolbar, and Connection Context Modal show waypoint controls for both Curved and Orthogonal. Waypoint handles (drag circles) appear for orthogonal when selected. Modified: `orthogonal-routing.ts`, `othogonal-connection.tsx`, `canvas-connections.tsx`, `context-toolbar.tsx`, `connection-context-modal.tsx`.
+
+### 2026-03-11 – ContextToolbar: React Hooks Error When Selecting Animated Connection
+Clicking an animated connection caused React error #300 ("Rendered fewer hooks than expected"). **Cause**: ContextToolbar returned early for edge selection (line ~661) before `commitTagChange` and `commitInfoChange` useCallback hooks, violating Rules of Hooks. **Fix**: Moved both useCallbacks above the `if (!selectedItem)` and edge early returns so they run on every render. Modified: `context-toolbar.tsx`.
+
+### 2026-03-11 – Waypoint Handles: Fix Lookup and Visibility
+Waypoint circles were not showing after adding a waypoint. **Cause**: Editor looked up the selected connection with `${c.from}-${c.to}` === selectedItemId, but selectedItemId for edges uses connection id (or `from-to-index` for multi-conn), so the lookup failed. **Fix**: Use selectedItem when itemType === 'edge' and match connection by id (or `from-to-index`). Also raised waypoint handle z-index to 60 so circles appear above connection lines. Modified: `editor-canvas.tsx`, `connection-waypoint-handles.tsx`.
+
+### 2026-03-11 – Connection Action Buttons: Right-Click + Tooltip Z-Index
+When a connection is selected, the floating action buttons (Add waypoint, Delete connection, Toggle arrow) could add a waypoint on right-click if the cursor was over the Add waypoint button—right-click should open the context menu, not trigger actions. **Fix**: (1) `onMouseDown` handlers now ignore non-left-clicks (`if (e.button !== 0) return`). (2) `onContextMenu` added to each button so right-clicking a button still opens the connection context modal. (3) TooltipContent for these buttons gets `className="z-[9999]"` so hover labels ("Add waypoint", "Delete connection", "Toggle arrow") appear above other canvas elements. Modified: `canvas-connections.tsx`.
+
+### 2026-03-11 – Buffered Text Inputs: Connection Text, Tag, Description
+Connection text inputs (right-click modal, Connections popover) and small fields (Tag, Description) previously called `onConnectionUpdate`/`onItemUpdate` on every keystroke, causing lag when backspacing long strings. **Fix**: Buffer changes in local state and commit only on blur or Enter. Typing stays responsive; diagram updates once when entry finishes. Main text/textbox objects unchanged (they work). Modified: `connection-context-modal.tsx`, `context-toolbar.tsx`.
+
 ### 2026-03-11 – Selection Focus: Resize/Drag Target Selected Item (Not Hovered)
 When a background object is selected with items on top, resize and drag must operate on the **selected** item, not the item under the cursor. **Fix**: Items that overlap the selected item and are rendered on top of it get `pointer-events: none`, so clicks pass through to the selected item. User can resize/drag the background even when the mouse is over the icon. Visual stacking order unchanged. To select the top item instead: click empty canvas to deselect, then click the top item. Modified: `diagram-node.tsx` (pointerEventsPassThrough prop), `editor-canvas.tsx` (pointerEventsPassThroughIds useMemo, overlap detection).
 

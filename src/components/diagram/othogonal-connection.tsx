@@ -63,6 +63,9 @@ function connectionDataEqual(a?: DiagramConnectionData, b?: DiagramConnectionDat
   if (a.lineWidth !== b.lineWidth || a.shadow !== b.shadow || a.color !== b.color) return false;
   if (a.fromArrow !== b.fromArrow || a.toArrow !== b.toArrow || a.arrow !== b.arrow) return false;
   if (a.text !== b.text || a.textPosition !== b.textPosition || a.style !== b.style) return false;
+  const wpA = a.waypoints?.map((w) => `${w.x},${w.y}`).join(";") ?? "";
+  const wpB = b.waypoints?.map((w) => `${w.x},${w.y}`).join(";") ?? "";
+  if (wpA !== wpB) return false;
   const animA = a.animation ? JSON.stringify(a.animation) : "";
   const animB = b.animation ? JSON.stringify(b.animation) : "";
   if (animA !== animB) return false;
@@ -133,10 +136,11 @@ function OrthogonalConnectionInner({
     [nodesById, zonesById, connectionData?.from, connectionData?.to]
   );
 
-  // Route
+  // Route (with optional waypoints - path passes through each)
+  const waypoints = connectionData?.waypoints;
   const route: OrthogonalRoute = useMemo(
-    () => computeOrthogonalRoute(fromX, fromY, toX, toY, fromAngle, toAngle, obstacles),
-    [fromX, fromY, toX, toY, fromAngle, toAngle, obstacles]
+    () => computeOrthogonalRoute(fromX, fromY, toX, toY, fromAngle, toAngle, obstacles, waypoints),
+    [fromX, fromY, toX, toY, fromAngle, toAngle, obstacles, waypoints]
   );
 
   // Arrow markers and styles

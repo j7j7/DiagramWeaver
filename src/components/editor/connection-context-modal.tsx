@@ -42,6 +42,7 @@ export function ConnectionContextModal({
 }: ConnectionContextModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [localConnectionText, setLocalConnectionText] = useState("");
 
   const connId = connection.id;
   const liveConnection = diagramData?.connections?.find((c) =>
@@ -62,16 +63,24 @@ export function ConnectionContextModal({
   const textPosition = liveConnection.textPosition ?? 50;
   const connectionText = liveConnection.text || "";
   const hasArrow = liveConnection.arrow === true || liveConnection.toArrow === true;
+
+  // Sync local text when modal opens or connection changes; buffer typing until blur/Enter
+  useEffect(() => {
+    if (visible) setLocalConnectionText(connectionText);
+  }, [visible, connId, connectionText]);
+
+  const commitConnectionText = (valueFromDom?: string) => {
+    const value = valueFromDom ?? localConnectionText;
+    if (value !== connectionText) {
+      onConnectionUpdate(connection.from, connection.to, { text: value }, connId);
+    }
+  };
   const waypoints = liveConnection.waypoints ?? [];
   const canAddWaypoint = !!onConnectionWaypointAdd && !isReadOnly;
   const canRemoveWaypoint = !!onConnectionWaypointRemove && !isReadOnly;
 
   const handleArrowToggle = () => {
     onConnectionUpdate(connection.from, connection.to, { arrow: !hasArrow, toArrow: !hasArrow }, connId);
-  };
-
-  const handleTextChange = (text: string) => {
-    onConnectionUpdate(connection.from, connection.to, { text }, connId);
   };
 
   const handleColorChange = (color: string) => {
@@ -202,8 +211,16 @@ export function ConnectionContextModal({
           <label className="text-xs text-muted-foreground">Text:</label>
           <Input
             type="text"
-            value={connectionText}
-            onChange={(e) => handleTextChange(e.target.value)}
+            value={localConnectionText}
+            onChange={(e) => setLocalConnectionText(e.target.value)}
+            onBlur={(e) => commitConnectionText((e.target as HTMLInputElement).value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                commitConnectionText((e.target as HTMLInputElement).value);
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
             placeholder="Enter connection text..."
             className="h-7 text-sm"
           />
@@ -304,7 +321,6 @@ export function ConnectionContextModal({
           />
         </div>
 
-        {lineStyle !== "orthogonal" && (
         <div className="border-t border-border pt-3 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">Connection points</span>
@@ -348,7 +364,6 @@ export function ConnectionContextModal({
             </div>
           )}
         </div>
-        )}
       </div>
         </div>
       </Draggable>

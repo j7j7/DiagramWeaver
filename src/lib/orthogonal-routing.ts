@@ -463,22 +463,28 @@ function ensureApproachSegment(
 }
 
 // -----------------------------------------------------------------------------
+// Waypoint helpers
+// -----------------------------------------------------------------------------
+
+/** Get orthogonal exit/entry angle (0, 90, 180, 270) from A toward B. Uses dominant axis. */
+function directionFromTo(ax: number, ay: number, bx: number, by: number): number {
+  const dx = bx - ax;
+  const dy = by - ay;
+  if (dx === 0 && dy === 0) return 90;
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    return dx >= 0 ? 90 : 270;
+  }
+  return dy >= 0 ? 180 : 0;
+}
+
+// -----------------------------------------------------------------------------
 // Public API
 // -----------------------------------------------------------------------------
 
 /**
- * Compute an orthogonal (90° only) route between two connection endpoints.
- * * @param fromX      Source x (from getOptimalConnectionPoints)
- * @param fromY      Source y
- * @param toX        Target x
- * @param toY        Target y
- * @param fromAngle  Exit angle in degrees (0=up, 90=right, 180=down, 270=left)
- * @param toAngle    Entry angle
- * @param obstacles  Array of node/zone bounding rectangles to route around
- * @param fromId     Source node id (excluded from obstacles)
- * @param toId       Target node id (excluded from obstacles)
+ * Compute a single segment orthogonal route. Used internally and for waypoint chaining.
  */
-export function computeOrthogonalRoute(
+function computeOrthogonalSegment(
   fromX: number,
   fromY: number,
   toX: number,
@@ -486,33 +492,23 @@ export function computeOrthogonalRoute(
   fromAngle: number,
   toAngle: number,
   obstacles: Rect[],
-  fromId?: string,
-  toId?: string,
-): OrthogonalRoute {
-  // Snap endpoints
+): Array<{ x: number; y: number }> {
   const sfx = snap(fromX);
   const sfy = snap(fromY);
   const stx = snap(toX);
   const sty = snap(toY);
 
-  // Add a short initial stub in the exit direction so the line leaves the node cleanly.
-  // 30 px ensures the stub clears the 20 px inflation margin by a full grid cell.
-  const stubLen = CELL * 3; // 30 px
-  const entryStubLen = CELL * 3; // 30 px
+  const stubLen = CELL * 3;
+  const entryStubLen = CELL * 3;
   const stub = exitStub(sfx, sfy, fromAngle, stubLen);
   const entryStub = exitStub(stx, sty, toAngle, entryStubLen);
 
-  // Try A* first (with obstacle avoidance)
   let points = astar(stub.x, stub.y, entryStub.x, entryStub.y, obstacles, fromAngle, toAngle);
 
   if (points) {
-    // Prepend source and append target
     points = [{ x: sfx, y: sfy }, ...points, { x: stx, y: sty }];
     points = simplifyPath(points);
   } else {
-    // Fallback: try L-route and Z-route with BOTH orientations, pick the
-    // first one that doesn't intersect obstacles. This handles cases where
-    // the preferred exit direction would send the line through the dest.
     const halfInflated = obstacles.map(o => inflateRect(o, OBSTACLE_MARGIN / 2));
     const candidateAngles = [fromAngle, fromAngle === 0 || fromAngle === 180 ? 90 : 0];
     let bestFallback: Array<{ x: number; y: number }> | null = null;
@@ -529,27 +525,82 @@ export function computeOrthogonalRoute(
         break;
       }
     }
-
-    // Ultimate fallback: use Z-route with the original angle (may still overlap)
     points = bestFallback ?? zRoute(sfx, sfy, stx, sty, fromAngle);
   }
 
-  // Ensure the first segment leaving the source matches the exit angle,
-  // and the final segment arriving at the destination matches the entry angle.
-  // Without this, simplified A* paths or fallback L/Z routes may approach
-  // the destination from the wrong axis (e.g. horizontally into a top entry).
   points = ensureApproachSegment(points, sfx, sfy, fromAngle, stubLen, true);
   points = ensureApproachSegment(points, stx, sty, toAngle, entryStubLen, false);
+  return points;
+}
 
-  // Build SVG path
+/**
+ * Compute an orthogonal (90° only) route between two connection endpoints.
+ * Optional waypoints force the path to pass through each point (in order).
+ * @param fromX      Source x (from getOptimalConnectionPoints)
+ * @param fromY      Source y
+ * @param toX        Target x
+ * @param toY        Target y
+ * @param fromAngle  Exit angle in degrees (0=up, 90=right, 180=down, 270=left)
+ * @param toAngle    Entry angle
+ * @param obstacles  Array of node/zone bounding rectangles to route around
+ * @param waypoints  Optional through-points; path must pass through each (snapped to grid)
+ */
+export function computeOrthogonalRoute(
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  fromAngle: number,
+  toAngle: number,
+  obstacles: Rect[],
+  waypoints?: Array<{ x: number; y: number }>,
+): OrthogonalRoute {
+  const snappedWaypoints = waypoints?.length
+    ? waypoints.map((wp) => ({ x: snap(wp.x), y: snap(wp.y) }))
+    : undefined;
+
+  let points: Array<{ x: number; y: number }>;
+
+  if (!snappedWaypoints?.length) {
+    points = computeOrthogonalSegment(fromX, fromY, toX, toY, fromAngle, toAngle, obstacles);
+  } else {
+    const all: Array<{ x: number; y: number }> = [];
+    const legs = [
+      { ax: fromX, ay: fromY, bx: snappedWaypoints[0].x, by: snappedWaypoints[0].y, exitAngle: fromAngle, entryAngle: directionFromTo(fromX, fromY, snappedWaypoints[0].x, snappedWaypoints[0].y) },
+      ...snappedWaypoints.slice(0, -1).map((wp, i) => {
+        const next = snappedWaypoints[i + 1];
+        const angle = directionFromTo(wp.x, wp.y, next.x, next.y);
+        return { ax: wp.x, ay: wp.y, bx: next.x, by: next.y, exitAngle: angle, entryAngle: angle };
+      }),
+      {
+        ax: snappedWaypoints[snappedWaypoints.length - 1].x,
+        ay: snappedWaypoints[snappedWaypoints.length - 1].y,
+        bx: toX, by: toY,
+        exitAngle: directionFromTo(snappedWaypoints[snappedWaypoints.length - 1].x, snappedWaypoints[snappedWaypoints.length - 1].y, toX, toY),
+        entryAngle: toAngle,
+      },
+    ];
+
+    for (let i = 0; i < legs.length; i++) {
+      const seg = computeOrthogonalSegment(
+        legs[i].ax, legs[i].ay, legs[i].bx, legs[i].by,
+        legs[i].exitAngle, legs[i].entryAngle,
+        obstacles,
+      );
+      if (i === 0) {
+        all.push(...seg);
+      } else {
+        all.push(...seg.slice(1));
+      }
+    }
+    points = simplifyPath(all);
+  }
+
   const pathData = pointsToPathData(points);
-
-  // Compute total length
   let totalLength = 0;
   for (let i = 1; i < points.length; i++) {
     totalLength += Math.abs(points[i].x - points[i - 1].x) + Math.abs(points[i].y - points[i - 1].y);
   }
-
   return { points, pathData, totalLength };
 }
 

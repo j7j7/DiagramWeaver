@@ -35,14 +35,19 @@ export function ConnectionWaypointHandles({
       if (!wp) return;
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
       setDraggingIndex(index);
+      const posX = connection.style === "orthogonal" ? snapToGrid(wp.x) : wp.x;
+      const posY = connection.style === "orthogonal" ? snapToGrid(wp.y) : wp.y;
+      if (connection.style === "orthogonal" && (posX !== wp.x || posY !== wp.y)) {
+        onWaypointMove(connection.from, connection.to, index, { x: posX, y: posY }, connection.id);
+      }
       dragStartRef.current = {
         clientX: e.clientX,
         clientY: e.clientY,
-        waypointX: wp.x,
-        waypointY: wp.y,
+        waypointX: posX,
+        waypointY: posY,
       };
     },
-    [disabled, waypoints]
+    [disabled, waypoints, connection.style, connection.from, connection.to, connection.id, onWaypointMove]
   );
 
   const handlePointerMove = useCallback(
@@ -106,19 +111,23 @@ export function ConnectionWaypointHandles({
 
   if (!waypoints.length || disabled) return null;
 
-  const handleSize = 32;
+  const handleSize = 28;
   const halfSize = handleSize / 2;
-  const HANDLE_Z_INDEX = 40;
+  const HANDLE_Z_INDEX = 60;
+  const isOrthogonal = connection.style === "orthogonal";
 
   return (
     <>
-      {waypoints.map((wp, index) => (
+      {waypoints.map((wp, index) => {
+        const posX = isOrthogonal ? snapToGrid(wp.x) : wp.x;
+        const posY = isOrthogonal ? snapToGrid(wp.y) : wp.y;
+        return (
         <div
           key={wp.id ?? `wp-${index}`}
           className="absolute rounded-full border-4 cursor-move hover:scale-110 transition-transform"
           style={{
-            left: `${wp.x - halfSize}px`,
-            top: `${wp.y - halfSize}px`,
+            left: `${posX - halfSize}px`,
+            top: `${posY - halfSize}px`,
             width: `${handleSize}px`,
             height: `${handleSize}px`,
             borderColor: connectionColor,
@@ -134,7 +143,7 @@ export function ConnectionWaypointHandles({
           onPointerLeave={handlePointerUp}
           title="Drag to move waypoint"
         />
-      ))}
+      );})}
     </>
   );
 }

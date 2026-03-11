@@ -72,6 +72,7 @@ import {
 } from '@/lib/rendering-order-utils';
 import { performAutoLayout } from '@/lib/auto-layout';
 import { generateConnectionId, ensureConnectionIds } from '@/lib/connection-order-utils';
+import { snapToGrid } from '@/components/editor/canvas-constants';
 import { DEFAULT_CONNECTION_ANIMATION, toConnectionAnimationPatch, getDownstreamAnimationChainNodes } from '@/lib/connection-animation';
 import { isEventFromEditableElement } from '@/lib/keyboard-utils';
 
@@ -1406,7 +1407,7 @@ export default function DiagramEditor() {
       midX = 200;
       midY = 150;
     }
-    const newWaypoint = { x: Math.round(midX), y: Math.round(midY), id: `wp-${Date.now()}` };
+    const newWaypoint = { x: snapToGrid(midX), y: snapToGrid(midY), id: `wp-${Date.now()}` };
     const connId = connectionId ?? (conn as DiagramConnectionData).id;
     handleConnectionUpdate(from, to, { waypoints: [...existing, newWaypoint] }, connId);
   };
