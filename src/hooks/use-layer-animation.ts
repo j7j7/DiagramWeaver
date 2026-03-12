@@ -111,6 +111,9 @@ export function useLayerAnimation(
 
   /**
    * Call BEFORE toggling the layer visibility.
+   * Returns false if animations are disabled or layer invalid.
+   * When an animation is in progress for this layer: returns true (caller should toggle)
+   * but does not start a new animation - the current one continues until complete.
    */
   const onLayerVisibilityWillChange = useCallback(
     (layerId: string) => {
@@ -119,6 +122,10 @@ export function useLayerAnimation(
       const layer = layersConfig.layers.find((l) => l.id === layerId);
       if (!layer) return false;
 
+      // Animation in progress: allow toggle (return true) but don't start a new anim.
+      // The current animation will continue until complete.
+      if (animationsRef.current.some((a) => a.layerId === layerId)) return true;
+
       const direction: 'show' | 'hide' = layer.visible ? 'hide' : 'show';
       const source = snapshotRef.current;
       const orderedNodeIds = getOrderedNodeIds(layerId, direction, source);
@@ -126,30 +133,6 @@ export function useLayerAnimation(
 
       const nodeIdSet = new Set(orderedNodeIds);
       const { keys: cKeys, mapping: cMapping, conns } = getConnectionsForNodes(nodeIdSet, source);
-
-      // --- Cancel any in-flight animation for this layer ---
-      setAnimations((prev) => {
-        const existing = prev.find((a) => a.layerId === layerId);
-        if (existing) {
-          setNodeStyles((ns) => {
-            const next = new Map(ns);
-            for (const id of existing.orderedNodeIds) next.delete(id);
-            return next;
-          });
-
-          setConnectionStyles((cs) => {
-            const next = new Map(cs);
-            for (const k of existing.connectionKeys) next.delete(k);
-            return next;
-          });
-
-          const oldNodeIds = new Set(existing.orderedNodeIds);
-          const oldConnKeys = new Set(existing.connectionKeys);
-          setFadingOutNodes((prev) => prev.filter((n) => !oldNodeIds.has(n.id)));
-          setFadingOutConns((prev) => prev.filter((c) => !oldConnKeys.has(connKey(c))));
-        }
-        return prev.filter((a) => a.layerId !== layerId);
-      });
 
       // --- Set up fading-out snapshots for hide direction ---
       if (direction === 'hide') {
@@ -212,6 +195,34 @@ export function useLayerAnimation(
     [enabled, layersConfig, getOrderedNodeIds, getConnectionsForNodes],
   );
 
+  // When a show animation is running and the layer was toggled to hidden
+  // (diagramData no longer has those nodes), add them to fadingOutNodes so
+  // animatingDiagramData keeps them visible until the show anim completes.
+  useEffect(() => {
+    const source = snapshotRef.current;
+    const existingIds = new Set((diagramData.nodes || []).map((n) => n.id));
+    const existingConnKeys = new Set((diagramData.connections || []).map((c) => connKey(c)));
+
+    for (const anim of animationsRef.current) {
+      if (anim.direction !== 'show') continue;
+      const missing = anim.orderedNodeIds.filter((id) => !existingIds.has(id));
+      if (missing.length === 0) continue;
+      const nodesInLayer = (source.nodes || []).filter((n) => getItemLayer(n) === anim.layerId);
+      const conns = (source.connections || []).filter(
+        (c) => anim.connectionKeys.includes(connKey(c)),
+      );
+      setFadingOutNodes((prev) => {
+        const ids = new Set(nodesInLayer.map((n) => n.id));
+        return [...prev.filter((n) => !ids.has(n.id)), ...nodesInLayer];
+      });
+      setFadingOutConns((prev) => {
+        const keys = new Set(conns.map((c) => connKey(c)));
+        return [...prev.filter((c) => !keys.has(connKey(c))), ...conns];
+      });
+      break;
+    }
+  }, [diagramData, animations]);
+
   const computeStyle = (
     anim: LayerAnimation,
     staggerIndex: number,
@@ -252,6 +263,37 @@ export function useLayerAnimation(
       };
     }
   };
+
+  // When a show animation is running and the layer was toggled hidden (user clicked during anim),
+  // diagramData no longer has those nodes. Keep them in fadingOutNodes so animatingDiagramData
+  // continues to render them until the show animation completes.
+  useEffect(() => {
+    const showAnims = animationsRef.current.filter((a) => a.direction === 'show');
+    if (showAnims.length === 0) return;
+
+    const existingIds = new Set((diagramData.nodes || []).map((n) => n.id));
+    const source = snapshotRef.current;
+
+    for (const anim of showAnims) {
+      const nodesInLayer = (source.nodes || []).filter((n) => getItemLayer(n) === anim.layerId);
+      const missing = nodesInLayer.filter((n) => !existingIds.has(n.id));
+      if (missing.length === 0) continue;
+
+      const conns = (source.connections || []).filter(
+        (c) => missing.some((n) => n.id === c.from || n.id === c.to),
+      );
+
+      setFadingOutNodes((prev) => {
+        const ids = new Set(missing.map((n) => n.id));
+        return [...prev.filter((n) => !ids.has(n.id)), ...missing];
+      });
+      setFadingOutConns((prev) => {
+        const keys = new Set(conns.map((c) => connKey(c)));
+        return [...prev.filter((c) => !keys.has(connKey(c))), ...conns];
+      });
+      break; // one layer at a time
+    }
+  }, [diagramData.nodes, animations]);
 
   useEffect(() => {
     if (animations.length === 0) {
@@ -383,6 +425,54 @@ export function useLayerAnimation(
       }
     };
   }, [animations.length]);
+
+  // When a show animation is running and the layer was toggled hidden (user clicked during anim),
+  // diagramData no longer has these nodes. Keep them in fadingOutNodes so they stay visible
+  // until the show animation completes.
+  useEffect(() => {
+    const source = snapshotRef.current;
+    const showAnims = animationsRef.current.filter((a) => a.direction === 'show');
+    if (showAnims.length === 0) return;
+    const existingIds = new Set((diagramData.nodes || []).map((n) => n.id));
+    const existingConnKeys = new Set((diagramData.connections || []).map((c) => connKey(c)));
+    let shouldUpdate = false;
+    const nodesToAdd: DiagramNodeData[] = [];
+    const connsToAdd: DiagramConnectionData[] = [];
+    for (const anim of showAnims) {
+      for (const nodeId of anim.orderedNodeIds) {
+        if (!existingIds.has(nodeId)) {
+          const node = (source.nodes || []).find((n) => n.id === nodeId);
+          if (node) {
+            nodesToAdd.push(node);
+            shouldUpdate = true;
+          }
+        }
+      }
+      for (const ck of anim.connectionKeys) {
+        if (!existingConnKeys.has(ck)) {
+          const conn = (source.connections || []).find(
+            (c) => connKey(c) === ck,
+          );
+          if (conn) {
+            connsToAdd.push(conn);
+            shouldUpdate = true;
+          }
+        }
+      }
+    }
+    if (shouldUpdate) {
+      setFadingOutNodes((prev) => {
+        const nextIds = new Set(nodesToAdd.map((n) => n.id));
+        const merged = [...prev.filter((n) => !nextIds.has(n.id)), ...nodesToAdd];
+        return merged.length > 0 ? merged : prev;
+      });
+      setFadingOutConns((prev) => {
+        const nextKeys = new Set(connsToAdd.map((c) => connKey(c)));
+        const merged = [...prev.filter((c) => !nextKeys.has(connKey(c))), ...connsToAdd];
+        return merged.length > 0 ? merged : prev;
+      });
+    }
+  }, [animations, diagramData.nodes, diagramData.connections]);
 
   const animatingDiagramData = useMemo(() => {
     if (fadingOutNodes.length === 0 && fadingOutConns.length === 0) return null;

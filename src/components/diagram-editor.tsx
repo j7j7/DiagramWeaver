@@ -418,7 +418,7 @@ export default function DiagramEditor() {
 
   const handleToggleLayerVisibility = React.useCallback(
     (layerId: string) => {
-      layerAnimation.onLayerVisibilityWillChange(layerId);
+      if (!layerAnimation.onLayerVisibilityWillChange(layerId)) return;
       layers.toggleLayerVisibilityById(layerId);
     },
     [layerAnimation.onLayerVisibilityWillChange, layers.toggleLayerVisibilityById],

@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-12)
 
+### 2026-03-12 – Textbox Toolbar: Vertical Alignment + Wider Default
+**Textbox toolbar** now includes top/middle/bottom vertical alignment icons (ArrowUp, Circle, ArrowDown). Click to set `textVerticalPosition` on the node; data persists via `onUpdate`. Alignment buttons show active state (bg-muted) for current position. **Default textbox size**: Width doubled when dropping a new textbox (120 → 240px) for a wider initial box. Modified: `textbox-rich-editor.tsx` (onVerticalAlignChange prop, applyVerticalAlign, alignment buttons), `diagram-node.tsx` (wire onVerticalAlignChange to onUpdate for textbox), `canvas-operations.ts` (isTextboxResource width 240).
+
 ### 2026-03-12 – Layer Animations (Show/Hide)
 **Layer show/hide animations** when toggling layer visibility from the Layers panel. Objects animate in (fade + translateY) when showing a layer and out when hiding. **Toggle**: Edit menu → Layer Animations (default: enabled). Disable to toggle layers instantly without animation. **Persistence**: `layerAnimationsEnabled` stored in localStorage (`dw:layerAnimations:enabled`). **Implementation**: `use-layer-animation.ts` hook provides `onLayerVisibilityWillChange`, `nodeAnimationStyles`, `connectionAnimationStyles`, `animatingDiagramData`; called before layer toggle; applies stagger + fade to nodes and connections. Modified: diagram-editor.tsx, top-menu-bar.tsx, editor-canvas.tsx, diagram-node.tsx, canvas-connections.tsx.
 

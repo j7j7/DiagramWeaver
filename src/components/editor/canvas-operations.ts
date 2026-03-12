@@ -143,7 +143,7 @@ export function useCanvasOperations({
              itemType === 'generic.object.cloud' ? 80 :
              itemType === 'generic.object.line' ? 150 :
              60
-           ) : isTextboxResource ? snapDimensionToGrid(120, 40) : undefined, // Initial width - larger for textbox
+           ) : isTextboxResource ? snapDimensionToGrid(240, 40) : undefined, // Initial width - 100% wider than before (was 120)
            height: isShapeResource ? snapDimensionToGrid(
              itemType === 'generic.object.point' ? 20 :
              itemType === 'generic.object.rectangle' ? 50 :
@@ -156,6 +156,11 @@ export function useCanvasOperations({
           // Apply default text color for text resources
           ...((itemType === 'generic.text.text' || itemType === 'generic.text.textbox') && {
             textColor: DEFAULT_TEXT_STYLING.textColor
+          }),
+          // Default textbox: center text horizontally and vertically
+          ...(isTextboxResource && !isFromScratchPad && {
+            textJustify: 'center' as const,
+            textVerticalPosition: 'middle' as const,
           }),
           // Apply random theme to all shapes (except point which has special styling)
           // BUT: Don't apply random theme if coming from scratchpad with existing properties

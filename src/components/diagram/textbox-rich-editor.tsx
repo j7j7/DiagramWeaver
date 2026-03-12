@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useEffect, useCallback } from "react";
-import { Bold, Italic, Underline, List, ListOrdered, AlignLeft, AlignCenter, AlignRight, AlignJustify } from "lucide-react";
+import { Bold, Italic, Underline, List, ListOrdered, AlignLeft, AlignCenter, AlignRight, AlignJustify, ArrowUp, Circle, ArrowDown } from "lucide-react";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import {
   runsToHtml,
@@ -23,6 +23,8 @@ interface TextboxRichEditorProps {
   onDoubleClick?: (e: React.MouseEvent) => void;
   /** Callback when content height changes during edit - for auto-resize. Receives required node height. */
   onHeightChange?: (height: number) => void;
+  /** Callback when vertical alignment changes (top/middle/bottom). Updates node textVerticalPosition. */
+  onVerticalAlignChange?: (position: 'top' | 'middle' | 'bottom') => void;
 }
 
 export function TextboxRichEditor({
@@ -31,6 +33,7 @@ export function TextboxRichEditor({
   onSubmit,
   onKeyDown,
   onHeightChange,
+  onVerticalAlignChange,
 }: TextboxRichEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const hasInitialized = useRef(false);
@@ -137,7 +140,15 @@ export function TextboxRichEditor({
     scheduleHeightCheck();
   };
 
+  const applyVerticalAlign = (position: 'top' | 'middle' | 'bottom', e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onVerticalAlignChange?.(position);
+    editorRef.current?.focus();
+  };
+
   const nodeAny = node as unknown as Record<string, unknown>;
+  const currentVerticalPos = (nodeAny.textVerticalPosition as 'top' | 'middle' | 'bottom' | undefined) || 'middle';
   const FONT_SIZES = [12, 14, 16, 18, 20, 24];
 
   return (
@@ -203,6 +214,35 @@ export function TextboxRichEditor({
         >
           <AlignJustify className="h-3.5 w-3.5" />
         </button>
+        {onVerticalAlignChange && (
+          <>
+            <span className="w-px bg-border mx-0.5 self-stretch" aria-hidden />
+            <button
+              type="button"
+              title="Align top"
+              onMouseDown={(e) => applyVerticalAlign('top', e)}
+              className={cn("p-1 rounded hover:bg-muted transition-colors", currentVerticalPos === 'top' && "bg-muted")}
+            >
+              <ArrowUp className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              title="Align middle"
+              onMouseDown={(e) => applyVerticalAlign('middle', e)}
+              className={cn("p-1 rounded hover:bg-muted transition-colors", currentVerticalPos === 'middle' && "bg-muted")}
+            >
+              <Circle className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              title="Align bottom"
+              onMouseDown={(e) => applyVerticalAlign('bottom', e)}
+              className={cn("p-1 rounded hover:bg-muted transition-colors", currentVerticalPos === 'bottom' && "bg-muted")}
+            >
+              <ArrowDown className="h-3.5 w-3.5" />
+            </button>
+          </>
+        )}
         <span className="w-px bg-border mx-0.5 self-stretch" aria-hidden />
         {FONT_SIZES.map((s) => (
           <button

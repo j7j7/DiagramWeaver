@@ -540,6 +540,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
                 if (snapped === current) return;
                 onUpdate({ ...node, height: snapped, sizeMode: 'custom' });
               } : undefined}
+              onVerticalAlignChange={onUpdate ? (pos) => onUpdate({ ...node, textVerticalPosition: pos }) : undefined}
             />
           </div>
         ) : (
