@@ -1,6 +1,9 @@
 # MEMORY.MD
 
-## DiagramWeaver - Latest Features and Functions (Updated 2026-03-11)
+## DiagramWeaver - Latest Features and Functions (Updated 2026-03-12)
+
+### 2026-03-12 – Layer Animations (Show/Hide)
+**Layer show/hide animations** when toggling layer visibility from the Layers panel. Objects animate in (fade + translateY) when showing a layer and out when hiding. **Toggle**: Edit menu → Layer Animations (default: enabled). Disable to toggle layers instantly without animation. **Persistence**: `layerAnimationsEnabled` stored in localStorage (`dw:layerAnimations:enabled`). **Implementation**: `use-layer-animation.ts` hook provides `onLayerVisibilityWillChange`, `nodeAnimationStyles`, `connectionAnimationStyles`, `animatingDiagramData`; called before layer toggle; applies stagger + fade to nodes and connections. Modified: diagram-editor.tsx, top-menu-bar.tsx, editor-canvas.tsx, diagram-node.tsx, canvas-connections.tsx.
 
 ### 2026-03-11 – Orthogonal Waypoints
 Waypoints can now be added to **orthogonal** (90°) connection lines, same as bezier. The path routes through each waypoint in order, with segments staying orthogonal. **Data**: Same `waypoints` array on DiagramConnectionData; persisted and works in viewer. **Implementation**: `computeOrthogonalRoute` accepts optional `waypoints`; chains segment routing (from→wp0, wp0→wp1, …, wpN→to) with direction inference at each waypoint. Waypoints are snapped to the 10px grid. **UI**: Add waypoint button, context toolbar, and Connection Context Modal show waypoint controls for both Curved and Orthogonal. Waypoint handles (drag circles) appear for orthogonal when selected. Modified: `orthogonal-routing.ts`, `othogonal-connection.tsx`, `canvas-connections.tsx`, `context-toolbar.tsx`, `connection-context-modal.tsx`.

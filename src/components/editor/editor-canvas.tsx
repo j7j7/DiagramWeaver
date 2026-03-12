@@ -122,6 +122,12 @@ interface EditorCanvasProps {
   ) => void;
   metadataPopupsEnabled?: boolean;
   setUmlClassEditorModal?: React.Dispatch<React.SetStateAction<{ visible: boolean; x: number; y: number; itemId: string }>>;
+  /** Layer show/hide animation styles for nodes (from useLayerAnimation) */
+  nodeAnimationStyles?: Map<string, { opacity: number; transition: string; transform?: string }>;
+  /** Layer show/hide animation styles for connections (from useLayerAnimation) */
+  connectionAnimationStyles?: Map<string, { opacity: number; transition: string; transform?: string }>;
+  /** Key function for connection lookup (from useLayerAnimation.connectionKey) */
+  connectionKey?: (conn: DiagramConnectionData) => string;
 }
 
 
@@ -136,7 +142,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, connectionsBehindNodesEnabled = true, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal }: EditorCanvasProps,
+   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, connectionsBehindNodesEnabled = true, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal, nodeAnimationStyles, connectionAnimationStyles, connectionKey }: EditorCanvasProps,
   ref
 ) {
   const [gifExportAnimationTimeSeconds, setGifExportAnimationTimeSeconds] = React.useState<number | null>(null);
@@ -1297,6 +1303,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   animationConnectionsEnabled={animationConnectionsEnabled}
                   animationFilterSourceIds={animationFilterSourceIds}
                   animationDisabledSources={animationDisabledSources}
+                  connectionAnimationStyles={connectionAnimationStyles}
+                  connectionKey={connectionKey}
                 />
                 {connectionSlots.sortedItemIds.map((itemId, i) => {
                   const node = nodesById[itemId];
@@ -1333,6 +1341,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   transform={transform}
                   canvasRef={canvasRef}
                   pointerEventsPassThrough={pointerEventsPassThroughIds.has(node.id)}
+                  animationStyle={nodeAnimationStyles?.get(node.id)}
                 />
               ) : zone ? null : null;
                   return nodeEl;
@@ -1382,6 +1391,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     transform={transform}
                     canvasRef={canvasRef}
                     pointerEventsPassThrough={pointerEventsPassThroughIds.has(node.id)}
+                    animationStyle={nodeAnimationStyles?.get(node.id)}
                   />
                 ) : zone ? null : null;
                 return [
@@ -1408,6 +1418,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       animationConnectionsEnabled={animationConnectionsEnabled}
                       animationFilterSourceIds={animationFilterSourceIds}
                       animationDisabledSources={animationDisabledSources}
+                      connectionAnimationStyles={connectionAnimationStyles}
+                      connectionKey={connectionKey}
                     />
                   ) : null,
                   nodeEl,
@@ -1441,6 +1453,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   animationConnectionsEnabled={animationConnectionsEnabled}
                   animationFilterSourceIds={animationFilterSourceIds}
                   animationDisabledSources={animationDisabledSources}
+                  connectionAnimationStyles={connectionAnimationStyles}
+                  connectionKey={connectionKey}
                 />
               );
             })()}

@@ -39,6 +39,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useDiagramTabs } from '@/hooks/use-diagram-tabs';
 import { useLayers } from '@/hooks/use-layers';
+import { useLayerAnimation } from '@/hooks/use-layer-animation';
 import { flattenDiagramOnImport, type RawDiagramData } from '@/lib/flatten-on-import';
 import { DiagramDataSchema } from '@/lib/schemas';
 import { parseMermaidFlowchart, parseMermaidClassDiagram, parseMermaidSequenceDiagram, detectMermaidDiagramType } from '@/lib/mermaid-parser';
@@ -183,6 +184,7 @@ export default function DiagramEditor() {
   const [metadataPopupsEnabled, setMetadataPopupsEnabled] = React.useState<boolean>(true);
   const [propertiesPanelVisible, setPropertiesPanelVisible] = React.useState<boolean>(true);
   const [scratchPadOpen, setScratchPadOpen] = React.useState<boolean>(false);
+  const [layerAnimationsEnabled, setLayerAnimationsEnabled] = React.useState<boolean>(true);
   const [rulesEditorOpen, setRulesEditorOpen] = React.useState<boolean>(false);
   const [rules, setRules] = React.useState<import('@/lib/rules-types').DiagramRule[]>([]);
 
@@ -229,6 +231,26 @@ export default function DiagramEditor() {
       localStorage.setItem('dw:scratchpad:visible', JSON.stringify(scratchPadOpen));
     }
   }, [scratchPadOpen]);
+
+  // Restore layer animations enabled from localStorage after hydration
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const saved = localStorage.getItem('dw:layerAnimations:enabled');
+    if (saved !== null) {
+      try {
+        setLayerAnimationsEnabled(JSON.parse(saved));
+      } catch {
+        // ignore
+      }
+    }
+  }, []);
+
+  // Save layer animations enabled to localStorage when it changes
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dw:layerAnimations:enabled', JSON.stringify(layerAnimationsEnabled));
+    }
+  }, [layerAnimationsEnabled]);
   const [jsonPanelWidth, setJsonPanelWidth] = React.useState<number>(420);
   const [isDragging, setIsDragging] = React.useState<boolean>(false);
   const [canPaste, setCanPaste] = React.useState<boolean>(false);
@@ -382,6 +404,27 @@ export default function DiagramEditor() {
     setDiagramData,
     toast
   });
+
+  // Layer show/hide animations (Edit menu toggle, default enabled)
+  const layerAnimation = useLayerAnimation(
+    layerAnimationsEnabled,
+    layers.filteredDiagramData ?? diagramData,
+    layers.layersConfig,
+  );
+
+  React.useEffect(() => {
+    layerAnimation.updateSnapshot(diagramData);
+  }, [diagramData, layerAnimation.updateSnapshot]);
+
+  const handleToggleLayerVisibility = React.useCallback(
+    (layerId: string) => {
+      layerAnimation.onLayerVisibilityWillChange(layerId);
+      layers.toggleLayerVisibilityById(layerId);
+    },
+    [layerAnimation.onLayerVisibilityWillChange, layers.toggleLayerVisibilityById],
+  );
+
+  const displayDiagramData = layerAnimation.animatingDiagramData ?? layers.filteredDiagramData ?? diagramData;
 
   // When animation toggle-on-click mode is on: show animations only for selected node's chain. Nothing selected = no animations.
   const effectiveAnimationFilterIds = React.useMemo(() => {
@@ -2299,6 +2342,11 @@ export default function DiagramEditor() {
         setUmlClassEditorModal={setUmlClassEditorModal}
         setDiagramData={setDiagramData}
         layers={layers}
+        layerAnimationsEnabled={layerAnimationsEnabled}
+        setLayerAnimationsEnabled={setLayerAnimationsEnabled}
+        layerAnimation={layerAnimation}
+        displayDiagramData={displayDiagramData}
+        handleToggleLayerVisibility={handleToggleLayerVisibility}
         canvasTransform={canvasTransform}
         setCanvasTransform={setCanvasTransform}
         handleNew={handleNew}
@@ -2455,6 +2503,11 @@ function DiagramEditorInner({
   setUmlClassEditorModal,
   setDiagramData,
   layers,
+  layerAnimationsEnabled,
+  setLayerAnimationsEnabled,
+  displayDiagramData,
+  layerAnimation,
+  handleToggleLayerVisibility,
   canvasTransform,
   setCanvasTransform,
   handleNew,
@@ -2676,6 +2729,8 @@ function DiagramEditorInner({
                     metadataPopupsEnabled={metadataPopupsEnabled}
                     onToggleLayersPanel={layers.toggleLayersPanel}
                     layersPanelOpen={layers.layersPanelOpen}
+                    layerAnimationsEnabled={layerAnimationsEnabled}
+                    onToggleLayerAnimations={() => setLayerAnimationsEnabled(!layerAnimationsEnabled)}
                     onFitToView={() => editorRef.current?.fitToView()}
                     onCopy={handleMenuCopy}
                     onPaste={handleMenuPaste}
@@ -2774,7 +2829,10 @@ function DiagramEditorInner({
                 <EditorCanvas
                     key={canvasRefreshKey}
                     ref={editorRef}
-                    diagramData={layers.filteredDiagramData}
+                    diagramData={displayDiagramData}
+                    nodeAnimationStyles={layerAnimation.nodeAnimationStyles}
+                    connectionAnimationStyles={layerAnimation.connectionAnimationStyles}
+                    connectionKey={layerAnimation.connectionKey}
                     setDiagramData={setDiagramData}
                     onItemSelect={handleItemSelect}
                     onBatchSelect={handleBatchSelect}
@@ -2872,7 +2930,7 @@ function DiagramEditorInner({
                         onAddLayer={layers.addNewLayer}
                         onRemoveLayer={layers.removeLayerById}
                         onRenameLayer={layers.renameLayerById}
-                        onToggleVisibility={layers.toggleLayerVisibilityById}
+                        onToggleVisibility={handleToggleLayerVisibility}
                         onSetActiveLayer={layers.setActiveLayerById}
                         onReorderLayers={layers.reorderLayers}
                         onAssignSelectedItemsToLayer={selectedItemIds.size > 0 ? (layerId: string) => layers.assignItemsToLayer(Array.from(selectedItemIds), layerId) : undefined}

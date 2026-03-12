@@ -173,6 +173,8 @@ interface DiagramNodeProps {
   stackZIndex?: number;
   /** When true, pointer-events: none so clicks pass through to selected item below */
   pointerEventsPassThrough?: boolean;
+  /** Layer show/hide animation style (opacity, transition, transform) from useLayerAnimation */
+  animationStyle?: { opacity: number; transition: string; transform?: string };
 }
 
 function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps): boolean {
@@ -222,10 +224,11 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
     prev.onDraggingChange === next.onDraggingChange &&
     prev.onHoverChange === next.onHoverChange &&
     prev.onConnect === next.onConnect &&
-    prev.isConnectMode === next.isConnectMode;
+    prev.isConnectMode === next.isConnectMode &&
+    prev.animationStyle === next.animationStyle;
 }
 
-function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onResizeStart, onResizeEnd, onPositionUpdate, onDraggingChange, onUpdate, hoverEnabled = true, isReadOnly = false, onHoverChange, onConnect, isConnectMode, transform, canvasRef, stackZIndex, pointerEventsPassThrough = false }: DiagramNodeProps) {
+function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onResizeStart, onResizeEnd, onPositionUpdate, onDraggingChange, onUpdate, hoverEnabled = true, isReadOnly = false, onHoverChange, onConnect, isConnectMode, transform, canvasRef, stackZIndex, pointerEventsPassThrough = false, animationStyle }: DiagramNodeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [isEditingTag, setIsEditingTag] = useState(false);
@@ -1336,6 +1339,8 @@ return (
         // pointerEventsPassThrough: when selected item is behind this, let clicks pass through to it for resize/drag
         ...(isLineNode && { pointerEvents: 'none' }),
         ...(pointerEventsPassThrough && { pointerEvents: 'none' }),
+        // Layer show/hide animation (opacity, transition, transform)
+        ...(animationStyle && { opacity: animationStyle.opacity, transition: animationStyle.transition, ...(animationStyle.transform && { transform: animationStyle.transform }) }),
       }}
       onMouseEnter={() => { 
         if (!isDragging && !isEditingLabel && !isEditingTag) { 

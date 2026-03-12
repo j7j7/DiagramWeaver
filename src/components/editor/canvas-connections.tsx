@@ -40,6 +40,10 @@ interface CanvasConnectionsProps {
   animationFilterSourceIds?: Set<string>;
   /** Set of node IDs whose outbound animations should be disabled */
   animationDisabledSources?: Set<string>;
+  /** Layer show/hide animation styles (from useLayerAnimation) keyed by connectionKey(conn) */
+  connectionAnimationStyles?: Map<string, { opacity: number; transition: string; transform?: string }>;
+  /** Key function for connection lookup (from useLayerAnimation.connectionKey) */
+  connectionKey?: (conn: DiagramConnectionData) => string;
 }
 
 function setsEqual(a: Set<number> | undefined, b: Set<number> | undefined): boolean {
@@ -69,6 +73,8 @@ function areCanvasConnectionsPropsEqual(prev: CanvasConnectionsProps, next: Canv
     prev.animationFilterSourceId === next.animationFilterSourceId &&
     stringSetsEqual(prev.animationFilterSourceIds, next.animationFilterSourceIds) &&
     prev.animationDisabledSources === next.animationDisabledSources &&
+    prev.connectionAnimationStyles === next.connectionAnimationStyles &&
+    prev.connectionKey === next.connectionKey &&
     prev.diagramData === next.diagramData &&
     prev.nodesById === next.nodesById &&
     prev.zonesById === next.zonesById &&
@@ -102,6 +108,8 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     animationFilterSourceId,
     animationFilterSourceIds,
     animationDisabledSources = new Set(),
+    connectionAnimationStyles,
+    connectionKey,
   } = props;
   // Pre-calculate edge information for all connections
   const connectionEdgeInfo = new Map<string, { fromEdge: string; toEdge: string }>();
@@ -422,8 +430,14 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
           },
         };
 
+        const layerAnimStyle = connectionKey && connectionAnimationStyles ? connectionAnimationStyles.get(connectionKey(edge)) : undefined;
+
         return (
-          <g key={`${edge.from}-${edge.to}-${index}-${edge.toArrow ? 'arrow' : 'noarrow'}-${edge._updated || ''}`} className={cn(isConnectionHighlighted && 'drop-shadow-[0_0_6px_rgba(0,200,150,0.8)]')}>
+          <g
+            key={`${edge.from}-${edge.to}-${index}-${edge.toArrow ? 'arrow' : 'noarrow'}-${edge._updated || ''}`}
+            className={cn(isConnectionHighlighted && 'drop-shadow-[0_0_6px_rgba(0,200,150,0.8)]')}
+            style={layerAnimStyle ? { opacity: layerAnimStyle.opacity, transition: layerAnimStyle.transition } : undefined}
+          >
             {connStyle === 'orthogonal' ? (
               <OrthogonalConnection
                 from={fromPos}

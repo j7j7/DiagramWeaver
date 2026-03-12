@@ -12,7 +12,7 @@ import {
   MenubarSubTrigger,
   MenubarSubContent,
 } from '@/components/ui/menubar';
-import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks, Network, Sun, Moon } from 'lucide-react';
+import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks, Network, Sun, Moon, Sparkles } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
 import { ThemeEditor } from './theme-editor';
 import { RulesEditor } from './rules-editor';
@@ -68,6 +68,8 @@ interface TopMenuBarProps {
   metadataPopupsEnabled?: boolean;
   onToggleLayersPanel?: () => void;
   layersPanelOpen?: boolean;
+  layerAnimationsEnabled?: boolean;
+  onToggleLayerAnimations?: () => void;
   onFitToView?: () => void;
   onCopy?: () => void;
   onPaste?: () => void;
@@ -189,6 +191,8 @@ export function TopMenuBar({
   triggerConnectionSettingsPanel = false,
   onToggleLayersPanel,
   layersPanelOpen,
+  layerAnimationsEnabled = true,
+  onToggleLayerAnimations,
   onConnectionSettingsPanelOpenChange,
   onCloseConnectionSettingsPanel,
   onTextStylingPanelOpenChange,
@@ -466,6 +470,15 @@ export function TopMenuBar({
                 <MenubarItem onClick={onToggleLayersPanel}>
                   <Layers className="mr-2 h-4 w-4" />
                   {layersPanelOpen ? 'Hide Layers' : 'Show Layers'}
+                </MenubarItem>
+              </>
+            )}
+            {onToggleLayerAnimations !== undefined && (
+              <>
+                {(onUndo || onRedo || onFitToView || onToggleLayersPanel || onTogglePropertiesPanel || onToggleMetadataPopups) && <MenubarSeparator />}
+                <MenubarItem onClick={onToggleLayerAnimations}>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  {layerAnimationsEnabled ? 'Disable Layer Animations' : 'Enable Layer Animations'}
                 </MenubarItem>
               </>
             )}
