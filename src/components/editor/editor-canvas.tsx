@@ -135,6 +135,7 @@ export type EditorCanvasHandle = {
   fitToView: () => void;
   exportPng: (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high' }) => Promise<void>;
   exportGif: (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high'; fps?: number; durationSeconds?: number }) => Promise<void>;
+  captureSnapshotPng: (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high' }) => Promise<string>;
   copy: () => void;
   paste: () => void;
   canPaste: () => boolean;
@@ -874,7 +875,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   // - exportPng: Exports current viewport to PNG
   // - startExport: Starts export with quality settings
   // See: src/hooks/use-canvas-export.ts
-  const { exportPng, exportGif, startExport } = useCanvasExport({
+  const { exportPng, exportGif, startExport, captureViewportPngDataUrl } = useCanvasExport({
     canvasRef,
     transform,
     width,
@@ -1056,6 +1057,15 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         }
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
+
+        // Keep keyboard delete behavior identical to the on-canvas connection
+        // remove action by routing selected edge deletes through onConnectionDelete.
+        if (selectedItem?.itemType === 'edge' && onConnectionDelete) {
+          const edge = selectedItem as DiagramConnectionData & { id?: string };
+          onConnectionDelete(edge.from, edge.to);
+          return;
+        }
+
         // If there are multiple selected items, delete all of them
         if (selectedItemIds && selectedItemIds.size > 0) {
           operations.handleDeleteMultiple(Array.from(selectedItemIds));
@@ -1070,7 +1080,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [selectedItemId, selectedItemIds, handleCopy, handlePaste, canPaste, operations]);
+  }, [selectedItem, selectedItemId, selectedItemIds, onConnectionDelete, handleCopy, handlePaste, canPaste, operations]);
 
   // ============================================================================
   // CANVAS DIMENSIONS TRACKING
@@ -1189,11 +1199,12 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     fitToView: handleFitToView, // Auto-fits diagram to viewport
     exportPng: (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high' }) => exportPng(options), // Exports current viewport to PNG
     exportGif: (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high'; fps?: number; durationSeconds?: number }) => exportGif(options), // Exports current viewport to GIF
+    captureSnapshotPng: (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high' }) => captureViewportPngDataUrl(options),
     copy: copyHandler, // Copies selected item(s)
     paste: pasteHandler, // Pastes from clipboard
     canPaste: canPasteHandler, // Checks if paste is available
     pastePaletteItem: pastePaletteItemHandler, // Pastes a new item from the sidebar palette
-  }), [handleFitToView, exportPng, exportGif, copyHandler, pasteHandler, canPasteHandler, pastePaletteItemHandler]);
+  }), [handleFitToView, exportPng, exportGif, captureViewportPngDataUrl, copyHandler, pasteHandler, canPasteHandler, pastePaletteItemHandler]);
 
   return (
     <div className="relative w-full h-full" data-tutorial-id="canvas">

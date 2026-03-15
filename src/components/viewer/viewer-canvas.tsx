@@ -20,6 +20,7 @@ export type ViewerSelectedItem =
 
 interface ViewerCanvasProps {
   diagramData: DiagramData;
+  showRulers?: boolean;
   onFitToView?: () => void;
   transform?: Transform;
   onTransformChange?: (transform: Transform) => void;
@@ -43,7 +44,7 @@ interface ViewerCanvasProps {
   onAnimationDisabledSourcesChange?: (sources: Set<string>) => void;
 }
 
-export function ViewerCanvas({ diagramData, onFitToView, transform: externalTransform, onTransformChange, selectedItemId, selectedItem, onItemSelect, metadataPopupsEnabled = true, animationConnectionsEnabled = true, connectionsBehindNodesEnabled: connectionsBehindNodesProp, showAnimationsForSelectedOnly = false, animationFilterSourceIds, animationToggleOnClickEnabled = false, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange }: ViewerCanvasProps) {
+export function ViewerCanvas({ diagramData, showRulers = true, onFitToView, transform: externalTransform, onTransformChange, selectedItemId, selectedItem, onItemSelect, metadataPopupsEnabled = true, animationConnectionsEnabled = true, connectionsBehindNodesEnabled: connectionsBehindNodesProp, showAnimationsForSelectedOnly = false, animationFilterSourceIds, animationToggleOnClickEnabled = false, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange }: ViewerCanvasProps) {
   const [connectionsBehindNodesEnabled, setConnectionsBehindNodesEnabled] = useState(true);
   useEffect(() => {
     if (connectionsBehindNodesProp !== undefined) {
@@ -329,11 +330,13 @@ export function ViewerCanvas({ diagramData, onFitToView, transform: externalTran
       onMouseLeave={handleMouseUp}
     >
       {/* Rulers */}
-      <CanvasRulers
-        transform={transform}
-        canvasWidth={canvasDimensions.width}
-        canvasHeight={canvasDimensions.height}
-      />
+      {showRulers && (
+        <CanvasRulers
+          transform={transform}
+          canvasWidth={canvasDimensions.width}
+          canvasHeight={canvasDimensions.height}
+        />
+      )}
 
         {/* Canvas content */}
       <div

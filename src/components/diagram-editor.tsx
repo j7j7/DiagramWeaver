@@ -10,6 +10,8 @@ import { ConnectionContextModal } from './editor/connection-context-modal';
 import { UmlClassEditorModal } from './editor/uml-class-editor-modal';
 import { computeUmlClassDimensions } from '@/lib/uml-utils';
 import { JsonEditorPanel } from './editor/json-editor-panel';
+import { PresentationEditorPanel } from './editor/presentation-editor-panel';
+import { PresentationPlayer } from './editor/presentation-player';
 import dynamic from 'next/dynamic';
 
 const TopMenuBar = dynamic(() => import('./editor/top-menu-bar').then(mod => ({ default: mod.TopMenuBar })), {
@@ -33,7 +35,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import type { DiagramData, DiagramNodeData, DiagramConnectionData } from '@/lib/types';
+import type { DiagramData, DiagramNodeData, DiagramConnectionData, PresentationDeck, Slide, DiagramDelta } from '@/lib/types';
 import { generateSequentialId } from '@/lib/id-generator';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -41,7 +43,7 @@ import { useDiagramTabs } from '@/hooks/use-diagram-tabs';
 import { useLayers } from '@/hooks/use-layers';
 import { useLayerAnimation } from '@/hooks/use-layer-animation';
 import { flattenDiagramOnImport, type RawDiagramData } from '@/lib/flatten-on-import';
-import { DiagramDataSchema } from '@/lib/schemas';
+import { DiagramDataSchema, PresentationDeckListSchema } from '@/lib/schemas';
 import { parseMermaidFlowchart, parseMermaidClassDiagram, parseMermaidSequenceDiagram, detectMermaidDiagramType } from '@/lib/mermaid-parser';
 import { mermaidToDiagramData, classDiagramToDiagramData, sequenceDiagramToDiagramData } from '@/lib/mermaid-to-diagram';
 import { themeManager } from '@/lib/theme-manager';
@@ -76,6 +78,16 @@ import { generateConnectionId, ensureConnectionIds } from '@/lib/connection-orde
 import { snapToGrid } from '@/components/editor/canvas-constants';
 import { DEFAULT_CONNECTION_ANIMATION, toConnectionAnimationPatch, getDownstreamAnimationChainNodes } from '@/lib/connection-animation';
 import { isEventFromEditableElement } from '@/lib/keyboard-utils';
+import {
+  applyDiagramDelta,
+  computeDiagramDelta,
+  listVisibleLayerIds,
+  projectVisibleDiagram,
+} from '@/lib/presentation-delta';
+import {
+  exportPresentationsToJson,
+  importPresentationsFromJson,
+} from '@/lib/presentation-storage';
 
 export type SelectedItem = (
   | (DiagramNodeData & {
@@ -144,6 +156,311 @@ interface PaletteSelection {
   category: string;
 }
 
+const PRESENTATION_THUMBNAIL_PLACEHOLDER = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180" viewBox="0 0 320 180"><rect width="320" height="180" fill="%2311141a"/><text x="160" y="90" text-anchor="middle" dominant-baseline="middle" fill="%23d1d5db" font-family="Arial, sans-serif" font-size="14">Slide</text></svg>';
+
+type CompactOpCode = 0 | 1 | 2; // 0=add, 1=remove, 2=replace
+type CompactOperation = [CompactOpCode, string, unknown?];
+
+type CompactAnimationStateV2 = {
+  e?: 0; // only stored when animations are disabled
+  f?: string[];
+  x?: string[];
+};
+
+type CompactSlideV2 = {
+  d?: { o: CompactOperation[] };
+  r?: {
+    n?: string[]; // visible node ids (resolved from base diagram)
+    l?: string[]; // visible layer ids (resolved from base diagram)
+    c?: unknown[]; // stripped connections array (resolved from deck table)
+    ni?: number; // node id set index in deck table
+    li?: number; // layer id set index in deck table
+    ci?: number; // connection array index in deck table
+  };
+  t?: string;
+  a?: CompactAnimationStateV2;
+  z?: number;
+};
+
+type CompactDeckV2 = {
+  n?: string;
+  tn?: string[][]; // deck-level node id set table
+  tl?: string[][]; // deck-level layer id set table
+  tc?: unknown[][]; // deck-level connection array table
+  s: CompactSlideV2[];
+};
+
+type CompactPresentationsV2 = {
+  v: 2;
+  ai?: number;
+  d: CompactDeckV2[];
+};
+
+type DiagramJsonWithPresentations = DiagramData & {
+  presentations?: CompactPresentationsV2;
+};
+
+function stableStringify(value: unknown): string {
+  return JSON.stringify(value);
+}
+
+function dedupeSlideRefSets(slides: CompactSlideV2[]): {
+  slides: CompactSlideV2[];
+  nodeTable?: string[][];
+  layerTable?: string[][];
+  connectionTable?: unknown[][];
+} {
+  const nodeCounts = new Map<string, number>();
+  const layerCounts = new Map<string, number>();
+  const connectionCounts = new Map<string, number>();
+  const nodeValues = new Map<string, string[]>();
+  const layerValues = new Map<string, string[]>();
+  const connectionValues = new Map<string, unknown[]>();
+
+  for (const slide of slides) {
+    const nodeRef = slide.r?.n;
+    const layerRef = slide.r?.l;
+    const connRef = slide.r?.c;
+
+    if (nodeRef && nodeRef.length > 0) {
+      const key = stableStringify(nodeRef);
+      nodeCounts.set(key, (nodeCounts.get(key) || 0) + 1);
+      if (!nodeValues.has(key)) nodeValues.set(key, nodeRef);
+    }
+
+    if (layerRef && layerRef.length > 0) {
+      const key = stableStringify(layerRef);
+      layerCounts.set(key, (layerCounts.get(key) || 0) + 1);
+      if (!layerValues.has(key)) layerValues.set(key, layerRef);
+    }
+
+    if (connRef && connRef.length > 0) {
+      const key = stableStringify(connRef);
+      connectionCounts.set(key, (connectionCounts.get(key) || 0) + 1);
+      if (!connectionValues.has(key)) connectionValues.set(key, connRef);
+    }
+  }
+
+  const nodeKeyToIndex = new Map<string, number>();
+  const layerKeyToIndex = new Map<string, number>();
+  const connectionKeyToIndex = new Map<string, number>();
+  const nodeTable: string[][] = [];
+  const layerTable: string[][] = [];
+  const connectionTable: unknown[][] = [];
+
+  for (const [key, count] of nodeCounts) {
+    if (count <= 1) continue;
+    const value = nodeValues.get(key);
+    if (!value) continue;
+    nodeKeyToIndex.set(key, nodeTable.length);
+    nodeTable.push(value);
+  }
+
+  for (const [key, count] of layerCounts) {
+    if (count <= 1) continue;
+    const value = layerValues.get(key);
+    if (!value) continue;
+    layerKeyToIndex.set(key, layerTable.length);
+    layerTable.push(value);
+  }
+
+  for (const [key, count] of connectionCounts) {
+    if (count <= 1) continue;
+    const value = connectionValues.get(key);
+    if (!value) continue;
+    connectionKeyToIndex.set(key, connectionTable.length);
+    connectionTable.push(value);
+  }
+
+  const compressedSlides = slides.map((slide) => {
+    const nodeRef = slide.r?.n;
+    const layerRef = slide.r?.l;
+    const connRef = slide.r?.c;
+
+    const nextRef: NonNullable<CompactSlideV2['r']> = {
+      ...slide.r,
+    };
+
+    if (nodeRef && nodeRef.length > 0) {
+      const key = stableStringify(nodeRef);
+      const index = nodeKeyToIndex.get(key);
+      if (index !== undefined) {
+        nextRef.ni = index;
+        delete nextRef.n;
+      }
+    }
+
+    if (layerRef && layerRef.length > 0) {
+      const key = stableStringify(layerRef);
+      const index = layerKeyToIndex.get(key);
+      if (index !== undefined) {
+        nextRef.li = index;
+        delete nextRef.l;
+      }
+    }
+
+    if (connRef && connRef.length > 0) {
+      const key = stableStringify(connRef);
+      const index = connectionKeyToIndex.get(key);
+      if (index !== undefined) {
+        nextRef.ci = index;
+        delete nextRef.c;
+      }
+    }
+
+    const hasRefs = Object.keys(nextRef).length > 0;
+    return {
+      ...slide,
+      r: hasRefs ? nextRef : undefined,
+    };
+  });
+
+  return {
+    slides: compressedSlides,
+    nodeTable: nodeTable.length > 0 ? nodeTable : undefined,
+    layerTable: layerTable.length > 0 ? layerTable : undefined,
+    connectionTable: connectionTable.length > 0 ? connectionTable : undefined,
+  };
+}
+
+function buildBaseNodeMap(baseDiagram: DiagramData): Map<string, DiagramData['nodes'][number]> {
+  const map = new Map<string, DiagramData['nodes'][number]>();
+  for (const node of baseDiagram.nodes || []) {
+    if (node?.id) map.set(node.id, node);
+  }
+  return map;
+}
+
+function canCompressNodeReplaceToIds(
+  operationValue: unknown,
+  baseNodeMap: Map<string, DiagramData['nodes'][number]>
+): string[] | null {
+  if (!Array.isArray(operationValue)) return null;
+  const ids: string[] = [];
+
+  for (const item of operationValue) {
+    if (!item || typeof item !== 'object') return null;
+    const id = (item as { id?: unknown }).id;
+    if (typeof id !== 'string') return null;
+    const baseNode = baseNodeMap.get(id);
+    if (!baseNode) return null;
+    if (stableStringify(baseNode) !== stableStringify(item)) return null;
+    ids.push(id);
+  }
+
+  return ids;
+}
+
+function canCompressLayerReplaceToVisibleIds(
+  operationValue: unknown,
+  baseLayers: DiagramData['layers']
+): string[] | null {
+  if (!Array.isArray(operationValue) || !baseLayers?.layers) return null;
+
+  const baseLayerById = new Map(baseLayers.layers.map((layer) => [layer.id, layer]));
+  const visibleIds: string[] = [];
+
+  for (const item of operationValue) {
+    if (!item || typeof item !== 'object') return null;
+    const id = (item as { id?: unknown }).id;
+    if (typeof id !== 'string') return null;
+    const baseLayer = baseLayerById.get(id);
+    if (!baseLayer) return null;
+
+    const candidate = item as { visible?: unknown } & Record<string, unknown>;
+    const baseWithoutVisible = { ...baseLayer, visible: undefined };
+    const itemWithoutVisible = { ...candidate, visible: undefined };
+
+    if (stableStringify(baseWithoutVisible) !== stableStringify(itemWithoutVisible)) {
+      return null;
+    }
+
+    if (candidate.visible === true) {
+      visibleIds.push(id);
+    }
+  }
+
+  return visibleIds;
+}
+
+/**
+ * Strip default values from a connection object for compact delta storage.
+ * Safe to round-trip: the renderer and clampConnectionAnimation fill in defaults on load.
+ */
+function stripConnectionDefaults(conn: DiagramData['connections'][number]): unknown {
+  const result: Record<string, unknown> = {};
+  if (conn.id !== undefined) result.id = conn.id;
+  result.from = conn.from;
+  result.to = conn.to;
+  if (conn.text !== undefined) result.text = conn.text;
+  if (conn.textPosition !== undefined) result.textPosition = conn.textPosition;
+  if (conn.color !== undefined) result.color = conn.color;
+  if (conn.lineWidth !== undefined) result.lineWidth = conn.lineWidth;
+  if (conn.shadow !== undefined) result.shadow = conn.shadow;
+  // style: 'bezier' is the default — omit it to save space
+  if (conn.style !== undefined && conn.style !== 'bezier') result.style = conn.style;
+  // curvature: 0.6 is the default — omit it to save space
+  if (conn.curvature !== undefined && conn.curvature !== 0.6) result.curvature = conn.curvature;
+  if (conn.fromPreferredExit !== undefined) result.fromPreferredExit = conn.fromPreferredExit;
+  if (conn.fromArrow !== undefined) result.fromArrow = conn.fromArrow;
+  if (conn.toPreferredEntry !== undefined) result.toPreferredEntry = conn.toPreferredEntry;
+  if (conn.toArrow !== undefined) result.toArrow = conn.toArrow;
+  if (conn.arrow !== undefined) result.arrow = conn.arrow;
+  if (conn.waypoints !== undefined) result.waypoints = conn.waypoints;
+  if (conn.metaData !== undefined) result.metaData = conn.metaData;
+
+  if (conn.animation !== undefined) {
+    const anim = conn.animation;
+    const hasNonDefaultFields =
+      (anim.shape !== undefined && anim.shape !== 'dot') ||
+      (anim.speed !== undefined && anim.speed !== 20) ||
+      (anim.size !== undefined && anim.size !== 2) ||
+      (anim.autoCount !== undefined && anim.autoCount !== true) ||
+      (anim.shapeCount !== undefined && anim.shapeCount !== 5) ||
+      (anim.spacing !== undefined && anim.spacing !== 2) ||
+      anim.color !== undefined;
+    const enabledIsDefault = anim.enabled === false || anim.enabled === undefined;
+
+    if (!enabledIsDefault || hasNonDefaultFields) {
+      const animStripped: Record<string, unknown> = {};
+      // Keep enabled=true explicitly; keep enabled=false only when non-default fields are
+      // also present (otherwise legacy-detection in clampConnectionAnimation would infer enabled=true)
+      if (anim.enabled === true) animStripped.enabled = true;
+      else if (anim.enabled === false && hasNonDefaultFields) animStripped.enabled = false;
+      if (anim.shape !== undefined && anim.shape !== 'dot') animStripped.shape = anim.shape;
+      if (anim.speed !== undefined && anim.speed !== 20) animStripped.speed = anim.speed;
+      if (anim.size !== undefined && anim.size !== 2) animStripped.size = anim.size;
+      if (anim.autoCount !== undefined && anim.autoCount !== true) animStripped.autoCount = anim.autoCount;
+      if (anim.shapeCount !== undefined && anim.shapeCount !== 5) animStripped.shapeCount = anim.shapeCount;
+      if (anim.spacing !== undefined && anim.spacing !== 2) animStripped.spacing = anim.spacing;
+      if (anim.color !== undefined) animStripped.color = anim.color;
+      result.animation = animStripped;
+    }
+    // All-default animation → omit entirely (clampConnectionAnimation(undefined) gives all defaults)
+  }
+
+  return result;
+}
+
+function expandNodeIdsToNodes(ids: string[], baseDiagram: DiagramData): DiagramData['nodes'] {
+  const baseNodeMap = buildBaseNodeMap(baseDiagram);
+  const expanded: DiagramData['nodes'] = [];
+  for (const id of ids) {
+    const node = baseNodeMap.get(id);
+    if (node) expanded.push(JSON.parse(JSON.stringify(node)));
+  }
+  return expanded;
+}
+
+function expandVisibleLayerIdsToLayers(visibleIds: string[], baseDiagram: DiagramData): NonNullable<DiagramData['layers']>['layers'] {
+  const visibleSet = new Set(visibleIds);
+  const baseLayers = baseDiagram.layers?.layers || [];
+  return baseLayers.map((layer) => ({
+    ...JSON.parse(JSON.stringify(layer)),
+    visible: visibleSet.has(layer.id),
+  }));
+}
+
 function createPaletteItem(
   resource: PaletteResource | { name: string; iconType?: string; iconName?: string; emoji?: string },
   provider: string,
@@ -187,6 +504,26 @@ export default function DiagramEditor() {
   const [layerAnimationsEnabled, setLayerAnimationsEnabled] = React.useState<boolean>(true);
   const [rulesEditorOpen, setRulesEditorOpen] = React.useState<boolean>(false);
   const [rules, setRules] = React.useState<import('@/lib/rules-types').DiagramRule[]>([]);
+  const [presentationModeEnabled, setPresentationModeEnabled] = React.useState<boolean>(false);
+  const [presentationDecks, setPresentationDecks] = React.useState<PresentationDeck[]>([]);
+  const [activePresentationDeckId, setActivePresentationDeckId] = React.useState<string | null>(null);
+  const [activePresentationSlideId, setActivePresentationSlideId] = React.useState<string | null>(null);
+  const [presentationDisabledLayerIds, setPresentationDisabledLayerIds] = React.useState<Set<string>>(new Set());
+  const [selectedPresentationSlideIds, setSelectedPresentationSlideIds] = React.useState<Set<string>>(new Set());
+  const [presentationPlayerOpen, setPresentationPlayerOpen] = React.useState<boolean>(false);
+  const [presentationPlayerIndex, setPresentationPlayerIndex] = React.useState<number>(0);
+  const [presentationZoomPercentDraft, setPresentationZoomPercentDraft] = React.useState<string>('100');
+  const [presentationMasterDiagram, setPresentationMasterDiagram] = React.useState<DiagramData | null>(null);
+  const [presentationDraftDiagram, setPresentationDraftDiagram] = React.useState<DiagramData | null>(null);
+  const canvasTransformRef = React.useRef<{ x: number; y: number; k: number }>({ x: 0, y: 0, k: 1 });
+  const presentationStateByTabRef = React.useRef<Record<string, {
+    decks: PresentationDeck[];
+    activeDeckId: string | null;
+    activeSlideId: string | null;
+    selectedSlideIds: string[];
+    masterDiagram: DiagramData | null;
+    draftDiagram: DiagramData | null;
+  }>>({});
 
   // Restore rules from localStorage after hydration
   React.useEffect(() => {
@@ -363,7 +700,10 @@ export default function DiagramEditor() {
   });
 
   // Sync active tab state to local state for component use
-  const diagramData = activeTab?.diagramData || { nodes: [], connections: [], groupings: [] };
+  const tabDiagramData = activeTab?.diagramData || { nodes: [], connections: [], groupings: [] };
+  const diagramData = presentationModeEnabled
+    ? (presentationDraftDiagram ?? tabDiagramData)
+    : tabDiagramData;
   const history = activeTab?.history || [JSON.stringify({ nodes: [], connections: [], groupings: [] })];
   const historyIndex = activeTab?.historyIndex || 0;
   const historyRef = React.useRef(getHistoryRef(activeTabId || '') || { history: [], index: 0 });
@@ -371,7 +711,35 @@ export default function DiagramEditor() {
   const selectedItemIds = activeTab?.selectedItemIds || new Set();
   const isConnectMode = activeTab?.isConnectMode || false;
   const jsonPanelOpen = activeTab?.jsonPanelOpen || false;
-  const canvasTransform = activeTab?.canvasTransform || { x: 0, y: 0, k: 1 };
+  const sanitizeCanvasTransform = React.useCallback((transform?: { x: number; y: number; k: number } | null) => {
+    const safeX = typeof transform?.x === 'number' && Number.isFinite(transform.x) ? transform.x : 0;
+    const safeY = typeof transform?.y === 'number' && Number.isFinite(transform.y) ? transform.y : 0;
+    const safeKRaw = typeof transform?.k === 'number' && Number.isFinite(transform.k) ? transform.k : 1;
+    const safeK = Math.max(0.1, Math.min(2.5, safeKRaw));
+    return { x: safeX, y: safeY, k: safeK };
+  }, []);
+
+  const canvasTransform = sanitizeCanvasTransform(activeTab?.canvasTransform);
+  React.useEffect(() => {
+    canvasTransformRef.current = canvasTransform;
+  }, [canvasTransform]);
+  const activePresentationDeck = React.useMemo(
+    () => presentationDecks.find((deck) => deck.id === activePresentationDeckId) ?? null,
+    [presentationDecks, activePresentationDeckId]
+  );
+  const activePresentationSlides = activePresentationDeck?.slides ?? [];
+  const activePresentationSlideDiagrams = React.useMemo(() => {
+    const master = projectVisibleDiagram(presentationMasterDiagram ?? diagramData);
+    return activePresentationSlides.map((slide) => applyDiagramDelta(master, slide.diagramDelta));
+  }, [activePresentationSlides, presentationMasterDiagram, diagramData]);
+
+  React.useEffect(() => {
+    if (!presentationModeEnabled) return;
+    const activeSlide = activePresentationSlides.find((slide) => slide.id === activePresentationSlideId) ?? null;
+    const zoom = activeSlide?.autoZoomLevel ?? canvasTransformRef.current.k;
+    if (!Number.isFinite(zoom) || zoom <= 0) return;
+    setPresentationZoomPercentDraft(String(Number((zoom * 100).toFixed(1))));
+  }, [presentationModeEnabled, activePresentationSlides, activePresentationSlideId]);
   
   // Refresh key to force canvas re-render
   const [canvasRefreshKey, setCanvasRefreshKey] = React.useState(0);
@@ -384,13 +752,20 @@ export default function DiagramEditor() {
 
   // Helper functions to update active tab
   const setDiagramData = React.useCallback((updater: DiagramData | ((prev: DiagramData) => DiagramData)) => {
-    if (!activeTabId) return;
+    if (!activeTabId && !presentationModeEnabled) return;
     const newData = typeof updater === 'function' ? updater(diagramData) : updater;
     const connections = newData.connections || [];
     const needsIds = connections.some((c: DiagramConnectionData) => !(c as DiagramConnectionData).id);
     const ensuredConnections = needsIds ? ensureConnectionIds(connections) : connections;
-    updateActiveTab({ diagramData: { ...newData, connections: ensuredConnections } });
-  }, [activeTabId, diagramData, updateActiveTab]);
+    const nextData = { ...newData, connections: ensuredConnections };
+
+    if (presentationModeEnabled) {
+      setPresentationDraftDiagram(nextData);
+      return;
+    }
+
+    updateActiveTab({ diagramData: nextData });
+  }, [activeTabId, diagramData, presentationModeEnabled, updateActiveTab]);
 
   const setSelectedItem = React.useCallback((updater: SelectedItem | null | ((prev: SelectedItem | null) => SelectedItem | null)) => {
     if (!activeTabId) return;
@@ -425,6 +800,56 @@ export default function DiagramEditor() {
   );
 
   const displayDiagramData = layerAnimation.animatingDiagramData ?? layers.filteredDiagramData ?? diagramData;
+
+  React.useEffect(() => {
+    if (!activeTabId) {
+      setPresentationDecks([]);
+      setActivePresentationDeckId(null);
+      setActivePresentationSlideId(null);
+      setSelectedPresentationSlideIds(new Set());
+      setPresentationMasterDiagram(null);
+      setPresentationDraftDiagram(null);
+      return;
+    }
+
+    const scoped = presentationStateByTabRef.current[activeTabId];
+    if (!scoped) {
+      setPresentationDecks([]);
+      setActivePresentationDeckId(null);
+      setActivePresentationSlideId(null);
+      setSelectedPresentationSlideIds(new Set());
+      setPresentationMasterDiagram(null);
+      setPresentationDraftDiagram(null);
+      return;
+    }
+
+    setPresentationDecks(scoped.decks);
+    setActivePresentationDeckId(scoped.activeDeckId);
+    setActivePresentationSlideId(scoped.activeSlideId);
+    setSelectedPresentationSlideIds(new Set(scoped.selectedSlideIds));
+    setPresentationMasterDiagram(scoped.masterDiagram);
+    setPresentationDraftDiagram(scoped.draftDiagram);
+  }, [activeTabId]);
+
+  React.useEffect(() => {
+    if (!activeTabId) return;
+    presentationStateByTabRef.current[activeTabId] = {
+      decks: presentationDecks,
+      activeDeckId: activePresentationDeckId,
+      activeSlideId: activePresentationSlideId,
+      selectedSlideIds: Array.from(selectedPresentationSlideIds),
+      masterDiagram: presentationMasterDiagram,
+      draftDiagram: presentationDraftDiagram,
+    };
+  }, [
+    activeTabId,
+    presentationDecks,
+    activePresentationDeckId,
+    activePresentationSlideId,
+    selectedPresentationSlideIds,
+    presentationMasterDiagram,
+    presentationDraftDiagram,
+  ]);
 
   // When animation toggle-on-click mode is on: show animations only for selected node's chain. Nothing selected = no animations.
   const effectiveAnimationFilterIds = React.useMemo(() => {
@@ -461,8 +886,8 @@ export default function DiagramEditor() {
 
   const setCanvasTransform = React.useCallback((transform: { x: number; y: number; k: number }) => {
     if (!activeTabId) return;
-    updateActiveTab({ canvasTransform: transform });
-  }, [activeTabId, updateActiveTab]);
+    updateActiveTab({ canvasTransform: sanitizeCanvasTransform(transform) });
+  }, [activeTabId, updateActiveTab, sanitizeCanvasTransform]);
 
   const setHistory = React.useCallback((newHistory: string[]) => {
     if (!activeTabId) return;
@@ -788,24 +1213,37 @@ export default function DiagramEditor() {
   };
 
   const handleItemDelete = (itemToDelete: SelectedItem) => {
-    setDiagramData(prevData => {
-      let newNodes = prevData.nodes;
-      let newConnections = prevData.connections;
+    if (itemToDelete.itemType === 'node') {
+      const layerId = itemToDelete.layer || layers.getItemLayerById(itemToDelete.id);
+      if (!confirmPresentationLayerImpact('The selected item', layerId ? [layerId] : [])) return;
+    } else if (itemToDelete.itemType === 'edge') {
+      const edge = itemToDelete as { from: string; to: string };
+      if (!confirmPresentationLayerImpact('This connection', getAffectedLayerIdsForConnection(edge.from, edge.to))) return;
+    }
 
-      if (itemToDelete.itemType === 'node') {
-        newNodes = prevData.nodes.filter(n => n.id !== itemToDelete.id);
-        newConnections = prevData.connections.filter((e: { from: string; to: string }) => e.from !== itemToDelete.id && e.to !== itemToDelete.id);
-      } else if (itemToDelete.itemType === 'edge') {
-        const edgeItem = itemToDelete as { from: string; to: string; id?: string };
-        newConnections = prevData.connections.filter((e: DiagramConnectionData) => {
-          if (edgeItem.id && (e as DiagramConnectionData).id) return (e as DiagramConnectionData).id !== edgeItem.id;
-          return !(e.from === edgeItem.from && e.to === edgeItem.to);
-        });
-      }
+    let newNodes = diagramData.nodes;
+    let newConnections = diagramData.connections;
 
-      const updatedData = { ...prevData, nodes: newNodes, connections: newConnections };
-      return cleanupGroupsAfterDeletion([itemToDelete.id], updatedData);
-    });
+    if (itemToDelete.itemType === 'node') {
+      newNodes = diagramData.nodes.filter(n => n.id !== itemToDelete.id);
+      newConnections = diagramData.connections.filter((e: { from: string; to: string }) => e.from !== itemToDelete.id && e.to !== itemToDelete.id);
+    } else if (itemToDelete.itemType === 'edge') {
+      const edgeItem = itemToDelete as { from: string; to: string; id?: string };
+      const hasExactIdMatch = Boolean(
+        edgeItem.id && diagramData.connections.some((e: DiagramConnectionData) => (e as DiagramConnectionData).id === edgeItem.id)
+      );
+      newConnections = diagramData.connections.filter((e: DiagramConnectionData) => {
+        if (hasExactIdMatch && edgeItem.id && (e as DiagramConnectionData).id) {
+          return (e as DiagramConnectionData).id !== edgeItem.id;
+        }
+        return !(e.from === edgeItem.from && e.to === edgeItem.to);
+      });
+    }
+
+    const updatedData = { ...diagramData, nodes: newNodes, connections: newConnections };
+    const nextDiagram = cleanupGroupsAfterDeletion([itemToDelete.id], updatedData);
+    setDiagramData(nextDiagram);
+    persistPresentationSlideFromDiagram(nextDiagram);
     setSelectedItem(null);
   };
 
@@ -948,8 +1386,109 @@ export default function DiagramEditor() {
     (window as any).pendingConnectionOptions = connectionOptions;
   }
 
+  const getLayerNameById = React.useCallback((layerId: string): string => {
+    return layers.layersConfig.layers.find((layer) => layer.id === layerId)?.name || layerId;
+  }, [layers.layersConfig.layers]);
+
+  const getAffectedLayerIdsForConnection = React.useCallback((from: string, to: string): string[] => {
+    const ids = new Set<string>();
+    const source = diagramData;
+    const fromNode = source.nodes.find((n) => n.id === from);
+    const toNode = source.nodes.find((n) => n.id === to);
+    if (fromNode?.layer) ids.add(fromNode.layer);
+    if (toNode?.layer) ids.add(toNode.layer);
+    return Array.from(ids);
+  }, [diagramData]);
+
+  const confirmPresentationLayerImpact = React.useCallback((actionLabel: string, layerIds: string[]): boolean => {
+    if (!presentationModeEnabled || layerIds.length === 0) return true;
+
+    const uniqueLayerIds = Array.from(new Set(layerIds));
+    const layerNames = uniqueLayerIds.map((id) => getLayerNameById(id));
+    const confirmed = window.confirm(
+      `${actionLabel} is assigned to layer(s): ${layerNames.join(', ')}. ` +
+      `This will disable layer functions for the affected layer(s) in Presentation Mode only. Continue?`
+    );
+    if (!confirmed) return false;
+
+    setPresentationDisabledLayerIds((prev) => {
+      const next = new Set(prev);
+      uniqueLayerIds.forEach((id) => next.add(id));
+      return next;
+    });
+    return true;
+  }, [presentationModeEnabled, getLayerNameById]);
+
+  const computePresentationDisabledLayerIds = React.useCallback((
+    masterDiagram: DiagramData,
+    currentDiagram: DiagramData
+  ): Set<string> => {
+    const disabled = new Set<string>();
+
+    const currentNodeIds = new Set((currentDiagram.nodes || []).map((n) => n.id));
+    const masterNodeLayerById = new Map((masterDiagram.nodes || []).map((n) => [n.id, n.layer || 'background']));
+
+    // If a node from master is missing in presentation draft, its layer becomes disabled.
+    for (const node of masterDiagram.nodes || []) {
+      if (!currentNodeIds.has(node.id)) {
+        disabled.add(node.layer || 'background');
+      }
+    }
+
+    const currentConnectionKeys = new Set(
+      (currentDiagram.connections || []).map((c) => (c.id ? `id:${c.id}` : `pair:${c.from}->${c.to}`))
+    );
+
+    // If a master connection is missing, disable layers of its endpoint nodes.
+    for (const conn of masterDiagram.connections || []) {
+      const key = conn.id ? `id:${conn.id}` : `pair:${conn.from}->${conn.to}`;
+      if (!currentConnectionKeys.has(key)) {
+        const fromLayer = masterNodeLayerById.get(conn.from);
+        const toLayer = masterNodeLayerById.get(conn.to);
+        if (fromLayer) disabled.add(fromLayer);
+        if (toLayer) disabled.add(toLayer);
+      }
+    }
+
+    return disabled;
+  }, []);
+
+  React.useEffect(() => {
+    if (!presentationModeEnabled) {
+      setPresentationDisabledLayerIds((prev) => (prev.size === 0 ? prev : new Set()));
+      return;
+    }
+
+    const master = presentationMasterDiagram ?? tabDiagramData;
+    const current = presentationDraftDiagram ?? diagramData;
+    if (!master || !current) return;
+
+    const nextDisabled = computePresentationDisabledLayerIds(master, current);
+    setPresentationDisabledLayerIds((prev) => {
+      if (prev.size === nextDisabled.size) {
+        let same = true;
+        for (const id of prev) {
+          if (!nextDisabled.has(id)) {
+            same = false;
+            break;
+          }
+        }
+        if (same) return prev;
+      }
+      return nextDisabled;
+    });
+  }, [
+    presentationModeEnabled,
+    presentationMasterDiagram,
+    presentationDraftDiagram,
+    tabDiagramData,
+    diagramData,
+    computePresentationDisabledLayerIds,
+  ]);
+
   const disconnectSelected = () => {
     if (!selectedItem || selectedItem.itemType !== 'node') return;
+    if (!confirmPresentationLayerImpact('The selected item', [selectedItem.layer || layers.getItemLayerById(selectedItem.id)])) return;
     const id = selectedItem.id;
     setDiagramData(prevData => ({
       ...prevData,
@@ -958,21 +1497,53 @@ export default function DiagramEditor() {
     toast({ title: 'Disconnected', description: 'All connections to/from this item have been removed.' });
   };
 
-  const disconnectConnection = (from: string, to: string, connectionId?: string) => {
-    setDiagramData(prevData => ({
-      ...prevData,
-      connections: prevData.connections.filter((e: DiagramConnectionData) => {
+  const persistPresentationSlideFromDiagram = React.useCallback((nextDiagram: DiagramData) => {
+    if (!presentationModeEnabled || !activePresentationDeckId || !activePresentationSlideId) return;
+
+    const masterBase = projectVisibleDiagram(presentationMasterDiagram ?? tabDiagramData);
+    const nextVisible = projectVisibleDiagram(nextDiagram);
+    const nextDelta = computeDiagramDelta(masterBase, nextVisible);
+
+    setPresentationDecks((prev) => prev.map((deck) => {
+      if (deck.id !== activePresentationDeckId) return deck;
+      return {
+        ...deck,
+        slides: deck.slides.map((slide) => (
+          slide.id === activePresentationSlideId
+            ? { ...slide, diagramDelta: nextDelta }
+            : slide
+        )),
+        updatedAt: Date.now(),
+      };
+    }));
+  }, [
+    presentationModeEnabled,
+    activePresentationDeckId,
+    activePresentationSlideId,
+    presentationMasterDiagram,
+    tabDiagramData,
+  ]);
+
+  const disconnectConnection = React.useCallback((from: string, to: string, connectionId?: string) => {
+    if (!confirmPresentationLayerImpact('This connection', getAffectedLayerIdsForConnection(from, to))) return;
+    const nextDiagram: DiagramData = {
+      ...diagramData,
+      connections: diagramData.connections.filter((e: DiagramConnectionData) => {
         if (connectionId && (e as DiagramConnectionData).id) return (e as DiagramConnectionData).id !== connectionId;
         return !(e.from === from && e.to === to);
       }),
-    }));
+    };
+
+    setDiagramData(nextDiagram);
+    persistPresentationSlideFromDiagram(nextDiagram);
+
     if (selectedItem && selectedItem.itemType === 'edge') {
       const match = (selectedItem.from === from && selectedItem.to === to) &&
         (!connectionId || (selectedItem as { id?: string }).id === connectionId);
       if (match) setSelectedItem(null);
     }
     toast({ title: 'Connection Disconnected', description: 'Connection has been removed.' });
-  };
+  }, [diagramData, persistPresentationSlideFromDiagram, selectedItem, setDiagramData, setSelectedItem, confirmPresentationLayerImpact, getAffectedLayerIdsForConnection, layers]);
   
   const getFilenameStem = (filename: string) =>
     filename.replace(/\.[^.]+$/, '') || filename;
@@ -982,7 +1553,102 @@ export default function DiagramEditor() {
     const targetTab = targetTabId ? getTab(targetTabId) : activeTab;
     if (!targetTabId || !targetTab) return false;
 
-    const dataToSave = targetTab.diagramData;
+    const baseForPresentationCompression = projectVisibleDiagram(presentationMasterDiagram ?? targetTab.diagramData);
+    const baseNodeMap = buildBaseNodeMap(baseForPresentationCompression);
+
+    const compactDecks: CompactDeckV2[] = presentationDecks.map((deck) => {
+      const rawSlides: CompactSlideV2[] = deck.slides.map((slide, index) => {
+        const compactRefs: CompactSlideV2['r'] = {};
+        const compactOps: CompactOperation[] = [];
+
+        for (const operation of slide.diagramDelta.operations || []) {
+          if (operation.op === 'replace' && operation.path === '/nodes') {
+            const compressedIds = canCompressNodeReplaceToIds(operation.value, baseNodeMap);
+            if (compressedIds) {
+              compactRefs.n = compressedIds;
+              continue;
+            }
+          }
+
+          if (operation.op === 'replace' && operation.path === '/layers/layers') {
+            const compressedVisibleLayerIds = canCompressLayerReplaceToVisibleIds(
+              operation.value,
+              baseForPresentationCompression.layers
+            );
+            if (compressedVisibleLayerIds) {
+              compactRefs.l = compressedVisibleLayerIds;
+              continue;
+            }
+          }
+
+          if (operation.op === 'replace' && operation.path === '/connections' && Array.isArray(operation.value)) {
+            compactRefs.c = (operation.value as DiagramData['connections']).map(stripConnectionDefaults);
+            continue;
+          }
+
+          const code: CompactOpCode = operation.op === 'add' ? 0 : operation.op === 'remove' ? 1 : 2;
+          compactOps.push(
+            operation.value === undefined
+              ? [code, operation.path]
+              : [code, operation.path, operation.value]
+          );
+        }
+
+        const animationState = slide.animationState;
+        const compactAnimation: CompactAnimationStateV2 | undefined = animationState
+          ? {
+              e: animationState.enabled ? undefined : 0,
+              f: animationState.filterSourceIds && animationState.filterSourceIds.length > 0
+                ? animationState.filterSourceIds
+                : undefined,
+              x: animationState.disabledSourceIds && animationState.disabledSourceIds.length > 0
+                ? animationState.disabledSourceIds
+                : undefined,
+            }
+          : undefined;
+
+        const hasCompactAnimation = Boolean(
+          compactAnimation && (
+            compactAnimation.e !== undefined ||
+            (compactAnimation.f && compactAnimation.f.length > 0) ||
+            (compactAnimation.x && compactAnimation.x.length > 0)
+          )
+        );
+
+        const defaultTitle = `Snapshot ${index + 1}`;
+        return {
+          d: compactOps.length > 0 ? { o: compactOps } : undefined,
+          r: (compactRefs.n || compactRefs.l || compactRefs.c) ? compactRefs : undefined,
+          t: slide.title && slide.title !== defaultTitle ? slide.title : undefined,
+          a: hasCompactAnimation ? compactAnimation : undefined,
+          z: typeof slide.autoZoomLevel === 'number' && Number.isFinite(slide.autoZoomLevel)
+            ? Number(slide.autoZoomLevel.toFixed(4))
+            : undefined,
+        };
+      });
+
+      const deduped = dedupeSlideRefSets(rawSlides);
+      return {
+        n: deck.name || undefined,
+        tn: deduped.nodeTable,
+        tl: deduped.layerTable,
+        tc: deduped.connectionTable,
+        s: deduped.slides,
+      };
+    });
+
+    const activeDeckIndex = activePresentationDeckId
+      ? presentationDecks.findIndex((deck) => deck.id === activePresentationDeckId)
+      : -1;
+
+    const dataToSave: DiagramJsonWithPresentations = {
+      ...targetTab.diagramData,
+      presentations: {
+        v: 2,
+        ai: activeDeckIndex >= 0 ? activeDeckIndex : undefined,
+        d: compactDecks,
+      },
+    };
     const jsonString = JSON.stringify(dataToSave, null, 2);
     const suggestedName = `${targetTab.name.replace(/\s+/g, '-').toLowerCase()}.json`;
 
@@ -1128,6 +1794,147 @@ export default function DiagramEditor() {
     };
   }, []);
 
+  const extractPresentationsFromDiagramJson = React.useCallback((json: unknown): {
+    decks: PresentationDeck[];
+    activeDeckId: string | null;
+  } => {
+    if (!json || typeof json !== 'object') {
+      return { decks: [], activeDeckId: null };
+    }
+
+    const raw = json as {
+      presentations?: {
+        v?: number;
+        ai?: number;
+        d?: unknown;
+        decks?: unknown;
+        activeDeckId?: string | null;
+      };
+    };
+
+    const compactRaw = raw.presentations;
+    if (compactRaw?.v === 2 && Array.isArray(compactRaw.d)) {
+      const now = Date.now();
+
+      const baseForPresentationExpansion = projectVisibleDiagram(parseUnknownJsonToDiagramData(json));
+
+      const hydratedDecks: PresentationDeck[] = compactRaw.d.map((rawDeck, deckIndex) => {
+        const deck = (rawDeck && typeof rawDeck === 'object' ? rawDeck : {}) as CompactDeckV2;
+        const slidesRaw = Array.isArray(deck.s) ? deck.s : [];
+
+        const slides: Slide[] = slidesRaw.map((rawSlide, slideIndex) => {
+          const slide = (rawSlide && typeof rawSlide === 'object' ? rawSlide : {}) as CompactSlideV2;
+          const opsRaw = Array.isArray(slide.d?.o) ? slide.d.o : [];
+          const operations: DiagramDelta['operations'] = opsRaw
+            .map((entry) => {
+              if (!Array.isArray(entry) || entry.length < 2) return null;
+              const [code, path, value] = entry;
+              if (typeof path !== 'string') return null;
+              let op: 'add' | 'remove' | 'replace' | null = null;
+              if (code === 0) op = 'add';
+              if (code === 1) op = 'remove';
+              if (code === 2) op = 'replace';
+              if (!op) return null;
+              return value === undefined ? { op, path } : { op, path, value };
+            })
+            .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+
+          const deckNodeTable = Array.isArray(deck.tn) ? deck.tn : [];
+          const deckLayerTable = Array.isArray(deck.tl) ? deck.tl : [];
+          const deckConnectionTable = Array.isArray(deck.tc) ? deck.tc : [];
+          const nodeIdsFromRefs = Array.isArray(slide.r?.n)
+            ? slide.r?.n
+            : (typeof slide.r?.ni === 'number' && slide.r.ni >= 0 ? deckNodeTable[slide.r.ni] : undefined);
+
+          if (nodeIdsFromRefs && Array.isArray(nodeIdsFromRefs)) {
+            operations.push({
+              op: 'replace',
+              path: '/nodes',
+              value: expandNodeIdsToNodes(nodeIdsFromRefs, baseForPresentationExpansion),
+            });
+          }
+
+          const layerIdsFromRefs = Array.isArray(slide.r?.l)
+            ? slide.r?.l
+            : (typeof slide.r?.li === 'number' && slide.r.li >= 0 ? deckLayerTable[slide.r.li] : undefined);
+
+          if (layerIdsFromRefs && Array.isArray(layerIdsFromRefs) && baseForPresentationExpansion.layers?.layers) {
+            operations.push({
+              op: 'replace',
+              path: '/layers/layers',
+              value: expandVisibleLayerIdsToLayers(layerIdsFromRefs, baseForPresentationExpansion),
+            });
+          }
+
+          const connectionsFromRefs = Array.isArray(slide.r?.c)
+            ? slide.r?.c
+            : (typeof slide.r?.ci === 'number' && slide.r.ci >= 0 ? deckConnectionTable[slide.r.ci] : undefined);
+
+          if (connectionsFromRefs && Array.isArray(connectionsFromRefs)) {
+            operations.push({
+              op: 'replace',
+              path: '/connections',
+              value: connectionsFromRefs,
+            });
+          }
+
+          const animationState = slide.a
+            ? {
+                enabled: slide.a.e === 0 ? false : true,
+                filterSourceIds: Array.isArray(slide.a.f) && slide.a.f.length > 0 ? slide.a.f : undefined,
+                disabledSourceIds: Array.isArray(slide.a.x) && slide.a.x.length > 0 ? slide.a.x : undefined,
+              }
+            : undefined;
+
+          return {
+            id: `slide-${now}-${deckIndex}-${slideIndex}`,
+            title: slide.t || `Snapshot ${slideIndex + 1}`,
+            snapshotImage: PRESENTATION_THUMBNAIL_PLACEHOLDER,
+            diagramDelta: {
+              version: '1.0',
+              compressed: true,
+              operations,
+            },
+            animationState,
+            autoZoomLevel: typeof slide.z === 'number' && Number.isFinite(slide.z) ? slide.z : undefined,
+            createdAt: now,
+          };
+        });
+
+        return {
+          id: `deck-${now}-${deckIndex}`,
+          name: (deck.n && String(deck.n).trim()) || `Presentation ${deckIndex + 1}`,
+          slides,
+          createdAt: now,
+          updatedAt: now,
+        };
+      });
+
+      const activeDeckId =
+        typeof compactRaw.ai === 'number' && compactRaw.ai >= 0
+          ? (hydratedDecks[compactRaw.ai]?.id ?? hydratedDecks[0]?.id ?? null)
+          : (hydratedDecks[0]?.id ?? null);
+
+      return { decks: hydratedDecks, activeDeckId };
+    }
+
+    const parsedDecks = PresentationDeckListSchema.safeParse(raw.presentations?.decks ?? []);
+    if (!parsedDecks.success) {
+      return { decks: [], activeDeckId: null };
+    }
+
+    const hydratedDecks: PresentationDeck[] = parsedDecks.data.map((deck) => ({
+      ...deck,
+      slides: deck.slides.map((slide) => ({
+        ...slide,
+        snapshotImage: slide.snapshotImage || PRESENTATION_THUMBNAIL_PLACEHOLDER,
+      })),
+    }));
+
+    const activeDeckId = raw.presentations?.activeDeckId ?? hydratedDecks[0]?.id ?? null;
+    return { decks: hydratedDecks, activeDeckId };
+  }, [parseUnknownJsonToDiagramData]);
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -1141,6 +1948,10 @@ export default function DiagramEditor() {
           const isMermaid = /\.(mmd|mermaid)$/.test(file.name.toLowerCase())
             || diagramType !== null;
           let completeData: DiagramData;
+          let loadedPresentations: { decks: PresentationDeck[]; activeDeckId: string | null } = {
+            decks: [],
+            activeDeckId: null,
+          };
 
           if (isMermaid && diagramType === 'sequenceDiagram') {
             const parsed = parseMermaidSequenceDiagram(text);
@@ -1177,6 +1988,7 @@ export default function DiagramEditor() {
           } else {
             const jsonData = JSON.parse(text);
             completeData = parseUnknownJsonToDiagramData(jsonData);
+            loadedPresentations = extractPresentationsFromDiagramJson(jsonData);
           }
           completeData.connections = ensureConnectionIds(completeData.connections || []);
 
@@ -1184,6 +1996,11 @@ export default function DiagramEditor() {
           setTimeout(() => {
             setDiagramData(completeData);
             setSelectedItem(null);
+            setPresentationDecks(loadedPresentations.decks);
+            setActivePresentationDeckId(loadedPresentations.activeDeckId);
+            setActivePresentationSlideId(loadedPresentations.decks[0]?.slides[0]?.id ?? null);
+            setSelectedPresentationSlideIds(new Set());
+            setPresentationMasterDiagram(JSON.parse(JSON.stringify(completeData)) as DiagramData);
             updateActiveTab({ name: getFilenameStem(file.name) });
             toast({ title: 'Diagram Loaded', description: 'Your diagram has been successfully loaded.' });
             setTimeout(() => editorRef.current?.fitToView(), 100);
@@ -1996,6 +2813,524 @@ export default function DiagramEditor() {
     }
   };
 
+  const handleTogglePresentationMode = React.useCallback(() => {
+    const next = !presentationModeEnabled;
+    setPresentationModeEnabled(next);
+    if (next) {
+      const snapshot = JSON.parse(JSON.stringify(tabDiagramData)) as DiagramData;
+      setPresentationMasterDiagram(snapshot);
+      setPresentationDraftDiagram(JSON.parse(JSON.stringify(snapshot)) as DiagramData);
+      setPresentationDisabledLayerIds(new Set());
+      toast({ title: 'Presentation Mode Enabled', description: 'Use the toolbox to manage presentations and snapshots.' });
+      return;
+    }
+    setPresentationDraftDiagram(null);
+    setPresentationDisabledLayerIds(new Set());
+    setPresentationPlayerOpen(false);
+  }, [presentationModeEnabled, tabDiagramData, toast]);
+
+  const handleCreatePresentationDeck = React.useCallback(() => {
+    const name = window.prompt('Presentation name');
+    if (!name || !name.trim()) return;
+    const now = Date.now();
+    const deck: PresentationDeck = {
+      id: `deck-${now}-${Math.random().toString(36).slice(2, 8)}`,
+      name: name.trim(),
+      slides: [],
+      createdAt: now,
+      updatedAt: now,
+    };
+    setPresentationDecks((prev) => [...prev, deck]);
+    setActivePresentationDeckId(deck.id);
+    setActivePresentationSlideId(null);
+    setSelectedPresentationSlideIds(new Set());
+  }, []);
+
+  const handleDeletePresentationDeck = React.useCallback(() => {
+    if (!activePresentationDeck) return;
+    const confirmed = window.confirm(`Delete presentation "${activePresentationDeck.name}"?`);
+    if (!confirmed) return;
+
+    const nextDecks = presentationDecks.filter((deck) => deck.id !== activePresentationDeck.id);
+    const fallbackDeckId = nextDecks[0]?.id ?? null;
+
+    setPresentationDecks(nextDecks);
+    setActivePresentationDeckId(fallbackDeckId);
+    setActivePresentationSlideId(nextDecks[0]?.slides[0]?.id ?? null);
+    setSelectedPresentationSlideIds(new Set());
+  }, [activePresentationDeck, presentationDecks]);
+
+  const handleRenamePresentationDeck = React.useCallback((name: string) => {
+    if (!activePresentationDeckId || !name.trim()) return;
+    setPresentationDecks((prev) => prev.map((deck) => {
+      if (deck.id !== activePresentationDeckId) return deck;
+      return {
+        ...deck,
+        name: name.trim(),
+        updatedAt: Date.now(),
+      };
+    }));
+  }, [activePresentationDeckId]);
+
+  const handleSelectPresentationDeck = React.useCallback((deckId: string) => {
+    setActivePresentationDeckId(deckId);
+    const deck = presentationDecks.find((item) => item.id === deckId) ?? null;
+    setActivePresentationSlideId(deck?.slides[0]?.id ?? null);
+    setSelectedPresentationSlideIds(new Set());
+  }, [presentationDecks]);
+
+  const runPresentationAutoZoom = React.useCallback(async () => {
+    if (!presentationModeEnabled) return null;
+    if (!editorRef.current?.fitToView) {
+      toast({ variant: 'destructive', title: 'Auto Zoom Failed', description: 'Canvas auto zoom API is unavailable.' });
+      return null;
+    }
+
+    editorRef.current.fitToView();
+    await new Promise((resolve) => window.setTimeout(resolve, 140));
+    const zoom = canvasTransformRef.current.k;
+    if (!Number.isFinite(zoom) || zoom <= 0) {
+      toast({ variant: 'destructive', title: 'Auto Zoom Failed', description: 'Could not compute an optimized zoom level.' });
+      return null;
+    }
+
+    return Number(zoom.toFixed(4));
+  }, [presentationModeEnabled, toast]);
+
+  const handleAutoZoomPresentation = React.useCallback(async () => {
+    if (!activePresentationDeckId) return;
+    const autoZoomLevel = await runPresentationAutoZoom();
+    if (autoZoomLevel === null) return;
+
+    if (!activePresentationDeck || activePresentationDeck.slides.length === 0) {
+      toast({
+        title: 'Auto Zoom Applied',
+        description: `Optimized zoom set to ${(autoZoomLevel * 100).toFixed(1)}%. Add snapshots to apply this value.`,
+      });
+      return;
+    }
+
+    setPresentationDecks((prev) => prev.map((deck) => {
+      if (deck.id !== activePresentationDeckId) return deck;
+      return {
+        ...deck,
+        slides: deck.slides.map((slide) => ({
+          ...slide,
+          autoZoomLevel,
+        })),
+        updatedAt: Date.now(),
+      };
+    }));
+
+    toast({
+      title: 'Auto Zoom Applied To Presentation',
+      description: `All ${activePresentationDeck.slides.length} snapshot(s) now use ${(autoZoomLevel * 100).toFixed(1)}% zoom.`,
+    });
+  }, [activePresentationDeckId, activePresentationDeck, runPresentationAutoZoom, toast]);
+
+  const parsePresentationZoomDraft = React.useCallback((): number | null => {
+    const parsed = Number(presentationZoomPercentDraft);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      toast({ variant: 'destructive', title: 'Invalid Zoom', description: 'Enter a zoom percent between 10 and 250.' });
+      return null;
+    }
+    const clampedPercent = Math.min(250, Math.max(10, parsed));
+    return Number((clampedPercent / 100).toFixed(4));
+  }, [presentationZoomPercentDraft, toast]);
+
+  const resolvePresentationZoomLevel = React.useCallback((overrideZoomLevel?: number): number | null => {
+    const candidate = overrideZoomLevel ?? parsePresentationZoomDraft();
+    if (candidate === null) return null;
+    if (!Number.isFinite(candidate) || candidate <= 0) {
+      toast({ variant: 'destructive', title: 'Invalid Zoom', description: 'Zoom value must be a valid number between 10% and 250%.' });
+      return null;
+    }
+    return Number(Math.min(2.5, Math.max(0.1, candidate)).toFixed(4));
+  }, [parsePresentationZoomDraft, toast]);
+
+  const applyZoomToCanvas = React.useCallback((zoomLevel: number) => {
+    const current = canvasTransformRef.current;
+    const next = { ...current, k: zoomLevel };
+    setCanvasTransform(next);
+    canvasTransformRef.current = next;
+  }, [setCanvasTransform]);
+
+  const handleApplyPresentationZoomToCurrent = React.useCallback((overrideZoomLevel?: number) => {
+    if (!activePresentationDeckId || !activePresentationSlideId) return;
+    const zoomLevel = resolvePresentationZoomLevel(overrideZoomLevel);
+    if (zoomLevel === null) return;
+
+    setPresentationDecks((prev) => prev.map((deck) => {
+      if (deck.id !== activePresentationDeckId) return deck;
+      return {
+        ...deck,
+        slides: deck.slides.map((slide) => (
+          slide.id === activePresentationSlideId
+            ? { ...slide, autoZoomLevel: zoomLevel }
+            : slide
+        )),
+        updatedAt: Date.now(),
+      };
+    }));
+
+    applyZoomToCanvas(zoomLevel);
+    setPresentationZoomPercentDraft(String(Number((zoomLevel * 100).toFixed(1))));
+    toast({ title: 'Zoom Applied', description: `Active snapshot zoom set to ${(zoomLevel * 100).toFixed(1)}%.` });
+  }, [
+    activePresentationDeckId,
+    activePresentationSlideId,
+    resolvePresentationZoomLevel,
+    applyZoomToCanvas,
+    toast,
+  ]);
+
+  const handleApplyPresentationZoomToAll = React.useCallback((overrideZoomLevel?: number) => {
+    if (!activePresentationDeckId || !activePresentationDeck || activePresentationDeck.slides.length === 0) return;
+    const zoomLevel = resolvePresentationZoomLevel(overrideZoomLevel);
+    if (zoomLevel === null) return;
+
+    setPresentationDecks((prev) => prev.map((deck) => {
+      if (deck.id !== activePresentationDeckId) return deck;
+      return {
+        ...deck,
+        slides: deck.slides.map((slide) => ({ ...slide, autoZoomLevel: zoomLevel })),
+        updatedAt: Date.now(),
+      };
+    }));
+
+    applyZoomToCanvas(zoomLevel);
+    setPresentationZoomPercentDraft(String(Number((zoomLevel * 100).toFixed(1))));
+    toast({ title: 'Zoom Applied', description: `All ${activePresentationDeck.slides.length} snapshots set to ${(zoomLevel * 100).toFixed(1)}%.` });
+  }, [
+    activePresentationDeckId,
+    activePresentationDeck,
+    resolvePresentationZoomLevel,
+    applyZoomToCanvas,
+    toast,
+  ]);
+
+  const capturePresentationSlidePayload = React.useCallback(async (autoZoomLevel?: number) => {
+    if (!editorRef.current?.captureSnapshotPng) {
+      throw new Error('Canvas snapshot API is unavailable.');
+    }
+
+    const snapshotImage = await editorRef.current.captureSnapshotPng({
+      backgroundColor: 'white',
+      quality: 'medium',
+    });
+
+    const visibleCurrent = projectVisibleDiagram(layers.filteredDiagramData ?? diagramData);
+    const masterBase = projectVisibleDiagram(presentationMasterDiagram ?? diagramData);
+    const diagramDelta = computeDiagramDelta(masterBase, visibleCurrent);
+
+    // Validate round-trip correctness for stored deltas.
+    applyDiagramDelta(masterBase, diagramDelta);
+
+    return {
+      snapshotImage,
+      diagramDelta,
+      animationState: {
+        enabled: animationConnectionsEnabled,
+        filterSourceIds: effectiveAnimationFilterIds ? Array.from(effectiveAnimationFilterIds) : undefined,
+        disabledSourceIds: animationDisabledSources.size > 0 ? Array.from(animationDisabledSources) : undefined,
+      },
+      autoZoomLevel: autoZoomLevel ?? canvasTransformRef.current.k,
+      visibleLayerIds: listVisibleLayerIds(diagramData),
+    };
+  }, [
+    layers.filteredDiagramData,
+    diagramData,
+    presentationMasterDiagram,
+    animationConnectionsEnabled,
+    effectiveAnimationFilterIds,
+    animationDisabledSources,
+  ]);
+
+  const handleAddPresentationSnapshot = React.useCallback(async () => {
+    if (!activePresentationDeckId) return;
+
+    try {
+      const payload = await capturePresentationSlidePayload();
+
+      const slide: Slide = {
+        id: `slide-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        ...payload,
+        title: `Snapshot ${(activePresentationDeck?.slides.length ?? 0) + 1}`,
+        createdAt: Date.now(),
+      };
+
+      setPresentationDecks((prev) => prev.map((deck) => {
+        if (deck.id !== activePresentationDeckId) return deck;
+        return {
+          ...deck,
+          slides: [...deck.slides, slide],
+          updatedAt: Date.now(),
+        };
+      }));
+      setActivePresentationSlideId(slide.id);
+      setSelectedPresentationSlideIds(new Set());
+      toast({ title: 'Snapshot Added', description: 'Captured current visible canvas state.' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not capture snapshot';
+      const lower = message.toLowerCase();
+      const isChunkLoadError =
+        lower.includes('failed to load chunk') ||
+        lower.includes('chunkloaderror') ||
+        (lower.includes('/_next/static/chunks/') && lower.includes('module'));
+
+      if (isChunkLoadError) {
+        toast({
+          variant: 'destructive',
+          title: 'Snapshot Failed',
+          description: 'App updated in background. Reloading to sync assets...',
+        });
+        setTimeout(() => window.location.reload(), 150);
+        return;
+      }
+      toast({ variant: 'destructive', title: 'Snapshot Failed', description: message });
+    }
+  }, [
+    activePresentationDeckId,
+    capturePresentationSlidePayload,
+    activePresentationDeck?.slides.length,
+    toast,
+  ]);
+
+  const handleSavePresentationSnapshot = React.useCallback(async () => {
+    if (!activePresentationDeckId || !activePresentationSlideId) return;
+
+    try {
+      const payload = await capturePresentationSlidePayload();
+      setPresentationDecks((prev) => prev.map((deck) => {
+        if (deck.id !== activePresentationDeckId) return deck;
+        return {
+          ...deck,
+          slides: deck.slides.map((slide) => (
+            slide.id === activePresentationSlideId
+              ? {
+                  ...slide,
+                  ...payload,
+                }
+              : slide
+          )),
+          updatedAt: Date.now(),
+        };
+      }));
+
+      toast({ title: 'Snapshot Saved', description: 'Updated the current snapshot with the editing canvas state.' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not save snapshot';
+      const lower = message.toLowerCase();
+      const isChunkLoadError =
+        lower.includes('failed to load chunk') ||
+        lower.includes('chunkloaderror') ||
+        (lower.includes('/_next/static/chunks/') && lower.includes('module'));
+
+      if (isChunkLoadError) {
+        toast({
+          variant: 'destructive',
+          title: 'Snapshot Failed',
+          description: 'App updated in background. Reloading to sync assets...',
+        });
+        setTimeout(() => window.location.reload(), 150);
+        return;
+      }
+
+      toast({ variant: 'destructive', title: 'Snapshot Failed', description: message });
+    }
+  }, [activePresentationDeckId, activePresentationSlideId, capturePresentationSlidePayload, toast]);
+
+  const handleRemovePresentationSlides = React.useCallback(() => {
+    if (!activePresentationDeckId || !activePresentationDeck) return;
+    const idsToRemove = selectedPresentationSlideIds.size > 0
+      ? selectedPresentationSlideIds
+      : new Set(activePresentationSlideId ? [activePresentationSlideId] : []);
+    if (idsToRemove.size === 0) return;
+
+    const nextSlides = activePresentationDeck.slides.filter((slide) => !idsToRemove.has(slide.id));
+    const currentStillExists = activePresentationSlideId
+      ? nextSlides.some((slide) => slide.id === activePresentationSlideId)
+      : false;
+    const nextActiveSlideId = nextSlides.length === 0
+      ? null
+      : (currentStillExists ? activePresentationSlideId : nextSlides[0].id);
+
+    setPresentationDecks((prev) => prev.map((deck) => {
+      if (deck.id !== activePresentationDeckId) return deck;
+      return {
+        ...deck,
+        slides: nextSlides,
+        updatedAt: Date.now(),
+      };
+    }));
+    setActivePresentationSlideId(nextActiveSlideId);
+    setSelectedPresentationSlideIds(new Set());
+  }, [activePresentationDeckId, activePresentationDeck, activePresentationSlideId, selectedPresentationSlideIds]);
+
+  const handleDeletePresentationSlide = React.useCallback((slideId: string) => {
+    if (!activePresentationDeckId || !activePresentationDeck) return;
+    const targetSlide = activePresentationDeck.slides.find((slide) => slide.id === slideId);
+    if (!targetSlide) return;
+
+    const confirmed = window.confirm(`Delete snapshot "${targetSlide.title || 'Untitled Snapshot'}"?`);
+    if (!confirmed) return;
+
+    const nextSlides = activePresentationDeck.slides.filter((slide) => slide.id !== slideId);
+    const nextActiveSlideId =
+      activePresentationSlideId === slideId
+        ? (nextSlides[0]?.id ?? null)
+        : (activePresentationSlideId ?? nextSlides[0]?.id ?? null);
+
+    setPresentationDecks((prev) => prev.map((deck) => {
+      if (deck.id !== activePresentationDeckId) return deck;
+      return {
+        ...deck,
+        slides: nextSlides,
+        updatedAt: Date.now(),
+      };
+    }));
+
+    setActivePresentationSlideId(nextActiveSlideId);
+    setSelectedPresentationSlideIds(new Set());
+
+    if (nextActiveSlideId) {
+      const nextSlide = nextSlides.find((slide) => slide.id === nextActiveSlideId);
+      if (nextSlide) {
+        const master = projectVisibleDiagram(presentationMasterDiagram ?? tabDiagramData);
+        setPresentationDraftDiagram(applyDiagramDelta(master, nextSlide.diagramDelta));
+      }
+    } else {
+      const fallbackDraft = JSON.parse(JSON.stringify(presentationMasterDiagram ?? tabDiagramData)) as DiagramData;
+      setPresentationDraftDiagram(fallbackDraft);
+    }
+
+    toast({ title: 'Snapshot Deleted', description: 'The snapshot has been removed from this presentation.' });
+  }, [
+    activePresentationDeckId,
+    activePresentationDeck,
+    activePresentationSlideId,
+    presentationMasterDiagram,
+    tabDiagramData,
+    toast,
+  ]);
+
+  const handleMovePresentationSlide = React.useCallback((fromIndex: number, toIndex: number) => {
+    if (!activePresentationDeckId || fromIndex === toIndex) return;
+    setPresentationDecks((prev) => prev.map((deck) => {
+      if (deck.id !== activePresentationDeckId) return deck;
+      if (fromIndex < 0 || toIndex < 0 || fromIndex >= deck.slides.length || toIndex >= deck.slides.length) return deck;
+      const nextSlides = [...deck.slides];
+      const [moved] = nextSlides.splice(fromIndex, 1);
+      nextSlides.splice(toIndex, 0, moved);
+      return {
+        ...deck,
+        slides: nextSlides,
+        updatedAt: Date.now(),
+      };
+    }));
+  }, [activePresentationDeckId]);
+
+  const handleSelectPresentationSlide = React.useCallback((slideId: string) => {
+    setActivePresentationSlideId(slideId);
+    setSelectedPresentationSlideIds(new Set());
+    // Show the selected slide's diagram on the canvas
+    const deck = presentationDecks.find((d) => d.id === activePresentationDeckId);
+    const slide = deck?.slides.find((s) => s.id === slideId);
+    if (slide) {
+      const master = projectVisibleDiagram(presentationMasterDiagram ?? tabDiagramData);
+      setPresentationDraftDiagram(applyDiagramDelta(master, slide.diagramDelta));
+    }
+  }, [activePresentationDeckId, presentationDecks, presentationMasterDiagram, tabDiagramData]);
+
+  const handleTogglePresentationSlideSelection = React.useCallback((slideId: string, checked: boolean) => {
+    setSelectedPresentationSlideIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(slideId);
+      else next.delete(slideId);
+      return next;
+    });
+  }, []);
+
+  const handlePreviousPresentationSlide = React.useCallback(() => {
+    if (!activePresentationSlides.length) return;
+    const currentIndex = Math.max(0, activePresentationSlides.findIndex((slide) => slide.id === activePresentationSlideId));
+    const nextIndex = (currentIndex - 1 + activePresentationSlides.length) % activePresentationSlides.length;
+    const nextSlideId = activePresentationSlides[nextIndex].id;
+    handleSelectPresentationSlide(nextSlideId);
+  }, [activePresentationSlides, activePresentationSlideId, handleSelectPresentationSlide]);
+
+  const handleNextPresentationSlide = React.useCallback(() => {
+    if (!activePresentationSlides.length) return;
+    const currentIndex = Math.max(0, activePresentationSlides.findIndex((slide) => slide.id === activePresentationSlideId));
+    const nextIndex = (currentIndex + 1) % activePresentationSlides.length;
+    const nextSlideId = activePresentationSlides[nextIndex].id;
+    handleSelectPresentationSlide(nextSlideId);
+  }, [activePresentationSlides, activePresentationSlideId, handleSelectPresentationSlide]);
+
+  const handleEnterPresentationPlayMode = React.useCallback(() => {
+    if (!activePresentationSlides.length) return;
+    setPresentationPlayerIndex(0);
+    setPresentationPlayerOpen(true);
+  }, [activePresentationSlides]);
+
+  const handleExportPresentations = React.useCallback(() => {
+    const exportBase = projectVisibleDiagram(presentationMasterDiagram ?? tabDiagramData);
+    const json = exportPresentationsToJson({
+      decks: presentationDecks,
+      activeDeckId: activePresentationDeckId,
+      baseDiagram: exportBase,
+    });
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'diagramweaver-presentations.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [presentationDecks, activePresentationDeckId, presentationMasterDiagram, tabDiagramData]);
+
+  const handleImportPresentations = React.useCallback(async (file: File) => {
+    try {
+      const text = await file.text();
+      const imported = importPresentationsFromJson(text);
+      const importedBase = imported.baseDiagram
+        ? projectVisibleDiagram(imported.baseDiagram)
+        : null;
+
+      setPresentationDecks(imported.decks);
+      const nextActiveDeckId = imported.activeDeckId ?? imported.decks[0]?.id ?? null;
+      setActivePresentationDeckId(nextActiveDeckId);
+
+      const nextActiveDeck = imported.decks.find((deck) => deck.id === nextActiveDeckId) ?? imported.decks[0] ?? null;
+      const nextActiveSlideId = nextActiveDeck?.slides[0]?.id ?? null;
+      setActivePresentationSlideId(nextActiveSlideId);
+      setSelectedPresentationSlideIds(new Set());
+
+      if (importedBase) {
+        const baseClone = JSON.parse(JSON.stringify(importedBase)) as DiagramData;
+        setPresentationMasterDiagram(baseClone);
+
+        if (nextActiveDeck && nextActiveDeck.slides.length > 0) {
+          const firstSlide = nextActiveDeck.slides[0];
+          const draft = applyDiagramDelta(projectVisibleDiagram(baseClone), firstSlide.diagramDelta);
+          setPresentationDraftDiagram(draft);
+        } else {
+          setPresentationDraftDiagram(JSON.parse(JSON.stringify(baseClone)) as DiagramData);
+        }
+
+        toast({ title: 'Presentations Imported', description: `Loaded ${imported.decks.length} presentation(s) with embedded base diagram format.` });
+        return;
+      }
+
+      toast({ title: 'Presentations Imported', description: `Loaded ${imported.decks.length} presentation(s) from legacy format (no embedded base diagram).` });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Invalid presentations file';
+      toast({ variant: 'destructive', title: 'Import Failed', description: message });
+    }
+  }, [toast]);
+
   const toggleJsonPanel = () => {
     const newState = !jsonPanelOpen;
     setJsonPanelOpen(newState);
@@ -2065,6 +3400,13 @@ export default function DiagramEditor() {
         setSelectedItemIds(new Set());
         return;
       }
+
+      // Delete/Backspace - Delete selected item (including selected connection)
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedItem && !isReadOnly) {
+        e.preventDefault();
+        handleItemDelete(selectedItem);
+        return;
+      }
       
       // Ctrl+G (or Cmd+G on Mac) - Group selected items
       if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === 'g' && !e.shiftKey) {
@@ -2099,6 +3441,29 @@ export default function DiagramEditor() {
         e.preventDefault();
         if (animationConnectionsEnabled) {
           setAnimationToggleOnClickEnabled(!animationToggleOnClickEnabled);
+        }
+        return;
+      }
+
+      // Alt+P - Exit presentation mode
+      if (!e.ctrlKey && !e.metaKey && !e.shiftKey && e.altKey && e.key.toLowerCase() === 'p') {
+        if (presentationModeEnabled) {
+          e.preventDefault();
+          handleTogglePresentationMode();
+        }
+        return;
+      }
+
+      // Ctrl+Alt+P (or Cmd+Option+P on Mac) - Toggle Presentation Mode
+      if ((isMac ? e.metaKey : e.ctrlKey) && e.altKey && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        if (!presentationModeEnabled) {
+          handleTogglePresentationMode();
+          return;
+        }
+
+        if (!presentationPlayerOpen) {
+          handleEnterPresentationPlayMode();
         }
         return;
       }
@@ -2179,7 +3544,7 @@ export default function DiagramEditor() {
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [jsonPanelOpen, historyIndex, history, selectedItem, selectedItemIds, diagramData, setDiagramData, setSelectedItem, animationConnectionsEnabled, setAnimationConnectionsEnabled, setAnimationToggleOnClickEnabled]);
+  }, [jsonPanelOpen, historyIndex, history, selectedItem, selectedItemIds, diagramData, setDiagramData, setSelectedItem, animationConnectionsEnabled, setAnimationConnectionsEnabled, setAnimationToggleOnClickEnabled, isReadOnly, handleItemDelete, handleTogglePresentationMode, presentationModeEnabled, presentationPlayerOpen, handleEnterPresentationPlayMode]);
 
   // Persist panel width
   React.useEffect(() => {
@@ -2402,6 +3767,40 @@ export default function DiagramEditor() {
         setRulesEditorOpen={setRulesEditorOpen}
         rules={rules}
         setRules={setRules}
+        presentationModeEnabled={presentationModeEnabled}
+        presentationDecks={presentationDecks}
+        activePresentationDeckId={activePresentationDeckId}
+        activePresentationSlideId={activePresentationSlideId}
+        presentationDisabledLayerIds={presentationDisabledLayerIds}
+        activePresentationSlides={activePresentationSlides}
+        activePresentationSlideDiagrams={activePresentationSlideDiagrams}
+        selectedPresentationSlideIds={selectedPresentationSlideIds}
+        handleTogglePresentationMode={handleTogglePresentationMode}
+        handleCreatePresentationDeck={handleCreatePresentationDeck}
+        handleDeletePresentationDeck={handleDeletePresentationDeck}
+        handleRenamePresentationDeck={handleRenamePresentationDeck}
+        handleSelectPresentationDeck={handleSelectPresentationDeck}
+        handleAutoZoomPresentation={handleAutoZoomPresentation}
+        presentationZoomPercentDraft={presentationZoomPercentDraft}
+        setPresentationZoomPercentDraft={setPresentationZoomPercentDraft}
+        handleApplyPresentationZoomToCurrent={handleApplyPresentationZoomToCurrent}
+        handleApplyPresentationZoomToAll={handleApplyPresentationZoomToAll}
+        handleAddPresentationSnapshot={handleAddPresentationSnapshot}
+        handleSavePresentationSnapshot={handleSavePresentationSnapshot}
+        handleRemovePresentationSlides={handleRemovePresentationSlides}
+        handleDeletePresentationSlide={handleDeletePresentationSlide}
+        handleMovePresentationSlide={handleMovePresentationSlide}
+        handleSelectPresentationSlide={handleSelectPresentationSlide}
+        handleTogglePresentationSlideSelection={handleTogglePresentationSlideSelection}
+        handlePreviousPresentationSlide={handlePreviousPresentationSlide}
+        handleNextPresentationSlide={handleNextPresentationSlide}
+        handleEnterPresentationPlayMode={handleEnterPresentationPlayMode}
+        handleExportPresentations={handleExportPresentations}
+        handleImportPresentations={handleImportPresentations}
+        presentationPlayerOpen={presentationPlayerOpen}
+        setPresentationPlayerOpen={setPresentationPlayerOpen}
+        presentationPlayerIndex={presentationPlayerIndex}
+        setPresentationPlayerIndex={setPresentationPlayerIndex}
         tabs={tabs}
         activeTabId={activeTabId}
         isLoaded={isLoaded}
@@ -2563,6 +3962,40 @@ function DiagramEditorInner({
   setRulesEditorOpen,
   rules,
   setRules,
+  presentationModeEnabled,
+  presentationDecks,
+  activePresentationDeckId,
+  activePresentationSlideId,
+  presentationDisabledLayerIds,
+  activePresentationSlides,
+  activePresentationSlideDiagrams,
+  selectedPresentationSlideIds,
+  handleTogglePresentationMode,
+  handleCreatePresentationDeck,
+  handleDeletePresentationDeck,
+  handleRenamePresentationDeck,
+  handleSelectPresentationDeck,
+  handleAutoZoomPresentation,
+  presentationZoomPercentDraft,
+  setPresentationZoomPercentDraft,
+  handleApplyPresentationZoomToCurrent,
+  handleApplyPresentationZoomToAll,
+  handleAddPresentationSnapshot,
+  handleSavePresentationSnapshot,
+  handleRemovePresentationSlides,
+  handleDeletePresentationSlide,
+  handleMovePresentationSlide,
+  handleSelectPresentationSlide,
+  handleTogglePresentationSlideSelection,
+  handlePreviousPresentationSlide,
+  handleNextPresentationSlide,
+  handleEnterPresentationPlayMode,
+  handleExportPresentations,
+  handleImportPresentations,
+  presentationPlayerOpen,
+  setPresentationPlayerOpen,
+  presentationPlayerIndex,
+  setPresentationPlayerIndex,
   tabs,
   activeTabId,
   isLoaded,
@@ -2756,7 +4189,7 @@ function DiagramEditorInner({
                     onConnectionDisconnect={disconnectConnection}
                     onConnectionWaypointAdd={handleConnectionWaypointAdd}
                     onConnectionWaypointRemove={handleConnectionWaypointRemove}
-                    diagramData={activeTab?.diagramData}
+                    diagramData={diagramData}
                     onDiagramDataUpdate={setDiagramData}
                     mousePosition={mousePosition}
                     hoverEnabled={hoverEnabled}
@@ -2791,6 +4224,8 @@ function DiagramEditorInner({
                     rulesEditorOpen={rulesEditorOpen}
                     rules={rules}
                     onRulesChange={setRules}
+                    presentationModeEnabled={presentationModeEnabled}
+                    onTogglePresentationMode={handleTogglePresentationMode}
                     onStartTutorial={handleStartTutorial}
                 />
                 {!isLoaded ? (
@@ -2821,6 +4256,32 @@ function DiagramEditorInner({
                     onChange={handleMermaidFileChange}
                     accept=".mmd,.mermaid,text/plain"
                     style={{ display: 'none' }}
+                />
+                <PresentationEditorPanel
+                  isOpen={presentationModeEnabled}
+                  decks={presentationDecks}
+                  activeDeckId={activePresentationDeckId}
+                  activeSlideId={activePresentationSlideId}
+                  onCreateDeck={handleCreatePresentationDeck}
+                  onDeleteDeck={handleDeletePresentationDeck}
+                  onRenameDeck={handleRenamePresentationDeck}
+                  onSelectDeck={handleSelectPresentationDeck}
+                  onAutoZoom={handleAutoZoomPresentation}
+                  zoomPercentDraft={presentationZoomPercentDraft}
+                  onZoomPercentDraftChange={setPresentationZoomPercentDraft}
+                  onApplyZoomToCurrent={handleApplyPresentationZoomToCurrent}
+                  onApplyZoomToAll={handleApplyPresentationZoomToAll}
+                  onAddSnapshot={handleAddPresentationSnapshot}
+                  onSaveSnapshot={handleSavePresentationSnapshot}
+                  onRemoveSlides={handleRemovePresentationSlides}
+                  onDeleteSlide={handleDeletePresentationSlide}
+                  onMoveSlide={handleMovePresentationSlide}
+                  onSelectSlide={handleSelectPresentationSlide}
+                  onPreviousSlide={handlePreviousPresentationSlide}
+                  onNextSlide={handleNextPresentationSlide}
+                  onEnterPlayMode={handleEnterPresentationPlayMode}
+                  onExportDecks={handleExportPresentations}
+                  onImportDecks={handleImportPresentations}
                 />
             </header>
             <div className="flex-1 flex flex-col">
@@ -2924,16 +4385,87 @@ function DiagramEditorInner({
                       <LayersPanel
                         layers={layers.getAllLayers()}
                         activeLayerId={layers.layersConfig.activeLayerId}
+                        disabledLayerIds={presentationModeEnabled ? Array.from(presentationDisabledLayerIds) : []}
                         selectedItemsLayerIds={selectedItemIds.size > 0 ? 
                           Array.from(selectedItemIds).map(id => layers.getItemLayerById(id)) : []
                         }
-                        onAddLayer={layers.addNewLayer}
-                        onRemoveLayer={layers.removeLayerById}
-                        onRenameLayer={layers.renameLayerById}
-                        onToggleVisibility={handleToggleLayerVisibility}
-                        onSetActiveLayer={layers.setActiveLayerById}
-                        onReorderLayers={layers.reorderLayers}
-                        onAssignSelectedItemsToLayer={selectedItemIds.size > 0 ? (layerId: string) => layers.assignItemsToLayer(Array.from(selectedItemIds), layerId) : undefined}
+                        onAddLayer={(name: string) => {
+                          if (presentationModeEnabled) {
+                            toast({
+                              variant: 'destructive',
+                              title: 'Layer Editing Disabled',
+                              description: 'Layer functions are locked in Presentation Mode to stay synced with the main diagram.',
+                            });
+                            return;
+                          }
+                          layers.addNewLayer(name);
+                        }}
+                        onRemoveLayer={(layerId: string) => {
+                          if (presentationModeEnabled) {
+                            toast({
+                              variant: 'destructive',
+                              title: 'Layer Editing Disabled',
+                              description: 'Layer functions are locked in Presentation Mode to stay synced with the main diagram.',
+                            });
+                            return;
+                          }
+                          layers.removeLayerById(layerId);
+                        }}
+                        onRenameLayer={(layerId: string, newName: string) => {
+                          if (presentationModeEnabled) {
+                            toast({
+                              variant: 'destructive',
+                              title: 'Layer Editing Disabled',
+                              description: 'Layer functions are locked in Presentation Mode to stay synced with the main diagram.',
+                            });
+                            return;
+                          }
+                          layers.renameLayerById(layerId, newName);
+                        }}
+                        onToggleVisibility={(layerId: string) => {
+                          if (presentationModeEnabled && presentationDisabledLayerIds.has(layerId)) {
+                            toast({
+                              variant: 'destructive',
+                              title: 'Layer Editing Disabled',
+                              description: `Layer "${layers.getLayer(layerId)?.name || layerId}" was impacted by presentation edits and is disabled in Presentation Mode.`,
+                            });
+                            return;
+                          }
+                          handleToggleLayerVisibility(layerId);
+                        }}
+                        onSetActiveLayer={(layerId: string) => {
+                          if (presentationModeEnabled) {
+                            toast({
+                              variant: 'destructive',
+                              title: 'Layer Editing Disabled',
+                              description: 'Layer functions are locked in Presentation Mode to stay synced with the main diagram.',
+                            });
+                            return;
+                          }
+                          layers.setActiveLayerById(layerId);
+                        }}
+                        onReorderLayers={(fromIndex: number, toIndex: number) => {
+                          if (presentationModeEnabled) {
+                            toast({
+                              variant: 'destructive',
+                              title: 'Layer Editing Disabled',
+                              description: 'Layer functions are locked in Presentation Mode to stay synced with the main diagram.',
+                            });
+                            return;
+                          }
+                          layers.reorderLayers(fromIndex, toIndex);
+                        }}
+                        onAssignSelectedItemsToLayer={selectedItemIds.size > 0 ? (layerId: string) => {
+                          if (presentationModeEnabled) {
+                            toast({
+                              variant: 'destructive',
+                              title: 'Layer Editing Disabled',
+                              description: 'Layer functions are locked in Presentation Mode to stay synced with the main diagram.',
+                            });
+                            return;
+                          }
+                          layers.assignItemsToLayer(Array.from(selectedItemIds), layerId);
+                        } : undefined}
                         onClose={layers.toggleLayersPanel}
                         getLayerItemCount={(layerId: string) => {
                           const items = layers.getLayerItems(layerId);
@@ -3009,6 +4541,16 @@ function DiagramEditorInner({
           setDiagramData={setDiagramData}
           onCanvasRefresh={refreshCanvas}
           onHistoryUpdate={updateHistory}
+        />
+        <PresentationPlayer
+          open={presentationPlayerOpen}
+          slides={activePresentationSlides}
+          slideDiagrams={activePresentationSlideDiagrams}
+          currentIndex={presentationPlayerIndex}
+          onOpenChange={setPresentationPlayerOpen}
+          onIndexChange={setPresentationPlayerIndex}
+          onApplyZoomToCurrentSlide={handleApplyPresentationZoomToCurrent}
+          onApplyZoomToAllSlides={handleApplyPresentationZoomToAll}
         />
         <AlertDialog
           open={animationSelectionDialogOpen}

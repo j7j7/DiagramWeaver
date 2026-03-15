@@ -232,6 +232,46 @@ export const LayersConfigSchema = z.object({
   defaultLayerId: z.string(), // Always 'background'
 });
 
+export const DiagramDeltaOperationSchema = z.object({
+  op: z.enum(['add', 'remove', 'replace']),
+  path: z.string(),
+  value: z.unknown().optional(),
+});
+
+export const DiagramDeltaSchema = z.object({
+  version: z.literal('1.0'),
+  operations: z.array(DiagramDeltaOperationSchema).default([]),
+  compressed: z.literal(true).default(true),
+});
+
+export const SlideAnimationStateSchema = z.object({
+  enabled: z.boolean(),
+  filterSourceIds: z.array(z.string()).optional(),
+  disabledSourceIds: z.array(z.string()).optional(),
+});
+
+export const SlideSchema = z.object({
+  id: z.string(),
+  snapshotImage: z.string().optional(),
+  diagramDelta: DiagramDeltaSchema,
+  animationState: SlideAnimationStateSchema.optional(),
+  autoZoomLevel: z.number().positive().optional(),
+  visibleLayerIds: z.array(z.string()).optional(),
+  title: z.string().optional(),
+  description: z.string().optional(),
+  createdAt: z.number(),
+});
+
+export const PresentationDeckSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  slides: z.array(SlideSchema).default([]),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+
+export const PresentationDeckListSchema = z.array(PresentationDeckSchema);
+
 // Main DiagramData schema - zones stripped on parse via flattenDiagramOnImport
 export const DiagramDataSchema = z.object({
   nodes: z.array(DiagramNodeDataSchema).default([]),

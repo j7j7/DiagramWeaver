@@ -164,6 +164,62 @@ export function useCanvasExport({
     };
   }, [processedNodes, processedZones]);
 
+  const captureViewportPngDataUrl = useCallback(async (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high' }) => {
+    if (!canvasRef.current) {
+      throw new Error('Canvas is not ready');
+    }
+
+    const { toPng } = await import('html-to-image');
+    const contentDiv = canvasRef.current.querySelector('.dot-grid') as HTMLElement;
+    if (!contentDiv) {
+      throw new Error('Could not find diagram content');
+    }
+
+    const hadGridClass = contentDiv.classList.contains('dot-grid');
+    if (hadGridClass) {
+      contentDiv.classList.remove('dot-grid');
+    }
+
+    try {
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+      const isDark = document.documentElement.classList.contains('dark');
+      const backgroundColor = options?.backgroundColor === 'transparent' ? 'transparent' :
+        options?.backgroundColor === 'white' ? '#ffffff' :
+        options?.backgroundColor === 'dark' ? '#0f172a' :
+        isDark ? '#0f172a' :
+        getComputedStyle(document.documentElement).getPropertyValue('--background') || '#ffffff';
+
+      const quality = options?.quality || 'medium';
+      let pixelRatio: number;
+
+      switch (quality) {
+        case 'low':
+          pixelRatio = 1;
+          break;
+        case 'medium':
+          pixelRatio = 2;
+          break;
+        case 'high':
+          pixelRatio = 4;
+          break;
+        default:
+          pixelRatio = 2;
+      }
+
+      return await toPng(canvasRef.current, {
+        pixelRatio,
+        cacheBust: true,
+        backgroundColor: backgroundColor === 'transparent' ? undefined : backgroundColor,
+        skipFonts: true,
+      });
+    } finally {
+      if (hadGridClass) {
+        contentDiv.classList.add('dot-grid');
+      }
+    }
+  }, [canvasRef]);
+
   const exportPng = useCallback(async (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high' }) => {
     if (!canvasRef.current) return;
     
@@ -476,6 +532,7 @@ export function useCanvasExport({
     exportPng,
     exportGif,
     startExport,
+    captureViewportPngDataUrl,
   };
 }
 

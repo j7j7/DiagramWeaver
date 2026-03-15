@@ -687,6 +687,9 @@ export function useCanvasOperations({
   const handleDelete = useCallback((itemId: string) => {
     setDiagramData(prev => {
       const isNode = prev.nodes.some(n => n.id === itemId);
+      const isZone = (prev.zones ?? []).some(zone => zone.id === itemId);
+      const hasConnectionIdMatch = prev.connections.some((e: any) => e.id === itemId);
+      const hasConnectionKeyMatch = prev.connections.some((e: any) => `${e.from}-${e.to}` === itemId);
       
       let updatedData;
       if (isNode) {
@@ -698,6 +701,19 @@ export function useCanvasOperations({
             ...zone,
             children: zone.children.filter((n: string) => n !== itemId)
           }))
+        };
+      } else if (hasConnectionIdMatch || hasConnectionKeyMatch) {
+        updatedData = {
+          ...prev,
+          connections: prev.connections.filter((e: any) => {
+            if (hasConnectionIdMatch) return e.id !== itemId;
+            return `${e.from}-${e.to}` !== itemId;
+          })
+        };
+      } else if (isZone) {
+        updatedData = {
+          ...prev,
+          zones: (prev.zones ?? []).filter(zone => zone.id !== itemId)
         };
       } else {
         updatedData = {
@@ -722,6 +738,14 @@ export function useCanvasOperations({
     setDiagramData(prev => {
       // Filter out nodes that are being deleted
       const remainingNodes = prev.nodes.filter(n => !idsToDelete.has(n.id));
+
+      // Separate edge identifiers from node/zone identifiers
+      const edgeIdsToDelete = new Set<string>();
+      const edgeKeysToDelete = new Set<string>();
+      idsToDelete.forEach((id) => {
+        if (prev.connections.some((e: any) => e.id === id)) edgeIdsToDelete.add(id);
+        else if (prev.connections.some((e: any) => `${e.from}-${e.to}` === id)) edgeKeysToDelete.add(id);
+      });
       
       // Filter out zones that are being deleted
       const remainingZones = prev.zones?.filter(zone => !idsToDelete.has(zone.id));
@@ -734,7 +758,10 @@ export function useCanvasOperations({
       
       // Remove connections that involve deleted items
       const remainingConnections = prev.connections?.filter((e: any) => 
-        !idsToDelete.has(e.from) && !idsToDelete.has(e.to)
+        !idsToDelete.has(e.from) &&
+        !idsToDelete.has(e.to) &&
+        !(e.id && edgeIdsToDelete.has(e.id)) &&
+        !edgeKeysToDelete.has(`${e.from}-${e.to}`)
       );
       
       const dataBeforeCleanup = {

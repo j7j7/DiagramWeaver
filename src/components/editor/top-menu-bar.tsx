@@ -126,6 +126,8 @@ interface TopMenuBarProps {
   rulesEditorOpen?: boolean;
   rules?: import('@/lib/rules-types').DiagramRule[];
   onRulesChange?: (rules: import('@/lib/rules-types').DiagramRule[]) => void;
+  presentationModeEnabled?: boolean;
+  onTogglePresentationMode?: () => void;
   isReadOnly?: boolean;
   onToggleReadOnly?: () => void;
   onStartTutorial?: () => void;
@@ -207,6 +209,8 @@ export function TopMenuBar({
   rulesEditorOpen,
   rules = [],
   onRulesChange,
+  presentationModeEnabled = false,
+  onTogglePresentationMode,
   isReadOnly = false,
   onToggleReadOnly,
   onStartTutorial,
@@ -500,9 +504,19 @@ export function TopMenuBar({
                 </MenubarItem>
               </>
             )}
+            {onTogglePresentationMode && (
+              <>
+                {(onUndo || onRedo || onFitToView || onToggleLayersPanel || onToggleScratchPad || onTogglePropertiesPanel || onToggleRulesEditor) && <MenubarSeparator />}
+                <MenubarItem onClick={onTogglePresentationMode}>
+                  <Layers className="mr-2 h-4 w-4" />
+                  {presentationModeEnabled ? 'Exit Presentation Mode' : 'Enter Presentation Mode'}
+                  <MenubarShortcut>{presentationModeEnabled ? 'Alt+P' : 'Ctrl+Alt+P'}</MenubarShortcut>
+                </MenubarItem>
+              </>
+            )}
             {onToggleHover !== undefined && (
               <>
-                {(onUndo || onRedo || onFitToView || onToggleLayersPanel || onToggleScratchPad || onTogglePropertiesPanel) && <MenubarSeparator />}
+                {(onUndo || onRedo || onFitToView || onToggleLayersPanel || onToggleScratchPad || onTogglePropertiesPanel || onTogglePresentationMode) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleHover}>
                   {hoverEnabled ? (
                     <>
@@ -737,7 +751,7 @@ export function TopMenuBar({
           }
         </div>
       )}
-      {transform && (
+      {transform && typeof transform.k === 'number' && Number.isFinite(transform.k) && (
         <div className="text-xs text-muted-foreground px-2 border-l border-border">
           Zoom: {(transform.k * 100).toFixed(1)}% (k: {transform.k.toFixed(3)})
         </div>

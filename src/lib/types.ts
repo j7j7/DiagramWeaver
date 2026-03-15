@@ -394,6 +394,44 @@ export interface LayersConfig {
   defaultLayerId: string; // Always 'background'
 }
 
+export interface DiagramDeltaOperation {
+  op: 'add' | 'remove' | 'replace';
+  path: string;
+  value?: unknown;
+}
+
+export interface DiagramDelta {
+  version: '1.0';
+  operations: DiagramDeltaOperation[];
+  compressed: true;
+}
+
+export interface SlideAnimationState {
+  enabled: boolean;
+  filterSourceIds?: string[];
+  disabledSourceIds?: string[];
+}
+
+export interface Slide {
+  id: string;
+  snapshotImage?: string; // base64 PNG (optional in compact file payload)
+  diagramDelta: DiagramDelta;
+  animationState?: SlideAnimationState;
+  autoZoomLevel?: number;
+  visibleLayerIds?: string[];
+  title?: string;
+  description?: string;
+  createdAt: number;
+}
+
+export interface PresentationDeck {
+  id: string;
+  name: string;
+  slides: Slide[];
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface DiagramData {
   nodes: DiagramNodeData[];
   connections: DiagramConnectionData[];
