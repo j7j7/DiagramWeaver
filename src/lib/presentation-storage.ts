@@ -21,7 +21,11 @@ const LEGACY_DECKS_KEY = 'decks';
 const LEGACY_ACTIVE_DECK_KEY = 'activeDeckId';
 const LEGACY_ALL_TABS_KEY = 'decks-by-tab';
 
-export type PerTabPresentationData = Record<string, { decks: PresentationDeck[]; activeDeckId: string | null }>;
+export type PerTabPresentationData = Record<string, {
+  decks: PresentationDeck[];
+  activeDeckId: string | null;
+  activeSlideId?: string | null;
+}>;
 
 export interface StoredPresentationPayload {
   decks: PresentationDeck[];
@@ -90,12 +94,13 @@ async function readPresentationTabsFromDb(
     const result: PerTabPresentationData = {};
     for (const [tabId, entry] of Object.entries(raw as Record<string, unknown>)) {
       if (!entry || typeof entry !== 'object') continue;
-      const { decks, activeDeckId } = entry as { decks?: unknown; activeDeckId?: unknown };
+      const { decks, activeDeckId, activeSlideId } = entry as { decks?: unknown; activeDeckId?: unknown; activeSlideId?: unknown };
       const normalised = normalizeDecks(decks);
       if (normalised.length > 0) {
         result[tabId] = {
           decks: normalised,
           activeDeckId: typeof activeDeckId === 'string' ? activeDeckId : null,
+          activeSlideId: typeof activeSlideId === 'string' ? activeSlideId : null,
         };
       }
     }
@@ -249,12 +254,13 @@ export async function loadPresentationsByTab(): Promise<PerTabPresentationData |
     const result: PerTabPresentationData = {};
     for (const [tabId, entry] of Object.entries(parsed)) {
       if (!entry || typeof entry !== 'object') continue;
-      const { decks, activeDeckId } = entry as { decks?: unknown; activeDeckId?: unknown };
+      const { decks, activeDeckId, activeSlideId } = entry as { decks?: unknown; activeDeckId?: unknown; activeSlideId?: unknown };
       const normalised = normalizeDecks(decks);
       if (normalised.length > 0) {
         result[tabId] = {
           decks: normalised,
           activeDeckId: typeof activeDeckId === 'string' ? activeDeckId : null,
+          activeSlideId: typeof activeSlideId === 'string' ? activeSlideId : null,
         };
       }
     }

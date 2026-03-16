@@ -2,6 +2,33 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-16)
 
+### 2026-03-16 – Presentation/Viewer Mode: Connection Text Labels
+**Connection text labels now show in presentation viewer**: ViewerCanvas (used by presentation player and standalone viewer) was missing `CanvasConnectionText`, which renders text labels on Bezier connections. Editor had it; viewer did not. Added `CanvasConnectionText` to ViewerCanvas inside the diagram content div, with same props as editor (width, height, diagramData, nodesById, zonesById, processedZones). Orthogonal connections render text inline in their own component. Modified: `viewer-canvas.tsx`.
+
+### 2026-03-16 – Presentation Viewer: Connection Text Labels
+**Connection text labels in presentation mode**: When in presentation viewer mode (or general viewer), connection text labels were not showing. **Cause**: ViewerCanvas rendered CanvasConnections but not CanvasConnectionText (which renders Bezier connection labels; orthogonal labels render inline). **Fix**: Added CanvasConnectionText to ViewerCanvas with the same props as editor (width, height, diagramData, nodesById, zonesById, processedZones). Modified: `viewer-canvas.tsx`.
+
+### 2026-03-16 – Presentation Mode: Persist State Across Browser Refresh
+**Presentation mode and settings preserved**: On refresh, presentation mode state is restored: (1) **presentationModeEnabled** in localStorage (`dw:presentationMode:enabled`); (2) **activeSlideId** per tab in IndexedDB/localStorage with decks and activeDeckId; (3) **Presentation editor panel UI** (toolbar collapsed/floating, snapshots collapsed/floating, positions, pane height) in localStorage (`dw:presentation:panelSettings`). Modified: `diagram-editor.tsx` (restore/save presentationModeEnabled; hydrate/save activeSlideId), `presentation-storage.ts` (extend PerTabPresentationData with activeSlideId), `presentation-editor-panel.tsx` (restore/save panel settings).
+
+### 2026-03-16 – Presentation Mode: Collapse Toolbar Shows Toolbar, Hides Thumbnails
+**Collapse toolbar fix**: When the presentation mode toolbar is collapsed, it now correctly shows the toolbar (deck select, add snapshot, previous/next, etc.) and hides only the thumbnails. Previously the `{!toolbarCollapsed && (` wrapper hid both. **Fix**: Removed the conditional wrapper from the toolbar div so the toolbar is always visible; added `!toolbarCollapsed &&` to the docked thumbnails condition. Modified: `presentation-editor-panel.tsx`.
+
+### 2026-03-16 – Presentation Mode Toolbar: Collapse Shows Toolbar, Hides Thumbnails
+**Collapse toolbar fix**: When the presentation mode toolbar is collapsed, it now correctly shows the toolbar (deck select, Add Snapshot, Previous/Next, Play, etc.) and hides only the slide thumbnails. Previously, both toolbar and thumbnails were hidden. Modified: `presentation-editor-panel.tsx` (removed `{!toolbarCollapsed &&` wrapper from toolbar; added `!toolbarCollapsed &&` to thumbnails condition).
+
+### 2026-03-16 – Presentation Mode: Collapse Toolbar Shows Toolbar, Hides Thumbnails
+**Collapse toolbar fix**: When the presentation-mode toolbar is collapsed, it now correctly shows the toolbar (deck select, add snapshot, previous/next, etc.) and hides only the thumbnails. Previously, both toolbar and thumbnails were hidden when collapsed. Modified: `presentation-editor-panel.tsx` (removed `{!toolbarCollapsed && (` wrapper from toolbar; added `!toolbarCollapsed &&` to thumbnails condition).
+
+### 2026-03-16 – Presentation Mode Toolbar: Collapse Shows Toolbar, Hides Thumbnails
+**Collapse toolbar fix**: When the presentation editor panel toolbar is collapsed, it now shows the toolbar (deck select, Add Snapshot, Previous/Next, Play, etc.) and hides only the thumbnails. Previously, both toolbar and thumbnails were hidden when collapsed. **Implementation**: Removed `{!toolbarCollapsed && (` wrapper from toolbar div so toolbar always renders; added `!toolbarCollapsed &&` to docked thumbnails condition. Modified: `presentation-editor-panel.tsx`.
+
+### 2026-03-16 – Presentation Mode Toolbar: Collapse Shows Toolbar, Hides Thumbnails
+**Collapse toolbar behavior**: When the presentation mode toolbar is collapsed, it now correctly shows the toolbar (deck select, Add Snapshot, Previous/Next, Play, etc.) while hiding only the slide thumbnails. Previously, both toolbar and thumbnails were hidden when collapsed. Modified: `presentation-editor-panel.tsx` (removed `{!toolbarCollapsed && (` wrapper from toolbar; added `!toolbarCollapsed &&` to thumbnails condition).
+
+### 2026-03-16 – Presentation Mode: Collapse Toolbar Shows Toolbar, Hides Thumbnails
+**Collapse toolbar fix**: When the presentation mode toolbar is collapsed, it now shows the toolbar (deck select, add snapshot, previous/next, etc.) and hides only the thumbnails. Previously the `{!toolbarCollapsed && (` wrapper hid both toolbar and thumbnails. Fixed by removing the conditional around the toolbar and adding `!toolbarCollapsed &&` to the docked thumbnails condition only. Modified: `presentation-editor-panel.tsx`.
+
 ### 2026-03-16 – Presentation Playback: Auto Zoom + Theme-Aware Toolbar
 **Auto zoom button**: Presentation player bottom toolbar now has an Auto zoom (Wand2) button that fits the current slide's diagram to the viewport, same as the edit canvas. Uses ViewerCanvas's fitToView via onFitToView. **Theme-aware toolbar**: Bottom toolbar (docked and floating) now uses theme classes (bg-card, text-foreground, border-border, bg-muted/50) so it reads correctly in light and dark mode. Previously white text on light mode when undocked was unreadable. Modified: `presentation-player.tsx` (Wand2 import, Auto zoom button, onFitToView to ViewerCanvas, theme classes throughout toolbar and reveal button).
 

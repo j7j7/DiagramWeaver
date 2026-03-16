@@ -609,6 +609,27 @@ export default function DiagramEditor() {
       localStorage.setItem('dw:layerAnimations:enabled', JSON.stringify(layerAnimationsEnabled));
     }
   }, [layerAnimationsEnabled]);
+
+  // Restore presentation mode from localStorage after hydration
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const saved = localStorage.getItem('dw:presentationMode:enabled');
+    if (saved !== null) {
+      try {
+        setPresentationModeEnabled(JSON.parse(saved));
+      } catch {
+        // ignore
+      }
+    }
+  }, []);
+
+  // Save presentation mode to localStorage when it changes
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dw:presentationMode:enabled', JSON.stringify(presentationModeEnabled));
+    }
+  }, [presentationModeEnabled]);
+
   const [jsonPanelWidth, setJsonPanelWidth] = React.useState<number>(420);
   const [isDragging, setIsDragging] = React.useState<boolean>(false);
   const [canPaste, setCanPaste] = React.useState<boolean>(false);
@@ -733,10 +754,11 @@ export default function DiagramEditor() {
 
         for (const [tabId, entry] of Object.entries(byTab)) {
           const existing = presentationStateByTabRef.current[tabId];
+          const loadedSlideId = entry.activeSlideId ?? existing?.activeSlideId ?? null;
           presentationStateByTabRef.current[tabId] = {
             decks: entry.decks,
             activeDeckId: entry.activeDeckId,
-            activeSlideId: existing?.activeSlideId ?? null,
+            activeSlideId: loadedSlideId,
             selectedSlideIds: existing?.selectedSlideIds ?? [],
             masterDiagram: existing?.masterDiagram ?? null,
             draftDiagram: existing?.draftDiagram ?? null,
@@ -744,8 +766,10 @@ export default function DiagramEditor() {
         }
 
         if (activeTabId && byTab[activeTabId]) {
-          setPresentationDecks(byTab[activeTabId].decks);
-          setActivePresentationDeckId(byTab[activeTabId].activeDeckId);
+          const entry = byTab[activeTabId];
+          setPresentationDecks(entry.decks);
+          setActivePresentationDeckId(entry.activeDeckId);
+          setActivePresentationSlideId(entry.activeSlideId ?? null);
         }
       })
       .catch(() => {
@@ -932,10 +956,14 @@ export default function DiagramEditor() {
     presentationPersistTimeoutRef.current = setTimeout(() => {
       presentationPersistTimeoutRef.current = null;
       const liveTabIds = new Set(tabs.map((tab) => tab.id));
-      const snapshot: Record<string, { decks: PresentationDeck[]; activeDeckId: string | null }> = {};
+      const snapshot: Record<string, { decks: PresentationDeck[]; activeDeckId: string | null; activeSlideId?: string | null }> = {};
       for (const [tabId, state] of Object.entries(presentationStateByTabRef.current)) {
         if (liveTabIds.has(tabId) && state.decks.length > 0) {
-          snapshot[tabId] = { decks: state.decks, activeDeckId: state.activeDeckId };
+          snapshot[tabId] = {
+            decks: state.decks,
+            activeDeckId: state.activeDeckId,
+            activeSlideId: state.activeSlideId ?? undefined,
+          };
         }
       }
       savePresentationsByTab(snapshot).catch(() => { /* silent */ });

@@ -7,6 +7,7 @@ import type { DiagramData } from "@/lib/types";
 import { calculateLayout } from "../editor/canvas-layout-utils";
 import { useCanvasTransform, type Transform } from "@/hooks/use-canvas-transform";
 import { CanvasConnections } from "../editor/canvas-connections";
+import { CanvasConnectionText } from "../editor/canvas-connection-text";
 import { RULER_SIZE, type PositionedNode, type PositionedGroup } from "../editor/canvas-constants";
 import { CanvasRulers } from "../editor/canvas-rulers";
 import { computeConnectionSlots } from "@/lib/connection-order-utils";
@@ -479,6 +480,16 @@ export function ViewerCanvas({ diagramData, showRulers = true, onFitToView, tran
             })()}
           </>
         )}
+
+        {/* Connection text labels (Bezier only; orthogonal renders inline) */}
+        <CanvasConnectionText
+          width={width}
+          height={height}
+          diagramData={diagramData}
+          nodesById={nodesById}
+          zonesById={zonesById}
+          processedZones={processedZones}
+        />
       </div>
     </div>
     </>

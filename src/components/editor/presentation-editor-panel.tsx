@@ -10,6 +10,7 @@ import type { PresentationDeck, Slide } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 const DND_TYPE = 'presentation-slide-item';
+const PANEL_SETTINGS_KEY = 'dw:presentation:panelSettings';
 const SLIDE_THUMBNAIL_PLACEHOLDER = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180" viewBox="0 0 320 180"><rect width="320" height="180" fill="%2311141a"/><text x="160" y="90" text-anchor="middle" dominant-baseline="middle" fill="%23d1d5db" font-family="Arial, sans-serif" font-size="14">Slide</text></svg>';
 
 interface DraggableSlideProps {
@@ -178,6 +179,48 @@ export function PresentationEditorPanel({
   React.useEffect(() => {
     setRenameDraft(activeDeck?.name ?? '');
   }, [activeDeck?.id, activeDeck?.name]);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const saved = localStorage.getItem(PANEL_SETTINGS_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as Record<string, unknown>;
+        if (typeof parsed.toolbarCollapsed === 'boolean') setToolbarCollapsed(parsed.toolbarCollapsed);
+        if (typeof parsed.toolbarFloating === 'boolean') setToolbarFloating(parsed.toolbarFloating);
+        if (parsed.toolbarPosition && typeof (parsed.toolbarPosition as any).x === 'number' && typeof (parsed.toolbarPosition as any).y === 'number') {
+          setToolbarPosition(parsed.toolbarPosition as { x: number; y: number });
+        }
+        if (typeof parsed.snapshotsCollapsed === 'boolean') setSnapshotsCollapsed(parsed.snapshotsCollapsed);
+        if (typeof parsed.snapshotsFloating === 'boolean') setSnapshotsFloating(parsed.snapshotsFloating);
+        if (parsed.snapshotsPosition && typeof (parsed.snapshotsPosition as any).x === 'number' && typeof (parsed.snapshotsPosition as any).y === 'number') {
+          setSnapshotsPosition(parsed.snapshotsPosition as { x: number; y: number });
+        }
+        if (typeof parsed.snapshotsPaneHeight === 'number' && parsed.snapshotsPaneHeight >= SNAPSHOT_PANE_HEIGHT_MIN && parsed.snapshotsPaneHeight <= SNAPSHOT_PANE_HEIGHT_MAX) {
+          setSnapshotsPaneHeight(parsed.snapshotsPaneHeight);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(PANEL_SETTINGS_KEY, JSON.stringify({
+        toolbarCollapsed,
+        toolbarFloating,
+        toolbarPosition,
+        snapshotsCollapsed,
+        snapshotsFloating,
+        snapshotsPosition,
+        snapshotsPaneHeight,
+      }));
+    } catch {
+      // ignore
+    }
+  }, [toolbarCollapsed, toolbarFloating, toolbarPosition, snapshotsCollapsed, snapshotsFloating, snapshotsPosition, snapshotsPaneHeight]);
 
   const handleToolbarMouseDown = React.useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     if (!toolbarFloating) return;
@@ -425,11 +468,9 @@ export function PresentationEditorPanel({
         </div>
       </div>
 
-      {!toolbarCollapsed && (
-        <>
-          <div className="mb-0.5 overflow-x-auto rounded-md border bg-background/80 p-1">
-            <div className="flex min-w-max items-center gap-1.5 whitespace-nowrap">
-              <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Toolbar</div>
+      <div className="mb-0.5 overflow-x-auto rounded-md border bg-background/80 p-1">
+        <div className="flex min-w-max items-center gap-1.5 whitespace-nowrap">
+          <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Toolbar</div>
               <select
                 className="h-7 min-w-[180px] rounded-md border bg-background px-2 text-[11px]"
                 value={activeDeckId ?? ''}
@@ -605,9 +646,7 @@ export function PresentationEditorPanel({
             </div>
           </div>
 
-          {!snapshotsFloating && !snapshotsCollapsed && snapshotsList}
-        </>
-      )}
+          {!toolbarCollapsed && !snapshotsFloating && !snapshotsCollapsed && snapshotsList}
       </div>
 
       {isOpen && snapshotsFloating && !toolbarCollapsed && (
