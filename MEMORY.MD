@@ -1,6 +1,12 @@
 # MEMORY.MD
 
-## DiagramWeaver - Latest Features and Functions (Updated 2026-03-12)
+## DiagramWeaver - Latest Features and Functions (Updated 2026-03-16)
+
+### 2026-03-16 – Presentation Playback: Auto Zoom + Theme-Aware Toolbar
+**Auto zoom button**: Presentation player bottom toolbar now has an Auto zoom (Wand2) button that fits the current slide's diagram to the viewport, same as the edit canvas. Uses ViewerCanvas's fitToView via onFitToView. **Theme-aware toolbar**: Bottom toolbar (docked and floating) now uses theme classes (bg-card, text-foreground, border-border, bg-muted/50) so it reads correctly in light and dark mode. Previously white text on light mode when undocked was unreadable. Modified: `presentation-player.tsx` (Wand2 import, Auto zoom button, onFitToView to ViewerCanvas, theme classes throughout toolbar and reveal button).
+
+### 2026-03-16 – Presentation Mode: Propagate Add/Delete to Later Slides
+**Propagate changes across slides**: When editing a presentation on step X (of 6), you can now propagate item changes to all later slides. **Add to later slides**: Select a node or connection, then click the Copy icon (Add to later slides) in the context toolbar—the item is added to slides X+1 through the end. **Remove from later slides**: Select an item, click the SquareMinus icon (Remove from later slides)—the item is removed from slides X+1 through the end. Fixes the issue where deleting on step 3 caused the item to reappear on steps 4, 5, 6. Buttons appear only in presentation mode when there are later slides (not on the last slide). Modified: `diagram-editor.tsx` (handlePropagateAddToLaterSlides, handlePropagateDeleteToLaterSlides, hasLaterSlides), `top-menu-bar.tsx`, `context-toolbar.tsx` (Copy + SquareMinus buttons for node and edge toolbars).
 
 ### 2026-03-12 – Textbox Toolbar: Vertical Alignment + Wider Default
 **Textbox toolbar** now includes top/middle/bottom vertical alignment icons (ArrowUp, Circle, ArrowDown). Click to set `textVerticalPosition` on the node; data persists via `onUpdate`. Alignment buttons show active state (bg-muted) for current position. **Default textbox size**: Width doubled when dropping a new textbox (120 → 240px) for a wider initial box. Modified: `textbox-rich-editor.tsx` (onVerticalAlignChange prop, applyVerticalAlign, alignment buttons), `diagram-node.tsx` (wire onVerticalAlignChange to onUpdate for textbox), `canvas-operations.ts` (isTextboxResource width 240).

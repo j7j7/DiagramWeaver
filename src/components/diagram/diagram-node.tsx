@@ -174,7 +174,7 @@ interface DiagramNodeProps {
   /** When true, pointer-events: none so clicks pass through to selected item below */
   pointerEventsPassThrough?: boolean;
   /** Layer show/hide animation style (opacity, transition, transform) from useLayerAnimation */
-  animationStyle?: { opacity: number; transition: string; transform?: string };
+  animationStyle?: { opacity: number; transition: string; transform?: string; transformOrigin?: string };
 }
 
 function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps): boolean {
@@ -1341,7 +1341,7 @@ return (
         ...(isLineNode && { pointerEvents: 'none' }),
         ...(pointerEventsPassThrough && { pointerEvents: 'none' }),
         // Layer show/hide animation (opacity, transition, transform)
-        ...(animationStyle && { opacity: animationStyle.opacity, transition: animationStyle.transition, ...(animationStyle.transform && { transform: animationStyle.transform }) }),
+        ...(animationStyle && { opacity: animationStyle.opacity, transition: animationStyle.transition, ...(animationStyle.transform && { transform: animationStyle.transform }), ...(animationStyle.transformOrigin && { transformOrigin: animationStyle.transformOrigin }) }),
       }}
       onMouseEnter={() => { 
         if (!isDragging && !isEditingLabel && !isEditingTag) { 

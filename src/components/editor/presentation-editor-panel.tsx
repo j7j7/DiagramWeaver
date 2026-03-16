@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useDrag, useDrop } from 'react-dnd';
-import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Copy, Download, GripVertical, Maximize2, Minimize2, Pin, PinOff, Play, Plus, Save, Trash2, Upload, Wand2 } from 'lucide-react';
+import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Copy, Download, GripHorizontal, GripVertical, Maximize2, Minimize2, Pin, PinOff, Play, Plus, Save, Trash2, Upload, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -16,7 +16,6 @@ interface DraggableSlideProps {
   slide: Slide;
   index: number;
   active: boolean;
-  compact: boolean;
   onMove: (fromIndex: number, toIndex: number) => void;
   onSelect: (slideId: string) => void;
   onDelete: (slideId: string) => void;
@@ -26,7 +25,6 @@ function DraggableSlideItem({
   slide,
   index,
   active,
-  compact,
   onMove,
   onSelect,
   onDelete,
@@ -56,52 +54,45 @@ function DraggableSlideItem({
     <div
       ref={ref}
       className={cn(
-        'group flex cursor-pointer flex-col gap-2 rounded-md border p-2 transition-all',
+        'group flex w-[140px] shrink-0 cursor-pointer flex-col rounded-md border p-1 transition-all',
         active ? 'border-primary/50 bg-primary/10 ring-1 ring-primary/20' : 'border-border bg-background hover:bg-accent/40',
         isDragging && 'opacity-50'
       )}
       onClick={() => onSelect(slide.id)}
       title={slide.title || `Slide ${index + 1}`}
     >
-      <img
-        src={slide.snapshotImage || SLIDE_THUMBNAIL_PLACEHOLDER}
-        alt={slide.title || `Slide ${index + 1}`}
-        className="aspect-video w-full rounded border object-cover"
-      />
-
-      {!compact ? (
-        <div className="min-w-0 w-full text-left">
-          <div className="flex items-center gap-2">
-            <div className="text-[11px] text-muted-foreground">Slide {index + 1}</div>
-            {slide.autoZoomLevel && (
-              <span className="rounded border bg-muted px-1 py-0.5 text-[10px] text-muted-foreground">
-                Zoom {(slide.autoZoomLevel * 100).toFixed(0)}%
-              </span>
-            )}
-          </div>
-          <div className="truncate text-xs font-medium">{slide.title || `Snapshot ${index + 1}`}</div>
-        </div>
-      ) : (
-        <div className="text-[10px] font-medium text-muted-foreground">#{index + 1}</div>
-      )}
-
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            size="sm"
-            variant="destructive"
-            className={cn('self-end px-0 opacity-85 group-hover:opacity-100', compact ? 'h-5 w-5' : 'h-6 w-6')}
-            aria-label="Delete snapshot"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(slide.id);
-            }}
-          >
-            <Trash2 className={compact ? 'h-2.5 w-2.5' : 'h-3 w-3'} />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Delete snapshot</TooltipContent>
-      </Tooltip>
+      <div className="relative w-full flex-1 min-h-0">
+        <img
+          src={slide.snapshotImage || SLIDE_THUMBNAIL_PLACEHOLDER}
+          alt={slide.title || `Slide ${index + 1}`}
+          className="aspect-video w-full rounded border object-cover"
+        />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="sm"
+              variant="destructive"
+              className="absolute right-1 top-1 h-6 w-6 rounded-full p-0 opacity-70 shadow-md hover:opacity-100"
+              aria-label="Delete snapshot"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(slide.id);
+              }}
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Delete snapshot</TooltipContent>
+        </Tooltip>
+      </div>
+      <div className="flex shrink-0 items-center gap-1.5 pt-0.5 text-left">
+        <span className="text-[11px] font-medium text-foreground">#{index + 1}</span>
+        {slide.autoZoomLevel && (
+          <span className="rounded border bg-muted px-1 py-0.5 text-[10px] text-muted-foreground">
+            {(slide.autoZoomLevel * 100).toFixed(0)}%
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -159,12 +150,10 @@ export function PresentationEditorPanel({
   onExportDecks,
   onImportDecks,
 }: PresentationEditorPanelProps) {
-  const SNAPSHOT_MIN_WIDTH = 88;
-  const SNAPSHOT_MAX_WIDTH = 210;
-  const SNAPSHOT_GAP = 8;
-  const SNAPSHOT_PANE_HEIGHT_MIN = 140;
+  const SNAPSHOT_PANE_HEIGHT_MIN = 100;
   const SNAPSHOT_PANE_HEIGHT_MAX = 540;
   const SNAPSHOT_PANE_HEIGHT_STEP = 40;
+  const SNAPSHOT_THUMBNAIL_WIDTH = 140;
 
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const toolbarRef = React.useRef<HTMLDivElement | null>(null);
@@ -184,8 +173,7 @@ export function PresentationEditorPanel({
   const [snapshotsFloating, setSnapshotsFloating] = React.useState(false);
   const [snapshotsPosition, setSnapshotsPosition] = React.useState({ x: 20, y: 220 });
   const [draggingSnapshots, setDraggingSnapshots] = React.useState(false);
-  const [snapshotsPaneHeight, setSnapshotsPaneHeight] = React.useState(256);
-  const [snapshotTileMinWidth, setSnapshotTileMinWidth] = React.useState(170);
+  const [snapshotsPaneHeight, setSnapshotsPaneHeight] = React.useState(123);
 
   React.useEffect(() => {
     setRenameDraft(activeDeck?.name ?? '');
@@ -312,60 +300,33 @@ export function PresentationEditorPanel({
     window.addEventListener('mouseup', onMouseUp);
   }, [snapshotsFloating, snapshotsPosition.x, snapshotsPosition.y, snapSnapshotsToToolbar]);
 
-  React.useEffect(() => {
-    if (!activeDeck || snapshotsCollapsed) {
-      return;
-    }
+  const handleResizeMouseDown = React.useCallback((event: React.MouseEvent) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    const startY = event.clientY;
+    const startHeight = snapshotsPaneHeight;
 
-    const viewport = snapshotsViewportRef.current;
-    if (!viewport) {
-      return;
-    }
-
-    const computeTileWidth = () => {
-      const containerWidth = Math.max(0, viewport.clientWidth - 8);
-      const containerHeight = Math.max(0, viewport.clientHeight - 8);
-      const count = activeDeck.slides.length;
-
-      if (!containerWidth || !containerHeight || count <= 0) {
-        setSnapshotTileMinWidth(170);
-        return;
-      }
-
-      let best = SNAPSHOT_MAX_WIDTH;
-
-      for (let width = SNAPSHOT_MAX_WIDTH; width >= SNAPSHOT_MIN_WIDTH; width -= 2) {
-        const columns = Math.max(1, Math.floor((containerWidth + SNAPSHOT_GAP) / (width + SNAPSHOT_GAP)));
-        const rows = Math.ceil(count / columns);
-        const contentHeight = width * (9 / 16) + (width <= 100 ? 34 : 74);
-        const totalHeight = rows * contentHeight + Math.max(0, rows - 1) * SNAPSHOT_GAP;
-
-        if (totalHeight <= containerHeight) {
-          best = width;
-          break;
-        }
-
-        best = width;
-      }
-
-      setSnapshotTileMinWidth(Math.max(SNAPSHOT_MIN_WIDTH, Math.min(SNAPSHOT_MAX_WIDTH, best)));
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const delta = moveEvent.clientY - startY;
+      setSnapshotsPaneHeight((prev) =>
+        Math.max(SNAPSHOT_PANE_HEIGHT_MIN, Math.min(SNAPSHOT_PANE_HEIGHT_MAX, startHeight + delta))
+      );
     };
 
-    computeTileWidth();
+    const onMouseUp = () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
 
-    const resizeObserver = new ResizeObserver(() => {
-      computeTileWidth();
-    });
-
-    resizeObserver.observe(viewport);
-    return () => resizeObserver.disconnect();
-  }, [activeDeck, snapshotsCollapsed, snapshotsPaneHeight]);
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  }, [snapshotsPaneHeight]);
 
   if (!isOpen) return null;
 
   const panelClassName = toolbarFloating
     ? 'fixed z-50 rounded-lg border bg-card/95 p-2 shadow-2xl backdrop-blur'
-    : 'border-b bg-card/95 px-2 py-1.5 backdrop-blur';
+    : 'border-b bg-card/95 px-2 py-1 backdrop-blur';
 
   const panelStyle = toolbarFloating
     ? ({ left: toolbarPosition.x, top: toolbarPosition.y, width: 'min(1120px, calc(100vw - 16px))' } as React.CSSProperties)
@@ -380,34 +341,40 @@ export function PresentationEditorPanel({
     : undefined;
 
   const snapshotsList = (
-    <div
-      ref={snapshotsViewportRef}
-      className="overflow-y-auto rounded-md border bg-background/60 p-2"
-      style={{ height: snapshotsPaneHeight }}
-    >
-      {activeDeck && activeDeck.slides.length > 0 ? (
-        <div
-          className="grid gap-2"
-          style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${snapshotTileMinWidth}px, 1fr))` }}
-        >
-          {activeDeck.slides.map((slide, index) => (
-            <DraggableSlideItem
-              key={slide.id}
-              slide={slide}
-              index={index}
-              active={activeSlideIndex === index}
-              compact={snapshotTileMinWidth <= 100}
-              onMove={onMoveSlide}
-              onSelect={onSelectSlide}
-              onDelete={onDeleteSlide}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-          No snapshots yet. Add Snapshot to capture the current visible canvas.
-        </div>
-      )}
+    <div className="flex flex-col gap-0 mt-0.5">
+      <div
+        role="separator"
+        onMouseDown={handleResizeMouseDown}
+        className="flex cursor-n-resize items-center justify-center border bg-muted/30 py-0.5 hover:bg-muted/50"
+        aria-label="Drag to resize snapshots pane height"
+      >
+        <GripHorizontal className="h-2.5 w-2.5 text-muted-foreground" />
+      </div>
+      <div
+        ref={snapshotsViewportRef}
+        className="overflow-x-auto overflow-y-hidden rounded-b-md border border-t-0 bg-background/60 p-1"
+        style={{ height: snapshotsPaneHeight }}
+      >
+        {activeDeck && activeDeck.slides.length > 0 ? (
+          <div className="flex flex-nowrap gap-2">
+            {activeDeck.slides.map((slide, index) => (
+              <DraggableSlideItem
+                key={slide.id}
+                slide={slide}
+                index={index}
+                active={activeSlideIndex === index}
+                onMove={onMoveSlide}
+                onSelect={onSelectSlide}
+                onDelete={onDeleteSlide}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="flex min-h-full items-center justify-center rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+            No snapshots yet. Add Snapshot to capture the current visible canvas.
+          </div>
+        )}
+      </div>
     </div>
   );
 
@@ -416,7 +383,7 @@ export function PresentationEditorPanel({
       <div className={panelClassName} style={panelStyle}>
       <div
         ref={toolbarRef}
-        className={cn('mb-1 flex items-center justify-between gap-2 rounded-md px-1 py-0.5', toolbarFloating && 'cursor-move border bg-background/70')}
+        className={cn('mb-0.5 flex items-center justify-between gap-2 rounded-md px-1 py-0.5', toolbarFloating && 'cursor-move border bg-background/70')}
         onMouseDown={handleToolbarMouseDown}
       >
         <div className="flex items-center gap-1.5">
@@ -460,7 +427,7 @@ export function PresentationEditorPanel({
 
       {!toolbarCollapsed && (
         <>
-          <div className="mb-1.5 overflow-x-auto rounded-md border bg-background/80 p-1.5">
+          <div className="mb-0.5 overflow-x-auto rounded-md border bg-background/80 p-1">
             <div className="flex min-w-max items-center gap-1.5 whitespace-nowrap">
               <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Toolbar</div>
               <select
@@ -638,73 +605,6 @@ export function PresentationEditorPanel({
             </div>
           </div>
 
-          <div className="mb-1 flex items-center justify-between px-0.5">
-            <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Snapshots</div>
-            {activeSlideIndex >= 0 && (
-              <div className="text-[11px] text-muted-foreground">Active: #{activeSlideIndex + 1}</div>
-            )}
-            <div className="ml-auto flex items-center gap-1">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-6 w-6 px-0"
-                    onClick={() => setSnapshotsPaneHeight((prev) => Math.max(SNAPSHOT_PANE_HEIGHT_MIN, prev - SNAPSHOT_PANE_HEIGHT_STEP))}
-                    aria-label="Decrease snapshots pane height"
-                    disabled={snapshotsPaneHeight <= SNAPSHOT_PANE_HEIGHT_MIN}
-                  >
-                    <ChevronUp className="h-3 w-3" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Shrink snapshots pane</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-6 w-6 px-0"
-                    onClick={() => setSnapshotsPaneHeight((prev) => Math.min(SNAPSHOT_PANE_HEIGHT_MAX, prev + SNAPSHOT_PANE_HEIGHT_STEP))}
-                    aria-label="Increase snapshots pane height"
-                    disabled={snapshotsPaneHeight >= SNAPSHOT_PANE_HEIGHT_MAX}
-                  >
-                    <ChevronDown className="h-3 w-3" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Grow snapshots pane</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-6 w-6 px-0"
-                    onClick={() => setSnapshotsCollapsed((prev) => !prev)}
-                    aria-label={snapshotsCollapsed ? 'Expand snapshots' : 'Collapse snapshots'}
-                  >
-                    {snapshotsCollapsed ? <Maximize2 className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{snapshotsCollapsed ? 'Expand snapshots' : 'Collapse snapshots'}</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-6 w-6 px-0"
-                    onClick={() => setSnapshotsFloating((prev) => !prev)}
-                    aria-label={snapshotsFloating ? 'Fix snapshots below toolbar' : 'Float snapshots pane'}
-                  >
-                    {snapshotsFloating ? <Pin className="h-3 w-3" /> : <PinOff className="h-3 w-3" />}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{snapshotsFloating ? 'Fix snapshots pane' : 'Float + drag snapshots pane'}</TooltipContent>
-              </Tooltip>
-            </div>
-          </div>
-
           {!snapshotsFloating && !snapshotsCollapsed && snapshotsList}
         </>
       )}
@@ -717,17 +617,11 @@ export function PresentationEditorPanel({
           style={snapshotsPanelStyle}
         >
           <div
-            className="mb-1 flex cursor-move items-center justify-between gap-2 rounded-md border bg-background/70 px-1 py-0.5"
+            className="mb-0.5 flex cursor-move items-center justify-end gap-1 rounded-md border bg-background/70 px-1 py-0.5"
             onMouseDown={handleSnapshotsMouseDown}
           >
-            <div className="flex items-center gap-1.5">
-              <GripVertical className={cn('h-3.5 w-3.5 text-muted-foreground', draggingSnapshots && 'text-primary')} />
-              <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Snapshots</div>
-              {activeSlideIndex >= 0 && (
-                <div className="text-[11px] text-muted-foreground">Active: #{activeSlideIndex + 1}</div>
-              )}
-            </div>
-            <div className="flex items-center gap-1">
+            <GripVertical className={cn('h-3 w-3 text-muted-foreground', draggingSnapshots && 'text-primary')} />
+            <div className="flex items-center gap-0.5">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button

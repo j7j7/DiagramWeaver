@@ -1633,6 +1633,130 @@ export default function DiagramEditor() {
     tabDiagramData,
   ]);
 
+  const activePresentationSlideIndex = activePresentationDeck
+    ? Math.max(0, activePresentationSlides.findIndex((s) => s.id === activePresentationSlideId))
+    : -1;
+  const hasLaterSlides = activePresentationSlideIndex >= 0 && activePresentationSlideIndex < activePresentationSlides.length - 1;
+
+  const handlePropagateAddToLaterSlides = React.useCallback(() => {
+    if (!presentationModeEnabled || !activePresentationDeckId || !activePresentationSlideId || !selectedItem || !hasLaterSlides || !presentationDraftDiagram) return;
+    const masterBase = projectVisibleDiagram(presentationMasterDiagram ?? tabDiagramData);
+    let itemToAdd: DiagramNodeData | DiagramConnectionData | null = null;
+    if (selectedItem.itemType === 'node') {
+      const node = presentationDraftDiagram.nodes.find((n) => n.id === selectedItem.id);
+      if (node) itemToAdd = { ...node };
+    } else if (selectedItem.itemType === 'edge') {
+      const connId = (selectedItem as { id?: string }).id;
+      const conn = (presentationDraftDiagram.connections || []).find(
+        (c) => (connId && (c as DiagramConnectionData).id === connId) || (c.from === selectedItem.from && c.to === selectedItem.to)
+      );
+      if (conn) itemToAdd = { ...conn };
+    }
+    if (!itemToAdd) return;
+
+    setPresentationDecks((prev) =>
+      prev.map((deck) => {
+        if (deck.id !== activePresentationDeckId) return deck;
+        const currentIdx = deck.slides.findIndex((s) => s.id === activePresentationSlideId);
+        if (currentIdx < 0) return deck;
+        const nextSlides = deck.slides.map((slide, idx) => {
+          if (idx <= currentIdx) return slide;
+          const slideDiagram = applyDiagramDelta(masterBase, slide.diagramDelta);
+          let nextDiagram: DiagramData;
+          if (itemToAdd && 'from' in itemToAdd && 'to' in itemToAdd) {
+            const conn = itemToAdd as DiagramConnectionData;
+            const existing = (slideDiagram.connections || []).some(
+              (c) => (conn.id && (c as DiagramConnectionData).id === conn.id) || (c.from === conn.from && c.to === conn.to)
+            );
+            if (existing) return slide;
+            nextDiagram = {
+              ...slideDiagram,
+              connections: [...(slideDiagram.connections || []), ensureConnectionIds([conn])[0]],
+            };
+          } else if (itemToAdd && 'type' in itemToAdd) {
+            const node = itemToAdd as DiagramNodeData;
+            if (slideDiagram.nodes.some((n) => n.id === node.id)) return slide;
+            nextDiagram = {
+              ...slideDiagram,
+              nodes: [...slideDiagram.nodes, node],
+            };
+          } else {
+            return slide;
+          }
+          const nextVisible = projectVisibleDiagram(nextDiagram);
+          const nextDelta = computeDiagramDelta(masterBase, nextVisible);
+          return { ...slide, diagramDelta: nextDelta };
+        });
+        return { ...deck, slides: nextSlides, updatedAt: Date.now() };
+      })
+    );
+    toast({ title: 'Added to later slides', description: `Item added to ${activePresentationSlides.length - 1 - activePresentationSlideIndex} slide(s).` });
+  }, [
+    presentationModeEnabled,
+    activePresentationDeckId,
+    activePresentationSlideId,
+    selectedItem,
+    hasLaterSlides,
+    presentationDraftDiagram,
+    presentationMasterDiagram,
+    tabDiagramData,
+    activePresentationSlides.length,
+    activePresentationSlideIndex,
+  ]);
+
+  const handlePropagateDeleteToLaterSlides = React.useCallback(() => {
+    if (!presentationModeEnabled || !activePresentationDeckId || !activePresentationSlideId || !selectedItem || !hasLaterSlides) return;
+    const masterBase = projectVisibleDiagram(presentationMasterDiagram ?? tabDiagramData);
+    const nodeIdToRemove = selectedItem.itemType === 'node' ? selectedItem.id : null;
+    const connectionToRemove =
+      selectedItem.itemType === 'edge' ? { from: selectedItem.from, to: selectedItem.to, id: (selectedItem as { id?: string }).id } : null;
+
+    setPresentationDecks((prev) =>
+      prev.map((deck) => {
+        if (deck.id !== activePresentationDeckId) return deck;
+        const currentIdx = deck.slides.findIndex((s) => s.id === activePresentationSlideId);
+        if (currentIdx < 0) return deck;
+        const nextSlides = deck.slides.map((slide, idx) => {
+          if (idx <= currentIdx) return slide;
+          const slideDiagram = applyDiagramDelta(masterBase, slide.diagramDelta);
+          let nextDiagram: DiagramData;
+          if (nodeIdToRemove) {
+            nextDiagram = {
+              ...slideDiagram,
+              nodes: slideDiagram.nodes.filter((n) => n.id !== nodeIdToRemove),
+              connections: (slideDiagram.connections || []).filter((c) => c.from !== nodeIdToRemove && c.to !== nodeIdToRemove),
+            };
+          } else if (connectionToRemove) {
+            nextDiagram = {
+              ...slideDiagram,
+              connections: (slideDiagram.connections || []).filter((c) => {
+                if (connectionToRemove.id && (c as DiagramConnectionData).id) return (c as DiagramConnectionData).id !== connectionToRemove.id;
+                return !(c.from === connectionToRemove.from && c.to === connectionToRemove.to);
+              }),
+            };
+          } else {
+            return slide;
+          }
+          const nextVisible = projectVisibleDiagram(nextDiagram);
+          const nextDelta = computeDiagramDelta(masterBase, nextVisible);
+          return { ...slide, diagramDelta: nextDelta };
+        });
+        return { ...deck, slides: nextSlides, updatedAt: Date.now() };
+      })
+    );
+    toast({ title: 'Removed from later slides', description: `Item removed from ${activePresentationSlides.length - 1 - activePresentationSlideIndex} slide(s).` });
+  }, [
+    presentationModeEnabled,
+    activePresentationDeckId,
+    activePresentationSlideId,
+    selectedItem,
+    hasLaterSlides,
+    presentationMasterDiagram,
+    tabDiagramData,
+    activePresentationSlides.length,
+    activePresentationSlideIndex,
+  ]);
+
   const disconnectConnection = React.useCallback((from: string, to: string, connectionId?: string) => {
     if (!confirmPresentationLayerImpact('This connection', getAffectedLayerIdsForConnection(from, to))) return;
     const nextDiagram: DiagramData = {
@@ -1653,7 +1777,7 @@ export default function DiagramEditor() {
     }
     toast({ title: 'Connection Disconnected', description: 'Connection has been removed.' });
   }, [diagramData, persistPresentationSlideFromDiagram, selectedItem, setDiagramData, setSelectedItem, confirmPresentationLayerImpact, getAffectedLayerIdsForConnection, layers]);
-  
+
   const getFilenameStem = (filename: string) =>
     filename.replace(/\.[^.]+$/, '') || filename;
 
@@ -3908,6 +4032,9 @@ export default function DiagramEditor() {
         handleSavePresentationSnapshot={handleSavePresentationSnapshot}
         handleRemovePresentationSlides={handleRemovePresentationSlides}
         handleDeletePresentationSlide={handleDeletePresentationSlide}
+        presentationHasLaterSlides={hasLaterSlides}
+        handlePropagateAddToLaterSlides={handlePropagateAddToLaterSlides}
+        handlePropagateDeleteToLaterSlides={handlePropagateDeleteToLaterSlides}
         handleMovePresentationSlide={handleMovePresentationSlide}
         handleSelectPresentationSlide={handleSelectPresentationSlide}
         handleTogglePresentationSlideSelection={handleTogglePresentationSlideSelection}
@@ -4103,6 +4230,9 @@ function DiagramEditorInner({
   handleSavePresentationSnapshot,
   handleRemovePresentationSlides,
   handleDeletePresentationSlide,
+  presentationHasLaterSlides,
+  handlePropagateAddToLaterSlides,
+  handlePropagateDeleteToLaterSlides,
   handleMovePresentationSlide,
   handleSelectPresentationSlide,
   handleTogglePresentationSlideSelection,
@@ -4345,6 +4475,9 @@ function DiagramEditorInner({
                     onRulesChange={setRules}
                     presentationModeEnabled={presentationModeEnabled}
                     onTogglePresentationMode={handleTogglePresentationMode}
+                    presentationHasLaterSlides={presentationHasLaterSlides}
+                    onPropagateAddToLaterSlides={handlePropagateAddToLaterSlides}
+                    onPropagateDeleteToLaterSlides={handlePropagateDeleteToLaterSlides}
                     onStartTutorial={handleStartTutorial}
                 />
                 {!isLoaded ? (

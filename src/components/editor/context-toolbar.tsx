@@ -29,7 +29,9 @@ import {
   ArrowDown,
   ChevronUp,
   Tag,
-  Minus
+  Minus,
+  Copy,
+  SquareMinus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -81,6 +83,11 @@ interface ContextToolbarProps {
   onLineStylingPanelOpenChange?: (open: boolean) => void;
   onConnectionSettingsPanelOpenChange?: (open: boolean) => void;
   isReadOnly?: boolean;
+  /** Presentation mode: show add/remove from later slides buttons when true and hasLaterSlides */
+  presentationModeEnabled?: boolean;
+  presentationHasLaterSlides?: boolean;
+  onPropagateAddToLaterSlides?: () => void;
+  onPropagateDeleteToLaterSlides?: () => void;
 }
 
 export function ContextToolbar({
@@ -107,6 +114,10 @@ export function ContextToolbar({
   onLineStylingPanelOpenChange,
   onConnectionSettingsPanelOpenChange,
   isReadOnly = false,
+  presentationModeEnabled = false,
+  presentationHasLaterSlides = false,
+  onPropagateAddToLaterSlides,
+  onPropagateDeleteToLaterSlides,
 }: ContextToolbarProps) {
   const [labelOpen, setLabelOpen] = useState(false);
   const [labelInputValue, setLabelInputValue] = useState('');
@@ -672,6 +683,28 @@ export function ContextToolbar({
               </div>
             </PopoverContent>
           </Popover>
+        )}
+
+        {/* Presentation: Add/Remove from later slides (for connections) */}
+        {presentationModeEnabled && presentationHasLaterSlides && onPropagateAddToLaterSlides && onPropagateDeleteToLaterSlides && (
+          <>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 px-2" onClick={onPropagateAddToLaterSlides} title="Add to later slides">
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Add to later slides</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 px-2" onClick={onPropagateDeleteToLaterSlides} title="Remove from later slides">
+                  <SquareMinus className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Remove from later slides</TooltipContent>
+            </Tooltip>
+          </>
         )}
       </div>
     );
@@ -2469,6 +2502,28 @@ export function ContextToolbar({
               </div>
             </PopoverContent>
           </Popover>
+        )}
+
+        {/* Presentation: Add/Remove from later slides */}
+        {presentationModeEnabled && presentationHasLaterSlides && onPropagateAddToLaterSlides && onPropagateDeleteToLaterSlides && (
+          <>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 px-2" onClick={onPropagateAddToLaterSlides} title="Add to later slides">
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Add to later slides</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 px-2" onClick={onPropagateDeleteToLaterSlides} title="Remove from later slides">
+                  <SquareMinus className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Remove from later slides</TooltipContent>
+            </Tooltip>
+          </>
         )}
 
         {/* Delete Button */}

@@ -13,6 +13,11 @@ import { computeConnectionSlots } from "@/lib/connection-order-utils";
 import { isShapeNodeType } from "@/lib/utils";
 import { getDownstreamAnimationChainNodes } from "@/lib/connection-animation";
 import { MetadataPopup } from "../editor/metadata-popup";
+import type { DiagramConnectionData } from "@/lib/types";
+
+function connKey(conn: DiagramConnectionData): string {
+  return (conn as any).id || `${conn.from}\u2192${conn.to}`;
+}
 
 export type ViewerSelectedItem =
   | (DiagramData["nodes"][number] & { itemType: "node" })
@@ -42,9 +47,13 @@ interface ViewerCanvasProps {
   animationDisabledSources?: Set<string>;
   /** Callback to update disabled animation sources */
   onAnimationDisabledSourcesChange?: (sources: Set<string>) => void;
+  /** Node transition styles for slide transitions */
+  nodeTransitionStyles?: Map<string, { opacity: number; transition: string; transform?: string; transformOrigin?: string }>;
+  /** Connection transition styles for slide transitions */
+  connectionTransitionStyles?: Map<string, { opacity: number; transition: string; transform?: string; transformOrigin?: string }>;
 }
 
-export function ViewerCanvas({ diagramData, showRulers = true, onFitToView, transform: externalTransform, onTransformChange, selectedItemId, selectedItem, onItemSelect, metadataPopupsEnabled = true, animationConnectionsEnabled = true, connectionsBehindNodesEnabled: connectionsBehindNodesProp, showAnimationsForSelectedOnly = false, animationFilterSourceIds, animationToggleOnClickEnabled = false, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange }: ViewerCanvasProps) {
+export function ViewerCanvas({ diagramData, showRulers = true, onFitToView, transform: externalTransform, onTransformChange, selectedItemId, selectedItem, onItemSelect, metadataPopupsEnabled = true, animationConnectionsEnabled = true, connectionsBehindNodesEnabled: connectionsBehindNodesProp, showAnimationsForSelectedOnly = false, animationFilterSourceIds, animationToggleOnClickEnabled = false, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, nodeTransitionStyles = new Map(), connectionTransitionStyles = new Map() }: ViewerCanvasProps) {
   const [connectionsBehindNodesEnabled, setConnectionsBehindNodesEnabled] = useState(true);
   useEffect(() => {
     if (connectionsBehindNodesProp !== undefined) {
@@ -369,6 +378,8 @@ export function ViewerCanvas({ diagramData, showRulers = true, onFitToView, tran
               animationConnectionsEnabled={animationConnectionsEnabled}
               animationFilterSourceIds={animationFilterSourceIds}
               animationDisabledSources={animationDisabledSources}
+              connectionAnimationStyles={connectionTransitionStyles}
+              connectionKey={connKey}
             />
             {connectionSlots.sortedItemIds.map((itemId, i) => {
               const node = nodesById[itemId];
@@ -384,6 +395,7 @@ export function ViewerCanvas({ diagramData, showRulers = true, onFitToView, tran
                   isReadOnly={true}
                   onHoverChange={handleNodeHover}
                   onClick={handleNodeClick}
+                  animationStyle={nodeTransitionStyles.get(node.id)}
                 />
               ) : null;
               return nodeEl;
@@ -411,6 +423,7 @@ export function ViewerCanvas({ diagramData, showRulers = true, onFitToView, tran
                   isReadOnly={true}
                   onHoverChange={handleNodeHover}
                   onClick={handleNodeClick}
+                  animationStyle={nodeTransitionStyles.get(node.id)}
                 />
               ) : null;
               return [
@@ -431,6 +444,8 @@ export function ViewerCanvas({ diagramData, showRulers = true, onFitToView, tran
                     animationConnectionsEnabled={animationConnectionsEnabled}
                     animationFilterSourceIds={animationFilterSourceIds}
                     animationDisabledSources={animationDisabledSources}
+                    connectionAnimationStyles={connectionTransitionStyles}
+                    connectionKey={connKey}
                   />
                 ) : null,
                 nodeEl,
@@ -457,6 +472,8 @@ export function ViewerCanvas({ diagramData, showRulers = true, onFitToView, tran
                   animationConnectionsEnabled={animationConnectionsEnabled}
                   animationFilterSourceIds={animationFilterSourceIds}
                   animationDisabledSources={animationDisabledSources}
+                  connectionAnimationStyles={connectionTransitionStyles}
+                  connectionKey={connKey}
                 />
               );
             })()}

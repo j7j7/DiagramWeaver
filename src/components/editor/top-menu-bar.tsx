@@ -128,6 +128,9 @@ interface TopMenuBarProps {
   onRulesChange?: (rules: import('@/lib/rules-types').DiagramRule[]) => void;
   presentationModeEnabled?: boolean;
   onTogglePresentationMode?: () => void;
+  presentationHasLaterSlides?: boolean;
+  onPropagateAddToLaterSlides?: () => void;
+  onPropagateDeleteToLaterSlides?: () => void;
   isReadOnly?: boolean;
   onToggleReadOnly?: () => void;
   onStartTutorial?: () => void;
@@ -211,6 +214,9 @@ export function TopMenuBar({
   onRulesChange,
   presentationModeEnabled = false,
   onTogglePresentationMode,
+  presentationHasLaterSlides = false,
+  onPropagateAddToLaterSlides,
+  onPropagateDeleteToLaterSlides,
   isReadOnly = false,
   onToggleReadOnly,
   onStartTutorial,
@@ -738,6 +744,10 @@ export function TopMenuBar({
             onLineStylingPanelOpenChange={setLineStylingPanelOpen}
             onConnectionSettingsPanelOpenChange={setConnectionSettingsPanelOpen}
             isReadOnly={isReadOnly}
+            presentationModeEnabled={presentationModeEnabled}
+            presentationHasLaterSlides={presentationHasLaterSlides}
+            onPropagateAddToLaterSlides={onPropagateAddToLaterSlides}
+            onPropagateDeleteToLaterSlides={onPropagateDeleteToLaterSlides}
           />
         </>
       )}

@@ -3,13 +3,14 @@
 import React from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock3, Copy, GripVertical, Maximize2, Minimize2, MonitorPlay, Pin, PinOff, Play, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock3, Copy, GripVertical, Maximize2, Minimize2, MonitorPlay, Pin, PinOff, Play, Wand2, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ViewerCanvas } from '@/components/viewer/viewer-canvas';
 import type { DiagramData, Slide } from '@/lib/types';
 import type { Transform } from '@/hooks/use-canvas-transform';
+import { useSlideTransition } from '@/hooks/use-slide-transition';
 
 const SLIDE_IMAGE_PLACEHOLDER = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720"><rect width="1280" height="720" fill="%23000000"/><text x="640" y="360" text-anchor="middle" dominant-baseline="middle" fill="%23d1d5db" font-family="Arial, sans-serif" font-size="28">Slide</text></svg>';
 
@@ -53,6 +54,9 @@ export function PresentationPlayer({
   const [toolbarFloating, setToolbarFloating] = React.useState(false);
   const [toolbarPosition, setToolbarPosition] = React.useState({ x: 20, y: 20 });
   const [draggingToolbar, setDraggingToolbar] = React.useState(false);
+  const [panelHidden, setPanelHidden] = React.useState(false);
+  const [previousSlideIndex, setPreviousSlideIndex] = React.useState(currentIndex);
+  const [previousDiagram, setPreviousDiagram] = React.useState<DiagramData | null>(null);
 
   const totalSlides = slides.length;
   const safeIndex = Math.min(Math.max(currentIndex, 0), Math.max(totalSlides - 1, 0));
@@ -65,6 +69,28 @@ export function PresentationPlayer({
     if (!currentSlideDiagram) return null;
     return pruneConnectionsToVisibleNodes(currentSlideDiagram);
   }, [currentSlideDiagram]);
+
+  const slideTransition = useSlideTransition({
+    enabled: open && safeIndex !== previousSlideIndex,
+    currentDiagram: renderedDiagram,
+    previousDiagram: previousDiagram,
+  });
+
+  React.useEffect(() => {
+    if (!open || !renderedDiagram) return;
+
+    if (previousSlideIndex !== safeIndex && previousDiagram !== null) {
+      slideTransition.startTransition();
+    }
+  }, [open, safeIndex, previousSlideIndex, previousDiagram, renderedDiagram, slideTransition]);
+
+  React.useEffect(() => {
+    if (!open || !renderedDiagram) return;
+
+    setPreviousDiagram(renderedDiagram);
+    setPreviousSlideIndex(safeIndex);
+  }, [safeIndex, renderedDiagram, open]);
+
   const animationFilterSourceIds = React.useMemo(() => {
     if (!playbackAnimationFilterSourceIds || playbackAnimationFilterSourceIds.length === 0) {
       return undefined;
@@ -168,6 +194,16 @@ export function PresentationPlayer({
         goPrevious();
         return;
       }
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        goNext();
+        return;
+      }
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        goPrevious();
+        return;
+      }
       if (event.key === 'Escape') {
         event.preventDefault();
         onOpenChange(false);
@@ -210,8 +246,8 @@ export function PresentationPlayer({
   }, [toolbarFloating, toolbarPosition.x, toolbarPosition.y]);
 
   const toolbarShellClassName = toolbarFloating
-    ? 'absolute z-50 rounded-lg border border-white/20 bg-black/78 p-1.5 text-white shadow-2xl backdrop-blur-sm'
-    : 'absolute bottom-0 left-0 right-0 border-t border-white/10 bg-black/70 p-1.5 text-white backdrop-blur-sm';
+    ? 'absolute z-50 rounded-lg border border-border bg-card p-1.5 text-foreground shadow-2xl backdrop-blur-sm'
+    : 'absolute bottom-0 left-0 right-0 border-t border-border bg-card/95 p-1.5 text-foreground backdrop-blur-sm';
 
   const toolbarShellStyle = toolbarFloating
     ? ({ left: toolbarPosition.x, top: toolbarPosition.y, width: 'min(860px, calc(100vw - 16px))' } as React.CSSProperties)
@@ -231,14 +267,17 @@ export function PresentationPlayer({
               >
                 <DndProvider backend={HTML5Backend}>
                   <ViewerCanvas
-                    diagramData={renderedDiagram}
+                    diagramData={slideTransition.animatingDiagramData || renderedDiagram}
                     showRulers={false}
                     transform={playbackTransform}
                     onTransformChange={setPlaybackTransform}
+                    onFitToView={() => {}}
                     metadataPopupsEnabled={false}
                     animationConnectionsEnabled={playbackAnimationEnabled}
                     animationFilterSourceIds={animationFilterSourceIds}
                     animationDisabledSources={animationDisabledSources}
+                    nodeTransitionStyles={slideTransition.nodeTransitionStyles}
+                    connectionTransitionStyles={slideTransition.connectionTransitionStyles}
                   />
                 </DndProvider>
               </div>
@@ -251,47 +290,49 @@ export function PresentationPlayer({
               />
             )
           ) : (
-            <div className="text-sm text-white/80">No slides to present.</div>
+            <div className="text-sm text-muted-foreground">No slides to present.</div>
           )}
 
-          <div className="absolute left-0 right-0 top-0 flex items-center justify-between bg-black/50 p-3 text-white">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <MonitorPlay className="h-4 w-4 text-white/80" />
-                <div className="truncate text-sm font-semibold">
-                  {currentSlide?.title || 'Presentation'}
-                </div>
-              </div>
-              <div className="mt-1 flex items-center gap-2 text-[11px] text-white/70">
-                <span className="rounded border border-white/20 bg-white/10 px-2 py-0.5">
-                  Slide {totalSlides > 0 ? safeIndex + 1 : 0} of {totalSlides}
-                </span>
-                {typeof currentSlide?.autoZoomLevel === 'number' && (
-                  <span className="rounded border border-white/20 bg-white/10 px-2 py-0.5">
-                    Saved Zoom {(currentSlide.autoZoomLevel * 100).toFixed(0)}%
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="text-sm font-medium text-white/90">
-              {totalSlides > 0 ? `${safeIndex + 1} / ${totalSlides}` : '0 / 0'}
-            </div>
-          </div>
-
+          {panelHidden ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="absolute bottom-3 left-1/2 z-50 -translate-x-1/2 border border-border bg-card px-3 py-1.5 text-foreground hover:bg-accent"
+              onClick={() => setPanelHidden(false)}
+              title="Show panel"
+              aria-label="Show panel"
+            >
+              <ChevronUp className="h-4 w-4" />
+            </Button>
+          ) : (
           <div className={toolbarShellClassName} style={toolbarShellStyle}>
             <div
-              className={toolbarFloating ? 'mb-1 flex cursor-move items-center justify-between gap-2 rounded border border-white/20 bg-white/5 px-1.5 py-1' : 'mb-1 flex items-center justify-between gap-2'}
+              className={toolbarFloating ? 'mb-1 flex cursor-move items-center justify-between gap-2 rounded border border-border bg-muted/50 px-1.5 py-1' : 'mb-1 flex items-center justify-between gap-2'}
               onMouseDown={handleToolbarMouseDown}
             >
-              <div className="flex items-center gap-1.5 text-[11px] text-white/80">
-                {toolbarFloating && <GripVertical className={draggingToolbar ? 'h-3.5 w-3.5 text-white' : 'h-3.5 w-3.5'} />}
-                <span>Playback Controls</span>
+              <div className="flex min-w-0 flex-1 items-center gap-3 text-[11px]">
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  {toolbarFloating && <GripVertical className={draggingToolbar ? 'h-3.5 w-3.5 text-foreground' : 'h-3.5 w-3.5'} />}
+                  <span>Playback Controls</span>
+                </div>
+                <div className="flex items-center gap-2 text-foreground">
+                  <MonitorPlay className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <span className="truncate font-medium">{currentSlide?.title || 'Presentation'}</span>
+                  <span className="shrink-0 rounded border border-border bg-muted/50 px-2 py-0.5 text-[10px]">
+                    Slide {totalSlides > 0 ? safeIndex + 1 : 0} of {totalSlides}
+                  </span>
+                  {typeof currentSlide?.autoZoomLevel === 'number' && (
+                    <span className="shrink-0 rounded border border-border bg-muted/50 px-2 py-0.5 text-[10px]">
+                      {(currentSlide.autoZoomLevel * 100).toFixed(0)}%
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-1">
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-5 w-5 border-white/30 bg-white/5 px-0 text-white hover:bg-white/10"
+                  className="h-5 w-5 border-border bg-muted/50 px-0 text-foreground hover:bg-muted"
                   onClick={() => setToolbarCollapsed((prev) => !prev)}
                   title={toolbarCollapsed ? 'Expand controls' : 'Collapse controls'}
                 >
@@ -300,17 +341,27 @@ export function PresentationPlayer({
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-5 w-5 border-white/30 bg-white/5 px-0 text-white hover:bg-white/10"
+                  className="h-5 w-5 border-border bg-muted/50 px-0 text-foreground hover:bg-muted"
                   onClick={() => setToolbarFloating((prev) => !prev)}
                   title={toolbarFloating ? 'Fix controls to bottom' : 'Float and drag controls'}
                 >
                   {toolbarFloating ? <Pin className="h-2.5 w-2.5" /> : <PinOff className="h-2.5 w-2.5" />}
                 </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-5 w-5 border-border bg-muted/50 px-0 text-foreground hover:bg-muted"
+                  onClick={() => setPanelHidden(true)}
+                  title="Hide panel"
+                  aria-label="Hide panel"
+                >
+                  <ChevronDown className="h-2.5 w-2.5" />
+                </Button>
                 {isCompactScreen && (
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-5 border-white/30 bg-white/5 px-1 text-[10px] text-white hover:bg-white/10"
+                    className="h-5 border-border bg-muted/50 px-1 text-[10px] text-foreground hover:bg-muted"
                     onClick={() => setControlsExpanded((prev) => !prev)}
                   >
                     {controlsExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
@@ -331,14 +382,26 @@ export function PresentationPlayer({
                     Next
                     <ChevronRight className="h-3 w-3" />
                   </Button>
-                  <Button size="sm" variant="outline" className="h-6 border-white/30 bg-white/5 px-1.5 text-[11px] text-white hover:bg-white/10" onClick={() => onOpenChange(false)}>
+                  <Button size="sm" variant="outline" className="h-6 border-border bg-muted/50 px-1.5 text-[11px] text-foreground hover:bg-muted" onClick={() => onOpenChange(false)}>
                     <X className="h-3 w-3" />
                     Exit
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 border-border bg-muted/50 px-1.5 text-[11px] text-foreground hover:bg-muted"
+                    onClick={() => (window as any).__viewerFitToView?.()}
+                    disabled={!renderedDiagram}
+                    title="Auto zoom - fit diagram to viewport"
+                    aria-label="Auto zoom"
+                  >
+                    <Wand2 className="h-3 w-3" />
+                    Auto zoom
                   </Button>
 
                   {showAdvancedControls && (
                     <>
-                      <label className="ml-0.5 flex h-6 items-center gap-1 rounded border border-white/20 bg-white/5 px-1.5 text-[10px]">
+                      <label className="ml-0.5 flex h-6 items-center gap-1 rounded border border-border bg-muted/50 px-1.5 text-[10px]">
                         <input
                           type="checkbox"
                           checked={autoPlayEnabled}
@@ -348,7 +411,7 @@ export function PresentationPlayer({
                         Auto-play
                       </label>
 
-                      <label className="flex h-6 items-center gap-1 rounded border border-white/20 bg-white/5 px-1.5 text-[10px]">
+                      <label className="flex h-6 items-center gap-1 rounded border border-border bg-muted/50 px-1.5 text-[10px]">
                         <input
                           type="checkbox"
                           checked={useSlideZoom}
@@ -357,20 +420,20 @@ export function PresentationPlayer({
                         Use slide zoom
                       </label>
 
-                      <div className="flex h-6 items-center gap-1 rounded border border-white/20 bg-white/5 px-1.5">
-                        <Clock3 className="h-2.5 w-2.5 text-white/80" />
+                      <div className="flex h-6 items-center gap-1 rounded border border-border bg-muted/50 px-1.5">
+                        <Clock3 className="h-2.5 w-2.5 text-muted-foreground" />
                         <Input
                           type="number"
                           min={1}
                           max={120}
                           value={autoPlaySeconds}
                           onChange={(e) => setAutoPlaySeconds(Number(e.target.value) || 1)}
-                          className="h-5 w-12 border-white/20 bg-black/20 px-1 text-[10px] text-white"
+                          className="h-5 w-12 border-border bg-muted px-1 text-[10px] text-foreground"
                         />
-                        <span className="text-[10px] text-white/80">sec</span>
+                        <span className="text-[10px] text-muted-foreground">sec</span>
                       </div>
 
-                      <div className="flex h-6 items-center gap-1 rounded border border-white/20 bg-white/5 px-1">
+                      <div className="flex h-6 items-center gap-1 rounded border border-border bg-muted/50 px-1">
                         <Input
                           type="number"
                           min={10}
@@ -383,13 +446,13 @@ export function PresentationPlayer({
                               handleApplyZoomToCurrent();
                             }
                           }}
-                          className="h-5 w-12 border-white/20 bg-black/20 px-1 text-[10px] text-white"
+                          className="h-5 w-12 border-border bg-muted px-1 text-[10px] text-foreground"
                         />
-                        <span className="text-[10px] text-white/80">%</span>
+                        <span className="text-[10px] text-muted-foreground">%</span>
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-5 w-5 border-white/30 bg-transparent px-0 text-white hover:bg-white/10"
+                          className="h-5 w-5 border-border bg-transparent px-0 text-foreground hover:bg-muted"
                           onClick={handleApplyZoomToCurrent}
                           disabled={!currentSlide}
                           title="Apply zoom to current snapshot"
@@ -399,7 +462,7 @@ export function PresentationPlayer({
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-5 w-5 border-white/30 bg-transparent px-0 text-white hover:bg-white/10"
+                          className="h-5 w-5 border-border bg-transparent px-0 text-foreground hover:bg-muted"
                           onClick={handleApplyZoomToAll}
                           disabled={!currentSlide || totalSlides === 0}
                           title="Apply zoom to all snapshots"
@@ -411,12 +474,13 @@ export function PresentationPlayer({
                   )}
                 </div>
 
-                <div className="text-[10px] text-white/70 lg:text-right">
-                  Keyboard: Space = next, Backspace = previous, Escape = exit
+                <div className="text-[10px] text-muted-foreground lg:text-right">
+                  Keyboard: Space / Arrows = navigate, Escape = exit
                 </div>
               </div>
             )}
           </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

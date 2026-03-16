@@ -436,7 +436,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
           <g
             key={`${edge.from}-${edge.to}-${index}-${edge.toArrow ? 'arrow' : 'noarrow'}-${edge._updated || ''}`}
             className={cn(isConnectionHighlighted && 'drop-shadow-[0_0_6px_rgba(0,200,150,0.8)]')}
-            style={layerAnimStyle ? { opacity: layerAnimStyle.opacity, transition: layerAnimStyle.transition } : undefined}
+            style={layerAnimStyle ? { opacity: layerAnimStyle.opacity, transition: layerAnimStyle.transition, ...(layerAnimStyle.transform && { transform: layerAnimStyle.transform }) } : undefined}
           >
             {connStyle === 'orthogonal' ? (
               <OrthogonalConnection
