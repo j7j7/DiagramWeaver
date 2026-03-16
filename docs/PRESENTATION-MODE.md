@@ -129,6 +129,8 @@ When the same `r.n` or `r.l` patterns repeat across multiple slides in a deck, t
 
 Presentation decks are persisted with IndexedDB first and localStorage fallback.
 
+Per-tab temporary presentation state now shares the same IndexedDB namespace used by tab storage (`DiagramWeaver` / `tabs`) and uses presentation-specific keys inside that store. Older data from the legacy `DiagramWeaverPresentations` database is migrated forward on read.
+
 Storage utility:
 
 - `src/lib/presentation-storage.ts`

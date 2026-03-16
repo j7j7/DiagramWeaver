@@ -14,7 +14,19 @@ function unescapePathSegment(segment: string): string {
 }
 
 function deepClone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
+  if (value === undefined) return value;
+
+  if (typeof structuredClone === 'function') {
+    try {
+      return structuredClone(value);
+    } catch {
+      // Fall back to JSON clone for plain data when structuredClone cannot clone.
+    }
+  }
+
+  const serialized = JSON.stringify(value);
+  if (serialized === undefined) return value;
+  return JSON.parse(serialized) as T;
 }
 
 function deepEqual(a: unknown, b: unknown): boolean {

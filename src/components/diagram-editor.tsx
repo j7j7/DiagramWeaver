@@ -87,6 +87,8 @@ import {
 import {
   exportPresentationsToJson,
   importPresentationsFromJson,
+  loadPresentationsByTab,
+  savePresentationsByTab,
 } from '@/lib/presentation-storage';
 
 export type SelectedItem = (
@@ -447,7 +449,7 @@ function expandNodeIdsToNodes(ids: string[], baseDiagram: DiagramData): DiagramD
   const expanded: DiagramData['nodes'] = [];
   for (const id of ids) {
     const node = baseNodeMap.get(id);
-    if (node) expanded.push(JSON.parse(JSON.stringify(node)));
+    if (node) expanded.push(safeClone(node));
   }
   return expanded;
 }
@@ -456,9 +458,25 @@ function expandVisibleLayerIdsToLayers(visibleIds: string[], baseDiagram: Diagra
   const visibleSet = new Set(visibleIds);
   const baseLayers = baseDiagram.layers?.layers || [];
   return baseLayers.map((layer) => ({
-    ...JSON.parse(JSON.stringify(layer)),
+    ...safeClone(layer),
     visible: visibleSet.has(layer.id),
   }));
+}
+
+function safeClone<T>(value: T): T {
+  if (value === undefined) return value;
+
+  if (typeof structuredClone === 'function') {
+    try {
+      return structuredClone(value);
+    } catch {
+      // Fall back to JSON cloning for plain serializable data.
+    }
+  }
+
+  const serialized = JSON.stringify(value);
+  if (serialized === undefined) return value;
+  return JSON.parse(serialized) as T;
 }
 
 function createPaletteItem(
@@ -524,6 +542,9 @@ export default function DiagramEditor() {
     masterDiagram: DiagramData | null;
     draftDiagram: DiagramData | null;
   }>>({});
+  const presentationPersistTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const presentationHydrationStartedRef = React.useRef(false);
+  const [presentationStorageHydrated, setPresentationStorageHydrated] = React.useState(false);
 
   // Restore rules from localStorage after hydration
   React.useEffect(() => {
@@ -699,6 +720,55 @@ export default function DiagramEditor() {
     onToast: toast,
   });
 
+  // Load saved presentations for all tabs once the tab store is ready
+  React.useEffect(() => {
+    if (!isLoaded || presentationStorageHydrated || presentationHydrationStartedRef.current) return;
+    presentationHydrationStartedRef.current = true;
+
+    let cancelled = false;
+
+    loadPresentationsByTab()
+      .then((byTab) => {
+        if (cancelled || !byTab) return;
+
+        for (const [tabId, entry] of Object.entries(byTab)) {
+          const existing = presentationStateByTabRef.current[tabId];
+          presentationStateByTabRef.current[tabId] = {
+            decks: entry.decks,
+            activeDeckId: entry.activeDeckId,
+            activeSlideId: existing?.activeSlideId ?? null,
+            selectedSlideIds: existing?.selectedSlideIds ?? [],
+            masterDiagram: existing?.masterDiagram ?? null,
+            draftDiagram: existing?.draftDiagram ?? null,
+          };
+        }
+
+        if (activeTabId && byTab[activeTabId]) {
+          setPresentationDecks(byTab[activeTabId].decks);
+          setActivePresentationDeckId(byTab[activeTabId].activeDeckId);
+        }
+      })
+      .catch(() => {
+        // Storage unavailable; keep in-memory behavior.
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setPresentationStorageHydrated(true);
+        }
+      });
+
+    return () => { cancelled = true; };
+  }, [isLoaded, presentationStorageHydrated, activeTabId]);
+
+  React.useEffect(() => {
+    const liveTabIds = new Set(tabs.map((tab) => tab.id));
+    for (const tabId of Object.keys(presentationStateByTabRef.current)) {
+      if (!liveTabIds.has(tabId)) {
+        delete presentationStateByTabRef.current[tabId];
+      }
+    }
+  }, [tabs]);
+
   // Sync active tab state to local state for component use
   const tabDiagramData = activeTab?.diagramData || { nodes: [], connections: [], groupings: [] };
   const diagramData = presentationModeEnabled
@@ -849,6 +919,45 @@ export default function DiagramEditor() {
     selectedPresentationSlideIds,
     presentationMasterDiagram,
     presentationDraftDiagram,
+  ]);
+
+  // Persist presentations for all tabs whenever per-tab state changes (debounced 600 ms).
+  // Keep this effect after ref sync so writes always include latest tab state.
+  React.useEffect(() => {
+    if (!isLoaded || !presentationStorageHydrated || !activeTabId) return;
+    if (presentationPersistTimeoutRef.current) {
+      clearTimeout(presentationPersistTimeoutRef.current);
+    }
+
+    presentationPersistTimeoutRef.current = setTimeout(() => {
+      presentationPersistTimeoutRef.current = null;
+      const liveTabIds = new Set(tabs.map((tab) => tab.id));
+      const snapshot: Record<string, { decks: PresentationDeck[]; activeDeckId: string | null }> = {};
+      for (const [tabId, state] of Object.entries(presentationStateByTabRef.current)) {
+        if (liveTabIds.has(tabId) && state.decks.length > 0) {
+          snapshot[tabId] = { decks: state.decks, activeDeckId: state.activeDeckId };
+        }
+      }
+      savePresentationsByTab(snapshot).catch(() => { /* silent */ });
+    }, 600);
+
+    return () => {
+      if (presentationPersistTimeoutRef.current) {
+        clearTimeout(presentationPersistTimeoutRef.current);
+        presentationPersistTimeoutRef.current = null;
+      }
+    };
+  }, [
+    activeTabId,
+    isLoaded,
+    presentationStorageHydrated,
+    presentationDecks,
+    activePresentationDeckId,
+    activePresentationSlideId,
+    selectedPresentationSlideIds,
+    presentationMasterDiagram,
+    presentationDraftDiagram,
+    tabs,
   ]);
 
   // When animation toggle-on-click mode is on: show animations only for selected node's chain. Nothing selected = no animations.
@@ -2000,7 +2109,7 @@ export default function DiagramEditor() {
             setActivePresentationDeckId(loadedPresentations.activeDeckId);
             setActivePresentationSlideId(loadedPresentations.decks[0]?.slides[0]?.id ?? null);
             setSelectedPresentationSlideIds(new Set());
-            setPresentationMasterDiagram(JSON.parse(JSON.stringify(completeData)) as DiagramData);
+            setPresentationMasterDiagram(safeClone(completeData));
             updateActiveTab({ name: getFilenameStem(file.name) });
             toast({ title: 'Diagram Loaded', description: 'Your diagram has been successfully loaded.' });
             setTimeout(() => editorRef.current?.fitToView(), 100);
@@ -2817,9 +2926,9 @@ export default function DiagramEditor() {
     const next = !presentationModeEnabled;
     setPresentationModeEnabled(next);
     if (next) {
-      const snapshot = JSON.parse(JSON.stringify(tabDiagramData)) as DiagramData;
+      const snapshot = safeClone(tabDiagramData);
       setPresentationMasterDiagram(snapshot);
-      setPresentationDraftDiagram(JSON.parse(JSON.stringify(snapshot)) as DiagramData);
+      setPresentationDraftDiagram(safeClone(snapshot));
       setPresentationDisabledLayerIds(new Set());
       toast({ title: 'Presentation Mode Enabled', description: 'Use the toolbox to manage presentations and snapshots.' });
       return;
@@ -3021,10 +3130,20 @@ export default function DiagramEditor() {
 
     const visibleCurrent = projectVisibleDiagram(layers.filteredDiagramData ?? diagramData);
     const masterBase = projectVisibleDiagram(presentationMasterDiagram ?? diagramData);
-    const diagramDelta = computeDiagramDelta(masterBase, visibleCurrent);
 
-    // Validate round-trip correctness for stored deltas.
-    applyDiagramDelta(masterBase, diagramDelta);
+    let diagramDelta: DiagramDelta;
+    try {
+      diagramDelta = computeDiagramDelta(masterBase, visibleCurrent);
+      // Validate round-trip correctness for stored deltas.
+      applyDiagramDelta(masterBase, diagramDelta);
+    } catch {
+      // Fallback to full replace when delta generation hits non-serializable edge cases.
+      diagramDelta = {
+        version: '1.0',
+        compressed: true,
+        operations: [{ op: 'replace' as const, path: '', value: safeClone(visibleCurrent) }],
+      };
+    }
 
     return {
       snapshotImage,
@@ -3200,7 +3319,7 @@ export default function DiagramEditor() {
         setPresentationDraftDiagram(applyDiagramDelta(master, nextSlide.diagramDelta));
       }
     } else {
-      const fallbackDraft = JSON.parse(JSON.stringify(presentationMasterDiagram ?? tabDiagramData)) as DiagramData;
+      const fallbackDraft = safeClone(presentationMasterDiagram ?? tabDiagramData);
       setPresentationDraftDiagram(fallbackDraft);
     }
 
@@ -3309,7 +3428,7 @@ export default function DiagramEditor() {
       setSelectedPresentationSlideIds(new Set());
 
       if (importedBase) {
-        const baseClone = JSON.parse(JSON.stringify(importedBase)) as DiagramData;
+        const baseClone = safeClone(importedBase);
         setPresentationMasterDiagram(baseClone);
 
         if (nextActiveDeck && nextActiveDeck.slides.length > 0) {
@@ -3317,7 +3436,7 @@ export default function DiagramEditor() {
           const draft = applyDiagramDelta(projectVisibleDiagram(baseClone), firstSlide.diagramDelta);
           setPresentationDraftDiagram(draft);
         } else {
-          setPresentationDraftDiagram(JSON.parse(JSON.stringify(baseClone)) as DiagramData);
+          setPresentationDraftDiagram(safeClone(baseClone));
         }
 
         toast({ title: 'Presentations Imported', description: `Loaded ${imported.decks.length} presentation(s) with embedded base diagram format.` });

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useDrag, useDrop } from 'react-dnd';
-import { Check, ChevronLeft, ChevronRight, Copy, Download, GripVertical, Maximize2, Minimize2, Pin, PinOff, Play, Plus, Save, Trash2, Upload, Wand2 } from 'lucide-react';
+import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Copy, Download, GripVertical, Maximize2, Minimize2, Pin, PinOff, Play, Plus, Save, Trash2, Upload, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -16,6 +16,7 @@ interface DraggableSlideProps {
   slide: Slide;
   index: number;
   active: boolean;
+  compact: boolean;
   onMove: (fromIndex: number, toIndex: number) => void;
   onSelect: (slideId: string) => void;
   onDelete: (slideId: string) => void;
@@ -25,6 +26,7 @@ function DraggableSlideItem({
   slide,
   index,
   active,
+  compact,
   onMove,
   onSelect,
   onDelete,
@@ -54,7 +56,7 @@ function DraggableSlideItem({
     <div
       ref={ref}
       className={cn(
-        'group flex cursor-pointer items-center gap-2 rounded-md border p-2 transition-all',
+        'group flex cursor-pointer flex-col gap-2 rounded-md border p-2 transition-all',
         active ? 'border-primary/50 bg-primary/10 ring-1 ring-primary/20' : 'border-border bg-background hover:bg-accent/40',
         isDragging && 'opacity-50'
       )}
@@ -64,34 +66,38 @@ function DraggableSlideItem({
       <img
         src={slide.snapshotImage || SLIDE_THUMBNAIL_PLACEHOLDER}
         alt={slide.title || `Slide ${index + 1}`}
-        className="h-9 w-14 rounded border object-cover"
+        className="aspect-video w-full rounded border object-cover"
       />
 
-      <div className="min-w-0 flex-1 text-left">
-        <div className="flex items-center gap-2">
-          <div className="text-[11px] text-muted-foreground">Slide {index + 1}</div>
-          {slide.autoZoomLevel && (
-            <span className="rounded border bg-muted px-1 py-0.5 text-[10px] text-muted-foreground">
-              Zoom {(slide.autoZoomLevel * 100).toFixed(0)}%
-            </span>
-          )}
+      {!compact ? (
+        <div className="min-w-0 w-full text-left">
+          <div className="flex items-center gap-2">
+            <div className="text-[11px] text-muted-foreground">Slide {index + 1}</div>
+            {slide.autoZoomLevel && (
+              <span className="rounded border bg-muted px-1 py-0.5 text-[10px] text-muted-foreground">
+                Zoom {(slide.autoZoomLevel * 100).toFixed(0)}%
+              </span>
+            )}
+          </div>
+          <div className="truncate text-xs font-medium">{slide.title || `Snapshot ${index + 1}`}</div>
         </div>
-        <div className="truncate text-xs font-medium">{slide.title || `Snapshot ${index + 1}`}</div>
-      </div>
+      ) : (
+        <div className="text-[10px] font-medium text-muted-foreground">#{index + 1}</div>
+      )}
 
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
             size="sm"
             variant="destructive"
-            className="h-6 w-6 px-0 opacity-85 group-hover:opacity-100"
+            className={cn('self-end px-0 opacity-85 group-hover:opacity-100', compact ? 'h-5 w-5' : 'h-6 w-6')}
             aria-label="Delete snapshot"
             onClick={(e) => {
               e.stopPropagation();
               onDelete(slide.id);
             }}
           >
-            <Trash2 className="h-3 w-3" />
+            <Trash2 className={compact ? 'h-2.5 w-2.5' : 'h-3 w-3'} />
           </Button>
         </TooltipTrigger>
         <TooltipContent>Delete snapshot</TooltipContent>
@@ -153,9 +159,17 @@ export function PresentationEditorPanel({
   onExportDecks,
   onImportDecks,
 }: PresentationEditorPanelProps) {
+  const SNAPSHOT_MIN_WIDTH = 88;
+  const SNAPSHOT_MAX_WIDTH = 210;
+  const SNAPSHOT_GAP = 8;
+  const SNAPSHOT_PANE_HEIGHT_MIN = 140;
+  const SNAPSHOT_PANE_HEIGHT_MAX = 540;
+  const SNAPSHOT_PANE_HEIGHT_STEP = 40;
+
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const toolbarRef = React.useRef<HTMLDivElement | null>(null);
   const snapshotsPanelRef = React.useRef<HTMLDivElement | null>(null);
+  const snapshotsViewportRef = React.useRef<HTMLDivElement | null>(null);
   const activeDeck = decks.find((deck) => deck.id === activeDeckId) ?? null;
   const activeSlideIndex = activeDeck
     ? Math.max(0, activeDeck.slides.findIndex((slide) => slide.id === activeSlideId))
@@ -170,6 +184,8 @@ export function PresentationEditorPanel({
   const [snapshotsFloating, setSnapshotsFloating] = React.useState(false);
   const [snapshotsPosition, setSnapshotsPosition] = React.useState({ x: 20, y: 220 });
   const [draggingSnapshots, setDraggingSnapshots] = React.useState(false);
+  const [snapshotsPaneHeight, setSnapshotsPaneHeight] = React.useState(256);
+  const [snapshotTileMinWidth, setSnapshotTileMinWidth] = React.useState(170);
 
   React.useEffect(() => {
     setRenameDraft(activeDeck?.name ?? '');
@@ -296,6 +312,55 @@ export function PresentationEditorPanel({
     window.addEventListener('mouseup', onMouseUp);
   }, [snapshotsFloating, snapshotsPosition.x, snapshotsPosition.y, snapSnapshotsToToolbar]);
 
+  React.useEffect(() => {
+    if (!activeDeck || snapshotsCollapsed) {
+      return;
+    }
+
+    const viewport = snapshotsViewportRef.current;
+    if (!viewport) {
+      return;
+    }
+
+    const computeTileWidth = () => {
+      const containerWidth = Math.max(0, viewport.clientWidth - 8);
+      const containerHeight = Math.max(0, viewport.clientHeight - 8);
+      const count = activeDeck.slides.length;
+
+      if (!containerWidth || !containerHeight || count <= 0) {
+        setSnapshotTileMinWidth(170);
+        return;
+      }
+
+      let best = SNAPSHOT_MAX_WIDTH;
+
+      for (let width = SNAPSHOT_MAX_WIDTH; width >= SNAPSHOT_MIN_WIDTH; width -= 2) {
+        const columns = Math.max(1, Math.floor((containerWidth + SNAPSHOT_GAP) / (width + SNAPSHOT_GAP)));
+        const rows = Math.ceil(count / columns);
+        const contentHeight = width * (9 / 16) + (width <= 100 ? 34 : 74);
+        const totalHeight = rows * contentHeight + Math.max(0, rows - 1) * SNAPSHOT_GAP;
+
+        if (totalHeight <= containerHeight) {
+          best = width;
+          break;
+        }
+
+        best = width;
+      }
+
+      setSnapshotTileMinWidth(Math.max(SNAPSHOT_MIN_WIDTH, Math.min(SNAPSHOT_MAX_WIDTH, best)));
+    };
+
+    computeTileWidth();
+
+    const resizeObserver = new ResizeObserver(() => {
+      computeTileWidth();
+    });
+
+    resizeObserver.observe(viewport);
+    return () => resizeObserver.disconnect();
+  }, [activeDeck, snapshotsCollapsed, snapshotsPaneHeight]);
+
   if (!isOpen) return null;
 
   const panelClassName = toolbarFloating
@@ -315,19 +380,29 @@ export function PresentationEditorPanel({
     : undefined;
 
   const snapshotsList = (
-    <div className="max-h-48 space-y-1 overflow-y-auto rounded-md border bg-background/60 p-1">
+    <div
+      ref={snapshotsViewportRef}
+      className="overflow-y-auto rounded-md border bg-background/60 p-2"
+      style={{ height: snapshotsPaneHeight }}
+    >
       {activeDeck && activeDeck.slides.length > 0 ? (
-        activeDeck.slides.map((slide, index) => (
-          <DraggableSlideItem
-            key={slide.id}
-            slide={slide}
-            index={index}
-            active={activeSlideIndex === index}
-            onMove={onMoveSlide}
-            onSelect={onSelectSlide}
-            onDelete={onDeleteSlide}
-          />
-        ))
+        <div
+          className="grid gap-2"
+          style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${snapshotTileMinWidth}px, 1fr))` }}
+        >
+          {activeDeck.slides.map((slide, index) => (
+            <DraggableSlideItem
+              key={slide.id}
+              slide={slide}
+              index={index}
+              active={activeSlideIndex === index}
+              compact={snapshotTileMinWidth <= 100}
+              onMove={onMoveSlide}
+              onSelect={onSelectSlide}
+              onDelete={onDeleteSlide}
+            />
+          ))}
+        </div>
       ) : (
         <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
           No snapshots yet. Add Snapshot to capture the current visible canvas.
@@ -575,6 +650,36 @@ export function PresentationEditorPanel({
                     size="sm"
                     variant="outline"
                     className="h-6 w-6 px-0"
+                    onClick={() => setSnapshotsPaneHeight((prev) => Math.max(SNAPSHOT_PANE_HEIGHT_MIN, prev - SNAPSHOT_PANE_HEIGHT_STEP))}
+                    aria-label="Decrease snapshots pane height"
+                    disabled={snapshotsPaneHeight <= SNAPSHOT_PANE_HEIGHT_MIN}
+                  >
+                    <ChevronUp className="h-3 w-3" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Shrink snapshots pane</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 w-6 px-0"
+                    onClick={() => setSnapshotsPaneHeight((prev) => Math.min(SNAPSHOT_PANE_HEIGHT_MAX, prev + SNAPSHOT_PANE_HEIGHT_STEP))}
+                    aria-label="Increase snapshots pane height"
+                    disabled={snapshotsPaneHeight >= SNAPSHOT_PANE_HEIGHT_MAX}
+                  >
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Grow snapshots pane</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 w-6 px-0"
                     onClick={() => setSnapshotsCollapsed((prev) => !prev)}
                     aria-label={snapshotsCollapsed ? 'Expand snapshots' : 'Collapse snapshots'}
                   >
@@ -623,6 +728,36 @@ export function PresentationEditorPanel({
               )}
             </div>
             <div className="flex items-center gap-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 w-6 px-0"
+                    onClick={() => setSnapshotsPaneHeight((prev) => Math.max(SNAPSHOT_PANE_HEIGHT_MIN, prev - SNAPSHOT_PANE_HEIGHT_STEP))}
+                    aria-label="Decrease snapshots pane height"
+                    disabled={snapshotsPaneHeight <= SNAPSHOT_PANE_HEIGHT_MIN}
+                  >
+                    <ChevronUp className="h-3 w-3" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Shrink snapshots pane</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 w-6 px-0"
+                    onClick={() => setSnapshotsPaneHeight((prev) => Math.min(SNAPSHOT_PANE_HEIGHT_MAX, prev + SNAPSHOT_PANE_HEIGHT_STEP))}
+                    aria-label="Increase snapshots pane height"
+                    disabled={snapshotsPaneHeight >= SNAPSHOT_PANE_HEIGHT_MAX}
+                  >
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Grow snapshots pane</TooltipContent>
+              </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
