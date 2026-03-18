@@ -14,7 +14,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Copy, Check, ExternalLink } from 'lucide-react';
 import type { DiagramData } from '@/lib/types';
-import { convertToNestedHierarchy } from '@/lib/nested-hierarchy';
 import { useToast } from '@/hooks/use-toast';
 
 interface ViewerUrlDialogProps {
@@ -30,9 +29,8 @@ export function ViewerUrlDialog({ open, onOpenChange, diagramData }: ViewerUrlDi
 
   useEffect(() => {
     if (open && diagramData) {
-      // Convert to hierarchical format (standard format for export)
-      const hierarchicalData = convertToNestedHierarchy(diagramData);
-      const jsonString = JSON.stringify(hierarchicalData);
+      // Use flat format to preserve subDiagrams, subDiagramId, and all nested diagram data
+      const jsonString = JSON.stringify(diagramData);
       
       // Encode to base64
       const base64Json = btoa(jsonString);

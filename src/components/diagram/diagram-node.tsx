@@ -181,6 +181,8 @@ interface DiagramNodeProps {
   onSubDiagramDoubleClick?: (node: DiagramNodeData) => void;
   /** True when node links to an existing sub-diagram (shows golden glow) */
   hasLinkedSubDiagram?: boolean;
+  /** When true, show URL handle (green icon) even in read-only mode - for viewer link support */
+  showUrlHandleWhenReadOnly?: boolean;
 }
 
 function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps): boolean {
@@ -233,10 +235,11 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
     prev.isConnectMode === next.isConnectMode &&
     prev.animationStyle === next.animationStyle &&
     prev.onSubDiagramDoubleClick === next.onSubDiagramDoubleClick &&
-    prev.hasLinkedSubDiagram === next.hasLinkedSubDiagram;
+    prev.hasLinkedSubDiagram === next.hasLinkedSubDiagram &&
+    prev.showUrlHandleWhenReadOnly === next.showUrlHandleWhenReadOnly;
 }
 
-function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onResizeStart, onResizeEnd, onPositionUpdate, onDraggingChange, onUpdate, hoverEnabled = true, isReadOnly = false, onHoverChange, onConnect, isConnectMode, transform, canvasRef, stackZIndex, pointerEventsPassThrough = false, animationStyle, onSubDiagramDoubleClick, hasLinkedSubDiagram }: DiagramNodeProps) {
+function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onResizeStart, onResizeEnd, onPositionUpdate, onDraggingChange, onUpdate, hoverEnabled = true, isReadOnly = false, onHoverChange, onConnect, isConnectMode, transform, canvasRef, stackZIndex, pointerEventsPassThrough = false, animationStyle, onSubDiagramDoubleClick, hasLinkedSubDiagram, showUrlHandleWhenReadOnly }: DiagramNodeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [isEditingTag, setIsEditingTag] = useState(false);
@@ -1508,8 +1511,8 @@ return (
          />
        )}
 
-       {/* URL handle - icon nodes and shapes with configured URL */}
-       {!isReadOnly && (isIconNode || isShapeNode) && (isSelected || isMultiSelected) && !!node.linkUrl?.trim() && (
+       {/* URL handle - icon nodes and shapes with configured URL (editor when selected, viewer when selected + showUrlHandleWhenReadOnly) */}
+       {((!isReadOnly || showUrlHandleWhenReadOnly) && (isIconNode || isShapeNode) && (isSelected || isMultiSelected) && !!node.linkUrl?.trim()) && (
          <UrlHandle
            visible={true}
            onOpen={() => {
@@ -1517,6 +1520,7 @@ return (
            }}
            disabled={false}
            zIndexClass="z-50"
+           url={node.linkUrl?.trim()}
          />
        )}
 

@@ -15,8 +15,6 @@ import { isShapeNodeType } from "@/lib/utils";
 import { getDownstreamAnimationChainNodes } from "@/lib/connection-animation";
 import { MetadataPopup } from "../editor/metadata-popup";
 import type { DiagramConnectionData } from "@/lib/types";
-import { normalizeExternalUrl, openExternalUrlInNewTab } from "@/lib/url-utils";
-
 function connKey(conn: DiagramConnectionData): string {
   return (conn as any).id || `${conn.from}\u2192${conn.to}`;
 }
@@ -107,7 +105,6 @@ export function ViewerCanvas({ diagramData, showRulers = true, onFitToView, tran
     bottom: number;
   } | null>(null);
   const [isClient, setIsClient] = useState(false);
-  const lastOpenedLinkRef = useRef<{ url: string; at: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef<{ x: number; y: number; transform: Transform } | null>(null);
   const hasFittedToViewRef = useRef(false);
@@ -287,21 +284,8 @@ export function ViewerCanvas({ diagramData, showRulers = true, onFitToView, tran
       }
 
       onItemSelect?.({ ...node, itemType: "node" } as ViewerSelectedItem);
-
-      if (openNodeLinksOnClick) {
-        const normalized = normalizeExternalUrl((node as { linkUrl?: string }).linkUrl);
-        if (normalized) {
-          const now = Date.now();
-          const recent = lastOpenedLinkRef.current;
-          // Guard against duplicate click handlers firing for a single user action.
-          if (!recent || recent.url !== normalized || now - recent.at > 700) {
-            lastOpenedLinkRef.current = { url: normalized, at: now };
-            openExternalUrlInNewTab(normalized);
-          }
-        }
-      }
     },
-    [onItemSelect, animationToggleOnClickEnabled, animationDisabledSources, onAnimationDisabledSourcesChange, diagramData, openNodeLinksOnClick]
+    [onItemSelect, animationToggleOnClickEnabled, animationDisabledSources, onAnimationDisabledSourcesChange, diagramData]
   );
 
   const handleSubDiagramDoubleClick = useCallback(
@@ -426,6 +410,7 @@ export function ViewerCanvas({ diagramData, showRulers = true, onFitToView, tran
                   onClick={handleNodeClick}
                   onSubDiagramDoubleClick={onSubDiagramDoubleClick ? handleSubDiagramDoubleClick : undefined}
                   hasLinkedSubDiagram={getHasLinkedSubDiagram?.(node) ?? Boolean(node.subDiagramId)}
+                  showUrlHandleWhenReadOnly={openNodeLinksOnClick}
                   animationStyle={nodeTransitionStyles.get(node.id)}
                 />
               ) : null;
@@ -454,11 +439,12 @@ export function ViewerCanvas({ diagramData, showRulers = true, onFitToView, tran
                   isReadOnly={true}
                   onHoverChange={handleNodeHover}
                   onClick={handleNodeClick}
-                  onSubDiagramDoubleClick={onSubDiagramDoubleClick ? handleSubDiagramDoubleClick : undefined}
-                  hasLinkedSubDiagram={getHasLinkedSubDiagram?.(node) ?? Boolean(node.subDiagramId)}
-                  animationStyle={nodeTransitionStyles.get(node.id)}
-                />
-              ) : null;
+                    onSubDiagramDoubleClick={onSubDiagramDoubleClick ? handleSubDiagramDoubleClick : undefined}
+                    hasLinkedSubDiagram={getHasLinkedSubDiagram?.(node) ?? Boolean(node.subDiagramId)}
+                    showUrlHandleWhenReadOnly={openNodeLinksOnClick}
+                    animationStyle={nodeTransitionStyles.get(node.id)}
+                  />
+                ) : null;
               return [
                 connIndices ? (
                   <CanvasConnections

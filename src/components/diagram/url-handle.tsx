@@ -10,6 +10,8 @@ interface UrlHandleProps {
   disabled?: boolean;
   zIndexClass?: string;
   className?: string;
+  /** URL shown in tooltip on hover */
+  url?: string;
 }
 
 export function UrlHandle({
@@ -18,6 +20,7 @@ export function UrlHandle({
   disabled = false,
   zIndexClass = "z-50",
   className,
+  url,
 }: UrlHandleProps) {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -58,8 +61,8 @@ export function UrlHandle({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={handleClick}
-      title="Open URL"
-      aria-label="Open URL"
+      title={url ? `Open: ${url}` : "Open URL"}
+      aria-label={url ? `Open: ${url}` : "Open URL"}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {

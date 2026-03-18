@@ -1,6 +1,7 @@
 import type { DiagramData, HierarchicalDiagramData } from './types';
 import { DiagramDataSchema, HierarchicalDiagramDataSchema } from './schemas';
 import { convertFromNestedHierarchy } from './nested-hierarchy';
+import { flattenDiagramOnImport, type RawDiagramData } from './flatten-on-import';
 import { ensureConnectionIds } from './connection-order-utils';
 
 const MAX_JSON_SIZE = 5 * 1024 * 1024; // 5MB limit
@@ -129,6 +130,9 @@ export function validateAndConvertJson(json: unknown): DiagramData {
     }
     // Convert hierarchical to flat format
     dataToValidate = convertFromNestedHierarchy(hierarchicalResult.data as HierarchicalDiagramData);
+  } else if (typeof json === 'object' && json !== null && 'zones' in json && Array.isArray((json as any).zones) && (json as any).zones.length > 0) {
+    // Flat format with zones - flatten to extract nodes (preserves subDiagrams)
+    dataToValidate = flattenDiagramOnImport(json as unknown as RawDiagramData);
   }
 
   // Validate flat format
@@ -138,11 +142,14 @@ export function validateAndConvertJson(json: unknown): DiagramData {
   }
 
   const connections = ensureConnectionIds(flatResult.data.connections || []);
+  const data = flatResult.data as DiagramData;
   return {
-    nodes: flatResult.data.nodes || [],
+    nodes: data.nodes || [],
     connections,
-    groupings: flatResult.data.groupings || [],
-    layers: flatResult.data.layers,
+    groupings: data.groupings || [],
+    layers: data.layers,
+    subDiagrams: data.subDiagrams,
+    recentColors: data.recentColors,
   } as DiagramData;
 }
 
