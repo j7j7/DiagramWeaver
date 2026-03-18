@@ -274,10 +274,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
 
   const handleLabelDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (node.subDiagramId && onSubDiagramDoubleClick) {
-      onSubDiagramDoubleClick(node);
-      return;
-    }
+    // Label double-click always enters edit mode; sub-diagram navigation only on icon/glow double-click
     setIsEditingLabel(true);
     setIsOpen(false); // Close popup when editing starts
     setEditText(node.label || '');
