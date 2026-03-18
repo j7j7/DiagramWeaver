@@ -273,6 +273,7 @@ export function PresentationPlayer({
                     onTransformChange={setPlaybackTransform}
                     onFitToView={() => {}}
                     metadataPopupsEnabled={false}
+                    openNodeLinksOnClick={true}
                     animationConnectionsEnabled={playbackAnimationEnabled}
                     animationFilterSourceIds={animationFilterSourceIds}
                     animationDisabledSources={animationDisabledSources}

@@ -31,7 +31,8 @@ import {
   Tag,
   Minus,
   Copy,
-  SquareMinus
+  SquareMinus,
+  ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,6 +59,8 @@ import { isShapeNodeType, isIconOrEmojiType } from '@/lib/utils';
 import { extractVisualStylingFromNode, extractVisualStylingFromGroup } from '@/lib/visual-styling';
 import { extractLineStylingFromNode, applyLineStylingToNode } from '@/lib/line-styling';
 import { toConnectionAnimationPatch } from '@/lib/connection-animation';
+import { useToast } from '@/hooks/use-toast';
+import { normalizeExternalUrl, openExternalUrlInNewTab } from '@/lib/url-utils';
 
 interface ContextToolbarProps {
   selectedItem: SelectedItem | null;
@@ -119,6 +122,7 @@ export function ContextToolbar({
   onPropagateAddToLaterSlides,
   onPropagateDeleteToLaterSlides,
 }: ContextToolbarProps) {
+  const { toast } = useToast();
   const [labelOpen, setLabelOpen] = useState(false);
   const [labelInputValue, setLabelInputValue] = useState('');
   const labelDebounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -573,6 +577,22 @@ export function ContextToolbar({
       onItemUpdate?.({ ...item, info: value } as SelectedItem);
     }
   }, [descriptionDraft, selectedItem, onItemUpdate]);
+
+  const handleOpenNodeLink = useCallback(() => {
+    if (!selectedItem || selectedItem.itemType !== 'node') return;
+    const rawUrl = (selectedItem as { linkUrl?: string }).linkUrl;
+    const normalized = normalizeExternalUrl(rawUrl);
+    if (!normalized) {
+      toast({
+        variant: 'destructive',
+        title: 'No valid URL',
+        description: 'Add a valid URL in the Properties panel first.',
+      });
+      return;
+    }
+
+    openExternalUrlInNewTab(normalized);
+  }, [selectedItem, toast]);
 
   if (!selectedItem) {
     return null;
@@ -1366,6 +1386,23 @@ export function ContextToolbar({
             </div>
           </PopoverContent>
         </Popover>
+        )}
+
+        {/* Open URL in new tab */}
+        {isNode && !isLineNode && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2"
+                onClick={handleOpenNodeLink}
+              >
+                <ExternalLink className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Open URL</TooltipContent>
+          </Tooltip>
         )}
 
         {/* Connect Button - Hide for lines */}

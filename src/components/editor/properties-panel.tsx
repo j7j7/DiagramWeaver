@@ -1,13 +1,15 @@
 "use client";
 
 import React, { useState, useCallback, useMemo } from "react";
-import { ChevronLeft, ChevronRight, Pencil, Plus, Trash2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, Pencil, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { normalizeExternalUrl, openExternalUrlInNewTab } from "@/lib/url-utils";
 import type { SelectedItem } from "../diagram-editor";
 import type { DiagramData } from "@/lib/types";
 
@@ -54,6 +56,7 @@ export function PropertiesPanel({
   onToggleCollapse,
   isReadOnly = false,
 }: PropertiesPanelProps) {
+  const { toast } = useToast();
   const usedMetadataKeys = useMemo(
     () => getUsedMetadataKeys(diagramData),
     [diagramData]
@@ -82,6 +85,10 @@ export function PropertiesPanel({
       : selectedItem?.itemType === "edge"
         ? "Connection"
         : "";
+
+  const isNode = selectedItem?.itemType === "node";
+  const linkUrl = isNode ? ((selectedItem as SelectedItem & { linkUrl?: string }).linkUrl ?? "") : "";
+  const normalizedLinkUrl = useMemo(() => normalizeExternalUrl(linkUrl), [linkUrl]);
 
   const handleMetaDataChange = useCallback(
     (newMetaData: Record<string, string>) => {
@@ -146,6 +153,27 @@ export function PropertiesPanel({
     },
     [selectedItem, metaData, handleMetaDataChange, isReadOnly]
   );
+
+  const handleLinkChange = useCallback(
+    (nextLinkUrl: string) => {
+      if (!selectedItem || selectedItem.itemType !== "node" || isReadOnly) return;
+      onItemUpdate({ ...selectedItem, linkUrl: nextLinkUrl });
+    },
+    [selectedItem, onItemUpdate, isReadOnly]
+  );
+
+  const handleOpenLink = useCallback(() => {
+    if (!normalizedLinkUrl) {
+      toast({
+        variant: "destructive",
+        title: "Invalid URL",
+        description: "Enter a valid http(s) URL.",
+      });
+      return;
+    }
+
+    openExternalUrlInNewTab(normalizedLinkUrl);
+  }, [normalizedLinkUrl, toast]);
 
   React.useEffect(() => {
     setEditingKey(null);
@@ -213,6 +241,55 @@ export function PropertiesPanel({
                   {displayType || "—"}
                 </div>
               </div>
+
+              {isNode && (
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">URL</Label>
+                  {!isReadOnly ? (
+                    <Input
+                      value={linkUrl}
+                      onChange={(e) => handleLinkChange(e.target.value)}
+                      placeholder="https://example.com"
+                      className="h-8 text-sm"
+                    />
+                  ) : (
+                    <div className="text-sm text-muted-foreground truncate" title={linkUrl || ""}>
+                      {linkUrl || "—"}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    {normalizedLinkUrl ? (
+                      <Button size="sm" variant="outline" className="h-8" asChild>
+                        <a href={normalizedLinkUrl} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className="mr-2 h-4 w-4" />
+                          Open URL
+                        </a>
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8"
+                        onClick={handleOpenLink}
+                        disabled
+                      >
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        Open URL
+                      </Button>
+                    )}
+                    {!isReadOnly && linkUrl && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8"
+                        onClick={() => handleLinkChange("")}
+                      >
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">

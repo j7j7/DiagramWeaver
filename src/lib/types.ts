@@ -25,6 +25,7 @@ export interface DiagramNodeData {
   tag?: string;
   tagPosition?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right';
   info?: string;
+  linkUrl?: string;
   x?: number;
   y?: number;
   lineColor?: string; // Color for connections/borders
@@ -180,6 +181,7 @@ export interface DiagramNodeItem {
   /** Rich formatting for textbox nodes - per-segment bold/italic/underline. When set, used for display instead of plain label. */
   richLabel?: RichTextRun[];
   info?: string;
+  linkUrl?: string;
   x?: number;
   y?: number;
   lineColor?: string; // Color for connections/borders

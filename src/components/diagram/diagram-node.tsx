@@ -44,7 +44,9 @@ import { ResizeHandles } from "./resize-handles";
 import { LineEndpointHandles } from "./line-endpoint-handles";
 import { ConnectHandle } from "./connect-handle";
 import { CornerRadiusHandle } from "./corner-radius-handle";
+import { UrlHandle } from "./url-handle";
 import { computeUmlClassDimensions } from "@/lib/uml-utils";
+import { openExternalUrlInNewTab } from "@/lib/url-utils";
 
 const NODE_WIDTH = 80;
 const BASE_NODE_HEIGHT = 80;
@@ -1484,6 +1486,18 @@ return (
            visible={true}
            onConnect={() => onConnect({ style: 'bezier', curvature: 0.6 })}
            isConnectMode={isConnectMode}
+           disabled={false}
+           zIndexClass="z-50"
+         />
+       )}
+
+       {/* URL handle - icon nodes with configured URL */}
+       {!isReadOnly && isIconNode && (isSelected || isMultiSelected) && !!node.linkUrl?.trim() && (
+         <UrlHandle
+           visible={true}
+           onOpen={() => {
+             openExternalUrlInNewTab(node.linkUrl);
+           }}
            disabled={false}
            zIndexClass="z-50"
          />

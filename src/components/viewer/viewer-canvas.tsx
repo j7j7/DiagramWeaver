@@ -15,6 +15,7 @@ import { isShapeNodeType } from "@/lib/utils";
 import { getDownstreamAnimationChainNodes } from "@/lib/connection-animation";
 import { MetadataPopup } from "../editor/metadata-popup";
 import type { DiagramConnectionData } from "@/lib/types";
+import { normalizeExternalUrl, openExternalUrlInNewTab } from "@/lib/url-utils";
 
 function connKey(conn: DiagramConnectionData): string {
   return (conn as any).id || `${conn.from}\u2192${conn.to}`;
@@ -48,13 +49,15 @@ interface ViewerCanvasProps {
   animationDisabledSources?: Set<string>;
   /** Callback to update disabled animation sources */
   onAnimationDisabledSourcesChange?: (sources: Set<string>) => void;
+  /** When true, clicking a node with a valid URL opens it in a new browser tab. */
+  openNodeLinksOnClick?: boolean;
   /** Node transition styles for slide transitions */
   nodeTransitionStyles?: Map<string, { opacity: number; transition: string; transform?: string; transformOrigin?: string }>;
   /** Connection transition styles for slide transitions */
   connectionTransitionStyles?: Map<string, { opacity: number; transition: string; transform?: string; transformOrigin?: string }>;
 }
 
-export function ViewerCanvas({ diagramData, showRulers = true, onFitToView, transform: externalTransform, onTransformChange, selectedItemId, selectedItem, onItemSelect, metadataPopupsEnabled = true, animationConnectionsEnabled = true, connectionsBehindNodesEnabled: connectionsBehindNodesProp, showAnimationsForSelectedOnly = false, animationFilterSourceIds, animationToggleOnClickEnabled = false, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, nodeTransitionStyles = new Map(), connectionTransitionStyles = new Map() }: ViewerCanvasProps) {
+export function ViewerCanvas({ diagramData, showRulers = true, onFitToView, transform: externalTransform, onTransformChange, selectedItemId, selectedItem, onItemSelect, metadataPopupsEnabled = true, animationConnectionsEnabled = true, connectionsBehindNodesEnabled: connectionsBehindNodesProp, showAnimationsForSelectedOnly = false, animationFilterSourceIds, animationToggleOnClickEnabled = false, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, openNodeLinksOnClick = false, nodeTransitionStyles = new Map(), connectionTransitionStyles = new Map() }: ViewerCanvasProps) {
   const [connectionsBehindNodesEnabled, setConnectionsBehindNodesEnabled] = useState(true);
   useEffect(() => {
     if (connectionsBehindNodesProp !== undefined) {
@@ -100,6 +103,7 @@ export function ViewerCanvas({ diagramData, showRulers = true, onFitToView, tran
     bottom: number;
   } | null>(null);
   const [isClient, setIsClient] = useState(false);
+  const lastOpenedLinkRef = useRef<{ url: string; at: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef<{ x: number; y: number; transform: Transform } | null>(null);
   const hasFittedToViewRef = useRef(false);
@@ -279,8 +283,21 @@ export function ViewerCanvas({ diagramData, showRulers = true, onFitToView, tran
       }
 
       onItemSelect?.({ ...node, itemType: "node" } as ViewerSelectedItem);
+
+      if (openNodeLinksOnClick) {
+        const normalized = normalizeExternalUrl((node as { linkUrl?: string }).linkUrl);
+        if (normalized) {
+          const now = Date.now();
+          const recent = lastOpenedLinkRef.current;
+          // Guard against duplicate click handlers firing for a single user action.
+          if (!recent || recent.url !== normalized || now - recent.at > 700) {
+            lastOpenedLinkRef.current = { url: normalized, at: now };
+            openExternalUrlInNewTab(normalized);
+          }
+        }
+      }
     },
-    [onItemSelect, animationToggleOnClickEnabled, animationDisabledSources, onAnimationDisabledSourcesChange, diagramData]
+    [onItemSelect, animationToggleOnClickEnabled, animationDisabledSources, onAnimationDisabledSourcesChange, diagramData, openNodeLinksOnClick]
   );
 
   const handleViewerItemSelect = useCallback(

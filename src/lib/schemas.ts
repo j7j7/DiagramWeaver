@@ -23,6 +23,7 @@ export const DiagramNodeDataSchema = z.object({
   tag: z.string().optional(),
   tagPosition: z.enum(['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right']).optional(),
   info: z.string().optional(),
+  linkUrl: z.string().optional(),
   x: z.number().optional(),
   y: z.number().optional(),
   imagePath: z.string().optional(), // Override icon path
@@ -298,6 +299,7 @@ export const DiagramNodeItemSchema = z.object({
   tag: z.string().optional(),
   tagPosition: z.enum(['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right']).optional(),
   info: z.string().optional(),
+  linkUrl: z.string().optional(),
   x: z.number().optional(),
   y: z.number().optional(),
   lineColor: z.string().optional(), // Color for connections/borders

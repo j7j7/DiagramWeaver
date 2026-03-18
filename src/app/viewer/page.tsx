@@ -248,6 +248,7 @@ function ViewerPageContent() {
             selectedItem={selectedItem}
             onItemSelect={handleItemSelect}
             metadataPopupsEnabled={metadataPopupsEnabled}
+            openNodeLinksOnClick={true}
             animationConnectionsEnabled={animationConnectionsEnabled}
             showAnimationsForSelectedOnly={showAnimationsForSelectedOnly && animationConnectionsEnabled}
             animationFilterSourceIds={effectiveAnimationFilterIds}
