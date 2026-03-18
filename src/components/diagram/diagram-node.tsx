@@ -1491,8 +1491,8 @@ return (
          />
        )}
 
-       {/* URL handle - icon nodes with configured URL */}
-       {!isReadOnly && isIconNode && (isSelected || isMultiSelected) && !!node.linkUrl?.trim() && (
+       {/* URL handle - icon nodes and shapes with configured URL */}
+       {!isReadOnly && (isIconNode || isShapeNode) && (isSelected || isMultiSelected) && !!node.linkUrl?.trim() && (
          <UrlHandle
            visible={true}
            onOpen={() => {
