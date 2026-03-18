@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo, Suspense } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
@@ -12,6 +12,7 @@ import { DiagramBreadcrumb, type BreadcrumbSegment } from "@/components/editor/d
 import { loadViewerData, parseViewerParams } from "@/lib/viewer-utils";
 import { filterByVisibleLayers, toggleLayerVisibility, validateLayersConfig } from "@/lib/layers-utils";
 import { getDiagramAtStack } from "@/lib/sub-diagram-utils";
+import { sanitizeViewState } from "@/lib/view-state-utils";
 import { getDownstreamAnimationChainNodes } from "@/lib/connection-animation";
 import { isEventFromEditableElement } from "@/lib/keyboard-utils";
 import type { DiagramData, DiagramNodeData, LayersConfig } from "@/lib/types";
@@ -170,9 +171,6 @@ function ViewerPageContent() {
     (index: number) => {
       setActiveDiagramStack((s) => s.slice(0, index));
       setSelectedItem(null);
-      setTimeout(() => {
-        if ((window as any).__viewerFitToView) (window as any).__viewerFitToView();
-      }, 100);
     },
     []
   );
@@ -184,10 +182,30 @@ function ViewerPageContent() {
       { diagramId: node.subDiagramId!, fromNodeId: node.id, fromNodeLabel: node.label || "Sub-diagram" },
     ]);
     setSelectedItem(null);
-    setTimeout(() => {
-      if ((window as any).__viewerFitToView) (window as any).__viewerFitToView();
-    }, 100);
   }, []);
+
+  /** Restore viewState when navigating; use fitToView if no saved state */
+  const lastRestoredStackRef = useRef<string | null>(null);
+  useEffect(() => {
+    lastRestoredStackRef.current = null;
+  }, [diagramData]);
+  useEffect(() => {
+    if (!diagramData) return;
+    const stackKey = JSON.stringify(activeDiagramStack);
+    if (lastRestoredStackRef.current === stackKey) return;
+    lastRestoredStackRef.current = stackKey;
+
+    const targetDiagram = getDiagramAtStack(diagramData, activeDiagramStack);
+    const vs = sanitizeViewState(targetDiagram?.viewState);
+    if (vs) {
+      setTransform(vs);
+    } else {
+      const t = setTimeout(() => {
+        if ((window as any).__viewerFitToView) (window as any).__viewerFitToView();
+      }, 100);
+      return () => clearTimeout(t);
+    }
+  }, [activeDiagramStack, diagramData, setTransform]);
 
   const getHasLinkedSubDiagram = useCallback(
     (node: DiagramNodeData) => {

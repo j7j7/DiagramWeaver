@@ -274,6 +274,12 @@ export const PresentationDeckSchema = z.object({
 
 export const PresentationDeckListSchema = z.array(PresentationDeckSchema);
 
+const DiagramViewStateSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+  k: z.number(),
+}).optional();
+
 // Main DiagramData schema - zones stripped on parse via flattenDiagramOnImport
 // subDiagrams: recursive structure, validated loosely to avoid circular type
 export const DiagramDataSchema = z.object({
@@ -283,6 +289,7 @@ export const DiagramDataSchema = z.object({
   layers: LayersConfigSchema.optional(),
   recentColors: z.array(z.string()).optional(),
   subDiagrams: z.record(z.string(), z.any()).optional(),
+  viewState: DiagramViewStateSchema,
 });
 
 export type DiagramDataValidated = z.infer<typeof DiagramDataSchema>;

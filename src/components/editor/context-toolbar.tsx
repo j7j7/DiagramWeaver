@@ -75,6 +75,10 @@ interface ContextToolbarProps {
   onConnectionWaypointRemove?: (from: string, to: string, index: number, connectionId?: string) => void;
   diagramData?: DiagramData;
   onDiagramDataUpdate?: (newDiagramData: DiagramData) => void;
+  /** Current diagram (root or sub) - for sub-diagram safe operations */
+  currentDiagramData?: DiagramData;
+  /** Updates current diagram - for sub-diagram safe updates */
+  onCurrentDiagramDataUpdate?: (updater: DiagramData | ((prev: DiagramData) => DiagramData)) => void;
   onAlignObjects?: (alignment: 'top' | 'center' | 'bottom' | 'v-middle' | 'left' | 'h-center' | 'right' | 'distribute-v' | 'distribute-h') => void;
   onThemeApplyToSelected?: (theme: DiagramTheme) => void;
   textStylingPanelOpen?: boolean;
@@ -106,6 +110,8 @@ export function ContextToolbar({
   onConnectionWaypointRemove,
   diagramData,
   onDiagramDataUpdate,
+  currentDiagramData,
+  onCurrentDiagramDataUpdate,
   onAlignObjects,
   onThemeApplyToSelected,
   textStylingPanelOpen = false,
@@ -2480,10 +2486,11 @@ export function ContextToolbar({
                     size="sm"
                     className="w-full justify-start h-8 px-2"
                     onClick={() => {
-                      if (onDiagramDataUpdate && diagramData) {
+                      const data = currentDiagramData ?? diagramData;
+                      if (onCurrentDiagramDataUpdate && data) {
                         const { moveItemToFront } = require('@/lib/rendering-order-utils');
-                        const updatedData = moveItemToFront(diagramData, selectedItem.id, selectedItem.itemType);
-                        onDiagramDataUpdate(updatedData);
+                        const updatedData = moveItemToFront(data, selectedItem.id, selectedItem.itemType);
+                        onCurrentDiagramDataUpdate(updatedData);
                       }
                     }}
                   >
@@ -2495,10 +2502,11 @@ export function ContextToolbar({
                     size="sm"
                     className="w-full justify-start h-8 px-2"
                     onClick={() => {
-                      if (onDiagramDataUpdate && diagramData) {
+                      const data = currentDiagramData ?? diagramData;
+                      if (onCurrentDiagramDataUpdate && data) {
                         const { moveItemOneForward } = require('@/lib/rendering-order-utils');
-                        const updatedData = moveItemOneForward(diagramData, selectedItem.id, selectedItem.itemType);
-                        onDiagramDataUpdate(updatedData);
+                        const updatedData = moveItemOneForward(data, selectedItem.id, selectedItem.itemType);
+                        onCurrentDiagramDataUpdate(updatedData);
                       }
                     }}
                   >
@@ -2510,10 +2518,11 @@ export function ContextToolbar({
                     size="sm"
                     className="w-full justify-start h-8 px-2"
                     onClick={() => {
-                      if (onDiagramDataUpdate && diagramData) {
+                      const data = currentDiagramData ?? diagramData;
+                      if (onCurrentDiagramDataUpdate && data) {
                         const { moveItemOneBack } = require('@/lib/rendering-order-utils');
-                        const updatedData = moveItemOneBack(diagramData, selectedItem.id, selectedItem.itemType);
-                        onDiagramDataUpdate(updatedData);
+                        const updatedData = moveItemOneBack(data, selectedItem.id, selectedItem.itemType);
+                        onCurrentDiagramDataUpdate(updatedData);
                       }
                     }}
                   >
@@ -2525,10 +2534,11 @@ export function ContextToolbar({
                     size="sm"
                     className="w-full justify-start h-8 px-2"
                     onClick={() => {
-                      if (onDiagramDataUpdate && diagramData) {
+                      const data = currentDiagramData ?? diagramData;
+                      if (onCurrentDiagramDataUpdate && data) {
                         const { moveItemToBack } = require('@/lib/rendering-order-utils');
-                        const updatedData = moveItemToBack(diagramData, selectedItem.id, selectedItem.itemType);
-                        onDiagramDataUpdate(updatedData);
+                        const updatedData = moveItemToBack(data, selectedItem.id, selectedItem.itemType);
+                        onCurrentDiagramDataUpdate(updatedData);
                       }
                     }}
                   >

@@ -2,6 +2,12 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-03-18 – Per-Diagram ViewState (Zoom/Pan) Persistence
+**ViewState stored per diagram level in JSON**: When navigating to a sub-diagram or via breadcrumbs, the view no longer auto-resizes. Instead, each diagram (root and each sub-diagram) stores `viewState?: { x, y, k }` in the JSON. If present, that zoom/position is restored when navigating to it; if absent, fit-to-view runs. **Persist**: Canvas transform changes are debounced (400ms) and saved to the current diagram's viewState. **Restore**: Effect on activeDiagramStack change reads target diagram's viewState and applies it or fits. Same logic in editor and standalone viewer. Modified: `types.ts` (DiagramViewState, DiagramData.viewState), `schemas.ts`, `flatten-on-import.ts`, `view-state-utils.ts` (new), `diagram-editor.tsx`, `viewer/page.tsx`.
+
+### 2026-03-18 – Sub-diagram: Properties and Theme Application
+**Property edits work in sub-diagrams**: Apply theme, move to back/front, align, connection updates, waypoints, auto-layout, and Properties Panel metadata now correctly target the **current diagram** (root or sub) instead of always the root. Uses `currentDiagramData` and `setCurrentDiagramData` throughout. Modified: `diagram-editor.tsx` (handleThemeApplyToSelected, handleMoveToBack/Front, handleAlignObjects, applyConnectionUpdates, applyAnimationToCurrentAndSelected, handleConnectionUpdate, handleConnectionWaypointAdd/Remove, handleAutoLayout, handleConnectionAnimationBulkApply, PropertiesPanel); `top-menu-bar.tsx`, `context-toolbar.tsx` (currentDiagramData/onCurrentDiagramDataUpdate for Rendering Order popover).
+
 ### 2026-03-18 – Sub-diagram Double-Click: Text vs Icon
 **Double-click text = edit, double-click icon = navigate**: For nodes with a linked sub-diagram, double-clicking the **label/text** now enters inline text edit mode instead of navigating. Double-clicking the **icon/glow area** still navigates to the sub-diagram. Modified: `diagram-node.tsx` (handleLabelDoubleClick no longer triggers sub-diagram navigation; container onDoubleClick handles icon-area navigation).
 

@@ -94,6 +94,10 @@ interface TopMenuBarProps {
   onConnectionWaypointRemove?: (from: string, to: string, index: number) => void;
   diagramData?: DiagramData;
   onDiagramDataUpdate?: (newDiagramData: DiagramData) => void;
+  /** Current diagram (root or sub) - use for operations that affect the current view */
+  currentDiagramData?: DiagramData;
+  /** Updates current diagram - use for sub-diagram safe updates */
+  onCurrentDiagramDataUpdate?: (updater: DiagramData | ((prev: DiagramData) => DiagramData)) => void;
   mousePosition?: { x: number; y: number } | null;
   hoverEnabled?: boolean;
   onToggleHover?: () => void;
@@ -177,6 +181,8 @@ export function TopMenuBar({
   onConnectionWaypointRemove,
   diagramData,
   onDiagramDataUpdate,
+  currentDiagramData,
+  onCurrentDiagramDataUpdate,
   mousePosition,
   hoverEnabled,
   onToggleHover,
@@ -741,6 +747,8 @@ export function TopMenuBar({
             onConnectionWaypointRemove={onConnectionWaypointRemove}
             diagramData={diagramData}
             onDiagramDataUpdate={onDiagramDataUpdate}
+            currentDiagramData={currentDiagramData}
+            onCurrentDiagramDataUpdate={onCurrentDiagramDataUpdate}
             onAlignObjects={onAlignObjects}
             onThemeApplyToSelected={onThemeApplyToSelected}
             textStylingPanelOpen={textStylingPanelOpen}

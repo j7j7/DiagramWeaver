@@ -437,6 +437,13 @@ export interface PresentationDeck {
   updatedAt: number;
 }
 
+/** Pan/zoom state stored per diagram level for restore on navigation */
+export interface DiagramViewState {
+  x: number;
+  y: number;
+  k: number;
+}
+
 export interface DiagramData {
   nodes: DiagramNodeData[];
   connections: DiagramConnectionData[];
@@ -447,6 +454,8 @@ export interface DiagramData {
   recentColors?: string[];
   /** Nested sub-diagrams keyed by subDiagramId. Nodes with subDiagramId reference these. */
   subDiagrams?: Record<string, DiagramData>;
+  /** Saved pan/zoom for this diagram level - restored when navigating to it */
+  viewState?: DiagramViewState;
 }
 
 /** @deprecated Zones removed - kept only for flatten-on-import of legacy JSON */

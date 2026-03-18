@@ -45,6 +45,7 @@ import { useLayerAnimation } from '@/hooks/use-layer-animation';
 import { flattenDiagramOnImport, type RawDiagramData } from '@/lib/flatten-on-import';
 import { collectAllIdsInDiagram, sanitizeImportedDiagram } from '@/lib/import-sanitize';
 import { getDiagramAtStack, updateDiagramAtStack, addSubDiagramAtStack, removeSubDiagramAtStack } from '@/lib/sub-diagram-utils';
+import { sanitizeViewState } from '@/lib/view-state-utils';
 import { DiagramDataSchema, PresentationDeckListSchema } from '@/lib/schemas';
 import { parseMermaidFlowchart, parseMermaidClassDiagram, parseMermaidSequenceDiagram, detectMermaidDiagramType } from '@/lib/mermaid-parser';
 import { mermaidToDiagramData, classDiagramToDiagramData, sequenceDiagramToDiagramData } from '@/lib/mermaid-to-diagram';
@@ -547,6 +548,7 @@ export default function DiagramEditor() {
   }>>({});
   const presentationPersistTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const presentationHydrationStartedRef = React.useRef(false);
+  const lastRestoredStackRef = React.useRef<string | null>(null);
   const [presentationStorageHydrated, setPresentationStorageHydrated] = React.useState(false);
 
   // Restore rules from localStorage after hydration
@@ -928,6 +930,7 @@ export default function DiagramEditor() {
       setPresentationMasterDiagram(null);
       setPresentationDraftDiagram(null);
       setActiveDiagramStack([]);
+      lastRestoredStackRef.current = null;
       return;
     }
     setActiveDiagramStack([]);
@@ -1047,10 +1050,43 @@ export default function DiagramEditor() {
     }
   }, [activeTabId, updateActiveTab, isClient]);
 
+  const viewStatePersistRef = useRef<{ x: number; y: number; k: number } | null>(null);
+  const viewStatePersistTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const VIEW_STATE_DEBOUNCE_MS = 400;
+
   const setCanvasTransform = React.useCallback((transform: { x: number; y: number; k: number }) => {
     if (!activeTabId) return;
-    updateActiveTab({ canvasTransform: sanitizeCanvasTransform(transform) });
-  }, [activeTabId, updateActiveTab, sanitizeCanvasTransform]);
+    const sanitized = sanitizeCanvasTransform(transform);
+    updateActiveTab({ canvasTransform: sanitized });
+
+    if (!presentationModeEnabled) {
+      viewStatePersistRef.current = sanitized;
+      if (viewStatePersistTimeoutRef.current) clearTimeout(viewStatePersistTimeoutRef.current);
+      viewStatePersistTimeoutRef.current = setTimeout(() => {
+        viewStatePersistTimeoutRef.current = null;
+        const toPersist = viewStatePersistRef.current;
+        if (!toPersist) return;
+        const vs = sanitizeViewState(toPersist);
+        if (!vs) return;
+        setDiagramData((prev) => {
+          const current = getDiagramAtStack(prev, activeDiagramStack);
+          return updateDiagramAtStack(prev, activeDiagramStack, () => ({
+            ...current,
+            viewState: vs,
+          }));
+        });
+      }, VIEW_STATE_DEBOUNCE_MS);
+    }
+  }, [activeTabId, updateActiveTab, sanitizeCanvasTransform, presentationModeEnabled, activeDiagramStack, setDiagramData]);
+
+  React.useEffect(() => {
+    return () => {
+      if (viewStatePersistTimeoutRef.current) {
+        clearTimeout(viewStatePersistTimeoutRef.current);
+        viewStatePersistTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   const setHistory = React.useCallback((newHistory: string[]) => {
     if (!activeTabId) return;
@@ -1528,13 +1564,11 @@ export default function DiagramEditor() {
     });
     setActiveDiagramStack((s) => [...s, { diagramId: subId, fromNodeId: node.id, fromNodeLabel: node.label || 'Sub-diagram' }]);
     setSelectedItem(null);
-    setTimeout(() => editorRef.current?.fitToView(), 100);
   }, [presentationModeEnabled, activeDiagramStack, setDiagramData]);
 
   const handleBreadcrumbNavigate = React.useCallback((index: number) => {
     setActiveDiagramStack((s) => s.slice(0, index));
     setSelectedItem(null);
-    setTimeout(() => editorRef.current?.fitToView(), 100);
   }, []);
 
   const handleBreadcrumbSegmentRename = React.useCallback(
@@ -1572,8 +1606,24 @@ export default function DiagramEditor() {
     });
     setActiveDiagramStack((s) => [...s, { diagramId: subId, fromNodeId: nodeId, fromNodeLabel: node?.label || 'Sub-diagram' }]);
     setSelectedItem(null);
-    setTimeout(() => editorRef.current?.fitToView(), 100);
   }, [generateSubDiagramId, currentDiagramData, activeDiagramStack, setDiagramData]);
+
+  /** Restore viewState when navigating to a diagram; use fitToView if no saved state */
+  React.useEffect(() => {
+    if (presentationModeEnabled) return;
+    const stackKey = JSON.stringify(activeDiagramStack);
+    if (lastRestoredStackRef.current === stackKey) return;
+    lastRestoredStackRef.current = stackKey;
+
+    const targetDiagram = getDiagramAtStack(diagramData, activeDiagramStack);
+    const vs = sanitizeViewState(targetDiagram?.viewState);
+    if (vs) {
+      setCanvasTransform(vs);
+    } else {
+      const t = setTimeout(() => editorRef.current?.fitToView(), 100);
+      return () => clearTimeout(t);
+    }
+  }, [activeDiagramStack, diagramData, presentationModeEnabled, setCanvasTransform]);
 
   /** True when node has subDiagramId and the sub exists (at current level or root for legacy) */
   const getHasLinkedSubDiagram = React.useCallback((node: DiagramNodeData) => {
@@ -2501,14 +2551,14 @@ export default function DiagramEditor() {
     },
     connectionId?: string
   ) => {
-    setDiagramData(prevData => ({
+    setCurrentDiagramData((prevData) => ({
       ...prevData,
-      connections: prevData.connections.map(conn => {
+      connections: (prevData.connections ?? []).map((conn) => {
         const match = connectionId
           ? (conn as DiagramConnectionData).id === connectionId
           : (conn.from === from && conn.to === to);
         return match ? { ...conn, ...updates } : conn;
-      })
+      }),
     }));
     if (selectedItem && selectedItem.itemType === 'edge') {
       const match = connectionId
@@ -2516,7 +2566,7 @@ export default function DiagramEditor() {
         : (selectedItem.from === from && selectedItem.to === to);
       if (match) setSelectedItem({ ...selectedItem, ...updates });
     }
-  }, [selectedItem, setDiagramData, setSelectedItem]);
+  }, [selectedItem, setCurrentDiagramData, setSelectedItem]);
 
   const applyAnimationToCurrentAndSelected = React.useCallback((
     from: string,
@@ -2541,9 +2591,9 @@ export default function DiagramEditor() {
     selectedConnectionIds: string[],
     currentConnectionId?: string
   ) => {
-    setDiagramData((prevData) => ({
+    setCurrentDiagramData((prevData) => ({
       ...prevData,
-      connections: prevData.connections.map((conn) => {
+      connections: (prevData.connections ?? []).map((conn) => {
         const connId = (conn as DiagramConnectionData).id;
         const isCurrent = currentConnectionId ? connId === currentConnectionId : (conn.from === from && conn.to === to);
         if (isCurrent) return { ...conn, ...updates };
@@ -2558,7 +2608,7 @@ export default function DiagramEditor() {
       const match = currentConnectionId ? (selectedItem as { id?: string }).id === currentConnectionId : (selectedItem.from === from && selectedItem.to === to);
       if (match) setSelectedItem({ ...selectedItem, ...updates });
     }
-  }, [selectedItem, setDiagramData, setSelectedItem]);
+  }, [selectedItem, setCurrentDiagramData, setSelectedItem]);
 
   const resetPendingAnimationDialogs = React.useCallback(() => {
     setAnimationSelectionDialogOpen(false);
@@ -2569,14 +2619,15 @@ export default function DiagramEditor() {
 
   const handleConnectionUpdate = (from: string, to: string, updates: { text?: string; color?: string; textPosition?: number; lineWidth?: number; shadow?: boolean; style?: 'bezier' | 'orthogonal'; curvature?: number; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean; arrow?: boolean; waypoints?: Array<{ x: number; y: number; id?: string }>; metaData?: Record<string, string>; animation?: DiagramConnectionData['animation'] }, connectionId?: string) => {
     const effectiveConnId = connectionId ?? (selectedItem?.itemType === 'edge' ? (selectedItem as { id?: string }).id : undefined);
-    const currentConnection = diagramData.connections.find((conn) =>
+    const connections = currentDiagramData.connections ?? [];
+    const currentConnection = connections.find((conn) =>
       effectiveConnId ? (conn as DiagramConnectionData).id === effectiveConnId : (conn.from === from && conn.to === to)
     );
     const isEnablingAnimation = updates.animation?.enabled === true && currentConnection?.animation?.enabled !== true;
     const isDisablingAnimation = updates.animation?.enabled === false && currentConnection?.animation?.enabled === true;
     const selectedConnectionIds = Array.from(selectedItemIds).filter((id) => {
       if (effectiveConnId && id === effectiveConnId) return false;
-      return diagramData.connections.some((conn) => (conn as DiagramConnectionData).id === id || `${conn.from}-${conn.to}` === id);
+      return connections.some((conn) => (conn as DiagramConnectionData).id === id || `${conn.from}-${conn.to}` === id);
     });
 
     if (isEnablingAnimation || isDisablingAnimation) {
@@ -2623,7 +2674,8 @@ export default function DiagramEditor() {
       return;
     }
 
-    const hasOtherExistingAnimation = diagramData.connections.some((conn) => {
+    const connections = currentDiagramData.connections ?? [];
+    const hasOtherExistingAnimation = connections.some((conn) => {
       const connId = (conn as DiagramConnectionData).id ?? `${conn.from}-${conn.to}`;
       if (!pendingAnimationUpdate.selectedConnectionIds.includes(connId)) return false;
       return hasConnectionAnimationSettings(conn);
@@ -2642,7 +2694,7 @@ export default function DiagramEditor() {
       pendingAnimationUpdate.connectionId
     );
     resetPendingAnimationDialogs();
-  }, [pendingAnimationUpdate, diagramData.connections, hasConnectionAnimationSettings, applyAnimationToCurrentAndSelected, resetPendingAnimationDialogs]);
+  }, [pendingAnimationUpdate, currentDiagramData.connections, hasConnectionAnimationSettings, applyAnimationToCurrentAndSelected, resetPendingAnimationDialogs]);
 
   const handleAnimationDisableConfirm = React.useCallback(() => {
     if (!pendingAnimationUpdate) return;
@@ -2684,13 +2736,14 @@ export default function DiagramEditor() {
   };
 
   const handleConnectionWaypointAdd = (from: string, to: string, connectionId?: string) => {
-    const conn = diagramData.connections.find((c) =>
+    const connections = currentDiagramData.connections ?? [];
+    const conn = connections.find((c) =>
       connectionId ? (c as DiagramConnectionData).id === connectionId : (c.from === from && c.to === to)
     );
     if (!conn) return;
     const existing = conn.waypoints ?? [];
-    const fromNode = diagramData.nodes.find((n) => n.id === from) || diagramData.zones?.find((z) => z.id === from);
-    const toNode = diagramData.nodes.find((n) => n.id === to) || diagramData.zones?.find((z) => z.id === to);
+    const fromNode = currentDiagramData.nodes.find((n) => n.id === from) || currentDiagramData.zones?.find((z) => z.id === from);
+    const toNode = currentDiagramData.nodes.find((n) => n.id === to) || currentDiagramData.zones?.find((z) => z.id === to);
     let midX: number;
     let midY: number;
     if (existing.length > 0) {
@@ -2716,7 +2769,8 @@ export default function DiagramEditor() {
   };
 
   const handleConnectionWaypointRemove = (from: string, to: string, index: number, connectionId?: string) => {
-    const conn = diagramData.connections.find((c) =>
+    const connections = currentDiagramData.connections ?? [];
+    const conn = connections.find((c) =>
       connectionId ? (c as DiagramConnectionData).id === connectionId : (c.from === from && c.to === to)
     );
     if (!conn?.waypoints) return;
@@ -2731,9 +2785,9 @@ export default function DiagramEditor() {
     animation: DiagramConnectionData['animation']
   ) => {
     const animationPatch = toConnectionAnimationPatch(animation);
-    setDiagramData((prevData) => ({
+    setCurrentDiagramData((prevData) => ({
       ...prevData,
-      connections: prevData.connections.map((conn) => {
+      connections: (prevData.connections ?? []).map((conn) => {
         const shouldApply = direction === 'outbound' ? conn.from === sourceId : conn.to === sourceId;
         if (!shouldApply) return conn;
         return {
@@ -2931,67 +2985,62 @@ export default function DiagramEditor() {
         handleItemUpdate(updatedItem as any);
       }
     } else {
-      // Apply to multiple selected items
-      const updatedDiagramData = { ...diagramData };
-      
-      // Update nodes
-      updatedDiagramData.nodes = updatedDiagramData.nodes.map(node => {
-        if (selectedItemIds.has(node.id)) {
-          return themeManager.applyThemeToItem(node, theme) as DiagramNodeData;
-        }
-        return node;
+      // Apply to multiple selected items - use current diagram (root or sub) for sub-diagram support
+      setCurrentDiagramData((prevData) => {
+        const updatedNodes = prevData.nodes.map((node) => {
+          if (selectedItemIds.has(node.id)) {
+            return themeManager.applyThemeToItem(node, theme) as DiagramNodeData;
+          }
+          return node;
+        });
+        const updatedConnections = (prevData.connections ?? []).map((connection) => {
+          const connId = (connection as DiagramConnectionData).id ?? `${connection.from}-${connection.to}`;
+          if (selectedItemIds.has(connId)) {
+            return themeManager.applyThemeToItem(connection, theme) as DiagramConnectionData;
+          }
+          return connection;
+        });
+        return { ...prevData, nodes: updatedNodes, connections: updatedConnections };
       });
-      
-      // Update connections
-      updatedDiagramData.connections = updatedDiagramData.connections.map(connection => {
-        const connId = (connection as DiagramConnectionData).id ?? `${connection.from}-${connection.to}`;
-        if (selectedItemIds.has(connId)) {
-          return themeManager.applyThemeToItem(connection, theme) as DiagramConnectionData;
-        }
-        return connection;
-      });
-      
-      setDiagramData(updatedDiagramData);
-      
       const count = selectedItemIds.size;
-      toast({ 
-        title: 'Theme Applied', 
-        description: `Applied "${theme.name}" theme to ${count} item${count > 1 ? 's' : ''}.` 
+      toast({
+        title: 'Theme Applied',
+        description: `Applied "${theme.name}" theme to ${count} item${count > 1 ? 's' : ''}.`,
       });
     }
   };
 
   const handleMoveToBack = () => {
     if (!selectedItem || selectedItem.itemType === 'edge') return;
-    const updatedData = moveItemToBack(diagramData, selectedItem.id, selectedItem.itemType);
-    setDiagramData(updatedData);
+    const updatedData = moveItemToBack(currentDiagramData, selectedItem.id, selectedItem.itemType);
+    setCurrentDiagramData(updatedData);
   };
 
   const handleMoveToFront = () => {
     if (!selectedItem || selectedItem.itemType === 'edge') return;
-    const updatedData = moveItemToFront(diagramData, selectedItem.id, selectedItem.itemType);
-    setDiagramData(updatedData);
+    const updatedData = moveItemToFront(currentDiagramData, selectedItem.id, selectedItem.itemType);
+    setCurrentDiagramData(updatedData);
   };
 
   const handleMoveOneBack = () => {
     if (!selectedItem || selectedItem.itemType === 'edge') return;
-    const updatedData = moveItemOneBack(diagramData, selectedItem.id, selectedItem.itemType);
-    setDiagramData(updatedData);
+    const updatedData = moveItemOneBack(currentDiagramData, selectedItem.id, selectedItem.itemType);
+    setCurrentDiagramData(updatedData);
   };
 
   const handleMoveOneForward = () => {
     if (!selectedItem || selectedItem.itemType === 'edge') return;
-    const updatedData = moveItemOneForward(diagramData, selectedItem.id, selectedItem.itemType);
-    setDiagramData(updatedData);
+    const updatedData = moveItemOneForward(currentDiagramData, selectedItem.id, selectedItem.itemType);
+    setCurrentDiagramData(updatedData);
   };
 
   const handleAlignObjects = (alignment: 'top' | 'center' | 'bottom' | 'v-middle' | 'left' | 'h-center' | 'right' | 'distribute-v' | 'distribute-h') => {
     if (!selectedItem || selectedItemIds.size < 2) return;
 
     // Get the reference item (first selected item) and store it permanently
-    // We need to find the actual first selected item from the diagram data
+    // Use current diagram (root or sub) for sub-diagram support
     const firstSelectedId = Array.from(selectedItemIds)[0];
-    const referenceNode = diagramData.nodes.find(n => n.id === firstSelectedId);
+    const referenceNode = currentDiagramData.nodes.find(n => n.id === firstSelectedId);
     if (!referenceNode) return;
     
     const referenceItem = { ...referenceNode, itemType: 'node' } as SelectedItem;
@@ -3086,7 +3135,7 @@ export default function DiagramEditor() {
       const selectedItems: Array<{id: string, x: number, y: number, width: number, height: number, itemType: 'node', index: number}> = [];
       
       selectedItemIds.forEach(id => {
-        const node = diagramData.nodes.find(n => n.id === id);
+        const node = currentDiagramData.nodes.find(n => n.id === id);
         if (node) {
           const dims = getObjectDimensions({ ...node, itemType: 'node' } as SelectedItem);
           selectedItems.push({
@@ -3096,7 +3145,7 @@ export default function DiagramEditor() {
             width: dims.width,
             height: dims.height,
             itemType: 'node',
-            index: diagramData.nodes.findIndex(n => n.id === id)
+            index: currentDiagramData.nodes.findIndex(n => n.id === id)
           });
         }
       });
@@ -3142,8 +3191,8 @@ export default function DiagramEditor() {
         });
       }
 
-      // Apply the new positions
-      setDiagramData(prevData => {
+      // Apply the new positions (use current diagram for sub-diagram support)
+      setCurrentDiagramData(prevData => {
         const newNodes = [...prevData.nodes];
         newPositions.forEach(pos => {
           const nodeIndex = newNodes.findIndex(n => n.id === pos.id);
@@ -3156,7 +3205,7 @@ export default function DiagramEditor() {
 
       const updatedSelectedItems: SelectedItem[] = [];
       selectedItemIds.forEach(id => {
-        const updatedNode = diagramData.nodes.find(n => n.id === id);
+        const updatedNode = currentDiagramData.nodes.find(n => n.id === id);
         if (updatedNode) {
           updatedSelectedItems.push({ ...updatedNode, itemType: 'node' } as SelectedItem);
         }
@@ -3173,8 +3222,8 @@ export default function DiagramEditor() {
       return;
     }
 
-    // Align all selected items
-    setDiagramData(prevData => {
+    // Align all selected items (use current diagram for sub-diagram support)
+    setCurrentDiagramData(prevData => {
       const newNodes = [...prevData.nodes];
 
       selectedItemIds.forEach(id => {
@@ -3223,7 +3272,7 @@ export default function DiagramEditor() {
 
     const updatedSelectedItems: SelectedItem[] = [];
     selectedItemIds.forEach(id => {
-      const updatedNode = diagramData.nodes.find(n => n.id === id);
+      const updatedNode = currentDiagramData.nodes.find(n => n.id === id);
       if (updatedNode) {
         updatedSelectedItems.push({ ...updatedNode, itemType: 'node' } as SelectedItem);
       }
@@ -3240,8 +3289,8 @@ export default function DiagramEditor() {
 
   const handleAutoLayout = () => {
     try {
-      const newData = performAutoLayout(diagramData);
-      setDiagramData(newData);
+      const newData = performAutoLayout(currentDiagramData);
+      setCurrentDiagramData(newData);
       toast({ 
         title: 'Auto Layout Applied', 
         description: 'Diagram has been automatically arranged.' 
@@ -4323,6 +4372,7 @@ export default function DiagramEditor() {
         handleCreateSubDiagram={handleCreateSubDiagram}
         handleRemoveSubDiagramLink={handleRemoveSubDiagramLink}
         setCurrentDiagramData={setCurrentDiagramData}
+        currentDiagramData={currentDiagramData}
         onImportIntoSubDiagram={activeDiagramStack.length > 0 ? handleImportIntoSubDiagramClick : undefined}
         onSubDiagramFileChange={handleSubDiagramFileChange}
         subDiagramImportInputRef={subDiagramImportInputRef}
@@ -4369,6 +4419,7 @@ function DiagramEditorInner({
   setUmlClassEditorModal,
   setDiagramData,
   setCurrentDiagramData,
+  currentDiagramData,
   activeDiagramStack,
   handleBreadcrumbNavigate,
   handleBreadcrumbSegmentRename,
@@ -4673,6 +4724,8 @@ function DiagramEditorInner({
                     onConnectionWaypointRemove={handleConnectionWaypointRemove}
                     diagramData={diagramData}
                     onDiagramDataUpdate={setDiagramData}
+                    currentDiagramData={currentDiagramData}
+                    onCurrentDiagramDataUpdate={setCurrentDiagramData}
                     mousePosition={mousePosition}
                     hoverEnabled={hoverEnabled}
                     onToggleHover={() => setHoverEnabled(!hoverEnabled)}
@@ -4875,7 +4928,7 @@ function DiagramEditorInner({
                   {propertiesPanelVisible && (
                   <PropertiesPanel
                     selectedItem={selectedItem}
-                    diagramData={diagramData}
+                    diagramData={currentDiagramData}
                     onItemUpdate={handleItemUpdate}
                     onConnectionUpdate={handleConnectionUpdate}
                     collapsed={rightPanelCollapsed}
