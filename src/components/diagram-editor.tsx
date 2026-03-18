@@ -43,6 +43,8 @@ import { useDiagramTabs } from '@/hooks/use-diagram-tabs';
 import { useLayers } from '@/hooks/use-layers';
 import { useLayerAnimation } from '@/hooks/use-layer-animation';
 import { flattenDiagramOnImport, type RawDiagramData } from '@/lib/flatten-on-import';
+import { collectAllIdsInDiagram, sanitizeImportedDiagram } from '@/lib/import-sanitize';
+import { getDiagramAtStack, updateDiagramAtStack, addSubDiagramAtStack, removeSubDiagramAtStack } from '@/lib/sub-diagram-utils';
 import { DiagramDataSchema, PresentationDeckListSchema } from '@/lib/schemas';
 import { parseMermaidFlowchart, parseMermaidClassDiagram, parseMermaidSequenceDiagram, detectMermaidDiagramType } from '@/lib/mermaid-parser';
 import { mermaidToDiagramData, classDiagramToDiagramData, sequenceDiagramToDiagramData } from '@/lib/mermaid-to-diagram';
@@ -90,6 +92,7 @@ import {
   loadPresentationsByTab,
   savePresentationsByTab,
 } from '@/lib/presentation-storage';
+import { DiagramBreadcrumb, type BreadcrumbSegment } from './editor/diagram-breadcrumb';
 
 export type SelectedItem = (
   | (DiagramNodeData & {
@@ -635,6 +638,7 @@ export default function DiagramEditor() {
   const [canPaste, setCanPaste] = React.useState<boolean>(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const mermaidInputRef = React.useRef<HTMLInputElement>(null);
+  const subDiagramImportInputRef = React.useRef<HTMLInputElement>(null);
   const [mousePosition, setMousePosition] = React.useState<{ x: number; y: number } | null>(null);
   const [hoverEnabled, setHoverEnabled] = React.useState<boolean>(false);
   const [iconBackgroundEnabled, setIconBackgroundEnabled] = React.useState<boolean>(true);
@@ -837,6 +841,9 @@ export default function DiagramEditor() {
   
   // Refresh key to force canvas re-render
   const [canvasRefreshKey, setCanvasRefreshKey] = React.useState(0);
+
+  // Sub-diagram navigation stack: empty = root; non-empty = viewing sub-diagram
+  const [activeDiagramStack, setActiveDiagramStack] = React.useState<BreadcrumbSegment[]>([]);
   
   const refreshCanvas = React.useCallback(() => {
     setCanvasRefreshKey(prev => prev + 1);
@@ -861,29 +868,46 @@ export default function DiagramEditor() {
     updateActiveTab({ diagramData: nextData });
   }, [activeTabId, diagramData, presentationModeEnabled, updateActiveTab]);
 
+  // Current diagram (root or sub) and its setter - traverses full stack for nested sub-diagrams
+  const currentDiagramData = React.useMemo(() => {
+    return getDiagramAtStack(diagramData, activeDiagramStack);
+  }, [diagramData, activeDiagramStack]);
+
+  const setCurrentDiagramData = React.useCallback((updater: DiagramData | ((prev: DiagramData) => DiagramData)) => {
+    if (activeDiagramStack.length === 0) {
+      setDiagramData(updater);
+      return;
+    }
+    setDiagramData((prev) => {
+      const current = getDiagramAtStack(prev, activeDiagramStack);
+      const next = typeof updater === 'function' ? updater(current) : updater;
+      return updateDiagramAtStack(prev, activeDiagramStack, () => next);
+    });
+  }, [activeDiagramStack, setDiagramData]);
+
   const setSelectedItem = React.useCallback((updater: SelectedItem | null | ((prev: SelectedItem | null) => SelectedItem | null)) => {
     if (!activeTabId) return;
     const newItem = typeof updater === 'function' ? updater(selectedItem) : updater;
     updateActiveTab({ selectedItem: newItem });
   }, [activeTabId, selectedItem, updateActiveTab]);
 
-  // Initialize layers system
+  // Initialize layers system (uses current diagram - root or sub)
   const layers = useLayers({
-    diagramData,
-    setDiagramData,
+    diagramData: currentDiagramData,
+    setDiagramData: setCurrentDiagramData,
     toast
   });
 
   // Layer show/hide animations (Edit menu toggle, default enabled)
   const layerAnimation = useLayerAnimation(
     layerAnimationsEnabled,
-    layers.filteredDiagramData ?? diagramData,
+    layers.filteredDiagramData ?? currentDiagramData,
     layers.layersConfig,
   );
 
   React.useEffect(() => {
-    layerAnimation.updateSnapshot(diagramData);
-  }, [diagramData, layerAnimation.updateSnapshot]);
+    layerAnimation.updateSnapshot(currentDiagramData);
+  }, [currentDiagramData, layerAnimation.updateSnapshot]);
 
   const handleToggleLayerVisibility = React.useCallback(
     (layerId: string) => {
@@ -893,7 +917,7 @@ export default function DiagramEditor() {
     [layerAnimation.onLayerVisibilityWillChange, layers.toggleLayerVisibilityById],
   );
 
-  const displayDiagramData = layerAnimation.animatingDiagramData ?? layers.filteredDiagramData ?? diagramData;
+  const displayDiagramData = layerAnimation.animatingDiagramData ?? layers.filteredDiagramData ?? currentDiagramData;
 
   React.useEffect(() => {
     if (!activeTabId) {
@@ -903,8 +927,10 @@ export default function DiagramEditor() {
       setSelectedPresentationSlideIds(new Set());
       setPresentationMasterDiagram(null);
       setPresentationDraftDiagram(null);
+      setActiveDiagramStack([]);
       return;
     }
+    setActiveDiagramStack([]);
 
     const scoped = presentationStateByTabRef.current[activeTabId];
     if (!scoped) {
@@ -1249,7 +1275,7 @@ export default function DiagramEditor() {
   
   const handleItemUpdate = (updatedItem: SelectedItem) => {
     if (updatedItem.itemType === 'edge') return;
-    setDiagramData(prevData => {
+    setCurrentDiagramData(prevData => {
             // Find the existing node to preserve its properties
             const existingNode = prevData.nodes.find(n => n.id === updatedItem.id);
             
@@ -1286,7 +1312,7 @@ export default function DiagramEditor() {
 
   const handleLabelUpdate = (nodeId: string, newLabel: string, richLabel?: import("@/lib/types").RichTextRun[]) => {
     React.startTransition(() => {
-      setDiagramData(prevData => ({
+      setCurrentDiagramData(prevData => ({
         ...prevData,
         nodes: prevData.nodes.map(n =>
           n.id === nodeId
@@ -1303,7 +1329,7 @@ export default function DiagramEditor() {
   }
 
   const handleTagUpdate = (nodeId: string, newTag: string) => {
-    setDiagramData(prevData => ({
+    setCurrentDiagramData(prevData => ({
       ...prevData,
       nodes: prevData.nodes.map(n => n.id === nodeId ? { ...n, tag: newTag } : n)
     }));
@@ -1358,18 +1384,18 @@ export default function DiagramEditor() {
       if (!confirmPresentationLayerImpact('This connection', getAffectedLayerIdsForConnection(edge.from, edge.to))) return;
     }
 
-    let newNodes = diagramData.nodes;
-    let newConnections = diagramData.connections;
+    let newNodes = currentDiagramData.nodes;
+    let newConnections = currentDiagramData.connections;
 
     if (itemToDelete.itemType === 'node') {
-      newNodes = diagramData.nodes.filter(n => n.id !== itemToDelete.id);
-      newConnections = diagramData.connections.filter((e: { from: string; to: string }) => e.from !== itemToDelete.id && e.to !== itemToDelete.id);
+      newNodes = currentDiagramData.nodes.filter(n => n.id !== itemToDelete.id);
+      newConnections = currentDiagramData.connections.filter((e: { from: string; to: string }) => e.from !== itemToDelete.id && e.to !== itemToDelete.id);
     } else if (itemToDelete.itemType === 'edge') {
       const edgeItem = itemToDelete as { from: string; to: string; id?: string };
       const hasExactIdMatch = Boolean(
-        edgeItem.id && diagramData.connections.some((e: DiagramConnectionData) => (e as DiagramConnectionData).id === edgeItem.id)
+        edgeItem.id && currentDiagramData.connections.some((e: DiagramConnectionData) => (e as DiagramConnectionData).id === edgeItem.id)
       );
-      newConnections = diagramData.connections.filter((e: DiagramConnectionData) => {
+      newConnections = currentDiagramData.connections.filter((e: DiagramConnectionData) => {
         if (hasExactIdMatch && edgeItem.id && (e as DiagramConnectionData).id) {
           return (e as DiagramConnectionData).id !== edgeItem.id;
         }
@@ -1377,9 +1403,9 @@ export default function DiagramEditor() {
       });
     }
 
-    const updatedData = { ...diagramData, nodes: newNodes, connections: newConnections };
+    const updatedData = { ...currentDiagramData, nodes: newNodes, connections: newConnections };
     const nextDiagram = cleanupGroupsAfterDeletion([itemToDelete.id], updatedData);
-    setDiagramData(nextDiagram);
+    setCurrentDiagramData(nextDiagram);
     persistPresentationSlideFromDiagram(nextDiagram);
     setSelectedItem(null);
   };
@@ -1395,8 +1421,8 @@ export default function DiagramEditor() {
     }
 
     try {
-      const updatedData = createGroup(Array.from(selectedItemIds), diagramData);
-      setDiagramData(updatedData);
+      const updatedData = createGroup(Array.from(selectedItemIds), currentDiagramData);
+      setCurrentDiagramData(updatedData);
       toast({ 
         title: 'Items Grouped', 
         description: `Created group with ${selectedItemIds.size} items.` 
@@ -1413,7 +1439,7 @@ export default function DiagramEditor() {
   const handleUngroupItems = () => {
     if (!selectedItem) return;
 
-    const group = getItemGroup(selectedItem.id, diagramData);
+    const group = getItemGroup(selectedItem.id, currentDiagramData);
     if (!group) {
       toast({ 
         variant: 'destructive', 
@@ -1424,8 +1450,8 @@ export default function DiagramEditor() {
     }
 
     try {
-      const updatedData = ungroup(group.id, diagramData);
-      setDiagramData(updatedData);
+      const updatedData = ungroup(group.id, currentDiagramData);
+      setCurrentDiagramData(updatedData);
       toast({ 
         title: 'Items Ungrouped', 
         description: 'Group has been dissolved.' 
@@ -1443,8 +1469,8 @@ export default function DiagramEditor() {
     if (selectedItemIds.size === 0) return;
 
     try {
-      const updatedData = removeFromGroup(Array.from(selectedItemIds), diagramData);
-      setDiagramData(updatedData);
+      const updatedData = removeFromGroup(Array.from(selectedItemIds), currentDiagramData);
+      setCurrentDiagramData(updatedData);
       toast({ 
         title: 'Removed from Group', 
         description: `${selectedItemIds.size} item(s) removed from group.` 
@@ -1462,8 +1488,8 @@ export default function DiagramEditor() {
     if (selectedItemIds.size === 0) return;
 
     try {
-      const updatedData = addToGroup(Array.from(selectedItemIds), groupId, diagramData);
-      setDiagramData(updatedData);
+      const updatedData = addToGroup(Array.from(selectedItemIds), groupId, currentDiagramData);
+      setCurrentDiagramData(updatedData);
       toast({ 
         title: 'Added to Group', 
         description: `${selectedItemIds.size} item(s) added to group.` 
@@ -1476,6 +1502,104 @@ export default function DiagramEditor() {
       });
     }
   };
+
+  const generateSubDiagramId = React.useCallback(() => {
+    const { subDiagramKeys } = collectAllIdsInDiagram(diagramData);
+    let i = 1;
+    while (subDiagramKeys.has(`sub-${i}`)) i++;
+    return `sub-${i}`;
+  }, [diagramData]);
+
+  const handleSubDiagramDoubleClick = React.useCallback((node: DiagramNodeData) => {
+    if (presentationModeEnabled || !node.subDiagramId) return;
+    const subId = node.subDiagramId;
+    setDiagramData((prev) => {
+      const current = getDiagramAtStack(prev, activeDiagramStack);
+      if (current.subDiagrams?.[subId]) return prev;
+      // Sub not at current level: use blank or migrate from root (legacy storage)
+      const atRoot = prev.subDiagrams?.[subId];
+      const content = atRoot ?? { nodes: [], connections: [] };
+      if (atRoot && activeDiagramStack.length > 0) {
+        const { [subId]: _, ...restRoot } = prev.subDiagrams || {};
+        const withoutAtRoot = { ...prev, subDiagrams: Object.keys(restRoot).length ? restRoot : undefined };
+        return addSubDiagramAtStack(withoutAtRoot, activeDiagramStack, subId, content);
+      }
+      return addSubDiagramAtStack(prev, activeDiagramStack, subId, content);
+    });
+    setActiveDiagramStack((s) => [...s, { diagramId: subId, fromNodeId: node.id, fromNodeLabel: node.label || 'Sub-diagram' }]);
+    setSelectedItem(null);
+    setTimeout(() => editorRef.current?.fitToView(), 100);
+  }, [presentationModeEnabled, activeDiagramStack, setDiagramData]);
+
+  const handleBreadcrumbNavigate = React.useCallback((index: number) => {
+    setActiveDiagramStack((s) => s.slice(0, index));
+    setSelectedItem(null);
+    setTimeout(() => editorRef.current?.fitToView(), 100);
+  }, []);
+
+  const handleBreadcrumbSegmentRename = React.useCallback(
+    (segmentIndex: number, newLabel: string) => {
+      if (segmentIndex < 1) return;
+      const seg = activeDiagramStack[segmentIndex - 1];
+      if (!seg?.fromNodeId) return;
+      const parentStack = activeDiagramStack.slice(0, segmentIndex - 1);
+      setDiagramData((prev) =>
+        updateDiagramAtStack(prev, parentStack, (current) => ({
+          ...current,
+          nodes: current.nodes.map((n) =>
+            n.id === seg.fromNodeId ? { ...n, label: newLabel } : n
+          ),
+        }))
+      );
+      setActiveDiagramStack((s) =>
+        s.map((x, i) =>
+          i === segmentIndex - 1 ? { ...x, fromNodeLabel: newLabel } : x
+        )
+      );
+    },
+    [activeDiagramStack, setDiagramData]
+  );
+
+  const handleCreateSubDiagram = React.useCallback((nodeId: string) => {
+    const subId = generateSubDiagramId();
+    const node = currentDiagramData.nodes.find((n) => n.id === nodeId);
+    setDiagramData((prev) => {
+      const withNode = updateDiagramAtStack(prev, activeDiagramStack, (current) => ({
+        ...current,
+        nodes: current.nodes.map((n) => (n.id === nodeId ? { ...n, subDiagramId: subId } : n)),
+      }));
+      return addSubDiagramAtStack(withNode, activeDiagramStack, subId, { nodes: [], connections: [] });
+    });
+    setActiveDiagramStack((s) => [...s, { diagramId: subId, fromNodeId: nodeId, fromNodeLabel: node?.label || 'Sub-diagram' }]);
+    setSelectedItem(null);
+    setTimeout(() => editorRef.current?.fitToView(), 100);
+  }, [generateSubDiagramId, currentDiagramData, activeDiagramStack, setDiagramData]);
+
+  /** True when node has subDiagramId and the sub exists (at current level or root for legacy) */
+  const getHasLinkedSubDiagram = React.useCallback((node: DiagramNodeData) => {
+    if (!node.subDiagramId) return false;
+    const subId = node.subDiagramId;
+    if (currentDiagramData.subDiagrams?.[subId]) return true;
+    if (activeDiagramStack.length > 0 && diagramData.subDiagrams?.[subId]) return true;
+    return false;
+  }, [currentDiagramData, activeDiagramStack, diagramData]);
+
+  const handleRemoveSubDiagramLink = React.useCallback((nodeId: string) => {
+    const node = currentDiagramData.nodes.find((n) => n.id === nodeId);
+    const subId = node?.subDiagramId;
+    if (!subId) return;
+    setDiagramData((prev) => {
+      const withoutLink = updateDiagramAtStack(prev, activeDiagramStack, (current) => ({
+        ...current,
+        nodes: current.nodes.map((n) => (n.id === nodeId ? { ...n, subDiagramId: undefined } : n)),
+      }));
+      return removeSubDiagramAtStack(withoutLink, activeDiagramStack, subId);
+    });
+    if (activeDiagramStack.some((s) => s.diagramId === subId)) {
+      setActiveDiagramStack((s) => s.filter((seg) => seg.diagramId !== subId));
+    }
+    setSelectedItem(null);
+  }, [currentDiagramData, activeDiagramStack, setDiagramData]);
 
   const handleConnect = (targetItem: DiagramNodeData) => {
     const pendingSourceId = (window as any).pendingConnectionSourceId as string | undefined;
@@ -1504,7 +1628,7 @@ export default function DiagramEditor() {
     delete (window as any).pendingConnectionSourceId;
     delete (window as any).pendingConnectionOptions;
     
-    setDiagramData(prevData => ({
+    setCurrentDiagramData(prevData => ({
       ...prevData,
       connections: [...prevData.connections, newConnection]
     }));
@@ -1529,13 +1653,13 @@ export default function DiagramEditor() {
 
   const getAffectedLayerIdsForConnection = React.useCallback((from: string, to: string): string[] => {
     const ids = new Set<string>();
-    const source = diagramData;
+    const source = currentDiagramData;
     const fromNode = source.nodes.find((n) => n.id === from);
     const toNode = source.nodes.find((n) => n.id === to);
     if (fromNode?.layer) ids.add(fromNode.layer);
     if (toNode?.layer) ids.add(toNode.layer);
     return Array.from(ids);
-  }, [diagramData]);
+  }, [currentDiagramData]);
 
   const confirmPresentationLayerImpact = React.useCallback((actionLabel: string, layerIds: string[]): boolean => {
     if (!presentationModeEnabled || layerIds.length === 0) return true;
@@ -2281,6 +2405,64 @@ export default function DiagramEditor() {
     }
     if (event.target) event.target.value = '';
   };
+
+  const handleImportIntoSubDiagramClick = React.useCallback(() => {
+    subDiagramImportInputRef.current?.click();
+  }, []);
+
+  const handleSubDiagramFileChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || activeDiagramStack.length === 0) return;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const text = e.target?.result;
+        if (typeof text !== 'string') return;
+        const diagramType = detectMermaidDiagramType(text);
+        const isMermaid = /\.(mmd|mermaid)$/.test(file.name.toLowerCase()) || diagramType !== null;
+        let completeData: DiagramData;
+
+        if (isMermaid && diagramType === 'sequenceDiagram') {
+          const parsed = parseMermaidSequenceDiagram(text);
+          if (parsed.participants.length === 0 && parsed.messages.length === 0) {
+            throw new Error('No valid sequence diagram content found.');
+          }
+          completeData = sequenceDiagramToDiagramData(parsed);
+        } else if (isMermaid && diagramType === 'classDiagram') {
+          const parsed = parseMermaidClassDiagram(text);
+          if (parsed.classes.length === 0 && parsed.edges.length === 0) {
+            throw new Error('No valid class diagram content found.');
+          }
+          completeData = classDiagramToDiagramData(parsed);
+        } else if (isMermaid) {
+          const parsed = parseMermaidFlowchart(text);
+          if (parsed.nodes.length === 0 && parsed.edges.length === 0) {
+            throw new Error('No valid flowchart content found.');
+          }
+          completeData = await mermaidToDiagramData(parsed);
+        } else {
+          const jsonData = JSON.parse(text);
+          completeData = parseUnknownJsonToDiagramData(jsonData);
+        }
+        completeData.connections = ensureConnectionIds(completeData.connections || []);
+        const existingIds = collectAllIdsInDiagram(diagramData);
+        const sanitized = sanitizeImportedDiagram(completeData, existingIds);
+        setCurrentDiagramData(sanitized);
+        setSelectedItem(null);
+        toast({ title: 'Sub-diagram imported', description: 'The diagram has been imported into this sub-diagram.' });
+        setTimeout(() => editorRef.current?.fitToView(), 100);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'An unknown error occurred';
+        toast({
+          variant: 'destructive',
+          title: 'Error importing diagram',
+          description: `Could not load or parse the file. ${message}`,
+        });
+      }
+    };
+    reader.readAsText(file);
+    if (event.target) event.target.value = '';
+  }, [activeDiagramStack.length, diagramData, parseUnknownJsonToDiagramData, setCurrentDiagramData, toast]);
 
   const hasConnectionAnimationSettings = React.useCallback((connection: DiagramConnectionData) => {
     const animation = connection.animation;
@@ -4133,6 +4315,17 @@ export default function DiagramEditor() {
         canvasRefreshKey={canvasRefreshKey}
         activeTab={activeTab}
         toast={toast}
+        activeDiagramStack={activeDiagramStack}
+        handleBreadcrumbNavigate={handleBreadcrumbNavigate}
+        handleBreadcrumbSegmentRename={handleBreadcrumbSegmentRename}
+        handleSubDiagramDoubleClick={handleSubDiagramDoubleClick}
+        getHasLinkedSubDiagram={getHasLinkedSubDiagram}
+        handleCreateSubDiagram={handleCreateSubDiagram}
+        handleRemoveSubDiagramLink={handleRemoveSubDiagramLink}
+        setCurrentDiagramData={setCurrentDiagramData}
+        onImportIntoSubDiagram={activeDiagramStack.length > 0 ? handleImportIntoSubDiagramClick : undefined}
+        onSubDiagramFileChange={handleSubDiagramFileChange}
+        subDiagramImportInputRef={subDiagramImportInputRef}
       />
       <TutorialOverlay />
     </TutorialProvider>
@@ -4175,6 +4368,17 @@ function DiagramEditorInner({
   umlClassEditorModal,
   setUmlClassEditorModal,
   setDiagramData,
+  setCurrentDiagramData,
+  activeDiagramStack,
+  handleBreadcrumbNavigate,
+  handleBreadcrumbSegmentRename,
+  handleSubDiagramDoubleClick,
+  getHasLinkedSubDiagram,
+  handleCreateSubDiagram,
+  handleRemoveSubDiagramLink,
+  onImportIntoSubDiagram,
+  onSubDiagramFileChange,
+  subDiagramImportInputRef,
   layers,
   layerAnimationsEnabled,
   setLayerAnimationsEnabled,
@@ -4426,6 +4630,7 @@ function DiagramEditorInner({
                     onNew={handleNew}
                     onLoad={handleLoadClick}
                     onImportMermaid={handleMermaidImportClick}
+                    onImportIntoSubDiagram={onImportIntoSubDiagram}
                     onSave={handleSave}
                     onLoadExample={handleLoadExample}
                     onNewTab={createTab}
@@ -4537,6 +4742,13 @@ function DiagramEditorInner({
                     accept=".mmd,.mermaid,text/plain"
                     style={{ display: 'none' }}
                 />
+                <input
+                    type="file"
+                    ref={subDiagramImportInputRef}
+                    onChange={onSubDiagramFileChange}
+                    accept=".json,application/json,.mmd,.mermaid,text/plain"
+                    style={{ display: 'none' }}
+                />
                 <PresentationEditorPanel
                   isOpen={presentationModeEnabled}
                   decks={presentationDecks}
@@ -4565,6 +4777,15 @@ function DiagramEditorInner({
                 />
             </header>
             <div className="flex-1 flex flex-col">
+                {!presentationModeEnabled && activeDiagramStack.length > 0 && (
+                  <DiagramBreadcrumb
+                    segments={[{ diagramId: null }, ...activeDiagramStack]}
+                    rootLabel={activeTab?.name || 'Main Diagram'}
+                    onNavigate={handleBreadcrumbNavigate}
+                    onSegmentRename={handleBreadcrumbSegmentRename}
+                    isReadOnly={isReadOnly}
+                  />
+                )}
                 <div className={`flex flex-1 ${(jsonPanelOpen || propertiesPanelVisible) ? 'overflow-x-auto' : ''}`}>
                   <div className={`flex-1 h-full min-w-0 ${(jsonPanelOpen || propertiesPanelVisible) ? 'mr-2' : ''}`}>
                 <EditorCanvas
@@ -4574,7 +4795,7 @@ function DiagramEditorInner({
                     nodeAnimationStyles={layerAnimation.nodeAnimationStyles}
                     connectionAnimationStyles={layerAnimation.connectionAnimationStyles}
                     connectionKey={layerAnimation.connectionKey}
-                    setDiagramData={setDiagramData}
+                    setDiagramData={setCurrentDiagramData}
                     onItemSelect={handleItemSelect}
                     onBatchSelect={handleBatchSelect}
                     setSelectedItemIds={setSelectedItemIds}
@@ -4588,7 +4809,7 @@ function DiagramEditorInner({
                     onDisconnect={() => {
                              // Remove all connections from selected item
                              if (selectedItem) {
-                                 setDiagramData((prevData: DiagramData) => ({
+                                 setCurrentDiagramData((prevData: DiagramData) => ({
                                      ...prevData,
                                      connections: prevData.connections?.filter((e: any) => e.from !== selectedItem.id && e.to !== selectedItem.id) || []
                                  }));
@@ -4643,6 +4864,10 @@ function DiagramEditorInner({
                     onResourceActivateAtPosition={handleResourceActivateAtPosition}
                     metadataPopupsEnabled={metadataPopupsEnabled}
                     setUmlClassEditorModal={setUmlClassEditorModal}
+                    onSubDiagramDoubleClick={!presentationModeEnabled ? handleSubDiagramDoubleClick : undefined}
+                    getHasLinkedSubDiagram={getHasLinkedSubDiagram}
+                    onCreateSubDiagram={handleCreateSubDiagram}
+                    onRemoveSubDiagramLink={handleRemoveSubDiagramLink}
                     />
                   </div>
 

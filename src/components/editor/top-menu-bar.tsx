@@ -56,6 +56,7 @@ interface TopMenuBarProps {
   onSave: () => void;
   onLoadExample?: (exampleId: string) => void;
   onImportMermaid?: () => void;
+  onImportIntoSubDiagram?: () => void;
   onNewTab?: () => void;
   onExportSvg?: () => void;
   onExportPng?: () => void;
@@ -142,6 +143,7 @@ export function TopMenuBar({
   onSave,
   onLoadExample,
   onImportMermaid,
+  onImportIntoSubDiagram,
   onNewTab,
   onExportSvg,
   onExportPng,
@@ -299,6 +301,12 @@ export function TopMenuBar({
               <MenubarItem onClick={onImportMermaid}>
                 <Upload className="mr-2 h-4 w-4" />
                 Import Mermaid
+              </MenubarItem>
+            )}
+            {onImportIntoSubDiagram && (
+              <MenubarItem onClick={onImportIntoSubDiagram}>
+                <Upload className="mr-2 h-4 w-4" />
+                Import into sub-diagram
               </MenubarItem>
             )}
             <MenubarItem onClick={onSave}>

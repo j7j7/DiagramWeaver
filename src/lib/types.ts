@@ -99,6 +99,9 @@ export interface DiagramNodeData {
   /** Optional metadata as key/value pairs (e.g. IP Address: 192.168.1.1) */
   metaData?: Record<string, string>;
 
+  /** When set, this icon/node links to a sub-diagram. Double-click navigates to it. */
+  subDiagramId?: string;
+
   /** UML class diagram compartments: name, attributes, methods in separate sections */
   umlClass?: {
     name: string;
@@ -440,6 +443,8 @@ export interface DiagramData {
   groupings?: DiagramGroupingData[];
   layers?: LayersConfig;
   recentColors?: string[];
+  /** Nested sub-diagrams keyed by subDiagramId. Nodes with subDiagramId reference these. */
+  subDiagrams?: Record<string, DiagramData>;
 }
 
 /** @deprecated Zones removed - kept only for flatten-on-import of legacy JSON */

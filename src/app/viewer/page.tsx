@@ -8,11 +8,13 @@ import { ViewerCanvas, type ViewerSelectedItem } from "@/components/viewer/viewe
 import { ViewerControls } from "@/components/viewer/viewer-controls";
 import { ViewerLayersPanel } from "@/components/viewer/viewer-layers-panel";
 import { PropertiesPanel } from "@/components/editor/properties-panel";
+import { DiagramBreadcrumb, type BreadcrumbSegment } from "@/components/editor/diagram-breadcrumb";
 import { loadViewerData, parseViewerParams } from "@/lib/viewer-utils";
 import { filterByVisibleLayers, toggleLayerVisibility, validateLayersConfig } from "@/lib/layers-utils";
+import { getDiagramAtStack } from "@/lib/sub-diagram-utils";
 import { getDownstreamAnimationChainNodes } from "@/lib/connection-animation";
 import { isEventFromEditableElement } from "@/lib/keyboard-utils";
-import type { DiagramData, LayersConfig } from "@/lib/types";
+import type { DiagramData, DiagramNodeData, LayersConfig } from "@/lib/types";
 import type { Transform } from "@/hooks/use-canvas-transform";
 
 function ViewerPageContent() {
@@ -31,6 +33,7 @@ function ViewerPageContent() {
   const [animationToggleOnClickEnabled, setAnimationToggleOnClickEnabled] = useState(false);
   const [animationDisabledSources, setAnimationDisabledSources] = useState<Set<string>>(new Set());
   const [isInitialized, setIsInitialized] = useState(false);
+  const [activeDiagramStack, setActiveDiagramStack] = useState<BreadcrumbSegment[]>([]);
 
   // Persist master animation toggle setting
   useEffect(() => {
@@ -104,11 +107,16 @@ function ViewerPageContent() {
     });
   }, []);
 
-  const filteredDiagramData = useMemo(() => {
+  const currentDiagramData = useMemo(() => {
     if (!diagramData) return null;
-    if (!layersConfig || layersConfig.layers.length <= 1) return diagramData;
-    return filterByVisibleLayers({ ...diagramData, layers: layersConfig });
-  }, [diagramData, layersConfig]);
+    return getDiagramAtStack(diagramData, activeDiagramStack);
+  }, [diagramData, activeDiagramStack]);
+
+  const filteredDiagramData = useMemo(() => {
+    if (!currentDiagramData) return null;
+    if (!layersConfig || layersConfig.layers.length <= 1) return currentDiagramData;
+    return filterByVisibleLayers({ ...currentDiagramData, layers: layersConfig });
+  }, [currentDiagramData, layersConfig]);
 
   const hasLayers = diagramData?.layers && validateLayersConfig(diagramData.layers) && diagramData.layers.layers.length > 1;
 
@@ -124,6 +132,7 @@ function ViewerPageContent() {
         // Load diagram data
         const data = await loadViewerData(params);
         setDiagramData(data.diagramData);
+        setActiveDiagramStack([]);
       } catch (err) {
         const message = err instanceof Error ? err.message : "Failed to load diagram";
         setError(message);
@@ -156,6 +165,40 @@ function ViewerPageContent() {
       (window as any).__viewerFitToView();
     }
   }, []);
+
+  const handleBreadcrumbNavigate = useCallback(
+    (index: number) => {
+      setActiveDiagramStack((s) => s.slice(0, index));
+      setSelectedItem(null);
+      setTimeout(() => {
+        if ((window as any).__viewerFitToView) (window as any).__viewerFitToView();
+      }, 100);
+    },
+    []
+  );
+
+  const handleSubDiagramDoubleClick = useCallback((node: DiagramNodeData) => {
+    if (!node.subDiagramId) return;
+    setActiveDiagramStack((s) => [
+      ...s,
+      { diagramId: node.subDiagramId!, fromNodeId: node.id, fromNodeLabel: node.label || "Sub-diagram" },
+    ]);
+    setSelectedItem(null);
+    setTimeout(() => {
+      if ((window as any).__viewerFitToView) (window as any).__viewerFitToView();
+    }, 100);
+  }, []);
+
+  const getHasLinkedSubDiagram = useCallback(
+    (node: DiagramNodeData) => {
+      if (!node.subDiagramId) return false;
+      const subId = node.subDiagramId;
+      if (currentDiagramData?.subDiagrams?.[subId]) return true;
+      if (activeDiagramStack.length > 0 && diagramData?.subDiagrams?.[subId]) return true;
+      return false;
+    },
+    [currentDiagramData, activeDiagramStack, diagramData]
+  );
 
   const handleItemSelect = useCallback(
     (item: ViewerSelectedItem | null) => {
@@ -225,7 +268,7 @@ function ViewerPageContent() {
     );
   }
 
-  const displayData = filteredDiagramData ?? diagramData;
+  const displayData = filteredDiagramData ?? currentDiagramData ?? diagramData;
   const selectedItemId = selectedItem?.itemType === "node" ? selectedItem.id : selectedItem?.itemType === "edge" ? selectedItem.id : undefined;
 
   // Show chain animations only when a node is selected. No animations when nothing selected.
@@ -237,7 +280,15 @@ function ViewerPageContent() {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="flex w-full h-screen bg-background overflow-hidden">
+      <div className="flex w-full h-screen bg-background overflow-hidden flex-col">
+        {activeDiagramStack.length > 0 && (
+          <DiagramBreadcrumb
+            segments={[{ diagramId: null }, ...activeDiagramStack]}
+            rootLabel="Main Diagram"
+            onNavigate={handleBreadcrumbNavigate}
+            isReadOnly={true}
+          />
+        )}
         <div className="flex-1 relative min-w-0">
           <ViewerCanvas
             diagramData={displayData}
@@ -247,6 +298,8 @@ function ViewerPageContent() {
             selectedItemId={selectedItemId}
             selectedItem={selectedItem}
             onItemSelect={handleItemSelect}
+            onSubDiagramDoubleClick={handleSubDiagramDoubleClick}
+            getHasLinkedSubDiagram={getHasLinkedSubDiagram}
             metadataPopupsEnabled={metadataPopupsEnabled}
             animationConnectionsEnabled={animationConnectionsEnabled}
             showAnimationsForSelectedOnly={showAnimationsForSelectedOnly && animationConnectionsEnabled}

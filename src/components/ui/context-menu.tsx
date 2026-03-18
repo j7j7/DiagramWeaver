@@ -49,6 +49,9 @@ interface ContextMenuProps {
   onToggleLock?: () => void;
   isLocked?: boolean;
   onEditUmlClass?: () => void;
+  hasSubDiagramLink?: boolean;
+  onCreateSubDiagram?: (nodeId: string) => void;
+  onRemoveSubDiagramLink?: (nodeId: string) => void;
 }
 
 // Helper function to check if a node type is a line
@@ -105,6 +108,9 @@ export function ContextMenu({
   onToggleLock,
   isLocked = false,
   onEditUmlClass,
+  hasSubDiagramLink = false,
+  onCreateSubDiagram,
+  onRemoveSubDiagramLink,
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [layerSubmenuOpen, setLayerSubmenuOpen] = useState(false);
@@ -183,6 +189,32 @@ export function ContextMenu({
         >
           <FileEdit className="w-4 h-4" />
           Edit UML Class
+        </button>
+      )}
+
+      {onCreateSubDiagram && !hasSubDiagramLink && itemType === 'node' && itemId && (
+        <button
+          className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+          onClick={() => {
+            onCreateSubDiagram(itemId);
+            onClose();
+          }}
+        >
+          <Link className="w-4 h-4" />
+          Create sub-diagram
+        </button>
+      )}
+
+      {onRemoveSubDiagramLink && hasSubDiagramLink && itemType === 'node' && itemId && (
+        <button
+          className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+          onClick={() => {
+            onRemoveSubDiagramLink(itemId);
+            onClose();
+          }}
+        >
+          <Link2Off className="w-4 h-4" />
+          Remove sub-diagram link
         </button>
       )}
 

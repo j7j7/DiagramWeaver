@@ -128,6 +128,14 @@ interface EditorCanvasProps {
   connectionAnimationStyles?: Map<string, { opacity: number; transition: string; transform?: string }>;
   /** Key function for connection lookup (from useLayerAnimation.connectionKey) */
   connectionKey?: (conn: DiagramConnectionData) => string;
+  /** Double-click on node with subDiagramId navigates to sub-diagram */
+  onSubDiagramDoubleClick?: (node: DiagramNodeData) => void;
+  /** True when node has subDiagramId and the linked sub exists (current level or root) */
+  getHasLinkedSubDiagram?: (node: DiagramNodeData) => boolean;
+  /** Create sub-diagram and link to node (context menu) */
+  onCreateSubDiagram?: (nodeId: string) => void;
+  /** Remove sub-diagram link from node (context menu) */
+  onRemoveSubDiagramLink?: (nodeId: string) => void;
 }
 
 
@@ -143,7 +151,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, connectionsBehindNodesEnabled = true, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal, nodeAnimationStyles, connectionAnimationStyles, connectionKey }: EditorCanvasProps,
+   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, connectionsBehindNodesEnabled = true, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal, nodeAnimationStyles, connectionAnimationStyles, connectionKey, onSubDiagramDoubleClick, getHasLinkedSubDiagram, onCreateSubDiagram, onRemoveSubDiagramLink }: EditorCanvasProps,
   ref
 ) {
   const [gifExportAnimationTimeSeconds, setGifExportAnimationTimeSeconds] = React.useState<number | null>(null);
@@ -1353,6 +1361,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   canvasRef={canvasRef}
                   pointerEventsPassThrough={pointerEventsPassThroughIds.has(node.id)}
                   animationStyle={nodeAnimationStyles?.get(node.id)}
+                  onSubDiagramDoubleClick={onSubDiagramDoubleClick}
+                  hasLinkedSubDiagram={getHasLinkedSubDiagram?.(node) ?? Boolean(node.subDiagramId)}
                 />
               ) : zone ? null : null;
                   return nodeEl;
@@ -1403,6 +1413,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     canvasRef={canvasRef}
                     pointerEventsPassThrough={pointerEventsPassThroughIds.has(node.id)}
                     animationStyle={nodeAnimationStyles?.get(node.id)}
+                    onSubDiagramDoubleClick={onSubDiagramDoubleClick}
+                    hasLinkedSubDiagram={getHasLinkedSubDiagram?.(node) ?? Boolean(node.subDiagramId)}
                   />
                 ) : zone ? null : null;
                 return [
@@ -1848,6 +1860,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               setUmlClassEditorModal({ visible: true, x: contextMenu.x, y: contextMenu.y, itemId: contextMenu.itemId });
               closeContextMenu();
             } : undefined}
+            hasSubDiagramLink={contextMenu.itemType === 'node' ? Boolean(diagramData.nodes.find(n => n.id === contextMenu.itemId)?.subDiagramId) : false}
+            onCreateSubDiagram={onCreateSubDiagram}
+            onRemoveSubDiagramLink={onRemoveSubDiagramLink}
           />
           {metadataPopupRect &&
             !contextMenu.visible &&

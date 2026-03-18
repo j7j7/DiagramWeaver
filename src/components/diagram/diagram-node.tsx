@@ -175,6 +175,10 @@ interface DiagramNodeProps {
   pointerEventsPassThrough?: boolean;
   /** Layer show/hide animation style (opacity, transition, transform) from useLayerAnimation */
   animationStyle?: { opacity: number; transition: string; transform?: string; transformOrigin?: string };
+  /** When node has subDiagramId, double-click navigates to sub-diagram instead of editing label */
+  onSubDiagramDoubleClick?: (node: DiagramNodeData) => void;
+  /** True when node links to an existing sub-diagram (shows golden glow) */
+  hasLinkedSubDiagram?: boolean;
 }
 
 function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps): boolean {
@@ -225,10 +229,12 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
     prev.onHoverChange === next.onHoverChange &&
     prev.onConnect === next.onConnect &&
     prev.isConnectMode === next.isConnectMode &&
-    prev.animationStyle === next.animationStyle;
+    prev.animationStyle === next.animationStyle &&
+    prev.onSubDiagramDoubleClick === next.onSubDiagramDoubleClick &&
+    prev.hasLinkedSubDiagram === next.hasLinkedSubDiagram;
 }
 
-function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onResizeStart, onResizeEnd, onPositionUpdate, onDraggingChange, onUpdate, hoverEnabled = true, isReadOnly = false, onHoverChange, onConnect, isConnectMode, transform, canvasRef, stackZIndex, pointerEventsPassThrough = false, animationStyle }: DiagramNodeProps) {
+function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onResizeStart, onResizeEnd, onPositionUpdate, onDraggingChange, onUpdate, hoverEnabled = true, isReadOnly = false, onHoverChange, onConnect, isConnectMode, transform, canvasRef, stackZIndex, pointerEventsPassThrough = false, animationStyle, onSubDiagramDoubleClick, hasLinkedSubDiagram }: DiagramNodeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [isEditingTag, setIsEditingTag] = useState(false);
@@ -263,6 +269,10 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
 
   const handleLabelDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (node.subDiagramId && onSubDiagramDoubleClick) {
+      onSubDiagramDoubleClick(node);
+      return;
+    }
     setIsEditingLabel(true);
     setIsOpen(false); // Close popup when editing starts
     setEditText(node.label || '');
@@ -1292,13 +1302,20 @@ return (
       className={cn(
         "absolute group transition-[transform,filter] duration-200 ease-in-out rounded-lg",
         // Hover and selection effects - not for lines, and not when locked
-        !isLineNode && !(isDragging || isTouchDragging) && !(isSelected || isHighlighted || isMultiSelected) && !isLocked && "node-glow-hover",
+        !isLineNode && !(isDragging || isTouchDragging) && !(isSelected || isHighlighted || isMultiSelected) && !isLocked && !(hasLinkedSubDiagram ?? node.subDiagramId) && "node-glow-hover",
+        !isLineNode && (hasLinkedSubDiagram ?? node.subDiagramId) && !(isSelected || isHighlighted || isMultiSelected) && !isLocked && "node-glow-subdiagram",
         !isLineNode && (isSelected || isHighlighted || isMultiSelected) && "node-glow-static",
         !isLineNode && isGroupMember && !isSelected && !isHighlighted && !isMultiSelected && "node-glow-green-static",
         (isDragging || isTouchDragging) && "cursor-grabbing",
         isTargetable && "cursor-crosshair opacity-70 hover:opacity-100"
         )}
       onClick={isLineNode ? undefined : (e) => onClick && onClick(e, node)} // Lines handle clicks in their SVG (not on container)
+      onDoubleClick={isLineNode ? undefined : (e) => {
+        if (node.subDiagramId && onSubDiagramDoubleClick) {
+          e.stopPropagation();
+          onSubDiagramDoubleClick(node);
+        }
+      }}
       onContextMenu={isLineNode ? undefined : (e) => onContextMenu && onContextMenu(e, node)} // Lines handle context menu in their SVG (not on container)
       style={{
         zIndex: stackZIndex ?? 2,
