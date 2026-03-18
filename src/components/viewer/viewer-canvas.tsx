@@ -55,9 +55,13 @@ interface ViewerCanvasProps {
   nodeTransitionStyles?: Map<string, { opacity: number; transition: string; transform?: string; transformOrigin?: string }>;
   /** Connection transition styles for slide transitions */
   connectionTransitionStyles?: Map<string, { opacity: number; transition: string; transform?: string; transformOrigin?: string }>;
+  /** Double-click on node with subDiagramId navigates to sub-diagram */
+  onSubDiagramDoubleClick?: (node: import("@/lib/types").DiagramNodeData) => void;
+  /** True when node has subDiagramId and the linked sub exists */
+  getHasLinkedSubDiagram?: (node: import("@/lib/types").DiagramNodeData) => boolean;
 }
 
-export function ViewerCanvas({ diagramData, showRulers = true, onFitToView, transform: externalTransform, onTransformChange, selectedItemId, selectedItem, onItemSelect, metadataPopupsEnabled = true, animationConnectionsEnabled = true, connectionsBehindNodesEnabled: connectionsBehindNodesProp, showAnimationsForSelectedOnly = false, animationFilterSourceIds, animationToggleOnClickEnabled = false, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, openNodeLinksOnClick = false, nodeTransitionStyles = new Map(), connectionTransitionStyles = new Map() }: ViewerCanvasProps) {
+export function ViewerCanvas({ diagramData, showRulers = true, onFitToView, transform: externalTransform, onTransformChange, selectedItemId, selectedItem, onItemSelect, metadataPopupsEnabled = true, animationConnectionsEnabled = true, connectionsBehindNodesEnabled: connectionsBehindNodesProp, showAnimationsForSelectedOnly = false, animationFilterSourceIds, animationToggleOnClickEnabled = false, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, openNodeLinksOnClick = false, nodeTransitionStyles = new Map(), connectionTransitionStyles = new Map(), onSubDiagramDoubleClick, getHasLinkedSubDiagram }: ViewerCanvasProps) {
   const [connectionsBehindNodesEnabled, setConnectionsBehindNodesEnabled] = useState(true);
   useEffect(() => {
     if (connectionsBehindNodesProp !== undefined) {
@@ -300,6 +304,13 @@ export function ViewerCanvas({ diagramData, showRulers = true, onFitToView, tran
     [onItemSelect, animationToggleOnClickEnabled, animationDisabledSources, onAnimationDisabledSourcesChange, diagramData, openNodeLinksOnClick]
   );
 
+  const handleSubDiagramDoubleClick = useCallback(
+    (node: import("@/lib/types").DiagramNodeData) => {
+      onSubDiagramDoubleClick?.(node);
+    },
+    [onSubDiagramDoubleClick]
+  );
+
   const handleViewerItemSelect = useCallback(
     (item: ViewerSelectedItem | null) => {
       onItemSelect?.(item);
@@ -413,6 +424,8 @@ export function ViewerCanvas({ diagramData, showRulers = true, onFitToView, tran
                   isReadOnly={true}
                   onHoverChange={handleNodeHover}
                   onClick={handleNodeClick}
+                  onSubDiagramDoubleClick={onSubDiagramDoubleClick ? handleSubDiagramDoubleClick : undefined}
+                  hasLinkedSubDiagram={getHasLinkedSubDiagram?.(node) ?? Boolean(node.subDiagramId)}
                   animationStyle={nodeTransitionStyles.get(node.id)}
                 />
               ) : null;
@@ -441,6 +454,8 @@ export function ViewerCanvas({ diagramData, showRulers = true, onFitToView, tran
                   isReadOnly={true}
                   onHoverChange={handleNodeHover}
                   onClick={handleNodeClick}
+                  onSubDiagramDoubleClick={onSubDiagramDoubleClick ? handleSubDiagramDoubleClick : undefined}
+                  hasLinkedSubDiagram={getHasLinkedSubDiagram?.(node) ?? Boolean(node.subDiagramId)}
                   animationStyle={nodeTransitionStyles.get(node.id)}
                 />
               ) : null;

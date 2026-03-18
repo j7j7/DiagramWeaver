@@ -91,6 +91,7 @@ export const DiagramNodeDataSchema = z.object({
   iconColor: z.string().optional(), // Color for Lucide icons (hex)
 
   metaData: z.record(z.string(), z.string()).optional(), // Key/value metadata
+  subDiagramId: z.string().optional(), // Links this node to a sub-diagram (double-click to navigate)
 
   umlClass: z.object({
     name: z.string(),
@@ -274,12 +275,14 @@ export const PresentationDeckSchema = z.object({
 export const PresentationDeckListSchema = z.array(PresentationDeckSchema);
 
 // Main DiagramData schema - zones stripped on parse via flattenDiagramOnImport
+// subDiagrams: recursive structure, validated loosely to avoid circular type
 export const DiagramDataSchema = z.object({
   nodes: z.array(DiagramNodeDataSchema).default([]),
   connections: z.array(DiagramConnectionDataSchema).default([]),
   groupings: z.array(DiagramGroupingDataSchema).optional(),
   layers: LayersConfigSchema.optional(),
   recentColors: z.array(z.string()).optional(),
+  subDiagrams: z.record(z.string(), z.any()).optional(),
 });
 
 export type DiagramDataValidated = z.infer<typeof DiagramDataSchema>;
@@ -356,6 +359,7 @@ export const DiagramNodeItemSchema = z.object({
   // Lock property - prevents movement when true
   locked: z.boolean().optional(), // If true, node cannot be moved
   metaData: z.record(z.string(), z.string()).optional(), // Key/value metadata
+  subDiagramId: z.string().optional(), // Links to sub-diagram (double-click to navigate)
 });
 
 // Schema for nested group items in hierarchical format

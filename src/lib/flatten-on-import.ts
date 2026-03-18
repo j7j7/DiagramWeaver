@@ -146,7 +146,9 @@ export function flattenDiagramOnImport(raw: RawDiagramData): DiagramData {
     nodes: flatNodes,
     connections,
     groupings: groupings.length > 0 ? groupings : undefined,
-    layers: raw.layers as LayersConfig | undefined
+    layers: raw.layers as LayersConfig | undefined,
+    recentColors: raw.recentColors as string[] | undefined,
+    subDiagrams: raw.subDiagrams as Record<string, DiagramData> | undefined
   };
 }
 
@@ -156,6 +158,8 @@ function normalizeDiagramData(raw: RawDiagramData): DiagramData {
     nodes: raw.nodes || [],
     connections: raw.connections || [],
     groupings: raw.groupings,
-    layers: raw.layers as LayersConfig | undefined
+    layers: raw.layers as LayersConfig | undefined,
+    recentColors: raw.recentColors as string[] | undefined,
+    subDiagrams: raw.subDiagrams as Record<string, DiagramData> | undefined
   };
 }
