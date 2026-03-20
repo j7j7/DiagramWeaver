@@ -8,7 +8,7 @@ import { calculateLayout } from "../editor/canvas-layout-utils";
 import { useCanvasTransform, type Transform } from "@/hooks/use-canvas-transform";
 import { CanvasConnections } from "../editor/canvas-connections";
 import { CanvasConnectionText } from "../editor/canvas-connection-text";
-import { RULER_SIZE, type PositionedNode, type PositionedGroup } from "../editor/canvas-constants";
+import { type PositionedNode, type PositionedGroup } from "../editor/canvas-constants";
 import { CanvasRulers } from "../editor/canvas-rulers";
 import { computeConnectionSlots } from "@/lib/connection-order-utils";
 import { isShapeNodeType } from "@/lib/utils";
@@ -68,9 +68,11 @@ interface ViewerCanvasProps {
   onSubDiagramDoubleClick?: (node: import("@/lib/types").DiagramNodeData) => void;
   /** True when node has subDiagramId and the linked sub exists */
   getHasLinkedSubDiagram?: (node: import("@/lib/types").DiagramNodeData) => boolean;
+  /** When true, skip the one-shot auto fit-to-view on mount (parent owns transform). */
+  skipInitialFitToView?: boolean;
 }
 
-export function ViewerCanvas({ diagramData, showRulers = true, onFitToView, transform: externalTransform, onTransformChange, selectedItemId, selectedItem, onItemSelect, metadataPopupsEnabled = true, animationConnectionsEnabled = true, connectionsBehindNodesEnabled: connectionsBehindNodesProp, showAnimationsForSelectedOnly = false, animationFilterSourceIds, animationToggleOnClickEnabled = false, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, openNodeLinksOnClick = false, nodeTransitionStyles = new Map(), connectionTransitionStyles = new Map(), onSubDiagramDoubleClick, getHasLinkedSubDiagram }: ViewerCanvasProps) {
+export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, transform: externalTransform, onTransformChange, selectedItemId, selectedItem, onItemSelect, metadataPopupsEnabled = true, animationConnectionsEnabled = true, connectionsBehindNodesEnabled: connectionsBehindNodesProp, showAnimationsForSelectedOnly = false, animationFilterSourceIds, animationToggleOnClickEnabled = false, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, openNodeLinksOnClick = false, nodeTransitionStyles = new Map(), connectionTransitionStyles = new Map(), onSubDiagramDoubleClick, getHasLinkedSubDiagram, skipInitialFitToView = false }: ViewerCanvasProps) {
   const [connectionsBehindNodesEnabled, setConnectionsBehindNodesEnabled] = useState(true);
   useEffect(() => {
     if (connectionsBehindNodesProp !== undefined) {
@@ -247,11 +249,13 @@ export function ViewerCanvas({ diagramData, showRulers = true, onFitToView, tran
   // Auto fit to view on first load
   useEffect(() => {
     if (
-      !isClient || 
-      !canvasRef.current || 
+      skipInitialFitToView ||
+      !isClient ||
+      !canvasRef.current ||
       hasFittedToViewRef.current ||
-      processedNodes.length === 0 && processedZones.length === 0 ||
-      canvasDimensions.width === 0 || canvasDimensions.height === 0
+      (processedNodes.length === 0 && processedZones.length === 0) ||
+      canvasDimensions.width === 0 ||
+      canvasDimensions.height === 0
     ) {
       return;
     }
@@ -265,7 +269,14 @@ export function ViewerCanvas({ diagramData, showRulers = true, onFitToView, tran
     }, 100);
 
     return () => clearTimeout(timeoutId);
-  }, [isClient, canvasDimensions, processedNodes.length, processedZones.length, handleFitToView]);
+  }, [
+    skipInitialFitToView,
+    isClient,
+    canvasDimensions,
+    processedNodes.length,
+    processedZones.length,
+    handleFitToView,
+  ]);
 
   // Client-side rendering
   useEffect(() => {

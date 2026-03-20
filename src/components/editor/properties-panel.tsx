@@ -26,6 +26,8 @@ interface PropertiesPanelProps {
   collapsed?: boolean;
   onToggleCollapse?: () => void;
   isReadOnly?: boolean;
+  /** Narrower collapsed strip (e.g. viewer overlay rail); icon-only, no side label. */
+  narrowCollapsed?: boolean;
 }
 
 /** Collect all metadata keys used across the diagram for consistent suggestions */
@@ -55,6 +57,7 @@ export function PropertiesPanel({
   collapsed = false,
   onToggleCollapse,
   isReadOnly = false,
+  narrowCollapsed = false,
 }: PropertiesPanelProps) {
   const { toast } = useToast();
   const usedMetadataKeys = useMemo(
@@ -182,6 +185,27 @@ export function PropertiesPanel({
   }, [selectedItem?.id]);
 
   if (collapsed) {
+    if (narrowCollapsed) {
+      return (
+        <aside
+          className={cn(
+            "flex flex-col flex-shrink-0 border-l bg-card",
+            "w-7"
+          )}
+        >
+          <div className="flex flex-1 flex-col items-center gap-1 p-1">
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              className="rounded-md p-1 hover:bg-muted touch-target"
+              aria-label="Expand properties panel"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+          </div>
+        </aside>
+      );
+    }
     return (
       <aside
         className={cn(
@@ -191,6 +215,7 @@ export function PropertiesPanel({
       >
         <div className="flex flex-col items-center p-2 gap-2 flex-1">
           <button
+            type="button"
             onClick={onToggleCollapse}
             className="p-2 rounded-md hover:bg-muted touch-target"
             aria-label="Expand properties panel"

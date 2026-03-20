@@ -43,39 +43,44 @@ export function ViewerControls({
   return (
     <div
       className={cn(
-        "absolute top-4 right-4 z-50 flex flex-col gap-2 bg-card border border-border rounded-lg shadow-lg p-2",
+        "absolute top-4 left-4 z-50 flex flex-col gap-2 rounded-lg border border-border/60 bg-card/80 p-2 shadow-lg backdrop-blur-md",
         className
       )}
     >
+      {onTogglePropertiesPanel && (
+        <button
+          type="button"
+          onClick={onTogglePropertiesPanel}
+          className={cn(
+            "rounded-md p-2 transition-colors hover:bg-accent",
+            propertiesPanelVisible && "bg-accent"
+          )}
+          title={propertiesPanelVisible ? "Hide properties panel" : "Show properties panel"}
+          aria-label={propertiesPanelVisible ? "Hide properties panel" : "Show properties panel"}
+          aria-pressed={propertiesPanelVisible}
+        >
+          <PanelRight className="h-4 w-4" />
+        </button>
+      )}
+      {onTogglePropertiesPanel && <div className="my-1 h-px bg-border/80" />}
       <button
+        type="button"
         onClick={onZoomIn}
-        className="p-2 hover:bg-accent rounded-md transition-colors"
+        className="rounded-md p-2 transition-colors hover:bg-accent"
         title="Zoom In"
         aria-label="Zoom In"
       >
-        <ZoomIn className="w-4 h-4" />
+        <ZoomIn className="h-4 w-4" />
       </button>
       <button
+        type="button"
         onClick={onZoomOut}
-        className="p-2 hover:bg-accent rounded-md transition-colors"
+        className="rounded-md p-2 transition-colors hover:bg-accent"
         title="Zoom Out"
         aria-label="Zoom Out"
       >
-        <ZoomOut className="w-4 h-4" />
+        <ZoomOut className="h-4 w-4" />
       </button>
-      {onTogglePropertiesPanel && (
-        <>
-          <div className="h-px bg-border my-1" />
-          <button
-            onClick={onTogglePropertiesPanel}
-            className="p-2 hover:bg-accent rounded-md transition-colors"
-            title={propertiesPanelVisible ? "Hide Properties" : "Show Properties"}
-            aria-label={propertiesPanelVisible ? "Hide Properties" : "Show Properties"}
-          >
-            <PanelRight className="w-4 h-4" />
-          </button>
-        </>
-      )}
       {onToggleMetadataPopups && (
         <>
           <div className="h-px bg-border my-1" />

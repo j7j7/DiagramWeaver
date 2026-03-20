@@ -3,16 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { DiagramData, Slide } from '@/lib/types';
 import { useSlideTransition } from '@/hooks/use-slide-transition';
-
-function pruneConnectionsToVisibleNodes(diagram: DiagramData): DiagramData {
-  const visibleNodeIds = new Set((diagram.nodes ?? []).map((node) => node.id));
-  return {
-    ...diagram,
-    connections: (diagram.connections ?? []).filter(
-      (conn) => visibleNodeIds.has(conn.from) && visibleNodeIds.has(conn.to)
-    ),
-  };
-}
+import { pruneConnectionsToVisibleNodes } from '@/lib/presentation-viewport-fit';
 
 export function usePresentationSlideView(options: {
   enabled: boolean;

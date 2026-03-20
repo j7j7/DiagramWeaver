@@ -12,6 +12,10 @@ import type { DiagramData, Slide } from '@/lib/types';
 import type { Transform } from '@/hooks/use-canvas-transform';
 import { useSlideTransition } from '@/hooks/use-slide-transition';
 import { isEventFromEditableElement } from '@/lib/keyboard-utils';
+import {
+  computeUnionFitTransformForDiagrams,
+  pruneConnectionsToVisibleNodes,
+} from '@/lib/presentation-viewport-fit';
 
 const SLIDE_IMAGE_PLACEHOLDER = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720"><rect width="1280" height="720" fill="%23000000"/><text x="640" y="360" text-anchor="middle" dominant-baseline="middle" fill="%23d1d5db" font-family="Arial, sans-serif" font-size="28">Slide</text></svg>';
 
@@ -26,14 +30,6 @@ interface PresentationPlayerProps {
   onApplyZoomToAllSlides?: (zoomLevel: number) => void;
   /** When false, bottom playback toolbar is hidden (viewer fullscreen uses keyboard + top exit only). Default true. */
   showPlaybackToolbar?: boolean;
-}
-
-function pruneConnectionsToVisibleNodes(diagram: DiagramData): DiagramData {
-  const visibleNodeIds = new Set((diagram.nodes ?? []).map((node) => node.id));
-  return {
-    ...diagram,
-    connections: (diagram.connections ?? []).filter((conn) => visibleNodeIds.has(conn.from) && visibleNodeIds.has(conn.to)),
-  };
 }
 
 export function PresentationPlayer({
@@ -133,8 +129,36 @@ export function PresentationPlayer({
     return () => window.clearInterval(timer);
   }, [open, autoPlayEnabled, autoPlaySeconds, totalSlides, goNext]);
 
+  const slideDiagramsForUnionFit = React.useMemo(() => {
+    if (!slideDiagrams?.length) return [];
+    return slideDiagrams.map((d) => pruneConnectionsToVisibleNodes(d));
+  }, [slideDiagrams]);
+
+  const applyViewerUnionFit = React.useCallback(() => {
+    if (typeof window === 'undefined') return;
+    if (slideDiagramsForUnionFit.length === 0) return;
+    const t = computeUnionFitTransformForDiagrams(
+      slideDiagramsForUnionFit,
+      window.innerWidth,
+      window.innerHeight
+    );
+    if (t) setPlaybackTransform(t);
+  }, [slideDiagramsForUnionFit]);
+
+  React.useLayoutEffect(() => {
+    if (!open || showPlaybackToolbar || slideDiagramsForUnionFit.length === 0) return;
+    applyViewerUnionFit();
+  }, [open, showPlaybackToolbar, slideDiagramsForUnionFit, applyViewerUnionFit]);
+
   React.useEffect(() => {
-    if (!open || !useSlideZoom || !currentSlide) return;
+    if (!open || showPlaybackToolbar) return;
+    const onResize = () => applyViewerUnionFit();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [open, showPlaybackToolbar, applyViewerUnionFit]);
+
+  React.useEffect(() => {
+    if (!open || !useSlideZoom || !currentSlide || !showPlaybackToolbar) return;
     const slideZoom = currentSlide.autoZoomLevel;
     if (typeof slideZoom !== 'number' || !Number.isFinite(slideZoom)) return;
     const clampedZoom = Math.max(0.1, Math.min(2.5, slideZoom));
@@ -146,7 +170,7 @@ export function PresentationPlayer({
         k: clampedZoom,
       };
     });
-  }, [open, useSlideZoom, currentSlide?.id, currentSlide?.autoZoomLevel]);
+  }, [open, useSlideZoom, showPlaybackToolbar, currentSlide?.id, currentSlide?.autoZoomLevel]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -279,6 +303,7 @@ export function PresentationPlayer({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        showCloseButton={false}
         className="h-screen max-w-none translate-x-[-50%] translate-y-[-50%] rounded-none border-0 p-0"
         onPointerDownOutside={blockInteractOutside ? (e) => e.preventDefault() : undefined}
         onInteractOutside={blockInteractOutside ? (e) => e.preventDefault() : undefined}
@@ -308,6 +333,7 @@ export function PresentationPlayer({
                     transform={playbackTransform}
                     onTransformChange={setPlaybackTransform}
                     onFitToView={() => {}}
+                    skipInitialFitToView={!showPlaybackToolbar}
                     metadataPopupsEnabled={false}
                     openNodeLinksOnClick={true}
                     animationConnectionsEnabled={playbackAnimationEnabled}
