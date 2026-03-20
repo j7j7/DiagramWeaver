@@ -2,6 +2,11 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-03-20 – Slide transition: shadow flash in play mode
+**Cause**: `use-slide-transition` used `transition: all` on nodes/connections, which pulled unrelated paint props (e.g. shadow/filter) into interpolation/compositing during the motion phase. **Fix**: `slideMotionTransition()` — only `opacity` and `transform` are transitioned; color crossfade / merge still use their existing scoped transition strings.
+
+**Gradient crossfade** stacks two renders; **`SlideShapeShadowTransitionProvider`** sets `crossfade` only when `visualColorCrossfade` is active—then suppress per-layer shadow and use **one** group `filter: var(--shape-shadow-drop)` (same CSS as a single layer). Solid colour lerp (`visualColorMerge` only) keeps the **normal** per-layer shadow so it doesn’t blink off/on. **Textbox** / **uml** / **ShapeWrapper** suppress local shadow only in `crossfade`. **SVG solid merge**: no inner `ShapeWrapper` paint `transition` when `skipWrapperStyling`.
+
 ### 2026-03-20 – Hard refresh in presentation mode: restore slide canvas
 **Problem**: Per-tab presentation **decks/slide id** load from IndexedDB after refresh, but **master/draft** were never persisted; the active-tab effect could also clear presentation state before that load. **Fix**: After **`presentationStorageHydrated`**, if presentation mode is on and there is an active deck + slide, **rebuild** `presentationMasterDiagram` from **`tabDiagramData`** (when missing) and **`presentationDraftDiagram`** via **`applyDiagramDelta(projectVisibleDiagram(master), slide.diagramDelta)`**, keyed by **`tabId:deckId:slideId`** (`presentationSlideCanvasKeyRef`) so edits don’t reset every render. Clear key when leaving presentation mode. File: `diagram-editor.tsx`.
 

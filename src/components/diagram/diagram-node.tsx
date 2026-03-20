@@ -40,6 +40,10 @@ import {
   LoopShape,
   UmlClassShape,
 } from "./shapes";
+import {
+  SlideShapeShadowTransitionProvider,
+  getSlideShapeShadowMode,
+} from "@/components/diagram/slide-shape-shadow-transition-context";
 import { ResizeHandles } from "./resize-handles";
 import { LineEndpointHandles } from "./line-endpoint-handles";
 import { ConnectHandle } from "./connect-handle";
@@ -413,6 +417,11 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     return { ...node, ...m } as DiagramNodeData;
   }, [node, animationStyle]);
 
+  const slideShapeShadowMode = useMemo(
+    () => getSlideShapeShadowMode(animationStyle),
+    [animationStyle],
+  );
+
   /** Gradient slide changes: two full renders with top-layer opacity (see use-slide-transition). */
   const wrapSlideVisualCrossfade = (render: (visualNode: DiagramNodeData) => React.ReactNode) => {
     if (!animationStyle?.visualColorCrossfade) {
@@ -422,15 +431,19 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     const to = { ...node, ...animationStyle.visualColorCrossfade.to } as DiagramNodeData;
     const topOpacity = animationStyle.visualColorCrossfadeTopOpacity ?? 0;
     const topTransition = animationStyle.visualColorCrossfadeTopTransition ?? 'none';
+    const liftGroupShadow = Boolean((displayNode as any).shadow);
     return (
-      <div className="relative w-full h-full min-h-0 isolate">
+      <div
+        className="relative w-full h-full min-h-0 isolate"
+        style={liftGroupShadow ? { filter: "var(--shape-shadow-drop)" } : undefined}
+      >
         <div className="absolute inset-0">{render(from)}</div>
         <div
           className="absolute inset-0"
           style={{
             opacity: topOpacity,
             transition: topTransition,
-            pointerEvents: topOpacity < 1 ? 'none' : 'auto',
+            pointerEvents: topOpacity < 1 ? "none" : "auto",
           }}
         >
           {render(to)}
@@ -564,6 +577,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     const gradientAngle = nodeAny.gradientAngle || 135;
     const borderGradientAngle = nodeAny.borderGradientAngle ?? gradientAngle;
     const hasShadow = nodeAny.shadow || false;
+    const showLocalShadow = hasShadow && slideShapeShadowMode !== "crossfade";
     const borderColor = nodeAny.borderColor || '#d1d5db';
 
     return (
@@ -579,7 +593,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
             : "opacity-100 hover:border hover:border-dashed hover:border-primary hover:bg-primary/5"),
           isSelected && borderStyle !== 'none' ? "border-primary" : !(isDragging || isTouchDragging) && borderStyle !== 'none' && "group-hover:border-accent",
           isTargetable && "border-dashed border-primary",
-          hasShadow && "shadow-[0_10px_15px_-3px_rgba(239,68,68,0.3),0_4px_6px_-2px_rgba(239,68,68,0.2)]"
+          showLocalShadow && "shadow-[0_10px_15px_-3px_rgba(239,68,68,0.3),0_4px_6px_-2px_rgba(239,68,68,0.2)]"
         )}
         style={{
           background: backgroundStyle === 'none'
@@ -598,7 +612,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
           }),
           color: nodeAny.textColor || '#374151',
           ...(node.sizeMode === 'custom' ? {} : { minHeight: '120px' }),
-          ...(hasShadow && { boxShadow: 'var(--shape-shadow)' }),
+          ...(showLocalShadow && { boxShadow: 'var(--shape-shadow)' }),
           ...(!animationStyle?.visualColorCrossfade && animationStyle?.visualColorMergeTransition !== undefined
             ? { transition: animationStyle.visualColorMergeTransition }
             : {}),
@@ -1465,6 +1479,7 @@ return (
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
+      <SlideShapeShadowTransitionProvider animationStyle={animationStyle}>
       <Popover open={isOpen && !isDragging && !isEditingLabel && !isEditingTag} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <div className="flex flex-col items-center justify-center h-full w-full cursor-pointer">
@@ -1617,6 +1632,7 @@ return (
            zIndexClass="z-50"
          />
        )}
+      </SlideShapeShadowTransitionProvider>
     </div>
   );
 }

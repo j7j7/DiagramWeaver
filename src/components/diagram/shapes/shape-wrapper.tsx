@@ -2,6 +2,7 @@
 
 import React from "react";
 import type { DiagramNodeData } from "@/lib/types";
+import { useSlideShapeShadowTransitionMode } from "@/components/diagram/slide-shape-shadow-transition-context";
 import { getNodeSizeMultiplier } from "@/lib/visual-styling";
 import { getShapeStyles } from "./shape-utils";
 import { ShapeTag } from "./shape-tag";
@@ -67,6 +68,9 @@ export function ShapeWrapper({
   slideColorTransition,
 }: ShapeWrapperProps) {
   const styles = getShapeStyles(node);
+  const slideShapeShadowMode = useSlideShapeShadowTransitionMode();
+  /** Only gradient crossfade stacks two paints; suppress per-layer shadow there and use one group filter. Merge-paint keeps the normal shadow so it never “blinks” off. */
+  const suppressLayerShadow = styles.shadow && slideShapeShadowMode === "crossfade";
   const nodeAny = node as any;
   const scale = getNodeSizeMultiplier(nodeAny.nodeSize);
   const baseWidth = node.width ?? defaultWidth;
@@ -109,10 +113,10 @@ export function ShapeWrapper({
         minHeight: height + overlap,
         marginRight: overlap ? -overlap : 0,
         marginBottom: overlap ? -overlap : 0,
-        ...(styles.shadow && !useSvgShadow && !needsGradientBorderRounding ? {
+        ...(styles.shadow && !suppressLayerShadow && !useSvgShadow && !needsGradientBorderRounding ? {
           boxShadow: 'var(--shape-shadow)'
         } : {}),
-        ...(styles.shadow && useSvgShadow && !needsGradientBorderRounding ? {
+        ...(styles.shadow && !suppressLayerShadow && useSvgShadow && !needsGradientBorderRounding ? {
           filter: 'var(--shape-shadow-drop)'
         } : {})
       }}
@@ -141,13 +145,13 @@ export function ShapeWrapper({
           width: needsGradientBorderRounding ? `calc(100% - ${styles.borderWidth})` : '100%',
           height: needsGradientBorderRounding ? `calc(100% - ${styles.borderWidth})` : '100%',
           margin: needsGradientBorderRounding ? `calc(${styles.borderWidth} / 2)` : 0,
-          ...(styles.shadow && !useSvgShadow && needsGradientBorderRounding ? {
+          ...(styles.shadow && !suppressLayerShadow && !useSvgShadow && needsGradientBorderRounding ? {
             boxShadow: 'var(--shape-shadow)'
           } : {}),
-          ...(styles.shadow && useSvgShadow && needsGradientBorderRounding ? {
+          ...(styles.shadow && !suppressLayerShadow && useSvgShadow && needsGradientBorderRounding ? {
             filter: 'var(--shape-shadow-drop)'
           } : {}),
-          ...(slideColorTransition !== undefined ? { transition: slideColorTransition } : {}),
+          ...(slideColorTransition !== undefined && !skipWrapperStyling ? { transition: slideColorTransition } : {}),
         }}
       >
         {children ?? null}

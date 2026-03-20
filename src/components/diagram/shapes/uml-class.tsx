@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import type { DiagramNodeData } from "@/lib/types";
+import { useSlideShapeShadowTransitionMode } from "@/components/diagram/slide-shape-shadow-transition-context";
 import { getShapeStyles } from "./shape-utils";
 import { getTextColorForBackground } from "./shape-utils";
 import { ShapeTag } from "./shape-tag";
@@ -64,6 +65,7 @@ export function UmlClassShape({
   const width = overrideWidth ?? node.width ?? 140;
   const height = overrideHeight ?? node.height ?? 120;
   const styles = getShapeStyles(node);
+  const slideShapeShadowMode = useSlideShapeShadowTransitionMode();
 
   const name = uml?.name ?? label.split("\n")[0] ?? "";
   const attributes = uml?.attributes ?? [];
@@ -156,7 +158,7 @@ export function UmlClassShape({
           borderImage: styles.borderImage,
           background: styles.background ?? nodeAny.backgroundColor ?? "#ffffff",
           borderRadius,
-          ...(styles.shadow ? { boxShadow: "var(--shape-shadow-sm)" } : {}),
+          ...(styles.shadow && slideShapeShadowMode !== "crossfade" ? { boxShadow: "var(--shape-shadow-sm)" } : {}),
           ...(slideColorTransition !== undefined ? { transition: slideColorTransition } : {}),
         }}
       >

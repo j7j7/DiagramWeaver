@@ -68,6 +68,12 @@ function slideCrossfadeOpacityWithDelay(delayMs: number): string {
   return `opacity ${TRANSITION_DURATION_MS}ms ${EASE_IN_OUT} ${delayMs}ms`;
 }
 
+/** Only opacity + transform — avoid `transition: all`, which can drag box-shadow/filter into interpolation and flash during compositing. */
+function slideMotionTransition(easing: string): string {
+  const t = TRANSITION_DURATION_MS;
+  return `opacity ${t}ms ${easing}, transform ${t}ms ${easing}`;
+}
+
 function connKey(conn: DiagramConnectionData): string {
   return (conn as any).id || `${conn.from}\u2192${conn.to}`;
 }
@@ -355,7 +361,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
         setNodeStyles((prev) => {
           const next = new Map(prev);
           for (const [nodeId, style] of nodeIdStyles) {
-            const transition = `all ${TRANSITION_DURATION_MS}ms ${style.easing}`;
+            const transition = slideMotionTransition(style.easing);
             const transformX = 0;
             const transformY = style.isResizeOnly ? 0 : style.translateYEnd;
 
@@ -423,7 +429,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
         setConnectionStyles((prev) => {
           const next = new Map(prev);
           for (const [connKeyVal, style] of connKeyStyles) {
-            const transition = `all ${TRANSITION_DURATION_MS}ms ${style.easing}`;
+            const transition = slideMotionTransition(style.easing);
             const transformY = style.translateYEnd;
 
             const transform = transformY !== 0
