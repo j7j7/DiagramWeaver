@@ -693,6 +693,28 @@ function ViewerPageContent() {
                   onFullscreen={() => setPresentationPlayerOpen(true)}
                 />
               )}
+          </div>
+          {propertiesPanelVisible && (
+            <div
+              data-dw-viewer-properties
+              className={cn(
+                "flex h-full shrink-0",
+                rightPanelCollapsed && "absolute top-0 bottom-0 right-0 z-30 shadow-md",
+                presentationPlayerOpen && "pointer-events-none"
+              )}
+            >
+              <PropertiesPanel
+                selectedItem={selectedItem as Parameters<typeof PropertiesPanel>[0]["selectedItem"]}
+                diagramData={canvasDiagramData}
+                onItemUpdate={() => {}}
+                collapsed={rightPanelCollapsed}
+                onToggleCollapse={() => setRightPanelCollapsed((v) => !v)}
+                isReadOnly={true}
+                narrowCollapsed
+              />
+            </div>
+          )}
+          {!presentationViewActive && !presentationPlayerOpen && (
             <ViewerControls
               onZoomIn={handleZoomIn}
               onZoomOut={handleZoomOut}
@@ -716,13 +738,11 @@ function ViewerPageContent() {
                         type="button"
                         onClick={handleTogglePresentationView}
                         className={cn(
-                          "p-2 hover:bg-accent rounded-md transition-[box-shadow,background-color,ring-color] duration-200",
-                          "ring-2 ring-green-500/90 shadow-[0_0_12px_rgba(34,197,94,0.55),0_0_24px_rgba(22,163,74,0.28)]",
-                          presentationViewActive &&
-                            "bg-accent ring-green-400 shadow-[0_0_16px_rgba(74,222,128,0.65),0_0_36px_rgba(34,197,94,0.4)]"
+                          "rounded-md p-2 transition-[box-shadow,background-color,ring-color] duration-200 hover:bg-accent",
+                          "ring-2 ring-green-500/90 shadow-[0_0_12px_rgba(34,197,94,0.55),0_0_24px_rgba(22,163,74,0.28)]"
                         )}
-                        title={presentationViewActive ? "Exit presentation slides" : "View presentation slides"}
-                        aria-label={presentationViewActive ? "Exit presentation slides" : "View presentation slides"}
+                        title="View presentation slides"
+                        aria-label="View presentation slides"
                       >
                         <MonitorPlay className="w-4 h-4" />
                       </button>
@@ -741,25 +761,6 @@ function ViewerPageContent() {
                 </>
               }
             />
-          </div>
-          {propertiesPanelVisible && (
-            <div
-              className={cn(
-                "flex h-full shrink-0",
-                rightPanelCollapsed && "absolute top-0 bottom-0 right-0 z-30 shadow-md",
-                presentationPlayerOpen && "pointer-events-none"
-              )}
-            >
-              <PropertiesPanel
-                selectedItem={selectedItem as Parameters<typeof PropertiesPanel>[0]["selectedItem"]}
-                diagramData={canvasDiagramData}
-                onItemUpdate={() => {}}
-                collapsed={rightPanelCollapsed}
-                onToggleCollapse={() => setRightPanelCollapsed((v) => !v)}
-                isReadOnly={true}
-                narrowCollapsed
-              />
-            </div>
           )}
         </div>
         {presentationDecks.length > 0 && (
