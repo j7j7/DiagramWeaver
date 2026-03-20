@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type MutableRefObject } from "react";
 import { useDrop } from 'react-dnd';
 import { ItemTypes } from "@/components/editor/draggable-item";
 import { snapToGrid } from "@/components/editor/canvas-constants";
@@ -7,12 +7,71 @@ import type { PositionedNode, PositionedGroup } from "@/components/editor/canvas
 import type { DiagramData, DiagramNodeData } from "@/lib/types";
 import { getItemGroup, getGroupMembers } from "@/lib/grouping-utils";
 
-type DropItem = { 
-  id?: string; 
-  type?: string; 
-  label?: string; 
-  x?: number; 
+/** Diagram-space radius around drag origin: inside = free movement; crossing = lock to dominant axis */
+const AXIS_CONSTRAINT_DEAD_ZONE = 15;
+
+type AxisLock = "h" | "v" | null;
+
+function applyCtrlAxisConstraint(
+  rawDx: number,
+  rawDy: number,
+  ctrlHeld: boolean,
+  axisLockRef: MutableRefObject<AxisLock>,
+  deadZone: number
+): { dx: number; dy: number } {
+  if (!ctrlHeld) {
+    axisLockRef.current = null;
+    return { dx: rawDx, dy: rawDy };
+  }
+  const dist = Math.hypot(rawDx, rawDy);
+  if (dist < deadZone) {
+    axisLockRef.current = null;
+    return { dx: rawDx, dy: rawDy };
+  }
+  if (axisLockRef.current === null) {
+    axisLockRef.current = Math.abs(rawDx) >= Math.abs(rawDy) ? "h" : "v";
+  }
+  if (axisLockRef.current === "h") {
+    return { dx: rawDx, dy: 0 };
+  }
+  return { dx: 0, dy: rawDy };
+}
+
+function getCanvasDragAnchor(
+  itemId: string,
+  nodesById: Record<string, PositionedNode>,
+  zonesById: Record<string, PositionedGroup>
+): { x: number; y: number } | null {
+  const originalItem = nodesById[itemId] || zonesById[itemId];
+  if (!originalItem) return null;
+  const isLineNode =
+    originalItem.type === "generic.object.line" || originalItem.type?.endsWith(".line");
+  if (isLineNode && (originalItem as { startPos?: { x: number; y: number } }).startPos && (originalItem as { endPos?: { x: number; y: number } }).endPos) {
+    const startPos = (originalItem as { startPos: { x: number; y: number } }).startPos;
+    const endPos = (originalItem as { endPos: { x: number; y: number } }).endPos;
+    return { x: Math.min(startPos.x, endPos.x), y: Math.min(startPos.y, endPos.y) };
+  }
+  return { x: originalItem.x ?? 0, y: originalItem.y ?? 0 };
+}
+
+type DropItem = {
+  id?: string;
+  type?: string;
+  label?: string;
+  x?: number;
   y?: number;
+};
+
+/** Last hover-computed positions (HTML5 drop often runs after mouseup; monitor delta can be 0/stale). */
+type CanvasDragCommitSnapshot = {
+  multi: { [itemId: string]: { x: number; y: number } } | null;
+  single: {
+    x: number;
+    y: number;
+    deltaX: number;
+    deltaY: number;
+    itemId?: string;
+  } | null;
 };
 
 interface UseCanvasDragDropOptions {
@@ -56,6 +115,10 @@ export function useCanvasDragDrop({
   const [altKeyHeld, setAltKeyHeld] = useState(false);
   /** Updated synchronously on modifier events so drop() sees the real Alt state (state alone can lag). */
   const altModifierRef = useRef(false);
+  /** Control key — axis constraint during canvas drag (same sync strategy as Alt). */
+  const ctrlModifierRef = useRef(false);
+  /** Horizontal vs vertical axis lock while Ctrl is held (see applyCtrlAxisConstraint). */
+  const axisLockRef = useRef<AxisLock>(null);
 
   /**
    * During native/react-dnd drags, keydown/keyup often do not reach listeners in the bubble phase.
@@ -63,7 +126,7 @@ export function useCanvasDragDrop({
    * after drag starts, or release Alt mid-drag).
    */
   useEffect(() => {
-    const readAlt = (e: Event) => {
+    const readModifiers = (e: Event) => {
       const ne = e as MouseEvent & KeyboardEvent & DragEvent;
       const alt =
         ne.altKey === true ||
@@ -72,25 +135,34 @@ export function useCanvasDragDrop({
         altModifierRef.current = alt;
         setAltKeyHeld(alt);
       }
+      const ctrl =
+        ne.ctrlKey === true ||
+        (typeof ne.getModifierState === "function" && ne.getModifierState("Control"));
+      if (ctrlModifierRef.current !== ctrl) {
+        ctrlModifierRef.current = ctrl;
+        if (!ctrl) axisLockRef.current = null;
+      }
     };
     const onBlur = () => {
       if (altModifierRef.current) {
         altModifierRef.current = false;
         setAltKeyHeld(false);
       }
+      ctrlModifierRef.current = false;
+      axisLockRef.current = null;
     };
-    document.addEventListener("dragover", readAlt, true);
-    document.addEventListener("mousemove", readAlt, true);
-    window.addEventListener("pointermove", readAlt, true);
-    window.addEventListener("keydown", readAlt, true);
-    window.addEventListener("keyup", readAlt, true);
+    document.addEventListener("dragover", readModifiers, true);
+    document.addEventListener("mousemove", readModifiers, true);
+    window.addEventListener("pointermove", readModifiers, true);
+    window.addEventListener("keydown", readModifiers, true);
+    window.addEventListener("keyup", readModifiers, true);
     window.addEventListener("blur", onBlur);
     return () => {
-      document.removeEventListener("dragover", readAlt, true);
-      document.removeEventListener("mousemove", readAlt, true);
-      window.removeEventListener("pointermove", readAlt, true);
-      window.removeEventListener("keydown", readAlt, true);
-      window.removeEventListener("keyup", readAlt, true);
+      document.removeEventListener("dragover", readModifiers, true);
+      document.removeEventListener("mousemove", readModifiers, true);
+      window.removeEventListener("pointermove", readModifiers, true);
+      window.removeEventListener("keydown", readModifiers, true);
+      window.removeEventListener("keyup", readModifiers, true);
       window.removeEventListener("blur", onBlur);
     };
   }, []);
@@ -99,13 +171,13 @@ export function useCanvasDragDrop({
   const [multiDragPositions, setMultiDragPositions] = useState<{ [itemId: string]: { x: number; y: number } } | null>(null);
   const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null);
   const isDraggingRef = useRef(false);
-  const multiDragStartPositions = useRef<{ [itemId: string]: { x: number; y: number } } | null>(null);
   const isDroppingOnScratchpadRef = useRef(false);
   const pendingDragRef = useRef<{
     single: { x: number; y: number; itemId?: string; deltaX?: number; deltaY?: number } | null;
     multi: { [itemId: string]: { x: number; y: number } } | null;
   } | null>(null);
   const dragRafIdRef = useRef<number | null>(null);
+  const lastCanvasDragCommitRef = useRef<CanvasDragCommitSnapshot | null>(null);
 
   const noOpDrop = () => {};
 
@@ -114,6 +186,13 @@ export function useCanvasDragDrop({
     hover: (item: DropItem, monitor) => {
       if (isReadOnly) return;
       if (!canvasRef.current) return;
+
+      // New drag session: drop stale commit/axis from the previous gesture (must run before we write commit below)
+      if (!isDraggingRef.current) {
+        axisLockRef.current = null;
+        lastCanvasDragCommitRef.current = null;
+      }
+
       const clientOffset = monitor.getClientOffset();
       if (!clientOffset) return;
       
@@ -121,58 +200,49 @@ export function useCanvasDragDrop({
       const x = (clientOffset.x - rect.left - transform.x) / transform.k;
       const y = (clientOffset.y - rect.top - transform.y) / transform.k;
 
-      // Update drag position for real-time display
-      // hover is only called during drag, so we always update
+      // Update drag position for real-time display (+ optional Ctrl axis constraint)
       let itemX = x;
       let itemY = y;
       let deltaX = 0;
       let deltaY = 0;
-      
+      let usedAnchorForCanvasDelta = false;
+
       if (item.id && (monitor.getItemType() === ItemTypes.CANVAS_NODE || monitor.getItemType() === ItemTypes.ZONE)) {
-        // For existing items, calculate based on initial position and delta
         const initialCanvasPos = monitor.getInitialSourceClientOffset();
-        const delta = monitor.getDifferenceFromInitialOffset();
-        if (initialCanvasPos && delta) {
-          const originalItem = nodesById[item.id] || zonesById[item.id];
-          if (originalItem) {
-            // For line nodes, use the min of startPos/endPos as the initial position
-            // This ensures consistency with how line nodes are rendered
-            const isLineNode = originalItem.type === 'generic.object.line' || originalItem.type?.endsWith('.line');
-            let initialX: number;
-            let initialY: number;
-            
-            if (isLineNode && (originalItem as any).startPos && (originalItem as any).endPos) {
-              // Use min of startPos/endPos for line nodes
-              const startPos = (originalItem as any).startPos;
-              const endPos = (originalItem as any).endPos;
-              initialX = Math.min(startPos.x, endPos.x);
-              initialY = Math.min(startPos.y, endPos.y);
-            } else {
-              // For other nodes, use x/y directly
-              initialX = originalItem.x ?? 0;
-              initialY = originalItem.y ?? 0;
-            }
-            
-            itemX = initialX + delta.x / transform.k;
-            itemY = initialY + delta.y / transform.k;
-            deltaX = delta.x / transform.k;
-            deltaY = delta.y / transform.k;
+        const deltaPix = monitor.getDifferenceFromInitialOffset();
+        if (initialCanvasPos && deltaPix) {
+          const anchor = getCanvasDragAnchor(item.id, nodesById, zonesById);
+          if (anchor) {
+            const rawDx = deltaPix.x / transform.k;
+            const rawDy = deltaPix.y / transform.k;
+            const c = applyCtrlAxisConstraint(
+              rawDx,
+              rawDy,
+              ctrlModifierRef.current,
+              axisLockRef,
+              AXIS_CONSTRAINT_DEAD_ZONE
+            );
+            itemX = anchor.x + c.dx;
+            itemY = anchor.y + c.dy;
+            const axSnap = snapToGrid(itemX);
+            const aySnap = snapToGrid(itemY);
+            deltaX = axSnap - anchor.x;
+            deltaY = aySnap - anchor.y;
+            itemX = axSnap;
+            itemY = aySnap;
+            usedAnchorForCanvasDelta = true;
           }
         }
       }
-      
-      // Snap to grid for display
+
       const snappedX = snapToGrid(itemX);
       const snappedY = snapToGrid(itemY);
-      
-      // Recalculate delta based on snapped positions for consistency
-      if (item.id && (monitor.getItemType() === ItemTypes.CANVAS_NODE || monitor.getItemType() === ItemTypes.ZONE)) {
-        const originalItem = nodesById[item.id] || zonesById[item.id];
-        if (originalItem) {
-          const originalX = originalItem.x ?? 0;
-          const originalY = originalItem.y ?? 0;
-          deltaX = snappedX - originalX;
-          deltaY = snappedY - originalY;
+
+      if (!usedAnchorForCanvasDelta && item.id && (monitor.getItemType() === ItemTypes.CANVAS_NODE || monitor.getItemType() === ItemTypes.ZONE)) {
+        const anchor = getCanvasDragAnchor(item.id, nodesById, zonesById);
+        if (anchor) {
+          deltaX = snappedX - anchor.x;
+          deltaY = snappedY - anchor.y;
         }
       }
       
@@ -196,33 +266,40 @@ export function useCanvasDragDrop({
         }
       }
       
-      // Handle multi-item dragging (either grouped or multi-selected)
+      // Handle multi-item dragging (either grouped or multi-selected).
+      // Always read start x/y from nodesById/zonesById (diagram state is unchanged until drop) so
+      // we never rely on refs that document mouseup may clear before drop runs.
       let newMulti: { [itemId: string]: { x: number; y: number } } | null = null;
       if (item.id && itemsToMove.size > 1) {
-        // Initialize start positions if not already done
-        if (!multiDragStartPositions.current) {
-          multiDragStartPositions.current = {};
-          itemsToMove.forEach(id => {
-            const node = nodesById[id] || zonesById[id];
-            if (node) {
-              multiDragStartPositions.current![id] = { x: node.x ?? 0, y: node.y ?? 0 };
-            }
-          });
-        }
-        
-        // Calculate positions for all items
         newMulti = {};
-        itemsToMove.forEach(id => {
-          const startPos = multiDragStartPositions.current![id];
-          if (startPos) {
+        itemsToMove.forEach((id) => {
+          const node = nodesById[id] || zonesById[id];
+          if (node) {
+            const sx = node.x ?? 0;
+            const sy = node.y ?? 0;
             newMulti![id] = {
-              x: snapToGrid(startPos.x + deltaX),
-              y: snapToGrid(startPos.y + deltaY)
+              x: snapToGrid(sx + deltaX),
+              y: snapToGrid(sy + deltaY),
             };
           }
         });
-      } else {
-        multiDragStartPositions.current = null;
+      }
+
+      if (
+        item.id &&
+        (monitor.getItemType() === ItemTypes.CANVAS_NODE || monitor.getItemType() === ItemTypes.ZONE)
+      ) {
+        lastCanvasDragCommitRef.current = {
+          multi: newMulti
+            ? Object.fromEntries(
+                Object.entries(newMulti).map(([k, v]) => [k, { x: v.x, y: v.y }])
+              )
+            : null,
+          single:
+            itemsToMove.size <= 1
+              ? { x: snappedX, y: snappedY, deltaX, deltaY, itemId: item.id }
+              : null,
+        };
       }
       
       // Throttle: store in ref, schedule RAF to flush (max once per frame)
@@ -309,22 +386,41 @@ export function useCanvasDragDrop({
         x = (currentPos.x - canvasRect.left - transform.x) / transform.k;
         y = (currentPos.y - canvasRect.top - transform.y) / transform.k;
       } else {
-        // This is an existing item being moved
-        const initialCanvasPos = monitor.getInitialSourceClientOffset();
-        const delta = monitor.getDifferenceFromInitialOffset();
-        if (!initialCanvasPos || !delta) {
-          // If delta isn't available, use client offset as fallback
-          x = (currentPos.x - canvasRect.left - transform.x) / transform.k;
-          y = (currentPos.y - canvasRect.top - transform.y) / transform.k;
+        const committed = lastCanvasDragCommitRef.current?.single;
+        if (committed && committed.itemId === item.id) {
+          x = committed.x;
+          y = committed.y;
         } else {
-          const originalItem = nodesById[item.id!] || zonesById[item.id!];
-          const initialX = originalItem?.x ?? 0;
-          const initialY = originalItem?.y ?? 0;
-          x = initialX + delta.x / transform.k;
-          y = initialY + delta.y / transform.k;
+          const initialCanvasPos = monitor.getInitialSourceClientOffset();
+          const delta = monitor.getDifferenceFromInitialOffset();
+          if (!initialCanvasPos || !delta) {
+            x = (currentPos.x - canvasRect.left - transform.x) / transform.k;
+            y = (currentPos.y - canvasRect.top - transform.y) / transform.k;
+          } else {
+            const anchor = item.id ? getCanvasDragAnchor(item.id, nodesById, zonesById) : null;
+            if (anchor) {
+              const rawDx = delta.x / transform.k;
+              const rawDy = delta.y / transform.k;
+              const c = applyCtrlAxisConstraint(
+                rawDx,
+                rawDy,
+                ctrlModifierRef.current,
+                axisLockRef,
+                AXIS_CONSTRAINT_DEAD_ZONE
+              );
+              x = anchor.x + c.dx;
+              y = anchor.y + c.dy;
+            } else {
+              const originalItem = nodesById[item.id!] || zonesById[item.id!];
+              const initialX = originalItem?.x ?? 0;
+              const initialY = originalItem?.y ?? 0;
+              x = initialX + delta.x / transform.k;
+              y = initialY + delta.y / transform.k;
+            }
+          }
         }
       }
-      
+
       // Snap to grid before dropping
       x = snapToGrid(x);
       y = snapToGrid(y);
@@ -351,10 +447,11 @@ export function useCanvasDragDrop({
         pendingDragRef.current = null;
         setDragPosition(null);
         setMultiDragPositions(null);
-        multiDragStartPositions.current = null;
         isDraggingRef.current = false;
+        axisLockRef.current = null;
         onDraggingChange?.(false);
         setHoveredGroupId(null);
+        lastCanvasDragCommitRef.current = null;
         
         // Force browser refresh after a short delay to ensure item is added to scratchpad first
         setTimeout(() => {
@@ -395,33 +492,67 @@ export function useCanvasDragDrop({
         const wantDuplicate = altModifierRef.current;
         const allDuplicatableNodes = [...itemsToMoveSet].every((id) => Boolean(nodesById[id]));
 
-        // Handle multi-item movement (grouped or multi-selected)
-        if (itemsToMoveSet.size > 1 && multiDragStartPositions.current) {
-          const initialCanvasPos = monitor.getInitialSourceClientOffset();
-          const delta = monitor.getDifferenceFromInitialOffset();
-          let deltaX = 0,
-            deltaY = 0;
-          if (initialCanvasPos && delta) {
-            deltaX = delta.x / transform.k;
-            deltaY = delta.y / transform.k;
-          }
+        // Handle multi-item movement (grouped or multi-selected).
+        // Start positions from live nodesById/zonesById — not a ref cleared by mouseup-before-drop.
+        if (itemsToMoveSet.size > 1) {
+          const commitMulti = lastCanvasDragCommitRef.current?.multi;
+          const ids = [...itemsToMoveSet];
+          const useCommit =
+            commitMulti &&
+            ids.length > 1 &&
+            ids.every((id) => commitMulti[id] != null);
 
           const dupItems: Array<{ id: string }> = [];
           const dupPositions: Array<{ x: number; y: number }> = [];
           const itemsToMove: Array<{ id: string; type: string; x?: number; y?: number }> = [];
           const newPositions: Array<{ x: number; y: number }> = [];
 
-          itemsToMoveSet.forEach((id) => {
-            const startPos = multiDragStartPositions.current![id];
-            if (!startPos) return;
-            const newX = snapToGrid(startPos.x + deltaX);
-            const newY = snapToGrid(startPos.y + deltaY);
-            dupItems.push({ id });
-            dupPositions.push({ x: newX, y: newY });
-            const it = nodesById[id] ? ItemTypes.CANVAS_NODE : ItemTypes.ZONE;
-            itemsToMove.push({ id, type: it, x: startPos.x, y: startPos.y });
-            newPositions.push({ x: newX, y: newY });
-          });
+          if (useCommit) {
+            ids.forEach((id) => {
+              const pos = commitMulti![id];
+              const n = nodesById[id] || zonesById[id];
+              if (!n) return;
+              const sx = n.x ?? 0;
+              const sy = n.y ?? 0;
+              dupItems.push({ id });
+              dupPositions.push({ x: pos.x, y: pos.y });
+              const it = nodesById[id] ? ItemTypes.CANVAS_NODE : ItemTypes.ZONE;
+              itemsToMove.push({ id, type: it, x: sx, y: sy });
+              newPositions.push({ x: pos.x, y: pos.y });
+            });
+          } else {
+            const initialCanvasPos = monitor.getInitialSourceClientOffset();
+            const delta = monitor.getDifferenceFromInitialOffset();
+            let deltaX = 0,
+              deltaY = 0;
+            if (initialCanvasPos && delta) {
+              const rawDx = delta.x / transform.k;
+              const rawDy = delta.y / transform.k;
+              const c = applyCtrlAxisConstraint(
+                rawDx,
+                rawDy,
+                ctrlModifierRef.current,
+                axisLockRef,
+                AXIS_CONSTRAINT_DEAD_ZONE
+              );
+              deltaX = c.dx;
+              deltaY = c.dy;
+            }
+
+            itemsToMoveSet.forEach((id) => {
+              const n = nodesById[id] || zonesById[id];
+              if (!n) return;
+              const sx = n.x ?? 0;
+              const sy = n.y ?? 0;
+              const newX = snapToGrid(sx + deltaX);
+              const newY = snapToGrid(sy + deltaY);
+              dupItems.push({ id });
+              dupPositions.push({ x: newX, y: newY });
+              const it = nodesById[id] ? ItemTypes.CANVAS_NODE : ItemTypes.ZONE;
+              itemsToMove.push({ id, type: it, x: sx, y: sy });
+              newPositions.push({ x: newX, y: newY });
+            });
+          }
 
           if (wantDuplicate && allDuplicatableNodes && dupItems.length > 0) {
             const created = duplicateNodesAtPositions(dupItems, dupPositions, diagramData);
@@ -447,8 +578,9 @@ export function useCanvasDragDrop({
       pendingDragRef.current = null;
       setDragPosition(null);
       setMultiDragPositions(null);
-      multiDragStartPositions.current = null;
       isDraggingRef.current = false;
+      axisLockRef.current = null;
+      lastCanvasDragCommitRef.current = null;
       onDraggingChange?.(false);
       setHoveredGroupId(null);
     },
@@ -467,8 +599,9 @@ export function useCanvasDragDrop({
           dragRafIdRef.current = null;
         }
         pendingDragRef.current = null;
+        // Clear both so a mouseup-before-drop frame does not show only the primary node at drag delta
+        setDragPosition(null);
         setMultiDragPositions(null);
-        multiDragStartPositions.current = null;
       }
     };
     
