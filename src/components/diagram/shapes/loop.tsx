@@ -12,6 +12,7 @@ interface LoopShapeProps {
   strokeWidth?: number;
   onClick?: (e: React.MouseEvent, node: DiagramNodeData) => void;
   onContextMenu?: (e: React.MouseEvent, node: DiagramNodeData) => void;
+  slideColorTransition?: string;
 }
 
 /**
@@ -19,7 +20,7 @@ interface LoopShapeProps {
  * Renders a curved path that bulges to the right, from top to bottom,
  * with optional arrow at the end and label.
  */
-export function LoopShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, onClick, onContextMenu }: LoopShapeProps) {
+export function LoopShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, onClick, onContextMenu, slideColorTransition }: LoopShapeProps) {
   const { resolvedTheme } = useTheme();
   const width = node.width ?? 60;
   const height = node.height ?? 80;
@@ -70,7 +71,11 @@ export function LoopShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
           strokeDasharray={strokeDasharray}
           strokeLinecap="round"
           strokeLinejoin="round"
-          style={{ pointerEvents: 'stroke', cursor: onClick ? 'pointer' : undefined }}
+          style={{
+            pointerEvents: 'stroke',
+            cursor: onClick ? 'pointer' : undefined,
+            ...(slideColorTransition !== undefined ? { transition: slideColorTransition } : {}),
+          }}
           onClick={(e) => {
             e.stopPropagation();
             onClick?.(e as unknown as React.MouseEvent, node);

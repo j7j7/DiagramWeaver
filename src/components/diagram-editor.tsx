@@ -95,6 +95,9 @@ import {
 } from '@/lib/presentation-storage';
 import { DiagramBreadcrumb, type BreadcrumbSegment } from './editor/diagram-breadcrumb';
 
+/** Presentation slide PNG thumbnails: refresh at most this often when the diagram delta changed. */
+const PRESENTATION_THUMB_INTERVAL_MS = 5000;
+
 export type SelectedItem = (
   | (DiagramNodeData & {
       itemType: 'node',
@@ -527,16 +530,36 @@ export default function DiagramEditor() {
   const [rulesEditorOpen, setRulesEditorOpen] = React.useState<boolean>(false);
   const [rules, setRules] = React.useState<import('@/lib/rules-types').DiagramRule[]>([]);
   const [presentationModeEnabled, setPresentationModeEnabled] = React.useState<boolean>(false);
+  const presentationModeEnabledRef = React.useRef(presentationModeEnabled);
+  presentationModeEnabledRef.current = presentationModeEnabled;
   const [presentationDecks, setPresentationDecks] = React.useState<PresentationDeck[]>([]);
+  const presentationDecksRef = React.useRef(presentationDecks);
+  presentationDecksRef.current = presentationDecks;
   const [activePresentationDeckId, setActivePresentationDeckId] = React.useState<string | null>(null);
   const [activePresentationSlideId, setActivePresentationSlideId] = React.useState<string | null>(null);
   const [presentationDisabledLayerIds, setPresentationDisabledLayerIds] = React.useState<Set<string>>(new Set());
   const [selectedPresentationSlideIds, setSelectedPresentationSlideIds] = React.useState<Set<string>>(new Set());
   const [presentationPlayerOpen, setPresentationPlayerOpen] = React.useState<boolean>(false);
   const [presentationPlayerIndex, setPresentationPlayerIndex] = React.useState<number>(0);
-  const [presentationZoomPercentDraft, setPresentationZoomPercentDraft] = React.useState<string>('100');
   const [presentationMasterDiagram, setPresentationMasterDiagram] = React.useState<DiagramData | null>(null);
   const [presentationDraftDiagram, setPresentationDraftDiagram] = React.useState<DiagramData | null>(null);
+  const presentationThumbLastDeltaFingerprintRef = React.useRef<string | null>(null);
+  /** `${deckId}:${slideId}` — last slide switch we scheduled a thumbnail pass for (avoids duplicate rAF on draft edits). */
+  const presentationThumbSlideSwitchKeyRef = React.useRef<string | null>(null);
+  const presentationThumbCaptureInFlightRef = React.useRef(false);
+  const presentationThumbCtxRef = React.useRef<{
+    draft: DiagramData | null;
+    master: DiagramData | null;
+    tab: DiagramData;
+    deckId: string | null;
+    slideId: string | null;
+  }>({
+    draft: null,
+    master: null,
+    tab: { nodes: [], connections: [], groupings: [] },
+    deckId: null,
+    slideId: null,
+  });
   const canvasTransformRef = React.useRef<{ x: number; y: number; k: number }>({ x: 0, y: 0, k: 1 });
   const presentationStateByTabRef = React.useRef<Record<string, {
     decks: PresentationDeck[];
@@ -804,6 +827,15 @@ export default function DiagramEditor() {
   const diagramData = presentationModeEnabled
     ? (presentationDraftDiagram ?? tabDiagramData)
     : tabDiagramData;
+
+  presentationThumbCtxRef.current = {
+    draft: presentationDraftDiagram,
+    master: presentationMasterDiagram,
+    tab: tabDiagramData,
+    deckId: activePresentationDeckId,
+    slideId: activePresentationSlideId,
+  };
+
   const history = activeTab?.history || [JSON.stringify({ nodes: [], connections: [], groupings: [] })];
   const historyIndex = activeTab?.historyIndex || 0;
   const historyRef = React.useRef(getHistoryRef(activeTabId || '') || { history: [], index: 0 });
@@ -833,14 +865,6 @@ export default function DiagramEditor() {
     return activePresentationSlides.map((slide) => applyDiagramDelta(master, slide.diagramDelta));
   }, [activePresentationSlides, presentationMasterDiagram, diagramData]);
 
-  React.useEffect(() => {
-    if (!presentationModeEnabled) return;
-    const activeSlide = activePresentationSlides.find((slide) => slide.id === activePresentationSlideId) ?? null;
-    const zoom = activeSlide?.autoZoomLevel ?? canvasTransformRef.current.k;
-    if (!Number.isFinite(zoom) || zoom <= 0) return;
-    setPresentationZoomPercentDraft(String(Number((zoom * 100).toFixed(1))));
-  }, [presentationModeEnabled, activePresentationSlides, activePresentationSlideId]);
-  
   // Refresh key to force canvas re-render
   const [canvasRefreshKey, setCanvasRefreshKey] = React.useState(0);
 
@@ -1442,7 +1466,6 @@ export default function DiagramEditor() {
     const updatedData = { ...currentDiagramData, nodes: newNodes, connections: newConnections };
     const nextDiagram = cleanupGroupsAfterDeletion([itemToDelete.id], updatedData);
     setCurrentDiagramData(nextDiagram);
-    persistPresentationSlideFromDiagram(nextDiagram);
     setSelectedItem(null);
   };
 
@@ -1835,6 +1858,129 @@ export default function DiagramEditor() {
     tabDiagramData,
   ]);
 
+  React.useEffect(() => {
+    if (!presentationModeEnabled || !activePresentationDeckId || !activePresentationSlideId) return;
+    if (!presentationDraftDiagram) return;
+    persistPresentationSlideFromDiagram(presentationDraftDiagram);
+  }, [
+    presentationModeEnabled,
+    activePresentationDeckId,
+    activePresentationSlideId,
+    presentationDraftDiagram,
+    persistPresentationSlideFromDiagram,
+  ]);
+
+  const runPresentationThumbnailCaptureIfNeeded = React.useCallback(async () => {
+    if (!presentationModeEnabledRef.current) return;
+    if (presentationThumbCaptureInFlightRef.current) return;
+    const ctx = presentationThumbCtxRef.current;
+    if (!ctx.draft || !ctx.deckId || !ctx.slideId) return;
+    if (!editorRef.current?.captureSnapshotPng) return;
+
+    let deltaFingerprint: string;
+    try {
+      const masterBase = projectVisibleDiagram(ctx.master ?? ctx.tab);
+      const nextVisible = projectVisibleDiagram(ctx.draft);
+      const nextDelta = computeDiagramDelta(masterBase, nextVisible);
+      deltaFingerprint = JSON.stringify(nextDelta);
+    } catch {
+      return;
+    }
+
+    // Only skip when we already captured a PNG for this exact delta. Do not skip just because the slide’s
+    // stored diagramDelta matches the canvas — that is true right after persist while snapshotImage is still stale.
+    if (deltaFingerprint === presentationThumbLastDeltaFingerprintRef.current) return;
+
+    const captureDeckId = ctx.deckId;
+    const captureSlideId = ctx.slideId;
+
+    presentationThumbCaptureInFlightRef.current = true;
+    try {
+      const snapshotImage = await editorRef.current.captureSnapshotPng({
+        backgroundColor: 'white',
+        quality: 'medium',
+      });
+
+      if (
+        presentationThumbCtxRef.current.slideId !== captureSlideId ||
+        presentationThumbCtxRef.current.deckId !== captureDeckId
+      ) {
+        return;
+      }
+
+      setPresentationDecks((prev) =>
+        prev.map((d) => {
+          if (d.id !== captureDeckId) return d;
+          return {
+            ...d,
+            slides: d.slides.map((s) =>
+              s.id === captureSlideId ? { ...s, snapshotImage } : s
+            ),
+            updatedAt: Date.now(),
+          };
+        })
+      );
+      presentationThumbLastDeltaFingerprintRef.current = deltaFingerprint;
+    } catch {
+      // Retry on a later interval or slide change
+    } finally {
+      presentationThumbCaptureInFlightRef.current = false;
+    }
+  }, [setPresentationDecks]);
+
+  /** Reset thumbnail tracking when leaving presentation mode. */
+  React.useEffect(() => {
+    if (!presentationModeEnabled) {
+      presentationThumbSlideSwitchKeyRef.current = null;
+      presentationThumbLastDeltaFingerprintRef.current = null;
+    }
+  }, [presentationModeEnabled]);
+
+  /** Switching decks can reuse slide ids — allow a thumbnail pass for the new deck’s active slide. */
+  React.useEffect(() => {
+    presentationThumbSlideSwitchKeyRef.current = null;
+  }, [activePresentationDeckId]);
+
+  /**
+   * After switching slides (or when draft first loads for that slide), refresh thumbnail if required.
+   * `presentationDraftDiagram` in deps ensures we can run after the new slide’s draft is applied.
+   * Slide key ref avoids re-running on every edit (same deck+slide).
+   */
+  React.useEffect(() => {
+    if (!presentationModeEnabled || !activePresentationDeckId || !activePresentationSlideId) return;
+    if (!presentationDraftDiagram) return;
+
+    const switchKey = `${activePresentationDeckId}:${activePresentationSlideId}`;
+    if (presentationThumbSlideSwitchKeyRef.current === switchKey) return;
+    presentationThumbSlideSwitchKeyRef.current = switchKey;
+
+    let cancelled = false;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (cancelled) return;
+        void runPresentationThumbnailCaptureIfNeeded();
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    presentationModeEnabled,
+    activePresentationDeckId,
+    activePresentationSlideId,
+    presentationDraftDiagram,
+    runPresentationThumbnailCaptureIfNeeded,
+  ]);
+
+  React.useEffect(() => {
+    if (!presentationModeEnabled || !activePresentationDeckId || !activePresentationSlideId) return;
+
+    const id = window.setInterval(() => {
+      void runPresentationThumbnailCaptureIfNeeded();
+    }, PRESENTATION_THUMB_INTERVAL_MS);
+    return () => window.clearInterval(id);
+  }, [presentationModeEnabled, activePresentationDeckId, activePresentationSlideId, runPresentationThumbnailCaptureIfNeeded]);
+
   const activePresentationSlideIndex = activePresentationDeck
     ? Math.max(0, activePresentationSlides.findIndex((s) => s.id === activePresentationSlideId))
     : -1;
@@ -1970,7 +2116,6 @@ export default function DiagramEditor() {
     };
 
     setDiagramData(nextDiagram);
-    persistPresentationSlideFromDiagram(nextDiagram);
 
     if (selectedItem && selectedItem.itemType === 'edge') {
       const match = (selectedItem.from === from && selectedItem.to === to) &&
@@ -1978,7 +2123,7 @@ export default function DiagramEditor() {
       if (match) setSelectedItem(null);
     }
     toast({ title: 'Connection Disconnected', description: 'Connection has been removed.' });
-  }, [diagramData, persistPresentationSlideFromDiagram, selectedItem, setDiagramData, setSelectedItem, confirmPresentationLayerImpact, getAffectedLayerIdsForConnection, layers]);
+  }, [diagramData, selectedItem, setDiagramData, setSelectedItem, confirmPresentationLayerImpact, getAffectedLayerIdsForConnection, layers]);
 
   const getFilenameStem = (filename: string) =>
     filename.replace(/\.[^.]+$/, '') || filename;
@@ -3420,25 +3565,14 @@ export default function DiagramEditor() {
     });
   }, [activePresentationDeckId, activePresentationDeck, runPresentationAutoZoom, toast]);
 
-  const parsePresentationZoomDraft = React.useCallback((): number | null => {
-    const parsed = Number(presentationZoomPercentDraft);
-    if (!Number.isFinite(parsed) || parsed <= 0) {
-      toast({ variant: 'destructive', title: 'Invalid Zoom', description: 'Enter a zoom percent between 10 and 250.' });
-      return null;
-    }
-    const clampedPercent = Math.min(250, Math.max(10, parsed));
-    return Number((clampedPercent / 100).toFixed(4));
-  }, [presentationZoomPercentDraft, toast]);
-
   const resolvePresentationZoomLevel = React.useCallback((overrideZoomLevel?: number): number | null => {
-    const candidate = overrideZoomLevel ?? parsePresentationZoomDraft();
-    if (candidate === null) return null;
+    const candidate = overrideZoomLevel ?? canvasTransformRef.current.k;
     if (!Number.isFinite(candidate) || candidate <= 0) {
-      toast({ variant: 'destructive', title: 'Invalid Zoom', description: 'Zoom value must be a valid number between 10% and 250%.' });
+      toast({ variant: 'destructive', title: 'Invalid Zoom', description: 'Could not read a valid zoom level from the canvas.' });
       return null;
     }
     return Number(Math.min(2.5, Math.max(0.1, candidate)).toFixed(4));
-  }, [parsePresentationZoomDraft, toast]);
+  }, [toast]);
 
   const applyZoomToCanvas = React.useCallback((zoomLevel: number) => {
     const current = canvasTransformRef.current;
@@ -3466,7 +3600,6 @@ export default function DiagramEditor() {
     }));
 
     applyZoomToCanvas(zoomLevel);
-    setPresentationZoomPercentDraft(String(Number((zoomLevel * 100).toFixed(1))));
     toast({ title: 'Zoom Applied', description: `Active snapshot zoom set to ${(zoomLevel * 100).toFixed(1)}%.` });
   }, [
     activePresentationDeckId,
@@ -3491,7 +3624,6 @@ export default function DiagramEditor() {
     }));
 
     applyZoomToCanvas(zoomLevel);
-    setPresentationZoomPercentDraft(String(Number((zoomLevel * 100).toFixed(1))));
     toast({ title: 'Zoom Applied', description: `All ${activePresentationDeck.slides.length} snapshots set to ${(zoomLevel * 100).toFixed(1)}%.` });
   }, [
     activePresentationDeckId,
@@ -3597,50 +3729,6 @@ export default function DiagramEditor() {
     activePresentationDeck?.slides.length,
     toast,
   ]);
-
-  const handleSavePresentationSnapshot = React.useCallback(async () => {
-    if (!activePresentationDeckId || !activePresentationSlideId) return;
-
-    try {
-      const payload = await capturePresentationSlidePayload();
-      setPresentationDecks((prev) => prev.map((deck) => {
-        if (deck.id !== activePresentationDeckId) return deck;
-        return {
-          ...deck,
-          slides: deck.slides.map((slide) => (
-            slide.id === activePresentationSlideId
-              ? {
-                  ...slide,
-                  ...payload,
-                }
-              : slide
-          )),
-          updatedAt: Date.now(),
-        };
-      }));
-
-      toast({ title: 'Snapshot Saved', description: 'Updated the current snapshot with the editing canvas state.' });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Could not save snapshot';
-      const lower = message.toLowerCase();
-      const isChunkLoadError =
-        lower.includes('failed to load chunk') ||
-        lower.includes('chunkloaderror') ||
-        (lower.includes('/_next/static/chunks/') && lower.includes('module'));
-
-      if (isChunkLoadError) {
-        toast({
-          variant: 'destructive',
-          title: 'Snapshot Failed',
-          description: 'App updated in background. Reloading to sync assets...',
-        });
-        setTimeout(() => window.location.reload(), 150);
-        return;
-      }
-
-      toast({ variant: 'destructive', title: 'Snapshot Failed', description: message });
-    }
-  }, [activePresentationDeckId, activePresentationSlideId, capturePresentationSlidePayload, toast]);
 
   const handleRemovePresentationSlides = React.useCallback(() => {
     if (!activePresentationDeckId || !activePresentationDeck) return;
@@ -4283,12 +4371,9 @@ export default function DiagramEditor() {
         handleRenamePresentationDeck={handleRenamePresentationDeck}
         handleSelectPresentationDeck={handleSelectPresentationDeck}
         handleAutoZoomPresentation={handleAutoZoomPresentation}
-        presentationZoomPercentDraft={presentationZoomPercentDraft}
-        setPresentationZoomPercentDraft={setPresentationZoomPercentDraft}
         handleApplyPresentationZoomToCurrent={handleApplyPresentationZoomToCurrent}
         handleApplyPresentationZoomToAll={handleApplyPresentationZoomToAll}
         handleAddPresentationSnapshot={handleAddPresentationSnapshot}
-        handleSavePresentationSnapshot={handleSavePresentationSnapshot}
         handleRemovePresentationSlides={handleRemovePresentationSlides}
         handleDeletePresentationSlide={handleDeletePresentationSlide}
         presentationHasLaterSlides={hasLaterSlides}
@@ -4505,12 +4590,9 @@ function DiagramEditorInner({
   handleRenamePresentationDeck,
   handleSelectPresentationDeck,
   handleAutoZoomPresentation,
-  presentationZoomPercentDraft,
-  setPresentationZoomPercentDraft,
   handleApplyPresentationZoomToCurrent,
   handleApplyPresentationZoomToAll,
   handleAddPresentationSnapshot,
-  handleSavePresentationSnapshot,
   handleRemovePresentationSlides,
   handleDeletePresentationSlide,
   presentationHasLaterSlides,
@@ -4812,12 +4894,9 @@ function DiagramEditorInner({
                   onRenameDeck={handleRenamePresentationDeck}
                   onSelectDeck={handleSelectPresentationDeck}
                   onAutoZoom={handleAutoZoomPresentation}
-                  zoomPercentDraft={presentationZoomPercentDraft}
-                  onZoomPercentDraftChange={setPresentationZoomPercentDraft}
                   onApplyZoomToCurrent={handleApplyPresentationZoomToCurrent}
                   onApplyZoomToAll={handleApplyPresentationZoomToAll}
                   onAddSnapshot={handleAddPresentationSnapshot}
-                  onSaveSnapshot={handleSavePresentationSnapshot}
                   onRemoveSlides={handleRemovePresentationSlides}
                   onDeleteSlide={handleDeletePresentationSlide}
                   onMoveSlide={handleMovePresentationSlide}

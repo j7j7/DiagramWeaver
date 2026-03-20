@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useDrag } from 'react-dnd';
 import { getEmptyImage } from 'react-dnd-html5-backend';
 import {
@@ -175,8 +175,19 @@ interface DiagramNodeProps {
   stackZIndex?: number;
   /** When true, pointer-events: none so clicks pass through to selected item below */
   pointerEventsPassThrough?: boolean;
-  /** Layer show/hide animation style (opacity, transition, transform) from useLayerAnimation */
-  animationStyle?: { opacity: number; transition: string; transform?: string; transformOrigin?: string };
+  /** Layer show/hide animation style (opacity, transition, transform) from useLayerAnimation; slide transitions may add visualColorMerge* */
+  animationStyle?: {
+    opacity: number;
+    transition: string;
+    transform?: string;
+    transformOrigin?: string;
+    visualColorMerge?: Record<string, unknown>;
+    visualColorMergeTransition?: string;
+    transitionDelayMs?: number;
+    visualColorCrossfade?: { from: Record<string, unknown>; to: Record<string, unknown> };
+    visualColorCrossfadeTopOpacity?: number;
+    visualColorCrossfadeTopTransition?: string;
+  };
   /** When node has subDiagramId, double-click navigates to sub-diagram instead of editing label */
   onSubDiagramDoubleClick?: (node: DiagramNodeData) => void;
   /** True when node links to an existing sub-diagram (shows golden glow) */
@@ -391,12 +402,50 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     }
   };
 
+  /** During slide transitions, merge previous-slide colors so CSS can lerp to current slide. */
+  const displayNode = useMemo(() => {
+    const cf = animationStyle?.visualColorCrossfade;
+    if (cf) {
+      return { ...node, ...cf.to } as DiagramNodeData;
+    }
+    const m = animationStyle?.visualColorMerge;
+    if (!m || Object.keys(m).length === 0) return node;
+    return { ...node, ...m } as DiagramNodeData;
+  }, [node, animationStyle]);
+
+  /** Gradient slide changes: two full renders with top-layer opacity (see use-slide-transition). */
+  const wrapSlideVisualCrossfade = (render: (visualNode: DiagramNodeData) => React.ReactNode) => {
+    if (!animationStyle?.visualColorCrossfade) {
+      return render(displayNode);
+    }
+    const from = { ...node, ...animationStyle.visualColorCrossfade.from } as DiagramNodeData;
+    const to = { ...node, ...animationStyle.visualColorCrossfade.to } as DiagramNodeData;
+    const topOpacity = animationStyle.visualColorCrossfadeTopOpacity ?? 0;
+    const topTransition = animationStyle.visualColorCrossfadeTopTransition ?? 'none';
+    return (
+      <div className="relative w-full h-full min-h-0 isolate">
+        <div className="absolute inset-0">{render(from)}</div>
+        <div
+          className="absolute inset-0"
+          style={{
+            opacity: topOpacity,
+            transition: topTransition,
+            pointerEvents: topOpacity < 1 ? 'none' : 'auto',
+          }}
+        >
+          {render(to)}
+        </div>
+      </div>
+    );
+  };
+
   // Helper function to render shape based on node type (excludes icons/emojis - they use ResourceIcon)
-  const renderShape = () => {
+  const renderShapeForVisualNode = (visualNode: DiagramNodeData, slideColorTransition?: string) => {
     if (isIconOrEmojiType(node.type)) return null
     const nodeAny = node as any;
     const shapeProps = {
-      node,
+      node: visualNode,
+      slideColorTransition,
       overrideWidth: typeof displayWidth === 'number' ? displayWidth : undefined,
       overrideHeight: typeof displayHeight === 'number' ? displayHeight : undefined,
       tag: nodeAny.tag,
@@ -419,11 +468,12 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     const nodeType = node.type;
     if (nodeType === 'generic.object.square' || nodeType?.endsWith('.square')) {
       return <SquareShape {...shapeProps} />;
-    } else if (nodeType === 'generic.object.uml-class' || nodeType?.endsWith('.uml-class')) {
+    } else     if (nodeType === 'generic.object.uml-class' || nodeType?.endsWith('.uml-class')) {
       const nodeAny = node as any;
       return (
         <UmlClassShape
-          node={node}
+          node={visualNode}
+          slideColorTransition={slideColorTransition}
           overrideWidth={shapeProps.overrideWidth}
           overrideHeight={shapeProps.overrideHeight}
           label={shapeProps.label}
@@ -451,8 +501,8 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
       return <RectangleShape {...shapeProps} />;
     } else if (nodeType === 'generic.object.rounded-rectangle' || nodeType?.endsWith('.rounded-rectangle')) {
       const roundedNode = isDraggingCornerRadius && localCornerRadius !== null
-        ? { ...node, cornerRadius: localCornerRadius }
-        : node;
+        ? { ...visualNode, cornerRadius: localCornerRadius }
+        : visualNode;
       return <RoundedRectangleShape {...shapeProps} node={roundedNode} />;
     } else if (nodeType === 'generic.object.circle' || nodeType?.endsWith('.circle')) {
       return <CircleShape {...shapeProps} />;
@@ -484,20 +534,28 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
       return <ChevronShape {...shapeProps} />;
     } else if (nodeType === 'generic.object.line' || nodeType?.endsWith('.line')) {
       const lineNodeWithLocalPos = {
-        ...node,
+        ...visualNode,
         ...(localStartPos && { __localStartPos: localStartPos }),
         ...(localEndPos && { __localEndPos: localEndPos })
       };
       return <LineShape {...shapeProps} node={lineNodeWithLocalPos} onClick={onClick} onContextMenu={onContextMenu} />;
     } else if (nodeType === 'generic.object.loop' || nodeType?.endsWith('.loop')) {
-      return <LoopShape {...shapeProps} node={node} onClick={onClick} onContextMenu={onContextMenu} />;
+      return <LoopShape {...shapeProps} node={visualNode} onClick={onClick} onContextMenu={onContextMenu} />;
     }
     return null;
   };
 
+  const renderShape = () =>
+    wrapSlideVisualCrossfade((vn) =>
+      renderShapeForVisualNode(
+        vn,
+        animationStyle?.visualColorCrossfade ? undefined : animationStyle?.visualColorMergeTransition
+      )
+    );
+
   // Textbox node content (avoids IIFE parsing issues in Turbopack)
-  const renderTextboxContent = () => {
-    const nodeAny = node as any;
+  const renderTextboxContentForVisualNode = (visualNode: DiagramNodeData) => {
+    const nodeAny = visualNode as any;
     const borderStyle = nodeAny.borderStyle || 'solid';
     const borderColors = nodeAny.borderColors || [nodeAny.borderColor || '#d1d5db', nodeAny.borderColor || '#d1d5db'];
     const backgroundStyle = nodeAny.backgroundStyle || 'solid';
@@ -511,7 +569,8 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     return (
       <div
         className={cn(
-          "flex flex-col h-full w-full rounded-lg transition-colors",
+          "flex flex-col h-full w-full rounded-lg",
+          animationStyle?.visualColorMergeTransition == null && !animationStyle?.visualColorCrossfade && "transition-colors",
           getVerticalPositionClass(nodeAny.textVerticalPosition),
           node.sizeMode === 'custom' ? "p-1" : "p-4",
           borderStyle !== 'none' && "border-2",
@@ -539,7 +598,10 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
           }),
           color: nodeAny.textColor || '#374151',
           ...(node.sizeMode === 'custom' ? {} : { minHeight: '120px' }),
-          ...(hasShadow && { boxShadow: 'var(--shape-shadow)' })
+          ...(hasShadow && { boxShadow: 'var(--shape-shadow)' }),
+          ...(!animationStyle?.visualColorCrossfade && animationStyle?.visualColorMergeTransition !== undefined
+            ? { transition: animationStyle.visualColorMergeTransition }
+            : {}),
         }}
       >
         {isEditingLabel ? (
@@ -561,7 +623,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
         ) : (
           <div className={`w-full flex-1 flex flex-col min-h-0 ${getVerticalJustifyClass(nodeAny.textVerticalPosition)} ${node.sizeMode === 'custom' ? 'px-1 py-0.5' : 'px-2 py-2'}`}>
             <TextboxRichDisplay
-              node={node}
+              node={visualNode}
               runs={node.richLabel ?? labelToRuns(node.label)}
               onDoubleClick={handleLabelDoubleClick}
             />
@@ -572,8 +634,8 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
   };
 
   // Regular icon node content (avoids IIFE parsing issues in Turbopack)
-  const renderIconNodeContent = () => {
-    const nodeAny = node as any;
+  const renderIconNodeContentForVisualNode = (visualNode: DiagramNodeData) => {
+    const nodeAny = visualNode as any;
     const { container, icon } = getNodeSizeDimensions(nodeAny.nodeSize);
     const textVerticalPosition = nodeAny.textVerticalPosition || 'bottom';
     const isMiddle = textVerticalPosition === 'middle';
@@ -586,14 +648,21 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
         isMiddle ? "relative justify-center" : "justify-start"
       )}>
         <div className={cn(
-          "flex items-center justify-center transition-colors flex-shrink-0",
+          "flex items-center justify-center flex-shrink-0",
+          animationStyle?.visualColorMergeTransition == null && !animationStyle?.visualColorCrossfade && "transition-colors",
           nodeAny.noIconBackground ? "" : "rounded-lg shadow-md border bg-card dw-icon-container",
           isSelected ? "border-primary" : nodeAny.noIconBackground || (isDragging || isTouchDragging) ? "" : "group-hover:border-accent",
           isTargetable && "border-dashed border-primary",
           isTop && "order-2",
           isBottom && "order-1"
         )}
-        style={{ width: container, height: container }}>
+        style={{
+          width: container,
+          height: container,
+          ...(!animationStyle?.visualColorCrossfade && animationStyle?.visualColorMergeTransition !== undefined
+            ? { transition: animationStyle.visualColorMergeTransition }
+            : {}),
+        }}>
           <ResourceIcon
             type={node.type}
             provider={node.provider}
@@ -602,10 +671,16 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
             iconType={node.iconType}
             iconName={node.iconName}
             emoji={node.emoji}
-            iconColor={node.iconColor}
+            iconColor={nodeAny.iconColor}
             width={icon}
             height={icon}
-            style={{ width: icon, height: icon }}
+            style={{
+              width: icon,
+              height: icon,
+              ...(!animationStyle?.visualColorCrossfade && animationStyle?.visualColorMergeTransition !== undefined
+                ? { transition: animationStyle.visualColorMergeTransition }
+                : {}),
+            }}
           />
         </div>
         {isEditingLabel ? (
@@ -1364,7 +1439,13 @@ return (
         ...(pointerEventsPassThrough && { pointerEvents: 'none' }),
         ...(isDuplicateDragPreview && { pointerEvents: 'none', opacity: 0.88 }),
         // Layer show/hide animation (opacity, transition, transform)
-        ...(animationStyle && !isDuplicateDragPreview && { opacity: animationStyle.opacity, transition: animationStyle.transition, ...(animationStyle.transform && { transform: animationStyle.transform }), ...(animationStyle.transformOrigin && { transformOrigin: animationStyle.transformOrigin }) }),
+        ...(animationStyle && !isDuplicateDragPreview && {
+          opacity: animationStyle.opacity,
+          transition: animationStyle.transition,
+          ...(animationStyle.transitionDelayMs != null && { transitionDelay: `${animationStyle.transitionDelayMs}ms` }),
+          ...(animationStyle.transform && { transform: animationStyle.transform }),
+          ...(animationStyle.transformOrigin && { transformOrigin: animationStyle.transformOrigin }),
+        }),
       }}
       onMouseEnter={() => { 
         if (!isDragging && !isEditingLabel && !isEditingTag) { 
@@ -1409,17 +1490,19 @@ return (
                     />
                   </div>
                 ) : (
-                  <div className="w-full flex-1 flex flex-col min-h-0">
-                    <TextboxRichDisplay
-                      node={node}
-                      runs={node.richLabel ?? labelToRuns(node.label)}
-                      onDoubleClick={handleLabelDoubleClick}
-                    />
-                  </div>
+                  wrapSlideVisualCrossfade((vn) => (
+                    <div className="w-full flex-1 flex flex-col min-h-0">
+                      <TextboxRichDisplay
+                        node={vn}
+                        runs={node.richLabel ?? labelToRuns(node.label)}
+                        onDoubleClick={handleLabelDoubleClick}
+                      />
+                    </div>
+                  ))
                 )}
               </div>
             ) : node.type === 'generic.text.textbox' ? (
-              renderTextboxContent()
+              wrapSlideVisualCrossfade((vn) => renderTextboxContentForVisualNode(vn))
              ) : isShapeNode ? (
               // Shape node - render pure shape with text in different positions (resizable)
               // Use justify-start/items-start so resize extends right/down from fixed top-left (like textbox)
@@ -1429,7 +1512,7 @@ return (
                   </div>
                 </div>
              ) : (
-              renderIconNodeContent()
+              wrapSlideVisualCrossfade((vn) => renderIconNodeContentForVisualNode(vn))
             )}
           </div>
         </PopoverTrigger>

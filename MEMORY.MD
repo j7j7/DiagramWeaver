@@ -2,6 +2,14 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-03-20 – Presentation mode: auto-save slide edits + toolbar cleanup
+**Auto-save diagram delta to the active snapshot**: In presentation mode, edits to the canvas update the current slide’s stored `diagramDelta` automatically (effect on `presentationDraftDiagram` calling `persistPresentationSlideFromDiagram`). No separate “Save snapshot” control. **Toolbar**: Removed Save snapshot button, zoom percent input, and per-thumbnail zoom % badges. **Apply zoom** buttons use the current canvas zoom level (`canvasTransformRef`). Files: `diagram-editor.tsx`, `presentation-editor-panel.tsx`.
+
+**Snapshot PNG thumbnails (delayed refresh)**: `runPresentationThumbnailCaptureIfNeeded` only skips when `JSON.stringify(computeDiagramDelta(...))` matches `presentationThumbLastDeltaFingerprintRef` (PNG already captured for that delta). It must **not** skip when stored `diagramDelta` matches the canvas but `snapshotImage` is still an old bitmap (that happened after auto-persist). **5s interval** + **slide/deck switch** (double rAF, `presentationThumbSlideSwitchKeyRef` per `deckId:slideId`). `presentationThumbCaptureInFlightRef` prevents overlap.
+
+### 2026-03-20 – Presentation slide transition: color lerp
+**Between slides**, `use-slide-transition` animates position/size/opacity. **Visual color fields** (`backgroundColor`, gradients, borders, `textColor`, `iconColor`, `lineColor`, etc.) are compared via `visualColorSignature` in `slide-visual-color.ts`. **Solid / simple paint**: (1) start colors + transition `none`; (2) after double rAF, still start colors + delayed merge transition; (3) next rAF applies end colors so CSS interpolates. **SvgShapeBase** adds scoped SVG rules for `fill`/`stroke` transitions. **Gradients**: `visualColorNeedsCrossfade` → two renders + top opacity with per-item delay. **Stagger**: `slide-transition-order.ts` uses `calculateLayout` + `computeConnectionSlots` (same stack order as canvas: layer back → front). **80ms** stagger between items (`SLIDE_STAGGER_MS`, same as layer animations). Each node/connection gets `transitionDelayMs`; total cleanup uses `maxDelay + 300ms + 50`. Connections use `max(fromIdx,toIdx)` in sorted item list for delay.
+
 ### 2026-03-20 – Theme menu swatches + new built-in themes
 **Themes dropdown swatch fix**: Small previews used only `backgroundColor` / `borderColor`, so **gradient** themes (e.g. Golden Yellow, Royal Purple) fell back to pale gray and looked white/wrong. Previews now use `getVisualStylingCSS(themePropertiesToVisualStyling(...))` from `visual-styling.ts` so gradient fills and gradient borders match the theme. Updated: `theme-menu-selector.tsx`, `theme-selector.tsx`, `theme-editor.tsx` list preview card.
 

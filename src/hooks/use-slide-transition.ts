@@ -1,11 +1,21 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import type { DiagramData, DiagramNodeData, DiagramConnectionData } from '@/lib/types';
+import { extractVisualColorFields, visualColorNeedsCrossfade, visualColorSignature } from '@/lib/slide-visual-color';
+import { buildSlideTransitionStaggerMaps } from '@/lib/slide-transition-order';
 
 export interface SlideTransitionStyle {
   opacity: number;
   transition: string;
+  /** Stagger start (ms) — matches canvas stack order (back → front), same idea as layer animations. */
+  transitionDelayMs?: number;
   transform?: string | undefined;
   transformOrigin?: string;
+  visualColorMerge?: Record<string, unknown>;
+  visualColorMergeTransition?: string;
+  /** Stack "from" and "to" visual fields and animate top layer opacity (gradients). */
+  visualColorCrossfade?: { from: Record<string, unknown>; to: Record<string, unknown> };
+  visualColorCrossfadeTopOpacity?: number;
+  visualColorCrossfadeTopTransition?: string;
 }
 
 interface SlideAnimation {
@@ -28,6 +38,10 @@ interface SlideAnimation {
     isResizeOnly: boolean;
     scaleOriginX: string;
     scaleOriginY: string;
+    hasVisualColorChange: boolean;
+    useVisualColorCrossfade: boolean;
+    visualColorMergeStart: Record<string, unknown>;
+    visualColorMergeEnd: Record<string, unknown>;
   }>;
   connKeyStyles: Map<string, {
     opacityStart: number;
@@ -42,6 +56,17 @@ const TRANSITION_DURATION_MS = 300;
 const EASE_OUT = 'cubic-bezier(0.0, 0.0, 0.2, 1)';
 const EASE_IN = 'cubic-bezier(0.4, 0.0, 1, 1)';
 const EASE_IN_OUT = 'cubic-bezier(0.4, 0.0, 0.2, 1)';
+
+function slideMergeTransitionWithDelay(delayMs: number): string {
+  const t = TRANSITION_DURATION_MS;
+  const e = 'cubic-bezier(0.4, 0, 0.2, 1)';
+  const d = delayMs;
+  return `background ${t}ms ${e} ${d}ms, background-color ${t}ms ${e} ${d}ms, border-color ${t}ms ${e} ${d}ms, color ${t}ms ${e} ${d}ms, fill ${t}ms ${e} ${d}ms, stroke ${t}ms ${e} ${d}ms`;
+}
+
+function slideCrossfadeOpacityWithDelay(delayMs: number): string {
+  return `opacity ${TRANSITION_DURATION_MS}ms ${EASE_IN_OUT} ${delayMs}ms`;
+}
 
 function connKey(conn: DiagramConnectionData): string {
   return (conn as any).id || `${conn.from}\u2192${conn.to}`;
@@ -71,6 +96,13 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
     const currNodesMap = new Map((currentDiagram.nodes || []).map(n => [n.id, n]));
     const prevConnsMap = new Map((previousDiagram.connections || []).map(c => [connKey(c), c]));
     const currConnsMap = new Map((currentDiagram.connections || []).map(c => [connKey(c), c]));
+
+    const prevStagger = buildSlideTransitionStaggerMaps(previousDiagram);
+    const currStagger = buildSlideTransitionStaggerMaps(currentDiagram);
+    const nodeDelayFor = (id: string) =>
+      currNodesMap.has(id) ? (currStagger.nodeDelayMs.get(id) ?? 0) : (prevStagger.nodeDelayMs.get(id) ?? 0);
+    const connDelayFor = (key: string) =>
+      currConnsMap.has(key) ? (currStagger.connectionDelayMs.get(key) ?? 0) : (prevStagger.connectionDelayMs.get(key) ?? 0);
 
     const nodeIdStyles = new Map<string, any>();
     const connKeyStyles = new Map<string, any>();
@@ -116,6 +148,14 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
       const scaleOriginX = prevX < currX ? '100%' : '0';
       const scaleOriginY = prevY < currY ? '100%' : '0';
 
+      const hasVisualColorChange = Boolean(
+        prevNode && currNode && visualColorSignature(prevNode) !== visualColorSignature(currNode)
+      );
+      const visualColorMergeStart = hasVisualColorChange && prevNode ? extractVisualColorFields(prevNode) : {};
+      const visualColorMergeEnd = hasVisualColorChange && currNode ? extractVisualColorFields(currNode) : {};
+      const useVisualColorCrossfade =
+        hasVisualColorChange && visualColorNeedsCrossfade(visualColorMergeStart, visualColorMergeEnd);
+
       nodeIdStyles.set(nodeId, {
         deltaX,
         deltaY,
@@ -133,6 +173,10 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
         isResizeOnly,
         scaleOriginX,
         scaleOriginY,
+        hasVisualColorChange,
+        useVisualColorCrossfade,
+        visualColorMergeStart,
+        visualColorMergeEnd,
       });
 
       if (isDisappearing) {
@@ -173,9 +217,18 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
     setAnimatingNodes(nodesToAdd);
     setAnimatingConnections(connsToAdd);
 
+    let maxDelayUsed = 0;
+    for (const id of nodeIdStyles.keys()) {
+      maxDelayUsed = Math.max(maxDelayUsed, nodeDelayFor(id));
+    }
+    for (const k of connKeyStyles.keys()) {
+      maxDelayUsed = Math.max(maxDelayUsed, connDelayFor(k));
+    }
+    const totalDurationMs = maxDelayUsed + TRANSITION_DURATION_MS + 50;
+
     const newAnimation: SlideAnimation = {
       startTime: performance.now(),
-      durationMs: TRANSITION_DURATION_MS,
+      durationMs: totalDurationMs,
       nodeIdStyles,
       connKeyStyles,
     };
@@ -222,12 +275,31 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
           ? `${style.scaleOriginX ?? '0'} ${style.scaleOriginY ?? '0'}`
           : 'center';
 
-        next.set(nodeId, {
-          opacity: style.opacityStart,
-          transition: 'none',
-          transform,
-          transformOrigin,
-        });
+        if (style.hasVisualColorChange && style.useVisualColorCrossfade) {
+          next.set(nodeId, {
+            opacity: style.opacityStart,
+            transition: 'none',
+            transform,
+            transformOrigin,
+            visualColorCrossfade: {
+              from: style.visualColorMergeStart,
+              to: style.visualColorMergeEnd,
+            },
+            visualColorCrossfadeTopOpacity: 0,
+            visualColorCrossfadeTopTransition: 'none',
+          });
+        } else {
+          next.set(nodeId, {
+            opacity: style.opacityStart,
+            transition: 'none',
+            transform,
+            transformOrigin,
+            ...(style.hasVisualColorChange ? {
+              visualColorMerge: style.visualColorMergeStart,
+              visualColorMergeTransition: 'none',
+            } : {}),
+          });
+        }
       }
       return next;
     });
@@ -259,7 +331,6 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
             const transformX = 0;
             const transformY = style.isResizeOnly ? 0 : style.translateYEnd;
 
-            // Disappearing: shrink to 0 (scale down). Others: scale to 1.
             const scaleX = style.isDisappearing ? 0 : 1;
             const scaleY = style.isDisappearing ? 0 : 1;
 
@@ -282,12 +353,41 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
               ? `${style.scaleOriginX ?? '0'} ${style.scaleOriginY ?? '0'}`
               : 'center';
 
-            next.set(nodeId, {
-              opacity: style.opacityEnd,
-              transition,
-              transform,
-              transformOrigin,
-            });
+            const dMs = nodeDelayFor(nodeId);
+            if (style.hasVisualColorChange && style.useVisualColorCrossfade) {
+              next.set(nodeId, {
+                opacity: style.opacityEnd,
+                transition,
+                transitionDelayMs: dMs,
+                transform,
+                transformOrigin,
+                visualColorCrossfade: {
+                  from: style.visualColorMergeStart,
+                  to: style.visualColorMergeEnd,
+                },
+                visualColorCrossfadeTopOpacity: 0,
+                visualColorCrossfadeTopTransition: slideCrossfadeOpacityWithDelay(dMs),
+              });
+            } else if (style.hasVisualColorChange) {
+              // Keep previous-slide colors but enable transition on paint props; next rAF applies end colors.
+              next.set(nodeId, {
+                opacity: style.opacityEnd,
+                transition,
+                transitionDelayMs: dMs,
+                transform,
+                transformOrigin,
+                visualColorMerge: style.visualColorMergeStart,
+                visualColorMergeTransition: slideMergeTransitionWithDelay(dMs),
+              });
+            } else {
+              next.set(nodeId, {
+                opacity: style.opacityEnd,
+                transition,
+                transitionDelayMs: dMs,
+                transform,
+                transformOrigin,
+              });
+            }
           }
           return next;
         });
@@ -305,10 +405,41 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
             next.set(connKeyVal, {
               opacity: style.opacityEnd,
               transition,
+              transitionDelayMs: connDelayFor(connKeyVal),
               transform,
             });
           }
           return next;
+        });
+
+        requestAnimationFrame(() => {
+          setNodeStyles((prev) => {
+            const next = new Map(prev);
+            for (const [nodeId, style] of nodeIdStyles) {
+              if (!style.hasVisualColorChange) continue;
+              const existing = next.get(nodeId);
+              if (!existing) continue;
+              const dMs = nodeDelayFor(nodeId);
+              if (style.useVisualColorCrossfade) {
+                next.set(nodeId, {
+                  ...existing,
+                  visualColorCrossfade: {
+                    from: style.visualColorMergeStart,
+                    to: style.visualColorMergeEnd,
+                  },
+                  visualColorCrossfadeTopOpacity: 1,
+                  visualColorCrossfadeTopTransition: slideCrossfadeOpacityWithDelay(dMs),
+                });
+              } else {
+                next.set(nodeId, {
+                  ...existing,
+                  visualColorMerge: style.visualColorMergeEnd,
+                  visualColorMergeTransition: slideMergeTransitionWithDelay(dMs),
+                });
+              }
+            }
+            return next;
+          });
         });
       });
     });
@@ -329,8 +460,14 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
             next.set(nodeId, {
               opacity: 1,
               transition: 'none',
+              transitionDelayMs: undefined,
               transform: undefined,
               transformOrigin: undefined,
+              visualColorMerge: undefined,
+              visualColorMergeTransition: undefined,
+              visualColorCrossfade: undefined,
+              visualColorCrossfadeTopOpacity: undefined,
+              visualColorCrossfadeTopTransition: undefined,
             });
           }
         }
@@ -344,6 +481,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
             next.set(connKeyVal, {
               opacity: 1,
               transition: 'none',
+              transitionDelayMs: undefined,
               transform: undefined,
             });
           }

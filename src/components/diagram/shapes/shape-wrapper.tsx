@@ -35,6 +35,8 @@ interface ShapeWrapperProps {
   onLabelSubmit: () => void;
   onLabelKeyDown: (e: React.KeyboardEvent) => void;
   onLabelDoubleClick: (e: React.MouseEvent) => void;
+  /** Presentation slide transition: lerp fill/stroke between slides */
+  slideColorTransition?: string;
 }
 
 export function ShapeWrapper({
@@ -62,6 +64,7 @@ export function ShapeWrapper({
   onLabelSubmit,
   onLabelKeyDown,
   onLabelDoubleClick,
+  slideColorTransition,
 }: ShapeWrapperProps) {
   const styles = getShapeStyles(node);
   const nodeAny = node as any;
@@ -143,7 +146,8 @@ export function ShapeWrapper({
           } : {}),
           ...(styles.shadow && useSvgShadow && needsGradientBorderRounding ? {
             filter: 'var(--shape-shadow-drop)'
-          } : {})
+          } : {}),
+          ...(slideColorTransition !== undefined ? { transition: slideColorTransition } : {}),
         }}
       >
         {children ?? null}

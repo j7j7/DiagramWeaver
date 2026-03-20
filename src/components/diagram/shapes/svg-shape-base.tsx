@@ -31,6 +31,7 @@ interface SvgShapeBaseProps {
   onLabelSubmit: () => void;
   onLabelKeyDown: (e: React.KeyboardEvent) => void;
   onLabelDoubleClick: (e: React.MouseEvent) => void;
+  slideColorTransition?: string;
 }
 
 export function SvgShapeBase({
@@ -42,6 +43,7 @@ export function SvgShapeBase({
   defaultHeight = 60,
   overrideWidth,
   overrideHeight,
+  slideColorTransition,
   ...rest
 }: SvgShapeBaseProps) {
   const nodeAny = node as any;
@@ -52,6 +54,9 @@ export function SvgShapeBase({
   const height = overrideHeight ?? (node.height != null ? node.height : Math.round(baseHeight * scale));
   const styles = getShapeStyles(node);
 
+  const svgPaintTransition =
+    slideColorTransition !== undefined && slideColorTransition !== "none" ? slideColorTransition : undefined;
+
   return (
     <ShapeWrapper
       node={node}
@@ -61,9 +66,23 @@ export function SvgShapeBase({
       overrideHeight={overrideHeight}
       useSvgShadow={styles.shadow}
       skipWrapperStyling={true}
+      slideColorTransition={slideColorTransition}
       {...rest}
     >
-      <svg width={width} height={height} viewBox={viewBox} preserveAspectRatio={preserveAspectRatio ?? "none"} className="absolute inset-0">
+      <svg
+        width={width}
+        height={height}
+        viewBox={viewBox}
+        preserveAspectRatio={preserveAspectRatio ?? "none"}
+        className="absolute inset-0 dw-slide-svg-paint-tx"
+      >
+        {svgPaintTransition ? (
+          <style>{`
+            .dw-slide-svg-paint-tx :is(path, circle, rect, polygon, polyline, line, ellipse, text, tspan) {
+              transition: ${svgPaintTransition};
+            }
+          `}</style>
+        ) : null}
         {svgContent}
       </svg>
     </ShapeWrapper>

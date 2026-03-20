@@ -50,7 +50,18 @@ interface ViewerCanvasProps {
   /** When true, clicking a node with a valid URL opens it in a new browser tab. */
   openNodeLinksOnClick?: boolean;
   /** Node transition styles for slide transitions */
-  nodeTransitionStyles?: Map<string, { opacity: number; transition: string; transform?: string; transformOrigin?: string }>;
+  nodeTransitionStyles?: Map<string, {
+    opacity: number;
+    transition: string;
+    transitionDelayMs?: number;
+    transform?: string;
+    transformOrigin?: string;
+    visualColorMerge?: Record<string, unknown>;
+    visualColorMergeTransition?: string;
+    visualColorCrossfade?: { from: Record<string, unknown>; to: Record<string, unknown> };
+    visualColorCrossfadeTopOpacity?: number;
+    visualColorCrossfadeTopTransition?: string;
+  }>;
   /** Connection transition styles for slide transitions */
   connectionTransitionStyles?: Map<string, { opacity: number; transition: string; transform?: string; transformOrigin?: string }>;
   /** Double-click on node with subDiagramId navigates to sub-diagram */

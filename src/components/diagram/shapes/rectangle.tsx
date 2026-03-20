@@ -21,6 +21,7 @@ interface RectangleShapeProps {
   onLabelSubmit: () => void;
   onLabelKeyDown: (e: React.KeyboardEvent) => void;
   onLabelDoubleClick: (e: React.MouseEvent) => void;
+  slideColorTransition?: string;
 }
 
 export function RectangleShape(props: RectangleShapeProps) {

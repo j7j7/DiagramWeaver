@@ -12,6 +12,7 @@ interface LineShapeProps {
   strokeWidth?: number;
   onClick?: (e: React.MouseEvent, node: DiagramNodeData) => void;
   onContextMenu?: (e: React.MouseEvent, node: DiagramNodeData) => void;
+  slideColorTransition?: string;
 }
 
 // Helper to render different line cap styles
@@ -88,7 +89,7 @@ const renderLineCap = (
   return null;
 };
 
-export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, onClick, onContextMenu }: LineShapeProps) {
+export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, onClick, onContextMenu, slideColorTransition }: LineShapeProps) {
   const { resolvedTheme } = useTheme();
   // Get absolute positions (required for lines)
   // Use local positions if available (for smooth dragging), otherwise use node positions
@@ -276,7 +277,10 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
           strokeWidth={actualStrokeWidth}
           strokeLinecap="round"
           strokeDasharray={strokeDasharray}
-          style={{ pointerEvents: 'none' }} // Visual line is not clickable (hit area above handles it)
+          style={{
+            pointerEvents: 'none',
+            ...(slideColorTransition !== undefined ? { transition: slideColorTransition } : {}),
+          }}
         />
         
         {/* Start cap - points outward from start (backward, away from line) */}

@@ -41,7 +41,7 @@ interface CanvasConnectionsProps {
   /** Set of node IDs whose outbound animations should be disabled */
   animationDisabledSources?: Set<string>;
   /** Layer show/hide animation styles (from useLayerAnimation) keyed by connectionKey(conn) */
-  connectionAnimationStyles?: Map<string, { opacity: number; transition: string; transform?: string }>;
+  connectionAnimationStyles?: Map<string, { opacity: number; transition: string; transform?: string; transitionDelayMs?: number }>;
   /** Key function for connection lookup (from useLayerAnimation.connectionKey) */
   connectionKey?: (conn: DiagramConnectionData) => string;
 }
@@ -436,7 +436,12 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
           <g
             key={`${edge.from}-${edge.to}-${index}-${edge.toArrow ? 'arrow' : 'noarrow'}-${edge._updated || ''}`}
             className={cn(isConnectionHighlighted && 'drop-shadow-[0_0_6px_rgba(0,200,150,0.8)]')}
-            style={layerAnimStyle ? { opacity: layerAnimStyle.opacity, transition: layerAnimStyle.transition, ...(layerAnimStyle.transform && { transform: layerAnimStyle.transform }) } : undefined}
+            style={layerAnimStyle ? {
+              opacity: layerAnimStyle.opacity,
+              transition: layerAnimStyle.transition,
+              ...(layerAnimStyle.transitionDelayMs != null && { transitionDelay: `${layerAnimStyle.transitionDelayMs}ms` }),
+              ...(layerAnimStyle.transform && { transform: layerAnimStyle.transform }),
+            } : undefined}
           >
             {connStyle === 'orthogonal' ? (
               <OrthogonalConnection

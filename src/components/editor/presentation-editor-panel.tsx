@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useDrag, useDrop } from 'react-dnd';
-import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Copy, Download, GripHorizontal, GripVertical, Maximize2, Minimize2, Pin, PinOff, Play, Plus, Save, Trash2, Upload, Wand2 } from 'lucide-react';
+import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Copy, Download, GripHorizontal, GripVertical, Maximize2, Minimize2, Pin, PinOff, Play, Plus, Trash2, Upload, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -88,11 +88,6 @@ function DraggableSlideItem({
       </div>
       <div className="flex shrink-0 items-center gap-1.5 pt-0.5 text-left">
         <span className="text-[11px] font-medium text-foreground">#{index + 1}</span>
-        {slide.autoZoomLevel && (
-          <span className="rounded border bg-muted px-1 py-0.5 text-[10px] text-muted-foreground">
-            {(slide.autoZoomLevel * 100).toFixed(0)}%
-          </span>
-        )}
       </div>
     </div>
   );
@@ -108,12 +103,9 @@ interface PresentationEditorPanelProps {
   onRenameDeck: (name: string) => void;
   onSelectDeck: (deckId: string) => void;
   onAutoZoom: () => void;
-  zoomPercentDraft: string;
-  onZoomPercentDraftChange: (value: string) => void;
   onApplyZoomToCurrent: () => void;
   onApplyZoomToAll: () => void;
   onAddSnapshot: () => void;
-  onSaveSnapshot: () => void;
   onRemoveSlides: () => void;
   onDeleteSlide: (slideId: string) => void;
   onMoveSlide: (fromIndex: number, toIndex: number) => void;
@@ -135,12 +127,9 @@ export function PresentationEditorPanel({
   onRenameDeck,
   onSelectDeck,
   onAutoZoom,
-  zoomPercentDraft,
-  onZoomPercentDraftChange,
   onApplyZoomToCurrent,
   onApplyZoomToAll,
   onAddSnapshot,
-  onSaveSnapshot,
   onRemoveSlides,
   onDeleteSlide,
   onMoveSlide,
@@ -539,34 +528,12 @@ export function PresentationEditorPanel({
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button size="sm" variant="outline" className="h-7 w-7 px-0" onClick={onSaveSnapshot} disabled={!activeDeck || !activeSlideId} aria-label="Save current snapshot">
-                    <Save className="h-3.5 w-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Save snapshot</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
                   <Button size="sm" variant="outline" className="h-7 w-7 px-0" onClick={onAutoZoom} disabled={!activeDeck} aria-label="Auto zoom">
                     <Wand2 className="h-3.5 w-3.5" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Auto zoom</TooltipContent>
               </Tooltip>
-              <Input
-                value={zoomPercentDraft}
-                onChange={(e) => onZoomPercentDraftChange(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    onApplyZoomToCurrent();
-                  }
-                }}
-                className="h-7 w-16 px-1.5 text-[11px]"
-                placeholder="100"
-                aria-label="Zoom percent"
-                disabled={!activeDeck}
-              />
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button size="sm" variant="outline" className="h-7 w-7 px-0" onClick={() => onApplyZoomToCurrent()} disabled={!activeDeck || !activeSlideId} aria-label="Apply zoom to active snapshot">

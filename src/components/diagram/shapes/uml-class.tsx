@@ -24,6 +24,7 @@ interface UmlClassShapeProps {
   onTagDoubleClick?: (e: React.MouseEvent) => void;
   onUmlClassUpdate?: (umlClass: { name?: string; attributes?: string[]; methods?: string[] }) => void;
   isReadOnly?: boolean;
+  slideColorTransition?: string;
 }
 
 function getCompartmentStyle(
@@ -55,6 +56,7 @@ export function UmlClassShape({
   onTagDoubleClick = () => {},
   onUmlClassUpdate,
   isReadOnly = false,
+  slideColorTransition,
 }: UmlClassShapeProps) {
   const nodeAny = node as any;
   const uml = nodeAny.umlClass;
@@ -155,6 +157,7 @@ export function UmlClassShape({
           background: styles.background ?? nodeAny.backgroundColor ?? "#ffffff",
           borderRadius,
           ...(styles.shadow ? { boxShadow: "var(--shape-shadow-sm)" } : {}),
+          ...(slideColorTransition !== undefined ? { transition: slideColorTransition } : {}),
         }}
       >
         {/* Name section - fixed single-line height */}
