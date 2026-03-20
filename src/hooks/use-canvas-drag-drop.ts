@@ -37,6 +37,22 @@ function applyCtrlAxisConstraint(
   return { dx: 0, dy: rawDy };
 }
 
+/**
+ * Selection may include connection ids; only items that exist as nodes/zones on the canvas can be dragged.
+ * Including edge ids broke multi Alt+duplicate: allDuplicatableNodes was false and commitMulti failed ids.every().
+ */
+function canvasDraggableIdsFromSelection(
+  selectedItemIds: Set<string>,
+  nodesById: Record<string, PositionedNode>,
+  zonesById: Record<string, PositionedGroup>
+): Set<string> {
+  const out = new Set<string>();
+  selectedItemIds.forEach((id) => {
+    if (nodesById[id] || zonesById[id]) out.add(id);
+  });
+  return out;
+}
+
 function getCanvasDragAnchor(
   itemId: string,
   nodesById: Record<string, PositionedNode>,
@@ -252,8 +268,10 @@ export function useCanvasDragDrop({
       if (item.id) {
         if (selectedItemIds.size > 1 && selectedItemIds.has(item.id)) {
           // Multiple items are selected and the dragged item is one of them - move all selected items
-          // This takes priority over group membership
-          selectedItemIds.forEach(id => itemsToMove.add(id));
+          // This takes priority over group membership (omit connection ids — not draggable nodes)
+          canvasDraggableIdsFromSelection(selectedItemIds, nodesById, zonesById).forEach((id) =>
+            itemsToMove.add(id)
+          );
         } else {
           // Check if item is in a group (only if not part of multi-select)
           const group = getItemGroup(item.id, diagramData);
@@ -477,8 +495,10 @@ export function useCanvasDragDrop({
         
         if (selectedItemIds.size > 1 && selectedItemIds.has(item.id)) {
           // Multiple items are selected and the dragged item is one of them - move all selected items
-          // This takes priority over group membership
-          selectedItemIds.forEach(id => itemsToMoveSet.add(id));
+          // This takes priority over group membership (omit connection ids — not draggable nodes)
+          canvasDraggableIdsFromSelection(selectedItemIds, nodesById, zonesById).forEach((id) =>
+            itemsToMoveSet.add(id)
+          );
         } else {
           // Check if item is in a group (only if not part of multi-select)
           if (group) {
@@ -490,7 +510,8 @@ export function useCanvasDragDrop({
         }
         
         const wantDuplicate = altModifierRef.current;
-        const allDuplicatableNodes = [...itemsToMoveSet].every((id) => Boolean(nodesById[id]));
+        /** Alt+duplicate only clones diagram nodes (not zones); edges in selection are already filtered out. */
+        const allSelectedAreNodesForDuplicate = [...itemsToMoveSet].every((id) => Boolean(nodesById[id]));
 
         // Handle multi-item movement (grouped or multi-selected).
         // Start positions from live nodesById/zonesById — not a ref cleared by mouseup-before-drop.
@@ -554,13 +575,20 @@ export function useCanvasDragDrop({
             });
           }
 
-          if (wantDuplicate && allDuplicatableNodes && dupItems.length > 0) {
-            const created = duplicateNodesAtPositions(dupItems, dupPositions, diagramData);
+          const duplicatePairs = dupItems
+            .map((d, i) => ({ id: d.id, pos: dupPositions[i] }))
+            .filter((p) => nodesById[p.id]);
+          if (wantDuplicate && allSelectedAreNodesForDuplicate && duplicatePairs.length > 0) {
+            const created = duplicateNodesAtPositions(
+              duplicatePairs.map((p) => ({ id: p.id })),
+              duplicatePairs.map((p) => p.pos),
+              diagramData
+            );
             if (created.length > 0) onDuplicateNodesPlaced?.(created);
           } else if (itemsToMove.length > 0) {
             moveMultipleItems(itemsToMove, newPositions, targetGroupIdForFreeflow);
           }
-        } else if (wantDuplicate && allDuplicatableNodes && item.id && nodesById[item.id]) {
+        } else if (wantDuplicate && item.id && nodesById[item.id]) {
           const created = duplicateNodesAtPositions([{ id: item.id }], [{ x, y }], diagramData);
           if (created.length > 0) onDuplicateNodesPlaced?.(created);
         } else {

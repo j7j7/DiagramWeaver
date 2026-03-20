@@ -7,10 +7,11 @@ interface ClipboardData {
   node?: DiagramNodeData;
   zone?: DiagramZoneData;
   children?: (DiagramNodeData | DiagramZoneData)[];
+  /** Connections touching copied node(s); may include an endpoint outside the copy (paste remaps the copied side). */
+  connections?: DiagramConnectionData[];
   // Multi-selection support
   nodes?: DiagramNodeData[];
   zones?: DiagramZoneData[];
-  connections?: DiagramConnectionData[];
   // Track original group relationships for creating new groups on paste
   originalGroupRelationships?: Map<string, string>; // nodeId -> zoneId
   originalGroupingRelationships?: Map<string, string>; // nodeId -> groupingId
@@ -71,13 +72,20 @@ export function useCanvasClipboard({
               }
             });
             
-            setClipboard({ 
+            const memberIdSet = new Set(groupedNodes.map((n) => n.id));
+            const groupConnections =
+              diagramData.connections
+                ?.filter((c) => memberIdSet.has(c.from) || memberIdSet.has(c.to))
+                .map((c) => ({ ...c })) ?? [];
+
+            setClipboard({
               nodes: groupedNodes,
+              connections: groupConnections,
               originalGroupingRelationships,
-              originalGroupingMemberOrder
+              originalGroupingMemberOrder,
             });
             onClipboardChange?.(true);
-            
+
             toast({
               title: "Group Copied",
               description: `${groupedNodes.length} items in grouping copied to clipboard.`,
@@ -86,10 +94,14 @@ export function useCanvasClipboard({
           }
         }
         
-        // If not grouped or grouping not found, copy just the node
-        setClipboard({ node: { ...node } });
+        // If not grouped or grouping not found, copy just the node (include edges touching it)
+        const touchConnections =
+          diagramData.connections
+            ?.filter((c) => c.from === node.id || c.to === node.id)
+            .map((c) => ({ ...c })) ?? [];
+        setClipboard({ node: { ...node }, connections: touchConnections });
         onClipboardChange?.(true);
-        
+
         toast({
           title: "Item Copied",
           description: "The selected item has been copied to clipboard.",
@@ -234,9 +246,9 @@ export function useCanvasClipboard({
         }
       });
 
-      // Collect connections between selected items
-      diagramData.connections?.forEach(connection => {
-        if (allSelectedIds.has(connection.from) && allSelectedIds.has(connection.to)) {
+      // Connections touching any copied node (external endpoint preserved on paste, like Alt+duplicate)
+      diagramData.connections?.forEach((connection) => {
+        if (allSelectedIds.has(connection.from) || allSelectedIds.has(connection.to)) {
           selectedConnections.push({ ...connection });
         }
       });
@@ -261,7 +273,11 @@ export function useCanvasClipboard({
       const zone = diagramData.zones?.find(zone => zone.id === itemId);
 
       if (node) {
-        setClipboard({ node: { ...node } });
+        const touchConnections =
+          diagramData.connections
+            ?.filter((c) => c.from === node.id || c.to === node.id)
+            .map((c) => ({ ...c })) ?? [];
+        setClipboard({ node: { ...node }, connections: touchConnections });
         onClipboardChange?.(true);
       } else if (zone) {
         // Recursively collect all children
@@ -430,24 +446,28 @@ export function useCanvasClipboard({
         }
       });
 
-      // Third pass: create new connections with updated IDs and new unique connection ids
-      // Must assign fresh connection ids so pasted connections are independent (selection,
-      // delete, update by connectionId target only the pasted copy, not the original)
+      // Third pass: remap endpoints for pasted nodes; keep external endpoint ids (same as duplicateNodesAtPositions)
       const newConnections: DiagramConnectionData[] = [];
-      connections.forEach(connection => {
+      connections.forEach((connection) => {
         const newFromId = idMapping.get(connection.from);
         const newToId = idMapping.get(connection.to);
-        
-        // Only create connection if both endpoints are being copied
-        if (newFromId && newToId) {
-          const { id: _oldId, ...rest } = connection;
-          newConnections.push({
-            ...rest,
-            id: generateConnectionId(),
-            from: newFromId,
-            to: newToId
-          });
-        }
+        if (!newFromId && !newToId) return;
+        const mergedFrom = newFromId ?? connection.from;
+        const mergedTo = newToId ?? connection.to;
+        if (mergedFrom === connection.from && mergedTo === connection.to) return;
+
+        const { id: _oldConnId, waypoints: _wp, ...rest } = connection;
+        newConnections.push({
+          ...rest,
+          id: generateConnectionId(),
+          from: mergedFrom,
+          to: mergedTo,
+          waypoints: undefined,
+          connectionIndex: undefined,
+          totalConnections: undefined,
+          toConnectionIndex: undefined,
+          toTotalConnections: undefined,
+        });
       });
 
       // Create new groupings for nodes that had original grouping relationships
@@ -613,11 +633,33 @@ export function useCanvasClipboard({
         }
       }
 
-      setDiagramData(prev => ({
+      const pastedTouchConnections: DiagramConnectionData[] = [];
+      (clipboard.connections || []).forEach((conn) => {
+        const oldId = clipboard.node!.id;
+        const newFrom = conn.from === oldId ? newNode.id : conn.from;
+        const newTo = conn.to === oldId ? newNode.id : conn.to;
+        if (newFrom === conn.from && newTo === conn.to) return;
+
+        const { id: _oldConnId, waypoints: _wp, ...rest } = conn;
+        pastedTouchConnections.push({
+          ...rest,
+          id: generateConnectionId(),
+          from: newFrom,
+          to: newTo,
+          waypoints: undefined,
+          connectionIndex: undefined,
+          totalConnections: undefined,
+          toConnectionIndex: undefined,
+          toTotalConnections: undefined,
+        });
+      });
+
+      setDiagramData((prev) => ({
         ...prev,
         nodes: [...prev.nodes, newNode],
         zones: [...(prev.zones || []), ...newZones],
-        groupings: [...(prev.groupings || []), ...newGroupings]
+        connections: [...(prev.connections || []), ...pastedTouchConnections],
+        groupings: [...(prev.groupings || []), ...newGroupings],
       }));
 
       // Select the newly pasted item (or its group if one was created)
@@ -629,7 +671,10 @@ export function useCanvasClipboard({
 
       toast({
         title: "Item Pasted",
-        description: "The copied item has been pasted to the canvas.",
+        description:
+          pastedTouchConnections.length > 0
+            ? `The copied item and ${pastedTouchConnections.length} connection(s) have been pasted to the canvas.`
+            : "The copied item has been pasted to the canvas.",
       });
     } else if (clipboard.zone) {
       // Handle single group paste (backward compatibility)

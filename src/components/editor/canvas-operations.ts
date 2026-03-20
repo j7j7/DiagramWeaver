@@ -1,5 +1,6 @@
 import { useCallback } from "react";
-import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramGroupData } from "@/lib/types";
+import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramGroupData, DiagramConnectionData } from "@/lib/types";
+import { generateConnectionId } from "@/lib/connection-order-utils";
 import { ItemTypes } from "./draggable-item";
 import { generateGroupId, generateSequentialId } from "@/lib/id-generator";
 import { DEFAULT_THEMES } from "@/lib/theme-manager";
@@ -377,6 +378,8 @@ export function useCanvasOperations({
       sourceDiagram: DiagramData
     ): DiagramNodeData[] => {
       const additions: DiagramNodeData[] = [];
+      /** originalId → cloneId; must be set when each clone is pushed (not by index into additions, which misaligns if any item skips). */
+      const idMap = new Map<string, string>();
       let accNodes = [...(sourceDiagram.nodes || [])];
       items.forEach((item, index) => {
         const original = accNodes.find((n) => n.id === item.id);
@@ -408,13 +411,37 @@ export function useCanvasOperations({
           };
         }
         additions.push(next);
+        idMap.set(item.id, next.id);
         accNodes = [...accNodes, next];
       });
       if (additions.length === 0) return [];
-      setDiagramData((prev) => ({
-        ...prev,
-        nodes: [...(prev.nodes || []), ...additions],
-      }));
+      setDiagramData((prev) => {
+        const extraConnections: DiagramConnectionData[] = [];
+        for (const conn of prev.connections || []) {
+          const newFrom = idMap.get(conn.from) ?? conn.from;
+          const newTo = idMap.get(conn.to) ?? conn.to;
+          if (newFrom === conn.from && newTo === conn.to) continue;
+
+          const { id: _oldConnId, waypoints: _wp, ...rest } = conn;
+          extraConnections.push({
+            ...rest,
+            id: generateConnectionId(),
+            from: newFrom,
+            to: newTo,
+            waypoints: undefined,
+            connectionIndex: undefined,
+            totalConnections: undefined,
+            toConnectionIndex: undefined,
+            toTotalConnections: undefined,
+          });
+        }
+
+        return {
+          ...prev,
+          nodes: [...(prev.nodes || []), ...additions],
+          connections: [...(prev.connections || []), ...extraConnections],
+        };
+      });
       return additions;
     },
     [setDiagramData]
