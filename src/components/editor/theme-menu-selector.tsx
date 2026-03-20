@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { DiagramTheme } from '@/lib/theme-types';
 import { themeManager } from '@/lib/theme-manager';
+import { getVisualStylingCSS, themePropertiesToVisualStyling } from '@/lib/visual-styling';
 
 interface ThemeMenuSelectorProps {
   onThemeSelect?: (theme: DiagramTheme) => void;
@@ -51,18 +52,12 @@ export function ThemeMenuSelector({ onThemeSelect, onOpenEditor, isReadOnly = fa
   };
 
   const renderThemePreview = (theme: DiagramTheme) => {
-    const { properties } = theme;
-    
+    const swatchStyle = getVisualStylingCSS(themePropertiesToVisualStyling(theme.properties));
     return (
       <div className="flex items-center gap-2">
-        <div 
-          className="w-4 h-4 rounded border-2 flex-shrink-0"
-          style={{
-            borderColor: properties.borderColor || '#ccc',
-            borderWidth: `${Math.min(properties.borderWidth || 2, 2)}px`,
-            borderStyle: properties.borderStyle === 'none' ? 'solid' : properties.borderStyle,
-            backgroundColor: properties.backgroundColor || '#f9fafb',
-          }}
+        <div
+          className="w-4 h-4 rounded flex-shrink-0"
+          style={swatchStyle}
         />
         <span className="text-sm truncate flex-1">{theme.name}</span>
       </div>
@@ -128,7 +123,7 @@ export function ThemeMenuSelector({ onThemeSelect, onOpenEditor, isReadOnly = fa
                 All Themes
               </div>
             )}
-            {otherThemes.slice(0, 20).map((theme) => (
+            {otherThemes.map((theme) => (
               <DropdownMenuItem
                 key={theme.id}
                 onClick={(e) => handleThemeSelect(theme, e)}
@@ -153,11 +148,6 @@ export function ThemeMenuSelector({ onThemeSelect, onOpenEditor, isReadOnly = fa
                 </div>
               </DropdownMenuItem>
             ))}
-            {otherThemes.length > 20 && (
-              <div className="px-2 py-1.5 text-xs text-muted-foreground text-center">
-                ... and {otherThemes.length - 20} more themes
-              </div>
-            )}
           </>
         )}
         

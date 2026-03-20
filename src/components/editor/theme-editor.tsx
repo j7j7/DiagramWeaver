@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { DiagramTheme, ThemeProperties } from '@/lib/theme-types';
 import { themeManager } from '@/lib/theme-manager';
+import { getVisualStylingCSS, themePropertiesToVisualStyling } from '@/lib/visual-styling';
 
 interface ThemeEditorProps {
   open: boolean;
@@ -267,33 +268,36 @@ export function ThemeEditor({ open, onOpenChange, onThemeSelect, isReadOnly = fa
 
   const renderThemePreview = (theme: DiagramTheme) => {
     const { properties } = theme;
-    
+    const panelStyle = getVisualStylingCSS({
+      ...themePropertiesToVisualStyling(properties),
+      borderWidth: properties.borderWidth ?? 2,
+      shadow: false,
+    });
     return (
-      <div className="w-full h-20 rounded-lg border-2 p-2 relative overflow-hidden"
-           style={{
-             borderColor: properties.borderColor || '#ccc',
-             borderWidth: `${properties.borderWidth || 2}px`,
-             borderStyle: properties.borderStyle === 'none' ? 'solid' : properties.borderStyle,
-             backgroundColor: properties.backgroundColor || '#f9fafb',
-             boxShadow: properties.shadow ? `0 2px ${properties.shadowBlur || 4}px rgba(0,0,0,${properties.shadowOpacity || 0.2})` : 'none'
-           }}>
-        <div className="flex items-center justify-between h-full">
-          <div className="flex-1">
-            <div className="text-xs font-medium truncate" 
-                 style={{ color: properties.textColor || '#374151' }}>
+      <div
+        className="w-full h-20 rounded-lg p-2 relative overflow-hidden"
+        style={{
+          ...panelStyle,
+          boxShadow: properties.shadow
+            ? `0 2px ${properties.shadowBlur || 4}px rgba(0,0,0,${properties.shadowOpacity || 0.2})`
+            : undefined,
+        }}
+      >
+        <div className="flex items-center justify-between h-full relative z-[1]">
+          <div className="flex-1 min-w-0 pr-2">
+            <div
+              className="text-xs font-medium truncate"
+              style={{ color: properties.textColor || '#374151' }}
+            >
               {theme.name}
             </div>
-            <div className="text-xs opacity-70 truncate" 
-                 style={{ color: properties.textColor || '#374151' }}>
+            <div
+              className="text-xs opacity-70 truncate"
+              style={{ color: properties.textColor || '#374151' }}
+            >
               {theme.description}
             </div>
           </div>
-          {properties.backgroundStyle === 'gradient' && (
-            <div className="w-8 h-8 rounded"
-                 style={{
-                   background: `linear-gradient(${properties.gradientAngle || 135}deg, ${properties.backgroundColors?.[0] || '#ccc'}, ${properties.backgroundColors?.[1] || '#999'})`
-                 }} />
-          )}
         </div>
       </div>
     );

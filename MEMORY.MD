@@ -2,6 +2,13 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-03-20 – Theme menu swatches + new built-in themes
+**Themes dropdown swatch fix**: Small previews used only `backgroundColor` / `borderColor`, so **gradient** themes (e.g. Golden Yellow, Royal Purple) fell back to pale gray and looked white/wrong. Previews now use `getVisualStylingCSS(themePropertiesToVisualStyling(...))` from `visual-styling.ts` so gradient fills and gradient borders match the theme. Updated: `theme-menu-selector.tsx`, `theme-selector.tsx`, `theme-editor.tsx` list preview card.
+
+**Ten new built-in themes** in `theme-manager.ts`: Aurora Teal, Lavender Mist, Ember Clay, Slate Indigo (now listed as **Grey · Slate Indigo**), Mint Mocha, Sakura Blush, Deep Current, Olive Grove, Citron Pop, Merlot Rose. **Grey / steel family**: five additions (Ash Mist, Charcoal Smoke, Cool Steel, Pewter Plate, Warm Concrete) plus renamed **Grey · Light Minimal** (was Minimal Gray) and **Grey · Slate Indigo** so built-in lists sort them adjacent under `Grey ·`.
+
+**Theme list ordering & completeness**: Built-in and custom themes in `getThemesSorted()` are ordered by **hue** (accent from `lineColor` → border → background) via `theme-spectrum.ts`; low-saturation themes sort after chromatic ones. Themes menu and theme popover **list all themes** (no 20-item cap or “and N more”). **Nature set**: Moss & Bark, Sea Glass, Wheat Straw, Redwood Grove, Lichen Stone, Desert Sand, Mountain Sky, Peat Earth, Tide Pool, Autumn Leaf. **Dark blues**: Midnight Sapphire, Cobalt Depth, Prussian Ink. **Mint Mocha** uses green `lineColor` for spectrum sort while keeping espresso borders.
+
 ### 2026-03-20 – Alt+drag duplicate on canvas
 **Hold Option/Alt while dragging** selected node(s): originals stay put; semi-transparent previews follow the cursor; **drop** creates clones at that position and selects them. **Release Alt before drop** to switch back to a normal move (same as standard drag). **Modifiers while dragging** must not rely on bubble-phase `keydown` alone (HTML5 DnD often swallows those)—`use-canvas-drag-drop` syncs Alt from **capture** `keydown`/`keyup` plus **`dragover` / `mousemove` / `pointermove`**, and uses **`altModifierRef`** so `drop()` reads the current Alt state. `duplicateNodesAtPositions` in `canvas-operations.ts`, preview layer in `editor-canvas.tsx`, `isDuplicateDragPreview` on `DiagramNode`. Line nodes duplicate with endpoints shifted; `groupId` cleared on copies.
 

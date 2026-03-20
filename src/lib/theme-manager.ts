@@ -1,5 +1,6 @@
 import { DiagramTheme, ThemeProperties, ThemeApplicationOptions } from './theme-types';
 import type { DiagramNodeData, DiagramGroupData, DiagramConnectionData } from './types';
+import { getThemeSpectrumSortKey } from './theme-spectrum';
 
 const THEME_STORAGE_KEY = 'diagram-weaver-themes';
 
@@ -108,7 +109,7 @@ export const DEFAULT_THEMES: DiagramTheme[] = [
   },
   {
     id: 'minimal-gray',
-    name: 'Minimal Gray',
+    name: 'Grey · Light Minimal',
     description: 'Clean minimalist gray theme',
     isBuiltIn: true,
     properties: {
@@ -129,6 +130,156 @@ export const DEFAULT_THEMES: DiagramTheme[] = [
       textColor: '#374151',
       textOpacity: 1,
       gradientAngle: 0
+    }
+  },
+  {
+    id: 'grey-ash-mist',
+    name: 'Grey · Ash Mist',
+    description: 'Featherlight cool zinc and silver fog',
+    isBuiltIn: true,
+    properties: {
+      borderStyle: 'solid',
+      borderColor: '#a3a3a3',
+      borderWidth: 1,
+      backgroundStyle: 'gradient',
+      backgroundColors: ['#fafafa', '#f4f4f5'],
+      backgroundOpacity: 1,
+      lineStyle: 'solid',
+      lineColor: '#737373',
+      lineWidth: 1.5,
+      lineOpacity: 1,
+      shadow: false,
+      shadowColor: '#000000',
+      shadowOpacity: 0.08,
+      shadowBlur: 3,
+      textColor: '#404040',
+      textOpacity: 1,
+      gradientAngle: 180
+    }
+  },
+  {
+    id: 'grey-charcoal-smoke',
+    name: 'Grey · Charcoal Smoke',
+    description: 'Charcoal frame on soft smoke white',
+    isBuiltIn: true,
+    properties: {
+      borderStyle: 'gradient',
+      borderColors: ['#52525b', '#3f3f46'],
+      borderWidth: 1,
+      backgroundStyle: 'gradient',
+      backgroundColors: ['#fafafa', '#e7e5e4'],
+      backgroundOpacity: 1,
+      lineStyle: 'solid',
+      lineColor: '#3f3f46',
+      lineWidth: 2,
+      lineOpacity: 1,
+      shadow: true,
+      shadowColor: '#27272a',
+      shadowOpacity: 0.18,
+      shadowBlur: 5,
+      textColor: '#18181b',
+      textOpacity: 1,
+      gradientAngle: 165
+    }
+  },
+  {
+    id: 'grey-cool-steel',
+    name: 'Grey · Cool Steel',
+    description: 'Brushed steel with blue-slate chill',
+    isBuiltIn: true,
+    properties: {
+      borderStyle: 'gradient',
+      borderColors: ['#64748b', '#475569'],
+      borderWidth: 1,
+      backgroundStyle: 'gradient',
+      backgroundColors: ['#f8fafc', '#e2e8f0'],
+      backgroundOpacity: 1,
+      lineStyle: 'solid',
+      lineColor: '#334155',
+      lineWidth: 2,
+      lineOpacity: 1,
+      shadow: true,
+      shadowColor: '#475569',
+      shadowOpacity: 0.22,
+      shadowBlur: 5,
+      textColor: '#1e293b',
+      textOpacity: 1,
+      gradientAngle: 135
+    }
+  },
+  {
+    id: 'grey-pewter-plate',
+    name: 'Grey · Pewter Plate',
+    description: 'Cast pewter rim with nickel highlights',
+    isBuiltIn: true,
+    properties: {
+      borderStyle: 'gradient',
+      borderColors: ['#71717a', '#52525b'],
+      borderWidth: 1,
+      backgroundStyle: 'gradient',
+      backgroundColors: ['#f4f4f5', '#e4e4e7'],
+      backgroundOpacity: 1,
+      lineStyle: 'solid',
+      lineColor: '#52525b',
+      lineWidth: 2,
+      lineOpacity: 1,
+      shadow: true,
+      shadowColor: '#3f3f46',
+      shadowOpacity: 0.2,
+      shadowBlur: 4,
+      textColor: '#27272a',
+      textOpacity: 1,
+      gradientAngle: 120
+    }
+  },
+  {
+    id: 'grey-warm-concrete',
+    name: 'Grey · Warm Concrete',
+    description: 'Neutral stone and taupe warmth',
+    isBuiltIn: true,
+    properties: {
+      borderStyle: 'solid',
+      borderColor: '#78716c',
+      borderWidth: 1,
+      backgroundStyle: 'gradient',
+      backgroundColors: ['#fafaf9', '#e7e5e4'],
+      backgroundOpacity: 1,
+      lineStyle: 'solid',
+      lineColor: '#57534e',
+      lineWidth: 2,
+      lineOpacity: 1,
+      shadow: true,
+      shadowColor: '#57534e',
+      shadowOpacity: 0.15,
+      shadowBlur: 4,
+      textColor: '#292524',
+      textOpacity: 1,
+      gradientAngle: 90
+    }
+  },
+  {
+    id: 'slate-indigo',
+    name: 'Grey · Slate Indigo',
+    description: 'Cool steel grey with indigo depth',
+    isBuiltIn: true,
+    properties: {
+      borderStyle: 'solid',
+      borderColor: '#475569',
+      borderWidth: 1,
+      backgroundStyle: 'gradient',
+      backgroundColors: ['#e2e8f0', '#cbd5f5'],
+      backgroundOpacity: 1,
+      lineStyle: 'solid',
+      lineColor: '#4338ca',
+      lineWidth: 2,
+      lineOpacity: 1,
+      shadow: true,
+      shadowColor: '#312e81',
+      shadowOpacity: 0.2,
+      shadowBlur: 5,
+      textColor: '#1e1b4b',
+      textOpacity: 1,
+      gradientAngle: 160
     }
   },
   {
@@ -255,6 +406,556 @@ export const DEFAULT_THEMES: DiagramTheme[] = [
       textOpacity: 1,
       gradientAngle: 135
     }
+  },
+  {
+    id: 'aurora-teal',
+    name: 'Aurora Teal',
+    description: 'Teal and sea-glass with crisp contrast',
+    isBuiltIn: true,
+    properties: {
+      borderStyle: 'gradient',
+      borderColors: ['#0d9488', '#14b8a6'],
+      borderWidth: 1,
+      backgroundStyle: 'gradient',
+      backgroundColors: ['#ccfbf1', '#a7f3d0'],
+      backgroundOpacity: 1,
+      lineStyle: 'solid',
+      lineColor: '#0f766e',
+      lineWidth: 2.5,
+      lineOpacity: 1,
+      shadow: true,
+      shadowColor: '#0d9488',
+      shadowOpacity: 0.28,
+      shadowBlur: 6,
+      textColor: '#134e4a',
+      textOpacity: 1,
+      gradientAngle: 118
+    }
+  },
+  {
+    id: 'lavender-mist',
+    name: 'Lavender Mist',
+    description: 'Soft lilac and periwinkle haze',
+    isBuiltIn: true,
+    properties: {
+      borderStyle: 'gradient',
+      borderColors: ['#a78bfa', '#818cf8'],
+      borderWidth: 1,
+      backgroundStyle: 'gradient',
+      backgroundColors: ['#ede9fe', '#e0e7ff'],
+      backgroundOpacity: 1,
+      lineStyle: 'solid',
+      lineColor: '#7c3aed',
+      lineWidth: 2,
+      lineOpacity: 1,
+      shadow: true,
+      shadowColor: '#8b5cf6',
+      shadowOpacity: 0.22,
+      shadowBlur: 5,
+      textColor: '#4c1d95',
+      textOpacity: 1,
+      gradientAngle: 135
+    }
+  },
+  {
+    id: 'ember-clay',
+    name: 'Ember Clay',
+    description: 'Terracotta warmth with sand tones',
+    isBuiltIn: true,
+    properties: {
+      borderStyle: 'gradient',
+      borderColors: ['#c2410c', '#ea580c'],
+      borderWidth: 1,
+      backgroundStyle: 'gradient',
+      backgroundColors: ['#ffedd5', '#fed7aa'],
+      backgroundOpacity: 1,
+      lineStyle: 'solid',
+      lineColor: '#c2410c',
+      lineWidth: 2.5,
+      lineOpacity: 1,
+      shadow: true,
+      shadowColor: '#ea580c',
+      shadowOpacity: 0.3,
+      shadowBlur: 6,
+      textColor: '#7c2d12',
+      textOpacity: 1,
+      gradientAngle: 145
+    }
+  },
+  {
+    id: 'mint-mocha',
+    name: 'Mint Mocha',
+    description: 'Fresh mint against rich espresso trim',
+    isBuiltIn: true,
+    properties: {
+      borderStyle: 'gradient',
+      borderColors: ['#57534e', '#78716c'],
+      borderWidth: 1,
+      backgroundStyle: 'gradient',
+      backgroundColors: ['#ecfccb', '#d9f99d'],
+      backgroundOpacity: 1,
+      lineStyle: 'solid',
+      lineColor: '#4d7c0f',
+      lineWidth: 2,
+      lineOpacity: 1,
+      shadow: true,
+      shadowColor: '#44403c',
+      shadowOpacity: 0.22,
+      shadowBlur: 5,
+      textColor: '#292524',
+      textOpacity: 1,
+      gradientAngle: 90
+    }
+  },
+  {
+    id: 'sakura-blush',
+    name: 'Sakura Blush',
+    description: 'Cherry blossom pink with rose accents',
+    isBuiltIn: true,
+    properties: {
+      borderStyle: 'gradient',
+      borderColors: ['#e11d48', '#fb7185'],
+      borderWidth: 1,
+      backgroundStyle: 'gradient',
+      backgroundColors: ['#ffe4e6', '#fecdd3'],
+      backgroundOpacity: 1,
+      lineStyle: 'solid',
+      lineColor: '#e11d48',
+      lineWidth: 2.5,
+      lineOpacity: 1,
+      shadow: true,
+      shadowColor: '#fb7185',
+      shadowOpacity: 0.25,
+      shadowBlur: 6,
+      textColor: '#881337',
+      textOpacity: 1,
+      gradientAngle: 125
+    }
+  },
+  {
+    id: 'deep-current',
+    name: 'Deep Current',
+    description: 'Midnight navy with cyan surge',
+    isBuiltIn: true,
+    properties: {
+      borderStyle: 'gradient',
+      borderColors: ['#06b6d4', '#0891b2'],
+      borderWidth: 1,
+      backgroundStyle: 'gradient',
+      backgroundColors: ['#0f172a', '#164e63'],
+      backgroundOpacity: 1,
+      lineStyle: 'solid',
+      lineColor: '#22d3ee',
+      lineWidth: 2.5,
+      lineOpacity: 1,
+      shadow: true,
+      shadowColor: '#000000',
+      shadowOpacity: 0.45,
+      shadowBlur: 8,
+      textColor: '#ecfeff',
+      textOpacity: 1,
+      gradientAngle: 135
+    }
+  },
+  {
+    id: 'olive-grove',
+    name: 'Olive Grove',
+    description: 'Muted olive and sage on cream',
+    isBuiltIn: true,
+    properties: {
+      borderStyle: 'solid',
+      borderColor: '#65a30d',
+      borderWidth: 1,
+      backgroundStyle: 'gradient',
+      backgroundColors: ['#f7fee7', '#ecfccb'],
+      backgroundOpacity: 1,
+      lineStyle: 'solid',
+      lineColor: '#4d7c0f',
+      lineWidth: 2,
+      lineOpacity: 1,
+      shadow: true,
+      shadowColor: '#65a30d',
+      shadowOpacity: 0.2,
+      shadowBlur: 4,
+      textColor: '#365314',
+      textOpacity: 1,
+      gradientAngle: 180
+    }
+  },
+  {
+    id: 'citron-pop',
+    name: 'Citron Pop',
+    description: 'Electric citrus with punchy contrast',
+    isBuiltIn: true,
+    properties: {
+      borderStyle: 'gradient',
+      borderColors: ['#ca8a04', '#a3e635'],
+      borderWidth: 1,
+      backgroundStyle: 'gradient',
+      backgroundColors: ['#facc15', '#bef264'],
+      backgroundOpacity: 1,
+      lineStyle: 'solid',
+      lineColor: '#713f12',
+      lineWidth: 3,
+      lineOpacity: 1,
+      shadow: true,
+      shadowColor: '#ca8a04',
+      shadowOpacity: 0.35,
+      shadowBlur: 7,
+      textColor: '#422006',
+      textOpacity: 1,
+      gradientAngle: 105
+    }
+  },
+  {
+    id: 'merlot-rose',
+    name: 'Merlot Rose',
+    description: 'Wine burgundy with dusty rose wash',
+    isBuiltIn: true,
+    properties: {
+      borderStyle: 'gradient',
+      borderColors: ['#881337', '#be123c'],
+      borderWidth: 1,
+      backgroundStyle: 'gradient',
+      backgroundColors: ['#fce7f3', '#fbcfe8'],
+      backgroundOpacity: 1,
+      lineStyle: 'solid',
+      lineColor: '#9f1239',
+      lineWidth: 2.5,
+      lineOpacity: 1,
+      shadow: true,
+      shadowColor: '#881337',
+      shadowOpacity: 0.28,
+      shadowBlur: 6,
+      textColor: '#4c0519',
+      textOpacity: 1,
+      gradientAngle: 40
+    }
+  },
+  {
+    id: 'blue-midnight-sapphire',
+    name: 'Midnight Sapphire',
+    description: 'Deep navy field with sapphire highlights',
+    isBuiltIn: true,
+    properties: {
+      borderStyle: 'gradient',
+      borderColors: ['#1e3a8a', '#312e81'],
+      borderWidth: 1,
+      backgroundStyle: 'gradient',
+      backgroundColors: ['#0f172a', '#172554'],
+      backgroundOpacity: 1,
+      lineStyle: 'solid',
+      lineColor: '#3b82f6',
+      lineWidth: 2.5,
+      lineOpacity: 1,
+      shadow: true,
+      shadowColor: '#000000',
+      shadowOpacity: 0.5,
+      shadowBlur: 8,
+      textColor: '#dbeafe',
+      textOpacity: 1,
+      gradientAngle: 135
+    }
+  },
+  {
+    id: 'blue-cobalt-depth',
+    name: 'Cobalt Depth',
+    description: 'Rich cobalt blue on ink blue ground',
+    isBuiltIn: true,
+    properties: {
+      borderStyle: 'gradient',
+      borderColors: ['#1d4ed8', '#1e40af'],
+      borderWidth: 1,
+      backgroundStyle: 'gradient',
+      backgroundColors: ['#172554', '#1e3a8a'],
+      backgroundOpacity: 1,
+      lineStyle: 'solid',
+      lineColor: '#60a5fa',
+      lineWidth: 2.5,
+      lineOpacity: 1,
+      shadow: true,
+      shadowColor: '#000000',
+      shadowOpacity: 0.45,
+      shadowBlur: 8,
+      textColor: '#eff6ff',
+      textOpacity: 1,
+      gradientAngle: 125
+    }
+  },
+  {
+    id: 'blue-prussian-ink',
+    name: 'Prussian Ink',
+    description: 'Near-black blue with steel azure lines',
+    isBuiltIn: true,
+    properties: {
+      borderStyle: 'solid',
+      borderColor: '#1e40af',
+      borderWidth: 1,
+      backgroundStyle: 'gradient',
+      backgroundColors: ['#020617', '#0f172a'],
+      backgroundOpacity: 1,
+      lineStyle: 'solid',
+      lineColor: '#2563eb',
+      lineWidth: 2,
+      lineOpacity: 1,
+      shadow: true,
+      shadowColor: '#000000',
+      shadowOpacity: 0.55,
+      shadowBlur: 9,
+      textColor: '#bfdbfe',
+      textOpacity: 1,
+      gradientAngle: 160
+    }
+  },
+  {
+    id: 'nat-moss-bark',
+    name: 'Moss & Bark',
+    description: 'Forest floor green with deep bark brown',
+    isBuiltIn: true,
+    properties: {
+      borderStyle: 'gradient',
+      borderColors: ['#3f6212', '#422006'],
+      borderWidth: 1,
+      backgroundStyle: 'gradient',
+      backgroundColors: ['#ecfccb', '#d9f99d'],
+      backgroundOpacity: 1,
+      lineStyle: 'solid',
+      lineColor: '#365314',
+      lineWidth: 2,
+      lineOpacity: 1,
+      shadow: true,
+      shadowColor: '#3f6212',
+      shadowOpacity: 0.22,
+      shadowBlur: 5,
+      textColor: '#1c1917',
+      textOpacity: 1,
+      gradientAngle: 95
+    }
+  },
+  {
+    id: 'nat-sea-glass',
+    name: 'Sea Glass',
+    description: 'Tumbled coastal aqua and foam white',
+    isBuiltIn: true,
+    properties: {
+      borderStyle: 'gradient',
+      borderColors: ['#14b8a6', '#2dd4bf'],
+      borderWidth: 1,
+      backgroundStyle: 'gradient',
+      backgroundColors: ['#ecfdf9', '#ccfbf1'],
+      backgroundOpacity: 1,
+      lineStyle: 'solid',
+      lineColor: '#0f766e',
+      lineWidth: 2,
+      lineOpacity: 1,
+      shadow: true,
+      shadowColor: '#14b8a6',
+      shadowOpacity: 0.2,
+      shadowBlur: 5,
+      textColor: '#115e59',
+      textOpacity: 1,
+      gradientAngle: 110
+    }
+  },
+  {
+    id: 'nat-wheat-straw',
+    name: 'Wheat Straw',
+    description: 'Sun-bleached field gold and chaff',
+    isBuiltIn: true,
+    properties: {
+      borderStyle: 'solid',
+      borderColor: '#ca8a04',
+      borderWidth: 1,
+      backgroundStyle: 'gradient',
+      backgroundColors: ['#fffbeb', '#fef3c7'],
+      backgroundOpacity: 1,
+      lineStyle: 'solid',
+      lineColor: '#a16207',
+      lineWidth: 2,
+      lineOpacity: 1,
+      shadow: true,
+      shadowColor: '#ca8a04',
+      shadowOpacity: 0.18,
+      shadowBlur: 4,
+      textColor: '#713f12',
+      textOpacity: 1,
+      gradientAngle: 170
+    }
+  },
+  {
+    id: 'nat-redwood',
+    name: 'Redwood Grove',
+    description: 'Russet cedar heartwood',
+    isBuiltIn: true,
+    properties: {
+      borderStyle: 'gradient',
+      borderColors: ['#9a3412', '#7c2d12'],
+      borderWidth: 1,
+      backgroundStyle: 'gradient',
+      backgroundColors: ['#ffedd5', '#fed7aa'],
+      backgroundOpacity: 1,
+      lineStyle: 'solid',
+      lineColor: '#7c2d12',
+      lineWidth: 2.5,
+      lineOpacity: 1,
+      shadow: true,
+      shadowColor: '#9a3412',
+      shadowOpacity: 0.25,
+      shadowBlur: 5,
+      textColor: '#431407',
+      textOpacity: 1,
+      gradientAngle: 40
+    }
+  },
+  {
+    id: 'nat-lichen-stone',
+    name: 'Lichen Stone',
+    description: 'Grey rock dusted with sage lichen',
+    isBuiltIn: true,
+    properties: {
+      borderStyle: 'gradient',
+      borderColors: ['#57534e', '#65a30d'],
+      borderWidth: 1,
+      backgroundStyle: 'gradient',
+      backgroundColors: ['#f5f5f4', '#e7e5e4'],
+      backgroundOpacity: 1,
+      lineStyle: 'solid',
+      lineColor: '#4d7c0f',
+      lineWidth: 2,
+      lineOpacity: 1,
+      shadow: true,
+      shadowColor: '#44403c',
+      shadowOpacity: 0.16,
+      shadowBlur: 4,
+      textColor: '#292524',
+      textOpacity: 1,
+      gradientAngle: 75
+    }
+  },
+  {
+    id: 'nat-desert-sand',
+    name: 'Desert Sand',
+    description: 'Warm dune ochre and pale dust',
+    isBuiltIn: true,
+    properties: {
+      borderStyle: 'gradient',
+      borderColors: ['#d97706', '#b45309'],
+      borderWidth: 1,
+      backgroundStyle: 'gradient',
+      backgroundColors: ['#fffbeb', '#fef9c3'],
+      backgroundOpacity: 1,
+      lineStyle: 'solid',
+      lineColor: '#b45309',
+      lineWidth: 2,
+      lineOpacity: 1,
+      shadow: true,
+      shadowColor: '#d97706',
+      shadowOpacity: 0.2,
+      shadowBlur: 5,
+      textColor: '#78350f',
+      textOpacity: 1,
+      gradientAngle: 155
+    }
+  },
+  {
+    id: 'nat-mountain-sky',
+    name: 'Mountain Sky',
+    description: 'High-altitude blue with cloud mist',
+    isBuiltIn: true,
+    properties: {
+      borderStyle: 'gradient',
+      borderColors: ['#0284c7', '#0ea5e9'],
+      borderWidth: 1,
+      backgroundStyle: 'gradient',
+      backgroundColors: ['#f0f9ff', '#e0f2fe'],
+      backgroundOpacity: 1,
+      lineStyle: 'solid',
+      lineColor: '#0369a1',
+      lineWidth: 2,
+      lineOpacity: 1,
+      shadow: true,
+      shadowColor: '#0284c7',
+      shadowOpacity: 0.2,
+      shadowBlur: 5,
+      textColor: '#0c4a6e',
+      textOpacity: 1,
+      gradientAngle: 130
+    }
+  },
+  {
+    id: 'nat-peat-earth',
+    name: 'Peat Earth',
+    description: 'Rich bog soil and dark humus',
+    isBuiltIn: true,
+    properties: {
+      borderStyle: 'gradient',
+      borderColors: ['#78350f', '#92400e'],
+      borderWidth: 1,
+      backgroundStyle: 'gradient',
+      backgroundColors: ['#fef3c7', '#fde68a'],
+      backgroundOpacity: 1,
+      lineStyle: 'solid',
+      lineColor: '#78350f',
+      lineWidth: 2.5,
+      lineOpacity: 1,
+      shadow: true,
+      shadowColor: '#451a03',
+      shadowOpacity: 0.28,
+      shadowBlur: 6,
+      textColor: '#431407',
+      textOpacity: 1,
+      gradientAngle: 25
+    }
+  },
+  {
+    id: 'nat-tide-pool',
+    name: 'Tide Pool',
+    description: 'Shallow reef teal meeting indigo depth',
+    isBuiltIn: true,
+    properties: {
+      borderStyle: 'gradient',
+      borderColors: ['#0e7490', '#155e75'],
+      borderWidth: 1,
+      backgroundStyle: 'gradient',
+      backgroundColors: ['#ecfeff', '#cffafe'],
+      backgroundOpacity: 1,
+      lineStyle: 'solid',
+      lineColor: '#155e75',
+      lineWidth: 2.5,
+      lineOpacity: 1,
+      shadow: true,
+      shadowColor: '#0e7490',
+      shadowOpacity: 0.24,
+      shadowBlur: 5,
+      textColor: '#164e63',
+      textOpacity: 1,
+      gradientAngle: 140
+    }
+  },
+  {
+    id: 'nat-autumn-leaf',
+    name: 'Autumn Leaf',
+    description: 'Maple rust, ochre, and dried gold',
+    isBuiltIn: true,
+    properties: {
+      borderStyle: 'gradient',
+      borderColors: ['#c2410c', '#b45309'],
+      borderWidth: 1,
+      backgroundStyle: 'gradient',
+      backgroundColors: ['#fff7ed', '#ffedd5'],
+      backgroundOpacity: 1,
+      lineStyle: 'solid',
+      lineColor: '#9a3412',
+      lineWidth: 2.5,
+      lineOpacity: 1,
+      shadow: true,
+      shadowColor: '#c2410c',
+      shadowOpacity: 0.22,
+      shadowBlur: 6,
+      textColor: '#7c2d12',
+      textOpacity: 1,
+      gradientAngle: 60
+    }
   }
 ];
 
@@ -321,19 +1022,23 @@ class ThemeManager {
       if (a.isBuiltIn && !b.isBuiltIn) return -1;
       if (!a.isBuiltIn && b.isBuiltIn) return 1;
       
-      // Within built-in themes, sort by name
+      // Within built-in themes, sort around the colour spectrum (neutrals last)
       if (a.isBuiltIn && b.isBuiltIn) {
+        const ka = getThemeSpectrumSortKey(a);
+        const kb = getThemeSpectrumSortKey(b);
+        if (Math.abs(ka - kb) > 1e-6) return ka - kb;
         return a.name.localeCompare(b.name);
       }
       
-      // Custom themes: sort by creation date (newest last) or updated date
+      // Custom themes: spectrum order, then date, then name
+      const ka = getThemeSpectrumSortKey(a);
+      const kb = getThemeSpectrumSortKey(b);
+      if (Math.abs(ka - kb) > 1e-6) return ka - kb;
       const aDate = a.createdAt || a.updatedAt || '';
       const bDate = b.createdAt || b.updatedAt || '';
       if (aDate && bDate) {
         return aDate.localeCompare(bDate);
       }
-      
-      // Fallback to name
       return a.name.localeCompare(b.name);
     });
   }

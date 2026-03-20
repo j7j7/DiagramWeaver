@@ -140,6 +140,25 @@ export function getVisualStyling(
 }
 
 /**
+ * Maps diagram theme properties to VisualStyling for shared CSS (e.g. menu swatches).
+ * Keeps swatch borders readable by capping border width.
+ */
+export function themePropertiesToVisualStyling(p: ThemeProperties): VisualStyling {
+  return {
+    borderStyle: p.borderStyle,
+    borderColor: p.borderColor,
+    borderColors: p.borderColors,
+    backgroundStyle: p.backgroundStyle,
+    backgroundColor: p.backgroundColor,
+    backgroundColors: p.backgroundColors,
+    gradientAngle: p.gradientAngle,
+    borderGradientAngle: p.borderGradientAngle ?? p.gradientAngle,
+    borderWidth: Math.min(p.borderWidth ?? 2, 2),
+    shadow: false,
+  };
+}
+
+/**
  * Converts visual styling object to CSS style object
  */
 export function getVisualStylingCSS(styling: VisualStyling): React.CSSProperties {

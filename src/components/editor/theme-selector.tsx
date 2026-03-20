@@ -6,6 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Palette, Star } from 'lucide-react';
 import { DiagramTheme } from '@/lib/theme-types';
 import { themeManager } from '@/lib/theme-manager';
+import { getVisualStylingCSS, themePropertiesToVisualStyling } from '@/lib/visual-styling';
 
 interface ThemeSelectorProps {
   onThemeApply: (theme: DiagramTheme) => void;
@@ -40,27 +41,21 @@ export function ThemeSelector({ onThemeApply, disabled = false, selectedCount = 
   const renderThemePreview = (theme: DiagramTheme, size: 'small' | 'medium' = 'small') => {
     const { properties } = theme;
     const sizeClass = size === 'small' ? 'w-8 h-8' : 'w-12 h-12';
-    
+    const css = getVisualStylingCSS({
+      ...themePropertiesToVisualStyling(properties),
+      borderWidth: Math.max(1, Math.round((properties.borderWidth || 2) / 2)),
+      shadow: false,
+    });
     return (
-      <div 
-        className={`${sizeClass} rounded border-2 relative overflow-hidden flex-shrink-0`}
+      <div
+        className={`${sizeClass} rounded relative overflow-hidden flex-shrink-0`}
         style={{
-          borderColor: properties.borderColor || '#ccc',
-          borderWidth: `${Math.max(1, (properties.borderWidth || 2) / 2)}px`,
-          borderStyle: properties.borderStyle === 'none' ? 'solid' : properties.borderStyle,
-          backgroundColor: properties.backgroundColor || '#f9fafb',
-          boxShadow: properties.shadow ? `0 1px ${Math.max(1, (properties.shadowBlur || 4) / 2)}px rgba(0,0,0,${properties.shadowOpacity || 0.2})` : 'none'
+          ...css,
+          boxShadow: properties.shadow
+            ? `0 1px ${Math.max(1, (properties.shadowBlur || 4) / 2)}px rgba(0,0,0,${properties.shadowOpacity || 0.2})`
+            : undefined,
         }}
-      >
-        {properties.backgroundStyle === 'gradient' && (
-          <div 
-            className="absolute inset-0"
-            style={{
-              background: `linear-gradient(${properties.gradientAngle || 135}deg, ${properties.backgroundColors?.[0] || '#ccc'}, ${properties.backgroundColors?.[1] || '#999'})`
-            }}
-          />
-        )}
-      </div>
+      />
     );
   };
 
@@ -139,7 +134,7 @@ export function ThemeSelector({ onThemeApply, disabled = false, selectedCount = 
                       </div>
                     )}
                     <div className="grid grid-cols-2 gap-2">
-                      {otherThemes.slice(0, 20).map((theme) => (
+                      {otherThemes.map((theme) => (
                         <Button
                           key={theme.id}
                           variant="outline"
@@ -169,11 +164,6 @@ export function ThemeSelector({ onThemeApply, disabled = false, selectedCount = 
                         </Button>
                       ))}
                     </div>
-                    {otherThemes.length > 20 && (
-                      <div className="text-xs text-muted-foreground text-center">
-                        ... and {otherThemes.length - 20} more themes
-                      </div>
-                    )}
                   </>
                 )}
               </>
