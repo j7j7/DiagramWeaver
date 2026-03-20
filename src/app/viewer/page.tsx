@@ -7,16 +7,23 @@ import { HTML5Backend } from "react-dnd-html5-backend";
 import { ViewerCanvas, type ViewerSelectedItem } from "@/components/viewer/viewer-canvas";
 import { ViewerControls } from "@/components/viewer/viewer-controls";
 import { ViewerLayersPanel } from "@/components/viewer/viewer-layers-panel";
+import { ViewerPresentationBar } from "@/components/viewer/viewer-presentation-bar";
+import { PresentationPlayer } from "@/components/editor/presentation-player";
 import { PropertiesPanel } from "@/components/editor/properties-panel";
 import { DiagramBreadcrumb, type BreadcrumbSegment } from "@/components/editor/diagram-breadcrumb";
-import { loadViewerData, parseViewerParams } from "@/lib/viewer-utils";
+import { loadViewerData, parseViewerParams, type ViewerData } from "@/lib/viewer-utils";
+import { ViewerLocalFilePanel } from "@/components/viewer/viewer-local-file-panel";
 import { filterByVisibleLayers, toggleLayerVisibility, validateLayersConfig } from "@/lib/layers-utils";
 import { getDiagramAtStack } from "@/lib/sub-diagram-utils";
 import { sanitizeViewState } from "@/lib/view-state-utils";
 import { getDownstreamAnimationChainNodes } from "@/lib/connection-animation";
 import { isEventFromEditableElement } from "@/lib/keyboard-utils";
-import type { DiagramData, DiagramNodeData, LayersConfig } from "@/lib/types";
+import { applyDiagramDelta, projectVisibleDiagram } from "@/lib/presentation-delta";
+import { usePresentationSlideView } from "@/hooks/use-presentation-slide-view";
+import { cn } from "@/lib/utils";
+import type { DiagramData, DiagramNodeData, LayersConfig, PresentationDeck } from "@/lib/types";
 import type { Transform } from "@/hooks/use-canvas-transform";
+import { MonitorPlay } from "lucide-react";
 
 function ViewerPageContent() {
   const searchParams = useSearchParams();
@@ -35,6 +42,14 @@ function ViewerPageContent() {
   const [animationDisabledSources, setAnimationDisabledSources] = useState<Set<string>>(new Set());
   const [isInitialized, setIsInitialized] = useState(false);
   const [activeDiagramStack, setActiveDiagramStack] = useState<BreadcrumbSegment[]>([]);
+  const [presentationDecks, setPresentationDecks] = useState<PresentationDeck[]>([]);
+  const [viewerPresentationDeckId, setViewerPresentationDeckId] = useState<string | null>(null);
+  const [presentationViewActive, setPresentationViewActive] = useState(false);
+  const [presentationSlideIndex, setPresentationSlideIndex] = useState(0);
+  const [presentationTransform, setPresentationTransform] = useState<Transform>({ x: 0, y: 0, k: 1 });
+  const [presentationPlayerOpen, setPresentationPlayerOpen] = useState(false);
+  const sessionFileChosenRef = useRef(false);
+  const [localFileError, setLocalFileError] = useState<string | null>(null);
 
   // Persist master animation toggle setting
   useEffect(() => {
@@ -121,19 +136,174 @@ function ViewerPageContent() {
 
   const hasLayers = diagramData?.layers && validateLayersConfig(diagramData.layers) && diagramData.layers.layers.length > 1;
 
+  const activeViewerPresentationDeck = useMemo(
+    () => presentationDecks.find((d) => d.id === viewerPresentationDeckId) ?? presentationDecks[0] ?? null,
+    [presentationDecks, viewerPresentationDeckId]
+  );
+  const activeViewerPresentationSlides = activeViewerPresentationDeck?.slides ?? [];
+
+  const presentationEligible =
+    Boolean(diagramData) &&
+    activeDiagramStack.length === 0 &&
+    presentationDecks.length > 0 &&
+    activeViewerPresentationSlides.length > 0;
+
+  const slideDiagramsForViewerPresentation = useMemo(() => {
+    if (!diagramData || !presentationEligible) return undefined;
+    const master = projectVisibleDiagram(diagramData);
+    return activeViewerPresentationSlides.map((slide) => applyDiagramDelta(master, slide.diagramDelta));
+  }, [diagramData, presentationEligible, activeViewerPresentationSlides]);
+
+  const slidePresentationView = usePresentationSlideView({
+    enabled: presentationViewActive && presentationEligible,
+    slides: activeViewerPresentationSlides,
+    slideDiagrams: slideDiagramsForViewerPresentation,
+    slideIndex: presentationSlideIndex,
+  });
+
+  useEffect(() => {
+    if (!presentationViewActive || !slidePresentationView.currentSlide) return;
+    const slideZoom = slidePresentationView.currentSlide.autoZoomLevel;
+    if (typeof slideZoom !== "number" || !Number.isFinite(slideZoom)) return;
+    const clampedZoom = Math.max(0.1, Math.min(2.5, slideZoom));
+    setPresentationTransform((prev) => ({ ...prev, k: clampedZoom }));
+  }, [
+    presentationViewActive,
+    slidePresentationView.currentSlide?.id,
+    slidePresentationView.currentSlide?.autoZoomLevel,
+  ]);
+
+  useEffect(() => {
+    if (activeDiagramStack.length > 0 && presentationViewActive) {
+      setPresentationViewActive(false);
+    }
+  }, [activeDiagramStack.length, presentationViewActive]);
+
+  const handleEnterPresentationView = useCallback(() => {
+    if (!presentationEligible) return;
+    setPresentationTransform(transform);
+    setPresentationSlideIndex(0);
+    setPresentationViewActive(true);
+  }, [presentationEligible, transform]);
+
+  const handleExitPresentationView = useCallback(() => {
+    setTransform(presentationTransform);
+    setPresentationViewActive(false);
+  }, [presentationTransform]);
+
+  const handleTogglePresentationView = useCallback(() => {
+    if (presentationViewActive) {
+      handleExitPresentationView();
+    } else {
+      handleEnterPresentationView();
+    }
+  }, [presentationViewActive, handleEnterPresentationView, handleExitPresentationView]);
+
+  const handleViewerPresentationDeckChange = useCallback((deckId: string) => {
+    setViewerPresentationDeckId(deckId);
+    setPresentationSlideIndex(0);
+  }, []);
+
+  useEffect(() => {
+    if (!presentationViewActive || presentationPlayerOpen || !presentationEligible) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (isEventFromEditableElement(e)) return;
+      const n = activeViewerPresentationSlides.length;
+      if (n === 0) return;
+      if (e.key === " " || e.key === "ArrowRight") {
+        e.preventDefault();
+        setPresentationSlideIndex((i) => (i + 1) % n);
+        return;
+      }
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        setPresentationSlideIndex((i) => (i - 1 + n) % n);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setPresentationSlideIndex(0);
+        return;
+      }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setPresentationSlideIndex(Math.max(n - 1, 0));
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [
+    presentationViewActive,
+    presentationPlayerOpen,
+    presentationEligible,
+    activeViewerPresentationSlides.length,
+  ]);
+
+  const presentationAnimationFilterIds = useMemo(() => {
+    const ids = slidePresentationView.currentSlide?.animationState?.filterSourceIds;
+    if (!ids || ids.length === 0) return undefined;
+    return new Set(ids);
+  }, [slidePresentationView.currentSlide?.animationState?.filterSourceIds]);
+
+  const presentationAnimationDisabledSources = useMemo(
+    () => new Set(slidePresentationView.currentSlide?.animationState?.disabledSourceIds ?? []),
+    [slidePresentationView.currentSlide?.animationState?.disabledSourceIds]
+  );
+
+  useEffect(() => {
+    const n = activeViewerPresentationSlides.length;
+    const maxIdx = Math.max(n - 1, 0);
+    setPresentationSlideIndex((i) => Math.min(Math.max(i, 0), maxIdx));
+  }, [activeViewerPresentationDeck?.id, activeViewerPresentationSlides.length]);
+
   useEffect(() => {
     async function loadDiagram() {
+      const baseHref = typeof window !== "undefined" ? window.location.href : undefined;
+      const rawSearch = typeof window !== "undefined" ? window.location.search : undefined;
+
+      let params: ReturnType<typeof parseViewerParams>;
+      try {
+        params = parseViewerParams(searchParams, baseHref, rawSearch);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Invalid viewer URL";
+        setError(message);
+        setIsLoading(false);
+        return;
+      }
+
+      if (params.mode === "localPick") {
+        if (!sessionFileChosenRef.current) {
+          setLocalFileError(null);
+          setDiagramData(null);
+          setActiveDiagramStack([]);
+          setPresentationDecks([]);
+          setViewerPresentationDeckId(null);
+          setPresentationViewActive(false);
+          setPresentationSlideIndex(0);
+          setPresentationPlayerOpen(false);
+          setSelectedItem(null);
+        }
+        setError(null);
+        setIsLoading(false);
+        return;
+      }
+
+      sessionFileChosenRef.current = false;
+
       try {
         setIsLoading(true);
         setError(null);
 
-        // Parse URL parameters
-        const params = parseViewerParams(searchParams);
-        
-        // Load diagram data
         const data = await loadViewerData(params);
         setDiagramData(data.diagramData);
         setActiveDiagramStack([]);
+        const decks = data.presentation?.decks ?? [];
+        setPresentationDecks(decks);
+        const nextDeckId = data.presentation?.activeDeckId ?? decks[0]?.id ?? null;
+        setViewerPresentationDeckId(nextDeckId);
+        setPresentationViewActive(false);
+        setPresentationSlideIndex(0);
+        setPresentationPlayerOpen(false);
       } catch (err) {
         const message = err instanceof Error ? err.message : "Failed to load diagram";
         setError(message);
@@ -146,19 +316,62 @@ function ViewerPageContent() {
     loadDiagram();
   }, [searchParams]);
 
-  const handleZoomIn = useCallback(() => {
-    setTransform(prev => ({
-      ...prev,
-      k: Math.min(prev.k * 1.2, 2.5),
-    }));
+  const handleLocalFileLoaded = useCallback((data: ViewerData) => {
+    sessionFileChosenRef.current = true;
+    setLocalFileError(null);
+    setDiagramData(data.diagramData);
+    setActiveDiagramStack([]);
+    const decks = data.presentation?.decks ?? [];
+    setPresentationDecks(decks);
+    const nextDeckId = data.presentation?.activeDeckId ?? decks[0]?.id ?? null;
+    setViewerPresentationDeckId(nextDeckId);
+    setPresentationViewActive(false);
+    setPresentationSlideIndex(0);
+    setPresentationPlayerOpen(false);
+    setSelectedItem(null);
+    setError(null);
   }, []);
 
+  const handleLocalFileError = useCallback((message: string) => {
+    setLocalFileError(message);
+  }, []);
+
+  const parsedViewerParams = useMemo(() => {
+    try {
+      const rawSearch = typeof window !== "undefined" ? window.location.search : undefined;
+      return parseViewerParams(
+        searchParams,
+        typeof window !== "undefined" ? window.location.href : undefined,
+        rawSearch
+      );
+    } catch {
+      return null;
+    }
+  }, [searchParams]);
+
+  const handleZoomIn = useCallback(() => {
+    const bump = (prev: Transform) => ({
+      ...prev,
+      k: Math.min(prev.k * 1.2, 2.5),
+    });
+    if (presentationViewActive && presentationEligible) {
+      setPresentationTransform(bump);
+    } else {
+      setTransform(bump);
+    }
+  }, [presentationViewActive, presentationEligible]);
+
   const handleZoomOut = useCallback(() => {
-    setTransform(prev => ({
+    const bump = (prev: Transform) => ({
       ...prev,
       k: Math.max(prev.k / 1.2, 0.1),
-    }));
-  }, []);
+    });
+    if (presentationViewActive && presentationEligible) {
+      setPresentationTransform(bump);
+    } else {
+      setTransform(bump);
+    }
+  }, [presentationViewActive, presentationEligible]);
 
   const handleFitToView = useCallback(() => {
     // Trigger fit to view via the canvas component
@@ -256,6 +469,25 @@ function ViewerPageContent() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [animationConnectionsEnabled, setAnimationConnectionsEnabled, setAnimationToggleOnClickEnabled]);
 
+  /** Must run on every render — cannot sit after loading/file-picker early returns (React #310). */
+  const displayData = useMemo(() => {
+    if (
+      presentationViewActive &&
+      presentationEligible &&
+      slidePresentationView.diagramDataForCanvas
+    ) {
+      return slidePresentationView.diagramDataForCanvas;
+    }
+    return filteredDiagramData ?? currentDiagramData ?? diagramData;
+  }, [
+    presentationViewActive,
+    presentationEligible,
+    slidePresentationView.diagramDataForCanvas,
+    filteredDiagramData,
+    currentDiagramData,
+    diagramData,
+  ]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen w-screen bg-background">
@@ -271,7 +503,8 @@ function ViewerPageContent() {
           <h1 className="text-2xl font-bold mb-4 text-destructive">Error Loading Diagram</h1>
           <p className="text-muted-foreground">{error}</p>
           <p className="text-sm text-muted-foreground mt-4">
-            Make sure the URL contains a valid "json" or "url" parameter.
+            Use <span className="font-mono">json</span>, <span className="font-mono">url</span>, or{" "}
+            <span className="font-mono">file=</span> (empty) to open a file from your computer.
           </p>
         </div>
       </div>
@@ -279,6 +512,15 @@ function ViewerPageContent() {
   }
 
   if (!diagramData) {
+    if (parsedViewerParams?.mode === "localPick") {
+      return (
+        <ViewerLocalFilePanel
+          onLoaded={handleLocalFileLoaded}
+          onError={handleLocalFileError}
+          errorMessage={localFileError}
+        />
+      );
+    }
     return (
       <div className="flex items-center justify-center h-screen w-screen bg-background">
         <div className="text-muted-foreground">No diagram data available</div>
@@ -286,13 +528,22 @@ function ViewerPageContent() {
     );
   }
 
-  const displayData = filteredDiagramData ?? currentDiagramData ?? diagramData;
+  /** `displayData` hook runs before `diagramData` guard; here `diagramData` is set. */
+  const canvasDiagramData: DiagramData = displayData ?? diagramData;
+
+  const canvasTransform =
+    presentationViewActive && presentationEligible ? presentationTransform : transform;
+  const slidePlaybackAnimEnabled =
+    presentationViewActive && presentationEligible
+      ? (slidePresentationView.currentSlide?.animationState?.enabled ?? true)
+      : animationConnectionsEnabled;
+
   const selectedItemId = selectedItem?.itemType === "node" ? selectedItem.id : selectedItem?.itemType === "edge" ? selectedItem.id : undefined;
 
   // Show chain animations only when a node is selected. No animations when nothing selected.
   const effectiveAnimationFilterIds = showAnimationsForSelectedOnly
-    ? (selectedItem?.itemType === "node" && selectedItemId && displayData?.connections
-        ? getDownstreamAnimationChainNodes(selectedItemId, displayData.connections)
+    ? (selectedItem?.itemType === "node" && selectedItemId && canvasDiagramData.connections
+        ? getDownstreamAnimationChainNodes(selectedItemId, canvasDiagramData.connections)
         : new Set<string>())  // Empty set = no animations when nothing selected
     : undefined;
 
@@ -309,9 +560,13 @@ function ViewerPageContent() {
         )}
         <div className="flex-1 relative min-w-0">
           <ViewerCanvas
-            diagramData={displayData}
-            transform={transform}
-            onTransformChange={setTransform}
+            diagramData={canvasDiagramData}
+            transform={canvasTransform}
+            onTransformChange={
+              presentationViewActive && presentationEligible
+                ? setPresentationTransform
+                : setTransform
+            }
             onFitToView={handleFitToView}
             selectedItemId={selectedItemId}
             selectedItem={selectedItem}
@@ -320,13 +575,63 @@ function ViewerPageContent() {
             getHasLinkedSubDiagram={getHasLinkedSubDiagram}
             metadataPopupsEnabled={metadataPopupsEnabled}
             openNodeLinksOnClick={true}
-            animationConnectionsEnabled={animationConnectionsEnabled}
-            showAnimationsForSelectedOnly={showAnimationsForSelectedOnly && animationConnectionsEnabled}
-            animationFilterSourceIds={effectiveAnimationFilterIds}
-            animationToggleOnClickEnabled={animationToggleOnClickEnabled && animationConnectionsEnabled}
-            animationDisabledSources={animationDisabledSources}
+            animationConnectionsEnabled={slidePlaybackAnimEnabled}
+            showAnimationsForSelectedOnly={
+              presentationViewActive && presentationEligible
+                ? false
+                : showAnimationsForSelectedOnly && animationConnectionsEnabled
+            }
+            animationFilterSourceIds={
+              presentationViewActive && presentationEligible
+                ? presentationAnimationFilterIds
+                : effectiveAnimationFilterIds
+            }
+            animationToggleOnClickEnabled={
+              presentationViewActive && presentationEligible
+                ? false
+                : animationToggleOnClickEnabled && animationConnectionsEnabled
+            }
+            animationDisabledSources={
+              presentationViewActive && presentationEligible
+                ? presentationAnimationDisabledSources
+                : animationDisabledSources
+            }
             onAnimationDisabledSourcesChange={setAnimationDisabledSources}
+            nodeTransitionStyles={
+              presentationViewActive && presentationEligible
+                ? slidePresentationView.nodeTransitionStyles
+                : undefined
+            }
+            connectionTransitionStyles={
+              presentationViewActive && presentationEligible
+                ? slidePresentationView.connectionTransitionStyles
+                : undefined
+            }
           />
+          {presentationViewActive && presentationEligible && activeViewerPresentationDeck && (
+            <ViewerPresentationBar
+              decks={presentationDecks}
+              activeDeckId={activeViewerPresentationDeck.id}
+              onDeckChange={handleViewerPresentationDeckChange}
+              slideIndex={slidePresentationView.safeIndex}
+              slideTitle={slidePresentationView.currentSlide?.title}
+              totalSlides={slidePresentationView.totalSlides}
+              onPrevious={() =>
+                setPresentationSlideIndex(
+                  (i) =>
+                    (i - 1 + activeViewerPresentationSlides.length) %
+                    activeViewerPresentationSlides.length
+                )
+              }
+              onNext={() =>
+                setPresentationSlideIndex(
+                  (i) => (i + 1) % activeViewerPresentationSlides.length
+                )
+              }
+              onExit={handleExitPresentationView}
+              onFullscreen={() => setPresentationPlayerOpen(true)}
+            />
+          )}
           <ViewerControls
             onZoomIn={handleZoomIn}
             onZoomOut={handleZoomOut}
@@ -342,20 +647,52 @@ function ViewerPageContent() {
             onToggleAnimationClickMode={() => setAnimationToggleOnClickEnabled((v) => !v)}
             animationToggleOnClickEnabled={animationToggleOnClickEnabled && animationConnectionsEnabled}
             additionalControls={
-            hasLayers && layersConfig && diagramData ? (
-              <ViewerLayersPanel
-                layers={layersConfig.layers}
-                diagramData={diagramData}
-                onToggleVisibility={handleToggleLayerVisibility}
-              />
-            ) : undefined
-          }
+              <>
+                {presentationEligible && (
+                  <>
+                    <div className="h-px bg-border my-1" />
+                    <button
+                      type="button"
+                      onClick={handleTogglePresentationView}
+                      className={cn(
+                        "p-2 hover:bg-accent rounded-md transition-colors",
+                        presentationViewActive && "bg-accent ring-1 ring-border"
+                      )}
+                      title={presentationViewActive ? "Exit presentation slides" : "View presentation slides"}
+                      aria-label={presentationViewActive ? "Exit presentation slides" : "View presentation slides"}
+                    >
+                      <MonitorPlay className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
+                {hasLayers && layersConfig && diagramData && !presentationViewActive && (
+                  <>
+                    <div className="h-px bg-border my-1" />
+                    <ViewerLayersPanel
+                      layers={layersConfig.layers}
+                      diagramData={diagramData}
+                      onToggleVisibility={handleToggleLayerVisibility}
+                    />
+                  </>
+                )}
+              </>
+            }
         />
         </div>
+        {presentationDecks.length > 0 && (
+          <PresentationPlayer
+            open={presentationPlayerOpen}
+            slides={activeViewerPresentationSlides}
+            slideDiagrams={slideDiagramsForViewerPresentation}
+            currentIndex={presentationSlideIndex}
+            onOpenChange={setPresentationPlayerOpen}
+            onIndexChange={setPresentationSlideIndex}
+          />
+        )}
         {propertiesPanelVisible && (
           <PropertiesPanel
             selectedItem={selectedItem as Parameters<typeof PropertiesPanel>[0]["selectedItem"]}
-            diagramData={displayData}
+            diagramData={canvasDiagramData}
             onItemUpdate={() => {}}
             collapsed={rightPanelCollapsed}
             onToggleCollapse={() => setRightPanelCollapsed((v) => !v)}

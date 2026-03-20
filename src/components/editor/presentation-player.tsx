@@ -11,6 +11,7 @@ import { ViewerCanvas } from '@/components/viewer/viewer-canvas';
 import type { DiagramData, Slide } from '@/lib/types';
 import type { Transform } from '@/hooks/use-canvas-transform';
 import { useSlideTransition } from '@/hooks/use-slide-transition';
+import { isEventFromEditableElement } from '@/lib/keyboard-utils';
 
 const SLIDE_IMAGE_PLACEHOLDER = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720"><rect width="1280" height="720" fill="%23000000"/><text x="640" y="360" text-anchor="middle" dominant-baseline="middle" fill="%23d1d5db" font-family="Arial, sans-serif" font-size="28">Slide</text></svg>';
 
@@ -112,6 +113,16 @@ export function PresentationPlayer({
     onIndexChange((safeIndex - 1 + totalSlides) % totalSlides);
   }, [totalSlides, safeIndex, onIndexChange]);
 
+  const goFirst = React.useCallback(() => {
+    if (totalSlides === 0) return;
+    onIndexChange(0);
+  }, [totalSlides, onIndexChange]);
+
+  const goLast = React.useCallback(() => {
+    if (totalSlides === 0) return;
+    onIndexChange(Math.max(totalSlides - 1, 0));
+  }, [totalSlides, onIndexChange]);
+
   React.useEffect(() => {
     if (!open || !autoPlayEnabled || totalSlides <= 1) return;
     const delay = Math.max(1, autoPlaySeconds) * 1000;
@@ -184,14 +195,11 @@ export function PresentationPlayer({
     if (!open) return;
 
     const onKeyDown = (event: KeyboardEvent) => {
+      if (isEventFromEditableElement(event)) return;
+
       if (event.key === ' ') {
         event.preventDefault();
         goNext();
-        return;
-      }
-      if (event.key === 'Backspace') {
-        event.preventDefault();
-        goPrevious();
         return;
       }
       if (event.key === 'ArrowRight') {
@@ -204,6 +212,16 @@ export function PresentationPlayer({
         goPrevious();
         return;
       }
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        goFirst();
+        return;
+      }
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        goLast();
+        return;
+      }
       if (event.key === 'Escape') {
         event.preventDefault();
         onOpenChange(false);
@@ -212,7 +230,7 @@ export function PresentationPlayer({
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [open, goNext, goPrevious, onOpenChange]);
+  }, [open, goNext, goPrevious, goFirst, goLast, onOpenChange]);
 
   const handleToolbarMouseDown = React.useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     if (!toolbarFloating) return;
@@ -259,6 +277,15 @@ export function PresentationPlayer({
         <DialogTitle className="sr-only">
           {currentSlide?.title || 'Presentation Player'}
         </DialogTitle>
+        <button
+          type="button"
+          onClick={() => onOpenChange(false)}
+          className="fixed top-4 right-4 z-[200] flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/35 text-white shadow-lg backdrop-blur-sm transition-colors hover:bg-black/50"
+          aria-label="Exit fullscreen"
+          title="Exit fullscreen"
+        >
+          <X className="h-5 w-5 opacity-90" strokeWidth={2.25} />
+        </button>
         <div className="relative flex h-full w-full items-center justify-center bg-black">
           {currentSlide ? (
             renderedDiagram ? (
@@ -476,7 +503,7 @@ export function PresentationPlayer({
                 </div>
 
                 <div className="text-[10px] text-muted-foreground lg:text-right">
-                  Keyboard: Space / Arrows = navigate, Escape = exit
+                  Space = next · ← → = prev/next · ↑ ↓ = first/last · Esc = exit
                 </div>
               </div>
             )}

@@ -3,35 +3,116 @@ import { DiagramDataSchema, HierarchicalDiagramDataSchema } from './schemas';
 import { convertFromNestedHierarchy } from './nested-hierarchy';
 import { flattenDiagramOnImport, type RawDiagramData } from './flatten-on-import';
 import { ensureConnectionIds } from './connection-order-utils';
+import { extractEmbeddedPresentations, type ExtractedEmbeddedPresentations } from './extract-embedded-presentations';
 
-const MAX_JSON_SIZE = 5 * 1024 * 1024; // 5MB limit
+export const VIEWER_MAX_JSON_SIZE = 5 * 1024 * 1024; // 5MB limit
 
-export interface ViewerParams {
-  json?: string; // Base64-encoded JSON
-  url?: string; // URL to fetch JSON from
-}
+export type ParsedViewerParams =
+  | { mode: 'inline'; json: string }
+  | { mode: 'remote'; url: string }
+  | { mode: 'localPick' };
 
 export interface ViewerData {
   diagramData: DiagramData;
-  source: 'inline' | 'remote';
+  source: 'inline' | 'remote' | 'file';
+  /** Hydrated from embedded `presentations` in JSON when present */
+  presentation?: ExtractedEmbeddedPresentations;
 }
 
 /**
- * Parse and validate viewer URL parameters
+ * Resolves `file` query values: absolute http(s) URLs, or paths relative to `baseHref` (e.g. window.location.href).
+ * Browsers cannot read raw `file://` paths from pages served over http(s).
  */
-export function parseViewerParams(searchParams: URLSearchParams): ViewerParams {
+export function resolveViewerFileParam(ref: string, baseHref: string): string {
+  const t = ref.trim();
+  if (!t) {
+    throw new Error('Empty file reference');
+  }
+  try {
+    const u = new URL(t);
+    if (u.protocol === 'http:' || u.protocol === 'https:') {
+      return u.href;
+    }
+    if (u.protocol === 'file:') {
+      throw new Error(
+        'file:// URLs cannot be loaded from the browser for security reasons. Open /viewer?file= (empty) to pick a JSON file from your computer, or host the file and pass an https URL.'
+      );
+    }
+    throw new Error(`Unsupported URL protocol: ${u.protocol}`);
+  } catch (e) {
+    if (!(e instanceof TypeError)) {
+      throw e;
+    }
+  }
+  let resolved: URL;
+  try {
+    resolved = new URL(t, baseHref);
+  } catch {
+    throw new Error(`Invalid file reference: ${t}`);
+  }
+  if (resolved.protocol !== 'http:' && resolved.protocol !== 'https:') {
+    throw new Error('Resolved file reference must be http or https');
+  }
+  return resolved.href;
+}
+
+/**
+ * Detect `file` when URLSearchParams drops it (e.g. bare `?file`) or serialization differs.
+ * Only matches a real `file` query key, not values like `other=file`.
+ */
+function fileQueryFromRawQuery(raw: string): { rawValue: string } | null {
+  const q = raw.replace(/^\?/, '').trim();
+  if (!q) return null;
+  const m = /(?:^|[&])file(?:=([^&]*))?($|&)/.exec(q);
+  if (!m) return null;
+  return { rawValue: m[1] ?? '' };
+}
+
+/**
+ * Parse and validate viewer URL parameters.
+ * @param rawLocationSearch - Pass `window.location.search` on the client so bare `?file` is always recognized (some routers omit it from hook params).
+ */
+export function parseViewerParams(
+  searchParams: URLSearchParams,
+  baseHrefForFileParam?: string,
+  rawLocationSearch?: string
+): ParsedViewerParams {
   const json = searchParams.get('json');
   const url = searchParams.get('url');
 
+  const hint = rawLocationSearch !== undefined ? fileQueryFromRawQuery(rawLocationSearch) : null;
+  const fromHint = hint !== null;
+  const fromParams = searchParams.has('file');
+  const hasFile = fromParams || fromHint;
+  const fileRaw = fromParams ? (searchParams.get('file') ?? '') : fromHint ? hint.rawValue : '';
+
+  if (hasFile) {
+    if (json || url) {
+      throw new Error('Cannot combine "file" with "json" or "url"');
+    }
+    const trimmed = (fileRaw ?? '').trim();
+    if (!trimmed) {
+      return { mode: 'localPick' };
+    }
+    if (!baseHrefForFileParam) {
+      throw new Error('Non-empty "file" requires a page URL context; open the viewer in the browser.');
+    }
+    const resolved = resolveViewerFileParam(trimmed, baseHrefForFileParam);
+    return { mode: 'remote', url: resolved };
+  }
+
   if (!json && !url) {
-    throw new Error('Missing required parameter: either "json" or "url" must be provided');
+    throw new Error('Missing required parameter: provide "json", "url", or "file" (use /viewer?file= to open a file picker)');
   }
 
   if (json && url) {
     throw new Error('Cannot specify both "json" and "url" parameters');
   }
 
-  return { json: json || undefined, url: url || undefined };
+  if (json) {
+    return { mode: 'inline', json };
+  }
+  return { mode: 'remote', url: url! };
 }
 
 /**
@@ -44,8 +125,8 @@ export function decodeJsonParam(encoded: string): unknown {
     const decoded = atob(base64);
     
     // Check size limit
-    if (decoded.length > MAX_JSON_SIZE) {
-      throw new Error(`JSON size exceeds maximum limit of ${MAX_JSON_SIZE / 1024 / 1024}MB`);
+    if (decoded.length > VIEWER_MAX_JSON_SIZE) {
+      throw new Error(`JSON size exceeds maximum limit of ${VIEWER_MAX_JSON_SIZE / 1024 / 1024}MB`);
     }
 
     return JSON.parse(decoded);
@@ -91,8 +172,8 @@ export async function fetchRemoteJson(url: string): Promise<unknown> {
     const text = await response.text();
     
     // Check size limit
-    if (text.length > MAX_JSON_SIZE) {
-      throw new Error(`JSON size exceeds maximum limit of ${MAX_JSON_SIZE / 1024 / 1024}MB`);
+    if (text.length > VIEWER_MAX_JSON_SIZE) {
+      throw new Error(`JSON size exceeds maximum limit of ${VIEWER_MAX_JSON_SIZE / 1024 / 1024}MB`);
     }
 
     return JSON.parse(text);
@@ -154,24 +235,45 @@ export function validateAndConvertJson(json: unknown): DiagramData {
 }
 
 /**
- * Load diagram data from viewer parameters
+ * Build viewer payload from parsed JSON (e.g. FileReader result)
  */
-export async function loadViewerData(params: ViewerParams): Promise<ViewerData> {
+export function viewerDataFromUnknownJson(json: unknown): ViewerData {
+  const diagramData = validateAndConvertJson(json);
+  const extracted = extractEmbeddedPresentations(json, diagramData);
+  return {
+    diagramData,
+    source: 'file',
+    presentation: extracted.decks.length > 0 ? extracted : undefined,
+  };
+}
+
+/**
+ * Load diagram data from viewer parameters (not for mode `localPick`)
+ */
+export async function loadViewerData(params: ParsedViewerParams): Promise<ViewerData> {
+  if (params.mode === 'localPick') {
+    throw new Error('loadViewerData does not handle localPick; use the file picker flow');
+  }
+
   let json: unknown;
 
-  if (params.json) {
+  if (params.mode === 'inline') {
     json = decodeJsonParam(params.json);
+    const diagramData = validateAndConvertJson(json);
+    const extracted = extractEmbeddedPresentations(json, diagramData);
     return {
-      diagramData: validateAndConvertJson(json),
+      diagramData,
       source: 'inline',
+      presentation: extracted.decks.length > 0 ? extracted : undefined,
     };
-  } else if (params.url) {
-    json = await fetchRemoteJson(params.url);
-    return {
-      diagramData: validateAndConvertJson(json),
-      source: 'remote',
-    };
-  } else {
-    throw new Error('No valid data source provided');
   }
+
+  json = await fetchRemoteJson(params.url);
+  const diagramData = validateAndConvertJson(json);
+  const extracted = extractEmbeddedPresentations(json, diagramData);
+  return {
+    diagramData,
+    source: 'remote',
+    presentation: extracted.decks.length > 0 ? extracted : undefined,
+  };
 }

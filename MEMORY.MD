@@ -2,6 +2,14 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-03-20 – Viewer: `?file=` local JSON
+**`/viewer?file`** or **`/viewer?file=`** (empty value): opens **`ViewerLocalFilePanel`** — choose `.json`, drag-and-drop, same validation/presentations as `loadViewerData` via `viewerDataFromUnknownJson`. **Non-empty** `file`: resolved with `resolveViewerFileParam` (absolute http(s) or path relative to the current page URL), then fetched like `url`. Cannot combine `file` with `json`/`url`. Browsers cannot load raw `file://` paths. **Implementation**: `parseViewerParams` → `ParsedViewerParams`; optional `rawLocationSearch` (`window.location.search`) so bare `?file` works if the Next `useSearchParams()` snapshot omits it; regex fallback via `fileQueryFromRawQuery`. `sessionFileChosenRef` avoids wiping client-loaded data while the URL stays `?file=`. **`displayData` `useMemo` must run before loading/file-picker early returns** or React throws #310 (“more hooks than previous render”) after picking a file.
+
+### 2026-03-20 – Standalone viewer: embedded presentation slides
+**`/viewer` loads `presentations` from saved JSON** (same v2 compact + legacy shapes as the editor): `loadViewerData` returns optional `presentation` (hydrated decks). **Shared extraction** in `extract-embedded-presentations.ts`; `diagram-editor` file load uses `extractEmbeddedPresentations(json, parseUnknownJsonToDiagramData(json))` so behavior matches pre-refactor.
+
+**In the viewer**: MonitorPlay control (when the diagram has slides) toggles **presentation slide view** — same `useSlideTransition` + `ViewerCanvas` transition maps as `PresentationPlayer`, per-slide `animationState` and `autoZoomLevel`, keyboard: Space = next, ← / → = prev/next, ↑ / ↓ = first/last (inputs excluded). **`ViewerPresentationBar`** is `fixed` bottom-center on the viewport. **Fullscreen** (`PresentationPlayer`): semi-transparent **X** fixed top-right exits; same keyboard as embedded. Sub-diagram navigation exits slide mode; layers side panel hidden during slide view.
+
 ### 2026-03-20 – Presentation mode: auto-save slide edits + toolbar cleanup
 **Auto-save diagram delta to the active snapshot**: In presentation mode, edits to the canvas update the current slide’s stored `diagramDelta` automatically (effect on `presentationDraftDiagram` calling `persistPresentationSlideFromDiagram`). No separate “Save snapshot” control. **Toolbar**: Removed Save snapshot button, zoom percent input, and per-thumbnail zoom % badges. **Apply zoom** buttons use the current canvas zoom level (`canvasTransformRef`). Files: `diagram-editor.tsx`, `presentation-editor-panel.tsx`.
 
