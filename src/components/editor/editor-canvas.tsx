@@ -692,7 +692,16 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   // - multiDragPositions: Positions for multi-item dragging
   // - hoveredGroupId: ID of zone currently being hovered during drag
   // See: src/hooks/use-canvas-drag-drop.ts
-  const { dragPosition, multiDragPositions, hoveredGroupId, drop } = useCanvasDragDrop({
+  const handleDuplicateNodesPlaced = useCallback(
+    (newNodes: DiagramNodeData[]) => {
+      if (newNodes.length === 0) return;
+      setSelectedItemIds(new Set(newNodes.map((n) => n.id)));
+      setSelectedItem({ ...newNodes[0], itemType: "node" as const });
+    },
+    [setSelectedItemIds, setSelectedItem]
+  );
+
+  const { dragPosition, multiDragPositions, hoveredGroupId, drop, altKeyHeld } = useCanvasDragDrop({
     canvasRef,
     transform,
     processedZones,
@@ -704,11 +713,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     addNode: operations.addNode,
     moveItem: operations.moveItem,
     moveMultipleItems: operations.moveMultipleItems,
+    duplicateNodesAtPositions: operations.duplicateNodesAtPositions,
+    onDuplicateNodesPlaced: handleDuplicateNodesPlaced,
     onDraggingChange,
   });
 
-  // Create display versions of nodes and zones lookup maps that include drag overrides
-  const displayNodesById = useMemo(() => {
+  // Positions during drag (ghost/cursor); used for guides and Alt-duplicate previews
+  const nodesWithDragPositions = useMemo(() => {
     const result = { ...nodesById };
     
     // Apply single item drag override
@@ -793,7 +804,41 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     return result;
   }, [nodesById, dragPosition, multiDragPositions]);
 
-  const displayZonesById = useMemo(() => {
+  const displayNodesById = useMemo(() => {
+    const isDup = altKeyHeld && (dragPosition || multiDragPositions);
+    if (!isDup) return nodesWithDragPositions;
+    const r = { ...nodesWithDragPositions };
+    if (multiDragPositions && Object.keys(multiDragPositions).length > 0) {
+      for (const id of Object.keys(multiDragPositions)) {
+        if (nodesById[id]) r[id] = nodesById[id];
+      }
+      return r;
+    }
+    if (dragPosition?.itemId && nodesById[dragPosition.itemId]) {
+      r[dragPosition.itemId] = nodesById[dragPosition.itemId];
+    }
+    return r;
+  }, [nodesWithDragPositions, nodesById, altKeyHeld, dragPosition, multiDragPositions]);
+
+  const duplicateDragPreviewNodes = useMemo((): DiagramNodeData[] => {
+    if (!altKeyHeld || !(dragPosition || multiDragPositions)) return [];
+    if (multiDragPositions && Object.keys(multiDragPositions).length > 0) {
+      return Object.keys(multiDragPositions)
+        .map((id) => {
+          const n = nodesWithDragPositions[id];
+          if (!n) return null;
+          return { ...n, id: `__alt_dup_preview__${id}` } as DiagramNodeData;
+        })
+        .filter((n): n is DiagramNodeData => n !== null);
+    }
+    if (dragPosition?.itemId && nodesWithDragPositions[dragPosition.itemId]) {
+      const n = nodesWithDragPositions[dragPosition.itemId];
+      return [{ ...n, id: `__alt_dup_preview__${dragPosition.itemId}` } as DiagramNodeData];
+    }
+    return [];
+  }, [altKeyHeld, dragPosition, multiDragPositions, nodesWithDragPositions]);
+
+  const zonesWithDragPositions = useMemo(() => {
     const result = { ...zonesById };
     
     // Apply single item drag override
@@ -821,6 +866,22 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     return result;
   }, [zonesById, dragPosition, multiDragPositions]);
 
+  const displayZonesById = useMemo(() => {
+    const isDup = altKeyHeld && (dragPosition || multiDragPositions);
+    if (!isDup) return zonesWithDragPositions;
+    const r = { ...zonesWithDragPositions };
+    if (multiDragPositions && Object.keys(multiDragPositions).length > 0) {
+      for (const id of Object.keys(multiDragPositions)) {
+        if (zonesById[id]) r[id] = zonesById[id];
+      }
+      return r;
+    }
+    if (dragPosition?.itemId && zonesById[dragPosition.itemId]) {
+      r[dragPosition.itemId] = zonesById[dragPosition.itemId];
+    }
+    return r;
+  }, [zonesWithDragPositions, zonesById, altKeyHeld, dragPosition, multiDragPositions]);
+
   // ============================================================================
   // HOOK: useAlignmentGuides
   // ============================================================================
@@ -833,8 +894,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
 
   const { guides: alignmentGuides } = useAlignmentGuides({
     diagramData,
-    displayNodesById,
-    displayZonesById,
+    displayNodesById: nodesWithDragPositions,
+    displayZonesById: zonesWithDragPositions,
     draggedItemId,
     draggedItemIds,
     transform,
@@ -1367,9 +1428,33 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               ) : zone ? null : null;
                   return nodeEl;
                 })}
+                {duplicateDragPreviewNodes.map((previewNode, pi) => (
+                  <DiagramNode
+                    key={previewNode.id}
+                    node={previewNode as PositionedNode}
+                    stackZIndex={50000 + pi}
+                    isDuplicateDragPreview
+                    isSelected={false}
+                    isMultiSelected={false}
+                    isGroupMember={false}
+                    onResize={handleNodeResize}
+                    onResizeStart={handleResizeStart}
+                    onResizeEnd={handleResizeEnd}
+                    onLabelUpdate={onLabelUpdate}
+                    onTagUpdate={onTagUpdate}
+                    onDraggingChange={onDraggingChange}
+                    onUpdate={handleNodeUpdate}
+                    hoverEnabled={false}
+                    isReadOnly={true}
+                    transform={transform}
+                    canvasRef={canvasRef}
+                    hasLinkedSubDiagram={getHasLinkedSubDiagram?.(previewNode) ?? Boolean(previewNode.subDiagramId)}
+                  />
+                ))}
               </>
             ) : (
-              connectionSlots.sortedItemIds.flatMap((itemId, i) => {
+              <>
+              {connectionSlots.sortedItemIds.flatMap((itemId, i) => {
                 const slotConnections = connectionSlots.connectionsBySlot.get(i);
                 const connIndices = slotConnections?.length
                   ? new Set(slotConnections)
@@ -1447,7 +1532,31 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   ) : null,
                   nodeEl,
                 ].filter(Boolean);
-              })
+              })}
+              {duplicateDragPreviewNodes.map((previewNode, pi) => (
+                <DiagramNode
+                  key={previewNode.id}
+                  node={previewNode as PositionedNode}
+                  stackZIndex={50000 + pi}
+                  isDuplicateDragPreview
+                  isSelected={false}
+                  isMultiSelected={false}
+                  isGroupMember={false}
+                  onResize={handleNodeResize}
+                  onResizeStart={handleResizeStart}
+                  onResizeEnd={handleResizeEnd}
+                  onLabelUpdate={onLabelUpdate}
+                  onTagUpdate={onTagUpdate}
+                  onDraggingChange={onDraggingChange}
+                  onUpdate={handleNodeUpdate}
+                  hoverEnabled={false}
+                  isReadOnly={true}
+                  transform={transform}
+                  canvasRef={canvasRef}
+                  hasLinkedSubDiagram={getHasLinkedSubDiagram?.(previewNode) ?? Boolean(previewNode.subDiagramId)}
+                />
+              ))}
+              </>
             )}
             {!connectionsBehindNodesEnabled && (() => {
               const n = connectionSlots.sortedItemIds.length;

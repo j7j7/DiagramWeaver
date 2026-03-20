@@ -183,6 +183,8 @@ interface DiagramNodeProps {
   hasLinkedSubDiagram?: boolean;
   /** When true, show URL handle (green icon) even in read-only mode - for viewer link support */
   showUrlHandleWhenReadOnly?: boolean;
+  /** Alt+drag duplicate preview ghost — non-interactive, not a drag source */
+  isDuplicateDragPreview?: boolean;
 }
 
 function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps): boolean {
@@ -236,10 +238,11 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
     prev.animationStyle === next.animationStyle &&
     prev.onSubDiagramDoubleClick === next.onSubDiagramDoubleClick &&
     prev.hasLinkedSubDiagram === next.hasLinkedSubDiagram &&
-    prev.showUrlHandleWhenReadOnly === next.showUrlHandleWhenReadOnly;
+    prev.showUrlHandleWhenReadOnly === next.showUrlHandleWhenReadOnly &&
+    prev.isDuplicateDragPreview === next.isDuplicateDragPreview;
 }
 
-function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onResizeStart, onResizeEnd, onPositionUpdate, onDraggingChange, onUpdate, hoverEnabled = true, isReadOnly = false, onHoverChange, onConnect, isConnectMode, transform, canvasRef, stackZIndex, pointerEventsPassThrough = false, animationStyle, onSubDiagramDoubleClick, hasLinkedSubDiagram, showUrlHandleWhenReadOnly }: DiagramNodeProps) {
+function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onResizeStart, onResizeEnd, onPositionUpdate, onDraggingChange, onUpdate, hoverEnabled = true, isReadOnly = false, onHoverChange, onConnect, isConnectMode, transform, canvasRef, stackZIndex, pointerEventsPassThrough = false, animationStyle, onSubDiagramDoubleClick, hasLinkedSubDiagram, showUrlHandleWhenReadOnly, isDuplicateDragPreview = false }: DiagramNodeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [isEditingTag, setIsEditingTag] = useState(false);
@@ -787,7 +790,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
       originalType: node.type,
       label: node.label || '' 
     },
-    canDrag: () => !isLocked && !isReadOnly && !isEditingLabel && !isEditingTag,
+    canDrag: () => !isDuplicateDragPreview && !isLocked && !isReadOnly && !isEditingLabel && !isEditingTag,
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
@@ -797,7 +800,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     onDragEnd: () => {
       onDraggingChange?.(false);
     },
-  }), [node, node.id, node.x, node.y, onDraggingChange, isLocked, isReadOnly, isEditingLabel, isEditingTag]);
+  }), [node, node.id, node.x, node.y, onDraggingChange, isLocked, isReadOnly, isEditingLabel, isEditingTag, isDuplicateDragPreview]);
 
   useEffect(() => {
     preview(getEmptyImage(), { captureDraggingState: true });
@@ -1296,9 +1299,9 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
 return (
     <div
       data-node-id={node.id}
-      ref={(node) => {
-        if (node) {
-          drag(node);
+      ref={(el) => {
+        if (el && !isDuplicateDragPreview) {
+          drag(el);
         }
       }}
       className={cn(
@@ -1359,8 +1362,9 @@ return (
         // pointerEventsPassThrough: when selected item is behind this, let clicks pass through to it for resize/drag
         ...(isLineNode && { pointerEvents: 'none' }),
         ...(pointerEventsPassThrough && { pointerEvents: 'none' }),
+        ...(isDuplicateDragPreview && { pointerEvents: 'none', opacity: 0.88 }),
         // Layer show/hide animation (opacity, transition, transform)
-        ...(animationStyle && { opacity: animationStyle.opacity, transition: animationStyle.transition, ...(animationStyle.transform && { transform: animationStyle.transform }), ...(animationStyle.transformOrigin && { transformOrigin: animationStyle.transformOrigin }) }),
+        ...(animationStyle && !isDuplicateDragPreview && { opacity: animationStyle.opacity, transition: animationStyle.transition, ...(animationStyle.transform && { transform: animationStyle.transform }), ...(animationStyle.transformOrigin && { transformOrigin: animationStyle.transformOrigin }) }),
       }}
       onMouseEnter={() => { 
         if (!isDragging && !isEditingLabel && !isEditingTag) { 

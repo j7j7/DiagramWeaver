@@ -369,6 +369,57 @@ export function useCanvasOperations({
     });
   }, [setDiagramData]);
 
+  /** Clone nodes to new positions; originals unchanged. Used for Alt+drag duplicate. Returns new node records (for selection). */
+  const duplicateNodesAtPositions = useCallback(
+    (
+      items: Array<{ id: string }>,
+      newPositions: Array<{ x: number; y: number }>,
+      sourceDiagram: DiagramData
+    ): DiagramNodeData[] => {
+      const additions: DiagramNodeData[] = [];
+      let accNodes = [...(sourceDiagram.nodes || [])];
+      items.forEach((item, index) => {
+        const original = accNodes.find((n) => n.id === item.id);
+        const pos = newPositions[index];
+        if (!original || !pos) return;
+        const tempData: DiagramData = { ...sourceDiagram, nodes: accNodes };
+        const newId = generateSequentialId(original.type, tempData);
+        const snappedX = snapToGrid(pos.x);
+        const snappedY = snapToGrid(pos.y);
+        let next: DiagramNodeData = {
+          ...original,
+          id: newId,
+          x: snappedX,
+          y: snappedY,
+          importId: undefined,
+          groupId: undefined,
+        };
+        if (original.type === "generic.object.line" || original.type?.endsWith(".line")) {
+          const ox = original.x ?? 0;
+          const oy = original.y ?? 0;
+          const ddx = snappedX - ox;
+          const ddy = snappedY - oy;
+          const sp = (original as { startPos?: { x: number; y: number } }).startPos || { x: ox, y: oy };
+          const ep = (original as { endPos?: { x: number; y: number } }).endPos || { x: ox + 150, y: oy };
+          next = {
+            ...next,
+            startPos: { x: sp.x + ddx, y: sp.y + ddy },
+            endPos: { x: ep.x + ddx, y: ep.y + ddy },
+          };
+        }
+        additions.push(next);
+        accNodes = [...accNodes, next];
+      });
+      if (additions.length === 0) return [];
+      setDiagramData((prev) => ({
+        ...prev,
+        nodes: [...(prev.nodes || []), ...additions],
+      }));
+      return additions;
+    },
+    [setDiagramData]
+  );
+
   const moveMultipleItems = useCallback((items: Array<{ id: string; type: string; x?: number, y?: number }>, newPositions: Array<{ x: number; y: number }>, targetGroupId: string | null) => {
     setDiagramData(prevData => {
       let currentNodes = [...(prevData.nodes || [])];
@@ -791,6 +842,7 @@ export function useCanvasOperations({
     updateGroupTag,
     moveMultipleItems,
     moveItem,
+    duplicateNodesAtPositions,
     handleDelete,
     handleDeleteMultiple,
   };

@@ -4,7 +4,7 @@ import { ItemTypes } from "@/components/editor/draggable-item";
 import { snapToGrid } from "@/components/editor/canvas-constants";
 import type { Transform } from "./use-canvas-transform";
 import type { PositionedNode, PositionedGroup } from "@/components/editor/canvas-constants";
-import type { DiagramData } from "@/lib/types";
+import type { DiagramData, DiagramNodeData } from "@/lib/types";
 import { getItemGroup, getGroupMembers } from "@/lib/grouping-utils";
 
 type DropItem = { 
@@ -27,6 +27,13 @@ interface UseCanvasDragDropOptions {
   addNode: (item: any, position: { x: number; y: number }, targetGroupId: string | null) => void;
   moveItem: (item: { id: string; type: string; x?: number, y?: number }, newPos: { x: number; y: number }, targetGroupId: string | null) => void;
   moveMultipleItems: (items: Array<{ id: string; type: string; x?: number, y?: number }>, newPositions: Array<{ x: number; y: number }>, targetGroupId: string | null) => void;
+  duplicateNodesAtPositions: (
+    items: Array<{ id: string }>,
+    newPositions: Array<{ x: number; y: number }>,
+    sourceDiagram: DiagramData
+  ) => DiagramNodeData[];
+  /** After Alt+duplicate drop: receive new nodes so the canvas can update selection */
+  onDuplicateNodesPlaced?: (newNodes: DiagramNodeData[]) => void;
   onDraggingChange?: (isDragging: boolean) => void;
 }
 
@@ -42,8 +49,52 @@ export function useCanvasDragDrop({
   addNode,
   moveItem,
   moveMultipleItems,
+  duplicateNodesAtPositions,
+  onDuplicateNodesPlaced,
   onDraggingChange,
 }: UseCanvasDragDropOptions) {
+  const [altKeyHeld, setAltKeyHeld] = useState(false);
+  /** Updated synchronously on modifier events so drop() sees the real Alt state (state alone can lag). */
+  const altModifierRef = useRef(false);
+
+  /**
+   * During native/react-dnd drags, keydown/keyup often do not reach listeners in the bubble phase.
+   * Capture-phase keyboard events + dragover/mousemove keep Alt in sync while dragging (press Alt
+   * after drag starts, or release Alt mid-drag).
+   */
+  useEffect(() => {
+    const readAlt = (e: Event) => {
+      const ne = e as MouseEvent & KeyboardEvent & DragEvent;
+      const alt =
+        ne.altKey === true ||
+        (typeof ne.getModifierState === "function" && ne.getModifierState("Alt"));
+      if (altModifierRef.current !== alt) {
+        altModifierRef.current = alt;
+        setAltKeyHeld(alt);
+      }
+    };
+    const onBlur = () => {
+      if (altModifierRef.current) {
+        altModifierRef.current = false;
+        setAltKeyHeld(false);
+      }
+    };
+    document.addEventListener("dragover", readAlt, true);
+    document.addEventListener("mousemove", readAlt, true);
+    window.addEventListener("pointermove", readAlt, true);
+    window.addEventListener("keydown", readAlt, true);
+    window.addEventListener("keyup", readAlt, true);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      document.removeEventListener("dragover", readAlt, true);
+      document.removeEventListener("mousemove", readAlt, true);
+      window.removeEventListener("pointermove", readAlt, true);
+      window.removeEventListener("keydown", readAlt, true);
+      window.removeEventListener("keyup", readAlt, true);
+      window.removeEventListener("blur", onBlur);
+    };
+  }, []);
+
   const [dragPosition, setDragPosition] = useState<{ x: number; y: number; itemId?: string; deltaX?: number; deltaY?: number } | null>(null);
   const [multiDragPositions, setMultiDragPositions] = useState<{ [itemId: string]: { x: number; y: number } } | null>(null);
   const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null);
@@ -341,38 +392,49 @@ export function useCanvasDragDrop({
           }
         }
         
+        const wantDuplicate = altModifierRef.current;
+        const allDuplicatableNodes = [...itemsToMoveSet].every((id) => Boolean(nodesById[id]));
+
         // Handle multi-item movement (grouped or multi-selected)
         if (itemsToMoveSet.size > 1 && multiDragStartPositions.current) {
-          // Move all items maintaining relative spacing
           const initialCanvasPos = monitor.getInitialSourceClientOffset();
           const delta = monitor.getDifferenceFromInitialOffset();
-          let deltaX = 0, deltaY = 0;
-          
+          let deltaX = 0,
+            deltaY = 0;
           if (initialCanvasPos && delta) {
             deltaX = delta.x / transform.k;
             deltaY = delta.y / transform.k;
           }
-          
-          const itemsToMove: Array<{ id: string; type: string; x?: number, y?: number }> = [];
+
+          const dupItems: Array<{ id: string }> = [];
+          const dupPositions: Array<{ x: number; y: number }> = [];
+          const itemsToMove: Array<{ id: string; type: string; x?: number; y?: number }> = [];
           const newPositions: Array<{ x: number; y: number }> = [];
-          
-          itemsToMoveSet.forEach(id => {
+
+          itemsToMoveSet.forEach((id) => {
             const startPos = multiDragStartPositions.current![id];
-            if (startPos) {
-              const newX = snapToGrid(startPos.x + deltaX);
-              const newY = snapToGrid(startPos.y + deltaY);
-              const itemType = nodesById[id] ? ItemTypes.CANVAS_NODE : ItemTypes.ZONE;
-              itemsToMove.push({ id, type: itemType, x: startPos.x, y: startPos.y });
-              newPositions.push({ x: newX, y: newY });
-            }
+            if (!startPos) return;
+            const newX = snapToGrid(startPos.x + deltaX);
+            const newY = snapToGrid(startPos.y + deltaY);
+            dupItems.push({ id });
+            dupPositions.push({ x: newX, y: newY });
+            const it = nodesById[id] ? ItemTypes.CANVAS_NODE : ItemTypes.ZONE;
+            itemsToMove.push({ id, type: it, x: startPos.x, y: startPos.y });
+            newPositions.push({ x: newX, y: newY });
           });
-          
-          if (itemsToMove.length > 0) {
+
+          if (wantDuplicate && allDuplicatableNodes && dupItems.length > 0) {
+            const created = duplicateNodesAtPositions(dupItems, dupPositions, diagramData);
+            if (created.length > 0) onDuplicateNodesPlaced?.(created);
+          } else if (itemsToMove.length > 0) {
             moveMultipleItems(itemsToMove, newPositions, targetGroupIdForFreeflow);
           }
+        } else if (wantDuplicate && allDuplicatableNodes && item.id && nodesById[item.id]) {
+          const created = duplicateNodesAtPositions([{ id: item.id }], [{ x, y }], diagramData);
+          if (created.length > 0) onDuplicateNodesPlaced?.(created);
         } else {
           // Single item movement
-          moveItem({ id: item.id, type: item.type || '', x: item.x, y: item.y }, { x, y }, targetGroupIdForFreeflow);
+          moveItem({ id: item.id, type: item.type || "", x: item.x, y: item.y }, { x, y }, targetGroupIdForFreeflow);
         }
         }
       }
@@ -394,7 +456,7 @@ export function useCanvasDragDrop({
       isOver: monitor.isOver(),
       canDrop: monitor.canDrop(),
     }),
-  }), [transform, processedZones, hoveredGroupId, moveItem, moveMultipleItems, addNode, nodesById, zonesById, selectedItemIds, canvasRef, diagramData]);
+  }), [transform, processedZones, hoveredGroupId, moveItem, moveMultipleItems, duplicateNodesAtPositions, onDuplicateNodesPlaced, addNode, nodesById, zonesById, selectedItemIds, canvasRef, diagramData]);
 
   // Cleanup multi-drag state when drag ends outside of drop
   useEffect(() => {
@@ -425,6 +487,7 @@ export function useCanvasDragDrop({
     multiDragPositions,
     hoveredGroupId,
     drop: isReadOnly ? noOpDrop : drop,
+    altKeyHeld,
   };
 }
 

@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-03-20 – Alt+drag duplicate on canvas
+**Hold Option/Alt while dragging** selected node(s): originals stay put; semi-transparent previews follow the cursor; **drop** creates clones at that position and selects them. **Release Alt before drop** to switch back to a normal move (same as standard drag). **Modifiers while dragging** must not rely on bubble-phase `keydown` alone (HTML5 DnD often swallows those)—`use-canvas-drag-drop` syncs Alt from **capture** `keydown`/`keyup` plus **`dragover` / `mousemove` / `pointermove`**, and uses **`altModifierRef`** so `drop()` reads the current Alt state. `duplicateNodesAtPositions` in `canvas-operations.ts`, preview layer in `editor-canvas.tsx`, `isDuplicateDragPreview` on `DiagramNode`. Line nodes duplicate with endpoints shifted; `groupId` cleared on copies.
+
 ### 2026-03-18 – Per-Diagram ViewState (Zoom/Pan) Persistence
 **ViewState stored per diagram level in JSON**: When navigating to a sub-diagram or via breadcrumbs, the view no longer auto-resizes. Instead, each diagram (root and each sub-diagram) stores `viewState?: { x, y, k }` in the JSON. If present, that zoom/position is restored when navigating to it; if absent, fit-to-view runs. **Persist**: Canvas transform changes are debounced (400ms) and saved to the current diagram's viewState. **Restore**: Effect on activeDiagramStack change reads target diagram's viewState and applies it or fits. Same logic in editor and standalone viewer. Modified: `types.ts` (DiagramViewState, DiagramData.viewState), `schemas.ts`, `flatten-on-import.ts`, `view-state-utils.ts` (new), `diagram-editor.tsx`, `viewer/page.tsx`.
 
