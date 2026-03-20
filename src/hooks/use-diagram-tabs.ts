@@ -23,6 +23,8 @@ export interface TabState {
   jsonPanelOpen: boolean;
   canvasTransform: { x: number; y: number; k: number };
   savedDataHash?: string; // Track if tab has unsaved changes
+  /** Embedded presentation slides/decks differ from last file save (e.g. edits in presentation mode). */
+  hasUnsavedPresentations?: boolean;
 }
 
 interface UseDiagramTabsOptions {
@@ -54,6 +56,7 @@ function parseStoredTabs(
       diagramData,
       selectedItemIds: new Set(rest.selectedItemIds || []),
       savedDataHash: JSON.stringify(rest.diagramData),
+      hasUnsavedPresentations: rest.hasUnsavedPresentations === true,
     };
   });
 }
@@ -258,6 +261,7 @@ export function useDiagramTabs({ isClient, onToast }: UseDiagramTabsOptions) {
       jsonPanelOpen: false,
       canvasTransform: { x: 0, y: 0, k: 1 },
       savedDataHash: JSON.stringify(initialDiagram),
+      hasUnsavedPresentations: false,
     };
   }
 
@@ -360,6 +364,7 @@ export function useDiagramTabs({ isClient, onToast }: UseDiagramTabsOptions) {
         return {
           ...tab,
           savedDataHash: JSON.stringify(tab.diagramData),
+          hasUnsavedPresentations: false,
         };
       }
       return tab;
@@ -367,7 +372,12 @@ export function useDiagramTabs({ isClient, onToast }: UseDiagramTabsOptions) {
   }, [activeTabId]);
 
   return {
-    tabs: tabs.map(t => ({ id: t.id, name: t.name, isModified: t.savedDataHash !== JSON.stringify(t.diagramData) })),
+    tabs: tabs.map((t) => ({
+      id: t.id,
+      name: t.name,
+      isModified:
+        t.savedDataHash !== JSON.stringify(t.diagramData) || t.hasUnsavedPresentations === true,
+    })),
     activeTabId,
     isLoaded,
     activeTab: getActiveTab(),

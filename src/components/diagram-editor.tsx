@@ -868,6 +868,7 @@ export default function DiagramEditor() {
 
     if (presentationModeEnabled) {
       setPresentationDraftDiagram(nextData);
+      updateActiveTab({ hasUnsavedPresentations: true });
       return;
     }
 
@@ -2425,7 +2426,7 @@ export default function DiagramEditor() {
             setActivePresentationSlideId(loadedPresentations.decks[0]?.slides[0]?.id ?? null);
             setSelectedPresentationSlideIds(new Set());
             setPresentationMasterDiagram(safeClone(completeData));
-            updateActiveTab({ name: getFilenameStem(file.name) });
+            updateActiveTab({ name: getFilenameStem(file.name), hasUnsavedPresentations: false });
             toast({ title: 'Diagram Loaded', description: 'Your diagram has been successfully loaded.' });
             setTimeout(() => editorRef.current?.fitToView(), 100);
           }, 0);
