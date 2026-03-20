@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import type { DiagramData, DiagramNodeData, DiagramConnectionData } from '@/lib/types';
 import { extractVisualColorFields, visualColorNeedsCrossfade, visualColorSignature } from '@/lib/slide-visual-color';
-import { buildSlideTransitionStaggerMaps } from '@/lib/slide-transition-order';
+import { buildStaggerDelaysForSlideTransition } from '@/lib/slide-transition-order';
 
 export interface SlideTransitionStyle {
   opacity: number;
@@ -72,6 +72,21 @@ function connKey(conn: DiagramConnectionData): string {
   return (conn as any).id || `${conn.from}\u2192${conn.to}`;
 }
 
+/** Line nodes use startPos/endPos; compare when both slides have a line node. */
+function lineEndpointsEqual(a: DiagramNodeData, b: DiagramNodeData): boolean {
+  const as = (a as { startPos?: { x: number; y: number } }).startPos;
+  const bs = (b as { startPos?: { x: number; y: number } }).startPos;
+  const ae = (a as { endPos?: { x: number; y: number } }).endPos;
+  const be = (b as { endPos?: { x: number; y: number } }).endPos;
+  if (as && bs) {
+    if (as.x !== bs.x || as.y !== bs.y) return false;
+  } else if (Boolean(as) !== Boolean(bs)) return false;
+  if (ae && be) {
+    if (ae.x !== be.x || ae.y !== be.y) return false;
+  } else if (Boolean(ae) !== Boolean(be)) return false;
+  return true;
+}
+
 interface SlideTransitionConfig {
   enabled: boolean;
   currentDiagram: DiagramData | null;
@@ -97,13 +112,6 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
     const prevConnsMap = new Map((previousDiagram.connections || []).map(c => [connKey(c), c]));
     const currConnsMap = new Map((currentDiagram.connections || []).map(c => [connKey(c), c]));
 
-    const prevStagger = buildSlideTransitionStaggerMaps(previousDiagram);
-    const currStagger = buildSlideTransitionStaggerMaps(currentDiagram);
-    const nodeDelayFor = (id: string) =>
-      currNodesMap.has(id) ? (currStagger.nodeDelayMs.get(id) ?? 0) : (prevStagger.nodeDelayMs.get(id) ?? 0);
-    const connDelayFor = (key: string) =>
-      currConnsMap.has(key) ? (currStagger.connectionDelayMs.get(key) ?? 0) : (prevStagger.connectionDelayMs.get(key) ?? 0);
-
     const nodeIdStyles = new Map<string, any>();
     const connKeyStyles = new Map<string, any>();
     const nodesToAdd: DiagramNodeData[] = [];
@@ -127,7 +135,14 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
 
       const isAppearing = !prevNode && currNode;
       const isDisappearing = prevNode && !currNode;
-      const isMoving = prevNode && currNode && (prevX !== currX || prevY !== currY);
+      const isMoving = Boolean(
+        prevNode &&
+          currNode &&
+          (prevX !== currX ||
+            prevY !== currY ||
+            !lineEndpointsEqual(prevNode, currNode) ||
+            (prevNode.rotation ?? 0) !== (currNode.rotation ?? 0)),
+      );
 
       const opacityStart = isAppearing ? 0 : 1;
       const opacityEnd = isDisappearing ? 0 : 1;
@@ -155,6 +170,11 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
       const visualColorMergeEnd = hasVisualColorChange && currNode ? extractVisualColorFields(currNode) : {};
       const useVisualColorCrossfade =
         hasVisualColorChange && visualColorNeedsCrossfade(visualColorMergeStart, visualColorMergeEnd);
+
+      const needsNodeTransition =
+        isAppearing || isDisappearing || isMoving || isResizeOnly || hasVisualColorChange;
+
+      if (!needsNodeTransition) continue;
 
       nodeIdStyles.set(nodeId, {
         deltaX,
@@ -201,6 +221,9 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
 
       const easing = isAppearing ? EASE_OUT : (isDisappearing ? EASE_IN : EASE_IN_OUT);
 
+      const needsConnTransition = isAppearing || isDisappearing;
+      if (!needsConnTransition) continue;
+
       connKeyStyles.set(connKeyVal, {
         opacityStart,
         opacityEnd,
@@ -214,17 +237,22 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
       }
     }
 
+    if (nodeIdStyles.size === 0 && connKeyStyles.size === 0) {
+      return;
+    }
+
+    const { nodeDelayMs, connectionDelayMs, maxStaggerMs } = buildStaggerDelaysForSlideTransition(
+      new Set(nodeIdStyles.keys()),
+      new Set(connKeyStyles.keys()),
+      currentDiagram,
+      previousDiagram,
+    );
+    const nodeDelayFor = (id: string) => nodeDelayMs.get(id) ?? 0;
+    const connDelayFor = (key: string) => connectionDelayMs.get(key) ?? 0;
+    const totalDurationMs = maxStaggerMs + TRANSITION_DURATION_MS + 50;
+
     setAnimatingNodes(nodesToAdd);
     setAnimatingConnections(connsToAdd);
-
-    let maxDelayUsed = 0;
-    for (const id of nodeIdStyles.keys()) {
-      maxDelayUsed = Math.max(maxDelayUsed, nodeDelayFor(id));
-    }
-    for (const k of connKeyStyles.keys()) {
-      maxDelayUsed = Math.max(maxDelayUsed, connDelayFor(k));
-    }
-    const totalDurationMs = maxDelayUsed + TRANSITION_DURATION_MS + 50;
 
     const newAnimation: SlideAnimation = {
       startTime: performance.now(),
