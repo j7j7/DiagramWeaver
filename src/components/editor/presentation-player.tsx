@@ -24,6 +24,8 @@ interface PresentationPlayerProps {
   onIndexChange: (index: number) => void;
   onApplyZoomToCurrentSlide?: (zoomLevel: number) => void;
   onApplyZoomToAllSlides?: (zoomLevel: number) => void;
+  /** When false, bottom playback toolbar is hidden (viewer fullscreen uses keyboard + top exit only). Default true. */
+  showPlaybackToolbar?: boolean;
 }
 
 function pruneConnectionsToVisibleNodes(diagram: DiagramData): DiagramData {
@@ -43,6 +45,7 @@ export function PresentationPlayer({
   onIndexChange,
   onApplyZoomToCurrentSlide,
   onApplyZoomToAllSlides,
+  showPlaybackToolbar = true,
 }: PresentationPlayerProps) {
   const [playbackTransform, setPlaybackTransform] = React.useState<Transform>({ x: 0, y: 0, k: 1 });
   const [useSlideZoom, setUseSlideZoom] = React.useState(true);
@@ -271,9 +274,15 @@ export function PresentationPlayer({
     ? ({ left: toolbarPosition.x, top: toolbarPosition.y, width: 'min(860px, calc(100vw - 16px))' } as React.CSSProperties)
     : undefined;
 
+  const blockInteractOutside = !showPlaybackToolbar;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="h-screen max-w-none translate-x-[-50%] translate-y-[-50%] rounded-none border-0 p-0">
+      <DialogContent
+        className="h-screen max-w-none translate-x-[-50%] translate-y-[-50%] rounded-none border-0 p-0"
+        onPointerDownOutside={blockInteractOutside ? (e) => e.preventDefault() : undefined}
+        onInteractOutside={blockInteractOutside ? (e) => e.preventDefault() : undefined}
+      >
         <DialogTitle className="sr-only">
           {currentSlide?.title || 'Presentation Player'}
         </DialogTitle>
@@ -321,7 +330,7 @@ export function PresentationPlayer({
             <div className="text-sm text-muted-foreground">No slides to present.</div>
           )}
 
-          {panelHidden ? (
+          {showPlaybackToolbar && (panelHidden ? (
             <Button
               variant="outline"
               size="sm"
@@ -508,7 +517,7 @@ export function PresentationPlayer({
               </div>
             )}
           </div>
-          )}
+          ))}
         </div>
       </DialogContent>
     </Dialog>

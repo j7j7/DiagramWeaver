@@ -155,20 +155,21 @@ function ViewerPageContent() {
   }, [diagramData, presentationEligible, activeViewerPresentationSlides]);
 
   const slidePresentationView = usePresentationSlideView({
-    enabled: presentationViewActive && presentationEligible,
+    enabled: presentationViewActive && presentationEligible && !presentationPlayerOpen,
     slides: activeViewerPresentationSlides,
     slideDiagrams: slideDiagramsForViewerPresentation,
     slideIndex: presentationSlideIndex,
   });
 
   useEffect(() => {
-    if (!presentationViewActive || !slidePresentationView.currentSlide) return;
+    if (!presentationViewActive || presentationPlayerOpen || !slidePresentationView.currentSlide) return;
     const slideZoom = slidePresentationView.currentSlide.autoZoomLevel;
     if (typeof slideZoom !== "number" || !Number.isFinite(slideZoom)) return;
     const clampedZoom = Math.max(0.1, Math.min(2.5, slideZoom));
     setPresentationTransform((prev) => ({ ...prev, k: clampedZoom }));
   }, [
     presentationViewActive,
+    presentationPlayerOpen,
     slidePresentationView.currentSlide?.id,
     slidePresentationView.currentSlide?.autoZoomLevel,
   ]);
@@ -558,7 +559,12 @@ function ViewerPageContent() {
             isReadOnly={true}
           />
         )}
-        <div className="flex-1 relative min-w-0">
+        <div
+          className={cn(
+            "flex-1 relative min-w-0",
+            presentationPlayerOpen && "pointer-events-none"
+          )}
+        >
           <ViewerCanvas
             diagramData={canvasDiagramData}
             transform={canvasTransform}
@@ -608,7 +614,10 @@ function ViewerPageContent() {
                 : undefined
             }
           />
-          {presentationViewActive && presentationEligible && activeViewerPresentationDeck && (
+          {presentationViewActive &&
+            presentationEligible &&
+            activeViewerPresentationDeck &&
+            !presentationPlayerOpen && (
             <ViewerPresentationBar
               decks={presentationDecks}
               activeDeckId={activeViewerPresentationDeck.id}
@@ -687,17 +696,20 @@ function ViewerPageContent() {
             currentIndex={presentationSlideIndex}
             onOpenChange={setPresentationPlayerOpen}
             onIndexChange={setPresentationSlideIndex}
+            showPlaybackToolbar={false}
           />
         )}
         {propertiesPanelVisible && (
-          <PropertiesPanel
-            selectedItem={selectedItem as Parameters<typeof PropertiesPanel>[0]["selectedItem"]}
-            diagramData={canvasDiagramData}
-            onItemUpdate={() => {}}
-            collapsed={rightPanelCollapsed}
-            onToggleCollapse={() => setRightPanelCollapsed((v) => !v)}
-            isReadOnly={true}
-          />
+          <div className={cn(presentationPlayerOpen && "pointer-events-none")}>
+            <PropertiesPanel
+              selectedItem={selectedItem as Parameters<typeof PropertiesPanel>[0]["selectedItem"]}
+              diagramData={canvasDiagramData}
+              onItemUpdate={() => {}}
+              collapsed={rightPanelCollapsed}
+              onToggleCollapse={() => setRightPanelCollapsed((v) => !v)}
+              isReadOnly={true}
+            />
+          </div>
         )}
       </div>
     </DndProvider>
