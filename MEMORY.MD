@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-03-20 – Hard refresh in presentation mode: restore slide canvas
+**Problem**: Per-tab presentation **decks/slide id** load from IndexedDB after refresh, but **master/draft** were never persisted; the active-tab effect could also clear presentation state before that load. **Fix**: After **`presentationStorageHydrated`**, if presentation mode is on and there is an active deck + slide, **rebuild** `presentationMasterDiagram` from **`tabDiagramData`** (when missing) and **`presentationDraftDiagram`** via **`applyDiagramDelta(projectVisibleDiagram(master), slide.diagramDelta)`**, keyed by **`tabId:deckId:slideId`** (`presentationSlideCanvasKeyRef`) so edits don’t reset every render. Clear key when leaving presentation mode. File: `diagram-editor.tsx`.
+
 ### 2026-03-20 – Tab modified dot for presentation-mode canvas edits
 **`TabState.hasUnsavedPresentations`** + **`isModified`** now true when embedded presentation data is dirty (canvas edits in **presentation mode** only updated the slide draft, not `tab.diagramData`). Set on `setDiagramData` when `presentationModeEnabled`; cleared by **`markTabAsSaved`** and on **file load**. Files: `use-diagram-tabs.ts`, `diagram-editor.tsx`.
 

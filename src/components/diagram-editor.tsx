@@ -526,6 +526,8 @@ export default function DiagramEditor() {
   const presentationThumbLastDeltaFingerprintRef = React.useRef<string | null>(null);
   /** `${deckId}:${slideId}` — last slide switch we scheduled a thumbnail pass for (avoids duplicate rAF on draft edits). */
   const presentationThumbSlideSwitchKeyRef = React.useRef<string | null>(null);
+  /** `${tabId}:${deckId}:${slideId}` — last canvas re-sync from tab + slide delta (refresh / deck load). */
+  const presentationSlideCanvasKeyRef = React.useRef<string | null>(null);
   const presentationThumbCaptureInFlightRef = React.useRef(false);
   const presentationThumbCtxRef = React.useRef<{
     draft: DiagramData | null;
@@ -635,6 +637,12 @@ export default function DiagramEditor() {
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('dw:presentationMode:enabled', JSON.stringify(presentationModeEnabled));
+    }
+  }, [presentationModeEnabled]);
+
+  React.useEffect(() => {
+    if (!presentationModeEnabled) {
+      presentationSlideCanvasKeyRef.current = null;
     }
   }, [presentationModeEnabled]);
 
@@ -815,6 +823,45 @@ export default function DiagramEditor() {
     deckId: activePresentationDeckId,
     slideId: activePresentationSlideId,
   };
+
+  /**
+   * IndexedDB restores decks/slide selection, but not presentation master/draft. On hard refresh the active-tab
+   * effect can also clear state before per-tab storage hydrates. Rebuild master + draft from the tab diagram
+   * and the active slide’s delta once storage is ready (same as choosing a slide in the panel).
+   */
+  React.useEffect(() => {
+    if (!presentationModeEnabled || !presentationStorageHydrated || !activeTabId) return;
+    if (!activePresentationDeckId || !activePresentationSlideId) return;
+
+    const deck = presentationDecks.find((d) => d.id === activePresentationDeckId);
+    const slide = deck?.slides.find((s) => s.id === activePresentationSlideId);
+    if (!deck || !slide) return;
+
+    const key = `${activeTabId}:${activePresentationDeckId}:${activePresentationSlideId}`;
+    const masterMissing = !presentationMasterDiagram;
+    const slideContextChanged = presentationSlideCanvasKeyRef.current !== key;
+    if (!masterMissing && !slideContextChanged) return;
+
+    presentationSlideCanvasKeyRef.current = key;
+
+    const tabSnapshot = safeClone(tabDiagramData);
+    if (masterMissing) {
+      setPresentationMasterDiagram(tabSnapshot);
+    }
+    const masterBase = projectVisibleDiagram(
+      masterMissing ? tabSnapshot : (presentationMasterDiagram ?? tabSnapshot),
+    );
+    setPresentationDraftDiagram(applyDiagramDelta(masterBase, slide.diagramDelta));
+  }, [
+    presentationModeEnabled,
+    presentationStorageHydrated,
+    activeTabId,
+    tabDiagramData,
+    activePresentationDeckId,
+    activePresentationSlideId,
+    presentationDecks,
+    presentationMasterDiagram,
+  ]);
 
   const history = activeTab?.history || [JSON.stringify({ nodes: [], connections: [], groupings: [] })];
   const historyIndex = activeTab?.historyIndex || 0;
