@@ -10,8 +10,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { normalizeExternalUrl, openExternalUrlInNewTab } from "@/lib/url-utils";
+import { CustomIconImage } from "@/components/diagram/custom-icon-image";
+import { DEFAULT_CUSTOM_IMAGE_OPTIONS, normalizeCustomImageOptions, normalizeHttpImageUrl, validateCustomImageUrl } from "@/lib/custom-icon-utils";
 import type { SelectedItem } from "../diagram-editor";
-import type { DiagramData } from "@/lib/types";
+import type { CustomImageOptions, DiagramData } from "@/lib/types";
 
 interface PropertiesPanelProps {
   selectedItem: SelectedItem | null;
@@ -69,6 +71,9 @@ export function PropertiesPanel({
   const [newKeyValue, setNewKeyValue] = useState<{ key: string; value: string }>(
     { key: "", value: "" }
   );
+  const [customIconUrlDraft, setCustomIconUrlDraft] = useState("");
+  const [customIconError, setCustomIconError] = useState<string | null>(null);
+  const [customIconLoading, setCustomIconLoading] = useState(false);
 
   const metaData =
     selectedItem && "metaData" in selectedItem
@@ -90,8 +95,14 @@ export function PropertiesPanel({
         : "";
 
   const isNode = selectedItem?.itemType === "node";
+  const isCustomIconNode = isNode && (selectedItem as (SelectedItem & { type?: string }) | null)?.type === "generic.icon.custom";
   const linkUrl = isNode ? ((selectedItem as SelectedItem & { linkUrl?: string }).linkUrl ?? "") : "";
   const normalizedLinkUrl = useMemo(() => normalizeExternalUrl(linkUrl), [linkUrl]);
+  const customIconImageUrl = isCustomIconNode ? ((selectedItem as SelectedItem & { imageUrl?: string }).imageUrl ?? "") : "";
+  const customIconOptions = useMemo(
+    () => normalizeCustomImageOptions(isCustomIconNode ? ((selectedItem as SelectedItem & { imageOptions?: Partial<CustomImageOptions> }).imageOptions ?? DEFAULT_CUSTOM_IMAGE_OPTIONS) : DEFAULT_CUSTOM_IMAGE_OPTIONS),
+    [isCustomIconNode, selectedItem]
+  );
 
   const handleMetaDataChange = useCallback(
     (newMetaData: Record<string, string>) => {
@@ -178,11 +189,77 @@ export function PropertiesPanel({
     openExternalUrlInNewTab(normalizedLinkUrl);
   }, [normalizedLinkUrl, toast]);
 
+  const updateCustomIconNode = useCallback(
+    (patch: Partial<{ imageUrl: string; imageOptions: CustomImageOptions }>) => {
+      if (!selectedItem || selectedItem.itemType !== "node" || isReadOnly) return;
+      onItemUpdate({
+        ...selectedItem,
+        type: "generic.icon.custom",
+        imageUrl: patch.imageUrl !== undefined ? patch.imageUrl : ((selectedItem as SelectedItem & { imageUrl?: string }).imageUrl || ""),
+        imageOptions: patch.imageOptions !== undefined ? patch.imageOptions : customIconOptions,
+      });
+    },
+    [selectedItem, onItemUpdate, isReadOnly, customIconOptions]
+  );
+
+  const updateCustomIconOptions = useCallback(
+    (patch: Partial<CustomImageOptions>) => {
+      const nextOptions = normalizeCustomImageOptions({ ...customIconOptions, ...patch });
+      updateCustomIconNode({ imageOptions: nextOptions });
+    },
+    [customIconOptions, updateCustomIconNode]
+  );
+
+  const updateCustomIconCrop = useCallback(
+    (patch: Partial<CustomImageOptions["crop"]>) => {
+      const nextOptions = normalizeCustomImageOptions({
+        ...customIconOptions,
+        crop: { ...customIconOptions.crop, ...patch },
+      });
+      updateCustomIconNode({ imageOptions: nextOptions });
+    },
+    [customIconOptions, updateCustomIconNode]
+  );
+
+  const loadCustomIconUrl = useCallback(async () => {
+    if (isReadOnly) return;
+    setCustomIconLoading(true);
+    setCustomIconError(null);
+
+    const normalized = normalizeHttpImageUrl(customIconUrlDraft);
+    if (!normalized) {
+      setCustomIconError("Enter a valid http/https image URL.");
+      updateCustomIconNode({ imageUrl: "" });
+      setCustomIconLoading(false);
+      return;
+    }
+
+    const result = await validateCustomImageUrl(normalized, { force: true });
+    if (!result.ok) {
+      setCustomIconError(result.error || "Unable to load image preview.");
+      updateCustomIconNode({ imageUrl: "" });
+      setCustomIconLoading(false);
+      return;
+    }
+
+    updateCustomIconNode({ imageUrl: result.normalizedUrl || normalized });
+    setCustomIconLoading(false);
+  }, [customIconUrlDraft, isReadOnly, updateCustomIconNode]);
+
   React.useEffect(() => {
     setEditingKey(null);
     setEditingDraft(null);
     setNewKeyValue({ key: "", value: "" });
+    setCustomIconError(null);
   }, [selectedItem?.id]);
+
+  React.useEffect(() => {
+    if (!isCustomIconNode) {
+      setCustomIconUrlDraft("");
+      return;
+    }
+    setCustomIconUrlDraft(customIconImageUrl);
+  }, [isCustomIconNode, customIconImageUrl]);
 
   if (collapsed) {
     if (narrowCollapsed) {
@@ -313,6 +390,115 @@ export function PropertiesPanel({
                       </Button>
                     )}
                   </div>
+                </div>
+              )}
+
+              {isCustomIconNode && (
+                <div className="space-y-2 border rounded-md p-3">
+                  <Label className="text-xs text-muted-foreground">Custom Icon</Label>
+                  {!isReadOnly && (
+                    <div className="flex gap-2">
+                      <Input
+                        value={customIconUrlDraft}
+                        onChange={(e) => {
+                          setCustomIconUrlDraft(e.target.value);
+                          setCustomIconError(null);
+                          updateCustomIconNode({ imageUrl: e.target.value });
+                        }}
+                        placeholder="https://example.com/icon.png"
+                        className="h-8 text-sm"
+                      />
+                      <Button size="sm" className="h-8" onClick={loadCustomIconUrl} disabled={customIconLoading}>
+                        {customIconLoading ? "Loading..." : "Load"}
+                      </Button>
+                    </div>
+                  )}
+
+                  <div className="w-24 h-24 border rounded bg-muted/20 flex items-center justify-center overflow-hidden">
+                    <CustomIconImage imageUrl={customIconImageUrl} imageOptions={customIconOptions} width={96} height={96} />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <Input
+                      type="number"
+                      min={16}
+                      max={512}
+                      value={customIconOptions.width}
+                      onChange={(e) => updateCustomIconOptions({ width: Number(e.target.value) })}
+                      className="h-8 text-xs"
+                      disabled={isReadOnly}
+                      title="Width"
+                    />
+                    <Input
+                      type="number"
+                      min={16}
+                      max={512}
+                      value={customIconOptions.height}
+                      onChange={(e) => updateCustomIconOptions({ height: Number(e.target.value) })}
+                      className="h-8 text-xs"
+                      disabled={isReadOnly}
+                      title="Height"
+                    />
+                    <Input
+                      type="number"
+                      min={10}
+                      max={300}
+                      value={customIconOptions.scale}
+                      onChange={(e) => updateCustomIconOptions({ scale: Number(e.target.value) })}
+                      className="h-8 text-xs"
+                      disabled={isReadOnly}
+                      title="Scale %"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-2">
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={customIconOptions.crop.x}
+                      onChange={(e) => updateCustomIconCrop({ x: Number(e.target.value) })}
+                      className="h-8 text-xs"
+                      disabled={isReadOnly}
+                      title="Crop X"
+                    />
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={customIconOptions.crop.y}
+                      onChange={(e) => updateCustomIconCrop({ y: Number(e.target.value) })}
+                      className="h-8 text-xs"
+                      disabled={isReadOnly}
+                      title="Crop Y"
+                    />
+                    <Input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={customIconOptions.crop.width}
+                      onChange={(e) => updateCustomIconCrop({ width: Number(e.target.value) })}
+                      className="h-8 text-xs"
+                      disabled={isReadOnly}
+                      title="Crop Width"
+                    />
+                    <Input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={customIconOptions.crop.height}
+                      onChange={(e) => updateCustomIconCrop({ height: Number(e.target.value) })}
+                      className="h-8 text-xs"
+                      disabled={isReadOnly}
+                      title="Crop Height"
+                    />
+                  </div>
+
+                  {customIconError ? (
+                    <div className="text-xs text-destructive">{customIconError}</div>
+                  ) : (
+                    <div className="text-xs text-muted-foreground">PNG/JPG/SVG, max 500 KB. Invalid URLs fall back to placeholder icon.</div>
+                  )}
                 </div>
               )}
 

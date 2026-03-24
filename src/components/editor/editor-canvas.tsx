@@ -114,7 +114,7 @@ interface EditorCanvasProps {
   isReadOnly?: boolean;
   alignmentGuidesEnabled?: boolean;
   onResourceActivateAtPosition?: (
-    resource: { name: string; file?: string; type?: string; hasWhiteVariant?: boolean; format?: string; iconType?: string; iconName?: string; emoji?: string },
+    resource: { name: string; file?: string; type?: string; hasWhiteVariant?: boolean; format?: string; iconType?: string; iconName?: string; emoji?: string; imageUrl?: string; imageOptions?: import('@/lib/types').CustomImageOptions },
     provider: string,
     category: string,
     position: { x: number; y: number },

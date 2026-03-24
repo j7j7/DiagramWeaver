@@ -13,6 +13,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { ResourceBrowser } from './resource-browser';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import type { CustomImageOptions } from '@/lib/types';
 
 interface ComponentSidebarProps {
   selectedItem: SelectedItem | null;
@@ -22,8 +23,8 @@ interface ComponentSidebarProps {
   onDisconnect: () => void;
   onItemDelete: (itemToDelete: SelectedItem) => void;
   diagramData: DiagramData;
-  onResourceSelect: (resource: { name: string; file?: string; type?: string; hasWhiteVariant?: boolean; format?: string; iconType?: string; iconName?: string; emoji?: string }, provider: string, category: string) => void;
-  onResourceActivate?: (resource: { name: string; file?: string; type?: string; hasWhiteVariant?: boolean; format?: string; iconType?: string; iconName?: string; emoji?: string }, provider: string, category: string, fullItem?: object) => void;
+  onResourceSelect: (resource: { name: string; file?: string; type?: string; hasWhiteVariant?: boolean; format?: string; iconType?: string; iconName?: string; emoji?: string; imageUrl?: string; imageOptions?: CustomImageOptions }, provider: string, category: string) => void;
+  onResourceActivate?: (resource: { name: string; file?: string; type?: string; hasWhiteVariant?: boolean; format?: string; iconType?: string; iconName?: string; emoji?: string; imageUrl?: string; imageOptions?: CustomImageOptions }, provider: string, category: string, fullItem?: object) => void;
   onToggleJsonPanel?: () => void;
   jsonPanelOpen?: boolean;
   onFitToView?: () => void;
