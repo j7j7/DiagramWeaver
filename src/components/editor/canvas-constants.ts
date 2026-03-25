@@ -16,6 +16,12 @@ export const MULTI_LINE_SPACING_BONUS = 25; // Extra spacing for nodes with 2+ l
 export const GRID_SNAP = 20;
 export const RULER_SIZE = 24;
 
+/**
+ * Z-index for connection affordances (on-canvas delete / add-waypoint / arrow helpers, waypoint drag handles).
+ * Must exceed node layer stacks in `editor-canvas` (e.g. `100 + 2 * order`) and duplicate-drag previews (`50000 + i`).
+ */
+export const CONNECTION_HELPER_Z_INDEX = 100000;
+
 // Types
 export type PositionedNode = DiagramNodeData & { x: number; y: number; };
 export type PositionedGroup = DiagramZoneData & { x: number; y: number; width: number; height: number; };

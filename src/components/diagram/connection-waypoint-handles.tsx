@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { DiagramConnectionData } from "@/lib/types";
-import { snapToGrid } from "@/components/editor/canvas-constants";
+import { CONNECTION_HELPER_Z_INDEX, snapToGrid } from "@/components/editor/canvas-constants";
 
 export type Transform = { x: number; y: number; k: number };
 
@@ -113,7 +113,7 @@ export function ConnectionWaypointHandles({
 
   const handleSize = 28;
   const halfSize = handleSize / 2;
-  const HANDLE_Z_INDEX = 60;
+  const HANDLE_Z_INDEX = CONNECTION_HELPER_Z_INDEX + 1;
   const isOrthogonal = connection.style === "orthogonal";
 
   return (

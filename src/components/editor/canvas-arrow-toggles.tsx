@@ -9,6 +9,7 @@ import {
   BASE_NODE_HEIGHT, 
   TEXT_NODE_HEIGHT, 
   EXTRA_LINE_HEIGHT,
+  CONNECTION_HELPER_Z_INDEX,
   measureNodeDims,
   type PositionedNode,
   type PositionedGroup,
@@ -355,7 +356,7 @@ function CanvasArrowTogglesInner(props: CanvasArrowTogglesProps) {
               <div
                 className={`absolute ${isReadOnly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                 style={{ 
-                  zIndex: 50,
+                  zIndex: CONNECTION_HELPER_Z_INDEX,
                   left: `${midX - iconHalf}px`,
                   top: `${midY - iconHalf}px`,
                   width: `${iconSize}px`,

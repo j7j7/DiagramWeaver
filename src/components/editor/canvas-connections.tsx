@@ -3,7 +3,7 @@ import { BezierConnection, determineConnectionEdges, getOptimalConnectionPoints,
 import { OrthogonalConnection } from "../diagram/othogonal-connection";
 import { computeOrthogonalRoute, getPointOnOrthogonalPath, collectObstacles } from "@/lib/orthogonal-routing";
 import type { DiagramData, DiagramConnectionData } from "@/lib/types";
-import { measureNodeDims, type PositionedNode, type PositionedGroup, NODE_WIDTH, BASE_NODE_HEIGHT, TEXT_NODE_HEIGHT, EXTRA_LINE_HEIGHT } from "./canvas-constants";
+import { measureNodeDims, type PositionedNode, type PositionedGroup, NODE_WIDTH, BASE_NODE_HEIGHT, TEXT_NODE_HEIGHT, EXTRA_LINE_HEIGHT, CONNECTION_HELPER_Z_INDEX } from "./canvas-constants";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
 import { cn, isIconOrEmojiType, isShapeNodeType } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -658,7 +658,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
 
       const ICON_SIZE = 29; // 24 * 1.2 ~20% bigger
       const ICON_HALF = Math.round(ICON_SIZE / 2);
-      const BUTTON_Z_INDEX = 50;
+      const BUTTON_Z_INDEX = CONNECTION_HELPER_Z_INDEX;
 
       return (
         <React.Fragment key={`actions-${edge.from}-${edge.to}-${index}`}>
