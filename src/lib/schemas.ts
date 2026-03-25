@@ -136,6 +136,7 @@ export const DiagramConnectionDataSchema = z.object({
   arrow: z.boolean().optional(), // Legacy arrow property - backward compatibility
   // Connection style options
   style: z.enum(['bezier', 'orthogonal']).optional(), // Connection rendering style (default: bezier)
+  smoothCorners: z.boolean().optional(), // Rounded corners for orthogonal connection bends
   curvature: z.number().optional(), // Bezier curve intensity (0.1 to 1.0)
   lineWidth: z.number().optional(), // Line thickness for the connection (default: 2.5)
   shadow: z.boolean().optional(), // Whether to show shadow around the connection line

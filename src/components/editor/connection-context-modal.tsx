@@ -61,6 +61,7 @@ export function ConnectionContextModal({
     (fromNode as any)?.lineColor ||
     "#6b7280";
   const lineStyle = liveConnection.style ?? "bezier";
+  const smoothCorners = lineStyle === "orthogonal" && liveConnection.smoothCorners === true;
   const textPosition = liveConnection.textPosition ?? 50;
   const connectionText = liveConnection.text || "";
   const hasArrow = liveConnection.arrow === true || liveConnection.toArrow === true;
@@ -102,6 +103,10 @@ export function ConnectionContextModal({
 
   const handleLineStyleChange = (style: "bezier" | "orthogonal") => {
     onConnectionUpdate(connection.from, connection.to, { style }, connId);
+  };
+
+  const handleSmoothCornersChange = (checked: boolean) => {
+    onConnectionUpdate(connection.from, connection.to, { smoothCorners: checked }, connId);
   };
 
   const centerOnEdge = liveConnection.centerEdgeAnchors === true;
@@ -200,6 +205,24 @@ export function ConnectionContextModal({
             </Button>
           </div>
         </div>
+
+        {lineStyle === "orthogonal" && (
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <span className="text-xs text-muted-foreground block">Smooth corners</span>
+              <span className="text-[10px] text-muted-foreground/90 leading-tight block mt-0.5">
+                Add a small rounded bend at each 90-degree turn
+              </span>
+            </div>
+            <Switch
+              checked={smoothCorners}
+              onCheckedChange={handleSmoothCornersChange}
+              disabled={isReadOnly}
+              className="shrink-0"
+              aria-label="Smooth orthogonal corners"
+            />
+          </div>
+        )}
 
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0 flex-1">

@@ -26,6 +26,7 @@ interface OrthogonalConnectionProps {
   to: Positionable & { lineColor?: string };
   connectionColor?: string;
   connectionData?: DiagramConnectionData;
+  route?: OrthogonalRoute;
   /** All positioned nodes - used for obstacle avoidance */
   nodesById: Record<string, any>;
   /** All positioned zones - used for obstacle avoidance */
@@ -63,6 +64,7 @@ function connectionDataEqual(a?: DiagramConnectionData, b?: DiagramConnectionDat
   if (a.lineWidth !== b.lineWidth || a.shadow !== b.shadow || a.color !== b.color) return false;
   if (a.fromArrow !== b.fromArrow || a.toArrow !== b.toArrow || a.arrow !== b.arrow) return false;
   if (a.centerEdgeAnchors !== b.centerEdgeAnchors) return false;
+  if (a.smoothCorners !== b.smoothCorners) return false;
   if (a.text !== b.text || a.textPosition !== b.textPosition || a.style !== b.style) return false;
   const wpA = a.waypoints?.map((w) => `${w.x},${w.y}`).join(";") ?? "";
   const wpB = b.waypoints?.map((w) => `${w.x},${w.y}`).join(";") ?? "";
@@ -79,6 +81,8 @@ function areOrthogonalPropsEqual(prev: OrthogonalConnectionProps, next: Orthogon
     positionablesEqual(prev.to, next.to) &&
     prev.connectionColor === next.connectionColor &&
     connectionDataEqual(prev.connectionData, next.connectionData) &&
+    prev.route?.pathData === next.route?.pathData &&
+    prev.route?.totalLength === next.route?.totalLength &&
     prev.exportAnimationTimeSeconds === next.exportAnimationTimeSeconds &&
     prev.animationConnectionsEnabled === next.animationConnectionsEnabled &&
     prev.nodesById === next.nodesById &&
@@ -97,6 +101,7 @@ function OrthogonalConnectionInner({
   to,
   connectionColor,
   connectionData,
+  route: precomputedRoute,
   nodesById,
   zonesById,
   exportAnimationTimeSeconds,
@@ -140,8 +145,10 @@ function OrthogonalConnectionInner({
   // Route (with optional waypoints - path passes through each)
   const waypoints = connectionData?.waypoints;
   const route: OrthogonalRoute = useMemo(
-    () => computeOrthogonalRoute(fromX, fromY, toX, toY, fromAngle, toAngle, obstacles, waypoints),
-    [fromX, fromY, toX, toY, fromAngle, toAngle, obstacles, waypoints]
+    () => precomputedRoute ?? computeOrthogonalRoute(fromX, fromY, toX, toY, fromAngle, toAngle, obstacles, waypoints, {
+      smoothCorners: connectionData?.smoothCorners === true,
+    }),
+    [precomputedRoute, fromX, fromY, toX, toY, fromAngle, toAngle, obstacles, waypoints, connectionData?.smoothCorners]
   );
 
   // Arrow markers and styles

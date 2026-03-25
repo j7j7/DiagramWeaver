@@ -148,6 +148,7 @@ export interface DiagramConnectionData {
   
   // Connection style options
   style?: 'bezier' | 'orthogonal'; // Connection rendering style (default: bezier)
+  smoothCorners?: boolean; // When true, orthogonal 90-degree bends render with small rounded corners
   curvature?: number; // Bezier curve intensity (0.1 to 1.0)
   lineWidth?: number; // Line thickness for the connection (default: 2.5)
   shadow?: boolean; // Whether to show shadow around the connection line

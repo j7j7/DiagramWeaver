@@ -26,6 +26,18 @@ const OBSTACLE_MARGIN = 20;
  * on very large canvases). Falls back to simple L/Z route. */
 const MAX_ITERATIONS = 15_000;
 
+/** Soft penalty when a route crosses an existing orthogonal segment. */
+const CROSSING_PENALTY = CELL * 12;
+
+/** Mild penalty when a route reuses the exact same corridor. */
+const OVERLAP_PENALTY = CELL * 0.8;
+
+/** Near a route's endpoints we allow tighter interaction with existing lines. */
+const ENDPOINT_CLEARANCE = CELL * 5;
+
+/** Visual radius for rounded orthogonal bends when enabled. */
+const SMOOTH_CORNER_RADIUS = 8;
+
 // -----------------------------------------------------------------------------
 // Types
 // -----------------------------------------------------------------------------
@@ -51,6 +63,22 @@ export interface OrthogonalRoute {
   pathData: string;
   /** Total Manhattan length in canvas px */
   totalLength: number;
+}
+
+export interface OrthogonalRouteOptions {
+  occupiedSegments?: OrthogonalSegment[];
+  smoothCorners?: boolean;
+}
+
+export interface OrthogonalRouteRequest extends OrthogonalRouteOptions {
+  fromX: number;
+  fromY: number;
+  toX: number;
+  toY: number;
+  fromAngle: number;
+  toAngle: number;
+  obstacles: Rect[];
+  waypoints?: Array<{ x: number; y: number }>;
 }
 
 // -----------------------------------------------------------------------------
@@ -190,6 +218,22 @@ function dedupeConsecutivePoints(
   return result;
 }
 
+function getManhattanDistance(a: { x: number; y: number }, b: { x: number; y: number }): number {
+  return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+}
+
+function trimPointToward(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  distance: number,
+): { x: number; y: number } {
+  if (from.x === to.x) {
+    return { x: from.x, y: from.y + Math.sign(to.y - from.y) * distance };
+  }
+
+  return { x: from.x + Math.sign(to.x - from.x) * distance, y: from.y };
+}
+
 function getPerpendicularAngle(angle: number): number {
   return angle === 0 || angle === 180 ? 90 : 0;
 }
@@ -201,6 +245,122 @@ function getFallbackAngles(primaryAngle: number, secondaryAngle: number): number
     getPerpendicularAngle(primaryAngle),
     getPerpendicularAngle(secondaryAngle),
   ]));
+}
+
+function getSegmentLength(segment: OrthogonalSegment): number {
+  return Math.abs(segment.x2 - segment.x1) + Math.abs(segment.y2 - segment.y1);
+}
+
+function pointsToSegments(points: Array<{ x: number; y: number }>): OrthogonalSegment[] {
+  const normalized = simplifyPath(points);
+  const segments: OrthogonalSegment[] = [];
+
+  for (let i = 1; i < normalized.length; i++) {
+    const prev = normalized[i - 1];
+    const curr = normalized[i];
+    if (prev.x === curr.x && prev.y === curr.y) continue;
+    segments.push({ x1: prev.x, y1: prev.y, x2: curr.x, y2: curr.y });
+  }
+
+  return segments;
+}
+
+function isNearProtectedEndpoint(
+  px: number,
+  py: number,
+  startX: number,
+  startY: number,
+  endX: number,
+  endY: number,
+): boolean {
+  return (
+    Math.abs(px - startX) + Math.abs(py - startY) <= ENDPOINT_CLEARANCE
+    || Math.abs(px - endX) + Math.abs(py - endY) <= ENDPOINT_CLEARANCE
+  );
+}
+
+function computeSegmentOverlapLength(candidate: OrthogonalSegment, occupied: OrthogonalSegment): number {
+  const candidateHorizontal = candidate.y1 === candidate.y2;
+  const occupiedHorizontal = occupied.y1 === occupied.y2;
+  if (candidateHorizontal !== occupiedHorizontal) {
+    return 0;
+  }
+
+  if (candidateHorizontal) {
+    if (candidate.y1 !== occupied.y1) return 0;
+    const start = Math.max(Math.min(candidate.x1, candidate.x2), Math.min(occupied.x1, occupied.x2));
+    const end = Math.min(Math.max(candidate.x1, candidate.x2), Math.max(occupied.x1, occupied.x2));
+    return Math.max(0, end - start);
+  }
+
+  if (candidate.x1 !== occupied.x1) return 0;
+  const start = Math.max(Math.min(candidate.y1, candidate.y2), Math.min(occupied.y1, occupied.y2));
+  const end = Math.min(Math.max(candidate.y1, candidate.y2), Math.max(occupied.y1, occupied.y2));
+  return Math.max(0, end - start);
+}
+
+function getPerpendicularIntersection(
+  candidate: OrthogonalSegment,
+  occupied: OrthogonalSegment,
+): { x: number; y: number } | null {
+  const candidateHorizontal = candidate.y1 === candidate.y2;
+  const occupiedHorizontal = occupied.y1 === occupied.y2;
+  if (candidateHorizontal === occupiedHorizontal) {
+    return null;
+  }
+
+  const horizontal = candidateHorizontal ? candidate : occupied;
+  const vertical = candidateHorizontal ? occupied : candidate;
+  const x = vertical.x1;
+  const y = horizontal.y1;
+  const withinHorizontal = x >= Math.min(horizontal.x1, horizontal.x2) && x <= Math.max(horizontal.x1, horizontal.x2);
+  const withinVertical = y >= Math.min(vertical.y1, vertical.y2) && y <= Math.max(vertical.y1, vertical.y2);
+
+  return withinHorizontal && withinVertical ? { x, y } : null;
+}
+
+function computeOccupiedSegmentPenalty(
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  occupiedSegments: OrthogonalSegment[],
+  startX: number,
+  startY: number,
+  endX: number,
+  endY: number,
+): number {
+  if (occupiedSegments.length === 0) {
+    return 0;
+  }
+
+  const candidate: OrthogonalSegment = { x1: ax, y1: ay, x2: bx, y2: by };
+  let penalty = 0;
+
+  for (const occupied of occupiedSegments) {
+    const overlapLength = computeSegmentOverlapLength(candidate, occupied);
+    if (overlapLength > 0) {
+      const overlapMidX = candidate.x1 === candidate.x2
+        ? candidate.x1
+        : (Math.max(Math.min(candidate.x1, candidate.x2), Math.min(occupied.x1, occupied.x2))
+          + Math.min(Math.max(candidate.x1, candidate.x2), Math.max(occupied.x1, occupied.x2))) / 2;
+      const overlapMidY = candidate.y1 === candidate.y2
+        ? candidate.y1
+        : (Math.max(Math.min(candidate.y1, candidate.y2), Math.min(occupied.y1, occupied.y2))
+          + Math.min(Math.max(candidate.y1, candidate.y2), Math.max(occupied.y1, occupied.y2))) / 2;
+
+      if (!isNearProtectedEndpoint(overlapMidX, overlapMidY, startX, startY, endX, endY)) {
+        penalty += OVERLAP_PENALTY * (overlapLength / CELL);
+      }
+    }
+
+    const intersection = getPerpendicularIntersection(candidate, occupied);
+    if (intersection && !isNearProtectedEndpoint(intersection.x, intersection.y, startX, startY, endX, endY)) {
+      penalty += CROSSING_PENALTY;
+    }
+  }
+
+  return penalty;
 }
 
 // -----------------------------------------------------------------------------
@@ -248,6 +408,7 @@ function astar(
   obstacles: Rect[],
   exitAngle: number,
   entryAngle: number,
+  options?: OrthogonalRouteOptions,
 ): Array<{ x: number; y: number }> | null {
   // Snap start/end
   const startX = snap(sx);
@@ -297,6 +458,7 @@ function astar(
   const startDir = angleToDir(exitAngle);
   const startStateKey = packStateKey(startX, startY, startDir);
   const endKey = packKey(endX, endY);
+  const occupiedSegments = options?.occupiedSegments ?? [];
 
   // Open set as a simple sorted array (fast enough for our bounded search)
   const gScore = new Map<number, number>();
@@ -359,7 +521,18 @@ function astar(
 
       // Cost: 1 per cell + penalty for changing direction (encourages fewer bends)
       const turnPenalty = (current.dir >= 0 && d !== current.dir) ? CELL * 2 : 0;
-      const tentativeG = current.g + CELL + turnPenalty;
+      const occupancyPenalty = computeOccupiedSegmentPenalty(
+        current.x,
+        current.y,
+        nx,
+        ny,
+        occupiedSegments,
+        startX,
+        startY,
+        endX,
+        endY,
+      );
+      const tentativeG = current.g + CELL + turnPenalty + occupancyPenalty;
 
       const prevG = gScore.get(nStateKey);
       if (prevG !== undefined && tentativeG >= prevG) continue;
@@ -435,6 +608,7 @@ function buildOrthogonalBridge(
   obstacles: Rect[],
   fromAngle: number,
   toAngle: number,
+  options?: OrthogonalRouteOptions,
 ): Array<{ x: number; y: number }> {
   const start = { x: snap(from.x), y: snap(from.y) };
   const end = { x: snap(to.x), y: snap(to.y) };
@@ -448,7 +622,7 @@ function buildOrthogonalBridge(
     return [start, end];
   }
 
-  const routed = astar(start.x, start.y, end.x, end.y, obstacles, fromAngle, toAngle);
+  const routed = astar(start.x, start.y, end.x, end.y, obstacles, fromAngle, toAngle, options);
   if (routed) {
     return simplifyPath(routed);
   }
@@ -462,6 +636,7 @@ function buildOrthogonalBridge(
 function enforceOrthogonalSegments(
   points: Array<{ x: number; y: number }>,
   obstacles: Rect[],
+  options?: OrthogonalRouteOptions,
 ): Array<{ x: number; y: number }> {
   const normalized = simplifyPath(points);
   if (normalized.length <= 2) {
@@ -482,7 +657,7 @@ function enforceOrthogonalSegments(
       ? directionFromTo(result[result.length - 2].x, result[result.length - 2].y, prev.x, prev.y)
       : directionFromTo(prev.x, prev.y, next.x, next.y);
     const outgoingAngle = directionFromTo(prev.x, prev.y, next.x, next.y);
-    const bridge = buildOrthogonalBridge(prev, next, obstacles, incomingAngle, outgoingAngle);
+    const bridge = buildOrthogonalBridge(prev, next, obstacles, incomingAngle, outgoingAngle, options);
     result.pop();
     result.push(...bridge);
   }
@@ -511,6 +686,7 @@ function ensureApproachSegment(
   angle: number,
   stubLen: number,
   obstacles: Rect[],
+  options: OrthogonalRouteOptions | undefined,
   isSource: boolean,
 ): Array<{ x: number; y: number }> {
   if (points.length < 2) return points;
@@ -560,6 +736,7 @@ function ensureApproachSegment(
       obstacles,
       angle,
       directionFromTo(approach.x, approach.y, adjacent.x, adjacent.y),
+      options,
     );
     return simplifyPath([
       { x: endpointX, y: endpointY },
@@ -573,6 +750,7 @@ function ensureApproachSegment(
       obstacles,
       directionFromTo(adjacent.x, adjacent.y, approach.x, approach.y),
       angle,
+      options,
     );
     return simplifyPath([
       ...points.slice(0, -2),
@@ -612,6 +790,7 @@ function computeOrthogonalSegment(
   fromAngle: number,
   toAngle: number,
   obstacles: Rect[],
+  options?: OrthogonalRouteOptions,
 ): Array<{ x: number; y: number }> {
   const sfx = snap(fromX);
   const sfy = snap(fromY);
@@ -623,7 +802,7 @@ function computeOrthogonalSegment(
   const stub = exitStub(sfx, sfy, fromAngle, stubLen);
   const entryStub = exitStub(stx, sty, toAngle, entryStubLen);
 
-  let points = astar(stub.x, stub.y, entryStub.x, entryStub.y, obstacles, fromAngle, toAngle);
+  let points = astar(stub.x, stub.y, entryStub.x, entryStub.y, obstacles, fromAngle, toAngle, options);
 
   if (points) {
     points = [{ x: sfx, y: sfy }, ...points, { x: stx, y: sty }];
@@ -637,9 +816,9 @@ function computeOrthogonalSegment(
       ?? zRoute(sfx, sfy, stx, sty, fromAngle);
   }
 
-  points = ensureApproachSegment(points, sfx, sfy, fromAngle, stubLen, obstacles, true);
-  points = ensureApproachSegment(points, stx, sty, toAngle, entryStubLen, obstacles, false);
-  return enforceOrthogonalSegments(points, obstacles);
+  points = ensureApproachSegment(points, sfx, sfy, fromAngle, stubLen, obstacles, options, true);
+  points = ensureApproachSegment(points, stx, sty, toAngle, entryStubLen, obstacles, options, false);
+  return enforceOrthogonalSegments(points, obstacles, options);
 }
 
 /**
@@ -663,6 +842,7 @@ export function computeOrthogonalRoute(
   toAngle: number,
   obstacles: Rect[],
   waypoints?: Array<{ x: number; y: number }>,
+  options?: OrthogonalRouteOptions,
 ): OrthogonalRoute {
   const snappedWaypoints = waypoints?.length
     ? waypoints.map((wp) => ({ x: snap(wp.x), y: snap(wp.y) }))
@@ -671,7 +851,7 @@ export function computeOrthogonalRoute(
   let points: Array<{ x: number; y: number }>;
 
   if (!snappedWaypoints?.length) {
-    points = computeOrthogonalSegment(fromX, fromY, toX, toY, fromAngle, toAngle, obstacles);
+    points = computeOrthogonalSegment(fromX, fromY, toX, toY, fromAngle, toAngle, obstacles, options);
   } else {
     const all: Array<{ x: number; y: number }> = [];
     const legs = [
@@ -695,6 +875,7 @@ export function computeOrthogonalRoute(
         legs[i].ax, legs[i].ay, legs[i].bx, legs[i].by,
         legs[i].exitAngle, legs[i].entryAngle,
         obstacles,
+        options,
       );
       if (i === 0) {
         all.push(...seg);
@@ -702,15 +883,41 @@ export function computeOrthogonalRoute(
         all.push(...seg.slice(1));
       }
     }
-    points = enforceOrthogonalSegments(all, obstacles);
+    points = enforceOrthogonalSegments(all, obstacles, options);
   }
 
-  const pathData = pointsToPathData(points);
+  const pathData = pointsToPathData(points, options?.smoothCorners === true);
   let totalLength = 0;
   for (let i = 1; i < points.length; i++) {
     totalLength += Math.abs(points[i].x - points[i - 1].x) + Math.abs(points[i].y - points[i - 1].y);
   }
   return { points, pathData, totalLength };
+}
+
+export function computeOrthogonalRoutesBatch(
+  requests: OrthogonalRouteRequest[],
+): OrthogonalRoute[] {
+  const occupiedSegments: OrthogonalSegment[] = [];
+
+  return requests.map((request) => {
+    const route = computeOrthogonalRoute(
+      request.fromX,
+      request.fromY,
+      request.toX,
+      request.toY,
+      request.fromAngle,
+      request.toAngle,
+      request.obstacles,
+      request.waypoints,
+      {
+        occupiedSegments: request.occupiedSegments ?? occupiedSegments,
+        smoothCorners: request.smoothCorners === true,
+      },
+    );
+
+    occupiedSegments.push(...pointsToSegments(route.points).filter((segment) => getSegmentLength(segment) > 0));
+    return route;
+  });
 }
 
 /** Short stub point extending from (x,y) in direction `angleDeg` by `len` px */
@@ -726,12 +933,46 @@ function exitStub(x: number, y: number, angleDeg: number, len: number): { x: num
 }
 
 /** Convert an array of points to an SVG path string */
-function pointsToPathData(points: Array<{ x: number; y: number }>): string {
-  if (points.length === 0) return '';
-  let d = `M ${points[0].x} ${points[0].y}`;
-  for (let i = 1; i < points.length; i++) {
-    d += ` L ${points[i].x} ${points[i].y}`;
+function pointsToPathData(points: Array<{ x: number; y: number }>, smoothCorners = false): string {
+  const normalized = simplifyPath(points);
+  if (normalized.length === 0) return "";
+  if (!smoothCorners || normalized.length < 3) {
+    let direct = `M ${normalized[0].x} ${normalized[0].y}`;
+    for (let i = 1; i < normalized.length; i++) {
+      direct += ` L ${normalized[i].x} ${normalized[i].y}`;
+    }
+    return direct;
   }
+
+  let d = `M ${normalized[0].x} ${normalized[0].y}`;
+
+  for (let i = 1; i < normalized.length - 1; i++) {
+    const prev = normalized[i - 1];
+    const curr = normalized[i];
+    const next = normalized[i + 1];
+    const incomingLen = getManhattanDistance(prev, curr);
+    const outgoingLen = getManhattanDistance(curr, next);
+    const sameX = prev.x === curr.x && curr.x === next.x;
+    const sameY = prev.y === curr.y && curr.y === next.y;
+
+    if (sameX || sameY || incomingLen === 0 || outgoingLen === 0) {
+      d += ` L ${curr.x} ${curr.y}`;
+      continue;
+    }
+
+    const radius = Math.min(SMOOTH_CORNER_RADIUS, incomingLen / 2, outgoingLen / 2);
+    if (radius <= 0) {
+      d += ` L ${curr.x} ${curr.y}`;
+      continue;
+    }
+
+    const entry = trimPointToward(curr, prev, radius);
+    const exit = trimPointToward(curr, next, radius);
+    d += ` L ${entry.x} ${entry.y} Q ${curr.x} ${curr.y} ${exit.x} ${exit.y}`;
+  }
+
+  const last = normalized[normalized.length - 1];
+  d += ` L ${last.x} ${last.y}`;
   return d;
 }
 

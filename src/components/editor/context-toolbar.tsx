@@ -38,6 +38,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Switch } from '@/components/ui/switch';
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -609,6 +610,7 @@ export function ContextToolbar({
     const isEdge = selectedItem.itemType === 'edge';
     const hasArrow = selectedItem.arrow === true || selectedItem.toArrow === true;
     const lineStyle = (selectedItem as any).style ?? 'bezier';
+    const smoothCorners = lineStyle === 'orthogonal' && (selectedItem as any).smoothCorners === true;
 
     const handleArrowToggle = () => {
       if (onConnectionUpdate && isEdge) {
@@ -624,6 +626,13 @@ export function ContextToolbar({
       if (onConnectionUpdate && isEdge) {
         const connId = (selectedItem as { id?: string }).id;
         onConnectionUpdate(selectedItem.from, selectedItem.to, { style }, connId);
+      }
+    };
+
+    const handleSmoothCornersToggle = () => {
+      if (onConnectionUpdate && isEdge) {
+        const connId = (selectedItem as { id?: string }).id;
+        onConnectionUpdate(selectedItem.from, selectedItem.to, { smoothCorners: !smoothCorners }, connId);
       }
     };
 
@@ -654,6 +663,18 @@ export function ContextToolbar({
             <span className="text-xs">Orthogonal</span>
           </Button>
         </div>
+
+        {lineStyle === 'orthogonal' && (
+          <Button
+            variant={smoothCorners ? "default" : "ghost"}
+            size="sm"
+            className="h-8 px-2"
+            onClick={handleSmoothCornersToggle}
+            title={smoothCorners ? "Disable smooth corners" : "Enable smooth corners"}
+          >
+            <span className="text-xs">Smooth corners</span>
+          </Button>
+        )}
 
         {/* Arrow Toggle Button */}
         <Button
@@ -1462,6 +1483,8 @@ export function ContextToolbar({
                     ) : (
                       getAllConnections.map((connInfo, index) => {
                         const hasArrow = connInfo.connection.arrow === true || connInfo.connection.toArrow === true;
+                        const connectionLineStyle = connInfo.connection.style ?? 'bezier';
+                        const connectionSmoothCorners = connectionLineStyle === 'orthogonal' && connInfo.connection.smoothCorners === true;
                         
                         // Get the actual connection color using the same inheritance logic as the rendered connection
                         const fromNode = diagramData?.nodes.find(n => n.id === connInfo.connection.from) || 
@@ -1591,7 +1614,7 @@ export function ContextToolbar({
                               <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Line type:</label>
                               <div className="flex gap-1">
                                 <Button
-                                  variant={(connInfo.connection.style ?? 'bezier') === 'bezier' ? 'default' : 'outline'}
+                                  variant={connectionLineStyle === 'bezier' ? 'default' : 'outline'}
                                   size="sm"
                                   className="h-7 px-2"
                                   onClick={() => onConnectionUpdate?.(connInfo.connection.from, connInfo.connection.to, { style: 'bezier' }, connId)}
@@ -1599,7 +1622,7 @@ export function ContextToolbar({
                                   Curved
                                 </Button>
                                 <Button
-                                  variant={(connInfo.connection.style ?? 'bezier') === 'orthogonal' ? 'default' : 'outline'}
+                                  variant={connectionLineStyle === 'orthogonal' ? 'default' : 'outline'}
                                   size="sm"
                                   className="h-7 px-2"
                                   onClick={() => onConnectionUpdate?.(connInfo.connection.from, connInfo.connection.to, { style: 'orthogonal' }, connId)}
@@ -1608,6 +1631,17 @@ export function ContextToolbar({
                                 </Button>
                               </div>
                             </div>
+                            {connectionLineStyle === 'orthogonal' && (
+                              <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/50">
+                                <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Smooth corners:</label>
+                                <Switch
+                                  checked={connectionSmoothCorners}
+                                  onCheckedChange={(checked: boolean) => onConnectionUpdate?.(connInfo.connection.from, connInfo.connection.to, { smoothCorners: checked }, connId)}
+                                  disabled={isReadOnly}
+                                  aria-label="Smooth orthogonal corners"
+                                />
+                              </div>
+                            )}
                             <div className="flex flex-col gap-1 pt-1 border-t border-border/50">
                               <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Text:</label>
                               <Input

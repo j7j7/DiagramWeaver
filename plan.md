@@ -7,6 +7,8 @@
 - Ensure orthogonal connection routing always emits axis-aligned segments after pathfinding and endpoint approach correction.
 - Preserve and improve obstacle avoidance by widening the A* search bounds around blockers and preferring stricter obstacle-safe fallbacks before relaxed ones.
 - Keep waypoint-based orthogonal routes working by enforcing orthogonality after chained leg assembly.
+- Add soft awareness of previously routed orthogonal connections so later routes avoid unnecessary crossings, while still allowing shared corridors when that remains the cleanest route.
+- Add an orthogonal-only `smooth corners` display option so 90-degree turns can render with small rounded bends without changing any routing or avoidance decisions.
 
 ## Overview
 Support multiple diagrams nested within each other. A top-level diagram can have icons that reference sub-diagrams. Double-clicking such an icon navigates to the sub-diagram. Users can return via a breadcrumb bar.
