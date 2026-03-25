@@ -1,5 +1,5 @@
 import type { DiagramData, PresentationDeck } from '@/lib/types';
-import { parseDiagramJson, PresentationDeckListSchema } from '@/lib/schemas';
+import { PresentationDeckListSchema } from '@/lib/schemas';
 
 const DB_NAME = 'DiagramWeaver';
 const DB_VERSION = 1;
@@ -115,16 +115,6 @@ function normalizeDecks(raw: unknown): PresentationDeck[] {
   const parsed = PresentationDeckListSchema.safeParse(raw);
   if (!parsed.success) return [];
   return parsed.data;
-}
-
-function stripSnapshotImages(decks: PresentationDeck[]): PresentationDeck[] {
-  return decks.map((deck) => ({
-    ...deck,
-    slides: deck.slides.map((slide) => {
-      const { snapshotImage: _snapshotImage, ...rest } = slide;
-      return rest;
-    }),
-  }));
 }
 
 export async function loadPresentationsFromIndexedDB(): Promise<StoredPresentationPayload | null> {
@@ -268,31 +258,4 @@ export async function loadPresentationsByTab(): Promise<PerTabPresentationData |
   } catch {
     return null;
   }
-}
-
-// ---- export / import ----------------------------------------------------
-
-export function exportPresentationsToJson(payload: StoredPresentationPayload): string {
-  const exportDecks = stripSnapshotImages(payload.decks);
-  return JSON.stringify({
-    version: '1.0',
-    exportedAt: Date.now(),
-    ...payload,
-    decks: exportDecks,
-  });
-}
-
-export function importPresentationsFromJson(jsonText: string): StoredPresentationPayload {
-  const parsed = JSON.parse(jsonText) as {
-    decks?: unknown;
-    activeDeckId?: string | null;
-    baseDiagram?: unknown;
-  };
-  const decks = normalizeDecks(parsed.decks ?? []);
-  const baseDiagram = parsed.baseDiagram ? parseDiagramJson(parsed.baseDiagram) : undefined;
-  return {
-    decks,
-    activeDeckId: parsed.activeDeckId ?? (decks[0]?.id ?? null),
-    baseDiagram,
-  };
 }

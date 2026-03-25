@@ -143,7 +143,14 @@ export type EditorCanvasHandle = {
   fitToView: () => void;
   exportPng: (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high' }) => Promise<void>;
   exportGif: (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high'; fps?: number; durationSeconds?: number }) => Promise<void>;
-  captureSnapshotPng: (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high' }) => Promise<string>;
+  captureSnapshotPng: (options?: {
+    backgroundColor?: 'transparent' | 'white' | 'dark';
+    quality?: 'low' | 'medium' | 'high';
+    /** Fit diagram content in the bitmap only (html-to-image clone); does not change the canvas view. */
+    fitContent?: boolean;
+    /** With fitContent: union bounds across these diagrams (e.g. all deck slides), same as viewer presentation. */
+    unionDiagrams?: DiagramData[];
+  }) => Promise<string>;
   copy: () => void;
   paste: () => void;
   canPaste: () => boolean;
@@ -1268,7 +1275,12 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     fitToView: handleFitToView, // Auto-fits diagram to viewport
     exportPng: (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high' }) => exportPng(options), // Exports current viewport to PNG
     exportGif: (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high'; fps?: number; durationSeconds?: number }) => exportGif(options), // Exports current viewport to GIF
-    captureSnapshotPng: (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high' }) => captureViewportPngDataUrl(options),
+    captureSnapshotPng: (options?: {
+      backgroundColor?: 'transparent' | 'white' | 'dark';
+      quality?: 'low' | 'medium' | 'high';
+      fitContent?: boolean;
+      unionDiagrams?: DiagramData[];
+    }) => captureViewportPngDataUrl(options),
     copy: copyHandler, // Copies selected item(s)
     paste: pasteHandler, // Pastes from clipboard
     canPaste: canPasteHandler, // Checks if paste is available

@@ -261,6 +261,8 @@ export const SlideSchema = z.object({
   diagramDelta: DiagramDeltaSchema,
   animationState: SlideAnimationStateSchema.optional(),
   autoZoomLevel: z.number().positive().optional(),
+  viewPanX: z.number().optional(),
+  viewPanY: z.number().optional(),
   visibleLayerIds: z.array(z.string()).optional(),
   title: z.string().optional(),
   description: z.string().optional(),

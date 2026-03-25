@@ -3,6 +3,14 @@ import type { Transform } from "./use-canvas-transform";
 import type { DiagramData } from "@/lib/types";
 import type { FileSystemFileHandle } from "@/types/file-system";
 import { measureNodeDims, type PositionedNode, type PositionedGroup } from "@/components/editor/canvas-constants";
+import {
+  computeContentBounds,
+  computeUnionFitTransformForDiagrams,
+  getCanvasElementSizeForImageCapture,
+  pruneConnectionsToVisibleNodes,
+  transformToFitBounds,
+} from '@/lib/presentation-viewport-fit';
+import { toPngWithDotGridTransform } from '@/lib/html-to-image-fit-png';
 
 interface UseCanvasExportOptions {
   canvasRef: React.RefObject<HTMLDivElement | null>;
@@ -164,7 +172,17 @@ export function useCanvasExport({
     };
   }, [processedNodes, processedZones]);
 
-  const captureViewportPngDataUrl = useCallback(async (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high' }) => {
+  const captureViewportPngDataUrl = useCallback(async (options?: {
+    backgroundColor?: 'transparent' | 'white' | 'dark';
+    quality?: 'low' | 'medium' | 'high';
+    /** Fit all diagram content into the PNG (clone-only transform; does not change the live canvas). */
+    fitContent?: boolean;
+    /**
+     * When set with `fitContent`, use the same union-bounds zoom as viewer/presentation playback
+     * (all slides in the deck). Otherwise fit only the current canvas diagram.
+     */
+    unionDiagrams?: DiagramData[];
+  }) => {
     if (!canvasRef.current) {
       throw new Error('Canvas is not ready');
     }
@@ -207,18 +225,41 @@ export function useCanvasExport({
           pixelRatio = 2;
       }
 
-      return await toPng(canvasRef.current, {
+      const toPngOptions = {
         pixelRatio,
         cacheBust: true,
         backgroundColor: backgroundColor === 'transparent' ? undefined : backgroundColor,
         skipFonts: true,
-      });
+      };
+
+      if (options?.fitContent) {
+        const { width: vw, height: vh } = getCanvasElementSizeForImageCapture(canvasRef.current);
+        if (vw > 0 && vh > 0) {
+          const union = options.unionDiagrams;
+          let fitTransform: Transform | null = null;
+          if (union && union.length > 0) {
+            const pruned = union.map((d) => pruneConnectionsToVisibleNodes(d));
+            fitTransform = computeUnionFitTransformForDiagrams(pruned, vw, vh, 40);
+          }
+          if (!fitTransform) {
+            const bounds = computeContentBounds(processedNodes, processedZones);
+            if (bounds) {
+              fitTransform = transformToFitBounds(bounds, vw, vh, 40);
+            }
+          }
+          if (fitTransform) {
+            return await toPngWithDotGridTransform(canvasRef.current, toPngOptions, fitTransform);
+          }
+        }
+      }
+
+      return await toPng(canvasRef.current, toPngOptions);
     } finally {
       if (hadGridClass) {
         contentDiv.classList.add('dot-grid');
       }
     }
-  }, [canvasRef]);
+  }, [canvasRef, processedNodes, processedZones]);
 
   const exportPng = useCallback(async (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high' }) => {
     if (!canvasRef.current) return;

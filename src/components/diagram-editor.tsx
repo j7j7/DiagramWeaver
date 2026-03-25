@@ -87,10 +87,13 @@ import {
   listVisibleLayerIds,
   projectVisibleDiagram,
 } from '@/lib/presentation-delta';
+import {
+  computeSlidePlaybackTransform,
+  computeUnionFitTransformForDiagrams,
+  pruneConnectionsToVisibleNodes,
+} from '@/lib/presentation-viewport-fit';
 import { extractEmbeddedPresentations } from '@/lib/extract-embedded-presentations';
 import {
-  exportPresentationsToJson,
-  importPresentationsFromJson,
   loadPresentationsByTab,
   savePresentationsByTab,
 } from '@/lib/presentation-storage';
@@ -188,6 +191,8 @@ type CompactSlideV2 = {
   t?: string;
   a?: CompactAnimationStateV2;
   z?: number;
+  px?: number;
+  py?: number;
 };
 
 type CompactDeckV2 = {
@@ -548,6 +553,8 @@ export default function DiagramEditor() {
     slideId: null,
   });
   const canvasTransformRef = React.useRef<{ x: number; y: number; k: number }>({ x: 0, y: 0, k: 1 });
+  /** Tracks last slide we applied viewport for — avoids re-applying on every deck update; used when switching slides. */
+  const prevPresentationSlideIdForViewportRef = React.useRef<string | null>(null);
   const presentationStateByTabRef = React.useRef<Record<string, {
     decks: PresentationDeck[];
     activeDeckId: string | null;
@@ -898,6 +905,27 @@ export default function DiagramEditor() {
     return activePresentationSlides.map((slide) => applyDiagramDelta(master, slide.diagramDelta));
   }, [activePresentationSlides, presentationMasterDiagram, diagramData]);
 
+  /** Union-fit for thumbnails: active slide uses live draft so bounds match the canvas while editing. */
+  const activePresentationSlideDiagramsForThumbnailCapture = React.useMemo(() => {
+    const master = projectVisibleDiagram(presentationMasterDiagram ?? diagramData);
+    return activePresentationSlides.map((slide) => {
+      if (
+        activePresentationSlideId &&
+        slide.id === activePresentationSlideId &&
+        presentationDraftDiagram
+      ) {
+        return projectVisibleDiagram(presentationDraftDiagram);
+      }
+      return applyDiagramDelta(master, slide.diagramDelta);
+    });
+  }, [
+    activePresentationSlides,
+    presentationMasterDiagram,
+    diagramData,
+    activePresentationSlideId,
+    presentationDraftDiagram,
+  ]);
+
   // Refresh key to force canvas re-render
   const [canvasRefreshKey, setCanvasRefreshKey] = React.useState(0);
 
@@ -1136,6 +1164,68 @@ export default function DiagramEditor() {
       }, VIEW_STATE_DEBOUNCE_MS);
     }
   }, [activeTabId, updateActiveTab, sanitizeCanvasTransform, presentationModeEnabled, activeDiagramStack, setDiagramData]);
+
+  React.useLayoutEffect(() => {
+    if (!presentationModeEnabled || !activeTabId) {
+      prevPresentationSlideIdForViewportRef.current = null;
+      return;
+    }
+    if (!activePresentationDeckId || !activePresentationSlideId) {
+      prevPresentationSlideIdForViewportRef.current = null;
+      return;
+    }
+
+    const prevSlideId = prevPresentationSlideIdForViewportRef.current;
+    if (prevSlideId === activePresentationSlideId) {
+      return;
+    }
+
+    const deck = presentationDecks.find((d) => d.id === activePresentationDeckId);
+    const slide = deck?.slides.find((s) => s.id === activePresentationSlideId);
+    if (!deck || !slide) {
+      return;
+    }
+
+    if (prevSlideId && prevSlideId !== activePresentationSlideId) {
+      const c = canvasTransformRef.current;
+      setPresentationDecks((prevDecks) =>
+        prevDecks.map((d) => {
+          if (d.id !== activePresentationDeckId) return d;
+          return {
+            ...d,
+            slides: d.slides.map((s) =>
+              s.id === prevSlideId
+                ? { ...s, autoZoomLevel: c.k, viewPanX: c.x, viewPanY: c.y }
+                : s
+            ),
+            updatedAt: Date.now(),
+          };
+        })
+      );
+    }
+
+    const masterBase = projectVisibleDiagram(presentationMasterDiagram ?? tabDiagramData);
+    const diagramForSlide = pruneConnectionsToVisibleNodes(applyDiagramDelta(masterBase, slide.diagramDelta));
+    const vw = typeof window !== 'undefined' ? window.innerWidth : 1280;
+    const vh = typeof window !== 'undefined' ? window.innerHeight : 720;
+    const t = computeSlidePlaybackTransform(slide, diagramForSlide, vw, vh);
+    if (t) {
+      setCanvasTransform(t);
+      canvasTransformRef.current = sanitizeCanvasTransform(t);
+    }
+
+    prevPresentationSlideIdForViewportRef.current = activePresentationSlideId;
+  }, [
+    presentationModeEnabled,
+    activeTabId,
+    activePresentationDeckId,
+    activePresentationSlideId,
+    presentationDecks,
+    presentationMasterDiagram,
+    tabDiagramData,
+    setCanvasTransform,
+    sanitizeCanvasTransform,
+  ]);
 
   React.useEffect(() => {
     return () => {
@@ -1933,6 +2023,8 @@ export default function DiagramEditor() {
       const snapshotImage = await editorRef.current.captureSnapshotPng({
         backgroundColor: 'white',
         quality: 'medium',
+        fitContent: true,
+        unionDiagrams: activePresentationSlideDiagramsForThumbnailCapture,
       });
 
       if (
@@ -1960,7 +2052,7 @@ export default function DiagramEditor() {
     } finally {
       presentationThumbCaptureInFlightRef.current = false;
     }
-  }, [setPresentationDecks]);
+  }, [setPresentationDecks, activePresentationSlideDiagramsForThumbnailCapture]);
 
   /** Reset thumbnail tracking when leaving presentation mode. */
   React.useEffect(() => {
@@ -2237,6 +2329,12 @@ export default function DiagramEditor() {
           a: hasCompactAnimation ? compactAnimation : undefined,
           z: typeof slide.autoZoomLevel === 'number' && Number.isFinite(slide.autoZoomLevel)
             ? Number(slide.autoZoomLevel.toFixed(4))
+            : undefined,
+          px: typeof slide.viewPanX === 'number' && Number.isFinite(slide.viewPanX)
+            ? Number(slide.viewPanX.toFixed(2))
+            : undefined,
+          py: typeof slide.viewPanY === 'number' && Number.isFinite(slide.viewPanY)
+            ? Number(slide.viewPanY.toFixed(2))
             : undefined,
         };
       });
@@ -3442,6 +3540,25 @@ export default function DiagramEditor() {
 
   const runPresentationAutoZoom = React.useCallback(async () => {
     if (!presentationModeEnabled) return null;
+
+    if (activePresentationSlideDiagrams.length > 0) {
+      const diagrams = activePresentationSlideDiagrams.map((d) => pruneConnectionsToVisibleNodes(d));
+      const t = computeUnionFitTransformForDiagrams(
+        diagrams,
+        typeof window !== 'undefined' ? window.innerWidth : 1280,
+        typeof window !== 'undefined' ? window.innerHeight : 720
+      );
+      if (t && Number.isFinite(t.k) && t.k > 0) {
+        return Number(t.k.toFixed(4));
+      }
+      toast({
+        variant: 'destructive',
+        title: 'Auto Zoom Failed',
+        description: 'Could not compute bounds from all slide snapshots.',
+      });
+      return null;
+    }
+
     if (!editorRef.current?.fitToView) {
       toast({ variant: 'destructive', title: 'Auto Zoom Failed', description: 'Canvas auto zoom API is unavailable.' });
       return null;
@@ -3456,7 +3573,7 @@ export default function DiagramEditor() {
     }
 
     return Number(zoom.toFixed(4));
-  }, [presentationModeEnabled, toast]);
+  }, [presentationModeEnabled, activePresentationSlideDiagrams, toast]);
 
   const handleAutoZoomPresentation = React.useCallback(async () => {
     if (!activePresentationDeckId) return;
@@ -3478,6 +3595,8 @@ export default function DiagramEditor() {
         slides: deck.slides.map((slide) => ({
           ...slide,
           autoZoomLevel,
+          viewPanX: undefined,
+          viewPanY: undefined,
         })),
         updatedAt: Date.now(),
       };
@@ -3516,7 +3635,12 @@ export default function DiagramEditor() {
         ...deck,
         slides: deck.slides.map((slide) => (
           slide.id === activePresentationSlideId
-            ? { ...slide, autoZoomLevel: zoomLevel }
+            ? {
+                ...slide,
+                autoZoomLevel: zoomLevel,
+                viewPanX: canvasTransformRef.current.x,
+                viewPanY: canvasTransformRef.current.y,
+              }
             : slide
         )),
         updatedAt: Date.now(),
@@ -3542,7 +3666,12 @@ export default function DiagramEditor() {
       if (deck.id !== activePresentationDeckId) return deck;
       return {
         ...deck,
-        slides: deck.slides.map((slide) => ({ ...slide, autoZoomLevel: zoomLevel })),
+        slides: deck.slides.map((slide) => ({
+          ...slide,
+          autoZoomLevel: zoomLevel,
+          viewPanX: undefined,
+          viewPanY: undefined,
+        })),
         updatedAt: Date.now(),
       };
     }));
@@ -3593,6 +3722,8 @@ export default function DiagramEditor() {
         disabledSourceIds: animationDisabledSources.size > 0 ? Array.from(animationDisabledSources) : undefined,
       },
       autoZoomLevel: autoZoomLevel ?? canvasTransformRef.current.k,
+      viewPanX: canvasTransformRef.current.x,
+      viewPanY: canvasTransformRef.current.y,
       visibleLayerIds: listVisibleLayerIds(diagramData),
     };
   }, [
@@ -3786,64 +3917,6 @@ export default function DiagramEditor() {
     setPresentationPlayerIndex(0);
     setPresentationPlayerOpen(true);
   }, [activePresentationSlides]);
-
-  const handleExportPresentations = React.useCallback(() => {
-    const exportBase = projectVisibleDiagram(presentationMasterDiagram ?? tabDiagramData);
-    const json = exportPresentationsToJson({
-      decks: presentationDecks,
-      activeDeckId: activePresentationDeckId,
-      baseDiagram: exportBase,
-    });
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'diagramweaver-presentations.json';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  }, [presentationDecks, activePresentationDeckId, presentationMasterDiagram, tabDiagramData]);
-
-  const handleImportPresentations = React.useCallback(async (file: File) => {
-    try {
-      const text = await file.text();
-      const imported = importPresentationsFromJson(text);
-      const importedBase = imported.baseDiagram
-        ? projectVisibleDiagram(imported.baseDiagram)
-        : null;
-
-      setPresentationDecks(imported.decks);
-      const nextActiveDeckId = imported.activeDeckId ?? imported.decks[0]?.id ?? null;
-      setActivePresentationDeckId(nextActiveDeckId);
-
-      const nextActiveDeck = imported.decks.find((deck) => deck.id === nextActiveDeckId) ?? imported.decks[0] ?? null;
-      const nextActiveSlideId = nextActiveDeck?.slides[0]?.id ?? null;
-      setActivePresentationSlideId(nextActiveSlideId);
-      setSelectedPresentationSlideIds(new Set());
-
-      if (importedBase) {
-        const baseClone = safeClone(importedBase);
-        setPresentationMasterDiagram(baseClone);
-
-        if (nextActiveDeck && nextActiveDeck.slides.length > 0) {
-          const firstSlide = nextActiveDeck.slides[0];
-          const draft = applyDiagramDelta(projectVisibleDiagram(baseClone), firstSlide.diagramDelta);
-          setPresentationDraftDiagram(draft);
-        } else {
-          setPresentationDraftDiagram(safeClone(baseClone));
-        }
-
-        toast({ title: 'Presentations Imported', description: `Loaded ${imported.decks.length} presentation(s) with embedded base diagram format.` });
-        return;
-      }
-
-      toast({ title: 'Presentations Imported', description: `Loaded ${imported.decks.length} presentation(s) from legacy format (no embedded base diagram).` });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Invalid presentations file';
-      toast({ variant: 'destructive', title: 'Import Failed', description: message });
-    }
-  }, [toast]);
 
   const toggleJsonPanel = () => {
     const newState = !jsonPanelOpen;
@@ -4310,8 +4383,6 @@ export default function DiagramEditor() {
         handlePreviousPresentationSlide={handlePreviousPresentationSlide}
         handleNextPresentationSlide={handleNextPresentationSlide}
         handleEnterPresentationPlayMode={handleEnterPresentationPlayMode}
-        handleExportPresentations={handleExportPresentations}
-        handleImportPresentations={handleImportPresentations}
         presentationPlayerOpen={presentationPlayerOpen}
         setPresentationPlayerOpen={setPresentationPlayerOpen}
         presentationPlayerIndex={presentationPlayerIndex}
@@ -4530,8 +4601,6 @@ function DiagramEditorInner({
   handlePreviousPresentationSlide,
   handleNextPresentationSlide,
   handleEnterPresentationPlayMode,
-  handleExportPresentations,
-  handleImportPresentations,
   presentationPlayerOpen,
   setPresentationPlayerOpen,
   presentationPlayerIndex,
@@ -4831,8 +4900,6 @@ function DiagramEditorInner({
                   onNextSlide={handleNextPresentationSlide}
                   onEnterPlayMode={handleEnterPresentationPlayMode}
                   onExitPresentationMode={handleExitPresentationMode}
-                  onExportDecks={handleExportPresentations}
-                  onImportDecks={handleImportPresentations}
                 />
             </header>
             <div className="flex-1 flex flex-col">

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useDrag, useDrop } from 'react-dnd';
-import { Check, ChevronLeft, ChevronRight, Copy, Download, GripVertical, LogOut, Maximize2, Minimize2, Pin, PinOff, Play, Plus, Trash2, Upload, Wand2 } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Copy, GripVertical, LogOut, Maximize2, Minimize2, Pin, PinOff, Play, Plus, Trash2, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -62,12 +62,17 @@ function DraggableSlideItem({
       onClick={() => onSelect(slide.id)}
       title={slide.title || `Slide ${index + 1}`}
     >
-      <div className="relative w-full shrink-0">
-        <img
-          src={slide.snapshotImage || SLIDE_THUMBNAIL_PLACEHOLDER}
-          alt={slide.title || `Slide ${index + 1}`}
-          className="aspect-video w-full rounded border object-cover"
-        />
+      <div className="relative w-full shrink-0 overflow-hidden rounded-md border bg-muted">
+        {/* object-contain (not cover): canvas PNGs are not 16:9; cover cropped top/bottom in the strip */}
+        <div className="aspect-video w-full">
+          <img
+            src={slide.snapshotImage || SLIDE_THUMBNAIL_PLACEHOLDER}
+            alt={slide.title || `Slide ${index + 1}`}
+            className="h-full w-full object-contain object-center"
+            loading="lazy"
+            decoding="async"
+          />
+        </div>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -114,8 +119,6 @@ interface PresentationEditorPanelProps {
   onNextSlide: () => void;
   onEnterPlayMode: () => void;
   onExitPresentationMode: () => void;
-  onExportDecks: () => void;
-  onImportDecks: (file: File) => void;
 }
 
 export function PresentationEditorPanel({
@@ -139,10 +142,7 @@ export function PresentationEditorPanel({
   onNextSlide,
   onEnterPlayMode,
   onExitPresentationMode,
-  onExportDecks,
-  onImportDecks,
 }: PresentationEditorPanelProps) {
-  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const toolbarRef = React.useRef<HTMLDivElement | null>(null);
   const snapshotsPanelRef = React.useRef<HTMLDivElement | null>(null);
   const snapshotsViewportRef = React.useRef<HTMLDivElement | null>(null);
@@ -482,6 +482,19 @@ export function PresentationEditorPanel({
                 </TooltipTrigger>
                 <TooltipContent>Previous snapshot</TooltipContent>
               </Tooltip>
+              <span
+                className="min-w-[2.75rem] shrink-0 text-center tabular-nums text-[11px] text-muted-foreground"
+                aria-live="polite"
+                aria-label={
+                  activeDeck && activeDeck.slides.length > 0
+                    ? `Snapshot ${activeSlideIndex + 1} of ${activeDeck.slides.length}`
+                    : 'No snapshots'
+                }
+              >
+                {activeDeck && activeDeck.slides.length > 0
+                  ? `${activeSlideIndex + 1} / ${activeDeck.slides.length}`
+                  : '—'}
+              </span>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button size="sm" variant="outline" className="h-7 w-7 px-0" onClick={onNextSlide} disabled={!activeDeck || activeDeck.slides.length === 0} aria-label="Next snapshot">
@@ -506,34 +519,6 @@ export function PresentationEditorPanel({
                 </TooltipTrigger>
                 <TooltipContent>Remove active snapshot</TooltipContent>
               </Tooltip>
-              <span className="mx-0.5 h-5 w-px bg-border" />
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button size="sm" variant="outline" className="h-7 w-7 px-0" onClick={onExportDecks} aria-label="Export presentations">
-                    <Download className="h-3.5 w-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Export presentations</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button size="sm" variant="outline" className="h-7 w-7 px-0" onClick={() => fileInputRef.current?.click()} aria-label="Import presentations">
-                    <Upload className="h-3.5 w-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Import presentations</TooltipContent>
-              </Tooltip>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".json,application/json"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) onImportDecks(file);
-                  e.currentTarget.value = '';
-                }}
-              />
             </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">

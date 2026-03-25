@@ -141,8 +141,6 @@ Key functions:
 - `savePresentationsToIndexedDB`
 - `loadPresentationsFromLocalStorage`
 - `savePresentationsToLocalStorage`
-- `exportPresentationsToJson`
-- `importPresentationsFromJson`
 
 ## Delta Utilities
 

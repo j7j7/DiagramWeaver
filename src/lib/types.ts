@@ -435,6 +435,9 @@ export interface Slide {
   diagramDelta: DiagramDelta;
   animationState?: SlideAnimationState;
   autoZoomLevel?: number;
+  /** Saved pan (screen-space transform x/y) when the snapshot was taken — used with autoZoomLevel in playback */
+  viewPanX?: number;
+  viewPanY?: number;
   visibleLayerIds?: string[];
   title?: string;
   description?: string;

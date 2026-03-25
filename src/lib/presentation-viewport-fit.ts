@@ -4,7 +4,7 @@ import {
   type PositionedGroup,
   type PositionedNode,
 } from '@/components/editor/canvas-constants';
-import type { DiagramData } from '@/lib/types';
+import type { DiagramData, Slide } from '@/lib/types';
 import type { Transform } from '@/hooks/use-canvas-transform';
 
 export type ContentBounds = { minX: number; minY: number; maxX: number; maxY: number };
@@ -139,6 +139,58 @@ export function transformToFitBounds(
   return { x, y, k };
 }
 
+/** Center content at a fixed zoom (same x/y math as fit, but k is chosen by the slide). */
+export function transformToFitBoundsWithFixedZoom(
+  bounds: ContentBounds,
+  viewportWidth: number,
+  viewportHeight: number,
+  k: number,
+  padding = 40
+): Transform {
+  const clampedK = Math.max(0.1, Math.min(2.5, k));
+  const { minX, minY, maxX, maxY } = bounds;
+  const contentCenterX = (minX + maxX) / 2;
+  const contentCenterY = (minY + maxY) / 2;
+  const viewportCenterX = viewportWidth / 2;
+  const viewportCenterY = viewportHeight / 2;
+  const x = viewportCenterX - contentCenterX * clampedK;
+  const y = viewportCenterY - contentCenterY * clampedK;
+  return { x, y, k: clampedK };
+}
+
+/**
+ * Playback camera for one slide: prefers stored pan from snapshot; otherwise centers
+ * slide content at the saved zoom (legacy slides that only stored `autoZoomLevel`).
+ */
+export function computeSlidePlaybackTransform(
+  slide: Pick<Slide, 'autoZoomLevel' | 'viewPanX' | 'viewPanY'>,
+  diagram: DiagramData | null,
+  viewportWidth: number,
+  viewportHeight: number
+): Transform | null {
+  if (typeof slide.autoZoomLevel !== 'number' || !Number.isFinite(slide.autoZoomLevel)) {
+    return null;
+  }
+  const k = Math.max(0.1, Math.min(2.5, slide.autoZoomLevel));
+  if (
+    typeof slide.viewPanX === 'number' &&
+    Number.isFinite(slide.viewPanX) &&
+    typeof slide.viewPanY === 'number' &&
+    Number.isFinite(slide.viewPanY)
+  ) {
+    return { x: slide.viewPanX, y: slide.viewPanY, k };
+  }
+  if (!diagram) {
+    return { x: 0, y: 0, k };
+  }
+  const { processedNodes, processedZones } = calculateLayout(diagram);
+  const bounds = computeContentBounds(processedNodes, processedZones);
+  if (!bounds) {
+    return { x: 0, y: 0, k };
+  }
+  return transformToFitBoundsWithFixedZoom(bounds, viewportWidth, viewportHeight, k);
+}
+
 /**
  * One camera for all slides: union of every slide’s layout bounds, then fit that
  * rectangle to the viewport so no slide’s content is clipped at the chosen zoom.
@@ -188,6 +240,21 @@ export function getElementVisibleViewportSize(element: HTMLElement): { width: nu
     width: visibleRight - visibleLeft,
     height: visibleBottom - visibleTop,
   };
+}
+
+/**
+ * Full layout size of the canvas host (what html-to-image rasterizes). Use this for pan/zoom math when
+ * generating PNGs of the canvas element — not {@link getElementVisibleViewportSize}, which clips to
+ * the browser window and can mismatch the captured bitmap (e.g. top/bottom mis-centered).
+ */
+export function getCanvasElementSizeForImageCapture(element: HTMLElement): { width: number; height: number } {
+  const w = element.clientWidth;
+  const h = element.clientHeight;
+  if (w > 0 && h > 0) {
+    return { width: w, height: h };
+  }
+  const rect = element.getBoundingClientRect();
+  return { width: Math.max(1, rect.width), height: Math.max(1, rect.height) };
 }
 
 /** Drop connections whose endpoints are not both visible (same as presentation playback). */

@@ -70,6 +70,8 @@ type CompactSlideV2 = {
   t?: string;
   a?: CompactAnimationStateV2;
   z?: number;
+  px?: number;
+  py?: number;
 };
 
 type CompactDeckV2 = {
@@ -197,6 +199,8 @@ export function extractEmbeddedPresentations(
           },
           animationState,
           autoZoomLevel: typeof slide.z === 'number' && Number.isFinite(slide.z) ? slide.z : undefined,
+          viewPanX: typeof slide.px === 'number' && Number.isFinite(slide.px) ? slide.px : undefined,
+          viewPanY: typeof slide.py === 'number' && Number.isFinite(slide.py) ? slide.py : undefined,
           createdAt: now,
         };
       });

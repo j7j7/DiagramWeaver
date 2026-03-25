@@ -13,9 +13,12 @@ import type { Transform } from '@/hooks/use-canvas-transform';
 import { useSlideTransition } from '@/hooks/use-slide-transition';
 import { isEventFromEditableElement } from '@/lib/keyboard-utils';
 import {
+  computeSlidePlaybackTransform,
   computeUnionFitTransformForDiagrams,
   pruneConnectionsToVisibleNodes,
 } from '@/lib/presentation-viewport-fit';
+
+const PLAYBACK_CAMERA_DURATION_MS = 300;
 
 const SLIDE_IMAGE_PLACEHOLDER = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720"><rect width="1280" height="720" fill="%23000000"/><text x="640" y="360" text-anchor="middle" dominant-baseline="middle" fill="%23d1d5db" font-family="Arial, sans-serif" font-size="28">Slide</text></svg>';
 
@@ -57,6 +60,10 @@ export function PresentationPlayer({
   const [panelHidden, setPanelHidden] = React.useState(false);
   const [previousSlideIndex, setPreviousSlideIndex] = React.useState(currentIndex);
   const [previousDiagram, setPreviousDiagram] = React.useState<DiagramData | null>(null);
+  const playbackTransformRef = React.useRef(playbackTransform);
+  playbackTransformRef.current = playbackTransform;
+  const skipPlaybackCameraLerpRef = React.useRef(true);
+  const prevUseSlideZoomRef = React.useRef(useSlideZoom);
 
   const totalSlides = slides.length;
   const safeIndex = Math.min(Math.max(currentIndex, 0), Math.max(totalSlides - 1, 0));
@@ -147,30 +154,79 @@ export function PresentationPlayer({
 
   React.useLayoutEffect(() => {
     if (!open || showPlaybackToolbar || slideDiagramsForUnionFit.length === 0) return;
+    if (useSlideZoom) return;
     applyViewerUnionFit();
-  }, [open, showPlaybackToolbar, slideDiagramsForUnionFit, applyViewerUnionFit]);
+  }, [open, showPlaybackToolbar, slideDiagramsForUnionFit, applyViewerUnionFit, useSlideZoom]);
 
   React.useEffect(() => {
     if (!open || showPlaybackToolbar) return;
-    const onResize = () => applyViewerUnionFit();
+    const onResize = () => {
+      if (!useSlideZoom) applyViewerUnionFit();
+    };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
-  }, [open, showPlaybackToolbar, applyViewerUnionFit]);
+  }, [open, showPlaybackToolbar, applyViewerUnionFit, useSlideZoom]);
 
   React.useEffect(() => {
-    if (!open || !useSlideZoom || !currentSlide || !showPlaybackToolbar) return;
-    const slideZoom = currentSlide.autoZoomLevel;
-    if (typeof slideZoom !== 'number' || !Number.isFinite(slideZoom)) return;
-    const clampedZoom = Math.max(0.1, Math.min(2.5, slideZoom));
+    if (!open) {
+      skipPlaybackCameraLerpRef.current = true;
+    }
+  }, [open]);
 
-    setPlaybackTransform((prev) => {
-      if (Math.abs(prev.k - clampedZoom) < 0.0001) return prev;
-      return {
-        ...prev,
-        k: clampedZoom,
+  React.useEffect(() => {
+    if (useSlideZoom && !prevUseSlideZoomRef.current) {
+      skipPlaybackCameraLerpRef.current = true;
+    }
+    prevUseSlideZoomRef.current = useSlideZoom;
+  }, [useSlideZoom]);
+
+  React.useEffect(() => {
+    if (!open || !currentSlide || !renderedDiagram) return;
+    if (!useSlideZoom) return;
+    if (typeof window === 'undefined') return;
+
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const target = computeSlidePlaybackTransform(currentSlide, renderedDiagram, vw, vh);
+    if (!target) return;
+
+    if (skipPlaybackCameraLerpRef.current) {
+      setPlaybackTransform(target);
+      skipPlaybackCameraLerpRef.current = false;
+      return;
+    }
+
+    const start = { ...playbackTransformRef.current };
+    let alive = true;
+    const easeOut = (t: number) => 1 - (1 - t) ** 3;
+    const startTime = performance.now();
+
+    const tick = (now: number) => {
+      if (!alive) return;
+      const elapsed = now - startTime;
+      const u = Math.min(1, elapsed / PLAYBACK_CAMERA_DURATION_MS);
+      const e = easeOut(u);
+      const next = {
+        x: start.x + (target.x - start.x) * e,
+        y: start.y + (target.y - start.y) * e,
+        k: start.k + (target.k - start.k) * e,
       };
-    });
-  }, [open, useSlideZoom, showPlaybackToolbar, currentSlide?.id, currentSlide?.autoZoomLevel]);
+      setPlaybackTransform(next);
+      if (u < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+    return () => {
+      alive = false;
+    };
+  }, [
+    open,
+    useSlideZoom,
+    currentSlide?.id,
+    currentSlide?.autoZoomLevel,
+    currentSlide?.viewPanX,
+    currentSlide?.viewPanY,
+    renderedDiagram,
+  ]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -453,9 +509,12 @@ export function PresentationPlayer({
                     size="sm"
                     variant="outline"
                     className="h-6 border-border bg-muted/50 px-1.5 text-[11px] text-foreground hover:bg-muted"
-                    onClick={() => (window as any).__viewerFitToView?.()}
-                    disabled={!renderedDiagram}
-                    title="Auto zoom - fit diagram to viewport"
+                    onClick={() => {
+                      applyViewerUnionFit();
+                      setUseSlideZoom(false);
+                    }}
+                    disabled={slideDiagramsForUnionFit.length === 0}
+                    title="Auto zoom — fit all slides in one view (same as viewer presentation)"
                     aria-label="Auto zoom"
                   >
                     <Wand2 className="h-3 w-3" />

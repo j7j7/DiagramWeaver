@@ -2,6 +2,27 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-03-25 – Presentation mode (editor): per-slide viewport when switching snapshots
+In **`diagram-editor`**, **`useLayoutEffect`** tracks **`prevPresentationSlideIdForViewportRef`**. On **slide id change**: **persist** outgoing slide’s **`autoZoomLevel` / `viewPanX` / `viewPanY`** from **`canvasTransformRef`** into **`presentationDecks`**, then **`computeSlidePlaybackTransform`** + **`setCanvasTransform`** for the **incoming** slide (diagram from master + that slide’s **`diagramDelta`**). If **`prevSlideId === activePresentationSlideId`**, return early so deck updates (thumbnails, delta persist) **don’t** reset the canvas every render.
+
+### 2026-03-25 – Presentation playback: per-slide pan + zoom with lerp
+**Slides** store **`viewPanX` / `viewPanY`** with **`autoZoomLevel`** when adding a snapshot or applying zoom to the active snapshot (compact JSON **`px` / `py`** next to **`z`**). **`PresentationPlayer`**: **`computeSlidePlaybackTransform`** uses saved pan when present; legacy slides (zoom only) center content at the saved zoom via **`transformToFitBoundsWithFixedZoom`**. Camera animates over **300ms** ease-out (aligned with **`use-slide-transition`**). **Use slide zoom** applies in **fullscreen** too (no longer gated on **`showPlaybackToolbar`**). Union-fit fullscreen runs only when **Use slide zoom** is off. Global auto-zoom / apply-zoom-to-all clears per-slide pan.
+
+### 2026-03-25 – Presentation strip: thumbnail `object-contain`
+**`presentation-editor-panel.tsx`** `DraggableSlideItem`: snapshot **`img`** uses **`object-contain`** inside an **`aspect-video`** frame with **`bg-muted`**, not **`object-cover`** — canvas PNGs are not 16:9, so cover cropped edges in the toolbar strip. **`loading="lazy"`** / **`decoding="async"`**.
+
+### 2026-03-25 – Presentation play mode auto-zoom matches viewer (union of all slides)
+**PresentationPlayer** (editor play mode, toolbar visible): **Auto zoom** now calls **`applyViewerUnionFit()`** (`computeUnionFitTransformForDiagrams` over all **`slideDiagrams`**, pruned connections) and turns **Use slide zoom** off so the one camera (pan + zoom) persists — same behavior as viewer fullscreen presentation. **`diagram-editor`** **`runPresentationAutoZoom`** (presentation panel wand / apply zoom to all snapshots) uses the same union-fit **`k`** vs **`window.innerWidth`/`innerHeight`** when the deck has slides; empty deck still uses **`editorRef.fitToView()`** on the current canvas.
+
+### 2026-03-25 – Presentation thumbnails: fit content inside PNG only (no canvas change)
+**Thumbnails** call **`captureSnapshotPng({ fitContent: true, unionDiagrams: activePresentationSlideDiagramsForThumbnailCapture })`** — union uses **live `presentationDraftDiagram`** for the active slide (not only persisted delta). **`use-canvas-export`** / **`html-to-image-fit-png.ts`**: html-to-image **`cloneNode`**, then **`.dot-grid`** transform on the clone = **`computeUnionFitTransformForDiagrams`** (same as viewer embedded presentation / `PresentationPlayer`) over **all deck slides**, with **`pruneConnectionsToVisibleNodes`**. Viewport size for that math uses **`getCanvasElementSizeForImageCapture`** (full canvas **`clientWidth`/`clientHeight`**) so it matches the rasterized bitmap — not **`getElementVisibleViewportSize`** (window-clipped), which caused mis-centered PNGs (e.g. top cut off). Fallback: single-slide **`computeContentBounds`** if union fails. **Add snapshot** unchanged (no `fitContent`).
+
+### 2026-03-25 – Presentation toolbar: snapshot index between prev/next
+**Editor** `PresentationEditorPanel`: Between **Previous** and **Next** snapshot buttons, a **`n / total`** readout (`tabular-nums`, muted text); **—** when no deck/slides. File: `presentation-editor-panel.tsx`.
+
+### 2026-03-25 – Presentation mode: no separate export/import
+Presentation decks are embedded in the main diagram JSON; **Export** / **Import** buttons and `handleExportPresentations` / `handleImportPresentations` were removed from `PresentationEditorPanel` and `diagram-editor.tsx`. **`exportPresentationsToJson`**, **`importPresentationsFromJson`**, and **`stripSnapshotImages`** removed from `presentation-storage.ts`. Docs: `PRESENTATION-MODE.md`.
+
 ### 2026-03-25 – Presentation mode toolbar: Exit
 **Editor** `PresentationEditorPanel` header row (right of collapse / float): **Exit** button with LogOut icon — calls `onExitPresentationMode` → `setPresentationModeEnabled(false)` and same cleanup as turning presentation mode off (draft, disabled layers, close play mode). Files: `presentation-editor-panel.tsx`, `diagram-editor.tsx`.
 
