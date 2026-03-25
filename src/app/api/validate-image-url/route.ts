@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       redirect: "follow",
       headers: {
         "User-Agent": "DiagramWeaver/1.0 (+custom-icon-validation)",
-        Accept: "image/png,image/jpeg,image/svg+xml,image/*;q=0.8,*/*;q=0.5",
+        Accept: "image/avif,image/webp,image/apng,image/svg+xml,image/png,image/jpeg,image/gif,image/bmp,image/x-icon,image/*;q=0.8,*/*;q=0.5",
       },
       cache: "no-store",
     });
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     const contentType = response.headers.get("content-type")?.toLowerCase() ?? undefined;
     if (!isAllowedImageMimeType(contentType)) {
       return NextResponse.json(
-        { ok: false, error: "Unsupported image format. Use PNG, JPG, or SVG." },
+        { ok: false, error: "Unsupported image format. Use PNG, JPG, SVG, WebP, GIF, AVIF, BMP, APNG, or ICO." },
         { status: 400 }
       );
     }

@@ -72,7 +72,7 @@ export function CustomIconImage({ imageUrl, imageOptions, width, height, alt = "
   }
 
   return (
-    <div className={className} style={{ ...containerStyle, ...wrapperStyle }}>
+    <div className={className} style={{ ...wrapperStyle, ...containerStyle }}>
       <img
         src={normalizedUrl}
         alt={alt}

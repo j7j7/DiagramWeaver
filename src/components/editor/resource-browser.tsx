@@ -46,7 +46,7 @@ const setBrowserState = (state: ResourceBrowserState) => {
 };
 import { ChevronDown, ChevronRight, Search, Package, Server, Database, Globe, Cloud, Cpu, Shield, BarChart3, Layers, Box, Network, Maximize2, Minimize2, Type, LayoutGrid, List } from 'lucide-react';
 import { ResourceIcon } from '@/components/diagram/resource-icon';
-import { CustomIconImage } from '@/components/diagram/custom-icon-image';
+import { CustomIconPreviewEditor } from '@/components/editor/custom-icon-preview-editor';
 import { DraggableIconItem } from './draggable-icon-item';
 import { SYMBOL_ICON_SECTIONS, EMOJI_ICONS } from '@/lib/icon-resources';
 import { DEFAULT_CUSTOM_IMAGE_OPTIONS, normalizeCustomImageOptions, normalizeHttpImageUrl, validateCustomImageUrl } from '@/lib/custom-icon-utils';
@@ -491,19 +491,6 @@ export function ResourceBrowser({ onResourceSelect, onResourceActivate }: Resour
     );
   };
 
-  const updateCustomIconOptions = (patch: Partial<CustomImageOptions>) => {
-    setCustomIconOptions((prev) => normalizeCustomImageOptions({ ...prev, ...patch }));
-  };
-
-  const updateCustomIconCrop = (patch: Partial<CustomImageOptions['crop']>) => {
-    setCustomIconOptions((prev) =>
-      normalizeCustomImageOptions({
-        ...prev,
-        crop: { ...prev.crop, ...patch },
-      })
-    );
-  };
-
   const loadCustomIconPreview = async () => {
     setCustomIconLoading(true);
     setCustomIconError(null);
@@ -511,7 +498,7 @@ export function ResourceBrowser({ onResourceSelect, onResourceActivate }: Resour
     const normalized = normalizeHttpImageUrl(customIconUrl);
     if (!normalized) {
       setCustomIconLoadedUrl(null);
-      setCustomIconError('Enter a valid http/https image URL.');
+      setCustomIconError('Enter a valid image URL (http/https or data:image/...).');
       setCustomIconLoading(false);
       return;
     }
@@ -525,6 +512,7 @@ export function ResourceBrowser({ onResourceSelect, onResourceActivate }: Resour
     }
 
     setCustomIconLoadedUrl(result.normalizedUrl || normalized);
+    setCustomIconOptions(normalizeCustomImageOptions(DEFAULT_CUSTOM_IMAGE_OPTIONS));
     setCustomIconLoading(false);
   };
 
@@ -729,7 +717,7 @@ return (
                                                       setCustomIconUrl(e.target.value);
                                                       setCustomIconError(null);
                                                     }}
-                                                    placeholder="https://example.com/icon.png"
+                                                      placeholder="https://example.com/icon"
                                                     className="h-8 text-xs"
                                                   />
                                                   <Button
@@ -742,88 +730,17 @@ return (
                                                     {customIconLoading ? 'Loading...' : 'Load'}
                                                   </Button>
                                                 </div>
-                                                <div className="flex items-center gap-3">
-                                                  <div className="w-16 h-16 rounded border bg-muted/20 flex items-center justify-center overflow-hidden">
-                                                    <CustomIconImage
-                                                      imageUrl={customIconLoadedUrl || undefined}
-                                                      imageOptions={customIconOptions}
-                                                      width={64}
-                                                      height={64}
-                                                    />
-                                                  </div>
-                                                  <div className="grid grid-cols-2 gap-1 text-xs flex-1">
-                                                    <Input
-                                                      type="number"
-                                                      min={16}
-                                                      max={512}
-                                                      value={customIconOptions.width}
-                                                      onChange={(e) => updateCustomIconOptions({ width: Number(e.target.value) })}
-                                                      className="h-7 text-xs"
-                                                      title="Width"
-                                                    />
-                                                    <Input
-                                                      type="number"
-                                                      min={16}
-                                                      max={512}
-                                                      value={customIconOptions.height}
-                                                      onChange={(e) => updateCustomIconOptions({ height: Number(e.target.value) })}
-                                                      className="h-7 text-xs"
-                                                      title="Height"
-                                                    />
-                                                    <Input
-                                                      type="number"
-                                                      min={10}
-                                                      max={300}
-                                                      value={customIconOptions.scale}
-                                                      onChange={(e) => updateCustomIconOptions({ scale: Number(e.target.value) })}
-                                                      className="h-7 text-xs col-span-2"
-                                                      title="Scale %"
-                                                    />
-                                                  </div>
-                                                </div>
-                                                <div className="grid grid-cols-4 gap-1">
-                                                  <Input
-                                                    type="number"
-                                                    min={0}
-                                                    max={100}
-                                                    value={customIconOptions.crop.x}
-                                                    onChange={(e) => updateCustomIconCrop({ x: Number(e.target.value) })}
-                                                    className="h-7 text-xs"
-                                                    title="Crop X"
-                                                  />
-                                                  <Input
-                                                    type="number"
-                                                    min={0}
-                                                    max={100}
-                                                    value={customIconOptions.crop.y}
-                                                    onChange={(e) => updateCustomIconCrop({ y: Number(e.target.value) })}
-                                                    className="h-7 text-xs"
-                                                    title="Crop Y"
-                                                  />
-                                                  <Input
-                                                    type="number"
-                                                    min={1}
-                                                    max={100}
-                                                    value={customIconOptions.crop.width}
-                                                    onChange={(e) => updateCustomIconCrop({ width: Number(e.target.value) })}
-                                                    className="h-7 text-xs"
-                                                    title="Crop Width"
-                                                  />
-                                                  <Input
-                                                    type="number"
-                                                    min={1}
-                                                    max={100}
-                                                    value={customIconOptions.crop.height}
-                                                    onChange={(e) => updateCustomIconCrop({ height: Number(e.target.value) })}
-                                                    className="h-7 text-xs"
-                                                    title="Crop Height"
-                                                  />
-                                                </div>
+                                                <CustomIconPreviewEditor
+                                                  imageUrl={customIconLoadedUrl || undefined}
+                                                  imageOptions={customIconOptions}
+                                                  onOptionsChange={setCustomIconOptions}
+                                                  size={132}
+                                                />
                                                 {customIconError ? (
                                                   <div className="text-[11px] text-destructive">{customIconError}</div>
                                                 ) : (
                                                   <div className="text-[11px] text-muted-foreground">
-                                                    PNG/JPG/SVG only, max 500 KB.
+                                                    Click Load, then drag to center and use the mouse wheel to zoom inside the icon frame.
                                                   </div>
                                                 )}
                                                 <Button

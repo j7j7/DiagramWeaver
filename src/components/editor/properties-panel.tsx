@@ -10,7 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { normalizeExternalUrl, openExternalUrlInNewTab } from "@/lib/url-utils";
-import { CustomIconImage } from "@/components/diagram/custom-icon-image";
+import { CustomIconPreviewEditor } from "@/components/editor/custom-icon-preview-editor";
 import { DEFAULT_CUSTOM_IMAGE_OPTIONS, normalizeCustomImageOptions, normalizeHttpImageUrl, validateCustomImageUrl } from "@/lib/custom-icon-utils";
 import type { SelectedItem } from "../diagram-editor";
 import type { CustomImageOptions, DiagramData } from "@/lib/types";
@@ -202,25 +202,6 @@ export function PropertiesPanel({
     [selectedItem, onItemUpdate, isReadOnly, customIconOptions]
   );
 
-  const updateCustomIconOptions = useCallback(
-    (patch: Partial<CustomImageOptions>) => {
-      const nextOptions = normalizeCustomImageOptions({ ...customIconOptions, ...patch });
-      updateCustomIconNode({ imageOptions: nextOptions });
-    },
-    [customIconOptions, updateCustomIconNode]
-  );
-
-  const updateCustomIconCrop = useCallback(
-    (patch: Partial<CustomImageOptions["crop"]>) => {
-      const nextOptions = normalizeCustomImageOptions({
-        ...customIconOptions,
-        crop: { ...customIconOptions.crop, ...patch },
-      });
-      updateCustomIconNode({ imageOptions: nextOptions });
-    },
-    [customIconOptions, updateCustomIconNode]
-  );
-
   const loadCustomIconUrl = useCallback(async () => {
     if (isReadOnly) return;
     setCustomIconLoading(true);
@@ -228,7 +209,7 @@ export function PropertiesPanel({
 
     const normalized = normalizeHttpImageUrl(customIconUrlDraft);
     if (!normalized) {
-      setCustomIconError("Enter a valid http/https image URL.");
+      setCustomIconError("Enter a valid image URL (http/https or data:image/...).");
       updateCustomIconNode({ imageUrl: "" });
       setCustomIconLoading(false);
       return;
@@ -242,7 +223,10 @@ export function PropertiesPanel({
       return;
     }
 
-    updateCustomIconNode({ imageUrl: result.normalizedUrl || normalized });
+    updateCustomIconNode({
+      imageUrl: result.normalizedUrl || normalized,
+      imageOptions: normalizeCustomImageOptions(DEFAULT_CUSTOM_IMAGE_OPTIONS),
+    });
     setCustomIconLoading(false);
   }, [customIconUrlDraft, isReadOnly, updateCustomIconNode]);
 
@@ -401,11 +385,14 @@ export function PropertiesPanel({
                       <Input
                         value={customIconUrlDraft}
                         onChange={(e) => {
-                          setCustomIconUrlDraft(e.target.value);
+                          const nextValue = e.target.value;
+                          setCustomIconUrlDraft(nextValue);
                           setCustomIconError(null);
-                          updateCustomIconNode({ imageUrl: e.target.value });
+                          if (!nextValue.trim()) {
+                            updateCustomIconNode({ imageUrl: "" });
+                          }
                         }}
-                        placeholder="https://example.com/icon.png"
+                        placeholder="https://example.com/icon"
                         className="h-8 text-sm"
                       />
                       <Button size="sm" className="h-8" onClick={loadCustomIconUrl} disabled={customIconLoading}>
@@ -414,90 +401,28 @@ export function PropertiesPanel({
                     </div>
                   )}
 
-                  <div className="w-24 h-24 border rounded bg-muted/20 flex items-center justify-center overflow-hidden">
-                    <CustomIconImage imageUrl={customIconImageUrl} imageOptions={customIconOptions} width={96} height={96} />
-                  </div>
+                  {!isReadOnly && (
+                    <div className="text-xs text-muted-foreground">
+                      Direct image links, wrapped links (for example, Google image-result URLs), and data:image/... URLs are supported.
+                    </div>
+                  )}
 
-                  <div className="grid grid-cols-3 gap-2">
-                    <Input
-                      type="number"
-                      min={16}
-                      max={512}
-                      value={customIconOptions.width}
-                      onChange={(e) => updateCustomIconOptions({ width: Number(e.target.value) })}
-                      className="h-8 text-xs"
-                      disabled={isReadOnly}
-                      title="Width"
-                    />
-                    <Input
-                      type="number"
-                      min={16}
-                      max={512}
-                      value={customIconOptions.height}
-                      onChange={(e) => updateCustomIconOptions({ height: Number(e.target.value) })}
-                      className="h-8 text-xs"
-                      disabled={isReadOnly}
-                      title="Height"
-                    />
-                    <Input
-                      type="number"
-                      min={10}
-                      max={300}
-                      value={customIconOptions.scale}
-                      onChange={(e) => updateCustomIconOptions({ scale: Number(e.target.value) })}
-                      className="h-8 text-xs"
-                      disabled={isReadOnly}
-                      title="Scale %"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-4 gap-2">
-                    <Input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={customIconOptions.crop.x}
-                      onChange={(e) => updateCustomIconCrop({ x: Number(e.target.value) })}
-                      className="h-8 text-xs"
-                      disabled={isReadOnly}
-                      title="Crop X"
-                    />
-                    <Input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={customIconOptions.crop.y}
-                      onChange={(e) => updateCustomIconCrop({ y: Number(e.target.value) })}
-                      className="h-8 text-xs"
-                      disabled={isReadOnly}
-                      title="Crop Y"
-                    />
-                    <Input
-                      type="number"
-                      min={1}
-                      max={100}
-                      value={customIconOptions.crop.width}
-                      onChange={(e) => updateCustomIconCrop({ width: Number(e.target.value) })}
-                      className="h-8 text-xs"
-                      disabled={isReadOnly}
-                      title="Crop Width"
-                    />
-                    <Input
-                      type="number"
-                      min={1}
-                      max={100}
-                      value={customIconOptions.crop.height}
-                      onChange={(e) => updateCustomIconCrop({ height: Number(e.target.value) })}
-                      className="h-8 text-xs"
-                      disabled={isReadOnly}
-                      title="Crop Height"
-                    />
-                  </div>
+                  <CustomIconPreviewEditor
+                    imageUrl={customIconImageUrl || undefined}
+                    imageOptions={customIconOptions}
+                    onOptionsChange={
+                      isReadOnly
+                        ? undefined
+                        : (nextOptions) => updateCustomIconNode({ imageOptions: nextOptions })
+                    }
+                    size={144}
+                    readOnly={isReadOnly}
+                  />
 
                   {customIconError ? (
                     <div className="text-xs text-destructive">{customIconError}</div>
                   ) : (
-                    <div className="text-xs text-muted-foreground">PNG/JPG/SVG, max 500 KB. Invalid URLs fall back to placeholder icon.</div>
+                    <div className="text-xs text-muted-foreground">Click Load, then drag to center and use the mouse wheel to zoom. Supports PNG, JPG, SVG, WebP, GIF, AVIF, BMP, APNG, ICO, including data:image/... URLs. Max 500 KB.</div>
                   )}
                 </div>
               )}
