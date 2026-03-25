@@ -1,5 +1,13 @@
 # Nested Diagrams Plan
 
+## Active Work Notes
+
+### 2026-03-25 - Orthogonal routing hardening
+
+- Ensure orthogonal connection routing always emits axis-aligned segments after pathfinding and endpoint approach correction.
+- Preserve and improve obstacle avoidance by widening the A* search bounds around blockers and preferring stricter obstacle-safe fallbacks before relaxed ones.
+- Keep waypoint-based orthogonal routes working by enforcing orthogonality after chained leg assembly.
+
 ## Overview
 Support multiple diagrams nested within each other. A top-level diagram can have icons that reference sub-diagrams. Double-clicking such an icon navigates to the sub-diagram. Users can return via a breadcrumb bar.
 

@@ -166,6 +166,43 @@ function routeIntersectsObstacles(
   return false;
 }
 
+function isAxisAlignedSegment(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+): boolean {
+  return a.x === b.x || a.y === b.y;
+}
+
+function dedupeConsecutivePoints(
+  points: Array<{ x: number; y: number }>,
+): Array<{ x: number; y: number }> {
+  const result: Array<{ x: number; y: number }> = [];
+
+  for (const point of points) {
+    const snappedPoint = { x: snap(point.x), y: snap(point.y) };
+    const last = result[result.length - 1];
+    if (last && last.x === snappedPoint.x && last.y === snappedPoint.y) {
+      continue;
+    }
+    result.push(snappedPoint);
+  }
+
+  return result;
+}
+
+function getPerpendicularAngle(angle: number): number {
+  return angle === 0 || angle === 180 ? 90 : 0;
+}
+
+function getFallbackAngles(primaryAngle: number, secondaryAngle: number): number[] {
+  return Array.from(new Set([
+    primaryAngle,
+    secondaryAngle,
+    getPerpendicularAngle(primaryAngle),
+    getPerpendicularAngle(secondaryAngle),
+  ]));
+}
+
 // -----------------------------------------------------------------------------
 // A* pathfinding on a 10 px grid
 // -----------------------------------------------------------------------------
@@ -180,13 +217,25 @@ function packKey(gx: number, gy: number): number {
   return ((gx / CELL + 32767) | 0) * 65536 + ((gy / CELL + 32767) | 0);
 }
 
+function packStateKey(gx: number, gy: number, dir: number): number {
+  return packKey(gx, gy) * 8 + (dir + 1);
+}
+
+function unpackStatePosition(stateKey: number): { x: number; y: number } {
+  const positionKey = Math.floor(stateKey / 8);
+  const pgx = ((positionKey / 65536) | 0) - 32767;
+  const pgy = (positionKey % 65536) - 32767;
+  return { x: pgx * CELL, y: pgy * CELL };
+}
+
 interface AStarNode {
   x: number;
   y: number;
   g: number; // cost so far
   f: number; // g + heuristic
   dir: number; // last direction index (0-3), or -1 for start
-  parentKey: number; // packed key of parent
+  stateKey: number;
+  parentStateKey: number;
 }
 
 /**
@@ -213,12 +262,17 @@ function astar(
   // Build blocked-cell lookup from inflated obstacles
   const inflated = obstacles.map(o => inflateRect(o, OBSTACLE_MARGIN));
 
-  // Determine the bounding box for the search (expand 200 px beyond the from/to range)
+  // Keep the search box wide enough to route around nearby blockers instead of
+  // failing early and falling back to a simplistic L/Z path.
   const PAD = 200;
-  const minBX = snap(Math.min(startX, endX) - PAD);
-  const maxBX = snap(Math.max(startX, endX) + PAD);
-  const minBY = snap(Math.min(startY, endY) - PAD);
-  const maxBY = snap(Math.max(startY, endY) + PAD);
+  const minObstacleX = inflated.length > 0 ? Math.min(...inflated.map((r) => r.x)) : Math.min(startX, endX);
+  const maxObstacleX = inflated.length > 0 ? Math.max(...inflated.map((r) => r.x + r.width)) : Math.max(startX, endX);
+  const minObstacleY = inflated.length > 0 ? Math.min(...inflated.map((r) => r.y)) : Math.min(startY, endY);
+  const maxObstacleY = inflated.length > 0 ? Math.max(...inflated.map((r) => r.y + r.height)) : Math.max(startY, endY);
+  const minBX = snap(Math.min(startX, endX, minObstacleX) - PAD);
+  const maxBX = snap(Math.max(startX, endX, maxObstacleX) + PAD);
+  const minBY = snap(Math.min(startY, endY, minObstacleY) - PAD);
+  const maxBY = snap(Math.max(startY, endY, maxObstacleY) + PAD);
 
   function isBlocked(px: number, py: number): boolean {
     for (const r of inflated) {
@@ -241,18 +295,18 @@ function astar(
   }
 
   const startDir = angleToDir(exitAngle);
-  const startKey = packKey(startX, startY);
+  const startStateKey = packStateKey(startX, startY, startDir);
   const endKey = packKey(endX, endY);
 
   // Open set as a simple sorted array (fast enough for our bounded search)
   const gScore = new Map<number, number>();
-  const cameFrom = new Map<number, { parentKey: number; dir: number }>();
+  const cameFrom = new Map<number, number>();
   const open: AStarNode[] = [];
   const closed = new Set<number>();
 
   const h0 = heuristic(startX, startY);
-  open.push({ x: startX, y: startY, g: 0, f: h0, dir: startDir, parentKey: -1 });
-  gScore.set(startKey, 0);
+  open.push({ x: startX, y: startY, g: 0, f: h0, dir: startDir, stateKey: startStateKey, parentStateKey: -1 });
+  gScore.set(startStateKey, 0);
 
   let iterations = 0;
   while (open.length > 0 && iterations < MAX_ITERATIONS) {
@@ -269,30 +323,25 @@ function astar(
     open.pop();
 
     const curKey = packKey(current.x, current.y);
+    const curStateKey = current.stateKey;
 
     if (curKey === endKey) {
       // Reconstruct path
       const path: Array<{ x: number; y: number }> = [];
-      let key = curKey;
-      let node: { parentKey: number; dir: number } | undefined = { parentKey: current.parentKey, dir: current.dir };
       path.push({ x: current.x, y: current.y });
+      let parentStateKey = current.parentStateKey;
 
-      while (node && node.parentKey !== -1) {
-        const pk = node.parentKey;
-        // Decode key back to coordinates
-        const pgx = ((pk / 65536) | 0) - 32767;
-        const pgy = (pk % 65536) - 32767;
-        path.push({ x: pgx * CELL, y: pgy * CELL });
-        node = cameFrom.get(pk);
-        key = pk;
+      while (parentStateKey !== -1) {
+        path.push(unpackStatePosition(parentStateKey));
+        parentStateKey = cameFrom.get(parentStateKey) ?? -1;
       }
 
       path.reverse();
-      return simplifyPath(path);
+      return simplifyPath(dedupeConsecutivePoints(path));
     }
 
-    if (closed.has(curKey)) continue;
-    closed.add(curKey);
+    if (closed.has(curStateKey)) continue;
+    closed.add(curStateKey);
 
     for (let d = 0; d < 4; d++) {
       const nx = current.x + DX[d];
@@ -302,7 +351,8 @@ function astar(
       if (nx < minBX || nx > maxBX || ny < minBY || ny > maxBY) continue;
 
       const nKey = packKey(nx, ny);
-      if (closed.has(nKey)) continue;
+      const nStateKey = packStateKey(nx, ny, d);
+      if (closed.has(nStateKey)) continue;
 
       // Skip blocked cells (but always allow the end cell)
       if (nKey !== endKey && isBlocked(nx, ny)) continue;
@@ -311,17 +361,18 @@ function astar(
       const turnPenalty = (current.dir >= 0 && d !== current.dir) ? CELL * 2 : 0;
       const tentativeG = current.g + CELL + turnPenalty;
 
-      const prevG = gScore.get(nKey);
+      const prevG = gScore.get(nStateKey);
       if (prevG !== undefined && tentativeG >= prevG) continue;
 
-      gScore.set(nKey, tentativeG);
-      cameFrom.set(nKey, { parentKey: curKey, dir: d });
+      gScore.set(nStateKey, tentativeG);
+      cameFrom.set(nStateKey, curStateKey);
       open.push({
         x: nx, y: ny,
         g: tentativeG,
         f: tentativeG + heuristic(nx, ny),
         dir: d,
-        parentKey: curKey,
+        stateKey: nStateKey,
+        parentStateKey: curStateKey,
       });
     }
   }
@@ -335,13 +386,14 @@ function astar(
 // -----------------------------------------------------------------------------
 
 function simplifyPath(points: Array<{ x: number; y: number }>): Array<{ x: number; y: number }> {
-  if (points.length <= 2) return points;
+  const normalizedPoints = dedupeConsecutivePoints(points);
+  if (normalizedPoints.length <= 2) return normalizedPoints;
 
-  const result: Array<{ x: number; y: number }> = [points[0]];
-  for (let i = 1; i < points.length - 1; i++) {
+  const result: Array<{ x: number; y: number }> = [normalizedPoints[0]];
+  for (let i = 1; i < normalizedPoints.length - 1; i++) {
     const prev = result[result.length - 1];
-    const next = points[i + 1];
-    const curr = points[i];
+    const next = normalizedPoints[i + 1];
+    const curr = normalizedPoints[i];
 
     // Keep point only if direction changes
     const sameX = prev.x === curr.x && curr.x === next.x;
@@ -350,8 +402,92 @@ function simplifyPath(points: Array<{ x: number; y: number }>): Array<{ x: numbe
       result.push(curr);
     }
   }
-  result.push(points[points.length - 1]);
+  result.push(normalizedPoints[normalizedPoints.length - 1]);
   return result;
+}
+
+function findFallbackRoute(
+  fx: number,
+  fy: number,
+  tx: number,
+  ty: number,
+  candidateAngles: number[],
+  obstacles: Rect[],
+): Array<{ x: number; y: number }> | null {
+  for (const angle of candidateAngles) {
+    const lPts = lRoute(fx, fy, tx, ty, angle);
+    if (!routeIntersectsObstacles(lPts, obstacles)) {
+      return simplifyPath(lPts);
+    }
+
+    const zPts = zRoute(fx, fy, tx, ty, angle);
+    if (!routeIntersectsObstacles(zPts, obstacles)) {
+      return simplifyPath(zPts);
+    }
+  }
+
+  return null;
+}
+
+function buildOrthogonalBridge(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  obstacles: Rect[],
+  fromAngle: number,
+  toAngle: number,
+): Array<{ x: number; y: number }> {
+  const start = { x: snap(from.x), y: snap(from.y) };
+  const end = { x: snap(to.x), y: snap(to.y) };
+
+  if (start.x === end.x && start.y === end.y) {
+    return [start];
+  }
+
+  const inflated = obstacles.map((o) => inflateRect(o, OBSTACLE_MARGIN));
+  if (isAxisAlignedSegment(start, end) && !routeIntersectsObstacles([start, end], inflated)) {
+    return [start, end];
+  }
+
+  const routed = astar(start.x, start.y, end.x, end.y, obstacles, fromAngle, toAngle);
+  if (routed) {
+    return simplifyPath(routed);
+  }
+
+  const fallbackAngles = getFallbackAngles(fromAngle, directionFromTo(start.x, start.y, end.x, end.y));
+  return findFallbackRoute(start.x, start.y, end.x, end.y, fallbackAngles, inflated)
+    ?? findFallbackRoute(start.x, start.y, end.x, end.y, fallbackAngles, obstacles)
+    ?? simplifyPath([start, { x: end.x, y: start.y }, end]);
+}
+
+function enforceOrthogonalSegments(
+  points: Array<{ x: number; y: number }>,
+  obstacles: Rect[],
+): Array<{ x: number; y: number }> {
+  const normalized = simplifyPath(points);
+  if (normalized.length <= 2) {
+    return normalized;
+  }
+
+  const result: Array<{ x: number; y: number }> = [normalized[0]];
+  for (let i = 1; i < normalized.length; i++) {
+    const prev = result[result.length - 1];
+    const next = normalized[i];
+
+    if (isAxisAlignedSegment(prev, next)) {
+      result.push(next);
+      continue;
+    }
+
+    const incomingAngle = result.length > 1
+      ? directionFromTo(result[result.length - 2].x, result[result.length - 2].y, prev.x, prev.y)
+      : directionFromTo(prev.x, prev.y, next.x, next.y);
+    const outgoingAngle = directionFromTo(prev.x, prev.y, next.x, next.y);
+    const bridge = buildOrthogonalBridge(prev, next, obstacles, incomingAngle, outgoingAngle);
+    result.pop();
+    result.push(...bridge);
+  }
+
+  return simplifyPath(result);
 }
 
 // -----------------------------------------------------------------------------
@@ -374,6 +510,7 @@ function ensureApproachSegment(
   endpointY: number,
   angle: number,
   stubLen: number,
+  obstacles: Rect[],
   isSource: boolean,
 ): Array<{ x: number; y: number }> {
   if (points.length < 2) return points;
@@ -416,50 +553,33 @@ function ensureApproachSegment(
   // Don't insert if it duplicates the adjacent point
   if (approach.x === adjacent.x && approach.y === adjacent.y) return points;
 
-  // We need a corner point that shortens the overshooting segment.
-  // Instead of INSERTING corner+approach (which leaves the old adjacent
-  // point in place, creating a zigzag), we REPLACE the adjacent point
-  // with the corner - this truncates the run at the right level - and
-  // then insert the approach point for the final stub.
-  //
-  // angle 0 or 180 (vertical entry/exit):
-  //   corner = (adjacent.x, approach.y)
-  //   Replaces adjacent -> shortens/adjusts the vertical run to the
-  //   approach level, then approach -> endpoint is the clean stub.
-  //
-  // angle 90 or 270 (horizontal entry/exit):
-  //   corner = (approach.x, adjacent.y)
-  //   Replaces adjacent -> shortens/adjusts the horizontal run to the
-  //   approach level, then approach -> endpoint is the clean stub.
-
-  let corner: { x: number; y: number };
-  if (angle === 0 || angle === 180) {
-    corner = { x: adjacent.x, y: approach.y };
-  } else {
-    corner = { x: approach.x, y: adjacent.y };
-  }
-
-  const result = [...points];
-  const cornerEqualsApproach = corner.x === approach.x && corner.y === approach.y;
-
   if (isSource) {
-    // Replace adjacent (index 1) with corner to adjust the overshoot,
-    // then insert approach between endpoint and corner.
-    // Result: endpoint -> approach -> corner -> (rest...)
-    result[1] = corner;
-    if (!cornerEqualsApproach) {
-      result.splice(1, 0, approach);
-    }
+    const bridge = buildOrthogonalBridge(
+      approach,
+      adjacent,
+      obstacles,
+      angle,
+      directionFromTo(approach.x, approach.y, adjacent.x, adjacent.y),
+    );
+    return simplifyPath([
+      { x: endpointX, y: endpointY },
+      ...bridge,
+      ...points.slice(2),
+    ]);
   } else {
-    // Replace adjacent (second to last) with corner to adjust the overshoot,
-    // then insert approach between corner and endpoint.
-    // Result: (...rest) -> corner -> approach -> endpoint
-    result[result.length - 2] = corner;
-    if (!cornerEqualsApproach) {
-      result.splice(result.length - 1, 0, approach);
-    }
+    const bridge = buildOrthogonalBridge(
+      adjacent,
+      approach,
+      obstacles,
+      directionFromTo(adjacent.x, adjacent.y, approach.x, approach.y),
+      angle,
+    );
+    return simplifyPath([
+      ...points.slice(0, -2),
+      ...bridge,
+      { x: endpointX, y: endpointY },
+    ]);
   }
-  return result;
 }
 
 // -----------------------------------------------------------------------------
@@ -509,28 +629,17 @@ function computeOrthogonalSegment(
     points = [{ x: sfx, y: sfy }, ...points, { x: stx, y: sty }];
     points = simplifyPath(points);
   } else {
-    const halfInflated = obstacles.map(o => inflateRect(o, OBSTACLE_MARGIN / 2));
-    const candidateAngles = [fromAngle, fromAngle === 0 || fromAngle === 180 ? 90 : 0];
-    let bestFallback: Array<{ x: number; y: number }> | null = null;
-
-    for (const angle of candidateAngles) {
-      const lPts = lRoute(sfx, sfy, stx, sty, angle);
-      if (!routeIntersectsObstacles(lPts, halfInflated)) {
-        bestFallback = lPts;
-        break;
-      }
-      const zPts = zRoute(sfx, sfy, stx, sty, angle);
-      if (!routeIntersectsObstacles(zPts, halfInflated)) {
-        bestFallback = zPts;
-        break;
-      }
-    }
-    points = bestFallback ?? zRoute(sfx, sfy, stx, sty, fromAngle);
+    const inflated = obstacles.map((o) => inflateRect(o, OBSTACLE_MARGIN));
+    const relaxed = obstacles.map((o) => inflateRect(o, OBSTACLE_MARGIN / 2));
+    const candidateAngles = getFallbackAngles(fromAngle, directionFromTo(sfx, sfy, stx, sty));
+    points = findFallbackRoute(sfx, sfy, stx, sty, candidateAngles, inflated)
+      ?? findFallbackRoute(sfx, sfy, stx, sty, candidateAngles, relaxed)
+      ?? zRoute(sfx, sfy, stx, sty, fromAngle);
   }
 
-  points = ensureApproachSegment(points, sfx, sfy, fromAngle, stubLen, true);
-  points = ensureApproachSegment(points, stx, sty, toAngle, entryStubLen, false);
-  return points;
+  points = ensureApproachSegment(points, sfx, sfy, fromAngle, stubLen, obstacles, true);
+  points = ensureApproachSegment(points, stx, sty, toAngle, entryStubLen, obstacles, false);
+  return enforceOrthogonalSegments(points, obstacles);
 }
 
 /**
@@ -593,7 +702,7 @@ export function computeOrthogonalRoute(
         all.push(...seg.slice(1));
       }
     }
-    points = simplifyPath(all);
+    points = enforceOrthogonalSegments(all, obstacles);
   }
 
   const pathData = pointsToPathData(points);

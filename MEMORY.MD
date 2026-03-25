@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-03-25 – Orthogonal routing: force 90° segments after avoidance
+Orthogonal connection routing could still emit a diagonal-looking hop after pathfinding when the endpoint approach-correction step rewrote a waypoint without repairing the following segment. **Fix**: `orthogonal-routing.ts` now (1) keeps A* state keyed by **position + direction** so turn costs remain valid, (2) expands the search bounds to include nearby inflated obstacles so avoidance succeeds more often before fallback, (3) rebuilds misaligned source/target approach segments with an orthogonal bridge instead of mutating a single point, and (4) runs a final orthogonality enforcement pass so every emitted segment is horizontal or vertical, including waypoint-chained routes. **Fallbacks** now prefer stricter obstacle-safe routes before relaxed ones.
+
 ### 2026-03-25 – Connection: center edge anchors
 **Data**: `DiagramConnectionData.centerEdgeAnchors?: boolean` — when `true`, both endpoints attach at the **center of the chosen edge** instead of **spreading along the edge** with `connectionIndex` / `totalConnections` (default unchanged). **UI**: Right-click connection → **Connection** properties modal → **Center on edge** switch. **Implementation**: `getConnectionPoint(..., centerEdgeAnchors)` in `bezier-connection.tsx`; compact JSON delta keeps `centerEdgeAnchors` only when `true` (`stripConnectionDefaults`).
 
