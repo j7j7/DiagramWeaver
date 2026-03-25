@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useDrag, useDrop } from 'react-dnd';
-import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Copy, Download, GripHorizontal, GripVertical, LogOut, Maximize2, Minimize2, Pin, PinOff, Play, Plus, Trash2, Upload, Wand2 } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Copy, Download, GripVertical, LogOut, Maximize2, Minimize2, Pin, PinOff, Play, Plus, Trash2, Upload, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -62,7 +62,7 @@ function DraggableSlideItem({
       onClick={() => onSelect(slide.id)}
       title={slide.title || `Slide ${index + 1}`}
     >
-      <div className="relative w-full flex-1 min-h-0">
+      <div className="relative w-full shrink-0">
         <img
           src={slide.snapshotImage || SLIDE_THUMBNAIL_PLACEHOLDER}
           alt={slide.title || `Slide ${index + 1}`}
@@ -142,11 +142,6 @@ export function PresentationEditorPanel({
   onExportDecks,
   onImportDecks,
 }: PresentationEditorPanelProps) {
-  const SNAPSHOT_PANE_HEIGHT_MIN = 100;
-  const SNAPSHOT_PANE_HEIGHT_MAX = 540;
-  const SNAPSHOT_PANE_HEIGHT_STEP = 40;
-  const SNAPSHOT_THUMBNAIL_WIDTH = 140;
-
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const toolbarRef = React.useRef<HTMLDivElement | null>(null);
   const snapshotsPanelRef = React.useRef<HTMLDivElement | null>(null);
@@ -164,7 +159,6 @@ export function PresentationEditorPanel({
   const [snapshotsFloating, setSnapshotsFloating] = React.useState(false);
   const [snapshotsPosition, setSnapshotsPosition] = React.useState({ x: 20, y: 220 });
   const [draggingSnapshots, setDraggingSnapshots] = React.useState(false);
-  const [snapshotsPaneHeight, setSnapshotsPaneHeight] = React.useState(123);
 
   React.useEffect(() => {
     setRenameDraft(activeDeck?.name ?? '');
@@ -185,9 +179,6 @@ export function PresentationEditorPanel({
         if (parsed.snapshotsPosition && typeof (parsed.snapshotsPosition as any).x === 'number' && typeof (parsed.snapshotsPosition as any).y === 'number') {
           setSnapshotsPosition(parsed.snapshotsPosition as { x: number; y: number });
         }
-        if (typeof parsed.snapshotsPaneHeight === 'number' && parsed.snapshotsPaneHeight >= SNAPSHOT_PANE_HEIGHT_MIN && parsed.snapshotsPaneHeight <= SNAPSHOT_PANE_HEIGHT_MAX) {
-          setSnapshotsPaneHeight(parsed.snapshotsPaneHeight);
-        }
       }
     } catch {
       // ignore
@@ -203,12 +194,11 @@ export function PresentationEditorPanel({
         snapshotsCollapsed,
         snapshotsFloating,
         snapshotsPosition,
-        snapshotsPaneHeight,
       }));
     } catch {
       // ignore
     }
-  }, [toolbarFloating, toolbarPosition, snapshotsCollapsed, snapshotsFloating, snapshotsPosition, snapshotsPaneHeight]);
+  }, [toolbarFloating, toolbarPosition, snapshotsCollapsed, snapshotsFloating, snapshotsPosition]);
 
   const handleToolbarMouseDown = React.useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     if (!toolbarFloating) return;
@@ -331,28 +321,6 @@ export function PresentationEditorPanel({
     window.addEventListener('mouseup', onMouseUp);
   }, [snapshotsFloating, snapshotsPosition.x, snapshotsPosition.y, snapSnapshotsToToolbar]);
 
-  const handleResizeMouseDown = React.useCallback((event: React.MouseEvent) => {
-    if (event.button !== 0) return;
-    event.preventDefault();
-    const startY = event.clientY;
-    const startHeight = snapshotsPaneHeight;
-
-    const onMouseMove = (moveEvent: MouseEvent) => {
-      const delta = moveEvent.clientY - startY;
-      setSnapshotsPaneHeight((prev) =>
-        Math.max(SNAPSHOT_PANE_HEIGHT_MIN, Math.min(SNAPSHOT_PANE_HEIGHT_MAX, startHeight + delta))
-      );
-    };
-
-    const onMouseUp = () => {
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-    };
-
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-  }, [snapshotsPaneHeight]);
-
   if (!isOpen) return null;
 
   const panelClassName = toolbarFloating
@@ -372,19 +340,10 @@ export function PresentationEditorPanel({
     : undefined;
 
   const snapshotsList = (
-    <div className="flex flex-col gap-0 mt-0.5">
-      <div
-        role="separator"
-        onMouseDown={handleResizeMouseDown}
-        className="flex cursor-n-resize items-center justify-center border bg-muted/30 py-0.5 hover:bg-muted/50"
-        aria-label="Drag to resize snapshots pane height"
-      >
-        <GripHorizontal className="h-2.5 w-2.5 text-muted-foreground" />
-      </div>
+    <div className="mt-0.5">
       <div
         ref={snapshotsViewportRef}
-        className="overflow-x-auto overflow-y-hidden rounded-b-md border border-t-0 bg-background/60 p-1"
-        style={{ height: snapshotsPaneHeight }}
+        className="overflow-x-auto rounded-md border bg-background/60 p-1"
       >
         {activeDeck && activeDeck.slides.length > 0 ? (
           <div className="flex flex-nowrap gap-2">
@@ -401,7 +360,7 @@ export function PresentationEditorPanel({
             ))}
           </div>
         ) : (
-          <div className="flex min-h-full items-center justify-center rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+          <div className="flex min-h-[88px] items-center justify-center rounded-lg border border-dashed px-4 py-6 text-sm text-muted-foreground">
             No snapshots yet. Add Snapshot to capture the current visible canvas.
           </div>
         )}
@@ -639,36 +598,6 @@ export function PresentationEditorPanel({
           >
             <GripVertical className={cn('h-3 w-3 text-muted-foreground', draggingSnapshots && 'text-primary')} />
             <div className="flex items-center gap-0.5">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-6 w-6 px-0"
-                    onClick={() => setSnapshotsPaneHeight((prev) => Math.max(SNAPSHOT_PANE_HEIGHT_MIN, prev - SNAPSHOT_PANE_HEIGHT_STEP))}
-                    aria-label="Decrease snapshots pane height"
-                    disabled={snapshotsPaneHeight <= SNAPSHOT_PANE_HEIGHT_MIN}
-                  >
-                    <ChevronUp className="h-3 w-3" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Shrink snapshots pane</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-6 w-6 px-0"
-                    onClick={() => setSnapshotsPaneHeight((prev) => Math.min(SNAPSHOT_PANE_HEIGHT_MAX, prev + SNAPSHOT_PANE_HEIGHT_STEP))}
-                    aria-label="Increase snapshots pane height"
-                    disabled={snapshotsPaneHeight >= SNAPSHOT_PANE_HEIGHT_MAX}
-                  >
-                    <ChevronDown className="h-3 w-3" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Grow snapshots pane</TooltipContent>
-              </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
