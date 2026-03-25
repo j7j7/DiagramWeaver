@@ -1,5 +1,6 @@
 "use client";
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, useLayoutEffect } from 'react';
+import { flushSync } from 'react-dom';
 import { createPortal } from 'react-dom';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -93,15 +94,15 @@ import {
   computeUnionFitTransformForDiagrams,
   pruneConnectionsToVisibleNodes,
 } from '@/lib/presentation-viewport-fit';
-import { extractEmbeddedPresentations } from '@/lib/extract-embedded-presentations';
+import { extractEmbeddedPresentations, slideNeedsPresentationThumbnailSnapshot } from '@/lib/extract-embedded-presentations';
 import {
   loadPresentationsByTab,
   savePresentationsByTab,
 } from '@/lib/presentation-storage';
 import { DiagramBreadcrumb, type BreadcrumbSegment } from './editor/diagram-breadcrumb';
 
-/** Presentation slide PNG thumbnails: refresh at most this often when the diagram delta changed. */
-const PRESENTATION_THUMB_INTERVAL_MS = 5000;
+/** Presentation slide PNG thumbnails: poll at most this often; capture only when delta fingerprint changed. */
+const PRESENTATION_THUMB_INTERVAL_MS = 3000;
 
 export type SelectedItem = (
   | (DiagramNodeData & {
@@ -544,12 +545,15 @@ export default function DiagramEditor() {
   const [presentationPlayerIndex, setPresentationPlayerIndex] = React.useState<number>(0);
   const [presentationMasterDiagram, setPresentationMasterDiagram] = React.useState<DiagramData | null>(null);
   const [presentationDraftDiagram, setPresentationDraftDiagram] = React.useState<DiagramData | null>(null);
-  const presentationThumbLastDeltaFingerprintRef = React.useRef<string | null>(null);
-  /** `${deckId}:${slideId}` — last slide switch we scheduled a thumbnail pass for (avoids duplicate rAF on draft edits). */
-  const presentationThumbSlideSwitchKeyRef = React.useRef<string | null>(null);
+  /** `${deckId}:${slideId}` → JSON fingerprint of diagram delta vs master — thumbnail matches this until the slide is edited. */
+  const presentationThumbDeltaFingerprintBySlideRef = React.useRef<Record<string, string>>({});
   /** `${tabId}:${deckId}:${slideId}` — last canvas re-sync from tab + slide delta (refresh / deck load). */
   const presentationSlideCanvasKeyRef = React.useRef<string | null>(null);
+  /** Last `${deckId}:${slideId}` for which thumbnail fingerprint baseline was set (layout + hydration). */
+  const presentationThumbFingerprintSlideKeyRef = React.useRef<string | null>(null);
   const presentationThumbCaptureInFlightRef = React.useRef(false);
+  /** True while sequentially capturing PNG thumbnails for every slide (e.g. compact file load). */
+  const presentationThumbBackfillRunningRef = React.useRef(false);
   const presentationThumbCtxRef = React.useRef<{
     draft: DiagramData | null;
     master: DiagramData | null;
@@ -848,6 +852,38 @@ export default function DiagramEditor() {
     slideId: activePresentationSlideId,
   };
 
+  const presentationDraftDiagramRef = React.useRef(presentationDraftDiagram);
+  presentationDraftDiagramRef.current = presentationDraftDiagram;
+  const presentationMasterDiagramRef = React.useRef(presentationMasterDiagram);
+  presentationMasterDiagramRef.current = presentationMasterDiagram;
+  const tabDiagramDataRef = React.useRef(tabDiagramData);
+  tabDiagramDataRef.current = tabDiagramData;
+
+  /** After slide/deck change (not draft-only edits): baseline delta fingerprint so leaving without edits skips capture. */
+  useLayoutEffect(() => {
+    if (!presentationModeEnabled) return;
+    const deckId = activePresentationDeckId;
+    const slideId = activePresentationSlideId;
+    if (!deckId || !slideId) {
+      presentationThumbFingerprintSlideKeyRef.current = null;
+      return;
+    }
+    const slideKey = `${deckId}:${slideId}`;
+    if (presentationThumbFingerprintSlideKeyRef.current === slideKey) return;
+    presentationThumbFingerprintSlideKeyRef.current = slideKey;
+
+    const draft = presentationDraftDiagramRef.current;
+    if (!draft) return;
+    const master = presentationMasterDiagramRef.current ?? tabDiagramDataRef.current;
+    try {
+      const masterBase = projectVisibleDiagram(master);
+      const fp = JSON.stringify(computeDiagramDelta(masterBase, projectVisibleDiagram(draft)));
+      presentationThumbDeltaFingerprintBySlideRef.current[slideKey] = fp;
+    } catch {
+      // ignore
+    }
+  }, [presentationModeEnabled, activePresentationDeckId, activePresentationSlideId]);
+
   /**
    * IndexedDB restores decks/slide selection, but not presentation master/draft. On hard refresh the active-tab
    * effect can also clear state before per-tab storage hydrates. Rebuild master + draft from the tab diagram
@@ -875,7 +911,17 @@ export default function DiagramEditor() {
     const masterBase = projectVisibleDiagram(
       masterMissing ? tabSnapshot : (presentationMasterDiagram ?? tabSnapshot),
     );
-    setPresentationDraftDiagram(applyDiagramDelta(masterBase, slide.diagramDelta));
+    const nextDraft = applyDiagramDelta(masterBase, slide.diagramDelta);
+    try {
+      const fp = JSON.stringify(
+        computeDiagramDelta(masterBase, projectVisibleDiagram(nextDraft)),
+      );
+      presentationThumbDeltaFingerprintBySlideRef.current[`${activePresentationDeckId}:${activePresentationSlideId}`] = fp;
+      presentationThumbFingerprintSlideKeyRef.current = `${activePresentationDeckId}:${activePresentationSlideId}`;
+    } catch {
+      // ignore
+    }
+    setPresentationDraftDiagram(nextDraft);
   }, [
     presentationModeEnabled,
     presentationStorageHydrated,
@@ -936,6 +982,15 @@ export default function DiagramEditor() {
     activePresentationSlideId,
     presentationDraftDiagram,
   ]);
+
+  /** Deck + slide ids only (stable while editing deltas) — used to re-run placeholder thumbnail backfill after file load. */
+  const presentationDeckIdentityKey = React.useMemo(
+    () =>
+      presentationDecks
+        .map((d) => `${d.id}:${d.slides.map((s) => s.id).join(',')}`)
+        .join('||'),
+    [presentationDecks],
+  );
 
   // Refresh key to force canvas re-render
   const [canvasRefreshKey, setCanvasRefreshKey] = React.useState(0);
@@ -2007,6 +2062,7 @@ export default function DiagramEditor() {
 
   const runPresentationThumbnailCaptureIfNeeded = React.useCallback(async () => {
     if (!presentationModeEnabledRef.current) return;
+    if (presentationThumbBackfillRunningRef.current) return;
     if (presentationThumbCaptureInFlightRef.current) return;
     const ctx = presentationThumbCtxRef.current;
     if (!ctx.draft || !ctx.deckId || !ctx.slideId) return;
@@ -2022,9 +2078,22 @@ export default function DiagramEditor() {
       return;
     }
 
-    // Only skip when we already captured a PNG for this exact delta. Do not skip just because the slide’s
-    // stored diagramDelta matches the canvas — that is true right after persist while snapshotImage is still stale.
-    if (deltaFingerprint === presentationThumbLastDeltaFingerprintRef.current) return;
+    const thumbKey = `${ctx.deckId}:${ctx.slideId}`;
+    let slideForThumb: Slide | undefined;
+    for (const d of presentationDecksRef.current) {
+      if (d.id !== ctx.deckId) continue;
+      slideForThumb = d.slides.find((s) => s.id === ctx.slideId);
+      break;
+    }
+    const snapshotNeedsRealPng =
+      slideForThumb && slideNeedsPresentationThumbnailSnapshot(slideForThumb.snapshotImage);
+    // Skip when this delta is already reflected in the thumbnail ref — unless we still have a placeholder PNG.
+    if (
+      presentationThumbDeltaFingerprintBySlideRef.current[thumbKey] === deltaFingerprint &&
+      !snapshotNeedsRealPng
+    ) {
+      return;
+    }
 
     const captureDeckId = ctx.deckId;
     const captureSlideId = ctx.slideId;
@@ -2057,7 +2126,7 @@ export default function DiagramEditor() {
           };
         })
       );
-      presentationThumbLastDeltaFingerprintRef.current = deltaFingerprint;
+      presentationThumbDeltaFingerprintBySlideRef.current[thumbKey] = deltaFingerprint;
     } catch {
       // Retry on a later interval or slide change
     } finally {
@@ -2065,49 +2134,19 @@ export default function DiagramEditor() {
     }
   }, [setPresentationDecks, activePresentationSlideDiagramsForThumbnailCapture]);
 
-  /** Reset thumbnail tracking when leaving presentation mode. */
+  const captureOutgoingSlideThumbnailIfNeeded = React.useCallback(async () => {
+    if (!presentationModeEnabledRef.current) return;
+    if (presentationThumbBackfillRunningRef.current) return;
+    await runPresentationThumbnailCaptureIfNeeded();
+  }, [runPresentationThumbnailCaptureIfNeeded]);
+
+  /** Reset per-slide thumbnail fingerprints when leaving presentation mode. */
   React.useEffect(() => {
     if (!presentationModeEnabled) {
-      presentationThumbSlideSwitchKeyRef.current = null;
-      presentationThumbLastDeltaFingerprintRef.current = null;
+      presentationThumbDeltaFingerprintBySlideRef.current = {};
+      presentationThumbFingerprintSlideKeyRef.current = null;
     }
   }, [presentationModeEnabled]);
-
-  /** Switching decks can reuse slide ids — allow a thumbnail pass for the new deck’s active slide. */
-  React.useEffect(() => {
-    presentationThumbSlideSwitchKeyRef.current = null;
-  }, [activePresentationDeckId]);
-
-  /**
-   * After switching slides (or when draft first loads for that slide), refresh thumbnail if required.
-   * `presentationDraftDiagram` in deps ensures we can run after the new slide’s draft is applied.
-   * Slide key ref avoids re-running on every edit (same deck+slide).
-   */
-  React.useEffect(() => {
-    if (!presentationModeEnabled || !activePresentationDeckId || !activePresentationSlideId) return;
-    if (!presentationDraftDiagram) return;
-
-    const switchKey = `${activePresentationDeckId}:${activePresentationSlideId}`;
-    if (presentationThumbSlideSwitchKeyRef.current === switchKey) return;
-    presentationThumbSlideSwitchKeyRef.current = switchKey;
-
-    let cancelled = false;
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        if (cancelled) return;
-        void runPresentationThumbnailCaptureIfNeeded();
-      });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    presentationModeEnabled,
-    activePresentationDeckId,
-    activePresentationSlideId,
-    presentationDraftDiagram,
-    runPresentationThumbnailCaptureIfNeeded,
-  ]);
 
   React.useEffect(() => {
     if (!presentationModeEnabled || !activePresentationDeckId || !activePresentationSlideId) return;
@@ -2117,6 +2156,136 @@ export default function DiagramEditor() {
     }, PRESENTATION_THUMB_INTERVAL_MS);
     return () => window.clearInterval(id);
   }, [presentationModeEnabled, activePresentationDeckId, activePresentationSlideId, runPresentationThumbnailCaptureIfNeeded]);
+
+  /**
+   * Compact / legacy loads use SVG placeholders for `snapshotImage`. Capture real PNGs for every slide
+   * (sequential: each slide must be the active draft for `captureSnapshotPng` + union fit).
+   */
+  React.useEffect(() => {
+    if (!presentationModeEnabled || !presentationMasterDiagram) return;
+
+    const decksSnapshot = presentationDecksRef.current;
+    if (decksSnapshot.length === 0) return;
+
+    const needsAny = decksSnapshot.some((d) =>
+      d.slides.some((s) => slideNeedsPresentationThumbnailSnapshot(s.snapshotImage)),
+    );
+    if (!needsAny) return;
+
+    let cancelled = false;
+    const savedDeckId = activePresentationDeckId;
+    const savedSlideId = activePresentationSlideId;
+    const masterBase = projectVisibleDiagram(presentationMasterDiagram);
+
+    const waitForEditor = async () => {
+      for (let i = 0; i < 45; i++) {
+        if (cancelled) return false;
+        if (editorRef.current?.captureSnapshotPng) return true;
+        await new Promise<void>((r) => requestAnimationFrame(() => r()));
+      }
+      return Boolean(editorRef.current?.captureSnapshotPng);
+    };
+
+    presentationThumbBackfillRunningRef.current = true;
+
+    void (async () => {
+      const ready = await waitForEditor();
+      if (!ready || cancelled) {
+        presentationThumbBackfillRunningRef.current = false;
+        return;
+      }
+
+      try {
+        for (const deck of decksSnapshot) {
+          const slidesNeeding = deck.slides.filter((s) =>
+            slideNeedsPresentationThumbnailSnapshot(s.snapshotImage),
+          );
+          if (slidesNeeding.length === 0) continue;
+
+          for (const slide of slidesNeeding) {
+            if (cancelled) return;
+
+            const draftDiagram = projectVisibleDiagram(
+              applyDiagramDelta(masterBase, slide.diagramDelta),
+            );
+            const unionDiagrams = deck.slides.map((s) =>
+              s.id === slide.id
+                ? draftDiagram
+                : projectVisibleDiagram(applyDiagramDelta(masterBase, s.diagramDelta)),
+            );
+
+            flushSync(() => {
+              setActivePresentationDeckId(deck.id);
+              setActivePresentationSlideId(slide.id);
+              setPresentationDraftDiagram(draftDiagram);
+            });
+
+            await new Promise<void>((r) =>
+              requestAnimationFrame(() => requestAnimationFrame(() => r())),
+            );
+            if (cancelled) return;
+
+            try {
+              const snapshotImage = await editorRef.current!.captureSnapshotPng!({
+                backgroundColor: 'white',
+                quality: 'medium',
+                fitContent: true,
+                unionDiagrams,
+              });
+
+              if (cancelled) return;
+
+              flushSync(() => {
+                setPresentationDecks((prev) =>
+                  prev.map((d) => {
+                    if (d.id !== deck.id) return d;
+                    return {
+                      ...d,
+                      slides: d.slides.map((s) =>
+                        s.id === slide.id ? { ...s, snapshotImage } : s,
+                      ),
+                      updatedAt: Date.now(),
+                    };
+                  }),
+                );
+              });
+              try {
+                const fp = JSON.stringify(
+                  computeDiagramDelta(masterBase, projectVisibleDiagram(draftDiagram)),
+                );
+                presentationThumbDeltaFingerprintBySlideRef.current[`${deck.id}:${slide.id}`] = fp;
+              } catch {
+                // ignore
+              }
+            } catch {
+              // Next slide or restore
+            }
+          }
+        }
+      } finally {
+        if (savedDeckId && savedSlideId) {
+          const restoreDeck = presentationDecksRef.current.find((d) => d.id === savedDeckId);
+          const restoreSlide = restoreDeck?.slides.find((s) => s.id === savedSlideId);
+          if (restoreDeck && restoreSlide) {
+            const restoreDraft = projectVisibleDiagram(
+              applyDiagramDelta(masterBase, restoreSlide.diagramDelta),
+            );
+            flushSync(() => {
+              setActivePresentationDeckId(savedDeckId);
+              setActivePresentationSlideId(savedSlideId);
+              setPresentationDraftDiagram(restoreDraft);
+            });
+          }
+        }
+        presentationThumbBackfillRunningRef.current = false;
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- active deck/slide are restore targets for this run only; omitting avoids re-entry on every slide change.
+  }, [presentationModeEnabled, presentationMasterDiagram, presentationDeckIdentityKey]);
 
   const activePresentationSlideIndex = activePresentationDeck
     ? Math.max(0, activePresentationSlides.findIndex((s) => s.id === activePresentationSlideId))
@@ -3516,9 +3685,10 @@ export default function DiagramEditor() {
     setPresentationPlayerOpen(false);
   }, [presentationModeEnabled, tabDiagramData, toast]);
 
-  const handleCreatePresentationDeck = React.useCallback(() => {
+  const handleCreatePresentationDeck = React.useCallback(async () => {
     const name = window.prompt('Presentation name');
     if (!name || !name.trim()) return;
+    await captureOutgoingSlideThumbnailIfNeeded();
     const now = Date.now();
     const deck: PresentationDeck = {
       id: `deck-${now}-${Math.random().toString(36).slice(2, 8)}`,
@@ -3531,21 +3701,37 @@ export default function DiagramEditor() {
     setActivePresentationDeckId(deck.id);
     setActivePresentationSlideId(null);
     setSelectedPresentationSlideIds(new Set());
-  }, []);
+    setPresentationDraftDiagram(safeClone(presentationMasterDiagram ?? tabDiagramData));
+  }, [captureOutgoingSlideThumbnailIfNeeded, presentationMasterDiagram, tabDiagramData]);
 
-  const handleDeletePresentationDeck = React.useCallback(() => {
+  const handleDeletePresentationDeck = React.useCallback(async () => {
     if (!activePresentationDeck) return;
     const confirmed = window.confirm(`Delete presentation "${activePresentationDeck.name}"?`);
     if (!confirmed) return;
+
+    await captureOutgoingSlideThumbnailIfNeeded();
 
     const nextDecks = presentationDecks.filter((deck) => deck.id !== activePresentationDeck.id);
     const fallbackDeckId = nextDecks[0]?.id ?? null;
 
     setPresentationDecks(nextDecks);
     setActivePresentationDeckId(fallbackDeckId);
-    setActivePresentationSlideId(nextDecks[0]?.slides[0]?.id ?? null);
+    const nextSlideId = nextDecks[0]?.slides[0]?.id ?? null;
+    setActivePresentationSlideId(nextSlideId);
     setSelectedPresentationSlideIds(new Set());
-  }, [activePresentationDeck, presentationDecks]);
+    if (nextSlideId && nextDecks[0]?.slides[0]) {
+      const master = projectVisibleDiagram(presentationMasterDiagram ?? tabDiagramData);
+      setPresentationDraftDiagram(applyDiagramDelta(master, nextDecks[0].slides[0].diagramDelta));
+    } else {
+      setPresentationDraftDiagram(safeClone(presentationMasterDiagram ?? tabDiagramData));
+    }
+  }, [
+    activePresentationDeck,
+    captureOutgoingSlideThumbnailIfNeeded,
+    presentationDecks,
+    presentationMasterDiagram,
+    tabDiagramData,
+  ]);
 
   const handleRenamePresentationDeck = React.useCallback((name: string) => {
     if (!activePresentationDeckId || !name.trim()) return;
@@ -3559,12 +3745,27 @@ export default function DiagramEditor() {
     }));
   }, [activePresentationDeckId]);
 
-  const handleSelectPresentationDeck = React.useCallback((deckId: string) => {
+  const handleSelectPresentationDeck = React.useCallback(async (deckId: string) => {
+    if (deckId === activePresentationDeckId) return;
+    await captureOutgoingSlideThumbnailIfNeeded();
     setActivePresentationDeckId(deckId);
     const deck = presentationDecks.find((item) => item.id === deckId) ?? null;
-    setActivePresentationSlideId(deck?.slides[0]?.id ?? null);
+    const nextSlideId = deck?.slides[0]?.id ?? null;
+    setActivePresentationSlideId(nextSlideId);
     setSelectedPresentationSlideIds(new Set());
-  }, [presentationDecks]);
+    if (nextSlideId && deck?.slides[0]) {
+      const master = projectVisibleDiagram(presentationMasterDiagram ?? tabDiagramData);
+      setPresentationDraftDiagram(applyDiagramDelta(master, deck.slides[0].diagramDelta));
+    } else {
+      setPresentationDraftDiagram(safeClone(presentationMasterDiagram ?? tabDiagramData));
+    }
+  }, [
+    activePresentationDeckId,
+    captureOutgoingSlideThumbnailIfNeeded,
+    presentationDecks,
+    presentationMasterDiagram,
+    tabDiagramData,
+  ]);
 
   const runPresentationAutoZoom = React.useCallback(async () => {
     if (!presentationModeEnabled) return null;
@@ -3776,6 +3977,8 @@ export default function DiagramEditor() {
         createdAt: Date.now(),
       };
 
+      await captureOutgoingSlideThumbnailIfNeeded();
+
       setPresentationDecks((prev) => prev.map((deck) => {
         if (deck.id !== activePresentationDeckId) return deck;
         return {
@@ -3808,6 +4011,7 @@ export default function DiagramEditor() {
     }
   }, [
     activePresentationDeckId,
+    captureOutgoingSlideThumbnailIfNeeded,
     capturePresentationSlidePayload,
     activePresentationDeck?.slides.length,
     toast,
@@ -3903,17 +4107,25 @@ export default function DiagramEditor() {
     }));
   }, [activePresentationDeckId]);
 
-  const handleSelectPresentationSlide = React.useCallback((slideId: string) => {
+  const handleSelectPresentationSlide = React.useCallback(async (slideId: string) => {
+    if (slideId === activePresentationSlideId) return;
+    await captureOutgoingSlideThumbnailIfNeeded();
     setActivePresentationSlideId(slideId);
     setSelectedPresentationSlideIds(new Set());
-    // Show the selected slide's diagram on the canvas
     const deck = presentationDecks.find((d) => d.id === activePresentationDeckId);
     const slide = deck?.slides.find((s) => s.id === slideId);
     if (slide) {
       const master = projectVisibleDiagram(presentationMasterDiagram ?? tabDiagramData);
       setPresentationDraftDiagram(applyDiagramDelta(master, slide.diagramDelta));
     }
-  }, [activePresentationDeckId, presentationDecks, presentationMasterDiagram, tabDiagramData]);
+  }, [
+    activePresentationSlideId,
+    activePresentationDeckId,
+    captureOutgoingSlideThumbnailIfNeeded,
+    presentationDecks,
+    presentationMasterDiagram,
+    tabDiagramData,
+  ]);
 
   const handleTogglePresentationSlideSelection = React.useCallback((slideId: string, checked: boolean) => {
     setSelectedPresentationSlideIds((prev) => {
@@ -3924,20 +4136,20 @@ export default function DiagramEditor() {
     });
   }, []);
 
-  const handlePreviousPresentationSlide = React.useCallback(() => {
+  const handlePreviousPresentationSlide = React.useCallback(async () => {
     if (!activePresentationSlides.length) return;
     const currentIndex = Math.max(0, activePresentationSlides.findIndex((slide) => slide.id === activePresentationSlideId));
     const nextIndex = (currentIndex - 1 + activePresentationSlides.length) % activePresentationSlides.length;
     const nextSlideId = activePresentationSlides[nextIndex].id;
-    handleSelectPresentationSlide(nextSlideId);
+    await handleSelectPresentationSlide(nextSlideId);
   }, [activePresentationSlides, activePresentationSlideId, handleSelectPresentationSlide]);
 
-  const handleNextPresentationSlide = React.useCallback(() => {
+  const handleNextPresentationSlide = React.useCallback(async () => {
     if (!activePresentationSlides.length) return;
     const currentIndex = Math.max(0, activePresentationSlides.findIndex((slide) => slide.id === activePresentationSlideId));
     const nextIndex = (currentIndex + 1) % activePresentationSlides.length;
     const nextSlideId = activePresentationSlides[nextIndex].id;
-    handleSelectPresentationSlide(nextSlideId);
+    await handleSelectPresentationSlide(nextSlideId);
   }, [activePresentationSlides, activePresentationSlideId, handleSelectPresentationSlide]);
 
   const handleEnterPresentationPlayMode = React.useCallback(() => {

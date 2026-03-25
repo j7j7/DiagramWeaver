@@ -2,8 +2,15 @@ import type { DiagramData, DiagramDelta, PresentationDeck, Slide } from '@/lib/t
 import { PresentationDeckListSchema } from '@/lib/schemas';
 import { projectVisibleDiagram } from '@/lib/presentation-delta';
 
-const PRESENTATION_THUMBNAIL_PLACEHOLDER =
+/** Placeholder used when compact JSON omits real PNG thumbnails — must be replaced by canvas capture in the editor. */
+export const PRESENTATION_THUMBNAIL_PLACEHOLDER =
   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180" viewBox="0 0 320 180"><rect width="320" height="180" fill="%2311141a"/><text x="160" y="90" text-anchor="middle" dominant-baseline="middle" fill="%23d1d5db" font-family="Arial, sans-serif" font-size="14">Slide</text></svg>';
+
+/** True when the slide still uses a placeholder or non-PNG snapshot (e.g. after compact file load). */
+export function slideNeedsPresentationThumbnailSnapshot(snapshotImage?: string | null): boolean {
+  if (!snapshotImage) return true;
+  return !snapshotImage.startsWith('data:image/png');
+}
 
 function safeClone<T>(value: T): T {
   if (value === undefined) return value;
