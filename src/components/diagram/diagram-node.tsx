@@ -686,6 +686,8 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
             iconName={node.iconName}
             emoji={node.emoji}
             iconColor={nodeAny.iconColor}
+            imageUrl={nodeAny.imageUrl}
+            imageOptions={nodeAny.imageOptions}
             width={icon}
             height={icon}
             style={{

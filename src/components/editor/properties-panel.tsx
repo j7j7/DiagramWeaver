@@ -10,8 +10,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { normalizeExternalUrl, openExternalUrlInNewTab } from "@/lib/url-utils";
+import { CustomIconPreviewEditor } from "@/components/editor/custom-icon-preview-editor";
+import { DEFAULT_CUSTOM_IMAGE_OPTIONS, normalizeCustomImageOptions, normalizeHttpImageUrl, validateCustomImageUrl } from "@/lib/custom-icon-utils";
 import type { SelectedItem } from "../diagram-editor";
-import type { DiagramData } from "@/lib/types";
+import type { CustomImageOptions, DiagramData } from "@/lib/types";
 
 interface PropertiesPanelProps {
   selectedItem: SelectedItem | null;
@@ -69,6 +71,9 @@ export function PropertiesPanel({
   const [newKeyValue, setNewKeyValue] = useState<{ key: string; value: string }>(
     { key: "", value: "" }
   );
+  const [customIconUrlDraft, setCustomIconUrlDraft] = useState("");
+  const [customIconError, setCustomIconError] = useState<string | null>(null);
+  const [customIconLoading, setCustomIconLoading] = useState(false);
 
   const metaData =
     selectedItem && "metaData" in selectedItem
@@ -90,8 +95,14 @@ export function PropertiesPanel({
         : "";
 
   const isNode = selectedItem?.itemType === "node";
+  const isCustomIconNode = isNode && (selectedItem as (SelectedItem & { type?: string }) | null)?.type === "generic.icon.custom";
   const linkUrl = isNode ? ((selectedItem as SelectedItem & { linkUrl?: string }).linkUrl ?? "") : "";
   const normalizedLinkUrl = useMemo(() => normalizeExternalUrl(linkUrl), [linkUrl]);
+  const customIconImageUrl = isCustomIconNode ? ((selectedItem as SelectedItem & { imageUrl?: string }).imageUrl ?? "") : "";
+  const customIconOptions = useMemo(
+    () => normalizeCustomImageOptions(isCustomIconNode ? ((selectedItem as SelectedItem & { imageOptions?: Partial<CustomImageOptions> }).imageOptions ?? DEFAULT_CUSTOM_IMAGE_OPTIONS) : DEFAULT_CUSTOM_IMAGE_OPTIONS),
+    [isCustomIconNode, selectedItem]
+  );
 
   const handleMetaDataChange = useCallback(
     (newMetaData: Record<string, string>) => {
@@ -178,11 +189,61 @@ export function PropertiesPanel({
     openExternalUrlInNewTab(normalizedLinkUrl);
   }, [normalizedLinkUrl, toast]);
 
+  const updateCustomIconNode = useCallback(
+    (patch: Partial<{ imageUrl: string; imageOptions: CustomImageOptions }>) => {
+      if (!selectedItem || selectedItem.itemType !== "node" || isReadOnly) return;
+      onItemUpdate({
+        ...selectedItem,
+        type: "generic.icon.custom",
+        imageUrl: patch.imageUrl !== undefined ? patch.imageUrl : ((selectedItem as SelectedItem & { imageUrl?: string }).imageUrl || ""),
+        imageOptions: patch.imageOptions !== undefined ? patch.imageOptions : customIconOptions,
+      });
+    },
+    [selectedItem, onItemUpdate, isReadOnly, customIconOptions]
+  );
+
+  const loadCustomIconUrl = useCallback(async () => {
+    if (isReadOnly) return;
+    setCustomIconLoading(true);
+    setCustomIconError(null);
+
+    const normalized = normalizeHttpImageUrl(customIconUrlDraft);
+    if (!normalized) {
+      setCustomIconError("Enter a valid image URL (http/https or data:image/...).");
+      updateCustomIconNode({ imageUrl: "" });
+      setCustomIconLoading(false);
+      return;
+    }
+
+    const result = await validateCustomImageUrl(normalized, { force: true });
+    if (!result.ok) {
+      setCustomIconError(result.error || "Unable to load image preview.");
+      updateCustomIconNode({ imageUrl: "" });
+      setCustomIconLoading(false);
+      return;
+    }
+
+    updateCustomIconNode({
+      imageUrl: result.normalizedUrl || normalized,
+      imageOptions: normalizeCustomImageOptions(DEFAULT_CUSTOM_IMAGE_OPTIONS),
+    });
+    setCustomIconLoading(false);
+  }, [customIconUrlDraft, isReadOnly, updateCustomIconNode]);
+
   React.useEffect(() => {
     setEditingKey(null);
     setEditingDraft(null);
     setNewKeyValue({ key: "", value: "" });
+    setCustomIconError(null);
   }, [selectedItem?.id]);
+
+  React.useEffect(() => {
+    if (!isCustomIconNode) {
+      setCustomIconUrlDraft("");
+      return;
+    }
+    setCustomIconUrlDraft(customIconImageUrl);
+  }, [isCustomIconNode, customIconImageUrl]);
 
   if (collapsed) {
     if (narrowCollapsed) {
@@ -313,6 +374,56 @@ export function PropertiesPanel({
                       </Button>
                     )}
                   </div>
+                </div>
+              )}
+
+              {isCustomIconNode && (
+                <div className="space-y-2 border rounded-md p-3">
+                  <Label className="text-xs text-muted-foreground">Custom Icon</Label>
+                  {!isReadOnly && (
+                    <div className="flex gap-2">
+                      <Input
+                        value={customIconUrlDraft}
+                        onChange={(e) => {
+                          const nextValue = e.target.value;
+                          setCustomIconUrlDraft(nextValue);
+                          setCustomIconError(null);
+                          if (!nextValue.trim()) {
+                            updateCustomIconNode({ imageUrl: "" });
+                          }
+                        }}
+                        placeholder="https://example.com/icon"
+                        className="h-8 text-sm"
+                      />
+                      <Button size="sm" className="h-8" onClick={loadCustomIconUrl} disabled={customIconLoading}>
+                        {customIconLoading ? "Loading..." : "Load"}
+                      </Button>
+                    </div>
+                  )}
+
+                  {!isReadOnly && (
+                    <div className="text-xs text-muted-foreground">
+                      Direct image links, wrapped links (for example, Google image-result URLs), and data:image/... URLs are supported.
+                    </div>
+                  )}
+
+                  <CustomIconPreviewEditor
+                    imageUrl={customIconImageUrl || undefined}
+                    imageOptions={customIconOptions}
+                    onOptionsChange={
+                      isReadOnly
+                        ? undefined
+                        : (nextOptions) => updateCustomIconNode({ imageOptions: nextOptions })
+                    }
+                    size={144}
+                    readOnly={isReadOnly}
+                  />
+
+                  {customIconError ? (
+                    <div className="text-xs text-destructive">{customIconError}</div>
+                  ) : (
+                    <div className="text-xs text-muted-foreground">Click Load, then drag to center and use the mouse wheel to zoom. Supports PNG, JPG, SVG, WebP, GIF, AVIF, BMP, APNG, ICO, including data:image/... URLs. Max 500 KB.</div>
+                  )}
                 </div>
               )}
 

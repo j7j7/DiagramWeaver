@@ -4,6 +4,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Server, User } from "lucide-react";
 import { buildResourceIconPath } from "@/lib/resource-mapping";
 import { getLucideIcon, getLucideIconFromTypeSlug } from "@/lib/icon-resources";
+import { CustomIconImage } from "@/components/diagram/custom-icon-image";
+import type { CustomImageOptions } from "@/lib/types";
 
 interface ResourceIconProps extends React.SVGProps<SVGSVGElement> {
   type: string; // Format: provider.category.resourcename (e.g., aws.compute.ec2)
@@ -15,10 +17,24 @@ interface ResourceIconProps extends React.SVGProps<SVGSVGElement> {
   iconName?: string; // Lucide icon name (e.g. "Home", "Shield")
   emoji?: string; // Emoji character for emoji icons
   iconColor?: string; // Color for Lucide icons
+  imageUrl?: string; // External URL for generic.icon.custom
+  imageOptions?: Partial<CustomImageOptions>;
 }
 
-export function ResourceIcon({ type, imagePath, provider, category, file, iconType, iconName, emoji, iconColor, ...props }: ResourceIconProps) {
+export function ResourceIcon({ type, imagePath, provider, category, file, iconType, iconName, emoji, iconColor, imageUrl, imageOptions, ...props }: ResourceIconProps) {
   const [resourceFile, setResourceFile] = useState<string | null>(null);
+
+  if (type === "generic.icon.custom") {
+    return (
+      <CustomIconImage
+        imageUrl={imageUrl}
+        imageOptions={imageOptions}
+        width={props.width}
+        height={props.height}
+        alt={type}
+      />
+    );
+  }
 
   // Render standard icons (Lucide symbols or emojis) - same square size as other items (70x70)
   if (iconType === "emoji" && emoji) {

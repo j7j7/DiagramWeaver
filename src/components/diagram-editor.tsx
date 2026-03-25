@@ -47,6 +47,7 @@ import { collectAllIdsInDiagram, sanitizeImportedDiagram } from '@/lib/import-sa
 import { getDiagramAtStack, updateDiagramAtStack, addSubDiagramAtStack, removeSubDiagramAtStack } from '@/lib/sub-diagram-utils';
 import { sanitizeViewState } from '@/lib/view-state-utils';
 import { DiagramDataSchema } from '@/lib/schemas';
+import { normalizeHttpImageUrl, sanitizeCustomIconsInDiagram } from '@/lib/custom-icon-utils';
 import { parseMermaidFlowchart, parseMermaidClassDiagram, parseMermaidSequenceDiagram, detectMermaidDiagramType } from '@/lib/mermaid-parser';
 import { mermaidToDiagramData, classDiagramToDiagramData, sequenceDiagramToDiagramData } from '@/lib/mermaid-to-diagram';
 import { themeManager } from '@/lib/theme-manager';
@@ -477,11 +478,21 @@ function safeClone<T>(value: T): T {
 }
 
 function createPaletteItem(
-  resource: PaletteResource | { name: string; iconType?: string; iconName?: string; emoji?: string },
+  resource: PaletteResource | { name: string; iconType?: string; iconName?: string; emoji?: string; imageUrl?: string; imageOptions?: import('@/lib/types').CustomImageOptions },
   provider: string,
   category: string
 ) {
-  const r = resource as { name: string; iconType?: string; iconName?: string; emoji?: string; file?: string };
+  const r = resource as { name: string; iconType?: string; iconName?: string; emoji?: string; file?: string; imageUrl?: string; imageOptions?: import('@/lib/types').CustomImageOptions; type?: string };
+  if (r.type === 'custom-icon' && r.imageUrl) {
+    return {
+      type: 'generic.icon.custom',
+      label: r.name || 'Custom Icon',
+      provider: 'generic',
+      category: 'icon',
+      imageUrl: r.imageUrl,
+      imageOptions: r.imageOptions,
+    };
+  }
   if (r.iconType === 'lucide' && r.iconName) {
     const slug = r.iconName.toLowerCase().replace(/\s+/g, '-');
     return { type: `generic.icon.${slug}`, label: r.name, provider: 'generic', category: 'icon', iconType: 'lucide', iconName: r.iconName };
@@ -1524,17 +1535,17 @@ export default function DiagramEditor() {
     }
   }
 
-  const handleResourceSelect = (resource: { name: string; file: string; type?: string; hasWhiteVariant?: boolean; format?: string }, provider: string, category: string) => {
+  const handleResourceSelect = (resource: { name: string; file?: string; type?: string; hasWhiteVariant?: boolean; format?: string; iconType?: string; iconName?: string; emoji?: string; imageUrl?: string; imageOptions?: import('@/lib/types').CustomImageOptions }, provider: string, category: string) => {
     // Track the currently selected resource from the sidebar for copy/paste
     setSelectedResource({ resource, provider, category });
     console.log('Resource selected:', { resource, provider, category });
   };
 
   const handleResourceActivate = (
-    resource: { name: string; file?: string; type?: string; hasWhiteVariant?: boolean; format?: string; iconType?: string; iconName?: string; emoji?: string },
+    resource: { name: string; file?: string; type?: string; hasWhiteVariant?: boolean; format?: string; iconType?: string; iconName?: string; emoji?: string; imageUrl?: string; imageOptions?: import('@/lib/types').CustomImageOptions },
     provider: string,
     category: string,
-    fullItem?: { type: string; label: string; provider: string; category: string; iconType?: string; iconName?: string; emoji?: string }
+    fullItem?: { type: string; label: string; provider: string; category: string; iconType?: string; iconName?: string; emoji?: string; imageUrl?: string; imageOptions?: import('@/lib/types').CustomImageOptions }
   ) => {
     const item = fullItem ?? createPaletteItem(resource as PaletteResource, provider, category);
     setSelectedResource({ resource, provider, category });
@@ -1545,7 +1556,7 @@ export default function DiagramEditor() {
   };
 
   const handleResourceActivateAtPosition = (
-    resource: { name: string; file?: string; type?: string; hasWhiteVariant?: boolean; format?: string; iconType?: string; iconName?: string; emoji?: string },
+    resource: { name: string; file?: string; type?: string; hasWhiteVariant?: boolean; format?: string; iconType?: string; iconName?: string; emoji?: string; imageUrl?: string; imageOptions?: import('@/lib/types').CustomImageOptions },
     provider: string,
     category: string,
     position: { x: number; y: number },
@@ -2493,17 +2504,34 @@ export default function DiagramEditor() {
 
   const parseUnknownJsonToDiagramData = React.useCallback((json: unknown): DiagramData => {
     const flattened = flattenDiagramOnImport((json || {}) as RawDiagramData);
-    const result = DiagramDataSchema.safeParse(flattened);
+
+    // Keep import resilient: invalid custom icon URLs are downgraded to fallback rendering
+    // before strict Zod validation runs.
+    const preSanitized = {
+      ...flattened,
+      nodes: (flattened.nodes || []).map((node: any) => {
+        if (node?.type !== 'generic.icon.custom') return node;
+        const normalizedUrl = normalizeHttpImageUrl(node?.imageUrl);
+        if (!normalizedUrl) {
+          const { imageUrl: _discard, ...rest } = node;
+          return rest;
+        }
+        return { ...node, imageUrl: normalizedUrl };
+      }),
+    };
+
+    const result = DiagramDataSchema.safeParse(preSanitized);
     if (!result.success) {
       throw new Error(`Invalid diagram format: ${result.error.message}`);
     }
     const connections = ensureConnectionIds(result.data.connections || []);
-    return {
+    const parsedData: DiagramData = {
       nodes: result.data.nodes || [],
       connections,
       groupings: result.data.groupings,
       layers: result.data.layers,
     };
+    return sanitizeCustomIconsInDiagram(parsedData);
   }, []);
 
   const extractPresentationsFromDiagramJson = React.useCallback((json: unknown): {

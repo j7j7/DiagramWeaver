@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { flattenDiagramOnImport } from './flatten-on-import';
+import { normalizeHttpImageUrl, sanitizeCustomIconsInDiagram } from './custom-icon-utils';
 
 // Rich text run schema for textbox nodes
 const RichTextRunSchema = z.object({
@@ -13,6 +14,39 @@ const RichTextRunSchema = z.object({
   lineFontWeight: z.union([z.string(), z.number()]).optional(),
   lineFontFamily: z.string().optional(),
 });
+
+const CustomImageCropSchema = z.object({
+  x: z.number().min(-300).max(300),
+  y: z.number().min(-300).max(300),
+  width: z.number().min(1).max(300),
+  height: z.number().min(1).max(300),
+});
+
+const CustomImageOrientationSchema = z.object({
+  rotate: z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)]),
+  flipHorizontal: z.boolean(),
+  flipVertical: z.boolean(),
+});
+
+const CustomImageOptionsSchema = z.object({
+  width: z.number().min(16).max(512),
+  height: z.number().min(16).max(512),
+  scale: z.number().min(10).max(300),
+  crop: CustomImageCropSchema,
+  orientation: CustomImageOrientationSchema,
+});
+
+const HttpImageUrlSchema = z
+  .string()
+  .url()
+  .refine((value) => {
+    try {
+      const parsed = new URL(value);
+      return parsed.protocol === "http:" || parsed.protocol === "https:";
+    } catch {
+      return false;
+    }
+  }, "imageUrl must use http or https");
 
 // Schema for DiagramNodeData based on actual types
 export const DiagramNodeDataSchema = z.object({
@@ -89,6 +123,8 @@ export const DiagramNodeDataSchema = z.object({
   iconName: z.string().optional(),
   emoji: z.string().optional(),
   iconColor: z.string().optional(), // Color for Lucide icons (hex)
+  imageUrl: HttpImageUrlSchema.optional(),
+  imageOptions: CustomImageOptionsSchema.optional(),
 
   metaData: z.record(z.string(), z.string()).optional(), // Key/value metadata
   subDiagramId: z.string().optional(), // Links this node to a sub-diagram (double-click to navigate)
@@ -302,7 +338,20 @@ export type DiagramDataValidated = z.infer<typeof DiagramDataSchema>;
 /** Parse diagram JSON - if zones present, flattens automatically */
 export function parseDiagramJson(raw: unknown): DiagramDataValidated {
   const flattened = flattenDiagramOnImport((raw || {}) as Parameters<typeof flattenDiagramOnImport>[0]);
-  return DiagramDataSchema.parse(flattened) as DiagramDataValidated;
+  const preSanitized = {
+    ...flattened,
+    nodes: (flattened.nodes || []).map((node: any) => {
+      if (node?.type !== 'generic.icon.custom') return node;
+      const normalizedUrl = normalizeHttpImageUrl(node?.imageUrl);
+      if (!normalizedUrl) {
+        const { imageUrl: _discard, ...rest } = node;
+        return rest;
+      }
+      return { ...node, imageUrl: normalizedUrl };
+    }),
+  };
+  const parsed = DiagramDataSchema.parse(preSanitized) as DiagramDataValidated;
+  return sanitizeCustomIconsInDiagram(parsed) as DiagramDataValidated;
 }
 
 // Schema for nested node items
@@ -370,6 +419,8 @@ export const DiagramNodeItemSchema = z.object({
   
   // Lock property - prevents movement when true
   locked: z.boolean().optional(), // If true, node cannot be moved
+  imageUrl: HttpImageUrlSchema.optional(),
+  imageOptions: CustomImageOptionsSchema.optional(),
   metaData: z.record(z.string(), z.string()).optional(), // Key/value metadata
   subDiagramId: z.string().optional(), // Links to sub-diagram (double-click to navigate)
 });

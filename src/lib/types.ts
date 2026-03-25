@@ -16,6 +16,27 @@ export interface RichTextRun {
   lineFontFamily?: string;
 }
 
+export interface CustomImageCrop {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface CustomImageOrientation {
+  rotate: 0 | 90 | 180 | 270;
+  flipHorizontal: boolean;
+  flipVertical: boolean;
+}
+
+export interface CustomImageOptions {
+  width: number;
+  height: number;
+  scale: number;
+  crop: CustomImageCrop;
+  orientation: CustomImageOrientation;
+}
+
 export interface DiagramNodeData {
   id: string;
   type: string; // Format: provider.category.resourcename (e.g., aws.compute.ec2)
@@ -96,6 +117,8 @@ export interface DiagramNodeData {
   iconName?: string; // Lucide icon name (e.g. 'Home', 'Shield')
   emoji?: string; // Emoji character for emoji icons
   iconColor?: string; // Color for Lucide icons (hex, e.g. '#3b82f6')
+  imageUrl?: string; // External image URL for generic.icon.custom nodes (http/https only)
+  imageOptions?: CustomImageOptions; // Crop/scale/orientation options for custom icon images
 
   /** Optional metadata as key/value pairs (e.g. IP Address: 192.168.1.1) */
   metaData?: Record<string, string>;
@@ -256,6 +279,10 @@ export interface DiagramNodeItem {
   
   // Lock property - prevents movement when true
   locked?: boolean; // If true, node cannot be moved
+
+  // External image URL support for custom icon nodes
+  imageUrl?: string; // External image URL for generic.icon.custom nodes (http/https only)
+  imageOptions?: CustomImageOptions; // Crop/scale/orientation options for custom icon images
 
   /** Optional metadata as key/value pairs */
   metaData?: Record<string, string>;
