@@ -130,6 +130,22 @@ export function CustomIconPreviewEditor({
     [applyCrop, imageUrl, onOptionsChange, options.crop, readOnly]
   );
 
+  const handleFit = useCallback(() => {
+    if (readOnly || !imageUrl || !onOptionsChange) return;
+    onOptionsChange(
+      normalizeCustomImageOptions({
+        ...options,
+        scale: 100,
+        crop: {
+          x: 0,
+          y: 0,
+          width: 100,
+          height: 100,
+        },
+      })
+    );
+  }, [imageUrl, onOptionsChange, options, readOnly]);
+
   const handleReset = useCallback(() => {
     if (!onOptionsChange) return;
     onOptionsChange(normalizeCustomImageOptions(DEFAULT_CUSTOM_IMAGE_OPTIONS));
@@ -150,6 +166,11 @@ export function CustomIconPreviewEditor({
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
+          onDoubleClick={() => {
+            if (!readOnly && imageUrl && onOptionsChange) {
+              handleFit();
+            }
+          }}
         >
           <CustomIconImage
             imageUrl={imageUrl}
@@ -166,7 +187,7 @@ export function CustomIconPreviewEditor({
       <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
         <div className="flex items-center gap-2">
           <Move className="h-3.5 w-3.5" />
-            <span>Drag freely</span>
+          <span>Drag freely (double-click to Fit)</span>
         </div>
       </div>
 
@@ -176,7 +197,20 @@ export function CustomIconPreviewEditor({
             <ZoomIn className="h-3.5 w-3.5" />
             <span>Zoom</span>
           </div>
-          <span>{getZoomLabel(zoomPercent)}</span>
+          <div className="flex items-center gap-2">
+            <span>{getZoomLabel(zoomPercent)}</span>
+            {!readOnly && imageUrl && onOptionsChange && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-6 px-2 text-[11px]"
+                onClick={handleFit}
+              >
+                Fit
+              </Button>
+            )}
+          </div>
         </div>
         <Slider
           value={[zoomPercent]}
