@@ -1,7 +1,7 @@
 import React from "react";
 import { BezierConnectionText } from "../diagram/bezier-connection";
 import { determineConnectionEdges } from "../diagram/bezier-connection";
-import type { DiagramData } from "@/lib/types";
+import type { DiagramConnectionData, DiagramData } from "@/lib/types";
 import { measureNodeDims, type PositionedNode, type PositionedGroup } from "./canvas-constants";
 
 interface CanvasConnectionTextProps {
@@ -11,6 +11,14 @@ interface CanvasConnectionTextProps {
   nodesById: Record<string, PositionedNode>;
   zonesById: Record<string, PositionedGroup>;
   processedZones: PositionedGroup[];
+  /** Slide / layer transition styles (same keys as CanvasConnections) */
+  connectionAnimationStyles?: Map<string, {
+    opacity: number;
+    transition: string;
+    slideEndpointOffset?: { fromDx: number; fromDy: number; toDx: number; toDy: number };
+    slideWaypointOffsets?: Array<{ dx: number; dy: number }>;
+  }>;
+  connectionKey?: (conn: DiagramConnectionData) => string;
 }
 
 function areCanvasConnectionTextPropsEqual(prev: CanvasConnectionTextProps, next: CanvasConnectionTextProps): boolean {
@@ -19,11 +27,13 @@ function areCanvasConnectionTextPropsEqual(prev: CanvasConnectionTextProps, next
     prev.diagramData === next.diagramData &&
     prev.nodesById === next.nodesById &&
     prev.zonesById === next.zonesById &&
-    prev.processedZones === next.processedZones;
+    prev.processedZones === next.processedZones &&
+    prev.connectionAnimationStyles === next.connectionAnimationStyles &&
+    prev.connectionKey === next.connectionKey;
 }
 
 function CanvasConnectionTextInner(props: CanvasConnectionTextProps) {
-  const { width, height, diagramData, nodesById, zonesById, processedZones } = props;
+  const { width, height, diagramData, nodesById, zonesById, processedZones, connectionAnimationStyles, connectionKey } = props;
   return (
     <svg
       width={width}
@@ -56,20 +66,44 @@ function CanvasConnectionTextInner(props: CanvasConnectionTextProps) {
         // Explicitly set lineColor after spreading to ensure it's not overwritten
         fromPos.lineColor = (fromItem as any).lineColor;
         toPos.lineColor = (toItem as any).lineColor;
+
+        const stableConnKey = connectionKey ? connectionKey(edge) : null;
+        const slideConnStyle = stableConnKey && connectionAnimationStyles ? connectionAnimationStyles.get(stableConnKey) : undefined;
+        const slideOff = slideConnStyle?.slideEndpointOffset;
+        const slideWpOff = slideConnStyle?.slideWaypointOffsets;
+
+        const geomFrom = slideOff
+          ? { ...fromPos, x: (fromPos.x ?? 0) + slideOff.fromDx, y: (fromPos.y ?? 0) + slideOff.fromDy }
+          : fromPos;
+        const geomTo = slideOff
+          ? { ...toPos, x: (toPos.x ?? 0) + slideOff.toDx, y: (toPos.y ?? 0) + slideOff.toDy }
+          : toPos;
         
         // Get edge information for this connection
-        const edges = determineConnectionEdges(fromPos, toPos, edge, fromItemDims.width, fromItemDims.height, toItemDims.width, toItemDims.height);
+        const edges = determineConnectionEdges(geomFrom, geomTo, edge, fromItemDims.width, fromItemDims.height, toItemDims.width, toItemDims.height);
+
+        let edgeConnData: any = {
+          ...edge,
+          fromPreferredExit: edges.fromEdge,
+          toPreferredEntry: edges.toEdge,
+        };
+        if (slideWpOff && edgeConnData.waypoints?.length) {
+          edgeConnData = {
+            ...edgeConnData,
+            waypoints: edgeConnData.waypoints.map((w: { x: number; y: number }, i: number) => ({
+              ...w,
+              x: w.x + (slideWpOff[i]?.dx ?? 0),
+              y: w.y + (slideWpOff[i]?.dy ?? 0),
+            })),
+          };
+        }
 
         return (
           <BezierConnectionText
             key={`connection-text-${edge.from}-${edge.to}-${index}`}
-            connectionData={{
-              ...edge,
-              fromPreferredExit: edges.fromEdge,
-              toPreferredEntry: edges.toEdge,
-            }}
-            from={fromPos}
-            to={toPos}
+            connectionData={edgeConnData}
+            from={geomFrom}
+            to={geomTo}
             connectionColor={edge.color}
           />
         );

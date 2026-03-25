@@ -1,7 +1,8 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import type { DiagramData, DiagramNodeData, DiagramConnectionData } from '@/lib/types';
+import type { DiagramData, DiagramNodeData, DiagramConnectionData, DiagramZoneData } from '@/lib/types';
 import { extractVisualColorFields, visualColorNeedsCrossfade, visualColorSignature } from '@/lib/slide-visual-color';
 import { buildStaggerDelaysForSlideTransition } from '@/lib/slide-transition-order';
+import { easeSlideTransitionInOut } from '@/lib/ease-slide-cubic-bezier';
 
 export interface SlideTransitionStyle {
   opacity: number;
@@ -10,6 +11,10 @@ export interface SlideTransitionStyle {
   transitionDelayMs?: number;
   transform?: string | undefined;
   transformOrigin?: string;
+  /** Interpolated endpoint offsets so connection paths lerp with moving nodes (slide transitions). */
+  slideEndpointOffset?: { fromDx: number; fromDy: number; toDx: number; toDy: number };
+  /** Interpolated manual waypoints (same length on prev/current slide). */
+  slideWaypointOffsets?: Array<{ dx: number; dy: number }>;
   visualColorMerge?: Record<string, unknown>;
   visualColorMergeTransition?: string;
   /** Stack "from" and "to" visual fields and animate top layer opacity (gradients). */
@@ -49,7 +54,17 @@ interface SlideAnimation {
     translateYStart: number;
     translateYEnd: number;
     easing: string;
+    slideEndpointMove?: {
+      fromDx: number;
+      fromDy: number;
+      toDx: number;
+      toDy: number;
+      waypointPrev?: Array<{ x: number; y: number }>;
+      waypointCurr?: Array<{ x: number; y: number }>;
+      waypointChanged: boolean;
+    };
   }>;
+  connectionDelayMs: Map<string, number>;
 }
 
 const TRANSITION_DURATION_MS = 300;
@@ -79,6 +94,13 @@ function connKey(conn: DiagramConnectionData): string {
 }
 
 /** Line nodes use startPos/endPos; compare when both slides have a line node. */
+function buildItemMap(diagram: DiagramData): Map<string, DiagramNodeData | DiagramZoneData> {
+  const m = new Map<string, DiagramNodeData | DiagramZoneData>();
+  for (const n of diagram.nodes || []) m.set(n.id, n);
+  for (const z of diagram.zones || []) m.set(z.id, z);
+  return m;
+}
+
 function lineEndpointsEqual(a: DiagramNodeData, b: DiagramNodeData): boolean {
   const as = (a as { startPos?: { x: number; y: number } }).startPos;
   const bs = (b as { startPos?: { x: number; y: number } }).startPos;
@@ -106,7 +128,8 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
   const [animatingNodes, setAnimatingNodes] = useState<DiagramNodeData[]>([]);
   const [animatingConnections, setAnimatingConnections] = useState<DiagramConnectionData[]>([]);
 
-  const rafRef = useRef<number | null>(null);
+  const connectionSlideEffectiveStartRef = useRef<number | null>(null);
+  const connectionGeomRafRef = useRef<number | null>(null);
   const animationsRef = useRef<SlideAnimation[]>([]);
   animationsRef.current = animations;
 
@@ -243,6 +266,49 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
       }
     }
 
+    const prevItemsMap = buildItemMap(previousDiagram);
+    const currItemsMap = buildItemMap(currentDiagram);
+
+    for (const connKeyVal of allConnKeys) {
+      const prevConn = prevConnsMap.get(connKeyVal);
+      const currConn = currConnsMap.get(connKeyVal);
+      if (!prevConn || !currConn) continue;
+      if (connKeyStyles.has(connKeyVal)) continue;
+
+      const fromPrev = prevItemsMap.get(currConn.from);
+      const fromCurr = currItemsMap.get(currConn.from);
+      const toPrev = prevItemsMap.get(currConn.to);
+      const toCurr = currItemsMap.get(currConn.to);
+      if (!fromPrev || !fromCurr || !toPrev || !toCurr) continue;
+
+      const fromDx = (fromPrev.x ?? 0) - (fromCurr.x ?? 0);
+      const fromDy = (fromPrev.y ?? 0) - (fromCurr.y ?? 0);
+      const toDx = (toPrev.x ?? 0) - (toCurr.x ?? 0);
+      const toDy = (toPrev.y ?? 0) - (toCurr.y ?? 0);
+
+      const waypointChanged =
+        JSON.stringify(prevConn.waypoints ?? null) !== JSON.stringify(currConn.waypoints ?? null);
+
+      if (fromDx === 0 && fromDy === 0 && toDx === 0 && toDy === 0 && !waypointChanged) continue;
+
+      connKeyStyles.set(connKeyVal, {
+        opacityStart: 1,
+        opacityEnd: 1,
+        translateYStart: 0,
+        translateYEnd: 0,
+        easing: EASE_IN_OUT,
+        slideEndpointMove: {
+          fromDx,
+          fromDy,
+          toDx,
+          toDy,
+          waypointPrev: prevConn.waypoints,
+          waypointCurr: currConn.waypoints,
+          waypointChanged,
+        },
+      });
+    }
+
     if (nodeIdStyles.size === 0 && connKeyStyles.size === 0) {
       return;
     }
@@ -265,7 +331,15 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
       durationMs: totalDurationMs,
       nodeIdStyles,
       connKeyStyles,
+      connectionDelayMs,
     };
+
+    connectionSlideEffectiveStartRef.current = null;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        connectionSlideEffectiveStartRef.current = performance.now();
+      });
+    });
 
     setAnimations([newAnimation]);
 
@@ -341,6 +415,31 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
     setConnectionStyles((prev) => {
       const next = new Map(prev);
       for (const [connKeyVal, style] of connKeyStyles) {
+        const sm = style.slideEndpointMove;
+        if (sm) {
+          const wpPrev = sm.waypointPrev;
+          const wpCurr = sm.waypointCurr;
+          const slideWaypointOffsets =
+            wpPrev && wpCurr && wpPrev.length === wpCurr.length && wpPrev.length > 0
+              ? wpPrev.map((wp: { x: number; y: number }, i: number) => ({
+                  dx: wp.x - wpCurr[i].x,
+                  dy: wp.y - wpCurr[i].y,
+                }))
+              : undefined;
+          next.set(connKeyVal, {
+            opacity: 1,
+            transition: 'none',
+            slideEndpointOffset: {
+              fromDx: sm.fromDx,
+              fromDy: sm.fromDy,
+              toDx: sm.toDx,
+              toDy: sm.toDy,
+            },
+            slideWaypointOffsets,
+          });
+          continue;
+        }
+
         const transformY = style.translateYStart;
 
         const transform = transformY !== 0
@@ -429,6 +528,32 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
         setConnectionStyles((prev) => {
           const next = new Map(prev);
           for (const [connKeyVal, style] of connKeyStyles) {
+            const sm = style.slideEndpointMove;
+            if (sm) {
+              const wpPrev = sm.waypointPrev;
+              const wpCurr = sm.waypointCurr;
+              const slideWaypointOffsets =
+                wpPrev && wpCurr && wpPrev.length === wpCurr.length && wpPrev.length > 0
+                  ? wpPrev.map((wp: { x: number; y: number }, i: number) => ({
+                      dx: wp.x - wpCurr[i].x,
+                      dy: wp.y - wpCurr[i].y,
+                    }))
+                  : undefined;
+              next.set(connKeyVal, {
+                opacity: 1,
+                transition: 'none',
+                transitionDelayMs: connDelayFor(connKeyVal),
+                slideEndpointOffset: {
+                  fromDx: sm.fromDx,
+                  fromDy: sm.fromDy,
+                  toDx: sm.toDx,
+                  toDy: sm.toDy,
+                },
+                slideWaypointOffsets,
+              });
+              continue;
+            }
+
             const transition = slideMotionTransition(style.easing);
             const transformY = style.translateYEnd;
 
@@ -480,6 +605,85 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
   }, [enabled, currentDiagram, previousDiagram]);
 
   useEffect(() => {
+    if (animations.length === 0) {
+      connectionSlideEffectiveStartRef.current = null;
+      if (connectionGeomRafRef.current !== null) {
+        cancelAnimationFrame(connectionGeomRafRef.current);
+        connectionGeomRafRef.current = null;
+      }
+      return;
+    }
+
+    const anim = animations[0];
+    const hasGeom = [...anim.connKeyStyles.values()].some((s) => s.slideEndpointMove);
+    if (!hasGeom) return;
+
+    const tick = () => {
+      const t0 = connectionSlideEffectiveStartRef.current;
+      const active = animationsRef.current[0];
+      if (!active) return;
+
+      if (t0 == null) {
+        connectionGeomRafRef.current = requestAnimationFrame(tick);
+        return;
+      }
+
+      const elapsed = performance.now() - t0;
+      const delays = active.connectionDelayMs;
+
+      setConnectionStyles((prev) => {
+        const next = new Map(prev);
+        for (const [key, style] of active.connKeyStyles) {
+          const sm = style.slideEndpointMove;
+          if (!sm) continue;
+
+          const delayMs = delays.get(key) ?? 0;
+          const u = Math.max(0, Math.min(1, (elapsed - delayMs) / TRANSITION_DURATION_MS));
+          const p = easeSlideTransitionInOut(u);
+
+          const wpPrev = sm.waypointPrev;
+          const wpCurr = sm.waypointCurr;
+          const slideWaypointOffsets =
+            wpPrev && wpCurr && wpPrev.length === wpCurr.length && wpPrev.length > 0
+              ? wpPrev.map((wp: { x: number; y: number }, i: number) => ({
+                  dx: (wp.x - wpCurr[i].x) * (1 - p),
+                  dy: (wp.y - wpCurr[i].y) * (1 - p),
+                }))
+              : undefined;
+
+          next.set(key, {
+            opacity: 1,
+            transition: 'none',
+            slideEndpointOffset: {
+              fromDx: sm.fromDx * (1 - p),
+              fromDy: sm.fromDy * (1 - p),
+              toDx: sm.toDx * (1 - p),
+              toDy: sm.toDy * (1 - p),
+            },
+            slideWaypointOffsets,
+          });
+        }
+        return next;
+      });
+
+      if (elapsed < active.durationMs + 50) {
+        connectionGeomRafRef.current = requestAnimationFrame(tick);
+      } else {
+        connectionGeomRafRef.current = null;
+      }
+    };
+
+    connectionGeomRafRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (connectionGeomRafRef.current !== null) {
+        cancelAnimationFrame(connectionGeomRafRef.current);
+        connectionGeomRafRef.current = null;
+      }
+    };
+  }, [animations.length]);
+
+  useEffect(() => {
     if (animations.length === 0) return;
 
     const anim = animations[0];
@@ -517,6 +721,8 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
               transition: 'none',
               transitionDelayMs: undefined,
               transform: undefined,
+              slideEndpointOffset: undefined,
+              slideWaypointOffsets: undefined,
             });
           }
         }

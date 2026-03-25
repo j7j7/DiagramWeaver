@@ -41,7 +41,14 @@ interface CanvasConnectionsProps {
   /** Set of node IDs whose outbound animations should be disabled */
   animationDisabledSources?: Set<string>;
   /** Layer show/hide animation styles (from useLayerAnimation) keyed by connectionKey(conn) */
-  connectionAnimationStyles?: Map<string, { opacity: number; transition: string; transform?: string; transitionDelayMs?: number }>;
+  connectionAnimationStyles?: Map<string, {
+    opacity: number;
+    transition: string;
+    transform?: string;
+    transitionDelayMs?: number;
+    slideEndpointOffset?: { fromDx: number; fromDy: number; toDx: number; toDy: number };
+    slideWaypointOffsets?: Array<{ dx: number; dy: number }>;
+  }>;
   /** Key function for connection lookup (from useLayerAnimation.connectionKey) */
   connectionKey?: (conn: DiagramConnectionData) => string;
 }
@@ -201,9 +208,22 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     fromPos.lineColor = (fromItem as any).lineColor;
     toPos.lineColor = (toItem as any).lineColor;
 
+    const stableConnKey = connectionKey ? connectionKey(edge) : null;
+    const slideConnStyle = stableConnKey && connectionAnimationStyles ? connectionAnimationStyles.get(stableConnKey) : undefined;
+    const slideOff = slideConnStyle?.slideEndpointOffset;
+    const slideWpOff = slideConnStyle?.slideWaypointOffsets;
+
+    const geomFrom = slideOff
+      ? { ...fromPos, x: (fromPos.x ?? 0) + slideOff.fromDx, y: (fromPos.y ?? 0) + slideOff.fromDy }
+      : fromPos;
+    const geomTo = slideOff
+      ? { ...toPos, x: (toPos.x ?? 0) + slideOff.toDx, y: (toPos.y ?? 0) + slideOff.toDy }
+      : toPos;
+
     const connKey = `${edge.from}-${edge.to}-${index}`;
-    const edges = connectionEdgeInfo.get(connKey)
-      || determineConnectionEdges(fromPos, toPos, edge, fromItemDims.width, fromItemDims.height, toItemDims.width, toItemDims.height);
+    const edges = !slideOff && connectionEdgeInfo.has(connKey)
+      ? connectionEdgeInfo.get(connKey)!
+      : determineConnectionEdges(geomFrom, geomTo, edge, fromItemDims.width, fromItemDims.height, toItemDims.width, toItemDims.height);
 
     const fromEdgeKey = `${edge.from}-${edges.fromEdge}`;
     const toEdgeKey = `${edge.to}-${edges.toEdge}`;
@@ -212,7 +232,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     const fromEdgeIndex = fromEdgeConnections.findIndex((item: any) => item.connIndex === index);
     const toEdgeIndex = toEdgeConnections.findIndex((item: any) => item.connIndex === index);
 
-    const enhancedEdge = {
+    let enhancedEdge: any = {
       ...edge,
       fromPreferredExit: edges.fromEdge,
       toPreferredEntry: edges.toEdge,
@@ -221,6 +241,16 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
       toConnectionIndex: toEdgeIndex >= 0 ? toEdgeIndex : 0,
       toTotalConnections: toEdgeConnections.length > 0 ? toEdgeConnections.length : 1,
     };
+    if (slideWpOff && enhancedEdge.waypoints?.length) {
+      enhancedEdge = {
+        ...enhancedEdge,
+        waypoints: enhancedEdge.waypoints.map((w: { x: number; y: number }, i: number) => ({
+          ...w,
+          x: w.x + (slideWpOff[i]?.dx ?? 0),
+          y: w.y + (slideWpOff[i]?.dy ?? 0),
+        })),
+      };
+    }
 
     const isFromShape = isShapeNodeType(fromPos.type);
     const isToShape = isShapeNodeType(toPos.type);
@@ -337,8 +367,8 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     const toIconOffsetX = toIconWidth ? (toWidth - toIconWidth) / 2 : undefined;
 
     const connectionPoints = getOptimalConnectionPoints(
-      fromPos,
-      toPos,
+      geomFrom,
+      geomTo,
       fromWidth,
       fromHeight,
       toWidth,
@@ -357,8 +387,8 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     const obstacles = collectObstacles(nodesById, zonesById, [edge.from, edge.to].filter(Boolean));
 
     return {
-      fromPos,
-      toPos,
+      fromPos: geomFrom,
+      toPos: geomTo,
       enhancedEdge,
       connStyle: edge.style ?? "bezier",
       obstacles,
@@ -444,10 +474,24 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
         // Explicitly set lineColor after spreading to ensure it's not overwritten
         fromPos.lineColor = (fromItem as any).lineColor;
         toPos.lineColor = (toItem as any).lineColor;
+
+        const stableConnKey = connectionKey ? connectionKey(edge) : null;
+        const slideConnStyle = stableConnKey && connectionAnimationStyles ? connectionAnimationStyles.get(stableConnKey) : undefined;
+        const slideOff = slideConnStyle?.slideEndpointOffset;
+        const slideWpOff = slideConnStyle?.slideWaypointOffsets;
+
+        const geomFrom = slideOff
+          ? { ...fromPos, x: (fromPos.x ?? 0) + slideOff.fromDx, y: (fromPos.y ?? 0) + slideOff.fromDy }
+          : fromPos;
+        const geomTo = slideOff
+          ? { ...toPos, x: (toPos.x ?? 0) + slideOff.toDx, y: (toPos.y ?? 0) + slideOff.toDy }
+          : toPos;
         
         // Get edge information for this connection
         const connKey = `${edge.from}-${edge.to}-${index}`;
-        const edges = connectionEdgeInfo.get(connKey) || determineConnectionEdges(fromPos, toPos, edge, fromItemDims.width, fromItemDims.height, toItemDims.width, toItemDims.height);
+        const edges = !slideOff && connectionEdgeInfo.has(connKey)
+          ? connectionEdgeInfo.get(connKey)!
+          : determineConnectionEdges(geomFrom, geomTo, edge, fromItemDims.width, fromItemDims.height, toItemDims.width, toItemDims.height);
         
         // Calculate per-edge indices
         const fromEdgeKey = `${edge.from}-${edges.fromEdge}`;
@@ -463,7 +507,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
         const toEdgeTotal = toEdgeConnections.length;
         
         // Update edge with per-edge connection distribution info
-        const enhancedEdge = {
+        let enhancedEdge: any = {
           ...edge,
           fromPreferredExit: edges.fromEdge,
           toPreferredEntry: edges.toEdge,
@@ -474,6 +518,16 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
           toConnectionIndex: toEdgeIndex >= 0 ? toEdgeIndex : 0,
           toTotalConnections: toEdgeTotal > 0 ? toEdgeTotal : 1,
         };
+        if (slideWpOff && enhancedEdge.waypoints?.length) {
+          enhancedEdge = {
+            ...enhancedEdge,
+            waypoints: enhancedEdge.waypoints.map((w: { x: number; y: number }, i: number) => ({
+              ...w,
+              x: w.x + (slideWpOff[i]?.dx ?? 0),
+              y: w.y + (slideWpOff[i]?.dy ?? 0),
+            })),
+          };
+        }
 
         // Check if this connection is selected (use connection id for multiple same from-to)
         const edgeId = (edge as { id?: string }).id ?? `${edge.from}-${edge.to}-${index}`;
@@ -604,7 +658,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
         const toIconOffsetX = toIconWidth ? (toWidth - toIconWidth) / 2 : undefined;
 
         // Calculate connection points
-        const connectionPoints = getOptimalConnectionPoints(fromPos, toPos, fromWidth, fromHeight, toWidth, toHeight, enhancedEdge, fromIconHeight, toIconHeight, fromIconOffset, toIconOffset, fromIconWidth, fromIconOffsetX, toIconWidth, toIconOffsetX);
+        const connectionPoints = getOptimalConnectionPoints(geomFrom, geomTo, fromWidth, fromHeight, toWidth, toHeight, enhancedEdge, fromIconHeight, toIconHeight, fromIconOffset, toIconOffset, fromIconWidth, fromIconOffsetX, toIconWidth, toIconOffsetX);
         const { fromX, fromY, toX, toY, fromAngle, toAngle } = connectionPoints;
         
         // Calculate control points for bezier curve
@@ -655,23 +709,21 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
           },
         };
 
-        const layerAnimStyle = connectionKey && connectionAnimationStyles ? connectionAnimationStyles.get(connectionKey(edge)) : undefined;
-
         return (
           <g
             key={`${edge.from}-${edge.to}-${index}-${edge.toArrow ? 'arrow' : 'noarrow'}-${edge._updated || ''}`}
             className={cn(isConnectionHighlighted && 'drop-shadow-[0_0_6px_rgba(0,200,150,0.8)]')}
-            style={layerAnimStyle ? {
-              opacity: layerAnimStyle.opacity,
-              transition: layerAnimStyle.transition,
-              ...(layerAnimStyle.transitionDelayMs != null && { transitionDelay: `${layerAnimStyle.transitionDelayMs}ms` }),
-              ...(layerAnimStyle.transform && { transform: layerAnimStyle.transform }),
+            style={slideConnStyle ? {
+              opacity: slideConnStyle.opacity,
+              transition: slideConnStyle.transition,
+              ...(slideConnStyle.transitionDelayMs != null && { transitionDelay: `${slideConnStyle.transitionDelayMs}ms` }),
+              ...(slideConnStyle.transform && { transform: slideConnStyle.transform }),
             } : undefined}
           >
             {connStyle === 'orthogonal' ? (
               <OrthogonalConnection
-                from={fromPos}
-                to={toPos}
+                from={geomFrom}
+                to={geomTo}
                 connectionColor={edge.color}
                 connectionData={enhancedEdge}
                 route={orthogonalRouteMap.get(index)}
@@ -684,8 +736,8 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
               />
             ) : (
               <BezierConnection
-                from={fromPos}
-                to={toPos}
+                from={geomFrom}
+                to={geomTo}
                 connectionColor={edge.color}
                 connectionData={enhancedEdge}
                 exportAnimationTimeSeconds={exportAnimationTimeSeconds}
@@ -729,9 +781,23 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
       
       fromPos.lineColor = (fromItem as any).lineColor;
       toPos.lineColor = (toItem as any).lineColor;
+
+      const stableConnKeyToolbar = connectionKey ? connectionKey(edge) : null;
+      const slideConnStyleToolbar = stableConnKeyToolbar && connectionAnimationStyles ? connectionAnimationStyles.get(stableConnKeyToolbar) : undefined;
+      const slideOffToolbar = slideConnStyleToolbar?.slideEndpointOffset;
+      const slideWpOffToolbar = slideConnStyleToolbar?.slideWaypointOffsets;
+
+      const geomFromToolbar = slideOffToolbar
+        ? { ...fromPos, x: (fromPos.x ?? 0) + slideOffToolbar.fromDx, y: (fromPos.y ?? 0) + slideOffToolbar.fromDy }
+        : fromPos;
+      const geomToToolbar = slideOffToolbar
+        ? { ...toPos, x: (toPos.x ?? 0) + slideOffToolbar.toDx, y: (toPos.y ?? 0) + slideOffToolbar.toDy }
+        : toPos;
       
       const connKey = `${edge.from}-${edge.to}-${index}`;
-      const edges = connectionEdgeInfo.get(connKey) || determineConnectionEdges(fromPos, toPos, edge, fromItemDims.width, fromItemDims.height, toItemDims.width, toItemDims.height);
+      const edges = !slideOffToolbar && connectionEdgeInfo.has(connKey)
+        ? connectionEdgeInfo.get(connKey)!
+        : determineConnectionEdges(geomFromToolbar, geomToToolbar, edge, fromItemDims.width, fromItemDims.height, toItemDims.width, toItemDims.height);
       
       const fromEdgeKey = `${edge.from}-${edges.fromEdge}`;
       const toEdgeKey = `${edge.to}-${edges.toEdge}`;
@@ -740,7 +806,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
       const fromEdgeIndex = fromEdgeConnections.findIndex((item: any) => item.connIndex === index);
       const toEdgeIndex = toEdgeConnections.findIndex((item: any) => item.connIndex === index);
       
-      const enhancedEdge = {
+      let enhancedEdge: any = {
         ...edge,
         fromPreferredExit: edges.fromEdge,
         toPreferredEntry: edges.toEdge,
@@ -749,6 +815,16 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
         toConnectionIndex: toEdgeIndex >= 0 ? toEdgeIndex : 0,
         toTotalConnections: toEdgeConnections.length > 0 ? toEdgeConnections.length : 1,
       };
+      if (slideWpOffToolbar && enhancedEdge.waypoints?.length) {
+        enhancedEdge = {
+          ...enhancedEdge,
+          waypoints: enhancedEdge.waypoints.map((w: { x: number; y: number }, i: number) => ({
+            ...w,
+            x: w.x + (slideWpOffToolbar[i]?.dx ?? 0),
+            y: w.y + (slideWpOffToolbar[i]?.dy ?? 0),
+          })),
+        };
+      }
 
       const isFromShape = isShapeNodeType(fromPos.type);
       const isToShape = isShapeNodeType(toPos.type);
@@ -852,7 +928,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
       const toIconWidth = isToIconNode && toIconContainer && toWidth > toIconContainer ? toIconContainer : undefined;
       const toIconOffsetX = toIconWidth ? (toWidth - toIconWidth) / 2 : undefined;
       
-      const connectionPoints = getOptimalConnectionPoints(fromPos, toPos, fromWidth, fromHeight, toWidth, toHeight, enhancedEdge, fromIconHeight, toIconHeight, fromIconOffset, toIconOffset, fromIconWidth, fromIconOffsetX, toIconWidth, toIconOffsetX);
+      const connectionPoints = getOptimalConnectionPoints(geomFromToolbar, geomToToolbar, fromWidth, fromHeight, toWidth, toHeight, enhancedEdge, fromIconHeight, toIconHeight, fromIconOffset, toIconOffset, fromIconWidth, fromIconOffsetX, toIconWidth, toIconOffsetX);
       const { fromX, fromY, toX, toY, fromAngle, toAngle } = connectionPoints;
       const connStyle = edge?.style ?? 'bezier';
 

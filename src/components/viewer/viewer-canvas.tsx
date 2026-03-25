@@ -63,7 +63,15 @@ interface ViewerCanvasProps {
     visualColorCrossfadeTopTransition?: string;
   }>;
   /** Connection transition styles for slide transitions */
-  connectionTransitionStyles?: Map<string, { opacity: number; transition: string; transform?: string; transformOrigin?: string }>;
+  connectionTransitionStyles?: Map<string, {
+    opacity: number;
+    transition: string;
+    transform?: string;
+    transformOrigin?: string;
+    transitionDelayMs?: number;
+    slideEndpointOffset?: { fromDx: number; fromDy: number; toDx: number; toDy: number };
+    slideWaypointOffsets?: Array<{ dx: number; dy: number }>;
+  }>;
   /** Double-click on node with subDiagramId navigates to sub-diagram */
   onSubDiagramDoubleClick?: (node: import("@/lib/types").DiagramNodeData) => void;
   /** True when node has subDiagramId and the linked sub exists */
@@ -529,6 +537,8 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
           nodesById={nodesById}
           zonesById={zonesById}
           processedZones={processedZones}
+          connectionAnimationStyles={connectionTransitionStyles}
+          connectionKey={connKey}
         />
       </div>
     </div>
