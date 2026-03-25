@@ -62,6 +62,7 @@ function connectionDataEqual(a?: DiagramConnectionData, b?: DiagramConnectionDat
   if (a.from !== b.from || a.to !== b.to || (a as any).id !== (b as any).id) return false;
   if (a.lineWidth !== b.lineWidth || a.shadow !== b.shadow || a.color !== b.color) return false;
   if (a.fromArrow !== b.fromArrow || a.toArrow !== b.toArrow || a.arrow !== b.arrow) return false;
+  if (a.centerEdgeAnchors !== b.centerEdgeAnchors) return false;
   if (a.text !== b.text || a.textPosition !== b.textPosition || a.style !== b.style) return false;
   const wpA = a.waypoints?.map((w) => `${w.x},${w.y}`).join(";") ?? "";
   const wpB = b.waypoints?.map((w) => `${w.x},${w.y}`).join(";") ?? "";

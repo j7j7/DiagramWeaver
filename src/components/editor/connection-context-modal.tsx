@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ColorPicker } from "@/components/ui/color-picker";
+import { Switch } from "@/components/ui/switch";
 import type { DiagramConnectionData, DiagramData } from "@/lib/types";
 import { ConnectionAnimationControls } from "@/components/editor/connection-animation-controls";
 
@@ -103,6 +104,11 @@ export function ConnectionContextModal({
     onConnectionUpdate(connection.from, connection.to, { style }, connId);
   };
 
+  const centerOnEdge = liveConnection.centerEdgeAnchors === true;
+  const handleCenterEdgeAnchorsChange = (checked: boolean) => {
+    onConnectionUpdate(connection.from, connection.to, { centerEdgeAnchors: checked }, connId);
+  };
+
   // Initialize position from props when modal opens
   useEffect(() => {
     if (visible) {
@@ -193,6 +199,22 @@ export function ConnectionContextModal({
               Orthogonal
             </Button>
           </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <span className="text-xs text-muted-foreground block">Center on edge</span>
+            <span className="text-[10px] text-muted-foreground/90 leading-tight block mt-0.5">
+              One attach point per side (not spread along the edge)
+            </span>
+          </div>
+          <Switch
+            checked={centerOnEdge}
+            onCheckedChange={handleCenterEdgeAnchorsChange}
+            disabled={isReadOnly}
+            className="shrink-0"
+            aria-label="Center connection anchors on edge"
+          />
         </div>
 
         <div className="flex items-center justify-between gap-2">

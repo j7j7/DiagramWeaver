@@ -414,6 +414,7 @@ function stripConnectionDefaults(conn: DiagramData['connections'][number]): unkn
   if (conn.toPreferredEntry !== undefined) result.toPreferredEntry = conn.toPreferredEntry;
   if (conn.toArrow !== undefined) result.toArrow = conn.toArrow;
   if (conn.arrow !== undefined) result.arrow = conn.arrow;
+  if (conn.centerEdgeAnchors === true) result.centerEdgeAnchors = true;
   if (conn.waypoints !== undefined) result.waypoints = conn.waypoints;
   if (conn.metaData !== undefined) result.metaData = conn.metaData;
 
@@ -2582,6 +2583,7 @@ export default function DiagramEditor() {
       toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center';
       toArrow?: boolean;
       arrow?: boolean;
+      centerEdgeAnchors?: boolean;
       waypoints?: Array<{ x: number; y: number; id?: string }>;
       metaData?: Record<string, string>;
       animation?: DiagramConnectionData['animation'];
@@ -2594,7 +2596,12 @@ export default function DiagramEditor() {
         const match = connectionId
           ? (conn as DiagramConnectionData).id === connectionId
           : (conn.from === from && conn.to === to);
-        return match ? { ...conn, ...updates } : conn;
+        if (!match) return conn;
+        const merged = { ...conn, ...updates } as DiagramConnectionData;
+        if (updates.centerEdgeAnchors === false) {
+          delete merged.centerEdgeAnchors;
+        }
+        return merged;
       }),
     }));
     if (selectedItem && selectedItem.itemType === 'edge') {
@@ -2654,7 +2661,7 @@ export default function DiagramEditor() {
     setPendingAnimationUpdate(null);
   }, []);
 
-  const handleConnectionUpdate = (from: string, to: string, updates: { text?: string; color?: string; textPosition?: number; lineWidth?: number; shadow?: boolean; style?: 'bezier' | 'orthogonal'; curvature?: number; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean; arrow?: boolean; waypoints?: Array<{ x: number; y: number; id?: string }>; metaData?: Record<string, string>; animation?: DiagramConnectionData['animation'] }, connectionId?: string) => {
+  const handleConnectionUpdate = (from: string, to: string, updates: { text?: string; color?: string; textPosition?: number; lineWidth?: number; shadow?: boolean; style?: 'bezier' | 'orthogonal'; curvature?: number; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean; arrow?: boolean; centerEdgeAnchors?: boolean; waypoints?: Array<{ x: number; y: number; id?: string }>; metaData?: Record<string, string>; animation?: DiagramConnectionData['animation'] }, connectionId?: string) => {
     const effectiveConnId = connectionId ?? (selectedItem?.itemType === 'edge' ? (selectedItem as { id?: string }).id : undefined);
     const connections = currentDiagramData.connections ?? [];
     const currentConnection = connections.find((conn) =>

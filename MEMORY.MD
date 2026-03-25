@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-03-25 – Connection: center edge anchors
+**Data**: `DiagramConnectionData.centerEdgeAnchors?: boolean` — when `true`, both endpoints attach at the **center of the chosen edge** instead of **spreading along the edge** with `connectionIndex` / `totalConnections` (default unchanged). **UI**: Right-click connection → **Connection** properties modal → **Center on edge** switch. **Implementation**: `getConnectionPoint(..., centerEdgeAnchors)` in `bezier-connection.tsx`; compact JSON delta keeps `centerEdgeAnchors` only when `true` (`stripConnectionDefaults`).
+
 ### 2026-03-20 – Slide transition: shadow flash in play mode
 **Cause**: `use-slide-transition` used `transition: all` on nodes/connections, which pulled unrelated paint props (e.g. shadow/filter) into interpolation/compositing during the motion phase. **Fix**: `slideMotionTransition()` — only `opacity` and `transform` are transitioned; color crossfade / merge still use their existing scoped transition strings.
 

@@ -158,6 +158,9 @@ export interface DiagramConnectionData {
   toConnectionIndex?: number; // Index of this connection among multiple connections on the same edge of the to node (0-based)
   toTotalConnections?: number; // Total number of connections on the same edge of the to node
 
+  /** When true, attach at the center of each chosen edge instead of spreading along the edge (default: subdivided). */
+  centerEdgeAnchors?: boolean;
+
   // Optional waypoints for routing connection around obstacles (absolute canvas coordinates)
   waypoints?: Array<{ x: number; y: number; id?: string }>;
 

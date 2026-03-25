@@ -139,6 +139,7 @@ export const DiagramConnectionDataSchema = z.object({
   curvature: z.number().optional(), // Bezier curve intensity (0.1 to 1.0)
   lineWidth: z.number().optional(), // Line thickness for the connection (default: 2.5)
   shadow: z.boolean().optional(), // Whether to show shadow around the connection line
+  centerEdgeAnchors: z.boolean().optional(), // Attach at edge center instead of spreading along the edge
   // Optional waypoints for routing connection around obstacles (absolute canvas coordinates)
   waypoints: z.array(z.object({ x: z.number(), y: z.number(), id: z.string().optional() })).optional(),
 

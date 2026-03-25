@@ -59,7 +59,7 @@ function connectionDataKey(c?: DiagramConnectionData): string {
   if (!c) return '';
   const wp = c.waypoints?.map((w) => `${w.x},${w.y}`).join(';') ?? '';
   const anim = c.animation ? JSON.stringify(c.animation) : '';
-  return `${c.from ?? ''}|${c.to ?? ''}|${(c as any).id ?? ''}|${c.curvature ?? ''}|${wp}|${c.lineWidth ?? ''}|${c.shadow ?? ''}|${c.fromArrow ?? ''}|${c.toArrow ?? ''}|${c.arrow ?? ''}|${anim}|${c.color ?? ''}`;
+  return `${c.from ?? ''}|${c.to ?? ''}|${(c as any).id ?? ''}|${c.curvature ?? ''}|${wp}|${c.lineWidth ?? ''}|${c.shadow ?? ''}|${c.fromArrow ?? ''}|${c.toArrow ?? ''}|${c.arrow ?? ''}|${anim}|${c.color ?? ''}|${c.centerEdgeAnchors ? '1' : ''}`;
 }
 
 function areBezierConnectionPropsEqual(prev: BezierConnectionProps, next: BezierConnectionProps): boolean {
@@ -247,7 +247,7 @@ export function renderAnimatedShape(shape: 'dot' | 'square' | 'arrow' | 'triangl
   );
 }
 
-export function getConnectionPoint(obj: any, width: number, height: number, point: 'top' | 'bottom' | 'left' | 'right' | 'center', iconHeight?: number, connectionIndex?: number, totalConnections?: number, isToNode: boolean = false, toConnectionIndex?: number, toTotalConnections?: number, iconOffset?: number, iconWidth?: number, iconOffsetX?: number): { x: number; y: number; angleDeg?: number } {
+export function getConnectionPoint(obj: any, width: number, height: number, point: 'top' | 'bottom' | 'left' | 'right' | 'center', iconHeight?: number, connectionIndex?: number, totalConnections?: number, isToNode: boolean = false, toConnectionIndex?: number, toTotalConnections?: number, iconOffset?: number, iconWidth?: number, iconOffsetX?: number, centerEdgeAnchors?: boolean): { x: number; y: number; angleDeg?: number } {
   const isGroup = obj.type === 'group' || obj.subType === 'zone';
   const isTextNode = obj.type === 'generic.text.text' || obj.type === 'generic.text.textbox';
   const isObjectNode = obj.type?.startsWith('generic.object.');
@@ -286,8 +286,9 @@ export function getConnectionPoint(obj: any, width: number, height: number, poin
   // Use to-specific indices if this is the "to" node and they're provided
   const effectiveIndex = (isToNode && toConnectionIndex !== undefined) ? toConnectionIndex : connectionIndex;
   const effectiveTotal = (isToNode && toTotalConnections !== undefined) ? toTotalConnections : totalConnections;
-  
-  if (effectiveIndex !== undefined && effectiveTotal !== undefined && effectiveTotal > 1) {
+  const spreadAlongEdge = centerEdgeAnchors !== true && effectiveIndex !== undefined && effectiveTotal !== undefined && effectiveTotal > 1;
+
+  if (spreadAlongEdge) {
     // Distribute connections evenly along the edge length
     // Edge length divided by number of connections gives us the spacing
     let edgeLength: number;
@@ -322,12 +323,14 @@ export function getConnectionPoint(obj: any, width: number, height: number, poin
   // Match sort order: connections are sorted by target/source position (left→right for top/bottom, top→bottom for left/right).
   // Bottom and left edges have path orientation reversed: invert t so leftmost/topmost destination gets the correct slot.
   if (isKiteShapeType(obj.type) && point !== 'center' && (point === 'top' || point === 'bottom' || point === 'left' || point === 'right')) {
-    const effectiveIndex = (isToNode && toConnectionIndex !== undefined) ? toConnectionIndex : connectionIndex;
-    const effectiveTotal = (isToNode && toTotalConnections !== undefined) ? toTotalConnections : totalConnections;
+    const kiteEffectiveIndex = (isToNode && toConnectionIndex !== undefined) ? toConnectionIndex : connectionIndex;
+    const kiteEffectiveTotal = (isToNode && toTotalConnections !== undefined) ? toTotalConnections : totalConnections;
     let t: number;
-    if (effectiveIndex !== undefined && effectiveTotal !== undefined && effectiveTotal >= 1) {
-      const n = effectiveTotal;
-      const i = effectiveIndex;
+    if (centerEdgeAnchors) {
+      t = 0.5;
+    } else if (kiteEffectiveIndex !== undefined && kiteEffectiveTotal !== undefined && kiteEffectiveTotal >= 1) {
+      const n = kiteEffectiveTotal;
+      const i = kiteEffectiveIndex;
       if (point === 'bottom' || point === 'left') {
         t = (n - i) / (n + 1); // inverted: low index (leftmost/topmost dest) → high t → correct slot
       } else {
@@ -545,10 +548,12 @@ export function getOptimalConnectionPoints(from: any, to: any, fromWidth: number
       : 0
   );
 
+  const centerEdgeAnchors = connectionData?.centerEdgeAnchors === true;
+
   // Use specified connection points if provided
   if (connectionData?.fromPreferredExit && connectionData?.toPreferredEntry) {
-    const fromPoint = getConnectionPoint(from, fromWidth, fromHeight, connectionData.fromPreferredExit, resolvedFromIconHeight, connectionData?.connectionIndex, connectionData?.totalConnections, false, undefined, undefined, resolvedFromIconOffset, resolvedFromIconWidth, resolvedFromIconOffsetX);
-    const toPoint = getConnectionPoint(to, toWidth, toHeight, connectionData.toPreferredEntry, resolvedToIconHeight, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, true, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, resolvedToIconOffset, resolvedToIconWidth, resolvedToIconOffsetX);
+    const fromPoint = getConnectionPoint(from, fromWidth, fromHeight, connectionData.fromPreferredExit, resolvedFromIconHeight, connectionData?.connectionIndex, connectionData?.totalConnections, false, undefined, undefined, resolvedFromIconOffset, resolvedFromIconWidth, resolvedFromIconOffsetX, centerEdgeAnchors);
+    const toPoint = getConnectionPoint(to, toWidth, toHeight, connectionData.toPreferredEntry, resolvedToIconHeight, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, true, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, resolvedToIconOffset, resolvedToIconWidth, resolvedToIconOffsetX, centerEdgeAnchors);
     const fromAngle = fromPoint.angleDeg ?? getExitAngle(connectionData.fromPreferredExit);
     const toAngle = toPoint.angleDeg ?? getExitAngle(connectionData.toPreferredEntry);
     return { fromX: fromPoint.x, fromY: fromPoint.y, toX: toPoint.x, toY: toPoint.y, fromAngle, toAngle };
@@ -613,8 +618,8 @@ export function getOptimalConnectionPoints(from: any, to: any, fromWidth: number
     ? (isHorizontal ? (dx > 0 ? 'left' : 'right') : (dy > 0 ? 'top' : 'bottom'))
     : finalToPoint;
   
-  const fromConnectionPoint = getConnectionPoint(from, fromWidth, fromHeight, safeFromPoint, resolvedFromIconHeight, connectionData?.connectionIndex, connectionData?.totalConnections, false, undefined, undefined, resolvedFromIconOffset, resolvedFromIconWidth, resolvedFromIconOffsetX);
-  const toConnectionPoint = getConnectionPoint(to, toWidth, toHeight, safeToPoint, resolvedToIconHeight, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, true, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, resolvedToIconOffset, resolvedToIconWidth, resolvedToIconOffsetX);
+  const fromConnectionPoint = getConnectionPoint(from, fromWidth, fromHeight, safeFromPoint, resolvedFromIconHeight, connectionData?.connectionIndex, connectionData?.totalConnections, false, undefined, undefined, resolvedFromIconOffset, resolvedFromIconWidth, resolvedFromIconOffsetX, centerEdgeAnchors);
+  const toConnectionPoint = getConnectionPoint(to, toWidth, toHeight, safeToPoint, resolvedToIconHeight, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, true, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, resolvedToIconOffset, resolvedToIconWidth, resolvedToIconOffsetX, centerEdgeAnchors);
   
   const fromAngle = fromConnectionPoint.angleDeg ?? getExitAngle(safeFromPoint);
   const toAngle = toConnectionPoint.angleDeg ?? getExitAngle(safeToPoint);
