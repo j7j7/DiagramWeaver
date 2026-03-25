@@ -222,16 +222,12 @@ export function validateAndConvertJson(json: unknown): DiagramData {
     throw new Error(`Invalid diagram format: ${flatResult.error.message}`);
   }
 
-  const connections = ensureConnectionIds(flatResult.data.connections || []);
   const data = flatResult.data as DiagramData;
+  // Spread full parsed diagram so connection fields (e.g. edgeAttachmentConstraint) and viewState round-trip like the editor
   return {
-    nodes: data.nodes || [],
-    connections,
-    groupings: data.groupings || [],
-    layers: data.layers,
-    subDiagrams: data.subDiagrams,
-    recentColors: data.recentColors,
-  } as DiagramData;
+    ...data,
+    connections: ensureConnectionIds(data.connections || []),
+  };
 }
 
 /**

@@ -7,6 +7,8 @@ import { keymap } from '@codemirror/view';
 
 import { stableStringify } from '@/lib/json-utils';
 import { flattenDiagramOnImport, type RawDiagramData } from '@/lib/flatten-on-import';
+import { DiagramDataSchema } from '@/lib/schemas';
+import { ensureConnectionIds } from '@/lib/connection-order-utils';
 import type { DiagramData } from '@/lib/types';
 
 type Props = {
@@ -250,10 +252,19 @@ export function JsonEditorPanel({
       let finalData: DiagramData | null = null;
       let validationError: any = null;
 
-      // Flatten on import - strips zones and extracts nodes with absolute positions
+      // Flatten + schema parse (same as File → Open) so connection fields round-trip (e.g. edgeAttachmentConstraint)
       if (parsed && typeof parsed === 'object' && (parsed.nodes || parsed.zones || parsed.connections)) {
         try {
-          finalData = flattenDiagramOnImport(parsed as RawDiagramData);
+          const flattened = flattenDiagramOnImport(parsed as RawDiagramData);
+          const schemaResult = DiagramDataSchema.safeParse(flattened);
+          if (!schemaResult.success) {
+            validationError = schemaResult.error;
+          } else {
+            finalData = {
+              ...schemaResult.data,
+              connections: ensureConnectionIds(schemaResult.data.connections || []),
+            } as DiagramData;
+          }
         } catch (e) {
           validationError = e;
         }
