@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-03-25 – Merge `customized-picture-icon` into `main`
+Merged **`origin/customized-picture-icon`** into **`main`** with **`-X ours`** so any overlapping edits resolve in favor of **main**; non-conflicting branch changes were applied. Adds custom picture/icon flow: **`/api/validate-image-url`**, **`custom-icon-utils`**, **`custom-icon-image`**, **`custom-icon-preview-editor`**, **`resource-browser`**, plus updates to **`diagram-editor`**, **`properties-panel`**, **`schemas`**, **`types`**, **`resource-icon`**, **`diagram-node`**, **`component-sidebar`**, **`editor-canvas`**. **`npm run typecheck`** passes after merge.
+
 ### 2026-03-25 – Presentation mode (editor): per-slide viewport when switching snapshots
 In **`diagram-editor`**, **`useLayoutEffect`** tracks **`prevPresentationSlideIdForViewportRef`**. On **slide id change**: **persist** outgoing slide’s **`autoZoomLevel` / `viewPanX` / `viewPanY`** from **`canvasTransformRef`** into **`presentationDecks`**, then **`computeSlidePlaybackTransform`** + **`setCanvasTransform`** for the **incoming** slide (diagram from master + that slide’s **`diagramDelta`**). If **`prevSlideId === activePresentationSlideId`**, return early so deck updates (thumbnails, delta persist) **don’t** reset the canvas every render.
 
