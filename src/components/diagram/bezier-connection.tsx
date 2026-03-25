@@ -59,7 +59,7 @@ function connectionDataKey(c?: DiagramConnectionData): string {
   if (!c) return '';
   const wp = c.waypoints?.map((w) => `${w.x},${w.y}`).join(';') ?? '';
   const anim = c.animation ? JSON.stringify(c.animation) : '';
-  return `${c.from ?? ''}|${c.to ?? ''}|${(c as any).id ?? ''}|${c.curvature ?? ''}|${wp}|${c.lineWidth ?? ''}|${c.shadow ?? ''}|${c.fromArrow ?? ''}|${c.toArrow ?? ''}|${c.arrow ?? ''}|${anim}|${c.color ?? ''}|${c.centerEdgeAnchors ? '1' : ''}`;
+  return `${c.from ?? ''}|${c.to ?? ''}|${(c as any).id ?? ''}|${c.curvature ?? ''}|${wp}|${c.lineWidth ?? ''}|${c.shadow ?? ''}|${c.fromArrow ?? ''}|${c.toArrow ?? ''}|${c.arrow ?? ''}|${anim}|${c.color ?? ''}|${c.centerEdgeAnchors ? '1' : ''}|${c.edgeAttachmentConstraint ?? ''}`;
 }
 
 function areBezierConnectionPropsEqual(prev: BezierConnectionProps, next: BezierConnectionProps): boolean {
@@ -391,63 +391,54 @@ function getExitAngle(exitPoint: 'top' | 'bottom' | 'left' | 'right' | 'center')
   }
 }
 
-// Helper function to determine the edge for a connection (for grouping connections by edge)
-export function determineConnectionEdges(
+type AxisConstraintKind = 'top-bottom' | 'left-right';
+
+/** Map an attach edge to the allowed axis set (same dx/dy rules as auto layout). */
+function clampEdgeToAxisConstraint(
+  edge: 'top' | 'bottom' | 'left' | 'right' | 'center',
+  constraint: AxisConstraintKind,
+  role: 'from' | 'to',
+  dx: number,
+  dy: number
+): 'top' | 'bottom' | 'left' | 'right' | 'center' {
+  if (constraint === 'top-bottom') {
+    if (edge === 'top' || edge === 'bottom') return edge;
+    if (edge === 'center') {
+      return role === 'from' ? (dy > 0 ? 'bottom' : 'top') : (dy > 0 ? 'top' : 'bottom');
+    }
+    return role === 'from' ? (dy > 0 ? 'bottom' : 'top') : (dy > 0 ? 'top' : 'bottom');
+  }
+  if (edge === 'left' || edge === 'right') return edge;
+  if (edge === 'center') {
+    return role === 'from' ? (dx > 0 ? 'right' : 'left') : (dx > 0 ? 'left' : 'right');
+  }
+  return role === 'from' ? (dx > 0 ? 'right' : 'left') : (dx > 0 ? 'left' : 'right');
+}
+
+function applyEdgeAttachmentConstraintToEdges(
+  edges: { fromEdge: 'top' | 'bottom' | 'left' | 'right' | 'center'; toEdge: 'top' | 'bottom' | 'left' | 'right' | 'center' },
+  constraint: DiagramConnectionData['edgeAttachmentConstraint'],
+  dx: number,
+  dy: number
+): { fromEdge: 'top' | 'bottom' | 'left' | 'right' | 'center'; toEdge: 'top' | 'bottom' | 'left' | 'right' | 'center' } {
+  const c = constraint;
+  if (!c || c === 'auto') return edges;
+  const kind: AxisConstraintKind = c === 'top-bottom' ? 'top-bottom' : 'left-right';
+  return {
+    fromEdge: clampEdgeToAxisConstraint(edges.fromEdge, kind, 'from', dx, dy),
+    toEdge: clampEdgeToAxisConstraint(edges.toEdge, kind, 'to', dx, dy),
+  };
+}
+
+/** Icon-aware center deltas between endpoints (matches auto edge selection). */
+function computeAxisDeltasForConnectionNodes(
   from: Positionable,
   to: Positionable,
-  connectionData?: DiagramConnectionData,
-  fromWidth?: number,
-  fromHeight?: number,
-  toWidth?: number,
-  toHeight?: number
-): { fromEdge: 'top' | 'bottom' | 'left' | 'right' | 'center'; toEdge: 'top' | 'bottom' | 'left' | 'right' | 'center' } {
-  // Use preferred edges if explicitly specified (user override)
-  if (connectionData?.fromPreferredExit && connectionData?.toPreferredEntry) {
-    return {
-      fromEdge: connectionData.fromPreferredExit,
-      toEdge: connectionData.toPreferredEntry
-    };
-  }
-
-  // When waypoints exist, use first/last waypoint to determine which edge the connector should exit/enter
-  const waypoints = connectionData?.waypoints;
-  if (waypoints?.length) {
-    const resolvedFromWidth = fromWidth || from.width;
-    const resolvedFromHeight = fromHeight || from.height;
-    const resolvedToWidth = toWidth || to.width;
-    const resolvedToHeight = toHeight || to.height;
-    const fromCenterX = from.x + (resolvedFromWidth || 0) / 2;
-    const fromCenterY = from.y + (resolvedFromHeight || 0) / 2;
-    const toCenterX = to.x + (resolvedToWidth || 0) / 2;
-    const toCenterY = to.y + (resolvedToHeight || 0) / 2;
-
-    const firstWp = waypoints[0];
-    const lastWp = waypoints[waypoints.length - 1];
-
-    const fromDx = firstWp.x - fromCenterX;
-    const fromDy = firstWp.y - fromCenterY;
-    const toDx = lastWp.x - toCenterX;
-    const toDy = lastWp.y - toCenterY;
-
-    const fromIsHorizontal = Math.abs(fromDx) > Math.abs(fromDy);
-    const toIsHorizontal = Math.abs(toDx) > Math.abs(toDy);
-
-    const fromEdge: 'top' | 'bottom' | 'left' | 'right' = fromIsHorizontal
-      ? fromDx > 0 ? 'right' : 'left'
-      : fromDy > 0 ? 'bottom' : 'top';
-    const toEdge: 'top' | 'bottom' | 'left' | 'right' = toIsHorizontal
-      ? toDx > 0 ? 'right' : 'left'
-      : toDy > 0 ? 'bottom' : 'top';
-
-    return { fromEdge, toEdge };
-  }
-
-  // Auto-determine edges based on icon-only centers for icon/resource nodes (no waypoints).
-  const resolvedFromWidth = fromWidth || from.width;
-  const resolvedFromHeight = fromHeight || from.height;
-  const resolvedToWidth = toWidth || to.width;
-  const resolvedToHeight = toHeight || to.height;
-
+  resolvedFromWidth: number,
+  resolvedFromHeight: number,
+  resolvedToWidth: number,
+  resolvedToHeight: number
+): { dx: number; dy: number } {
   const fromIsGroup = from.type === 'group' || from.subType === 'zone';
   const toIsGroup = to.type === 'group' || to.subType === 'zone';
   const fromIsText = from.type === 'generic.text.text' || from.type === 'generic.text.textbox';
@@ -481,15 +472,81 @@ export function determineConnectionEdges(
     ? to.y + toIconOffsetY + toIconContainer / 2
     : to.y + resolvedToHeight / 2;
 
-  const dx = toCenterX - fromCenterX;
-  const dy = toCenterY - fromCenterY;
+  return { dx: toCenterX - fromCenterX, dy: toCenterY - fromCenterY };
+}
 
-  const isHorizontal = Math.abs(dx) > Math.abs(dy);
-  
+// Helper function to determine the edge for a connection (for grouping connections by edge)
+export function determineConnectionEdges(
+  from: Positionable,
+  to: Positionable,
+  connectionData?: DiagramConnectionData,
+  fromWidth?: number,
+  fromHeight?: number,
+  toWidth?: number,
+  toHeight?: number
+): { fromEdge: 'top' | 'bottom' | 'left' | 'right' | 'center'; toEdge: 'top' | 'bottom' | 'left' | 'right' | 'center' } {
+  const resolvedFromWidth = fromWidth || from.width;
+  const resolvedFromHeight = fromHeight || from.height;
+  const resolvedToWidth = toWidth || to.width;
+  const resolvedToHeight = toHeight || to.height;
+  const { dx, dy } = computeAxisDeltasForConnectionNodes(
+    from,
+    to,
+    resolvedFromWidth,
+    resolvedFromHeight,
+    resolvedToWidth,
+    resolvedToHeight
+  );
+
+  // Use preferred edges if explicitly specified (user override)
+  if (connectionData?.fromPreferredExit && connectionData?.toPreferredEntry) {
+    return applyEdgeAttachmentConstraintToEdges(
+      { fromEdge: connectionData.fromPreferredExit, toEdge: connectionData.toPreferredEntry },
+      connectionData.edgeAttachmentConstraint,
+      dx,
+      dy
+    );
+  }
+
+  // When waypoints exist, use first/last waypoint to determine which edge the connector should exit/enter
+  const waypoints = connectionData?.waypoints;
+  if (waypoints?.length) {
+    const fromCenterX = from.x + (resolvedFromWidth || 0) / 2;
+    const fromCenterY = from.y + (resolvedFromHeight || 0) / 2;
+    const toCenterX = to.x + (resolvedToWidth || 0) / 2;
+    const toCenterY = to.y + (resolvedToHeight || 0) / 2;
+
+    const firstWp = waypoints[0];
+    const lastWp = waypoints[waypoints.length - 1];
+
+    const fromDx = firstWp.x - fromCenterX;
+    const fromDy = firstWp.y - fromCenterY;
+    const toDx = lastWp.x - toCenterX;
+    const toDy = lastWp.y - toCenterY;
+
+    const fromIsHorizontal = Math.abs(fromDx) > Math.abs(fromDy);
+    const toIsHorizontal = Math.abs(toDx) > Math.abs(toDy);
+
+    const fromEdge: 'top' | 'bottom' | 'left' | 'right' = fromIsHorizontal
+      ? fromDx > 0 ? 'right' : 'left'
+      : fromDy > 0 ? 'bottom' : 'top';
+    const toEdge: 'top' | 'bottom' | 'left' | 'right' = toIsHorizontal
+      ? toDx > 0 ? 'right' : 'left'
+      : toDy > 0 ? 'bottom' : 'top';
+
+    return applyEdgeAttachmentConstraintToEdges({ fromEdge, toEdge }, connectionData?.edgeAttachmentConstraint, dx, dy);
+  }
+
+  const constraint = connectionData?.edgeAttachmentConstraint;
+  let useHorizontal: boolean;
+  if (constraint === 'left-right') useHorizontal = true;
+  else if (constraint === 'top-bottom') useHorizontal = false;
+  else useHorizontal = Math.abs(dx) > Math.abs(dy);
+
   let fromEdge: 'top' | 'bottom' | 'left' | 'right' | 'center';
   let toEdge: 'top' | 'bottom' | 'left' | 'right' | 'center';
 
-  if (isHorizontal) {
+  if (useHorizontal) {
     fromEdge = dx > 0 ? 'right' : 'left';
     toEdge = dx > 0 ? 'left' : 'right';
   } else {
@@ -508,7 +565,7 @@ export function determineConnectionEdges(
     toEdge = connectionData?.toPreferredEntry || toEdge;
   }
 
-  return { fromEdge, toEdge };
+  return applyEdgeAttachmentConstraintToEdges({ fromEdge, toEdge }, connectionData?.edgeAttachmentConstraint, dx, dy);
 }
 
 export function getOptimalConnectionPoints(from: any, to: any, fromWidth: number, fromHeight: number, toWidth: number, toHeight: number, connectionData?: DiagramConnectionData, fromIconHeight?: number, toIconHeight?: number, fromIconOffset?: number, toIconOffset?: number, fromIconWidth?: number, fromIconOffsetX?: number, toIconWidth?: number, toIconOffsetX?: number): { fromX: number; fromY: number; toX: number; toY: number; fromAngle: number; toAngle: number } {
@@ -550,17 +607,7 @@ export function getOptimalConnectionPoints(from: any, to: any, fromWidth: number
 
   const centerEdgeAnchors = connectionData?.centerEdgeAnchors === true;
 
-  // Use specified connection points if provided
-  if (connectionData?.fromPreferredExit && connectionData?.toPreferredEntry) {
-    const fromPoint = getConnectionPoint(from, fromWidth, fromHeight, connectionData.fromPreferredExit, resolvedFromIconHeight, connectionData?.connectionIndex, connectionData?.totalConnections, false, undefined, undefined, resolvedFromIconOffset, resolvedFromIconWidth, resolvedFromIconOffsetX, centerEdgeAnchors);
-    const toPoint = getConnectionPoint(to, toWidth, toHeight, connectionData.toPreferredEntry, resolvedToIconHeight, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, true, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, resolvedToIconOffset, resolvedToIconWidth, resolvedToIconOffsetX, centerEdgeAnchors);
-    const fromAngle = fromPoint.angleDeg ?? getExitAngle(connectionData.fromPreferredExit);
-    const toAngle = toPoint.angleDeg ?? getExitAngle(connectionData.toPreferredEntry);
-    return { fromX: fromPoint.x, fromY: fromPoint.y, toX: toPoint.x, toY: toPoint.y, fromAngle, toAngle };
-  }
-
-  // Auto-determine optimal connection points
-  // Use icon dimensions when provided (for icon nodes with labelWidth - connections attach to icon)
+  // Auto-determine optimal connection points — shared axis deltas for constraint + auto layout
   const fromCenterX = resolvedFromIconWidth ? from.x + resolvedFromIconOffsetX + resolvedFromIconWidth / 2 : from.x + fromWidth / 2;
   const fromCenterY = resolvedFromIconHeight ? from.y + resolvedFromIconOffset + resolvedFromIconHeight / 2 : from.y + fromHeight / 2;
   const toCenterX = resolvedToIconWidth ? to.x + resolvedToIconOffsetX + resolvedToIconWidth / 2 : to.x + toWidth / 2;
@@ -569,8 +616,30 @@ export function getOptimalConnectionPoints(from: any, to: any, fromWidth: number
   const dx = toCenterX - fromCenterX;
   const dy = toCenterY - fromCenterY;
 
+  const edgeConstraint = connectionData?.edgeAttachmentConstraint;
+  const constraintKind: AxisConstraintKind | null =
+    edgeConstraint === 'top-bottom' ? 'top-bottom' : edgeConstraint === 'left-right' ? 'left-right' : null;
+
+  // Use specified connection points if provided
+  if (connectionData?.fromPreferredExit && connectionData?.toPreferredEntry) {
+    let fromExit = connectionData.fromPreferredExit;
+    let toEntry = connectionData.toPreferredEntry;
+    if (constraintKind) {
+      fromExit = clampEdgeToAxisConstraint(fromExit, constraintKind, 'from', dx, dy);
+      toEntry = clampEdgeToAxisConstraint(toEntry, constraintKind, 'to', dx, dy);
+    }
+    const fromPoint = getConnectionPoint(from, fromWidth, fromHeight, fromExit, resolvedFromIconHeight, connectionData?.connectionIndex, connectionData?.totalConnections, false, undefined, undefined, resolvedFromIconOffset, resolvedFromIconWidth, resolvedFromIconOffsetX, centerEdgeAnchors);
+    const toPoint = getConnectionPoint(to, toWidth, toHeight, toEntry, resolvedToIconHeight, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, true, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, resolvedToIconOffset, resolvedToIconWidth, resolvedToIconOffsetX, centerEdgeAnchors);
+    const fromAngle = fromPoint.angleDeg ?? getExitAngle(fromExit);
+    const toAngle = toPoint.angleDeg ?? getExitAngle(toEntry);
+    return { fromX: fromPoint.x, fromY: fromPoint.y, toX: toPoint.x, toY: toPoint.y, fromAngle, toAngle };
+  }
+
   // Determine primary direction
-  const isHorizontal = Math.abs(dx) > Math.abs(dy);
+  let isHorizontal: boolean;
+  if (edgeConstraint === 'left-right') isHorizontal = true;
+  else if (edgeConstraint === 'top-bottom') isHorizontal = false;
+  else isHorizontal = Math.abs(dx) > Math.abs(dy);
   
   let fromPoint: 'top' | 'bottom' | 'left' | 'right' | 'center';
   let toPoint: 'top' | 'bottom' | 'left' | 'right' | 'center';
@@ -617,12 +686,19 @@ export function getOptimalConnectionPoints(from: any, to: any, fromWidth: number
   const safeToPoint = (toIsGroup && finalToPoint === 'center')
     ? (isHorizontal ? (dx > 0 ? 'left' : 'right') : (dy > 0 ? 'top' : 'bottom'))
     : finalToPoint;
+
+  let clampedFrom = safeFromPoint;
+  let clampedTo = safeToPoint;
+  if (constraintKind) {
+    clampedFrom = clampEdgeToAxisConstraint(safeFromPoint, constraintKind, 'from', dx, dy);
+    clampedTo = clampEdgeToAxisConstraint(safeToPoint, constraintKind, 'to', dx, dy);
+  }
+
+  const fromConnectionPoint = getConnectionPoint(from, fromWidth, fromHeight, clampedFrom, resolvedFromIconHeight, connectionData?.connectionIndex, connectionData?.totalConnections, false, undefined, undefined, resolvedFromIconOffset, resolvedFromIconWidth, resolvedFromIconOffsetX, centerEdgeAnchors);
+  const toConnectionPoint = getConnectionPoint(to, toWidth, toHeight, clampedTo, resolvedToIconHeight, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, true, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, resolvedToIconOffset, resolvedToIconWidth, resolvedToIconOffsetX, centerEdgeAnchors);
   
-  const fromConnectionPoint = getConnectionPoint(from, fromWidth, fromHeight, safeFromPoint, resolvedFromIconHeight, connectionData?.connectionIndex, connectionData?.totalConnections, false, undefined, undefined, resolvedFromIconOffset, resolvedFromIconWidth, resolvedFromIconOffsetX, centerEdgeAnchors);
-  const toConnectionPoint = getConnectionPoint(to, toWidth, toHeight, safeToPoint, resolvedToIconHeight, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, true, connectionData?.toConnectionIndex, connectionData?.toTotalConnections, resolvedToIconOffset, resolvedToIconWidth, resolvedToIconOffsetX, centerEdgeAnchors);
-  
-  const fromAngle = fromConnectionPoint.angleDeg ?? getExitAngle(safeFromPoint);
-  const toAngle = toConnectionPoint.angleDeg ?? getExitAngle(safeToPoint);
+  const fromAngle = fromConnectionPoint.angleDeg ?? getExitAngle(clampedFrom);
+  const toAngle = toConnectionPoint.angleDeg ?? getExitAngle(clampedTo);
 
   return {
     fromX: fromConnectionPoint.x,

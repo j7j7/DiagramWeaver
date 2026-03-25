@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-03-25 – Connection: edge attachment constraint
+**Data**: `DiagramConnectionData.edgeAttachmentConstraint?: 'auto' | 'top-bottom' | 'left-right'` — default/unset = **auto** (existing behavior). **`top-bottom`**: only top/bottom attach edges; **`left-right`**: only left/right. **UI**: Connection properties modal (`connection-context-modal.tsx`) — **Attach on side**: two icon toggles (↕ top/bottom, ↔ left/right); active = constrained, both off = auto; switching one on replaces the other. **Logic**: `determineConnectionEdges` and `getOptimalConnectionPoints` in `bezier-connection.tsx` clamp inferred or preferred edges to the allowed axis set using the same dx/dy rules as automatic routing (orthogonal pathing / avoidance unchanged). **Persistence**: `stripConnectionDefaults` stores only `top-bottom` or `left-right`; merge clears the field when explicitly set to auto/undefined (`applyConnectionUpdates` uses `'edgeAttachmentConstraint' in updates`).
+
 ### 2026-03-25 – Orthogonal routing: force 90° segments after avoidance
 Orthogonal connection routing could still emit a diagonal-looking hop after pathfinding when the endpoint approach-correction step rewrote a waypoint without repairing the following segment. **Fix**: `orthogonal-routing.ts` now (1) keeps A* state keyed by **position + direction** so turn costs remain valid, (2) expands the search bounds to include nearby inflated obstacles so avoidance succeeds more often before fallback, (3) rebuilds misaligned source/target approach segments with an orthogonal bridge instead of mutating a single point, and (4) runs a final orthogonality enforcement pass so every emitted segment is horizontal or vertical, including waypoint-chained routes. **Fallbacks** now prefer stricter obstacle-safe routes before relaxed ones.
 

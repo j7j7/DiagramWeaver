@@ -2,7 +2,7 @@
 
 import React, { useRef, useEffect, useState } from "react";
 import Draggable from "react-draggable";
-import { X, Plus, Unlink, GripHorizontal, ArrowRight } from "lucide-react";
+import { X, Plus, Unlink, GripHorizontal, ArrowRight, ArrowDownUp, ArrowLeftRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
@@ -112,6 +112,15 @@ export function ConnectionContextModal({
   const centerOnEdge = liveConnection.centerEdgeAnchors === true;
   const handleCenterEdgeAnchorsChange = (checked: boolean) => {
     onConnectionUpdate(connection.from, connection.to, { centerEdgeAnchors: checked }, connId);
+  };
+
+  const edgeAttachmentConstraint = liveConnection.edgeAttachmentConstraint;
+  const setEdgeConstraint = (next: "auto" | "top-bottom" | "left-right") => {
+    if (next === "auto") {
+      onConnectionUpdate(connection.from, connection.to, { edgeAttachmentConstraint: undefined }, connId);
+    } else {
+      onConnectionUpdate(connection.from, connection.to, { edgeAttachmentConstraint: next }, connId);
+    }
   };
 
   // Initialize position from props when modal opens
@@ -238,6 +247,55 @@ export function ConnectionContextModal({
             className="shrink-0"
             aria-label="Center connection anchors on edge"
           />
+        </div>
+
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <span className="text-xs text-muted-foreground block">Attach on side</span>
+            <span className="text-[10px] text-muted-foreground/90 leading-tight block mt-0.5">
+              Limit which edges the line may use (default: automatic)
+            </span>
+          </div>
+          <div className="flex gap-1 shrink-0">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant={edgeAttachmentConstraint === "top-bottom" ? "default" : "outline"}
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  disabled={isReadOnly}
+                  aria-pressed={edgeAttachmentConstraint === "top-bottom"}
+                  aria-label="Top and bottom edges only"
+                  onClick={() =>
+                    setEdgeConstraint(edgeAttachmentConstraint === "top-bottom" ? "auto" : "top-bottom")
+                  }
+                >
+                  <ArrowDownUp className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Top / bottom only</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant={edgeAttachmentConstraint === "left-right" ? "default" : "outline"}
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  disabled={isReadOnly}
+                  aria-pressed={edgeAttachmentConstraint === "left-right"}
+                  aria-label="Left and right edges only"
+                  onClick={() =>
+                    setEdgeConstraint(edgeAttachmentConstraint === "left-right" ? "auto" : "left-right")
+                  }
+                >
+                  <ArrowLeftRight className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Left / right only</TooltipContent>
+            </Tooltip>
+          </div>
         </div>
 
         <div className="flex items-center justify-between gap-2">

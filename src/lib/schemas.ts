@@ -141,6 +141,7 @@ export const DiagramConnectionDataSchema = z.object({
   lineWidth: z.number().optional(), // Line thickness for the connection (default: 2.5)
   shadow: z.boolean().optional(), // Whether to show shadow around the connection line
   centerEdgeAnchors: z.boolean().optional(), // Attach at edge center instead of spreading along the edge
+  edgeAttachmentConstraint: z.enum(['auto', 'top-bottom', 'left-right']).optional(),
   // Optional waypoints for routing connection around obstacles (absolute canvas coordinates)
   waypoints: z.array(z.object({ x: z.number(), y: z.number(), id: z.string().optional() })).optional(),
 

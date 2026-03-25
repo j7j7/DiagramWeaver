@@ -162,6 +162,14 @@ export interface DiagramConnectionData {
   /** When true, attach at the center of each chosen edge instead of spreading along the edge (default: subdivided). */
   centerEdgeAnchors?: boolean;
 
+  /**
+   * Limits which sides of each endpoint may be used when choosing attach edges.
+   * `auto` (default): allow top, bottom, left, or right based on layout.
+   * `top-bottom`: only top and bottom edges.
+   * `left-right`: only left and right edges.
+   */
+  edgeAttachmentConstraint?: 'auto' | 'top-bottom' | 'left-right';
+
   // Optional waypoints for routing connection around obstacles (absolute canvas coordinates)
   waypoints?: Array<{ x: number; y: number; id?: string }>;
 
