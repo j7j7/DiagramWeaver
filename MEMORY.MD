@@ -2,6 +2,15 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-03-25 – Presentation mode toolbar: Exit
+**Editor** `PresentationEditorPanel` header row (right of collapse / float): **Exit** button with LogOut icon — calls `onExitPresentationMode` → `setPresentationModeEnabled(false)` and same cleanup as turning presentation mode off (draft, disabled layers, close play mode). Files: `presentation-editor-panel.tsx`, `diagram-editor.tsx`.
+
+### 2026-03-25 – Presentation panel: single toolbar row
+**Editor** `PresentationEditorPanel`: Removed the separate top row (“Presentation Mode”, deck · slide count badge) and the **Toolbar** label. One horizontal bar: scrollable deck/snapshot controls (`flex-1 overflow-x-auto`) plus **collapse**, **float/pin**, and **Exit** on the right (`shrink-0`). Floating mode keeps grip + drag on the combined bar. File: `presentation-editor-panel.tsx`.
+
+### 2026-03-25 – Presentation panel: collapse hides previews only
+The first **minimize** control on the presentation bar toggles **`snapshotsCollapsed`** (hide/show slide thumbnail strip), not a separate `toolbarCollapsed` state. Deck controls, snapshot actions, and pin/exit stay visible. Removed `toolbarCollapsed` from panel localStorage. File: `presentation-editor-panel.tsx`.
+
 ### 2026-03-25 – Connection: edge attachment constraint
 **Data**: `DiagramConnectionData.edgeAttachmentConstraint?: 'auto' | 'top-bottom' | 'left-right'` — default/unset = **auto** (existing behavior). **`top-bottom`**: only top/bottom attach edges; **`left-right`**: only left/right. **UI**: Connection properties modal (`connection-context-modal.tsx`) — **Attach on side**: two icon toggles (↕ top/bottom, ↔ left/right); active = constrained, both off = auto; switching one on replaces the other. **Logic**: `determineConnectionEdges` and `getOptimalConnectionPoints` in `bezier-connection.tsx` clamp inferred or preferred edges to the allowed axis set using the same dx/dy rules as automatic routing (orthogonal pathing / avoidance unchanged). **Persistence**: `stripConnectionDefaults` stores only `top-bottom` or `left-right`; merge clears the field when explicitly set to auto/undefined (`applyConnectionUpdates` uses `'edgeAttachmentConstraint' in updates`). **Load/save**: `DiagramConnectionDataSchema` includes the field (Zod does not strip it). **JSON panel Apply** uses `flattenDiagramOnImport` + `DiagramDataSchema.safeParse` + `ensureConnectionIds` (same as file open) so hand-edited JSON keeps `edgeAttachmentConstraint`. **Viewer** (`/viewer`): loads via `validateAndConvertJson` in `viewer-utils.ts` — now returns `{ ...DiagramDataSchema.parse(...), connections: ensureConnectionIds(...) }` so all parsed connection fields are kept; `ViewerCanvas` reuses `CanvasConnections` / `determineConnectionEdges` / `getOptimalConnectionPoints` like the editor.
 

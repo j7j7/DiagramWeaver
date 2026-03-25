@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useDrag, useDrop } from 'react-dnd';
-import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Copy, Download, GripHorizontal, GripVertical, Maximize2, Minimize2, Pin, PinOff, Play, Plus, Trash2, Upload, Wand2 } from 'lucide-react';
+import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Copy, Download, GripHorizontal, GripVertical, LogOut, Maximize2, Minimize2, Pin, PinOff, Play, Plus, Trash2, Upload, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -113,6 +113,7 @@ interface PresentationEditorPanelProps {
   onPreviousSlide: () => void;
   onNextSlide: () => void;
   onEnterPlayMode: () => void;
+  onExitPresentationMode: () => void;
   onExportDecks: () => void;
   onImportDecks: (file: File) => void;
 }
@@ -137,6 +138,7 @@ export function PresentationEditorPanel({
   onPreviousSlide,
   onNextSlide,
   onEnterPlayMode,
+  onExitPresentationMode,
   onExportDecks,
   onImportDecks,
 }: PresentationEditorPanelProps) {
@@ -155,7 +157,6 @@ export function PresentationEditorPanel({
     : -1;
 
   const [renameDraft, setRenameDraft] = React.useState('');
-  const [toolbarCollapsed, setToolbarCollapsed] = React.useState(false);
   const [toolbarFloating, setToolbarFloating] = React.useState(false);
   const [toolbarPosition, setToolbarPosition] = React.useState({ x: 20, y: 96 });
   const [draggingToolbar, setDraggingToolbar] = React.useState(false);
@@ -175,7 +176,6 @@ export function PresentationEditorPanel({
       const saved = localStorage.getItem(PANEL_SETTINGS_KEY);
       if (saved) {
         const parsed = JSON.parse(saved) as Record<string, unknown>;
-        if (typeof parsed.toolbarCollapsed === 'boolean') setToolbarCollapsed(parsed.toolbarCollapsed);
         if (typeof parsed.toolbarFloating === 'boolean') setToolbarFloating(parsed.toolbarFloating);
         if (parsed.toolbarPosition && typeof (parsed.toolbarPosition as any).x === 'number' && typeof (parsed.toolbarPosition as any).y === 'number') {
           setToolbarPosition(parsed.toolbarPosition as { x: number; y: number });
@@ -198,7 +198,6 @@ export function PresentationEditorPanel({
     if (typeof window === 'undefined') return;
     try {
       localStorage.setItem(PANEL_SETTINGS_KEY, JSON.stringify({
-        toolbarCollapsed,
         toolbarFloating,
         toolbarPosition,
         snapshotsCollapsed,
@@ -209,7 +208,7 @@ export function PresentationEditorPanel({
     } catch {
       // ignore
     }
-  }, [toolbarCollapsed, toolbarFloating, toolbarPosition, snapshotsCollapsed, snapshotsFloating, snapshotsPosition, snapshotsPaneHeight]);
+  }, [toolbarFloating, toolbarPosition, snapshotsCollapsed, snapshotsFloating, snapshotsPosition, snapshotsPaneHeight]);
 
   const handleToolbarMouseDown = React.useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     if (!toolbarFloating) return;
@@ -413,53 +412,19 @@ export function PresentationEditorPanel({
   return (
     <>
       <div className={panelClassName} style={panelStyle}>
-      <div
-        ref={toolbarRef}
-        className={cn('mb-0.5 flex items-center justify-between gap-2 rounded-md px-1 py-0.5', toolbarFloating && 'cursor-move border bg-background/70')}
-        onMouseDown={handleToolbarMouseDown}
-      >
-        <div className="flex items-center gap-1.5">
-          {toolbarFloating && <GripVertical className={cn('h-3.5 w-3.5 text-muted-foreground', draggingToolbar && 'text-primary')} />}
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Presentation Mode</h3>
-          <div className="rounded-md border bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground">
-            {activeDeck ? `${activeDeck.name} · ${activeDeck.slides.length} slides` : 'No presentation selected'}
-          </div>
-        </div>
-        <div className="flex items-center gap-1">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-6 w-6 px-0"
-                onClick={() => setToolbarCollapsed((prev) => !prev)}
-                aria-label={toolbarCollapsed ? 'Expand toolbar' : 'Collapse toolbar'}
-              >
-                {toolbarCollapsed ? <Maximize2 className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{toolbarCollapsed ? 'Expand toolbar' : 'Collapse toolbar'}</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-6 w-6 px-0"
-                onClick={() => setToolbarFloating((prev) => !prev)}
-                aria-label={toolbarFloating ? 'Switch to fixed toolbar' : 'Switch to floating toolbar'}
-              >
-                {toolbarFloating ? <Pin className="h-3 w-3" /> : <PinOff className="h-3 w-3" />}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{toolbarFloating ? 'Fix to window' : 'Float + drag toolbar'}</TooltipContent>
-          </Tooltip>
-        </div>
-      </div>
-
-      <div className="mb-0.5 overflow-x-auto rounded-md border bg-background/80 p-1">
-        <div className="flex min-w-max items-center gap-1.5 whitespace-nowrap">
-          <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Toolbar</div>
+        <div
+          ref={toolbarRef}
+          className={cn(
+            'mb-0.5 flex items-center gap-2 rounded-md border bg-background/80 p-1',
+            toolbarFloating && 'cursor-move bg-background/70'
+          )}
+          onMouseDown={handleToolbarMouseDown}
+        >
+        {toolbarFloating && (
+          <GripVertical className={cn('h-3.5 w-3.5 shrink-0 text-muted-foreground', draggingToolbar && 'text-primary')} />
+        )}
+        <div className="min-w-0 flex-1 overflow-x-auto">
+            <div className="flex min-w-max items-center gap-1.5 whitespace-nowrap">
               <select
                 className="h-7 min-w-[180px] rounded-md border bg-background px-2 text-[11px]"
                 value={activeDeckId ?? ''}
@@ -611,12 +576,58 @@ export function PresentationEditorPanel({
                 }}
               />
             </div>
-          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 w-7 px-0"
+                onClick={() => setSnapshotsCollapsed((prev) => !prev)}
+                aria-label={snapshotsCollapsed ? 'Show snapshot previews' : 'Hide snapshot previews'}
+              >
+                {snapshotsCollapsed ? <Maximize2 className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{snapshotsCollapsed ? 'Show snapshot previews' : 'Hide snapshot previews'}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 w-7 px-0"
+                onClick={() => setToolbarFloating((prev) => !prev)}
+                aria-label={toolbarFloating ? 'Switch to fixed toolbar' : 'Switch to floating toolbar'}
+              >
+                {toolbarFloating ? <Pin className="h-3 w-3" /> : <PinOff className="h-3 w-3" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{toolbarFloating ? 'Fix to window' : 'Float + drag toolbar'}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 gap-1 px-2"
+                onClick={onExitPresentationMode}
+                aria-label="Exit presentation mode"
+              >
+                <LogOut className="h-3 w-3" />
+                <span className="hidden sm:inline">Exit</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Exit presentation mode</TooltipContent>
+          </Tooltip>
+        </div>
+        </div>
 
-          {!toolbarCollapsed && !snapshotsFloating && !snapshotsCollapsed && snapshotsList}
+        {!snapshotsFloating && !snapshotsCollapsed && snapshotsList}
       </div>
 
-      {isOpen && snapshotsFloating && !toolbarCollapsed && (
+      {isOpen && snapshotsFloating && (
         <div
           ref={snapshotsPanelRef}
           className={snapshotsPanelClassName}

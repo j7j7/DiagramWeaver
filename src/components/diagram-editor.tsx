@@ -3366,6 +3366,14 @@ export default function DiagramEditor() {
     }
   };
 
+  const handleExitPresentationMode = React.useCallback(() => {
+    if (!presentationModeEnabled) return;
+    setPresentationModeEnabled(false);
+    setPresentationDraftDiagram(null);
+    setPresentationDisabledLayerIds(new Set());
+    setPresentationPlayerOpen(false);
+  }, [presentationModeEnabled]);
+
   const handleTogglePresentationMode = React.useCallback(() => {
     const next = !presentationModeEnabled;
     setPresentationModeEnabled(next);
@@ -4282,6 +4290,7 @@ export default function DiagramEditor() {
         activePresentationSlideDiagrams={activePresentationSlideDiagrams}
         selectedPresentationSlideIds={selectedPresentationSlideIds}
         handleTogglePresentationMode={handleTogglePresentationMode}
+        handleExitPresentationMode={handleExitPresentationMode}
         handleCreatePresentationDeck={handleCreatePresentationDeck}
         handleDeletePresentationDeck={handleDeletePresentationDeck}
         handleRenamePresentationDeck={handleRenamePresentationDeck}
@@ -4501,6 +4510,7 @@ function DiagramEditorInner({
   activePresentationSlideDiagrams,
   selectedPresentationSlideIds,
   handleTogglePresentationMode,
+  handleExitPresentationMode,
   handleCreatePresentationDeck,
   handleDeletePresentationDeck,
   handleRenamePresentationDeck,
@@ -4820,6 +4830,7 @@ function DiagramEditorInner({
                   onPreviousSlide={handlePreviousPresentationSlide}
                   onNextSlide={handleNextPresentationSlide}
                   onEnterPlayMode={handleEnterPresentationPlayMode}
+                  onExitPresentationMode={handleExitPresentationMode}
                   onExportDecks={handleExportPresentations}
                   onImportDecks={handleImportPresentations}
                 />
