@@ -2,6 +2,12 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-03-30 – Visual Styling panel: wider two-column layout
+**UI**: **`visual-styling-panel.tsx`** matches the text panel pattern: **full styling** mode uses **`w-[640px]`** + **`max-w-[calc(100vw-2rem)]`**; **compact** (icon-only etc.) uses **`w-[512px]`** (double the former **`w-[16rem]`**). **Two-column grid** when **`showFullStyling`**: left — Preset, Border, Background; right — Effects, Tags (**`border-l pl-8`**). **Icon color / Remove background** share a row when both apply; **Size** is full width below. Header and controls scaled like text styling (**`h-9`**, **`text-sm`**, **`p-3`** section cards).
+
+### 2026-03-30 – Text Styling panel: wider two-column layout
+**UI**: **`text-styling-panel.tsx`** uses **`w-[640px]`** (double the former **`w-80`**) with **`max-w-[calc(100vw-2rem)]`**. Content is a **two-column grid**: left — font family/size, justification, vertical position, zone text position; right — text transform, letter/line spacing, opacity, body/heading colors (with a vertical divider between columns). Slightly larger controls (**`h-9`**, **`text-sm`** labels) to match the scale.
+
 ### 2026-03-30 – Interactive tutorial: dedicated `tutorial` tab
 **Behavior**: Starting the tutorial (**auto-start** or **Help → Interactive tutorial**) calls **`ensureTutorialTab`** so the diagram loads in a single reserved tab named **`tutorial`** (`TUTORIAL_TAB_NAME` in **`use-diagram-tabs.ts`**), with **`isTutorialTab: true`**. User diagrams stay in their own tabs. Duplicate tutorial markers are collapsed to one tab. **`handleLoadTutorialExample`** uses **`updateTab`** on that tab (not **`updateActiveTab`**). **`TutorialProvider`** takes **`onTutorialSessionStart`** to create/focus the tab when **`start()`** runs. **`finish()`** and **`close()`** (X button, backdrop when allowed) call **`onTutorialFinish`** → **`handleTutorialFinish`**: closes the tutorial tab without a save dialog; if it was the only tab, **`createTab({ name: 'Diagram 1', silent: true })`** runs inside **`flushSync`** first so the app always keeps ≥1 tab. **`handleTabClose`** skips the unsaved dialog for **`isTutorialTab`** tabs.
 

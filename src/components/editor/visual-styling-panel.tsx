@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import { ColorPicker } from "@/components/ui/color-picker";
 import { VisualStyling, VISUAL_STYLES, getPredefinedVisualStyle, findClosestPredefinedStyle } from "@/lib/visual-styling";
 import { Palette, RotateCcw, X } from "lucide-react";
@@ -128,381 +127,376 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
         setPosition({ x: data.x, y: data.y });
       }}
     >
-      <div ref={nodeRef} className={`fixed top-20 left-20 z-50 bg-popover border border-border rounded-lg shadow-lg cursor-move ${showFullStyling ? 'w-[24rem]' : 'w-[16rem]'}`}>
-        <div className="flex items-center justify-between p-3 border-b">
+      <div ref={nodeRef} className={`fixed top-20 left-20 z-50 bg-popover border border-border rounded-lg shadow-lg cursor-move ${showFullStyling ? 'w-[640px]' : 'w-[512px]'} max-w-[calc(100vw-2rem)]`}>
+        <div className="flex items-center justify-between px-5 py-4 border-b">
           <div className="flex items-center gap-2">
-            <Palette className="w-4 h-4 text-blue-600" />
-            <h3 className="font-semibold text-foreground text-sm">{isLucideIcon ? 'Icon Styling' : 'Visual Styling'}</h3>
+            <Palette className="w-5 h-5 text-blue-600" />
+            <h3 className="text-base font-semibold text-foreground">{isLucideIcon ? 'Icon Styling' : 'Visual Styling'}</h3>
           </div>
           {onClose && (
             <Button
               variant="ghost"
               size="sm"
               onClick={onClose}
-              className="h-7 w-7 p-0"
+              className="h-9 w-9 p-0"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-5 h-5" />
             </Button>
           )}
         </div>
-        <div className="p-3 space-y-2">
-          {/* Icon Color - only for Lucide icons; when icon mode, hide other sections */}
-          {isLucideIcon && (
-            <div className="bg-muted/50 rounded-md p-2 border border-border">
-              <div className="flex items-center gap-1.5 mb-2">
-                <div className="w-1.5 h-1.5 bg-primary rounded-full"></div>
-                <Label className="text-xs font-semibold text-foreground">Icon Color</Label>
-              </div>
-              <ColorPicker
-                value={styling.iconColor || '#374151'}
-                onChange={(value) => handlePropertyChange('iconColor', value)}
-                placeholder="#374151"
-                showAlpha={false}
-                allowTransparent={false}
-              />
-            </div>
-          )}
-
-          {/* Remove background - for resource items and Lucide icons */}
-          {showRemoveBackground && (
-            <div className="bg-muted/50 rounded-md p-2 border border-border">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-semibold text-foreground">Remove background</Label>
-                <Switch
-                  checked={noIconBackground}
-                  onCheckedChange={(checked) => onStylingChange({ noIconBackground: checked })}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Size - for nodes and icons: normal, half, quarter */}
-          {!isShape && (
-          <div className="bg-muted/50 rounded-md p-2 border border-border">
-            <div className="flex items-center gap-1.5 mb-2">
-              <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full"></div>
-              <Label className="text-xs font-semibold text-foreground">Size</Label>
-            </div>
-            <Select
-              value={styling.nodeSize || 'normal'}
-              onValueChange={(value) => onStylingChange({ nodeSize: value as 'normal' | 'half' | 'quarter' })}
-            >
-              <SelectTrigger className="h-7 text-xs">
-                <SelectValue placeholder="Normal" />
-              </SelectTrigger>
-              <SelectContent className="z-[70]">
-                <SelectItem value="normal" className="text-xs">Normal</SelectItem>
-                <SelectItem value="half" className="text-xs">Half</SelectItem>
-                <SelectItem value="quarter" className="text-xs">Quarter</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          )}
-
-          {/* Preset, Border, Background, Effects, Tags - shapes and text nodes only */}
-          {showFullStyling && (
-          <>
-          {/* Style Preset */}
-          <div className="bg-muted/50 rounded-md p-2">
-            <div className="flex items-center gap-1.5 mb-2">
-              <div className="w-1.5 h-1.5 bg-primary rounded-full"></div>
-              <Label className="text-xs font-semibold text-foreground">Preset</Label>
-            </div>
-            <Select
-              value={currentPredefinedStyle || 'custom'}
-              onValueChange={(value) => {
-                if (value === 'custom') {
-                  return;
-                }
-                handlePredefinedStyleChange(value as keyof typeof VISUAL_STYLES);
-              }}
-            >
-              <SelectTrigger className="h-7 text-xs">
-                <SelectValue placeholder="Select preset" />
-              </SelectTrigger>
-              <SelectContent className="z-[70]">
-                {Object.entries(VISUAL_STYLES).map(([key, style]) => (
-                  <SelectItem key={key} value={key} className="text-xs">
-                    <div className="flex flex-col">
-                      <span className="font-medium">{style.name}</span>
-                      <span className="text-muted-foreground text-xs">{style.description}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-                <SelectItem value="custom" className="text-xs">Custom</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Border Section */}
-          <div className="bg-amber-50/50 rounded-md p-2 border border-amber-200/50">
-            <div className="flex items-center gap-1.5 mb-2">
-              <div className="w-1.5 h-1.5 bg-amber-500 rounded-full"></div>
-              <Label className="text-xs font-semibold text-foreground">Border</Label>
-            </div>
-            <div className="grid grid-cols-2 gap-2 mb-2">
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Style</Label>
-                <Select
-                  value={styling.borderStyle || 'solid'}
-                  onValueChange={(value) => handlePropertyChange('borderStyle', value as any)}
-                >
-                  <SelectTrigger className="h-7 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="z-[70]">
-                    <SelectItem value="none" className="text-xs">None</SelectItem>
-                    <SelectItem value="solid" className="text-xs">Solid</SelectItem>
-                    <SelectItem value="dotted" className="text-xs">Dotted</SelectItem>
-                    <SelectItem value="gradient" className="text-xs">Gradient</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {styling.borderStyle && styling.borderStyle !== 'none' && (
-                <div className="space-y-1 flex flex-col">
-                  <div className="flex items-center gap-2">
-                    <Label className="text-xs text-muted-foreground shrink-0">Width</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={20}
-                      value={styling.borderWidth ?? 2}
-                      onChange={(e) => {
-                        const n = parseInt(e.target.value, 10);
-                        if (!isNaN(n)) handlePropertyChange('borderWidth', Math.min(20, Math.max(0, n)));
-                      }}
-                      className="h-7 w-14 text-xs"
+        <div className="p-5 space-y-4">
+          {(isLucideIcon || showRemoveBackground) && (
+            <div className={`grid gap-4 ${isLucideIcon && showRemoveBackground ? 'grid-cols-2' : 'grid-cols-1'}`}>
+              {isLucideIcon && (
+                <div className="bg-muted/50 rounded-md p-3 border border-border min-w-0">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 bg-primary rounded-full shrink-0" />
+                    <Label className="text-sm font-semibold text-foreground">Icon Color</Label>
+                  </div>
+                  <ColorPicker
+                    value={styling.iconColor || '#374151'}
+                    onChange={(value) => handlePropertyChange('iconColor', value)}
+                    placeholder="#374151"
+                    showAlpha={false}
+                    allowTransparent={false}
+                  />
+                </div>
+              )}
+              {showRemoveBackground && (
+                <div className="bg-muted/50 rounded-md p-3 border border-border min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-sm font-semibold text-foreground">Remove background</Label>
+                    <Switch
+                      checked={noIconBackground}
+                      onCheckedChange={(checked) => onStylingChange({ noIconBackground: checked })}
                     />
-                    {styling.borderStyle === 'gradient' && (
-                      <GradientAnglePicker
-                        value={styling.borderGradientAngle ?? styling.gradientAngle ?? 135}
-                        onChange={(angle) => handlePropertyChange('borderGradientAngle', angle)}
-                        label="Dir"
-                      />
-                    )}
                   </div>
                 </div>
               )}
             </div>
-            {styling.borderStyle && styling.borderStyle !== 'none' && (
-              <div className="space-y-2">
-                {styling.borderStyle === 'gradient' ? (
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="flex flex-col gap-2">
-                      <Label className="text-xs text-muted-foreground">Start</Label>
-                      <ColorPicker
-                        value={styling.borderColors?.[0] || '#6b7280'}
-                        onChange={(value) => {
-                          const currentColors = styling.borderColors || ['#6b7280', '#3b82f6'];
-                          handlePropertyChange('borderColors', [value, currentColors[1]]);
-                        }}
-                        placeholder="#6b7280"
-                        showAlpha={true}
-                        allowTransparent={true}
-                      />
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <Label className="text-xs text-muted-foreground">End</Label>
-                      <ColorPicker
-                        value={styling.borderColors?.[1] || '#3b82f6'}
-                        onChange={(value) => {
-                          const currentColors = styling.borderColors || ['#6b7280', '#3b82f6'];
-                          handlePropertyChange('borderColors', [currentColors[0], value]);
-                        }}
-                        placeholder="#3b82f6"
-                        showAlpha={true}
-                        allowTransparent={true}
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <ColorPicker
-                    value={styling.borderColor || '#d1d5db'}
-                    onChange={(value) => handlePropertyChange('borderColor', value)}
-                    placeholder="#d1d5db"
-                    showAlpha={true}
-                    allowTransparent={true}
-                  />
-                )}
-              </div>
-            )}
-          </div>
+          )}
 
-          {/* Background Section */}
-          <div className="bg-emerald-50/50 rounded-md p-2 border border-emerald-200/50">
-            <div className="flex items-center gap-1.5 mb-2">
-              <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
-              <Label className="text-xs font-semibold text-foreground">Background</Label>
+          {!isShape && (
+            <div className="bg-muted/50 rounded-md p-3 border border-border">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 bg-muted-foreground rounded-full shrink-0" />
+                <Label className="text-sm font-semibold text-foreground">Size</Label>
+              </div>
+              <Select
+                value={styling.nodeSize || 'normal'}
+                onValueChange={(value) => onStylingChange({ nodeSize: value as 'normal' | 'half' | 'quarter' })}
+              >
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder="Normal" />
+                </SelectTrigger>
+                <SelectContent className="z-[70]">
+                  <SelectItem value="normal" className="text-sm">Normal</SelectItem>
+                  <SelectItem value="half" className="text-sm">Half</SelectItem>
+                  <SelectItem value="quarter" className="text-sm">Quarter</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <div className="grid grid-cols-2 gap-2 mb-2">
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Style</Label>
+          )}
+
+          {showFullStyling && (
+          <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+            <div className="space-y-4 min-w-0">
+              <div className="bg-muted/50 rounded-md p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 bg-primary rounded-full shrink-0" />
+                  <Label className="text-sm font-semibold text-foreground">Preset</Label>
+                </div>
                 <Select
-                  value={styling.backgroundStyle || 'solid'}
-                  onValueChange={(value) => handlePropertyChange('backgroundStyle', value as any)}
+                  value={currentPredefinedStyle || 'custom'}
+                  onValueChange={(value) => {
+                    if (value === 'custom') {
+                      return;
+                    }
+                    handlePredefinedStyleChange(value as keyof typeof VISUAL_STYLES);
+                  }}
                 >
-                  <SelectTrigger className="h-7 text-xs">
-                    <SelectValue />
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue placeholder="Select preset" />
                   </SelectTrigger>
                   <SelectContent className="z-[70]">
-                    <SelectItem value="none" className="text-xs">None</SelectItem>
-                    <SelectItem value="solid" className="text-xs">Solid</SelectItem>
-                    <SelectItem value="gradient" className="text-xs">Gradient</SelectItem>
+                    {Object.entries(VISUAL_STYLES).map(([key, style]) => (
+                      <SelectItem key={key} value={key} className="text-sm">
+                        <div className="flex flex-col">
+                          <span className="font-medium">{style.name}</span>
+                          <span className="text-muted-foreground text-xs">{style.description}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="custom" className="text-sm">Custom</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              {styling.backgroundStyle === 'gradient' && (
-                <GradientAnglePicker
-                  value={styling.gradientAngle ?? 135}
-                  onChange={(angle) => handlePropertyChange('gradientAngle', angle)}
-                  label="Direction"
-                />
-              )}
-            </div>
-            {styling.backgroundStyle && styling.backgroundStyle !== 'none' && (
-              <div className="space-y-2">
-                {styling.backgroundStyle === 'gradient' ? (
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="flex flex-col gap-2">
-                      <Label className="text-xs text-muted-foreground">Start</Label>
+
+              <div className="bg-amber-50/50 rounded-md p-3 border border-amber-200/50">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 bg-amber-500 rounded-full shrink-0" />
+                  <Label className="text-sm font-semibold text-foreground">Border</Label>
+                </div>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <div className="space-y-1">
+                    <Label className="text-sm text-muted-foreground">Style</Label>
+                    <Select
+                      value={styling.borderStyle || 'solid'}
+                      onValueChange={(value) => handlePropertyChange('borderStyle', value as any)}
+                    >
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="z-[70]">
+                        <SelectItem value="none" className="text-sm">None</SelectItem>
+                        <SelectItem value="solid" className="text-sm">Solid</SelectItem>
+                        <SelectItem value="dotted" className="text-sm">Dotted</SelectItem>
+                        <SelectItem value="gradient" className="text-sm">Gradient</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {styling.borderStyle && styling.borderStyle !== 'none' && (
+                    <div className="space-y-1 flex flex-col">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Label className="text-sm text-muted-foreground shrink-0">Width</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={20}
+                          value={styling.borderWidth ?? 2}
+                          onChange={(e) => {
+                            const n = parseInt(e.target.value, 10);
+                            if (!isNaN(n)) handlePropertyChange('borderWidth', Math.min(20, Math.max(0, n)));
+                          }}
+                          className="h-9 w-14 text-sm"
+                        />
+                        {styling.borderStyle === 'gradient' && (
+                          <GradientAnglePicker
+                            value={styling.borderGradientAngle ?? styling.gradientAngle ?? 135}
+                            onChange={(angle) => handlePropertyChange('borderGradientAngle', angle)}
+                            label="Dir"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {styling.borderStyle && styling.borderStyle !== 'none' && (
+                  <div className="space-y-2">
+                    {styling.borderStyle === 'gradient' ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="flex flex-col gap-2">
+                          <Label className="text-sm text-muted-foreground">Start</Label>
+                          <ColorPicker
+                            value={styling.borderColors?.[0] || '#6b7280'}
+                            onChange={(value) => {
+                              const currentColors = styling.borderColors || ['#6b7280', '#3b82f6'];
+                              handlePropertyChange('borderColors', [value, currentColors[1]]);
+                            }}
+                            placeholder="#6b7280"
+                            showAlpha={true}
+                            allowTransparent={true}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <Label className="text-sm text-muted-foreground">End</Label>
+                          <ColorPicker
+                            value={styling.borderColors?.[1] || '#3b82f6'}
+                            onChange={(value) => {
+                              const currentColors = styling.borderColors || ['#6b7280', '#3b82f6'];
+                              handlePropertyChange('borderColors', [currentColors[0], value]);
+                            }}
+                            placeholder="#3b82f6"
+                            showAlpha={true}
+                            allowTransparent={true}
+                          />
+                        </div>
+                      </div>
+                    ) : (
                       <ColorPicker
-                        value={styling.backgroundColors?.[0] || '#f3f4f6'}
-                        onChange={(value) => {
-                          const currentColors = styling.backgroundColors || ['#f3f4f6', '#e5e7eb'];
-                          handlePropertyChange('backgroundColors', [value, currentColors[1]]);
-                        }}
+                        value={styling.borderColor || '#d1d5db'}
+                        onChange={(value) => handlePropertyChange('borderColor', value)}
+                        placeholder="#d1d5db"
+                        showAlpha={true}
+                        allowTransparent={true}
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-emerald-50/50 rounded-md p-3 border border-emerald-200/50">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 bg-emerald-500 rounded-full shrink-0" />
+                  <Label className="text-sm font-semibold text-foreground">Background</Label>
+                </div>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <div className="space-y-1">
+                    <Label className="text-sm text-muted-foreground">Style</Label>
+                    <Select
+                      value={styling.backgroundStyle || 'solid'}
+                      onValueChange={(value) => handlePropertyChange('backgroundStyle', value as any)}
+                    >
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="z-[70]">
+                        <SelectItem value="none" className="text-sm">None</SelectItem>
+                        <SelectItem value="solid" className="text-sm">Solid</SelectItem>
+                        <SelectItem value="gradient" className="text-sm">Gradient</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {styling.backgroundStyle === 'gradient' && (
+                    <GradientAnglePicker
+                      value={styling.gradientAngle ?? 135}
+                      onChange={(angle) => handlePropertyChange('gradientAngle', angle)}
+                      label="Direction"
+                    />
+                  )}
+                </div>
+                {styling.backgroundStyle && styling.backgroundStyle !== 'none' && (
+                  <div className="space-y-2">
+                    {styling.backgroundStyle === 'gradient' ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="flex flex-col gap-2">
+                          <Label className="text-sm text-muted-foreground">Start</Label>
+                          <ColorPicker
+                            value={styling.backgroundColors?.[0] || '#f3f4f6'}
+                            onChange={(value) => {
+                              const currentColors = styling.backgroundColors || ['#f3f4f6', '#e5e7eb'];
+                              handlePropertyChange('backgroundColors', [value, currentColors[1]]);
+                            }}
+                            placeholder="#f3f4f6"
+                            showAlpha={true}
+                            allowTransparent={true}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <Label className="text-sm text-muted-foreground">End</Label>
+                          <ColorPicker
+                            value={styling.backgroundColors?.[1] || '#e5e7eb'}
+                            onChange={(value) => {
+                              const currentColors = styling.backgroundColors || ['#f3f4f6', '#e5e7eb'];
+                              handlePropertyChange('backgroundColors', [currentColors[0], value]);
+                            }}
+                            placeholder="#e5e7eb"
+                            showAlpha={true}
+                            allowTransparent={true}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <ColorPicker
+                        value={styling.backgroundColor || '#f3f4f6'}
+                        onChange={(value) => handlePropertyChange('backgroundColor', value)}
                         placeholder="#f3f4f6"
                         showAlpha={true}
                         allowTransparent={true}
                       />
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <Label className="text-xs text-muted-foreground">End</Label>
-                      <ColorPicker
-                        value={styling.backgroundColors?.[1] || '#e5e7eb'}
-                        onChange={(value) => {
-                          const currentColors = styling.backgroundColors || ['#f3f4f6', '#e5e7eb'];
-                          handlePropertyChange('backgroundColors', [currentColors[0], value]);
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-4 min-w-0 border-l border-border pl-8">
+              <div className="bg-purple-50/50 rounded-md p-3 border border-purple-200/50">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 bg-purple-500 rounded-full shrink-0" />
+                  <Label className="text-sm font-semibold text-foreground">Effects</Label>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-sm text-muted-foreground">Shadow</Label>
+                    <Switch
+                      checked={styling.shadow || false}
+                      onCheckedChange={(checked) => handlePropertyChange('shadow', checked)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-sm text-muted-foreground">Rounded Edges</Label>
+                    <Switch
+                      checked={styling.roundedEdges || false}
+                      onCheckedChange={(checked) => handlePropertyChange('roundedEdges', checked)}
+                    />
+                  </div>
+                  {isRoundedRectangle && (
+                    <div className="flex items-center justify-between gap-2">
+                      <Label className="text-sm text-muted-foreground">Corner radius</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={1}
+                        step={0.1}
+                        value={styling.cornerRadius ?? 0.2}
+                        onChange={(e) => {
+                          const n = parseFloat(e.target.value);
+                          if (!isNaN(n)) handlePropertyChange('cornerRadius', Math.min(1, Math.max(0, n)));
                         }}
-                        placeholder="#e5e7eb"
-                        showAlpha={true}
-                        allowTransparent={true}
+                        className="h-9 w-16 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
                     </div>
-                  </div>
-                ) : (
-                  <ColorPicker
-                    value={styling.backgroundColor || '#f3f4f6'}
-                    onChange={(value) => handlePropertyChange('backgroundColor', value)}
-                    placeholder="#f3f4f6"
-                    showAlpha={true}
-                    allowTransparent={true}
-                  />
-                )}
+                  )}
+                  {isTextBoxHeading && (
+                    <div className="space-y-2">
+                      <Label className="text-sm text-muted-foreground">Heading color</Label>
+                      <ColorPicker
+                        value={
+                          styling.headingBackgroundColor?.startsWith("#")
+                            ? styling.headingBackgroundColor
+                            : "#1f2937"
+                        }
+                        onChange={(value) =>
+                          handlePropertyChange("headingBackgroundColor", value)
+                        }
+                        placeholder="#1f2937"
+                        showAlpha={false}
+                        allowTransparent={false}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
 
-          {/* Effects & Tags Row */}
-          <div className="grid grid-cols-2 gap-2">
-            {/* Effects */}
-            <div className="bg-purple-50/50 rounded-md p-2 border border-purple-200/50">
-              <div className="flex items-center gap-1.5 mb-2">
-                <div className="w-1.5 h-1.5 bg-purple-500 rounded-full"></div>
-                <Label className="text-xs font-semibold text-foreground">Effects</Label>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs text-muted-foreground">Shadow</Label>
-                  <Switch
-                    checked={styling.shadow || false}
-                    onCheckedChange={(checked) => handlePropertyChange('shadow', checked)}
-                  />
+              <div className="bg-indigo-50/50 rounded-md p-3 border border-indigo-200/50">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 bg-indigo-500 rounded-full shrink-0" />
+                  <Label className="text-sm font-semibold text-foreground">Tags</Label>
                 </div>
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs text-muted-foreground">Rounded Edges</Label>
-                  <Switch
-                    checked={styling.roundedEdges || false}
-                    onCheckedChange={(checked) => handlePropertyChange('roundedEdges', checked)}
-                  />
-                </div>
-                {isRoundedRectangle && (
-                  <div className="flex items-center justify-between gap-2">
-                    <Label className="text-xs text-muted-foreground">Corner radius</Label>
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-sm text-muted-foreground mb-1 block">Text</Label>
                     <Input
-                      type="number"
-                      min={0}
-                      max={1}
-                      step={0.1}
-                      value={styling.cornerRadius ?? 0.2}
-                      onChange={(e) => {
-                        const n = parseFloat(e.target.value);
-                        if (!isNaN(n)) handlePropertyChange('cornerRadius', Math.min(1, Math.max(0, n)));
-                      }}
-                      className="h-7 w-14 text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      value={tag || ''}
+                      onChange={(e) => onTagChange?.(e.target.value)}
+                      placeholder="Tag text"
+                      className="h-9 text-sm"
                     />
                   </div>
-                )}
-                {isTextBoxHeading && (
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Heading color</Label>
-                    <ColorPicker
-                      value={
-                        styling.headingBackgroundColor?.startsWith("#")
-                          ? styling.headingBackgroundColor
-                          : "#1f2937"
-                      }
-                      onChange={(value) =>
-                        handlePropertyChange("headingBackgroundColor", value)
-                      }
-                      placeholder="#1f2937"
-                      showAlpha={false}
-                      allowTransparent={false}
-                    />
+                  <div>
+                    <Label className="text-sm text-muted-foreground mb-1 block">Position</Label>
+                    <Select
+                      value={tagPosition || 'top-center'}
+                      onValueChange={(value) => onTagPositionChange?.(value as any)}
+                    >
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="z-[70]">
+                        <SelectItem value="top-left" className="text-sm">Top L</SelectItem>
+                        <SelectItem value="top-center" className="text-sm">Top C</SelectItem>
+                        <SelectItem value="top-right" className="text-sm">Top R</SelectItem>
+                        <SelectItem value="bottom-left" className="text-sm">Bot L</SelectItem>
+                        <SelectItem value="bottom-center" className="text-sm">Bot C</SelectItem>
+                        <SelectItem value="bottom-right" className="text-sm">Bot R</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                )}
-              </div>
-            </div>
-
-            {/* Tags */}
-            <div className="bg-indigo-50/50 rounded-md p-2 border border-indigo-200/50">
-              <div className="flex items-center gap-1.5 mb-2">
-                <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full"></div>
-                <Label className="text-xs font-semibold text-foreground">Tags</Label>
-              </div>
-              <div className="space-y-2">
-                <div>
-                  <Label className="text-xs text-muted-foreground mb-0.5 block">Text</Label>
-                  <Input
-                    value={tag || ''}
-                    onChange={(e) => onTagChange?.(e.target.value)}
-                    placeholder="Tag text"
-                    className="h-6 text-xs"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground mb-0.5 block">Position</Label>
-                  <Select
-                    value={tagPosition || 'top-center'}
-                    onValueChange={(value) => onTagPositionChange?.(value as any)}
-                  >
-                    <SelectTrigger className="h-6 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="z-[70]">
-                      <SelectItem value="top-left" className="text-xs">Top L</SelectItem>
-                      <SelectItem value="top-center" className="text-xs">Top C</SelectItem>
-                      <SelectItem value="top-right" className="text-xs">Top R</SelectItem>
-                      <SelectItem value="bottom-left" className="text-xs">Bot L</SelectItem>
-                      <SelectItem value="bottom-center" className="text-xs">Bot C</SelectItem>
-                      <SelectItem value="bottom-right" className="text-xs">Bot R</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
             </div>
           </div>
-          </>
           )}
         </div>
        </div>

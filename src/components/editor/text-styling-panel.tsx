@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Separator } from "@/components/ui/separator";
 import { ColorPicker } from "@/components/ui/color-picker";
 import { TextStyling, COMMON_FONT_FAMILIES, DEFAULT_TEXT_STYLING } from "@/lib/text-styling";
 import { Type, AlignLeft, AlignCenter, AlignRight, AlignJustify, ArrowUp, Circle, ArrowDown, RotateCcw, Move3D, Box, X } from "lucide-react";
@@ -125,296 +124,277 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
         setPosition({ x: data.x, y: data.y });
       }}
     >
-      <div ref={nodeRef} className="fixed top-20 left-20 z-50 bg-popover border border-border rounded-lg shadow-lg w-80 cursor-move">
-        <div className="flex items-center justify-between p-4 border-b">
+      <div ref={nodeRef} className="fixed top-20 left-20 z-50 bg-popover border border-border rounded-lg shadow-lg w-[640px] max-w-[calc(100vw-2rem)] cursor-move">
+        <div className="flex items-center justify-between px-5 py-4 border-b">
           <div className="flex items-center gap-2">
-            <Type className="w-4 h-4" />
-            <h3 className="font-semibold">Text Styling</h3>
+            <Type className="w-5 h-5" />
+            <h3 className="text-base font-semibold">Text Styling</h3>
           </div>
           {onClose && (
             <Button
               variant="ghost"
               size="sm"
               onClick={onClose}
-              className="h-8 w-8 p-0"
+              className="h-9 w-9 p-0"
             >
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5" />
             </Button>
           )}
         </div>
-        <div className="space-y-4 p-4">
-          {/* Font Family */}
-          <div className="space-y-2">
-            <Label htmlFor="font-family" className="text-xs font-medium">Font Family</Label>
-            <Select
-              value={styling.fontFamily || ''}
-              onValueChange={(value) => handlePropertyChange('fontFamily', value)}
-            >
-              <SelectTrigger id="font-family" className="h-8 text-xs">
-                <SelectValue placeholder="Select font family" />
-              </SelectTrigger>
-              <SelectContent className="z-[70]">
-                {COMMON_FONT_FAMILIES.map((font) => (
-                  <SelectItem key={font} value={font} className="text-xs">
-                    <span style={{ fontFamily: font }}>{font.split(',')[0]}</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Font Size */}
-          <div className="space-y-2">
-            <Label htmlFor="font-size" className="text-xs font-medium">
-              Font Size: {styling.fontSize || 14}px
-            </Label>
-            <Slider
-              id="font-size"
-              min={8}
-              max={72}
-              step={1}
-              value={[styling.fontSize || 14]}
-              onValueChange={([value]) => handlePropertyChange('fontSize', value)}
-              className="w-full"
-            />
-          </div>
-
-          {/* Text Justification */}
-          <div className="space-y-2">
-            <Label className="text-xs font-medium">Text Justification</Label>
-            <div className="flex gap-1">
-              <Button
-                variant={effectiveTextJustify === 'left' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => handlePropertyChange('textJustify', effectiveTextJustify === 'left' ? 'center' : 'left')}
-                className="h-8 px-2"
-                title="Align Left"
+        <div className="grid grid-cols-2 gap-x-8 gap-y-4 p-5">
+          {/* Column 1: font, size, alignment, position */}
+          <div className="space-y-4 min-w-0">
+            <div className="space-y-2">
+              <Label htmlFor="font-family" className="text-sm font-medium">Font Family</Label>
+              <Select
+                value={styling.fontFamily || ''}
+                onValueChange={(value) => handlePropertyChange('fontFamily', value)}
               >
-                <AlignLeft className="w-3 h-3" />
-              </Button>
-              <Button
-                variant={effectiveTextJustify === 'center' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => handlePropertyChange('textJustify', 'center')}
-                className="h-8 px-2"
-                title="Align Center"
-              >
-                <AlignCenter className="w-3 h-3" />
-              </Button>
-              <Button
-                variant={effectiveTextJustify === 'right' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => handlePropertyChange('textJustify', effectiveTextJustify === 'right' ? 'center' : 'right')}
-                className="h-8 px-2"
-                title="Align Right"
-              >
-                <AlignRight className="w-3 h-3" />
-              </Button>
-              <Button
-                variant={effectiveTextJustify === 'full' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => handlePropertyChange('textJustify', effectiveTextJustify === 'full' ? 'center' : 'full')}
-                className="h-8 px-2"
-                title="Justify"
-              >
-                <AlignJustify className="w-3 h-3" />
-              </Button>
+                <SelectTrigger id="font-family" className="h-9 text-sm">
+                  <SelectValue placeholder="Select font family" />
+                </SelectTrigger>
+                <SelectContent className="z-[70]">
+                  {COMMON_FONT_FAMILIES.map((font) => (
+                    <SelectItem key={font} value={font} className="text-sm">
+                      <span style={{ fontFamily: font }}>{font.split(',')[0]}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          </div>
 
-          {/* Text Vertical Position */}
-          <div className="space-y-2">
-            <Label className="text-xs font-medium">Vertical Position</Label>
-            <div className="flex gap-1">
-              <Button
-                variant={effectiveVerticalPosition === 'top' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => {
-                  const newVerticalPos = effectiveVerticalPosition === 'top' ? 'middle' : 'top';
-                  handlePropertyChange('textVerticalPosition', newVerticalPos);
-                  // For zones with outside position, update text position based on vertical position
-                  if (selectedItem && selectedItem.itemType === 'zone') {
-if (textPosition?.startsWith('outside-') || textPosition === 'outside') {
-                    const newTextPos = 'outside-top';
-                    onTextPositionChange && onTextPositionChange(newTextPos);
-                  }
-                }
-              }}
-                className="h-8 px-2"
-                title="Align Top"
-              >
-                <ArrowUp className="w-3 h-3" />
-              </Button>
-              <Button
-                variant={effectiveVerticalPosition === 'middle' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => {
-                  handlePropertyChange('textVerticalPosition', 'middle');
-                  // For zones with outside position, update text position based on vertical position
-                  if (selectedItem && selectedItem.itemType === 'zone') {
-                  if (textPosition?.startsWith('outside-') || textPosition === 'outside') {
-                    onTextPositionChange && onTextPositionChange('outside-top');
-                  }
-                }
-              }}
-                className="h-8 px-2"
-                title="Align Middle"
-              >
-                <Circle className="w-3 h-3" />
-              </Button>
-              <Button
-                variant={effectiveVerticalPosition === 'bottom' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => {
-                  const newVerticalPos = effectiveVerticalPosition === 'bottom' ? 'middle' : 'bottom';
-                  handlePropertyChange('textVerticalPosition', newVerticalPos);
-                  // For zones with outside position, update text position based on vertical position
-                  if (selectedItem && selectedItem.itemType === 'zone') {
-                  if (textPosition?.startsWith('outside-') || textPosition === 'outside') {
-                    const newTextPos: string = newVerticalPos === 'bottom' ? 'outside-bottom' : 'outside-top';
-                    onTextPositionChange && onTextPositionChange(newTextPos);
-                  }
-                }
-              }}
-                className="h-8 px-2"
-                title="Align Bottom"
-              >
-                <ArrowDown className="w-3 h-3" />
-              </Button>
+            <div className="space-y-2">
+              <Label htmlFor="font-size" className="text-sm font-medium">
+                Font Size: {styling.fontSize || 14}px
+              </Label>
+              <Slider
+                id="font-size"
+                min={8}
+                max={72}
+                step={1}
+                value={[styling.fontSize || 14]}
+                onValueChange={([value]) => handlePropertyChange('fontSize', value)}
+                className="w-full"
+              />
             </div>
-          </div>
 
-          {/* Text Position - Only for zones */}
-          {selectedItem && selectedItem.itemType === 'zone' && (
-            <>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Text Justification</Label>
+              <div className="flex flex-wrap gap-1">
+                <Button
+                  variant={effectiveTextJustify === 'left' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => handlePropertyChange('textJustify', effectiveTextJustify === 'left' ? 'center' : 'left')}
+                  className="h-9 px-2"
+                  title="Align Left"
+                >
+                  <AlignLeft className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant={effectiveTextJustify === 'center' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => handlePropertyChange('textJustify', 'center')}
+                  className="h-9 px-2"
+                  title="Align Center"
+                >
+                  <AlignCenter className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant={effectiveTextJustify === 'right' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => handlePropertyChange('textJustify', effectiveTextJustify === 'right' ? 'center' : 'right')}
+                  className="h-9 px-2"
+                  title="Align Right"
+                >
+                  <AlignRight className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant={effectiveTextJustify === 'full' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => handlePropertyChange('textJustify', effectiveTextJustify === 'full' ? 'center' : 'full')}
+                  className="h-9 px-2"
+                  title="Justify"
+                >
+                  <AlignJustify className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Vertical Position</Label>
+              <div className="flex gap-1">
+                <Button
+                  variant={effectiveVerticalPosition === 'top' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => {
+                    const newVerticalPos = effectiveVerticalPosition === 'top' ? 'middle' : 'top';
+                    handlePropertyChange('textVerticalPosition', newVerticalPos);
+                    if (selectedItem && selectedItem.itemType === 'zone') {
+                      if (textPosition?.startsWith('outside-') || textPosition === 'outside') {
+                        const newTextPos = 'outside-top';
+                        onTextPositionChange && onTextPositionChange(newTextPos);
+                      }
+                    }
+                  }}
+                  className="h-9 px-2"
+                  title="Align Top"
+                >
+                  <ArrowUp className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant={effectiveVerticalPosition === 'middle' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => {
+                    handlePropertyChange('textVerticalPosition', 'middle');
+                    if (selectedItem && selectedItem.itemType === 'zone') {
+                      if (textPosition?.startsWith('outside-') || textPosition === 'outside') {
+                        onTextPositionChange && onTextPositionChange('outside-top');
+                      }
+                    }
+                  }}
+                  className="h-9 px-2"
+                  title="Align Middle"
+                >
+                  <Circle className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant={effectiveVerticalPosition === 'bottom' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => {
+                    const newVerticalPos = effectiveVerticalPosition === 'bottom' ? 'middle' : 'bottom';
+                    handlePropertyChange('textVerticalPosition', newVerticalPos);
+                    if (selectedItem && selectedItem.itemType === 'zone') {
+                      if (textPosition?.startsWith('outside-') || textPosition === 'outside') {
+                        const newTextPos: string = newVerticalPos === 'bottom' ? 'outside-bottom' : 'outside-top';
+                        onTextPositionChange && onTextPositionChange(newTextPos);
+                      }
+                    }
+                  }}
+                  className="h-9 px-2"
+                  title="Align Bottom"
+                >
+                  <ArrowDown className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            {selectedItem && selectedItem.itemType === 'zone' && (
               <div className="space-y-2">
-                <Label className="text-xs font-medium">Text Position</Label>
+                <Label className="text-sm font-medium">Text Position</Label>
                 <div className="grid grid-cols-2 gap-1">
                   <Button
                     variant={textPosition === 'inside' ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => onTextPositionChange && onTextPositionChange('inside')}
-                    className="h-8 px-2 text-xs"
+                    className="h-9 px-2 text-sm"
                     title="Inside Zone"
                   >
-                    <Box className="w-3 h-3 mr-1" />
+                    <Box className="w-4 h-4 mr-1" />
                     Inside
                   </Button>
                   <Button
                     variant={textPosition?.startsWith('outside-') ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => {
-                      // Use effective vertical position to determine outside-top or outside-bottom
                       const verticalPos = effectiveVerticalPosition || 'middle';
                       const newPosition = verticalPos === 'bottom' ? 'outside-bottom' : 'outside-top';
-                      // Update textPosition - handleTextPositionChange will also update textVerticalPosition
                       if (onTextPositionChange) {
                         onTextPositionChange(newPosition);
                       }
                     }}
-                    className="h-8 px-2 text-xs"
+                    className="h-9 px-2 text-sm"
                     title="Outside Zone"
                     type="button"
                   >
-                    <Move3D className="w-3 h-3 mr-1" />
+                    <Move3D className="w-4 h-4 mr-1" />
                     Outside
                   </Button>
                 </div>
               </div>
-              <Separator />
-            </>
-          )}
-
-          <Separator />
-
-          {/* Text Transform */}
-          <div className="space-y-2">
-            <Label htmlFor="text-transform" className="text-xs font-medium">Text Transform</Label>
-            <Select
-              value={styling.textTransform || 'none'}
-              onValueChange={(value) => handlePropertyChange('textTransform', value as any)}
-            >
-              <SelectTrigger id="text-transform" className="h-8 text-xs">
-                <SelectValue placeholder="Select text transform" />
-              </SelectTrigger>
-              <SelectContent className="z-[70]">
-                <SelectItem value="none" className="text-xs">None</SelectItem>
-                <SelectItem value="uppercase" className="text-xs">UPPERCASE</SelectItem>
-                <SelectItem value="lowercase" className="text-xs">lowercase</SelectItem>
-                <SelectItem value="capitalize" className="text-xs">Capitalize</SelectItem>
-              </SelectContent>
-            </Select>
+            )}
           </div>
 
-          <Separator />
+          {/* Column 2: transform, spacing, opacity, colors */}
+          <div className="space-y-4 min-w-0 border-l border-border pl-8">
+            <div className="space-y-2">
+              <Label htmlFor="text-transform" className="text-sm font-medium">Text Transform</Label>
+              <Select
+                value={styling.textTransform || 'none'}
+                onValueChange={(value) => handlePropertyChange('textTransform', value as any)}
+              >
+                <SelectTrigger id="text-transform" className="h-9 text-sm">
+                  <SelectValue placeholder="Select text transform" />
+                </SelectTrigger>
+                <SelectContent className="z-[70]">
+                  <SelectItem value="none" className="text-sm">None</SelectItem>
+                  <SelectItem value="uppercase" className="text-sm">UPPERCASE</SelectItem>
+                  <SelectItem value="lowercase" className="text-sm">lowercase</SelectItem>
+                  <SelectItem value="capitalize" className="text-sm">Capitalize</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-          {/* Letter Spacing */}
-          <div className="space-y-2">
-            <Label htmlFor="letter-spacing" className="text-xs font-medium">
-              Letter Spacing: {styling.letterSpacing || 0}px
-            </Label>
-            <Slider
-              id="letter-spacing"
-              min={-2}
-              max={10}
-              step={0.5}
-              value={[styling.letterSpacing || 0]}
-              onValueChange={([value]) => handlePropertyChange('letterSpacing', value)}
-              className="w-full"
-            />
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="letter-spacing" className="text-sm font-medium">
+                Letter Spacing: {styling.letterSpacing || 0}px
+              </Label>
+              <Slider
+                id="letter-spacing"
+                min={-2}
+                max={10}
+                step={0.5}
+                value={[styling.letterSpacing || 0]}
+                onValueChange={([value]) => handlePropertyChange('letterSpacing', value)}
+                className="w-full"
+              />
+            </div>
 
-          {/* Line Height */}
-          <div className="space-y-2">
-            <Label htmlFor="line-height" className="text-xs font-medium">
-              Line Height: {styling.lineHeight || 1.4}
-            </Label>
-            <Slider
-              id="line-height"
-              min={0.8}
-              max={3}
-              step={0.1}
-              value={[styling.lineHeight || 1.4]}
-              onValueChange={([value]) => handlePropertyChange('lineHeight', value)}
-              className="w-full"
-            />
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="line-height" className="text-sm font-medium">
+                Line Height: {styling.lineHeight || 1.4}
+              </Label>
+              <Slider
+                id="line-height"
+                min={0.8}
+                max={3}
+                step={0.1}
+                value={[styling.lineHeight || 1.4]}
+                onValueChange={([value]) => handlePropertyChange('lineHeight', value)}
+                className="w-full"
+              />
+            </div>
 
-          {/* Text Opacity */}
-          <div className="space-y-2">
-            <Label htmlFor="text-opacity" className="text-xs font-medium">
-              Text Opacity: {Math.round((styling.textOpacity || 1) * 100)}%
-            </Label>
-            <Slider
-              id="text-opacity"
-              min={0}
-              max={1}
-              step={0.05}
-              value={[styling.textOpacity || 1]}
-              onValueChange={([value]) => handlePropertyChange('textOpacity', value)}
-              className="w-full"
-            />
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="text-opacity" className="text-sm font-medium">
+                Text Opacity: {Math.round((styling.textOpacity || 1) * 100)}%
+              </Label>
+              <Slider
+                id="text-opacity"
+                min={0}
+                max={1}
+                step={0.05}
+                value={[styling.textOpacity || 1]}
+                onValueChange={([value]) => handlePropertyChange('textOpacity', value)}
+                className="w-full"
+              />
+            </div>
 
-          {/* Text Color (body); heading strip color is separate for text-box-heading */}
-          <div className="space-y-2">
-            <Label htmlFor="text-color" className="text-xs font-medium">
-              {isTextBoxHeading ? "Body text color" : "Text Color"}
-            </Label>
-            <ColorPicker
-              value={styling.textColor || '#000000'}
-              onChange={(value) => handlePropertyChange('textColor', value)}
-              placeholder="#000000"
-              showAlpha={true}
-              allowTransparent={true}
-            />
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="text-color" className="text-sm font-medium">
+                {isTextBoxHeading ? "Body text color" : "Text Color"}
+              </Label>
+              <ColorPicker
+                value={styling.textColor || '#000000'}
+                onChange={(value) => handlePropertyChange('textColor', value)}
+                placeholder="#000000"
+                showAlpha={true}
+                allowTransparent={true}
+              />
+            </div>
 
-          {isTextBoxHeading && (
-            <>
-              <Separator />
+            {isTextBoxHeading && (
               <div className="space-y-2">
-                <Label className="text-xs font-medium">Heading text color</Label>
+                <Label className="text-sm font-medium">Heading text color</Label>
                 <ColorPicker
                   value={styling.headingTextColor ?? "#ffffff"}
                   onChange={(value) => handlePropertyChange("headingTextColor", value)}
@@ -423,8 +403,8 @@ if (textPosition?.startsWith('outside-') || textPosition === 'outside') {
                   allowTransparent={true}
                 />
               </div>
-            </>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </Draggable>
