@@ -3,7 +3,7 @@
 import React from "react";
 import type { DiagramNodeData } from "@/lib/types";
 import { SvgShapeBase } from "./svg-shape-base";
-import { polygonToRoundedPath, getPolygonViewBoxAndPoints } from "./shape-utils";
+import { polygonToRoundedPath, getPolygonViewBoxAndPoints, getShapeSvgFill } from "./shape-utils";
 import { useSvgGradient } from "@/hooks/use-svg-gradient";
 
 interface OctagonShapeProps {
@@ -52,7 +52,7 @@ export function OctagonShape(props: OctagonShapeProps) {
     enabled: backgroundStyle === 'gradient' || borderStyle === 'gradient'
   });
 
-  const fillColor = backgroundStyle === 'gradient' ? fillRef : (nodeAny.backgroundColor || '#6b7280');
+  const fillColor = getShapeSvgFill(backgroundStyle, fillRef, nodeAny.backgroundColor);
   const strokeColor = borderStyle === 'gradient' ? strokeRef : (nodeAny.borderColor || '#6b7280');
   const strokeWidth = borderStyle === 'none' ? '0' : (nodeAny.borderWidth || 2);
   const strokeDasharray = borderStyle === 'dotted' ? '3,3' : undefined;

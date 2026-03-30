@@ -155,7 +155,9 @@ export const getShapeStyles = (node: DiagramNodeData & { width?: number; height?
   return {
     background: backgroundStyle === 'gradient'
       ? getGradientWithAngle(backgroundColors, gradientAngle)
-      : backgroundColor,
+      : backgroundStyle === 'none'
+        ? 'transparent'
+        : backgroundColor,
     borderWidth: borderStyle === 'none' ? '0' : `${borderWidth}px`,
     borderStyle: borderStyle === 'gradient' ? 'solid' : borderStyle,
     borderColor: borderStyle === 'gradient' ? 'transparent' : borderColor,
@@ -163,9 +165,26 @@ export const getShapeStyles = (node: DiagramNodeData & { width?: number; height?
     borderImage: borderStyle === 'gradient' ? `${getGradientWithAngle(borderColors, borderGradientAngle)} 1` : undefined,
     shadow,
     roundedEdges,
-    backgroundColor: backgroundStyle === 'gradient' ? backgroundColors[0] : backgroundColor,
+    backgroundColor:
+      backgroundStyle === 'gradient'
+        ? backgroundColors[0]
+        : backgroundStyle === 'none'
+          ? 'transparent'
+          : backgroundColor,
   };
 };
+
+/** SVG interior fill from visual styling — `none` is fully transparent, not the solid gray fallback. */
+export function getShapeSvgFill(
+  backgroundStyle: string | undefined,
+  gradientFillRef: string,
+  solidColor: string | undefined,
+  solidFallback = '#6b7280'
+): string {
+  if (backgroundStyle === 'gradient') return gradientFillRef;
+  if (backgroundStyle === 'none') return 'transparent';
+  return solidColor || solidFallback;
+}
 
 /**
  * Convert polygon points string to array of [x, y] coordinates

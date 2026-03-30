@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-03-30 – Shape visual styling: background “none” = transparent
+**Bug**: Setting **background** to **none** on shapes showed **dark grey** (`#6b7280` fallback). **Fix**: `getShapeSvgFill()` in **`shape-utils.ts`** returns **`transparent`** when `backgroundStyle === 'none'`; **`getShapeStyles`** uses transparent background for wrappers. All SVG shape components use **`getShapeSvgFill`** for fill.
+
 ### 2026-03-30 – Cursor skill: React effects / max update depth
 **Project skill** (`.cursor/skills/react-effect-avoid-max-depth/SKILL.md`): use **refs** for latest selection + setter; **`useEffect`** deps only **`currentDiagramData`** (or other stable “source” data)—not **`selectedItem`** / unstable **`setSelectedItem`**—to avoid **Maximum update depth exceeded** when syncing selection from the diagram.
 
