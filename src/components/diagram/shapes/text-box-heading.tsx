@@ -9,6 +9,7 @@ import { labelToRuns } from "@/lib/rich-text";
 import { TextboxRichEditor } from "../textbox-rich-editor";
 import { TextboxRichDisplay } from "../textbox-rich-display";
 import {
+  getShapeStyles,
   getTextJustifyClass,
   getTextStylingForNode,
   getVerticalJustifyClass,
@@ -127,6 +128,7 @@ export function TextBoxHeadingShape(props: TextBoxHeadingShapeProps) {
   const previewEdgeRef = useRef<HeadingEdge | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
+  const shapeStyles = getShapeStyles(node);
   const backgroundColors = nodeAny.backgroundColors || [nodeAny.backgroundColor || "#6b7280"];
   const borderColors = nodeAny.borderColors || [nodeAny.borderColor || "#6b7280"];
   const gradientAngle = nodeAny.gradientAngle || 135;
@@ -315,7 +317,7 @@ export function TextBoxHeadingShape(props: TextBoxHeadingShapeProps) {
       defaultHeight={VIEWBOX_H}
       overrideWidth={overrideWidth}
       overrideHeight={overrideHeight}
-      useSvgShadow={false}
+      useSvgShadow={shapeStyles.shadow}
       skipWrapperStyling={true}
       slideColorTransition={slideColorTransition}
       omitShapeText
