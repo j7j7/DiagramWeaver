@@ -1,5 +1,5 @@
 "use client";
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import type { TutorialStep, TutorialState } from './tutorial-types';
 import { getTutorialSteps } from './tutorial-steps';
 
@@ -90,15 +90,26 @@ export function TutorialProvider({
     });
   }, []);
 
+  // Only load each tutorial JSON once per step — `onLoadTutorialExample` from the parent may change
+  // identity on every render (e.g. unstable deps), which would re-fetch and reset selection on every click.
+  const lastTutorialLoadKeyRef = useRef<string>('');
+
   // When the active step defines a tutorial example, load it into the editor (active tab).
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (!state.isOpen || state.steps.length === 0) return;
+    if (!state.isOpen || state.steps.length === 0) {
+      lastTutorialLoadKeyRef.current = '';
+      return;
+    }
     const step = state.steps[state.currentIndex];
     const id = step?.loadExampleId;
-    if (id && onLoadTutorialExample) {
-      void Promise.resolve(onLoadTutorialExample(id));
-    }
+    if (!id || !onLoadTutorialExample) return;
+
+    const key = `${state.currentIndex}:${id}`;
+    if (lastTutorialLoadKeyRef.current === key) return;
+
+    lastTutorialLoadKeyRef.current = key;
+    void Promise.resolve(onLoadTutorialExample(id));
   }, [state.isOpen, state.currentIndex, state.steps, onLoadTutorialExample]);
 
   // Auto-start on first visit (only if not completed)

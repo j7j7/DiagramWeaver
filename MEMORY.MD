@@ -2,13 +2,17 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
-### 2026-03-27 – File → Export PNG: tight frame (no letterbox)
-**PNG export** uses **`captureViewportPngDataUrl({ fitContent: true, fitPadding: 50, tightContentFrame: true })`**: **`computeExportContentBounds`** / **`computeUnionExportContentBounds`** extend node/zone **`computeContentBounds`** with **connection waypoints** plus **~40px** canvas padding (stroke, bezier overshoot, arrows); **`transformToFitBounds`** then **`computeTightPngFrameForBounds`** (default **20px** outer margin). **Thumbnails** omit **`tightContentFrame`** (node/zone bounds only, full canvas size). **`computeUnionContentBounds`** remains inside **`computeUnionFitTransformForDiagrams`**.
+### 2026-03-30 – Cursor skill: React effects / max update depth
+**Project skill** (`.cursor/skills/react-effect-avoid-max-depth/SKILL.md`): use **refs** for latest selection + setter; **`useEffect`** deps only **`currentDiagramData`** (or other stable “source” data)—not **`selectedItem`** / unstable **`setSelectedItem`**—to avoid **Maximum update depth exceeded** when syncing selection from the diagram.
 
-**Export transform vs live pan/zoom**: Capture temporarily removes **`.dot-grid`** (hides grid); **`querySelector('.dot-grid')`** then missed the diagram layer, so **`toPngWithDotGridTransform`** never applied the fit transform and **html-to-image** kept the **live** `transform`. **Fix**: **`data-diagram-layer`** on editor + viewer diagram divs; **`[data-diagram-layer]`** selector; apply **`transform`/`transform-origin`** **after** **`applyStyle`** with **`setProperty(..., 'important')`** in **`html-to-image-fit-png.ts`**.
+### 2026-03-30 – Selection sync after drag (visual styling jump)
+**Bug**: After moving a node on the canvas, opening visual styling and changing a value snapped the item back to the pre-drag position. **Cause**: `moveItem` / `handleNodeUpdate` update **`diagramData`** but not **`selectedItem`**; `handleVisualStylingChange` spread **`selectedItem`**, so **`handleItemUpdate`** re-applied stale **`x`/`y`**. **Fix**: **`diagram-editor.tsx`** — `useEffect` on **`currentDiagramData`** + selection syncs **`selectedItem`** geometry (position, size, rotation, line endpoints) from the diagram when it differs. **Follow-up**: Effect must depend only on **`currentDiagramData`**; read selection via **`selectedItemForSyncRef`** (and **`setSelectedItemForSyncRef`**) so **`setSelectedItem`** identity changes do not retrigger the effect (**maximum update depth**).
 
-### 2026-03-26 – About dialog matches keyboard / tutorial amber styling
-**UI**: **`about-dialog.tsx`** uses the same **amber panel** as **`keyboard-shortcuts-dialog.tsx`**: `border-2 border-amber-400`, `bg-amber-50` / dark `amber-950/95`, amber title/description/body text, section heading uppercase, footer **Close** button with amber outline variant.
+### 2026-03-30 – Tutorial diagram B: labels Object A/B/C
+**Tutorial** sample **`tutorial-b-content.json`** node labels are **Object A**, **Object B**, **Object C** (not “Step A/B/C”). **`tutorial-steps.ts`** copy for **Diagram content**, **Selection**, and **Connections** matches.
+
+### 2026-03-27 – File → Export PNG: fit-to-view framing and canvas-sized dimensions
+**PNG export** uses **`captureViewportPngDataUrl({ fitContent: true, fitPadding: 50 })`** — same **`computeContentBounds`** + **`transformToFitBounds`** / clone **`.dot-grid`** transform as fit-content captures, with **50px** padding to match **`handleFitToView`**. Output dimensions are **`getCanvasElementSizeForImageCapture`** (canvas **`clientWidth`/`clientHeight`**) passed as html-to-image **`width`/`height`**, not the layout coordinate minimum (**2000×1500**). **`useCanvasExport`** no longer takes unused **`transform`/`width`/`height`**.
 
 ### 2026-03-26 – Help menu pinned to the right of the top bar
 **UI**: **Help** is a second `Menubar` (same items as before) placed after zoom/cursor readouts with **`ml-auto`** so it sits at the **far right** of the toolbar row; outer bar uses **`w-full min-w-0`**.

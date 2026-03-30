@@ -92,7 +92,7 @@ export function TutorialOverlay() {
       return;
     }
 
-    // Message-only step: don't dim/highlight; just center the popup.
+    // Message-only step: don't dim/highlight; position the popup (default center can cover diagram nodes).
     if (currentStep.mode === 'message') {
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
@@ -102,10 +102,20 @@ export function TutorialOverlay() {
 
       setTargetRect(null);
       setTargetMissing(false);
-      setPopupPosition({
-        x: Math.max(padding, (viewportWidth - popupWidth) / 2),
-        y: Math.max(padding, (viewportHeight - popupHeight) / 2),
-      });
+      const anchor = currentStep.messagePopupAnchor ?? 'center';
+      if (anchor === 'bottom-right') {
+        setPopupPosition({ x: 0, y: 0 }); // actual placement uses right/bottom in render
+      } else if (anchor === 'top-right') {
+        setPopupPosition({
+          x: Math.max(padding, viewportWidth - popupWidth - padding),
+          y: padding,
+        });
+      } else {
+        setPopupPosition({
+          x: Math.max(padding, (viewportWidth - popupWidth) / 2),
+          y: Math.max(padding, (viewportHeight - popupHeight) / 2),
+        });
+      }
       targetElementRef.current = null;
       return;
     }
@@ -151,8 +161,14 @@ export function TutorialOverlay() {
       setTargetRect(rect);
       setTargetMissing(false);
 
-      // Scroll element into view
-      element.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+      // Don't scroll the canvas wrapper into view: it scrolls the page/layout and shifts the
+      // visible diagram (e.g. Object A/B disappear during section B selection steps).
+      const isCanvasTarget =
+        currentStep.target === 'canvas' ||
+        (element as HTMLElement).getAttribute?.('data-tutorial-id') === 'canvas';
+      if (!isCanvasTarget) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+      }
 
       // Calculate popup position (prefer right side, then left, then below)
       const viewportWidth = window.innerWidth;
@@ -182,6 +198,18 @@ export function TutorialOverlay() {
       // If popup would go off top, adjust
       if (y < padding) {
         y = padding;
+      }
+
+      // If the card overlaps the highlighted region (e.g. canvas centered on narrow viewports),
+      // tuck it into the viewport corner so clicks reach the diagram.
+      const overlapsTarget =
+        x < rect.right &&
+        x + popupWidth > rect.left &&
+        y < rect.bottom &&
+        y + popupHeight > rect.top;
+      if (overlapsTarget) {
+        x = Math.max(padding, viewportWidth - popupWidth - padding);
+        y = Math.max(padding, viewportHeight - popupHeight - padding);
       }
 
       setPopupPosition({ x, y });
@@ -282,6 +310,13 @@ export function TutorialOverlay() {
     }
   };
 
+  // Dimmed regions must not use pointer-events-auto by default: they sit above the canvas and
+  // block react-dnd drags (e.g. sidebar → canvas). Visual dim only; pass events through unless
+  // a step explicitly uses allowBackdropClickToClose (then backdrop captures clicks).
+  const dimPointerEventsClass = currentStep.allowBackdropClickToClose
+    ? 'pointer-events-auto'
+    : 'pointer-events-none';
+
   return createPortal(
     <div
       className="fixed inset-0 z-[10000] pointer-events-none"
@@ -291,7 +326,7 @@ export function TutorialOverlay() {
         <>
           {/* Top overlay */}
           <div
-            className="absolute bg-black/60 pointer-events-auto"
+            className={cn('absolute bg-black/60', dimPointerEventsClass)}
             style={{
               top: 0,
               left: 0,
@@ -302,7 +337,7 @@ export function TutorialOverlay() {
           />
           {/* Bottom overlay */}
           <div
-            className="absolute bg-black/60 pointer-events-auto"
+            className={cn('absolute bg-black/60', dimPointerEventsClass)}
             style={{
               top: `${targetRect.bottom}px`,
               left: 0,
@@ -313,7 +348,7 @@ export function TutorialOverlay() {
           />
           {/* Left overlay */}
           <div
-            className="absolute bg-black/60 pointer-events-auto"
+            className={cn('absolute bg-black/60', dimPointerEventsClass)}
             style={{
               top: `${targetRect.top}px`,
               left: 0,
@@ -324,7 +359,7 @@ export function TutorialOverlay() {
           />
           {/* Right overlay */}
           <div
-            className="absolute bg-black/60 pointer-events-auto"
+            className={cn('absolute bg-black/60', dimPointerEventsClass)}
             style={{
               top: `${targetRect.top}px`,
               left: `${targetRect.right}px`,
@@ -360,12 +395,23 @@ export function TutorialOverlay() {
       {popupPosition && (
         <div
           className="absolute rounded-lg border-2 border-amber-400 bg-amber-50 p-4 text-amber-950 shadow-xl pointer-events-auto dark:border-amber-500 dark:bg-amber-950/95 dark:text-amber-50"
-          style={{
-            left: `${popupPosition.x}px`,
-            top: `${popupPosition.y}px`,
-            width: '320px',
-            maxWidth: 'calc(100vw - 40px)',
-          }}
+          style={
+            currentStep.mode === 'message' && currentStep.messagePopupAnchor === 'bottom-right'
+              ? {
+                  right: 20,
+                  bottom: 20,
+                  left: 'auto',
+                  top: 'auto',
+                  width: '320px',
+                  maxWidth: 'calc(100vw - 40px)',
+                }
+              : {
+                  left: `${popupPosition.x}px`,
+                  top: `${popupPosition.y}px`,
+                  width: '320px',
+                  maxWidth: 'calc(100vw - 40px)',
+                }
+          }
           onClick={(e) => e.stopPropagation()}
         >
           {/* Arrow pointing to target */}
@@ -438,6 +484,18 @@ export function TutorialOverlay() {
               {!isLastStep && <ChevronRight className="h-4 w-4 ml-1" />}
             </Button>
           </div>
+
+          {isFirstStep && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="mt-2 w-full text-amber-900/90 hover:bg-amber-200/50 hover:text-amber-950 dark:text-amber-100/90 dark:hover:bg-amber-900/50 dark:hover:text-amber-50"
+              onClick={finish}
+            >
+              Skip tutorial
+            </Button>
+          )}
 
           {requiresClick && (
             <div className="mt-2 text-center text-xs text-amber-800/90 dark:text-amber-200/85">

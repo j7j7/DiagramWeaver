@@ -19,11 +19,21 @@ export interface TutorialStep {
   loadExampleId?: string;
   /**
    * - focus: dim + highlight a target (default)
-   * - message: show a centered message without dimming/highlight
+   * - message: show a message without dimming/highlight
    */
   mode?: 'focus' | 'message';
+  /**
+   * For `mode: 'message'`, where to place the card. Default `center` can sit on top of the diagram
+   * (e.g. tutorial shapes in the middle of the canvas); use `bottom-right` when the user must
+   * click or drag on the canvas during this step.
+   */
+  messagePopupAnchor?: 'center' | 'bottom-right' | 'top-right';
   requiresTargetClick?: boolean; // If true, user must click the target to advance
-  allowBackdropClickToClose?: boolean; // If true, clicking backdrop closes tutorial
+  /**
+   * If true, dimmed backdrop regions capture clicks (closes tutorial on click).
+   * Default false: dim is visual-only so pointer events reach the canvas (needed for drag from sidebar, etc.).
+   */
+  allowBackdropClickToClose?: boolean;
   /**
    * Actions to perform automatically when the user presses Next on this step
    * (used when the user doesn't want to perform the action manually).

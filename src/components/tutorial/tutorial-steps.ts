@@ -36,25 +36,27 @@ export function getTutorialSteps(): TutorialStep[] {
     {
       id: 'b-intro',
       title: 'Diagram content',
-      body: 'A new sample with three shapes is loaded. Click one shape, then Shift+click another to multi-select.',
+      body: 'A new sample with three objects (Object A, Object B, Object C) is loaded. Click one object, then Shift+click another to multi-select.',
       target: 'canvas',
       mode: 'message',
+      messagePopupAnchor: 'bottom-right',
       loadExampleId: 'tutorial-b-content',
       sectionLabel: 'B — Diagram content',
     },
     {
       id: 'b-selection',
       title: 'Selection',
-      body: 'Selected items show the context toolbar. Drag selected nodes together to move them as a group.',
+      body: 'Selected items show the context toolbar. Drag selected objects together to move them as a group.',
       target: 'canvas',
     },
     {
       id: 'c-intro',
       title: 'Connections',
-      body: 'This sample includes a link between two nodes. Select the line to edit style, label, and arrows.',
+      body:
+        'Added a connection between Object A and Object B. To add a connection from Object A to Object C: click Object A to select it, then click the green (+) icon at the top right. Then click Object C to make a connection between the two. This can also be accessed from the right-click object menu.',
       target: 'canvas',
       mode: 'message',
-      loadExampleId: 'tutorial-c-connections',
+      messagePopupAnchor: 'bottom-right',
       sectionLabel: 'C — Connections',
     },
     {

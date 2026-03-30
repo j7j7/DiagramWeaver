@@ -1,5 +1,5 @@
 "use client";
-import React, { useRef, useCallback, useLayoutEffect } from 'react';
+import React, { useRef, useCallback, useLayoutEffect, useEffect } from 'react';
 import { flushSync } from 'react-dom';
 import { createPortal } from 'react-dom';
 import { DndProvider } from 'react-dnd';
@@ -36,7 +36,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import type { DiagramData, DiagramNodeData, DiagramConnectionData, PresentationDeck, Slide, DiagramDelta } from '@/lib/types';
+import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramConnectionData, PresentationDeck, Slide, DiagramDelta } from '@/lib/types';
 import { generateSequentialId } from '@/lib/id-generator';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -1045,6 +1045,71 @@ export default function DiagramEditor() {
     const newItem = typeof updater === 'function' ? updater(selectedItem) : updater;
     updateActiveTab({ selectedItem: newItem });
   }, [activeTabId, selectedItem, updateActiveTab]);
+
+  const selectedItemForSyncRef = React.useRef(selectedItem);
+  selectedItemForSyncRef.current = selectedItem;
+  const setSelectedItemForSyncRef = React.useRef(setSelectedItem);
+  setSelectedItemForSyncRef.current = setSelectedItem;
+
+  /**
+   * Keep selectedItem geometry in sync with the diagram after drag/resize (diagram updates first).
+   * Otherwise toolbar handlers that spread `selectedItem` (e.g. visual styling) can re-apply stale x/y.
+   *
+   * Depends only on `currentDiagramData`: do not list `selectedItem` or `setSelectedItem` (the latter
+   * changes identity when selection changes and would retrigger this effect → max update depth).
+   */
+  React.useEffect(() => {
+    const selectedItem = selectedItemForSyncRef.current;
+    const setSelectedItem = setSelectedItemForSyncRef.current;
+    if (!selectedItem || selectedItem.itemType === 'edge') return;
+    const id = selectedItem.id;
+
+    const lineEndpointsMatch = (a: DiagramNodeData, b: DiagramNodeData) =>
+      JSON.stringify((a as any).startPos) === JSON.stringify((b as any).startPos) &&
+      JSON.stringify((a as any).endPos) === JSON.stringify((b as any).endPos);
+
+    const rot = (o: unknown) => (typeof o === 'number' && Number.isFinite(o) ? o : 0);
+
+    if (selectedItem.itemType === 'node') {
+      const node = currentDiagramData.nodes.find((n) => n.id === id);
+      if (node) {
+        setSelectedItem((prev) => {
+          if (!prev || prev.id !== id || prev.itemType !== 'node') return prev;
+          const s = prev as DiagramNodeData & { itemType: 'node' };
+          if (
+            node.x === s.x &&
+            node.y === s.y &&
+            node.width === s.width &&
+            node.height === s.height &&
+            rot((node as any).rotation) === rot((s as any).rotation) &&
+            lineEndpointsMatch(node, s)
+          ) {
+            return prev;
+          }
+          return { ...node, itemType: 'node' as const };
+        });
+        return;
+      }
+      const zone = currentDiagramData.zones?.find((z) => z.id === id);
+      if (zone) {
+        setSelectedItem((prev) => {
+          if (!prev || prev.id !== id || prev.itemType !== 'node') return prev;
+          const s = prev as DiagramZoneData & { itemType: 'node' };
+          if (
+            zone.x === s.x &&
+            zone.y === s.y &&
+            zone.width === s.width &&
+            zone.height === s.height &&
+            rot((zone as any).rotation) === rot((s as any).rotation)
+          ) {
+            return prev;
+          }
+          return { ...zone, itemType: 'node' as const } as SelectedItem;
+        });
+      }
+      return;
+    }
+  }, [currentDiagramData]);
 
   // Initialize layers system (uses current diagram - root or sub)
   const layers = useLayers({
@@ -4950,11 +5015,71 @@ function DiagramEditorInner({
   activeTab,
   toast,
 }: any) {
-  const { start } = useTutorial();
-  
+  const { start, isOpen: tutorialOpen, steps: tutorialSteps, currentIndex: tutorialStepIndex } = useTutorial();
+
   const handleStartTutorial = React.useCallback(() => {
     start(getTutorialSteps());
   }, [start]);
+
+  // `setDiagramData` is recreated whenever `diagramData` changes; do not list it in effect deps
+  // or the injection effect re-runs forever (maximum update depth).
+  const setDiagramDataRef = React.useRef(setDiagramData);
+  setDiagramDataRef.current = setDiagramData;
+
+  // When the Connections step starts, add A→B on the tutorial diagram so the user only adds A→C next.
+  const tutorialStepId = tutorialSteps[tutorialStepIndex]?.id;
+  useEffect(() => {
+    if (!tutorialOpen || !tutorialSteps.length || presentationModeEnabled) return;
+    if (activeDiagramStack.length > 0) return;
+    if (tutorialStepId !== 'c-intro') return;
+
+    const FROM = 'tutorial-shape-a';
+    const TO = 'tutorial-shape-b';
+
+    setDiagramDataRef.current((prev: DiagramData) => {
+      const nodes = prev.nodes || [];
+      if (!nodes.some((n: DiagramNodeData) => n.id === FROM) || !nodes.some((n: DiagramNodeData) => n.id === TO)) return prev;
+
+      const connections = prev.connections || [];
+      const alreadyHas = connections.some(
+        (c: DiagramConnectionData) =>
+          (c.from === FROM && c.to === TO) ||
+          (c.from === TO && c.to === FROM),
+      );
+      if (alreadyHas) return prev;
+
+      const newConn: DiagramConnectionData = {
+        id: generateConnectionId(),
+        from: FROM,
+        to: TO,
+        style: 'bezier',
+        curvature: 0.6,
+        animation: {
+          enabled: false,
+          shape: 'dot',
+          speed: 20,
+          size: 2,
+          autoCount: true,
+          shapeCount: 5,
+          spacing: 2,
+        },
+        arrow: true,
+        toArrow: true,
+      };
+
+      return {
+        ...prev,
+        connections: [...connections, newConn],
+      };
+    });
+  }, [
+    tutorialOpen,
+    tutorialStepIndex,
+    tutorialStepId,
+    presentationModeEnabled,
+    activeDiagramStack.length,
+    tutorialSteps.length,
+  ]);
 
   return (
     <DndProvider backend={HTML5Backend}>

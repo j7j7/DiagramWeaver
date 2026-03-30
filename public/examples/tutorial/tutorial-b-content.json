@@ -3,7 +3,9 @@
     {
       "id": "tutorial-shape-a",
       "type": "generic.object.rounded-rectangle",
-      "label": "Step A",
+      "label": "Object A",
+      "width": 70,
+      "height": 70,
       "x": 220,
       "y": 240,
       "freeflow": true,
@@ -16,7 +18,9 @@
     {
       "id": "tutorial-shape-b",
       "type": "generic.object.rounded-rectangle",
-      "label": "Step B",
+      "label": "Object B",
+      "width": 70,
+      "height": 70,
       "x": 520,
       "y": 240,
       "freeflow": true,
@@ -29,7 +33,9 @@
     {
       "id": "tutorial-shape-c",
       "type": "generic.object.rounded-rectangle",
-      "label": "Step C",
+      "label": "Object C",
+      "width": 70,
+      "height": 70,
       "x": 370,
       "y": 420,
       "freeflow": true,
