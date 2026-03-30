@@ -143,7 +143,7 @@ export function useCanvasOperations({
              itemType === 'generic.object.rectangle' ? 80 :
              itemType === 'generic.object.uml-class' ? 120 :
              itemType === 'generic.object.rounded-rectangle' ? 80 :
-             itemType === 'generic.object.text-box-heading' ? 80 :
+             itemType === 'generic.object.text-box-heading' ? 180 :
              itemType === 'generic.object.cloud' ? 80 :
              itemType === 'generic.object.line' ? 150 :
              60
@@ -153,7 +153,7 @@ export function useCanvasOperations({
              itemType === 'generic.object.rectangle' ? 50 :
              itemType === 'generic.object.uml-class' ? 80 :
              itemType === 'generic.object.rounded-rectangle' ? 50 :
-             itemType === 'generic.object.text-box-heading' ? 50 :
+             itemType === 'generic.object.text-box-heading' ? 90 :
              itemType === 'generic.object.cloud' ? 50 :
              itemType === 'generic.object.line' ? 100 :
              60
@@ -203,7 +203,7 @@ export function useCanvasOperations({
             headingEdge: 'top' as const,
             headingLabel: 'HEADING',
             headingBackgroundColor: '#1f2937',
-            label: 'More text here',
+            label: 'body',
           }),
           // Apply icon background setting
           ...(!iconBackgroundEnabled && {

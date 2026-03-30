@@ -259,7 +259,7 @@ export function SearchResourcesModal({
                     resource={item.resource}
                     provider={item.provider}
                     category={item.category}
-                    icon={<Box className="h-5 w-5" />}
+                    icon={<Box className="h-10 w-10" />}
                     onClick={() => handleResourceClick(item.resource, item.provider, item.category)}
                     onDoubleClick={() => handleResourceClick(item.resource, item.provider, item.category)}
                     viewMode="compact"

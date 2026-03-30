@@ -171,16 +171,16 @@ export function DraggableResourceItem({ resource, provider, category, icon, onCl
       {isCompact ? (
         <Tooltip>
           <TooltipTrigger asChild>
-            <Card className="hover:bg-accent hover:text-accent-foreground transition-colors w-full min-w-0">
-              <CardContent className="p-1.5 flex flex-col items-center justify-center gap-0.5 text-center h-12 min-w-0 w-full">
-                <div className={`w-5 h-5 flex items-center justify-center flex-shrink-0 text-muted-foreground ${invertInDarkMode && !isTextBoxHeadingResource ? 'dark:[&_img]:invert' : ''}`}>
+            <Card className="hover:bg-accent hover:text-accent-foreground transition-colors w-full min-w-0 aspect-square">
+              <CardContent className="p-1 flex h-full min-h-0 w-full flex-col items-center justify-center gap-0.5 text-center min-w-0">
+                <div className={`flex h-full w-full min-h-0 flex-1 items-center justify-center text-muted-foreground ${invertInDarkMode && !isTextBoxHeadingResource ? 'dark:[&_img]:invert' : ''}`}>
                   {isTextBoxHeadingResource ? (
-                    <ResourceIcon type="generic.object.text-box-heading" width={20} height={20} className="shrink-0" />
+                    <ResourceIcon type="generic.object.text-box-heading" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
                   ) : !imageError && iconPath ? (
                     <img
                       src={iconPath}
                       alt={resource.name}
-                      className="w-5 h-5 object-contain"
+                      className="max-h-[92%] max-w-[92%] h-auto w-auto object-contain"
                       onError={handleImageError}
                     />
                   ) : (

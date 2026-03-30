@@ -471,30 +471,12 @@ export function TopMenuBar({
                 </MenubarItem>
               </>
             )}
-            {onToggleMetadataPopups && (
-              <>
-                {(onUndo || onRedo || onFitToView || onTogglePropertiesPanel) && <MenubarSeparator />}
-                <MenubarItem onClick={onToggleMetadataPopups}>
-                  <Info className="mr-2 h-4 w-4" />
-                  {metadataPopupsEnabled ? 'Disable Properties' : 'Enable Properties'}
-                </MenubarItem>
-              </>
-            )}
             {onToggleLayersPanel && (
               <>
-                {(onUndo || onRedo || onFitToView || onTogglePropertiesPanel || onToggleMetadataPopups) && <MenubarSeparator />}
+                {(onUndo || onRedo || onFitToView || onTogglePropertiesPanel) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleLayersPanel}>
                   <Layers className="mr-2 h-4 w-4" />
                   {layersPanelOpen ? 'Hide Layers' : 'Show Layers'}
-                </MenubarItem>
-              </>
-            )}
-            {onToggleLayerAnimations !== undefined && (
-              <>
-                {(onUndo || onRedo || onFitToView || onToggleLayersPanel || onTogglePropertiesPanel || onToggleMetadataPopups) && <MenubarSeparator />}
-                <MenubarItem onClick={onToggleLayerAnimations}>
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  {layerAnimationsEnabled ? 'Disable Layer Animations' : 'Enable Layer Animations'}
                 </MenubarItem>
               </>
             )}
@@ -526,9 +508,47 @@ export function TopMenuBar({
                 </MenubarItem>
               </>
             )}
+            {onToggleReadOnly !== undefined && (
+              <>
+                {(onUndo || onRedo || onFitToView || onToggleLayersPanel || onToggleScratchPad || onTogglePropertiesPanel || onToggleRulesEditor || onTogglePresentationMode) && <MenubarSeparator />}
+                <MenubarItem onClick={onToggleReadOnly}>
+                  {isReadOnly ? (
+                    <>
+                      <Unlock className="mr-2 h-4 w-4" />
+                      Disable Read-Only Mode
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="mr-2 h-4 w-4" />
+                      Enable Read-Only Mode
+                    </>
+                  )}
+                </MenubarItem>
+              </>
+            )}
+          </MenubarContent>
+        </MenubarMenu>
+        <MenubarMenu>
+          <MenubarTrigger data-tutorial-id="options-menu">Options</MenubarTrigger>
+          <MenubarContent>
+            {onToggleMetadataPopups && (
+              <MenubarItem onClick={onToggleMetadataPopups}>
+                <Info className="mr-2 h-4 w-4" />
+                {metadataPopupsEnabled ? 'Disable Properties' : 'Enable Properties'}
+              </MenubarItem>
+            )}
+            {onToggleLayerAnimations !== undefined && (
+              <>
+                {onToggleMetadataPopups && <MenubarSeparator />}
+                <MenubarItem onClick={onToggleLayerAnimations}>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  {layerAnimationsEnabled ? 'Disable Layer Animations' : 'Enable Layer Animations'}
+                </MenubarItem>
+              </>
+            )}
             {onToggleHover !== undefined && (
               <>
-                {(onUndo || onRedo || onFitToView || onToggleLayersPanel || onToggleScratchPad || onTogglePropertiesPanel || onTogglePresentationMode) && <MenubarSeparator />}
+                {(onToggleMetadataPopups || onToggleLayerAnimations !== undefined) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleHover}>
                   {hoverEnabled ? (
                     <>
@@ -544,9 +564,32 @@ export function TopMenuBar({
                 </MenubarItem>
               </>
             )}
+            {onToggleAlignmentGuides !== undefined && (
+              <>
+                {(onToggleMetadataPopups || onToggleLayerAnimations !== undefined || onToggleHover !== undefined) && (
+                  <MenubarSeparator />
+                )}
+                <MenubarItem onClick={onToggleAlignmentGuides}>
+                  {alignmentGuidesEnabled ? (
+                    <>
+                      <Move className="mr-2 h-4 w-4" />
+                      Hide Alignment Guides
+                    </>
+                  ) : (
+                    <>
+                      <Move className="mr-2 h-4 w-4" />
+                      Show Alignment Guides
+                    </>
+                  )}
+                </MenubarItem>
+              </>
+            )}
             {onToggleIconBackground !== undefined && (
               <>
-                {(onUndo || onRedo || onFitToView || onToggleHover || onTogglePropertiesPanel) && <MenubarSeparator />}
+                {(onToggleMetadataPopups ||
+                  onToggleLayerAnimations !== undefined ||
+                  onToggleHover !== undefined ||
+                  onToggleAlignmentGuides !== undefined) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleIconBackground}>
                   {iconBackgroundEnabled ? (
                     <>
@@ -564,7 +607,11 @@ export function TopMenuBar({
             )}
             {onToggleConnectionsBehindNodes !== undefined && (
               <>
-                {(onUndo || onRedo || onFitToView || onToggleHover || onToggleIconBackground || onTogglePropertiesPanel) && <MenubarSeparator />}
+                {(onToggleMetadataPopups ||
+                  onToggleLayerAnimations !== undefined ||
+                  onToggleHover !== undefined ||
+                  onToggleAlignmentGuides !== undefined ||
+                  onToggleIconBackground !== undefined) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleConnectionsBehindNodes}>
                   {connectionsBehindNodesEnabled ? (
                     <>
@@ -580,27 +627,14 @@ export function TopMenuBar({
                 </MenubarItem>
               </>
             )}
-            {onToggleAlignmentGuides !== undefined && (
-              <>
-                {(onUndo || onRedo || onFitToView || onToggleHover || onToggleIconBackground || onTogglePropertiesPanel || onToggleConnectionsBehindNodes) && <MenubarSeparator />}
-                <MenubarItem onClick={onToggleAlignmentGuides}>
-                  {alignmentGuidesEnabled ? (
-                    <>
-                      <Move className="mr-2 h-4 w-4" />
-                      Hide Alignment Guides
-                    </>
-                  ) : (
-                    <>
-                      <Move className="mr-2 h-4 w-4" />
-                      Show Alignment Guides
-                    </>
-                  )}
-                </MenubarItem>
-              </>
-            )}
             {onToggleAnimationConnections !== undefined && (
               <>
-                {(onUndo || onRedo || onFitToView || onToggleHover || onToggleIconBackground || onTogglePropertiesPanel || onToggleConnectionsBehindNodes || onToggleAlignmentGuides) && <MenubarSeparator />}
+                {(onToggleMetadataPopups ||
+                  onToggleLayerAnimations !== undefined ||
+                  onToggleHover !== undefined ||
+                  onToggleAlignmentGuides !== undefined ||
+                  onToggleIconBackground !== undefined ||
+                  onToggleConnectionsBehindNodes !== undefined) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleAnimationConnections}>
                   {animationConnectionsEnabled ? (
                     <>
@@ -620,7 +654,13 @@ export function TopMenuBar({
             )}
             {onToggleAnimationToggleOnClick !== undefined && (
               <>
-                {(onUndo || onRedo || onFitToView || onToggleHover || onToggleIconBackground || onTogglePropertiesPanel || onToggleConnectionsBehindNodes || onToggleAlignmentGuides || onToggleAnimationConnections) && <MenubarSeparator />}
+                {(onToggleMetadataPopups ||
+                  onToggleLayerAnimations !== undefined ||
+                  onToggleHover !== undefined ||
+                  onToggleAlignmentGuides !== undefined ||
+                  onToggleIconBackground !== undefined ||
+                  onToggleConnectionsBehindNodes !== undefined ||
+                  onToggleAnimationConnections !== undefined) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleAnimationToggleOnClick} disabled={!animationConnectionsEnabled}>
                   {animationToggleOnClickEnabled ? (
                     <>
@@ -633,24 +673,6 @@ export function TopMenuBar({
                       <Network className="mr-2 h-4 w-4" />
                       Enable Click to Toggle Animations
                       <MenubarShortcut>Ctrl+Alt+C</MenubarShortcut>
-                    </>
-                  )}
-                </MenubarItem>
-              </>
-            )}
-            {onToggleReadOnly !== undefined && (
-              <>
-                {(onUndo || onRedo || onFitToView || onToggleHover || onToggleIconBackground || onToggleAlignmentGuides) && <MenubarSeparator />}
-                <MenubarItem onClick={onToggleReadOnly}>
-                  {isReadOnly ? (
-                    <>
-                      <Unlock className="mr-2 h-4 w-4" />
-                      Disable Read-Only Mode
-                    </>
-                  ) : (
-                    <>
-                      <Lock className="mr-2 h-4 w-4" />
-                      Enable Read-Only Mode
                     </>
                   )}
                 </MenubarItem>

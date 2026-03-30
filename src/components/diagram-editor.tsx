@@ -1121,7 +1121,7 @@ export default function DiagramEditor() {
     toast
   });
 
-  // Layer show/hide animations (Edit menu toggle, default enabled)
+  // Layer show/hide animations (Options menu toggle, default enabled)
   const layerAnimation = useLayerAnimation(
     layerAnimationsEnabled,
     layers.filteredDiagramData ?? currentDiagramData,
@@ -3584,6 +3584,9 @@ export default function DiagramEditor() {
         }
         
         // Default dimensions based on node type
+        if (node.type === 'generic.object.text-box-heading' || node.type?.endsWith('.text-box-heading')) {
+          return { width: 180, height: 90 };
+        }
         if (node.type?.startsWith('generic.text')) {
           if (node.type === 'generic.text.textbox') {
             return { width: 120, height: 60 };

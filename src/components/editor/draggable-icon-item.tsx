@@ -88,13 +88,13 @@ export function DraggableIconItem({
           onDoubleClick={() => onDoubleClick?.(dragItem)}
         >
           {isCompact ? (
-            <Card className="hover:bg-accent hover:text-accent-foreground transition-colors w-full">
-              <CardContent className="p-1.5 flex flex-col items-center justify-center gap-0.5 text-center h-12">
-                <div className="w-5 h-5 flex items-center justify-center">
+            <Card className="hover:bg-accent hover:text-accent-foreground transition-colors w-full aspect-square">
+              <CardContent className="flex h-full min-h-0 w-full flex-col items-center justify-center p-1 text-center">
+                <div className="flex h-full w-full min-h-0 flex-1 items-center justify-center">
                   {iconItem.iconType === "lucide" ? (
-                    <iconItem.IconComponent className="w-5 h-5" />
+                    <iconItem.IconComponent className="h-12 w-12 max-h-[90%] max-w-[90%] shrink-0" />
                   ) : (
-                    <span className="text-xl leading-none">{iconItem.emoji}</span>
+                    <span className="text-4xl leading-none">{iconItem.emoji}</span>
                   )}
                 </div>
               </CardContent>
