@@ -444,18 +444,20 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                   </div>
                 )}
                 {isTextBoxHeading && (
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="space-y-1.5">
                     <Label className="text-xs text-muted-foreground">Heading color</Label>
-                    <input
-                      type="color"
+                    <ColorPicker
                       value={
                         styling.headingBackgroundColor?.startsWith("#")
                           ? styling.headingBackgroundColor
                           : "#1f2937"
                       }
-                      onChange={(e) => handlePropertyChange("headingBackgroundColor", e.target.value, true)}
-                      className="h-7 w-14 cursor-pointer rounded border border-border bg-background p-0"
-                      title="Heading strip color"
+                      onChange={(value) =>
+                        handlePropertyChange("headingBackgroundColor", value)
+                      }
+                      placeholder="#1f2937"
+                      showAlpha={false}
+                      allowTransparent={false}
                     />
                   </div>
                 )}

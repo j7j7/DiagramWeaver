@@ -22,10 +22,16 @@ const TutorialContext = createContext<TutorialContextValue | undefined>(undefine
 export function TutorialProvider({
   children,
   onLoadTutorialExample,
+  onTutorialSessionStart,
+  onTutorialFinish,
 }: {
   children: React.ReactNode;
-  /** Called when the active step includes `loadExampleId` (replaces the active tab diagram). */
+  /** Called when the active step includes `loadExampleId` (loads into the dedicated tutorial tab). */
   onLoadTutorialExample?: (exampleId: string) => void | Promise<void>;
+  /** Called when the tutorial session starts (create/focus the `tutorial` tab before examples load). */
+  onTutorialSessionStart?: () => void;
+  /** Called when the tutorial UI closes (`finish()` or X / `close()`); parent should close the tutorial tab without a save prompt. */
+  onTutorialFinish?: () => void;
 }) {
   const [state, setState] = useState<TutorialState>({
     isOpen: false,
@@ -38,13 +44,17 @@ export function TutorialProvider({
     return localStorage.getItem(TUTORIAL_COMPLETION_KEY) === 'true';
   }, []);
 
-  const start = useCallback((steps: TutorialStep[]) => {
-    setState({
-      isOpen: true,
-      steps,
-      currentIndex: 0,
-    });
-  }, []);
+  const start = useCallback(
+    (steps: TutorialStep[]) => {
+      onTutorialSessionStart?.();
+      setState({
+        isOpen: true,
+        steps,
+        currentIndex: 0,
+      });
+    },
+    [onTutorialSessionStart],
+  );
 
   const next = useCallback(() => {
     setState(prev => {
@@ -74,21 +84,23 @@ export function TutorialProvider({
     if (typeof window !== 'undefined') {
       localStorage.setItem(TUTORIAL_COMPLETION_KEY, 'true');
     }
+    onTutorialFinish?.();
     setState({
       isOpen: false,
       steps: [],
       currentIndex: 0,
     });
-  }, []);
+  }, [onTutorialFinish]);
 
   const close = useCallback(() => {
     // Don't mark as completed when closing early
+    onTutorialFinish?.();
     setState({
       isOpen: false,
       steps: [],
       currentIndex: 0,
     });
-  }, []);
+  }, [onTutorialFinish]);
 
   // Only load each tutorial JSON once per step — `onLoadTutorialExample` from the parent may change
   // identity on every render (e.g. unstable deps), which would re-fetch and reset selection on every click.

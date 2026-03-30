@@ -75,6 +75,8 @@ export interface DiagramNodeData {
   richHeadingLabel?: RichTextRun[];
   /** Heading strip gradient starts from this color (fades toward the body) */
   headingBackgroundColor?: string;
+  /** Heading strip text color (body uses `textColor`) */
+  headingTextColor?: string;
   objectStyle?: string; // Predefined visual style key (e.g., 'solid', 'gradient', 'modern', etc.)
   
   // Custom sizing properties for textbox nodes
@@ -252,6 +254,7 @@ export interface DiagramNodeItem {
   headingLabel?: string;
   richHeadingLabel?: RichTextRun[];
   headingBackgroundColor?: string;
+  headingTextColor?: string;
   objectStyle?: string; // Predefined visual style key (e.g., 'solid', 'gradient', 'modern', etc.)
   
   // Custom sizing properties for textbox nodes

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useLayoutEffect } from 'react';
 import type { DiagramData } from '@/lib/types';
 import type { SelectedItem } from '@/components/diagram-editor';
 import { ensureConnectionIds } from '@/lib/connection-order-utils';
@@ -10,6 +10,9 @@ import {
   loadTabsFromLocalStorage,
   clearTabsFromLocalStorage,
 } from '@/lib/tab-storage';
+
+/** Reserved label for the interactive tutorial diagram tab (only one such tab exists). */
+export const TUTORIAL_TAB_NAME = 'tutorial';
 
 export interface TabState {
   id: string;
@@ -25,6 +28,8 @@ export interface TabState {
   savedDataHash?: string; // Track if tab has unsaved changes
   /** Embedded presentation slides/decks differ from last file save (e.g. edits in presentation mode). */
   hasUnsavedPresentations?: boolean;
+  /** When true, this tab is the dedicated interactive tutorial canvas (name should be `TUTORIAL_TAB_NAME`). */
+  isTutorialTab?: boolean;
 }
 
 interface UseDiagramTabsOptions {
@@ -57,6 +62,7 @@ function parseStoredTabs(
       selectedItemIds: new Set(rest.selectedItemIds || []),
       savedDataHash: JSON.stringify(rest.diagramData),
       hasUnsavedPresentations: rest.hasUnsavedPresentations === true,
+      isTutorialTab: rest.isTutorialTab === true,
     };
   });
 }
@@ -67,6 +73,35 @@ export function useDiagramTabs({ isClient, onToast }: UseDiagramTabsOptions) {
   const [isLoaded, setIsLoaded] = useState(false);
   const historyRefs = useRef<Record<string, { history: string[]; index: number }>>({});
   const persistTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const focusTutorialAfterEnsureRef = useRef(false);
+
+  const createNewTab = useCallback(
+    (name: string, diagramData?: DiagramData, opts?: { isTutorialTab?: boolean }): TabState => {
+      const rawDiagram = diagramData || { nodes: [], connections: [], groupings: [] };
+      const initialDiagram = { ...rawDiagram, connections: ensureConnectionIds(rawDiagram.connections || []) };
+      const initialHistory = [JSON.stringify(initialDiagram)];
+      const tabId = `tab-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+      historyRefs.current[tabId] = { history: initialHistory, index: 0 };
+
+      return {
+        id: tabId,
+        name,
+        diagramData: initialDiagram,
+        history: initialHistory,
+        historyIndex: 0,
+        selectedItem: null,
+        selectedItemIds: new Set(),
+        isConnectMode: false,
+        jsonPanelOpen: false,
+        canvasTransform: { x: 0, y: 0, k: 1 },
+        savedDataHash: JSON.stringify(initialDiagram),
+        hasUnsavedPresentations: false,
+        isTutorialTab: opts?.isTutorialTab === true,
+      };
+    },
+    [],
+  );
 
   // Initialize tabs from IndexedDB (with localStorage migration)
   useEffect(() => {
@@ -163,7 +198,7 @@ export function useDiagramTabs({ isClient, onToast }: UseDiagramTabsOptions) {
     return () => {
       cancelled = true;
     };
-  }, [isClient]);
+  }, [isClient, createNewTab]);
 
   // Persist tabs (IndexedDB when available, else localStorage)
   useEffect(() => {
@@ -241,38 +276,57 @@ export function useDiagramTabs({ isClient, onToast }: UseDiagramTabsOptions) {
     };
   }, [tabs, activeTabId, isClient, isLoaded, onToast]);
 
-  function createNewTab(name: string, diagramData?: DiagramData): TabState {
-    const rawDiagram = diagramData || { nodes: [], connections: [], groupings: [] };
-    const initialDiagram = { ...rawDiagram, connections: ensureConnectionIds(rawDiagram.connections || []) };
-    const initialHistory = [JSON.stringify(initialDiagram)];
-    const tabId = `tab-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
-    historyRefs.current[tabId] = { history: initialHistory, index: 0 };
+  const createTab = useCallback(
+    (options?: {
+      name?: string;
+      diagramData?: DiagramData;
+      isTutorialTab?: boolean;
+      /** When true, do not show the "New Tab" toast (e.g. fallback tab after tutorial completes). */
+      silent?: boolean;
+    }) => {
+      const tabNumber = tabs.length + 1;
+      const tabName = options?.name || `Diagram ${tabNumber}`;
+      const newTab = createNewTab(tabName, options?.diagramData, { isTutorialTab: options?.isTutorialTab });
+      setTabs((prev) => [...prev, newTab]);
+      setActiveTabId(newTab.id);
+      if (!options?.silent) {
+        onToast({ title: 'New Tab', description: `${newTab.name} created.` });
+      }
+    },
+    [tabs.length, onToast, createNewTab],
+  );
 
-    return {
-      id: tabId,
-      name,
-      diagramData: initialDiagram,
-      history: initialHistory,
-      historyIndex: 0,
-      selectedItem: null,
-      selectedItemIds: new Set(),
-      isConnectMode: false,
-      jsonPanelOpen: false,
-      canvasTransform: { x: 0, y: 0, k: 1 },
-      savedDataHash: JSON.stringify(initialDiagram),
-      hasUnsavedPresentations: false,
-    };
-  }
+  const getTutorialTabId = useCallback((): string | null => {
+    return tabs.find((t) => t.isTutorialTab)?.id ?? null;
+  }, [tabs]);
 
-  const createTab = useCallback((options?: { name?: string; diagramData?: DiagramData }) => {
-    const tabNumber = tabs.length + 1;
-    const tabName = options?.name || `Diagram ${tabNumber}`;
-    const newTab = createNewTab(tabName, options?.diagramData);
-    setTabs(prev => [...prev, newTab]);
-    setActiveTabId(newTab.id);
-    onToast({ title: 'New Tab', description: `${newTab.name} created.` });
-  }, [tabs.length, onToast]);
+  const ensureTutorialTab = useCallback(() => {
+    focusTutorialAfterEnsureRef.current = true;
+    setTabs((prev) => {
+      const marked = prev.filter((t) => t.isTutorialTab);
+      if (marked.length === 1) {
+        return prev;
+      }
+      if (marked.length > 1) {
+        const keep = marked[0];
+        for (const t of marked.slice(1)) {
+          delete historyRefs.current[t.id];
+        }
+        return prev.filter((t) => !t.isTutorialTab || t.id === keep.id);
+      }
+      const newTab = createNewTab(TUTORIAL_TAB_NAME, undefined, { isTutorialTab: true });
+      return [...prev, newTab];
+    });
+  }, [createNewTab]);
+
+  useLayoutEffect(() => {
+    if (!focusTutorialAfterEnsureRef.current) return;
+    const id = tabs.find((t) => t.isTutorialTab)?.id;
+    if (id) {
+      setActiveTabId(id);
+      focusTutorialAfterEnsureRef.current = false;
+    }
+  }, [tabs]);
 
   const switchTab = useCallback((tabId: string) => {
     if (tabs.some(t => t.id === tabId)) {
@@ -377,11 +431,14 @@ export function useDiagramTabs({ isClient, onToast }: UseDiagramTabsOptions) {
       name: t.name,
       isModified:
         t.savedDataHash !== JSON.stringify(t.diagramData) || t.hasUnsavedPresentations === true,
+      isTutorialTab: t.isTutorialTab === true,
     })),
     activeTabId,
     isLoaded,
     activeTab: getActiveTab(),
     createTab,
+    ensureTutorialTab,
+    getTutorialTabId,
     switchTab,
     closeTab,
     updateActiveTab,

@@ -40,7 +40,7 @@ import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramConnectionDa
 import { generateSequentialId } from '@/lib/id-generator';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useDiagramTabs } from '@/hooks/use-diagram-tabs';
+import { useDiagramTabs, TUTORIAL_TAB_NAME } from '@/hooks/use-diagram-tabs';
 import { useLayers } from '@/hooks/use-layers';
 import { useLayerAnimation } from '@/hooks/use-layer-animation';
 import { flattenDiagramOnImport, type RawDiagramData } from '@/lib/flatten-on-import';
@@ -773,6 +773,7 @@ export default function DiagramEditor() {
     isLoaded,
     activeTab,
     createTab,
+    ensureTutorialTab,
     switchTab,
     closeTab,
     updateActiveTab,
@@ -3279,23 +3280,18 @@ export default function DiagramEditor() {
     }
   }, [parseUnknownJsonToDiagramData, createTab, toast]);
 
-  const tutorialExampleTabNames: Record<string, string> = {
-    'tutorial-a-orientation': 'Tutorial: Orientation',
-    'tutorial-b-content': 'Tutorial: Diagram content',
-    'tutorial-c-connections': 'Tutorial: Connections',
-  };
-
   const activeTabIdRef = React.useRef(activeTabId);
   activeTabIdRef.current = activeTabId;
 
+  const tabsRef = React.useRef(tabs);
+  tabsRef.current = tabs;
+
   const handleLoadTutorialExample = React.useCallback(
     async (exampleId: string) => {
-      let tabId = activeTabIdRef.current;
-      if (!isLoaded || !tabId) {
+      if (!isLoaded) {
         await new Promise((r) => window.setTimeout(r, 450));
-        tabId = activeTabIdRef.current;
       }
-      if (!tabId) return;
+      ensureTutorialTab();
 
       try {
         const res = await fetch(`/examples/tutorial/${exampleId}.json`);
@@ -3306,10 +3302,12 @@ export default function DiagramEditor() {
         const json = JSON.parse(text) as unknown;
         const diagram = parseUnknownJsonToDiagramData(json);
         const serialized = JSON.stringify(diagram);
-        const name = tutorialExampleTabNames[exampleId] ?? `Tutorial: ${exampleId}`;
-        updateActiveTab({
+        const tabId = tabsRef.current.find((t) => t.isTutorialTab)?.id;
+        if (!tabId) return;
+
+        updateTab(tabId, {
           diagramData: diagram,
-          name,
+          name: TUTORIAL_TAB_NAME,
           selectedItem: null,
           selectedItemIds: new Set(),
           history: [serialized],
@@ -3323,8 +3321,20 @@ export default function DiagramEditor() {
         toast({ variant: 'destructive', title: 'Tutorial example failed', description: message });
       }
     },
-    [isLoaded, parseUnknownJsonToDiagramData, setHistoryRef, updateActiveTab, toast]
+    [isLoaded, parseUnknownJsonToDiagramData, setHistoryRef, updateTab, toast, ensureTutorialTab]
   );
+
+  const handleTutorialFinish = React.useCallback(() => {
+    const list = tabsRef.current;
+    const tutorialId = list.find((t) => t.isTutorialTab)?.id;
+    if (!tutorialId) return;
+    if (list.filter((t) => !t.isTutorialTab).length === 0) {
+      flushSync(() => {
+        createTab({ name: 'Diagram 1', silent: true });
+      });
+    }
+    void closeTab(tutorialId, true);
+  }, [createTab, closeTab]);
 
   const handleMenuCopy = () => {
     if (selectedResource) {
@@ -3411,6 +3421,11 @@ export default function DiagramEditor() {
   const handleTabClose = async (tabId: string) => {
     const tab = tabs.find(t => t.id === tabId);
     if (!tab) return;
+
+    if (tab.isTutorialTab) {
+      await closeTab(tabId, true);
+      return;
+    }
 
     // Check for unsaved changes
     const currentDataHash = JSON.stringify(activeTab?.diagramData);
@@ -4603,7 +4618,11 @@ export default function DiagramEditor() {
 
   return (
     <TooltipProvider>
-    <TutorialProvider onLoadTutorialExample={handleLoadTutorialExample}>
+    <TutorialProvider
+      onTutorialSessionStart={ensureTutorialTab}
+      onTutorialFinish={handleTutorialFinish}
+      onLoadTutorialExample={handleLoadTutorialExample}
+    >
       <DiagramEditorInner
         canPasteFromMenu={canPasteFromMenu}
         isMobile={isMobile}

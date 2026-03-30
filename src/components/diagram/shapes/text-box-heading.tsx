@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useId, useRef, useState } from "react";
+import React, { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { ShapeWrapper } from "./shape-wrapper";
 import { getShapeSvgFill } from "./shape-utils";
@@ -20,7 +20,7 @@ export type HeadingEdge = "top" | "bottom" | "left" | "right";
 
 const VIEWBOX_W = 80;
 const VIEWBOX_H = 50;
-/** Horizontal strip height / vertical strip width as a fraction of shape height (not width), so left/right stay narrow on wide nodes */
+/** Fallback strip size (diagram units) when content measurement is not ready yet */
 const HEADING_RATIO = 0.22;
 
 interface TextBoxHeadingShapeProps {
@@ -128,6 +128,9 @@ export function TextBoxHeadingShape(props: TextBoxHeadingShapeProps) {
   const [headingToolbarHost, setHeadingToolbarHost] = useState<HTMLDivElement | null>(null);
   const previewEdgeRef = useRef<HeadingEdge | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  /** Natural heading block height (or width for side edges) ÷ container size — content-driven, not % of shape height */
+  const stripMeasureRef = useRef<HTMLDivElement | null>(null);
+  const [stripRatio, setStripRatio] = useState<number | null>(null);
 
   const shapeStyles = getShapeStyles(node);
   const backgroundColors = nodeAny.backgroundColors || [nodeAny.backgroundColor || "#6b7280"];
@@ -150,7 +153,70 @@ export function TextBoxHeadingShape(props: TextBoxHeadingShapeProps) {
   const ry = rx;
 
   const edge: HeadingEdge = previewEdge ?? nodeAny.headingEdge ?? "top";
-  const stripThick = headingStripThickness(w, h, edge, rx, ry);
+
+  const headingRuns = useMemo(
+    () => nodeAny.richHeadingLabel ?? labelToRuns(nodeAny.headingLabel ?? ""),
+    [nodeAny.richHeadingLabel, nodeAny.headingLabel]
+  );
+
+  const headingTextColorResolved = nodeAny.headingTextColor ?? "#ffffff";
+
+  const headingNode: DiagramNodeData = {
+    ...node,
+    textColor: headingTextColorResolved,
+    fontSize: Math.max(10, (nodeAny.fontSize ?? 14) - 2),
+    textJustify: "center",
+    textVerticalPosition: "middle",
+  };
+
+  const runsForStripMeasure = isEditingHeading ? editHeadingRuns : headingRuns;
+
+  const stripThick = (() => {
+    const minR = Math.min(rx, ry) * 1.2;
+    let t: number;
+    if (stripRatio != null && stripRatio > 0) {
+      if (edge === "top" || edge === "bottom") {
+        t = h * stripRatio;
+      } else {
+        t = w * stripRatio;
+      }
+    } else {
+      t = headingStripThickness(w, h, edge, rx, ry);
+    }
+    if (edge === "left" || edge === "right") {
+      t = Math.min(t, w * 0.36);
+    }
+    const maxStrip = edge === "top" || edge === "bottom" ? h - 2 : w - 2;
+    return Math.max(Math.min(t, maxStrip), minR);
+  })();
+
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    const measure = stripMeasureRef.current;
+    if (!container || !measure) return;
+
+    const update = () => {
+      const ch = container.clientHeight;
+      const cw = container.clientWidth;
+      const mh = measure.offsetHeight;
+      if (edge === "top" || edge === "bottom") {
+        if (ch > 0 && mh > 0) {
+          const next = mh / ch;
+          setStripRatio((prev) => (prev != null && Math.abs(prev - next) < 1e-6 ? prev : next));
+        }
+      } else if (cw > 0 && mh > 0) {
+        const next = mh / cw;
+        setStripRatio((prev) => (prev != null && Math.abs(prev - next) < 1e-6 ? prev : next));
+      }
+    };
+
+    const ro = new ResizeObserver(update);
+    ro.observe(container);
+    ro.observe(measure);
+    update();
+    return () => ro.disconnect();
+  }, [edge, w, h, isEditingHeading]);
+
   const headingColor = nodeAny.headingBackgroundColor || "#1f2937";
 
   const { defs, fillRef, strokeRef } = useSvgGradient({
@@ -199,15 +265,6 @@ export function TextBoxHeadingShape(props: TextBoxHeadingShapeProps) {
     gX2 = "0%";
     gY2 = "0%";
   }
-
-  const headingRuns = nodeAny.richHeadingLabel ?? labelToRuns(nodeAny.headingLabel ?? "");
-  const headingNode: DiagramNodeData = {
-    ...node,
-    textColor: "#ffffff",
-    fontSize: Math.max(10, (nodeAny.fontSize ?? 14) - 2),
-    textJustify: "center",
-    textVerticalPosition: "middle",
-  };
 
   const clipW = overrideWidth ?? w;
   const clipH = overrideHeight ?? h;
@@ -339,6 +396,27 @@ export function TextBoxHeadingShape(props: TextBoxHeadingShapeProps) {
             className="pointer-events-auto absolute bottom-full left-1/2 z-[100] mb-3 -translate-x-1/2"
           />
         ) : null}
+        {/* Hidden: natural heading block size (lines + padding) — drives strip thickness independent of overall shape height */}
+        <div
+          ref={stripMeasureRef}
+          className="pointer-events-none absolute left-0 top-0 -z-10 w-full select-none overflow-hidden opacity-0"
+          aria-hidden
+        >
+          <div
+            className={`flex flex-col items-center justify-center overflow-hidden px-1 py-0.5 ${getTextJustifyClass("center")}`}
+            style={{
+              ...getTextStylingForNode(headingNode),
+              color: headingTextColorResolved,
+            }}
+          >
+            <TextboxRichDisplay
+              node={headingNode}
+              runs={runsForStripMeasure}
+              onDoubleClick={() => {}}
+              suppressHoverBackground
+            />
+          </div>
+        </div>
         <svg
           width="100%"
           height="100%"
@@ -391,9 +469,13 @@ export function TextBoxHeadingShape(props: TextBoxHeadingShapeProps) {
         </svg>
 
         <div
-          className={`absolute z-[2] pointer-events-auto cursor-move select-none ${isVerticalHeading ? "flex items-center justify-center overflow-visible" : "flex items-center justify-center px-1 py-0.5"}`}
+          className={cn(
+            "absolute z-[2] pointer-events-auto",
+            isEditingHeading ? "cursor-text select-text" : "cursor-move select-none",
+            isVerticalHeading ? "flex items-center justify-center overflow-visible" : "flex items-center justify-center px-1 py-0.5"
+          )}
           style={headingBoxStyle}
-          onMouseDown={handleHeadingMouseDown}
+          onMouseDown={isEditingHeading ? undefined : handleHeadingMouseDown}
           onDoubleClick={handleHeadingDoubleClick}
         >
           {isVerticalHeading ? (
@@ -432,7 +514,7 @@ export function TextBoxHeadingShape(props: TextBoxHeadingShapeProps) {
                     className={`flex max-h-full min-h-0 w-full max-w-full flex-1 items-center justify-center overflow-visible ${getTextJustifyClass("center")}`}
                     style={{
                       ...getTextStylingForNode(headingNode),
-                      color: "#ffffff",
+                      color: headingTextColorResolved,
                     }}
                   >
                     <TextboxRichDisplay
@@ -459,7 +541,7 @@ export function TextBoxHeadingShape(props: TextBoxHeadingShapeProps) {
               className={`flex max-h-full w-full flex-col items-center justify-center overflow-hidden ${getTextJustifyClass("center")}`}
               style={{
                 ...getTextStylingForNode(headingNode),
-                color: "#ffffff",
+                color: headingTextColorResolved,
               }}
             >
               <TextboxRichDisplay

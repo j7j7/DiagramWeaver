@@ -84,6 +84,7 @@ export const DiagramNodeDataSchema = z.object({
   headingLabel: z.string().optional(),
   richHeadingLabel: z.array(RichTextRunSchema).optional(),
   headingBackgroundColor: z.string().optional(),
+  headingTextColor: z.string().optional(),
   // Custom sizing properties for textbox nodes
   width: z.number().optional(), // Custom width - when set, overrides auto-calculated width
   height: z.number().optional(), // Custom height - when set, overrides auto-calculated height
@@ -393,6 +394,7 @@ export const DiagramNodeItemSchema = z.object({
   headingLabel: z.string().optional(),
   richHeadingLabel: z.array(RichTextRunSchema).optional(),
   headingBackgroundColor: z.string().optional(),
+  headingTextColor: z.string().optional(),
   // Custom sizing properties for textbox nodes
   width: z.number().optional(), // Custom width - when set, overrides auto-calculated width
   height: z.number().optional(), // Custom height - when set, overrides auto-calculated height

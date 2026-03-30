@@ -215,7 +215,8 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
         (p as any).headingEdge !== (n as any).headingEdge ||
         (p as any).headingLabel !== (n as any).headingLabel ||
         JSON.stringify((p as any).richHeadingLabel) !== JSON.stringify((n as any).richHeadingLabel) ||
-        (p as any).headingBackgroundColor !== (n as any).headingBackgroundColor) {
+        (p as any).headingBackgroundColor !== (n as any).headingBackgroundColor ||
+        (p as any).headingTextColor !== (n as any).headingTextColor) {
       return false;
     }
     const pUml = (p as any).umlClass;

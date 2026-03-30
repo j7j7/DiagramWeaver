@@ -7,6 +7,8 @@ export interface TabData {
   id: string;
   name: string;
   isModified: boolean;
+  /** Reserved tab for the interactive tutorial (`name` is `tutorial`). */
+  isTutorialTab?: boolean;
 }
 
 interface TabBarProps {

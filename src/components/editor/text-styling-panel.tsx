@@ -94,6 +94,10 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
   const effectiveTextJustify =
     styling.textJustify ?? DEFAULT_TEXT_STYLING.textJustify ?? "center";
 
+  const isTextBoxHeading =
+    selectedItem?.type === "generic.object.text-box-heading" ||
+    (typeof selectedItem?.type === "string" && selectedItem.type.endsWith(".text-box-heading"));
+
   const handlePropertyChange = (property: keyof TextStyling, value: any) => {
     // Only update the specific property that changed
     const updatedStyling = { [property]: value };
@@ -392,9 +396,11 @@ if (textPosition?.startsWith('outside-') || textPosition === 'outside') {
             />
           </div>
 
-          {/* Text Color */}
+          {/* Text Color (body); heading strip color is separate for text-box-heading */}
           <div className="space-y-2">
-            <Label htmlFor="text-color" className="text-xs font-medium">Text Color</Label>
+            <Label htmlFor="text-color" className="text-xs font-medium">
+              {isTextBoxHeading ? "Body text color" : "Text Color"}
+            </Label>
             <ColorPicker
               value={styling.textColor || '#000000'}
               onChange={(value) => handlePropertyChange('textColor', value)}
@@ -403,6 +409,22 @@ if (textPosition?.startsWith('outside-') || textPosition === 'outside') {
               allowTransparent={true}
             />
           </div>
+
+          {isTextBoxHeading && (
+            <>
+              <Separator />
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Heading text color</Label>
+                <ColorPicker
+                  value={styling.headingTextColor ?? "#ffffff"}
+                  onChange={(value) => handlePropertyChange("headingTextColor", value)}
+                  placeholder="#ffffff"
+                  showAlpha={true}
+                  allowTransparent={true}
+                />
+              </div>
+            </>
+          )}
         </div>
       </div>
     </Draggable>

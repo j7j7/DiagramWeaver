@@ -15,6 +15,8 @@ export interface TextStyling {
   textColor?: string;
   textJustify?: 'left' | 'center' | 'right' | 'full';
   textVerticalPosition?: 'top' | 'middle' | 'bottom';
+  /** `generic.object.text-box-heading` only: heading strip text color (body uses `textColor`) */
+  headingTextColor?: string;
 }
 
 /**
@@ -36,7 +38,8 @@ export function getTextStyling(
     textOpacity: node?.textOpacity || theme?.textOpacity,
     textColor: node?.textColor || theme?.textColor,
     textJustify: node?.textJustify || 'center',
-    textVerticalPosition: node?.textVerticalPosition || 'middle'
+    textVerticalPosition: node?.textVerticalPosition || 'middle',
+    headingTextColor: (node as any)?.headingTextColor
   };
 }
 
@@ -91,7 +94,8 @@ export function extractTextStylingFromNode(node: DiagramNodeData | DiagramNodeIt
     textOpacity: node.textOpacity,
     textColor: node.textColor,
     textJustify: node.textJustify,
-    textVerticalPosition: node.textVerticalPosition
+    textVerticalPosition: node.textVerticalPosition,
+    headingTextColor: node.headingTextColor
   };
 }
 
@@ -164,6 +168,7 @@ export function applyTextStylingToNode(
   if ('textColor' in styling) updated.textColor = styling.textColor;
   if ('textJustify' in styling) updated.textJustify = styling.textJustify;
   if ('textVerticalPosition' in styling) updated.textVerticalPosition = styling.textVerticalPosition;
+  if ('headingTextColor' in styling) (updated as any).headingTextColor = styling.headingTextColor;
 
   return updated;
 }
