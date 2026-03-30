@@ -16,6 +16,11 @@
           "name": "Textbox",
           "file": "textbox.png",
           "type": "textbox"
+        },
+        {
+          "name": "Text Box Heading",
+          "file": "text-box-heading.png",
+          "type": "shape"
         }
       ]
     },
@@ -51,11 +56,6 @@
         {
           "name": "Rounded Rectangle",
           "file": "rounded-rectangle.png",
-          "type": "shape"
-        },
-        {
-          "name": "Text Box Heading",
-          "file": "text-box-heading.png",
           "type": "shape"
         },
         {

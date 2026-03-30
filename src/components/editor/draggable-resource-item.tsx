@@ -5,6 +5,7 @@ import { Card, CardContent } from '../ui/card';
 import { DraggableItem, ItemTypes } from './draggable-item';
 import { Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip';
 import { buildResourceIconPath } from '@/lib/resource-mapping';
+import { ResourceIcon } from '@/components/diagram/resource-icon';
 
 interface DraggableResourceItemProps {
   resource: {
@@ -31,8 +32,13 @@ export function DraggableResourceItem({ resource, provider, category, icon, onCl
   // Icon path for display in sidebar - NEVER passed to node
   const iconPath = useMemo(() => {
     if (!resource.file) return '';
-    return buildResourceIconPath(provider, category, resource.file);
-  }, [provider, category, resource.file]);
+    const derivedSlug = resource.name.replace(/\s+/g, '-').toLowerCase();
+    const pathCategory =
+      provider === 'generic' && category === 'text' && derivedSlug === 'text-box-heading'
+        ? 'object'
+        : category;
+    return buildResourceIconPath(provider, pathCategory, resource.file);
+  }, [provider, category, resource.file, resource.name]);
   
   const item = useMemo(() => {
     const derivedSlug = resource.name.replace(/\s+/g, '-').toLowerCase();
@@ -58,11 +64,13 @@ export function DraggableResourceItem({ resource, provider, category, icon, onCl
       return dragItem;
     }
     
+    const isTextPaletteTextBoxHeading =
+      provider === 'generic' && category === 'text' && derivedSlug === 'text-box-heading';
     return {
-      type: `${provider}.${category}.${derivedSlug}`,
+      type: isTextPaletteTextBoxHeading ? 'generic.object.text-box-heading' : `${provider}.${category}.${derivedSlug}`,
       label: resource.name,
       provider,
-      category,
+      category: isTextPaletteTextBoxHeading ? 'object' : category,
       file: resource.file, // For ResourceIcon lookup during drag
     };
   }, [resource.name, provider, category, resource.file]);
@@ -142,7 +150,9 @@ export function DraggableResourceItem({ resource, provider, category, icon, onCl
   };
 
   const isCompact = viewMode === 'compact';
-  
+  const isTextBoxHeadingResource =
+    resource.name.replace(/\s+/g, '-').toLowerCase() === 'text-box-heading';
+
   const dragWrapper = (
     <div
       ref={(node) => {
@@ -163,8 +173,10 @@ export function DraggableResourceItem({ resource, provider, category, icon, onCl
           <TooltipTrigger asChild>
             <Card className="hover:bg-accent hover:text-accent-foreground transition-colors w-full min-w-0">
               <CardContent className="p-1.5 flex flex-col items-center justify-center gap-0.5 text-center h-12 min-w-0 w-full">
-                <div className={`w-5 h-5 flex items-center justify-center flex-shrink-0 ${invertInDarkMode ? 'dark:[&_img]:invert' : ''}`}>
-                  {!imageError && iconPath ? (
+                <div className={`w-5 h-5 flex items-center justify-center flex-shrink-0 text-muted-foreground ${invertInDarkMode && !isTextBoxHeadingResource ? 'dark:[&_img]:invert' : ''}`}>
+                  {isTextBoxHeadingResource ? (
+                    <ResourceIcon type="generic.object.text-box-heading" width={20} height={20} className="shrink-0" />
+                  ) : !imageError && iconPath ? (
                     <img
                       src={iconPath}
                       alt={resource.name}
@@ -190,8 +202,10 @@ export function DraggableResourceItem({ resource, provider, category, icon, onCl
           <TooltipTrigger asChild>
             <Card className="hover:bg-accent hover:text-accent-foreground transition-colors min-w-0">
               <CardContent className="p-2 flex flex-col items-center justify-center gap-1 text-center h-16 min-w-0 w-full">
-                <div className={`w-6 h-6 flex items-center justify-center flex-shrink-0 ${invertInDarkMode ? 'dark:[&_img]:invert' : ''}`}>
-                  {!imageError && iconPath ? (
+                <div className={`w-6 h-6 flex items-center justify-center flex-shrink-0 text-muted-foreground ${invertInDarkMode && !isTextBoxHeadingResource ? 'dark:[&_img]:invert' : ''}`}>
+                  {isTextBoxHeadingResource ? (
+                    <ResourceIcon type="generic.object.text-box-heading" width={24} height={24} className="shrink-0" />
+                  ) : !imageError && iconPath ? (
                     <img
                       src={iconPath}
                       alt={resource.name}

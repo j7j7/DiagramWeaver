@@ -34,11 +34,16 @@ export async function loadAllResourceTypes(): Promise<ResourceType[]> {
           Object.entries(data.categories || {}).forEach(([categoryKey, category]: [string, any]) => {
             if (category.resources) {
               category.resources.forEach((resource: any) => {
+                const resourceSlug = resource.name.replace(/\s+/g, '-').toLowerCase();
+                let fullType = `${providerKey}.${categoryKey}.${resourceSlug}`;
+                if (providerKey === 'generic' && categoryKey === 'text' && resourceSlug === 'text-box-heading') {
+                  fullType = 'generic.object.text-box-heading';
+                }
                 resourceTypes.push({
-                  fullType: `${providerKey}.${categoryKey}.${resource.name.replace(/\s+/g, '-').toLowerCase()}`,
+                  fullType,
                   provider: providerKey,
                   category: categoryKey,
-                  resource: resource.name.replace(/\s+/g, '-').toLowerCase()
+                  resource: resourceSlug
                 });
               });
             }

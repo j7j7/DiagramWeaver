@@ -173,7 +173,10 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
     return null;
   }, [type, resourceFile, imagePath, provider, category]);
 
-  if (iconPath) {
+  // Vector preview only: matches the on-canvas shape (rounded body + dark heading strip), not the flat PNG.
+  const isTextBoxHeadingType = type === 'generic.object.text-box-heading' || type?.endsWith('.text-box-heading');
+
+  if (iconPath && !isTextBoxHeadingType) {
     return (
       <img
         src={iconPath}
@@ -247,9 +250,29 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
         );
       case 'text-box-heading':
         return (
-          <svg {...props} viewBox="0 0 24 24" fill={props.fill || "currentColor"} stroke={props.stroke || "currentColor"} strokeWidth={props.strokeWidth ?? 1}>
-            <rect x="4" y="6" width="16" height="12" rx="2" ry="2" fill="none" />
-            <path d="M 4 6 h16 v4 H4 Z" fill="currentColor" opacity={0.35} />
+          <svg
+            {...props}
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden
+          >
+            {/* Inset 3 — fills more of the 24×24 icon frame than the previous 4/5 inset */}
+            <rect x="3" y="4" width="18" height="14" rx="2" ry="2" fill="currentColor" opacity={0.09} />
+            <path
+              d="M 3 6 A 2 2 0 0 1 5 4 L 19 4 A 2 2 0 0 1 21 6 L 21 9.25 L 3 9.25 Z"
+              fill="#1f2937"
+            />
+            <rect
+              x="3"
+              y="4"
+              width="18"
+              height="14"
+              rx="2"
+              ry="2"
+              stroke="currentColor"
+              strokeWidth={props.strokeWidth ?? 1}
+              opacity={0.4}
+            />
           </svg>
         );
       case 'uml-class':

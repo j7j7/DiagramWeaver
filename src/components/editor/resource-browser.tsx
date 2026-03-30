@@ -463,6 +463,14 @@ export function ResourceBrowser({ onResourceSelect, onResourceActivate }: Resour
         </span>
       );
     }
+    // Text Box Heading is listed under Text but uses generic.object.* type and object/ asset path
+    if (provider === 'generic' && category === 'text' && resource.name?.replace(/\s+/g, '-').toLowerCase() === 'text-box-heading') {
+      return (
+        <span className="text-muted-foreground inline-flex items-center justify-center">
+          <ResourceIcon type="generic.object.text-box-heading" className="w-6 h-6" stroke="currentColor" fill="currentColor" />
+        </span>
+      );
+    }
     return <Box className="w-6 h-6" />;
   };
 
@@ -830,7 +838,12 @@ return (
                                           provider={providerKey}
                                           category={categoryKey}
                                           icon={getResourceIcon(resource, providerKey, categoryKey)}
-                                          invertInDarkMode={providerKey === 'generic' && categoryKey === 'object'}
+                                          invertInDarkMode={
+                                            providerKey === 'generic' &&
+                                            (categoryKey === 'object' ||
+                                              (categoryKey === 'text' &&
+                                                resource.name.replace(/\s+/g, '-').toLowerCase() === 'text-box-heading'))
+                                          }
                                           onClick={() => handleResourceClick(resource, providerKey, categoryKey)}
                                           onDoubleClick={() => handleResourceActivate(resource, providerKey, categoryKey)}
                                           viewMode={viewMode}

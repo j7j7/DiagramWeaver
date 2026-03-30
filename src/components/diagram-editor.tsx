@@ -504,11 +504,13 @@ function createPaletteItem(
     return { type: `generic.emoji.${slug}`, label: r.name, provider: 'generic', category: 'emoji', iconType: 'emoji', emoji: r.emoji };
   }
   const derivedSlug = (resource as PaletteResource).name.replace(/\s+/g, '-').toLowerCase();
+  const isTextPaletteTextBoxHeading =
+    provider === 'generic' && category === 'text' && derivedSlug === 'text-box-heading';
   return {
-    type: `${provider}.${category}.${derivedSlug}`,
+    type: isTextPaletteTextBoxHeading ? 'generic.object.text-box-heading' : `${provider}.${category}.${derivedSlug}`,
     label: (resource as PaletteResource).name,
     provider,
-    category,
+    category: isTextPaletteTextBoxHeading ? 'object' : category,
     file: (resource as PaletteResource).file,
   };
 }
