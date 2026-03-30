@@ -142,7 +142,7 @@ export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, 
 
   if (collapsed) {
     return (
-      <aside className="w-12 bg-card border-r flex flex-col h-full flex-shrink-0">
+      <aside className="w-12 bg-card border-r flex flex-col h-full flex-shrink-0" data-tutorial-id="component-sidebar">
         <div className="flex flex-col items-center p-2 gap-2">
           <button
             onClick={onToggleCollapse}
@@ -158,7 +158,7 @@ export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, 
   }
 
   return (
-    <aside className="w-80 bg-card border-r flex flex-col h-full flex-shrink-0">
+    <aside className="w-80 bg-card border-r flex flex-col h-full flex-shrink-0" data-tutorial-id="component-sidebar">
       {/* Header: app name + collapse button */}
       <div className="flex items-center justify-between px-4 py-3 border-b flex-shrink-0">
         <h1 className="font-semibold text-base">Diagram Weaver</h1>

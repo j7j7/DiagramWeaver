@@ -5,18 +5,19 @@ import type { FileSystemFileHandle } from "@/types/file-system";
 import { measureNodeDims, type PositionedNode, type PositionedGroup } from "@/components/editor/canvas-constants";
 import {
   computeContentBounds,
+  computeExportContentBounds,
+  computeTightPngFrameForBounds,
+  computeUnionExportContentBounds,
   computeUnionFitTransformForDiagrams,
   getCanvasElementSizeForImageCapture,
   pruneConnectionsToVisibleNodes,
   transformToFitBounds,
+  type ContentBounds,
 } from '@/lib/presentation-viewport-fit';
 import { toPngWithDotGridTransform } from '@/lib/html-to-image-fit-png';
 
 interface UseCanvasExportOptions {
   canvasRef: React.RefObject<HTMLDivElement | null>;
-  transform: Transform;
-  width: number;
-  height: number;
   toast: (options: { variant?: 'destructive' | 'default'; title: string; description: string }) => void;
   diagramData: DiagramData;
   processedNodes: PositionedNode[];
@@ -35,9 +36,6 @@ const MAX_GIF_FRAMES = 300;
 
 export function useCanvasExport({
   canvasRef,
-  transform,
-  width,
-  height,
   toast,
   diagramData,
   processedNodes,
@@ -177,18 +175,28 @@ export function useCanvasExport({
     quality?: 'low' | 'medium' | 'high';
     /** Fit all diagram content into the PNG (clone-only transform; does not change the live canvas). */
     fitContent?: boolean;
+    /** Padding (px) around content when fitting; matches {@link useCanvasTransform} handleFitToView when 50. */
+    fitPadding?: number;
     /**
      * When set with `fitContent`, use the same union-bounds zoom as viewer/presentation playback
      * (all slides in the deck). Otherwise fit only the current canvas diagram.
      */
     unionDiagrams?: DiagramData[];
+    /**
+     * When set with `fitContent`, output width/height wrap the content bounds at the fit scale plus
+     * a small margin (see `frameBorderPx`) instead of the full canvas size.
+     */
+    tightContentFrame?: boolean;
+    /** Margin in output pixels on each side when `tightContentFrame` is true (default 20). */
+    frameBorderPx?: number;
   }) => {
     if (!canvasRef.current) {
       throw new Error('Canvas is not ready');
     }
 
     const { toPng } = await import('html-to-image');
-    const contentDiv = canvasRef.current.querySelector('.dot-grid') as HTMLElement;
+    const contentDiv = (canvasRef.current.querySelector('[data-diagram-layer]') as HTMLElement | null)
+      ?? (canvasRef.current.querySelector('.dot-grid') as HTMLElement | null);
     if (!contentDiv) {
       throw new Error('Could not find diagram content');
     }
@@ -235,20 +243,49 @@ export function useCanvasExport({
       if (options?.fitContent) {
         const { width: vw, height: vh } = getCanvasElementSizeForImageCapture(canvasRef.current);
         if (vw > 0 && vh > 0) {
+          const fitPadding = options.fitPadding ?? 40;
           const union = options.unionDiagrams;
           let fitTransform: Transform | null = null;
+
+          if (options.tightContentFrame) {
+            let boundsForTight: ContentBounds | null = null;
+            if (union && union.length > 0) {
+              const pruned = union.map((d) => pruneConnectionsToVisibleNodes(d));
+              boundsForTight = computeUnionExportContentBounds(pruned);
+            } else {
+              boundsForTight = computeExportContentBounds(diagramData, processedNodes, processedZones);
+            }
+            if (boundsForTight) {
+              fitTransform = transformToFitBounds(boundsForTight, vw, vh, fitPadding);
+              const borderPx = options.frameBorderPx ?? 20;
+              const { width: tw, height: th, transform: tightTransform } = computeTightPngFrameForBounds(
+                boundsForTight,
+                fitTransform,
+                borderPx
+              );
+              return await toPngWithDotGridTransform(canvasRef.current, {
+                ...toPngOptions,
+                width: tw,
+                height: th,
+              }, tightTransform);
+            }
+          }
+
           if (union && union.length > 0) {
             const pruned = union.map((d) => pruneConnectionsToVisibleNodes(d));
-            fitTransform = computeUnionFitTransformForDiagrams(pruned, vw, vh, 40);
-          }
-          if (!fitTransform) {
+            fitTransform = computeUnionFitTransformForDiagrams(pruned, vw, vh, fitPadding);
+          } else {
             const bounds = computeContentBounds(processedNodes, processedZones);
             if (bounds) {
-              fitTransform = transformToFitBounds(bounds, vw, vh, 40);
+              fitTransform = transformToFitBounds(bounds, vw, vh, fitPadding);
             }
           }
           if (fitTransform) {
-            return await toPngWithDotGridTransform(canvasRef.current, toPngOptions, fitTransform);
+            return await toPngWithDotGridTransform(canvasRef.current, {
+              ...toPngOptions,
+              width: vw,
+              height: vh,
+            }, fitTransform);
           }
         }
       }
@@ -259,111 +296,53 @@ export function useCanvasExport({
         contentDiv.classList.add('dot-grid');
       }
     }
-  }, [canvasRef, processedNodes, processedZones]);
+  }, [canvasRef, diagramData, processedNodes, processedZones]);
 
   const exportPng = useCallback(async (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high' }) => {
     if (!canvasRef.current) return;
-    
+
     try {
-      const { toPng } = await import('html-to-image');
-      
-      // Find the actual content div (the one with dot-grid class)
-      const contentDiv = canvasRef.current.querySelector('.dot-grid') as HTMLElement;
-      if (!contentDiv) {
-        toast({ variant: 'destructive', title: 'Export failed', description: 'Could not find diagram content.' });
-        return;
-      }
+      const dataUrl = await captureViewportPngDataUrl({
+        ...options,
+        fitContent: true,
+        fitPadding: 50,
+        tightContentFrame: true,
+      });
 
-      // Temporarily hide grid
-      const hadGridClass = contentDiv.classList.contains('dot-grid');
-      if (hadGridClass) {
-        contentDiv.classList.remove('dot-grid');
-      }
-      
-      // Wait for browser to apply changes
-      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-      
-      // Export the canvas container as-is (current viewport)
-      let exportElement = canvasRef.current;
-
-      try {
-        const isDark = document.documentElement.classList.contains('dark');
-        const backgroundColor = options?.backgroundColor === 'transparent' ? 'transparent' :
-                               options?.backgroundColor === 'white' ? '#ffffff' :
-                               options?.backgroundColor === 'dark' ? '#0f172a' :
-                               isDark ? '#0f172a' :
-                               getComputedStyle(document.documentElement).getPropertyValue('--background') || '#ffffff';
-
-        // Set pixel ratio based on quality setting
-        const quality = options?.quality || 'medium';
-        let pixelRatio: number;
-        
-        switch (quality) {
-          case 'low':
-            pixelRatio = 1;
-            break;
-          case 'medium':
-            pixelRatio = 2;
-            break;
-          case 'high':
-            pixelRatio = 4;
-            break;
-          default:
-            pixelRatio = 2;
-        }
-
-        let exportOptions: any = {
-          pixelRatio: pixelRatio,
-          cacheBust: true,
-          backgroundColor: backgroundColor === 'transparent' ? undefined : backgroundColor,
-          skipFonts: true,
-        };
-
-        const dataUrl = await toPng(exportElement, exportOptions);
-
-        // Use File System Access API if available
-        if ('showSaveFilePicker' in window) {
-          try {
-            const handle = await (window as any).showSaveFilePicker({
-              suggestedName: 'diagram.png',
-              types: [{
-                description: 'PNG Images',
-                accept: { 'image/png': ['.png'] }
-              }]
-            });
-            const blob = await (await fetch(dataUrl)).blob();
-            const writable = await handle.createWritable();
-            await writable.write(blob);
-            await writable.close();
-            toast({ title: 'Exported', description: 'PNG exported successfully.' });
-            return;
-          } catch (error: any) {
-            // User cancelled or API failed, fall back to download
-            if (error.name !== 'AbortError') {
-              console.log('File System Access API failed, falling back to download:', error);
-            }
+      if ('showSaveFilePicker' in window) {
+        try {
+          const handle = await (window as any).showSaveFilePicker({
+            suggestedName: 'diagram.png',
+            types: [{
+              description: 'PNG Images',
+              accept: { 'image/png': ['.png'] }
+            }]
+          });
+          const blob = await (await fetch(dataUrl)).blob();
+          const writable = await handle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+          toast({ title: 'Exported', description: 'PNG exported successfully.' });
+          return;
+        } catch (error: any) {
+          if (error.name !== 'AbortError') {
+            console.log('File System Access API failed, falling back to download:', error);
           }
         }
-
-        // Fallback: automatic download
-        const link = document.createElement('a');
-        link.download = 'diagram.png';
-        link.href = dataUrl;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        toast({ title: 'Exported', description: 'PNG exported successfully.' });
-      } finally {
-        // Restore grid class
-        if (hadGridClass) {
-          contentDiv.classList.add('dot-grid');
-        }
       }
+
+      const link = document.createElement('a');
+      link.download = 'diagram.png';
+      link.href = dataUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast({ title: 'Exported', description: 'PNG exported successfully.' });
     } catch (err) {
       console.error('Export failed:', err);
       toast({ variant: 'destructive', title: 'Export failed', description: 'Export encountered an issue.' });
     }
-  }, [toast, transform, width, height, canvasRef, calculateItemBounds, selectedItemIds, processedNodes, processedZones]);
+  }, [toast, captureViewportPngDataUrl]);
 
   const exportGif = useCallback(async (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high'; fps?: number; durationSeconds?: number }) => {
     if (!canvasRef.current) return;
@@ -394,7 +373,8 @@ export function useCanvasExport({
       const { toPng } = await import('html-to-image');
       const { GIFEncoder, quantize, applyPalette } = await import('gifenc');
 
-      gridElement = canvasRef.current.querySelector('.dot-grid') as HTMLElement;
+      gridElement = (canvasRef.current.querySelector('[data-diagram-layer]') as HTMLElement | null)
+        ?? (canvasRef.current.querySelector('.dot-grid') as HTMLElement | null);
       if (!gridElement) {
         toast({ variant: 'destructive', title: 'Export failed', description: 'Could not find diagram content.' });
         return;

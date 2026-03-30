@@ -2,6 +2,26 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-03-27 – File → Export PNG: tight frame (no letterbox)
+**PNG export** uses **`captureViewportPngDataUrl({ fitContent: true, fitPadding: 50, tightContentFrame: true })`**: **`computeExportContentBounds`** / **`computeUnionExportContentBounds`** extend node/zone **`computeContentBounds`** with **connection waypoints** plus **~40px** canvas padding (stroke, bezier overshoot, arrows); **`transformToFitBounds`** then **`computeTightPngFrameForBounds`** (default **20px** outer margin). **Thumbnails** omit **`tightContentFrame`** (node/zone bounds only, full canvas size). **`computeUnionContentBounds`** remains inside **`computeUnionFitTransformForDiagrams`**.
+
+**Export transform vs live pan/zoom**: Capture temporarily removes **`.dot-grid`** (hides grid); **`querySelector('.dot-grid')`** then missed the diagram layer, so **`toPngWithDotGridTransform`** never applied the fit transform and **html-to-image** kept the **live** `transform`. **Fix**: **`data-diagram-layer`** on editor + viewer diagram divs; **`[data-diagram-layer]`** selector; apply **`transform`/`transform-origin`** **after** **`applyStyle`** with **`setProperty(..., 'important')`** in **`html-to-image-fit-png.ts`**.
+
+### 2026-03-26 – About dialog matches keyboard / tutorial amber styling
+**UI**: **`about-dialog.tsx`** uses the same **amber panel** as **`keyboard-shortcuts-dialog.tsx`**: `border-2 border-amber-400`, `bg-amber-50` / dark `amber-950/95`, amber title/description/body text, section heading uppercase, footer **Close** button with amber outline variant.
+
+### 2026-03-26 – Help menu pinned to the right of the top bar
+**UI**: **Help** is a second `Menubar` (same items as before) placed after zoom/cursor readouts with **`ml-auto`** so it sits at the **far right** of the toolbar row; outer bar uses **`w-full min-w-0`**.
+
+### 2026-03-26 – Help menu + sectioned interactive tutorial with tutorial JSON
+**UI**: Top bar **Help** (`data-tutorial-id="help-menu"`) — **Keyboard shortcuts**, **Interactive tutorial**, **About** (moved from File). **File** keeps document actions only. **Tutorial**: `tutorial-steps.ts` defines sections (`sectionLabel`) A/B/C; `TutorialStep.loadExampleId` loads `/public/examples/tutorial/` JSON into the **active tab** via `handleLoadTutorialExample` in **`diagram-editor`**. Examples: `tutorial-a-orientation.json`, `tutorial-b-content.json`, `tutorial-c-connections.json`. **IDs**: `main-menubar` on Menubar, `component-sidebar` on sidebar. Auto-start first-run delay **800ms** (tabs + DOM ready).
+
+### 2026-03-26 – File menu: Keyboard shortcuts dialog
+**UI**: File → **Keyboard shortcuts** (after **About**) opens **`keyboard-shortcuts-dialog.tsx`** — amber/yellow modal (matches tutorial styling). Lists file/edit shortcuts, **duplicate** (copy/paste + **Alt+drag** for nodes), **multi-select** (Shift / Ctrl / ⌘+click), **Control+drag** axis lock (⌃ on Mac, not Command), **canvas mouse** (wheel zoom, right-drag pan, right-click search on empty canvas, context menu on items), **resize** (edge vs corner). Title: **Keyboard shortcuts & canvas input**. **`top-menu-bar.tsx`** wires menu item + state.
+
+### 2026-03-26 – Tutorial overlay: yellow popups + roadmap doc
+**UI**: `tutorial-overlay.tsx` — tutorial card uses **amber/yellow** panel (`bg-amber-50` / `dark:bg-amber-950/95`), matching border, arrow, and **amber highlight ring** around focused targets (replacing generic popover/primary styling). **Planning**: `docs/TUTORIAL-MAP.md` lists proposed tutorial steps covering editor features (canvas, sidebar, menus, connections, styling, JSON, presentation, rules, viewer, etc.) and notes which `data-tutorial-id` hooks still need to be added in the UI.
+
 ### 2026-03-25 – Slide transitions: connection lines lerp with moving endpoints
 **Problem**: In presentation play mode / viewer, nodes CSS-animated between slides but connections were only transitioned on appear/disappear—lines jumped to the new geometry when endpoints moved. **Fix**: `use-slide-transition` detects stable connections whose **from/to** items moved (or waypoints changed), stores previous→current deltas, and a **requestAnimationFrame** loop (aligned with the same double-rAF start as node transitions) interpolates **`slideEndpointOffset`** / **`slideWaypointOffsets`** using **`ease-slide-cubic-bezier`** (`cubic-bezier(0.4, 0, 0.2, 1)` to match slide **EASE_IN_OUT**) and the same stagger delays as connections. **`CanvasConnections`** / **`CanvasConnectionText`** apply offsets when computing **`getOptimalConnectionPoints`** (and skip cached edge picks while offsets are active); **`BezierConnection`** / **`OrthogonalConnection`** receive **`geomFrom`/`geomTo`**. **`viewer-canvas`** passes transition styles into connection text.
 

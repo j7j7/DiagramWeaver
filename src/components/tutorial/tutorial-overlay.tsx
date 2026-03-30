@@ -3,6 +3,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useTutorial } from './tutorial-provider';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { TutorialAction } from './tutorial-types';
 
@@ -333,9 +334,9 @@ export function TutorialOverlay() {
             onClick={handleBackdropAreaClick}
           />
           
-          {/* Highlight ring around target - uses primary for theme awareness */}
+          {/* Highlight ring — amber to match tutorial popup */}
           <div
-            className="absolute pointer-events-none border-primary"
+            className="absolute pointer-events-none border-amber-500 dark:border-amber-400"
             style={{
               left: `${targetRect.left - 4}px`,
               top: `${targetRect.top - 4}px`,
@@ -343,7 +344,8 @@ export function TutorialOverlay() {
               height: `${targetRect.height + 8}px`,
               borderWidth: '3px',
               borderRadius: '4px',
-              boxShadow: '0 0 0 2px hsl(var(--primary) / 0.3), 0 0 20px hsl(var(--primary) / 0.5)',
+              boxShadow:
+                '0 0 0 2px rgb(245 158 11 / 0.35), 0 0 20px rgb(245 158 11 / 0.45)',
             }}
           />
         </>
@@ -357,7 +359,7 @@ export function TutorialOverlay() {
       {/* Popup */}
       {popupPosition && (
         <div
-          className="absolute bg-popover border-2 border-primary/50 rounded-lg shadow-xl p-4 pointer-events-auto text-popover-foreground"
+          className="absolute rounded-lg border-2 border-amber-400 bg-amber-50 p-4 text-amber-950 shadow-xl pointer-events-auto dark:border-amber-500 dark:bg-amber-950/95 dark:text-amber-50"
           style={{
             left: `${popupPosition.x}px`,
             top: `${popupPosition.y}px`,
@@ -369,15 +371,16 @@ export function TutorialOverlay() {
           {/* Arrow pointing to target */}
           {targetRect && (
             <div
-              className="absolute w-0 h-0"
+              className={cn(
+                'absolute w-0 border-t-[8px] border-b-[8px] border-t-transparent border-b-transparent',
+                targetRect.right < popupPosition.x
+                  ? 'border-r-[8px] border-r-amber-50 dark:border-r-amber-950'
+                  : 'border-l-[8px] border-l-amber-50 dark:border-l-amber-950'
+              )}
               style={{
                 left: targetRect.right < popupPosition.x ? '-8px' : 'auto',
                 right: targetRect.right >= popupPosition.x ? '-8px' : 'auto',
                 top: '20px',
-                borderTop: '8px solid transparent',
-                borderBottom: '8px solid transparent',
-                borderRight: targetRect.right < popupPosition.x ? '8px solid hsl(var(--popover))' : 'none',
-                borderLeft: targetRect.right >= popupPosition.x ? '8px solid hsl(var(--popover))' : 'none',
               }}
             />
           )}
@@ -385,12 +388,17 @@ export function TutorialOverlay() {
           {/* Header */}
           <div className="flex items-start justify-between mb-2">
             <div className="flex-1">
-              <h3 className="font-semibold text-foreground text-sm">{currentStep.title}</h3>
-              <p className="text-xs text-muted-foreground mt-1">{currentStep.body}</p>
+              {currentStep.sectionLabel && (
+                <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-amber-800/95 dark:text-amber-200/90">
+                  {currentStep.sectionLabel}
+                </p>
+              )}
+              <h3 className="text-sm font-semibold text-amber-950 dark:text-amber-50">{currentStep.title}</h3>
+              <p className="mt-1 text-xs text-amber-900/85 dark:text-amber-100/90">{currentStep.body}</p>
             </div>
             <button
               onClick={close}
-              className="ml-2 text-muted-foreground hover:text-foreground"
+              className="ml-2 text-amber-700 hover:text-amber-950 dark:text-amber-300 dark:hover:text-amber-50"
               aria-label="Close tutorial"
             >
               <X className="h-4 w-4" />
@@ -398,12 +406,12 @@ export function TutorialOverlay() {
           </div>
 
           {/* Step counter */}
-          <div className="text-xs text-muted-foreground mb-3">
+          <div className="mb-3 text-xs text-amber-800/90 dark:text-amber-200/85">
             Step {currentIndex + 1} of {steps.length}
           </div>
 
           {targetMissing && (
-            <div className="mb-3 text-xs bg-muted border border-border rounded p-2">
+            <div className="mb-3 rounded border border-amber-300/80 bg-amber-100/80 p-2 text-xs text-amber-950 dark:border-amber-600 dark:bg-amber-900/60 dark:text-amber-100">
               Target not visible yet. If this step refers to a menu or panel, open it and the highlight will appear automatically.
             </div>
           )}
@@ -432,7 +440,7 @@ export function TutorialOverlay() {
           </div>
 
           {requiresClick && (
-            <div className="mt-2 text-xs text-muted-foreground text-center">
+            <div className="mt-2 text-center text-xs text-amber-800/90 dark:text-amber-200/85">
               Click the highlighted element, or press Next to do it for you
             </div>
           )}

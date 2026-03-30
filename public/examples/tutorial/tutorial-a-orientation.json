@@ -1,0 +1,21 @@
+{
+  "nodes": [
+    {
+      "id": "tutorial-orient-label",
+      "type": "generic.text.textbox",
+      "label": "Tutorial — Orientation\n\nPan: right-drag. Zoom: wheel.",
+      "x": 280,
+      "y": 220,
+      "freeflow": true,
+      "width": 360,
+      "height": 120,
+      "sizeMode": "custom",
+      "borderStyle": "solid",
+      "backgroundStyle": "solid",
+      "borderColor": "#d97706",
+      "backgroundColor": "#fffbeb",
+      "textColor": "#78350f"
+    }
+  ],
+  "connections": []
+}

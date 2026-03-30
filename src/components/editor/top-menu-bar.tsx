@@ -12,12 +12,13 @@ import {
   MenubarSubTrigger,
   MenubarSubContent,
 } from '@/components/ui/menubar';
-import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks, Network, Sun, Moon, Sparkles } from 'lucide-react';
+import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks, Network, Sun, Moon, Sparkles, Keyboard, BookOpen } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
 import { ThemeEditor } from './theme-editor';
 import { RulesEditor } from './rules-editor';
 import { ThemeMenuSelector } from './theme-menu-selector';
 import { AboutDialog } from './about-dialog';
+import { KeyboardShortcutsDialog } from './keyboard-shortcuts-dialog';
 import { ViewerUrlDialog } from './viewer-url-dialog';
 import { useTheme } from '@/components/theme-provider';
 import type { SelectedItem } from '../diagram-editor';
@@ -232,6 +233,7 @@ export function TopMenuBar({
   
   const [themeEditorOpen, setThemeEditorOpen] = React.useState(false);
   const [aboutOpen, setAboutOpen] = React.useState(false);
+  const [keyboardShortcutsOpen, setKeyboardShortcutsOpen] = React.useState(false);
   const [viewerUrlDialogOpen, setViewerUrlDialogOpen] = React.useState(false);
   const [textStylingPanelOpen, setTextStylingPanelOpen] = React.useState(false);
   const [visualStylingPanelOpen, setVisualStylingPanelOpen] = React.useState(false);
@@ -288,8 +290,8 @@ export function TopMenuBar({
 
 
   return (
-    <div className="flex items-center border-b bg-card min-h-[2.5rem] overflow-x-auto">
-      <Menubar className="rounded-none border-0 border-b-0 border-l-0 border-r-0 border-t-0 h-auto shrink-0">
+    <div className="flex w-full min-w-0 items-center border-b bg-card min-h-[2.5rem] overflow-x-auto">
+      <Menubar className="rounded-none border-0 border-b-0 border-l-0 border-r-0 border-t-0 h-auto shrink-0" data-tutorial-id="main-menubar">
         <MenubarMenu>
           <MenubarTrigger data-tutorial-id="file-menu">File</MenubarTrigger>
           <MenubarContent>
@@ -405,16 +407,6 @@ export function TopMenuBar({
                 <ViewThemeSubmenu />
               </MenubarSubContent>
             </MenubarSub>
-            <MenubarSeparator />
-            <MenubarItem onClick={() => setAboutOpen(true)}>
-              <Info className="mr-2 h-4 w-4" />
-              About
-            </MenubarItem>
-            <MenubarSeparator />
-            <MenubarItem onClick={onStartTutorial}>
-              <Info className="mr-2 h-4 w-4" />
-              Start Tutorial
-            </MenubarItem>
           </MenubarContent>
         </MenubarMenu>
         <MenubarMenu>
@@ -788,6 +780,28 @@ export function TopMenuBar({
         </div>
       )}
 
+      <Menubar className="ml-auto shrink-0 rounded-none border-0 border-b-0 border-l-0 border-r-0 border-t-0 h-auto">
+        <MenubarMenu>
+          <MenubarTrigger data-tutorial-id="help-menu">Help</MenubarTrigger>
+          <MenubarContent>
+            <MenubarItem onClick={() => setKeyboardShortcutsOpen(true)}>
+              <Keyboard className="mr-2 h-4 w-4" />
+              Keyboard shortcuts
+            </MenubarItem>
+            {onStartTutorial && (
+              <MenubarItem onClick={onStartTutorial}>
+                <BookOpen className="mr-2 h-4 w-4" />
+                Interactive tutorial
+              </MenubarItem>
+            )}
+            <MenubarItem onClick={() => setAboutOpen(true)}>
+              <Info className="mr-2 h-4 w-4" />
+              About
+            </MenubarItem>
+          </MenubarContent>
+        </MenubarMenu>
+      </Menubar>
+
       
       {/* Theme Editor Dialog */}
       <ThemeEditor 
@@ -801,6 +815,11 @@ export function TopMenuBar({
       <AboutDialog
         open={aboutOpen}
         onOpenChange={setAboutOpen}
+      />
+
+      <KeyboardShortcutsDialog
+        open={keyboardShortcutsOpen}
+        onOpenChange={setKeyboardShortcutsOpen}
       />
       
       {/* Viewer URL Dialog */}

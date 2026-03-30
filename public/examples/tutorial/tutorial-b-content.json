@@ -1,0 +1,44 @@
+{
+  "nodes": [
+    {
+      "id": "tutorial-shape-a",
+      "type": "generic.object.rounded-rectangle",
+      "label": "Step A",
+      "x": 220,
+      "y": 240,
+      "freeflow": true,
+      "borderColor": "#2563eb",
+      "backgroundColor": "#eff6ff",
+      "textColor": "#1e3a8a",
+      "borderStyle": "solid",
+      "backgroundStyle": "solid"
+    },
+    {
+      "id": "tutorial-shape-b",
+      "type": "generic.object.rounded-rectangle",
+      "label": "Step B",
+      "x": 520,
+      "y": 240,
+      "freeflow": true,
+      "borderColor": "#059669",
+      "backgroundColor": "#ecfdf5",
+      "textColor": "#064e3b",
+      "borderStyle": "solid",
+      "backgroundStyle": "solid"
+    },
+    {
+      "id": "tutorial-shape-c",
+      "type": "generic.object.rounded-rectangle",
+      "label": "Step C",
+      "x": 370,
+      "y": 420,
+      "freeflow": true,
+      "borderColor": "#7c3aed",
+      "backgroundColor": "#f5f3ff",
+      "textColor": "#4c1d95",
+      "borderStyle": "solid",
+      "backgroundStyle": "solid"
+    }
+  ],
+  "connections": []
+}

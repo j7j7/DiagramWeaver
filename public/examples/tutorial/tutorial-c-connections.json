@@ -1,0 +1,42 @@
+{
+  "nodes": [
+    {
+      "id": "tutorial-conn-from",
+      "type": "generic.object.rounded-rectangle",
+      "label": "From",
+      "x": 260,
+      "y": 300,
+      "freeflow": true,
+      "borderColor": "#0ea5e9",
+      "backgroundColor": "#f0f9ff",
+      "textColor": "#0c4a6e",
+      "borderStyle": "solid",
+      "backgroundStyle": "solid"
+    },
+    {
+      "id": "tutorial-conn-to",
+      "type": "generic.object.rounded-rectangle",
+      "label": "To",
+      "x": 560,
+      "y": 300,
+      "freeflow": true,
+      "borderColor": "#0ea5e9",
+      "backgroundColor": "#f0f9ff",
+      "textColor": "#0c4a6e",
+      "borderStyle": "solid",
+      "backgroundStyle": "solid"
+    }
+  ],
+  "connections": [
+    {
+      "id": "tutorial-sample-link",
+      "from": "tutorial-conn-from",
+      "to": "tutorial-conn-to",
+      "arrow": true,
+      "style": "bezier",
+      "color": "#0284c7",
+      "text": "connection",
+      "textPosition": 50
+    }
+  ]
+}

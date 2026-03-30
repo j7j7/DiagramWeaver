@@ -1,6 +1,7 @@
 "use client";
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { TutorialStep, TutorialState } from './tutorial-types';
+import { getTutorialSteps } from './tutorial-steps';
 
 const TUTORIAL_COMPLETION_KEY = 'dw:tutorial:completed:v1';
 
@@ -18,7 +19,14 @@ interface TutorialContextValue {
 
 const TutorialContext = createContext<TutorialContextValue | undefined>(undefined);
 
-export function TutorialProvider({ children }: { children: React.ReactNode }) {
+export function TutorialProvider({
+  children,
+  onLoadTutorialExample,
+}: {
+  children: React.ReactNode;
+  /** Called when the active step includes `loadExampleId` (replaces the active tab diagram). */
+  onLoadTutorialExample?: (exampleId: string) => void | Promise<void>;
+}) {
   const [state, setState] = useState<TutorialState>({
     isOpen: false,
     steps: [],
@@ -82,46 +90,27 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  // When the active step defines a tutorial example, load it into the editor (active tab).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!state.isOpen || state.steps.length === 0) return;
+    const step = state.steps[state.currentIndex];
+    const id = step?.loadExampleId;
+    if (id && onLoadTutorialExample) {
+      void Promise.resolve(onLoadTutorialExample(id));
+    }
+  }, [state.isOpen, state.currentIndex, state.steps, onLoadTutorialExample]);
+
   // Auto-start on first visit (only if not completed)
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    
-    // Check completion status directly
+
     const completed = localStorage.getItem(TUTORIAL_COMPLETION_KEY) === 'true';
-    
-    // Only auto-start if tutorial hasn't been completed
+
     if (!completed) {
-      // Use a small delay to ensure DOM is ready
       const timer = setTimeout(() => {
-        // Default placeholder steps - can be replaced later
-        const defaultSteps: TutorialStep[] = [
-          {
-            id: 'step-1',
-            title: 'Welcome to DiagramWeaver',
-            body: 'Click the File menu to open it. You can create new diagrams, load existing ones, and save your work here.',
-            target: 'file-menu',
-            requiresTargetClick: true,
-            autoActionsOnNext: [{ type: 'click', target: 'file-menu' }],
-          },
-          {
-            id: 'step-2',
-            title: 'Edit menu',
-            body: 'The Edit menu has actions like copy/paste and undo/redo. Press Next to open it automatically.',
-            target: 'edit-menu',
-            requiresTargetClick: true,
-            autoActionsOnNext: [{ type: 'click', target: 'edit-menu' }],
-          },
-          {
-            id: 'step-3',
-            title: 'Tutorial complete',
-            body: 'You’re all set. You can run this tutorial again any time from File → Start Tutorial.',
-            target: 'canvas',
-            mode: 'message',
-            requiresTargetClick: false,
-          },
-        ];
-        start(defaultSteps);
-      }, 500);
+        start(getTutorialSteps());
+      }, 800);
       return () => clearTimeout(timer);
     }
   }, [start]);

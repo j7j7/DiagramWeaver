@@ -203,7 +203,7 @@ export function useCanvasTransform({
     }
 
     // Add padding around content
-    const padding = 40;
+    const padding = 50;
     
     // Calculate available space (viewport minus padding on both sides)
     const availableWidth = viewportWidth - (2 * padding);

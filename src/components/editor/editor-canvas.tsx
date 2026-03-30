@@ -953,9 +953,6 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   // See: src/hooks/use-canvas-export.ts
   const { exportPng, exportGif, startExport, captureViewportPngDataUrl } = useCanvasExport({
     canvasRef,
-    transform,
-    width,
-    height,
     toast,
     diagramData,
     processedNodes,
@@ -1354,6 +1351,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               applies pan (x, y) and zoom (scale k) transformations.
           */}
           <div
+            data-diagram-layer
             className="relative dot-grid"
             style={{
               width: `${width}px`,

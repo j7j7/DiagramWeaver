@@ -13,6 +13,10 @@ export interface TutorialStep {
   title: string;
   body: string;
   target: string; // CSS selector or data-tutorial-id
+  /** Shown above the title when the tutorial is split into sections (e.g. chapter labels). */
+  sectionLabel?: string;
+  /** Loads `/public/examples/tutorial/{id}.json` into the active tab when the step is shown. */
+  loadExampleId?: string;
   /**
    * - focus: dim + highlight a target (default)
    * - message: show a centered message without dimming/highlight

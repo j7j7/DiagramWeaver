@@ -59,6 +59,7 @@ const ScratchPad = dynamic(() => import('./editor/scratch-pad').then(mod => ({ d
   ssr: false,
 });
 import { TutorialProvider, useTutorial } from './tutorial/tutorial-provider';
+import { getTutorialSteps } from './tutorial/tutorial-steps';
 import { TutorialOverlay } from './tutorial/tutorial-overlay';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { 
@@ -3213,6 +3214,53 @@ export default function DiagramEditor() {
     }
   }, [parseUnknownJsonToDiagramData, createTab, toast]);
 
+  const tutorialExampleTabNames: Record<string, string> = {
+    'tutorial-a-orientation': 'Tutorial: Orientation',
+    'tutorial-b-content': 'Tutorial: Diagram content',
+    'tutorial-c-connections': 'Tutorial: Connections',
+  };
+
+  const activeTabIdRef = React.useRef(activeTabId);
+  activeTabIdRef.current = activeTabId;
+
+  const handleLoadTutorialExample = React.useCallback(
+    async (exampleId: string) => {
+      let tabId = activeTabIdRef.current;
+      if (!isLoaded || !tabId) {
+        await new Promise((r) => window.setTimeout(r, 450));
+        tabId = activeTabIdRef.current;
+      }
+      if (!tabId) return;
+
+      try {
+        const res = await fetch(`/examples/tutorial/${exampleId}.json`);
+        if (!res.ok) {
+          throw new Error(`Failed to load tutorial example: ${res.statusText}`);
+        }
+        const text = await res.text();
+        const json = JSON.parse(text) as unknown;
+        const diagram = parseUnknownJsonToDiagramData(json);
+        const serialized = JSON.stringify(diagram);
+        const name = tutorialExampleTabNames[exampleId] ?? `Tutorial: ${exampleId}`;
+        updateActiveTab({
+          diagramData: diagram,
+          name,
+          selectedItem: null,
+          selectedItemIds: new Set(),
+          history: [serialized],
+          historyIndex: 0,
+          isConnectMode: false,
+        });
+        setHistoryRef(tabId, { history: [serialized], index: 0 });
+        window.setTimeout(() => editorRef.current?.fitToView(), 150);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        toast({ variant: 'destructive', title: 'Tutorial example failed', description: message });
+      }
+    },
+    [isLoaded, parseUnknownJsonToDiagramData, setHistoryRef, updateActiveTab, toast]
+  );
+
   const handleMenuCopy = () => {
     if (selectedResource) {
       const item = createPaletteItem(selectedResource.resource, selectedResource.provider, selectedResource.category);
@@ -4487,15 +4535,9 @@ export default function DiagramEditor() {
 
   const canPasteFromMenu = paletteClipboardItem != null || canPaste;
 
-  // Tutorial integration
-  const handleStartTutorial = React.useCallback(() => {
-    // This will be called from TopMenuBar, but we need to access the tutorial context
-    // So we'll pass it through a ref or use a different approach
-  }, []);
-
   return (
     <TooltipProvider>
-    <TutorialProvider>
+    <TutorialProvider onLoadTutorialExample={handleLoadTutorialExample}>
       <DiagramEditorInner
         canPasteFromMenu={canPasteFromMenu}
         isMobile={isMobile}
@@ -4911,32 +4953,7 @@ function DiagramEditorInner({
   const { start } = useTutorial();
   
   const handleStartTutorial = React.useCallback(() => {
-    start([
-      {
-        id: 'step-1',
-        title: 'Welcome to DiagramWeaver',
-        body: 'Click the File menu to open it. If you don’t want to, press Next and the tutorial will do it for you.',
-        target: 'file-menu',
-        requiresTargetClick: true,
-        autoActionsOnNext: [{ type: 'click', target: 'file-menu' }],
-      },
-      {
-        id: 'step-2',
-        title: 'Edit menu',
-        body: 'The Edit menu has actions like copy/paste and undo/redo. Click it, or press Next to open it automatically.',
-        target: 'edit-menu',
-        requiresTargetClick: true,
-        autoActionsOnNext: [{ type: 'click', target: 'edit-menu' }],
-      },
-      {
-        id: 'step-3',
-        title: 'Tutorial complete',
-        body: 'You’re all set. You can run this tutorial again any time from File → Start Tutorial.',
-        target: 'canvas',
-        mode: 'message',
-        requiresTargetClick: false,
-      },
-    ]);
+    start(getTutorialSteps());
   }, [start]);
 
   return (

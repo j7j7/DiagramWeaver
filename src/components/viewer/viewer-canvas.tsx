@@ -392,6 +392,7 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
 
         {/* Canvas content */}
       <div
+        data-diagram-layer
         className="absolute dot-grid"
         data-viewer-background
         style={{

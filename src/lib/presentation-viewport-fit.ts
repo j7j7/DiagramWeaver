@@ -107,6 +107,72 @@ export function computeContentBounds(
   return { minX, minY, maxX, maxY };
 }
 
+/**
+ * Like {@link computeContentBounds} but expands the box to include connection waypoints and a
+ * margin for stroke width, bezier overshoot, and arrowheads — content that can extend past
+ * node/zone AABBs (tight PNG export uses this so lines are not clipped).
+ */
+export function computeExportContentBounds(
+  diagramData: DiagramData,
+  processedNodes: PositionedNode[],
+  processedZones: PositionedGroup[]
+): ContentBounds | null {
+  const base = computeContentBounds(processedNodes, processedZones);
+  if (!base) return null;
+
+  let minX = base.minX;
+  let minY = base.minY;
+  let maxX = base.maxX;
+  let maxY = base.maxY;
+
+  for (const conn of diagramData.connections ?? []) {
+    for (const wp of conn.waypoints ?? []) {
+      if (
+        typeof wp.x === 'number' &&
+        typeof wp.y === 'number' &&
+        Number.isFinite(wp.x) &&
+        Number.isFinite(wp.y)
+      ) {
+        minX = Math.min(minX, wp.x);
+        minY = Math.min(minY, wp.y);
+        maxX = Math.max(maxX, wp.x);
+        maxY = Math.max(maxY, wp.y);
+      }
+    }
+  }
+
+  const curvePad = 40;
+  return {
+    minX: minX - curvePad,
+    minY: minY - curvePad,
+    maxX: maxX + curvePad,
+    maxY: maxY + curvePad,
+  };
+}
+
+/** Union of {@link computeExportContentBounds} across diagrams (e.g. presentation deck). */
+export function computeUnionExportContentBounds(diagrams: DiagramData[]): ContentBounds | null {
+  let unionMinX = Infinity;
+  let unionMinY = Infinity;
+  let unionMaxX = -Infinity;
+  let unionMaxY = -Infinity;
+  let hasAny = false;
+
+  for (const diagram of diagrams) {
+    const { processedNodes, processedZones } = calculateLayout(diagram);
+    const b = computeExportContentBounds(diagram, processedNodes, processedZones);
+    if (!b) continue;
+    hasAny = true;
+    unionMinX = Math.min(unionMinX, b.minX);
+    unionMinY = Math.min(unionMinY, b.minY);
+    unionMaxX = Math.max(unionMaxX, b.maxX);
+    unionMaxY = Math.max(unionMaxY, b.maxY);
+  }
+
+  if (!hasAny) return null;
+  return { minX: unionMinX, minY: unionMinY, maxX: unionMaxX, maxY: unionMaxY };
+}
+
 /** Pan/zoom to fit bounds in viewport (matches viewer `handleToView` math). */
 export function transformToFitBounds(
   bounds: ContentBounds,
@@ -137,6 +203,31 @@ export function transformToFitBounds(
   const y = viewportCenterY - contentCenterY * k;
 
   return { x, y, k };
+}
+
+/**
+ * PNG pixel size and clone transform so the bitmap tightly wraps diagram content at the same
+ * scale as `fitTransform.k`, with `borderPadPx` empty margin on each side in output pixels.
+ */
+export function computeTightPngFrameForBounds(
+  bounds: ContentBounds,
+  fitTransform: Transform,
+  borderPadPx: number
+): { width: number; height: number; transform: Transform } {
+  const k = fitTransform.k;
+  const { minX, minY, maxX, maxY } = bounds;
+  const cw = maxX - minX;
+  const ch = maxY - minY;
+  const wPx = cw * k;
+  const hPx = ch * k;
+  const width = Math.max(1, Math.ceil(wPx + 1e-4) + 2 * borderPadPx);
+  const height = Math.max(1, Math.ceil(hPx + 1e-4) + 2 * borderPadPx);
+  const transform: Transform = {
+    x: borderPadPx - minX * k,
+    y: borderPadPx - minY * k,
+    k,
+  };
+  return { width, height, transform };
 }
 
 /** Center content at a fixed zoom (same x/y math as fit, but k is chosen by the slide). */
@@ -191,16 +282,8 @@ export function computeSlidePlaybackTransform(
   return transformToFitBoundsWithFixedZoom(bounds, viewportWidth, viewportHeight, k);
 }
 
-/**
- * One camera for all slides: union of every slide’s layout bounds, then fit that
- * rectangle to the viewport so no slide’s content is clipped at the chosen zoom.
- */
-export function computeUnionFitTransformForDiagrams(
-  diagrams: DiagramData[],
-  viewportWidth: number,
-  viewportHeight: number,
-  padding = 40
-): Transform | null {
+/** Union axis-aligned bounds of every diagram’s layout (same geometry as union-fit zoom). */
+export function computeUnionContentBounds(diagrams: DiagramData[]): ContentBounds | null {
   let unionMinX = Infinity;
   let unionMinY = Infinity;
   let unionMaxX = -Infinity;
@@ -219,12 +302,22 @@ export function computeUnionFitTransformForDiagrams(
   }
 
   if (!hasAny) return null;
-  return transformToFitBounds(
-    { minX: unionMinX, minY: unionMinY, maxX: unionMaxX, maxY: unionMaxY },
-    viewportWidth,
-    viewportHeight,
-    padding
-  );
+  return { minX: unionMinX, minY: unionMinY, maxX: unionMaxX, maxY: unionMaxY };
+}
+
+/**
+ * One camera for all slides: union of every slide’s layout bounds, then fit that
+ * rectangle to the viewport so no slide’s content is clipped at the chosen zoom.
+ */
+export function computeUnionFitTransformForDiagrams(
+  diagrams: DiagramData[],
+  viewportWidth: number,
+  viewportHeight: number,
+  padding = 40
+): Transform | null {
+  const bounds = computeUnionContentBounds(diagrams);
+  if (!bounds) return null;
+  return transformToFitBounds(bounds, viewportWidth, viewportHeight, padding);
 }
 
 /** Matches `handleFitToView` in `use-canvas-transform`: clip element rect to the window. */

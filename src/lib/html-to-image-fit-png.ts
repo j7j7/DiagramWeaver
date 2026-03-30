@@ -13,9 +13,15 @@ import type { Options } from 'html-to-image/lib/types';
 import type { Transform } from '@/hooks/use-canvas-transform';
 
 /**
- * Same as html-to-image `toPng`, but after cloning the DOM, overrides the `.dot-grid` transform.
- * Used so snapshot PNGs can show fit-to-content framing without changing the live canvas pan/zoom.
+ * Same as html-to-image `toPng`, but after cloning, overrides the diagram layer transform.
+ * Uses `[data-diagram-layer]` so export still finds the node when `.dot-grid` is temporarily removed.
  */
+function applyExportDotGridTransform(dotGrid: HTMLElement, dotGridTransform: Transform) {
+  const v = `translate(${dotGridTransform.x}px, ${dotGridTransform.y}px) scale(${dotGridTransform.k})`;
+  dotGrid.style.setProperty('transform', v, 'important');
+  dotGrid.style.setProperty('transform-origin', '0 0', 'important');
+}
+
 export async function toPngWithDotGridTransform(
   node: HTMLElement,
   options: Options,
@@ -26,14 +32,15 @@ export async function toPngWithDotGridTransform(
   if (!clonedNode) {
     throw new Error('html-to-image clone failed');
   }
-  const dotGrid = clonedNode.querySelector('.dot-grid') as HTMLElement | null;
-  if (dotGrid) {
-    dotGrid.style.transform = `translate(${dotGridTransform.x}px, ${dotGridTransform.y}px) scale(${dotGridTransform.k})`;
-    dotGrid.style.transformOrigin = '0 0';
-  }
   await embedWebFonts(clonedNode, options);
   await embedImages(clonedNode, options);
   applyStyle(clonedNode, options);
+  const diagramLayer =
+    (clonedNode.querySelector('[data-diagram-layer]') as HTMLElement | null)
+    ?? (clonedNode.querySelector('.dot-grid') as HTMLElement | null);
+  if (diagramLayer) {
+    applyExportDotGridTransform(diagramLayer, dotGridTransform);
+  }
   const datauri = await nodeToDataURL(clonedNode, width, height);
   const img = await createImage(datauri);
   const canvas = document.createElement('canvas');
