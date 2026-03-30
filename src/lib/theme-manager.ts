@@ -1199,6 +1199,10 @@ class ThemeManager {
     }
     if (properties.borderColors !== undefined) {
       (updated as any).borderColors = properties.borderColors;
+      // Keep legacy single-color field in sync for renderers that still read borderColor.
+      if (properties.borderColors.length > 0) {
+        (updated as any).borderColor = properties.borderColors[0];
+      }
     }
     if (properties.borderWidth !== undefined) {
       (updated as any).borderWidth = properties.borderWidth;
@@ -1213,6 +1217,10 @@ class ThemeManager {
     }
     if (properties.backgroundColors !== undefined) {
       (updated as any).backgroundColors = properties.backgroundColors;
+      // Keep legacy single-color field in sync for renderers that still read backgroundColor.
+      if (properties.backgroundColors.length > 0) {
+        (updated as any).backgroundColor = properties.backgroundColors[0];
+      }
     }
 
     // Apply line properties (for connections)

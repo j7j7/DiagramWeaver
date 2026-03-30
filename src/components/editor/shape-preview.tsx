@@ -71,11 +71,24 @@ export function ShapePreview({
 }: ShapePreviewProps) {
   const gradientId = useId();
   const borderGradientId = useId();
+  const isPlainRectangle = type === 'generic.object.rectangle' || type?.endsWith('.rectangle');
+  const isDefaultRectanglePreview =
+    isPlainRectangle &&
+    backgroundColor === undefined &&
+    backgroundColors === undefined &&
+    fill === undefined &&
+    borderColor === undefined &&
+    borderColors === undefined &&
+    stroke === undefined;
 
   // Use provided colors or fallback to fill/stroke for backward compatibility
   // Only apply defaults if NO color is provided at all
-  const effectiveBackgroundColor = backgroundColor !== undefined ? backgroundColor : (fill !== undefined ? fill : '#6b7280');
-  const effectiveBorderColor = borderColor !== undefined ? borderColor : (stroke !== undefined ? stroke : '#6b7280');
+  const effectiveBackgroundColor = backgroundColor !== undefined
+    ? backgroundColor
+    : (fill !== undefined ? fill : (isDefaultRectanglePreview ? '#ecfccb' : '#6b7280'));
+  const effectiveBorderColor = borderColor !== undefined
+    ? borderColor
+    : (stroke !== undefined ? stroke : (isDefaultRectanglePreview ? '#57534e' : '#6b7280'));
   
   // Normalize dimensions to fit in the preview area while maintaining aspect ratio if needed
   // For scratchpad, we usually want a fixed square-ish preview
@@ -85,13 +98,16 @@ export function ShapePreview({
   // Handle background colors array - ensure we have valid colors
   const bgColors = backgroundColors && backgroundColors.length >= 2 
     ? backgroundColors 
-    : [effectiveBackgroundColor, effectiveBackgroundColor];
+    : [effectiveBackgroundColor, isDefaultRectanglePreview ? '#d9f99d' : effectiveBackgroundColor];
   const borderColorArray = borderColors && borderColors.length >= 2
     ? borderColors
-    : [effectiveBorderColor, effectiveBorderColor];
+    : [effectiveBorderColor, isDefaultRectanglePreview ? '#78716c' : effectiveBorderColor];
   
   // Ensure backgroundStyle defaults to 'solid' if not provided (matching canvas behavior)
-  const effectiveBackgroundStyle = backgroundStyle !== undefined ? backgroundStyle : 'solid';
+  const effectiveBackgroundStyle =
+    isDefaultRectanglePreview
+      ? 'gradient'
+      : (backgroundStyle !== undefined ? backgroundStyle : 'solid');
   
 
 
