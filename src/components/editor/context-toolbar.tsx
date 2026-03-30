@@ -1105,7 +1105,8 @@ export function ContextToolbar({
       borderWidth: undefined,
       iconColor: undefined,
       nodeSize: undefined,
-      headingBackgroundColor: undefined
+      headingBackgroundColor: undefined,
+      headingBackgroundStyle: undefined
     };
     
     // Check if multiple items are selected

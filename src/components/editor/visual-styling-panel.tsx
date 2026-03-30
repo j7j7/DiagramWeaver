@@ -440,6 +440,28 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                   )}
                   {isTextBoxHeading && (
                     <div className="space-y-2">
+                      <Label className="text-sm text-muted-foreground">Heading background</Label>
+                      <Select
+                        value={styling.headingBackgroundStyle === "solid" ? "solid" : "gradient"}
+                        onValueChange={(v) =>
+                          handlePropertyChange(
+                            "headingBackgroundStyle",
+                            v === "solid" ? "solid" : "gradient"
+                          )
+                        }
+                      >
+                        <SelectTrigger className="h-9 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="z-[70]">
+                          <SelectItem value="gradient" className="text-sm">
+                            Gradient (fade to transparent)
+                          </SelectItem>
+                          <SelectItem value="solid" className="text-sm">
+                            Solid
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
                       <Label className="text-sm text-muted-foreground">Heading color</Label>
                       <ColorPicker
                         value={

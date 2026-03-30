@@ -15,8 +15,10 @@ export interface VisualStyling {
   borderWidth?: number; // Border thickness
   roundedEdges?: boolean; // Whether to apply rounded edges to shapes
   cornerRadius?: number; // Rounded-rectangle only: 0=straight, 1=full pill
-  /** Text box with heading: gradient start color for the heading strip */
+  /** Text box with heading: fill color for the heading strip */
   headingBackgroundColor?: string;
+  /** Text box with heading: `gradient` = fade to transparent; `solid` = flat fill */
+  headingBackgroundStyle?: 'gradient' | 'solid';
   iconColor?: string; // Color for Lucide icons (context-aware, icons only)
   noIconBackground?: boolean; // Remove background from icon/resource nodes
   nodeSize?: 'normal' | 'half' | 'quarter'; // Size mode for nodes and icons
@@ -211,6 +213,7 @@ export function extractVisualStylingFromNode(node: DiagramNodeData | DiagramNode
     roundedEdges: (node as any).roundedEdges,
     cornerRadius: (node as any).cornerRadius,
     headingBackgroundColor: (node as any).headingBackgroundColor,
+    headingBackgroundStyle: (node as any).headingBackgroundStyle,
     iconColor: (node as DiagramNodeData).iconColor,
     noIconBackground: (node as any).noIconBackground,
     nodeSize: (node as any).nodeSize
@@ -273,6 +276,10 @@ export function applyVisualStylingToNode(
     cornerRadius: styling.cornerRadius !== undefined ? styling.cornerRadius : (node as any).cornerRadius,
     headingBackgroundColor:
       styling.headingBackgroundColor !== undefined ? styling.headingBackgroundColor : (node as any).headingBackgroundColor,
+    headingBackgroundStyle:
+      styling.headingBackgroundStyle !== undefined
+        ? styling.headingBackgroundStyle
+        : (node as any).headingBackgroundStyle,
     iconColor: styling.iconColor !== undefined ? styling.iconColor : (node as DiagramNodeData).iconColor,
     noIconBackground: styling.noIconBackground !== undefined ? styling.noIconBackground : (node as any).noIconBackground,
     nodeSize: styling.nodeSize !== undefined ? styling.nodeSize : (node as any).nodeSize

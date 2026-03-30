@@ -216,6 +216,7 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
         (p as any).headingLabel !== (n as any).headingLabel ||
         JSON.stringify((p as any).richHeadingLabel) !== JSON.stringify((n as any).richHeadingLabel) ||
         (p as any).headingBackgroundColor !== (n as any).headingBackgroundColor ||
+        (p as any).headingBackgroundStyle !== (n as any).headingBackgroundStyle ||
         (p as any).headingTextColor !== (n as any).headingTextColor) {
       return false;
     }

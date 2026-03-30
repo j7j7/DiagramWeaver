@@ -73,8 +73,10 @@ export interface DiagramNodeData {
   /** Heading text (separate from main body label) */
   headingLabel?: string;
   richHeadingLabel?: RichTextRun[];
-  /** Heading strip gradient starts from this color (fades toward the body) */
+  /** Heading strip fill color (see `headingBackgroundStyle`) */
   headingBackgroundColor?: string;
+  /** Heading strip: `gradient` = fade color to transparent into body; `solid` = uniform fill */
+  headingBackgroundStyle?: 'gradient' | 'solid';
   /** Heading strip text color (body uses `textColor`) */
   headingTextColor?: string;
   objectStyle?: string; // Predefined visual style key (e.g., 'solid', 'gradient', 'modern', etc.)
@@ -254,6 +256,7 @@ export interface DiagramNodeItem {
   headingLabel?: string;
   richHeadingLabel?: RichTextRun[];
   headingBackgroundColor?: string;
+  headingBackgroundStyle?: 'gradient' | 'solid';
   headingTextColor?: string;
   objectStyle?: string; // Predefined visual style key (e.g., 'solid', 'gradient', 'modern', etc.)
   

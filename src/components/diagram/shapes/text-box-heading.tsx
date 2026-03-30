@@ -218,6 +218,7 @@ export function TextBoxHeadingShape(props: TextBoxHeadingShapeProps) {
   }, [edge, w, h, isEditingHeading]);
 
   const headingColor = nodeAny.headingBackgroundColor || "#1f2937";
+  const headingBgSolid = nodeAny.headingBackgroundStyle === "solid";
 
   const { defs, fillRef, strokeRef } = useSvgGradient({
     colors: backgroundStyle === "gradient" ? backgroundColors : [backgroundColors[0]],
@@ -436,10 +437,12 @@ export function TextBoxHeadingShape(props: TextBoxHeadingShapeProps) {
             <clipPath id={`${uid}-shape-clip`} clipPathUnits="userSpaceOnUse">
               <rect x={half} y={half} width={w} height={h} rx={rx} ry={ry} />
             </clipPath>
-            <linearGradient id={headingGradId} x1={gX1} y1={gY1} x2={gX2} y2={gY2} gradientUnits="objectBoundingBox">
-              <stop offset="0%" stopColor={headingColor} stopOpacity={1} />
-              <stop offset="100%" stopColor={headingColor} stopOpacity={0} />
-            </linearGradient>
+            {!headingBgSolid ? (
+              <linearGradient id={headingGradId} x1={gX1} y1={gY1} x2={gX2} y2={gY2} gradientUnits="objectBoundingBox">
+                <stop offset="0%" stopColor={headingColor} stopOpacity={1} />
+                <stop offset="100%" stopColor={headingColor} stopOpacity={0} />
+              </linearGradient>
+            ) : null}
           </defs>
           <g clipPath={`url(#${uid}-shape-clip)`}>
             <rect
@@ -451,7 +454,10 @@ export function TextBoxHeadingShape(props: TextBoxHeadingShapeProps) {
               ry={ry}
               fill={fillColor}
             />
-            <path d={headingPath} fill={`url(#${headingGradId})`} />
+            <path
+              d={headingPath}
+              fill={headingBgSolid ? headingColor : `url(#${headingGradId})`}
+            />
           </g>
           <rect
             x={half}

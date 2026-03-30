@@ -26,6 +26,8 @@ interface ShapePreviewProps {
   shadow?: boolean;
   roundedEdges?: boolean;
   cornerRadius?: number; // Rounded-rectangle only: 0=straight, 1=full
+  headingBackgroundColor?: string;
+  headingBackgroundStyle?: 'gradient' | 'solid';
 }
 
 // Helper function to convert gradient angle to SVG coordinates
@@ -67,7 +69,9 @@ export function ShapePreview({
   textDecoration,
   shadow = false,
   roundedEdges = false,
-  cornerRadius = 0.2
+  cornerRadius = 0.2,
+  headingBackgroundColor: headingBgColorProp,
+  headingBackgroundStyle: headingBgStyleProp
 }: ShapePreviewProps) {
   const gradientId = useId();
   const borderGradientId = useId();
@@ -102,6 +106,9 @@ export function ShapePreview({
   };
 
   const borderCoords = getGradientCoordinates(borderGradientAngle ?? gradientAngle);
+
+  const headingStripColor = headingBgColorProp ?? '#1f2937';
+  const headingStripSolid = headingBgStyleProp === 'solid';
 
   const renderShape = () => {
     // Circle
@@ -708,10 +715,12 @@ export function ShapePreview({
                 <stop offset="100%" stopColor={borderColorArray[1]} />
               </linearGradient>
             )}
-            <linearGradient id={hdg} x1="0%" y1="0%" x2="0%" y2="100%" gradientUnits="objectBoundingBox">
-              <stop offset="0%" stopColor="#1f2937" stopOpacity={1} />
-              <stop offset="100%" stopColor="#1f2937" stopOpacity={0} />
-            </linearGradient>
+            {!headingStripSolid && (
+              <linearGradient id={hdg} x1="0%" y1="0%" x2="0%" y2="100%" gradientUnits="objectBoundingBox">
+                <stop offset="0%" stopColor={headingStripColor} stopOpacity={1} />
+                <stop offset="100%" stopColor={headingStripColor} stopOpacity={0} />
+              </linearGradient>
+            )}
           </defs>
           <rect
             x={sw / 2}
@@ -724,7 +733,7 @@ export function ShapePreview({
           />
           <path
             d={`M ${hx1 + radius} ${hy1} L ${hx2 - radius} ${hy1} Q ${hx2} ${hy1} ${hx2} ${hy1 + radius} L ${hx2} ${hb} L ${hx1} ${hb} L ${hx1} ${hy1 + radius} Q ${hx1} ${hy1} ${hx1 + radius} ${hy1} Z`}
-            fill={`url(#${hdg})`}
+            fill={headingStripSolid ? headingStripColor : `url(#${hdg})`}
           />
           <rect
             x={sw / 2}

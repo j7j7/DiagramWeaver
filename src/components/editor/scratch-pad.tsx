@@ -470,6 +470,8 @@ const DraggableShape = ({ item, data }: { item: ScratchPadItem; data: any }) => 
             shadow={itemData.shadow}
             roundedEdges={(itemData as { roundedEdges?: boolean }).roundedEdges}
             cornerRadius={(itemData as { cornerRadius?: number }).cornerRadius}
+            headingBackgroundColor={(itemData as { headingBackgroundColor?: string }).headingBackgroundColor}
+            headingBackgroundStyle={(itemData as { headingBackgroundStyle?: 'gradient' | 'solid' }).headingBackgroundStyle}
           />
         </CardContent>
       </Card>
