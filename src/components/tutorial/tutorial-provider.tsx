@@ -1,5 +1,13 @@
 "use client";
-import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+} from 'react';
 import type { TutorialStep, TutorialState } from './tutorial-types';
 import { getTutorialSteps } from './tutorial-steps';
 
@@ -106,7 +114,15 @@ export function TutorialProvider({
   // identity on every render (e.g. unstable deps), which would re-fetch and reset selection on every click.
   const lastTutorialLoadKeyRef = useRef<string>('');
 
-  // When the active step defines a tutorial example, load it into the editor (active tab).
+  // Before child effects run: refocus the dedicated tutorial tab on every step so the canvas matches
+  // the tab that receives `loadExampleId` JSON (steps without a load still need the tutorial diagram visible).
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!state.isOpen || state.steps.length === 0) return;
+    onTutorialSessionStart?.();
+  }, [state.currentIndex, state.isOpen, state.steps.length, onTutorialSessionStart]);
+
+  // When the active step defines a tutorial example, load it into the dedicated tutorial tab.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (!state.isOpen || state.steps.length === 0) {

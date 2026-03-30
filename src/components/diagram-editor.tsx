@@ -3302,7 +3302,9 @@ export default function DiagramEditor() {
         const json = JSON.parse(text) as unknown;
         const diagram = parseUnknownJsonToDiagramData(json);
         const serialized = JSON.stringify(diagram);
-        const tabId = tabsRef.current.find((t) => t.isTutorialTab)?.id;
+        const tabId = tabsRef.current.find(
+          (t) => t.isTutorialTab === true || t.name === TUTORIAL_TAB_NAME
+        )?.id;
         if (!tabId) return;
 
         updateTab(tabId, {
@@ -3315,18 +3317,38 @@ export default function DiagramEditor() {
           isConnectMode: false,
         });
         setHistoryRef(tabId, { history: [serialized], index: 0 });
+        switchTab(tabId);
         window.setTimeout(() => editorRef.current?.fitToView(), 150);
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
         toast({ variant: 'destructive', title: 'Tutorial example failed', description: message });
       }
     },
-    [isLoaded, parseUnknownJsonToDiagramData, setHistoryRef, updateTab, toast, ensureTutorialTab]
+    [isLoaded, parseUnknownJsonToDiagramData, setHistoryRef, updateTab, toast, ensureTutorialTab, switchTab]
+  );
+
+  /** Mutate the dedicated tutorial tab's diagram (not necessarily the active tab). */
+  const updateTutorialDiagramData = React.useCallback(
+    (updater: (prev: DiagramData) => DiagramData) => {
+      const tabId = tabsRef.current.find(
+        (t) => t.isTutorialTab === true || t.name === TUTORIAL_TAB_NAME
+      )?.id;
+      if (!tabId) return;
+      const tab = getTab(tabId);
+      if (!tab) return;
+      const newData = updater(tab.diagramData);
+      const connections = newData.connections || [];
+      const needsIds = connections.some((c: DiagramConnectionData) => !(c as DiagramConnectionData).id);
+      const ensuredConnections = needsIds ? ensureConnectionIds(connections) : connections;
+      const nextData = { ...newData, connections: ensuredConnections };
+      updateTab(tabId, { diagramData: nextData });
+    },
+    [getTab, updateTab],
   );
 
   const handleTutorialFinish = React.useCallback(() => {
     const list = tabsRef.current;
-    const tutorialId = list.find((t) => t.isTutorialTab)?.id;
+    const tutorialId = list.find((t) => t.isTutorialTab === true || t.name === TUTORIAL_TAB_NAME)?.id;
     if (!tutorialId) return;
     if (list.filter((t) => !t.isTutorialTab).length === 0) {
       flushSync(() => {
@@ -3422,7 +3444,7 @@ export default function DiagramEditor() {
     const tab = tabs.find(t => t.id === tabId);
     if (!tab) return;
 
-    if (tab.isTutorialTab) {
+    if (tab.isTutorialTab === true || tab.name === TUTORIAL_TAB_NAME) {
       await closeTab(tabId, true);
       return;
     }
@@ -4660,6 +4682,7 @@ export default function DiagramEditor() {
         umlClassEditorModal={umlClassEditorModal}
         setUmlClassEditorModal={setUmlClassEditorModal}
         setDiagramData={setDiagramData}
+        updateTutorialDiagramData={updateTutorialDiagramData}
         layers={layers}
         layerAnimationsEnabled={layerAnimationsEnabled}
         setLayerAnimationsEnabled={setLayerAnimationsEnabled}
@@ -4866,6 +4889,7 @@ function DiagramEditorInner({
   umlClassEditorModal,
   setUmlClassEditorModal,
   setDiagramData,
+  updateTutorialDiagramData,
   setCurrentDiagramData,
   currentDiagramData,
   activeDiagramStack,
@@ -5041,10 +5065,9 @@ function DiagramEditorInner({
     start(getTutorialSteps());
   }, [start]);
 
-  // `setDiagramData` is recreated whenever `diagramData` changes; do not list it in effect deps
-  // or the injection effect re-runs forever (maximum update depth).
-  const setDiagramDataRef = React.useRef(setDiagramData);
-  setDiagramDataRef.current = setDiagramData;
+  // `updateTutorialDiagramData` updates the tutorial tab even when another tab is active.
+  const updateTutorialDiagramDataRef = React.useRef(updateTutorialDiagramData);
+  updateTutorialDiagramDataRef.current = updateTutorialDiagramData;
 
   // When the Connections step starts, add A→B on the tutorial diagram so the user only adds A→C next.
   const tutorialStepId = tutorialSteps[tutorialStepIndex]?.id;
@@ -5056,7 +5079,7 @@ function DiagramEditorInner({
     const FROM = 'tutorial-shape-a';
     const TO = 'tutorial-shape-b';
 
-    setDiagramDataRef.current((prev: DiagramData) => {
+    updateTutorialDiagramDataRef.current((prev: DiagramData) => {
       const nodes = prev.nodes || [];
       if (!nodes.some((n: DiagramNodeData) => n.id === FROM) || !nodes.some((n: DiagramNodeData) => n.id === TO)) return prev;
 

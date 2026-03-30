@@ -62,7 +62,9 @@ function parseStoredTabs(
       selectedItemIds: new Set(rest.selectedItemIds || []),
       savedDataHash: JSON.stringify(rest.diagramData),
       hasUnsavedPresentations: rest.hasUnsavedPresentations === true,
-      isTutorialTab: rest.isTutorialTab === true,
+      isTutorialTab:
+        rest.isTutorialTab === true ||
+        (typeof rest.name === 'string' && rest.name === TUTORIAL_TAB_NAME),
     };
   });
 }
