@@ -5,6 +5,9 @@
 ### 2026-03-30 – Merge `troubleshoot-mint-mocha` into `main`
 Merged **`origin/troubleshoot-mint-mocha`** into **`main`** (clean merge, no conflicts). Touches **`shape-wrapper.tsx`**, **`square.tsx`**, **`html-to-image-fit-png.ts`**. Pushed **`main`** to **`origin`**. **`npm run typecheck`** passes.
 
+### 2026-03-30 – Merge `troubleshoot-mint-mocha` into `main` (follow-up)
+Second merge after branch updates: **`uml-class.tsx`** (mint/mocha grey fix for custom UML shape). Clean merge, **`npm run typecheck`** passes, pushed **`origin/main`**.
+
 ### 2026-03-30 – Shape: Text box with heading (`generic.object.text-box-heading`)
 **Purpose**: Rounded-rectangle body with a **linked heading strip** on any edge; **heading** and **body** use separate rich text; **drag** the heading to snap **top/bottom/left/right** (gradient + text rotation update). **Data**: `headingEdge`, `headingLabel`, `richHeadingLabel`, `headingBackgroundColor`, **`headingBackgroundStyle`** (`gradient` \| `solid`; default **gradient** = fade color to transparent; **solid** = flat strip fill) (see **`types.ts`** / **`schemas.ts`**). **Rendering**: **`text-box-heading.tsx`** (SVG body + heading path, `ShapeWrapper` with **`omitShapeText`**). **UI**: Visual styling **Heading background** + **Heading color**; corner-radius handle shared with rounded-rectangle. **Palette**: Generic → **Text** → **Text Box Heading** (`resource-generic.json`; runtime type remains **`generic.object.text-box-heading`**). **Sidebar icon**: vector in **`resource-icon.tsx`** (rounded card + **#1f2937** heading strip); palette tile uses **`ResourceIcon`**, not the PNG.
 
