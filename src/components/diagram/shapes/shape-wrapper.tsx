@@ -42,6 +42,19 @@ interface ShapeWrapperProps {
   omitShapeText?: boolean;
 }
 
+/**
+ * html-to-image can gray out gradient fills when a node combines CSS border-image
+ * with a gradient background. Keep this decision centralized so future refactors
+ * preserve the export-safe layered border rendering.
+ */
+function shouldUseGradientBorderLayer(
+  shouldSkipStyling: boolean,
+  borderImage: string | undefined,
+  borderColors: string[] | undefined
+): boolean {
+  return !shouldSkipStyling && !!(borderImage && borderColors);
+}
+
 export function ShapeWrapper({
   node,
   children,
@@ -98,10 +111,11 @@ export function ShapeWrapper({
   const borderImage = styles.borderImage;
   const borderColorForBorder = borderImage ? 'transparent' : styles.borderColor;
   const borderColors = styles.borderColors;
+  const borderGradientBackground = borderImage ? String(borderImage).replace(/\s+1$/, '') : undefined;
 
-  // Check if we need special handling for rounded gradient borders
-  // border-image doesn't work with border-radius, so we use padding approach
-  const needsGradientBorderRounding = roundedEdges && borderImage && borderColors && calculatedBorderRadius;
+  // Use a layered gradient border for all gradient borders.
+  // This avoids `border-image` export glitches (gray fills in html-to-image snapshots).
+  const needsGradientBorderLayer = shouldUseGradientBorderLayer(shouldSkipStyling, borderImage, borderColors);
 
   return (
     <div
@@ -109,27 +123,28 @@ export function ShapeWrapper({
       className="relative"
       style={{
         boxSizing: 'border-box',
-        borderRadius: needsGradientBorderRounding ? calculatedBorderRadius : undefined,
+        borderRadius: needsGradientBorderLayer ? calculatedBorderRadius : undefined,
         width: width + overlap,
         height: height + overlap,
         minWidth: width + overlap,
         minHeight: height + overlap,
         marginRight: overlap ? -overlap : 0,
         marginBottom: overlap ? -overlap : 0,
-        ...(styles.shadow && !suppressLayerShadow && !useSvgShadow && !needsGradientBorderRounding ? {
+        ...(styles.shadow && !suppressLayerShadow && !useSvgShadow && !needsGradientBorderLayer ? {
           boxShadow: 'var(--shape-shadow)'
         } : {}),
-        ...(styles.shadow && !suppressLayerShadow && useSvgShadow && !needsGradientBorderRounding ? {
+        ...(styles.shadow && !suppressLayerShadow && useSvgShadow && !needsGradientBorderLayer ? {
           filter: 'var(--shape-shadow-drop)'
         } : {})
       }}
     >
-      {needsGradientBorderRounding ? (
+      {needsGradientBorderLayer ? (
         <div
           style={{
             position: 'absolute',
             inset: 0,
-            background: borderImage,
+            background: borderGradientBackground,
+            backgroundColor: borderColors?.[0],
             borderRadius: calculatedBorderRadius,
             pointerEvents: 'none',
           }}
@@ -137,21 +152,25 @@ export function ShapeWrapper({
       ) : null}
 
       <div
+        data-shape-bg-fallback={!shouldSkipStyling ? styles.backgroundColor : undefined}
+        data-shape-border-fallback={needsGradientBorderLayer ? (borderColors?.[0] ?? undefined) : undefined}
         style={{
           boxSizing: 'border-box',
-          background: !shouldSkipStyling && !needsGradientBorderRounding ? styles.background : undefined,
-          borderWidth: !shouldSkipStyling && !needsGradientBorderRounding ? styles.borderWidth : undefined,
-          borderStyle: !shouldSkipStyling && !needsGradientBorderRounding ? styles.borderStyle : undefined,
-          borderColor: !shouldSkipStyling && !needsGradientBorderRounding ? borderColorForBorder : undefined,
-          borderImage: !shouldSkipStyling && !needsGradientBorderRounding ? borderImage : undefined,
-          borderRadius: !needsGradientBorderRounding ? calculatedBorderRadius : undefined,
-          width: needsGradientBorderRounding ? `calc(100% - ${styles.borderWidth})` : '100%',
-          height: needsGradientBorderRounding ? `calc(100% - ${styles.borderWidth})` : '100%',
-          margin: needsGradientBorderRounding ? `calc(${styles.borderWidth} / 2)` : 0,
-          ...(styles.shadow && !suppressLayerShadow && !useSvgShadow && needsGradientBorderRounding ? {
+          background: !shouldSkipStyling ? styles.background : undefined,
+          // Keep a solid fallback under gradients for html-to-image export reliability.
+          backgroundColor: !shouldSkipStyling ? styles.backgroundColor : undefined,
+          borderWidth: !shouldSkipStyling && !needsGradientBorderLayer ? styles.borderWidth : undefined,
+          borderStyle: !shouldSkipStyling && !needsGradientBorderLayer ? styles.borderStyle : undefined,
+          borderColor: !shouldSkipStyling && !needsGradientBorderLayer ? borderColorForBorder : undefined,
+          borderImage: !shouldSkipStyling && !needsGradientBorderLayer ? borderImage : undefined,
+          borderRadius: !needsGradientBorderLayer ? calculatedBorderRadius : undefined,
+          width: needsGradientBorderLayer ? `calc(100% - ${styles.borderWidth})` : '100%',
+          height: needsGradientBorderLayer ? `calc(100% - ${styles.borderWidth})` : '100%',
+          margin: needsGradientBorderLayer ? `calc(${styles.borderWidth} / 2)` : 0,
+          ...(styles.shadow && !suppressLayerShadow && !useSvgShadow && needsGradientBorderLayer ? {
             boxShadow: 'var(--shape-shadow)'
           } : {}),
-          ...(styles.shadow && !suppressLayerShadow && useSvgShadow && needsGradientBorderRounding ? {
+          ...(styles.shadow && !suppressLayerShadow && useSvgShadow && needsGradientBorderLayer ? {
             filter: 'var(--shape-shadow-drop)'
           } : {}),
           ...(slideColorTransition !== undefined && !skipWrapperStyling ? { transition: slideColorTransition } : {}),
