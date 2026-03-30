@@ -2,7 +2,9 @@
 
 import React from "react";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
-import { ShapeWrapper } from "./shape-wrapper";
+import { SvgShapeBase } from "./svg-shape-base";
+import { getShapeSvgFill } from "./shape-utils";
+import { useSvgGradient } from "@/hooks/use-svg-gradient";
 
 interface SquareShapeProps {
   node: DiagramNodeData & { width?: number; height?: number };
@@ -24,12 +26,62 @@ interface SquareShapeProps {
   slideColorTransition?: string;
 }
 
+const VIEWBOX_W = 60;
+const VIEWBOX_H = 60;
+
 export function SquareShape(props: SquareShapeProps) {
+  const { node } = props;
+  const nodeAny = node as any;
+
+  const backgroundColors = nodeAny.backgroundColors || [nodeAny.backgroundColor || "#6b7280"];
+  const borderColors = nodeAny.borderColors || [nodeAny.borderColor || "#6b7280"];
+  const gradientAngle = nodeAny.gradientAngle || 135;
+  const borderGradientAngle = nodeAny.borderGradientAngle ?? gradientAngle;
+  const backgroundStyle = nodeAny.backgroundStyle || "solid";
+  const borderStyle = nodeAny.borderStyle || "solid";
+
+  const strokeWidth = borderStyle === "none" ? 0 : (parseInt(String(nodeAny.borderWidth || 2), 10) || 2);
+  const half = strokeWidth / 2;
+
+  const w = node.width ?? VIEWBOX_W;
+  const h = node.height ?? VIEWBOX_H;
+  const vbW = w + strokeWidth;
+  const vbH = h + strokeWidth;
+
+  const { defs, fillRef, strokeRef } = useSvgGradient({
+    colors: backgroundStyle === "gradient" ? backgroundColors : [backgroundColors[0]],
+    angle: gradientAngle,
+    borderColors: borderStyle === "gradient" ? borderColors : undefined,
+    borderAngle: borderStyle === "gradient" ? borderGradientAngle : undefined,
+    enabled: backgroundStyle === "gradient" || borderStyle === "gradient",
+  });
+
+  const fillColor = getShapeSvgFill(backgroundStyle, fillRef, nodeAny.backgroundColor);
+  const strokeColor = borderStyle === "gradient" ? strokeRef : (nodeAny.borderColor || "#6b7280");
+  const strokeDasharray = borderStyle === "dotted" ? "3,3" : undefined;
+
   return (
-    <ShapeWrapper
+    <SvgShapeBase
       {...props}
-      defaultWidth={60}
-      defaultHeight={60}
+      defaultWidth={VIEWBOX_W}
+      defaultHeight={VIEWBOX_H}
+      viewBox={`0 0 ${vbW} ${vbH}`}
+      svgContent={
+        <>
+          {defs}
+          <rect
+            x={half}
+            y={half}
+            width={w}
+            height={h}
+            fill={fillColor}
+            stroke={strokeColor}
+            strokeWidth={strokeWidth}
+            strokeDasharray={strokeDasharray}
+            {...(strokeWidth > 0 ? { vectorEffect: "non-scaling-stroke" as const } : {})}
+          />
+        </>
+      }
     />
   );
 }

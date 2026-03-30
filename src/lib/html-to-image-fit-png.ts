@@ -22,6 +22,20 @@ function applyExportDotGridTransform(dotGrid: HTMLElement, dotGridTransform: Tra
   dotGrid.style.setProperty('transform-origin', '0 0', 'important');
 }
 
+function applyExportShapeFallbackColors(root: HTMLElement) {
+  const shapeNodes = root.querySelectorAll<HTMLElement>('[data-shape-bg-fallback]');
+  shapeNodes.forEach((el) => {
+    const bgFallback = el.getAttribute('data-shape-bg-fallback');
+    const borderFallback = el.getAttribute('data-shape-border-fallback');
+    if (bgFallback && bgFallback.trim().length > 0) {
+      el.style.setProperty('background-color', bgFallback, 'important');
+    }
+    if (borderFallback && borderFallback.trim().length > 0) {
+      el.style.setProperty('border-color', borderFallback, 'important');
+    }
+  });
+}
+
 export async function toPngWithDotGridTransform(
   node: HTMLElement,
   options: Options,
@@ -41,6 +55,7 @@ export async function toPngWithDotGridTransform(
   if (diagramLayer) {
     applyExportDotGridTransform(diagramLayer, dotGridTransform);
   }
+  applyExportShapeFallbackColors(clonedNode as HTMLElement);
   const datauri = await nodeToDataURL(clonedNode, width, height);
   const img = await createImage(datauri);
   const canvas = document.createElement('canvas');
