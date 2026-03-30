@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Bold, Italic, Underline, List, ListOrdered, AlignLeft, AlignCenter, AlignRight, AlignJustify, ArrowUp, Circle, ArrowDown } from "lucide-react";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import {
@@ -33,6 +34,13 @@ interface TextboxRichEditorProps {
    * formatting bar so it stays horizontal on screen. Degrees: opposite of the container’s rotation.
    */
   toolbarCounterRotationDeg?: number;
+  /**
+   * When set, render the toolbar into this element (e.g. a slot above the full shape). Use instead of
+   * counter-rotating the bar next to a left/right heading so the menu stays centered above the shape.
+   */
+  toolbarPortalHost?: HTMLElement | null;
+  /** When true, toolbar is portaled to `toolbarPortalHost` (or hidden until the host mounts). */
+  toolbarPinToShapeTop?: boolean;
 }
 
 export function TextboxRichEditor({
@@ -43,6 +51,8 @@ export function TextboxRichEditor({
   onHeightChange,
   onVerticalAlignChange,
   toolbarCounterRotationDeg,
+  toolbarPortalHost,
+  toolbarPinToShapeTop,
 }: TextboxRichEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const hasInitialized = useRef(false);
@@ -162,29 +172,11 @@ export function TextboxRichEditor({
 
   const toolbarClass =
     "flex gap-0.5 rounded-md border border-border bg-background/95 text-foreground px-1 py-1 shadow-sm";
-  const counterRot = toolbarCounterRotationDeg != null;
+  const useShapeTopToolbar = toolbarPinToShapeTop === true;
+  const counterRot = !useShapeTopToolbar && toolbarCounterRotationDeg != null;
 
-  return (
-    <div className="relative w-full h-full flex flex-col min-h-0">
-      {/* Formatting toolbar - positioned OUTSIDE above textbox, so text stays in same place */}
-      <div
-        className={cn(
-          "absolute bottom-full mb-3 z-[100]",
-          counterRot ? "left-1/2 -translate-x-1/2" : "left-0"
-        )}
-      >
-        <div
-          className={toolbarClass}
-          style={
-            counterRot
-              ? {
-                  transform: `rotate(${toolbarCounterRotationDeg}deg)`,
-                  transformOrigin: "bottom center",
-                }
-              : undefined
-          }
-          onMouseDown={(e) => e.stopPropagation()}
-        >
+  const toolbarBar = (
+    <div className={toolbarClass} onMouseDown={(e) => e.stopPropagation()}>
         <button
           type="button"
           title="Bold"
@@ -298,8 +290,38 @@ export function TextboxRichEditor({
         >
           <ListOrdered className="h-3.5 w-3.5" />
         </button>
+    </div>
+  );
+
+  const toolbarChrome = useShapeTopToolbar ? (
+    toolbarPortalHost ? (
+      createPortal(toolbarBar, toolbarPortalHost)
+    ) : null
+  ) : (
+      <div
+        className={cn(
+          "absolute bottom-full mb-3 z-[100]",
+          counterRot ? "left-1/2 -translate-x-1/2" : "left-0"
+        )}
+      >
+        <div
+          style={
+            counterRot
+              ? {
+                  transform: `rotate(${toolbarCounterRotationDeg}deg)`,
+                  transformOrigin: "bottom center",
+                }
+              : undefined
+          }
+        >
+          {toolbarBar}
         </div>
       </div>
+    );
+
+  return (
+    <div className="relative w-full h-full flex flex-col min-h-0">
+      {toolbarChrome}
 
       {/* contentEditable area - fills same space as display, no layout shift */}
       <div

@@ -125,6 +125,7 @@ export function TextBoxHeadingShape(props: TextBoxHeadingShapeProps) {
   const [editHeadingRuns, setEditHeadingRuns] = useState<RichTextRun[]>([]);
   const [previewEdge, setPreviewEdge] = useState<HeadingEdge | null>(null);
   const [isDraggingHeadingEdge, setIsDraggingHeadingEdge] = useState(false);
+  const [headingToolbarHost, setHeadingToolbarHost] = useState<HTMLDivElement | null>(null);
   const previewEdgeRef = useRef<HeadingEdge | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -332,6 +333,12 @@ export function TextBoxHeadingShape(props: TextBoxHeadingShapeProps) {
           ...(isEditingAny ? { zIndex: 20 } : {}),
         }}
       >
+        {isVerticalHeading && isEditingHeading ? (
+          <div
+            ref={setHeadingToolbarHost}
+            className="pointer-events-auto absolute bottom-full left-1/2 z-[100] mb-3 -translate-x-1/2"
+          />
+        ) : null}
         <svg
           width="100%"
           height="100%"
@@ -416,7 +423,8 @@ export function TextBoxHeadingShape(props: TextBoxHeadingShapeProps) {
                       runs={editHeadingRuns}
                       onSubmit={handleHeadingRichSubmit}
                       onKeyDown={handleHeadingKeyDown}
-                      toolbarCounterRotationDeg={edge === "left" ? 90 : -90}
+                      toolbarPinToShapeTop
+                      toolbarPortalHost={headingToolbarHost}
                     />
                   </div>
                 ) : (
