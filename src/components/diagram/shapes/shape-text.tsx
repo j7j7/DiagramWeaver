@@ -1,23 +1,24 @@
 "use client";
 
-import React, { useRef, useEffect } from "react";
-import type { DiagramNodeData } from "@/lib/types";
+import React from "react";
+import type { DiagramNodeData, RichTextRun } from "@/lib/types";
+import { labelToRuns } from "@/lib/rich-text";
+import { TextboxRichEditor } from "../textbox-rich-editor";
+import { TextboxRichDisplay } from "../textbox-rich-display";
 import {
   getTextStylingForNode,
-  getTextColorForBackground,
   getTextJustifyClass,
   getVerticalPositionClass,
   getVerticalJustifyClass,
-  getShapeStyles,
 } from "./shape-utils";
 
 interface ShapeTextProps {
   node: DiagramNodeData;
   label: string;
   isEditingLabel: boolean;
-  editText: string;
-  onLabelTextChange: (text: string) => void;
-  onLabelSubmit: () => void;
+  editRuns: RichTextRun[];
+  onRichLabelSubmit: (plainText: string, runs: RichTextRun[]) => void;
+  onVerticalAlignChange?: (position: "top" | "middle" | "bottom") => void;
   onLabelKeyDown: (e: React.KeyboardEvent) => void;
   onLabelDoubleClick: (e: React.MouseEvent) => void;
 }
@@ -26,27 +27,18 @@ export function ShapeText({
   node,
   label,
   isEditingLabel,
-  editText,
-  onLabelTextChange,
-  onLabelSubmit,
+  editRuns,
+  onRichLabelSubmit,
+  onVerticalAlignChange,
   onLabelKeyDown,
   onLabelDoubleClick,
 }: ShapeTextProps) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const nodeAny = node as any;
-
-  useEffect(() => {
-    if (isEditingLabel && textareaRef.current) {
-      textareaRef.current.focus();
-      textareaRef.current.select();
-    }
-  }, [isEditingLabel]);
-  const styles = getShapeStyles(node);
   const verticalPosition = nodeAny.textVerticalPosition;
   const textPosition = nodeAny.textPosition;
 
   // Point shapes don't display text
-  if (node.type === 'generic.object.point' || node.type?.endsWith('.point')) {
+  if (node.type === "generic.object.point" || node.type?.endsWith(".point")) {
     return null;
   }
 
@@ -56,21 +48,21 @@ export function ShapeText({
   }
 
   // Determine position: textVerticalPosition takes precedence, fallback to textPosition for backward compatibility
-  let effectivePosition: 'top' | 'middle' | 'bottom';
+  let effectivePosition: "top" | "middle" | "bottom";
   if (verticalPosition) {
     effectivePosition = verticalPosition;
-  } else if (textPosition === 'above') {
-    effectivePosition = 'top';
-  } else if (textPosition === 'under') {
-    effectivePosition = 'bottom';
+  } else if (textPosition === "above") {
+    effectivePosition = "top";
+  } else if (textPosition === "under") {
+    effectivePosition = "bottom";
   } else {
-    effectivePosition = 'middle'; // Default to middle/inside
+    effectivePosition = "middle"; // Default to middle/inside
   }
 
   // Determine if text should be inside or outside
-  const isInside = effectivePosition === 'middle';
-  const isAbove = effectivePosition === 'top';
-  const isBelow = effectivePosition === 'bottom';
+  const isInside = effectivePosition === "middle";
+  const isAbove = effectivePosition === "top";
+  const isBelow = effectivePosition === "bottom";
 
   // Get shape dimensions for outside positioning
   const shapeWidth = node.width || 60;
@@ -78,46 +70,32 @@ export function ShapeText({
   const spacing = 4; // Spacing between shape and text
 
   // Kite (diamond) and hexagon have narrower usable width - constrain text so it wraps at spaces with left/right padding
-  const isKite = node.type === 'generic.object.kite' || node.type?.endsWith('.kite');
-  const isHexagon = node.type === 'generic.object.hexagon' || node.type?.endsWith('.hexagon');
-  const narrowShapeClass = isKite || isHexagon ? ' max-w-[70%] mx-auto min-w-0' : '';
+  const isKite = node.type === "generic.object.kite" || node.type?.endsWith(".kite");
+  const isHexagon = node.type === "generic.object.hexagon" || node.type?.endsWith(".hexagon");
+  const narrowShapeClass = isKite || isHexagon ? " max-w-[70%] mx-auto min-w-0" : "";
+
+  const displayRuns = node.richLabel ?? labelToRuns(node.label);
 
   // Render text inside the shape (middle position)
   if (isInside) {
     const innerClass = `w-full h-full flex flex-col ${getVerticalJustifyClass(effectivePosition)} px-1`;
     return (
-      <div className={`absolute inset-0 flex flex-col ${getVerticalPositionClass(effectivePosition)}`}>
+      <div
+        className={`absolute inset-0 flex flex-col ${getVerticalPositionClass(effectivePosition)} ${isEditingLabel ? "overflow-visible" : ""}`}
+      >
         {isEditingLabel ? (
-          <div className={innerClass + narrowShapeClass}>
-            <textarea
-              ref={textareaRef}
-              id={`node-input-${node.id}`}
-              value={editText}
-              onChange={(e) => onLabelTextChange(e.target.value)}
-              onBlur={onLabelSubmit}
+          <div className={`${innerClass} min-h-0 flex-1 flex flex-col overflow-visible${narrowShapeClass}`}>
+            <TextboxRichEditor
+              node={node}
+              runs={editRuns}
+              onSubmit={onRichLabelSubmit}
               onKeyDown={onLabelKeyDown}
-              rows={3}
-              className={`text-xs ${getTextJustifyClass(nodeAny.textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none resize-none`}
-              style={{
-                ...getTextStylingForNode(node),
-                color: getTextColorForBackground(styles.backgroundColor, nodeAny.textColor)
-              }}
-              onClick={(e) => e.stopPropagation()}
+              onVerticalAlignChange={onVerticalAlignChange}
             />
           </div>
         ) : (
           <div className={innerClass + narrowShapeClass}>
-            <p
-              className={`text-xs ${getTextJustifyClass(nodeAny.textJustify)} break-words leading-tight cursor-text w-full whitespace-pre-wrap`}
-              style={{
-                ...getTextStylingForNode(node),
-                color: getTextColorForBackground(styles.backgroundColor, nodeAny.textColor),
-                display: 'block'
-              }}
-              onDoubleClick={onLabelDoubleClick}
-            >
-              {label}
-            </p>
+            <TextboxRichDisplay node={node} runs={displayRuns} onDoubleClick={onLabelDoubleClick} />
           </div>
         )}
       </div>
@@ -126,11 +104,11 @@ export function ShapeText({
 
   // Render text outside the shape (above or below)
   const outsideStyle: React.CSSProperties = {
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     width: `${shapeWidth}px`,
     ...getTextStylingForNode(node),
-    display: 'block',
+    display: "block",
   };
 
   if (isAbove) {
@@ -143,38 +121,21 @@ export function ShapeText({
 
   return (
     <div
-      className={`absolute ${getTextJustifyClass(nodeAny.textJustify)} w-full`}
+      className={`absolute ${getTextJustifyClass(nodeAny.textJustify)} w-full ${isEditingLabel ? "overflow-visible" : ""}`}
       style={outsideStyle}
     >
       {isEditingLabel ? (
-        <textarea
-          ref={textareaRef}
-          id={`node-input-${node.id}`}
-          value={editText}
-          onChange={(e) => onLabelTextChange(e.target.value)}
-          onBlur={onLabelSubmit}
-          onKeyDown={onLabelKeyDown}
-          rows={3}
-          className={`text-xs ${getTextJustifyClass(nodeAny.textJustify)} bg-transparent border border-white rounded px-1 py-0.5 w-full outline-none resize-none`}
-          style={{
-            ...getTextStylingForNode(node),
-            color: nodeAny.textColor || '#374151',
-            display: 'block'
-          }}
-          onClick={(e) => e.stopPropagation()}
-        />
+        <div className="min-h-0 flex flex-col overflow-visible w-full">
+          <TextboxRichEditor
+            node={node}
+            runs={editRuns}
+            onSubmit={onRichLabelSubmit}
+            onKeyDown={onLabelKeyDown}
+            onVerticalAlignChange={onVerticalAlignChange}
+          />
+        </div>
       ) : (
-        <p
-          className={`text-xs ${getTextJustifyClass(nodeAny.textJustify)} break-words leading-tight cursor-text w-full whitespace-pre-wrap`}
-          style={{
-            ...getTextStylingForNode(node),
-            color: nodeAny.textColor || '#374151',
-            display: 'block'
-          }}
-          onDoubleClick={onLabelDoubleClick}
-        >
-          {label}
-        </p>
+        <TextboxRichDisplay node={node} runs={displayRuns} onDoubleClick={onLabelDoubleClick} />
       )}
     </div>
   );

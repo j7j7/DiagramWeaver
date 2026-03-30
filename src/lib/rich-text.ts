@@ -8,7 +8,10 @@
 
 import type { RichTextRun } from "@/lib/types";
 import type { DiagramNodeData } from "@/lib/types";
+import { DEFAULT_TEXT_STYLING } from "@/lib/text-styling";
 export type { RichTextRun };
+
+const DEFAULT_JUSTIFY = DEFAULT_TEXT_STYLING.textJustify ?? "center";
 
 const BOLD_TAGS = ["b", "strong"];
 const ITALIC_TAGS = ["i", "em"];
@@ -42,7 +45,7 @@ function wrapRun(run: RichTextRun): string {
 
 function lineStyleAttr(run: RichTextRun, defaults: LineDefaults): string {
   const parts: string[] = [];
-  const align = run.lineJustify ?? defaults.textJustify ?? "left";
+  const align = run.lineJustify ?? defaults.textJustify ?? DEFAULT_JUSTIFY;
   parts.push(`text-align:${align === "full" ? "justify" : align}`);
   if (run.lineFontSize != null) parts.push(`font-size:${run.lineFontSize}px`);
   else if (defaults.fontSize != null) parts.push(`font-size:${defaults.fontSize}px`);
@@ -61,7 +64,7 @@ function escapeCssString(s: string): string {
 export function runsToHtml(runs: RichTextRun[], node?: DiagramNodeData | null): string {
   if (runs.length === 0) return "";
   const defaults: LineDefaults = {
-    textJustify: (node as any)?.textJustify ?? "left",
+    textJustify: (node as any)?.textJustify ?? DEFAULT_JUSTIFY,
     fontSize: (node as any)?.fontSize,
     fontWeight: (node as any)?.fontWeight,
     fontFamily: (node as any)?.fontFamily,
@@ -143,7 +146,7 @@ export function htmlToRuns(html: string, node?: DiagramNodeData | null): RichTex
   if (!root) return [];
 
   const defaults: LineDefaults = {
-    textJustify: (node as any)?.textJustify ?? "left",
+    textJustify: (node as any)?.textJustify ?? DEFAULT_JUSTIFY,
     fontSize: (node as any)?.fontSize,
     fontWeight: (node as any)?.fontWeight,
     fontFamily: (node as any)?.fontFamily,

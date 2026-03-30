@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import type { DiagramNodeData } from "@/lib/types";
+import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { ShapeWrapper } from "./shape-wrapper";
 
 interface SquareShapeProps {
@@ -16,9 +16,9 @@ interface SquareShapeProps {
   onTagDoubleClick: (e: React.MouseEvent) => void;
   label: string;
   isEditingLabel: boolean;
-  editText: string;
-  onLabelTextChange: (text: string) => void;
-  onLabelSubmit: () => void;
+  editRuns: RichTextRun[];
+  onRichLabelSubmit: (plainText: string, runs: RichTextRun[]) => void;
+  onVerticalAlignChange?: (position: 'top' | 'middle' | 'bottom') => void;
   onLabelKeyDown: (e: React.KeyboardEvent) => void;
   onLabelDoubleClick: (e: React.MouseEvent) => void;
   slideColorTransition?: string;

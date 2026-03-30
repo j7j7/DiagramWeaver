@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import type { DiagramNodeData } from "@/lib/types";
+import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { useSlideShapeShadowTransitionMode } from "@/components/diagram/slide-shape-shadow-transition-context";
 import { getNodeSizeMultiplier } from "@/lib/visual-styling";
 import { getShapeStyles } from "./shape-utils";
@@ -31,9 +31,9 @@ interface ShapeWrapperProps {
   // Text props
   label: string;
   isEditingLabel: boolean;
-  editText: string;
-  onLabelTextChange: (text: string) => void;
-  onLabelSubmit: () => void;
+  editRuns: RichTextRun[];
+  onRichLabelSubmit: (plainText: string, runs: RichTextRun[]) => void;
+  onVerticalAlignChange?: (position: "top" | "middle" | "bottom") => void;
   onLabelKeyDown: (e: React.KeyboardEvent) => void;
   onLabelDoubleClick: (e: React.MouseEvent) => void;
   /** Presentation slide transition: lerp fill/stroke between slides */
@@ -60,9 +60,9 @@ export function ShapeWrapper({
   onTagDoubleClick,
   label,
   isEditingLabel,
-  editText,
-  onLabelTextChange,
-  onLabelSubmit,
+  editRuns,
+  onRichLabelSubmit,
+  onVerticalAlignChange,
   onLabelKeyDown,
   onLabelDoubleClick,
   slideColorTransition,
@@ -171,9 +171,9 @@ export function ShapeWrapper({
           node={node}
           label={label}
           isEditingLabel={isEditingLabel}
-          editText={editText}
-          onLabelTextChange={onLabelTextChange}
-          onLabelSubmit={onLabelSubmit}
+          editRuns={editRuns}
+          onRichLabelSubmit={onRichLabelSubmit}
+          onVerticalAlignChange={onVerticalAlignChange}
           onLabelKeyDown={onLabelKeyDown}
           onLabelDoubleClick={onLabelDoubleClick}
         />

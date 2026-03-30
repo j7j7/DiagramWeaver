@@ -9,8 +9,11 @@ import {
   getPlainTextFromRuns,
   normalizeRuns,
 } from "@/lib/rich-text";
+import { DEFAULT_TEXT_STYLING } from "@/lib/text-styling";
 import { getTextStylingForNode, getTextJustifyClass } from "@/components/diagram/shapes/shape-utils";
 import { cn } from "@/lib/utils";
+
+const DEFAULT_JUSTIFY = DEFAULT_TEXT_STYLING.textJustify ?? "center";
 
 /** Vertical overhead: outer p-1 (8) + inner py-0.5 (4) + contentEditable border (2). scrollHeight includes contentEditable padding (py-0.5 = 4). */
 const TEXTBOX_CONTENT_OVERHEAD = 14;
@@ -300,7 +303,7 @@ export function TextboxRichEditor({
           "[&_ul]:list-disc [&_ul]:list-inside [&_ul]:pl-5 [&_ul]:my-1 [&_ul]:space-y-0.5",
           "[&_ol]:list-decimal [&_ol]:list-inside [&_ol]:pl-5 [&_ol]:my-1 [&_ol]:space-y-0.5",
           "[&_li]:leading-normal",
-          getTextJustifyClass((nodeAny.textJustify as string) || "left")
+          getTextJustifyClass((nodeAny.textJustify as string) || DEFAULT_JUSTIFY)
         )}
         style={{
           ...getTextStylingForNode(node),

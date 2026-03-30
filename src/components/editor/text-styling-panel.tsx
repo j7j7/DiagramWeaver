@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
 import { ColorPicker } from "@/components/ui/color-picker";
-import { TextStyling, COMMON_FONT_FAMILIES } from "@/lib/text-styling";
+import { TextStyling, COMMON_FONT_FAMILIES, DEFAULT_TEXT_STYLING } from "@/lib/text-styling";
 import { Type, AlignLeft, AlignCenter, AlignRight, AlignJustify, ArrowUp, Circle, ArrowDown, RotateCcw, Move3D, Box, X } from "lucide-react";
 import Draggable from 'react-draggable';
 
@@ -90,6 +90,9 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
   };
 
   const effectiveVerticalPosition = getEffectiveVerticalPosition();
+
+  const effectiveTextJustify =
+    styling.textJustify ?? DEFAULT_TEXT_STYLING.textJustify ?? "center";
 
   const handlePropertyChange = (property: keyof TextStyling, value: any) => {
     // Only update the specific property that changed
@@ -177,16 +180,16 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
             <Label className="text-xs font-medium">Text Justification</Label>
             <div className="flex gap-1">
               <Button
-                variant={styling.textJustify === 'left' ? 'default' : 'outline'}
+                variant={effectiveTextJustify === 'left' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => handlePropertyChange('textJustify', styling.textJustify === 'left' ? 'center' : 'left')}
+                onClick={() => handlePropertyChange('textJustify', effectiveTextJustify === 'left' ? 'center' : 'left')}
                 className="h-8 px-2"
                 title="Align Left"
               >
                 <AlignLeft className="w-3 h-3" />
               </Button>
               <Button
-                variant={styling.textJustify === 'center' ? 'default' : 'outline'}
+                variant={effectiveTextJustify === 'center' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => handlePropertyChange('textJustify', 'center')}
                 className="h-8 px-2"
@@ -195,18 +198,18 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
                 <AlignCenter className="w-3 h-3" />
               </Button>
               <Button
-                variant={styling.textJustify === 'right' ? 'default' : 'outline'}
+                variant={effectiveTextJustify === 'right' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => handlePropertyChange('textJustify', styling.textJustify === 'right' ? 'center' : 'right')}
+                onClick={() => handlePropertyChange('textJustify', effectiveTextJustify === 'right' ? 'center' : 'right')}
                 className="h-8 px-2"
                 title="Align Right"
               >
                 <AlignRight className="w-3 h-3" />
               </Button>
               <Button
-                variant={styling.textJustify === 'full' ? 'default' : 'outline'}
+                variant={effectiveTextJustify === 'full' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => handlePropertyChange('textJustify', styling.textJustify === 'full' ? 'center' : 'full')}
+                onClick={() => handlePropertyChange('textJustify', effectiveTextJustify === 'full' ? 'center' : 'full')}
                 className="h-8 px-2"
                 title="Justify"
               >

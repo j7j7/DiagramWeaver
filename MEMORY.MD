@@ -2,6 +2,12 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-03-30 – Default horizontal text alignment: center
+**Behavior**: When **`textJustify`** is unset, rich text (**`rich-text.ts`**, **`textbox-rich-display`**, **`textbox-rich-editor`**) now falls back to **`DEFAULT_TEXT_STYLING.textJustify`** (**center**), not left. **Text styling panel** uses **`effectiveTextJustify`** so **center** appears selected when unset. **New palette nodes**: shapes (with random theme) and standalone **text** nodes get **`textJustify: 'center'`** in **`canvas-operations.ts`** (textbox already did).
+
+### 2026-03-30 – Shape label editing: same WYSIWYG toolbar as textbox/text
+**Change**: **`shape-text.tsx`** uses **`TextboxRichEditor`** / **`TextboxRichDisplay`** (rich **`richLabel`**) instead of a plain **`<textarea>`**, matching **textbox** / **text** nodes. **`diagram-node`** passes **`editRuns`**, **`handleRichLabelSubmit`**, and optional **`onVerticalAlignChange`** into **`ShapeWrapper`** / shape components.
+
 ### 2026-03-30 – Shape visual styling: background “none” = transparent
 **Bug**: Setting **background** to **none** on shapes showed **dark grey** (`#6b7280` fallback). **Fix**: `getShapeSvgFill()` in **`shape-utils.ts`** returns **`transparent`** when `backgroundStyle === 'none'`; **`getShapeStyles`** uses transparent background for wrappers. All SVG shape components use **`getShapeSvgFill`** for fill.
 

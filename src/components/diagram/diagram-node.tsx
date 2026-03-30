@@ -296,9 +296,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     setIsEditingLabel(true);
     setIsOpen(false); // Close popup when editing starts
     setEditText(node.label || '');
-    if (node.type === 'generic.text.textbox' || node.type === 'generic.text.text') {
-      setEditRuns(node.richLabel ?? labelToRuns(node.label));
-    }
+    setEditRuns(node.richLabel ?? labelToRuns(node.label));
     setTimeout(() => {
       const ref = (isTextboxNode || isTextNode) ? null : inputRef.current;
       if (ref) {
@@ -358,9 +356,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     } else if (e.key === 'Escape') {
       setIsEditingLabel(false);
       setEditText(node.label || '');
-      if (node.type === 'generic.text.textbox' || node.type === 'generic.text.text') {
-        setEditRuns(node.richLabel ?? labelToRuns(node.label));
-      }
+      setEditRuns(node.richLabel ?? labelToRuns(node.label));
       // Also clear resize state when Escape is pressed
       if (isResizing) {
         handleResizeEnd();
@@ -471,9 +467,11 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
       onTagDoubleClick: handleTagDoubleClick,
       label: node.label || '',
       isEditingLabel,
-      editText,
-      onLabelTextChange: setEditText,
-      onLabelSubmit: handleLabelSubmit,
+      editRuns,
+      onRichLabelSubmit: handleRichLabelSubmit,
+      onVerticalAlignChange: onUpdate
+        ? (pos: 'top' | 'middle' | 'bottom') => onUpdate({ ...node, textVerticalPosition: pos })
+        : undefined,
       onLabelKeyDown: (e: React.KeyboardEvent) => handleLabelKeyDown(e, true),
       onLabelDoubleClick: handleLabelDoubleClick,
     };

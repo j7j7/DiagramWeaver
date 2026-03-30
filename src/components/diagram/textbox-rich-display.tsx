@@ -2,7 +2,10 @@
 
 import React from "react";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
+import { DEFAULT_TEXT_STYLING } from "@/lib/text-styling";
 import { getTextStylingForNode, getTextJustifyClass } from "@/components/diagram/shapes/shape-utils";
+
+const DEFAULT_JUSTIFY = DEFAULT_TEXT_STYLING.textJustify ?? "center";
 
 interface TextboxRichDisplayProps {
   node: DiagramNodeData;
@@ -14,7 +17,7 @@ function getLineStyle(run: RichTextRun, node: DiagramNodeData): React.CSSPropert
   const base = getTextStylingForNode(node);
   const style: React.CSSProperties = { ...base, display: "block" };
   const nodeAny = node as unknown as Record<string, unknown>;
-  const align = run.lineJustify ?? nodeAny.textJustify ?? "left";
+  const align = run.lineJustify ?? nodeAny.textJustify ?? DEFAULT_JUSTIFY;
   style.textAlign = (align === "full" ? "justify" : align) as React.CSSProperties["textAlign"];
   if (run.lineFontSize != null) style.fontSize = `${run.lineFontSize}px`;
   else if (nodeAny.fontSize) style.fontSize = `${nodeAny.fontSize}px`;
@@ -35,7 +38,7 @@ export function TextboxRichDisplay({
   if (runs.length === 0) {
     return (
       <p
-        className={`${getTextJustifyClass((nodeAny.textJustify as string) || "left")} break-words leading-normal cursor-text hover:bg-background/50 rounded whitespace-pre-wrap w-full text-muted-foreground`}
+        className={`${getTextJustifyClass((nodeAny.textJustify as string) || DEFAULT_JUSTIFY)} break-words leading-normal cursor-text hover:bg-background/50 rounded whitespace-pre-wrap w-full text-muted-foreground`}
         style={{ ...getTextStylingForNode(node), display: "block" }}
         onDoubleClick={onDoubleClick}
       >

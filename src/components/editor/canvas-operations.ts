@@ -163,10 +163,16 @@ export function useCanvasOperations({
             textJustify: 'center' as const,
             textVerticalPosition: 'middle' as const,
           }),
+          // Standalone text node: same horizontal/vertical defaults as textbox
+          ...((itemType === 'generic.text.text' || itemType?.endsWith('.text')) && !isTextboxResource && !isFromScratchPad && {
+            textJustify: 'center' as const,
+            textVerticalPosition: 'middle' as const,
+          }),
           // Apply random theme to all shapes (except point which has special styling)
           // BUT: Don't apply random theme if coming from scratchpad with existing properties
           ...(isShapeResource && itemType !== 'generic.object.point' && !isFromScratchPad && {
-            ...getRandomTheme()
+            ...getRandomTheme(),
+            textJustify: 'center' as const,
           }),
           // Special defaults for point shape (only if not from scratchpad)
           ...(itemType === 'generic.object.point' && !isFromScratchPad && {
