@@ -42,6 +42,13 @@ function getCompartmentStyle(
   };
 }
 
+function shouldUseGradientBorderLayer(
+  borderImage: string | undefined,
+  borderColors: string[] | undefined
+): boolean {
+  return !!(borderImage && borderColors);
+}
+
 export function UmlClassShape({
   node,
   overrideWidth,
@@ -77,12 +84,16 @@ export function UmlClassShape({
 
   const bgColor = typeof nodeAny.backgroundColor === "string" ? nodeAny.backgroundColor : "#eff6ff";
   const fallbackColor = getTextColorForBackground(bgColor, nodeAny.textColor);
-  const dividerColor = styles.borderColor ?? "#000000";
+  const dividerColor = nodeAny.borderColor || styles.borderColors?.[0] || "#000000";
   const dividerWidth = umlStyle?.dividerLineWidth ?? 1;
   const roundedEdges = nodeAny.roundedEdges || false;
   const borderRadius = roundedEdges
     ? `${Math.min(width, height) * 0.06}px`
     : "6px";
+  const borderImage = styles.borderImage;
+  const borderColors = styles.borderColors;
+  const borderGradientBackground = borderImage ? String(borderImage).replace(/\s+1$/, "") : undefined;
+  const needsGradientBorderLayer = shouldUseGradientBorderLayer(borderImage, borderColors);
 
   const nameStyle = getCompartmentStyle(umlStyle?.name, fallbackColor);
   const attrStyle = getCompartmentStyle(umlStyle?.attributes, fallbackColor);
@@ -148,16 +159,32 @@ export function UmlClassShape({
 
   return (
     <div className="relative" style={{ width, height }}>
+      {needsGradientBorderLayer ? (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: borderGradientBackground,
+            backgroundColor: borderColors?.[0],
+            borderRadius,
+            pointerEvents: "none",
+          }}
+        />
+      ) : null}
       <div
         className="relative overflow-hidden flex flex-col w-full h-full"
         style={{
           boxSizing: "border-box",
-          borderWidth: styles.borderWidth,
-          borderStyle: styles.borderStyle ?? "solid",
-          borderColor: styles.borderImage ? "transparent" : dividerColor,
-          borderImage: styles.borderImage,
+          borderWidth: !needsGradientBorderLayer ? styles.borderWidth : undefined,
+          borderStyle: !needsGradientBorderLayer ? styles.borderStyle ?? "solid" : undefined,
+          borderColor: !needsGradientBorderLayer ? (borderImage ? "transparent" : dividerColor) : undefined,
+          borderImage: !needsGradientBorderLayer ? borderImage : undefined,
           background: styles.background ?? nodeAny.backgroundColor ?? "#ffffff",
-          borderRadius,
+          backgroundColor: styles.backgroundColor,
+          borderRadius: !needsGradientBorderLayer ? borderRadius : undefined,
+          width: needsGradientBorderLayer ? `calc(100% - ${styles.borderWidth})` : "100%",
+          height: needsGradientBorderLayer ? `calc(100% - ${styles.borderWidth})` : "100%",
+          margin: needsGradientBorderLayer ? `calc(${styles.borderWidth} / 2)` : 0,
           ...(styles.shadow && slideShapeShadowMode !== "crossfade" ? { boxShadow: "var(--shape-shadow-sm)" } : {}),
           ...(slideColorTransition !== undefined ? { transition: slideColorTransition } : {}),
         }}
