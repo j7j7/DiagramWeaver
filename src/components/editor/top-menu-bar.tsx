@@ -12,7 +12,7 @@ import {
   MenubarSubTrigger,
   MenubarSubContent,
 } from '@/components/ui/menubar';
-import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks, Network, Sun, Moon, Sparkles, Keyboard, BookOpen } from 'lucide-react';
+import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
 import { ThemeEditor } from './theme-editor';
 import { RulesEditor } from './rules-editor';
@@ -112,6 +112,9 @@ interface TopMenuBarProps {
   onToggleAnimationConnections?: () => void;
   animationToggleOnClickEnabled?: boolean;
   onToggleAnimationToggleOnClick?: () => void;
+  /** When true, new palette drops get resource name (label) + info; text/textbox unchanged. */
+  defaultTextLabelsEnabled?: boolean;
+  onToggleDefaultTextLabels?: () => void;
   onAlignObjects?: (alignment: 'top' | 'center' | 'bottom' | 'v-middle' | 'left' | 'h-center' | 'right' | 'distribute-v' | 'distribute-h') => void;
   onThemeApplyToSelected?: (theme: DiagramTheme) => void;
   triggerTextStylingPanel?: boolean;
@@ -197,6 +200,8 @@ export function TopMenuBar({
   onToggleAnimationConnections,
   animationToggleOnClickEnabled,
   onToggleAnimationToggleOnClick,
+  defaultTextLabelsEnabled = true,
+  onToggleDefaultTextLabels,
   onAlignObjects,
   onThemeApplyToSelected,
   triggerTextStylingPanel = false,
@@ -239,6 +244,13 @@ export function TopMenuBar({
   const [visualStylingPanelOpen, setVisualStylingPanelOpen] = React.useState(false);
   const [lineStylingPanelOpen, setLineStylingPanelOpen] = React.useState(false);
   const [connectionSettingsPanelOpen, setConnectionSettingsPanelOpen] = React.useState(false);
+
+  const hasOptionsPanelMenuItems =
+    Boolean(onTogglePropertiesPanel) ||
+    Boolean(onToggleLayersPanel) ||
+    Boolean(onToggleScratchPad) ||
+    Boolean(onToggleRulesEditor) ||
+    Boolean(onTogglePresentationMode);
 
   // Function to close connection settings panel
   const handleCloseConnectionSettingsPanel = () => {
@@ -382,15 +394,6 @@ export function TopMenuBar({
                 )}
               </>
             )}
-            {onToggleJsonPanel && (
-              <>
-                <MenubarSeparator />
-                <MenubarItem onClick={onToggleJsonPanel} data-tutorial-id="toggle-json-menu">
-                  <Code className="mr-2 h-4 w-4" />
-                  {jsonPanelOpen ? 'Hide JSON' : 'Show JSON'}
-                </MenubarItem>
-              </>
-            )}
             {diagramData && (
               <>
                 <MenubarSeparator />
@@ -400,13 +403,6 @@ export function TopMenuBar({
                 </MenubarItem>
               </>
             )}
-            <MenubarSeparator />
-            <MenubarSub>
-              <MenubarSubTrigger>View</MenubarSubTrigger>
-              <MenubarSubContent>
-                <ViewThemeSubmenu />
-              </MenubarSubContent>
-            </MenubarSub>
           </MenubarContent>
         </MenubarMenu>
         <MenubarMenu>
@@ -462,55 +458,9 @@ export function TopMenuBar({
                 </MenubarItem>
               </>
             )}
-            {onTogglePropertiesPanel && (
-              <>
-                {(onUndo || onRedo || onFitToView) && <MenubarSeparator />}
-                <MenubarItem onClick={onTogglePropertiesPanel}>
-                  <PanelRight className="mr-2 h-4 w-4" />
-                  {propertiesPanelVisible ? 'Hide Properties' : 'Show Properties'}
-                </MenubarItem>
-              </>
-            )}
-            {onToggleLayersPanel && (
-              <>
-                {(onUndo || onRedo || onFitToView || onTogglePropertiesPanel) && <MenubarSeparator />}
-                <MenubarItem onClick={onToggleLayersPanel}>
-                  <Layers className="mr-2 h-4 w-4" />
-                  {layersPanelOpen ? 'Hide Layers' : 'Show Layers'}
-                </MenubarItem>
-              </>
-            )}
-            {onToggleScratchPad && (
-              <>
-                {(onUndo || onRedo || onFitToView || onToggleLayersPanel || onTogglePropertiesPanel) && <MenubarSeparator />}
-                <MenubarItem onClick={onToggleScratchPad}>
-                  <Clipboard className="mr-2 h-4 w-4" />
-                  {scratchPadOpen ? 'Hide Scratch Pad' : 'Show Scratch Pad'}
-                </MenubarItem>
-              </>
-            )}
-            {onToggleRulesEditor && (
-              <>
-                {(onUndo || onRedo || onFitToView || onToggleLayersPanel || onToggleScratchPad || onTogglePropertiesPanel) && <MenubarSeparator />}
-                <MenubarItem onClick={() => onToggleRulesEditor?.()}>
-                  <ListChecks className="mr-2 h-4 w-4" />
-                  Rules
-                </MenubarItem>
-              </>
-            )}
-            {onTogglePresentationMode && (
-              <>
-                {(onUndo || onRedo || onFitToView || onToggleLayersPanel || onToggleScratchPad || onTogglePropertiesPanel || onToggleRulesEditor) && <MenubarSeparator />}
-                <MenubarItem onClick={onTogglePresentationMode}>
-                  <Layers className="mr-2 h-4 w-4" />
-                  {presentationModeEnabled ? 'Exit Presentation Mode' : 'Enter Presentation Mode'}
-                  <MenubarShortcut>{presentationModeEnabled ? 'Alt+P' : 'Ctrl+Alt+P'}</MenubarShortcut>
-                </MenubarItem>
-              </>
-            )}
             {onToggleReadOnly !== undefined && (
               <>
-                {(onUndo || onRedo || onFitToView || onToggleLayersPanel || onToggleScratchPad || onTogglePropertiesPanel || onToggleRulesEditor || onTogglePresentationMode) && <MenubarSeparator />}
+                {(onUndo || onRedo || onFitToView) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleReadOnly}>
                   {isReadOnly ? (
                     <>
@@ -531,15 +481,70 @@ export function TopMenuBar({
         <MenubarMenu>
           <MenubarTrigger data-tutorial-id="options-menu">Options</MenubarTrigger>
           <MenubarContent>
-            {onToggleMetadataPopups && (
-              <MenubarItem onClick={onToggleMetadataPopups}>
-                <Info className="mr-2 h-4 w-4" />
-                {metadataPopupsEnabled ? 'Disable Properties' : 'Enable Properties'}
+            {onToggleJsonPanel && (
+              <MenubarItem onClick={onToggleJsonPanel} data-tutorial-id="toggle-json-menu">
+                <Code className="mr-2 h-4 w-4" />
+                {jsonPanelOpen ? 'Hide JSON' : 'Show JSON'}
               </MenubarItem>
+            )}
+            {onTogglePropertiesPanel && (
+              <>
+                {onToggleJsonPanel && <MenubarSeparator />}
+                <MenubarItem onClick={onTogglePropertiesPanel}>
+                  <PanelRight className="mr-2 h-4 w-4" />
+                  {propertiesPanelVisible ? 'Hide Properties' : 'Show Properties'}
+                </MenubarItem>
+              </>
+            )}
+            {onToggleLayersPanel && (
+              <>
+                {(onToggleJsonPanel || onTogglePropertiesPanel) && <MenubarSeparator />}
+                <MenubarItem onClick={onToggleLayersPanel}>
+                  <Layers className="mr-2 h-4 w-4" />
+                  {layersPanelOpen ? 'Hide Layers' : 'Show Layers'}
+                </MenubarItem>
+              </>
+            )}
+            {onToggleScratchPad && (
+              <>
+                {(onToggleJsonPanel || onTogglePropertiesPanel || onToggleLayersPanel) && <MenubarSeparator />}
+                <MenubarItem onClick={onToggleScratchPad}>
+                  <Clipboard className="mr-2 h-4 w-4" />
+                  {scratchPadOpen ? 'Hide Scratch Pad' : 'Show Scratch Pad'}
+                </MenubarItem>
+              </>
+            )}
+            {onToggleRulesEditor && (
+              <>
+                {(onToggleJsonPanel || onTogglePropertiesPanel || onToggleLayersPanel || onToggleScratchPad) && <MenubarSeparator />}
+                <MenubarItem onClick={() => onToggleRulesEditor?.()}>
+                  <ListChecks className="mr-2 h-4 w-4" />
+                  Rules
+                </MenubarItem>
+              </>
+            )}
+            {onTogglePresentationMode && (
+              <>
+                {(onToggleJsonPanel || onTogglePropertiesPanel || onToggleLayersPanel || onToggleScratchPad || onToggleRulesEditor) && <MenubarSeparator />}
+                <MenubarItem onClick={onTogglePresentationMode}>
+                  <Layers className="mr-2 h-4 w-4" />
+                  {presentationModeEnabled ? 'Exit Presentation Mode' : 'Enter Presentation Mode'}
+                  <MenubarShortcut>{presentationModeEnabled ? 'Alt+P' : 'Ctrl+Alt+P'}</MenubarShortcut>
+                </MenubarItem>
+              </>
+            )}
+            {onToggleMetadataPopups && (
+              <>
+                {(onToggleJsonPanel || hasOptionsPanelMenuItems) && <MenubarSeparator />}
+                <MenubarItem onClick={onToggleMetadataPopups}>
+                  <Info className="mr-2 h-4 w-4" />
+                  {metadataPopupsEnabled ? 'Disable Properties' : 'Enable Properties'}
+                </MenubarItem>
+              </>
             )}
             {onToggleLayerAnimations !== undefined && (
               <>
-                {onToggleMetadataPopups && <MenubarSeparator />}
+                {(onToggleMetadataPopups || onToggleJsonPanel || hasOptionsPanelMenuItems) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleLayerAnimations}>
                   <Sparkles className="mr-2 h-4 w-4" />
                   {layerAnimationsEnabled ? 'Disable Layer Animations' : 'Enable Layer Animations'}
@@ -548,7 +553,7 @@ export function TopMenuBar({
             )}
             {onToggleHover !== undefined && (
               <>
-                {(onToggleMetadataPopups || onToggleLayerAnimations !== undefined) && <MenubarSeparator />}
+                {(onToggleMetadataPopups || onToggleLayerAnimations !== undefined || onToggleJsonPanel || hasOptionsPanelMenuItems) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleHover}>
                   {hoverEnabled ? (
                     <>
@@ -566,7 +571,7 @@ export function TopMenuBar({
             )}
             {onToggleAlignmentGuides !== undefined && (
               <>
-                {(onToggleMetadataPopups || onToggleLayerAnimations !== undefined || onToggleHover !== undefined) && (
+                {(onToggleMetadataPopups || onToggleLayerAnimations !== undefined || onToggleHover !== undefined || onToggleJsonPanel || hasOptionsPanelMenuItems) && (
                   <MenubarSeparator />
                 )}
                 <MenubarItem onClick={onToggleAlignmentGuides}>
@@ -584,12 +589,29 @@ export function TopMenuBar({
                 </MenubarItem>
               </>
             )}
+            {onToggleDefaultTextLabels !== undefined && (
+              <>
+                {(onToggleMetadataPopups ||
+                  onToggleLayerAnimations !== undefined ||
+                  onToggleHover !== undefined ||
+                  onToggleAlignmentGuides !== undefined ||
+                  onToggleJsonPanel ||
+                  hasOptionsPanelMenuItems) && <MenubarSeparator />}
+                <MenubarItem onClick={onToggleDefaultTextLabels}>
+                  <Type className="mr-2 h-4 w-4" />
+                  {defaultTextLabelsEnabled ? 'Disable Default Text Labels' : 'Enable Default Text Labels'}
+                </MenubarItem>
+              </>
+            )}
             {onToggleIconBackground !== undefined && (
               <>
                 {(onToggleMetadataPopups ||
                   onToggleLayerAnimations !== undefined ||
                   onToggleHover !== undefined ||
-                  onToggleAlignmentGuides !== undefined) && <MenubarSeparator />}
+                  onToggleAlignmentGuides !== undefined ||
+                  onToggleDefaultTextLabels !== undefined ||
+                  onToggleJsonPanel ||
+                  hasOptionsPanelMenuItems) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleIconBackground}>
                   {iconBackgroundEnabled ? (
                     <>
@@ -611,7 +633,10 @@ export function TopMenuBar({
                   onToggleLayerAnimations !== undefined ||
                   onToggleHover !== undefined ||
                   onToggleAlignmentGuides !== undefined ||
-                  onToggleIconBackground !== undefined) && <MenubarSeparator />}
+                  onToggleDefaultTextLabels !== undefined ||
+                  onToggleIconBackground !== undefined ||
+                  onToggleJsonPanel ||
+                  hasOptionsPanelMenuItems) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleConnectionsBehindNodes}>
                   {connectionsBehindNodesEnabled ? (
                     <>
@@ -633,8 +658,11 @@ export function TopMenuBar({
                   onToggleLayerAnimations !== undefined ||
                   onToggleHover !== undefined ||
                   onToggleAlignmentGuides !== undefined ||
+                  onToggleDefaultTextLabels !== undefined ||
                   onToggleIconBackground !== undefined ||
-                  onToggleConnectionsBehindNodes !== undefined) && <MenubarSeparator />}
+                  onToggleConnectionsBehindNodes !== undefined ||
+                  onToggleJsonPanel ||
+                  hasOptionsPanelMenuItems) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleAnimationConnections}>
                   {animationConnectionsEnabled ? (
                     <>
@@ -658,9 +686,12 @@ export function TopMenuBar({
                   onToggleLayerAnimations !== undefined ||
                   onToggleHover !== undefined ||
                   onToggleAlignmentGuides !== undefined ||
+                  onToggleDefaultTextLabels !== undefined ||
                   onToggleIconBackground !== undefined ||
                   onToggleConnectionsBehindNodes !== undefined ||
-                  onToggleAnimationConnections !== undefined) && <MenubarSeparator />}
+                  onToggleAnimationConnections !== undefined ||
+                  onToggleJsonPanel ||
+                  hasOptionsPanelMenuItems) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleAnimationToggleOnClick} disabled={!animationConnectionsEnabled}>
                   {animationToggleOnClickEnabled ? (
                     <>
@@ -678,6 +709,25 @@ export function TopMenuBar({
                 </MenubarItem>
               </>
             )}
+            <>
+              {(onToggleJsonPanel ||
+                hasOptionsPanelMenuItems ||
+                onToggleMetadataPopups ||
+                onToggleLayerAnimations !== undefined ||
+                onToggleHover !== undefined ||
+                onToggleAlignmentGuides !== undefined ||
+                onToggleDefaultTextLabels !== undefined ||
+                onToggleIconBackground !== undefined ||
+                onToggleConnectionsBehindNodes !== undefined ||
+                onToggleAnimationConnections !== undefined ||
+                onToggleAnimationToggleOnClick !== undefined) && <MenubarSeparator />}
+              <MenubarSub>
+                <MenubarSubTrigger data-tutorial-id="view-menu">View</MenubarSubTrigger>
+                <MenubarSubContent>
+                  <ViewThemeSubmenu />
+                </MenubarSubContent>
+              </MenubarSub>
+            </>
           </MenubarContent>
         </MenubarMenu>
         <MenubarMenu>

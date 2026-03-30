@@ -25,6 +25,8 @@ interface UseCanvasOperationsOptions {
   onItemSelect: (item: any | null) => void;
   toast: (options: { variant?: 'destructive' | 'default'; title: string; description: string }) => void;
   iconBackgroundEnabled?: boolean;
+  /** When true (default), new palette drops get resource label + info description for icons/objects. Text/textbox resources always keep catalog label. */
+  defaultTextLabelsEnabled?: boolean;
 }
 
 export function useCanvasOperations({
@@ -34,6 +36,7 @@ export function useCanvasOperations({
   onItemSelect,
   toast,
   iconBackgroundEnabled = true,
+  defaultTextLabelsEnabled = true,
 }: UseCanvasOperationsOptions) {
   // Function to get random theme for shapes
   const getRandomTheme = () => {
@@ -123,7 +126,16 @@ export function useCanvasOperations({
       
       // Check if this is a textbox resource
       const isTextboxResource = itemType === 'generic.text.textbox' || itemType?.endsWith('.textbox');
-      
+      const useResourceLabelForNewNode =
+        itemType === 'generic.text.text' ||
+        isTextboxResource ||
+        defaultTextLabelsEnabled;
+      // Drag/palette items may carry info/description; do not merge them when defaults are off (same as omitting generated info above)
+      const omitMergedInfoDescription =
+        itemType !== 'generic.text.text' &&
+        !isTextboxResource &&
+        !defaultTextLabelsEnabled;
+
       if (!existingNode) {
         // For resource items from the sidebar, use type from drag item
         // NEVER store file in node - ResourceIcon looks up file from resource catalog
@@ -132,11 +144,15 @@ export function useCanvasOperations({
           id: generateSequentialId(itemType, prevData),
           type: itemType,
           // Set label based on type - shapes get no default text (never use resource name like "Rectangle", "Circle")
-          label: isShapeResource ? '' : itemLabel,
+          // Icons/objects: omit resource name + info when defaultTextLabelsEnabled is off (text/textbox still use catalog label)
+          label: isShapeResource ? '' : useResourceLabelForNewNode ? itemLabel : '',
           // Don't set info/description for text and textbox resource types, or shapes
-          ...(itemType !== 'generic.text.text' && itemType !== 'generic.text.textbox' && !isShapeResource && {
-            info: item.provider ? `${itemLabel} from ${item.provider}` : `A new ${itemLabel}`
-          }),
+          ...(itemType !== 'generic.text.text' &&
+            itemType !== 'generic.text.textbox' &&
+            !isShapeResource &&
+            defaultTextLabelsEnabled && {
+              info: item.provider ? `${itemLabel} from ${item.provider}` : `A new ${itemLabel}`,
+            }),
           sizeMode: (isShapeResource || isTextboxResource) ? 'custom' : undefined, // Shapes and textboxes use custom sizing
            width: isShapeResource ? snapDimensionToGrid(
              itemType === 'generic.object.point' ? 20 :
@@ -213,9 +229,13 @@ export function useCanvasOperations({
           // Keep provider, category, and file for icon rendering
           // This MUST come AFTER random theme so scratchpad properties override defaults
           ...Object.keys(item).reduce((acc: any, key) => {
-             if (!['type', 'label', 'x', 'y', 'id', 'fromScratchPad'].includes(key)) {
-               acc[key] = item[key];
+             if (['type', 'label', 'x', 'y', 'id', 'fromScratchPad'].includes(key)) {
+               return acc;
              }
+             if (omitMergedInfoDescription && (key === 'info' || key === 'description')) {
+               return acc;
+             }
+             acc[key] = item[key];
              return acc;
           }, {}),
         };
@@ -232,7 +252,7 @@ export function useCanvasOperations({
 
       return { ...prevData, nodes: newNodes };
     });
-  }, [setDiagramData]);
+  }, [setDiagramData, defaultTextLabelsEnabled, iconBackgroundEnabled]);
 
   const resizeNode = useCallback((nodeId: string, newWidth: number, newHeight: number, newX?: number, newY?: number) => {
     setDiagramData(prevData => {

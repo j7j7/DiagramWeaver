@@ -2,11 +2,23 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-03-30 – Properties/Layers/Scratch/Rules/Presentation: Edit → Options
+**UI**: **`top-menu-bar.tsx`** — **Show/Hide Properties** (right **panel**), **Show/Hide Layers**, **Show/Hide Scratch Pad**, **Rules**, **Enter/Exit Presentation Mode** moved from **Edit** to **Options**, in that order after **Show JSON** and before **Enable Properties** (metadata popups). **`hasOptionsPanelMenuItems`** is used so separators stay correct through the rest of **Options**. **Edit** is now clipboard, paste, select all, undo/redo, fit to view, read-only.
+
+### 2026-03-30 – View (Light/Dark/System): moved to Options menu
+**UI**: **`top-menu-bar.tsx`** — **View** submenu (**Light** / **Dark** / **System** via `ViewThemeSubmenu`) moved from **File** to **Options** (last entry, after other toggles). **`data-tutorial-id="view-menu"`** on the **View** sub-trigger for tutorials. Separator before **View** only when at least one other Options item is present.
+
+### 2026-03-30 – Show JSON: moved to Options menu
+**UI**: **`top-menu-bar.tsx`** — **Show JSON / Hide JSON** (`data-tutorial-id="toggle-json-menu"`, **Code** icon) is no longer under **File**; it is the first item in **Options** when `onToggleJsonPanel` is provided. Keyboard shortcut unchanged (**Ctrl+Shift+J** in shortcuts dialog).
+
 ### 2026-03-30 – Right-click search modal: larger palette icons
 **Context menu** “search resources” grid (`search-resources-modal`, `viewMode="compact"`). **Change**: **`DraggableResourceItem`** / **`DraggableIconItem`** compact tiles use **`aspect-square`** cells with **`max-w`/`max-h` ~90–92%** for PNGs and **48×48** vector heading icon; Lucide symbols **`h-12 w-12`** (capped **`max-h/w 90%`**); emojis **`text-4xl`**; fallback **`Box`** in modal **`h-10 w-10`**. Icons fill the tile instead of fixed **20px** in **48px**-tall rows.
 
 ### 2026-03-30 – Top bar: Options menu
-**UI**: **`top-menu-bar.tsx`** — new top-level **Options** menu (`data-tutorial-id="options-menu"`) immediately **right of Edit**, before **Layout**. Items moved from Edit: **Enable Properties** (metadata popups), **Layer Animations**, **Show/Hide Hover Text**, **Alignment Guides**, **Icon Background**, **Lines Behind Nodes / Order-Aware Connection Lines**, **Animation Connections**, **Click to Toggle Animations**. Edit keeps clipboard, undo/redo, fit, properties **panel**, layers **panel**, scratch pad, rules, presentation mode, read-only.
+**UI**: **`top-menu-bar.tsx`** — new top-level **Options** menu (`data-tutorial-id="options-menu"`) immediately **right of Edit**, before **Layout**. **Options** also holds **JSON**, **panel toggles** (properties, layers, scratch, rules, presentation), **View** (app theme), and behavior toggles (metadata popups, layer animations, hover, guides, default text labels, icon background, connection ordering, animation connections). **Edit** keeps clipboard, undo/redo, fit, read-only (see newer MEMORY entries for panel moves).
+
+### 2026-03-30 – Options: default text labels for new palette drops
+**Toggle**: **Options → Enable/Disable Default Text Labels** (default: **on**). When **off**, dropping an icon or object from the palette creates a node **without** the resource **label** or **info** (description); **text** / **textbox** resources still get the catalog label as before. **Persistence**: `dw:defaultTextLabels:enabled` in localStorage. **Implementation**: `useCanvasOperations` **`addNode`** in **`canvas-operations.ts`** (`defaultTextLabelsEnabled`); **`diagram-editor.tsx`** state; **`editor-canvas.tsx`** passes the flag into the hook; **`top-menu-bar.tsx`** Options menu. When defaults are off, **`addNode`** also skips merging **`info`** / **`description`** from drag/palette item objects (covers right-click **search** and DnD). **`pastePaletteItem`** deps include **`defaultTextLabelsEnabled`**.
 
 ### 2026-03-30 – Merge `troubleshoot-mint-mocha` into `main`
 Merged **`origin/troubleshoot-mint-mocha`** into **`main`** (clean merge, no conflicts). Touches **`shape-wrapper.tsx`**, **`square.tsx`**, **`html-to-image-fit-png.ts`**. Pushed **`main`** to **`origin`**. **`npm run typecheck`** passes.

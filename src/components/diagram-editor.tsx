@@ -685,6 +685,7 @@ export default function DiagramEditor() {
   const [mousePosition, setMousePosition] = React.useState<{ x: number; y: number } | null>(null);
   const [hoverEnabled, setHoverEnabled] = React.useState<boolean>(false);
   const [iconBackgroundEnabled, setIconBackgroundEnabled] = React.useState<boolean>(true);
+  const [defaultTextLabelsEnabled, setDefaultTextLabelsEnabled] = React.useState<boolean>(true);
   const [alignmentGuidesEnabled, setAlignmentGuidesEnabled] = React.useState<boolean>(true);
   const [connectionsBehindNodesEnabled, setConnectionsBehindNodesEnabled] = React.useState<boolean>(true);
   const [animationConnectionsEnabled, setAnimationConnectionsEnabled] = React.useState<boolean>(true);
@@ -1497,6 +1498,10 @@ export default function DiagramEditor() {
     const savedIconBackground = localStorage.getItem('dw:iconBackground:enabled');
     if (savedIconBackground !== null) {
       setIconBackgroundEnabled(savedIconBackground === 'true');
+    }
+    const savedDefaultTextLabels = localStorage.getItem('dw:defaultTextLabels:enabled');
+    if (savedDefaultTextLabels !== null) {
+      setDefaultTextLabelsEnabled(savedDefaultTextLabels === 'true');
     }
   }, []);
 
@@ -4543,6 +4548,13 @@ export default function DiagramEditor() {
     }
   }, [iconBackgroundEnabled, isClient]);
 
+  // Persist default text labels for new palette drops
+  React.useEffect(() => {
+    if (isClient) {
+      localStorage.setItem('dw:defaultTextLabels:enabled', String(defaultTextLabelsEnabled));
+    }
+  }, [defaultTextLabelsEnabled, isClient]);
+
   // Persist alignment guides preference
   React.useEffect(() => {
     if (isClient) {
@@ -4719,6 +4731,8 @@ export default function DiagramEditor() {
         setHoverEnabled={setHoverEnabled}
         iconBackgroundEnabled={iconBackgroundEnabled}
         setIconBackgroundEnabled={setIconBackgroundEnabled}
+        defaultTextLabelsEnabled={defaultTextLabelsEnabled}
+        setDefaultTextLabelsEnabled={setDefaultTextLabelsEnabled}
         alignmentGuidesEnabled={alignmentGuidesEnabled}
         setAlignmentGuidesEnabled={setAlignmentGuidesEnabled}
         connectionsBehindNodesEnabled={connectionsBehindNodesEnabled}
@@ -4938,6 +4952,8 @@ function DiagramEditorInner({
   setHoverEnabled,
   iconBackgroundEnabled,
   setIconBackgroundEnabled,
+  defaultTextLabelsEnabled,
+  setDefaultTextLabelsEnabled,
   alignmentGuidesEnabled,
   setAlignmentGuidesEnabled,
   connectionsBehindNodesEnabled,
@@ -5238,6 +5254,8 @@ function DiagramEditorInner({
                     onToggleHover={() => setHoverEnabled(!hoverEnabled)}
                     iconBackgroundEnabled={iconBackgroundEnabled}
                     onToggleIconBackground={() => setIconBackgroundEnabled(!iconBackgroundEnabled)}
+                    defaultTextLabelsEnabled={defaultTextLabelsEnabled}
+                    onToggleDefaultTextLabels={() => setDefaultTextLabelsEnabled(!defaultTextLabelsEnabled)}
                     alignmentGuidesEnabled={alignmentGuidesEnabled}
                     onToggleAlignmentGuides={() => setAlignmentGuidesEnabled(!alignmentGuidesEnabled)}
                     connectionsBehindNodesEnabled={connectionsBehindNodesEnabled}
@@ -5390,6 +5408,7 @@ function DiagramEditorInner({
                     onExportComplete={() => setExportDialogOpen(false)}
                     hoverEnabled={hoverEnabled}
                     iconBackgroundEnabled={iconBackgroundEnabled}
+                    defaultTextLabelsEnabled={defaultTextLabelsEnabled}
                     onSelectAll={handleSelectAll}
                     onTriggerTextStylingPanel={() => setTriggerTextStylingPanel(true)}
                     onTriggerVisualStylingPanel={() => setTriggerVisualStylingPanel(true)}

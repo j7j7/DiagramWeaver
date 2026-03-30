@@ -82,6 +82,8 @@ interface EditorCanvasProps {
   onExportComplete?: () => void;
   hoverEnabled?: boolean;
   iconBackgroundEnabled?: boolean;
+  /** When false, new palette drops omit resource name (label) and info for icons/objects; text/textbox drops unchanged. Default true. */
+  defaultTextLabelsEnabled?: boolean;
   connectionsBehindNodesEnabled?: boolean;
   animationConnectionsEnabled?: boolean;
   animationToggleOnClickEnabled?: boolean;
@@ -158,7 +160,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, connectionsBehindNodesEnabled = true, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal, nodeAnimationStyles, connectionAnimationStyles, connectionKey, onSubDiagramDoubleClick, getHasLinkedSubDiagram, onCreateSubDiagram, onRemoveSubDiagramLink }: EditorCanvasProps,
+   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, defaultTextLabelsEnabled = true, connectionsBehindNodesEnabled = true, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal, nodeAnimationStyles, connectionAnimationStyles, connectionKey, onSubDiagramDoubleClick, getHasLinkedSubDiagram, onCreateSubDiagram, onRemoveSubDiagramLink }: EditorCanvasProps,
   ref
 ) {
   const [gifExportAnimationTimeSeconds, setGifExportAnimationTimeSeconds] = React.useState<number | null>(null);
@@ -610,6 +612,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     onItemSelect,
     toast,
     iconBackgroundEnabled,
+    defaultTextLabelsEnabled,
   });
 
   // Wrapper functions for multi-item resize
@@ -1262,7 +1265,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     const canvasX = (centerX - transform.x) / transform.k;
     const canvasY = (centerY - transform.y) / transform.k;
     operations.addNode(item, { x: canvasX, y: canvasY }, null);
-  }, [transform, operations]);
+  }, [transform, operations, defaultTextLabelsEnabled]);
 
   const canPasteHandler = useCallback(() => {
     return canPaste();
