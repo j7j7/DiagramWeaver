@@ -11,6 +11,8 @@ interface TextboxRichDisplayProps {
   node: DiagramNodeData;
   runs: RichTextRun[];
   onDoubleClick: (e: React.MouseEvent) => void;
+  /** When true, omit hover background (e.g. text-box-heading strip on colored gradient) */
+  suppressHoverBackground?: boolean;
 }
 
 function getLineStyle(run: RichTextRun, node: DiagramNodeData): React.CSSProperties {
@@ -32,13 +34,14 @@ export function TextboxRichDisplay({
   node,
   runs,
   onDoubleClick,
+  suppressHoverBackground = false,
 }: TextboxRichDisplayProps) {
   const nodeAny = node as unknown as Record<string, unknown>;
 
   if (runs.length === 0) {
     return (
       <p
-        className={`${getTextJustifyClass((nodeAny.textJustify as string) || DEFAULT_JUSTIFY)} break-words leading-normal cursor-text hover:bg-background/50 rounded whitespace-pre-wrap w-full text-muted-foreground`}
+        className={`${getTextJustifyClass((nodeAny.textJustify as string) || DEFAULT_JUSTIFY)} break-words leading-normal cursor-text ${suppressHoverBackground ? "" : "hover:bg-background/50"} rounded whitespace-pre-wrap w-full text-muted-foreground`}
         style={{ ...getTextStylingForNode(node), display: "block" }}
         onDoubleClick={onDoubleClick}
       >
@@ -152,7 +155,7 @@ export function TextboxRichDisplay({
   const containerStyle = { ...baseStyle, display: "block" as const };
   return (
     <div
-      className="break-words leading-normal cursor-text hover:bg-background/50 rounded w-full space-y-0.5"
+      className={`break-words leading-normal cursor-text rounded w-full space-y-0.5${suppressHoverBackground ? "" : " hover:bg-background/50"}`}
       style={containerStyle}
       onDoubleClick={onDoubleClick}
     >

@@ -22,6 +22,7 @@ import {
   SquareShape,
   RectangleShape,
   RoundedRectangleShape,
+  TextBoxHeadingShape,
   CircleShape,
   PointShape,
   KiteShape,
@@ -210,7 +211,11 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
         JSON.stringify((p as any).richLabel) !== JSON.stringify((n as any).richLabel) ||
         p.width !== n.width || p.height !== n.height || p.type !== n.type ||
         (p as any).rotation !== (n as any).rotation || p.tag !== n.tag ||
-        (p as any).cornerRadius !== (n as any).cornerRadius) {
+        (p as any).cornerRadius !== (n as any).cornerRadius ||
+        (p as any).headingEdge !== (n as any).headingEdge ||
+        (p as any).headingLabel !== (n as any).headingLabel ||
+        JSON.stringify((p as any).richHeadingLabel) !== JSON.stringify((n as any).richHeadingLabel) ||
+        (p as any).headingBackgroundColor !== (n as any).headingBackgroundColor) {
       return false;
     }
     const pUml = (p as any).umlClass;
@@ -515,6 +520,19 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
         ? { ...visualNode, cornerRadius: localCornerRadius }
         : visualNode;
       return <RoundedRectangleShape {...shapeProps} node={roundedNode} />;
+    } else if (nodeType === 'generic.object.text-box-heading' || nodeType?.endsWith('.text-box-heading')) {
+      const roundedNode = isDraggingCornerRadius && localCornerRadius !== null
+        ? { ...visualNode, cornerRadius: localCornerRadius }
+        : visualNode;
+      return (
+        <TextBoxHeadingShape
+          {...shapeProps}
+          node={roundedNode}
+          onPatch={onUpdate ? (p) => onUpdate({ ...node, ...p }) : undefined}
+          isReadOnly={isReadOnly}
+          onDraggingChange={onDraggingChange}
+        />
+      );
     } else if (nodeType === 'generic.object.circle' || nodeType?.endsWith('.circle')) {
       return <CircleShape {...shapeProps} />;
     } else if (nodeType === 'generic.object.point' || nodeType?.endsWith('.point')) {
@@ -845,11 +863,13 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
 
    const isTextNode = node.type === 'generic.text.text';
   const isTextboxNode = node.type === 'generic.text.textbox';
-   const isShapeNode = !isIconOrEmojiType(node.type) && (node.type === 'generic.object.square' || node.type === 'generic.object.circle' || node.type === 'generic.object.point' || node.type === 'generic.object.rectangle' || node.type === 'generic.object.uml-class' || node.type === 'generic.object.rounded-rectangle' || node.type === 'generic.object.triangle' || node.type === 'generic.object.star' || node.type === 'generic.object.cloud' || node.type === 'generic.object.parallelogram' || node.type === 'generic.object.trapezoid' || node.type === 'generic.object.kite' || node.type === 'generic.object.hexagon' || node.type === 'generic.object.pentagon' || node.type === 'generic.object.octagon' || node.type === 'generic.object.jigsaw' || node.type === 'generic.object.arrowhead' || node.type === 'generic.object.chevron' || node.type === 'generic.object.line' || node.type === 'generic.object.loop' ||
-                       node.type?.endsWith('.square') || node.type?.endsWith('.circle') || node.type?.endsWith('.point') || node.type?.endsWith('.rectangle') || node.type?.endsWith('.rounded-rectangle') || node.type?.endsWith('.triangle') || node.type?.endsWith('.star') || node.type?.endsWith('.cloud') || node.type?.endsWith('.parallelogram') || node.type?.endsWith('.trapezoid') || node.type?.endsWith('.kite') || node.type?.endsWith('.hexagon') || node.type?.endsWith('.pentagon') || node.type?.endsWith('.octagon') || node.type?.endsWith('.jigsaw') || node.type?.endsWith('.arrowhead') || node.type?.endsWith('.chevron') || node.type?.endsWith('.line') || node.type?.endsWith('.loop'));
+   const isShapeNode = !isIconOrEmojiType(node.type) && (node.type === 'generic.object.square' || node.type === 'generic.object.circle' || node.type === 'generic.object.point' || node.type === 'generic.object.rectangle' || node.type === 'generic.object.uml-class' || node.type === 'generic.object.rounded-rectangle' || node.type === 'generic.object.text-box-heading' || node.type === 'generic.object.triangle' || node.type === 'generic.object.star' || node.type === 'generic.object.cloud' || node.type === 'generic.object.parallelogram' || node.type === 'generic.object.trapezoid' || node.type === 'generic.object.kite' || node.type === 'generic.object.hexagon' || node.type === 'generic.object.pentagon' || node.type === 'generic.object.octagon' || node.type === 'generic.object.jigsaw' || node.type === 'generic.object.arrowhead' || node.type === 'generic.object.chevron' || node.type === 'generic.object.line' || node.type === 'generic.object.loop' ||
+                       node.type?.endsWith('.square') || node.type?.endsWith('.circle') || node.type?.endsWith('.point') || node.type?.endsWith('.rectangle') || node.type?.endsWith('.rounded-rectangle') || node.type?.endsWith('.text-box-heading') || node.type?.endsWith('.triangle') || node.type?.endsWith('.star') || node.type?.endsWith('.cloud') || node.type?.endsWith('.parallelogram') || node.type?.endsWith('.trapezoid') || node.type?.endsWith('.kite') || node.type?.endsWith('.hexagon') || node.type?.endsWith('.pentagon') || node.type?.endsWith('.octagon') || node.type?.endsWith('.jigsaw') || node.type?.endsWith('.arrowhead') || node.type?.endsWith('.chevron') || node.type?.endsWith('.line') || node.type?.endsWith('.loop'));
   const isPointNode = node.type === 'generic.object.point' || node.type?.endsWith('.point');
   const isLineNode = node.type === 'generic.object.line' || node.type?.endsWith('.line');
-  const isRoundedRectangleNode = node.type === 'generic.object.rounded-rectangle' || node.type?.endsWith('.rounded-rectangle');
+   const isRoundedRectangleNode = node.type === 'generic.object.rounded-rectangle' || node.type?.endsWith('.rounded-rectangle');
+   const isTextBoxHeadingNode = node.type === 'generic.object.text-box-heading' || node.type?.endsWith('.text-box-heading');
+   const showsCornerRadiusHandle = isRoundedRectangleNode || isTextBoxHeadingNode;
   const isRotatableNode = (isTextNode || isTextboxNode || isShapeNode) && !isLineNode;
   const isIconNode = !isTextNode && !isTextboxNode && !isShapeNode && !isLineNode;
   const nodeHeight = calculateNodeHeight(node.label || '', node.type, node.sizeMode, node.height);
@@ -968,15 +988,20 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
         if (isKiteNode) newWidth = newHeight;
         break;
       case 'bottom-right': {
-        // Proportional resize: maintain aspect ratio (both dimensions scale together)
-        const rawW = resizeStartPos.current.startWidth + deltaX;
-        const rawH = resizeStartPos.current.startHeight + deltaY;
-        // Use the larger scale so the shape fills the dragged area
-        const scaleFromW = rawW / resizeStartPos.current.startWidth;
-        const scaleFromH = rawH / resizeStartPos.current.startHeight;
-        const scale = Math.max(scaleFromW, scaleFromH, minWidth / resizeStartPos.current.startWidth, minHeight / resizeStartPos.current.startHeight);
-        newWidth = resizeStartPos.current.startWidth * scale;
-        newHeight = resizeStartPos.current.startHeight * scale;
+        if (e.shiftKey) {
+          // Proportional resize: maintain aspect ratio (both dimensions scale together)
+          const rawW = resizeStartPos.current.startWidth + deltaX;
+          const rawH = resizeStartPos.current.startHeight + deltaY;
+          const scaleFromW = rawW / resizeStartPos.current.startWidth;
+          const scaleFromH = rawH / resizeStartPos.current.startHeight;
+          const scale = Math.max(scaleFromW, scaleFromH, minWidth / resizeStartPos.current.startWidth, minHeight / resizeStartPos.current.startHeight);
+          newWidth = resizeStartPos.current.startWidth * scale;
+          newHeight = resizeStartPos.current.startHeight * scale;
+        } else {
+          // Corner: width and height follow the pointer independently (like right + bottom together)
+          newWidth = resizeStartPos.current.startWidth + deltaX;
+          newHeight = resizeStartPos.current.startHeight + deltaY;
+        }
         if (isKiteNode) {
           const size = Math.max(newWidth, newHeight);
           newWidth = size;
@@ -1222,7 +1247,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
 
   // Corner radius drag handlers (rounded-rectangle only)
   const handleCornerRadiusDragStart = useCallback((e: React.MouseEvent) => {
-    if (isReadOnly || !onUpdate || !isRoundedRectangleNode) return;
+    if (isReadOnly || !onUpdate || !showsCornerRadiusHandle) return;
     e.preventDefault();
     e.stopPropagation();
     const startValue = Math.max(0, Math.min(1, (node as any).cornerRadius ?? 0.2));
@@ -1231,7 +1256,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     setLocalCornerRadius(startValue);
     setIsDraggingCornerRadius(true);
     onDraggingChange?.(true);
-  }, [isReadOnly, onUpdate, isRoundedRectangleNode, node, onDraggingChange]);
+  }, [isReadOnly, onUpdate, showsCornerRadiusHandle, node, onDraggingChange]);
 
   const handleCornerRadiusDragMove = useCallback((e: MouseEvent) => {
     if (!cornerRadiusDragRef.current) return;
@@ -1624,7 +1649,7 @@ return (
        )}
 
        {/* Corner radius handle - rounded-rectangle only, single select */}
-       {!isReadOnly && isSelected && !isMultiSelected && isRoundedRectangleNode && onUpdate && (
+       {!isReadOnly && isSelected && !isMultiSelected && showsCornerRadiusHandle && onUpdate && (
          <CornerRadiusHandle
            visible={true}
            onMouseDown={handleCornerRadiusDragStart}

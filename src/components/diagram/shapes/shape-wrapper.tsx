@@ -38,6 +38,8 @@ interface ShapeWrapperProps {
   onLabelDoubleClick: (e: React.MouseEvent) => void;
   /** Presentation slide transition: lerp fill/stroke between slides */
   slideColorTransition?: string;
+  /** When true, skip ShapeText so the shape can render custom label regions (e.g. text-box-heading) */
+  omitShapeText?: boolean;
 }
 
 export function ShapeWrapper({
@@ -66,6 +68,7 @@ export function ShapeWrapper({
   onLabelKeyDown,
   onLabelDoubleClick,
   slideColorTransition,
+  omitShapeText = false,
 }: ShapeWrapperProps) {
   const styles = getShapeStyles(node);
   const slideShapeShadowMode = useSlideShapeShadowTransitionMode();
@@ -167,16 +170,18 @@ export function ShapeWrapper({
           onTagDoubleClick={onTagDoubleClick}
         />
 
-        <ShapeText
-          node={node}
-          label={label}
-          isEditingLabel={isEditingLabel}
-          editRuns={editRuns}
-          onRichLabelSubmit={onRichLabelSubmit}
-          onVerticalAlignChange={onVerticalAlignChange}
-          onLabelKeyDown={onLabelKeyDown}
-          onLabelDoubleClick={onLabelDoubleClick}
-        />
+        {!omitShapeText ? (
+          <ShapeText
+            node={node}
+            label={label}
+            isEditingLabel={isEditingLabel}
+            editRuns={editRuns}
+            onRichLabelSubmit={onRichLabelSubmit}
+            onVerticalAlignChange={onVerticalAlignChange}
+            onLabelKeyDown={onLabelKeyDown}
+            onLabelDoubleClick={onLabelDoubleClick}
+          />
+        ) : null}
       </div>
     </div>
   );

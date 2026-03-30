@@ -267,8 +267,18 @@ export function KeyboardShortcutsDialog({ open, onOpenChange }: KeyboardShortcut
                 keys: <span className="text-xs text-amber-800 dark:text-amber-200">Drag handle</span>,
               },
               {
-                action: "Resize proportionally (keep aspect ratio) — drag the bottom-right corner handle",
+                action: "Resize width and height independently — drag the bottom-right corner handle",
                 keys: <span className="text-xs text-amber-800 dark:text-amber-200">Corner drag</span>,
+              },
+              {
+                action: "Resize proportionally (keep aspect ratio) — hold Shift while dragging the bottom-right corner handle",
+                keys: (
+                  <span className="flex flex-wrap items-center gap-1">
+                    <Kbd>{shiftLabel}</Kbd>
+                    <span className="text-amber-700 dark:text-amber-300">+</span>
+                    <span className="text-xs text-amber-800 dark:text-amber-200">corner drag</span>
+                  </span>
+                ),
               },
             ]}
           />

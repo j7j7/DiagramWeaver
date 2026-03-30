@@ -19,6 +19,7 @@ export function isShapeNodeType(nodeType: string): boolean {
          nodeType === 'generic.object.uml-class' ||
          nodeType?.endsWith('.uml-class') ||
          nodeType === 'generic.object.rounded-rectangle' ||
+         nodeType === 'generic.object.text-box-heading' ||
          nodeType === 'generic.object.triangle' ||
          nodeType === 'generic.object.star' ||
          nodeType === 'generic.object.cloud' ||
@@ -36,6 +37,7 @@ export function isShapeNodeType(nodeType: string): boolean {
          nodeType?.endsWith('.point') ||
          nodeType?.endsWith('.rectangle') ||
          nodeType?.endsWith('.rounded-rectangle') ||
+         nodeType?.endsWith('.text-box-heading') ||
          nodeType?.endsWith('.triangle') ||
          nodeType?.endsWith('.star') ||
          nodeType?.endsWith('.cloud') ||

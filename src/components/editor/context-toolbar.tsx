@@ -444,6 +444,7 @@ export function ContextToolbar({
     (selectedItem as any)?.type === 'generic.object.rectangle' ||
     (selectedItem as any)?.type === 'generic.object.uml-class' ||
     (selectedItem as any)?.type === 'generic.object.rounded-rectangle' ||
+    (selectedItem as any)?.type === 'generic.object.text-box-heading' ||
     (selectedItem as any)?.type === 'generic.object.triangle' ||
     (selectedItem as any)?.type === 'generic.object.star' ||
     (selectedItem as any)?.type === 'generic.object.cloud' ||
@@ -462,6 +463,7 @@ export function ContextToolbar({
     (selectedItem as any)?.type?.endsWith('.point') ||
     (selectedItem as any)?.type?.endsWith('.rectangle') ||
     (selectedItem as any)?.type?.endsWith('.rounded-rectangle') ||
+    (selectedItem as any)?.type?.endsWith('.text-box-heading') ||
     (selectedItem as any)?.type?.endsWith('.triangle') ||
     (selectedItem as any)?.type?.endsWith('.star') ||
     (selectedItem as any)?.type?.endsWith('.cloud') ||
@@ -1101,7 +1103,8 @@ export function ContextToolbar({
       shadow: undefined,
       borderWidth: undefined,
       iconColor: undefined,
-      nodeSize: undefined
+      nodeSize: undefined,
+      headingBackgroundColor: undefined
     };
     
     // Check if multiple items are selected
@@ -1914,6 +1917,10 @@ export function ContextToolbar({
                   isRoundedRectangle={
                     (selectedItem as any)?.type === 'generic.object.rounded-rectangle' ||
                     (selectedItem as any)?.type?.endsWith?.('.rounded-rectangle')
+                  }
+                  isTextBoxHeading={
+                    (selectedItem as any)?.type === 'generic.object.text-box-heading' ||
+                    (selectedItem as any)?.type?.endsWith?.('.text-box-heading')
                   }
                   noIconBackground={(() => {
                     if (!selectedItem || !diagramData) return false;

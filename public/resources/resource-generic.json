@@ -1,7 +1,7 @@
 {
   "name": "Generic",
   "icon": "generic.png",
-  "totalResources": 30,
+  "totalResources": 31,
   "categories": {
     "text": {
       "name": "Text",
@@ -51,6 +51,11 @@
         {
           "name": "Rounded Rectangle",
           "file": "rounded-rectangle.png",
+          "type": "shape"
+        },
+        {
+          "name": "Text Box Heading",
+          "file": "text-box-heading.png",
           "type": "shape"
         },
         {

@@ -28,6 +28,11 @@ interface TextboxRichEditorProps {
   onHeightChange?: (height: number) => void;
   /** Callback when vertical alignment changes (top/middle/bottom). Updates node textVerticalPosition. */
   onVerticalAlignChange?: (position: 'top' | 'middle' | 'bottom') => void;
+  /**
+   * When the editor is inside a rotated container (e.g. left/right heading strip), counter-rotate the
+   * formatting bar so it stays horizontal on screen. Degrees: opposite of the container’s rotation.
+   */
+  toolbarCounterRotationDeg?: number;
 }
 
 export function TextboxRichEditor({
@@ -37,6 +42,7 @@ export function TextboxRichEditor({
   onKeyDown,
   onHeightChange,
   onVerticalAlignChange,
+  toolbarCounterRotationDeg,
 }: TextboxRichEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const hasInitialized = useRef(false);
@@ -154,13 +160,31 @@ export function TextboxRichEditor({
   const currentVerticalPos = (nodeAny.textVerticalPosition as 'top' | 'middle' | 'bottom' | undefined) || 'middle';
   const FONT_SIZES = [12, 14, 16, 18, 20, 24];
 
+  const toolbarClass =
+    "flex gap-0.5 rounded-md border border-border bg-background/95 text-foreground px-1 py-1 shadow-sm";
+  const counterRot = toolbarCounterRotationDeg != null;
+
   return (
     <div className="relative w-full h-full flex flex-col min-h-0">
       {/* Formatting toolbar - positioned OUTSIDE above textbox, so text stays in same place */}
       <div
-        className="absolute left-0 bottom-full mb-3 flex gap-0.5 rounded-md border border-border bg-background/95 text-foreground px-1 py-1 shadow-sm z-10"
-        onMouseDown={(e) => e.stopPropagation()}
+        className={cn(
+          "absolute bottom-full mb-3 z-[100]",
+          counterRot ? "left-1/2 -translate-x-1/2" : "left-0"
+        )}
       >
+        <div
+          className={toolbarClass}
+          style={
+            counterRot
+              ? {
+                  transform: `rotate(${toolbarCounterRotationDeg}deg)`,
+                  transformOrigin: "bottom center",
+                }
+              : undefined
+          }
+          onMouseDown={(e) => e.stopPropagation()}
+        >
         <button
           type="button"
           title="Bold"
@@ -274,6 +298,7 @@ export function TextboxRichEditor({
         >
           <ListOrdered className="h-3.5 w-3.5" />
         </button>
+        </div>
       </div>
 
       {/* contentEditable area - fills same space as display, no layout shift */}

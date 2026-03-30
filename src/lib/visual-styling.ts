@@ -15,6 +15,8 @@ export interface VisualStyling {
   borderWidth?: number; // Border thickness
   roundedEdges?: boolean; // Whether to apply rounded edges to shapes
   cornerRadius?: number; // Rounded-rectangle only: 0=straight, 1=full pill
+  /** Text box with heading: gradient start color for the heading strip */
+  headingBackgroundColor?: string;
   iconColor?: string; // Color for Lucide icons (context-aware, icons only)
   noIconBackground?: boolean; // Remove background from icon/resource nodes
   nodeSize?: 'normal' | 'half' | 'quarter'; // Size mode for nodes and icons
@@ -208,6 +210,7 @@ export function extractVisualStylingFromNode(node: DiagramNodeData | DiagramNode
     borderWidth: node.borderWidth,
     roundedEdges: (node as any).roundedEdges,
     cornerRadius: (node as any).cornerRadius,
+    headingBackgroundColor: (node as any).headingBackgroundColor,
     iconColor: (node as DiagramNodeData).iconColor,
     noIconBackground: (node as any).noIconBackground,
     nodeSize: (node as any).nodeSize
@@ -268,6 +271,8 @@ export function applyVisualStylingToNode(
     borderWidth: styling.borderWidth ?? node.borderWidth,
     roundedEdges: styling.roundedEdges ?? (node as any).roundedEdges,
     cornerRadius: styling.cornerRadius !== undefined ? styling.cornerRadius : (node as any).cornerRadius,
+    headingBackgroundColor:
+      styling.headingBackgroundColor !== undefined ? styling.headingBackgroundColor : (node as any).headingBackgroundColor,
     iconColor: styling.iconColor !== undefined ? styling.iconColor : (node as DiagramNodeData).iconColor,
     noIconBackground: styling.noIconBackground !== undefined ? styling.noIconBackground : (node as any).noIconBackground,
     nodeSize: styling.nodeSize !== undefined ? styling.nodeSize : (node as any).nodeSize

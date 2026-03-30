@@ -778,6 +778,7 @@ const renderIcon = (item: ScratchPadItem) => {
                                     return !isIconOrEmojiType(t) && (t.startsWith('generic.object.') ||
                                       t?.endsWith('.square') || t?.endsWith('.circle') ||
                                       t?.endsWith('.point') || t?.endsWith('.rectangle') ||
+                                      t?.endsWith('.rounded-rectangle') || t?.endsWith('.text-box-heading') ||
                                       t?.endsWith('.triangle') || t?.endsWith('.star') ||
                                       t?.endsWith('.cloud') || t?.endsWith('.parallelogram') ||
                                       t?.endsWith('.trapezoid') || t?.endsWith('.kite') ||
@@ -787,7 +788,13 @@ const renderIcon = (item: ScratchPadItem) => {
                                 })()}
                                 isRoundedRectangle={
                                   editingItem.type === 'generic.object.rounded-rectangle' ||
-                                  editingItem.type?.endsWith?.('.rounded-rectangle')
+                                  editingItem.type === 'generic.object.text-box-heading' ||
+                                  editingItem.type?.endsWith?.('.rounded-rectangle') ||
+                                  editingItem.type?.endsWith?.('.text-box-heading')
+                                }
+                                isTextBoxHeading={
+                                  editingItem.type === 'generic.object.text-box-heading' ||
+                                  editingItem.type?.endsWith?.('.text-box-heading')
                                 }
                             />
                         </TabsContent>

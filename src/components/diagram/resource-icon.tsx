@@ -192,7 +192,7 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
   // Handle shape types (exclude icon/emoji - those use Lucide/emoji above)
   if (!type.startsWith('generic.icon.') && !type.startsWith('generic.emoji.') &&
       (type.startsWith('generic.object.') || type?.endsWith('.square') || type?.endsWith('.circle') ||
-      type?.endsWith('.point') || type?.endsWith('.rectangle') || type?.endsWith('.rounded-rectangle') || type?.endsWith('.triangle') ||
+      type?.endsWith('.point') || type?.endsWith('.rectangle') || type?.endsWith('.rounded-rectangle') || type?.endsWith('.text-box-heading') || type?.endsWith('.triangle') ||
       type?.endsWith('.star') || type?.endsWith('.cloud') || type?.endsWith('.parallelogram') ||
       type?.endsWith('.trapezoid') || type?.endsWith('.kite') || type?.endsWith('.hexagon') ||
       type?.endsWith('.pentagon') || type?.endsWith('.octagon') || type?.endsWith('.jigsaw') ||
@@ -243,6 +243,13 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
         return (
           <svg {...props} viewBox="0 0 24 24" fill={props.fill || "currentColor"} stroke={props.stroke || "none"} strokeWidth={props.strokeWidth || 2}>
             <rect x="4" y="6" width="16" height="12" rx="2" ry="2" />
+          </svg>
+        );
+      case 'text-box-heading':
+        return (
+          <svg {...props} viewBox="0 0 24 24" fill={props.fill || "currentColor"} stroke={props.stroke || "currentColor"} strokeWidth={props.strokeWidth ?? 1}>
+            <rect x="4" y="6" width="16" height="12" rx="2" ry="2" fill="none" />
+            <path d="M 4 6 h16 v4 H4 Z" fill="currentColor" opacity={0.35} />
           </svg>
         );
       case 'uml-class':

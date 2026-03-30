@@ -51,6 +51,7 @@ export const measureNodeDims = (n: PositionedNode) => {
      n.type === 'generic.object.rectangle' ||
      n.type === 'generic.object.uml-class' ||
      n.type === 'generic.object.rounded-rectangle' ||
+     n.type === 'generic.object.text-box-heading' ||
      n.type === 'generic.object.triangle' ||
      n.type === 'generic.object.star' ||
      n.type === 'generic.object.cloud' ||
@@ -70,6 +71,7 @@ export const measureNodeDims = (n: PositionedNode) => {
      n.type?.endsWith('.rectangle') ||
      n.type?.endsWith('.uml-class') ||
      n.type?.endsWith('.rounded-rectangle') ||
+     n.type?.endsWith('.text-box-heading') ||
      n.type?.endsWith('.triangle') ||
      n.type?.endsWith('.star') ||
      n.type?.endsWith('.cloud') ||

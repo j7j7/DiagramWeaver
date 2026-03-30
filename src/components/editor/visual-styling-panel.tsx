@@ -34,9 +34,11 @@ interface VisualStylingPanelProps {
   isShape?: boolean;
   /** When true, shows corner radius control (rounded-rectangle only) */
   isRoundedRectangle?: boolean;
+  /** When true, shows heading strip color (text-box-heading only) */
+  isTextBoxHeading?: boolean;
 }
 
-export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false }: VisualStylingPanelProps) {
+export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, isTextBoxHeading = false }: VisualStylingPanelProps) {
   const [position, setPosition] = useState({ x: 200, y: 100 });
   const [isMounted, setIsMounted] = useState(false);
   const nodeRef = useRef(null);
@@ -438,6 +440,22 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                         if (!isNaN(n)) handlePropertyChange('cornerRadius', Math.min(1, Math.max(0, n)));
                       }}
                       className="h-7 w-14 text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                  </div>
+                )}
+                {isTextBoxHeading && (
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-xs text-muted-foreground">Heading color</Label>
+                    <input
+                      type="color"
+                      value={
+                        styling.headingBackgroundColor?.startsWith("#")
+                          ? styling.headingBackgroundColor
+                          : "#1f2937"
+                      }
+                      onChange={(e) => handlePropertyChange("headingBackgroundColor", e.target.value, true)}
+                      className="h-7 w-14 cursor-pointer rounded border border-border bg-background p-0"
+                      title="Heading strip color"
                     />
                   </div>
                 )}

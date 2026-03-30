@@ -86,6 +86,7 @@ export function useCanvasOperations({
                                 itemType === 'generic.object.point' ||
                                 itemType === 'generic.object.rectangle' ||
                                 itemType === 'generic.object.rounded-rectangle' ||
+                                itemType === 'generic.object.text-box-heading' ||
                                 itemType === 'generic.object.triangle' ||
                                 itemType === 'generic.object.star' ||
                                 itemType === 'generic.object.cloud' ||
@@ -105,6 +106,7 @@ export function useCanvasOperations({
                                 itemType?.endsWith('.point') ||
                                 itemType?.endsWith('.rectangle') ||
                                 itemType?.endsWith('.rounded-rectangle') ||
+                                itemType?.endsWith('.text-box-heading') ||
                                 itemType?.endsWith('.triangle') ||
                                 itemType?.endsWith('.star') ||
                                 itemType?.endsWith('.cloud') ||
@@ -141,6 +143,7 @@ export function useCanvasOperations({
              itemType === 'generic.object.rectangle' ? 80 :
              itemType === 'generic.object.uml-class' ? 120 :
              itemType === 'generic.object.rounded-rectangle' ? 80 :
+             itemType === 'generic.object.text-box-heading' ? 80 :
              itemType === 'generic.object.cloud' ? 80 :
              itemType === 'generic.object.line' ? 150 :
              60
@@ -150,6 +153,7 @@ export function useCanvasOperations({
              itemType === 'generic.object.rectangle' ? 50 :
              itemType === 'generic.object.uml-class' ? 80 :
              itemType === 'generic.object.rounded-rectangle' ? 50 :
+             itemType === 'generic.object.text-box-heading' ? 50 :
              itemType === 'generic.object.cloud' ? 50 :
              itemType === 'generic.object.line' ? 100 :
              60
@@ -194,6 +198,12 @@ export function useCanvasOperations({
           // Default placeholder text for UML class (only if not from scratchpad)
           ...((itemType === 'generic.object.uml-class' || itemType?.endsWith('.uml-class')) && !isFromScratchPad && {
             umlClass: { name: 'name', attributes: ['attributes'], methods: ['methods'] },
+          }),
+          ...((itemType === 'generic.object.text-box-heading' || itemType?.endsWith('.text-box-heading')) && !isFromScratchPad && {
+            headingEdge: 'top' as const,
+            headingLabel: 'HEADING',
+            headingBackgroundColor: '#1f2937',
+            label: 'More text here',
           }),
           // Apply icon background setting
           ...(!iconBackgroundEnabled && {

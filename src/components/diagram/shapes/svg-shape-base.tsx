@@ -32,6 +32,7 @@ interface SvgShapeBaseProps {
   onLabelKeyDown: (e: React.KeyboardEvent) => void;
   onLabelDoubleClick: (e: React.MouseEvent) => void;
   slideColorTransition?: string;
+  omitShapeText?: boolean;
 }
 
 export function SvgShapeBase({
@@ -44,6 +45,7 @@ export function SvgShapeBase({
   overrideWidth,
   overrideHeight,
   slideColorTransition,
+  omitShapeText,
   ...rest
 }: SvgShapeBaseProps) {
   const nodeAny = node as any;
@@ -67,6 +69,7 @@ export function SvgShapeBase({
       useSvgShadow={styles.shadow}
       skipWrapperStyling={true}
       slideColorTransition={slideColorTransition}
+      omitShapeText={omitShapeText}
       {...rest}
     >
       <svg

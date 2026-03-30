@@ -68,6 +68,13 @@ export interface DiagramNodeData {
   freeflow?: boolean; // If true, node can be placed anywhere without joining groups/zones
   borderWidth?: number; // Border thickness for shapes
   cornerRadius?: number; // Rounded-rectangle only: 0=straight, 1=full round
+  /** Text box with linked heading (generic.object.text-box-heading): which edge the heading strip sits on */
+  headingEdge?: 'top' | 'bottom' | 'left' | 'right';
+  /** Heading text (separate from main body label) */
+  headingLabel?: string;
+  richHeadingLabel?: RichTextRun[];
+  /** Heading strip gradient starts from this color (fades toward the body) */
+  headingBackgroundColor?: string;
   objectStyle?: string; // Predefined visual style key (e.g., 'solid', 'gradient', 'modern', etc.)
   
   // Custom sizing properties for textbox nodes
@@ -241,6 +248,10 @@ export interface DiagramNodeItem {
   freeflow?: boolean; // If true, node can be placed anywhere without joining groups/zones
   borderWidth?: number; // Border thickness for shapes
   cornerRadius?: number; // Rounded-rectangle only: 0=straight, 1=full round
+  headingEdge?: 'top' | 'bottom' | 'left' | 'right';
+  headingLabel?: string;
+  richHeadingLabel?: RichTextRun[];
+  headingBackgroundColor?: string;
   objectStyle?: string; // Predefined visual style key (e.g., 'solid', 'gradient', 'modern', etc.)
   
   // Custom sizing properties for textbox nodes

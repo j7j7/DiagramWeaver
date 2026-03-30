@@ -32,10 +32,10 @@ function calculateNodeHeight(label: string = '', isTextNode: boolean) {
 export function NodeEdgeArrows({ node, connections, width, height }: NodeEdgeArrowsProps) {
   const isTextNode = !isIconOrEmojiType(node.type) && (node.type === 'generic.text.text'  ||
                       node.type === 'generic.object.square' || node.type === 'generic.object.circle' ||
-                      node.type === 'generic.object.point' || node.type === 'generic.object.rectangle' || node.type === 'generic.object.rounded-rectangle' || node.type === 'generic.object.triangle' ||
+                      node.type === 'generic.object.point' || node.type === 'generic.object.rectangle' || node.type === 'generic.object.rounded-rectangle' || node.type === 'generic.object.text-box-heading' || node.type === 'generic.object.triangle' ||
                       node.type === 'generic.object.star' || node.type === 'generic.object.cloud' ||
                       node.type?.endsWith('.square') || node.type?.endsWith('.circle') ||
-                      node.type?.endsWith('.point') || node.type?.endsWith('.rectangle') || node.type?.endsWith('.rounded-rectangle') || node.type?.endsWith('.triangle') ||
+                      node.type?.endsWith('.point') || node.type?.endsWith('.rectangle') || node.type?.endsWith('.rounded-rectangle') || node.type?.endsWith('.text-box-heading') || node.type?.endsWith('.triangle') ||
                       node.type?.endsWith('.star') || node.type?.endsWith('.cloud'));
   const nodeHeight = calculateNodeHeight(node.label || '', isTextNode);
   const nodeWidth = isTextNode ? 90 : NODE_WIDTH; // Approximate width for text nodes

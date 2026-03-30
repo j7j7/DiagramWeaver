@@ -16,11 +16,13 @@ export function isBorderShapeNode(type?: string): boolean {
     type === "generic.object.rectangle" ||
     type === "generic.object.uml-class" ||
     type === "generic.object.rounded-rectangle" ||
+    type === "generic.object.text-box-heading" ||
     type === "generic.object.circle" ||
     type === "generic.object.point" ||
     type?.endsWith(".square") ||
     type?.endsWith(".rectangle") ||
     type?.endsWith(".rounded-rectangle") ||
+    type?.endsWith(".text-box-heading") ||
     type?.endsWith(".circle") ||
     type?.endsWith(".point")
   );
