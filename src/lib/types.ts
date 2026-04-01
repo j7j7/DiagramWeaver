@@ -486,6 +486,8 @@ export interface Slide {
   title?: string;
   description?: string;
   createdAt: number;
+  /** Hand-drawn annotations for this slide */
+  annotations?: import('./annotation-types').SlideAnnotations;
 }
 
 export interface PresentationDeck {
@@ -515,6 +517,8 @@ export interface DiagramData {
   subDiagrams?: Record<string, DiagramData>;
   /** Saved pan/zoom for this diagram level - restored when navigating to it */
   viewState?: DiagramViewState;
+  /** Hand-drawn annotations (strokes) for this diagram */
+  annotations?: import('./annotation-types').DiagramAnnotations;
 }
 
 /** @deprecated Zones removed - kept only for flatten-on-import of legacy JSON */

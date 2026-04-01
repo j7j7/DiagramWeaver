@@ -298,16 +298,66 @@ export function useCanvasExport({
     }
   }, [canvasRef, diagramData, processedNodes, processedZones]);
 
+  const drawAnnotationsOnContext = useCallback((ctx: CanvasRenderingContext2D, pixelRatio: number) => {
+    const annotations = diagramData.annotations;
+    if (!annotations?.enabled || annotations.strokes.length === 0) return;
+    for (const stroke of annotations.strokes) {
+      if (!stroke.points || stroke.points.length < 2) continue;
+      ctx.strokeStyle = stroke.color;
+      ctx.lineWidth = stroke.width * pixelRatio;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.globalAlpha = stroke.opacity;
+      ctx.beginPath();
+      ctx.moveTo(stroke.points[0].x * pixelRatio, stroke.points[0].y * pixelRatio);
+      for (let i = 1; i < stroke.points.length; i++) {
+        ctx.lineTo(stroke.points[i].x * pixelRatio, stroke.points[i].y * pixelRatio);
+      }
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }, [diagramData.annotations]);
+
+  const compositeAnnotationsOnDataUrl = useCallback(async (dataUrl: string, pixelRatio: number) => {
+    const annotations = diagramData.annotations;
+    if (!annotations?.enabled || annotations.strokes.length === 0 || !canvasRef.current) {
+      return dataUrl;
+    }
+
+    const bounds = canvasRef.current.getBoundingClientRect();
+    const width = Math.max(1, Math.round(bounds.width * pixelRatio));
+    const height = Math.max(1, Math.round(bounds.height * pixelRatio));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return dataUrl;
+
+    const img = new Image();
+    img.src = dataUrl;
+    await img.decode();
+    ctx.drawImage(img, 0, 0, width, height);
+    drawAnnotationsOnContext(ctx, pixelRatio);
+    return canvas.toDataURL('image/png');
+  }, [canvasRef, diagramData.annotations, drawAnnotationsOnContext]);
+
   const exportPng = useCallback(async (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high' }) => {
     if (!canvasRef.current) return;
 
     try {
+      const hasAnnotations = Boolean(diagramData.annotations?.enabled && diagramData.annotations.strokes.length > 0);
+      const quality = options?.quality || 'medium';
+      const pixelRatio = quality === 'low' ? 1 : quality === 'high' ? 4 : 2;
       const dataUrl = await captureViewportPngDataUrl({
         ...options,
-        fitContent: true,
-        fitPadding: 50,
-        tightContentFrame: true,
+        // Keep viewport framing when annotations are present so stroke coordinates align with export.
+        fitContent: !hasAnnotations,
+        fitPadding: hasAnnotations ? undefined : 50,
+        tightContentFrame: !hasAnnotations,
       });
+      const outputDataUrl = hasAnnotations
+        ? await compositeAnnotationsOnDataUrl(dataUrl, pixelRatio)
+        : dataUrl;
 
       if ('showSaveFilePicker' in window) {
         try {
@@ -318,7 +368,7 @@ export function useCanvasExport({
               accept: { 'image/png': ['.png'] }
             }]
           });
-          const blob = await (await fetch(dataUrl)).blob();
+          const blob = await (await fetch(outputDataUrl)).blob();
           const writable = await handle.createWritable();
           await writable.write(blob);
           await writable.close();
@@ -333,7 +383,7 @@ export function useCanvasExport({
 
       const link = document.createElement('a');
       link.download = 'diagram.png';
-      link.href = dataUrl;
+      link.href = outputDataUrl;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -342,7 +392,7 @@ export function useCanvasExport({
       console.error('Export failed:', err);
       toast({ variant: 'destructive', title: 'Export failed', description: 'Export encountered an issue.' });
     }
-  }, [toast, captureViewportPngDataUrl]);
+  }, [toast, captureViewportPngDataUrl, diagramData.annotations, canvasRef, compositeAnnotationsOnDataUrl]);
 
   const exportGif = useCallback(async (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high'; fps?: number; durationSeconds?: number }) => {
     if (!canvasRef.current) return;
@@ -474,6 +524,7 @@ export function useCanvasExport({
 
         decodeCtx.clearRect(0, 0, gifWidth, gifHeight);
         decodeCtx.drawImage(img, 0, 0, gifWidth, gifHeight);
+        drawAnnotationsOnContext(decodeCtx, pixelRatio);
         const rgbaFrame = decodeCtx.getImageData(0, 0, gifWidth, gifHeight).data;
 
         if (globalPalette === null) {
@@ -534,7 +585,7 @@ export function useCanvasExport({
         gridElement.classList.add('dot-grid');
       }
     }
-  }, [toast, canvasRef, onGifAnimationTimeUpdate]);
+  }, [toast, canvasRef, onGifAnimationTimeUpdate, drawAnnotationsOnContext]);
 
   const startExport = useCallback((options: { format?: 'png' | 'gif'; backgroundColor: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high'; fps?: number; durationSeconds?: number }) => {
     if (options.format === 'gif') {

@@ -9,6 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ViewerCanvas } from '@/components/viewer/viewer-canvas';
 import type { DiagramData, Slide } from '@/lib/types';
+import { AnnotationCanvas } from './annotation-canvas';
+import { AnnotationRenderer } from './annotation-renderer';
+import { AnnotationToolbar } from './annotation-toolbar';
+import { createEmptyAnnotations, type AnnotationToolConfig, type DiagramAnnotations, type SlideAnnotations } from '@/lib/annotation-types';
 import type { Transform } from '@/hooks/use-canvas-transform';
 import { useSlideTransition } from '@/hooks/use-slide-transition';
 import { isEventFromEditableElement } from '@/lib/keyboard-utils';
@@ -31,6 +35,7 @@ interface PresentationPlayerProps {
   onIndexChange: (index: number) => void;
   onApplyZoomToCurrentSlide?: (zoomLevel: number) => void;
   onApplyZoomToAllSlides?: (zoomLevel: number) => void;
+  onSlideAnnotationsChange?: (slideId: string, annotations: SlideAnnotations) => void;
   /** When false, bottom playback toolbar is hidden (viewer fullscreen uses keyboard + top exit only). Default true. */
   showPlaybackToolbar?: boolean;
 }
@@ -44,9 +49,20 @@ export function PresentationPlayer({
   onIndexChange,
   onApplyZoomToCurrentSlide,
   onApplyZoomToAllSlides,
+  onSlideAnnotationsChange,
   showPlaybackToolbar = true,
 }: PresentationPlayerProps) {
   const [playbackTransform, setPlaybackTransform] = React.useState<Transform>({ x: 0, y: 0, k: 1 });
+  const [annotationToolConfig, setAnnotationToolConfig] = React.useState<AnnotationToolConfig>({
+    enabled: false,
+    color: '#000000',
+    width: 2,
+    opacity: 1,
+    style: 'pen',
+  });
+  const [annotationIsDrawing, setAnnotationIsDrawing] = React.useState(false);
+  const [annotationViewport, setAnnotationViewport] = React.useState({ width: 0, height: 0 });
+  const [annotationsBySlideId, setAnnotationsBySlideId] = React.useState<Record<string, DiagramAnnotations>>({});
   const [useSlideZoom, setUseSlideZoom] = React.useState(true);
   const [autoPlayEnabled, setAutoPlayEnabled] = React.useState(false);
   const [autoPlaySeconds, setAutoPlaySeconds] = React.useState(4);
@@ -61,6 +77,7 @@ export function PresentationPlayer({
   const [previousSlideIndex, setPreviousSlideIndex] = React.useState(currentIndex);
   const [previousDiagram, setPreviousDiagram] = React.useState<DiagramData | null>(null);
   const playbackTransformRef = React.useRef(playbackTransform);
+  const presentationSurfaceRef = React.useRef<HTMLDivElement | null>(null);
   playbackTransformRef.current = playbackTransform;
   const skipPlaybackCameraLerpRef = React.useRef(true);
   const prevUseSlideZoomRef = React.useRef(useSlideZoom);
@@ -76,6 +93,51 @@ export function PresentationPlayer({
     if (!currentSlideDiagram) return null;
     return pruneConnectionsToVisibleNodes(currentSlideDiagram);
   }, [currentSlideDiagram]);
+
+  const currentAnnotations = React.useMemo<DiagramAnnotations>(() => {
+    if (!currentSlide) return createEmptyAnnotations();
+    const cached = annotationsBySlideId[currentSlide.id];
+    if (cached) return cached;
+    const fromSlide = (currentSlide as any).annotations;
+    if (fromSlide && Array.isArray(fromSlide.strokes)) {
+      return {
+        enabled: Boolean(fromSlide.enabled),
+        strokes: fromSlide.strokes,
+        createdAt: typeof fromSlide.createdAt === 'number' ? fromSlide.createdAt : Date.now(),
+        updatedAt: typeof fromSlide.updatedAt === 'number' ? fromSlide.updatedAt : Date.now(),
+      };
+    }
+    return createEmptyAnnotations();
+  }, [currentSlide, annotationsBySlideId]);
+
+  const annotationPageToken = React.useMemo(
+    () => `slide:${currentSlide?.id ?? 'none'}`,
+    [currentSlide?.id]
+  );
+
+  const updateCurrentAnnotations = React.useCallback(
+    (updater: DiagramAnnotations | ((prev: DiagramAnnotations) => DiagramAnnotations)) => {
+      if (!currentSlide) return;
+      setAnnotationsBySlideId((prev) => {
+        const base = prev[currentSlide.id] ?? currentAnnotations;
+        const next = typeof updater === 'function' ? updater(base) : updater;
+        onSlideAnnotationsChange?.(currentSlide.id, {
+          enabled: next.enabled,
+          strokes: next.strokes,
+          createdAt: next.createdAt,
+          updatedAt: Date.now(),
+        });
+        return {
+          ...prev,
+          [currentSlide.id]: {
+            ...next,
+            updatedAt: Date.now(),
+          },
+        };
+      });
+    },
+    [currentSlide, currentAnnotations, onSlideAnnotationsChange]
+  );
 
   const slideTransition = useSlideTransition({
     enabled: open && safeIndex !== previousSlideIndex,
@@ -166,6 +228,24 @@ export function PresentationPlayer({
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, [open, showPlaybackToolbar, applyViewerUnionFit, useSlideZoom]);
+
+  React.useEffect(() => {
+    if (!open || !presentationSurfaceRef.current) return;
+    const element = presentationSurfaceRef.current;
+
+    const updateSize = () => {
+      const rect = element.getBoundingClientRect();
+      setAnnotationViewport({
+        width: Math.max(1, Math.round(rect.width)),
+        height: Math.max(1, Math.round(rect.height)),
+      });
+    };
+
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [open]);
 
   React.useEffect(() => {
     if (!open) {
@@ -376,7 +456,7 @@ export function PresentationPlayer({
         >
           <X className="h-5 w-5 opacity-90" strokeWidth={2.25} />
         </button>
-        <div className="relative flex h-full w-full items-center justify-center bg-black">
+        <div ref={presentationSurfaceRef} className="relative flex h-full w-full items-center justify-center bg-black">
           {currentSlide ? (
             renderedDiagram ? (
               <div
@@ -410,6 +490,58 @@ export function PresentationPlayer({
             )
           ) : (
             <div className="text-sm text-muted-foreground">No slides to present.</div>
+          )}
+
+          {currentSlide && annotationViewport.width > 0 && annotationViewport.height > 0 && (
+            <>
+              <AnnotationRenderer
+                width={annotationViewport.width}
+                height={annotationViewport.height}
+                annotations={currentAnnotations}
+              />
+              <AnnotationCanvas
+                enabled={annotationToolConfig.enabled}
+                width={annotationViewport.width}
+                height={annotationViewport.height}
+                toolConfig={annotationToolConfig}
+                isDrawing={annotationIsDrawing}
+                onDrawingChange={setAnnotationIsDrawing}
+                resetToken={annotationPageToken}
+                onStrokeComplete={(stroke) => {
+                  updateCurrentAnnotations((prev) => ({
+                    ...prev,
+                    enabled: true,
+                    strokes: [...prev.strokes, stroke],
+                  }));
+                }}
+              />
+            </>
+          )}
+
+          {currentSlide && (
+            <div className="absolute top-16 left-4 z-[120] pointer-events-auto max-w-[calc(100vw-1rem)] overflow-x-auto">
+              <AnnotationToolbar
+                toolConfig={annotationToolConfig}
+                onToolChange={(config) => {
+                  setAnnotationToolConfig((prev) => ({ ...prev, ...config }));
+                }}
+                onToggleTool={() => {
+                  setAnnotationToolConfig((prev) => ({ ...prev, enabled: !prev.enabled }));
+                }}
+                onClearAll={() => {
+                  updateCurrentAnnotations((prev) => ({ ...prev, enabled: false, strokes: [] }));
+                }}
+                onUndo={() => {
+                  updateCurrentAnnotations((prev) => ({
+                    ...prev,
+                    strokes: prev.strokes.slice(0, -1),
+                    enabled: prev.strokes.length > 1,
+                  }));
+                }}
+                hasStrokes={currentAnnotations.strokes.length > 0}
+                isDrawing={annotationIsDrawing}
+              />
+            </div>
           )}
 
           {showPlaybackToolbar && (panelHidden ? (

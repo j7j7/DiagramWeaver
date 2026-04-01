@@ -55,6 +55,10 @@ import { themeManager } from '@/lib/theme-manager';
 import { DiagramTheme } from '@/lib/theme-types';
 import { LayersPanel } from './editor/layers-panel';
 import { PropertiesPanel } from './editor/properties-panel';
+import { AnnotationCanvas } from './editor/annotation-canvas';
+import { AnnotationRenderer } from './editor/annotation-renderer';
+import { AnnotationToolbar } from './editor/annotation-toolbar';
+import { createEmptyAnnotations, type AnnotationToolConfig, type DiagramAnnotations, type SlideAnnotations } from '@/lib/annotation-types';
 const ScratchPad = dynamic(() => import('./editor/scratch-pad').then(mod => ({ default: mod.ScratchPad })), {
   ssr: false,
 });
@@ -999,6 +1003,16 @@ export default function DiagramEditor() {
 
   // Refresh key to force canvas re-render
   const [canvasRefreshKey, setCanvasRefreshKey] = React.useState(0);
+  const canvasHostRef = React.useRef<HTMLDivElement | null>(null);
+  const [annotationCanvasSize, setAnnotationCanvasSize] = React.useState({ width: 0, height: 0 });
+  const [annotationToolConfig, setAnnotationToolConfig] = React.useState<AnnotationToolConfig>({
+    enabled: false,
+    color: '#000000',
+    width: 2,
+    opacity: 1,
+    style: 'pen',
+  });
+  const [annotationIsDrawing, setAnnotationIsDrawing] = React.useState(false);
 
   // Sub-diagram navigation stack: empty = root; non-empty = viewing sub-diagram
   const [activeDiagramStack, setActiveDiagramStack] = React.useState<BreadcrumbSegment[]>([]);
@@ -1049,6 +1063,85 @@ export default function DiagramEditor() {
     const newItem = typeof updater === 'function' ? updater(selectedItem) : updater;
     updateActiveTab({ selectedItem: newItem });
   }, [activeTabId, selectedItem, updateActiveTab]);
+
+  const currentAnnotations = React.useMemo<DiagramAnnotations>(() => {
+    if (presentationModeEnabled && activePresentationSlideId) {
+      const activeSlide = activePresentationDeck?.slides.find((s) => s.id === activePresentationSlideId);
+      return activeSlide?.annotations ?? createEmptyAnnotations();
+    }
+    return currentDiagramData.annotations ?? createEmptyAnnotations();
+  }, [
+    presentationModeEnabled,
+    activePresentationSlideId,
+    activePresentationDeck,
+    currentDiagramData.annotations,
+  ]);
+
+  const updateCurrentAnnotations = React.useCallback((updater: DiagramAnnotations | ((prev: DiagramAnnotations) => DiagramAnnotations)) => {
+    if (presentationModeEnabled && activePresentationDeckId && activePresentationSlideId) {
+      setPresentationDecks((prevDecks) => prevDecks.map((deck) => {
+        if (deck.id !== activePresentationDeckId) return deck;
+        return {
+          ...deck,
+          slides: deck.slides.map((slide) => {
+            if (slide.id !== activePresentationSlideId) return slide;
+            const base = slide.annotations ?? createEmptyAnnotations();
+            const next = typeof updater === 'function' ? updater(base) : updater;
+            return { ...slide, annotations: { ...next, updatedAt: Date.now() } };
+          }),
+          updatedAt: Date.now(),
+        };
+      }));
+      return;
+    }
+
+    setCurrentDiagramData((prev) => {
+      const base = prev.annotations ?? createEmptyAnnotations();
+      const next = typeof updater === 'function' ? updater(base) : updater;
+      return { ...prev, annotations: { ...next, updatedAt: Date.now() } };
+    });
+  }, [
+    presentationModeEnabled,
+    activePresentationDeckId,
+    activePresentationSlideId,
+    setPresentationDecks,
+    setCurrentDiagramData,
+  ]);
+
+  const annotationPageToken = React.useMemo(() => {
+    if (presentationModeEnabled) {
+      return `presentation:${activePresentationDeckId ?? 'none'}:${activePresentationSlideId ?? 'none'}`;
+    }
+
+    if (activeDiagramStack.length === 0) {
+      return 'diagram:root';
+    }
+
+    return `diagram:${activeDiagramStack.map((segment) => segment.diagramId ?? 'root').join('/')}`;
+  }, [presentationModeEnabled, activePresentationDeckId, activePresentationSlideId, activeDiagramStack]);
+
+  const handleAnnotationToolChange = React.useCallback((config: Partial<AnnotationToolConfig>) => {
+    setAnnotationToolConfig((prev) => ({
+      ...prev,
+      ...config,
+    }));
+  }, []);
+
+  React.useEffect(() => {
+    if (!canvasHostRef.current) return;
+    const element = canvasHostRef.current;
+    const updateSize = () => {
+      const rect = element.getBoundingClientRect();
+      setAnnotationCanvasSize({
+        width: Math.max(1, Math.round(rect.width)),
+        height: Math.max(1, Math.round(rect.height)),
+      });
+    };
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
 
   const selectedItemForSyncRef = React.useRef(selectedItem);
   selectedItemForSyncRef.current = selectedItem;
@@ -4319,6 +4412,22 @@ export default function DiagramEditor() {
     setPresentationPlayerOpen(true);
   }, [activePresentationSlides]);
 
+  const handlePresentationSlideAnnotationsChange = React.useCallback((slideId: string, annotations: SlideAnnotations) => {
+    if (!activePresentationDeckId) return;
+    setPresentationDecks((prev) => prev.map((deck) => {
+      if (deck.id !== activePresentationDeckId) return deck;
+      return {
+        ...deck,
+        slides: deck.slides.map((slide) => (
+          slide.id === slideId
+            ? { ...slide, annotations: { ...annotations, updatedAt: Date.now() } }
+            : slide
+        )),
+        updatedAt: Date.now(),
+      };
+    }));
+  }, [activePresentationDeckId]);
+
   const toggleJsonPanel = () => {
     const newState = !jsonPanelOpen;
     setJsonPanelOpen(newState);
@@ -4433,6 +4542,25 @@ export default function DiagramEditor() {
         return;
       }
 
+      // Ctrl+Alt+D (or Cmd+Option+D on Mac) - Toggle hand drawing annotations
+      if ((isMac ? e.metaKey : e.ctrlKey) && e.altKey && e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        if (!isReadOnly) {
+          setAnnotationToolConfig((prev) => ({ ...prev, enabled: !prev.enabled }));
+        }
+        return;
+      }
+
+      // Ctrl+Alt+X (or Cmd+Option+X on Mac) - Clear all annotations
+      if ((isMac ? e.metaKey : e.ctrlKey) && e.altKey && e.key.toLowerCase() === 'x') {
+        e.preventDefault();
+        if (!isReadOnly) {
+          updateCurrentAnnotations((prev) => ({ ...prev, enabled: false, strokes: [] }));
+          toast({ title: 'Annotations cleared', description: 'All hand-drawn annotations were removed.' });
+        }
+        return;
+      }
+
       // Alt+P - Exit presentation mode
       if (!e.ctrlKey && !e.metaKey && !e.shiftKey && e.altKey && e.key.toLowerCase() === 'p') {
         if (presentationModeEnabled) {
@@ -4532,7 +4660,7 @@ export default function DiagramEditor() {
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [jsonPanelOpen, historyIndex, history, selectedItem, selectedItemIds, diagramData, setDiagramData, setSelectedItem, animationConnectionsEnabled, setAnimationConnectionsEnabled, setAnimationToggleOnClickEnabled, isReadOnly, handleItemDelete, handleTogglePresentationMode, presentationModeEnabled, presentationPlayerOpen, handleEnterPresentationPlayMode]);
+  }, [jsonPanelOpen, historyIndex, history, selectedItem, selectedItemIds, diagramData, setDiagramData, setSelectedItem, animationConnectionsEnabled, setAnimationConnectionsEnabled, setAnimationToggleOnClickEnabled, isReadOnly, handleItemDelete, handleTogglePresentationMode, presentationModeEnabled, presentationPlayerOpen, handleEnterPresentationPlayMode, updateCurrentAnnotations, toast]);
 
   // Persist panel width
   React.useEffect(() => {
@@ -4792,6 +4920,7 @@ export default function DiagramEditor() {
         handlePreviousPresentationSlide={handlePreviousPresentationSlide}
         handleNextPresentationSlide={handleNextPresentationSlide}
         handleEnterPresentationPlayMode={handleEnterPresentationPlayMode}
+        handlePresentationSlideAnnotationsChange={handlePresentationSlideAnnotationsChange}
         presentationPlayerOpen={presentationPlayerOpen}
         setPresentationPlayerOpen={setPresentationPlayerOpen}
         presentationPlayerIndex={presentationPlayerIndex}
@@ -4851,6 +4980,16 @@ export default function DiagramEditor() {
         handleMoveToFront={handleMoveToFront}
         handleMoveOneBack={handleMoveOneBack}
         handleMoveOneForward={handleMoveOneForward}
+        canvasHostRef={canvasHostRef}
+        annotationCanvasSize={annotationCanvasSize}
+        annotationToolConfig={annotationToolConfig}
+        annotationIsDrawing={annotationIsDrawing}
+        setAnnotationIsDrawing={setAnnotationIsDrawing}
+        annotationPageToken={annotationPageToken}
+        currentAnnotations={currentAnnotations}
+        updateCurrentAnnotations={updateCurrentAnnotations}
+        handleAnnotationToolChange={handleAnnotationToolChange}
+        setAnnotationToolConfig={setAnnotationToolConfig}
         canvasRefreshKey={canvasRefreshKey}
         activeTab={activeTab}
         toast={toast}
@@ -5013,6 +5152,7 @@ function DiagramEditorInner({
   handlePreviousPresentationSlide,
   handleNextPresentationSlide,
   handleEnterPresentationPlayMode,
+  handlePresentationSlideAnnotationsChange,
   presentationPlayerOpen,
   setPresentationPlayerOpen,
   presentationPlayerIndex,
@@ -5076,6 +5216,16 @@ function DiagramEditorInner({
   handleMoveToFront,
   handleMoveOneBack,
   handleMoveOneForward,
+  canvasHostRef,
+  annotationCanvasSize,
+  annotationToolConfig,
+  annotationIsDrawing,
+  setAnnotationIsDrawing,
+  annotationPageToken,
+  currentAnnotations,
+  updateCurrentAnnotations,
+  handleAnnotationToolChange,
+  setAnnotationToolConfig,
   canvasRefreshKey,
   activeTab,
   toast,
@@ -5144,6 +5294,84 @@ function DiagramEditorInner({
     activeDiagramStack.length,
     tutorialSteps.length,
   ]);
+
+  const annotationToolbarRef = React.useRef<HTMLDivElement | null>(null);
+  const annotationToolbarDragRef = React.useRef({ offsetX: 0, offsetY: 0 });
+  const [annotationToolbarPos, setAnnotationToolbarPos] = React.useState({ x: 16, y: 16 });
+  const [annotationToolbarDragging, setAnnotationToolbarDragging] = React.useState(false);
+
+  const clampAnnotationToolbarPos = React.useCallback((x: number, y: number) => {
+    if (typeof window === 'undefined') return { x, y };
+    const margin = 8;
+    const toolbarWidth = annotationToolbarRef.current?.offsetWidth ?? 360;
+    const toolbarHeight = annotationToolbarRef.current?.offsetHeight ?? 110;
+    const maxX = Math.max(margin, window.innerWidth - toolbarWidth - margin);
+    const maxY = Math.max(margin, window.innerHeight - toolbarHeight - margin);
+    return {
+      x: Math.min(Math.max(margin, x), maxX),
+      y: Math.min(Math.max(margin, y), maxY),
+    };
+  }, []);
+
+  const handleAnnotationToolbarDragStart = React.useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    if (!annotationToolbarRef.current) return;
+    const rect = annotationToolbarRef.current.getBoundingClientRect();
+    annotationToolbarDragRef.current = {
+      offsetX: event.clientX - rect.left,
+      offsetY: event.clientY - rect.top,
+    };
+    setAnnotationToolbarDragging(true);
+  }, []);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Place toolbar at bottom-left initially once viewport size is known.
+    setAnnotationToolbarPos((prev) => {
+      if (prev.y !== 16) return prev;
+      const toolbarHeight = annotationToolbarRef.current?.offsetHeight ?? 110;
+      return {
+        x: 16,
+        y: Math.max(8, window.innerHeight - toolbarHeight - 16),
+      };
+    });
+  }, []);
+
+  React.useEffect(() => {
+    if (!annotationToolbarDragging || typeof window === 'undefined') return;
+
+    const onPointerMove = (event: PointerEvent) => {
+      const next = clampAnnotationToolbarPos(
+        event.clientX - annotationToolbarDragRef.current.offsetX,
+        event.clientY - annotationToolbarDragRef.current.offsetY,
+      );
+      setAnnotationToolbarPos(next);
+    };
+
+    const onPointerUp = () => {
+      setAnnotationToolbarDragging(false);
+    };
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    return () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+    };
+  }, [annotationToolbarDragging, clampAnnotationToolbarPos]);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const onResize = () => {
+      setAnnotationToolbarPos((prev) => clampAnnotationToolbarPos(prev.x, prev.y));
+    };
+
+    window.addEventListener('resize', onResize);
+    return () => {
+      window.removeEventListener('resize', onResize);
+    };
+  }, [clampAnnotationToolbarPos]);
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -5361,7 +5589,7 @@ function DiagramEditorInner({
                   />
                 )}
                 <div className={`flex flex-1 ${(jsonPanelOpen || propertiesPanelVisible) ? 'overflow-x-auto' : ''}`}>
-                  <div className={`flex-1 h-full min-w-0 ${(jsonPanelOpen || propertiesPanelVisible) ? 'mr-2' : ''}`}>
+                  <div ref={canvasHostRef} className={`relative flex-1 h-full min-w-0 ${(jsonPanelOpen || propertiesPanelVisible) ? 'mr-2' : ''}`}>
                 <EditorCanvas
                     key={canvasRefreshKey}
                     ref={editorRef}
@@ -5444,6 +5672,36 @@ function DiagramEditorInner({
                     onCreateSubDiagram={handleCreateSubDiagram}
                     onRemoveSubDiagramLink={handleRemoveSubDiagramLink}
                     />
+
+                    {(
+                      <>
+                        {annotationCanvasSize.width > 0 && annotationCanvasSize.height > 0 && (
+                          <>
+                            <AnnotationRenderer
+                              width={annotationCanvasSize.width}
+                              height={annotationCanvasSize.height}
+                              annotations={currentAnnotations}
+                            />
+                            <AnnotationCanvas
+                              enabled={annotationToolConfig.enabled && !isReadOnly}
+                              width={annotationCanvasSize.width}
+                              height={annotationCanvasSize.height}
+                              toolConfig={annotationToolConfig}
+                              isDrawing={annotationIsDrawing}
+                              onDrawingChange={setAnnotationIsDrawing}
+                              resetToken={annotationPageToken}
+                              onStrokeComplete={(stroke) => {
+                                updateCurrentAnnotations((prev: DiagramAnnotations) => ({
+                                  ...prev,
+                                  enabled: true,
+                                  strokes: [...prev.strokes, stroke],
+                                }));
+                              }}
+                            />
+                          </>
+                        )}
+                      </>
+                    )}
                   </div>
 
                   {/* Properties Panel (metadata, item name/type) */}
@@ -5571,6 +5829,47 @@ function DiagramEditorInner({
                 </div>
             </div>
         </main>
+
+        {/* Annotation Toolbar - Fixed Position */}
+        {( !presentationPlayerOpen ) && (
+          <div
+            ref={annotationToolbarRef}
+            className="fixed z-[70] pointer-events-auto max-w-[calc(100vw-1rem)]"
+            style={{ left: annotationToolbarPos.x, top: annotationToolbarPos.y }}
+          >
+            <button
+              type="button"
+              onPointerDown={handleAnnotationToolbarDragStart}
+              className="mb-1 w-full cursor-move rounded border border-border bg-background/95 px-2 py-1 text-left text-xs text-muted-foreground shadow-sm backdrop-blur-sm"
+              title="Drag to move annotation toolbar"
+            >
+              Annotation toolbar
+            </button>
+            <AnnotationToolbar
+              toolConfig={annotationToolConfig}
+              onToolChange={handleAnnotationToolChange}
+              onToggleTool={() => {
+                if (isReadOnly) return;
+                setAnnotationToolConfig((prev: AnnotationToolConfig) => ({ ...prev, enabled: !prev.enabled }));
+              }}
+              onClearAll={() => {
+                if (isReadOnly) return;
+                updateCurrentAnnotations((prev: DiagramAnnotations) => ({ ...prev, enabled: false, strokes: [] }));
+              }}
+              onUndo={() => {
+                if (isReadOnly) return;
+                updateCurrentAnnotations((prev: DiagramAnnotations) => ({
+                  ...prev,
+                  strokes: prev.strokes.slice(0, -1),
+                  enabled: prev.strokes.length > 1,
+                }));
+              }}
+              hasStrokes={currentAnnotations.strokes.length > 0}
+              isDrawing={annotationIsDrawing}
+            />
+          </div>
+        )}
+
         <ExportDialog
           open={exportDialogOpen}
           onOpenChange={setExportDialogOpen}
@@ -5631,6 +5930,7 @@ function DiagramEditorInner({
           onIndexChange={setPresentationPlayerIndex}
           onApplyZoomToCurrentSlide={handleApplyPresentationZoomToCurrent}
           onApplyZoomToAllSlides={handleApplyPresentationZoomToAll}
+          onSlideAnnotationsChange={handlePresentationSlideAnnotationsChange}
         />
         <AlertDialog
           open={animationSelectionDialogOpen}
