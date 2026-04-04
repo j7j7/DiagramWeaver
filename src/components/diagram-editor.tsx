@@ -1,5 +1,5 @@
 "use client";
-import React, { useRef, useCallback, useLayoutEffect, useEffect } from 'react';
+import React, { useRef, useCallback, useLayoutEffect, useEffect, Suspense } from 'react';
 import { flushSync } from 'react-dom';
 import { createPortal } from 'react-dom';
 import { DndProvider } from 'react-dnd';
@@ -10,8 +10,6 @@ import { EditorCanvas, type EditorCanvasHandle } from './editor/editor-canvas';
 import { ConnectionContextModal } from './editor/connection-context-modal';
 import { UmlClassEditorModal } from './editor/uml-class-editor-modal';
 import { computeUmlClassDimensions } from '@/lib/uml-utils';
-import { JsonEditorPanel } from './editor/json-editor-panel';
-import { PresentationEditorPanel } from './editor/presentation-editor-panel';
 import { PresentationPlayer } from './editor/presentation-player';
 import { setBooleanDebounced, setItemDebounced, getBooleanSafe, getItemSafe } from '@/lib/local-storage-debounce';
 import dynamic from 'next/dynamic';
@@ -24,6 +22,40 @@ const TopMenuBar = dynamic(() => import('./editor/top-menu-bar').then(mod => ({ 
     </div>
   </div>
 });
+
+// Lazy load large panels for better initial load performance
+const JsonEditorPanel = dynamic(() => import('./editor/json-editor-panel').then(mod => ({ default: mod.JsonEditorPanel })), {
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center h-full min-w-[200px] border-l bg-card">
+    <div className="text-sm text-muted-foreground">Loading JSON Editor...</div>
+  </div>
+});
+
+const PresentationEditorPanel = dynamic(() => import('./editor/presentation-editor-panel').then(mod => ({ default: mod.PresentationEditorPanel })), {
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center h-12 border-b bg-card">
+    <div className="text-sm text-muted-foreground">Loading Presentation Editor...</div>
+  </div>
+});
+
+const LayersPanel = dynamic(() => import('./editor/layers-panel').then(mod => ({ default: mod.LayersPanel })), {
+  ssr: false,
+  loading: () => <div className="p-4 border rounded-md bg-card shadow-lg">
+    <div className="text-sm text-muted-foreground">Loading Layers Panel...</div>
+  </div>
+});
+
+const PropertiesPanel = dynamic(() => import('./editor/properties-panel').then(mod => ({ default: mod.PropertiesPanel })), {
+  ssr: false,
+  loading: () => <div className="p-4 border-t bg-card">
+    <div className="text-sm text-muted-foreground">Loading Properties Panel...</div>
+  </div>
+});
+
+const ScratchPad = dynamic(() => import('./editor/scratch-pad').then(mod => ({ default: mod.ScratchPad })), {
+  ssr: false,
+});
+
 import { TabBar } from './editor/tab-bar';
 import { ExportDialog } from './editor/export-dialog';
 import {
@@ -54,11 +86,6 @@ import { parseMermaidFlowchart, parseMermaidClassDiagram, parseMermaidSequenceDi
 import { mermaidToDiagramData, classDiagramToDiagramData, sequenceDiagramToDiagramData } from '@/lib/mermaid-to-diagram';
 import { themeManager } from '@/lib/theme-manager';
 import { DiagramTheme } from '@/lib/theme-types';
-import { LayersPanel } from './editor/layers-panel';
-import { PropertiesPanel } from './editor/properties-panel';
-const ScratchPad = dynamic(() => import('./editor/scratch-pad').then(mod => ({ default: mod.ScratchPad })), {
-  ssr: false,
-});
 import { TutorialProvider, useTutorial } from './tutorial/tutorial-provider';
 import { getTutorialSteps } from './tutorial/tutorial-steps';
 import { TutorialOverlay } from './tutorial/tutorial-overlay';

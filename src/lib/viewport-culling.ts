@@ -180,8 +180,11 @@ export function applyViewportCulling(
   const nodes = diagramData.nodes || [];
   const connections = diagramData.connections || [];
 
-  // Filter visible nodes
-  const visibleNodeIds = filterVisibleNodes(nodes, transform, viewportWidth, viewportHeight, margin);
+  // Filter visible nodes (only nodes with valid x/y coordinates)
+  const nodesWithCoordinates = nodes.filter((n): n is DiagramNodeData & { x: number; y: number } => 
+    n.x !== undefined && n.y !== undefined
+  );
+  const visibleNodeIds = filterVisibleNodes(nodesWithCoordinates, transform, viewportWidth, viewportHeight, margin);
 
   // Filter visible connections
   const visibleConnections = filterVisibleConnections(connections, visibleNodeIds);
