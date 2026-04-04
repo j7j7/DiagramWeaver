@@ -137,7 +137,7 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
               onClick={onClose}
               className="h-9 w-9 p-0"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </Button>
           )}
         </div>

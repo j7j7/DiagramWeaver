@@ -108,7 +108,7 @@ export function ThemeSelector({ onThemeApply, disabled = false, selectedCount = 
                               onClick={(e) => handleToggleFavorite(theme.id, e)}
                             >
                               <Star 
-                                className="h-3 w-3 fill-yellow-400 text-yellow-400" 
+                                className="h-4 w-4 fill-yellow-400 text-yellow-400" 
                               />
                             </Button>
                             {renderThemePreview(theme, 'small')}
@@ -149,7 +149,7 @@ export function ThemeSelector({ onThemeApply, disabled = false, selectedCount = 
                               onClick={(e) => handleToggleFavorite(theme.id, e)}
                             >
                               <Star 
-                                className="h-3 w-3 text-muted-foreground hover:text-primary" 
+                                className="h-4 w-4 text-muted-foreground hover:text-primary" 
                               />
                             </Button>
                             {renderThemePreview(theme, 'small')}

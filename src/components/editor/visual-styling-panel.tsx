@@ -140,7 +140,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
               onClick={onClose}
               className="h-9 w-9 p-0"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </Button>
           )}
         </div>

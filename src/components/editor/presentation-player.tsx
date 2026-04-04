@@ -374,7 +374,7 @@ export function PresentationPlayer({
           aria-label="Exit fullscreen"
           title="Exit fullscreen"
         >
-          <X className="h-5 w-5 opacity-90" strokeWidth={2.25} />
+          <X className="h-4 w-4 opacity-90" strokeWidth={2.25} />
         </button>
         <div className="relative flex h-full w-full items-center justify-center bg-black">
           {currentSlide ? (
@@ -455,7 +455,7 @@ export function PresentationPlayer({
                   onClick={() => setToolbarCollapsed((prev) => !prev)}
                   title={toolbarCollapsed ? 'Expand controls' : 'Collapse controls'}
                 >
-                  {toolbarCollapsed ? <Maximize2 className="h-2.5 w-2.5" /> : <Minimize2 className="h-2.5 w-2.5" />}
+                  {toolbarCollapsed ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
                 </Button>
                 <Button
                   size="sm"
@@ -464,7 +464,7 @@ export function PresentationPlayer({
                   onClick={() => setToolbarFloating((prev) => !prev)}
                   title={toolbarFloating ? 'Fix controls to bottom' : 'Float and drag controls'}
                 >
-                  {toolbarFloating ? <Pin className="h-2.5 w-2.5" /> : <PinOff className="h-2.5 w-2.5" />}
+                  {toolbarFloating ? <Pin className="h-4 w-4" /> : <PinOff className="h-4 w-4" />}
                 </Button>
                 <Button
                   size="sm"
@@ -579,7 +579,7 @@ export function PresentationPlayer({
                           disabled={!currentSlide}
                           title="Apply zoom to current snapshot"
                         >
-                          <Check className="h-2.5 w-2.5" />
+                          <Check className="h-4 w-4" />
                         </Button>
                         <Button
                           size="sm"
@@ -589,7 +589,7 @@ export function PresentationPlayer({
                           disabled={!currentSlide || totalSlides === 0}
                           title="Apply zoom to all snapshots"
                         >
-                          <Copy className="h-2.5 w-2.5" />
+                          <Copy className="h-4 w-4" />
                         </Button>
                       </div>
                     </>
