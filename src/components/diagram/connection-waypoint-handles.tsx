@@ -15,7 +15,40 @@ interface ConnectionWaypointHandlesProps {
   disabled?: boolean;
 }
 
-export function ConnectionWaypointHandles({
+function areConnectionWaypointHandlesPropsEqual(
+  prev: ConnectionWaypointHandlesProps,
+  next: ConnectionWaypointHandlesProps
+): boolean {
+  // Compare primitives
+  if (prev.connectionColor !== next.connectionColor) return false;
+  if (prev.disabled !== next.disabled) return false;
+
+  // Compare transform
+  if (prev.transform.x !== next.transform.x) return false;
+  if (prev.transform.y !== next.transform.y) return false;
+  if (prev.transform.k !== next.transform.k) return false;
+
+  // Compare connection data
+  if (prev.connection.from !== next.connection.from) return false;
+  if (prev.connection.to !== next.connection.to) return false;
+  if (prev.connection.id !== next.connection.id) return false;
+  if (prev.connection.style !== next.connection.style) return false;
+
+  // Compare waypoints array
+  if (prev.waypoints.length !== next.waypoints.length) return false;
+  for (let i = 0; i < prev.waypoints.length; i++) {
+    const pw = prev.waypoints[i];
+    const nw = next.waypoints[i];
+    if (pw.x !== nw.x || pw.y !== nw.y || pw.id !== nw.id) return false;
+  }
+
+  // Compare function reference (should be stable with useCallback)
+  if (prev.onWaypointMove !== next.onWaypointMove) return false;
+
+  return true;
+}
+
+function ConnectionWaypointHandlesInner({
   connection,
   waypoints,
   connectionColor,
@@ -147,3 +180,5 @@ export function ConnectionWaypointHandles({
     </>
   );
 }
+
+export const ConnectionWaypointHandles = React.memo(ConnectionWaypointHandlesInner, areConnectionWaypointHandlesPropsEqual);
