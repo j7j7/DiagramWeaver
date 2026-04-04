@@ -4,8 +4,8 @@ This document contains the automated implementation plan for continuing the Diag
 
 ## Current Status
 - Branch: `implement-performance-ux-improvements`
-- Progress: ~71.88% complete (23/32 tasks: 19 fully complete, 4 verified/investigated)
-- Last Completed: Task 22 - Standardize Dropdown/Popover Behaviors
+- Progress: ~75.00% complete (24/32 tasks: 20 fully complete, 4 verified/investigated)
+- Last Completed: Task 23 - Fix Color Inconsistencies
 - Last Build: ✅ Passing
 
 ## Implementation Queue
@@ -210,11 +210,16 @@ This document contains the automated implementation plan for continuing the Diag
   - All components now use: click trigger, consistent positioning, close on outside click, standardized animations
 - **Status:** Completed, build successful, typecheck passing
 
-#### Task 23: Fix Color Inconsistencies
-- **Files:** All component files with inline colors
-- **Action:** Replace with CSS variables or theme colors
-- **Impact:** Consistent theming and dark mode support
-- **Complexity:** Medium
+#### ~~Task 23: Fix Color Inconsistencies~~ ✅ COMPLETED
+- **Files:** `src/components/diagram/connection-waypoint-handles.tsx`, `src/components/editor/layers-panel.tsx`, `src/components/viewer/viewer-layers-panel.tsx`
+- **Action:** Replaced hardcoded light gray colors with CSS variables
+- **Impact:** Better dark mode support and consistent theming
+- **Changes Made:**
+  - Replaced `#f3f4f6` with `hsl(var(--muted))` in connection waypoint handles
+  - Replaced `#f3f4f6` with `hsl(var(--muted))` in layers panel color indicators
+  - Replaced `#f3f4f6` with `hsl(var(--muted))` in viewer layers panel color indicators
+- **Note:** Diagram-specific default colors intentionally left unchanged (part of data model)
+- **Status:** Completed, build successful, typecheck passing
 
 #### Task 24: Fix Typography Inconsistencies
 - **Files:** All component files
@@ -313,10 +318,10 @@ git log --oneline -10
 ## Progress Tracking
 
 - Start Date: 2026-04-04
-- Current Task: Task 23 - Fix Color Inconsistencies
-- Tasks Completed: 23/32 (19 fully complete, 4 verified/investigated)
-- Tasks Remaining: 9/32
-- Completion: 71.88%
+- Current Task: Task 24 - Fix Typography Inconsistencies
+- Tasks Completed: 24/32 (20 fully complete, 4 verified/investigated)
+- Tasks Remaining: 8/32
+- Completion: 75.00%
 
 ## Notes
 

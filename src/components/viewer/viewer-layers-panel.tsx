@@ -69,7 +69,7 @@ export function ViewerLayersPanel({
               >
                 <div
                   className="w-3 h-3 rounded-full border border-border flex-shrink-0"
-                  style={{ backgroundColor: layer.color || "#f3f4f6" }}
+                  style={{ backgroundColor: layer.color || "hsl(var(--muted))" }}
                   aria-hidden
                 />
                 <span

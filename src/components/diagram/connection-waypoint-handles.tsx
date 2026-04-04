@@ -164,7 +164,7 @@ function ConnectionWaypointHandlesInner({
             width: `${handleSize}px`,
             height: `${handleSize}px`,
             borderColor: connectionColor,
-            backgroundColor: draggingIndex === index ? connectionColor : "#f3f4f6",
+            backgroundColor: draggingIndex === index ? connectionColor : "hsl(var(--muted))",
             opacity: draggingIndex === index ? 0.9 : 1,
             zIndex: HANDLE_Z_INDEX,
             pointerEvents: "auto",

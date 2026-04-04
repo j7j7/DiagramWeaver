@@ -302,7 +302,7 @@ export function LayersPanel({
                 {/* Layer Color Indicator */}
                 <div
                   className="w-3 h-3 rounded-full border border-gray-300"
-                  style={{ backgroundColor: layer.color || '#f3f4f6' }}
+                  style={{ backgroundColor: layer.color || 'hsl(var(--muted))' }}
                 />
 
                 {/* Layer Name */}

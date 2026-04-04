@@ -8,6 +8,30 @@ This log tracks all functional and visual changes made during the performance an
 
 ---
 
+## Task 23: Fix Color Inconsistencies ✅ COMPLETED
+
+### 2026-04-04 - UX Consistency: Color Inconsistencies Fixed ✅
+- **Files:** `src/components/diagram/connection-waypoint-handles.tsx`, `src/components/editor/layers-panel.tsx`, `src/components/viewer/viewer-layers-panel.tsx`
+- **Change:** Replaced hardcoded light gray colors with CSS variables for dark mode support
+- **Impact:** Better dark mode support and consistent theming
+- **Changes Made:**
+  1. **connection-waypoint-handles.tsx**:
+     - Changed `backgroundColor: "#f3f4f6"` to `backgroundColor: "hsl(var(--muted))"`
+     - Applied to waypoint handles when not being dragged
+  2. **layers-panel.tsx**:
+     - Changed `backgroundColor: layer.color || '#f3f4f6'` to `backgroundColor: layer.color || 'hsl(var(--muted))'`
+     - Applied to layer color indicator fallback
+  3. **viewer-layers-panel.tsx**:
+     - Changed `backgroundColor: layer.color || "#f3f4f6"` to `backgroundColor: layer.color || "hsl(var(--muted))"`
+     - Applied to viewer layer color indicator fallback
+- **Note:** Diagram-specific default colors (for new nodes, shapes, themes) were intentionally left unchanged as they are part of the data model, not UI theme colors
+- **Testing:**
+  - ✅ Build successful
+  - ✅ Typecheck passing
+  - ✅ CSS variables properly reference theme colors for both light and dark modes
+
+---
+
 ## Task 22: Standardize Dropdown/Popover Behaviors ✅ COMPLETED
 
 ### 2026-04-04 - UX Consistency: Dropdown/Popover Standardization ✅
