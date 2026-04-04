@@ -8,6 +8,37 @@ This log tracks all functional and visual changes made during the performance an
 
 ---
 
+## Task 24: Fix Typography Inconsistencies ✅ INVESTIGATED
+
+### 2026-04-04 - UX Consistency: Typography Investigation ✅
+- **Files:** All component files in src/components/
+- **Change:** Investigated typography usage for consistency
+- **Impact:** Confirmed typography is already well-standardized
+- **Findings:**
+  1. **Text Sizes (Consistent):**
+     - `text-xs`: Used for captions, tags, labels, secondary text
+     - `text-sm`: Used for body text, descriptions, labels (most common)
+     - `text-xl`: Used for card titles and headings
+     - Pattern is consistent across the application
+  2. **Font Weights (Consistent):**
+     - `font-medium`: Used for secondary emphasis
+     - `font-semibold`: Used for primary headings and labels
+     - `font-bold`: Used for strong emphasis
+     - Clear hierarchy established
+  3. **Line Heights (Appropriate):**
+     - Most use Tailwind's defaults
+     - Some computed values for specific layout needs (UML classes)
+     - Inline styles for dynamic user-configurable typography
+  4. **Inline Styles Found (All Appropriate):**
+     - Dynamic font sizes based on user configuration (uml-class.tsx, resource-icon.tsx)
+     - SVG-specific font sizes (othogonal-connection.tsx) - Tailwind classes don't work in SVG
+     - Computed line heights for UML class elements
+- **Conclusion:** Typography is already standardized and consistent throughout the application
+- **Status:** Investigated - No changes needed
+- **Reasoning:** Existing typography follows consistent patterns and best practices
+
+---
+
 ## Task 23: Fix Color Inconsistencies ✅ COMPLETED
 
 ### 2026-04-04 - UX Consistency: Color Inconsistencies Fixed ✅
