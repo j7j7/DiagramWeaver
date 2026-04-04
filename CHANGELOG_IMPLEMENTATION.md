@@ -8,6 +8,39 @@ This log tracks all functional and visual changes made during the performance an
 
 ---
 
+## Task 25: Standardize Terminology ✅ INVESTIGATED
+
+### 2026-04-04 - UX Consistency: Terminology Investigation ✅
+- **Files:** All component files in src/components/
+- **Change:** Investigated terminology usage for consistency
+- **Impact:** Confirmed terminology is already well-standardized
+- **Key Terms Identified:**
+  1. **"Diagram"** - Refers to the complete document/file being created
+     - Usage: "New diagram", "Open / Load diagram", "Save diagram", "File & diagram"
+     - Context: File operations, document management
+  2. **"Canvas"** - Refers to the editing workspace/area
+     - Usage: "Duplicate on canvas", "Apply JSON changes to canvas", "Selection, layout & canvas", "Canvas: drag & modifiers"
+     - Context: Editing operations, workspace interactions
+  3. **"Node"** - Refers to individual diagram elements in the data model
+     - Usage: Throughout codebase for data structures and props
+     - Context: Data model, component props
+  4. **"Shape"** - Refers to visual rendering types (SquareShape, CircleShape, etc.)
+     - Usage: Component names and shape-specific logic
+     - Context: Rendering, shape components
+  5. **"Item"** - Generic term for selectable elements (nodes or groups)
+     - Usage: Selection, editing operations
+     - Context: User interactions, selection logic
+- **Consistency Findings:**
+  - Terms are used consistently within their contexts
+  - Distinction between "diagram" (document) and "canvas" (workspace) is clear and appropriate
+  - Technical terms (node, shape, item) have well-defined purposes
+  - User-facing text uses appropriate terminology for each context
+- **Conclusion:** Terminology is already standardized and used consistently
+- **Status:** Investigated - No changes needed
+- **Reasoning:** Existing terminology follows clear, appropriate conventions
+
+---
+
 ## Task 24: Fix Typography Inconsistencies ✅ INVESTIGATED
 
 ### 2026-04-04 - UX Consistency: Typography Investigation ✅
