@@ -540,31 +540,31 @@ const renderIcon = (item: ScratchPadItem) => {
               {activeTab === 'favorites' && (
                 <>
                   {favorites.length > 0 && (
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={saveFavorites} title="Save Favorites">
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={saveFavorites} title="Save Favorites" aria-label="Save Favorites">
                       <Download className="h-3 w-3" />
                     </Button>
                   )}
                   <div className="relative">
-                    <Input 
-                      type="file" 
-                      accept=".json" 
-                      onChange={loadFavorites} 
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                    <Input
+                      type="file"
+                      accept=".json"
+                      onChange={loadFavorites}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                       title="Load Favorites"
                     />
-                    <Button variant="ghost" size="icon" className="h-6 w-6" title="Load Favorites">
+                    <Button variant="ghost" size="icon" className="h-6 w-6" title="Load Favorites" aria-label="Load Favorites">
                       <Upload className="h-3 w-3" />
                     </Button>
                   </div>
                   {favorites.length > 0 && (
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={clearFavorites} title="Clear Favorites">
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={clearFavorites} title="Clear Favorites" aria-label="Clear Favorites">
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   )}
                 </>
               )}
               {activeTab === 'imports' && imports.length > 0 && (
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={clearImports} title="Clear Imports">
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={clearImports} title="Clear Imports" aria-label="Clear Imports">
                   <Trash2 className="h-3 w-3" />
                 </Button>
               )}
@@ -633,10 +633,10 @@ const renderIcon = (item: ScratchPadItem) => {
                         </div>
                       )}
                       <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 bg-background/80 rounded z-10">
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditClick(item)}>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditClick(item)} aria-label="Edit favorite">
                           <Edit2 className="h-3 w-3" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => deleteFavorite(item.id)}>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => deleteFavorite(item.id)} aria-label="Delete favorite">
                           <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
@@ -699,7 +699,7 @@ const renderIcon = (item: ScratchPadItem) => {
                                 </div>
                             )}
                              <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 bg-background/80 rounded z-10">
-                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => deleteImport(item.id)}>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => deleteImport(item.id)} aria-label="Delete import">
                                 <Trash2 className="h-3 w-3" />
                                 </Button>
                             </div>
