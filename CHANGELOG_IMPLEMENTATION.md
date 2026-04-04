@@ -8,6 +8,47 @@ This log tracks all functional and visual changes made during the performance an
 
 ---
 
+## Task 28: Update Documentation ✅ COMPLETED
+
+### 2026-04-04 - Documentation: Updated README and Performance Docs ✅
+- **Files:** README.md, docs/PERFORMANCE_IMPROVEMENTS.md
+- **Change:** Updated documentation to reflect performance and accessibility improvements
+- **Impact:** Better developer and user experience with comprehensive documentation
+- **Changes Made:**
+  1. **README.md Updates:**
+     - Added missing `Ctrl+0 | Fit to View` keyboard shortcut
+     - Added new "Performance" section documenting:
+       - Rendering optimizations (memoization, useCallback, image caching)
+       - Load time optimizations (code splitting, lazy image loading)
+       - Performance improvements by diagram size
+       - Tips for best performance
+     - Added new "Accessibility" section documenting:
+       - Keyboard navigation features
+       - Screen reader support
+       - Accessibility statistics (69 ARIA labels, 86 focus management, etc.)
+       - WCAG 2.1 Level AA compliance
+     - Updated Documentation section to reference new reports:
+       - docs/PERFORMANCE_IMPROVEMENTS.md
+       - PERFORMANCE_BENCHMARK_REPORT.md
+       - ACCESSIBILITY_AUDIT_REPORT.md
+  2. **docs/PERFORMANCE_IMPROVEMENTS.md Updates:**
+     - Added "Completed Optimizations (April 2026)" section
+     - Documented all implemented performance improvements
+     - Listed actual performance metrics achieved
+     - Noted viewport culling status (utility created, integration pending)
+     - Referenced benchmark and accessibility reports
+- **Documentation Added:**
+  - Performance section with specific metrics (10-40% improvement based on diagram size)
+  - Accessibility section with statistics and WCAG compliance
+  - Performance tips for users
+  - Links to detailed reports
+- **Testing:**
+  - ✅ Build successful
+  - ✅ All markdown formatting valid
+- **Status:** Completed, documentation comprehensive and up-to-date
+
+---
+
 ## Task 27: Accessibility Audit ✅ COMPLETED
 
 ### 2026-04-04 - Accessibility: Comprehensive WCAG 2.1 Level AA Audit ✅
