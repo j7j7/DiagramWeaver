@@ -226,15 +226,15 @@ export function JsonEditorPanel({
     }, 50);
   }, []);
 
-  const handleChange = (newText: string) => {
+  const handleChange = React.useCallback((newText: string) => {
     // Skip handling if read-only mode is enabled
     if (isReadOnly) return;
     // Skip handling if we're applying an external update
     if (isApplyingExternalUpdate.current) return;
-    
+
     // Only update the text state, don't push to canvas yet
     setText(newText);
-    
+
     try {
       const parsed = JSON.parse(newText);
       const hasValidStructure = parsed && typeof parsed === 'object' && (parsed.nodes || parsed.zones || parsed.connections);
@@ -242,13 +242,13 @@ export function JsonEditorPanel({
     } catch (e: any) {
       setError(e?.message || 'Invalid JSON');
     }
-  };
+  }, [isReadOnly, setText, setError]);
 
-  const handleSubmit = () => {
+  const handleSubmit = React.useCallback(() => {
     setIsUpdating(true);
     try {
       const parsed = JSON.parse(text);
-      
+
       let finalData: DiagramData | null = null;
       let validationError: any = null;
 
@@ -271,18 +271,18 @@ export function JsonEditorPanel({
       } else {
         validationError = { message: 'Invalid diagram data structure' };
       }
-      
+
       if (!validationError && finalData) {
         setError(null);
         onValidJsonChange(finalData);
-        
+
         const displayText = stableStringify(finalData);
         if (displayText !== text) {
           // Try to capture scroll position
           const scrollPos = captureScrollPosition();
-          
+
           setText(displayText);
-          
+
           // Restore scroll position after text update
           setTimeout(() => {
             restoreScrollPosition(scrollPos);
@@ -299,7 +299,7 @@ export function JsonEditorPanel({
     } finally {
       setIsUpdating(false);
     }
-  };
+  }, [text, setIsUpdating, setError, onValidJsonChange, captureScrollPosition, restoreScrollPosition, setText]);
 
   return (
     <div
