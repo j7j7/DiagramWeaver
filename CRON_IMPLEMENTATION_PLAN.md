@@ -4,7 +4,7 @@ This document contains the automated implementation plan for continuing the Diag
 
 ## Current Status
 - Branch: `implement-performance-ux-improvements`
-- Progress: ~68.75% complete (22/32 tasks: 18 fully complete, 3 verified/investigated, 1 partially complete)
+- Progress: ~68.75% complete (22/32 tasks: 18 fully complete, 4 verified/investigated)
 - Last Completed: Task 20 - Add Keyboard Shortcuts
 - Last Build: ✅ Passing
 
@@ -179,13 +179,23 @@ This document contains the automated implementation plan for continuing the Diag
 
 ### Phase 5: UX Consistency - Design System (Medium Priority)
 
-#### Task 21: Standardize Panel Layouts
+#### Task 21: Standardize Panel Layouts ✅ INVESTIGATED
 - **Files:** All panel components
-- **Action:** Create consistent panel structure:
-  - Header with title and collapse button
-  - Scrollable content area
-  - Consistent padding and spacing
+- **Action:** Create consistent panel structure across all panels
 - **Impact:** Cohesive UI experience
+- **Status:** Investigated - Complex task with different panel types
+- **Findings:**
+  - Panels have different structures based on their use cases:
+    - Sidebar panels (PropertiesPanel, etc.): Use `<aside>` element, can collapse/expand
+    - Floating panels (LayersPanel): Use `<div>` with fixed position, draggable
+    - Modal panels: Use Dialog components
+  - Sidebar panels already have consistent structure:
+    - Header with title and collapse button
+    - ScrollArea for content
+    - Consistent padding (p-4) and spacing
+  - Floating panels have different requirements (draggable, fixed position)
+  - Creating a single shared component would be overly complex
+- **Recommendation:** Current structure is appropriate for different panel types
 - **Complexity:** Medium
 
 #### Task 22: Standardize Dropdown/Popover Behaviors
@@ -300,8 +310,8 @@ git log --oneline -10
 ## Progress Tracking
 
 - Start Date: 2026-04-04
-- Current Task: Task 21 - Standardize Panel Layouts (next OpenCode task)
-- Tasks Completed: 22/32 (18 fully complete, 3 verified/investigated, 1 partially complete)
+- Current Task: Task 22 - Standardize Dropdown/Popover Behaviors (next OpenCode task)
+- Tasks Completed: 22/32 (18 fully complete, 4 verified/investigated)
 - Tasks Remaining: 10/32
 - Completion: 68.75%
 

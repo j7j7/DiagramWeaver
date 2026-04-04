@@ -8,6 +8,41 @@ This log tracks all functional and visual changes made during the performance an
 
 ---
 
+## Task 21: Standardize Panel Layouts ✅ INVESTIGATED
+
+### 2026-04-04 - UX Consistency: Panel Layouts Investigation ✅
+- **Files:** `src/components/editor/properties-panel.tsx`, `src/components/editor/layers-panel.tsx`
+- **Change:** Investigated panel layouts for standardization opportunities
+- **Impact:** Documented panel architecture and structure
+- **Findings:**
+  1. **Panel Types Identified:**
+     - **Sidebar Panels:** PropertiesPanel, etc.
+       - Use `<aside>` element
+       - Fixed width (w-80)
+       - Can collapse/expand
+       - Header with title and collapse button
+       - ScrollArea for content with p-4 padding
+     - **Floating Panels:** LayersPanel
+       - Use `<div>` with fixed position
+       - Draggable (wrapped in Draggable component)
+       - Has close button instead of collapse
+       - Fixed height overflow area (h-64)
+     - **Modal Panels:** Various dialogs
+       - Use Radix UI Dialog components
+  2. **Current Consistency:**
+     - Sidebar panels already have consistent structure
+     - All use ScrollArea for scrollable content
+     - Consistent padding (p-4) in sidebar panels
+     - Header with title is consistent
+  3. **Recommendation:**
+     - Current structure is appropriate for different panel use cases
+     - Creating a single shared component would add unnecessary complexity
+     - Different panel types legitimately need different behaviors
+- **Status:** Investigated - No changes needed
+- **Reasoning:** Panel structures are already consistent within their categories
+
+---
+
 ## Task 20: Add Keyboard Shortcuts ✅ COMPLETED
 
 ### 2026-04-04 - UX Consistency: Missing Keyboard Shortcuts Added ✅
