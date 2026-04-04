@@ -30,6 +30,7 @@ export function UmlClassEditorModal({
   isReadOnly = false,
 }: UmlClassEditorModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const previousActiveElementRef = useRef<HTMLElement | null>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [name, setName] = useState("");
   const [attributes, setAttributes] = useState<string[]>([]);
@@ -62,6 +63,54 @@ export function UmlClassEditorModal({
       setPosition({ x: posX, y: posY });
     }
   }, [visible, x, y]);
+
+  // Focus management: save and restore focus
+  useEffect(() => {
+    if (visible) {
+      // Save the currently focused element
+      previousActiveElementRef.current = document.activeElement as HTMLElement;
+
+      // Focus the first focusable element in the modal
+      const focusableElement = panelRef.current?.querySelector(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      ) as HTMLElement;
+      focusableElement?.focus();
+
+      // Trap focus within the modal
+      const handleTab = (e: KeyboardEvent) => {
+        if (e.key !== 'Tab') return;
+
+        const focusableElements = panelRef.current?.querySelectorAll(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        ) as NodeListOf<HTMLElement>;
+
+        if (!focusableElements || focusableElements.length === 0) return;
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            lastElement.focus();
+            e.preventDefault();
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            firstElement.focus();
+            e.preventDefault();
+          }
+        }
+      };
+
+      document.addEventListener('keydown', handleTab);
+
+      return () => {
+        document.removeEventListener('keydown', handleTab);
+        // Restore focus to the previously focused element
+        previousActiveElementRef.current?.focus();
+      };
+    }
+  }, [visible]);
 
   useEffect(() => {
     if (!visible) return;
