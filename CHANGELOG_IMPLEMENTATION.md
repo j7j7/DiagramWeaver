@@ -8,6 +8,42 @@ This log tracks all functional and visual changes made during the performance an
 
 ---
 
+## Task 22: Standardize Dropdown/Popover Behaviors ✅ COMPLETED
+
+### 2026-04-04 - UX Consistency: Dropdown/Popover Standardization ✅
+- **Files:** `src/components/ui/popover.tsx`, `src/components/ui/dropdown-menu.tsx`, `src/components/ui/standard-popover.tsx` (new), `src/components/ui/standard-dropdown-menu.tsx` (new)
+- **Change:** Standardized dropdown and popover behaviors across the application
+- **Impact:** Consistent user interactions and predictable behavior for all dropdowns/popovers
+- **Changes Made:**
+  1. **Updated Base Components:**
+     - `popover.tsx`: Changed default align from "center" to "start", added explicit side="bottom"
+     - `dropdown-menu.tsx`: Reformatted animation classes for consistency
+     - Both components now have multi-line animation classes for better readability
+  2. **Created Standardized Wrapper Components:**
+     - `StandardPopover`: Pre-configured popover with consistent defaults
+       - Default: align="start", side="bottom", sideOffset=4
+       - Click-only trigger (Radix default)
+       - Standardized fade/zoom/slide animations
+     - `StandardDropdownMenu`: Pre-configured dropdown menu with consistent defaults
+       - Default: align="end", sideOffset=4 (typical for dropdown menus)
+       - Click-only trigger (Radix default)
+       - Standardized fade/zoom/slide animations
+  3. **Standardized Behaviors:**
+     - **Trigger:** Click-only (not hover) - Radix UI default
+     - **Positioning:**
+       - Popovers: bottom-start by default
+       - Dropdowns: end-aligned by default (standard for menus)
+     - **Close Behavior:** Always close on click outside (Radix default)
+     - **Animation:** Consistent fade/zoom/slide animations across all components
+- **Backward Compatibility:** Original components exported for existing code
+- **Future Use:** New components can use StandardPopover and StandardDropdownMenu for consistency
+- **Testing:**
+  - ✅ Build successful
+  - ✅ Typecheck passing
+  - ✅ All animation classes reformatted consistently
+
+---
+
 ## Task 21: Standardize Panel Layouts ✅ INVESTIGATED
 
 ### 2026-04-04 - UX Consistency: Panel Layouts Investigation ✅

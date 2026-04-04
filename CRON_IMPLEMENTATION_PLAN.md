@@ -4,8 +4,8 @@ This document contains the automated implementation plan for continuing the Diag
 
 ## Current Status
 - Branch: `implement-performance-ux-improvements`
-- Progress: ~68.75% complete (22/32 tasks: 18 fully complete, 4 verified/investigated)
-- Last Completed: Task 20 - Add Keyboard Shortcuts
+- Progress: ~71.88% complete (23/32 tasks: 19 fully complete, 4 verified/investigated)
+- Last Completed: Task 22 - Standardize Dropdown/Popover Behaviors
 - Last Build: ✅ Passing
 
 ## Implementation Queue
@@ -198,14 +198,17 @@ This document contains the automated implementation plan for continuing the Diag
 - **Recommendation:** Current structure is appropriate for different panel types
 - **Complexity:** Medium
 
-#### Task 22: Standardize Dropdown/Popover Behaviors
-- **Files:** Components using DropdownMenu or Popover
-- **Action:** Ensure consistent:
-  - Trigger behavior (click vs hover)
-  - Positioning strategy
-  - Close on click outside
-- **Impact:** Predictable user interactions
-- **Complexity:** Medium
+#### ~~Task 22: Standardize Dropdown/Popover Behaviors~~ ✅ COMPLETED
+- **Files:** `src/components/ui/popover.tsx`, `src/components/ui/dropdown-menu.tsx`, `src/components/ui/standard-popover.tsx` (new), `src/components/ui/standard-dropdown-menu.tsx` (new)
+- **Action:** Standardized dropdown and popover behaviors across the application
+- **Impact:** Consistent user interactions and predictable behavior
+- **Changes Made:**
+  - Updated popover.tsx: Changed default align from "center" to "start", added explicit side="bottom"
+  - Updated dropdown-menu.tsx: Reformatted animation classes for consistency
+  - Created StandardPopover component with consistent defaults
+  - Created StandardDropdownMenu component with consistent defaults
+  - All components now use: click trigger, consistent positioning, close on outside click, standardized animations
+- **Status:** Completed, build successful, typecheck passing
 
 #### Task 23: Fix Color Inconsistencies
 - **Files:** All component files with inline colors
@@ -310,10 +313,10 @@ git log --oneline -10
 ## Progress Tracking
 
 - Start Date: 2026-04-04
-- Current Task: Task 22 - Standardize Dropdown/Popover Behaviors (next OpenCode task)
-- Tasks Completed: 22/32 (18 fully complete, 4 verified/investigated)
-- Tasks Remaining: 10/32
-- Completion: 68.75%
+- Current Task: Task 23 - Fix Color Inconsistencies
+- Tasks Completed: 23/32 (19 fully complete, 4 verified/investigated)
+- Tasks Remaining: 9/32
+- Completion: 71.88%
 
 ## Notes
 
