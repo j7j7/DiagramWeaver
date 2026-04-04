@@ -56,6 +56,18 @@ const EMBEDDED_IMAGE_QUERY_KEYS = ["imgurl", "mediaurl", "image_url", "image", "
 
 const validationCache = new Map<string, CustomImageValidationResult>();
 
+// Image cache to prevent redundant network requests for the same URL
+const imageCache = new Map<string, {
+  dataUrl: string;
+  timestamp: number;
+}>();
+
+// Cache duration: 1 hour in milliseconds
+const IMAGE_CACHE_DURATION = 60 * 60 * 1000;
+
+// Maximum cache size to prevent memory issues (100 images)
+const MAX_IMAGE_CACHE_SIZE = 100;
+
 export function normalizeHttpImageUrl(value: string | undefined | null): string | null {
   if (!value) return null;
   const trimmed = value.trim();
@@ -347,3 +359,58 @@ function estimateDataImageSizeBytes(dataImage: ParsedDataImageUrl): number {
     return Number.MAX_SAFE_INTEGER;
   }
 }
+
+/**
+ * Get a cached image data URL if available and not expired
+ */
+export function getCachedImage(url: string): string | null {
+  const cached = imageCache.get(url);
+  if (!cached) return null;
+
+  // Check if cache entry is expired
+  const now = Date.now();
+  if (now - cached.timestamp > IMAGE_CACHE_DURATION) {
+    imageCache.delete(url);
+    return null;
+  }
+
+  return cached.dataUrl;
+}
+
+/**
+ * Cache an image data URL
+ */
+export function cacheImage(url: string, dataUrl: string): void {
+  // Remove oldest entries if cache is too large
+  if (imageCache.size >= MAX_IMAGE_CACHE_SIZE) {
+    const firstKey = imageCache.keys().next().value;
+    if (firstKey) {
+      imageCache.delete(firstKey);
+    }
+  }
+
+  imageCache.set(url, {
+    dataUrl,
+    timestamp: Date.now(),
+  });
+}
+
+/**
+ * Clear expired cache entries (optional - can be called periodically)
+ */
+export function clearExpiredImageCache(): void {
+  const now = Date.now();
+  for (const [url, cached] of imageCache.entries()) {
+    if (now - cached.timestamp > IMAGE_CACHE_DURATION) {
+      imageCache.delete(url);
+    }
+  }
+}
+
+/**
+ * Clear all cached images (useful for memory management)
+ */
+export function clearImageCache(): void {
+  imageCache.clear();
+}
+

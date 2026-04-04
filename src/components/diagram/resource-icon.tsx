@@ -181,6 +181,7 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
       <img
         src={iconPath}
         alt={type}
+        loading="lazy"
         onError={() => {
           console.warn(`Icon failed to load for type: ${type}, path: ${iconPath}`);
         }}
