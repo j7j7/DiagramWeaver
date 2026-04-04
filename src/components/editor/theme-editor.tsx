@@ -418,12 +418,12 @@ export function ThemeEditor({ open, onOpenChange, onThemeSelect, isReadOnly = fa
                     <Eye className="h-4 w-4 mr-1" />
                     {previewMode ? 'Edit' : 'Preview'}
                   </Button>
-                  <Button size="sm" onClick={handleSaveTheme}>
+                  <Button variant="default" size="sm" onClick={handleSaveTheme}>
                     <Save className="h-4 w-4 mr-1" />
                     Save
                   </Button>
                   {selectedTheme && (
-                    <Button size="sm" onClick={handleApplyTheme} disabled={isReadOnly}>
+                    <Button variant="outline" size="sm" onClick={handleApplyTheme} disabled={isReadOnly}>
                       <Check className="h-4 w-4 mr-1" />
                       Apply
                     </Button>

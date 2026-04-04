@@ -4,8 +4,8 @@ This document contains the automated implementation plan for continuing the Diag
 
 ## Current Status
 - Branch: `implement-performance-ux-improvements`
-- Progress: ~46.88% complete (15/32 tasks: 11 fully complete, 3 verified/investigated, 1 partially complete)
-- Last Completed: Task 13 - Code Splitting for Large Panels
+- Progress: ~53.13% complete (17/32 tasks: 13 fully complete, 3 verified/investigated, 1 partially complete)
+- Last Completed: Task 15 - Standardize Button Variants
 - Last Build: ✅ Passing
 
 ## Implementation Queue
@@ -86,23 +86,35 @@ This document contains the automated implementation plan for continuing the Diag
   - PresentationEditorPanel (622 lines) - Lazy loaded with loading indicator
 - **Testing:** All panels load correctly with loading indicators, no JavaScript errors
 
-#### Task 14: Optimize Image Loading
-- **Files:** Custom icon and image handling components
-- **Action:** Add lazy loading for images, implement image caching
-- **Impact:** Faster rendering of diagrams with many custom images
-- **Complexity:** Medium
+#### ~~Task 14: Optimize Image Loading~~ ✅ COMPLETED
+- **Files:** `src/lib/custom-icon-utils.ts`, `src/components/diagram/custom-icon-image.tsx`, `src/components/diagram/resource-icon.tsx`
+- **Action:** Implemented image caching, lazy loading, and loading states
+- **Impact:** Faster rendering of diagrams with many custom images, reduced network requests
+- **Status:** Completed, build successful, browser tested
+- **Features Implemented:**
+  - Image caching system (1-hour cache, max 100 images)
+  - Lazy loading with loading="lazy" attribute on all images
+  - Loading spinner for custom icons while fetching
+  - Cache management functions for memory control
+- **Testing:** Build successful, typecheck passing, browser tested - no errors
 
 ### Phase 3: UX Consistency - Button Standardization (High Priority)
 
-#### Task 15: Standardize Button Variants
-- **Files:** All component files using Button component
-- **Action:** Audit all button uses, standardize on:
-  - Primary: "default" variant for main actions
-  - Secondary: "outline" or "ghost" for secondary actions
-  - Destructive: "destructive" variant for delete/cancel
-  - Sizes: Default to "default", use "sm" for toolbars
+#### ~~Task 15: Standardize Button Variants~~ ✅ COMPLETED
+- **Files:** Multiple component files
+- **Action:** Added explicit variant attributes to all buttons that were missing them
 - **Impact:** Consistent visual design across application
-- **Complexity:** Medium - requires UI review
+- **Changes Made:**
+  - Added `variant="default"` to 6 primary action buttons (Save, Load, Add)
+  - Added `variant="outline"` to 1 secondary action button (Apply theme)
+  - Added `variant="ghost"` to 1 toolbar icon button (Add snapshot)
+  - Added `aria-label="Add layer"` to icon-only button for accessibility
+- **Standardization Applied:**
+  - Primary actions: "default" variant
+  - Secondary actions: "outline" or "ghost" variant
+  - Toolbar icon buttons: "ghost" variant with tooltips
+  - Icon-only buttons: aria-label for accessibility
+- **Status:** Completed, build successful, typecheck passing
 
 #### Task 16: Add Tooltips to Icon-Only Buttons
 - **Files:** Search for buttons with only icons (no text)
@@ -262,10 +274,10 @@ git log --oneline -10
 ## Progress Tracking
 
 - Start Date: 2026-04-04
-- Current Task: Task 14 - Optimize Image Loading (next OpenCode task)
-- Tasks Completed: 15/32 (11 fully complete, 3 verified/investigated, 1 partially complete)
-- Tasks Remaining: 17/32
-- Completion: 46.88%
+- Current Task: Task 16 - Add Tooltips to Icon-Only Buttons (next direct implementation task)
+- Tasks Completed: 17/32 (13 fully complete, 3 verified/investigated, 1 partially complete)
+- Tasks Remaining: 15/32
+- Completion: 53.13%
 
 ## Notes
 

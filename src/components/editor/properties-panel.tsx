@@ -395,7 +395,7 @@ export function PropertiesPanel({
                         placeholder="https://example.com/icon"
                         className="h-8 text-sm"
                       />
-                      <Button size="sm" className="h-8" onClick={loadCustomIconUrl} disabled={customIconLoading}>
+                      <Button variant="default" size="sm" className="h-8" onClick={loadCustomIconUrl} disabled={customIconLoading}>
                         {customIconLoading ? "Loading..." : "Load"}
                       </Button>
                     </div>
@@ -494,6 +494,7 @@ export function PropertiesPanel({
                         <X className="w-4 h-4 text-muted-foreground" />
                       </Button>
                       <Button
+                        variant="default"
                         size="sm"
                         className="h-8 shrink-0"
                         onClick={handleAddMetaData}

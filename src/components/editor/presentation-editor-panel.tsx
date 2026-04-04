@@ -444,7 +444,7 @@ export function PresentationEditorPanel({
               <span className="mx-0.5 h-5 w-px bg-border" />
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button size="sm" className="h-7 w-7 px-0" onClick={onAddSnapshot} disabled={!activeDeck} aria-label="Add snapshot">
+                  <Button variant="ghost" size="sm" className="h-7 w-7 px-0" onClick={onAddSnapshot} disabled={!activeDeck} aria-label="Add snapshot">
                     <Plus className="h-3.5 w-3.5" />
                   </Button>
                 </TooltipTrigger>

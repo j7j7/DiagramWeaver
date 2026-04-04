@@ -513,7 +513,7 @@ function RuleEditForm({
         </>
       )}
       <div className="flex gap-2 pt-2">
-        <Button size="sm" onClick={onSave}>
+        <Button variant="default" size="sm" onClick={onSave}>
           Save
         </Button>
         <Button size="sm" variant="outline" onClick={onCancel}>

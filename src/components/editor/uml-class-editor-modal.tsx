@@ -220,7 +220,7 @@ export function UmlClassEditorModal({
               <Button variant="outline" size="sm" onClick={onClose}>
                 Cancel
               </Button>
-              <Button size="sm" onClick={handleSave}>
+              <Button variant="default" size="sm" onClick={handleSave}>
                 Save
               </Button>
             </div>

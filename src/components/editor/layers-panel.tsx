@@ -243,7 +243,7 @@ export function LayersPanel({
               className="flex-1"
               autoFocus
             />
-            <Button size="sm" onClick={handleAddLayer}>
+            <Button variant="default" size="sm" onClick={handleAddLayer} aria-label="Add layer">
               <Check className="w-4 h-4" />
             </Button>
             <Button 
