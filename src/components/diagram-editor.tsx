@@ -13,6 +13,7 @@ import { computeUmlClassDimensions } from '@/lib/uml-utils';
 import { JsonEditorPanel } from './editor/json-editor-panel';
 import { PresentationEditorPanel } from './editor/presentation-editor-panel';
 import { PresentationPlayer } from './editor/presentation-player';
+import { setBooleanDebounced, setItemDebounced, getBooleanSafe, getItemSafe } from '@/lib/local-storage-debounce';
 import dynamic from 'next/dynamic';
 
 const TopMenuBar = dynamic(() => import('./editor/top-menu-bar').then(mod => ({ default: mod.TopMenuBar })), {
@@ -589,7 +590,7 @@ export default function DiagramEditor() {
   // Restore rules from localStorage after hydration
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
-    const saved = localStorage.getItem('dw:rules');
+    const saved = getItemSafe('dw:rules');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -603,17 +604,17 @@ export default function DiagramEditor() {
     }
   }, []);
 
-  // Save rules to localStorage when they change
+  // Save rules to localStorage when they change (debounced)
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('dw:rules', JSON.stringify({ version: '1.0', rules }));
+      setItemDebounced('dw:rules', JSON.stringify({ version: '1.0', rules }), 1000);
     }
   }, [rules]);
 
   // Restore scratchpad visibility from localStorage after hydration
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
-    const saved = localStorage.getItem('dw:scratchpad:visible');
+    const saved = getItemSafe('dw:scratchpad:visible');
     if (saved) {
       try {
         setScratchPadOpen(JSON.parse(saved));
@@ -623,17 +624,17 @@ export default function DiagramEditor() {
     }
   }, []);
 
-  // Save scratchpad visibility to localStorage when it changes
+  // Save scratchpad visibility to localStorage when it changes (debounced)
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('dw:scratchpad:visible', JSON.stringify(scratchPadOpen));
+      setItemDebounced('dw:scratchpad:visible', JSON.stringify(scratchPadOpen), 1000);
     }
   }, [scratchPadOpen]);
 
   // Restore layer animations enabled from localStorage after hydration
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
-    const saved = localStorage.getItem('dw:layerAnimations:enabled');
+    const saved = getItemSafe('dw:layerAnimations:enabled');
     if (saved !== null) {
       try {
         setLayerAnimationsEnabled(JSON.parse(saved));
@@ -643,10 +644,10 @@ export default function DiagramEditor() {
     }
   }, []);
 
-  // Save layer animations enabled to localStorage when it changes
+  // Save layer animations enabled to localStorage when it changes (debounced)
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('dw:layerAnimations:enabled', JSON.stringify(layerAnimationsEnabled));
+      setItemDebounced('dw:layerAnimations:enabled', JSON.stringify(layerAnimationsEnabled), 1000);
     }
   }, [layerAnimationsEnabled]);
 
@@ -4534,71 +4535,71 @@ export default function DiagramEditor() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [jsonPanelOpen, historyIndex, history, selectedItem, selectedItemIds, diagramData, setDiagramData, setSelectedItem, animationConnectionsEnabled, setAnimationConnectionsEnabled, setAnimationToggleOnClickEnabled, isReadOnly, handleItemDelete, handleTogglePresentationMode, presentationModeEnabled, presentationPlayerOpen, handleEnterPresentationPlayMode]);
 
-  // Persist panel width
+  // Persist panel width (debounced for better performance)
   React.useEffect(() => {
     if (isClient) {
-      localStorage.setItem('dw:jsonEditor:width', String(jsonPanelWidth));
+      setItemDebounced('dw:jsonEditor:width', String(jsonPanelWidth), 200);
     }
   }, [jsonPanelWidth, isClient]);
 
-  // Persist icon background preference
+  // Persist icon background preference (debounced)
   React.useEffect(() => {
     if (isClient) {
-      localStorage.setItem('dw:iconBackground:enabled', String(iconBackgroundEnabled));
+      setBooleanDebounced('dw:iconBackground:enabled', iconBackgroundEnabled);
     }
   }, [iconBackgroundEnabled, isClient]);
 
-  // Persist default text labels for new palette drops
+  // Persist default text labels for new palette drops (debounced)
   React.useEffect(() => {
     if (isClient) {
-      localStorage.setItem('dw:defaultTextLabels:enabled', String(defaultTextLabelsEnabled));
+      setBooleanDebounced('dw:defaultTextLabels:enabled', defaultTextLabelsEnabled);
     }
   }, [defaultTextLabelsEnabled, isClient]);
 
-  // Persist alignment guides preference
+  // Persist alignment guides preference (debounced)
   React.useEffect(() => {
     if (isClient) {
-      localStorage.setItem('dw:alignmentGuides:enabled', String(alignmentGuidesEnabled));
+      setBooleanDebounced('dw:alignmentGuides:enabled', alignmentGuidesEnabled);
     }
   }, [alignmentGuidesEnabled, isClient]);
 
   // Restore panel state from localStorage after hydration (avoids hydration mismatch)
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
-    const savedCollapsed = localStorage.getItem('dw:propertiesPanel:collapsed');
+    const savedCollapsed = getItemSafe('dw:propertiesPanel:collapsed');
     if (savedCollapsed !== null) setRightPanelCollapsed(savedCollapsed === 'true');
-    const savedVisible = localStorage.getItem('dw:propertiesPanel:visible');
+    const savedVisible = getItemSafe('dw:propertiesPanel:visible');
     if (savedVisible !== null) setPropertiesPanelVisible(savedVisible !== 'false');
-    const savedPopups = localStorage.getItem('dw:metadataPopups:enabled');
+    const savedPopups = getItemSafe('dw:metadataPopups:enabled');
     if (savedPopups !== null) setMetadataPopupsEnabled(savedPopups !== 'false');
-    const savedGuides = localStorage.getItem('dw:alignmentGuides:enabled');
+    const savedGuides = getItemSafe('dw:alignmentGuides:enabled');
     if (savedGuides !== null) setAlignmentGuidesEnabled(savedGuides !== 'false');
-    const savedConnectionsBehind = localStorage.getItem('dw:connectionsBehindNodes:enabled');
+    const savedConnectionsBehind = getItemSafe('dw:connectionsBehindNodes:enabled');
     if (savedConnectionsBehind !== null) setConnectionsBehindNodesEnabled(savedConnectionsBehind !== 'false');
-    const savedAnimationConnections = localStorage.getItem('dw:animationConnections:enabled');
+    const savedAnimationConnections = getItemSafe('dw:animationConnections:enabled');
     if (savedAnimationConnections !== null) setAnimationConnectionsEnabled(savedAnimationConnections !== 'false');
-    const savedAnimationToggleOnClick = localStorage.getItem('dw:animationToggleOnClick:enabled');
+    const savedAnimationToggleOnClick = getItemSafe('dw:animationToggleOnClick:enabled');
     if (savedAnimationToggleOnClick !== null) setAnimationToggleOnClickEnabled(savedAnimationToggleOnClick === 'true');
   }, []);
 
-  // Persist connections-behind-nodes preference
+  // Persist connections-behind-nodes preference (debounced)
   React.useEffect(() => {
     if (isClient) {
-      localStorage.setItem('dw:connectionsBehindNodes:enabled', String(connectionsBehindNodesEnabled));
+      setBooleanDebounced('dw:connectionsBehindNodes:enabled', connectionsBehindNodesEnabled);
     }
   }, [connectionsBehindNodesEnabled, isClient]);
 
-  // Persist animation connections preference
+  // Persist animation connections preference (debounced)
   React.useEffect(() => {
     if (isClient) {
-      localStorage.setItem('dw:animationConnections:enabled', String(animationConnectionsEnabled));
+      setBooleanDebounced('dw:animationConnections:enabled', animationConnectionsEnabled);
     }
   }, [animationConnectionsEnabled, isClient]);
 
-  // Persist animation toggle on click preference
+  // Persist animation toggle on click preference (debounced)
   React.useEffect(() => {
     if (isClient) {
-      localStorage.setItem('dw:animationToggleOnClick:enabled', String(animationToggleOnClickEnabled));
+      setBooleanDebounced('dw:animationToggleOnClick:enabled', animationToggleOnClickEnabled);
     }
   }, [animationToggleOnClickEnabled, isClient]);
 
