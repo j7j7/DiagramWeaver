@@ -8,6 +8,36 @@ This log tracks all functional and visual changes made during the performance an
 
 ---
 
+## Task 12: Viewport Culling (PARTIALLY COMPLETED - Integration Blocked)
+
+### 2026-04-04 - Performance: Viewport Culling Utility Created 📝
+- **File:** `src/lib/viewport-culling.ts` (new)
+- **Change:** Created comprehensive viewport culling utility library
+- **Impact:** Foundation for rendering performance improvement with large diagrams (100+ nodes)
+- **Functions Implemented:**
+  1. `calculateViewportBounds` - Convert screen coordinates to diagram coordinates
+  2. `isNodeInViewport` - Check if node intersects with viewport bounds
+  3. `filterVisibleNodes` - Filter nodes to only those visible in viewport
+  4. `isConnectionVisible` - Check if connection endpoints are visible
+  5. `filterVisibleConnections` - Filter connections based on visible endpoints
+  6. `applyViewportCulling` - Main entry point for viewport culling
+  7. `logCullingStats` - Debug utility for logging culling statistics
+- **Features:**
+  - Configurable margin buffer to prevent popping at edges
+  - Type-safe with TypeScript
+  - Well-documented with JSDoc comments
+  - Includes debug logging for performance analysis
+- **Integration Status:** Blocked by build issues
+- **Issue Encountered:** Integration with CanvasConnections component caused "Cannot access 'bh' before initialization" error during build
+- **Root Cause:** Complex dependency/hoisting issue in CanvasConnections component when adding visibleConnections prop
+- **Next Steps:**
+  - Need deeper investigation into CanvasConnections component architecture
+  - Consider alternative integration approach (e.g., filtering diagramData at parent level)
+  - May require refactoring CanvasConnections to support external connection filtering
+- **Testing:** Utility functions are logically correct but not yet integrated/tested in the app
+
+---
+
 ## Completed Changes
 
 ### 2026-04-04 - Performance: ConnectionWaypointHandles Memoization ✅
