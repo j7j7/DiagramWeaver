@@ -4,8 +4,8 @@ This document contains the automated implementation plan for continuing the Diag
 
 ## Current Status
 - Branch: `implement-performance-ux-improvements`
-- Progress: ~62.50% complete (20/32 tasks: 16 fully complete, 3 verified/investigated, 1 partially complete)
-- Last Completed: Task 18 - Add Missing ARIA Labels
+- Progress: ~68.75% complete (22/32 tasks: 18 fully complete, 3 verified/investigated, 1 partially complete)
+- Last Completed: Task 20 - Add Keyboard Shortcuts
 - Last Build: ✅ Passing
 
 ## Implementation Queue
@@ -151,17 +151,31 @@ This document contains the automated implementation plan for continuing the Diag
 - **Testing:** Build successful, typecheck passing
 - **Status:** Completed
 
-#### Task 19: Improve Focus Management
-- **Files:** Modal and dialog components
-- **Action:** Ensure proper focus trapping and restoration
+#### Task 19: Improve Focus Management ✅ COMPLETED
+- **Files:** `src/components/editor/uml-class-editor-modal.tsx`, `src/components/editor/connection-context-modal.tsx`
+- **Action:** Added focus trapping and restoration to custom modals
 - **Impact:** Keyboard navigation accessibility
-- **Complexity:** Medium
+- **Changes Made:**
+  - Added previousActiveElementRef to save focused element
+  - Auto-focus first focusable element when modal opens
+  - Trap Tab navigation within the modal
+  - Restore focus to previously focused element when modal closes
+- **Dialog Components:** Already have focus management via Radix UI (no changes needed)
+- **Testing:** Build successful, typecheck passing
+- **Status:** Completed
 
-#### Task 20: Add Keyboard Shortcuts
+#### Task 20: Add Keyboard Shortcuts ✅ COMPLETED
 - **Files:** Main editor components
 - **Action:** Document and implement missing keyboard shortcuts
 - **Impact:** Power user efficiency
-- **Complexity:** Medium
+- **Changes Made:**
+  - Added Copy (Ctrl+C / Cmd+C) keyboard shortcut
+  - Added Paste (Ctrl+V / Cmd+V) keyboard shortcut
+  - Added Fit to View (Ctrl+0 / Cmd+0) keyboard shortcut
+  - Updated keyboard shortcuts dialog to document Fit to View shortcut
+  - Updated dependency array for keyboard handler
+- **Status:** Completed, build successful, typecheck passing
+- **Complexity:** Low
 
 ### Phase 5: UX Consistency - Design System (Medium Priority)
 
@@ -286,10 +300,10 @@ git log --oneline -10
 ## Progress Tracking
 
 - Start Date: 2026-04-04
-- Current Task: Task 19 - Improve Focus Management (next direct implementation task)
-- Tasks Completed: 20/32 (16 fully complete, 3 verified/investigated, 1 partially complete)
-- Tasks Remaining: 12/32
-- Completion: 62.50%
+- Current Task: Task 21 - Standardize Panel Layouts (next OpenCode task)
+- Tasks Completed: 22/32 (18 fully complete, 3 verified/investigated, 1 partially complete)
+- Tasks Remaining: 10/32
+- Completion: 68.75%
 
 ## Notes
 

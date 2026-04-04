@@ -4409,7 +4409,28 @@ export default function DiagramEditor() {
         e.preventDefault();
         handleSelectAll();
       }
-      
+
+      // Ctrl+C (or Cmd+C on Mac) - Copy selection
+      if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === 'c' && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        handleMenuCopy();
+        return;
+      }
+
+      // Ctrl+V (or Cmd+V on Mac) - Paste
+      if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === 'v' && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        handleMenuPaste();
+        return;
+      }
+
+      // Ctrl+0 (or Cmd+0 on Mac) - Fit to View
+      if ((isMac ? e.metaKey : e.ctrlKey) && e.key === '0' && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        editorRef.current?.fitToView();
+        return;
+      }
+
       // Escape key - Clear multi-selection
       if (e.key === 'Escape' && selectedItemIds.size > 1) {
         e.preventDefault();
@@ -4560,7 +4581,7 @@ export default function DiagramEditor() {
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [jsonPanelOpen, historyIndex, history, selectedItem, selectedItemIds, diagramData, setDiagramData, setSelectedItem, animationConnectionsEnabled, setAnimationConnectionsEnabled, setAnimationToggleOnClickEnabled, isReadOnly, handleItemDelete, handleTogglePresentationMode, presentationModeEnabled, presentationPlayerOpen, handleEnterPresentationPlayMode]);
+  }, [jsonPanelOpen, historyIndex, history, selectedItem, selectedItemIds, diagramData, setDiagramData, setSelectedItem, animationConnectionsEnabled, setAnimationConnectionsEnabled, setAnimationToggleOnClickEnabled, isReadOnly, handleItemDelete, handleMenuCopy, handleMenuPaste, handleTogglePresentationMode, presentationModeEnabled, presentationPlayerOpen, handleEnterPresentationPlayMode]);
 
   // Persist panel width (debounced for better performance)
   React.useEffect(() => {

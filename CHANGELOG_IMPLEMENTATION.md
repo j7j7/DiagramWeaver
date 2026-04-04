@@ -8,6 +8,72 @@ This log tracks all functional and visual changes made during the performance an
 
 ---
 
+## Task 20: Add Keyboard Shortcuts ✅ COMPLETED
+
+### 2026-04-04 - UX Consistency: Missing Keyboard Shortcuts Added ✅
+- **Files:** `src/components/diagram-editor.tsx`, `src/components/editor/keyboard-shortcuts-dialog.tsx`
+- **Change:** Added missing keyboard shortcuts for common operations
+- **Impact:** Improved power user efficiency and consistency with documented shortcuts
+- **Changes Made:**
+  1. **Copy Selection (Ctrl+C / Cmd+C):**
+     - Added keyboard handler for Ctrl+C (or Cmd+C on Mac)
+     - Calls handleMenuCopy() to copy selected items
+     - Prevents default browser behavior to use app's copy implementation
+  2. **Paste (Ctrl+V / Cmd+V):**
+     - Added keyboard handler for Ctrl+V (or Cmd+V on Mac)
+     - Calls handleMenuPaste() to paste from clipboard
+     - Prevents default browser behavior to use app's paste implementation
+  3. **Fit to View (Ctrl+0 / Cmd+0):**
+     - Added keyboard handler for Ctrl+0 (or Cmd+0 on Mac)
+     - Calls editorRef.current?.fitToView() to fit diagram to viewport
+     - Useful for quickly viewing entire diagram after zooming/panning
+  4. **Updated Dependency Array:**
+     - Added handleMenuCopy and handleMenuPaste to keyboard handler dependency array
+     - Ensures handlers are up-to-date when they change
+  5. **Updated Documentation:**
+     - Added "Fit to view" shortcut to keyboard shortcuts dialog
+     - Located in "Selection, layout & canvas" section
+- **Notes:**
+  - Copy and Paste shortcuts were documented but not implemented
+  - Now all documented keyboard shortcuts are implemented
+  - Shortcuts are ignored when focus is in editable elements (inputs, textareas, JSON editor)
+- **Testing:**
+  - ✅ Build successful
+  - ✅ Typecheck passing
+  - ✅ All shortcuts now match documentation
+
+---
+
+## Task 19: Improve Focus Management ✅ COMPLETED
+
+### 2026-04-04 - UX Accessibility: Focus Management for Custom Modals ✅
+- **Files:** `src/components/editor/uml-class-editor-modal.tsx`, `src/components/editor/connection-context-modal.tsx`
+- **Change:** Added comprehensive focus management to custom modals
+- **Impact:** Improved keyboard navigation and accessibility for screen readers
+- **Changes Made:**
+  1. **UML Class Editor Modal:**
+     - Added previousActiveElementRef to save focused element
+     - Auto-focus first focusable element when modal opens
+     - Trap Tab navigation within the modal
+     - Restore focus to previously focused element when modal closes
+  2. **Connection Context Modal:**
+     - Added previousActiveElementRef to save focused element
+     - Auto-focus first focusable element when modal opens
+     - Trap Tab navigation within the modal
+     - Restore focus to previously focused element when modal closes
+  3. **Dialog Components (No Changes Needed):**
+     - about-dialog.tsx, keyboard-shortcuts-dialog.tsx, viewer-url-dialog.tsx, export-dialog.tsx
+     - Already have focus management via Radix UI Dialog component
+- **Search Resources Modal:**
+  - Already has basic focus management (focuses input on open)
+  - Could be enhanced with full focus trapping in future
+- **Testing:**
+  - ✅ Build successful
+  - ✅ Typecheck passing
+  - ✅ Keyboard navigation improved for custom modals
+
+---
+
 ## Task 18: Add Missing ARIA Labels ✅ COMPLETED
 
 ### 2026-04-04 - UX Accessibility: ARIA Labels for Icon-Only Buttons ✅

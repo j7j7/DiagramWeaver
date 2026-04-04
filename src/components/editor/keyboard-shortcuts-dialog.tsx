@@ -210,6 +210,7 @@ export function KeyboardShortcutsDialog({ open, onOpenChange }: KeyboardShortcut
               { action: "Group selected items", keys: modPlus("G") },
               { action: "Ungroup selected items", keys: modShiftPlus("G") },
               { action: "Auto layout", keys: modShiftPlus("L") },
+              { action: "Fit to view", keys: modPlus("0") },
             ]}
           />
           <ShortcutTable
