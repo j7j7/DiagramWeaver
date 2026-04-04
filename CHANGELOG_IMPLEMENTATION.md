@@ -8,6 +8,27 @@ This log tracks all functional and visual changes made during the performance an
 
 ---
 
+## Task 16: Add Tooltips to Icon-Only Buttons ✅ COMPLETED
+
+### 2026-04-04 - UX Consistency: Tooltip Addition for Icon-Only Buttons ✅
+- **Files:** `src/components/editor/uml-class-editor-modal.tsx`, `src/components/editor/connection-context-modal.tsx`
+- **Change:** Added Tooltip wrappers to close button icons in modal headers
+- **Impact:** Better accessibility and user experience for icon-only buttons
+- **Changes Made:**
+  1. **UML Class Editor Modal:**
+     - Added Tooltip wrapper to close button (X icon)
+     - Added TooltipContent with "Close" text
+     - Imported Tooltip components
+  2. **Connection Context Modal:**
+     - Added Tooltip wrapper to close button (X icon)
+     - Added TooltipContent with "Close" text
+- **Testing:**
+  - ✅ Build successful
+  - ✅ Typecheck passing
+  - ✅ Tooltips display on hover for better accessibility
+
+---
+
 ## Task 15: Standardize Button Variants ✅ COMPLETED
 
 ### 2026-04-04 - UX Consistency: Button Variant Standardization ✅

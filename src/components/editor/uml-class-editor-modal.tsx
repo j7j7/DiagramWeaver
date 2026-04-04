@@ -5,6 +5,7 @@ import Draggable from "react-draggable";
 import { X, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { DiagramNodeData } from "@/lib/types";
 
 interface UmlClassEditorModalProps {
@@ -129,9 +130,14 @@ export function UmlClassEditorModal({
         >
           <div className="uml-modal-drag-handle flex items-center justify-between p-3 border-b cursor-move">
             <h3 className="font-semibold text-sm">Edit UML Class</h3>
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0" onClick={onClose}>
-              <X className="w-4 h-4" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0" onClick={onClose}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Close</TooltipContent>
+            </Tooltip>
           </div>
           <div className="p-4 space-y-4 max-h-[380px] overflow-y-auto">
             <div className="space-y-2">

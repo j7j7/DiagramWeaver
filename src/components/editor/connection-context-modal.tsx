@@ -188,9 +188,14 @@ export function ConnectionContextModal({
         <h3 className="font-semibold text-sm truncate" title={`${connection.from} → ${connection.to}`}>
           {fromLabel} → {toLabel}
         </h3>
-        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0" onClick={onClose}>
-          <X className="w-4 h-4" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0" onClick={onClose}>
+              <X className="w-4 h-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Close</TooltipContent>
+        </Tooltip>
       </div>
       <div className="p-4 space-y-3 max-h-80 overflow-y-auto">
         <div className="flex items-center justify-between gap-2">
