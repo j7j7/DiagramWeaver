@@ -1521,7 +1521,7 @@ export default function DiagramEditor() {
     }
   }, [sidebarOpen, isMobile]);
 
-  const handleItemSelect = (item: SelectedItem | null, shiftKey = false) => {
+  const handleItemSelect = React.useCallback((item: SelectedItem | null, shiftKey = false) => {
     if (isConnectMode && !item) {
       setIsConnectMode(false);
     }
@@ -1557,16 +1557,16 @@ export default function DiagramEditor() {
         setSelectedItemIds(new Set());
       }
     }
-  };
+  }, [isConnectMode, animationToggleOnClickEnabled, selectedItem, setIsConnectMode, setAnimationDisabledSources, setSelectedItem, setSelectedItemIds]);
 
-  const handleBatchSelect = (itemIds: string[]) => {
+  const handleBatchSelect = React.useCallback((itemIds: string[]) => {
     if (itemIds.length === 0) {
       setSelectedItem(null);
       setSelectedItemIds(new Set());
       if (animationToggleOnClickEnabled) setAnimationDisabledSources(new Set());
       return;
     }
-    
+
     // Find all selectable items (nodes, zones, and connections)
     const items: SelectedItem[] = [];
     itemIds.forEach(id => {
@@ -1590,29 +1590,29 @@ export default function DiagramEditor() {
         items.push({ ...connection, itemType: 'edge' as const, id: connId });
       }
     });
-    
+
     if (items.length > 0) {
       // Set first item as primary, all items as selected
       setSelectedItem(items[0]);
       setSelectedItemIds(new Set(itemIds));
     }
-  };
+  }, [setSelectedItem, setSelectedItemIds, animationToggleOnClickEnabled, setAnimationDisabledSources, diagramData]);
   
-  const handleItemUpdate = (updatedItem: SelectedItem) => {
+  const handleItemUpdate = React.useCallback((updatedItem: SelectedItem) => {
     if (updatedItem.itemType === 'edge') return;
     setCurrentDiagramData(prevData => {
             // Find the existing node to preserve its properties
             const existingNode = prevData.nodes.find(n => n.id === updatedItem.id);
-            
+
             if (!existingNode) {
                 // Node doesn't exist, this shouldn't happen but handle gracefully
                 return prevData;
             }
-            
+
             // Create merged node, ensuring we preserve all existing properties
             // Only update properties that are explicitly provided in updatedItem
             const mergedNode = { ...existingNode } as DiagramNodeData;
-            
+
             // Only copy properties that exist in updatedItem and are not undefined
             Object.keys(updatedItem).forEach(key => {
                 if (key !== 'itemType' && key !== 'id') {
@@ -1622,7 +1622,7 @@ export default function DiagramEditor() {
                     }
                 }
             });
-            
+
             return {
                 ...prevData,
                 nodes: prevData.nodes.map(n => n.id === updatedItem.id ? mergedNode : n)
@@ -1633,9 +1633,9 @@ export default function DiagramEditor() {
     if (selectedItem?.id === updatedItem.id) {
         setSelectedItem(updatedItem);
     }
-  }
+  }, [selectedItem, setCurrentDiagramData, setSelectedItem]);
 
-  const handleLabelUpdate = (nodeId: string, newLabel: string, richLabel?: import("@/lib/types").RichTextRun[]) => {
+  const handleLabelUpdate = React.useCallback((nodeId: string, newLabel: string, richLabel?: import("@/lib/types").RichTextRun[]) => {
     React.startTransition(() => {
       setCurrentDiagramData(prevData => ({
         ...prevData,
@@ -1651,9 +1651,9 @@ export default function DiagramEditor() {
         setSelectedItem({ ...selectedItem, label: newLabel });
       }
     });
-  }
+  }, [selectedItem, setCurrentDiagramData, setSelectedItem]);
 
-  const handleTagUpdate = (nodeId: string, newTag: string) => {
+  const handleTagUpdate = React.useCallback((nodeId: string, newTag: string) => {
     setCurrentDiagramData(prevData => ({
       ...prevData,
       nodes: prevData.nodes.map(n => n.id === nodeId ? { ...n, tag: newTag } : n)
@@ -1663,7 +1663,7 @@ export default function DiagramEditor() {
     if (selectedItem?.id === nodeId && selectedItem.itemType === 'node') {
       setSelectedItem({ ...selectedItem, tag: newTag });
     }
-  }
+  }, [selectedItem, setCurrentDiagramData, setSelectedItem]);
 
   const handleResourceSelect = (resource: { name: string; file?: string; type?: string; hasWhiteVariant?: boolean; format?: string; iconType?: string; iconName?: string; emoji?: string; imageUrl?: string; imageOptions?: import('@/lib/types').CustomImageOptions }, provider: string, category: string) => {
     // Track the currently selected resource from the sidebar for copy/paste
@@ -1700,7 +1700,7 @@ export default function DiagramEditor() {
     }
   };
 
-  const handleItemDelete = (itemToDelete: SelectedItem) => {
+  const handleItemDelete = React.useCallback((itemToDelete: SelectedItem) => {
     if (itemToDelete.itemType === 'node') {
       const layerId = itemToDelete.layer || layers.getItemLayerById(itemToDelete.id);
       if (!confirmPresentationLayerImpact('The selected item', layerId ? [layerId] : [])) return;
@@ -1732,14 +1732,14 @@ export default function DiagramEditor() {
     const nextDiagram = cleanupGroupsAfterDeletion([itemToDelete.id], updatedData);
     setCurrentDiagramData(nextDiagram);
     setSelectedItem(null);
-  };
+  }, [currentDiagramData, layers, setCurrentDiagramData, setSelectedItem]);
 
-  const handleGroupItems = () => {
+  const handleGroupItems = React.useCallback(() => {
     if (selectedItemIds.size < 2) {
-      toast({ 
-        variant: 'destructive', 
-        title: 'Cannot Group', 
-        description: 'Select at least 2 items to create a group.' 
+      toast({
+        variant: 'destructive',
+        title: 'Cannot Group',
+        description: 'Select at least 2 items to create a group.'
       });
       return;
     }
@@ -1747,28 +1747,28 @@ export default function DiagramEditor() {
     try {
       const updatedData = createGroup(Array.from(selectedItemIds), currentDiagramData);
       setCurrentDiagramData(updatedData);
-      toast({ 
-        title: 'Items Grouped', 
-        description: `Created group with ${selectedItemIds.size} items.` 
+      toast({
+        title: 'Items Grouped',
+        description: `Created group with ${selectedItemIds.size} items.`
       });
     } catch (error) {
-      toast({ 
-        variant: 'destructive', 
-        title: 'Group Failed', 
-        description: error instanceof Error ? error.message : 'Failed to create group.' 
+      toast({
+        variant: 'destructive',
+        title: 'Group Failed',
+        description: error instanceof Error ? error.message : 'Failed to create group.'
       });
     }
-  };
+  }, [selectedItemIds, currentDiagramData, setCurrentDiagramData, toast]);
 
-  const handleUngroupItems = () => {
+  const handleUngroupItems = React.useCallback(() => {
     if (!selectedItem) return;
 
     const group = getItemGroup(selectedItem.id, currentDiagramData);
     if (!group) {
-      toast({ 
-        variant: 'destructive', 
-        title: 'Not Grouped', 
-        description: 'Selected item is not in a group.' 
+      toast({
+        variant: 'destructive',
+        title: 'Not Grouped',
+        description: 'Selected item is not in a group.'
       });
       return;
     }
@@ -1776,56 +1776,56 @@ export default function DiagramEditor() {
     try {
       const updatedData = ungroup(group.id, currentDiagramData);
       setCurrentDiagramData(updatedData);
-      toast({ 
-        title: 'Items Ungrouped', 
-        description: 'Group has been dissolved.' 
+      toast({
+        title: 'Items Ungrouped',
+        description: 'Group has been dissolved.'
       });
     } catch (error) {
-      toast({ 
-        variant: 'destructive', 
-        title: 'Ungroup Failed', 
-        description: error instanceof Error ? error.message : 'Failed to ungroup items.' 
+      toast({
+        variant: 'destructive',
+        title: 'Ungroup Failed',
+        description: error instanceof Error ? error.message : 'Failed to ungroup items.'
       });
     }
-  };
+  }, [selectedItem, currentDiagramData, setCurrentDiagramData, toast]);
 
-  const handleRemoveFromGroup = () => {
+  const handleRemoveFromGroup = React.useCallback(() => {
     if (selectedItemIds.size === 0) return;
 
     try {
       const updatedData = removeFromGroup(Array.from(selectedItemIds), currentDiagramData);
       setCurrentDiagramData(updatedData);
-      toast({ 
-        title: 'Removed from Group', 
-        description: `${selectedItemIds.size} item(s) removed from group.` 
+      toast({
+        title: 'Removed from Group',
+        description: `${selectedItemIds.size} item(s) removed from group.`
       });
     } catch (error) {
-      toast({ 
-        variant: 'destructive', 
-        title: 'Remove Failed', 
-        description: error instanceof Error ? error.message : 'Failed to remove from group.' 
+      toast({
+        variant: 'destructive',
+        title: 'Remove Failed',
+        description: error instanceof Error ? error.message : 'Failed to remove from group.'
       });
     }
-  };
+  }, [selectedItemIds, currentDiagramData, setCurrentDiagramData, toast]);
 
-  const handleAddToGroup = (groupId: string) => {
+  const handleAddToGroup = React.useCallback((groupId: string) => {
     if (selectedItemIds.size === 0) return;
 
     try {
       const updatedData = addToGroup(Array.from(selectedItemIds), groupId, currentDiagramData);
       setCurrentDiagramData(updatedData);
-      toast({ 
-        title: 'Added to Group', 
-        description: `${selectedItemIds.size} item(s) added to group.` 
+      toast({
+        title: 'Added to Group',
+        description: `${selectedItemIds.size} item(s) added to group.`
       });
     } catch (error) {
-      toast({ 
-        variant: 'destructive', 
-        title: 'Add to Group Failed', 
-        description: error instanceof Error ? error.message : 'Failed to add to group.' 
+      toast({
+        variant: 'destructive',
+        title: 'Add to Group Failed',
+        description: error instanceof Error ? error.message : 'Failed to add to group.'
       });
     }
-  };
+  }, [selectedItemIds, currentDiagramData, setCurrentDiagramData, toast]);
 
   const generateSubDiagramId = React.useCallback(() => {
     const { subDiagramKeys } = collectAllIdsInDiagram(diagramData);
@@ -3048,7 +3048,7 @@ export default function DiagramEditor() {
     setPendingAnimationUpdate(null);
   }, []);
 
-  const handleConnectionUpdate = (from: string, to: string, updates: { text?: string; color?: string; textPosition?: number; lineWidth?: number; shadow?: boolean; style?: 'bezier' | 'orthogonal'; smoothCorners?: boolean; curvature?: number; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean; arrow?: boolean; centerEdgeAnchors?: boolean; edgeAttachmentConstraint?: DiagramConnectionData['edgeAttachmentConstraint']; waypoints?: Array<{ x: number; y: number; id?: string }>; metaData?: Record<string, string>; animation?: DiagramConnectionData['animation'] }, connectionId?: string) => {
+  const handleConnectionUpdate = React.useCallback((from: string, to: string, updates: { text?: string; color?: string; textPosition?: number; lineWidth?: number; shadow?: boolean; style?: 'bezier' | 'orthogonal'; smoothCorners?: boolean; curvature?: number; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean; arrow?: boolean; centerEdgeAnchors?: boolean; edgeAttachmentConstraint?: DiagramConnectionData['edgeAttachmentConstraint']; waypoints?: Array<{ x: number; y: number; id?: string }>; metaData?: Record<string, string>; animation?: DiagramConnectionData['animation'] }, connectionId?: string) => {
     const effectiveConnId = connectionId ?? (selectedItem?.itemType === 'edge' ? (selectedItem as { id?: string }).id : undefined);
     const connections = currentDiagramData.connections ?? [];
     const currentConnection = connections.find((conn) =>
@@ -3082,7 +3082,7 @@ export default function DiagramEditor() {
     }
 
     applyConnectionUpdates(from, to, updates, effectiveConnId);
-  };
+  }, [selectedItem, selectedItemIds, currentDiagramData.connections, setPendingAnimationUpdate, setAnimationSelectionDialogOpen, applyAnimationToCurrentAndSelected, applyConnectionUpdates]);
 
   const handleAnimationApplyCurrentOnly = React.useCallback(() => {
     if (!pendingAnimationUpdate) return;
@@ -3366,33 +3366,33 @@ export default function DiagramEditor() {
     void closeTab(tutorialId, true);
   }, [createTab, closeTab]);
 
-  const handleMenuCopy = () => {
+  const handleMenuCopy = React.useCallback(() => {
     if (selectedResource) {
       const item = createPaletteItem(selectedResource.resource, selectedResource.provider, selectedResource.category);
       setPaletteClipboardItem(item);
     } else {
       editorRef.current?.copy();
     }
-  };
+  }, [selectedResource, setPaletteClipboardItem, editorRef]);
 
-  const handleMenuPaste = () => {
+  const handleMenuPaste = React.useCallback(() => {
     if (paletteClipboardItem && editorRef.current) {
       editorRef.current.pastePaletteItem(paletteClipboardItem);
     } else {
       editorRef.current?.paste();
     }
-  };
+  }, [paletteClipboardItem, editorRef]);
 
-  const handleSelectAll = () => {
+  const handleSelectAll = React.useCallback(() => {
     const allIds = new Set<string>();
-    
+
     diagramData.nodes.forEach(node => allIds.add(node.id));
     diagramData.connections.forEach(connection => {
       allIds.add((connection as DiagramConnectionData).id ?? `${connection.from}-${connection.to}`);
     });
-    
+
     setSelectedItemIds(allIds);
-    
+
     if (allIds.size > 0) {
       const firstId = Array.from(allIds)[0];
       const nodeItem = diagramData.nodes.find(node => node.id === firstId);
@@ -3410,7 +3410,7 @@ export default function DiagramEditor() {
     } else {
       setSelectedItem(null);
     }
-  };
+  }, [diagramData, setSelectedItemIds, setSelectedItem]);
 
   const handleExportPng = async () => {
     setExportDialogFormat('png');
@@ -3524,29 +3524,29 @@ export default function DiagramEditor() {
     }
   };
 
-  const handleMoveToBack = () => {
+  const handleMoveToBack = React.useCallback(() => {
     if (!selectedItem || selectedItem.itemType === 'edge') return;
     const updatedData = moveItemToBack(currentDiagramData, selectedItem.id, selectedItem.itemType);
     setCurrentDiagramData(updatedData);
-  };
+  }, [selectedItem, currentDiagramData, setCurrentDiagramData]);
 
-  const handleMoveToFront = () => {
+  const handleMoveToFront = React.useCallback(() => {
     if (!selectedItem || selectedItem.itemType === 'edge') return;
     const updatedData = moveItemToFront(currentDiagramData, selectedItem.id, selectedItem.itemType);
     setCurrentDiagramData(updatedData);
-  };
+  }, [selectedItem, currentDiagramData, setCurrentDiagramData]);
 
-  const handleMoveOneBack = () => {
+  const handleMoveOneBack = React.useCallback(() => {
     if (!selectedItem || selectedItem.itemType === 'edge') return;
     const updatedData = moveItemOneBack(currentDiagramData, selectedItem.id, selectedItem.itemType);
     setCurrentDiagramData(updatedData);
-  };
+  }, [selectedItem, currentDiagramData, setCurrentDiagramData]);
 
-  const handleMoveOneForward = () => {
+  const handleMoveOneForward = React.useCallback(() => {
     if (!selectedItem || selectedItem.itemType === 'edge') return;
     const updatedData = moveItemOneForward(currentDiagramData, selectedItem.id, selectedItem.itemType);
     setCurrentDiagramData(updatedData);
-  };
+  }, [selectedItem, currentDiagramData, setCurrentDiagramData]);
 
   const handleAlignObjects = (alignment: 'top' | 'center' | 'bottom' | 'v-middle' | 'left' | 'h-center' | 'right' | 'distribute-v' | 'distribute-h') => {
     if (!selectedItem || selectedItemIds.size < 2) return;

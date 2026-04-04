@@ -38,6 +38,31 @@ This log tracks all functional and visual changes made during the performance an
   11. handleShapeTextPlacementChange - Shape text placement change
 - **Testing:** Build successful, typecheck successful, browser tested
 
+### 2026-04-04 - Performance: Diagram Editor useCallback Optimizations ✅
+- **File:** `src/components/diagram-editor.tsx`
+- **Change:** Added useCallback to 18 handler functions to prevent unnecessary re-renders
+- **Impact:** Optimizes performance by stabilizing function references passed to child components
+- **Functions Optimized:**
+  1. handleItemSelect - Item selection with additive selection support
+  2. handleBatchSelect - Multiple item selection
+  3. handleItemUpdate - Update selected item properties
+  4. handleLabelUpdate - Update node label
+  5. handleTagUpdate - Update node tag
+  6. handleItemDelete - Delete selected item
+  7. handleGroupItems - Group selected items
+  8. handleUngroupItems - Ungroup selected items
+  9. handleRemoveFromGroup - Remove items from group
+  10. handleAddToGroup - Add items to group
+  11. handleConnectionUpdate - Update connection properties
+  12. handleMenuCopy - Copy selected item/resource
+  13. handleMenuPaste - Paste copied item
+  14. handleSelectAll - Select all items in diagram
+  15. handleMoveToBack - Move item to back
+  16. handleMoveToFront - Move item to front
+  17. handleMoveOneBack - Move item one position back
+  18. handleMoveOneForward - Move item one position forward
+- **Testing:** Build successful, typecheck successful
+
 ### 2026-04-04 - Performance: Optimization Verifications ✅
 - **Files:** Multiple files
 - **Changes:**
@@ -227,9 +252,9 @@ Changes Planned:
 
 ## Summary
 
-**Total Changes Completed:** 11 (8 fully complete, 3 verified/investigated)
-**Total Changes Remaining:** ~21+ (estimated from improvement plans)
-**Progress:** ~34% complete
+**Total Changes Completed:** 12 (9 fully complete, 3 verified/investigated)
+**Total Changes Remaining:** ~20+ (estimated from improvement plans)
+**Progress:** ~37.5% complete
 
 **Performance Improvements:**
 - ✅ DraggableResourceItem memoization
@@ -240,13 +265,16 @@ Changes Planned:
 - ✅ ConnectionWaypointHandles memoization
 - ✅ OrthogonalConnection memoization verification
 - ✅ Context toolbar useCallback optimizations (11 handler functions)
+- ✅ Diagram editor useCallback optimizations (18 handler functions)
 - ✅ getUsedMetadataKeys useMemo verification
 - ✅ Small component memoization investigation (components already optimized)
 
 **Next Priorities:**
-- Continue performance improvements (component refactoring, viewport culling)
+- Complete Task 9: Continue useCallback optimization for remaining handlers (~20+ functions in other files)
+- Task 12: Implement Viewport Culling (use OpenCode)
+- Task 13: Code Splitting for Large Panels (use OpenCode)
+- Task 14: Optimize Image Loading (use OpenCode)
 - Start UX consistency improvements (button standardization, ARIA labels)
-- Implement remaining memoization opportunities if found
 
 ---
 
