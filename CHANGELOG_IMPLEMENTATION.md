@@ -20,6 +20,24 @@ This log tracks all functional and visual changes made during the performance an
   - Reduces re-renders when nodes are moved or diagram state changes
 - **Testing:** Build successful
 
+### 2026-04-04 - Performance: Context Toolbar useCallback Optimizations ✅
+- **File:** `src/components/editor/context-toolbar.tsx`
+- **Change:** Added useCallback to 11 handler functions to prevent unnecessary re-renders
+- **Impact:** Optimizes performance by stabilizing function references passed to child components
+- **Functions Optimized:**
+  1. handleArrowToggle - Connection arrow toggle
+  2. handleLineStyleChange - Line style (bezier/orthogonal) change
+  3. handleSmoothCornersToggle - Smooth corners toggle for orthogonal lines
+  4. handleMaxItemsPerRowChange - Zone max items per row change
+  5. handleSizeModeChange - Zone size mode (auto/custom) change
+  6. handleWidthChange - Node/zone width change
+  7. handleHeightChange - Node/zone height change
+  8. handleRotationChange - Node/zone rotation change
+  9. handleOrientationChange - Node orientation change
+  10. handleTextPositionChange - Text position change
+  11. handleShapeTextPlacementChange - Shape text placement change
+- **Testing:** Build successful, typecheck successful, browser tested
+
 ### 2026-04-04 - Performance: Memory Leak Verification ✅
 - **File:** Multiple components
 - **Change:** Verified that all documented memory leaks have been fixed
@@ -196,9 +214,9 @@ Changes Planned:
 
 ## Summary
 
-**Total Changes Completed:** 7 (5 performance improvements + 2 verification tasks)
-**Total Changes Remaining:** ~25+ (estimated from improvement plans)
-**Progress:** ~22% complete
+**Total Changes Completed:** 8 (7 performance improvements + 1 verification task)
+**Total Changes Remaining:** ~24+ (estimated from improvement plans)
+**Progress:** ~25% complete
 
 **Performance Improvements:**
 - ✅ DraggableResourceItem memoization
@@ -207,6 +225,8 @@ Changes Planned:
 - ✅ Memory leak verification (all fixed)
 - ✅ Memoization verification (key components already optimized)
 - ✅ ConnectionWaypointHandles memoization
+- ✅ OrthogonalConnection memoization verification
+- ✅ Context toolbar useCallback optimizations (11 handler functions)
 
 **Next Priorities:**
 - Continue performance improvements (component refactoring, viewport culling)
