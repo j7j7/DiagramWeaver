@@ -28,7 +28,7 @@ function slugify(name: string): string {
   return name.replace(/\s+/g, "-").toLowerCase();
 }
 
-export function DraggableIconItem({
+export function DraggableIconItemInner({
   iconItem,
   onClick,
   onDoubleClick,
@@ -121,3 +121,14 @@ export function DraggableIconItem({
     </Tooltip>
   );
 }
+
+function areDraggableIconItemPropsEqual(prev: DraggableIconItemProps, next: DraggableIconItemProps): boolean {
+  return (
+    prev.iconItem === next.iconItem &&
+    prev.viewMode === next.viewMode &&
+    prev.onClick === next.onClick &&
+    prev.onDoubleClick === next.onDoubleClick
+  );
+}
+
+export const DraggableIconItem = React.memo(DraggableIconItemInner, areDraggableIconItemPropsEqual);

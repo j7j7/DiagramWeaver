@@ -26,7 +26,7 @@ interface DraggableResourceItemProps {
   viewMode?: 'normal' | 'compact';
 }
 
-export function DraggableResourceItem({ resource, provider, category, icon, onClick, onDoubleClick, isSelected, viewMode = 'normal', invertInDarkMode = false }: DraggableResourceItemProps) {
+function DraggableResourceItemInner({ resource, provider, category, icon, onClick, onDoubleClick, isSelected, viewMode = 'normal', invertInDarkMode = false }: DraggableResourceItemProps) {
   const [imageError, setImageError] = useState(false);
 
   // Icon path for display in sidebar - NEVER passed to node
@@ -237,3 +237,18 @@ export function DraggableResourceItem({ resource, provider, category, icon, onCl
 
   return dragWrapper;
 }
+
+function areDraggableResourceItemPropsEqual(prev: DraggableResourceItemProps, next: DraggableResourceItemProps): boolean {
+  return (
+    prev.resource === next.resource &&
+    prev.provider === next.provider &&
+    prev.category === next.category &&
+    prev.isSelected === next.isSelected &&
+    prev.viewMode === next.viewMode &&
+    prev.invertInDarkMode === next.invertInDarkMode &&
+    prev.onClick === next.onClick &&
+    prev.onDoubleClick === next.onDoubleClick
+  );
+}
+
+export const DraggableResourceItem = React.memo(DraggableResourceItemInner, areDraggableResourceItemPropsEqual);
