@@ -7,6 +7,13 @@ import { getLucideIcon, getLucideIconFromTypeSlug } from "@/lib/icon-resources";
 import { CustomIconImage } from "@/components/diagram/custom-icon-image";
 import type { CustomImageOptions } from "@/lib/types";
 
+/** Palette JSON lists Text Box Heading under `generic.text` but runtime type is `generic.object.text-box-heading`. */
+function isTextBoxHeadingRuntimeType(type: string | undefined): boolean {
+  if (!type || typeof type !== "string") return false;
+  const t = type.trim().toLowerCase().replace(/\u2011/g, "-");
+  return t === "generic.object.text-box-heading" || t.endsWith(".text-box-heading");
+}
+
 interface ResourceIconProps extends React.SVGProps<SVGSVGElement> {
   type: string; // Format: provider.category.resourcename (e.g., aws.compute.ec2)
   imagePath?: string; // If provided, use this exact icon path (legacy support)
@@ -24,6 +31,139 @@ interface ResourceIconProps extends React.SVGProps<SVGSVGElement> {
 export function ResourceIcon({ type, imagePath, provider, category, file, iconType, iconName, emoji, iconColor, imageUrl, imageOptions, ...props }: ResourceIconProps) {
   const [resourceFile, setResourceFile] = useState<string | null>(null);
 
+  // Catalog lookup must run on every render path — hooks stay before any conditional return.
+  useEffect(() => {
+    const ac = new AbortController();
+    const { signal } = ac;
+
+    if (type === "generic.icon.custom") {
+      return () => ac.abort();
+    }
+    if (iconType === "emoji" && emoji) {
+      return () => ac.abort();
+    }
+    if (iconType === "lucide") {
+      const nameToUse = iconName || type.split(".").pop()?.split("-").map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join("") || "";
+      if (getLucideIcon(nameToUse)) {
+        return () => ac.abort();
+      }
+    }
+    if (type.startsWith("generic.emoji.")) {
+      return () => ac.abort();
+    }
+    if (type.startsWith("generic.icon.")) {
+      const iconPart = type.replace("generic.icon.", "");
+      const LucideIcon = getLucideIconFromTypeSlug(iconPart) ?? getLucideIcon(iconPart.split("-").map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(""));
+      if (LucideIcon) {
+        return () => ac.abort();
+      }
+    }
+
+    // Lucide icons and emojis don't use the resource catalog - skip lookup
+    if (type.startsWith("generic.icon.") || type.startsWith("generic.emoji.")) {
+      return () => ac.abort();
+    }
+
+    // Vector-only in UI; catalog entry lives under generic.text, not generic.object
+    if (isTextBoxHeadingRuntimeType(type)) {
+      setResourceFile(null);
+      return () => ac.abort();
+    }
+
+    // If direct provider info is provided, use it immediately
+    if (provider && category && file) {
+      setResourceFile(file);
+      return () => ac.abort();
+    }
+
+    const parts = type.split(".");
+    if (parts.length >= 3) {
+      const typeProvider = parts[0];
+      const typeCategory = parts[1];
+      const resourceName = parts.slice(2).join("-").toLowerCase();
+
+      setResourceFile(null);
+
+      fetch(`/resources/resource-${typeProvider}.json`, { signal })
+        .then((res) => {
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
+          return res.json();
+        })
+        .then((data) => {
+          if (signal.aborted) return;
+
+          const findInResources = (resources: { name: string; file: string }[] | undefined) =>
+            resources?.find((r) => r.name.replace(/\s+/g, "-").toLowerCase() === resourceName);
+
+          let categoryData = data.categories?.[typeCategory];
+          let resource = findInResources(categoryData?.resources);
+
+          // text-box-heading is under generic.text in JSON but type string uses generic.object
+          if (!resource?.file && typeProvider === "generic" && typeCategory === "object" && resourceName === "text-box-heading") {
+            categoryData = data.categories?.text;
+            resource = findInResources(categoryData?.resources);
+          }
+
+          if (categoryData?.resources) {
+            if (resource?.file) {
+              // Always use vector preview for this shape; PNG lives under generic/text, not generic/object
+              if (resourceName === "text-box-heading") {
+                setResourceFile(null);
+              } else {
+                setResourceFile(resource.file);
+              }
+            } else {
+              console.warn(`Resource not found: ${resourceName} in ${typeProvider}.${typeCategory}`, {
+                availableResources: categoryData.resources.map((r: { name: string }) => ({
+                  name: r.name,
+                  normalized: r.name.replace(/\s+/g, "-").toLowerCase(),
+                })),
+              });
+            }
+          } else {
+            console.warn(`Category not found: ${typeCategory} in ${typeProvider}`, {
+              availableCategories: Object.keys(data.categories || {}),
+            });
+          }
+        })
+        .catch((err: Error) => {
+          if (signal.aborted || (err as Error).name === "AbortError") return;
+          console.warn(`Failed to load resource catalog for ${typeProvider}:`, err.message);
+        });
+    }
+
+    return () => ac.abort();
+  }, [type, provider, category, file, iconType, iconName, emoji]);
+
+  const iconPath = useMemo(() => {
+    if (isTextBoxHeadingRuntimeType(type)) {
+      return null;
+    }
+
+    const parts = type.split('.');
+    
+    // If imagePath is explicitly provided, use only that
+    if (imagePath) {
+      return imagePath;
+    }
+    
+    // If direct provider info is provided, use it
+    if (provider && category && resourceFile) {
+      return buildResourceIconPath(provider, category, resourceFile);
+    }
+    
+    // Only use resource catalog lookup - no fallbacks
+    if (resourceFile && parts.length >= 3) {
+      const typeProvider = parts[0];
+      const typeCategory = parts[1];
+      return buildResourceIconPath(typeProvider, typeCategory, resourceFile);
+    }
+    
+    return null;
+  }, [type, resourceFile, imagePath, provider, category]);
+
   if (type === "generic.icon.custom") {
     return (
       <CustomIconImage
@@ -36,7 +176,6 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
     );
   }
 
-  // Render standard icons (Lucide symbols or emojis) - same square size as other items (70x70)
   if (iconType === "emoji" && emoji) {
     const size = typeof props.width === "number" ? props.width : parseInt(String(props.width || 70), 10) || 70;
     return (
@@ -65,7 +204,6 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
     }
   }
   if (type.startsWith("generic.icon.") || type.startsWith("generic.emoji.")) {
-    // Fallback when node has type but no iconType/iconName/emoji passed (e.g. from JSON)
     if (type.startsWith("generic.emoji.")) {
       const slug = type.replace("generic.emoji.", "");
       const emojiMap: Record<string, string> = {
@@ -90,91 +228,8 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
     }
   }
 
-  // Look up file from resource catalog based on type or direct provider info
-  useEffect(() => {
-    // Lucide icons and emojis don't use the resource catalog - skip lookup
-    if (type.startsWith("generic.icon.") || type.startsWith("generic.emoji.")) {
-      return;
-    }
-
-    // If direct provider info is provided, use it immediately
-    if (provider && category && file) {
-      setResourceFile(file);
-      return;
-    }
-
-    const parts = type.split('.');
-    if (parts.length >= 3) {
-      const typeProvider = parts[0];
-      const typeCategory = parts[1];
-      const resourceName = parts.slice(2).join('-').toLowerCase();
-      
-      // Reset resource file when type changes
-      setResourceFile(null);
-      
-      // Fetch resource catalog to get correct filename
-      fetch(`/resources/resource-${typeProvider}.json`)
-        .then(res => {
-          if (!res.ok) {
-            throw new Error(`HTTP ${res.status}`);
-          }
-          return res.json();
-        })
-        .then(data => {
-          const categoryData = data.categories?.[typeCategory];
-          if (categoryData?.resources) {
-            // Find resource that matches resourceName (derived from type)
-            // Look for resources where name.toLowerCase().replace(/\s+/g, '-') matches resourceName
-            const resource = categoryData.resources.find((r: {name: string, file: string}) => 
-              r.name.replace(/\s+/g, '-').toLowerCase() === resourceName
-            );
-            if (resource?.file) {
-              setResourceFile(resource.file);
-            } else {
-              console.warn(`Resource not found: ${resourceName} in ${typeProvider}.${typeCategory}`, {
-                availableResources: categoryData.resources.map((r: any) => ({
-                  name: r.name,
-                  normalized: r.name.replace(/\s+/g, '-').toLowerCase()
-                }))
-              });
-            }
-          } else {
-            console.warn(`Category not found: ${typeCategory} in ${typeProvider}`, {
-              availableCategories: Object.keys(data.categories || {})
-            });
-          }
-        })
-        .catch((err) => {
-          console.warn(`Failed to load resource catalog for ${typeProvider}:`, err.message);
-        });
-    }
-  }, [type, provider, category, file]);
-
-  const iconPath = useMemo(() => {
-    const parts = type.split('.');
-    
-    // If imagePath is explicitly provided, use only that
-    if (imagePath) {
-      return imagePath;
-    }
-    
-    // If direct provider info is provided, use it
-    if (provider && category && resourceFile) {
-      return buildResourceIconPath(provider, category, resourceFile);
-    }
-    
-    // Only use resource catalog lookup - no fallbacks
-    if (resourceFile && parts.length >= 3) {
-      const typeProvider = parts[0];
-      const typeCategory = parts[1];
-      return buildResourceIconPath(typeProvider, typeCategory, resourceFile);
-    }
-    
-    return null;
-  }, [type, resourceFile, imagePath, provider, category]);
-
   // Vector preview only: matches the on-canvas shape (rounded body + dark heading strip), not the flat PNG.
-  const isTextBoxHeadingType = type === 'generic.object.text-box-heading' || type?.endsWith('.text-box-heading');
+  const isTextBoxHeadingType = isTextBoxHeadingRuntimeType(type);
 
   if (iconPath && !isTextBoxHeadingType) {
     return (

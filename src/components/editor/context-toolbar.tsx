@@ -614,7 +614,7 @@ export function ContextToolbar({
     const lineStyle = (selectedItem as any).style ?? 'bezier';
     const smoothCorners = lineStyle === 'orthogonal' && (selectedItem as any).smoothCorners === true;
 
-    const handleArrowToggle = useCallback(() => {
+    const handleArrowToggle = () => {
       if (onConnectionUpdate && isEdge) {
         const connId = (selectedItem as { id?: string }).id;
         onConnectionUpdate(selectedItem.from, selectedItem.to, {
@@ -622,21 +622,21 @@ export function ContextToolbar({
           toArrow: !hasArrow
         }, connId);
       }
-    }, [onConnectionUpdate, isEdge, selectedItem, hasArrow]);
+    };
 
-    const handleLineStyleChange = useCallback((style: 'bezier' | 'orthogonal') => {
+    const handleLineStyleChange = (style: 'bezier' | 'orthogonal') => {
       if (onConnectionUpdate && isEdge) {
         const connId = (selectedItem as { id?: string }).id;
         onConnectionUpdate(selectedItem.from, selectedItem.to, { style }, connId);
       }
-    }, [onConnectionUpdate, isEdge, selectedItem]);
+    };
 
-    const handleSmoothCornersToggle = useCallback(() => {
+    const handleSmoothCornersToggle = () => {
       if (onConnectionUpdate && isEdge) {
         const connId = (selectedItem as { id?: string }).id;
         onConnectionUpdate(selectedItem.from, selectedItem.to, { smoothCorners: !smoothCorners }, connId);
       }
-    }, [onConnectionUpdate, isEdge, selectedItem, smoothCorners]);
+    };
 
     const waypoints = (selectedItem as any).waypoints ?? [];
     const canAddWaypoint = !!onConnectionWaypointAdd && !isReadOnly;
@@ -759,7 +759,7 @@ export function ContextToolbar({
     );
   }
 
-  const handleMaxItemsPerRowChange = useCallback((value: number) => {
+  const handleMaxItemsPerRowChange = (value: number) => {
     // Check if multiple items are selected
     if (selectedItemIds && selectedItemIds.size > 1 && diagramData && onDiagramDataUpdate) {
       // Apply maxItemsPerRow change to all selected items
@@ -780,9 +780,9 @@ export function ContextToolbar({
       // Single item selection - existing logic
       onItemUpdate?.({ ...selectedItem, maxItemsPerRow: value } as SelectedItem);
     }
-  }, [selectedItemIds, diagramData, onDiagramDataUpdate, onItemUpdate, selectedItem]);
+  };
 
-  const handleSizeModeChange = useCallback((value: 'auto' | 'custom') => {
+  const handleSizeModeChange = (value: 'auto' | 'custom') => {
     // Check if multiple items are selected
     if (selectedItemIds && selectedItemIds.size > 1 && diagramData && onDiagramDataUpdate) {
       // Apply sizeMode change to all selected items
@@ -814,9 +814,9 @@ export function ContextToolbar({
       }
       onItemUpdate?.(updatedItem);
     }
-  }, [selectedItemIds, diagramData, onDiagramDataUpdate, onItemUpdate, selectedItem]);
+  };
 
-  const handleWidthChange = useCallback((value: number) => {
+  const handleWidthChange = (value: number) => {
     // Check if multiple items are selected
     if (selectedItemIds && selectedItemIds.size > 1 && diagramData && onDiagramDataUpdate) {
       // Apply width change to all selected items
@@ -845,9 +845,9 @@ export function ContextToolbar({
       // Single item selection - existing logic
       onItemUpdate?.({ ...selectedItem, width: value } as SelectedItem);
     }
-  }, [selectedItemIds, diagramData, onDiagramDataUpdate, onItemUpdate, selectedItem]);
+  };
 
-  const handleHeightChange = useCallback((value: number) => {
+  const handleHeightChange = (value: number) => {
     // Check if multiple items are selected
     if (selectedItemIds && selectedItemIds.size > 1 && diagramData && onDiagramDataUpdate) {
       // Apply height change to all selected items
@@ -876,9 +876,9 @@ export function ContextToolbar({
       // Single item selection - existing logic
       onItemUpdate?.({ ...selectedItem, height: value } as SelectedItem);
     }
-  }, [selectedItemIds, diagramData, onDiagramDataUpdate, onItemUpdate, selectedItem]);
+  };
 
-  const handleRotationChange = useCallback((value: string) => {
+  const handleRotationChange = (value: string) => {
     const rotationValue = parseInt(value);
     
     // Check if multiple items are selected
@@ -909,21 +909,21 @@ export function ContextToolbar({
       // Single item selection - existing logic
       onItemUpdate?.({ ...selectedItem, rotation: rotationValue } as SelectedItem);
     }
-  }, [selectedItemIds, diagramData, onDiagramDataUpdate, onItemUpdate, selectedItem]);
+  };
 
 
 
-  const handleOrientationChange = useCallback((value: 'square' | 'horizontal' | 'vertical') => {
+  const handleOrientationChange = (value: 'square' | 'horizontal' | 'vertical') => {
     onItemUpdate?.({ ...selectedItem, orientation: value } as SelectedItem);
-  }, [onItemUpdate, selectedItem]);
+  };
 
-  const handleTextPositionChange = useCallback((value: string) => {
+  const handleTextPositionChange = (value: string) => {
     onItemUpdate?.({ ...selectedItem, textPosition: value as any } as SelectedItem);
-  }, [onItemUpdate, selectedItem]);
+  };
 
-  const handleShapeTextPlacementChange = useCallback((value: 'above' | 'center' | 'under') => {
+  const handleShapeTextPlacementChange = (value: 'above' | 'center' | 'under') => {
     onItemUpdate?.({ ...selectedItem, textPosition: value } as SelectedItem);
-  }, [onItemUpdate, selectedItem]);
+  };
 
   const toggleNoIconBackground = () => {
     if (!selectedItem) return;

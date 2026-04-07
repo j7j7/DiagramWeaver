@@ -26,12 +26,12 @@ else
   npm ci 2>/dev/null || npm install
 fi
 
-if [ "$BUILD_FLAG" = true ] || [ ! -d ".next" ]; then
+if [ "$BUILD_FLAG" = true ]; then
   echo "[2/3] Building..."
   npm run build
+  echo "[3/3] Starting production server at http://localhost:3030"
+  npm run start -- -p 3040
 else
-  echo "[2/3] Skipping build (use --build to force)"
+  echo "[2/3] Starting dev server at http://localhost:3030 (use --build for production)"
+  npm run dev -- -p 3040
 fi
-
-echo "[3/3] Starting server at http://localhost:3030"
-npm run start -- -p 3030

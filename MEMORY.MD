@@ -2,6 +2,15 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-04-05 – ContextToolbar: hooks after edge early-return
+**Issue**: Branch vs `main` wrapped edge toolbar handlers and post-edge handlers in **`useCallback`**. **`ContextToolbar`** returns early when **`selectedItem.itemType === 'edge'`**, so **edge** renders ran **3** extra hooks; **non-edge** skipped those and ran **many** hooks below → **Rules of Hooks** / “final argument to useCallback changed size” when right-clicking / changing selection. **Fix**: **`context-toolbar.tsx`** — revert those to **plain functions** (same as **`main`**); hooks must not be split across the edge **`return`**.
+
+### 2026-03-30 – ResourceIcon: text-box-heading catalog + hooks order
+**Issue**: Right-click on a **connection** (or any action that re-rendered the canvas with **text-box-heading** nodes) triggered **`Resource not found: text-box-heading in generic.object`** — palette JSON lists **Text Box Heading** under **`generic.text`**, while runtime type is **`generic.object.text-box-heading`**. Failed lookup also risked **React error #300** from **conditional hooks** (`useEffect` / `useMemo` only after early returns). **Fix** in **`resource-icon.tsx`**: run **all hooks** before conditional returns; **skip** resource-catalog fetch for **`generic.object.text-box-heading`** (vector icon only); keep existing render branches.
+
+### 2026-03-30 – ResourceIcon: text-box-heading follow-up (stale fetch + fallback)
+**Follow-up**: Same warning could still appear from **stale in-flight `fetch`** resolving after a type change, or **trim/Unicode hyphen** on `type`. **`resource-icon.tsx`** now: **`isTextBoxHeadingRuntimeType()`** (trim, lowercase, `\u2011` → `-`); **`AbortController`** on catalog fetch + **ignore** aborted/`AbortError`; if lookup in **`generic.object`** fails, **retry** **`generic.text`** for slug **`text-box-heading`**; **`useMemo`** returns **`null`** icon path for heading type so PNG is never used; resolved catalog file for **`text-box-heading`** does not set **`resourceFile`** (vector only).
+
 ### 2026-03-30 – Properties/Layers/Scratch/Rules/Presentation: Edit → Options
 **UI**: **`top-menu-bar.tsx`** — **Show/Hide Properties** (right **panel**), **Show/Hide Layers**, **Show/Hide Scratch Pad**, **Rules**, **Enter/Exit Presentation Mode** moved from **Edit** to **Options**, in that order after **Show JSON** and before **Enable Properties** (metadata popups). **`hasOptionsPanelMenuItems`** is used so separators stay correct through the rest of **Options**. **Edit** is now clipboard, paste, select all, undo/redo, fit to view, read-only.
 
