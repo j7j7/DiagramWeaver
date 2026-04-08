@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-04-08 – Connection edge drag handles (editor)
+**UI**: When a **connection** is selected, **small green square** handles appear at the **start** and **end** attachment points (same overlay layer as arrow / waypoint controls). **Drag** near a node to pick **which side** the line exits (source) or enters (target); updates persisted **`fromPreferredExit`** / **`toPreferredEntry`** (with the other end filled from **auto** layout when first overridden). Respects **`edgeAttachmentConstraint`**. Hidden when the connection is deselected, when **read-only**, or without editor **`transform` + `canvasRef`**. **Files**: **`connection-endpoint-handles.tsx`**, **`canvas-connections.tsx`**, **`editor-canvas.tsx`**, **`bezier-connection.tsx`** (memo key + **`clampEdgeAttachmentForConstraint`** / **`computeAxisDeltasForConnectionNodes`** exports), **`othogonal-connection.tsx`** (memo compares preferred edges).
+
 ### 2026-04-08 – Auto Layout: vertical graph depth (connected nodes)
 **Issue**: Layered layout used **layers as columns** (left-to-right) and stacked nodes in each column on **Y**. Chains (A→B→C) had **one node per column**, all **vertically centered** to the same **Y** → nodes sat on a **horizontal line** and **edges overlapped**. **Change**: **`src/lib/auto-layout.ts`** **`layoutComponent`** now places **layers as rows** (top-to-bottom = rank / depth) and **spreads nodes in a layer on X**. Same **Sugiyama** ranking and barycenter ordering; only the coordinate mapping swapped so flowcharts get clear vertical separation between hops.
 

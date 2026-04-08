@@ -59,7 +59,7 @@ function connectionDataKey(c?: DiagramConnectionData): string {
   if (!c) return '';
   const wp = c.waypoints?.map((w) => `${w.x},${w.y}`).join(';') ?? '';
   const anim = c.animation ? JSON.stringify(c.animation) : '';
-  return `${c.from ?? ''}|${c.to ?? ''}|${(c as any).id ?? ''}|${c.curvature ?? ''}|${wp}|${c.lineWidth ?? ''}|${c.shadow ?? ''}|${c.fromArrow ?? ''}|${c.toArrow ?? ''}|${c.arrow ?? ''}|${anim}|${c.color ?? ''}|${c.centerEdgeAnchors ? '1' : ''}|${c.edgeAttachmentConstraint ?? ''}`;
+  return `${c.from ?? ''}|${c.to ?? ''}|${(c as any).id ?? ''}|${c.curvature ?? ''}|${wp}|${c.lineWidth ?? ''}|${c.shadow ?? ''}|${c.fromArrow ?? ''}|${c.toArrow ?? ''}|${c.arrow ?? ''}|${anim}|${c.color ?? ''}|${c.centerEdgeAnchors ? '1' : ''}|${c.edgeAttachmentConstraint ?? ''}|${c.fromPreferredExit ?? ''}|${c.toPreferredEntry ?? ''}`;
 }
 
 function areBezierConnectionPropsEqual(prev: BezierConnectionProps, next: BezierConnectionProps): boolean {
@@ -415,6 +415,19 @@ function clampEdgeToAxisConstraint(
   return role === 'from' ? (dx > 0 ? 'right' : 'left') : (dx > 0 ? 'left' : 'right');
 }
 
+/** Exported for connection endpoint drag handles (editor). */
+export function clampEdgeAttachmentForConstraint(
+  edge: 'top' | 'bottom' | 'left' | 'right' | 'center',
+  constraint: DiagramConnectionData['edgeAttachmentConstraint'],
+  role: 'from' | 'to',
+  dx: number,
+  dy: number
+): 'top' | 'bottom' | 'left' | 'right' | 'center' {
+  if (!constraint || constraint === 'auto') return edge;
+  const kind: AxisConstraintKind = constraint === 'top-bottom' ? 'top-bottom' : 'left-right';
+  return clampEdgeToAxisConstraint(edge, kind, role, dx, dy);
+}
+
 function applyEdgeAttachmentConstraintToEdges(
   edges: { fromEdge: 'top' | 'bottom' | 'left' | 'right' | 'center'; toEdge: 'top' | 'bottom' | 'left' | 'right' | 'center' },
   constraint: DiagramConnectionData['edgeAttachmentConstraint'],
@@ -431,7 +444,7 @@ function applyEdgeAttachmentConstraintToEdges(
 }
 
 /** Icon-aware center deltas between endpoints (matches auto edge selection). */
-function computeAxisDeltasForConnectionNodes(
+export function computeAxisDeltasForConnectionNodes(
   from: Positionable,
   to: Positionable,
   resolvedFromWidth: number,

@@ -7,6 +7,8 @@ import { measureNodeDims, type PositionedNode, type PositionedGroup, NODE_WIDTH,
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
 import { cn, isIconOrEmojiType, isShapeNodeType } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ConnectionEndpointHandles, type DiagramTransform } from "../diagram/connection-endpoint-handles";
+import type { Positionable } from "../diagram/bezier-connection";
 
 interface CanvasConnectionsProps {
   width: number;
@@ -51,6 +53,12 @@ interface CanvasConnectionsProps {
   }>;
   /** Key function for connection lookup (from useLayerAnimation.connectionKey) */
   connectionKey?: (conn: DiagramConnectionData) => string;
+  /** Editor: pan/zoom for mapping pointer coords to diagram space (endpoint handles). */
+  transform?: DiagramTransform;
+  /** Editor: canvas root for client→diagram coordinate conversion */
+  canvasRef?: React.RefObject<HTMLElement | null>;
+  /** When true, hide draggable endpoint handles (viewer / read-only). */
+  isReadOnly?: boolean;
 }
 
 function setsEqual(a: Set<number> | undefined, b: Set<number> | undefined): boolean {
@@ -82,6 +90,9 @@ function areCanvasConnectionsPropsEqual(prev: CanvasConnectionsProps, next: Canv
     prev.animationDisabledSources === next.animationDisabledSources &&
     prev.connectionAnimationStyles === next.connectionAnimationStyles &&
     prev.connectionKey === next.connectionKey &&
+    prev.transform === next.transform &&
+    prev.canvasRef === next.canvasRef &&
+    prev.isReadOnly === next.isReadOnly &&
     prev.diagramData === next.diagramData &&
     prev.nodesById === next.nodesById &&
     prev.zonesById === next.zonesById &&
@@ -117,6 +128,9 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     animationDisabledSources = new Set(),
     connectionAnimationStyles,
     connectionKey,
+    transform,
+    canvasRef,
+    isReadOnly = false,
   } = props;
   // Pre-calculate edge information for all connections
   const connectionEdgeInfo = new Map<string, { fromEdge: string; toEdge: string }>();
@@ -967,6 +981,25 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
 
       return (
         <React.Fragment key={`actions-${edge.from}-${edge.to}-${index}`}>
+          {onConnectionUpdate && transform && canvasRef && !isReadOnly && (
+            <ConnectionEndpointHandles
+              connection={edge}
+              connectionId={edgeId}
+              geomFrom={geomFromToolbar as Positionable}
+              geomTo={geomToToolbar as Positionable}
+              fromWidth={fromWidth}
+              fromHeight={fromHeight}
+              toWidth={toWidth}
+              toHeight={toHeight}
+              fromX={fromX}
+              fromY={fromY}
+              toX={toX}
+              toY={toY}
+              transform={transform}
+              canvasRef={canvasRef}
+              onEdgeAttachmentChange={onConnectionUpdate}
+            />
+          )}
           {/* Arrow toggle button - positioned at 90% (destination) along the curve */}
           <Tooltip>
             <TooltipTrigger asChild>

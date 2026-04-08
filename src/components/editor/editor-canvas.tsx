@@ -1448,6 +1448,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   animationDisabledSources={animationDisabledSources}
                   connectionAnimationStyles={connectionAnimationStyles}
                   connectionKey={connectionKey}
+                  transform={transform}
+                  canvasRef={canvasRef}
+                  isReadOnly={isReadOnly}
                 />
                 {connectionSlots.sortedItemIds.map((itemId, i) => {
                   const node = nodesById[itemId];
@@ -1611,6 +1614,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       animationDisabledSources={animationDisabledSources}
                       connectionAnimationStyles={connectionAnimationStyles}
                       connectionKey={connectionKey}
+                      transform={transform}
+                      canvasRef={canvasRef}
+                      isReadOnly={isReadOnly}
                     />
                   ) : null,
                   nodeEl,
@@ -1670,6 +1676,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   animationDisabledSources={animationDisabledSources}
                   connectionAnimationStyles={connectionAnimationStyles}
                   connectionKey={connectionKey}
+                  transform={transform}
+                  canvasRef={canvasRef}
+                  isReadOnly={isReadOnly}
                 />
               );
             })()}
