@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-04-09 – Connection line: taper, gradient, lock toggles (modal + SVG)
+**Data** (`DiagramConnectionData`): optional **`lineWidthLock`** (default locked), **`lineWidthEnd`**, **`colorLock`** (default locked), **`colorEnd`**. **Modal** (`connection-context-modal.tsx`): **Lock** / **Unlock** next to line thickness and line color; when unlocked, **Start** / **End** inputs (px) and two **ColorPicker**s. **Merge** (`diagram-editor.tsx` **`applyConnectionUpdates`**): re-locking clears **`lineWidthEnd`** / **`colorEnd`** (and lock flags) from stored JSON. **Render** (`bezier-connection.tsx`, `othogonal-connection.tsx`): varying width → filled **ribbon** polygon along sampled path; varying color → **linearGradient** (userSpaceOnUse from path start→end); uniform stroke path unchanged when both locked. **Arrows** (advanced stroke): separate invisible paths with **`markerUnits="strokeWidth"`** — **start** marker uses **`wStart`**, **end** marker uses **`wEnd`**. **Stroke pattern**: dashed/dotted is **not** applied while taper or color gradient is active (line draws **solid** for that case). **Helpers**: `src/lib/connection-line-style.ts`, `src/lib/connection-ribbon-path.ts`. **Schema**: `schemas.ts` updated. **Note**: node toolbar **Connections** popover still uses single thickness/color until aligned with the modal.
+
 ### 2026-04-09 – JSON panel header: title + find field width
 **UI**: **`json-editor-panel.tsx`** — header title **JSON** (was “JSON Editor”); find input width **~half** (**`min(90px,14vw)`**, **`min-w-[50px]`**, tighter **`px`**).
 

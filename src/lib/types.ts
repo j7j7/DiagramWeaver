@@ -185,6 +185,14 @@ export interface DiagramConnectionData {
   smoothCorners?: boolean; // When true, orthogonal 90-degree bends render with small rounded corners
   curvature?: number; // Bezier curve intensity (0.1 to 1.0)
   lineWidth?: number; // Line thickness for the connection (default: 2.5)
+  /** When false, `lineWidth` is the start thickness and `lineWidthEnd` is the end (smooth taper). Default: locked (uniform `lineWidth`). */
+  lineWidthLock?: boolean;
+  /** End thickness when `lineWidthLock === false` (px, clamped like `lineWidth`). */
+  lineWidthEnd?: number;
+  /** When false, `color` is the start colour and `colorEnd` is the end (gradient along the line). Default: locked (single `color`). */
+  colorLock?: boolean;
+  /** End colour when `colorLock === false`. */
+  colorEnd?: string;
   /** Stroke pattern: solid (default), dashed, or dotted — same semantics as line shapes (`lineType`). */
   lineType?: 'solid' | 'dashed' | 'dotted';
   shadow?: boolean; // Whether to show shadow around the connection line

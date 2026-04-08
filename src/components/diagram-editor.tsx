@@ -440,6 +440,10 @@ function stripConnectionDefaults(conn: DiagramData['connections'][number]): unkn
   if (conn.textPosition !== undefined) result.textPosition = conn.textPosition;
   if (conn.color !== undefined) result.color = conn.color;
   if (conn.lineWidth !== undefined) result.lineWidth = conn.lineWidth;
+  if (conn.lineWidthLock === false) result.lineWidthLock = false;
+  if (conn.lineWidthEnd !== undefined) result.lineWidthEnd = conn.lineWidthEnd;
+  if (conn.colorLock === false) result.colorLock = false;
+  if (conn.colorEnd !== undefined) result.colorEnd = conn.colorEnd;
   if (conn.shadow !== undefined) result.shadow = conn.shadow;
   // style: 'bezier' is the default — omit it to save space
   if (conn.style !== undefined && conn.style !== 'bezier') result.style = conn.style;
@@ -2977,6 +2981,10 @@ export default function DiagramEditor() {
       color?: string;
       textPosition?: number;
       lineWidth?: number;
+      lineWidthLock?: boolean;
+      lineWidthEnd?: number;
+      colorLock?: boolean;
+      colorEnd?: string;
       shadow?: boolean;
       style?: 'bezier' | 'orthogonal';
       smoothCorners?: boolean;
@@ -3002,6 +3010,14 @@ export default function DiagramEditor() {
           : (conn.from === from && conn.to === to);
         if (!match) return conn;
         const merged = { ...conn, ...updates } as DiagramConnectionData;
+        if (updates.lineWidthLock === true) {
+          delete merged.lineWidthEnd;
+          delete merged.lineWidthLock;
+        }
+        if (updates.colorLock === true) {
+          delete merged.colorEnd;
+          delete merged.colorLock;
+        }
         if (updates.smoothCorners === false) {
           delete merged.smoothCorners;
         }
@@ -3029,6 +3045,14 @@ export default function DiagramEditor() {
         : (selectedItem.from === from && selectedItem.to === to);
       if (match) {
         const next = { ...selectedItem, ...updates } as DiagramConnectionData & { itemType: 'edge'; id: string };
+        if (updates.lineWidthLock === true) {
+          delete (next as DiagramConnectionData).lineWidthEnd;
+          delete (next as DiagramConnectionData).lineWidthLock;
+        }
+        if (updates.colorLock === true) {
+          delete (next as DiagramConnectionData).colorEnd;
+          delete (next as DiagramConnectionData).colorLock;
+        }
         if ('fromPreferredExit' in updates && updates.fromPreferredExit === undefined) {
           delete (next as DiagramConnectionData).fromPreferredExit;
         }
@@ -3090,7 +3114,7 @@ export default function DiagramEditor() {
     setPendingAnimationUpdate(null);
   }, []);
 
-  const handleConnectionUpdate = React.useCallback((from: string, to: string, updates: { text?: string; color?: string; textPosition?: number; lineWidth?: number; shadow?: boolean; style?: 'bezier' | 'orthogonal'; smoothCorners?: boolean; curvature?: number; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean; arrow?: boolean; centerEdgeAnchors?: boolean; edgeAttachmentConstraint?: DiagramConnectionData['edgeAttachmentConstraint']; waypoints?: Array<{ x: number; y: number; id?: string }>; metaData?: Record<string, string>; animation?: DiagramConnectionData['animation'] }, connectionId?: string) => {
+  const handleConnectionUpdate = React.useCallback((from: string, to: string, updates: { text?: string; color?: string; textPosition?: number; lineWidth?: number; lineWidthLock?: boolean; lineWidthEnd?: number; colorLock?: boolean; colorEnd?: string; shadow?: boolean; style?: 'bezier' | 'orthogonal'; smoothCorners?: boolean; curvature?: number; fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center'; fromArrow?: boolean; toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center'; toArrow?: boolean; arrow?: boolean; centerEdgeAnchors?: boolean; edgeAttachmentConstraint?: DiagramConnectionData['edgeAttachmentConstraint']; waypoints?: Array<{ x: number; y: number; id?: string }>; metaData?: Record<string, string>; animation?: DiagramConnectionData['animation'] }, connectionId?: string) => {
     const effectiveConnId = connectionId ?? (selectedItem?.itemType === 'edge' ? (selectedItem as { id?: string }).id : undefined);
     const connections = currentDiagramData.connections ?? [];
     const currentConnection = connections.find((conn) =>

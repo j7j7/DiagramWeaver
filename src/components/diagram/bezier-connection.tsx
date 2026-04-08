@@ -8,6 +8,13 @@ import { isIconOrEmojiType, isShapeNodeType } from "@/lib/utils";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
 import { getShapeEdgeBounds, shapeEdgeToPoint, isKiteShapeType, getKiteConnectionPoint } from "@/lib/shape-connection-bounds";
 import { clampConnectionAnimation } from "@/lib/connection-animation";
+import { buildRibbonPolygonPath } from "@/lib/connection-ribbon-path";
+import {
+  resolveConnectionWidths,
+  resolveConnectionColors,
+  connectionNeedsAdvancedLineStyle,
+  maxResolvedLineWidth,
+} from "@/lib/connection-line-style";
 import { connectionStrokeDashFromLineType } from "@/lib/utils";
 
 const NODE_WIDTH = 80;
@@ -56,7 +63,7 @@ function connectionDataKey(c?: DiagramConnectionData): string {
   if (!c) return '';
   const wp = c.waypoints?.map((w) => `${w.x},${w.y}`).join(';') ?? '';
   const anim = c.animation ? JSON.stringify(c.animation) : '';
-  return `${c.from ?? ''}|${c.to ?? ''}|${(c as any).id ?? ''}|${c.curvature ?? ''}|${wp}|${c.lineWidth ?? ''}|${c.lineType ?? ''}|${c.shadow ?? ''}|${c.fromArrow ?? ''}|${c.toArrow ?? ''}|${c.arrow ?? ''}|${anim}|${c.color ?? ''}|${c.centerEdgeAnchors ? '1' : ''}|${c.edgeAttachmentConstraint ?? ''}|${c.fromPreferredExit ?? ''}|${c.toPreferredEntry ?? ''}`;
+  return `${c.from ?? ''}|${c.to ?? ''}|${(c as any).id ?? ''}|${c.curvature ?? ''}|${wp}|${c.lineWidth ?? ''}|${c.lineWidthLock ?? ''}|${c.lineWidthEnd ?? ''}|${c.lineType ?? ''}|${c.shadow ?? ''}|${c.fromArrow ?? ''}|${c.toArrow ?? ''}|${c.arrow ?? ''}|${anim}|${c.color ?? ''}|${c.colorLock ?? ''}|${c.colorEnd ?? ''}|${c.centerEdgeAnchors ? '1' : ''}|${c.edgeAttachmentConstraint ?? ''}|${c.fromPreferredExit ?? ''}|${c.toPreferredEntry ?? ''}`;
 }
 
 function areBezierConnectionPropsEqual(prev: BezierConnectionProps, next: BezierConnectionProps): boolean {
@@ -1079,9 +1086,33 @@ function BezierConnectionInner({ from, to, connectionColor, connectionData, expo
 
   const curvature = connectionData?.curvature || 0.6;
   const waypoints = connectionData?.waypoints;
+  const waypointsKey = waypoints?.length ? waypoints.map((w) => `${w.x},${w.y}`).join(';') : '';
   const pathData = waypoints?.length
     ? calculateMultiPointBezierPath(fromX, fromY, toX, toY, waypoints, curvature, fromAngle, toAngle)
     : calculateBezierPath(fromX, fromY, toX, toY, curvature, fromAngle, toAngle);
+
+  const finalConnectionColor = connectionColor || to.lineColor || from.lineColor || '#6b7280';
+  const rw = resolveConnectionWidths(connectionData);
+  const rc = resolveConnectionColors(connectionData, finalConnectionColor);
+  const advancedLine = connectionNeedsAdvancedLineStyle(rw, rc);
+  const widthVaries = !rw.locked && rw.wStart !== rw.wEnd;
+  const colorVaries = !rc.locked && rc.cStart !== rc.cEnd;
+  const ribbonLayout = React.useMemo(() => {
+    const baseGrad = { gx1: fromX, gy1: fromY, gx2: toX, gy2: toY };
+    if (!widthVaries) {
+      return { ribbonPathD: '', ...baseGrad };
+    }
+    const pts = Array.from({ length: 72 }, (_, i) =>
+      getPointOnConnectionPath(i / 71, fromX, fromY, toX, toY, fromAngle, toAngle, curvature, waypoints)
+    );
+    return {
+      ribbonPathD: buildRibbonPolygonPath(pts, rw.wStart, rw.wEnd),
+      gx1: pts[0].x,
+      gy1: pts[0].y,
+      gx2: pts[pts.length - 1].x,
+      gy2: pts[pts.length - 1].y,
+    };
+  }, [widthVaries, fromX, fromY, toX, toY, fromAngle, toAngle, curvature, waypointsKey, rw.wStart, rw.wEnd]);
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -1098,9 +1129,6 @@ function BezierConnectionInner({ from, to, connectionColor, connectionData, expo
     }
   };
 
-  // Use connection color first, then 'to' node, fallback to 'from' node, then default
-  const finalConnectionColor = connectionColor || to.lineColor || from.lineColor || '#6b7280';
-  
   // Check for arrows
   const hasFromArrow = connectionData?.fromArrow === true;
   const hasToArrow = connectionData?.toArrow === true;
@@ -1115,7 +1143,7 @@ function BezierConnectionInner({ from, to, connectionColor, connectionData, expo
   const hasShadow = connectionData?.shadow || false;
   const shadowFilterId = hasShadow ? `shadow-filter-${from.id}-${to.id}-${resolvedTheme}` : undefined;
   const animation = clampConnectionAnimation(connectionData?.animation);
-  const connectionThickness = connectionData?.lineWidth || 2.5;
+  const connectionThickness = maxResolvedLineWidth(rw);
   const shapeSize = animation.size * 2 * connectionThickness;
   const spacingDistance = shapeSize * (1 + animation.spacing);
   const hasExportAnimationTime = typeof exportAnimationTimeSeconds === 'number' && Number.isFinite(exportAnimationTimeSeconds);
@@ -1134,7 +1162,6 @@ function BezierConnectionInner({ from, to, connectionColor, connectionData, expo
   const shouldAnimateShapes = shouldRenderAnimationShapes && speedMagnitude > 0;
   const useStaticExportAnimation = shouldAnimateShapes && hasExportAnimationTime;
   const needsPathDistanceLookup = useStaticExportAnimation || (shouldRenderAnimationShapes && !shouldAnimateShapes);
-  const waypointsKey = waypoints?.length ? waypoints.map((w) => `${w.x},${w.y}`).join(';') : '';
   const pathDistanceLookup = needsPathDistanceLookup
     ? React.useMemo(
         () => buildPathDistanceLookup(fromX, fromY, toX, toY, fromAngle, toAngle, curvature, waypoints),
@@ -1160,10 +1187,12 @@ function BezierConnectionInner({ from, to, connectionColor, connectionData, expo
     Math.round(pathLength),
   ].join('-').replace(/[^a-zA-Z0-9_-]/g, '_');
   const motionPathId = `connection-motion-${connectionKey}-${animationPhaseResetKey}`;
-  const strokeDashProps = connectionStrokeDashFromLineType(
-    connectionData?.lineWidth || 2.5,
-    connectionData?.lineType
-  );
+  const strokeDashProps = advancedLine
+    ? {}
+    : connectionStrokeDashFromLineType(maxResolvedLineWidth(rw), connectionData?.lineType);
+  const lineGradientId = `conn-line-grad-${connectionKey}`;
+  const markerFillStart = rc.locked ? finalConnectionColor : rc.cStart;
+  const markerFillEnd = rc.locked ? finalConnectionColor : rc.cEnd;
 
   return (
     <>
@@ -1189,6 +1218,19 @@ function BezierConnectionInner({ from, to, connectionColor, connectionData, expo
             </feMerge>
           </filter>
         )}
+        {advancedLine && colorVaries && (
+          <linearGradient
+            id={lineGradientId}
+            gradientUnits="userSpaceOnUse"
+            x1={ribbonLayout.gx1}
+            y1={ribbonLayout.gy1}
+            x2={ribbonLayout.gx2}
+            y2={ribbonLayout.gy2}
+          >
+            <stop offset="0%" stopColor={rc.cStart} />
+            <stop offset="100%" stopColor={rc.cEnd} />
+          </linearGradient>
+        )}
         {showStartArrow && (
           <marker
             id={startMarkerId}
@@ -1201,7 +1243,7 @@ function BezierConnectionInner({ from, to, connectionColor, connectionData, expo
           >
             <polygon
               points="10 0, 0 3.5, 10 7"
-              fill={finalConnectionColor}
+              fill={markerFillStart}
             />
           </marker>
         )}
@@ -1217,7 +1259,7 @@ function BezierConnectionInner({ from, to, connectionColor, connectionData, expo
           >
             <polygon
               points="0 0, 10 3.5, 0 7"
-              fill={finalConnectionColor}
+              fill={markerFillEnd}
             />
           </marker>
         )}
@@ -1233,18 +1275,63 @@ function BezierConnectionInner({ from, to, connectionColor, connectionData, expo
           strokeWidth={20}
           fill="none"
         />
-        <path
-          d={pathData}
-          stroke={finalConnectionColor}
-          className="cursor-pointer connection-glow-hover transition-[filter] duration-200"
-          strokeWidth={connectionData?.lineWidth || 2.5}
-          fill="none"
-          strokeLinecap={strokeDashProps.strokeLinecap}
-          strokeDasharray={strokeDashProps.strokeDasharray}
-          markerStart={showStartArrow ? `url(#${startMarkerId})` : undefined}
-          markerEnd={showEndArrow ? `url(#${endMarkerId})` : undefined}
-          filter={hasShadow ? `url(#${shadowFilterId})` : undefined}
-        />
+        {advancedLine ? (
+          <>
+            {ribbonLayout.ribbonPathD ? (
+              <path
+                d={ribbonLayout.ribbonPathD}
+                fill={colorVaries ? `url(#${lineGradientId})` : rc.cStart}
+                stroke="none"
+                className="cursor-pointer connection-glow-hover transition-[filter] duration-200"
+                filter={hasShadow ? `url(#${shadowFilterId})` : undefined}
+              />
+            ) : (
+              <path
+                d={pathData}
+                stroke={colorVaries ? `url(#${lineGradientId})` : rc.cStart}
+                strokeWidth={rw.wStart}
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="cursor-pointer connection-glow-hover transition-[filter] duration-200"
+                filter={hasShadow ? `url(#${shadowFilterId})` : undefined}
+              />
+            )}
+            {showStartArrow && (
+              <path
+                d={pathData}
+                fill="none"
+                stroke="transparent"
+                strokeWidth={rw.wStart}
+                markerStart={`url(#${startMarkerId})`}
+                pointerEvents="none"
+              />
+            )}
+            {showEndArrow && (
+              <path
+                d={pathData}
+                fill="none"
+                stroke="transparent"
+                strokeWidth={rw.wEnd}
+                markerEnd={`url(#${endMarkerId})`}
+                pointerEvents="none"
+              />
+            )}
+          </>
+        ) : (
+          <path
+            d={pathData}
+            stroke={finalConnectionColor}
+            className="cursor-pointer connection-glow-hover transition-[filter] duration-200"
+            strokeWidth={connectionData?.lineWidth || 2.5}
+            fill="none"
+            strokeLinecap={strokeDashProps.strokeLinecap}
+            strokeDasharray={strokeDashProps.strokeDasharray}
+            markerStart={showStartArrow ? `url(#${startMarkerId})` : undefined}
+            markerEnd={showEndArrow ? `url(#${endMarkerId})` : undefined}
+            filter={hasShadow ? `url(#${shadowFilterId})` : undefined}
+          />
+        )}
         {shouldRenderAnimationShapes && Array.from({ length: renderedShapeCount }).map((_, index) => {
           const progress = renderedShapeCount > 0 ? index / renderedShapeCount : 0;
 
