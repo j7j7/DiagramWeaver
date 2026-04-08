@@ -10,6 +10,6 @@ const parts = raw.split('.').map((s) => parseInt(s, 10));
 if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) {
   throw new Error(`Invalid semver in package.json: ${JSON.stringify(pkg.version)}`);
 }
-const [major, minor] = parts;
-pkg.version = `${major}.${minor + 1}.0`;
+const [major, minor, patch] = parts;
+pkg.version = `${major}.${minor}.${patch + 1}`;
 fs.writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`, 'utf8');

@@ -1,0 +1,22 @@
+---
+description: Bump package.json patch semver after application code changes (DiagramWeaver)
+alwaysApply: true
+---
+
+# Semver patch bump on app edits
+
+App **`version`** uses **`0.1.x`**: **major** `0`, **minor** `1`, **patch** `x` tracks feature churn (and should stay aligned with the count of dated **`### `** update entries in **`MEMORY.MD`** when you add a MEMORY note for a change).
+
+When you **change application code** for this project (e.g. under `src/`, or app-facing config such as `next.config.ts`, `tailwind.config.*`, `postcss.config.*`), **before finishing the task** run:
+
+```bash
+node scripts/bump-patch.mjs
+```
+
+This increments the **patch** segment only (e.g. `0.1.12` → `0.1.13`). The UI reads semver via `src/lib/app-version.ts`.
+
+**Do not** run the bump when the session’s edits are **only** to: documentation (including `MEMORY.MD`), `.cursor/rules/`, `package.json` / `build-version.json` / scripts **solely** to adjust versioning, or other non-runtime project meta — unless you also changed app code in the same task.
+
+**Do not** run it more than **once** per completed task (avoid double-bumping).
+
+The **build** counter (`scripts/bump-build.mjs`, `predev` / `prebuild`) is separate; it advances only when **`npm run dev`** or **`npm run build`** runs, not on every code edit.

@@ -12,6 +12,9 @@ import { CONNECTION_HELPER_Z_INDEX } from "@/components/editor/canvas-constants"
 
 export type DiagramTransform = { x: number; y: number; k: number };
 
+/** Diagram px: inside this distance from the node rect we apply edge picks; beyond on release we clear a forced end. */
+const EDGE_INTERACTION_DISTANCE = 120;
+
 function stripEdgeAttachmentPreferences(conn: DiagramConnectionData): DiagramConnectionData {
   return { ...conn, fromPreferredExit: undefined, toPreferredEntry: undefined };
 }
@@ -44,6 +47,14 @@ function closestRectangleEdge(
   if (clampedY === y + h) return "bottom";
   if (clampedX === x) return "left";
   return "right";
+}
+
+/** Distance from point to axis-aligned rectangle (0 if inside). */
+function distancePointToRect(px: number, py: number, x: number, y: number, w: number, h: number): number {
+  if (px >= x && px <= x + w && py >= y && py <= y + h) return 0;
+  const dx = px < x ? x - px : px > x + w ? px - (x + w) : 0;
+  const dy = py < y ? y - py : py > y + h ? py - (y + h) : 0;
+  return Math.hypot(dx, dy);
 }
 
 function clientToDiagram(
@@ -81,7 +92,10 @@ interface ConnectionEndpointHandlesProps {
   onEdgeAttachmentChange: (
     from: string,
     to: string,
-    updates: { fromPreferredExit: DiagramConnectionData["fromPreferredExit"]; toPreferredEntry: DiagramConnectionData["toPreferredEntry"] },
+    updates: {
+      fromPreferredExit?: DiagramConnectionData["fromPreferredExit"];
+      toPreferredEntry?: DiagramConnectionData["toPreferredEntry"];
+    },
     connectionId?: string
   ) => void;
   disabled?: boolean;
@@ -89,7 +103,13 @@ interface ConnectionEndpointHandlesProps {
 
 const HANDLE = 12;
 const HALF = HANDLE / 2;
-const HANDLE_Z = CONNECTION_HELPER_Z_INDEX + 2;
+/** Above connection helper buttons (arrow / waypoint / delete) so start handle is not blocked by delete at ~10% along path */
+const HANDLE_Z = CONNECTION_HELPER_Z_INDEX + 50;
+
+const GREEN = "#22c55e";
+const GREEN_ACTIVE = "#16a34a";
+const YELLOW = "#eab308";
+const YELLOW_ACTIVE = "#ca8a04";
 
 export function ConnectionEndpointHandles({
   connection,
@@ -112,6 +132,9 @@ export function ConnectionEndpointHandles({
   const [dragging, setDragging] = useState<"from" | "to" | null>(null);
   const draggingRef = useRef<"from" | "to" | null>(null);
   const captureRef = useRef<{ el: HTMLElement; pointerId: number } | null>(null);
+
+  const fromForced = connection.fromPreferredExit !== undefined;
+  const toForced = connection.toPreferredEntry !== undefined;
 
   const applyDrag = useCallback(
     (role: "from" | "to", clientX: number, clientY: number) => {
@@ -139,26 +162,26 @@ export function ConnectionEndpointHandles({
 
       if (role === "from") {
         const picked = closestRectangleEdge(pt.x, pt.y, geomFrom.x, geomFrom.y, fromWidth, fromHeight);
-        let newFrom = clampEdgeAttachmentForConstraint(picked, c, "from", dx, dy);
-        let newTo = (connection.toPreferredEntry ?? auto.toEdge) as NonNullable<DiagramConnectionData["toPreferredEntry"]>;
-        newTo = clampEdgeAttachmentForConstraint(newTo, c, "to", dx, dy);
-        onEdgeAttachmentChange(
-          connection.from,
-          connection.to,
-          { fromPreferredExit: newFrom, toPreferredEntry: newTo },
-          connectionId
-        );
+        const newFrom = clampEdgeAttachmentForConstraint(picked, c, "from", dx, dy);
+        const updates: {
+          fromPreferredExit: NonNullable<DiagramConnectionData["fromPreferredExit"]>;
+          toPreferredEntry?: DiagramConnectionData["toPreferredEntry"];
+        } = { fromPreferredExit: newFrom };
+        if (connection.toPreferredEntry !== undefined) {
+          updates.toPreferredEntry = connection.toPreferredEntry;
+        }
+        onEdgeAttachmentChange(connection.from, connection.to, updates, connectionId);
       } else {
         const picked = closestRectangleEdge(pt.x, pt.y, geomTo.x, geomTo.y, toWidth, toHeight);
-        let newTo = clampEdgeAttachmentForConstraint(picked, c, "to", dx, dy);
-        let newFrom = (connection.fromPreferredExit ?? auto.fromEdge) as NonNullable<DiagramConnectionData["fromPreferredExit"]>;
-        newFrom = clampEdgeAttachmentForConstraint(newFrom, c, "from", dx, dy);
-        onEdgeAttachmentChange(
-          connection.from,
-          connection.to,
-          { fromPreferredExit: newFrom, toPreferredEntry: newTo },
-          connectionId
-        );
+        const newTo = clampEdgeAttachmentForConstraint(picked, c, "to", dx, dy);
+        const updates: {
+          toPreferredEntry: NonNullable<DiagramConnectionData["toPreferredEntry"]>;
+          fromPreferredExit?: DiagramConnectionData["fromPreferredExit"];
+        } = { toPreferredEntry: newTo };
+        if (connection.fromPreferredExit !== undefined) {
+          updates.fromPreferredExit = connection.fromPreferredExit;
+        }
+        onEdgeAttachmentChange(connection.from, connection.to, updates, connectionId);
       }
     },
     [
@@ -176,6 +199,22 @@ export function ConnectionEndpointHandles({
     ]
   );
 
+  const maybeApplyDragNearNode = useCallback(
+    (role: "from" | "to", clientX: number, clientY: number) => {
+      const pt = clientToDiagram(clientX, clientY, canvasRef, transform);
+      if (!pt) return;
+      const x = role === "from" ? geomFrom.x : geomTo.x;
+      const y = role === "from" ? geomFrom.y : geomTo.y;
+      const w = role === "from" ? fromWidth : toWidth;
+      const h = role === "from" ? fromHeight : toHeight;
+      const d = distancePointToRect(pt.x, pt.y, x, y, w, h);
+      if (d <= EDGE_INTERACTION_DISTANCE) {
+        applyDrag(role, clientX, clientY);
+      }
+    },
+    [applyDrag, canvasRef, transform, geomFrom, geomTo, fromWidth, fromHeight, toWidth, toHeight]
+  );
+
   const onPointerDown = useCallback(
     (e: React.PointerEvent, role: "from" | "to") => {
       if (disabled) return;
@@ -186,9 +225,9 @@ export function ConnectionEndpointHandles({
       captureRef.current = { el, pointerId: e.pointerId };
       draggingRef.current = role;
       setDragging(role);
-      applyDrag(role, e.clientX, e.clientY);
+      maybeApplyDragNearNode(role, e.clientX, e.clientY);
     },
-    [disabled, applyDrag]
+    [disabled, maybeApplyDragNearNode]
   );
 
   useEffect(() => {
@@ -196,9 +235,29 @@ export function ConnectionEndpointHandles({
     const move = (e: PointerEvent) => {
       const role = draggingRef.current;
       if (!role) return;
-      applyDrag(role, e.clientX, e.clientY);
+      maybeApplyDragNearNode(role, e.clientX, e.clientY);
     };
-    const up = () => {
+    const up = (e: PointerEvent) => {
+      const role = draggingRef.current;
+      if (role) {
+        const pt = clientToDiagram(e.clientX, e.clientY, canvasRef, transform);
+        if (pt) {
+          const x = role === "from" ? geomFrom.x : geomTo.x;
+          const y = role === "from" ? geomFrom.y : geomTo.y;
+          const w = role === "from" ? fromWidth : toWidth;
+          const h = role === "from" ? fromHeight : toHeight;
+          const d = distancePointToRect(pt.x, pt.y, x, y, w, h);
+          if (d > EDGE_INTERACTION_DISTANCE) {
+            // Always emit clear for this end (applyConnectionUpdates deletes key). Avoids stale closure
+            // missing a clear on the start handle when prefs changed during the same drag.
+            if (role === "from") {
+              onEdgeAttachmentChange(connection.from, connection.to, { fromPreferredExit: undefined }, connectionId);
+            } else {
+              onEdgeAttachmentChange(connection.from, connection.to, { toPreferredEntry: undefined }, connectionId);
+            }
+          }
+        }
+      }
       const cap = captureRef.current;
       if (cap) {
         try {
@@ -219,9 +278,31 @@ export function ConnectionEndpointHandles({
       document.removeEventListener("pointerup", up, true);
       document.removeEventListener("pointercancel", up, true);
     };
-  }, [dragging, applyDrag]);
+  }, [
+    dragging,
+    maybeApplyDragNearNode,
+    canvasRef,
+    transform,
+    geomFrom,
+    geomTo,
+    fromWidth,
+    fromHeight,
+    toWidth,
+    toHeight,
+    connection.from,
+    connection.to,
+    connection.fromPreferredExit,
+    connection.toPreferredEntry,
+    connectionId,
+    onEdgeAttachmentChange,
+  ]);
 
   if (disabled) return null;
+
+  const fromColor =
+    dragging === "from" ? (fromForced ? YELLOW_ACTIVE : GREEN_ACTIVE) : fromForced ? YELLOW : GREEN;
+  const toColor =
+    dragging === "to" ? (toForced ? YELLOW_ACTIVE : GREEN_ACTIVE) : toForced ? YELLOW : GREEN;
 
   return (
     <>
@@ -232,11 +313,11 @@ export function ConnectionEndpointHandles({
           top: `${fromY - HALF}px`,
           width: `${HANDLE}px`,
           height: `${HANDLE}px`,
-          backgroundColor: dragging === "from" ? "#16a34a" : "#22c55e",
+          backgroundColor: fromColor,
           zIndex: HANDLE_Z,
           pointerEvents: "auto",
         }}
-        title="Drag to choose source edge"
+        title={fromForced ? "Drag on the shape to adjust edge, or drag away to clear" : "Drag on the shape to pin exit edge (yellow = pinned)"}
         onPointerDown={(e) => onPointerDown(e, "from")}
       />
       <div
@@ -246,11 +327,11 @@ export function ConnectionEndpointHandles({
           top: `${toY - HALF}px`,
           width: `${HANDLE}px`,
           height: `${HANDLE}px`,
-          backgroundColor: dragging === "to" ? "#16a34a" : "#22c55e",
+          backgroundColor: toColor,
           zIndex: HANDLE_Z,
           pointerEvents: "auto",
         }}
-        title="Drag to choose target edge"
+        title={toForced ? "Drag on the shape to adjust edge, or drag away to clear" : "Drag on the shape to pin entry edge (yellow = pinned)"}
         onPointerDown={(e) => onPointerDown(e, "to")}
       />
     </>

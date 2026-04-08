@@ -999,25 +999,6 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
 
       return (
         <React.Fragment key={`actions-${edge.from}-${edge.to}-${index}`}>
-          {onConnectionUpdate && transform && canvasRef && !isReadOnly && (
-            <ConnectionEndpointHandles
-              connection={edge}
-              connectionId={edgeId}
-              geomFrom={geomFromToolbar as Positionable}
-              geomTo={geomToToolbar as Positionable}
-              fromWidth={fromWidth}
-              fromHeight={fromHeight}
-              toWidth={toWidth}
-              toHeight={toHeight}
-              fromX={fromX}
-              fromY={fromY}
-              toX={toX}
-              toY={toY}
-              transform={transform}
-              canvasRef={canvasRef}
-              onEdgeAttachmentChange={onConnectionUpdate}
-            />
-          )}
           {/* Arrow toggle button - positioned at 90% (destination) along the curve */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -1167,6 +1148,27 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                 Delete connection
               </TooltipContent>
             </Tooltip>
+          )}
+
+          {/* Endpoint edge handles: after action buttons so start handle is not covered by delete (10% along path) */}
+          {onConnectionUpdate && transform && canvasRef && !isReadOnly && (
+            <ConnectionEndpointHandles
+              connection={edge}
+              connectionId={edgeId}
+              geomFrom={geomFromToolbar as Positionable}
+              geomTo={geomToToolbar as Positionable}
+              fromWidth={fromWidth}
+              fromHeight={fromHeight}
+              toWidth={toWidth}
+              toHeight={toHeight}
+              fromX={fromX}
+              fromY={fromY}
+              toX={toX}
+              toY={toY}
+              transform={transform}
+              canvasRef={canvasRef}
+              onEdgeAttachmentChange={onConnectionUpdate}
+            />
           )}
         </React.Fragment>
       );

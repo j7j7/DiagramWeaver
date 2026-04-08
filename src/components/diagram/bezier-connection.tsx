@@ -511,10 +511,48 @@ export function determineConnectionEdges(
     resolvedToHeight
   );
 
-  // Use preferred edges if explicitly specified (user override)
-  if (connectionData?.fromPreferredExit && connectionData?.toPreferredEntry) {
+  // Both sides explicitly set — full user override
+  if (
+    connectionData?.fromPreferredExit !== undefined &&
+    connectionData?.toPreferredEntry !== undefined
+  ) {
     return applyEdgeAttachmentConstraintToEdges(
       { fromEdge: connectionData.fromPreferredExit, toEdge: connectionData.toPreferredEntry },
+      connectionData.edgeAttachmentConstraint,
+      dx,
+      dy
+    );
+  }
+
+  // Only one side forced — merge with auto layout for the other end
+  if (
+    connectionData?.fromPreferredExit !== undefined ||
+    connectionData?.toPreferredEntry !== undefined
+  ) {
+    const stripped: DiagramConnectionData = {
+      ...connectionData,
+      fromPreferredExit: undefined,
+      toPreferredEntry: undefined,
+    };
+    const auto = determineConnectionEdges(
+      from,
+      to,
+      stripped,
+      resolvedFromWidth,
+      resolvedFromHeight,
+      resolvedToWidth,
+      resolvedToHeight
+    );
+    let fromEdge = auto.fromEdge;
+    let toEdge = auto.toEdge;
+    if (connectionData.fromPreferredExit !== undefined) {
+      fromEdge = connectionData.fromPreferredExit;
+    }
+    if (connectionData.toPreferredEntry !== undefined) {
+      toEdge = connectionData.toPreferredEntry;
+    }
+    return applyEdgeAttachmentConstraintToEdges(
+      { fromEdge, toEdge },
       connectionData.edgeAttachmentConstraint,
       dx,
       dy
@@ -633,10 +671,22 @@ export function getOptimalConnectionPoints(from: any, to: any, fromWidth: number
   const constraintKind: AxisConstraintKind | null =
     edgeConstraint === 'top-bottom' ? 'top-bottom' : edgeConstraint === 'left-right' ? 'left-right' : null;
 
-  // Use specified connection points if provided
-  if (connectionData?.fromPreferredExit && connectionData?.toPreferredEntry) {
-    let fromExit = connectionData.fromPreferredExit;
-    let toEntry = connectionData.toPreferredEntry;
+  // User-specified edge on one or both ends (undefined = auto for that end)
+  if (
+    connectionData?.fromPreferredExit !== undefined ||
+    connectionData?.toPreferredEntry !== undefined
+  ) {
+    const edges = determineConnectionEdges(
+      from,
+      to,
+      connectionData,
+      fromWidth,
+      fromHeight,
+      toWidth,
+      toHeight
+    );
+    let fromExit = edges.fromEdge;
+    let toEntry = edges.toEdge;
     if (constraintKind) {
       fromExit = clampEdgeToAxisConstraint(fromExit, constraintKind, 'from', dx, dy);
       toEntry = clampEdgeToAxisConstraint(toEntry, constraintKind, 'to', dx, dy);
@@ -689,8 +739,10 @@ export function getOptimalConnectionPoints(from: any, to: any, fromWidth: number
     }
   }
 
-  const finalFromPoint = connectionData?.fromPreferredExit || fromPoint;
-  const finalToPoint = connectionData?.toPreferredEntry || toPoint;
+  const finalFromPoint = (connectionData?.fromPreferredExit ?? fromPoint) as
+    'top' | 'bottom' | 'left' | 'right' | 'center';
+  const finalToPoint = (connectionData?.toPreferredEntry ?? toPoint) as
+    'top' | 'bottom' | 'left' | 'right' | 'center';
   
   // Final safety check: never allow 'center' for groups/zones
   const safeFromPoint = (fromIsGroup && finalFromPoint === 'center') 

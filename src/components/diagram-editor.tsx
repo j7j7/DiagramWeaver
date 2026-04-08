@@ -3014,6 +3014,12 @@ export default function DiagramEditor() {
         ) {
           delete merged.edgeAttachmentConstraint;
         }
+        if ('fromPreferredExit' in updates && updates.fromPreferredExit === undefined) {
+          delete merged.fromPreferredExit;
+        }
+        if ('toPreferredEntry' in updates && updates.toPreferredEntry === undefined) {
+          delete merged.toPreferredEntry;
+        }
         return merged;
       }),
     }));
@@ -3021,7 +3027,16 @@ export default function DiagramEditor() {
       const match = connectionId
         ? (selectedItem as { id?: string }).id === connectionId
         : (selectedItem.from === from && selectedItem.to === to);
-      if (match) setSelectedItem({ ...selectedItem, ...updates });
+      if (match) {
+        const next = { ...selectedItem, ...updates } as DiagramConnectionData & { itemType: 'edge'; id: string };
+        if ('fromPreferredExit' in updates && updates.fromPreferredExit === undefined) {
+          delete (next as DiagramConnectionData).fromPreferredExit;
+        }
+        if ('toPreferredEntry' in updates && updates.toPreferredEntry === undefined) {
+          delete (next as DiagramConnectionData).toPreferredEntry;
+        }
+        setSelectedItem(next as SelectedItem);
+      }
     }
   }, [selectedItem, setCurrentDiagramData, setSelectedItem]);
 

@@ -2,6 +2,18 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-04-08 – Semver: `0.1.{patch}`, patch auto-bump, build on dev/build only
+**Versioning**: **`package.json`** **`version`** is **`0.1.x`** where **x** (**patch**) aligns with the count of dated **`### `** update lines in **`MEMORY.MD`** (third segment). **Auto** on app code edits: **`node scripts/bump-patch.mjs`** increments **patch** only (not **minor**). **`scripts/bump-minor.mjs`** removed. **Cursor rule**: **`.cursor/rules/semver-patch-on-app-edit.mdc`**. **`src/lib/build-version.json`** **`build`** advances only via **`predev`** / **`prebuild`** (**`npm run dev`** / **`npm run build`**), separate from semver.
+
+### 2026-04-08 – App build number set to 252
+**Versioning**: **`src/lib/build-version.json`** **`build`** set to **252** (user request: replace **10** with **252**). **`package.json`** semver was **`0.9.0`** at that time; later **`0.1.x`** scheme applies.
+
+### 2026-04-08 – Connection edge handles: start handle hit-testing + clear
+**Issue**: Start (source) handle could sit under the **delete** control (~10% along path) and **far-release clear** could miss due to **stale** `connection` in the pointer-up closure. **Fix**: Render **`ConnectionEndpointHandles`** **after** arrow / waypoint / delete in **`canvas-connections.tsx`**; raise handle **z-index** (`CONNECTION_HELPER_Z_INDEX + 50`). On pointer-up beyond the distance threshold, **always** emit **`fromPreferredExit` / `toPreferredEntry`: `undefined`** for that role (merge deletes key; no stale guard).
+
+### 2026-04-08 – Connection edge handles: yellow = pinned, drag away clears
+**UI**: Endpoint handles are **yellow** when that end has a **stored** preference (`fromPreferredExit` / `toPreferredEntry`, per-end); **green** when **auto** for that end. **Drag** only updates the edge while the pointer stays **within ~120px** diagram space of the node; **release** **farther** than that **clears** that end’s preference (back to **green** + autocalc). **`determineConnectionEdges`** / **`getOptimalConnectionPoints`** support **partial** prefs (one side only). **`applyConnectionUpdates`** deletes keys when updates pass **`undefined`** for those fields.
+
 ### 2026-04-08 – Orthogonal routing: no line through node when user picks an edge
 **Issue**: Endpoints are **excluded** from `collectObstacles`, so orthogonal paths could **cross the interior** of the source/target (e.g. through the **icon**) before reaching a **user-chosen** edge. **Fix**: **`appendInteriorObstaclesForPreferredEdges`** in **`orthogonal-routing.ts`** — when **`fromPreferredExit`** / **`toPreferredEntry`** is set to a **cardinal** side (not `center`), add an **interior** rectangle that blocks everything **except** a **~40px strip** along that edge so the path must **go around** (e.g. from **top**) like a clean port. Wired in **`canvas-connections.tsx`** (batch + toolbar) and **`othogonal-connection.tsx`**.
 
@@ -20,8 +32,8 @@
 ### 2026-04-08 – Tooltips: no spurious open on programmatic focus (global)
 **Cause**: Radix **`TooltipTrigger`** opens on **focus** as well as pointer hover. Modals that **focus the first control** often hit a **Close** button wrapped in a tooltip → **“Close”** appears without hover. **Fix**: **`src/components/ui/tooltip.tsx`** wraps **`TooltipPrimitive.Trigger`** and, on **`onFocus`**, calls **`preventDefault()`** when the target does **not** match **`:focus-visible`** (see Radix [issue #2248](https://github.com/radix-ui/primitives/issues/2248)) — suppresses programmatic / non–keyboard-intent focus while keeping keyboard **Tab** behavior. **`connection-context-modal.tsx`**: close button has **`data-skip-modal-initial-focus`** so initial focus targets the first **non-close** control.
 
-### 2026-04-08 – Semver minor bump (agent rule + script)
-**Cursor rule**: **`.cursor/rules/semver-minor-on-app-edit.mdc`** (`alwaysApply: true`) — when an agent **changes application code** (`src/`, app config like **`next.config.ts`**, etc.), it should run **`node scripts/bump-minor.mjs`** **once** before finishing the task. That increments **`package.json`** **`version`** **minor** (e.g. `0.1.0` → `0.2.0`, patch reset to `0`). **Skip** the bump for docs-only / meta-only edits (e.g. **`MEMORY.MD`**, rules-only), or when only touching version files. **Build** counter (**`bump-build.mjs`**) is independent (still **`predev`** / **`prebuild`**).
+### 2026-04-08 – Semver patch bump (agent rule + script) — superseded by `0.1.x` + **`bump-patch.mjs`**
+**Superseded** by the **`2026-04-08 – Semver: 0.1.{patch}`** entry above. Historically: **`.cursor/rules/semver-minor-on-app-edit.mdc`** + **`bump-minor.mjs`** incremented **minor**. Now: **`.cursor/rules/semver-patch-on-app-edit.mdc`** + **`scripts/bump-patch.mjs`** increments **patch** only. **Skip** bump for docs-only / meta-only edits per rule. **Build** (**`bump-build.mjs`**) only on **`npm run dev`** / **`npm run build`**.
 
 ### 2026-04-08 – App build number (auto-increment)
 **Versioning**: **`src/lib/build-version.json`** holds monotonic **`build`** (integer). **`scripts/bump-build.mjs`** increments it. **`predev`** and **`prebuild`** in **`package.json`** run the bump before **`npm run dev`** and **`npm run build`**, so each dev session or production build advances the counter. **`src/lib/app-version.ts`** exports **`APP_SEMVER`** (from **`package.json`**) and **`APP_BUILD`**. **UI**: top bar shows **`{semver} · {build}`** (before Help); **About** shows **Version {semver} · build {build}** and **Development session** when `NODE_ENV !== 'production'`.

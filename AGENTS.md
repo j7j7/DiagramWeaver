@@ -1,6 +1,7 @@
 # Build Commands
 - `npm run dev` - Start dev server (port 9003)
 - `npm run build` - Production build
+- `node scripts/bump-patch.mjs` - Increment `package.json` patch (`0.1.x` → `0.1.x+1`) after app code changes (see `.cursor/rules/semver-patch-on-app-edit.mdc`)
 - `npm run lint` - Run ESLint
 - `npm run typecheck` - TypeScript type check
 
