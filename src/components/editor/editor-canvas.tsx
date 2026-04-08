@@ -51,6 +51,19 @@ import { isShapeNodeType } from "@/lib/utils";
 import { isEventFromEditableElement } from "@/lib/keyboard-utils";
 import { getDownstreamAnimationChainNodes } from "@/lib/connection-animation";
 
+const ROTATION_DRAG_SENSITIVITY_DEG_PER_PX = 0.5;
+
+function normalizeRotationDegrees(rotation: number): number {
+  let r = rotation % 360;
+  if (r >= 180) r -= 360;
+  if (r < -180) r += 360;
+  return r;
+}
+
+function snapRotationDegrees(rotation: number, snapStep: number): number {
+  return normalizeRotationDegrees(Math.round(rotation / snapStep) * snapStep);
+}
+
 interface EditorCanvasProps {
   diagramData: DiagramData;
   setDiagramData: React.Dispatch<React.SetStateAction<DiagramData>>;
@@ -279,8 +292,15 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     startY: number;
     startRotation: number;
     currentRotation: number;
+    lastPointerClientY: number;
+    shiftKey: boolean;
+    activePointerId: number;
     capturedElement: HTMLElement | null;
   } | null>(null);
+
+  /** Latest rotation drag state for pointer/keyboard handlers (avoids stale closures) */
+  const rotationDragRef = useRef<typeof rotationDragState>(null);
+  rotationDragRef.current = rotationDragState;
 
   // Store original dimensions for all selected items during multi-resize
   const originalDimensionsRef = useRef<Map<string, { width: number; height: number }>>(new Map());
@@ -389,14 +409,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   }, [hoveredItemId, selectedItemIds]);
 
   // Update rotation for an item
-  const setRotationForItem = useCallback((targetId: string, targetType: 'node' | 'zone', rotation: number, applyToAllSelected = false) => {
-    // Snap to nearest 5-degree increment
-    let snappedRotation = Math.round(rotation / 5) * 5;
-    
-    // Normalize rotation to [-180, 180)
-    let normalizedRotation = snappedRotation % 360;
-    if (normalizedRotation >= 180) normalizedRotation -= 360;
-    if (normalizedRotation < -180) normalizedRotation += 360;
+  const setRotationForItem = useCallback((targetId: string, targetType: 'node' | 'zone', rotation: number, applyToAllSelected = false, snapStep = 5) => {
+    const normalizedRotation = snapRotationDegrees(rotation, snapStep);
 
     setDiagramData(prev => {
       if (applyToAllSelected && selectedItemIds.size > 1) {
@@ -466,6 +480,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       startY: e.clientY,
       startRotation: currentRotation,
       currentRotation: currentRotation,
+      lastPointerClientY: e.clientY,
+      shiftKey: e.shiftKey,
+      activePointerId: e.pointerId,
       capturedElement,
     });
 
@@ -480,65 +497,91 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     [handleRotationHandlePointerDown]
   );
 
-  // Handle pointer move for rotation
+  // Pointer drag + Shift: 5° snap (default) or 45° snap when Shift is held
+  const isRotationDragging = !!rotationDragState?.isActive;
+
   useEffect(() => {
-    if (!rotationDragState) return;
+    if (!isRotationDragging) return;
 
-    const handlePointerMove = (e: PointerEvent) => {
-      if (!rotationDragState || !rotationDragState.isActive) return;
+    const applyRotationFromPointer = (clientY: number, shiftKey: boolean) => {
+      const drag = rotationDragRef.current;
+      if (!drag?.isActive) return;
 
-      const deltaY = rotationDragState.startY - e.clientY;
-      const sensitivityDegPerPx = 0.5; // degrees per pixel
-      const deltaDeg = deltaY * sensitivityDegPerPx;
-      const rawRotation = rotationDragState.startRotation + deltaDeg;
-      
-      // Snap to nearest 5-degree increment
-      const newRotation = Math.round(rawRotation / 5) * 5;
+      const deltaY = drag.startY - clientY;
+      const rawRotation = drag.startRotation + deltaY * ROTATION_DRAG_SENSITIVITY_DEG_PER_PX;
+      const snapStep = shiftKey ? 45 : 5;
+      const newRotation = snapRotationDegrees(rawRotation, snapStep);
+      const targetId = drag.targetId;
+      const targetType = drag.targetType;
 
-      // Capture values for the update
-      const targetId = rotationDragState.targetId;
-      const targetType = rotationDragState.targetType;
+      setRotationDragState((prev) =>
+        prev
+          ? {
+              ...prev,
+              currentRotation: newRotation,
+              lastPointerClientY: clientY,
+              shiftKey,
+            }
+          : null
+      );
 
-      setRotationDragState(prev => prev ? { ...prev, currentRotation: newRotation } : null);
-
-      // Update rotation (throttled via requestAnimationFrame)
       requestAnimationFrame(() => {
-        setRotationForItem(targetId, targetType, newRotation, true); // Apply to all selected
+        setRotationForItem(targetId, targetType, newRotation, true, snapStep);
       });
     };
 
+    const handlePointerMove = (e: PointerEvent) => {
+      applyRotationFromPointer(e.clientY, e.shiftKey);
+    };
+
     const handlePointerUp = (e: PointerEvent) => {
-      if (!rotationDragState) return;
+      const drag = rotationDragRef.current;
+      if (!drag?.isActive || e.pointerId !== drag.activePointerId) return;
 
-      // Capture values before clearing state
-      const targetId = rotationDragState.targetId;
-      const targetType = rotationDragState.targetType;
-      const finalRotation = rotationDragState.currentRotation;
-      const capturedElement = rotationDragState.capturedElement;
+      const capturedElement = drag.capturedElement;
+      const snapStep = e.shiftKey ? 45 : 5;
+      const deltaY = drag.startY - drag.lastPointerClientY;
+      const rawRotation =
+        drag.startRotation + deltaY * ROTATION_DRAG_SENSITIVITY_DEG_PER_PX;
+      const finalRotation = snapRotationDegrees(rawRotation, snapStep);
 
-      // Release pointer capture
       if (capturedElement) {
         try {
           capturedElement.releasePointerCapture(e.pointerId);
-        } catch (err) {
-          // Ignore errors if pointer capture was already released
+        } catch {
+          // ignore
         }
       }
 
-      // Final update with current rotation
-      setRotationForItem(targetId, targetType, finalRotation, true); // Apply to all selected
-
+      setRotationForItem(drag.targetId, drag.targetType, finalRotation, true, snapStep);
       setRotationDragState(null);
     };
 
-    window.addEventListener('pointermove', handlePointerMove);
-    window.addEventListener('pointerup', handlePointerUp);
+    const handlePointerUpCapture = (e: PointerEvent) => {
+      if (rotationDragRef.current?.isActive) {
+        handlePointerUp(e);
+      }
+    };
+
+    const handleShiftKeyToggle = (e: KeyboardEvent) => {
+      if (e.key !== "Shift") return;
+      const drag = rotationDragRef.current;
+      if (!drag?.isActive) return;
+      applyRotationFromPointer(drag.lastPointerClientY, e.shiftKey);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUpCapture);
+    window.addEventListener("keydown", handleShiftKeyToggle);
+    window.addEventListener("keyup", handleShiftKeyToggle);
 
     return () => {
-      window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUpCapture);
+      window.removeEventListener("keydown", handleShiftKeyToggle);
+      window.removeEventListener("keyup", handleShiftKeyToggle);
     };
-  }, [rotationDragState, setRotationForItem]);
+  }, [isRotationDragging, setRotationForItem]);
   
   
   // ============================================================================
@@ -1770,6 +1813,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   transform={transform}
                   targetBounds={bounds}
                   rotationDegrees={rotationDragState.currentRotation}
+                  shiftKey={rotationDragState.shiftKey}
                 />
               );
             })()}

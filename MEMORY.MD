@@ -945,6 +945,8 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
   - **Handle placement**: One **top-left** green control (`RotationHandle` in `diagram-node.tsx`), same visual system as connect / resize / corner-radius (`globals.css` `.dw-rotation-*`), inside the node’s rotated box so it stays fixed like other helpers
   - **Visual Feedback**: `CanvasRotationOverlay` draws only the **angle HUD** (ticks + readout) while dragging, in screen space
   - **Drag-to-Rotate**: Drag vertically to rotate (up increases, down decreases); pointer capture on handle
+  - **Snap**: Default **5°** steps; hold **Shift** for **45°** steps only (HUD switches to coarse 45° dial + “45° snap” hint; keyboard Shift toggles mid-drag without moving the pointer)
+  - **Dial**: **90°** cardinals (0/90/180/270) strongest ticks; **45°** diagonals next; other **5°** ticks subtle
   - **Multi-Select**: Handle targets the hovered selected item when applicable
   - **Files**: `rotation-handle.tsx`, `canvas-rotation-overlay.tsx`, `editor-canvas.tsx`, `diagram-node.tsx`
 - **Label Node Styling** (2025-12): Enhanced label nodes with styling controls matching groups/zones:
