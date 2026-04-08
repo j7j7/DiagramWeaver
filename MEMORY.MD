@@ -2,6 +2,15 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-04-09 – JSON panel header: title + find field width
+**UI**: **`json-editor-panel.tsx`** — header title **JSON** (was “JSON Editor”); find input width **~half** (**`min(90px,14vw)`**, **`min-w-[50px]`**, tighter **`px`**).
+
+### 2026-04-09 – JSON editor: find bar + scroll to start of canvas selection
+**Behavior**: **Find** row next to **Submit** — search input, **Aa** (case-sensitive), **prev/next** (**chevrons**), count (**0/n** until first navigation, then **i/n**), **Enter** / **Shift+Enter** for next/prev. **`src/lib/json-text-search.ts`** uses **`SearchCursor`**; **`searchKeymap`** off so built-in panel does not clash. **Canvas selection** scroll uses **`EditorView.scrollIntoView(from, { y: 'start' })`** so the **first line** of the highlighted block is aligned to the top of the viewport.
+
+### 2026-04-09 – JSON editor: jump to canvas selection
+**Behavior**: With the **JSON Editor** panel open, clicking a **node** or **connection** on the canvas selects the corresponding **`nodes[]` / `connections[]`** object in the editor, scrolls it into view (**CodeMirror** `scrollIntoView`), and updates scroll lock so later diagram sync does not snap away. **Implementation**: **`src/lib/json-editor-focus.ts`** (parse JSON for index → scan raw text for array element byte range), **`json-editor-panel.tsx`** (`focusTarget` + effect), **`diagram-editor.tsx`** passes **`selectedItem`**.
+
 ### 2026-04-09 – Connections popover (toolbar): same layout as connection modal + Stroke
 **UI**: **`context-toolbar.tsx`** — **Connections** popover width **`min(480px, 100vw-2rem)`**; expanded row body matches **`connection-context-modal`**: **two-column** grid (**Line type** + **Arrow**, **Stroke** solid/dashed/dotted, **Line thickness** + depth, smooth/center/attach | **Text**, **Text position**, **Color**, **Delete** with tooltip), then **`ConnectionAnimationControls`** (**compact**), then **Connection points**. **Collapse/expand** per connection unchanged.
 

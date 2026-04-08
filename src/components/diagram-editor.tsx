@@ -27,7 +27,7 @@ const TopMenuBar = dynamic(() => import('./editor/top-menu-bar').then(mod => ({ 
 const JsonEditorPanel = dynamic(() => import('./editor/json-editor-panel').then(mod => ({ default: mod.JsonEditorPanel })), {
   ssr: false,
   loading: () => <div className="flex items-center justify-center h-full min-w-[200px] border-l bg-card">
-    <div className="text-sm text-muted-foreground">Loading JSON Editor...</div>
+    <div className="text-sm text-muted-foreground">Loading JSON…</div>
   </div>
 });
 
@@ -5630,6 +5630,18 @@ function DiagramEditorInner({
                         widthPx={jsonPanelWidth}
                         onWidthChange={setJsonPanelWidth}
                         isReadOnly={isReadOnly}
+                        focusTarget={
+                          selectedItem
+                            ? selectedItem.itemType === 'node'
+                              ? { itemType: 'node' as const, id: selectedItem.id }
+                              : {
+                                  itemType: 'edge' as const,
+                                  id: selectedItem.id,
+                                  from: selectedItem.from,
+                                  to: selectedItem.to,
+                                }
+                            : null
+                        }
                       />
                     </div>
                   )}

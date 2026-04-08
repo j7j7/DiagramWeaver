@@ -3,12 +3,16 @@ import CodeMirror from '@uiw/react-codemirror';
 import { json } from '@codemirror/lang-json';
 import { lintGutter } from '@codemirror/lint';
 import { oneDark } from '@codemirror/theme-one-dark';
-import { keymap } from '@codemirror/view';
+import { EditorView, keymap } from '@codemirror/view';
+import { Text } from '@codemirror/state';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { stableStringify } from '@/lib/json-utils';
 import { flattenDiagramOnImport, type RawDiagramData } from '@/lib/flatten-on-import';
 import { DiagramDataSchema } from '@/lib/schemas';
 import { ensureConnectionIds } from '@/lib/connection-order-utils';
+import { findJsonRangeForDiagramSelection, type JsonFocusTarget } from '@/lib/json-editor-focus';
+import { applyJsonSearchMatch, collectJsonSearchMatches } from '@/lib/json-text-search';
 import type { DiagramData } from '@/lib/types';
 
 type Props = {
@@ -19,6 +23,8 @@ type Props = {
   widthPx: number;
   onWidthChange?: (width: number) => void;
   isReadOnly?: boolean;
+  /** When set (e.g. canvas selection), selects and scrolls to the matching node or connection object in the JSON. */
+  focusTarget?: JsonFocusTarget | null;
 };
 
 const MIN_WIDTH = 280;
@@ -32,6 +38,7 @@ export function JsonEditorPanel({
   widthPx,
   onWidthChange,
   isReadOnly = false,
+  focusTarget = null,
 }: Props) {
   const [text, setText] = React.useState(() => {
     const d: DiagramData = { nodes: value.nodes || [], connections: value.connections || [], groupings: value.groupings, layers: value.layers };
@@ -50,6 +57,62 @@ export function JsonEditorPanel({
   const previousValueRef = React.useRef<DiagramData | null>(null);
   const [isUpdating, setIsUpdating] = React.useState(false);
   const isApplyingExternalUpdate = React.useRef(false);
+  const jsonFocusKeyRef = React.useRef('');
+  const jsonPanelWasOpenRef = React.useRef(false);
+  const focusTargetRef = React.useRef(focusTarget);
+  focusTargetRef.current = focusTarget;
+
+  const jsonFocusKeyStr = focusTarget
+    ? focusTarget.itemType === 'node'
+      ? `node:${focusTarget.id}`
+      : `edge:${focusTarget.id}:${focusTarget.from}:${focusTarget.to}`
+    : '';
+
+  const [jsonFindQuery, setJsonFindQuery] = React.useState('');
+  const [jsonFindCaseSensitive, setJsonFindCaseSensitive] = React.useState(false);
+  /** -1 = no match navigated yet (Next/Prev will pick first/last). */
+  const [jsonFindMatchIndex, setJsonFindMatchIndex] = React.useState(-1);
+
+  const jsonFindMatches = React.useMemo(() => {
+    if (!jsonFindQuery) return [];
+    const doc = Text.of(text.split('\n'));
+    return collectJsonSearchMatches(doc, jsonFindQuery, jsonFindCaseSensitive);
+  }, [text, jsonFindQuery, jsonFindCaseSensitive]);
+
+  React.useEffect(() => {
+    setJsonFindMatchIndex(-1);
+  }, [jsonFindQuery, jsonFindCaseSensitive]);
+
+  React.useEffect(() => {
+    if (jsonFindMatches.length === 0) {
+      setJsonFindMatchIndex(-1);
+      return;
+    }
+    setJsonFindMatchIndex((i) => {
+      if (i < 0) return -1;
+      return Math.min(i, jsonFindMatches.length - 1);
+    });
+  }, [jsonFindMatches]);
+
+  const handleJsonFindNext = React.useCallback(() => {
+    const view = editorRef.current;
+    if (!view || jsonFindMatches.length === 0) return;
+    const next =
+      jsonFindMatchIndex < 0 ? 0 : (jsonFindMatchIndex + 1) % jsonFindMatches.length;
+    setJsonFindMatchIndex(next);
+    applyJsonSearchMatch(view, jsonFindMatches[next], { scrollY: 'nearest' });
+  }, [jsonFindMatches, jsonFindMatchIndex]);
+
+  const handleJsonFindPrev = React.useCallback(() => {
+    const view = editorRef.current;
+    if (!view || jsonFindMatches.length === 0) return;
+    const prev =
+      jsonFindMatchIndex < 0
+        ? jsonFindMatches.length - 1
+        : (jsonFindMatchIndex - 1 + jsonFindMatches.length) % jsonFindMatches.length;
+    setJsonFindMatchIndex(prev);
+    applyJsonSearchMatch(view, jsonFindMatches[prev], { scrollY: 'nearest' });
+  }, [jsonFindMatches, jsonFindMatchIndex]);
 
   // Responsive panel width based on viewport (skip during user resize)
   React.useEffect(() => {
@@ -194,6 +257,55 @@ export function JsonEditorPanel({
     };
   }, []);
 
+  // When the JSON panel is open and the user selects a node or connection on the canvas, jump to that object in the editor.
+  React.useEffect(() => {
+    if (!isOpen) {
+      jsonPanelWasOpenRef.current = false;
+      jsonFocusKeyRef.current = '';
+      return;
+    }
+    const openedNow = !jsonPanelWasOpenRef.current;
+    jsonPanelWasOpenRef.current = true;
+    const target = focusTargetRef.current;
+    if (!target) return;
+    if (!openedNow && jsonFocusKeyRef.current === jsonFocusKeyStr) return;
+    jsonFocusKeyRef.current = jsonFocusKeyStr;
+
+    let cancelled = false;
+    let attempts = 10;
+
+    const tryScroll = () => {
+      if (cancelled) return;
+      const view = editorRef.current;
+      if (!view) {
+        if (attempts-- > 0) requestAnimationFrame(tryScroll);
+        return;
+      }
+      const doc = view.state.doc.toString();
+      const range = findJsonRangeForDiagramSelection(doc, target);
+      if (!range) {
+        if (attempts-- > 0) requestAnimationFrame(tryScroll);
+        return;
+      }
+      const len = view.state.doc.length;
+      const from = Math.min(range.from, len);
+      const to = Math.min(range.to, len);
+      if (from >= to) return;
+      view.dispatch({
+        selection: { anchor: from, head: to },
+        effects: EditorView.scrollIntoView(from, { y: 'start', yMargin: 4 }),
+      });
+      setTimeout(() => {
+        lockScrollPosition();
+      }, 0);
+    };
+
+    requestAnimationFrame(tryScroll);
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, jsonFocusKeyStr, lockScrollPosition]);
+
   // Helper function to restore scroll position
   const restoreScrollPosition = React.useCallback((scrollPos: ReturnType<typeof captureScrollPosition>) => {
     if (!editorRef.current) return;
@@ -319,14 +431,76 @@ export function JsonEditorPanel({
       )}
       <div className="flex flex-col flex-1 min-w-0 overflow-y-auto border-l">
       {/* Header */}
-      <div className="flex items-center justify-between p-2 border-b bg-muted/50 flex-shrink-0">
-        <div className="text-sm font-medium">JSON Editor</div>
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-2 p-2 border-b bg-muted/50 flex-shrink-0 flex-wrap">
+        <div className="text-sm font-medium shrink-0">JSON</div>
+        <div className="flex items-center gap-2 flex-wrap justify-end min-w-0 flex-1">
+          <div className="flex items-center gap-1 min-w-0 max-w-full">
+            <input
+              type="search"
+              value={jsonFindQuery}
+              onChange={(e) => setJsonFindQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (e.shiftKey) handleJsonFindPrev();
+                  else handleJsonFindNext();
+                }
+              }}
+              placeholder="Find in JSON…"
+              className="h-8 w-[min(90px,14vw)] min-w-[50px] rounded border border-input bg-background px-1.5 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              aria-label="Find in JSON"
+            />
+            <button
+              type="button"
+              onClick={() => setJsonFindCaseSensitive((v) => !v)}
+              className={`h-8 w-8 shrink-0 rounded border text-xs font-semibold transition-colors ${
+                jsonFindCaseSensitive
+                  ? 'border-primary bg-primary/15 text-foreground'
+                  : 'border-transparent bg-muted/80 text-muted-foreground hover:bg-muted'
+              }`}
+              title={jsonFindCaseSensitive ? 'Case sensitive (on)' : 'Case insensitive — click for case sensitive'}
+              aria-pressed={jsonFindCaseSensitive}
+            >
+              Aa
+            </button>
+            <button
+              type="button"
+              onClick={handleJsonFindPrev}
+              disabled={jsonFindMatches.length === 0}
+              className="h-8 w-8 shrink-0 inline-flex items-center justify-center rounded border border-input bg-background hover:bg-muted disabled:opacity-40 disabled:pointer-events-none"
+              title="Previous match (Shift+Enter)"
+              aria-label="Previous match"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={handleJsonFindNext}
+              disabled={jsonFindMatches.length === 0}
+              className="h-8 w-8 shrink-0 inline-flex items-center justify-center rounded border border-input bg-background hover:bg-muted disabled:opacity-40 disabled:pointer-events-none"
+              title="Next match (Enter)"
+              aria-label="Next match"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+            <span
+              className="text-xs text-muted-foreground tabular-nums shrink-0 min-w-[2.75rem] text-right"
+              aria-live="polite"
+            >
+              {jsonFindMatches.length === 0
+                ? jsonFindQuery
+                  ? '0/0'
+                  : '—'
+                : jsonFindMatchIndex < 0
+                  ? `0/${jsonFindMatches.length}`
+                  : `${jsonFindMatchIndex + 1}/${jsonFindMatches.length}`}
+            </span>
+          </div>
           {!isReadOnly && (
             <button
               onClick={handleSubmit}
               disabled={!!error}
-              className="px-3 py-1 text-sm font-medium text-white bg-primary rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-1 text-sm font-medium text-white bg-primary rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0"
               title="Apply JSON changes to canvas"
             >
               Submit
@@ -387,7 +561,7 @@ export function JsonEditorPanel({
                 foldGutter: true,
                 autocompletion: true,
                 bracketMatching: true,
-                searchKeymap: true,
+                searchKeymap: false,
               }}
               editable={!isReadOnly}
               onCreateEditor={(view) => {
