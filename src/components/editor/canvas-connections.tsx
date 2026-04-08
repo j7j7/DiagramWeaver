@@ -1,7 +1,7 @@
 import React from "react";
 import { BezierConnection, determineConnectionEdges, getOptimalConnectionPoints, calculateBezierControlPoints, getBezierPoint, getPointOnConnectionPath } from "../diagram/bezier-connection";
 import { OrthogonalConnection } from "../diagram/othogonal-connection";
-import { computeOrthogonalRoute, computeOrthogonalRoutesBatch, getPointOnOrthogonalPath, collectObstacles, type OrthogonalRoute, type OrthogonalRouteRequest } from "@/lib/orthogonal-routing";
+import { computeOrthogonalRoute, computeOrthogonalRoutesBatch, getPointOnOrthogonalPath, collectObstacles, appendInteriorObstaclesForPreferredEdges, type OrthogonalRoute, type OrthogonalRouteRequest } from "@/lib/orthogonal-routing";
 import type { DiagramData, DiagramConnectionData } from "@/lib/types";
 import { measureNodeDims, type PositionedNode, type PositionedGroup, NODE_WIDTH, BASE_NODE_HEIGHT, TEXT_NODE_HEIGHT, EXTRA_LINE_HEIGHT, CONNECTION_HELPER_Z_INDEX } from "./canvas-constants";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
@@ -398,7 +398,16 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
       toIconOffsetX
     );
 
-    const obstacles = collectObstacles(nodesById, zonesById, [edge.from, edge.to].filter(Boolean));
+    const baseObstacles = collectObstacles(nodesById, zonesById, [edge.from, edge.to].filter(Boolean));
+    const obstacles = appendInteriorObstaclesForPreferredEdges(
+      baseObstacles,
+      nodesById,
+      zonesById,
+      edge.from,
+      edge.to,
+      edge.fromPreferredExit,
+      edge.toPreferredEntry,
+    );
 
     return {
       fromPos: geomFrom,
@@ -951,7 +960,16 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
       let arrowPoint: { x: number; y: number };
 
       if (connStyle === 'orthogonal') {
-        const obstacles = collectObstacles(nodesById, zonesById, [edge.from, edge.to].filter(Boolean));
+        const baseObstaclesToolbar = collectObstacles(nodesById, zonesById, [edge.from, edge.to].filter(Boolean));
+        const obstacles = appendInteriorObstaclesForPreferredEdges(
+          baseObstaclesToolbar,
+          nodesById,
+          zonesById,
+          edge.from,
+          edge.to,
+          edge.fromPreferredExit,
+          edge.toPreferredEntry,
+        );
         const route = orthogonalRouteMap.get(index)
           ?? computeOrthogonalRoute(fromX, fromY, toX, toY, fromAngle, toAngle, obstacles, edge?.waypoints, {
             smoothCorners: edge?.smoothCorners === true,

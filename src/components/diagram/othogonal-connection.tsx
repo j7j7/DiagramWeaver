@@ -7,6 +7,7 @@ import {
   computeOrthogonalRoute,
   getPointOnOrthogonalPath,
   collectObstacles,
+  appendInteriorObstaclesForPreferredEdges,
   type OrthogonalRoute,
 } from "@/lib/orthogonal-routing";
 import {
@@ -134,15 +135,31 @@ function OrthogonalConnectionInner({
     [from, to, fromWidth, fromHeight, toWidth, toHeight, connectionData]
   );
 
-  // Collect obstacles (exclude source and target nodes)
-  const obstacles = useMemo(
-    () => collectObstacles(
+  // Collect obstacles (exclude source and target nodes); block interior when user picked an edge
+  const obstacles = useMemo(() => {
+    const base = collectObstacles(
       nodesById,
       zonesById,
       [connectionData?.from ?? "", connectionData?.to ?? ""].filter(Boolean)
-    ),
-    [nodesById, zonesById, connectionData?.from, connectionData?.to]
-  );
+    );
+    if (!connectionData?.from || !connectionData?.to) return base;
+    return appendInteriorObstaclesForPreferredEdges(
+      base,
+      nodesById,
+      zonesById,
+      connectionData.from,
+      connectionData.to,
+      connectionData.fromPreferredExit,
+      connectionData.toPreferredEntry,
+    );
+  }, [
+    nodesById,
+    zonesById,
+    connectionData?.from,
+    connectionData?.to,
+    connectionData?.fromPreferredExit,
+    connectionData?.toPreferredEntry,
+  ]);
 
   // Route (with optional waypoints - path passes through each)
   const waypoints = connectionData?.waypoints;

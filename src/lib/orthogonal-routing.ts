@@ -1014,6 +1014,82 @@ export function getPointOnOrthogonalPath(
 }
 
 /**
+ * When the user explicitly chooses a connection edge (fromPreferredExit / toPreferredEntry),
+ * endpoints are excluded from the obstacle list — so the router would otherwise allow
+ * segments to cut through the node's interior (e.g. across the icon) before reaching the
+ * chosen side. We add a thin "free" strip along that chosen edge and block the rest of the
+ * node's interior so the path must approach from outside (e.g. top/bottom) instead of
+ * through the node.
+ */
+const PREFERRED_EDGE_STRIP_PX = CELL * 4; // 40px; ≥ stub length (CELL*3) so the corridor is usable
+
+function pushInteriorObstacleForPreferredEdge(
+  out: Rect[],
+  node: { x: number; y: number; width: number; height: number },
+  edge: 'top' | 'bottom' | 'left' | 'right',
+  stripWidth: number,
+): void {
+  const { x, y, width: w, height: h } = node;
+  const sw = Math.min(stripWidth, Math.max(0, w - 2), Math.max(0, h - 2));
+  if (sw <= 0) return;
+  switch (edge) {
+    case 'right': {
+      if (w - sw <= 2) return;
+      out.push({ x, y, width: w - sw, height: h });
+      break;
+    }
+    case 'left': {
+      if (w - sw <= 2) return;
+      out.push({ x: x + sw, y, width: w - sw, height: h });
+      break;
+    }
+    case 'top': {
+      if (h - sw <= 2) return;
+      out.push({ x, y: y + sw, width: w, height: h - sw });
+      break;
+    }
+    case 'bottom': {
+      if (h - sw <= 2) return;
+      out.push({ x, y, width: w, height: h - sw });
+      break;
+    }
+  }
+}
+
+function getNodeRectForRoutingObstacle(
+  id: string,
+  nodesById: Record<string, { x: number; y: number; width?: number; height?: number; [k: string]: any }>,
+  zonesById: Record<string, { x: number; y: number; width: number; height: number; [k: string]: any }>,
+): Rect | null {
+  const n = nodesById[id] || zonesById[id];
+  if (!n) return null;
+  const w = n.width ?? 80;
+  const h = n.height ?? 80;
+  return { x: n.x, y: n.y, width: w, height: h };
+}
+
+export function appendInteriorObstaclesForPreferredEdges(
+  obstacles: Rect[],
+  nodesById: Record<string, { x: number; y: number; width?: number; height?: number; [k: string]: any }>,
+  zonesById: Record<string, { x: number; y: number; width: number; height: number; [k: string]: any }>,
+  fromId: string,
+  toId: string,
+  fromPreferredExit?: 'top' | 'bottom' | 'left' | 'right' | 'center',
+  toPreferredEntry?: 'top' | 'bottom' | 'left' | 'right' | 'center',
+): Rect[] {
+  const out = [...obstacles];
+  if (fromPreferredExit && fromPreferredExit !== 'center') {
+    const r = getNodeRectForRoutingObstacle(fromId, nodesById, zonesById);
+    if (r) pushInteriorObstacleForPreferredEdge(out, r, fromPreferredExit, PREFERRED_EDGE_STRIP_PX);
+  }
+  if (toPreferredEntry && toPreferredEntry !== 'center') {
+    const r = getNodeRectForRoutingObstacle(toId, nodesById, zonesById);
+    if (r) pushInteriorObstacleForPreferredEdge(out, r, toPreferredEntry, PREFERRED_EDGE_STRIP_PX);
+  }
+  return out;
+}
+
+/**
  * Collect obstacle rectangles from the diagram for routing.
  * Excludes the source & target nodes so the path can exit/enter them.
  */

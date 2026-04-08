@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-04-08 – Orthogonal routing: no line through node when user picks an edge
+**Issue**: Endpoints are **excluded** from `collectObstacles`, so orthogonal paths could **cross the interior** of the source/target (e.g. through the **icon**) before reaching a **user-chosen** edge. **Fix**: **`appendInteriorObstaclesForPreferredEdges`** in **`orthogonal-routing.ts`** — when **`fromPreferredExit`** / **`toPreferredEntry`** is set to a **cardinal** side (not `center`), add an **interior** rectangle that blocks everything **except** a **~40px strip** along that edge so the path must **go around** (e.g. from **top**) like a clean port. Wired in **`canvas-connections.tsx`** (batch + toolbar) and **`othogonal-connection.tsx`**.
+
 ### 2026-04-08 – Connection edge drag handles (editor)
 **UI**: When a **connection** is selected, **small green square** handles appear at the **start** and **end** attachment points (same overlay layer as arrow / waypoint controls). **Drag** near a node to pick **which side** the line exits (source) or enters (target); updates persisted **`fromPreferredExit`** / **`toPreferredEntry`** (with the other end filled from **auto** layout when first overridden). Respects **`edgeAttachmentConstraint`**. Hidden when the connection is deselected, when **read-only**, or without editor **`transform` + `canvasRef`**. **Files**: **`connection-endpoint-handles.tsx`**, **`canvas-connections.tsx`**, **`editor-canvas.tsx`**, **`bezier-connection.tsx`** (memo key + **`clampEdgeAttachmentForConstraint`** / **`computeAxisDeltasForConnectionNodes`** exports), **`othogonal-connection.tsx`** (memo compares preferred edges).
 
