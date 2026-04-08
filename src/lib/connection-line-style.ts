@@ -3,6 +3,13 @@ import type { DiagramConnectionData } from "@/lib/types";
 const MIN_W = 1;
 const MAX_W = 50;
 
+/**
+ * Reference line width (px) for connection animation **spacing along the path** only.
+ * Dot **render** size still uses actual `lineWidth`; decoupling avoids huge spacing when the line is very thick
+ * (which would otherwise reduce dot count to zero on short paths).
+ */
+export const CONNECTION_ANIMATION_SPACING_REF_LINE_PX = 2.5;
+
 function fmtAnimFloat(v: number): string {
   return Number.isFinite(v) ? v.toFixed(6).replace(/0+$/, '').replace(/\.$/, '') || '0' : '0';
 }

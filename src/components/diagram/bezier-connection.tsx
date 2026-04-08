@@ -16,6 +16,7 @@ import {
   maxResolvedLineWidth,
   lineWidthAtPathFraction,
   scaleValuesForAnimationKeyPoints,
+  CONNECTION_ANIMATION_SPACING_REF_LINE_PX,
 } from "@/lib/connection-line-style";
 import { connectionStrokeDashFromLineType } from "@/lib/utils";
 
@@ -1148,7 +1149,9 @@ function BezierConnectionInner({ from, to, connectionColor, connectionData, expo
   const connectionThickness = maxResolvedLineWidth(rw);
   const shapeSize = animation.size * 2 * connectionThickness;
   const baseAnimShapeSize = animation.size * 2 * Math.max(rw.wStart, rw.wEnd, 1e-6);
-  const spacingDistance = shapeSize * (1 + animation.spacing);
+  /** Spacing for count/layout only — uses ref line width so frequency does not collapse when the stroke is very wide. */
+  const spacingDistance =
+    (animation.size * 2 * CONNECTION_ANIMATION_SPACING_REF_LINE_PX) * (1 + animation.spacing);
   const hasExportAnimationTime = typeof exportAnimationTimeSeconds === 'number' && Number.isFinite(exportAnimationTimeSeconds);
   const pathLengthForCount = computePathLengthLight(fromX, fromY, toX, toY, fromAngle, toAngle, curvature, waypoints);
   const maxShapeCountByLength = spacingDistance > 0 ? Math.floor(pathLengthForCount / spacingDistance) : 0;

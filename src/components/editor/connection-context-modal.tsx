@@ -2,16 +2,16 @@
 
 import React, { useRef, useEffect, useState } from "react";
 import Draggable from "react-draggable";
-import { X, Plus, GripHorizontal, ArrowRight, ArrowDownUp, ArrowLeftRight, Link2, Trash2, Lock, Unlock } from "lucide-react";
+import { X, Plus, GripHorizontal, ArrowRight, ArrowDownUp, ArrowLeftRight, Link2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { ColorPicker } from "@/components/ui/color-picker";
 import { Switch } from "@/components/ui/switch";
 import type { DiagramConnectionData, DiagramData } from "@/lib/types";
 import { ConnectionAnimationControls } from "@/components/editor/connection-animation-controls";
+import { ConnectionLineStyleFields } from "@/components/editor/connection-line-style-fields";
 
 interface ConnectionContextModalProps {
   x: number;
@@ -88,63 +88,8 @@ export function ConnectionContextModal({
     onConnectionUpdate(connection.from, connection.to, { arrow: !hasArrow, toArrow: !hasArrow }, connId);
   };
 
-  const handleColorChange = (color: string) => {
-    onConnectionUpdate(connection.from, connection.to, { color }, connId);
-  };
-
   const handleTextPositionChange = (value: number) => {
     onConnectionUpdate(connection.from, connection.to, { textPosition: value }, connId);
-  };
-
-  const handleLineWidthChange = (value: number) => {
-    onConnectionUpdate(connection.from, connection.to, { lineWidth: value }, connId);
-  };
-
-  const handleLineWidthEndChange = (value: number) => {
-    onConnectionUpdate(connection.from, connection.to, { lineWidthEnd: value }, connId);
-  };
-
-  const lineWidthLocked = liveConnection.lineWidthLock !== false;
-  const colorLocked = liveConnection.colorLock !== false;
-
-  const toggleLineWidthLock = () => {
-    if (lineWidthLocked) {
-      onConnectionUpdate(
-        connection.from,
-        connection.to,
-        {
-          lineWidthLock: false,
-          lineWidthEnd: liveConnection.lineWidthEnd ?? liveConnection.lineWidth ?? 2.5,
-        },
-        connId
-      );
-    } else {
-      onConnectionUpdate(connection.from, connection.to, { lineWidthLock: true }, connId);
-    }
-  };
-
-  const toggleColorLock = () => {
-    if (colorLocked) {
-      onConnectionUpdate(
-        connection.from,
-        connection.to,
-        {
-          colorLock: false,
-          colorEnd: liveConnection.colorEnd ?? liveConnection.color ?? connectionColor,
-        },
-        connId
-      );
-    } else {
-      onConnectionUpdate(connection.from, connection.to, { colorLock: true }, connId);
-    }
-  };
-
-  const handleColorEndChange = (color: string) => {
-    onConnectionUpdate(connection.from, connection.to, { colorEnd: color }, connId);
-  };
-
-  const handleShadowToggle = () => {
-    onConnectionUpdate(connection.from, connection.to, { shadow: !(liveConnection.shadow || false) }, connId);
   };
 
   const handleLineStyleChange = (style: "bezier" | "orthogonal") => {
@@ -380,107 +325,15 @@ export function ConnectionContextModal({
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between gap-2">
-                  <Label className="text-xs font-medium">Line thickness</Label>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-8 w-8 p-0 shrink-0"
-                        onClick={toggleLineWidthLock}
-                        disabled={isReadOnly}
-                        aria-label={lineWidthLocked ? "Unlock start and end thickness" : "Lock to single thickness"}
-                      >
-                        {lineWidthLocked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {lineWidthLocked
-                        ? "Same thickness both ends — click to set start and end separately"
-                        : "Start and end unlocked — click to use one thickness"}
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {lineWidthLocked ? (
-                    <>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={50}
-                        value={(liveConnection.lineWidth || 2.5).toString()}
-                        onChange={(e) => {
-                          const width = Math.max(
-                            1,
-                            Math.min(50, parseFloat(e.target.value) || 2.5)
-                          );
-                          handleLineWidthChange(width);
-                        }}
-                        className="h-8 w-[4.25rem] text-xs text-center shrink-0"
-                        disabled={isReadOnly}
-                      />
-                      <span className="text-xs text-muted-foreground shrink-0">px</span>
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex items-center gap-1">
-                        <span className="text-[10px] text-muted-foreground w-8 shrink-0">Start</span>
-                        <Input
-                          type="number"
-                          min={1}
-                          max={50}
-                          value={(liveConnection.lineWidth ?? 2.5).toString()}
-                          onChange={(e) => {
-                            const width = Math.max(
-                              1,
-                              Math.min(50, parseFloat(e.target.value) || 2.5)
-                            );
-                            handleLineWidthChange(width);
-                          }}
-                          className="h-8 w-[3.75rem] text-xs text-center shrink-0"
-                          disabled={isReadOnly}
-                        />
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="text-[10px] text-muted-foreground w-8 shrink-0">End</span>
-                        <Input
-                          type="number"
-                          min={1}
-                          max={50}
-                          value={(liveConnection.lineWidthEnd ?? liveConnection.lineWidth ?? 2.5).toString()}
-                          onChange={(e) => {
-                            const width = Math.max(
-                              1,
-                              Math.min(50, parseFloat(e.target.value) || 2.5)
-                            );
-                            handleLineWidthEndChange(width);
-                          }}
-                          className="h-8 w-[3.75rem] text-xs text-center shrink-0"
-                          disabled={isReadOnly}
-                        />
-                      </div>
-                      <span className="text-xs text-muted-foreground shrink-0">px</span>
-                    </>
-                  )}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant={(liveConnection.shadow || false) ? "default" : "outline"}
-                        size="sm"
-                        className="h-8 w-8 p-0 shrink-0"
-                        onClick={handleShadowToggle}
-                        aria-pressed={!!liveConnection.shadow}
-                      >
-                        <ShadowIcon active={!!liveConnection.shadow} />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Depth effect</TooltipContent>
-                  </Tooltip>
-                </div>
-              </div>
+              <ConnectionLineStyleFields
+                liveConnection={liveConnection}
+                resolvedConnectionColor={connectionColor}
+                from={connection.from}
+                to={connection.to}
+                connectionId={connId}
+                onConnectionUpdate={onConnectionUpdate}
+                isReadOnly={isReadOnly}
+              />
 
               {lineStyle === "orthogonal" && (
                 <div className="space-y-1.5">
@@ -625,64 +478,6 @@ export function ConnectionContextModal({
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between gap-2">
-                  <Label className="text-xs font-medium">Line color</Label>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-8 w-8 p-0 shrink-0"
-                        onClick={toggleColorLock}
-                        disabled={isReadOnly}
-                        aria-label={colorLocked ? "Unlock start and end colors" : "Lock to single color"}
-                      >
-                        {colorLocked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {colorLocked
-                        ? "Single color — click to gradient from start to end"
-                        : "Gradient unlocked — click to use one color"}
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-                {colorLocked ? (
-                  <ColorPicker
-                    value={connectionColor}
-                    onChange={handleColorChange}
-                    placeholder="#6b7280"
-                    showAlpha={true}
-                    allowTransparent={true}
-                  />
-                ) : (
-                  <div className="space-y-2">
-                    <div className="space-y-1">
-                      <span className="text-[10px] text-muted-foreground">Start</span>
-                      <ColorPicker
-                        value={liveConnection.color ?? connectionColor}
-                        onChange={handleColorChange}
-                        placeholder="#6b7280"
-                        showAlpha={true}
-                        allowTransparent={true}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-[10px] text-muted-foreground">End</span>
-                      <ColorPicker
-                        value={liveConnection.colorEnd ?? liveConnection.color ?? connectionColor}
-                        onChange={handleColorEndChange}
-                        placeholder="#6b7280"
-                        showAlpha={true}
-                        allowTransparent={true}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
               {onConnectionDisconnect && !isReadOnly && (
                 <div className="flex justify-end pt-1">
                   <Tooltip>
@@ -771,36 +566,5 @@ export function ConnectionContextModal({
         </div>
       </Draggable>
     </div>
-  );
-}
-
-function ShadowIcon({ active }: { active: boolean }) {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 12 12"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <rect
-        x="2"
-        y="2"
-        width="6"
-        height="6"
-        rx="0.5"
-        fill="rgba(0, 0, 0, 0.15)"
-      />
-      <rect
-        x="0.5"
-        y="0.5"
-        width="6"
-        height="6"
-        rx="0.5"
-        fill={active ? "#22c55e" : "#9ca3af"}
-        stroke={active ? "#22c55e" : "#9ca3af"}
-        strokeWidth="0.3"
-      />
-    </svg>
   );
 }

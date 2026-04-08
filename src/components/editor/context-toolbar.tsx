@@ -52,6 +52,7 @@ import { UmlClassTextStylingPanel } from './uml-class-text-styling-panel';
 import { VisualStylingPanel } from './visual-styling-panel';
 import { LineStylingPanel } from './line-styling-panel';
 import { ConnectionAnimationControls } from './connection-animation-controls';
+import { ConnectionLineStyleFields } from './connection-line-style-fields';
 import type { SelectedItem } from '../diagram-editor';
 import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramConnectionData } from '@/lib/types';
 import { DiagramTheme } from '@/lib/theme-types';
@@ -417,7 +418,6 @@ export function ContextToolbar({
   }, [flushLabelChange]);
 
   const colorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const connectionColorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleColorChange = useCallback((property: 'borderColor' | 'backgroundColor' | 'textColor' | 'lineColor', value: string) => {
     if (colorTimeoutRef.current) {
@@ -442,7 +442,6 @@ export function ContextToolbar({
   useEffect(() => {
     return () => {
       if (colorTimeoutRef.current) clearTimeout(colorTimeoutRef.current);
-      if (connectionColorTimeoutRef.current) clearTimeout(connectionColorTimeoutRef.current);
       if (labelDebounceRef.current) clearTimeout(labelDebounceRef.current);
     };
   }, []);
@@ -1550,28 +1549,33 @@ export function ContextToolbar({
                       <div className="text-sm text-muted-foreground py-2">No connections</div>
                     ) : (
                       getAllConnections.map((connInfo, index) => {
-                        const hasArrow = connInfo.connection.arrow === true || connInfo.connection.toArrow === true;
-                        const connectionLineStyle = connInfo.connection.style ?? 'bezier';
-                        const strokePattern = connInfo.connection.lineType ?? 'solid';
-                        const connectionSmoothCorners = connectionLineStyle === 'orthogonal' && connInfo.connection.smoothCorners === true;
-                        
-                        // Get the actual connection color using the same inheritance logic as the rendered connection
-                        const fromNode = diagramData?.nodes.find(n => n.id === connInfo.connection.from) || 
-                                        diagramData?.zones?.find(z => z.id === connInfo.connection.from);
-                        const toNode = diagramData?.nodes.find(n => n.id === connInfo.connection.to) || 
-                                      diagramData?.zones?.find(z => z.id === connInfo.connection.to);
-                        
-                        const connectionColor = connInfo.connection.color || 
-                                              toNode?.lineColor || 
-                                              fromNode?.lineColor || 
-                                              '#6b7280';
-                        
-                        const textPosition = connInfo.connection.textPosition ?? 50; // Default to 50%
-                        const connectionText = connInfo.connection.text || '';
-                        
+                        const fromNode =
+                          diagramData?.nodes.find((n) => n.id === connInfo.connection.from) ||
+                          diagramData?.zones?.find((z) => z.id === connInfo.connection.from);
+                        const toNode =
+                          diagramData?.nodes.find((n) => n.id === connInfo.connection.to) ||
+                          diagramData?.zones?.find((z) => z.id === connInfo.connection.to);
+
                         const connId = (connInfo.connection as DiagramConnectionData).id;
                         const connectionRowKey = connId ?? `${connInfo.connection.from}-${connInfo.connection.to}-${index}`;
                         const isConnectionExpanded = expandedConnectionKeys.has(connectionRowKey);
+                        const diagramSource = currentDiagramData ?? diagramData;
+                        const liveConnection =
+                          diagramSource?.connections?.find((c) =>
+                            connId ? c.id === connId : c.from === connInfo.connection.from && c.to === connInfo.connection.to
+                          ) ?? connInfo.connection;
+
+                        const hasArrow = liveConnection.arrow === true || liveConnection.toArrow === true;
+                        const connectionLineStyle = liveConnection.style ?? 'bezier';
+                        const strokePattern = liveConnection.lineType ?? 'solid';
+                        const connectionSmoothCorners =
+                          connectionLineStyle === 'orthogonal' && liveConnection.smoothCorners === true;
+
+                        const connectionColor =
+                          liveConnection.color || toNode?.lineColor || fromNode?.lineColor || '#6b7280';
+
+                        const textPosition = liveConnection.textPosition ?? 50;
+                        const connectionText = liveConnection.text || '';
                         const handleConnectionArrowToggle = () => {
                           if (onConnectionUpdate) {
                             onConnectionUpdate(
@@ -1580,30 +1584,6 @@ export function ContextToolbar({
                               { arrow: !hasArrow, toArrow: !hasArrow },
                               connId
                             );
-                          }
-                        };
-
-                        // Debounced connection color change
-                        const handleConnectionColorChange = (color: string, immediate = false) => {
-                          if (connectionColorTimeoutRef.current) {
-                            clearTimeout(connectionColorTimeoutRef.current);
-                          }
-                          
-                          const updateColor = () => {
-                            if (onConnectionUpdate) {
-                              onConnectionUpdate(
-                                connInfo.connection.from,
-                                connInfo.connection.to,
-                                { color: color },
-                                connId
-                              );
-                            }
-                          };
-                          
-                          if (immediate) {
-                            updateColor();
-                          } else {
-                            connectionColorTimeoutRef.current = setTimeout(updateColor, 150);
                           }
                         };
 
@@ -1767,63 +1747,18 @@ export function ContextToolbar({
                                   </div>
                                 </div>
 
-                                <div className="space-y-1.5">
-                                  <Label className="text-xs font-medium">Line thickness</Label>
-                                  <div className="flex flex-wrap items-center gap-1.5">
-                                    <Input
-                                      type="number"
-                                      min={1}
-                                      max={50}
-                                      value={(connInfo.connection.lineWidth || 2.5).toString()}
-                                      onChange={(e) => {
-                                        const width = Math.max(1, Math.min(50, parseFloat(e.target.value) || 2.5));
-                                        onConnectionUpdate?.(
-                                          connInfo.connection.from,
-                                          connInfo.connection.to,
-                                          { lineWidth: width },
-                                          connId
-                                        );
-                                      }}
-                                      className="h-8 w-[4.25rem] text-xs text-center shrink-0"
-                                      title="Line thickness (1-10 pixels)"
-                                    />
-                                    <span className="text-xs text-muted-foreground shrink-0">px</span>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          type="button"
-                                          variant={(connInfo.connection.shadow || false) ? 'default' : 'outline'}
-                                          size="sm"
-                                          className="h-8 w-8 p-0 shrink-0"
-                                          onClick={() =>
-                                            onConnectionUpdate?.(
-                                              connInfo.connection.from,
-                                              connInfo.connection.to,
-                                              { shadow: !(connInfo.connection.shadow || false) },
-                                              connId
-                                            )
-                                          }
-                                          aria-pressed={!!connInfo.connection.shadow}
-                                        >
-                                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <rect x="2" y="2" width="6" height="6" rx="0.5" fill="rgba(0, 0, 0, 0.15)" />
-                                            <rect
-                                              x="0.5"
-                                              y="0.5"
-                                              width="6"
-                                              height="6"
-                                              rx="0.5"
-                                              fill={(connInfo.connection.shadow || false) ? '#22c55e' : '#9ca3af'}
-                                              stroke={(connInfo.connection.shadow || false) ? '#22c55e' : '#9ca3af'}
-                                              strokeWidth="0.3"
-                                            />
-                                          </svg>
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>Depth effect</TooltipContent>
-                                    </Tooltip>
-                                  </div>
-                                </div>
+                                <ConnectionLineStyleFields
+                                  liveConnection={liveConnection}
+                                  resolvedConnectionColor={connectionColor}
+                                  from={connInfo.connection.from}
+                                  to={connInfo.connection.to}
+                                  connectionId={connId}
+                                  onConnectionUpdate={(from, to, updates, cid) =>
+                                    onConnectionUpdate?.(from, to, updates, cid)
+                                  }
+                                  isReadOnly={isReadOnly}
+                                  debounceColorMs={150}
+                                />
 
                                 {connectionLineStyle === 'orthogonal' && (
                                   <div className="space-y-1.5">
@@ -1856,7 +1791,7 @@ export function ContextToolbar({
                                       </p>
                                     </div>
                                     <Switch
-                                      checked={connInfo.connection.centerEdgeAnchors === true}
+                                      checked={liveConnection.centerEdgeAnchors === true}
                                       onCheckedChange={(checked: boolean) =>
                                         onConnectionUpdate?.(
                                           connInfo.connection.from,
@@ -1885,17 +1820,17 @@ export function ContextToolbar({
                                         <TooltipTrigger asChild>
                                           <Button
                                             type="button"
-                                            variant={connInfo.connection.edgeAttachmentConstraint === 'top-bottom' ? 'default' : 'outline'}
+                                            variant={liveConnection.edgeAttachmentConstraint === 'top-bottom' ? 'default' : 'outline'}
                                             size="sm"
                                             className="h-8 w-8 p-0"
                                             disabled={isReadOnly}
-                                            aria-pressed={connInfo.connection.edgeAttachmentConstraint === 'top-bottom'}
+                                            aria-pressed={liveConnection.edgeAttachmentConstraint === 'top-bottom'}
                                             aria-label="Top and bottom edges only"
                                             onClick={() =>
                                               onConnectionUpdate?.(
                                                 connInfo.connection.from,
                                                 connInfo.connection.to,
-                                                connInfo.connection.edgeAttachmentConstraint === 'top-bottom'
+                                                liveConnection.edgeAttachmentConstraint === 'top-bottom'
                                                   ? { edgeAttachmentConstraint: undefined }
                                                   : { edgeAttachmentConstraint: 'top-bottom' },
                                                 connId
@@ -1911,17 +1846,17 @@ export function ContextToolbar({
                                         <TooltipTrigger asChild>
                                           <Button
                                             type="button"
-                                            variant={connInfo.connection.edgeAttachmentConstraint === 'left-right' ? 'default' : 'outline'}
+                                            variant={liveConnection.edgeAttachmentConstraint === 'left-right' ? 'default' : 'outline'}
                                             size="sm"
                                             className="h-8 w-8 p-0"
                                             disabled={isReadOnly}
-                                            aria-pressed={connInfo.connection.edgeAttachmentConstraint === 'left-right'}
+                                            aria-pressed={liveConnection.edgeAttachmentConstraint === 'left-right'}
                                             aria-label="Left and right edges only"
                                             onClick={() =>
                                               onConnectionUpdate?.(
                                                 connInfo.connection.from,
                                                 connInfo.connection.to,
-                                                connInfo.connection.edgeAttachmentConstraint === 'left-right'
+                                                liveConnection.edgeAttachmentConstraint === 'left-right'
                                                   ? { edgeAttachmentConstraint: undefined }
                                                   : { edgeAttachmentConstraint: 'left-right' },
                                                 connId
@@ -1989,17 +1924,6 @@ export function ContextToolbar({
                                   </div>
                                 </div>
 
-                                <div className="space-y-1.5">
-                                  <Label className="text-xs font-medium">Color</Label>
-                                  <ColorPicker
-                                    value={connectionColor}
-                                    onChange={handleConnectionColorChange}
-                                    placeholder="#6b7280"
-                                    showAlpha={true}
-                                    allowTransparent={true}
-                                  />
-                                </div>
-
                                 {onConnectionDisconnect && !isReadOnly && (
                                   <div className="flex justify-end pt-1">
                                     <Tooltip>
@@ -2033,7 +1957,7 @@ export function ContextToolbar({
 
                             <div className="border-t border-border pt-3 space-y-2">
                               <ConnectionAnimationControls
-                                connection={connInfo.connection}
+                                connection={liveConnection}
                                 inheritedConnectionColor={connectionColor}
                                 onConnectionUpdate={(from, to, updates) => onConnectionUpdate?.(from, to, updates, connId)}
                                 onBulkApply={handleBulkConnectionAnimationApply}
@@ -2062,9 +1986,9 @@ export function ContextToolbar({
                                   </Button>
                                 )}
                               </div>
-                              {(connInfo.connection.waypoints ?? []).length > 0 && (
+                              {(liveConnection.waypoints ?? []).length > 0 && (
                                 <div className="space-y-0.5 max-h-32 overflow-y-auto">
-                                  {(connInfo.connection.waypoints ?? []).map(
+                                  {(liveConnection.waypoints ?? []).map(
                                     (wp: { x: number; y: number; id?: string }, idx: number) => (
                                       <div
                                         key={wp.id ?? idx}

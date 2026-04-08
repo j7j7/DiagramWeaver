@@ -12,7 +12,7 @@ import {
   MenubarSubTrigger,
   MenubarSubContent,
 } from '@/components/ui/menubar';
-import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type } from 'lucide-react';
+import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type, Activity } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
 import { ThemeEditor } from './theme-editor';
 import { RulesEditor } from './rules-editor';
@@ -26,6 +26,7 @@ import type { DiagramData } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { DiagramTheme } from '@/lib/theme-types';
 import { APP_BUILD, APP_SEMVER } from '@/lib/app-version';
+import { cn } from '@/lib/utils';
 
 const truncateName = (s: string, max = 20) => (s.length > max ? `${s.slice(0, max - 3)}...` : s);
 
@@ -793,6 +794,27 @@ export function TopMenuBar({
           title="Fit to View"
         >
           <Maximize2 className="h-4 w-4" />
+        </Button>
+      )}
+      {onToggleAnimationConnections && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className={cn('h-8 px-2', !(animationConnectionsEnabled ?? true) && 'opacity-50')}
+          onClick={onToggleAnimationConnections}
+          title={
+            (animationConnectionsEnabled ?? true)
+              ? 'Disable connection line animations (Ctrl+Alt+A)'
+              : 'Enable connection line animations (Ctrl+Alt+A)'
+          }
+          aria-label={
+            (animationConnectionsEnabled ?? true)
+              ? 'Disable connection line animations'
+              : 'Enable connection line animations'
+          }
+          aria-pressed={(animationConnectionsEnabled ?? true) ? 'true' : 'false'}
+        >
+          <Activity className="h-4 w-4" />
         </Button>
       )}
       

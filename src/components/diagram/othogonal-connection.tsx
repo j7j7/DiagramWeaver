@@ -27,6 +27,7 @@ import {
   maxResolvedLineWidth,
   lineWidthAtPathFraction,
   scaleValuesForAnimationKeyPoints,
+  CONNECTION_ANIMATION_SPACING_REF_LINE_PX,
 } from "@/lib/connection-line-style";
 import { connectionStrokeDashFromLineType } from "@/lib/utils";
 
@@ -253,7 +254,8 @@ function OrthogonalConnectionInner({
   const connectionThickness = thickness;
   const shapeSize = animation.size * 2 * connectionThickness;
   const baseAnimShapeSize = animation.size * 2 * Math.max(rw.wStart, rw.wEnd, 1e-6);
-  const spacingDistance = shapeSize * (1 + animation.spacing);
+  const spacingDistance =
+    (animation.size * 2 * CONNECTION_ANIMATION_SPACING_REF_LINE_PX) * (1 + animation.spacing);
   const pathLengthForCount = route.totalLength;
   const maxShapeCountByLength = spacingDistance > 0 ? Math.floor(pathLengthForCount / spacingDistance) : 0;
   const requestedShapeCount = animation.autoCount ? maxShapeCountByLength : animation.shapeCount;
