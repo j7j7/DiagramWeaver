@@ -3618,11 +3618,12 @@ export default function DiagramEditor() {
                            node.type === 'generic.object.star' ||
                            node.type === 'generic.object.cloud';
         
-        // Check if it's a textbox node
+        // Check if it's a textbox or plain text node (same custom sizing behavior)
         const isTextboxNode = node.type === 'generic.text.textbox';
+        const isPlainTextNode = node.type === 'generic.text.text';
         
         // Use custom dimensions if sizeMode is 'custom' and dimensions are provided
-        if ((isTextboxNode || isShapeNode) && node.sizeMode === 'custom' && node.width && node.height) {
+        if ((isTextboxNode || isPlainTextNode || isShapeNode) && node.sizeMode === 'custom' && node.width && node.height) {
           return { width: node.width, height: node.height };
         }
         
@@ -3636,7 +3637,7 @@ export default function DiagramEditor() {
           return { width: 180, height: 90 };
         }
         if (node.type?.startsWith('generic.text')) {
-          if (node.type === 'generic.text.textbox') {
+          if (node.type === 'generic.text.textbox' || node.type === 'generic.text.text') {
             return { width: 120, height: 60 };
           }
           return { width: 100, height: 40 };

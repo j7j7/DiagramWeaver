@@ -126,6 +126,7 @@ export function useCanvasOperations({
       
       // Check if this is a textbox resource
       const isTextboxResource = itemType === 'generic.text.textbox' || itemType?.endsWith('.textbox');
+      const isRichTextBoxLikeResource = isTextboxResource || itemType === 'generic.text.text';
       const useResourceLabelForNewNode =
         itemType === 'generic.text.text' ||
         isTextboxResource ||
@@ -153,7 +154,7 @@ export function useCanvasOperations({
             defaultTextLabelsEnabled && {
               info: item.provider ? `${itemLabel} from ${item.provider}` : `A new ${itemLabel}`,
             }),
-          sizeMode: (isShapeResource || isTextboxResource) ? 'custom' : undefined, // Shapes and textboxes use custom sizing
+          sizeMode: (isShapeResource || isRichTextBoxLikeResource) ? 'custom' : undefined, // Shapes, textbox, and plain text use custom sizing
            width: isShapeResource ? snapDimensionToGrid(
              itemType === 'generic.object.point' ? 20 :
              itemType === 'generic.object.rectangle' ? 80 :
@@ -163,7 +164,7 @@ export function useCanvasOperations({
              itemType === 'generic.object.cloud' ? 80 :
              itemType === 'generic.object.line' ? 150 :
              60
-           ) : isTextboxResource ? snapDimensionToGrid(240, 40) : undefined, // Initial width - 100% wider than before (was 120)
+           ) : isRichTextBoxLikeResource ? snapDimensionToGrid(240, 40) : undefined, // Initial width - 100% wider than before (was 120)
            height: isShapeResource ? snapDimensionToGrid(
              itemType === 'generic.object.point' ? 20 :
              itemType === 'generic.object.rectangle' ? 50 :
@@ -173,18 +174,18 @@ export function useCanvasOperations({
              itemType === 'generic.object.cloud' ? 50 :
              itemType === 'generic.object.line' ? 100 :
              60
-           ) : isTextboxResource ? snapDimensionToGrid(80, 40) : undefined, // Initial height - larger for textbox
+           ) : isRichTextBoxLikeResource ? snapDimensionToGrid(80, 40) : undefined, // Initial height - same as textbox for plain text
           // Apply default text color for text resources
           ...((itemType === 'generic.text.text' || itemType === 'generic.text.textbox') && {
             textColor: DEFAULT_TEXT_STYLING.textColor
           }),
-          // Default textbox: center text horizontally and vertically
-          ...(isTextboxResource && !isFromScratchPad && {
+          // Textbox + plain text: center text horizontally and vertically
+          ...(isRichTextBoxLikeResource && !isFromScratchPad && {
             textJustify: 'center' as const,
             textVerticalPosition: 'middle' as const,
           }),
-          // Standalone text node: same horizontal/vertical defaults as textbox
-          ...((itemType === 'generic.text.text' || itemType?.endsWith('.text')) && !isTextboxResource && !isFromScratchPad && {
+          // Other `.text` resources (not textbox / not generic.text.text): same alignment defaults
+          ...(itemType?.endsWith('.text') && !isRichTextBoxLikeResource && !isFromScratchPad && {
             textJustify: 'center' as const,
             textVerticalPosition: 'middle' as const,
           }),
@@ -271,7 +272,7 @@ export function useCanvasOperations({
 
           let minWidth = 80;
           let minHeight = 40;
-          if (node.type === 'generic.text.textbox') {
+          if (node.type === 'generic.text.textbox' || node.type === 'generic.text.text') {
             minWidth = 40;
             minHeight = 40;
           } else if (isShapeNode) {
@@ -324,7 +325,7 @@ export function useCanvasOperations({
           let minHeight = 40;
           const isShapeNode = isShapeNodeType(node.type);
 
-          if (node.type === 'generic.text.textbox') {
+          if (node.type === 'generic.text.textbox' || node.type === 'generic.text.text') {
             minWidth = 40;
             minHeight = 40;
           } else if (isShapeNode) {

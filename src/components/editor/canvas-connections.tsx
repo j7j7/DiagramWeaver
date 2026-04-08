@@ -275,14 +275,9 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
 
     const calculateNodeHeight = (label: string = "", nodeType: string, sizeMode?: string, customHeight?: number) => {
       if (sizeMode === "custom" && customHeight) return customHeight;
-      if (nodeType === "generic.text.textbox") {
+      if (nodeType === "generic.text.textbox" || nodeType === "generic.text.text") {
         const maxCharsPerLine = 30;
         const lines = Math.max(1, Math.ceil(label.length / maxCharsPerLine));
-        return 40 + ((lines - 1) * EXTRA_LINE_HEIGHT);
-      }
-      if (nodeType === "generic.text.text") {
-        const maxCharsPerLine = 20;
-        const lines = Math.ceil(label.length / maxCharsPerLine);
         return TEXT_NODE_HEIGHT + ((lines - 1) * EXTRA_LINE_HEIGHT);
       }
       const maxCharsPerLine = 12;
@@ -573,13 +568,9 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
         // Calculate node heights
         const calculateNodeHeight = (label: string = '', nodeType: string, sizeMode?: string, customHeight?: number) => {
           if (sizeMode === 'custom' && customHeight) return customHeight;
-          if (nodeType === 'generic.text.textbox') {
+          if (nodeType === 'generic.text.textbox' || nodeType === 'generic.text.text') {
             const maxCharsPerLine = 30;
             const lines = Math.max(1, Math.ceil(label.length / maxCharsPerLine));
-            return 40 + ((lines - 1) * EXTRA_LINE_HEIGHT);
-          } else if (nodeType === 'generic.text.text') {
-            const maxCharsPerLine = 20;
-            const lines = Math.ceil(label.length / maxCharsPerLine);
             return TEXT_NODE_HEIGHT + ((lines - 1) * EXTRA_LINE_HEIGHT);
           } else {
             const maxCharsPerLine = 12;
@@ -858,13 +849,9 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
       
       const calculateNodeHeight = (label: string = '', nodeType: string, sizeMode?: string, customHeight?: number) => {
         if (sizeMode === 'custom' && customHeight) return customHeight;
-        if (nodeType === 'generic.text.textbox') {
+        if (nodeType === 'generic.text.textbox' || nodeType === 'generic.text.text') {
           const maxCharsPerLine = 30;
           const lines = Math.max(1, Math.ceil(label.length / maxCharsPerLine));
-          return 40 + ((lines - 1) * EXTRA_LINE_HEIGHT);
-        } else if (nodeType === 'generic.text.text') {
-          const maxCharsPerLine = 20;
-          const lines = Math.ceil(label.length / maxCharsPerLine);
           return TEXT_NODE_HEIGHT + ((lines - 1) * EXTRA_LINE_HEIGHT);
         } else {
           const maxCharsPerLine = 12;

@@ -181,6 +181,7 @@ export const DiagramConnectionDataSchema = z.object({
   smoothCorners: z.boolean().optional(), // Rounded corners for orthogonal connection bends
   curvature: z.number().optional(), // Bezier curve intensity (0.1 to 1.0)
   lineWidth: z.number().optional(), // Line thickness for the connection (default: 2.5)
+  lineType: z.enum(['solid', 'dashed', 'dotted']).optional(),
   shadow: z.boolean().optional(), // Whether to show shadow around the connection line
   centerEdgeAnchors: z.boolean().optional(), // Attach at edge center instead of spreading along the edge
   edgeAttachmentConstraint: z.enum(['auto', 'top-bottom', 'left-right']).optional(),

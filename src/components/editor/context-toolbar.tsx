@@ -379,7 +379,7 @@ export function ContextToolbar({
     const value = labelInputValue.trim();
     if (selectedItem && selectedItem.itemType !== 'edge' && value !== ((selectedItem as { label?: string }).label || '')) {
       const updated = { ...selectedItem, label: value } as SelectedItem;
-      if (selectedItem.type === 'generic.text.textbox') {
+      if (selectedItem.type === 'generic.text.textbox' || selectedItem.type === 'generic.text.text') {
         (updated as any).richLabel = undefined;
       }
       onItemUpdate?.(updated);
@@ -395,7 +395,7 @@ export function ContextToolbar({
       labelDebounceRef.current = null;
       if (selectedItem && selectedItem.itemType !== 'edge' && value.trim() !== ((selectedItem as { label?: string }).label || '')) {
         const updated = { ...selectedItem, label: value.trim() } as SelectedItem;
-        if (selectedItem.type === 'generic.text.textbox') {
+        if (selectedItem.type === 'generic.text.textbox' || selectedItem.type === 'generic.text.text') {
           (updated as any).richLabel = undefined;
         }
         onItemUpdate?.(updated);

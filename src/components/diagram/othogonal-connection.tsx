@@ -19,6 +19,7 @@ import {
   type Positionable,
 } from "./bezier-connection";
 import { clampConnectionAnimation } from "@/lib/connection-animation";
+import { connectionStrokeDashFromLineType } from "@/lib/utils";
 
 // --- Props Interface ---
 
@@ -62,7 +63,7 @@ function connectionDataEqual(a?: DiagramConnectionData, b?: DiagramConnectionDat
   if (a === b) return true;
   if (!a || !b) return a === b;
   if (a.from !== b.from || a.to !== b.to || (a as any).id !== (b as any).id) return false;
-  if (a.lineWidth !== b.lineWidth || a.shadow !== b.shadow || a.color !== b.color) return false;
+  if (a.lineWidth !== b.lineWidth || a.lineType !== b.lineType || a.shadow !== b.shadow || a.color !== b.color) return false;
   if (a.fromArrow !== b.fromArrow || a.toArrow !== b.toArrow || a.arrow !== b.arrow) return false;
   if (a.centerEdgeAnchors !== b.centerEdgeAnchors) return false;
   if (a.fromPreferredExit !== b.fromPreferredExit || a.toPreferredEntry !== b.toPreferredEntry) return false;
@@ -251,6 +252,7 @@ function OrthogonalConnectionInner({
     Math.round(pathLength),
   ].join("-").replace(/[^a-zA-Z0-9_-]/g, "_");
   const motionPathId = `orth-motion-${connectionKey}-${animationPhaseResetKey}`;
+  const strokeDashProps = connectionStrokeDashFromLineType(thickness, connectionData?.lineType);
 
   return (
     <>
@@ -316,7 +318,8 @@ function OrthogonalConnectionInner({
           className="cursor-pointer connection-glow-hover transition-[filter] duration-200"
           strokeWidth={thickness}
           strokeLinejoin="round"
-          strokeLinecap="round"
+          strokeLinecap={strokeDashProps.strokeLinecap ?? "round"}
+          strokeDasharray={strokeDashProps.strokeDasharray}
           fill="none"
           markerStart={showStartArrow ? `url(#${startMarkerId})` : undefined}
           markerEnd={showEndArrow ? `url(#${endMarkerId})` : undefined}

@@ -5,6 +5,22 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/** SVG stroke dash for diagram connections — matches `diagram/shapes/line.tsx` behavior. */
+export function connectionStrokeDashFromLineType(
+  lineWidth: number,
+  lineType?: 'solid' | 'dashed' | 'dotted'
+): { strokeDasharray?: string; strokeLinecap?: 'round' } {
+  const w = lineWidth > 0 ? lineWidth : 2.5;
+  const t = lineType ?? 'solid';
+  if (t === 'dashed') {
+    return { strokeDasharray: `${w * 4} ${w * 2}` };
+  }
+  if (t === 'dotted') {
+    return { strokeDasharray: `0 ${w * 2}`, strokeLinecap: 'round' };
+  }
+  return {};
+}
+
 /** Icon/emoji types (generic.icon.*, generic.emoji.*) are never object shapes - they render as Lucide/emoji. */
 export function isIconOrEmojiType(type: string | undefined): boolean {
   return !!(type?.startsWith('generic.icon.') || type?.startsWith('generic.emoji.'))

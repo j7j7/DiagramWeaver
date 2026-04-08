@@ -122,7 +122,8 @@ export const measureNodeDims = (n: PositionedNode) => {
     return { width: snapDimensionToGrid(n.width), height: snapDimensionToGrid(n.height) };
   }
 
-  if (isTextboxNode) {
+  // Text + textbox: identical auto-size model (plain text has no visible frame on canvas)
+  if (isTextboxNode || isTextNode) {
     const avgCharWidth = 8;
     const padding = 32;
     const minWidth = 40;
@@ -154,92 +155,29 @@ export const measureNodeDims = (n: PositionedNode) => {
     const height = minHeight + (textLines - 1) * EXTRA_LINE_HEIGHT;
 
     return { width: snapDimensionToGrid(calculatedWidth, minWidth), height: snapDimensionToGrid(height, minHeight) };
-  } else if (isTextboxNode) {
-    const avgCharWidth = 8;
-    const padding = 24;
-    const minWidth = 40;
-    const maxWidth = 300;
-    const minHeight = n.sizeMode === 'custom' ? 40 : 60; // Allow smaller height in custom mode
-
-    const words = label.split(' ');
-    const maxCharsPerLine = 25;
-    const lines: string[] = [];
-    let currentLine = '';
-
-    for (const word of words) {
-      if ((currentLine + ' ' + word).trim().length <= maxCharsPerLine) {
-        currentLine = (currentLine + ' ' + word).trim();
-      } else {
-        if (currentLine) lines.push(currentLine);
-        currentLine = word;
-      }
-    }
-    if (currentLine) lines.push(currentLine);
-
-    const maxLineLength = Math.max(...lines.map(line => line.length), 1);
-    const calculatedWidth = Math.max(
-      minWidth,
-      Math.min(maxWidth, maxLineLength * avgCharWidth + padding),
-    );
-
-    const textLines = Math.max(1, Math.ceil(label.length / maxCharsPerLine));
-    const height = minHeight + (textLines - 1) * EXTRA_LINE_HEIGHT;
-
-    return { width: snapDimensionToGrid(calculatedWidth, minWidth), height: snapDimensionToGrid(height, minHeight) };
-  } else if (isTextNode  || isShapeNode) {
+  } else if (isShapeNode) {
     const avgCharWidth = 8;
 
     let calculatedWidth: number;
     let height: number;
 
-    if (isTextNode ) {
-      const padding = 16;
-      const minTextWidth = 80;
-      const maxTextWidth = 200;
+    const scale = getNodeSizeMultiplier((n as any).nodeSize);
+    const shapeSize = Math.round(48 * scale);
+    const textPadding = 16;
+    const textPosition = (n as any).textPosition || 'under';
 
-      const words = label.split(' ');
-      const textMaxCharsPerLine = 20;
-      const lines: string[] = [];
-      let currentLine = '';
-
-      for (const word of words) {
-        if ((currentLine + ' ' + word).trim().length <= textMaxCharsPerLine) {
-          currentLine = (currentLine + ' ' + word).trim();
-        } else {
-          if (currentLine) lines.push(currentLine);
-          currentLine = word;
-        }
-      }
-      if (currentLine) lines.push(currentLine);
-
-      const maxLineLength = Math.max(...lines.map(line => line.length), 1);
-      calculatedWidth = Math.max(
-        minTextWidth,
-        Math.min(maxTextWidth, maxLineLength * avgCharWidth + padding),
-      );
-
-      // Text nodes - use standard text height calculation
-      const textLines = Math.max(1, Math.ceil(label.length / textMaxCharsPerLine));
-      height = TEXT_NODE_HEIGHT + (textLines - 1) * EXTRA_LINE_HEIGHT;
+    if (textPosition === 'center' && label) {
+      calculatedWidth = shapeSize;
+    } else if (textPosition === 'above' || textPosition === 'under') {
+      const textWidth = Math.min(120, Math.max(40, label.length * avgCharWidth + textPadding));
+      calculatedWidth = Math.max(shapeSize, textWidth);
     } else {
-      const scale = getNodeSizeMultiplier((n as any).nodeSize);
-      const shapeSize = Math.round(48 * scale);
-      const textPadding = 16;
-      const textPosition = (n as any).textPosition || 'under';
-
-      if (textPosition === 'center' && label) {
-        calculatedWidth = shapeSize;
-      } else if (textPosition === 'above' || textPosition === 'under') {
-        const textWidth = Math.min(120, Math.max(40, label.length * avgCharWidth + textPadding));
-        calculatedWidth = Math.max(shapeSize, textWidth);
-      } else {
-        calculatedWidth = Math.max(shapeSize, Math.round(80 * scale));
-      }
-
-      const explicitLines = label.split('\n');
-      const shapeLines = Math.max(1, explicitLines.length);
-      height = Math.round(NODE_HEIGHT * scale) + (shapeLines - 1) * EXTRA_LINE_HEIGHT;
+      calculatedWidth = Math.max(shapeSize, Math.round(80 * scale));
     }
+
+    const explicitLines = label.split('\n');
+    const shapeLines = Math.max(1, explicitLines.length);
+    height = Math.round(NODE_HEIGHT * scale) + (shapeLines - 1) * EXTRA_LINE_HEIGHT;
 
     return { width: snapDimensionToGrid(calculatedWidth, 40), height: snapDimensionToGrid(height, 40) };
   } else {

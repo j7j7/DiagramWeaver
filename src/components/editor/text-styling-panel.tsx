@@ -75,7 +75,7 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
       if (selectedItem && selectedItem.itemType === 'node') {
         const nodeType = selectedItem.type;
         // Textboxes should default to 'middle', regular nodes to 'bottom'
-        if (nodeType === 'generic.text.textbox') {
+        if (nodeType === 'generic.text.textbox' || nodeType === 'generic.text.text') {
           return 'middle';
         }
         // Regular icon nodes default to 'bottom'

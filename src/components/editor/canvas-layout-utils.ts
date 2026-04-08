@@ -97,10 +97,8 @@ export function recalculateGroupSize(
           
           const node = child as PositionedNode;
           let baseHeight = NODE_HEIGHT;
-          if (node.type === 'generic.text.text') {
+          if (node.type === 'generic.text.text' || node.type === 'generic.text.textbox') {
             baseHeight = TEXT_NODE_HEIGHT;
-          } else if (node.type === 'generic.text.textbox') {
-            baseHeight = 40;
           }
           
           const excess = Math.max(0, dims.height - baseHeight);
@@ -226,10 +224,8 @@ function redistributeItemsInCustomZone(
           
           // Calculate how much taller this node is than its base height
           let baseHeight = NODE_HEIGHT;
-          if (node.type === 'generic.text.text') {
+          if (node.type === 'generic.text.text' || node.type === 'generic.text.textbox') {
             baseHeight = TEXT_NODE_HEIGHT;
-          } else if (node.type === 'generic.text.textbox') {
-            baseHeight = 40;
           }
           
           const excess = Math.max(0, height - baseHeight);
@@ -750,10 +746,8 @@ function layoutZone(
         
         // Calculate how much taller this node is than its base height
         let baseHeight = NODE_HEIGHT;
-        if (node.type === 'generic.text.text') {
+        if (node.type === 'generic.text.text' || node.type === 'generic.text.textbox') {
           baseHeight = TEXT_NODE_HEIGHT;
-        } else if (node.type === 'generic.text.textbox') {
-          baseHeight = 40;
         }
         
         const excess = Math.max(0, height - baseHeight);

@@ -592,8 +592,8 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
       )
     );
 
-  // Textbox node content (avoids IIFE parsing issues in Turbopack)
-  const renderTextboxContentForVisualNode = (visualNode: DiagramNodeData) => {
+  // Textbox / plain text node: same rich editor, layout, and sizing; `plainChrome` skips border/background/shadow
+  const renderRichTextBoxContentForVisualNode = (visualNode: DiagramNodeData, plainChrome: boolean) => {
     const nodeAny = visualNode as any;
     const borderStyle = nodeAny.borderStyle || 'solid';
     const borderColors = nodeAny.borderColors || [nodeAny.borderColor || '#d1d5db', nodeAny.borderColor || '#d1d5db'];
@@ -603,31 +603,34 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     const gradientAngle = nodeAny.gradientAngle || 135;
     const borderGradientAngle = nodeAny.borderGradientAngle ?? gradientAngle;
     const hasShadow = nodeAny.shadow || false;
-    const showLocalShadow = hasShadow && slideShapeShadowMode !== "crossfade";
+    const showLocalShadow = !plainChrome && hasShadow && slideShapeShadowMode !== "crossfade";
     const borderColor = nodeAny.borderColor || '#d1d5db';
 
     return (
       <div
         className={cn(
-          "flex flex-col h-full w-full rounded-lg",
-          animationStyle?.visualColorMergeTransition == null && !animationStyle?.visualColorCrossfade && "transition-colors",
+          "flex flex-col h-full w-full",
+          !plainChrome && "rounded-lg",
+          !plainChrome && animationStyle?.visualColorMergeTransition == null && !animationStyle?.visualColorCrossfade && "transition-colors",
           getVerticalPositionClass(nodeAny.textVerticalPosition),
           node.sizeMode === 'custom' ? "p-1" : "p-4",
-          borderStyle !== 'none' && "border-2",
-          borderStyle === 'none' && (isSelected
+          !plainChrome && borderStyle !== 'none' && "border-2",
+          !plainChrome && borderStyle === 'none' && (isSelected
             ? "border border-dashed border-primary opacity-100"
             : "opacity-100 hover:border hover:border-dashed hover:border-primary hover:bg-primary/5"),
-          isSelected && borderStyle !== 'none' ? "border-primary" : !(isDragging || isTouchDragging) && borderStyle !== 'none' && "group-hover:border-accent",
-          isTargetable && "border-dashed border-primary",
+          !plainChrome && isSelected && borderStyle !== 'none' ? "border-primary" : !plainChrome && !(isDragging || isTouchDragging) && borderStyle !== 'none' && "group-hover:border-accent",
+          !plainChrome && isTargetable && "border-dashed border-primary",
           showLocalShadow && "shadow-[0_10px_15px_-3px_rgba(239,68,68,0.3),0_4px_6px_-2px_rgba(239,68,68,0.2)]"
         )}
         style={{
-          background: backgroundStyle === 'none'
+          background: plainChrome
             ? 'transparent'
-            : backgroundStyle === 'gradient'
-              ? `linear-gradient(${gradientAngle}deg, ${backgroundColors[0]}, ${backgroundColors[1]})`
-              : backgroundColor,
-          ...(borderStyle === 'none' ? {} : borderStyle === 'gradient' ? {
+            : backgroundStyle === 'none'
+              ? 'transparent'
+              : backgroundStyle === 'gradient'
+                ? `linear-gradient(${gradientAngle}deg, ${backgroundColors[0]}, ${backgroundColors[1]})`
+                : backgroundColor,
+          ...(plainChrome || borderStyle === 'none' ? {} : borderStyle === 'gradient' ? {
             borderImage: `${getGradientWithAngle(borderColors, borderGradientAngle)} 1`,
             borderColor: 'transparent'
           } : borderStyle === 'dotted' ? {
@@ -651,12 +654,6 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
               runs={editRuns}
               onSubmit={handleRichLabelSubmit}
               onKeyDown={(e) => handleLabelKeyDown(e, true)}
-              onHeightChange={node.sizeMode === 'custom' && onUpdate && !isResizing ? (height) => {
-                const snapped = snapDimensionToGrid(height, 40);
-                const current = node.height ?? 40;
-                if (snapped === current) return;
-                onUpdate({ ...node, height: snapped, sizeMode: 'custom' });
-              } : undefined}
               onVerticalAlignChange={onUpdate ? (pos) => onUpdate({ ...node, textVerticalPosition: pos }) : undefined}
             />
           </div>
@@ -787,17 +784,9 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
       return customHeight;
     }
     
-    // Handle larger multi-line text boxes
-    if (nodeType === 'generic.text.textbox') {
-      const maxCharsPerLine = 30; // More characters fit in wider textbox
-      const lines = Math.max(1, Math.ceil(label.length / maxCharsPerLine)); // Minimum 1 line
-      return 40 + ((lines - 1) * EXTRA_LINE_HEIGHT); // Start with 40px height
-    } else if (nodeType === 'generic.text.textbox') {
-      const maxCharsPerLine = 25; // Characters fit in textbox
-      const lines = Math.max(1, Math.ceil(label.length / maxCharsPerLine)); // Minimum 1 line for custom sizing
-      return 100 + ((lines - 1) * EXTRA_LINE_HEIGHT); // Start with 100px height
-    } else if (nodeType === 'generic.text.text') {
-      const maxCharsPerLine = 20; // More characters fit in text-only nodes
+    // Text + textbox: same line-wrap height model (plain text has no visible box but matches textbox sizing)
+    if (nodeType === 'generic.text.textbox' || nodeType === 'generic.text.text') {
+      const maxCharsPerLine = 30;
       const lines = Math.max(1, Math.ceil(label.length / maxCharsPerLine));
       return TEXT_NODE_HEIGHT + ((lines - 1) * EXTRA_LINE_HEIGHT);
     } else {
@@ -873,6 +862,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
 
    const isTextNode = node.type === 'generic.text.text';
   const isTextboxNode = node.type === 'generic.text.textbox';
+  const isRichTextBoxLike = isTextNode || isTextboxNode;
    const isShapeNode = !isIconOrEmojiType(node.type) && (node.type === 'generic.object.square' || node.type === 'generic.object.circle' || node.type === 'generic.object.point' || node.type === 'generic.object.rectangle' || node.type === 'generic.object.uml-class' || node.type === 'generic.object.rounded-rectangle' || node.type === 'generic.object.text-box-heading' || node.type === 'generic.object.triangle' || node.type === 'generic.object.star' || node.type === 'generic.object.cloud' || node.type === 'generic.object.parallelogram' || node.type === 'generic.object.trapezoid' || node.type === 'generic.object.kite' || node.type === 'generic.object.hexagon' || node.type === 'generic.object.pentagon' || node.type === 'generic.object.octagon' || node.type === 'generic.object.jigsaw' || node.type === 'generic.object.arrowhead' || node.type === 'generic.object.chevron' || node.type === 'generic.object.line' || node.type === 'generic.object.loop' ||
                        node.type?.endsWith('.square') || node.type?.endsWith('.circle') || node.type?.endsWith('.point') || node.type?.endsWith('.rectangle') || node.type?.endsWith('.rounded-rectangle') || node.type?.endsWith('.text-box-heading') || node.type?.endsWith('.triangle') || node.type?.endsWith('.star') || node.type?.endsWith('.cloud') || node.type?.endsWith('.parallelogram') || node.type?.endsWith('.trapezoid') || node.type?.endsWith('.kite') || node.type?.endsWith('.hexagon') || node.type?.endsWith('.pentagon') || node.type?.endsWith('.octagon') || node.type?.endsWith('.jigsaw') || node.type?.endsWith('.arrowhead') || node.type?.endsWith('.chevron') || node.type?.endsWith('.line') || node.type?.endsWith('.loop'));
   const isPointNode = node.type === 'generic.object.point' || node.type?.endsWith('.point');
@@ -888,12 +878,12 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
   // During resize, use local dimensions for instant visual feedback
   const displayWidth = resizeDimensions ? resizeDimensions.width : (
     isShapeNode ? (node.width || 60) :
-    (isRotatableNode || isTextboxNode) ? (node.sizeMode === 'custom' && node.width ? node.width : undefined) :
+    isRichTextBoxLike ? (node.sizeMode === 'custom' && node.width ? node.width : undefined) :
     undefined
   );
   const displayHeight = resizeDimensions ? resizeDimensions.height : (
     isShapeNode ? (node.height || 60) :
-    (isTextboxNode && node.sizeMode === 'custom') ? (node.height || 40) :
+    (isRichTextBoxLike && node.sizeMode === 'custom') ? (node.height || 40) :
     undefined
   );
   const isLocked = node.locked || false;
@@ -945,7 +935,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     setResizeHandle(handle);
     const startX = node.x ?? 0;
     const startY = node.y ?? 0;
-    const startWidth = isIconNode ? (iconNodeDims?.width ?? (node as any).labelWidth ?? 80) : (node.width || (isTextboxNode ? 40 : 80));
+    const startWidth = isIconNode ? (iconNodeDims?.width ?? (node as any).labelWidth ?? 80) : (node.width || (isRichTextBoxLike ? 40 : 80));
     const startHeight = isIconNode ? (iconNodeDims?.height ?? nodeHeight) : (node.height || nodeHeight);
     
     // Store original dimensions for multi-resize
@@ -980,8 +970,8 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     let newWidth = resizeStartPos.current.startWidth;
     let newHeight = resizeStartPos.current.startHeight;
     
-    const minWidth = isTextboxNode ? 40 : isShapeNode ? 20 : 80;
-    const minHeight = isTextboxNode ? 40 : isShapeNode ? 20 : 40;
+    const minWidth = isRichTextBoxLike ? 40 : isShapeNode ? 20 : 80;
+    const minHeight = isRichTextBoxLike ? 40 : isShapeNode ? 20 : 40;
     const isKiteNode = node.type === 'generic.object.kite' || node.type?.endsWith?.('.kite');
     
     let newX: number | undefined;
@@ -1459,24 +1449,24 @@ return (
           : (resizePosition?.y ?? node.y),
          width: isLineNode ? 'auto' : (typeof displayWidth === 'number' ? displayWidth :
                 (isShapeNode ? (node.width || 60) :
-                (isRotatableNode || isTextboxNode ? 
-                 (node.sizeMode === 'custom' && node.width ? node.width : 'auto') : 
-                 (iconNodeDims ? iconNodeDims.width : NODE_WIDTH)))),
+                isRichTextBoxLike ?
+                 (node.sizeMode === 'custom' && node.width ? node.width : 'auto') :
+                 (iconNodeDims ? iconNodeDims.width : NODE_WIDTH))),
          minWidth: isLineNode ? 0 : // Lines don't need min width
-                   (resizeDimensions ? (isShapeNode ? 20 : isTextboxNode ? 40 : 80) : // During resize: allow shrinking to match new dimensions (like textbox)
+                   (resizeDimensions ? (isShapeNode ? 20 : isRichTextBoxLike ? 40 : 80) : // During resize: allow shrinking to match new dimensions (like textbox)
                     isShapeNode ? (node.width || 60) :
-                    isTextboxNode ? 40 :
+                    isRichTextBoxLike ? 40 :
                    isRotatableNode ? 80 : (isIconNode ? (iconNodeDims?.width ?? getNodeSizeDimensions((node as any).nodeSize).container) : NODE_WIDTH)),
          maxWidth: isLineNode ? 'none' : // Lines don't need max width
                    (resizeDimensions ? 'none' : // During resize: allow growing without constraint
                     isShapeNode ? (node.width || 60) :
-                    isTextboxNode ? (node.sizeMode === 'custom' ? 'none' : 400) :
+                    isRichTextBoxLike ? (node.sizeMode === 'custom' ? 'none' : 400) :
                    isRotatableNode ? 200 : (isIconNode ? 400 : NODE_WIDTH)),
          height: isLineNode ? 'auto' : (typeof displayHeight === 'number' ? displayHeight :
                  (isShapeNode ? (node.height || 60) :
-                 isTextboxNode && node.sizeMode === 'custom' ? (node.height || 40) :
-                 (isRotatableNode || isTextboxNode) ? nodeHeight : (iconNodeDims ? iconNodeDims.height : 'auto'))),
-         ...(resizeDimensions && !isLineNode && (isShapeNode || isTextboxNode) && {
+                 isRichTextBoxLike && node.sizeMode === 'custom' ? (node.height || 40) :
+                 isRichTextBoxLike ? nodeHeight : (iconNodeDims ? iconNodeDims.height : 'auto'))),
+         ...(resizeDimensions && !isLineNode && (isShapeNode || isRichTextBoxLike) && {
            minHeight: isShapeNode ? 20 : 40,
          }),
         touchAction: 'none',
@@ -1518,41 +1508,8 @@ return (
       <Popover open={isOpen && !isDragging && !isEditingLabel && !isEditingTag} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <div className="flex flex-col items-center justify-center h-full w-full cursor-pointer">
-            {node.type === 'generic.text.text' ? (
-              // Text node - rich text with same toolbar as textbox
-              <div className={cn(
-                "flex flex-col items-center justify-center h-full w-full px-2",
-                isEditingLabel && "overflow-visible"
-              )}>
-                {isEditingLabel ? (
-                  <div className="w-full flex-1 flex flex-col min-h-0 overflow-visible">
-                    <TextboxRichEditor
-                      node={node}
-                      runs={editRuns}
-                      onSubmit={handleRichLabelSubmit}
-                      onKeyDown={(e) => handleLabelKeyDown(e, true)}
-                      onHeightChange={node.sizeMode === 'custom' && onUpdate && !isResizing ? (height) => {
-                        const snapped = snapDimensionToGrid(height, 40);
-                        const current = node.height ?? 40;
-                        if (snapped === current) return;
-                        onUpdate({ ...node, height: snapped, sizeMode: 'custom' });
-                      } : undefined}
-                    />
-                  </div>
-                ) : (
-                  wrapSlideVisualCrossfade((vn) => (
-                    <div className="w-full flex-1 flex flex-col min-h-0">
-                      <TextboxRichDisplay
-                        node={vn}
-                        runs={node.richLabel ?? labelToRuns(node.label)}
-                        onDoubleClick={handleLabelDoubleClick}
-                      />
-                    </div>
-                  ))
-                )}
-              </div>
-            ) : node.type === 'generic.text.textbox' ? (
-              wrapSlideVisualCrossfade((vn) => renderTextboxContentForVisualNode(vn))
+            {isRichTextBoxLike ? (
+              wrapSlideVisualCrossfade((vn) => renderRichTextBoxContentForVisualNode(vn, isTextNode))
              ) : isShapeNode ? (
               // Shape node - render pure shape with text in different positions (resizable)
               // Use justify-start/items-start so resize extends right/down from fixed top-left (like textbox)
@@ -1577,9 +1534,9 @@ return (
         )}
        </Popover>
 
-       {/* Resize handles - textbox, text (custom), shapes, or icon nodes (label width) */}
+       {/* Resize handles - textbox, text, shapes, or icon nodes (label width) */}
         {!isReadOnly && (isResizing || isSelected || isMultiSelected) &&
-         (isTextboxNode || ((isTextNode ) && node.sizeMode === 'custom') || (isShapeNode && !isPointNode && !isLineNode) || isIconNode) && (
+         (isRichTextBoxLike || (isShapeNode && !isPointNode && !isLineNode) || isIconNode) && (
           <ResizeHandles
             visible={true}
             activeHandle={resizeHandle}

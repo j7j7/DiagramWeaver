@@ -2,6 +2,12 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-04-09 – Plain text (`generic.text.text`) aligned with textbox, no chrome
+**Behavior**: **Text** uses the same **rich editor / display**, **custom sizing**, **resize handles**, **vertical alignment** (`textVerticalPosition`), and **auto / measure** dimensions as **textbox**. **Rendering**: **`plainChrome`** path in **`diagram-node.tsx`** — transparent **background**, **no** border / shadow / hover box (textbox styling unchanged). **Data**: New palette **text** nodes get **`sizeMode: 'custom'`** and the same default **width/height** as textbox (**`canvas-operations.ts`**). **`measureNodeDims`** (**`canvas-constants.ts`**) treats text like textbox; removed dead duplicate **`isTextboxNode`** branch. **Resize** mins and **align/distribute** defaults updated for **`generic.text.text`**.
+
+### 2026-04-09 – Text / textbox (custom size): edit no longer grows height
+**Issue**: With **Custom (Manual Resize)** sizing, **double-click** to edit used **`TextboxRichEditor`** **`onHeightChange`**, which measured content and updated **`node.height`** on every keystroke → box **kept growing vertically**. **Fix**: **`diagram-node.tsx`** — do not pass **`onHeightChange`** for custom-sized **text** / **textbox** nodes; fixed height from resize handles is preserved; **`overflow-auto`** on the editor scrolls long content.
+
 ### 2026-04-08 – Semver: `0.1.{patch}`, patch auto-bump, build on dev/build only
 **Versioning**: **`package.json`** **`version`** is **`0.1.x`** where **x** (**patch**) aligns with the count of dated **`### `** update lines in **`MEMORY.MD`** (third segment). **Auto** on app code edits: **`node scripts/bump-patch.mjs`** increments **patch** only (not **minor**). **`scripts/bump-minor.mjs`** removed. **Cursor rule**: **`.cursor/rules/semver-patch-on-app-edit.mdc`**. **`src/lib/build-version.json`** **`build`** advances only via **`predev`** / **`prebuild`** (**`npm run dev`** / **`npm run build`**), separate from semver.
 

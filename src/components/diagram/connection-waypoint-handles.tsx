@@ -33,6 +33,7 @@ function areConnectionWaypointHandlesPropsEqual(
   if (prev.connection.to !== next.connection.to) return false;
   if (prev.connection.id !== next.connection.id) return false;
   if (prev.connection.style !== next.connection.style) return false;
+  if (prev.connection.lineType !== next.connection.lineType) return false;
 
   // Compare waypoints array
   if (prev.waypoints.length !== next.waypoints.length) return false;

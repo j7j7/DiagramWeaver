@@ -62,6 +62,7 @@ export function ConnectionContextModal({
     (fromNode as any)?.lineColor ||
     "#6b7280";
   const lineStyle = liveConnection.style ?? "bezier";
+  const strokePattern = liveConnection.lineType ?? "solid";
   const smoothCorners = lineStyle === "orthogonal" && liveConnection.smoothCorners === true;
   const textPosition = liveConnection.textPosition ?? 50;
   const connectionText = liveConnection.text || "";
@@ -104,6 +105,10 @@ export function ConnectionContextModal({
 
   const handleLineStyleChange = (style: "bezier" | "orthogonal") => {
     onConnectionUpdate(connection.from, connection.to, { style }, connId);
+  };
+
+  const handleStrokePatternChange = (lineType: "solid" | "dashed" | "dotted") => {
+    onConnectionUpdate(connection.from, connection.to, { lineType }, connId);
   };
 
   const handleSmoothCornersChange = (checked: boolean) => {
@@ -272,6 +277,36 @@ export function ConnectionContextModal({
               onClick={() => handleLineStyleChange("orthogonal")}
             >
               Orthogonal
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs text-muted-foreground">Stroke</span>
+          <div className="flex gap-1">
+            <Button
+              variant={strokePattern === "solid" ? "default" : "outline"}
+              size="sm"
+              className="h-7 px-2"
+              onClick={() => handleStrokePatternChange("solid")}
+            >
+              Solid
+            </Button>
+            <Button
+              variant={strokePattern === "dashed" ? "default" : "outline"}
+              size="sm"
+              className="h-7 px-2"
+              onClick={() => handleStrokePatternChange("dashed")}
+            >
+              Dashed
+            </Button>
+            <Button
+              variant={strokePattern === "dotted" ? "default" : "outline"}
+              size="sm"
+              className="h-7 px-2"
+              onClick={() => handleStrokePatternChange("dotted")}
+            >
+              Dotted
             </Button>
           </div>
         </div>

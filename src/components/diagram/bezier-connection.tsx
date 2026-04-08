@@ -8,6 +8,7 @@ import { isIconOrEmojiType, isShapeNodeType } from "@/lib/utils";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
 import { getShapeEdgeBounds, shapeEdgeToPoint, isKiteShapeType, getKiteConnectionPoint } from "@/lib/shape-connection-bounds";
 import { clampConnectionAnimation } from "@/lib/connection-animation";
+import { connectionStrokeDashFromLineType } from "@/lib/utils";
 
 const NODE_WIDTH = 80;
 const NODE_HEIGHT = 80;
@@ -22,14 +23,10 @@ const calculateNodeHeight = (label: string = '', nodeType: string, sizeMode?: st
     return customHeight;
   }
   
-  // Handle larger multi-line text boxes
-  if (nodeType === 'generic.text.textbox') {
-    const maxCharsPerLine = 30; // More characters fit in wider textbox
-    const lines = Math.max(1, Math.ceil(label.length / maxCharsPerLine)); // Minimum 1 line
-    return 40 + ((lines - 1) * EXTRA_LINE_HEIGHT); // Start with 40px height
-  } else if (nodeType === 'generic.text.text') {
-    const maxCharsPerLine = 20; // More characters fit in text-only nodes
-    const lines = Math.ceil(label.length / maxCharsPerLine);
+  // Plain text + textbox: same wrap height model
+  if (nodeType === 'generic.text.textbox' || nodeType === 'generic.text.text') {
+    const maxCharsPerLine = 30;
+    const lines = Math.max(1, Math.ceil(label.length / maxCharsPerLine));
     return TEXT_NODE_HEIGHT + ((lines - 1) * EXTRA_LINE_HEIGHT);
   } else {
     const maxCharsPerLine = 12; // Approximate characters that fit in node width
@@ -59,7 +56,7 @@ function connectionDataKey(c?: DiagramConnectionData): string {
   if (!c) return '';
   const wp = c.waypoints?.map((w) => `${w.x},${w.y}`).join(';') ?? '';
   const anim = c.animation ? JSON.stringify(c.animation) : '';
-  return `${c.from ?? ''}|${c.to ?? ''}|${(c as any).id ?? ''}|${c.curvature ?? ''}|${wp}|${c.lineWidth ?? ''}|${c.shadow ?? ''}|${c.fromArrow ?? ''}|${c.toArrow ?? ''}|${c.arrow ?? ''}|${anim}|${c.color ?? ''}|${c.centerEdgeAnchors ? '1' : ''}|${c.edgeAttachmentConstraint ?? ''}|${c.fromPreferredExit ?? ''}|${c.toPreferredEntry ?? ''}`;
+  return `${c.from ?? ''}|${c.to ?? ''}|${(c as any).id ?? ''}|${c.curvature ?? ''}|${wp}|${c.lineWidth ?? ''}|${c.lineType ?? ''}|${c.shadow ?? ''}|${c.fromArrow ?? ''}|${c.toArrow ?? ''}|${c.arrow ?? ''}|${anim}|${c.color ?? ''}|${c.centerEdgeAnchors ? '1' : ''}|${c.edgeAttachmentConstraint ?? ''}|${c.fromPreferredExit ?? ''}|${c.toPreferredEntry ?? ''}`;
 }
 
 function areBezierConnectionPropsEqual(prev: BezierConnectionProps, next: BezierConnectionProps): boolean {
@@ -1163,6 +1160,10 @@ function BezierConnectionInner({ from, to, connectionColor, connectionData, expo
     Math.round(pathLength),
   ].join('-').replace(/[^a-zA-Z0-9_-]/g, '_');
   const motionPathId = `connection-motion-${connectionKey}-${animationPhaseResetKey}`;
+  const strokeDashProps = connectionStrokeDashFromLineType(
+    connectionData?.lineWidth || 2.5,
+    connectionData?.lineType
+  );
 
   return (
     <>
@@ -1238,6 +1239,8 @@ function BezierConnectionInner({ from, to, connectionColor, connectionData, expo
           className="cursor-pointer connection-glow-hover transition-[filter] duration-200"
           strokeWidth={connectionData?.lineWidth || 2.5}
           fill="none"
+          strokeLinecap={strokeDashProps.strokeLinecap}
+          strokeDasharray={strokeDashProps.strokeDasharray}
           markerStart={showStartArrow ? `url(#${startMarkerId})` : undefined}
           markerEnd={showEndArrow ? `url(#${endMarkerId})` : undefined}
           filter={hasShadow ? `url(#${shadowFilterId})` : undefined}

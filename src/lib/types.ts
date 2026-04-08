@@ -185,6 +185,8 @@ export interface DiagramConnectionData {
   smoothCorners?: boolean; // When true, orthogonal 90-degree bends render with small rounded corners
   curvature?: number; // Bezier curve intensity (0.1 to 1.0)
   lineWidth?: number; // Line thickness for the connection (default: 2.5)
+  /** Stroke pattern: solid (default), dashed, or dotted — same semantics as line shapes (`lineType`). */
+  lineType?: 'solid' | 'dashed' | 'dotted';
   shadow?: boolean; // Whether to show shadow around the connection line
   
   // Multiple connection support
