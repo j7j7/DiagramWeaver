@@ -25,6 +25,8 @@ import {
   resolveConnectionColors,
   connectionNeedsAdvancedLineStyle,
   maxResolvedLineWidth,
+  lineWidthAtPathFraction,
+  scaleValuesForAnimationKeyPoints,
 } from "@/lib/connection-line-style";
 import { connectionStrokeDashFromLineType } from "@/lib/utils";
 
@@ -250,6 +252,7 @@ function OrthogonalConnectionInner({
   const animation = clampConnectionAnimation(connectionData?.animation);
   const connectionThickness = thickness;
   const shapeSize = animation.size * 2 * connectionThickness;
+  const baseAnimShapeSize = animation.size * 2 * Math.max(rw.wStart, rw.wEnd, 1e-6);
   const spacingDistance = shapeSize * (1 + animation.spacing);
   const pathLengthForCount = route.totalLength;
   const maxShapeCountByLength = spacingDistance > 0 ? Math.floor(pathLengthForCount / spacingDistance) : 0;
@@ -360,7 +363,12 @@ function OrthogonalConnectionInner({
           <path id={motionPathId} d={route.pathData} fill="none" stroke="none" />
         )}
         {/* Invisible wide hit-test path */}
-        <path d={route.pathData} stroke="transparent" strokeWidth={20} fill="none" />
+        <path
+          d={route.pathData}
+          stroke="transparent"
+          strokeWidth={Math.max(20, maxResolvedLineWidth(rw) * 4)}
+          fill="none"
+        />
 
         {/* Visible path */}
         {advancedLine ? (
@@ -428,9 +436,23 @@ function OrthogonalConnectionInner({
 
           if (shouldAnimateShapes && !useStaticExportAnimation) {
             const loopConfig = getLoopedAnimationPathConfig(progress, animation.speed);
+            const scaleValues = scaleValuesForAnimationKeyPoints(loopConfig.keyPoints, rw);
             return (
               <g key={`orth-anim-${animationPhaseResetKey}-${index}`}>
-                {renderAnimatedShape(animation.shape, shapeSize, animationColor)}
+                <g>
+                  <animateTransform
+                    attributeName="transform"
+                    type="scale"
+                    additive="replace"
+                    values={scaleValues}
+                    keyTimes={loopConfig.keyTimes}
+                    dur={`${animationDuration}s`}
+                    begin="0s"
+                    repeatCount="indefinite"
+                    calcMode="linear"
+                  />
+                  {renderAnimatedShape(animation.shape, baseAnimShapeSize, animationColor)}
+                </g>
                 <animateMotion
                   dur={`${animationDuration}s`}
                   begin="0s"
@@ -461,10 +483,11 @@ function OrthogonalConnectionInner({
           const tangentT = Math.min(1, (distance + 2) / pathLength);
           const tangentPoint = getPointOnOrthogonalPath(tangentT, route.points, route.totalLength);
           const angleDeg = Math.atan2(tangentPoint.y - point.y, tangentPoint.x - point.x) * (180 / Math.PI);
+          const staticShapeSize = animation.size * 2 * lineWidthAtPathFraction(rw, t);
 
           return (
             <g key={`orth-static-${animationPhaseResetKey}-${index}`} transform={`translate(${point.x}, ${point.y}) rotate(${angleDeg})`}>
-              {renderAnimatedShape(animation.shape, shapeSize, animationColor)}
+              {renderAnimatedShape(animation.shape, staticShapeSize, animationColor)}
             </g>
           );
         })}

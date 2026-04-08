@@ -1,11 +1,10 @@
 import type { DiagramConnectionData } from "@/lib/types";
 
 const MIN_W = 1;
-const MAX_W = 10;
+const MAX_W = 50;
 
-export function clampConnectionLineWidth(w: number): number {
-  if (!Number.isFinite(w)) return 2.5;
-  return Math.max(MIN_W, Math.min(MAX_W, w));
+function fmtAnimFloat(v: number): string {
+  return Number.isFinite(v) ? v.toFixed(6).replace(/0+$/, '').replace(/\.$/, '') || '0' : '0';
 }
 
 export interface ResolvedConnectionWidths {
@@ -13,6 +12,33 @@ export interface ResolvedConnectionWidths {
   wEnd: number;
   /** When false, start/end may differ (`lineWidth` = start, `lineWidthEnd` = end). */
   locked: boolean;
+}
+
+export function clampConnectionLineWidth(w: number): number {
+  if (!Number.isFinite(w)) return 2.5;
+  return Math.max(MIN_W, Math.min(MAX_W, w));
+}
+
+/** Linear width along the connection by arc-length fraction `pathFraction` in [0, 1] (start → end). */
+export function lineWidthAtPathFraction(rw: ResolvedConnectionWidths, pathFraction: number): number {
+  const k = Math.max(0, Math.min(1, pathFraction));
+  return rw.wStart * (1 - k) + rw.wEnd * k;
+}
+
+/**
+ * SMIL scale values aligned with `getLoopedAnimationPathConfig` keyPoints (path fraction 0–1 per keyframe).
+ * Renders at base size `animation.size * 2 * max(wStart,wEnd)` then scales by these values.
+ */
+export function scaleValuesForAnimationKeyPoints(keyPointsStr: string, rw: ResolvedConnectionWidths): string {
+  const maxW = Math.max(rw.wStart, rw.wEnd, 1e-6);
+  return keyPointsStr
+    .split(';')
+    .map((s) => {
+      const k = parseFloat(s.trim());
+      const w = lineWidthAtPathFraction(rw, k);
+      return fmtAnimFloat(w / maxW);
+    })
+    .join(';');
 }
 
 export function resolveConnectionWidths(

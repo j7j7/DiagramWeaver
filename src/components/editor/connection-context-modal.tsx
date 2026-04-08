@@ -410,12 +410,12 @@ export function ConnectionContextModal({
                       <Input
                         type="number"
                         min={1}
-                        max={10}
+                        max={50}
                         value={(liveConnection.lineWidth || 2.5).toString()}
                         onChange={(e) => {
                           const width = Math.max(
                             1,
-                            Math.min(10, parseFloat(e.target.value) || 2.5)
+                            Math.min(50, parseFloat(e.target.value) || 2.5)
                           );
                           handleLineWidthChange(width);
                         }}
@@ -431,12 +431,12 @@ export function ConnectionContextModal({
                         <Input
                           type="number"
                           min={1}
-                          max={10}
+                          max={50}
                           value={(liveConnection.lineWidth ?? 2.5).toString()}
                           onChange={(e) => {
                             const width = Math.max(
                               1,
-                              Math.min(10, parseFloat(e.target.value) || 2.5)
+                              Math.min(50, parseFloat(e.target.value) || 2.5)
                             );
                             handleLineWidthChange(width);
                           }}
@@ -449,12 +449,12 @@ export function ConnectionContextModal({
                         <Input
                           type="number"
                           min={1}
-                          max={10}
+                          max={50}
                           value={(liveConnection.lineWidthEnd ?? liveConnection.lineWidth ?? 2.5).toString()}
                           onChange={(e) => {
                             const width = Math.max(
                               1,
-                              Math.min(10, parseFloat(e.target.value) || 2.5)
+                              Math.min(50, parseFloat(e.target.value) || 2.5)
                             );
                             handleLineWidthEndChange(width);
                           }}

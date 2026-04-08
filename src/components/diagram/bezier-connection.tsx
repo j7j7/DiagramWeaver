@@ -14,6 +14,8 @@ import {
   resolveConnectionColors,
   connectionNeedsAdvancedLineStyle,
   maxResolvedLineWidth,
+  lineWidthAtPathFraction,
+  scaleValuesForAnimationKeyPoints,
 } from "@/lib/connection-line-style";
 import { connectionStrokeDashFromLineType } from "@/lib/utils";
 
@@ -1145,6 +1147,7 @@ function BezierConnectionInner({ from, to, connectionColor, connectionData, expo
   const animation = clampConnectionAnimation(connectionData?.animation);
   const connectionThickness = maxResolvedLineWidth(rw);
   const shapeSize = animation.size * 2 * connectionThickness;
+  const baseAnimShapeSize = animation.size * 2 * Math.max(rw.wStart, rw.wEnd, 1e-6);
   const spacingDistance = shapeSize * (1 + animation.spacing);
   const hasExportAnimationTime = typeof exportAnimationTimeSeconds === 'number' && Number.isFinite(exportAnimationTimeSeconds);
   const pathLengthForCount = computePathLengthLight(fromX, fromY, toX, toY, fromAngle, toAngle, curvature, waypoints);
@@ -1272,7 +1275,7 @@ function BezierConnectionInner({ from, to, connectionColor, connectionData, expo
         <path
           d={pathData}
           stroke="transparent"
-          strokeWidth={20}
+          strokeWidth={Math.max(20, maxResolvedLineWidth(rw) * 4)}
           fill="none"
         />
         {advancedLine ? (
@@ -1337,9 +1340,23 @@ function BezierConnectionInner({ from, to, connectionColor, connectionData, expo
 
           if (shouldAnimateShapes && !useStaticExportAnimation) {
             const loopConfig = getLoopedAnimationPathConfig(progress, animation.speed);
+            const scaleValues = scaleValuesForAnimationKeyPoints(loopConfig.keyPoints, rw);
             return (
               <g key={`animated-shape-${animationPhaseResetKey}-${index}`}>
-                {renderAnimatedShape(animation.shape, shapeSize, animationColor)}
+                <g>
+                  <animateTransform
+                    attributeName="transform"
+                    type="scale"
+                    additive="replace"
+                    values={scaleValues}
+                    keyTimes={loopConfig.keyTimes}
+                    dur={`${animationDuration}s`}
+                    begin="0s"
+                    repeatCount="indefinite"
+                    calcMode="linear"
+                  />
+                  {renderAnimatedShape(animation.shape, baseAnimShapeSize, animationColor)}
+                </g>
                 <animateMotion
                   dur={`${animationDuration}s`}
                   begin="0s"
@@ -1371,10 +1388,12 @@ function BezierConnectionInner({ from, to, connectionColor, connectionData, expo
           const tangentT = lookup.resolveT(distance + 2, false);
           const tangentPoint = getPointOnConnectionPath(tangentT, fromX, fromY, toX, toY, fromAngle, toAngle, curvature, waypoints);
           const angleDeg = Math.atan2(tangentPoint.y - point.y, tangentPoint.x - point.x) * (180 / Math.PI);
+          const arcFraction = pathLength > 0 ? Math.min(1, Math.max(0, distance / pathLength)) : 0;
+          const staticShapeSize = animation.size * 2 * lineWidthAtPathFraction(rw, arcFraction);
 
           return (
             <g key={`static-shape-${animationPhaseResetKey}-${index}`} transform={`translate(${point.x}, ${point.y}) rotate(${angleDeg})`}>
-              {renderAnimatedShape(animation.shape, shapeSize, animationColor)}
+              {renderAnimatedShape(animation.shape, staticShapeSize, animationColor)}
             </g>
           );
         })}

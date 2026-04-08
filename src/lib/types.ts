@@ -184,7 +184,7 @@ export interface DiagramConnectionData {
   style?: 'bezier' | 'orthogonal'; // Connection rendering style (default: bezier)
   smoothCorners?: boolean; // When true, orthogonal 90-degree bends render with small rounded corners
   curvature?: number; // Bezier curve intensity (0.1 to 1.0)
-  lineWidth?: number; // Line thickness for the connection (default: 2.5)
+  lineWidth?: number; // Line thickness for the connection (default: 2.5; clamped 1–50 px)
   /** When false, `lineWidth` is the start thickness and `lineWidthEnd` is the end (smooth taper). Default: locked (uniform `lineWidth`). */
   lineWidthLock?: boolean;
   /** End thickness when `lineWidthLock === false` (px, clamped like `lineWidth`). */

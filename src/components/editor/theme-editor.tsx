@@ -573,7 +573,7 @@ export function ThemeEditor({ open, onOpenChange, onThemeSelect, isReadOnly = fa
                               value={[editingTheme.properties.lineWidth || 2.5]}
                               onValueChange={(value) => handlePropertyChange('properties.lineWidth', value[0])}
                               min={0.5}
-                              max={10}
+                              max={50}
                               step={0.5}
                               className="flex-1"
                             />

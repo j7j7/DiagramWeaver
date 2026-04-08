@@ -1773,10 +1773,10 @@ export function ContextToolbar({
                                     <Input
                                       type="number"
                                       min={1}
-                                      max={10}
+                                      max={50}
                                       value={(connInfo.connection.lineWidth || 2.5).toString()}
                                       onChange={(e) => {
-                                        const width = Math.max(1, Math.min(10, parseFloat(e.target.value) || 2.5));
+                                        const width = Math.max(1, Math.min(50, parseFloat(e.target.value) || 2.5));
                                         onConnectionUpdate?.(
                                           connInfo.connection.from,
                                           connInfo.connection.to,
