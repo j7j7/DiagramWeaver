@@ -2,6 +2,18 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-04-09 – Connection animation controls: 2-column grid, show when enabled
+**UI**: **`connection-animation-controls.tsx`** — **Enable animation** row always visible; **detail** controls (shape, speed, size, formula, auto **/** shape count, color, spacing, bulk apply) render only when **`animation.enabled`**. Layout uses **`grid`** **`grid-cols-2`** (left: shape + speed + size + note + auto count + manual count; right: color + spacing + divider) with **bulk** rows **full-width** below. **Bulk** checkboxes reset when animation is disabled.
+
+### 2026-04-09 – Connection modal: Delete under Color (recent colors), tooltip
+**UI**: **`connection-context-modal.tsx`** — **Delete** connection control moved to **bottom-right** of the **right** column **below** the **Color** picker (under **Recent Colors**), **outline** button with **Trash2** + **Delete** label, **tooltip** “Remove this connection from the diagram” (**`side="bottom"`** **`align="end"`**). Removed from **Line thickness** row.
+
+### 2026-04-09 – Connection context modal: Arrow by Line type; Text → Text position; thickness left
+**UI**: **`connection-context-modal.tsx`** — **Line type** and **Arrow** share one **horizontal** row (left column). **Line thickness** (+ shadow + disconnect) moved to **left** column after **Stroke**. **Right** column order: **Text**, **Text position** (directly under Text), **Color**.
+
+### 2026-04-09 – Connection context modal: denser footprint (still two-column)
+**UI**: **`connection-context-modal.tsx`** — keeps **two-column** **Link2** header layout aligned with **Text** / **Visual** styling, but **narrower** (**`min(480px, 100vw-2rem)`**), **tighter** **`p-4`**, **`gap-x-3`**, **`pl-3`** divider, **`text-xs`** field labels, **`h-8`** controls, **`compact`** **`ConnectionAnimationControls`** in the modal to reduce vertical space; scroll **`max-h-[min(78vh,640px)]`**. **`connection-animation-controls.tsx`**: modal uses **`compact`** for animation; non-compact **`text-sm`/`h-9`** path remains for other callers if needed.
+
 ### 2026-04-09 – Plain text (`generic.text.text`) aligned with textbox, no chrome
 **Behavior**: **Text** uses the same **rich editor / display**, **custom sizing**, **resize handles**, **vertical alignment** (`textVerticalPosition`), and **auto / measure** dimensions as **textbox**. **Rendering**: **`plainChrome`** path in **`diagram-node.tsx`** — transparent **background**, **no** border / shadow / hover box (textbox styling unchanged). **Data**: New palette **text** nodes get **`sizeMode: 'custom'`** and the same default **width/height** as textbox (**`canvas-operations.ts`**). **`measureNodeDims`** (**`canvas-constants.ts`**) treats text like textbox; removed dead duplicate **`isTextboxNode`** branch. **Resize** mins and **align/distribute** defaults updated for **`generic.text.text`**.
 

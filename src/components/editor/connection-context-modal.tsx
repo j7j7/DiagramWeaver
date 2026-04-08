@@ -2,9 +2,10 @@
 
 import React, { useRef, useEffect, useState } from "react";
 import Draggable from "react-draggable";
-import { X, Plus, Unlink, GripHorizontal, ArrowRight, ArrowDownUp, ArrowLeftRight } from "lucide-react";
+import { X, Plus, GripHorizontal, ArrowRight, ArrowDownUp, ArrowLeftRight, Link2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ColorPicker } from "@/components/ui/color-picker";
@@ -132,8 +133,8 @@ export function ConnectionContextModal({
   // Initialize position from props when modal opens
   useEffect(() => {
     if (visible) {
-      const modalWidth = 320;
-      const modalHeight = 620;
+      const modalWidth = 480;
+      const modalHeight = 600;
       const padding = 8;
       let posX = x;
       let posY = y;
@@ -237,18 +238,24 @@ export function ConnectionContextModal({
       >
         <div
           ref={panelRef}
-          className="fixed w-80 rounded-md border border-border bg-popover shadow-lg p-0 z-[70]"
+          className="fixed w-[min(480px,calc(100vw-2rem))] rounded-lg border border-border bg-popover shadow-lg p-0 z-[70]"
         >
-      <div className="connection-modal-drag-handle flex items-center justify-between p-3 border-b cursor-move">
-        <h3 className="font-semibold text-sm truncate" title={`${connection.from} → ${connection.to}`}>
-          {fromLabel} → {toLabel}
-        </h3>
+      <div className="connection-modal-drag-handle flex items-center justify-between px-4 py-2.5 border-b cursor-move">
+        <div className="flex items-center gap-2 min-w-0">
+          <Link2 className="w-4 h-4 shrink-0 text-blue-600" aria-hidden />
+          <h3
+            className="text-sm font-semibold text-foreground truncate"
+            title={`${connection.from} → ${connection.to}`}
+          >
+            {fromLabel} → {toLabel}
+          </h3>
+        </div>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 w-7 p-0 shrink-0"
+              className="h-8 w-8 p-0 shrink-0"
               data-skip-modal-initial-focus
               onClick={onClose}
             >
@@ -258,310 +265,350 @@ export function ConnectionContextModal({
           <TooltipContent>Close</TooltipContent>
         </Tooltip>
       </div>
-      <div className="p-4 space-y-3 max-h-80 overflow-y-auto">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-xs text-muted-foreground">Line type</span>
-          <div className="flex gap-1">
-            <Button
-              variant={lineStyle === "bezier" ? "default" : "outline"}
-              size="sm"
-              className="h-7 px-2"
-              onClick={() => handleLineStyleChange("bezier")}
-            >
-              Curved
-            </Button>
-            <Button
-              variant={lineStyle === "orthogonal" ? "default" : "outline"}
-              size="sm"
-              className="h-7 px-2"
-              onClick={() => handleLineStyleChange("orthogonal")}
-            >
-              Orthogonal
-            </Button>
-          </div>
-        </div>
+      <div className="max-h-[min(78vh,640px)] overflow-y-auto">
+        <div className="p-4 space-y-3">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-2.5">
+            <div className="space-y-2.5 min-w-0">
+              <div className="flex items-start gap-3">
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <Label className="text-xs font-medium">Line type</Label>
+                  <div className="flex flex-wrap gap-1">
+                    <Button
+                      variant={lineStyle === "bezier" ? "default" : "outline"}
+                      size="sm"
+                      className="h-8 px-2 text-xs"
+                      onClick={() => handleLineStyleChange("bezier")}
+                    >
+                      Curved
+                    </Button>
+                    <Button
+                      variant={lineStyle === "orthogonal" ? "default" : "outline"}
+                      size="sm"
+                      className="h-8 px-2 text-xs"
+                      onClick={() => handleLineStyleChange("orthogonal")}
+                    >
+                      Orthogonal
+                    </Button>
+                  </div>
+                </div>
+                <div className="shrink-0 space-y-1.5">
+                  <Label className="text-xs font-medium">Arrow</Label>
+                  <div className="flex flex-wrap gap-1">
+                    <Button
+                      variant={hasArrow ? "default" : "outline"}
+                      size="sm"
+                      className="h-8 px-2"
+                      onClick={handleArrowToggle}
+                      aria-pressed={hasArrow}
+                    >
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
 
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-xs text-muted-foreground">Stroke</span>
-          <div className="flex gap-1">
-            <Button
-              variant={strokePattern === "solid" ? "default" : "outline"}
-              size="sm"
-              className="h-7 px-2"
-              onClick={() => handleStrokePatternChange("solid")}
-            >
-              Solid
-            </Button>
-            <Button
-              variant={strokePattern === "dashed" ? "default" : "outline"}
-              size="sm"
-              className="h-7 px-2"
-              onClick={() => handleStrokePatternChange("dashed")}
-            >
-              Dashed
-            </Button>
-            <Button
-              variant={strokePattern === "dotted" ? "default" : "outline"}
-              size="sm"
-              className="h-7 px-2"
-              onClick={() => handleStrokePatternChange("dotted")}
-            >
-              Dotted
-            </Button>
-          </div>
-        </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Stroke</Label>
+                <div className="flex flex-wrap gap-1">
+                  <Button
+                    variant={strokePattern === "solid" ? "default" : "outline"}
+                    size="sm"
+                    className="h-8 px-2 text-xs"
+                    onClick={() => handleStrokePatternChange("solid")}
+                  >
+                    Solid
+                  </Button>
+                  <Button
+                    variant={strokePattern === "dashed" ? "default" : "outline"}
+                    size="sm"
+                    className="h-8 px-2 text-xs"
+                    onClick={() => handleStrokePatternChange("dashed")}
+                  >
+                    Dashed
+                  </Button>
+                  <Button
+                    variant={strokePattern === "dotted" ? "default" : "outline"}
+                    size="sm"
+                    className="h-8 px-2 text-xs"
+                    onClick={() => handleStrokePatternChange("dotted")}
+                  >
+                    Dotted
+                  </Button>
+                </div>
+              </div>
 
-        {lineStyle === "orthogonal" && (
-          <div className="flex items-center justify-between gap-2">
-            <div className="min-w-0 flex-1">
-              <span className="text-xs text-muted-foreground block">Smooth corners</span>
-              <span className="text-[10px] text-muted-foreground/90 leading-tight block mt-0.5">
-                Add a small rounded bend at each 90-degree turn
-              </span>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Line thickness</Label>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={(liveConnection.lineWidth || 2.5).toString()}
+                    onChange={(e) => {
+                      const width = Math.max(
+                        1,
+                        Math.min(10, parseFloat(e.target.value) || 2.5)
+                      );
+                      handleLineWidthChange(width);
+                    }}
+                    className="h-8 w-[4.25rem] text-xs text-center shrink-0"
+                  />
+                  <span className="text-xs text-muted-foreground shrink-0">px</span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant={(liveConnection.shadow || false) ? "default" : "outline"}
+                        size="sm"
+                        className="h-8 w-8 p-0 shrink-0"
+                        onClick={handleShadowToggle}
+                        aria-pressed={!!liveConnection.shadow}
+                      >
+                        <ShadowIcon active={!!liveConnection.shadow} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Depth effect</TooltipContent>
+                  </Tooltip>
+                </div>
+              </div>
+
+              {lineStyle === "orthogonal" && (
+                <div className="space-y-1.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <Label className="text-xs font-medium">Smooth corners</Label>
+                      <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                        Add a small rounded bend at each 90-degree turn
+                      </p>
+                    </div>
+                    <Switch
+                      checked={smoothCorners}
+                      onCheckedChange={handleSmoothCornersChange}
+                      disabled={isReadOnly}
+                      className="shrink-0 mt-0.5 scale-90"
+                      aria-label="Smooth orthogonal corners"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <Label className="text-xs font-medium">Center on edge</Label>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                      One attach point per side (not spread along the edge)
+                    </p>
+                  </div>
+                  <Switch
+                    checked={centerOnEdge}
+                    onCheckedChange={handleCenterEdgeAnchorsChange}
+                    disabled={isReadOnly}
+                    className="shrink-0 mt-0.5 scale-90"
+                    aria-label="Center connection anchors on edge"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <Label className="text-xs font-medium">Attach on side</Label>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                      Limit which edges the line may use (default: automatic)
+                    </p>
+                  </div>
+                  <div className="flex gap-0.5 shrink-0 mt-0.5">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant={edgeAttachmentConstraint === "top-bottom" ? "default" : "outline"}
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          disabled={isReadOnly}
+                          aria-pressed={edgeAttachmentConstraint === "top-bottom"}
+                          aria-label="Top and bottom edges only"
+                          onClick={() =>
+                            setEdgeConstraint(edgeAttachmentConstraint === "top-bottom" ? "auto" : "top-bottom")
+                          }
+                        >
+                          <ArrowDownUp className="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Top / bottom only</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant={edgeAttachmentConstraint === "left-right" ? "default" : "outline"}
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          disabled={isReadOnly}
+                          aria-pressed={edgeAttachmentConstraint === "left-right"}
+                          aria-label="Left and right edges only"
+                          onClick={() =>
+                            setEdgeConstraint(edgeAttachmentConstraint === "left-right" ? "auto" : "left-right")
+                          }
+                        >
+                          <ArrowLeftRight className="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Left / right only</TooltipContent>
+                    </Tooltip>
+                  </div>
+                </div>
+              </div>
             </div>
-            <Switch
-              checked={smoothCorners}
-              onCheckedChange={handleSmoothCornersChange}
-              disabled={isReadOnly}
-              className="shrink-0"
-              aria-label="Smooth orthogonal corners"
+
+            <div className="space-y-2.5 min-w-0 border-l border-border pl-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="connection-label-text" className="text-xs font-medium">
+                  Text
+                </Label>
+                <Input
+                  id="connection-label-text"
+                  type="text"
+                  value={localConnectionText}
+                  onChange={(e) => setLocalConnectionText(e.target.value)}
+                  onBlur={(e) => commitConnectionText((e.target as HTMLInputElement).value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      commitConnectionText((e.target as HTMLInputElement).value);
+                      (e.target as HTMLInputElement).blur();
+                    }
+                  }}
+                  placeholder="Enter connection text..."
+                  className="h-8 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="connection-text-position" className="text-xs font-medium">
+                  Text position: {textPosition}%
+                </Label>
+                <div className="flex items-center gap-1.5">
+                  <Slider
+                    id="connection-text-position"
+                    value={[textPosition]}
+                    onValueChange={(values) => handleTextPositionChange(values[0])}
+                    min={0}
+                    max={100}
+                    step={1}
+                    className="flex-1"
+                  />
+                  <Input
+                    type="number"
+                    value={textPosition}
+                    onChange={(e) =>
+                      handleTextPositionChange(
+                        Math.max(0, Math.min(100, parseInt(e.target.value) || 50))
+                      )
+                    }
+                    className="h-8 w-14 text-xs text-center shrink-0"
+                    min={0}
+                    max={100}
+                  />
+                  <span className="text-xs text-muted-foreground shrink-0">%</span>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Color</Label>
+                <ColorPicker
+                  value={connectionColor}
+                  onChange={handleColorChange}
+                  placeholder="#6b7280"
+                  showAlpha={true}
+                  allowTransparent={true}
+                />
+              </div>
+
+              {onConnectionDisconnect && !isReadOnly && (
+                <div className="flex justify-end pt-1">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 gap-1.5 px-2.5 text-xs text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() => {
+                          onConnectionDisconnect(connection.from, connection.to, connId);
+                          onClose();
+                        }}
+                        aria-label="Delete connection"
+                      >
+                        <Trash2 className="h-3.5 w-3.5 shrink-0" />
+                        Delete
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" align="end">
+                      Remove this connection from the diagram
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="border-t border-border pt-3 space-y-2">
+            <ConnectionAnimationControls
+              connection={liveConnection}
+              inheritedConnectionColor={connectionColor}
+              onConnectionUpdate={(from, to, updates) => onConnectionUpdate(from, to, updates as Record<string, unknown>, connId)}
+              onBulkApply={onConnectionAnimationBulkApply}
+              isReadOnly={isReadOnly}
+              compact
             />
           </div>
-        )}
 
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <span className="text-xs text-muted-foreground block">Center on edge</span>
-            <span className="text-[10px] text-muted-foreground/90 leading-tight block mt-0.5">
-              One attach point per side (not spread along the edge)
-            </span>
-          </div>
-          <Switch
-            checked={centerOnEdge}
-            onCheckedChange={handleCenterEdgeAnchorsChange}
-            disabled={isReadOnly}
-            className="shrink-0"
-            aria-label="Center connection anchors on edge"
-          />
-        </div>
-
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <span className="text-xs text-muted-foreground block">Attach on side</span>
-            <span className="text-[10px] text-muted-foreground/90 leading-tight block mt-0.5">
-              Limit which edges the line may use (default: automatic)
-            </span>
-          </div>
-          <div className="flex gap-1 shrink-0">
-            <Tooltip>
-              <TooltipTrigger asChild>
+          <div className="border-t border-border pt-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <Label className="text-xs font-medium">Connection points</Label>
+              {canAddWaypoint && (
                 <Button
-                  type="button"
-                  variant={edgeAttachmentConstraint === "top-bottom" ? "default" : "outline"}
+                  variant="ghost"
                   size="sm"
-                  className="h-7 w-7 p-0"
-                  disabled={isReadOnly}
-                  aria-pressed={edgeAttachmentConstraint === "top-bottom"}
-                  aria-label="Top and bottom edges only"
+                  className="h-8 px-2 text-xs"
                   onClick={() =>
-                    setEdgeConstraint(edgeAttachmentConstraint === "top-bottom" ? "auto" : "top-bottom")
+                    onConnectionWaypointAdd?.(connection.from, connection.to, connId)
                   }
                 >
-                  <ArrowDownUp className="h-3.5 w-3.5" />
+                  <Plus className="h-3.5 w-3.5 mr-1" />
+                  Add
                 </Button>
-              </TooltipTrigger>
-              <TooltipContent>Top / bottom only</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant={edgeAttachmentConstraint === "left-right" ? "default" : "outline"}
-                  size="sm"
-                  className="h-7 w-7 p-0"
-                  disabled={isReadOnly}
-                  aria-pressed={edgeAttachmentConstraint === "left-right"}
-                  aria-label="Left and right edges only"
-                  onClick={() =>
-                    setEdgeConstraint(edgeAttachmentConstraint === "left-right" ? "auto" : "left-right")
-                  }
-                >
-                  <ArrowLeftRight className="h-3.5 w-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Left / right only</TooltipContent>
-            </Tooltip>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-xs text-muted-foreground">Arrow</span>
-          <Button
-            variant={hasArrow ? "default" : "outline"}
-            size="sm"
-            className="h-7 px-2"
-            onClick={handleArrowToggle}
-          >
-            <ArrowRight className="h-3 w-3" />
-          </Button>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-muted-foreground">Text:</label>
-          <Input
-            type="text"
-            value={localConnectionText}
-            onChange={(e) => setLocalConnectionText(e.target.value)}
-            onBlur={(e) => commitConnectionText((e.target as HTMLInputElement).value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                commitConnectionText((e.target as HTMLInputElement).value);
-                (e.target as HTMLInputElement).blur();
-              }
-            }}
-            placeholder="Enter connection text..."
-            className="h-7 text-sm"
-          />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Color:</label>
-          <ColorPicker
-            value={connectionColor}
-            onChange={handleColorChange}
-            placeholder="#6b7280"
-            showAlpha={true}
-            allowTransparent={true}
-          />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Text Position:</label>
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <Slider
-              value={[textPosition]}
-              onValueChange={(values) => handleTextPositionChange(values[0])}
-              min={0}
-              max={100}
-              step={1}
-              className="flex-1"
-            />
-            <Input
-              type="number"
-              value={textPosition}
-              onChange={(e) =>
-                handleTextPositionChange(
-                  Math.max(0, Math.min(100, parseInt(e.target.value) || 50))
-                )
-              }
-              className="h-7 w-16 text-xs text-center shrink-0"
-              min={0}
-              max={100}
-            />
-            <span className="text-xs text-muted-foreground shrink-0">%</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Line Thickness:</label>
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <Input
-              type="number"
-              min={1}
-              max={10}
-              value={(liveConnection.lineWidth || 2.5).toString()}
-              onChange={(e) => {
-                const width = Math.max(
-                  1,
-                  Math.min(10, parseFloat(e.target.value) || 2.5)
-                );
-                handleLineWidthChange(width);
-              }}
-              className="h-7 w-20 text-xs text-center shrink-0"
-            />
-            <span className="text-xs text-muted-foreground shrink-0">px</span>
-          </div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant={(liveConnection.shadow || false) ? "default" : "outline"}
-                size="sm"
-                className="h-7 px-2 shrink-0"
-                onClick={handleShadowToggle}
-              >
-                <ShadowIcon active={!!liveConnection.shadow} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Depth effect</TooltipContent>
-          </Tooltip>
-          {onConnectionDisconnect && !isReadOnly && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-destructive hover:text-destructive shrink-0"
-              onClick={() => {
-                onConnectionDisconnect(connection.from, connection.to, connId);
-                onClose();
-              }}
-            >
-              <Unlink className="h-3 w-3" />
-            </Button>
-          )}
-        </div>
-
-        <div className="border-t border-border pt-3 space-y-2">
-          <ConnectionAnimationControls
-            connection={liveConnection}
-            inheritedConnectionColor={connectionColor}
-            onConnectionUpdate={(from, to, updates) => onConnectionUpdate(from, to, updates as Record<string, unknown>, connId)}
-            onBulkApply={onConnectionAnimationBulkApply}
-            isReadOnly={isReadOnly}
-          />
-        </div>
-
-        <div className="border-t border-border pt-3 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">Connection points</span>
-            {canAddWaypoint && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2"
-                onClick={() =>
-                  onConnectionWaypointAdd?.(connection.from, connection.to, connId)
-                }
-              >
-                <Plus className="h-3 w-3 mr-1" />
-                Add
-              </Button>
+              )}
+            </div>
+            {waypoints.length > 0 && (
+              <div className="space-y-0.5 max-h-32 overflow-y-auto">
+                {waypoints.map((wp: { x: number; y: number; id?: string }, idx: number) => (
+                  <div
+                    key={wp.id ?? idx}
+                    className="flex items-center justify-between gap-2 py-1 px-1.5 rounded-md hover:bg-accent/50"
+                  >
+                    <GripHorizontal className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className="text-xs font-mono truncate">Waypoint {idx + 1}</span>
+                    {canRemoveWaypoint && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 text-destructive hover:text-destructive shrink-0"
+                        onClick={() =>
+                          onConnectionWaypointRemove?.(connection.from, connection.to, idx, connId)
+                        }
+                        aria-label={`Remove waypoint ${idx + 1}`}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
-          {waypoints.length > 0 && (
-            <div className="space-y-1 max-h-32 overflow-y-auto">
-              {waypoints.map((wp: { x: number; y: number; id?: string }, idx: number) => (
-                <div
-                  key={wp.id ?? idx}
-                  className="flex items-center justify-between gap-2 py-1 px-2 rounded hover:bg-accent/50"
-                >
-                  <GripHorizontal className="h-3 w-3 text-muted-foreground" />
-                  <span className="text-xs font-mono truncate">Waypoint {idx + 1}</span>
-                  {canRemoveWaypoint && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0 text-destructive hover:text-destructive shrink-0"
-                      onClick={() =>
-                        onConnectionWaypointRemove?.(connection.from, connection.to, idx, connId)
-                      }
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </div>
         </div>

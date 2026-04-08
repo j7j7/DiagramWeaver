@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import type { DiagramConnectionData } from "@/lib/types";
 import { clampConnectionAnimation, toConnectionAnimationPatch, type ConnectionAnimationShape } from "@/lib/connection-animation";
 import { ColorPicker } from "@/components/ui/color-picker";
@@ -44,6 +44,13 @@ export function ConnectionAnimationControls({
   const [pendingDirection, setPendingDirection] = useState<BulkDirection | null>(null);
   const [outboundChecked, setOutboundChecked] = useState(false);
   const [inboundChecked, setInboundChecked] = useState(false);
+
+  useEffect(() => {
+    if (!animation.enabled) {
+      setOutboundChecked(false);
+      setInboundChecked(false);
+    }
+  }, [animation.enabled]);
 
   const updateAnimation = (patch: Partial<DiagramConnectionData['animation']>) => {
     if (isReadOnly) return;
@@ -117,6 +124,15 @@ export function ConnectionAnimationControls({
   };
 
   const sectionClass = compact ? "space-y-2" : "space-y-3";
+  const labelClass = compact
+    ? "text-xs text-muted-foreground"
+    : "text-sm font-medium text-foreground";
+  const rowLabelClass = compact
+    ? "text-xs text-muted-foreground whitespace-nowrap"
+    : "text-sm font-medium text-foreground whitespace-nowrap";
+  const selectTriggerClass = compact ? "h-7 w-28 text-xs" : "h-9 min-w-[7rem] text-sm";
+  const numberInputClass = compact ? "h-7 w-14 text-xs text-center" : "h-9 w-16 text-sm text-center";
+  const numberInputClassWide = compact ? "h-7 w-16 text-xs text-center" : "h-9 w-16 text-sm text-center";
   const controlsDisabled = isReadOnly || !animation.enabled;
   const connectionThickness = connection.lineWidth || 2.5;
   const computedShapeWidth = animation.size * 2 * connectionThickness;
@@ -124,10 +140,16 @@ export function ConnectionAnimationControls({
     ? computedShapeWidth.toString()
     : computedShapeWidth.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
 
+  const gridGap = compact ? "gap-x-2 gap-y-2" : "gap-x-3 gap-y-2.5";
+  const colClass = "space-y-2.5 min-w-0";
+  const rightColClass = compact
+    ? "space-y-2.5 min-w-0 border-l border-border pl-2"
+    : "space-y-2.5 min-w-0 border-l border-border pl-3";
+
   return (
     <div className={sectionClass}>
-      <div className="flex items-center justify-between">
-        <Label className="text-xs text-muted-foreground">Enable animation</Label>
+      <div className="flex items-center justify-between gap-2">
+        <Label className={labelClass}>Enable animation</Label>
         <Checkbox
           checked={animation.enabled}
           onCheckedChange={(checked) => handleEnabledToggle(checked === true)}
@@ -135,161 +157,179 @@ export function ConnectionAnimationControls({
         />
       </div>
 
-      <div className="flex items-center justify-between">
-        <Label className="text-xs text-muted-foreground">Animated shapes</Label>
-        <Select value={animation.shape} onValueChange={(value) => handleShapeChange(value as ConnectionAnimationShape)} disabled={controlsDisabled}>
-          <SelectTrigger className="h-7 w-28 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="z-[80]">
-            <SelectItem value="dot">Dot</SelectItem>
-            <SelectItem value="square">Square</SelectItem>
-            <SelectItem value="arrow">Arrow</SelectItem>
-            <SelectItem value="triangle">Triangle</SelectItem>
-            <SelectItem value="hexagon">Hexagon</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      {animation.enabled && (
+        <>
+          <div className={`grid grid-cols-2 ${gridGap} items-start`}>
+            <div className={colClass}>
+              <div className="space-y-1.5">
+                <Label className={labelClass}>Animated shapes</Label>
+                <Select value={animation.shape} onValueChange={(value) => handleShapeChange(value as ConnectionAnimationShape)} disabled={controlsDisabled}>
+                  <SelectTrigger className={`${selectTriggerClass} w-full max-w-full`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="z-[80]">
+                    <SelectItem value="dot">Dot</SelectItem>
+                    <SelectItem value="square">Square</SelectItem>
+                    <SelectItem value="arrow">Arrow</SelectItem>
+                    <SelectItem value="triangle">Triangle</SelectItem>
+                    <SelectItem value="hexagon">Hexagon</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-      <div className="flex items-center gap-2">
-        <Label className="text-xs text-muted-foreground whitespace-nowrap">Speed</Label>
-        <Slider
-          value={[animation.speed]}
-          onValueChange={(values) => handleSpeedChange(values[0])}
-          min={-100}
-          max={100}
-          step={5}
-          className="flex-1"
-          disabled={controlsDisabled}
-        />
-        <Input
-          type="number"
-          className="h-7 w-16 text-xs text-center"
-          min={-100}
-          max={100}
-          step={5}
-          value={animation.speed}
-          onChange={(e) => handleSpeedChange(parseInt(e.target.value || '0', 10))}
-          disabled={controlsDisabled}
-        />
-      </div>
+              <div className="space-y-1">
+                <Label className={rowLabelClass}>Speed</Label>
+                <div className="flex items-center gap-2">
+                  <Slider
+                    value={[animation.speed]}
+                    onValueChange={(values) => handleSpeedChange(values[0])}
+                    min={-100}
+                    max={100}
+                    step={5}
+                    className="flex-1"
+                    disabled={controlsDisabled}
+                  />
+                  <Input
+                    type="number"
+                    className={numberInputClassWide}
+                    min={-100}
+                    max={100}
+                    step={5}
+                    value={animation.speed}
+                    onChange={(e) => handleSpeedChange(parseInt(e.target.value || '0', 10))}
+                    disabled={controlsDisabled}
+                  />
+                </div>
+              </div>
 
-      <div className="flex items-center gap-2">
-        <Label className="text-xs text-muted-foreground whitespace-nowrap">Shape size</Label>
-        <Slider
-          value={[animation.size]}
-          onValueChange={(values) => handleSizeChange(values[0])}
-          min={0}
-          max={10}
-          step={1}
-          className="flex-1"
-          disabled={controlsDisabled}
-        />
-        <Input
-          type="number"
-          className="h-7 w-14 text-xs text-center"
-          min={0}
-          max={10}
-          step={1}
-          value={animation.size}
-          onChange={(e) => handleSizeChange(parseInt(e.target.value || '0', 10))}
-          disabled={controlsDisabled}
-        />
-      </div>
-      <p className="text-[11px] text-muted-foreground">
-        Shape width = size × 2 × connection thickness ({animation.size} × 2 × {connectionThickness} = {formattedShapeWidth}px)
-      </p>
+              <div className="space-y-1">
+                <Label className={rowLabelClass}>Shape size</Label>
+                <div className="flex items-center gap-2">
+                  <Slider
+                    value={[animation.size]}
+                    onValueChange={(values) => handleSizeChange(values[0])}
+                    min={0}
+                    max={10}
+                    step={1}
+                    className="flex-1"
+                    disabled={controlsDisabled}
+                  />
+                  <Input
+                    type="number"
+                    className={numberInputClass}
+                    min={0}
+                    max={10}
+                    step={1}
+                    value={animation.size}
+                    onChange={(e) => handleSizeChange(parseInt(e.target.value || '0', 10))}
+                    disabled={controlsDisabled}
+                  />
+                </div>
+              </div>
+              <p className={compact ? "text-[11px] text-muted-foreground leading-snug" : "text-xs text-muted-foreground leading-snug"}>
+                Shape width = size × 2 × connection thickness ({animation.size} × 2 × {connectionThickness} = {formattedShapeWidth}px)
+              </p>
 
-      <div className="flex items-center gap-2">
-        <Label className="text-xs text-muted-foreground whitespace-nowrap">Shape color</Label>
-        <ColorPicker
-          value={animation.color || inheritedConnectionColor}
-          onChange={(color) => {
-            if (controlsDisabled) return;
-            handleColorChange(color);
-          }}
-          placeholder={inheritedConnectionColor}
-          showAlpha
-          allowTransparent
-        />
-      </div>
+              <div className="flex items-center justify-between gap-2">
+                <Label className={labelClass}>Auto shape count</Label>
+                <Checkbox
+                  checked={animation.autoCount}
+                  onCheckedChange={(checked) => handleAutoCountToggle(checked === true)}
+                  disabled={controlsDisabled}
+                />
+              </div>
 
-      <div className="flex items-center justify-between">
-        <Label className="text-xs text-muted-foreground">Auto shape count</Label>
-        <Checkbox
-          checked={animation.autoCount}
-          onCheckedChange={(checked) => handleAutoCountToggle(checked === true)}
-          disabled={controlsDisabled}
-        />
-      </div>
+              {!animation.autoCount && (
+                <div className="space-y-1">
+                  <Label className={rowLabelClass}>Shape count</Label>
+                  <div className="flex items-center gap-2">
+                    <Slider
+                      value={[animation.shapeCount]}
+                      onValueChange={(values) => handleShapeCountChange(values[0])}
+                      min={0}
+                      max={2000}
+                      step={1}
+                      className="flex-1"
+                      disabled={controlsDisabled}
+                    />
+                    <Input
+                      type="number"
+                      className={numberInputClass}
+                      min={0}
+                      max={2000}
+                      step={1}
+                      value={animation.shapeCount}
+                      onChange={(e) => handleShapeCountChange(parseInt(e.target.value || '0', 10))}
+                      disabled={controlsDisabled}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
 
-      {!animation.autoCount && (
-        <div className="flex items-center gap-2">
-          <Label className="text-xs text-muted-foreground whitespace-nowrap">Shape count</Label>
-          <Slider
-            value={[animation.shapeCount]}
-            onValueChange={(values) => handleShapeCountChange(values[0])}
-            min={0}
-            max={2000}
-            step={1}
-            className="flex-1"
-            disabled={controlsDisabled}
-          />
-          <Input
-            type="number"
-            className="h-7 w-14 text-xs text-center"
-            min={0}
-            max={2000}
-            step={1}
-            value={animation.shapeCount}
-            onChange={(e) => handleShapeCountChange(parseInt(e.target.value || '0', 10))}
-            disabled={controlsDisabled}
-          />
-        </div>
-      )}
+            <div className={rightColClass}>
+              <div className="space-y-1">
+                <Label className={rowLabelClass}>Shape color</Label>
+                <ColorPicker
+                  value={animation.color || inheritedConnectionColor}
+                  onChange={(color) => {
+                    if (controlsDisabled) return;
+                    handleColorChange(color);
+                  }}
+                  placeholder={inheritedConnectionColor}
+                  showAlpha
+                  allowTransparent
+                />
+              </div>
 
-      <div className="flex items-center gap-2">
-        <Label className="text-xs text-muted-foreground whitespace-nowrap">Shape-size spacing</Label>
-        <Slider
-          value={[animation.spacing]}
-          onValueChange={(values) => handleSpacingChange(values[0])}
-          min={0}
-          max={10}
-          step={0.5}
-          className="flex-1"
-          disabled={controlsDisabled}
-        />
-        <Input
-          type="number"
-          className="h-7 w-16 text-xs text-center"
-          min={0}
-          max={10}
-          step={0.5}
-          value={animation.spacing}
-          onChange={(e) => handleSpacingChange(parseFloat(e.target.value || '0'))}
-          disabled={controlsDisabled}
-        />
-      </div>
-
-      {onBulkApply && (
-        <div className="space-y-2 border-t border-border pt-2">
-          <div className="flex items-center justify-between gap-2">
-            <Label className="text-xs text-muted-foreground">Apply to all outbound of source</Label>
-            <Checkbox
-              checked={outboundChecked}
-              onCheckedChange={(checked) => triggerBulkConfirm('outbound', checked === true)}
-              disabled={controlsDisabled}
-            />
+              <div className="space-y-1">
+                <Label className={rowLabelClass}>Shape-size spacing</Label>
+                <div className="flex items-center gap-2">
+                  <Slider
+                    value={[animation.spacing]}
+                    onValueChange={(values) => handleSpacingChange(values[0])}
+                    min={0}
+                    max={10}
+                    step={0.5}
+                    className="flex-1"
+                    disabled={controlsDisabled}
+                  />
+                  <Input
+                    type="number"
+                    className={numberInputClassWide}
+                    min={0}
+                    max={10}
+                    step={0.5}
+                    value={animation.spacing}
+                    onChange={(e) => handleSpacingChange(parseFloat(e.target.value || '0'))}
+                    disabled={controlsDisabled}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center justify-between gap-2">
-            <Label className="text-xs text-muted-foreground">Apply to all inbound of source</Label>
-            <Checkbox
-              checked={inboundChecked}
-              onCheckedChange={(checked) => triggerBulkConfirm('inbound', checked === true)}
-              disabled={controlsDisabled}
-            />
-          </div>
-        </div>
+
+          {onBulkApply && (
+            <div className="space-y-2 border-t border-border pt-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label className={labelClass}>Apply to all outbound of source</Label>
+                <Checkbox
+                  checked={outboundChecked}
+                  onCheckedChange={(checked) => triggerBulkConfirm('outbound', checked === true)}
+                  disabled={controlsDisabled}
+                />
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <Label className={labelClass}>Apply to all inbound of source</Label>
+                <Checkbox
+                  checked={inboundChecked}
+                  onCheckedChange={(checked) => triggerBulkConfirm('inbound', checked === true)}
+                  disabled={controlsDisabled}
+                />
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       <AlertDialog open={confirmOpen} onOpenChange={(open) => {
