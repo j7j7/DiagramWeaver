@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import packageJson from '../../../package.json';
+import { APP_BUILD, APP_SEMVER } from '@/lib/app-version';
 
 interface AboutDialogProps {
   open: boolean;
@@ -30,34 +30,40 @@ export function AboutDialog({ open, onOpenChange }: AboutDialogProps) {
         )}
       >
         <DialogHeader>
-          <DialogTitle className="text-amber-950 dark:text-amber-50">About Diagram Weaver</DialogTitle>
+          <DialogTitle className="text-amber-950 dark:text-amber-50">About DiagramWeaver</DialogTitle>
           <DialogDescription className="text-amber-900/85 dark:text-amber-100/85">
-            Diagram Weaver by Jason Severn
+            DiagramWeaver by Jason Severn
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           <p className="text-sm text-amber-950/95 dark:text-amber-50/95">
-            An interactive diagram creation tool that allows you to create diagrams from JSON configurations.
+            DiagramWeaver is a simple, interactive diagram creation tool. Use it to present or convey information
+            cleanly and tell a story.
           </p>
 
           <div className="space-y-2">
             <h4 className="text-xs font-semibold uppercase tracking-wide text-amber-900/90 dark:text-amber-200/90">
-              Privacy & Security
+              Privacy
             </h4>
             <div className="space-y-2 border-b border-amber-200/80 pb-3 text-sm text-amber-900/90 dark:border-amber-800/80 dark:text-amber-100/90">
               <p>
-                • Diagram JSON files and diagram state are stored locally in your browser (localStorage) and when exported are saved directly to your device.
+                • Your diagrams stay on your device: the app keeps working state in the browser (localStorage) and
+                saves exports only where you choose on your computer.
               </p>
               <p>
-                • Diagram content is <strong className="font-semibold text-amber-950 dark:text-amber-50">not uploaded</strong> to cloud services by Diagram Weaver.
+                • DiagramWeaver does <strong className="font-semibold text-amber-950 dark:text-amber-50">not</strong>{' '}
+                upload your diagram content to its own servers or other cloud services.
               </p>
             </div>
           </div>
 
           <div className="text-xs text-amber-800/90 dark:text-amber-200/85">
-            <p>Version: {packageJson.version}</p>
-            {isDev && <p>Build: dev</p>}
+            <p>
+              Version {APP_SEMVER}
+              <span className="text-amber-800/75 dark:text-amber-200/70"> · build {APP_BUILD}</span>
+            </p>
+            {isDev && <p className="text-amber-800/75 dark:text-amber-200/70">Development session</p>}
           </div>
         </div>
 

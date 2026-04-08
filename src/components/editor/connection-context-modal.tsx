@@ -146,9 +146,10 @@ export function ConnectionContextModal({
       // Save the currently focused element
       previousActiveElementRef.current = document.activeElement as HTMLElement;
 
-      // Focus the first focusable element in the modal
+      // Focus the first focusable control, but not the header close button (avoids
+      // Radix tooltips opening from programmatic focus before hover).
       const focusableElement = panelRef.current?.querySelector(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        'button:not([data-skip-modal-initial-focus]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
       ) as HTMLElement;
       focusableElement?.focus();
 
@@ -239,7 +240,13 @@ export function ConnectionContextModal({
         </h3>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0" onClick={onClose}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0 shrink-0"
+              data-skip-modal-initial-focus
+              onClick={onClose}
+            >
               <X className="w-4 h-4" />
             </Button>
           </TooltipTrigger>

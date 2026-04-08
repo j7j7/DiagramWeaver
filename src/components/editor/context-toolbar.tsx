@@ -20,6 +20,8 @@ import {
   Grid3x3,
   Maximize2,
   ArrowRight,
+  ArrowDownUp,
+  ArrowLeftRight,
   ChevronDown,
   Palette,
   GripHorizontal,
@@ -56,7 +58,7 @@ import { DiagramTheme } from '@/lib/theme-types';
 import { themeManager } from '@/lib/theme-manager';
 import { extractTextStylingFromNode, extractTextStylingFromGroup, applyTextStylingToZone, applyTextStylingToNode } from '@/lib/text-styling';
 import { extractUmlClassTextStylingFromNode, applyUmlClassTextStylingToNode, DEFAULT_UML_CLASS_TEXT_STYLING } from '@/lib/uml-text-styling';
-import { isShapeNodeType, isIconOrEmojiType } from '@/lib/utils';
+import { cn, isShapeNodeType, isIconOrEmojiType } from '@/lib/utils';
 import { extractVisualStylingFromNode, extractVisualStylingFromGroup } from '@/lib/visual-styling';
 import { extractLineStylingFromNode, applyLineStylingToNode } from '@/lib/line-styling';
 import { toConnectionAnimationPatch } from '@/lib/connection-animation';
@@ -142,6 +144,8 @@ export function ContextToolbar({
   const [draggedConnectionIndex, setDraggedConnectionIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [connectionTextDrafts, setConnectionTextDrafts] = useState<Record<string, string>>({});
+  /** Keys = connection id or `${from}-${to}-${index}` — which rows show full details in Connections popover */
+  const [expandedConnectionKeys, setExpandedConnectionKeys] = useState<Set<string>>(() => new Set());
   const [tagDraft, setTagDraft] = useState('');
   const [descriptionDraft, setDescriptionDraft] = useState('');
   const textStylingPanelRef = useRef<HTMLDivElement>(null);
@@ -328,10 +332,21 @@ export function ContextToolbar({
     setConnectionsOpen(connectionSettingsPanelOpen);
   }, [connectionSettingsPanelOpen]);
 
-  // Clear connection text drafts when Connections popover closes
+  // Clear connection text drafts when Connections popover closes (expanded/collapsed state persists)
   useEffect(() => {
-    if (!connectionsOpen) setConnectionTextDrafts({});
+    if (!connectionsOpen) {
+      setConnectionTextDrafts({});
+    }
   }, [connectionsOpen]);
+
+  const toggleConnectionExpanded = useCallback((key: string) => {
+    setExpandedConnectionKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
 
   // Sync tag/description drafts when popovers open
   useEffect(() => {
@@ -554,6 +569,54 @@ export function ContextToolbar({
     });
     return allConnections;
   }, [selectedItem, diagramData]);
+
+  const connectionExpandKeys = useMemo(
+    () =>
+      getAllConnections.map((connInfo, index) => {
+        const cid = (connInfo.connection as DiagramConnectionData).id;
+        return cid ?? `${connInfo.connection.from}-${connInfo.connection.to}-${index}`;
+      }),
+    [getAllConnections]
+  );
+
+  const prevConnectionsNodeIdRef = useRef<string | undefined>(undefined);
+  const prevConnectionsCountRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const nodeId = selectedItem?.itemType !== 'edge' ? selectedItem?.id : undefined;
+    const len = connectionExpandKeys.length;
+    const keys = connectionExpandKeys;
+
+    if (!nodeId || len === 0) {
+      if (len === 0) setExpandedConnectionKeys(new Set());
+      prevConnectionsNodeIdRef.current = nodeId;
+      prevConnectionsCountRef.current = len;
+      return;
+    }
+
+    const nodeChanged = prevConnectionsNodeIdRef.current !== nodeId;
+    const prevCount = prevConnectionsCountRef.current;
+
+    if (nodeChanged) {
+      if (len === 1) {
+        setExpandedConnectionKeys(new Set([keys[0]]));
+      } else {
+        setExpandedConnectionKeys(new Set());
+      }
+      prevConnectionsNodeIdRef.current = nodeId;
+      prevConnectionsCountRef.current = len;
+      return;
+    }
+
+    if (prevCount !== null) {
+      if (prevCount === 1 && len >= 2) {
+        setExpandedConnectionKeys(new Set());
+      } else if (prevCount >= 2 && len === 1) {
+        setExpandedConnectionKeys(new Set([keys[0]]));
+      }
+    }
+    prevConnectionsCountRef.current = len;
+  }, [selectedItem?.id, selectedItem?.itemType, connectionExpandKeys]);
 
   const handleBulkConnectionAnimationApply = useCallback((sourceId: string, direction: 'outbound' | 'inbound', animation: DiagramConnectionData['animation']) => {
     if (!diagramData || !onDiagramDataUpdate) return;
@@ -1506,6 +1569,8 @@ export function ContextToolbar({
                         const connectionText = connInfo.connection.text || '';
                         
                         const connId = (connInfo.connection as DiagramConnectionData).id;
+                        const connectionRowKey = connId ?? `${connInfo.connection.from}-${connInfo.connection.to}-${index}`;
+                        const isConnectionExpanded = expandedConnectionKeys.has(connectionRowKey);
                         const handleConnectionArrowToggle = () => {
                           if (onConnectionUpdate) {
                             onConnectionUpdate(
@@ -1583,39 +1648,55 @@ export function ContextToolbar({
                             onDragLeave={handleDragLeave}
                             onDrop={(e) => handleDrop(e, index)}
                           >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2 flex-1 min-w-0">
-                                <div 
-                                  className="cursor-grab active:cursor-grabbing p-1 hover:bg-accent/50 rounded"
-                                  draggable
-                                  onDragStart={(e) => {
-                                    e.stopPropagation();
-                                    handleDragStart(e, index);
-                                  }}
-                                  onDragEnd={(e) => {
-                                    e.stopPropagation();
-                                    handleDragEnd(e);
-                                  }}
-                                >
-                                  <GripHorizontal className="h-3 w-3 text-muted-foreground" />
-                                </div>
-                                <span className="text-xs font-mono text-muted-foreground">
+                            <div className="flex items-center gap-1 min-w-0">
+                              <div 
+                                className="cursor-grab active:cursor-grabbing p-1 hover:bg-accent/50 rounded shrink-0"
+                                draggable
+                                onDragStart={(e) => {
+                                  e.stopPropagation();
+                                  handleDragStart(e, index);
+                                }}
+                                onDragEnd={(e) => {
+                                  e.stopPropagation();
+                                  handleDragEnd(e);
+                                }}
+                              >
+                                <GripHorizontal className="h-3 w-3 text-muted-foreground" />
+                              </div>
+                              <button
+                                type="button"
+                                className={cn(
+                                  "flex flex-1 min-w-0 items-center gap-2 rounded-md px-1.5 py-1 text-left outline-none",
+                                  "hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background"
+                                )}
+                                onClick={() => toggleConnectionExpanded(connectionRowKey)}
+                                aria-expanded={isConnectionExpanded}
+                                aria-controls={`connection-details-${connectionRowKey}`}
+                                id={`connection-summary-${connectionRowKey}`}
+                              >
+                                <span className="text-xs font-mono text-muted-foreground shrink-0">
                                   {connInfo.isOutgoing ? '→' : '←'}
                                 </span>
-                                <span className="text-sm truncate" title={connInfo.targetLabel}>
+                                <span className="text-sm font-medium truncate flex-1" title={connInfo.targetLabel}>
                                   {connInfo.targetLabel || connInfo.targetId}
                                 </span>
-                              </div>
-                              <Button
-                                variant={hasArrow ? "default" : "outline"}
-                                size="sm"
-                                className="h-7 px-2 shrink-0"
-                                onClick={handleConnectionArrowToggle}
-                              >
-                                <ArrowRight className={`h-3 w-3 ${hasArrow ? '' : 'opacity-50'}`} />
-                              </Button>
+                                <ChevronDown
+                                  className={cn(
+                                    "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+                                    isConnectionExpanded && "rotate-180"
+                                  )}
+                                  aria-hidden
+                                />
+                              </button>
                             </div>
-                            <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/50">
+                            {isConnectionExpanded && (
+                            <div
+                              id={`connection-details-${connectionRowKey}`}
+                              role="region"
+                              aria-labelledby={`connection-summary-${connectionRowKey}`}
+                              className="flex flex-col gap-2 pt-1 border-t border-border/50"
+                            >
+                            <div className="flex items-center justify-between gap-2">
                               <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Line type:</label>
                               <div className="flex gap-1">
                                 <Button
@@ -1638,15 +1719,116 @@ export function ContextToolbar({
                             </div>
                             {connectionLineStyle === 'orthogonal' && (
                               <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/50">
-                                <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Smooth corners:</label>
+                                <div className="min-w-0 flex-1">
+                                  <span className="text-xs text-muted-foreground block">Smooth corners</span>
+                                  <span className="text-[10px] text-muted-foreground/90 leading-tight block mt-0.5">
+                                    Add a small rounded bend at each 90-degree turn
+                                  </span>
+                                </div>
                                 <Switch
                                   checked={connectionSmoothCorners}
                                   onCheckedChange={(checked: boolean) => onConnectionUpdate?.(connInfo.connection.from, connInfo.connection.to, { smoothCorners: checked }, connId)}
                                   disabled={isReadOnly}
+                                  className="shrink-0"
                                   aria-label="Smooth orthogonal corners"
                                 />
                               </div>
                             )}
+                            <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/50">
+                              <div className="min-w-0 flex-1">
+                                <span className="text-xs text-muted-foreground block">Center on edge</span>
+                                <span className="text-[10px] text-muted-foreground/90 leading-tight block mt-0.5">
+                                  One attach point per side (not spread along the edge)
+                                </span>
+                              </div>
+                              <Switch
+                                checked={connInfo.connection.centerEdgeAnchors === true}
+                                onCheckedChange={(checked: boolean) =>
+                                  onConnectionUpdate?.(
+                                    connInfo.connection.from,
+                                    connInfo.connection.to,
+                                    { centerEdgeAnchors: checked },
+                                    connId
+                                  )
+                                }
+                                disabled={isReadOnly}
+                                className="shrink-0"
+                                aria-label="Center connection anchors on edge"
+                              />
+                            </div>
+                            <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/50">
+                              <div className="min-w-0 flex-1">
+                                <span className="text-xs text-muted-foreground block">Attach on side</span>
+                                <span className="text-[10px] text-muted-foreground/90 leading-tight block mt-0.5">
+                                  Limit which edges the line may use (default: automatic)
+                                </span>
+                              </div>
+                              <div className="flex gap-1 shrink-0">
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      type="button"
+                                      variant={connInfo.connection.edgeAttachmentConstraint === 'top-bottom' ? 'default' : 'outline'}
+                                      size="sm"
+                                      className="h-7 w-7 p-0"
+                                      disabled={isReadOnly}
+                                      aria-pressed={connInfo.connection.edgeAttachmentConstraint === 'top-bottom'}
+                                      aria-label="Top and bottom edges only"
+                                      onClick={() =>
+                                        onConnectionUpdate?.(
+                                          connInfo.connection.from,
+                                          connInfo.connection.to,
+                                          connInfo.connection.edgeAttachmentConstraint === 'top-bottom'
+                                            ? { edgeAttachmentConstraint: undefined }
+                                            : { edgeAttachmentConstraint: 'top-bottom' },
+                                          connId
+                                        )
+                                      }
+                                    >
+                                      <ArrowDownUp className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Top / bottom only</TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      type="button"
+                                      variant={connInfo.connection.edgeAttachmentConstraint === 'left-right' ? 'default' : 'outline'}
+                                      size="sm"
+                                      className="h-7 w-7 p-0"
+                                      disabled={isReadOnly}
+                                      aria-pressed={connInfo.connection.edgeAttachmentConstraint === 'left-right'}
+                                      aria-label="Left and right edges only"
+                                      onClick={() =>
+                                        onConnectionUpdate?.(
+                                          connInfo.connection.from,
+                                          connInfo.connection.to,
+                                          connInfo.connection.edgeAttachmentConstraint === 'left-right'
+                                            ? { edgeAttachmentConstraint: undefined }
+                                            : { edgeAttachmentConstraint: 'left-right' },
+                                          connId
+                                        )
+                                      }
+                                    >
+                                      <ArrowLeftRight className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Left / right only</TooltipContent>
+                                </Tooltip>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/50">
+                              <span className="text-xs text-muted-foreground">Arrow</span>
+                              <Button
+                                variant={hasArrow ? 'default' : 'outline'}
+                                size="sm"
+                                className="h-7 px-2"
+                                onClick={handleConnectionArrowToggle}
+                              >
+                                <ArrowRight className="h-3 w-3" />
+                              </Button>
+                            </div>
                             <div className="flex flex-col gap-1 pt-1 border-t border-border/50">
                               <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Text:</label>
                               <Input
@@ -1698,16 +1880,6 @@ export function ContextToolbar({
                                 />
                                 <span className="text-xs text-muted-foreground shrink-0">%</span>
                               </div>
-                            </div>
-                            <div className="pt-1 border-t border-border/50">
-                              <ConnectionAnimationControls
-                                connection={connInfo.connection}
-                                inheritedConnectionColor={connectionColor}
-                                onConnectionUpdate={(from, to, updates) => onConnectionUpdate?.(from, to, updates, connId)}
-                                onBulkApply={handleBulkConnectionAnimationApply}
-                                compact
-                                isReadOnly={isReadOnly}
-                              />
                             </div>
                             <div className="flex items-center gap-2 pt-1 border-t border-border/50">
                               <label className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Line Thickness:</label>
@@ -1797,6 +1969,72 @@ export function ContextToolbar({
                                 <Unlink className="h-3 w-3" />
                               </Button>
                             </div>
+                            <div className="border-t border-border pt-3 space-y-2">
+                              <ConnectionAnimationControls
+                                connection={connInfo.connection}
+                                inheritedConnectionColor={connectionColor}
+                                onConnectionUpdate={(from, to, updates) => onConnectionUpdate?.(from, to, updates, connId)}
+                                onBulkApply={handleBulkConnectionAnimationApply}
+                                compact
+                                isReadOnly={isReadOnly}
+                              />
+                            </div>
+                            <div className="border-t border-border pt-3 space-y-2 mt-1">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-muted-foreground">Connection points</span>
+                                {onConnectionWaypointAdd && !isReadOnly && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2"
+                                    onClick={() =>
+                                      onConnectionWaypointAdd(
+                                        connInfo.connection.from,
+                                        connInfo.connection.to,
+                                        connId
+                                      )
+                                    }
+                                  >
+                                    <Plus className="h-3 w-3 mr-1" />
+                                    Add
+                                  </Button>
+                                )}
+                              </div>
+                              {(connInfo.connection.waypoints ?? []).length > 0 && (
+                                <div className="space-y-1 max-h-32 overflow-y-auto">
+                                  {(connInfo.connection.waypoints ?? []).map(
+                                    (wp: { x: number; y: number; id?: string }, idx: number) => (
+                                      <div
+                                        key={wp.id ?? idx}
+                                        className="flex items-center justify-between gap-2 py-1 px-2 rounded hover:bg-accent/50"
+                                      >
+                                        <GripHorizontal className="h-3 w-3 text-muted-foreground" />
+                                        <span className="text-xs font-mono truncate">Waypoint {idx + 1}</span>
+                                        {onConnectionWaypointRemove && !isReadOnly && (
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 w-6 p-0 text-destructive hover:text-destructive shrink-0"
+                                            onClick={() =>
+                                              onConnectionWaypointRemove(
+                                                connInfo.connection.from,
+                                                connInfo.connection.to,
+                                                idx,
+                                                connId
+                                              )
+                                            }
+                                          >
+                                            <X className="h-3 w-3" />
+                                          </Button>
+                                        )}
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            </div>
+                            )}
                           </div>
                         );
                       })

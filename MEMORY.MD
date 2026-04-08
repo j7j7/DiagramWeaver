@@ -2,6 +2,33 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-04-08 – Auto Layout: vertical graph depth (connected nodes)
+**Issue**: Layered layout used **layers as columns** (left-to-right) and stacked nodes in each column on **Y**. Chains (A→B→C) had **one node per column**, all **vertically centered** to the same **Y** → nodes sat on a **horizontal line** and **edges overlapped**. **Change**: **`src/lib/auto-layout.ts`** **`layoutComponent`** now places **layers as rows** (top-to-bottom = rank / depth) and **spreads nodes in a layer on X**. Same **Sugiyama** ranking and barycenter ordering; only the coordinate mapping swapped so flowcharts get clear vertical separation between hops.
+
+### 2026-04-08 – Auto Layout: grid within layers + grid of components
+**Issue**: Many nodes **same rank** (or **no / weak edges**) still produced **one long horizontal row** per layer; **disconnected** root items used **shelf packing** with a **wide** target width → **one line** of boxes. **Change**: **`performLayeredLayout`** — multiple connected components packed with **`packComponentsInGrid`** (sqrt-based grid) instead of the shelf algorithm.
+
+### 2026-04-08 – Auto Layout: dagre per component (fan-out → 2D, not a vertical spine)
+**Issue**: Custom **Sugiyama** + **DFS tree edges** collapsed **fan-out** (e.g. hub → several nodes) into a **linear chain** of ranks → everything **stacked on one vertical axis**; edges overlapped. **Desired**: spread like a **small grid** when the graph branches (see user ref. layout). **Change**: **`src/lib/auto-layout.ts`** **`layoutComponent`** now uses **`@dagrejs/dagre`** (**`rankdir: TB`**, `nodesep` / `ranksep` aligned with existing spacing) on **all directed edges** in the component (deduped), same family as **Mermaid** layout. **Fallback**: row-major grid if layout throws. **Chain spine**: if result is **one node per rank** (≥3 ranks), apply **horizontal zig-zag** between ranks so pure chains are not one straight column.
+
+### 2026-04-08 – Tooltips: no spurious open on programmatic focus (global)
+**Cause**: Radix **`TooltipTrigger`** opens on **focus** as well as pointer hover. Modals that **focus the first control** often hit a **Close** button wrapped in a tooltip → **“Close”** appears without hover. **Fix**: **`src/components/ui/tooltip.tsx`** wraps **`TooltipPrimitive.Trigger`** and, on **`onFocus`**, calls **`preventDefault()`** when the target does **not** match **`:focus-visible`** (see Radix [issue #2248](https://github.com/radix-ui/primitives/issues/2248)) — suppresses programmatic / non–keyboard-intent focus while keeping keyboard **Tab** behavior. **`connection-context-modal.tsx`**: close button has **`data-skip-modal-initial-focus`** so initial focus targets the first **non-close** control.
+
+### 2026-04-08 – Semver minor bump (agent rule + script)
+**Cursor rule**: **`.cursor/rules/semver-minor-on-app-edit.mdc`** (`alwaysApply: true`) — when an agent **changes application code** (`src/`, app config like **`next.config.ts`**, etc.), it should run **`node scripts/bump-minor.mjs`** **once** before finishing the task. That increments **`package.json`** **`version`** **minor** (e.g. `0.1.0` → `0.2.0`, patch reset to `0`). **Skip** the bump for docs-only / meta-only edits (e.g. **`MEMORY.MD`**, rules-only), or when only touching version files. **Build** counter (**`bump-build.mjs`**) is independent (still **`predev`** / **`prebuild`**).
+
+### 2026-04-08 – App build number (auto-increment)
+**Versioning**: **`src/lib/build-version.json`** holds monotonic **`build`** (integer). **`scripts/bump-build.mjs`** increments it. **`predev`** and **`prebuild`** in **`package.json`** run the bump before **`npm run dev`** and **`npm run build`**, so each dev session or production build advances the counter. **`src/lib/app-version.ts`** exports **`APP_SEMVER`** (from **`package.json`**) and **`APP_BUILD`**. **UI**: top bar shows **`{semver} · {build}`** (before Help); **About** shows **Version {semver} · build {build}** and **Development session** when `NODE_ENV !== 'production'`.
+
+### 2026-04-08 – About dialog copy
+**UI**: **`about-dialog.tsx`** — title **About DiagramWeaver** (product name, no space); body describes a simple interactive diagram tool for presenting/conveying information and storytelling; **Privacy** section clarified (data on device, localStorage, exports where you choose; no upload to cloud/remote servers).
+
+### 2026-04-08 – Connections popover: expandable rows
+**UI**: **`context-toolbar.tsx`** — each connection row shows **grip + clickable title + chevron** when collapsed; clicking expands/collapses full settings. **Defaults**: selecting a node with **one** connection starts **expanded**; **two or more** start **all collapsed**. **Transitions**: adding a second connection (1→2+) **collapses all**; removing down to one (2+→1) **expands** the sole row. **Remember**: expanded state is **not** cleared when the popover closes; it resets when switching to another node or when diagram connections for the node go to zero. **`expandedConnectionKeys`** uses connection id or `from-to-index`.
+
+### 2026-04-08 – Connections popover (node toolbar) matches connection context modal
+**UI**: **`context-toolbar.tsx`** Connections popover (arrow button on selected node) now exposes the same line controls as right-click **`ConnectionContextModal`**: **Center on edge**, **Attach on side** (top/bottom vs left/right toggles), **Arrow** on its own row, **Smooth corners** with the same helper text, **Connection points** (add/remove waypoints), and section order aligned (line options → text/color/position → thickness/shadow/disconnect → path animation → waypoints).
+
 ### 2026-04-05 – ContextToolbar: hooks after edge early-return
 **Issue**: Branch vs `main` wrapped edge toolbar handlers and post-edge handlers in **`useCallback`**. **`ContextToolbar`** returns early when **`selectedItem.itemType === 'edge'`**, so **edge** renders ran **3** extra hooks; **non-edge** skipped those and ran **many** hooks below → **Rules of Hooks** / “final argument to useCallback changed size” when right-clicking / changing selection. **Fix**: **`context-toolbar.tsx`** — revert those to **plain functions** (same as **`main`**); hooks must not be split across the edge **`return`**.
 
@@ -914,16 +941,12 @@ DiagramWeaver is a Next.js 15 application for creating interactive architecture 
   - **Rendering**: Updated `DiagramNode` and `DiagramGroup` components to apply rotation transforms
   - **UI Controls**: Rotation option appears in toolbar for all nodes and groups (not just text nodes)
   - **Shadow Compatibility**: Rotation works correctly with shadow effects (uses `translateZ(0)` for proper rendering)
-- **Interactive Rotation Handles** (2026-01): Added canvas-based rotation handles for direct manipulation:
-  - **Corner Handles**: Four semi-transparent green rotate handles appear at corners of selected/hovered items
-  - **Visual Feedback**: Green semi-transparent circle HUD shows during rotation with tick marks every 5° and angle readout
-  - **Drag-to-Rotate**: Click and drag any corner handle vertically to rotate (up increases, down decreases)
-  - **Multi-Select Support**: In multi-select, handles appear for the currently hovered selected item
-  - **Live Preview**: Rotation updates in real-time as user drags; persists to data on release
-  - **Geometry-Aware**: Handles positioned at rotated corners, accounting for current rotation angle
-  - **Implementation**: New `CanvasRotationOverlay` component renders handles and HUD overlay
-  - **Pointer Events**: Uses pointer capture for smooth dragging across screen boundaries
-  - **Files**: `src/components/editor/canvas-rotation-overlay.tsx`, updated `editor-canvas.tsx`, `diagram-node.tsx`, `diagram-zone.tsx`
+- **Interactive Rotation Handles** (2026-01, updated 2026-04): Direct rotation from the canvas:
+  - **Handle placement**: One **top-left** green control (`RotationHandle` in `diagram-node.tsx`), same visual system as connect / resize / corner-radius (`globals.css` `.dw-rotation-*`), inside the node’s rotated box so it stays fixed like other helpers
+  - **Visual Feedback**: `CanvasRotationOverlay` draws only the **angle HUD** (ticks + readout) while dragging, in screen space
+  - **Drag-to-Rotate**: Drag vertically to rotate (up increases, down decreases); pointer capture on handle
+  - **Multi-Select**: Handle targets the hovered selected item when applicable
+  - **Files**: `rotation-handle.tsx`, `canvas-rotation-overlay.tsx`, `editor-canvas.tsx`, `diagram-node.tsx`
 - **Label Node Styling** (2025-12): Enhanced label nodes with styling controls matching groups/zones:
   - **Height Fix**: Label nodes now have horizontal height matching text exactly (removed vertical padding)
   - **Labelbox Unchanged**: Labelbox nodes maintain their padding and styling

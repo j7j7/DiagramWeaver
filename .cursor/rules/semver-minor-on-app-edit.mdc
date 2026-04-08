@@ -1,0 +1,20 @@
+---
+description: Bump package.json minor semver after application code changes (DiagramWeaver)
+alwaysApply: true
+---
+
+# Semver minor bump on app edits
+
+When you **change application code** for this project (e.g. under `src/`, or app-facing config such as `next.config.ts`, `tailwind.config.*`, `postcss.config.*`), **before finishing the task** run:
+
+```bash
+node scripts/bump-minor.mjs
+```
+
+This increments the **minor** segment of `package.json` `version` (e.g. `0.1.0` → `0.2.0`) and sets **patch** to `0`. The UI reads semver via `src/lib/app-version.ts`.
+
+**Do not** run the bump when the session’s edits are **only** to: documentation (including `MEMORY.MD`), `.cursor/rules/`, `package.json` / `build-version.json` / scripts **solely** to adjust versioning, or other non-runtime project meta — unless you also changed app code in the same task.
+
+**Do not** run it more than **once** per completed task (avoid double-bumping).
+
+The **build** counter (`scripts/bump-build.mjs`, `predev` / `prebuild`) is separate; it still advances on each `npm run dev` / `npm run build`.

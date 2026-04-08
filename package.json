@@ -1,8 +1,10 @@
 {
   "name": "nextn",
-  "version": "0.1.0",
+  "version": "0.6.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/bump-build.mjs",
+    "prebuild": "node scripts/bump-build.mjs",
     "dev": "next dev --turbopack -p 9003",
     "dev:test": "next dev --turbopack -p 9004",
     "build": "NODE_ENV=production next build",

@@ -49,6 +49,7 @@ import { ResizeHandles } from "./resize-handles";
 import { LineEndpointHandles } from "./line-endpoint-handles";
 import { ConnectHandle } from "./connect-handle";
 import { CornerRadiusHandle } from "./corner-radius-handle";
+import { RotationHandle } from "./rotation-handle";
 import { UrlHandle } from "./url-handle";
 import { computeUmlClassDimensions } from "@/lib/uml-utils";
 import { openExternalUrlInNewTab } from "@/lib/url-utils";
@@ -201,6 +202,10 @@ interface DiagramNodeProps {
   showUrlHandleWhenReadOnly?: boolean;
   /** Alt+drag duplicate preview ghost — non-interactive, not a drag source */
   isDuplicateDragPreview?: boolean;
+  /** Editor: show top-left rotation handle (same layer as connect / resize helpers) */
+  rotationHandleVisible?: boolean;
+  onRotationPointerDown?: (e: React.PointerEvent) => void;
+  isRotationDragging?: boolean;
 }
 
 function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps): boolean {
@@ -261,10 +266,13 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
     prev.onSubDiagramDoubleClick === next.onSubDiagramDoubleClick &&
     prev.hasLinkedSubDiagram === next.hasLinkedSubDiagram &&
     prev.showUrlHandleWhenReadOnly === next.showUrlHandleWhenReadOnly &&
-    prev.isDuplicateDragPreview === next.isDuplicateDragPreview;
+    prev.isDuplicateDragPreview === next.isDuplicateDragPreview &&
+    prev.rotationHandleVisible === next.rotationHandleVisible &&
+    prev.onRotationPointerDown === next.onRotationPointerDown &&
+    prev.isRotationDragging === next.isRotationDragging;
 }
 
-function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onResizeStart, onResizeEnd, onPositionUpdate, onDraggingChange, onUpdate, hoverEnabled = true, isReadOnly = false, onHoverChange, onConnect, isConnectMode, transform, canvasRef, stackZIndex, pointerEventsPassThrough = false, animationStyle, onSubDiagramDoubleClick, hasLinkedSubDiagram, showUrlHandleWhenReadOnly, isDuplicateDragPreview = false }: DiagramNodeProps) {
+function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onResizeStart, onResizeEnd, onPositionUpdate, onDraggingChange, onUpdate, hoverEnabled = true, isReadOnly = false, onHoverChange, onConnect, isConnectMode, transform, canvasRef, stackZIndex, pointerEventsPassThrough = false, animationStyle, onSubDiagramDoubleClick, hasLinkedSubDiagram, showUrlHandleWhenReadOnly, isDuplicateDragPreview = false, rotationHandleVisible = false, onRotationPointerDown, isRotationDragging = false }: DiagramNodeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [isEditingTag, setIsEditingTag] = useState(false);
@@ -1656,6 +1664,17 @@ return (
            visible={true}
            onMouseDown={handleCornerRadiusDragStart}
            disabled={isDraggingCornerRadius}
+           zIndexClass="z-50"
+         />
+       )}
+
+       {/* Rotation handle — top-left; parent decides visibility (excludes lines/points) */}
+       {!isReadOnly && rotationHandleVisible && onRotationPointerDown && !isLineNode && (
+         <RotationHandle
+           visible={Boolean(isSelected || isMultiSelected)}
+           onPointerDown={onRotationPointerDown}
+           disabled={false}
+           isDragging={isRotationDragging ?? false}
            zIndexClass="z-50"
          />
        )}

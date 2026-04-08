@@ -9,7 +9,31 @@ const TooltipProvider = TooltipPrimitive.Provider
 
 const Tooltip = TooltipPrimitive.Root
 
-const TooltipTrigger = TooltipPrimitive.Trigger
+/**
+ * Radix opens the tooltip on both pointer hover and focus. Programmatic focus
+ * (e.g. modal/dialog initial focus on the first button) is not `:focus-visible`,
+ * so we block that path and keep hover + keyboard (:focus-visible) behavior.
+ */
+const TooltipTrigger = React.forwardRef<
+  React.ElementRef<typeof TooltipPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Trigger>
+>(({ onFocus, ...props }, ref) => (
+  <TooltipPrimitive.Trigger
+    ref={ref}
+    {...props}
+    onFocus={(e) => {
+      onFocus?.(e)
+      const el = e.currentTarget
+      if (
+        typeof el.matches === "function" &&
+        !el.matches(":focus-visible")
+      ) {
+        e.preventDefault()
+      }
+    }}
+  />
+))
+TooltipTrigger.displayName = TooltipPrimitive.Trigger.displayName
 
 const TooltipContent = React.forwardRef<
   React.ElementRef<typeof TooltipPrimitive.Content>,

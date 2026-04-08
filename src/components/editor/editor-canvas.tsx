@@ -473,6 +473,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     capturedElement.setPointerCapture(e.pointerId);
   }, [rotationTarget, nodesById, zonesById]);
 
+  const onRotationHandlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      handleRotationHandlePointerDown(e, "top-left");
+    },
+    [handleRotationHandlePointerDown]
+  );
+
   // Handle pointer move for rotation
   useEffect(() => {
     if (!rotationDragState) return;
@@ -1437,6 +1444,16 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   animationStyle={nodeAnimationStyles?.get(node.id)}
                   onSubDiagramDoubleClick={onSubDiagramDoubleClick}
                   hasLinkedSubDiagram={getHasLinkedSubDiagram?.(node) ?? Boolean(node.subDiagramId)}
+                  rotationHandleVisible={
+                    !isReadOnly &&
+                    !!rotationTarget &&
+                    rotationTarget.type === "node" &&
+                    rotationTarget.id === node.id
+                  }
+                  onRotationPointerDown={onRotationHandlePointerDown}
+                  isRotationDragging={
+                    rotationDragState?.isActive === true && rotationDragState.targetId === node.id
+                  }
                 />
               ) : zone ? null : null;
                   return nodeEl;
@@ -1513,6 +1530,16 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     animationStyle={nodeAnimationStyles?.get(node.id)}
                     onSubDiagramDoubleClick={onSubDiagramDoubleClick}
                     hasLinkedSubDiagram={getHasLinkedSubDiagram?.(node) ?? Boolean(node.subDiagramId)}
+                    rotationHandleVisible={
+                      !isReadOnly &&
+                      !!rotationTarget &&
+                      rotationTarget.type === "node" &&
+                      rotationTarget.id === node.id
+                    }
+                    onRotationPointerDown={onRotationHandlePointerDown}
+                    isRotationDragging={
+                      rotationDragState?.isActive === true && rotationDragState.targetId === node.id
+                    }
                   />
                 ) : zone ? null : null;
                 return [
@@ -1702,57 +1729,50 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           )}
 
           {/* ====================================================================
-              ROTATION HANDLES OVERLAY
+              ROTATION ANGLE HUD (handle is on the node — RotationHandle)
               ====================================================================
-              Shows rotation handles at corners of selected/hovered items
-              Includes green angle HUD while dragging
-              See: src/components/editor/canvas-rotation-overlay.tsx
+              Green dial while dragging; see canvas-rotation-overlay.tsx
           */}
-          {rotationTarget && (() => {
-            const target = rotationTarget.type === 'node'
-              ? displayNodesById[rotationTarget.id]
-              : displayZonesById[rotationTarget.id];
+          {rotationTarget &&
+            rotationDragState?.isActive &&
+            rotationDragState.targetId === rotationTarget.id &&
+            (() => {
+              const target =
+                rotationTarget.type === "node"
+                  ? displayNodesById[rotationTarget.id]
+                  : displayZonesById[rotationTarget.id];
 
-            if (!target) return null;
+              if (!target) return null;
 
-            // Calculate bounds
-            let bounds: { x: number; y: number; width: number; height: number };
-            
-            if (rotationTarget.type === 'node') {
-              const node = target as PositionedNode;
-              const dims = measureNodeDims(node);
-              bounds = {
-                x: node.x || 0,
-                y: node.y || 0,
-                width: dims.width,
-                height: dims.height,
-              };
-            } else {
-              const zone = target as PositionedGroup;
-              bounds = {
-                x: zone.x || 0,
-                y: zone.y || 0,
-                width: zone.width || 300,
-                height: zone.height || 220,
-              };
-            }
+              let bounds: { x: number; y: number; width: number; height: number };
 
-            const currentRotation = (target as any).rotation || 0;
-            const dragRotation = rotationDragState?.isActive && rotationDragState.targetId === rotationTarget.id
-              ? rotationDragState.currentRotation
-              : undefined;
+              if (rotationTarget.type === "node") {
+                const node = target as PositionedNode;
+                const dims = measureNodeDims(node);
+                bounds = {
+                  x: node.x || 0,
+                  y: node.y || 0,
+                  width: dims.width,
+                  height: dims.height,
+                };
+              } else {
+                const zone = target as PositionedGroup;
+                bounds = {
+                  x: zone.x || 0,
+                  y: zone.y || 0,
+                  width: zone.width || 300,
+                  height: zone.height || 220,
+                };
+              }
 
-            return (
-              <CanvasRotationOverlay
-                transform={transform}
-                targetBounds={bounds}
-                rotation={currentRotation}
-                isDragging={(rotationDragState?.isActive && rotationDragState.targetId === rotationTarget.id) ?? false}
-                dragRotation={dragRotation}
-                onHandlePointerDown={handleRotationHandlePointerDown}
-              />
-            );
-          })()}
+              return (
+                <CanvasRotationOverlay
+                  transform={transform}
+                  targetBounds={bounds}
+                  rotationDegrees={rotationDragState.currentRotation}
+                />
+              );
+            })()}
 
           {/* ====================================================================
               CONTEXT MENU

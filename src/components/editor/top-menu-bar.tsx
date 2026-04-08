@@ -25,6 +25,7 @@ import type { SelectedItem } from '../diagram-editor';
 import type { DiagramData } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { DiagramTheme } from '@/lib/theme-types';
+import { APP_BUILD, APP_SEMVER } from '@/lib/app-version';
 
 const truncateName = (s: string, max = 20) => (s.length > max ? `${s.slice(0, max - 3)}...` : s);
 
@@ -851,6 +852,13 @@ export function TopMenuBar({
           Cursor: X: {mousePosition.x.toFixed(0)}, Y: {mousePosition.y.toFixed(0)}
         </div>
       )}
+
+      <div
+        className="text-xs text-muted-foreground px-2 border-l border-border tabular-nums shrink-0"
+        title={`DiagramWeaver ${APP_SEMVER} (build ${APP_BUILD})`}
+      >
+        {APP_SEMVER} · {APP_BUILD}
+      </div>
 
       <Menubar className="ml-auto shrink-0 rounded-none border-0 border-b-0 border-l-0 border-r-0 border-t-0 h-auto">
         <MenubarMenu>

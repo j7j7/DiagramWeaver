@@ -1,3 +1,4 @@
+import dagre from "@dagrejs/dagre";
 import { DiagramData, DiagramNodeData, DiagramZoneData, DiagramConnectionData, DiagramGroupingData } from "./types";
 import { measureNodeDims, PositionedNode } from "../components/editor/canvas-constants";
 
@@ -6,6 +7,9 @@ const MIN_NODE_SPACING = 60;
 const LAYER_SPACING = 100;
 const ZONE_PADDING = 40;
 const COMPONENT_SPACING = 80;
+const GRID_COLS_SQRT_FACTOR = 1.4;
+/** Horizontal offset for alternating ranks when layout is a thin vertical chain (one node per rank). */
+const CHAIN_ZIGZAG_OFFSET = 120;
 
 interface LayoutItem {
   id: string;
@@ -17,8 +21,6 @@ interface LayoutItem {
   originalX?: number;
   originalY?: number;
   data: DiagramNodeData | DiagramZoneData | DiagramGroupingData;
-  rank?: number;
-  order?: number;
 }
 
 interface GraphEdge {
@@ -33,6 +35,59 @@ function shuffleArray<T>(array: T[]): T[] {
         [array[i], array[j]] = [array[j], array[i]];
     }
     return array;
+}
+
+interface ComponentLayoutBox {
+    items: LayoutItem[];
+    width: number;
+    height: number;
+}
+
+/** Pack disconnected graph components in a grid instead of a single shelf row (avoids one long line). */
+function packComponentsInGrid(componentLayouts: ComponentLayoutBox[]): { width: number; height: number } {
+    if (componentLayouts.length === 0) return { width: 0, height: 0 };
+    if (componentLayouts.length === 1) {
+        const c = componentLayouts[0];
+        return { width: c.width, height: c.height };
+    }
+
+    const n = componentLayouts.length;
+    const cols = Math.max(1, Math.ceil(Math.sqrt(n * GRID_COLS_SQRT_FACTOR)));
+    const rows: ComponentLayoutBox[][] = [];
+    for (let i = 0; i < n; i += cols) {
+        rows.push(componentLayouts.slice(i, i + cols));
+    }
+
+    const rowHeights: number[] = [];
+    const rowWidths: number[] = [];
+    rows.forEach(rowComps => {
+        const rowW =
+            rowComps.reduce((s, c) => s + c.width + COMPONENT_SPACING, 0) -
+            (rowComps.length > 0 ? COMPONENT_SPACING : 0);
+        const rowH = Math.max(...rowComps.map(c => c.height), 0);
+        rowWidths.push(rowW);
+        rowHeights.push(rowH);
+    });
+
+    const maxGridW = Math.max(0, ...rowWidths);
+
+    let yOff = 0;
+    rows.forEach((rowComps, rowIdx) => {
+        const rowH = rowHeights[rowIdx];
+        const rowW = rowWidths[rowIdx];
+        let xOff = (maxGridW - rowW) / 2;
+        rowComps.forEach(comp => {
+            comp.items.forEach(item => {
+                item.x += xOff;
+                item.y += yOff;
+            });
+            xOff += comp.width + COMPONENT_SPACING;
+        });
+        yOff += rowH + COMPONENT_SPACING;
+    });
+
+    const totalHeight = yOff > 0 ? yOff - COMPONENT_SPACING : 0;
+    return { width: maxGridW, height: totalHeight };
 }
 
 /**
@@ -350,7 +405,7 @@ export function performAutoLayout(data: DiagramData): DiagramData {
 }
 
 /**
- * Sugiyama-style Layered Layout
+ * Layered layout per connected component (dagre inside each component), then grid-pack components.
  */
 function performLayeredLayout(items: LayoutItem[], edges: GraphEdge[]): { width: number, height: number } {
     if (items.length === 0) return { width: 0, height: 0 };
@@ -364,51 +419,15 @@ function performLayeredLayout(items: LayoutItem[], edges: GraphEdge[]): { width:
     shuffleArray(components);
 
     // Calculate component dimensions
-    const componentLayouts = components.map(componentItems => {
+    const componentLayouts: ComponentLayoutBox[] = components.map(componentItems => {
         const componentIds = new Set(componentItems.map(i => i.id));
         const componentEdges = edges.filter(e => componentIds.has(e.from) && componentIds.has(e.to));
-        
-        // Randomize layout direction slightly? Or stick to Left-to-Right?
-        // User requested horizontal alignment. Let's use Left-to-Right as main flow.
+
         const layout = layoutComponent(componentItems, componentEdges);
         return { items: componentItems, ...layout };
     });
 
-    // Simple 2D Bin Packing (Shelf Algorithm)
-    // We want to pack into a roughly square/rectangular area to avoid "going off page"
-    // Estimate total area
-    const totalArea = componentLayouts.reduce((sum, c) => sum + (c.width + COMPONENT_SPACING) * (c.height + COMPONENT_SPACING), 0);
-    const targetWidth = Math.sqrt(totalArea) * 1.5; // Bias towards wider aspect ratio (1.5:1)
-
-    let currentX = 0;
-    let currentY = 0;
-    let rowHeight = 0;
-    let maxWidth = 0;
-    let totalHeight = 0;
-
-    componentLayouts.forEach(comp => {
-        // Check if we need to wrap to next row
-        if (currentX > 0 && currentX + comp.width > targetWidth) {
-            currentX = 0;
-            currentY += rowHeight + COMPONENT_SPACING;
-            rowHeight = 0;
-        }
-
-        // Position component
-        comp.items.forEach(item => {
-            item.x += currentX;
-            item.y += currentY;
-        });
-
-        // Update cursor
-        currentX += comp.width + COMPONENT_SPACING;
-        rowHeight = Math.max(rowHeight, comp.height);
-        maxWidth = Math.max(maxWidth, currentX);
-    });
-
-    totalHeight = currentY + rowHeight;
-    
-    return { width: maxWidth, height: totalHeight };
+    return packComponentsInGrid(componentLayouts);
 }
 
 function getConnectedComponents(items: LayoutItem[], edges: GraphEdge[]): LayoutItem[][] {
@@ -448,156 +467,124 @@ function getConnectedComponents(items: LayoutItem[], edges: GraphEdge[]): Layout
     return components;
 }
 
-function layoutComponent(items: LayoutItem[], edges: GraphEdge[]): { width: number, height: number } {
-    // If simple component (1 item), return size
+function normalizeItemPositionsTopLeft(items: LayoutItem[]): void {
+    let minX = Infinity;
+    let minY = Infinity;
+    items.forEach((item) => {
+        minX = Math.min(minX, item.x);
+        minY = Math.min(minY, item.y);
+    });
+    if (minX === Infinity) return;
+    items.forEach((item) => {
+        item.x -= minX;
+        item.y -= minY;
+    });
+}
+
+function boundingBoxForItems(items: LayoutItem[]): { width: number; height: number } {
+    let maxX = 0;
+    let maxY = 0;
+    items.forEach((item) => {
+        maxX = Math.max(maxX, item.x + item.width);
+        maxY = Math.max(maxY, item.y + item.height);
+    });
+    return { width: maxX, height: maxY };
+}
+
+/**
+ * If dagre produced a "spine" (one node per horizontal band), stagger X so edges are not all collinear.
+ */
+function applyChainZigZagIfNeeded(items: LayoutItem[]): void {
+    if (items.length < 3) return;
+    const sorted = [...items].sort((a, b) => a.y - b.y);
+    const clusters: LayoutItem[][] = [];
+    for (const item of sorted) {
+        const last = clusters[clusters.length - 1];
+        if (!last || Math.abs(item.y - last[0].y) > 8) {
+            clusters.push([item]);
+        } else {
+            last.push(item);
+        }
+    }
+    if (clusters.length < 3 || !clusters.every((c) => c.length === 1)) return;
+
+    const stagger = Math.min(CHAIN_ZIGZAG_OFFSET, Math.max(80, LAYER_SPACING * 0.75));
+    clusters.forEach((c, i) => {
+        c[0].x += (i % 2) * stagger;
+    });
+}
+
+function layoutComponentGridFallback(items: LayoutItem[]): { width: number; height: number } {
+    const n = items.length;
+    const cols = Math.max(1, Math.ceil(Math.sqrt(n * GRID_COLS_SQRT_FACTOR)));
+    let rowY = 0;
+    for (let i = 0; i < n; i += cols) {
+        const row = items.slice(i, i + cols);
+        let x = 0;
+        let rowH = 0;
+        row.forEach((item) => {
+            item.x = x;
+            item.y = rowY;
+            x += item.width + MIN_NODE_SPACING;
+            rowH = Math.max(rowH, item.height);
+        });
+        rowY += rowH + MIN_NODE_SPACING;
+    }
+    normalizeItemPositionsTopLeft(items);
+    return boundingBoxForItems(items);
+}
+
+/**
+ * Layered layout via dagre (same engine as Mermaid flowcharts): fan-out keeps siblings on one rank
+ * with horizontal spread (e.g. 2×2 style), instead of a custom DFS tree that collapses to a line.
+ */
+function layoutComponent(items: LayoutItem[], edges: GraphEdge[]): { width: number; height: number } {
     if (items.length === 1) {
         return { width: items[0].width, height: items[0].height };
     }
 
-    // 1. Assign Layers (Longest Path)
-    // First, build adjacency for directed graph
-    const outEdges = new Map<string, string[]>();
-    const inEdges = new Map<string, string[]>();
-    items.forEach(i => {
-        outEdges.set(i.id, []);
-        inEdges.set(i.id, []);
+    const idSet = new Set(items.map((i) => i.id));
+    const g = new dagre.graphlib.Graph();
+    g.setDefaultEdgeLabel(() => ({}));
+    g.setGraph({
+        rankdir: "TB",
+        nodesep: MIN_NODE_SPACING,
+        ranksep: LAYER_SPACING,
+        marginx: 20,
+        marginy: 20,
+        edgesep: MIN_NODE_SPACING,
     });
-    
-    // Shuffle items to randomize processing order
-    shuffleArray(items);
 
-    edges.forEach(e => {
-        outEdges.get(e.from)?.push(e.to);
-        inEdges.get(e.to)?.push(e.from);
+    items.forEach((item) => {
+        g.setNode(item.id, { width: item.width, height: item.height });
     });
-    
-    // Break cycles (Greedy DFS)
-    const visited = new Set<string>();
-    const recursionStack = new Set<string>();
-    const validEdges: GraphEdge[] = [];
-    
-    const visit = (u: string) => {
-        visited.add(u);
-        recursionStack.add(u);
-        
-        // Shuffle neighbors to randomize DFS path
-        const neighbors = outEdges.get(u) || [];
-        shuffleArray(neighbors);
 
-        neighbors.forEach(v => {
-            if (recursionStack.has(v)) {
-                // Cycle detected, ignore this edge for layering (treat as back-edge)
-            } else {
-                validEdges.push({ from: u, to: v });
-                if (!visited.has(v)) visit(v);
-            }
-        });
-        
-        recursionStack.delete(u);
-    };
-    
-    items.forEach(i => {
-        if (!visited.has(i.id)) visit(i.id);
+    const edgeKeySeen = new Set<string>();
+    edges.forEach((e) => {
+        if (!idSet.has(e.from) || !idSet.has(e.to) || e.from === e.to) return;
+        const key = `${e.from}\0${e.to}`;
+        if (edgeKeySeen.has(key)) return;
+        edgeKeySeen.add(key);
+        g.setEdge(e.from, e.to);
     });
-    
-    // Compute ranks using valid edges
-    const ranks = new Map<string, number>();
-    // Initialize sources with rank 0
-    items.forEach(i => ranks.set(i.id, 0));
-    
-    // Simple longest path approach
-    // Iterate a few times to propagate ranks
-    for (let i = 0; i < items.length; i++) {
-        let changed = false;
-        validEdges.forEach(e => {
-            const rU = ranks.get(e.from) || 0;
-            const rV = ranks.get(e.to) || 0;
-            if (rV < rU + 1) {
-                ranks.set(e.to, rU + 1);
-                changed = true;
-            }
-        });
-        if (!changed) break;
+
+    try {
+        dagre.layout(g);
+    } catch {
+        return layoutComponentGridFallback(items);
     }
-    
-    // Group by rank
-    const layers = new Map<number, LayoutItem[]>();
-    items.forEach(i => {
-        i.rank = ranks.get(i.id);
-        if (!layers.has(i.rank!)) layers.set(i.rank!, []);
-        layers.get(i.rank!)?.push(i);
+
+    items.forEach((item) => {
+        const n = g.node(item.id);
+        if (n && typeof n.x === "number" && typeof n.y === "number") {
+            item.x = n.x - item.width / 2;
+            item.y = n.y - item.height / 2;
+        }
     });
-    
-    const sortedLayers = Array.from(layers.keys()).sort((a, b) => a - b).map(r => layers.get(r)!);
-    
-    // 2. Order Vertices in Layers (Barycenter Heuristic) to minimize crossings
-    // Simple heuristic: Sort layer L+1 based on average position of parents in layer L
-    
-    for (let i = 0; i < sortedLayers.length - 1; i++) {
-        const currentLayer = sortedLayers[i];
-        const nextLayer = sortedLayers[i+1];
-        
-        // Assign initial order in current layer if not set
-        // Randomize initial order slightly
-        if (i === 0) shuffleArray(currentLayer);
-        currentLayer.forEach((item, idx) => item.order = idx);
-        
-        // For each node in next layer, calculate barycenter of parents
-        nextLayer.forEach(node => {
-            const parents = inEdges.get(node.id)?.filter(pId => currentLayer.some(l => l.id === pId)) || [];
-            if (parents.length > 0) {
-                const sumOrder = parents.reduce((sum, pId) => {
-                    const p = currentLayer.find(l => l.id === pId);
-                    return sum + (p?.order || 0);
-                }, 0);
-                (node as any).barycenter = sumOrder / parents.length;
-            } else {
-                // Random barycenter for unconnected nodes to distribute them
-                (node as any).barycenter = (node.order || 0) + (Math.random() - 0.5);
-            }
-        });
-        
-        // Sort next layer
-        nextLayer.sort((a, b) => ((a as any).barycenter || 0) - ((b as any).barycenter || 0));
-        // Update order
-        nextLayer.forEach((item, idx) => item.order = idx);
-    }
-    
-    // 3. Assign Coordinates (Horizontal Layout: Layers = Columns (X), Items = Rows (Y))
-    
-    // X coordinates (Layers)
-    let currentX = 0;
-    sortedLayers.forEach(layer => {
-        const maxW = Math.max(...layer.map(i => i.width));
-        layer.forEach(item => {
-            // Center item horizontally in the layer column
-            item.x = currentX + (maxW - item.width) / 2;
-        });
-        currentX += maxW + LAYER_SPACING;
-    });
-    
-    // Y coordinates (Items in Layer)
-    let maxH = 0;
-    sortedLayers.forEach(layer => {
-        let currentY = 0;
-        layer.forEach(item => {
-            item.y = currentY;
-            currentY += item.height + MIN_NODE_SPACING;
-        });
-        maxH = Math.max(maxH, currentY - MIN_NODE_SPACING);
-    });
-    
-    // Center layers vertically relative to max height
-    sortedLayers.forEach(layer => {
-        const layerHeight = layer.reduce((sum, item) => sum + item.height, 0) + (layer.length - 1) * MIN_NODE_SPACING;
-        const offset = (maxH - layerHeight) / 2;
-        
-        let currentY = offset;
-        layer.forEach(item => {
-            item.y = currentY;
-            currentY += item.height + MIN_NODE_SPACING;
-        });
-    });
-    
-    return { width: currentX - LAYER_SPACING, height: maxH };
+
+    normalizeItemPositionsTopLeft(items);
+    applyChainZigZagIfNeeded(items);
+    normalizeItemPositionsTopLeft(items);
+
+    return boundingBoxForItems(items);
 }
