@@ -2,6 +2,12 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-04-09 – Connections popover (toolbar): same layout as connection modal + Stroke
+**UI**: **`context-toolbar.tsx`** — **Connections** popover width **`min(480px, 100vw-2rem)`**; expanded row body matches **`connection-context-modal`**: **two-column** grid (**Line type** + **Arrow**, **Stroke** solid/dashed/dotted, **Line thickness** + depth, smooth/center/attach | **Text**, **Text position**, **Color**, **Delete** with tooltip), then **`ConnectionAnimationControls`** (**compact**), then **Connection points**. **Collapse/expand** per connection unchanged.
+
+### 2026-04-09 – Toolbar Connections popover: same layout as connection context modal
+**UI**: **`context-toolbar.tsx`** — expanded connection row uses the same **two-column** layout as **`connection-context-modal`**: **Line type** + **Arrow**, **Stroke**, **Line thickness** + depth, **Smooth corners** / **Center on edge** / **Attach on side** (left); **Text**, **Text position**, **Color**, **Delete** (Trash2 + tooltip) (right). **Popover** width **`min(480px, 100vw-2rem)`**. **Collapse/expand** per row unchanged. **`Label`** import; removed **`Unlink`**.
+
 ### 2026-04-09 – Connection animation controls: 2-column grid, show when enabled
 **UI**: **`connection-animation-controls.tsx`** — **Enable animation** row always visible; **detail** controls (shape, speed, size, formula, auto **/** shape count, color, spacing, bulk apply) render only when **`animation.enabled`**. Layout uses **`grid`** **`grid-cols-2`** (left: shape + speed + size + note + auto count + manual count; right: color + spacing + divider) with **bulk** rows **full-width** below. **Bulk** checkboxes reset when animation is disabled.
 
