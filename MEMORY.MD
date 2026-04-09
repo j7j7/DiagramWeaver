@@ -5,6 +5,9 @@
 ### 2026-04-09 – Connection animations: 20s canvas idle auto-pause + resume on movement
 **Behavior**: **`animationConnectionsUserEnabled`** (persisted **`dw:animationConnections:enabled`**) is separate from **effective** rendering: **`animationConnectionsEnabled = userEnabled && !idlePaused`**. After **20s** with **no diagram-space cursor change** on the canvas (snapped grid updates from **`use-canvas-interactions`**), **`idlePaused`** turns on so animations stop without changing saved preference. **Mouse move** or **touch move** on the canvas calls **`onCanvasActivity`**, clears idle pause, and restarts the timer. **Activity** toolbar button tooltip explains idle pause. **Options** menu Enable/Disable text follows **user** preference. **Hook**: **`src/hooks/use-connection-animation-idle.ts`** (**`CONNECTION_ANIMATION_IDLE_MS`**). **Touch**: **`use-canvas-interactions`**; **`touchend`** clears when **`touches.length === 0`**.
 
+### 2026-04-09 – Presentation slide change: connection transition before paint
+**Issue**: **`startTransition`** ran in **`useEffect`** (after paint), so connections could **flash one frame** at the **next** slide’s geometry before **`slideEndpointOffset`** applied. **Fix**: **`useLayoutEffect`** in **`use-presentation-slide-view.ts`** and **`presentation-player.tsx`** so **`useSlideTransition`**’s initial connection styles apply **before** the browser paints.
+
 ### 2026-04-09 – Viewer: same connection rendering as editor + `isReadOnly`
 **Behavior**: **`viewer-canvas.tsx`** passes **`isReadOnly`** on **`CanvasConnections`** (ribbons, color gradients, animation paths unchanged — shared **`BezierConnection`** / **`OrthogonalConnection`**). **`canvas-connections.tsx`** memo compare includes **`onConnectionUpdate`** and **`onConnectionWaypointAdd`**. **`AGENTS.md`** documents viewer pipeline + schema.
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import type { DiagramData, Slide } from '@/lib/types';
 import { useSlideTransition } from '@/hooks/use-slide-transition';
 import { pruneConnectionsToVisibleNodes } from '@/lib/presentation-viewport-fit';
@@ -38,7 +38,9 @@ export function usePresentationSlideView(options: {
     previousDiagram: previousDiagram,
   });
 
-  useEffect(() => {
+  // Layout effect: apply slide transition styles (incl. connection endpoint offsets) before paint
+  // so connections never flash one frame at the target geometry.
+  useLayoutEffect(() => {
     if (!enabled || !renderedDiagram) return;
     if (previousSlideIndex !== safeIndex && previousDiagram !== null) {
       slideTransition.startTransition();

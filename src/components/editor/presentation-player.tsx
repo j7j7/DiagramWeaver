@@ -83,7 +83,8 @@ export function PresentationPlayer({
     previousDiagram: previousDiagram,
   });
 
-  React.useEffect(() => {
+  // Layout effect: apply transition styles before paint — avoids one frame at final connection geometry.
+  React.useLayoutEffect(() => {
     if (!open || !renderedDiagram) return;
 
     if (previousSlideIndex !== safeIndex && previousDiagram !== null) {
