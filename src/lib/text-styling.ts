@@ -13,6 +13,20 @@ export interface TextStyling {
   lineHeight?: number;
   textOpacity?: number;
   textColor?: string;
+  /** Outline width in px; 0 or unset = no outline */
+  textOutlineWidth?: number;
+  /** Outline stroke color (separate from fill `textColor`) */
+  textOutlineColor?: string;
+  /** Glow via `text-shadow`; blur px, 0 or unset = off */
+  textGlowBlur?: number;
+  textGlowColor?: string;
+  /** Drop shadow: offsets + blur (px); all zero = off */
+  textShadowOffsetX?: number;
+  textShadowOffsetY?: number;
+  textShadowBlur?: number;
+  textShadowColor?: string;
+  /** Only `true` applies drop shadow; omitted/false = off (default). */
+  textDropShadowEnabled?: boolean;
   textJustify?: 'left' | 'center' | 'right' | 'full';
   textVerticalPosition?: 'top' | 'middle' | 'bottom';
   /** `generic.object.text-box-heading` only: heading strip text color (body uses `textColor`) */
@@ -37,6 +51,15 @@ export function getTextStyling(
     lineHeight: node?.lineHeight || theme?.lineHeight,
     textOpacity: node?.textOpacity || theme?.textOpacity,
     textColor: node?.textColor || theme?.textColor,
+    textOutlineWidth: node?.textOutlineWidth ?? theme?.textOutlineWidth,
+    textOutlineColor: node?.textOutlineColor ?? theme?.textOutlineColor,
+    textGlowBlur: node?.textGlowBlur ?? theme?.textGlowBlur,
+    textGlowColor: node?.textGlowColor ?? theme?.textGlowColor,
+    textShadowOffsetX: node?.textShadowOffsetX ?? theme?.textShadowOffsetX,
+    textShadowOffsetY: node?.textShadowOffsetY ?? theme?.textShadowOffsetY,
+    textShadowBlur: node?.textShadowBlur ?? theme?.textShadowBlur,
+    textShadowColor: node?.textShadowColor ?? theme?.textShadowColor,
+    textDropShadowEnabled: node?.textDropShadowEnabled ?? theme?.textDropShadowEnabled,
     textJustify: node?.textJustify || 'center',
     textVerticalPosition: node?.textVerticalPosition || 'middle',
     headingTextColor: (node as any)?.headingTextColor
@@ -59,6 +82,13 @@ export function getTextStylingCSS(styling: TextStyling): React.CSSProperties {
   if (styling.lineHeight) css.lineHeight = styling.lineHeight;
   if (styling.textOpacity !== undefined) css.opacity = styling.textOpacity;
   if (styling.textColor) css.color = styling.textColor;
+  const ow = styling.textOutlineWidth;
+  if (ow != null && ow > 0) {
+    const oc = styling.textOutlineColor ?? '#ffffff';
+    (css as Record<string, string | undefined>).WebkitTextStroke = `${ow}px ${oc}`;
+  }
+  const fx = getTextEffectsShadowCss(styling);
+  if (fx) css.textShadow = fx;
   if (styling.textJustify) css.textAlign = styling.textJustify === 'full' ? 'justify' : styling.textJustify;
   if (styling.textVerticalPosition) {
     css.display = 'flex';
@@ -79,6 +109,47 @@ export function getTextStylingCSS(styling: TextStyling): React.CSSProperties {
 }
 
 /**
+ * Composes `text-shadow` for glow + drop shadow (comma-separated layers).
+ */
+export function getTextEffectsShadowCss(styling: TextStyling): string | undefined {
+  const parts: string[] = [];
+  const gBlur = styling.textGlowBlur;
+  if (gBlur != null && gBlur > 0) {
+    const gc = styling.textGlowColor ?? 'rgba(255,255,255,0.9)';
+    parts.push(`0 0 ${gBlur}px ${gc}`);
+    parts.push(`0 0 ${gBlur * 1.75}px ${gc}`);
+  }
+  if (styling.textDropShadowEnabled === true) {
+    const sx = styling.textShadowOffsetX ?? 0;
+    const sy = styling.textShadowOffsetY ?? 0;
+    const sb = styling.textShadowBlur ?? 0;
+    const hasDrop = sb > 0 || sx !== 0 || sy !== 0;
+    if (hasDrop) {
+      const sc = styling.textShadowColor ?? 'rgba(0,0,0,0.45)';
+      parts.push(`${sx}px ${sy}px ${sb}px ${sc}`);
+    }
+  }
+  return parts.length ? parts.join(', ') : undefined;
+}
+
+/**
+ * SVG `<text>` outline: stroke drawn first so fill (`textColor`) stays on top.
+ */
+export function getSvgTextOutlineProps(styling: TextStyling): {
+  stroke?: string;
+  strokeWidth?: number;
+  paintOrder?: 'stroke fill';
+} {
+  const w = styling.textOutlineWidth;
+  if (w == null || w <= 0) return {};
+  return {
+    stroke: styling.textOutlineColor ?? '#ffffff',
+    strokeWidth: w,
+    paintOrder: 'stroke fill',
+  };
+}
+
+/**
  * Extracts text styling from a node data object
  */
 export function extractTextStylingFromNode(node: DiagramNodeData | DiagramNodeItem): TextStyling {
@@ -93,6 +164,15 @@ export function extractTextStylingFromNode(node: DiagramNodeData | DiagramNodeIt
     lineHeight: node.lineHeight,
     textOpacity: node.textOpacity,
     textColor: node.textColor,
+    textOutlineWidth: node.textOutlineWidth,
+    textOutlineColor: node.textOutlineColor,
+    textGlowBlur: node.textGlowBlur,
+    textGlowColor: node.textGlowColor,
+    textShadowOffsetX: node.textShadowOffsetX,
+    textShadowOffsetY: node.textShadowOffsetY,
+    textShadowBlur: node.textShadowBlur,
+    textShadowColor: node.textShadowColor,
+    textDropShadowEnabled: node.textDropShadowEnabled,
     textJustify: node.textJustify,
     textVerticalPosition: node.textVerticalPosition,
     headingTextColor: node.headingTextColor
@@ -114,6 +194,15 @@ export function extractTextStylingFromZone(zone: DiagramZoneData | DiagramZoneIt
     lineHeight: zone.lineHeight,
     textOpacity: zone.textOpacity,
     textColor: zone.textColor,
+    textOutlineWidth: zone.textOutlineWidth,
+    textOutlineColor: zone.textOutlineColor,
+    textGlowBlur: zone.textGlowBlur,
+    textGlowColor: zone.textGlowColor,
+    textShadowOffsetX: zone.textShadowOffsetX,
+    textShadowOffsetY: zone.textShadowOffsetY,
+    textShadowBlur: zone.textShadowBlur,
+    textShadowColor: zone.textShadowColor,
+    textDropShadowEnabled: zone.textDropShadowEnabled,
     textJustify: zone.textJustify,
     textVerticalPosition: zone.textVerticalPosition
   };
@@ -166,6 +255,15 @@ export function applyTextStylingToNode(
   if ('lineHeight' in styling) updated.lineHeight = styling.lineHeight;
   if ('textOpacity' in styling) updated.textOpacity = styling.textOpacity;
   if ('textColor' in styling) updated.textColor = styling.textColor;
+  if ('textOutlineWidth' in styling) updated.textOutlineWidth = styling.textOutlineWidth;
+  if ('textOutlineColor' in styling) updated.textOutlineColor = styling.textOutlineColor;
+  if ('textGlowBlur' in styling) updated.textGlowBlur = styling.textGlowBlur;
+  if ('textGlowColor' in styling) updated.textGlowColor = styling.textGlowColor;
+  if ('textShadowOffsetX' in styling) updated.textShadowOffsetX = styling.textShadowOffsetX;
+  if ('textShadowOffsetY' in styling) updated.textShadowOffsetY = styling.textShadowOffsetY;
+  if ('textShadowBlur' in styling) updated.textShadowBlur = styling.textShadowBlur;
+  if ('textShadowColor' in styling) updated.textShadowColor = styling.textShadowColor;
+  if ('textDropShadowEnabled' in styling) updated.textDropShadowEnabled = styling.textDropShadowEnabled;
   if ('textJustify' in styling) updated.textJustify = styling.textJustify;
   if ('textVerticalPosition' in styling) updated.textVerticalPosition = styling.textVerticalPosition;
   if ('headingTextColor' in styling) (updated as any).headingTextColor = styling.headingTextColor;
@@ -194,6 +292,15 @@ export function applyTextStylingToZone(
   if ('lineHeight' in styling) updated.lineHeight = styling.lineHeight;
   if ('textOpacity' in styling) updated.textOpacity = styling.textOpacity;
   if ('textColor' in styling) updated.textColor = styling.textColor;
+  if ('textOutlineWidth' in styling) updated.textOutlineWidth = styling.textOutlineWidth;
+  if ('textOutlineColor' in styling) updated.textOutlineColor = styling.textOutlineColor;
+  if ('textGlowBlur' in styling) updated.textGlowBlur = styling.textGlowBlur;
+  if ('textGlowColor' in styling) updated.textGlowColor = styling.textGlowColor;
+  if ('textShadowOffsetX' in styling) updated.textShadowOffsetX = styling.textShadowOffsetX;
+  if ('textShadowOffsetY' in styling) updated.textShadowOffsetY = styling.textShadowOffsetY;
+  if ('textShadowBlur' in styling) updated.textShadowBlur = styling.textShadowBlur;
+  if ('textShadowColor' in styling) updated.textShadowColor = styling.textShadowColor;
+  if ('textDropShadowEnabled' in styling) updated.textDropShadowEnabled = styling.textDropShadowEnabled;
   if ('textJustify' in styling) updated.textJustify = styling.textJustify;
   if ('textVerticalPosition' in styling) updated.textVerticalPosition = styling.textVerticalPosition;
   

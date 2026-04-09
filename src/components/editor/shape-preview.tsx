@@ -1,5 +1,6 @@
 import React, { useId } from 'react';
 import { polygonToRoundedPath } from '@/components/diagram/shapes/shape-utils';
+import { getTextEffectsShadowCss } from '@/lib/text-styling';
 
 interface ShapePreviewProps {
   type: string;
@@ -18,6 +19,15 @@ interface ShapePreviewProps {
   borderGradientAngle?: number;
   label?: string;
   textColor?: string;
+  textOutlineWidth?: number;
+  textOutlineColor?: string;
+  textGlowBlur?: number;
+  textGlowColor?: string;
+  textShadowOffsetX?: number;
+  textShadowOffsetY?: number;
+  textShadowBlur?: number;
+  textShadowColor?: string;
+  textDropShadowEnabled?: boolean;
   fontFamily?: string;
   fontSize?: number;
   fontWeight?: string;
@@ -62,6 +72,15 @@ export function ShapePreview({
   borderGradientAngle,
   label,
   textColor = '#000000',
+  textOutlineWidth,
+  textOutlineColor,
+  textGlowBlur,
+  textGlowColor,
+  textShadowOffsetX,
+  textShadowOffsetY,
+  textShadowBlur,
+  textShadowColor,
+  textDropShadowEnabled,
   fontFamily,
   fontSize = 10,
   fontWeight,
@@ -73,6 +92,15 @@ export function ShapePreview({
   headingBackgroundColor: headingBgColorProp,
   headingBackgroundStyle: headingBgStyleProp
 }: ShapePreviewProps) {
+  const textEffectsShadow = getTextEffectsShadowCss({
+    textGlowBlur,
+    textGlowColor,
+    textShadowOffsetX,
+    textShadowOffsetY,
+    textShadowBlur,
+    textShadowColor,
+    textDropShadowEnabled,
+  });
   const gradientId = useId();
   const borderGradientId = useId();
   const isPlainRectangle = type === 'generic.object.rectangle' || type?.endsWith('.rectangle');
@@ -863,7 +891,14 @@ export function ShapePreview({
               fontStyle: fontStyle as any,
               textDecoration,
               fontSize: `${fontSize}px`,
-              textShadow: shadow ? 'var(--shape-text-shadow)' : undefined,
+              textShadow:
+                textEffectsShadow ??
+                (shadow && !(textOutlineWidth != null && textOutlineWidth > 0)
+                  ? 'var(--shape-text-shadow)'
+                  : undefined),
+              ...(textOutlineWidth != null && textOutlineWidth > 0
+                ? { WebkitTextStroke: `${textOutlineWidth}px ${textOutlineColor ?? "#ffffff"}` }
+                : {}),
               maxWidth: '100%',
               overflow: 'hidden',
               textOverflow: 'ellipsis',

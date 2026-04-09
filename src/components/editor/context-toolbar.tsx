@@ -1089,6 +1089,15 @@ export function ContextToolbar({
       lineHeight: undefined,
       textOpacity: undefined,
       textColor: undefined,
+      textOutlineWidth: undefined,
+      textOutlineColor: undefined,
+      textGlowBlur: undefined,
+      textGlowColor: undefined,
+      textShadowOffsetX: undefined,
+      textShadowOffsetY: undefined,
+      textShadowBlur: undefined,
+      textShadowColor: undefined,
+      textDropShadowEnabled: undefined,
       headingTextColor: undefined
     };
     
@@ -1246,6 +1255,15 @@ export function ContextToolbar({
       lineHeight: undefined,
       textOpacity: undefined,
       textColor: undefined,
+      textOutlineWidth: undefined,
+      textOutlineColor: undefined,
+      textGlowBlur: undefined,
+      textGlowColor: undefined,
+      textShadowOffsetX: undefined,
+      textShadowOffsetY: undefined,
+      textShadowBlur: undefined,
+      textShadowColor: undefined,
+      textDropShadowEnabled: undefined,
       textJustify: undefined,
       textVerticalPosition: undefined
     };

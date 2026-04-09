@@ -173,6 +173,15 @@ export function ScratchPad({ isOpen, onClose, diagramData, setDiagramData, onCan
               letterSpacing: child.letterSpacing,
               lineHeight: child.lineHeight,
               textOpacity: child.textOpacity,
+              textOutlineWidth: child.textOutlineWidth,
+              textOutlineColor: child.textOutlineColor,
+              textGlowBlur: child.textGlowBlur,
+              textGlowColor: child.textGlowColor,
+              textShadowOffsetX: child.textShadowOffsetX,
+              textShadowOffsetY: child.textShadowOffsetY,
+              textShadowBlur: child.textShadowBlur,
+              textShadowColor: child.textShadowColor,
+              textDropShadowEnabled: child.textDropShadowEnabled,
               // Resource info for icon rendering
               ...(child.provider && { provider: child.provider }),
               ...(child.category && { category: child.category }),
@@ -234,6 +243,15 @@ export function ScratchPad({ isOpen, onClose, diagramData, setDiagramData, onCan
           letterSpacing: item.letterSpacing,
           lineHeight: item.lineHeight,
           textOpacity: item.textOpacity,
+          textOutlineWidth: item.textOutlineWidth,
+          textOutlineColor: item.textOutlineColor,
+          textGlowBlur: item.textGlowBlur,
+          textGlowColor: item.textGlowColor,
+          textShadowOffsetX: item.textShadowOffsetX,
+          textShadowOffsetY: item.textShadowOffsetY,
+          textShadowBlur: item.textShadowBlur,
+          textShadowColor: item.textShadowColor,
+          textDropShadowEnabled: item.textDropShadowEnabled,
           // Resource info for icon rendering
           ...(item.provider && { provider: item.provider }),
           ...(item.category && { category: item.category }),
@@ -462,6 +480,15 @@ const DraggableShape = ({ item, data }: { item: ScratchPadItem; data: any }) => 
             borderGradientAngle={itemData.borderGradientAngle}
             label={item.label}
             textColor={itemData.textColor}
+            textOutlineWidth={itemData.textOutlineWidth}
+            textOutlineColor={itemData.textOutlineColor}
+            textGlowBlur={itemData.textGlowBlur}
+            textGlowColor={itemData.textGlowColor}
+            textShadowOffsetX={itemData.textShadowOffsetX}
+            textShadowOffsetY={itemData.textShadowOffsetY}
+            textShadowBlur={itemData.textShadowBlur}
+            textShadowColor={itemData.textShadowColor}
+            textDropShadowEnabled={itemData.textDropShadowEnabled}
             fontFamily={itemData.fontFamily}
             fontSize={8}
             fontWeight={itemData.fontWeight}

@@ -35,6 +35,15 @@ export function extractLineStylingFromNode(node: DiagramNodeData | DiagramNodeIt
     lineHeight: node.lineHeight,
     textOpacity: node.textOpacity,
     textColor: node.textColor,
+    textOutlineWidth: node.textOutlineWidth,
+    textOutlineColor: node.textOutlineColor,
+    textGlowBlur: node.textGlowBlur,
+    textGlowColor: node.textGlowColor,
+    textShadowOffsetX: node.textShadowOffsetX,
+    textShadowOffsetY: node.textShadowOffsetY,
+    textShadowBlur: node.textShadowBlur,
+    textShadowColor: node.textShadowColor,
+    textDropShadowEnabled: node.textDropShadowEnabled,
     textJustify: node.textJustify,
     textVerticalPosition: node.textVerticalPosition
   };
@@ -68,6 +77,15 @@ export function applyLineStylingToNode(
   if ('lineHeight' in styling) updated.lineHeight = styling.lineHeight;
   if ('textOpacity' in styling) updated.textOpacity = styling.textOpacity;
   if ('textColor' in styling) updated.textColor = styling.textColor;
+  if ('textOutlineWidth' in styling) updated.textOutlineWidth = styling.textOutlineWidth;
+  if ('textOutlineColor' in styling) updated.textOutlineColor = styling.textOutlineColor;
+  if ('textGlowBlur' in styling) updated.textGlowBlur = styling.textGlowBlur;
+  if ('textGlowColor' in styling) updated.textGlowColor = styling.textGlowColor;
+  if ('textShadowOffsetX' in styling) updated.textShadowOffsetX = styling.textShadowOffsetX;
+  if ('textShadowOffsetY' in styling) updated.textShadowOffsetY = styling.textShadowOffsetY;
+  if ('textShadowBlur' in styling) updated.textShadowBlur = styling.textShadowBlur;
+  if ('textShadowColor' in styling) updated.textShadowColor = styling.textShadowColor;
+  if ('textDropShadowEnabled' in styling) updated.textDropShadowEnabled = styling.textDropShadowEnabled;
   if ('textJustify' in styling) updated.textJustify = styling.textJustify;
   if ('textVerticalPosition' in styling) updated.textVerticalPosition = styling.textVerticalPosition;
   

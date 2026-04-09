@@ -107,8 +107,17 @@ export const DiagramNodeDataSchema = z.object({
   letterSpacing: z.number().optional(), // Letter spacing in pixels
   lineHeight: z.number().optional(), // Line height as a multiplier (e.g., 1.2, 1.5)
   textOpacity: z.number().optional(), // Text opacity (0-1)
+  textOutlineWidth: z.number().optional(),
+  textOutlineColor: z.string().optional(),
+  textGlowBlur: z.number().optional(),
+  textGlowColor: z.string().optional(),
+  textShadowOffsetX: z.number().optional(),
+  textShadowOffsetY: z.number().optional(),
+  textShadowBlur: z.number().optional(),
+  textShadowColor: z.string().optional(),
+  textDropShadowEnabled: z.boolean().optional(),
   groupId: z.string().optional(), // Reference to grouping this node belongs to
-  
+
   // Line shape specific properties (absolute canvas positions)
   startPos: z.object({ x: z.number(), y: z.number() }).optional(), // Absolute canvas position for line start
   endPos: z.object({ x: z.number(), y: z.number() }).optional(), // Absolute canvas position for line end
@@ -254,6 +263,15 @@ export const DiagramGroupDataSchema = z.object({
   letterSpacing: z.number().optional(), // Letter spacing in pixels
   lineHeight: z.number().optional(), // Line height as a multiplier (e.g., 1.2, 1.5)
   textOpacity: z.number().optional(), // Text opacity (0-1)
+  textOutlineWidth: z.number().optional(),
+  textOutlineColor: z.string().optional(),
+  textGlowBlur: z.number().optional(),
+  textGlowColor: z.string().optional(),
+  textShadowOffsetX: z.number().optional(),
+  textShadowOffsetY: z.number().optional(),
+  textShadowBlur: z.number().optional(),
+  textShadowColor: z.string().optional(),
+  textDropShadowEnabled: z.boolean().optional(),
   groupId: z.string().optional(), // Reference to grouping this zone belongs to
   metaData: z.record(z.string(), z.string()).optional(), // Key/value metadata
 });
@@ -423,8 +441,17 @@ export const DiagramNodeItemSchema = z.object({
   letterSpacing: z.number().optional(), // Letter spacing in pixels
   lineHeight: z.number().optional(), // Line height as a multiplier (e.g., 1.2, 1.5)
   textOpacity: z.number().optional(), // Text opacity (0-1)
+  textOutlineWidth: z.number().optional(),
+  textOutlineColor: z.string().optional(),
+  textGlowBlur: z.number().optional(),
+  textGlowColor: z.string().optional(),
+  textShadowOffsetX: z.number().optional(),
+  textShadowOffsetY: z.number().optional(),
+  textShadowBlur: z.number().optional(),
+  textShadowColor: z.string().optional(),
+  textDropShadowEnabled: z.boolean().optional(),
   groupId: z.string().optional(), // Reference to grouping this node belongs to
-  
+
   // Line shape specific properties (absolute canvas positions)
   startPos: z.object({ x: z.number(), y: z.number() }).optional(), // Absolute canvas position for line start
   endPos: z.object({ x: z.number(), y: z.number() }).optional(), // Absolute canvas position for line end
@@ -488,6 +515,15 @@ export const DiagramGroupItemSchema = z.object({
    letterSpacing: z.number().optional(), // Letter spacing in pixels
    lineHeight: z.number().optional(), // Line height as a multiplier (e.g., 1.2, 1.5)
    textOpacity: z.number().optional(), // Text opacity (0-1)
+   textOutlineWidth: z.number().optional(),
+   textOutlineColor: z.string().optional(),
+   textGlowBlur: z.number().optional(),
+   textGlowColor: z.string().optional(),
+   textShadowOffsetX: z.number().optional(),
+   textShadowOffsetY: z.number().optional(),
+   textShadowBlur: z.number().optional(),
+   textShadowColor: z.string().optional(),
+   textDropShadowEnabled: z.boolean().optional(),
    
    // Custom sizing properties
    width: z.number().optional(), // Custom width - when set, overrides auto-calculated width

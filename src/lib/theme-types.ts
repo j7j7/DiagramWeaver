@@ -26,6 +26,15 @@ export interface ThemeProperties {
   // Text properties
   textColor?: string;
   textOpacity?: number; // 0-1
+  textOutlineWidth?: number;
+  textOutlineColor?: string;
+  textGlowBlur?: number;
+  textGlowColor?: string;
+  textShadowOffsetX?: number;
+  textShadowOffsetY?: number;
+  textShadowBlur?: number;
+  textShadowColor?: string;
+  textDropShadowEnabled?: boolean;
   fontFamily?: string; // Font family (e.g., 'Arial', 'Helvetica', 'Times New Roman')
   fontSize?: number; // Font size in pixels
   fontWeight?: 'normal' | 'bold' | '100' | '200' | '300' | '400' | '500' | '600' | '700' | '800' | '900'; // Font weight

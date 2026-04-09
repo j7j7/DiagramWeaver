@@ -3,7 +3,7 @@
 import React from "react";
 import { useTheme } from "@/components/theme-provider";
 import type { DiagramNodeData } from "@/lib/types";
-import { extractTextStylingFromNode } from "@/lib/text-styling";
+import { extractTextStylingFromNode, getSvgTextOutlineProps, getTextEffectsShadowCss } from "@/lib/text-styling";
 
 interface LineShapeProps {
   node: DiagramNodeData & { width?: number; height?: number };
@@ -153,6 +153,12 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
   const fontStyle = textStyling.fontStyle || 'normal';
   const letterSpacing = textStyling.letterSpacing || 0;
   const textOpacity = textStyling.textOpacity !== undefined ? textStyling.textOpacity : 1;
+  const outlineSvg = getSvgTextOutlineProps(textStyling);
+  const effectsShadow = getTextEffectsShadowCss(textStyling);
+  const themeLabelShadow =
+    resolvedTheme === "dark"
+      ? "0 0 3px rgba(0,0,0,1), 0 0 6px rgba(0,0,0,0.9), 1px 1px 4px rgba(0,0,0,0.9), -1px -1px 4px rgba(0,0,0,0.9), 1px -1px 4px rgba(0,0,0,0.9), -1px 1px 4px rgba(0,0,0,0.9)"
+      : "0 0 3px rgba(255,255,255,1), 0 0 6px rgba(255,255,255,0.8), 1px 1px 4px rgba(255,255,255,1), -1px -1px 4px rgba(255,255,255,1), 1px -1px 4px rgba(255,255,255,1), -1px 1px 4px rgba(255,255,255,1)";
   
   // Calculate the actual line endpoints, adjusted for cap sizes
   const capSize = 10;
@@ -313,6 +319,10 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
                   x={0}
                   y={startY + (index * lineHeightPx)}
                   fill={textColor}
+                  stroke={outlineSvg.stroke}
+                  strokeWidth={outlineSvg.strokeWidth}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
                   fontSize={fontSize}
                   fontWeight={fontWeight}
                   fontFamily={fontFamily}
@@ -323,9 +333,10 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
                   dominantBaseline="middle"
                   className="pointer-events-none select-none"
                   style={{
-                    textShadow: resolvedTheme === "dark"
-                      ? "0 0 3px rgba(0,0,0,1), 0 0 6px rgba(0,0,0,0.9), 1px 1px 4px rgba(0,0,0,0.9), -1px -1px 4px rgba(0,0,0,0.9), 1px -1px 4px rgba(0,0,0,0.9), -1px 1px 4px rgba(0,0,0,0.9)"
-                      : "0 0 3px rgba(255,255,255,1), 0 0 6px rgba(255,255,255,0.8), 1px 1px 4px rgba(255,255,255,1), -1px -1px 4px rgba(255,255,255,1), 1px -1px 4px rgba(255,255,255,1), -1px 1px 4px rgba(255,255,255,1)",
+                    paintOrder: outlineSvg.paintOrder,
+                    textShadow:
+                      effectsShadow ??
+                      (outlineSvg.stroke ? undefined : themeLabelShadow),
                     textDecoration: textStyling.textDecoration === 'underline' ? 'underline' : 
                                    textStyling.textDecoration === 'line-through' ? 'line-through' :
                                    textStyling.textDecoration === 'overline' ? 'overline' : 'none'

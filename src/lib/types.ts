@@ -102,6 +102,20 @@ export interface DiagramNodeData {
   letterSpacing?: number; // Letter spacing in pixels
   lineHeight?: number; // Line height as a multiplier (e.g., 1.2, 1.5)
   textOpacity?: number; // Text opacity (0-1)
+  /** Text outline width in px; omit or 0 for no outline */
+  textOutlineWidth?: number;
+  /** Outline color when `textOutlineWidth` > 0 (independent of `textColor`) */
+  textOutlineColor?: string;
+  /** Glow: blur radius in px; 0 or unset = off */
+  textGlowBlur?: number;
+  textGlowColor?: string;
+  /** Drop shadow: offset and blur (px); all zero = off */
+  textShadowOffsetX?: number;
+  textShadowOffsetY?: number;
+  textShadowBlur?: number;
+  textShadowColor?: string;
+  /** When true, drop shadow is rendered. Omitted or false = off (default). */
+  textDropShadowEnabled?: boolean;
   groupId?: string; // Reference to grouping this node belongs to
   importId?: string; // ID for tracking imported items from Scratch Pad
   
@@ -291,6 +305,15 @@ export interface DiagramNodeItem {
    letterSpacing?: number; // Letter spacing in pixels
    lineHeight?: number; // Line height as a multiplier (e.g., 1.2, 1.5)
    textOpacity?: number; // Text opacity (0-1)
+   textOutlineWidth?: number;
+   textOutlineColor?: string;
+   textGlowBlur?: number;
+   textGlowColor?: string;
+   textShadowOffsetX?: number;
+   textShadowOffsetY?: number;
+   textShadowBlur?: number;
+   textShadowColor?: string;
+   textDropShadowEnabled?: boolean;
    tag?: string; // Tag text for node identification
    tagPosition?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right'; // Tag position relative to node
    groupId?: string; // Reference to grouping this node belongs to
@@ -358,6 +381,15 @@ export interface DiagramZoneItem {
    letterSpacing?: number; // Letter spacing in pixels
    lineHeight?: number; // Line height as a multiplier (e.g., 1.2, 1.5)
    textOpacity?: number; // Text opacity (0-1)
+   textOutlineWidth?: number;
+   textOutlineColor?: string;
+   textGlowBlur?: number;
+   textGlowColor?: string;
+   textShadowOffsetX?: number;
+   textShadowOffsetY?: number;
+   textShadowBlur?: number;
+   textShadowColor?: string;
+   textDropShadowEnabled?: boolean;
    
    // Custom sizing properties
    width?: number; // Custom width - when set, overrides auto-calculated width
@@ -421,6 +453,15 @@ export interface DiagramZoneData {
    letterSpacing?: number; // Letter spacing in pixels
    lineHeight?: number; // Line height as a multiplier (e.g., 1.2, 1.5)
    textOpacity?: number; // Text opacity (0-1)
+   textOutlineWidth?: number;
+   textOutlineColor?: string;
+   textGlowBlur?: number;
+   textGlowColor?: string;
+   textShadowOffsetX?: number;
+   textShadowOffsetY?: number;
+   textShadowBlur?: number;
+   textShadowColor?: string;
+   textDropShadowEnabled?: boolean;
    
    // Custom sizing properties
    width?: number; // Custom width - when set, overrides auto-calculated width

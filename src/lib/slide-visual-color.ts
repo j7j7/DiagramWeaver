@@ -10,6 +10,9 @@ const VISUAL_COLOR_KEYS = [
   'borderStyle',
   'borderGradientAngle',
   'textColor',
+  'textOutlineColor',
+  'textGlowColor',
+  'textShadowColor',
   'iconColor',
   'lineColor',
 ] as const;

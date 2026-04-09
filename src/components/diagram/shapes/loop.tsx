@@ -3,7 +3,7 @@
 import React from "react";
 import { useTheme } from "@/components/theme-provider";
 import type { DiagramNodeData } from "@/lib/types";
-import { extractTextStylingFromNode } from "@/lib/text-styling";
+import { extractTextStylingFromNode, getSvgTextOutlineProps, getTextEffectsShadowCss } from "@/lib/text-styling";
 
 interface LoopShapeProps {
   node: DiagramNodeData & { width?: number; height?: number };
@@ -44,6 +44,12 @@ export function LoopShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
   const textStyling = extractTextStylingFromNode(node);
   const textColor = textStyling.textColor || lineColor;
   const fontSize = textStyling.fontSize || 12;
+  const outlineSvg = getSvgTextOutlineProps(textStyling);
+  const effectsShadow = getTextEffectsShadowCss(textStyling);
+  const themeLabelShadow =
+    resolvedTheme === "dark"
+      ? "0 0 3px rgba(0,0,0,1), 0 0 6px rgba(0,0,0,0.9)"
+      : "0 0 3px rgba(255,255,255,1), 0 0 6px rgba(255,255,255,0.8)";
 
   // Arrow at bottom - points left (back toward lifeline)
   const arrowSize = 10;
@@ -100,13 +106,18 @@ export function LoopShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
             textAnchor="middle"
             dominantBaseline="middle"
             fill={textColor}
+            stroke={outlineSvg.stroke}
+            strokeWidth={outlineSvg.strokeWidth}
+            strokeLinejoin="round"
+            strokeLinecap="round"
             fontSize={fontSize}
             fontWeight={textStyling.fontWeight || '500'}
             fontFamily={textStyling.fontFamily || 'Inter, system-ui, sans-serif'}
             style={{
-              textShadow: resolvedTheme === "dark"
-                ? "0 0 3px rgba(0,0,0,1), 0 0 6px rgba(0,0,0,0.9)"
-                : "0 0 3px rgba(255,255,255,1), 0 0 6px rgba(255,255,255,0.8)",
+              paintOrder: outlineSvg.paintOrder,
+              textShadow:
+                effectsShadow ??
+                (outlineSvg.stroke ? undefined : themeLabelShadow),
               pointerEvents: 'none',
             }}
           >

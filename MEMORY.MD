@@ -2,6 +2,21 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-04-09 – Text drop shadow: enable toggle
+**Data**: **`textDropShadowEnabled`**: only **`true`** applies drop shadow; **omitted** or **`false`** = off (**default**). **Render**: **`getTextEffectsShadowCss`**. **UI**: Switch in **text styling** + **line styling** panels; when off, **offset/blur/color controls are hidden**. **Types**, **schema**, **nested hierarchy**, **scratch pad** / **ShapePreview**, **resets**.
+
+### 2026-04-09 – Text styling panel: persist 0 on effects + layout
+**Behavior**: Outline / glow / drop-shadow sliders **store `0`** (not `undefined`) when dragged to zero so the value **stays after deselect** (same in **line styling** panel). **UI**: **Text transform**, **letter spacing**, **line height** moved to the **left** column; right column is opacity, colors, outline, glow, shadow.
+
+### 2026-04-09 – Text styling: font size slider max 200px
+**UI**: `text-styling-panel.tsx` and `line-styling-panel.tsx` — **Font size** slider **`max`** raised from **72** to **200** px for large titles.
+
+### 2026-04-09 – Text glow + drop shadow (optional)
+**Data**: **`textGlowBlur`** / **`textGlowColor`** (0 or unset = no glow), **`textShadowOffsetX`** / **`textShadowOffsetY`** / **`textShadowBlur`** / **`textShadowColor`** (drop shadow off when blur and both offsets are 0). **Rendering**: **`getTextEffectsShadowCss`** in **`text-styling.ts`** composes comma-separated **`text-shadow`** layers (glow uses two radii; shadow uses offset+blur). **`getTextStylingCSS`** applies it; **line** / **loop** SVG labels use the same helper, falling back to theme halo only when no custom effects and no outline stroke. **UI**: Text styling + line styling panels. **Theme** merge, **schema**, **nested hierarchy**, **scratch pad** / **ShapePreview**, **`slide-visual-color`** (glow + shadow colors).
+
+### 2026-04-09 – Optional text outline (separate from fill color)
+**Data** (`DiagramNodeData` / zones / schema): optional **`textOutlineWidth`** (px, 0 or unset = off) and **`textOutlineColor`** (stroke color, independent of **`textColor`**). **Rendering**: HTML text uses **`-webkit-text-stroke`** via **`getTextStylingCSS`** (`text-styling.ts`); SVG line/loop labels use **`stroke`** + **`paint-order: stroke fill`** via **`getSvgTextOutlineProps`**. **UI**: Text styling panel + line styling panel — outline width slider (0–6px) and outline color when width &gt; 0. **Theme** (`theme-types`): optional outline fields merged in **`getTextStyling`**. **Scratch pad** / **ShapePreview** pass outline for thumbnail consistency.
+
 ### 2026-04-09 – Slide transitions: connection remove/add before node motion
 **Behavior** (`use-slide-transition.ts`): **Removing** a connection between slides **locks** geometry to the **previous** slide (`slideEndpointMove` + **`geomLockToPrev`**, no RAF lerp) so the line does **not** jump to the next slide’s layout while fading; **endpoints that move** (`nodeIdStyles`) get a **delay** (`connectionDelay + TRANSITION_DURATION_MS`) so the fade finishes **before** their motion. **New** connections use **`max(endpoint delays) + TRANSITION_DURATION_MS`** so their fade-in starts **after** both endpoints are in place. **Presentation** + **viewer** slide paths share this hook.
 

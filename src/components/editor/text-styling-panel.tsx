@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { ColorPicker } from "@/components/ui/color-picker";
+import { Switch } from "@/components/ui/switch";
 import { TextStyling, COMMON_FONT_FAMILIES, DEFAULT_TEXT_STYLING } from "@/lib/text-styling";
 import { Type, AlignLeft, AlignCenter, AlignRight, AlignJustify, ArrowUp, Circle, ArrowDown, RotateCcw, Move3D, Box, X } from "lucide-react";
 import Draggable from 'react-draggable';
@@ -97,6 +98,8 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
     selectedItem?.type === "generic.object.text-box-heading" ||
     (typeof selectedItem?.type === "string" && selectedItem.type.endsWith(".text-box-heading"));
 
+  const dropShadowOn = styling.textDropShadowEnabled === true;
+
   const handlePropertyChange = (property: keyof TextStyling, value: any) => {
     // Only update the specific property that changed
     const updatedStyling = { [property]: value };
@@ -142,7 +145,7 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
           )}
         </div>
         <div className="grid grid-cols-2 gap-x-8 gap-y-4 p-5">
-          {/* Column 1: font, size, alignment, position */}
+          {/* Column 1: font, size, alignment, position, transform, spacing */}
           <div className="space-y-4 min-w-0">
             <div className="space-y-2">
               <Label htmlFor="font-family" className="text-sm font-medium">Font Family</Label>
@@ -170,7 +173,7 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
               <Slider
                 id="font-size"
                 min={8}
-                max={72}
+                max={200}
                 step={1}
                 value={[styling.fontSize || 14]}
                 onValueChange={([value]) => handlePropertyChange('fontSize', value)}
@@ -312,10 +315,7 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
                 </div>
               </div>
             )}
-          </div>
 
-          {/* Column 2: transform, spacing, opacity, colors */}
-          <div className="space-y-4 min-w-0 border-l border-border pl-8">
             <div className="space-y-2">
               <Label htmlFor="text-transform" className="text-sm font-medium">Text Transform</Label>
               <Select
@@ -363,7 +363,10 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
                 className="w-full"
               />
             </div>
+          </div>
 
+          {/* Column 2: opacity, colors, outline, glow, shadow */}
+          <div className="space-y-4 min-w-0 border-l border-border pl-8">
             <div className="space-y-2">
               <Label htmlFor="text-opacity" className="text-sm font-medium">
                 Text Opacity: {Math.round((styling.textOpacity || 1) * 100)}%
@@ -390,6 +393,133 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
                 showAlpha={true}
                 allowTransparent={true}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="text-outline-width" className="text-sm font-medium">
+                Text outline width: {(styling.textOutlineWidth ?? 0)}px
+              </Label>
+              <Slider
+                id="text-outline-width"
+                min={0}
+                max={6}
+                step={0.5}
+                value={[styling.textOutlineWidth ?? 0]}
+                onValueChange={([value]) => handlePropertyChange("textOutlineWidth", value)}
+                className="w-full"
+              />
+            </div>
+
+            {(styling.textOutlineWidth ?? 0) > 0 && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Outline color</Label>
+                <ColorPicker
+                  value={styling.textOutlineColor ?? "#ffffff"}
+                  onChange={(value) => handlePropertyChange("textOutlineColor", value)}
+                  placeholder="#ffffff"
+                  showAlpha={true}
+                  allowTransparent={true}
+                />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="text-glow-blur" className="text-sm font-medium">
+                Glow blur: {(styling.textGlowBlur ?? 0)}px
+              </Label>
+              <Slider
+                id="text-glow-blur"
+                min={0}
+                max={24}
+                step={0.5}
+                value={[styling.textGlowBlur ?? 0]}
+                onValueChange={([value]) => handlePropertyChange("textGlowBlur", value)}
+                className="w-full"
+              />
+            </div>
+            {(styling.textGlowBlur ?? 0) > 0 && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Glow color</Label>
+                <ColorPicker
+                  value={styling.textGlowColor ?? "rgba(255,255,255,0.9)"}
+                  onChange={(value) => handlePropertyChange("textGlowColor", value)}
+                  placeholder="rgba(255,255,255,0.9)"
+                  showAlpha={true}
+                  allowTransparent={true}
+                />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="text-drop-shadow-enabled" className="text-sm font-medium">
+                  Drop shadow
+                </Label>
+                <Switch
+                  id="text-drop-shadow-enabled"
+                  checked={dropShadowOn}
+                  onCheckedChange={(on) =>
+                    handlePropertyChange("textDropShadowEnabled", on ? true : false)
+                  }
+                />
+              </div>
+              {dropShadowOn && (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label htmlFor="text-shadow-ox" className="text-xs text-muted-foreground">
+                        Offset X: {styling.textShadowOffsetX ?? 0}px
+                      </Label>
+                      <Slider
+                        id="text-shadow-ox"
+                        min={-6}
+                        max={6}
+                        step={0.5}
+                        value={[styling.textShadowOffsetX ?? 0]}
+                        onValueChange={([value]) => handlePropertyChange("textShadowOffsetX", value)}
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="text-shadow-oy" className="text-xs text-muted-foreground">
+                        Offset Y: {styling.textShadowOffsetY ?? 0}px
+                      </Label>
+                      <Slider
+                        id="text-shadow-oy"
+                        min={-6}
+                        max={10}
+                        step={0.5}
+                        value={[styling.textShadowOffsetY ?? 0]}
+                        onValueChange={([value]) => handlePropertyChange("textShadowOffsetY", value)}
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                  <Label htmlFor="text-shadow-blur" className="text-xs text-muted-foreground">
+                    Blur: {(styling.textShadowBlur ?? 0)}px
+                  </Label>
+                  <Slider
+                    id="text-shadow-blur"
+                    min={0}
+                    max={16}
+                    step={0.5}
+                    value={[styling.textShadowBlur ?? 0]}
+                    onValueChange={([value]) => handlePropertyChange("textShadowBlur", value)}
+                    className="w-full"
+                  />
+                  {((styling.textShadowBlur ?? 0) > 0 ||
+                    (styling.textShadowOffsetX ?? 0) !== 0 ||
+                    (styling.textShadowOffsetY ?? 0) !== 0) && (
+                    <ColorPicker
+                      value={styling.textShadowColor ?? "rgba(0,0,0,0.45)"}
+                      onChange={(value) => handlePropertyChange("textShadowColor", value)}
+                      placeholder="rgba(0,0,0,0.45)"
+                      showAlpha={true}
+                      allowTransparent={true}
+                    />
+                  )}
+                </>
+              )}
             </div>
 
             {isTextBoxHeading && (

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
 import { ColorPicker } from "@/components/ui/color-picker";
+import { Switch } from "@/components/ui/switch";
 import { LineStyling } from "@/lib/line-styling";
 import { COMMON_FONT_FAMILIES } from "@/lib/text-styling";
 import { Minus, ArrowRight, Circle, Square, RotateCcw, X, ArrowUp, ArrowDown } from "lucide-react";
@@ -30,6 +31,7 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
   selectedItem, 
   selectedItemIds 
 }: LineStylingPanelProps) {
+  const dropShadowOn = styling.textDropShadowEnabled === true;
   const [position, setPosition] = useState({ x: 300, y: 100 });
   const [isMounted, setIsMounted] = useState(false);
   const nodeRef = useRef(null);
@@ -255,7 +257,7 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
                 <Slider
                   id="font-size"
                   min={8}
-                  max={72}
+                  max={200}
                   step={1}
                   value={[styling.fontSize || 12]}
                   onValueChange={([value]) => handlePropertyChange('fontSize', value)}
@@ -308,6 +310,120 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
                 showAlpha={true}
                 allowTransparent={true}
               />
+            </div>
+            <div className="space-y-1 mb-2">
+              <Label htmlFor="text-outline-width" className="text-xs text-slate-600">
+                Outline: {(styling.textOutlineWidth ?? 0)}px
+              </Label>
+              <Slider
+                id="text-outline-width"
+                min={0}
+                max={6}
+                step={0.5}
+                value={[styling.textOutlineWidth ?? 0]}
+                onValueChange={([value]) => handlePropertyChange("textOutlineWidth", value)}
+                className="w-full"
+              />
+            </div>
+            {(styling.textOutlineWidth ?? 0) > 0 && (
+              <div className="space-y-2 mb-2">
+                <Label className="text-xs text-slate-600">Outline color</Label>
+                <ColorPicker
+                  value={styling.textOutlineColor ?? "#ffffff"}
+                  onChange={(value) => handlePropertyChange("textOutlineColor", value)}
+                  placeholder="#ffffff"
+                  showAlpha={true}
+                  allowTransparent={true}
+                />
+              </div>
+            )}
+            <div className="space-y-1 mb-2">
+              <Label htmlFor="text-glow-blur" className="text-xs text-slate-600">
+                Glow: {(styling.textGlowBlur ?? 0)}px
+              </Label>
+              <Slider
+                id="text-glow-blur"
+                min={0}
+                max={24}
+                step={0.5}
+                value={[styling.textGlowBlur ?? 0]}
+                onValueChange={([value]) => handlePropertyChange("textGlowBlur", value)}
+                className="w-full"
+              />
+            </div>
+            {(styling.textGlowBlur ?? 0) > 0 && (
+              <div className="space-y-2 mb-2">
+                <Label className="text-xs text-slate-600">Glow color</Label>
+                <ColorPicker
+                  value={styling.textGlowColor ?? "rgba(255,255,255,0.9)"}
+                  onChange={(value) => handlePropertyChange("textGlowColor", value)}
+                  placeholder="rgba(255,255,255,0.9)"
+                  showAlpha={true}
+                  allowTransparent={true}
+                />
+              </div>
+            )}
+            <div className="space-y-2 mb-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="line-text-drop-shadow" className="text-xs text-slate-600">
+                  Drop shadow
+                </Label>
+                <Switch
+                  id="line-text-drop-shadow"
+                  checked={dropShadowOn}
+                  onCheckedChange={(on) =>
+                    handlePropertyChange("textDropShadowEnabled", on ? true : false)
+                  }
+                />
+              </div>
+              {dropShadowOn && (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-slate-500">X: {styling.textShadowOffsetX ?? 0}</Label>
+                      <Slider
+                        min={-6}
+                        max={6}
+                        step={0.5}
+                        value={[styling.textShadowOffsetX ?? 0]}
+                        onValueChange={([value]) => handlePropertyChange("textShadowOffsetX", value)}
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-slate-500">Y: {styling.textShadowOffsetY ?? 0}</Label>
+                      <Slider
+                        min={-6}
+                        max={10}
+                        step={0.5}
+                        value={[styling.textShadowOffsetY ?? 0]}
+                        onValueChange={([value]) => handlePropertyChange("textShadowOffsetY", value)}
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                  <Label className="text-xs text-slate-500">Blur: {(styling.textShadowBlur ?? 0)}px</Label>
+                  <Slider
+                    min={0}
+                    max={16}
+                    step={0.5}
+                    value={[styling.textShadowBlur ?? 0]}
+                    onValueChange={([value]) => handlePropertyChange("textShadowBlur", value)}
+                    className="w-full"
+                  />
+                  {((styling.textShadowBlur ?? 0) > 0 ||
+                    (styling.textShadowOffsetX ?? 0) !== 0 ||
+                    (styling.textShadowOffsetY ?? 0) !== 0) && (
+                    <ColorPicker
+                      value={styling.textShadowColor ?? "rgba(0,0,0,0.45)"}
+                      onChange={(value) => handlePropertyChange("textShadowColor", value)}
+                      placeholder="rgba(0,0,0,0.45)"
+                      showAlpha={true}
+                      allowTransparent={true}
+                    />
+                  )}
+                </>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-2 mb-2">
               <div className="space-y-1">
