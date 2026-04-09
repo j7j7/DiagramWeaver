@@ -111,6 +111,10 @@ interface TopMenuBarProps {
   connectionsBehindNodesEnabled?: boolean;
   onToggleConnectionsBehindNodes?: () => void;
   animationConnectionsEnabled?: boolean;
+  /** User preference (Options menu labels); when omitted, falls back to `animationConnectionsEnabled`. */
+  animationConnectionsUserEnabled?: boolean;
+  /** True when animations were auto-paused after canvas idle (effective off while preference may stay on). */
+  animationConnectionsIdlePaused?: boolean;
   onToggleAnimationConnections?: () => void;
   animationToggleOnClickEnabled?: boolean;
   onToggleAnimationToggleOnClick?: () => void;
@@ -199,6 +203,8 @@ export function TopMenuBar({
   connectionsBehindNodesEnabled,
   onToggleConnectionsBehindNodes,
   animationConnectionsEnabled,
+  animationConnectionsUserEnabled,
+  animationConnectionsIdlePaused,
   onToggleAnimationConnections,
   animationToggleOnClickEnabled,
   onToggleAnimationToggleOnClick,
@@ -237,7 +243,8 @@ export function TopMenuBar({
   onToggleReadOnly,
   onStartTutorial,
 }: TopMenuBarProps) {
-  
+  const animMenuPreferenceOn = animationConnectionsUserEnabled ?? animationConnectionsEnabled;
+
   const [themeEditorOpen, setThemeEditorOpen] = React.useState(false);
   const [aboutOpen, setAboutOpen] = React.useState(false);
   const [keyboardShortcutsOpen, setKeyboardShortcutsOpen] = React.useState(false);
@@ -666,7 +673,7 @@ export function TopMenuBar({
                   onToggleJsonPanel ||
                   hasOptionsPanelMenuItems) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleAnimationConnections}>
-                  {animationConnectionsEnabled ? (
+                  {animMenuPreferenceOn ? (
                     <>
                       <Network className="mr-2 h-4 w-4" />
                       Disable Animation Connections
@@ -803,14 +810,18 @@ export function TopMenuBar({
           className={cn('h-8 px-2', !(animationConnectionsEnabled ?? true) && 'opacity-50')}
           onClick={onToggleAnimationConnections}
           title={
-            (animationConnectionsEnabled ?? true)
-              ? 'Disable connection line animations (Ctrl+Alt+A)'
-              : 'Enable connection line animations (Ctrl+Alt+A)'
+            animationConnectionsIdlePaused && (animationConnectionsUserEnabled ?? animationConnectionsEnabled ?? true)
+              ? 'Animations paused (idle); move on the canvas to resume'
+              : (animationConnectionsEnabled ?? true)
+                ? 'Disable connection line animations (Ctrl+Alt+A)'
+                : 'Enable connection line animations (Ctrl+Alt+A)'
           }
           aria-label={
-            (animationConnectionsEnabled ?? true)
-              ? 'Disable connection line animations'
-              : 'Enable connection line animations'
+            animationConnectionsIdlePaused && (animationConnectionsUserEnabled ?? animationConnectionsEnabled ?? true)
+              ? 'Animations paused until you move on the canvas'
+              : (animationConnectionsEnabled ?? true)
+                ? 'Disable connection line animations'
+                : 'Enable connection line animations'
           }
           aria-pressed={(animationConnectionsEnabled ?? true) ? 'true' : 'false'}
         >

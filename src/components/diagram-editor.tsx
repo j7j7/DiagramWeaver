@@ -76,6 +76,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useDiagramTabs, TUTORIAL_TAB_NAME } from '@/hooks/use-diagram-tabs';
 import { useLayers } from '@/hooks/use-layers';
 import { useLayerAnimation } from '@/hooks/use-layer-animation';
+import { useConnectionAnimationIdlePause } from '@/hooks/use-connection-animation-idle';
 import { flattenDiagramOnImport, type RawDiagramData } from '@/lib/flatten-on-import';
 import { collectAllIdsInDiagram, sanitizeImportedDiagram } from '@/lib/import-sanitize';
 import { getDiagramAtStack, updateDiagramAtStack, addSubDiagramAtStack, removeSubDiagramAtStack } from '@/lib/sub-diagram-utils';
@@ -720,7 +721,12 @@ export default function DiagramEditor() {
   const [defaultTextLabelsEnabled, setDefaultTextLabelsEnabled] = React.useState<boolean>(true);
   const [alignmentGuidesEnabled, setAlignmentGuidesEnabled] = React.useState<boolean>(true);
   const [connectionsBehindNodesEnabled, setConnectionsBehindNodesEnabled] = React.useState<boolean>(true);
-  const [animationConnectionsEnabled, setAnimationConnectionsEnabled] = React.useState<boolean>(true);
+  const [animationConnectionsUserEnabled, setAnimationConnectionsUserEnabled] = React.useState<boolean>(true);
+  const {
+    idlePaused: animationConnectionsIdlePaused,
+    onCanvasActivity: onConnectionAnimationCanvasActivity,
+  } = useConnectionAnimationIdlePause(animationConnectionsUserEnabled);
+  const animationConnectionsEnabled = animationConnectionsUserEnabled && !animationConnectionsIdlePaused;
   const [animationToggleOnClickEnabled, setAnimationToggleOnClickEnabled] = React.useState<boolean>(false);
   const [animationDisabledSources, setAnimationDisabledSources] = React.useState<Set<string>>(new Set());
   const [isReadOnly, setIsReadOnly] = React.useState<boolean>(false);
@@ -772,6 +778,17 @@ export default function DiagramEditor() {
     };
     selectedConnectionIds: string[];
   } | null>(null);
+
+  const setMousePositionForIdle = React.useCallback(
+    (pos: { x: number; y: number } | null) => {
+      setMousePosition(pos);
+      if (pos !== null) {
+        onConnectionAnimationCanvasActivity();
+      }
+    },
+    [onConnectionAnimationCanvasActivity],
+  );
+
   // Reset trigger states after they've been used
   React.useEffect(() => {
     if (triggerTextStylingPanel) {
@@ -4506,10 +4523,10 @@ export default function DiagramEditor() {
         return;
       }
       
-      // Ctrl+Alt+A (or Cmd+Option+A on Mac) - Toggle Animation Connections
+      // Ctrl+Alt+A (or Cmd+Option+A on Mac) - Toggle Animation Connections (user preference)
       if ((isMac ? e.metaKey : e.ctrlKey) && e.altKey && e.key.toLowerCase() === 'a') {
         e.preventDefault();
-        setAnimationConnectionsEnabled(!animationConnectionsEnabled);
+        setAnimationConnectionsUserEnabled((v) => !v);
         return;
       }
       
@@ -4621,7 +4638,7 @@ export default function DiagramEditor() {
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [jsonPanelOpen, historyIndex, history, selectedItem, selectedItemIds, diagramData, setDiagramData, setSelectedItem, animationConnectionsEnabled, setAnimationConnectionsEnabled, setAnimationToggleOnClickEnabled, isReadOnly, handleItemDelete, handleMenuCopy, handleMenuPaste, handleTogglePresentationMode, presentationModeEnabled, presentationPlayerOpen, handleEnterPresentationPlayMode]);
+  }, [jsonPanelOpen, historyIndex, history, selectedItem, selectedItemIds, diagramData, setDiagramData, setSelectedItem, animationConnectionsEnabled, setAnimationConnectionsUserEnabled, setAnimationToggleOnClickEnabled, isReadOnly, handleItemDelete, handleMenuCopy, handleMenuPaste, handleTogglePresentationMode, presentationModeEnabled, presentationPlayerOpen, handleEnterPresentationPlayMode]);
 
   // Persist panel width (debounced for better performance)
   React.useEffect(() => {
@@ -4665,7 +4682,7 @@ export default function DiagramEditor() {
     const savedConnectionsBehind = getItemSafe('dw:connectionsBehindNodes:enabled');
     if (savedConnectionsBehind !== null) setConnectionsBehindNodesEnabled(savedConnectionsBehind !== 'false');
     const savedAnimationConnections = getItemSafe('dw:animationConnections:enabled');
-    if (savedAnimationConnections !== null) setAnimationConnectionsEnabled(savedAnimationConnections !== 'false');
+    if (savedAnimationConnections !== null) setAnimationConnectionsUserEnabled(savedAnimationConnections !== 'false');
     const savedAnimationToggleOnClick = getItemSafe('dw:animationToggleOnClick:enabled');
     if (savedAnimationToggleOnClick !== null) setAnimationToggleOnClickEnabled(savedAnimationToggleOnClick === 'true');
   }, []);
@@ -4677,12 +4694,12 @@ export default function DiagramEditor() {
     }
   }, [connectionsBehindNodesEnabled, isClient]);
 
-  // Persist animation connections preference (debounced)
+  // Persist animation connections preference (debounced; user intent only — not idle auto-pause)
   React.useEffect(() => {
     if (isClient) {
-      setBooleanDebounced('dw:animationConnections:enabled', animationConnectionsEnabled);
+      setBooleanDebounced('dw:animationConnections:enabled', animationConnectionsUserEnabled);
     }
-  }, [animationConnectionsEnabled, isClient]);
+  }, [animationConnectionsUserEnabled, isClient]);
 
   // Persist animation toggle on click preference (debounced)
   React.useEffect(() => {
@@ -4827,7 +4844,9 @@ export default function DiagramEditor() {
         connectionsBehindNodesEnabled={connectionsBehindNodesEnabled}
         setConnectionsBehindNodesEnabled={setConnectionsBehindNodesEnabled}
         animationConnectionsEnabled={animationConnectionsEnabled}
-        setAnimationConnectionsEnabled={setAnimationConnectionsEnabled}
+        animationConnectionsUserEnabled={animationConnectionsUserEnabled}
+        animationConnectionsIdlePaused={animationConnectionsIdlePaused}
+        setAnimationConnectionsEnabled={setAnimationConnectionsUserEnabled}
         animationToggleOnClickEnabled={animationToggleOnClickEnabled}
         setAnimationToggleOnClickEnabled={setAnimationToggleOnClickEnabled}
         effectiveAnimationFilterIds={effectiveAnimationFilterIds}
@@ -4931,7 +4950,7 @@ export default function DiagramEditor() {
         handleTagUpdate={handleTagUpdate}
         setIsDragging={setIsDragging}
         setCanPaste={setCanPaste}
-        setMousePosition={setMousePosition}
+        setMousePosition={setMousePositionForIdle}
         handleGroupItems={handleGroupItems}
         handleUngroupItems={handleUngroupItems}
         handleRemoveFromGroup={handleRemoveFromGroup}
@@ -5048,7 +5067,9 @@ function DiagramEditorInner({
   connectionsBehindNodesEnabled,
   setConnectionsBehindNodesEnabled,
   animationConnectionsEnabled,
-  setAnimationConnectionsEnabled,
+  animationConnectionsUserEnabled,
+  animationConnectionsIdlePaused,
+  setAnimationConnectionsEnabled: setAnimationConnectionsUserEnabled,
   animationToggleOnClickEnabled,
   setAnimationToggleOnClickEnabled,
   effectiveAnimationFilterIds,
@@ -5350,7 +5371,9 @@ function DiagramEditorInner({
                     connectionsBehindNodesEnabled={connectionsBehindNodesEnabled}
                     onToggleConnectionsBehindNodes={() => setConnectionsBehindNodesEnabled(!connectionsBehindNodesEnabled)}
                     animationConnectionsEnabled={animationConnectionsEnabled}
-                    onToggleAnimationConnections={() => setAnimationConnectionsEnabled(!animationConnectionsEnabled)}
+                    animationConnectionsUserEnabled={animationConnectionsUserEnabled}
+                    animationConnectionsIdlePaused={animationConnectionsIdlePaused}
+                    onToggleAnimationConnections={() => setAnimationConnectionsUserEnabled((v: boolean) => !v)}
                     animationToggleOnClickEnabled={animationToggleOnClickEnabled}
                     onToggleAnimationToggleOnClick={() => setAnimationToggleOnClickEnabled(!animationToggleOnClickEnabled)}
                     isReadOnly={isReadOnly}

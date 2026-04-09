@@ -38,7 +38,7 @@ export function clampConnectionAnimation(animation?: DiagramConnectionData['anim
   const enabled = animation?.enabled ?? hasLegacyAnimationConfig;
   const shape = animation?.shape ?? DEFAULT_CONNECTION_ANIMATION.shape;
   const speed = roundToStep(Math.max(-100, Math.min(100, animation?.speed ?? DEFAULT_CONNECTION_ANIMATION.speed)), 5);
-  const size = Math.max(0, Math.min(10, Math.round(animation?.size ?? DEFAULT_CONNECTION_ANIMATION.size)));
+  const size = Math.max(0, Math.min(10, roundToStep(animation?.size ?? DEFAULT_CONNECTION_ANIMATION.size, 0.5)));
   const autoCount = animation?.autoCount ?? DEFAULT_CONNECTION_ANIMATION.autoCount;
   const shapeCount = Math.max(0, Math.min(2000, Math.round(animation?.shapeCount ?? DEFAULT_CONNECTION_ANIMATION.shapeCount)));
   const spacing = Math.max(0, Math.min(10, roundToStep(animation?.spacing ?? DEFAULT_CONNECTION_ANIMATION.spacing, 0.5)));

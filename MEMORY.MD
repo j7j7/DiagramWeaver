@@ -2,8 +2,14 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-04-09 – Connection animations: 20s canvas idle auto-pause + resume on movement
+**Behavior**: **`animationConnectionsUserEnabled`** (persisted **`dw:animationConnections:enabled`**) is separate from **effective** rendering: **`animationConnectionsEnabled = userEnabled && !idlePaused`**. After **20s** with **no diagram-space cursor change** on the canvas (snapped grid updates from **`use-canvas-interactions`**), **`idlePaused`** turns on so animations stop without changing saved preference. **Mouse move** or **touch move** on the canvas calls **`onCanvasActivity`**, clears idle pause, and restarts the timer. **Activity** toolbar button tooltip explains idle pause. **Options** menu Enable/Disable text follows **user** preference. **Hook**: **`src/hooks/use-connection-animation-idle.ts`** (**`CONNECTION_ANIMATION_IDLE_MS`**). **Touch**: **`use-canvas-interactions`**; **`touchend`** clears when **`touches.length === 0`**.
+
 ### 2026-04-09 – Top bar: toggle connection line animations (toolbar button)
 **UI**: **`top-menu-bar.tsx`** — next to **Fit to view**, **ghost** **Activity** button toggles the same **`animationConnectionsEnabled`** state as **Options → Enable/Disable Animation Connections** (**Ctrl+Alt+A**). Dimmed when animations are off; **title** / **aria** mirror the menu.
+
+### 2026-04-09 – Connection animation: shape size step 0.5
+**Behavior**: **`connection-animation-controls.tsx`** — **Shape size** slider/input use **`step={0.5}`** (was **1**); number field uses **`parseFloat`**. **`clampConnectionAnimation`** (`connection-animation.ts`) rounds **`animation.size`** to **0.5** increments (**0–10**). **`types.ts`** comment updated.
 
 ### 2026-04-09 – Toolbar Connections popover: `liveConnection` + modal parity
 **UI**: **`context-toolbar.tsx`** — each row resolves **`liveConnection`** from **`currentDiagramData ?? diagramData`** (by **`id`** or **`from`/`to`**) and uses it for **arrow**, **line style**, **stroke**, **smooth corners**, **center on edge**, **attach on side**, **text** / **color** display, **`ConnectionLineStyleFields`** (locks, start/end width and color, shadow), **`ConnectionAnimationControls`**, and **waypoints** so controls stay aligned with saved **`connections[]`** JSON after edits.

@@ -225,7 +225,7 @@ export interface DiagramConnectionData {
     enabled?: boolean; // Whether animated shapes are shown on this connection
     shape?: 'dot' | 'square' | 'arrow' | 'triangle' | 'hexagon';
     speed?: number; // -100 to 100, units/sec in connection coordinates
-    size?: number; // 0 to 10, scaled by line width (0 = 1x line width)
+    size?: number; // 0–10 in 0.5 steps, scaled by line width
     color?: string; // Fallback to connection color when not provided
     autoCount?: boolean; // true: derive shape count from length + spacing
     shapeCount?: number; // Manual mode: 0 to 2000 (effective max is dynamically clamped by path length/spacing)

@@ -26,6 +26,8 @@ export function useCanvasInteractions({
   // Throttle mouse position updates to avoid performance warnings
   const mousePositionThrottleRef = useRef<number | null>(null);
   const lastMousePositionRef = useRef<{ x: number; y: number } | null>(null);
+  const touchPositionThrottleRef = useRef<number | null>(null);
+  const lastTouchDiagramPositionRef = useRef<{ x: number; y: number } | null>(null);
   // Track if last right-click was used for panning (drag) - if so, don't show context menu
   const rightClickPanningRef = useRef(false);
   const rightClickDidPanRef = useRef(false);
@@ -150,6 +152,30 @@ export function useCanvasInteractions({
         target.closest('.cursor-move')) {
       return;
     }
+
+    // Diagram-space touch position (same grid as mouse) — idle timers / cursor readout
+    if (e.touches.length === 1 && canvasRef.current && onMousePositionChange) {
+      const touch = e.touches[0];
+      const canvasRect = canvasRef.current.getBoundingClientRect();
+      const canvasX = touch.clientX - canvasRect.left;
+      const canvasY = touch.clientY - canvasRect.top;
+      const diagramX = (canvasX - transform.x) / transform.k;
+      const diagramY = (canvasY - transform.y) / transform.k;
+      const snappedPosition = { x: snapToGrid(diagramX), y: snapToGrid(diagramY) };
+      if (
+        !lastTouchDiagramPositionRef.current ||
+        lastTouchDiagramPositionRef.current.x !== snappedPosition.x ||
+        lastTouchDiagramPositionRef.current.y !== snappedPosition.y
+      ) {
+        if (touchPositionThrottleRef.current === null) {
+          touchPositionThrottleRef.current = requestAnimationFrame(() => {
+            onMousePositionChange(snappedPosition);
+            lastTouchDiagramPositionRef.current = snappedPosition;
+            touchPositionThrottleRef.current = null;
+          });
+        }
+      }
+    }
     
     if (e.touches.length === 1 && isPanning) {
       // Single touch - pan
@@ -173,13 +199,21 @@ export function useCanvasInteractions({
       setTransform({ ...transform, k: newK });
       setLastTouchDistance(currentDistance);
     }
-  }, [canvasRef, transform, isPanning, panStart, touchStart, lastTouchDistance, setTransform]);
+  }, [canvasRef, transform, isPanning, panStart, touchStart, lastTouchDistance, setTransform, onMousePositionChange]);
 
-  const handleTouchEnd = useCallback(() => {
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     setIsPanning(false);
     setTouchStart(null);
     setLastTouchDistance(null);
-  }, []);
+    if (e.touches.length === 0) {
+      if (touchPositionThrottleRef.current !== null) {
+        cancelAnimationFrame(touchPositionThrottleRef.current);
+        touchPositionThrottleRef.current = null;
+      }
+      lastTouchDiagramPositionRef.current = null;
+      onMousePositionChange?.(null);
+    }
+  }, [onMousePositionChange]);
 
   return {
     isPanning,

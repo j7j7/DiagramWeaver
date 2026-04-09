@@ -75,6 +75,7 @@ export function ConnectionAnimationControls({
   };
 
   const handleSizeChange = (value: number) => {
+    if (!Number.isFinite(value)) return;
     updateAnimation({ size: value });
   };
 
@@ -210,7 +211,7 @@ export function ConnectionAnimationControls({
                     onValueChange={(values) => handleSizeChange(values[0])}
                     min={0}
                     max={10}
-                    step={1}
+                    step={0.5}
                     className="flex-1"
                     disabled={controlsDisabled}
                   />
@@ -219,9 +220,9 @@ export function ConnectionAnimationControls({
                     className={numberInputClass}
                     min={0}
                     max={10}
-                    step={1}
+                    step={0.5}
                     value={animation.size}
-                    onChange={(e) => handleSizeChange(parseInt(e.target.value || '0', 10))}
+                    onChange={(e) => handleSizeChange(parseFloat(e.target.value || '0'))}
                     disabled={controlsDisabled}
                   />
                 </div>
