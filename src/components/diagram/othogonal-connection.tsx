@@ -28,6 +28,9 @@ import {
   lineWidthAtPathFraction,
   scaleValuesForAnimationKeyPoints,
   CONNECTION_ANIMATION_SPACING_REF_LINE_PX,
+  connectionAdvancedStyleRevisionKey,
+  orthogonalConnectionColorFallback,
+  connectionGradientIdSuffix,
 } from "@/lib/connection-line-style";
 import { connectionStrokeDashFromLineType } from "@/lib/utils";
 
@@ -47,6 +50,8 @@ interface OrthogonalConnectionProps {
   animationConnectionsEnabled?: boolean;
   onClick?: (connection: DiagramConnectionData, event: React.MouseEvent) => void;
   onContextMenu?: (e: React.MouseEvent, connection: DiagramConnectionData) => void;
+  /** Opacity/transform for slide/layer transitions — applied to path group only, not defs. */
+  slideTransitionStyle?: React.CSSProperties;
 }
 
 // --- Memo Comparators ---
@@ -66,6 +71,21 @@ function positionablesEqual(a: OrthogonalConnectionProps["from"], b: OrthogonalC
     (a as any).textPosition === (b as any).textPosition &&
     (a as any).textVerticalPosition === (b as any).textVerticalPosition &&
     a.subType === b.subType
+  );
+}
+
+function slideTransitionStyleEqual(
+  a?: React.CSSProperties,
+  b?: React.CSSProperties
+): boolean {
+  if (a === b) return true;
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  return (
+    a.opacity === b.opacity &&
+    a.transform === b.transform &&
+    a.transition === b.transition &&
+    a.transitionDelay === b.transitionDelay
   );
 }
 
@@ -92,15 +112,20 @@ function connectionDataEqual(a?: DiagramConnectionData, b?: DiagramConnectionDat
 }
 
 function areOrthogonalPropsEqual(prev: OrthogonalConnectionProps, next: OrthogonalConnectionProps): boolean {
+  const prevFf = orthogonalConnectionColorFallback(prev.connectionData, prev.connectionColor, prev.from, prev.to);
+  const nextFf = orthogonalConnectionColorFallback(next.connectionData, next.connectionColor, next.from, next.to);
   return (
     positionablesEqual(prev.from, next.from) &&
     positionablesEqual(prev.to, next.to) &&
     prev.connectionColor === next.connectionColor &&
     connectionDataEqual(prev.connectionData, next.connectionData) &&
+    connectionAdvancedStyleRevisionKey(prev.connectionData, prevFf) ===
+      connectionAdvancedStyleRevisionKey(next.connectionData, nextFf) &&
     prev.route?.pathData === next.route?.pathData &&
     prev.route?.totalLength === next.route?.totalLength &&
     prev.exportAnimationTimeSeconds === next.exportAnimationTimeSeconds &&
     prev.animationConnectionsEnabled === next.animationConnectionsEnabled &&
+    slideTransitionStyleEqual(prev.slideTransitionStyle, next.slideTransitionStyle) &&
     prev.nodesById === next.nodesById &&
     prev.zonesById === next.zonesById
   );
@@ -124,6 +149,7 @@ function OrthogonalConnectionInner({
   animationConnectionsEnabled = true,
   onClick,
   onContextMenu,
+  slideTransitionStyle,
 }: OrthogonalConnectionProps) {
   const { resolvedTheme } = useTheme();
 
@@ -274,7 +300,8 @@ function OrthogonalConnectionInner({
   const pathLength = pathLengthForCount;
   const animationDuration = shouldAnimateShapes ? pathLength / speedMagnitude : 0;
   const animationColor = animation.color ? animation.color : colorWithHalfOpacity(finalConnectionColor);
-  const connectionKey = `${connectionData?.from ?? from.id}-${connectionData?.to ?? to.id}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+  const connectionKey = `${connectionData?.from ?? from.id}-${connectionData?.to ?? to.id}-${connectionData?.id ?? ""}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+  const gradIdSuffix = connectionGradientIdSuffix(connectionData, finalConnectionColor, ribbonLayout);
   const animationPhaseResetKey = [
     animation.enabled ? "1" : "0",
     animation.shape,
@@ -292,7 +319,7 @@ function OrthogonalConnectionInner({
   const strokeDashProps = advancedLine
     ? {}
     : connectionStrokeDashFromLineType(thickness, connectionData?.lineType);
-  const lineGradientId = `orth-line-grad-${connectionKey}`;
+  const lineGradientId = `orth-line-grad-${connectionKey}-${gradIdSuffix}`;
   const markerFillStart = rc.locked ? finalConnectionColor : rc.cStart;
   const markerFillEnd = rc.locked ? finalConnectionColor : rc.cEnd;
 
@@ -356,11 +383,15 @@ function OrthogonalConnectionInner({
         )}
       </defs>
 
-      <g className="group" style={GROUP_STYLE} onClick={handleClick} onContextMenu={handleContextMenu} data-connection-id={
-        connectionData?.from && connectionData?.to 
-          ? `${connectionData.from}-${connectionData.to}` 
-          : undefined
-      }>
+      <g
+        className="group"
+        style={{ ...GROUP_STYLE, ...slideTransitionStyle }}
+        onClick={handleClick}
+        onContextMenu={handleContextMenu}
+        data-connection-id={
+          connectionData?.from && connectionData?.to ? `${connectionData.from}-${connectionData.to}` : undefined
+        }
+      >
         {shouldRenderAnimationShapes && (
           <path id={motionPathId} d={route.pathData} fill="none" stroke="none" />
         )}

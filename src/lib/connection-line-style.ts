@@ -93,3 +93,85 @@ export function connectionNeedsAdvancedLineStyle(
 export function maxResolvedLineWidth(rw: ResolvedConnectionWidths): number {
   return Math.max(rw.wStart, rw.wEnd);
 }
+
+/**
+ * Stable fingerprint of resolved taper + color gradient (same inputs as render-time
+ * `resolveConnectionWidths` / `resolveConnectionColors`). Used by connection memo
+ * equality so slide/presentation diagram swaps cannot reuse a stale "flat" render
+ * when lock flags or end colors change without other props moving.
+ */
+export function connectionAdvancedStyleRevisionKey(
+  connection: DiagramConnectionData | undefined,
+  fallbackColor: string
+): string {
+  const rw = resolveConnectionWidths(connection);
+  const rc = resolveConnectionColors(connection, fallbackColor);
+  const widthVaries = !rw.locked && rw.wStart !== rw.wEnd;
+  const colorVaries = !rc.locked && rc.cStart !== rc.cEnd;
+  const advanced = connectionNeedsAdvancedLineStyle(rw, rc);
+  return [
+    rw.locked ? '1' : '0',
+    rw.wStart.toFixed(6),
+    rw.wEnd.toFixed(6),
+    rc.locked ? '1' : '0',
+    rc.cStart,
+    rc.cEnd,
+    widthVaries ? '1' : '0',
+    colorVaries ? '1' : '0',
+    advanced ? '1' : '0',
+  ].join('|');
+}
+
+/** Same fallback as BezierConnection before `resolveConnectionColors` (prop + node line colors). */
+export function bezierConnectionColorFallback(
+  connectionColor: string | undefined,
+  from: { lineColor?: string },
+  to: { lineColor?: string }
+): string {
+  return connectionColor || to.lineColor || from.lineColor || '#6b7280';
+}
+
+/** Same color resolution order as OrthogonalConnection `finalConnectionColor` (theme-neutral tail for memo). */
+export function orthogonalConnectionColorFallback(
+  connectionData: DiagramConnectionData | undefined,
+  connectionColor: string | undefined,
+  from: { lineColor?: string },
+  to: { lineColor?: string }
+): string {
+  if (connectionData?.color) return connectionData.color;
+  if (connectionColor) return connectionColor;
+  if (to?.lineColor) return to.lineColor;
+  if (from?.lineColor) return from.lineColor;
+  return '#6b7280';
+}
+
+function formatGradientAxisCoord(n: number): string {
+  if (!Number.isFinite(n)) return '0';
+  return n.toFixed(4).replace(/\.?0+$/, '') || '0';
+}
+
+/**
+ * Short stable id segment for SVG gradient `id`s: includes resolved taper/color revision **and**
+ * the gradient axis in user space (`userSpaceOnUse`). Same colors with new endpoint positions
+ * must get a new id so engines do not keep a stale gradient vector.
+ */
+export function connectionGradientIdSuffix(
+  connection: DiagramConnectionData | undefined,
+  fallbackColor: string,
+  gradientAxis: { gx1: number; gy1: number; gx2: number; gy2: number }
+): string {
+  const styleKey = connectionAdvancedStyleRevisionKey(connection, fallbackColor);
+  const geom = [
+    formatGradientAxisCoord(gradientAxis.gx1),
+    formatGradientAxisCoord(gradientAxis.gy1),
+    formatGradientAxisCoord(gradientAxis.gx2),
+    formatGradientAxisCoord(gradientAxis.gy2),
+  ].join('|');
+  const combined = `${styleKey}|axis|${geom}`;
+  let h = 2166136261;
+  for (let i = 0; i < combined.length; i++) {
+    h ^= combined.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0).toString(36);
+}

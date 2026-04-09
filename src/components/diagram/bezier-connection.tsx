@@ -17,6 +17,9 @@ import {
   lineWidthAtPathFraction,
   scaleValuesForAnimationKeyPoints,
   CONNECTION_ANIMATION_SPACING_REF_LINE_PX,
+  connectionAdvancedStyleRevisionKey,
+  bezierConnectionColorFallback,
+  connectionGradientIdSuffix,
 } from "@/lib/connection-line-style";
 import { connectionStrokeDashFromLineType } from "@/lib/utils";
 
@@ -56,6 +59,8 @@ interface BezierConnectionProps {
   animationConnectionsEnabled?: boolean; // When false, hide all animation shapes
   onClick?: (connection: DiagramConnectionData, event: React.MouseEvent) => void; // Click handler
   onContextMenu?: (e: React.MouseEvent, connection: DiagramConnectionData) => void;
+  /** Opacity/transform for slide/layer transitions — applied to path group only, not defs (gradients stay aligned). */
+  slideTransitionStyle?: React.CSSProperties;
 }
 
 function positionableKey(p: BezierConnectionProps['from']): string {
@@ -66,17 +71,37 @@ function connectionDataKey(c?: DiagramConnectionData): string {
   if (!c) return '';
   const wp = c.waypoints?.map((w) => `${w.x},${w.y}`).join(';') ?? '';
   const anim = c.animation ? JSON.stringify(c.animation) : '';
-  return `${c.from ?? ''}|${c.to ?? ''}|${(c as any).id ?? ''}|${c.curvature ?? ''}|${wp}|${c.lineWidth ?? ''}|${c.lineWidthLock ?? ''}|${c.lineWidthEnd ?? ''}|${c.lineType ?? ''}|${c.shadow ?? ''}|${c.fromArrow ?? ''}|${c.toArrow ?? ''}|${c.arrow ?? ''}|${anim}|${c.color ?? ''}|${c.colorLock ?? ''}|${c.colorEnd ?? ''}|${c.centerEdgeAnchors ? '1' : ''}|${c.edgeAttachmentConstraint ?? ''}|${c.fromPreferredExit ?? ''}|${c.toPreferredEntry ?? ''}`;
+  return `${c.from ?? ''}|${c.to ?? ''}|${(c as any).id ?? ''}|${c.style ?? ''}|${c.curvature ?? ''}|${wp}|${c.lineWidth ?? ''}|${c.lineWidthLock ?? ''}|${c.lineWidthEnd ?? ''}|${c.lineType ?? ''}|${c.shadow ?? ''}|${c.fromArrow ?? ''}|${c.toArrow ?? ''}|${c.arrow ?? ''}|${anim}|${c.color ?? ''}|${c.colorLock ?? ''}|${c.colorEnd ?? ''}|${c.centerEdgeAnchors ? '1' : ''}|${c.edgeAttachmentConstraint ?? ''}|${c.fromPreferredExit ?? ''}|${c.toPreferredEntry ?? ''}`;
+}
+
+function slideTransitionStyleEqual(
+  a?: React.CSSProperties,
+  b?: React.CSSProperties
+): boolean {
+  if (a === b) return true;
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  return (
+    a.opacity === b.opacity &&
+    a.transform === b.transform &&
+    a.transition === b.transition &&
+    a.transitionDelay === b.transitionDelay
+  );
 }
 
 function areBezierConnectionPropsEqual(prev: BezierConnectionProps, next: BezierConnectionProps): boolean {
+  const prevFf = bezierConnectionColorFallback(prev.connectionColor, prev.from, prev.to);
+  const nextFf = bezierConnectionColorFallback(next.connectionColor, next.from, next.to);
   return (
     positionableKey(prev.from) === positionableKey(next.from) &&
     positionableKey(prev.to) === positionableKey(next.to) &&
     prev.connectionColor === next.connectionColor &&
     connectionDataKey(prev.connectionData) === connectionDataKey(next.connectionData) &&
+    connectionAdvancedStyleRevisionKey(prev.connectionData, prevFf) ===
+      connectionAdvancedStyleRevisionKey(next.connectionData, nextFf) &&
     prev.exportAnimationTimeSeconds === next.exportAnimationTimeSeconds &&
-    prev.animationConnectionsEnabled === next.animationConnectionsEnabled
+    prev.animationConnectionsEnabled === next.animationConnectionsEnabled &&
+    slideTransitionStyleEqual(prev.slideTransitionStyle, next.slideTransitionStyle)
   );
 }
 
@@ -960,7 +985,17 @@ export function getPointOnConnectionPath(
   return getBezierPoint(localT, seg.p0x, seg.p0y, seg.cp1x, seg.cp1y, seg.cp2x, seg.cp2y, seg.p3x, seg.p3y);
 }
 
-function BezierConnectionInner({ from, to, connectionColor, connectionData, exportAnimationTimeSeconds, animationConnectionsEnabled = true, onClick, onContextMenu }: BezierConnectionProps) {
+function BezierConnectionInner({
+  from,
+  to,
+  connectionColor,
+  connectionData,
+  exportAnimationTimeSeconds,
+  animationConnectionsEnabled = true,
+  onClick,
+  onContextMenu,
+  slideTransitionStyle,
+}: BezierConnectionProps) {
   // Use measureNodeDims-like logic for shapes to get actual dimensions
   const isFromShape = isShapeNodeType(from.type);
   const isToShape = isShapeNodeType(to.type);
@@ -1178,7 +1213,9 @@ function BezierConnectionInner({ from, to, connectionColor, connectionData, expo
   const distributedShapeSpacing = renderedShapeCount > 0 ? pathLength / renderedShapeCount : 0;
   const animationDuration = shouldAnimateShapes ? pathLength / speedMagnitude : 0;
   const animationColor = animation.color ? animation.color : colorWithHalfOpacity(finalConnectionColor);
-  const connectionKey = `${connectionData?.from ?? from.id}-${connectionData?.to ?? to.id}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const connectionKey = `${connectionData?.from ?? from.id}-${connectionData?.to ?? to.id}-${(connectionData as { id?: string })?.id ?? ''}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const gradIdSuffix = connectionGradientIdSuffix(connectionData, finalConnectionColor, ribbonLayout);
+  const lineGradientId = `conn-line-grad-${connectionKey}-${gradIdSuffix}`;
   const animationPhaseResetKey = [
     animation.enabled ? '1' : '0',
     animation.shape,
@@ -1196,7 +1233,6 @@ function BezierConnectionInner({ from, to, connectionColor, connectionData, expo
   const strokeDashProps = advancedLine
     ? {}
     : connectionStrokeDashFromLineType(maxResolvedLineWidth(rw), connectionData?.lineType);
-  const lineGradientId = `conn-line-grad-${connectionKey}`;
   const markerFillStart = rc.locked ? finalConnectionColor : rc.cStart;
   const markerFillEnd = rc.locked ? finalConnectionColor : rc.cEnd;
 
@@ -1271,7 +1307,13 @@ function BezierConnectionInner({ from, to, connectionColor, connectionData, expo
         )}
       </defs>
       
-      <g className="group" style={{ pointerEvents: 'auto' }} onClick={handleClick} onContextMenu={handleContextMenu} data-connection-id={connectionData?.from && connectionData?.to ? `${connectionData.from}-${connectionData.to}` : undefined}>
+      <g
+        className="group"
+        style={{ pointerEvents: 'auto', ...slideTransitionStyle }}
+        onClick={handleClick}
+        onContextMenu={handleContextMenu}
+        data-connection-id={connectionData?.from && connectionData?.to ? `${connectionData.from}-${connectionData.to}` : undefined}
+      >
         {shouldRenderAnimationShapes && (
           <path id={motionPathId} d={pathData} fill="none" stroke="none" />
         )}

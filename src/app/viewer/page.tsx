@@ -665,6 +665,11 @@ function ViewerPageContent() {
                   : undefined
               }
               skipInitialFitToView={presentationViewActive && presentationEligible}
+              connectionRenderRevision={
+                presentationViewActive && presentationEligible
+                  ? `${slidePresentationView.safeIndex}-${slidePresentationView.currentSlide?.id ?? ""}`
+                  : undefined
+              }
             />
             {presentationViewActive &&
               presentationEligible &&

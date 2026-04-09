@@ -78,9 +78,11 @@ interface ViewerCanvasProps {
   getHasLinkedSubDiagram?: (node: import("@/lib/types").DiagramNodeData) => boolean;
   /** When true, skip the one-shot auto fit-to-view on mount (parent owns transform). */
   skipInitialFitToView?: boolean;
+  /** Bump when the logical diagram revision changes (e.g. presentation slide index) so connections remount cleanly. */
+  connectionRenderRevision?: string | number;
 }
 
-export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, transform: externalTransform, onTransformChange, selectedItemId, selectedItem, onItemSelect, metadataPopupsEnabled = true, animationConnectionsEnabled = true, connectionsBehindNodesEnabled: connectionsBehindNodesProp, showAnimationsForSelectedOnly = false, animationFilterSourceIds, animationToggleOnClickEnabled = false, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, openNodeLinksOnClick = false, nodeTransitionStyles = new Map(), connectionTransitionStyles = new Map(), onSubDiagramDoubleClick, getHasLinkedSubDiagram, skipInitialFitToView = false }: ViewerCanvasProps) {
+export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, transform: externalTransform, onTransformChange, selectedItemId, selectedItem, onItemSelect, metadataPopupsEnabled = true, animationConnectionsEnabled = true, connectionsBehindNodesEnabled: connectionsBehindNodesProp, showAnimationsForSelectedOnly = false, animationFilterSourceIds, animationToggleOnClickEnabled = false, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, openNodeLinksOnClick = false, nodeTransitionStyles = new Map(), connectionTransitionStyles = new Map(), onSubDiagramDoubleClick, getHasLinkedSubDiagram, skipInitialFitToView = false, connectionRenderRevision }: ViewerCanvasProps) {
   const [connectionsBehindNodesEnabled, setConnectionsBehindNodesEnabled] = useState(true);
   useEffect(() => {
     if (connectionsBehindNodesProp !== undefined) {
@@ -424,6 +426,8 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
               animationDisabledSources={animationDisabledSources}
               connectionAnimationStyles={connectionTransitionStyles}
               connectionKey={connKey}
+              isReadOnly
+              connectionRenderRevision={connectionRenderRevision}
             />
             {connectionSlots.sortedItemIds.map((itemId, i) => {
               const node = nodesById[itemId];
@@ -496,6 +500,8 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
                     animationDisabledSources={animationDisabledSources}
                     connectionAnimationStyles={connectionTransitionStyles}
                     connectionKey={connKey}
+                    isReadOnly
+                    connectionRenderRevision={connectionRenderRevision}
                   />
                 ) : null,
                 nodeEl,
@@ -524,6 +530,8 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
                   animationDisabledSources={animationDisabledSources}
                   connectionAnimationStyles={connectionTransitionStyles}
                   connectionKey={connKey}
+                  isReadOnly
+                  connectionRenderRevision={connectionRenderRevision}
                 />
               );
             })()}

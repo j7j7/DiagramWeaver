@@ -5190,6 +5190,11 @@ function DiagramEditorInner({
   activeTab,
   toast,
 }: any) {
+  const presentationConnectionRenderRevision = React.useMemo(() => {
+    if (!presentationModeEnabled) return undefined;
+    return `${activePresentationDeckId ?? ''}-${activePresentationSlideId ?? ''}`;
+  }, [presentationModeEnabled, activePresentationDeckId, activePresentationSlideId]);
+
   const { start, isOpen: tutorialOpen, steps: tutorialSteps, currentIndex: tutorialStepIndex } = useTutorial();
 
   const handleStartTutorial = React.useCallback(() => {
@@ -5481,6 +5486,7 @@ function DiagramEditorInner({
                     nodeAnimationStyles={layerAnimation.nodeAnimationStyles}
                     connectionAnimationStyles={layerAnimation.connectionAnimationStyles}
                     connectionKey={layerAnimation.connectionKey}
+                    connectionRenderRevision={presentationConnectionRenderRevision}
                     setDiagramData={setCurrentDiagramData}
                     onItemSelect={handleItemSelect}
                     onBatchSelect={handleBatchSelect}

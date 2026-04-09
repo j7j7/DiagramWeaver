@@ -397,6 +397,7 @@ export function PresentationPlayer({
                     animationDisabledSources={animationDisabledSources}
                     nodeTransitionStyles={slideTransition.nodeTransitionStyles}
                     connectionTransitionStyles={slideTransition.connectionTransitionStyles}
+                    connectionRenderRevision={`${safeIndex}-${currentSlide?.id ?? ''}`}
                   />
                 </DndProvider>
               </div>

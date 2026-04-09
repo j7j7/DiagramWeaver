@@ -59,6 +59,11 @@ interface CanvasConnectionsProps {
   canvasRef?: React.RefObject<HTMLElement | null>;
   /** When true, hide draggable endpoint handles (viewer / read-only). */
   isReadOnly?: boolean;
+  /**
+   * Changes with each presentation slide (or other logical diagram revision) so connection
+   * subtrees remount during playback — avoids stale SVG defs/gradients when slide deltas swap styling.
+   */
+  connectionRenderRevision?: string | number;
 }
 
 function setsEqual(a: Set<number> | undefined, b: Set<number> | undefined): boolean {
@@ -93,6 +98,7 @@ function areCanvasConnectionsPropsEqual(prev: CanvasConnectionsProps, next: Canv
     prev.transform === next.transform &&
     prev.canvasRef === next.canvasRef &&
     prev.isReadOnly === next.isReadOnly &&
+    prev.connectionRenderRevision === next.connectionRenderRevision &&
     prev.diagramData === next.diagramData &&
     prev.nodesById === next.nodesById &&
     prev.zonesById === next.zonesById &&
@@ -100,6 +106,8 @@ function areCanvasConnectionsPropsEqual(prev: CanvasConnectionsProps, next: Canv
     prev.closeContextMenu === next.closeContextMenu &&
     prev.onConnectionDelete === next.onConnectionDelete &&
     prev.onConnectionContextMenu === next.onConnectionContextMenu &&
+    prev.onConnectionUpdate === next.onConnectionUpdate &&
+    prev.onConnectionWaypointAdd === next.onConnectionWaypointAdd &&
     setsEqual(prev.connectionIndices, next.connectionIndices);
 }
 
@@ -131,6 +139,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     transform,
     canvasRef,
     isReadOnly = false,
+    connectionRenderRevision,
   } = props;
   // Pre-calculate edge information for all connections
   const connectionEdgeInfo = new Map<string, { fromEdge: string; toEdge: string }>();
@@ -495,6 +504,16 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
 
         const stableConnKey = connectionKey ? connectionKey(edge) : null;
         const slideConnStyle = stableConnKey && connectionAnimationStyles ? connectionAnimationStyles.get(stableConnKey) : undefined;
+        const slideTransitionStyle = slideConnStyle
+          ? {
+              opacity: slideConnStyle.opacity,
+              transition: slideConnStyle.transition,
+              ...(slideConnStyle.transitionDelayMs != null && {
+                transitionDelay: `${slideConnStyle.transitionDelayMs}ms`,
+              }),
+              ...(slideConnStyle.transform && { transform: slideConnStyle.transform }),
+            }
+          : undefined;
         const slideOff = slideConnStyle?.slideEndpointOffset;
         const slideWpOff = slideConnStyle?.slideWaypointOffsets;
 
@@ -725,14 +744,8 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
 
         return (
           <g
-            key={`${edge.from}-${edge.to}-${index}-${edge.toArrow ? 'arrow' : 'noarrow'}-${edge._updated || ''}`}
+            key={`${edge.from}-${edge.to}-${index}-${edge.toArrow ? 'arrow' : 'noarrow'}-${edge._updated || ''}-r${connectionRenderRevision ?? ''}`}
             className={cn(isConnectionHighlighted && 'drop-shadow-[0_0_6px_rgba(0,200,150,0.8)]')}
-            style={slideConnStyle ? {
-              opacity: slideConnStyle.opacity,
-              transition: slideConnStyle.transition,
-              ...(slideConnStyle.transitionDelayMs != null && { transitionDelay: `${slideConnStyle.transitionDelayMs}ms` }),
-              ...(slideConnStyle.transform && { transform: slideConnStyle.transform }),
-            } : undefined}
           >
             {connStyle === 'orthogonal' ? (
               <OrthogonalConnection
@@ -747,6 +760,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                 animationConnectionsEnabled={animationConnectionsEnabled && (animationFilterSourceIds ? animationFilterSourceIds.has(edge.from) : (!animationFilterSourceId || edge.from === animationFilterSourceId)) && !animationDisabledSources.has(edge.from)}
                 onClick={connectionHandlers.onClick}
                 onContextMenu={connectionHandlers.onContextMenu}
+                slideTransitionStyle={slideTransitionStyle}
               />
             ) : (
               <BezierConnection
@@ -758,6 +772,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                 animationConnectionsEnabled={animationConnectionsEnabled && (animationFilterSourceIds ? animationFilterSourceIds.has(edge.from) : (!animationFilterSourceId || edge.from === animationFilterSourceId)) && !animationDisabledSources.has(edge.from)}
                 onClick={connectionHandlers.onClick}
                 onContextMenu={connectionHandlers.onContextMenu}
+                slideTransitionStyle={slideTransitionStyle}
               />
             )}
           </g>
