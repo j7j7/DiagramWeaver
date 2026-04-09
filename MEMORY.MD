@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-04-09 – Slide transitions: connection remove/add before node motion
+**Behavior** (`use-slide-transition.ts`): **Removing** a connection between slides **locks** geometry to the **previous** slide (`slideEndpointMove` + **`geomLockToPrev`**, no RAF lerp) so the line does **not** jump to the next slide’s layout while fading; **endpoints that move** (`nodeIdStyles`) get a **delay** (`connectionDelay + TRANSITION_DURATION_MS`) so the fade finishes **before** their motion. **New** connections use **`max(endpoint delays) + TRANSITION_DURATION_MS`** so their fade-in starts **after** both endpoints are in place. **Presentation** + **viewer** slide paths share this hook.
+
 ### 2026-04-09 – Connection animations: 20s canvas idle auto-pause + resume on movement
 **Behavior**: **`animationConnectionsUserEnabled`** (persisted **`dw:animationConnections:enabled`**) is separate from **effective** rendering: **`animationConnectionsEnabled = userEnabled && !idlePaused`**. After **20s** with **no diagram-space cursor change** on the canvas (snapped grid updates from **`use-canvas-interactions`**), **`idlePaused`** turns on so animations stop without changing saved preference. **Mouse move** or **touch move** on the canvas calls **`onCanvasActivity`**, clears idle pause, and restarts the timer. **Activity** toolbar button tooltip explains idle pause. **Options** menu Enable/Disable text follows **user** preference. **Hook**: **`src/hooks/use-connection-animation-idle.ts`** (**`CONNECTION_ANIMATION_IDLE_MS`**). **Touch**: **`use-canvas-interactions`**; **`touchend`** clears when **`touches.length === 0`**.
 

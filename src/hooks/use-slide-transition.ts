@@ -62,6 +62,8 @@ interface SlideAnimation {
       waypointPrev?: Array<{ x: number; y: number }>;
       waypointCurr?: Array<{ x: number; y: number }>;
       waypointChanged: boolean;
+      /** When true, keep endpoints at previous-slide positions (no RAF lerp); used for disappearing connections. */
+      geomLockToPrev?: boolean;
     };
   }>;
   connectionDelayMs: Map<string, number>;
@@ -140,6 +142,8 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
     const currNodesMap = new Map((currentDiagram.nodes || []).map(n => [n.id, n]));
     const prevConnsMap = new Map((previousDiagram.connections || []).map(c => [connKey(c), c]));
     const currConnsMap = new Map((currentDiagram.connections || []).map(c => [connKey(c), c]));
+    const prevItemsMap = buildItemMap(previousDiagram);
+    const currItemsMap = buildItemMap(currentDiagram);
 
     const nodeIdStyles = new Map<string, any>();
     const connKeyStyles = new Map<string, any>();
@@ -253,6 +257,47 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
       const needsConnTransition = isAppearing || isDisappearing;
       if (!needsConnTransition) continue;
 
+      if (isDisappearing) {
+        connsToAdd.push(prevConn);
+
+        const fromPrev = prevItemsMap.get(prevConn.from);
+        const fromCurr = currItemsMap.get(prevConn.from);
+        const toPrev = prevItemsMap.get(prevConn.to);
+        const toCurr = currItemsMap.get(prevConn.to);
+
+        let fromDx = 0;
+        let fromDy = 0;
+        let toDx = 0;
+        let toDy = 0;
+        if (fromPrev && fromCurr) {
+          fromDx = (fromPrev.x ?? 0) - (fromCurr.x ?? 0);
+          fromDy = (fromPrev.y ?? 0) - (fromCurr.y ?? 0);
+        }
+        if (toPrev && toCurr) {
+          toDx = (toPrev.x ?? 0) - (toCurr.x ?? 0);
+          toDy = (toPrev.y ?? 0) - (toCurr.y ?? 0);
+        }
+
+        connKeyStyles.set(connKeyVal, {
+          opacityStart: 1,
+          opacityEnd: 0,
+          translateYStart: 0,
+          translateYEnd: 30,
+          easing: EASE_IN,
+          slideEndpointMove: {
+            fromDx,
+            fromDy,
+            toDx,
+            toDy,
+            waypointPrev: prevConn.waypoints,
+            waypointCurr: prevConn.waypoints,
+            waypointChanged: false,
+            geomLockToPrev: true,
+          },
+        });
+        continue;
+      }
+
       connKeyStyles.set(connKeyVal, {
         opacityStart,
         opacityEnd,
@@ -260,14 +305,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
         translateYEnd,
         easing,
       });
-
-      if (isDisappearing) {
-        connsToAdd.push(prevConn);
-      }
     }
-
-    const prevItemsMap = buildItemMap(previousDiagram);
-    const currItemsMap = buildItemMap(currentDiagram);
 
     for (const connKeyVal of allConnKeys) {
       const prevConn = prevConnsMap.get(connKeyVal);
@@ -313,12 +351,44 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
       return;
     }
 
-    const { nodeDelayMs, connectionDelayMs, maxStaggerMs } = buildStaggerDelaysForSlideTransition(
+    const baseDelays = buildStaggerDelaysForSlideTransition(
       new Set(nodeIdStyles.keys()),
       new Set(connKeyStyles.keys()),
       currentDiagram,
       previousDiagram,
     );
+    const nodeDelayMs = new Map(baseDelays.nodeDelayMs);
+    const connectionDelayMs = new Map(baseDelays.connectionDelayMs);
+
+    // Disappearing connections: fade at previous-slide geometry first; endpoints that move wait until fade ends.
+    for (const connKeyVal of connKeyStyles.keys()) {
+      const prevConn = prevConnsMap.get(connKeyVal);
+      const currConn = currConnsMap.get(connKeyVal);
+      if (!prevConn || currConn) continue;
+
+      const fadeEnd = (connectionDelayMs.get(connKeyVal) ?? 0) + TRANSITION_DURATION_MS;
+      for (const nid of [prevConn.from, prevConn.to]) {
+        if (nodeIdStyles.has(nid)) {
+          nodeDelayMs.set(nid, Math.max(nodeDelayMs.get(nid) ?? 0, fadeEnd));
+        }
+      }
+    }
+
+    // New connections: start fading in only after both endpoints have finished moving into place.
+    for (const connKeyVal of connKeyStyles.keys()) {
+      const prevConn = prevConnsMap.get(connKeyVal);
+      const currConn = currConnsMap.get(connKeyVal);
+      if (!currConn || prevConn) continue;
+
+      const dA = nodeDelayMs.get(currConn.from) ?? 0;
+      const dB = nodeDelayMs.get(currConn.to) ?? 0;
+      connectionDelayMs.set(connKeyVal, Math.max(dA, dB) + TRANSITION_DURATION_MS);
+    }
+
+    let maxStaggerMs = 0;
+    for (const v of nodeDelayMs.values()) maxStaggerMs = Math.max(maxStaggerMs, v);
+    for (const v of connectionDelayMs.values()) maxStaggerMs = Math.max(maxStaggerMs, v);
+
     const nodeDelayFor = (id: string) => nodeDelayMs.get(id) ?? 0;
     const connDelayFor = (key: string) => connectionDelayMs.get(key) ?? 0;
     const totalDurationMs = maxStaggerMs + TRANSITION_DURATION_MS + 50;
@@ -427,7 +497,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
                 }))
               : undefined;
           next.set(connKeyVal, {
-            opacity: 1,
+            opacity: sm.geomLockToPrev ? style.opacityStart : 1,
             transition: 'none',
             slideEndpointOffset: {
               fromDx: sm.fromDx,
@@ -539,6 +609,26 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
                       dy: wp.y - wpCurr[i].y,
                     }))
                   : undefined;
+              if (sm.geomLockToPrev) {
+                const transition = slideMotionTransition(style.easing);
+                next.set(connKeyVal, {
+                  opacity: style.opacityEnd,
+                  transition,
+                  transitionDelayMs: connDelayFor(connKeyVal),
+                  slideEndpointOffset: {
+                    fromDx: sm.fromDx,
+                    fromDy: sm.fromDy,
+                    toDx: sm.toDx,
+                    toDy: sm.toDy,
+                  },
+                  slideWaypointOffsets,
+                  transform:
+                    style.translateYEnd !== 0
+                      ? `translateY(${style.translateYEnd}px)`
+                      : undefined,
+                });
+                continue;
+              }
               next.set(connKeyVal, {
                 opacity: 1,
                 transition: 'none',
@@ -615,7 +705,9 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
     }
 
     const anim = animations[0];
-    const hasGeom = [...anim.connKeyStyles.values()].some((s) => s.slideEndpointMove);
+    const hasGeom = [...anim.connKeyStyles.values()].some(
+      (s) => s.slideEndpointMove && !s.slideEndpointMove.geomLockToPrev,
+    );
     if (!hasGeom) return;
 
     const tick = () => {
@@ -635,7 +727,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
         const next = new Map(prev);
         for (const [key, style] of active.connKeyStyles) {
           const sm = style.slideEndpointMove;
-          if (!sm) continue;
+          if (!sm || sm.geomLockToPrev) continue;
 
           const delayMs = delays.get(key) ?? 0;
           const u = Math.max(0, Math.min(1, (elapsed - delayMs) / TRANSITION_DURATION_MS));
