@@ -4495,8 +4495,14 @@ export default function DiagramEditor() {
         return;
       }
 
-      // Delete/Backspace - Delete selected item (including selected connection)
+      // Delete/Backspace - Delete selected item (including selected connection).
+      // Multi-select is handled in EditorCanvas (handleDeleteMultiple). That listener runs first
+      // (child useEffect); if we also run single-item delete here we apply stale currentDiagramData
+      // and overwrite the batch delete (one item removed, rest remain until a second keypress).
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedItem && !isReadOnly) {
+        if (selectedItemIds.size > 1) {
+          return;
+        }
         e.preventDefault();
         handleItemDelete(selectedItem);
         return;

@@ -2,6 +2,15 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-04-13 – Marquee multi-select: Delete removes all in one keypress
+**Issue**: Two window **`keydown`** handlers — **`EditorCanvas`** runs **`handleDeleteMultiple`** first, then **`diagram-editor`** ran **`handleItemDelete(selectedItem)`** with **stale** **`currentDiagramData`**, overwriting the batch update so only **one** item disappeared until Delete was pressed again. **Fix**: skip the parent single-item delete branch when **`selectedItemIds.size > 1`**.
+
+### 2026-04-13 – Paste: allocate ids against all occupied references + batch reserve
+**Behavior**: Each paste builds **`collectOccupiedDiagramIds`** (nodes, zones, groupings, **`connection.id`**) then a mutable **`pasteOccupied`** set; every new node/zone/grouping/grouping-record and pasted **connection id** is reserved so **nothing collides** with the target diagram or with **other items in the same paste**. **`generateSequentialId` / `generateGroupId`** take optional **`extraOccupiedIds`** and skip past exact collisions (custom ids). **Grouping** paste ids use **`generateSequentialId('grouping', …)`** (replaces naive `grouping-N` max). **Zone tree paste** reserves ids **per child** so multiple children no longer reuse the same sequential id. Pasted **nodes** get **`groupId: undefined`** until new groupings are applied.
+
+### 2026-04-13 – Cross-tab paste: restore connections when sequential ids match source
+**Issue**: Copying nodes + connections then pasting into another tab (often an **empty** diagram) could paste **nodes** but **no connections**. **Cause**: paste skipped creating edges when **`mergedFrom`/`mergedTo` equaled the clipboard’s `from`/`to`** — `generateSequentialId` can reuse the same strings as the source (e.g. `type-1`, `type-2`), so the guard treated the edge as unchanged and dropped it. **Fix** (`use-canvas-clipboard.ts`): remove that skip for multi- and single-node paste. **Copy**: also treat connections as selected when **`connection.id`** or **`${from}-${to}`** is in **`selectedItemIds`** (explicit edge selection).
+
 ### 2026-04-09 – Text drop shadow: enable toggle
 **Data**: **`textDropShadowEnabled`**: only **`true`** applies drop shadow; **omitted** or **`false`** = off (**default**). **Render**: **`getTextEffectsShadowCss`**. **UI**: Switch in **text styling** + **line styling** panels; when off, **offset/blur/color controls are hidden**. **Types**, **schema**, **nested hierarchy**, **scratch pad** / **ShapePreview**, **resets**.
 

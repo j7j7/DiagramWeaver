@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramConnectionData, DiagramGroupData, DiagramGroupingData } from "@/lib/types";
-import { generateSequentialId, generateGroupId } from "@/lib/id-generator";
+import { generateSequentialId, generateGroupId, collectOccupiedDiagramIds } from "@/lib/id-generator";
 import { generateConnectionId } from "@/lib/connection-order-utils";
 
 interface ClipboardData {
@@ -246,9 +246,18 @@ export function useCanvasClipboard({
         }
       });
 
-      // Connections touching any copied node (external endpoint preserved on paste, like Alt+duplicate)
+      // Connections touching any copied node (external endpoint preserved on paste, like Alt+duplicate),
+      // plus edges explicitly selected by connection id (batch / shift selection uses id or `${from}-${to}`).
       diagramData.connections?.forEach((connection) => {
-        if (allSelectedIds.has(connection.from) || allSelectedIds.has(connection.to)) {
+        const c = connection as DiagramConnectionData;
+        const idInSelection =
+          Boolean(c.id && selectedItemIds.has(c.id)) ||
+          selectedItemIds.has(`${connection.from}-${connection.to}`);
+        if (
+          idInSelection ||
+          allSelectedIds.has(connection.from) ||
+          allSelectedIds.has(connection.to)
+        ) {
           selectedConnections.push({ ...connection });
         }
       });
@@ -326,30 +335,25 @@ export function useCanvasClipboard({
       const nodes = clipboard.nodes || [];
       const zones = clipboard.zones || [];
       const connections = clipboard.connections || [];
-      
+      const pasteOccupied = collectOccupiedDiagramIds(diagramData);
+
       // Create ID mapping for all items being pasted
       const idMapping = new Map<string, string>();
 
       // First pass: generate new IDs for all nodes
       const newNodes: DiagramNodeData[] = [];
-      const tempGeneratedIds: string[] = []; // Track IDs generated in this paste operation
-      
+
       nodes.forEach(node => {
-        // Create temporary diagram data that includes already-generated IDs
-        const tempData: DiagramData = {
-          ...diagramData,
-          nodes: [...diagramData.nodes, ...newNodes] // Include nodes we've already created
-        };
-        
-        const newNodeId = generateSequentialId(node.type, tempData);
+        const newNodeId = generateSequentialId(node.type, diagramData, pasteOccupied);
+        pasteOccupied.add(newNodeId);
         idMapping.set(node.id, newNodeId);
-        tempGeneratedIds.push(newNodeId);
-        
+
         const newNode: DiagramNodeData = {
           ...node,
           id: newNodeId,
           x: (node.x || 0) + 50,
           y: (node.y || 0) + 50,
+          groupId: undefined,
         };
         newNodes.push(newNode);
       });
@@ -372,14 +376,8 @@ export function useCanvasClipboard({
       // Second pass: generate new IDs for all groups and process their children
       const newZones: DiagramZoneData[] = [];
       const processZoneChildren = (zone: DiagramGroupData): DiagramGroupData => {
-        // Create temporary diagram data that includes already-generated IDs
-        const tempData: DiagramData = {
-          ...diagramData,
-          nodes: [...diagramData.nodes, ...newNodes],
-          zones: [...(diagramData.zones || []), ...newZones]
-        };
-        
-        const newZoneId = generateGroupId((zone.subType as 'group' | 'zone') || 'zone', tempData);
+        const newZoneId = generateGroupId((zone.subType as 'group' | 'zone') || 'zone', diagramData, pasteOccupied);
+        pasteOccupied.add(newZoneId);
         idMapping.set(zone.id, newZoneId);
 
         // Process children - map old IDs to new IDs
@@ -415,14 +413,8 @@ export function useCanvasClipboard({
         // Find original group to copy its properties
         const originalGroup = diagramData.zones?.find(zone => zone.id === originalGroupId);
         if (originalGroup && nodeIds.length > 0) {
-          // Create temporary diagram data for ID generation
-          const tempData: DiagramData = {
-            ...diagramData,
-            nodes: [...diagramData.nodes, ...newNodes],
-            zones: [...(diagramData.zones || []), ...newZones]
-          };
-          
-          const newGroupId = generateGroupId((originalGroup.subType as 'group' | 'zone') || 'group', tempData);
+          const newGroupId = generateGroupId((originalGroup.subType as 'group' | 'zone') || 'group', diagramData, pasteOccupied);
+          pasteOccupied.add(newGroupId);
           
           // Calculate position for new group (centered around its nodes)
           let minX = Infinity, minY = Infinity;
@@ -454,12 +446,15 @@ export function useCanvasClipboard({
         if (!newFromId && !newToId) return;
         const mergedFrom = newFromId ?? connection.from;
         const mergedTo = newToId ?? connection.to;
-        if (mergedFrom === connection.from && mergedTo === connection.to) return;
+        // Do not skip when merged endpoints equal originals: generateSequentialId can reuse the same
+        // ids as the source diagram (e.g. paste into an empty tab), but these are still new graph edges.
 
         const { id: _oldConnId, waypoints: _wp, ...rest } = connection;
+        const newConnId = generateConnectionId();
+        pasteOccupied.add(newConnId);
         newConnections.push({
           ...rest,
-          id: generateConnectionId(),
+          id: newConnId,
           from: mergedFrom,
           to: mergedTo,
           waypoints: undefined,
@@ -492,12 +487,8 @@ export function useCanvasClipboard({
         // Find original grouping to copy its properties
         const originalGrouping = diagramData.groupings?.find(grouping => grouping.id === originalGroupingId);
         if (originalGrouping && nodeIds.length > 0) {
-          // Generate new grouping ID
-          const existingGroupingIds = (diagramData.groupings || []).map(g => g.id);
-          const maxNumber = Math.max(0, ...existingGroupingIds
-            .map(id => parseInt(id.replace('grouping-', '')) || 0)
-          );
-          const newGroupingId = `grouping-${maxNumber + 1}`;
+          const newGroupingId = generateSequentialId('grouping', diagramData, pasteOccupied);
+          pasteOccupied.add(newGroupingId);
           
           // Preserve the original order of memberIds
           const originalOrder = originalGroupingMemberOrder.get(originalGroupingId);
@@ -579,11 +570,15 @@ export function useCanvasClipboard({
       // Handle single node paste (backward compatibility)
       const originalGroupRelationships = clipboard.originalGroupRelationships || new Map();
       const originalGroupingRelationships = clipboard.originalGroupingRelationships || new Map();
+      const pasteOccupied = collectOccupiedDiagramIds(diagramData);
+      const newNodeId = generateSequentialId(clipboard.node.type, diagramData, pasteOccupied);
+      pasteOccupied.add(newNodeId);
       const newNode: DiagramNodeData = {
         ...clipboard.node,
-        id: generateSequentialId(clipboard.node.type, diagramData),
+        id: newNodeId,
         x: (clipboard.node.x || 0) + 50,
         y: (clipboard.node.y || 0) + 50,
+        groupId: undefined,
       };
 
       const newZones: DiagramZoneData[] = [];
@@ -594,7 +589,8 @@ export function useCanvasClipboard({
       if (originalGroupId) {
         const originalGroup = diagramData.zones?.find(zone => zone.id === originalGroupId);
         if (originalGroup) {
-          const newGroupId = generateGroupId((originalGroup.subType as 'group' | 'zone') || 'group', diagramData);
+          const newGroupId = generateGroupId((originalGroup.subType as 'group' | 'zone') || 'group', diagramData, pasteOccupied);
+          pasteOccupied.add(newGroupId);
           
           const newGroup: DiagramZoneData = {
             ...originalGroup,
@@ -613,12 +609,8 @@ export function useCanvasClipboard({
       if (originalGroupingId) {
         const originalGrouping = diagramData.groupings?.find(grouping => grouping.id === originalGroupingId);
         if (originalGrouping) {
-          // Generate new grouping ID
-          const existingGroupingIds = (diagramData.groupings || []).map(g => g.id);
-          const maxNumber = Math.max(0, ...existingGroupingIds
-            .map(id => parseInt(id.replace('grouping-', '')) || 0)
-          );
-          const newGroupingId = `grouping-${maxNumber + 1}`;
+          const newGroupingId = generateSequentialId('grouping', diagramData, pasteOccupied);
+          pasteOccupied.add(newGroupingId);
           
           const newGrouping: DiagramGroupingData = {
             ...originalGrouping,
@@ -638,12 +630,14 @@ export function useCanvasClipboard({
         const oldId = clipboard.node!.id;
         const newFrom = conn.from === oldId ? newNode.id : conn.from;
         const newTo = conn.to === oldId ? newNode.id : conn.to;
-        if (newFrom === conn.from && newTo === conn.to) return;
+        // Same as multi-paste: remapped ids can match source strings when sequential ids align.
 
         const { id: _oldConnId, waypoints: _wp, ...rest } = conn;
+        const newConnId = generateConnectionId();
+        pasteOccupied.add(newConnId);
         pastedTouchConnections.push({
           ...rest,
-          id: generateConnectionId(),
+          id: newConnId,
           from: newFrom,
           to: newTo,
           waypoints: undefined,
@@ -680,23 +674,27 @@ export function useCanvasClipboard({
       // Handle single group paste (backward compatibility)
       // Create ID mapping for all items being pasted
       const idMapping = new Map<string, string>();
+      const pasteOccupied = collectOccupiedDiagramIds(diagramData);
 
       // Generate new ID for the main group
-      const newZoneId = generateGroupId((clipboard.zone.subType as 'group' | 'zone') || 'group', diagramData);
+      const newZoneId = generateGroupId((clipboard.zone.subType as 'group' | 'zone') || 'group', diagramData, pasteOccupied);
+      pasteOccupied.add(newZoneId);
       idMapping.set(clipboard.zone.id, newZoneId);
 
-      // Generate new IDs for all children
+      // Generate new IDs for all children (same pass must reserve ids so children stay unique)
       const children = clipboard.children || [];
       for (const child of children) {
         if ('type' in child && child.type) {
           // It's a node
           const nodeChild = child as DiagramNodeData;
-          const newChildId = generateSequentialId(nodeChild.type, diagramData);
+          const newChildId = generateSequentialId(nodeChild.type, diagramData, pasteOccupied);
+          pasteOccupied.add(newChildId);
           idMapping.set(nodeChild.id, newChildId);
         } else {
           // It's a group
           const zoneChild = child as DiagramGroupData;
-          const newChildId = generateGroupId((zoneChild.subType as 'group' | 'zone') || 'group', diagramData);
+          const newChildId = generateGroupId((zoneChild.subType as 'group' | 'zone') || 'group', diagramData, pasteOccupied);
+          pasteOccupied.add(newChildId);
           idMapping.set(zoneChild.id, newChildId);
         }
       }
@@ -725,6 +723,7 @@ export function useCanvasClipboard({
             id: newChildId,
             x: (nodeChild.x || 0) + 50,
             y: (nodeChild.y || 0) + 50,
+            groupId: undefined,
           };
           newNodes.push(newNode);
         } else {
