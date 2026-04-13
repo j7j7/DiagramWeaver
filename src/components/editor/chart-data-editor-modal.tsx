@@ -18,12 +18,14 @@ import type {
   DiagramNodeData,
   NodeChartSpec,
   NodeChartSpecBar,
+  NodeChartSpecLine,
   NodeChartSpecPie,
 } from "@/lib/types";
 import {
   CHART_MAX_SEGMENT_PULL,
   CHART_MAX_PER_SLICE_SEGMENT_PULL,
   defaultBarChartSpec,
+  defaultLineChartSpec,
   defaultPieChartSpec,
   newChartSliceId,
   DEFAULT_PIE_SLICE_COLORS,
@@ -40,6 +42,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { barChartWantsRoundedColumnEnds } from "@/lib/bar-chart-layout";
+import {
+  LINE_CHART_POLYLINE_STROKE_MAX,
+  LINE_CHART_POLYLINE_STROKE_MIN,
+  lineChartPolylineStrokeFallbackFromNodeBorder,
+} from "@/lib/line-chart-layout";
 
 function sliceFillStyleFromSeries(s: ChartSeriesItem | ChartBarSegmentItem): ChartSliceFillStyle {
   if (s.fillStyle === "none" || s.fillStyle === "solid" || s.fillStyle === "gradient") {
@@ -293,11 +300,100 @@ export function ChartDataEditorModal({
   const [showBarLegend, setShowBarLegend] = useState(false);
   const [barCategoryLabelFontSizeStr, setBarCategoryLabelFontSizeStr] = useState("");
   const [barLegendLabelFontSizeStr, setBarLegendLabelFontSizeStr] = useState("");
+  const [showLineArea, setShowLineArea] = useState(true);
+  const [lineSmooth, setLineSmooth] = useState(true);
+  const [showLineDots, setShowLineDots] = useState(true);
+  const [lineDotRadius, setLineDotRadius] = useState(1.85);
+  const [lineStrokeWidth, setLineStrokeWidth] = useState(1.35);
+  const [lineAreaOpacity, setLineAreaOpacity] = useState(0.42);
 
   useEffect(() => {
     if (visible && node) {
       const chart = (node as DiagramNodeData & { chart?: NodeChartSpec }).chart;
       const isBar = node.type === "generic.chart.bar" || chart?.kind === "bar";
+      const isLine = node.type === "generic.chart.line" || chart?.kind === "line";
+
+      if (isLine) {
+        const spec: NodeChartSpecLine =
+          chart?.kind === "line" ? chart : defaultLineChartSpec();
+        const series: ChartBarSegmentItem[] = spec.series?.length
+          ? spec.series.map((s) => ({ ...s, values: [...(s.values ?? [])] }))
+          : defaultLineChartSpec().series;
+        const nextBar: BarEditRow[] = series.map((s) => {
+          const fs = sliceFillStyleFromSeries(s);
+          const gc = s.gradientColors;
+          return {
+            id: s.id || newChartSliceId(),
+            name: s.name,
+            valuesStr: (s.values ?? []).map((v) => String(v)).join(", "),
+            fillStyle: fs,
+            color: s.color ?? "",
+            gradientColor1: gc?.[0] ?? "",
+            gradientColor2: gc?.[1] ?? "",
+            labelColor: s.labelColor ?? "",
+            labelFontSizeStr:
+              s.labelFontSize != null && Number.isFinite(s.labelFontSize)
+                ? String(s.labelFontSize)
+                : "",
+          };
+        });
+        setBarRows(nextBar);
+        setCategoryLabelsStr(
+          Array.isArray(spec.categoryLabels) ? spec.categoryLabels.join(", ") : ""
+        );
+        setShowGridX(spec.showGridX === true);
+        setShowGridY(spec.showGridY === true);
+        setGridColor(spec.gridColor ?? "");
+        setShowValueAxis(spec.showValueAxis !== false);
+        setAxisColor(spec.axisColor ?? "");
+        setShowCategoryLabels(spec.showCategoryLabels !== false);
+        setShowBarLegend(spec.showLegend === true);
+        setBarCategoryLabelFontSizeStr(
+          spec.categoryLabelFontSize != null && Number.isFinite(spec.categoryLabelFontSize)
+            ? String(spec.categoryLabelFontSize)
+            : ""
+        );
+        setBarLegendLabelFontSizeStr(
+          spec.legendLabelFontSize != null && Number.isFinite(spec.legendLabelFontSize)
+            ? String(spec.legendLabelFontSize)
+            : ""
+        );
+        setSliceBorderColor(spec.sliceBorderColor ?? "");
+        setChartShadow(spec.shadow === true);
+        setShowSegmentLabels(true);
+        setShowLineArea(spec.showAreaFill !== false);
+        setLineSmooth(spec.smooth !== false);
+        setShowLineDots(spec.showDots !== false);
+        setLineDotRadius(
+          typeof spec.dotRadius === "number" && Number.isFinite(spec.dotRadius)
+            ? Math.min(3, Math.max(0, spec.dotRadius))
+            : 1.85
+        );
+        {
+          const borderStyle = node.borderStyle ?? "solid";
+          const nodeStrokeW = borderStyle === "none" ? 0 : node.borderWidth ?? 2;
+          const legacyLineW = lineChartPolylineStrokeFallbackFromNodeBorder(nodeStrokeW);
+          setLineStrokeWidth(
+            typeof spec.lineStrokeWidth === "number" && Number.isFinite(spec.lineStrokeWidth)
+              ? Math.min(
+                  LINE_CHART_POLYLINE_STROKE_MAX,
+                  Math.max(LINE_CHART_POLYLINE_STROKE_MIN, spec.lineStrokeWidth)
+                )
+              : legacyLineW
+          );
+        }
+        setLineAreaOpacity(
+          typeof spec.areaFillOpacity === "number" && Number.isFinite(spec.areaFillOpacity)
+            ? Math.min(1, Math.max(0, spec.areaFillOpacity))
+            : 0.42
+        );
+        if (nextBar.length > 2) {
+          setCollapsedBarIds(new Set(nextBar.map((r) => r.id)));
+        } else {
+          setCollapsedBarIds(new Set());
+        }
+        return;
+      }
 
       if (isBar) {
         const spec: NodeChartSpecBar =
@@ -601,6 +697,95 @@ export function ChartDataEditorModal({
   const handleSave = () => {
     if (!node || isReadOnly) return;
     const isBar = node.type === "generic.chart.bar" || node.chart?.kind === "bar";
+    const isLine = node.type === "generic.chart.line" || node.chart?.kind === "line";
+
+    if (isLine) {
+      const labelParts = categoryLabelsStr
+        .split(/[,;\n]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const rawLens = barRows.map((r) =>
+        String(r.valuesStr ?? "")
+          .split(/[,;\n]+/)
+          .map((x) => x.trim())
+          .filter(Boolean).length
+      );
+      const maxCat = Math.max(1, labelParts.length, ...rawLens, 0);
+      if (barRows.length === 0) {
+        onSave(node.id, defaultLineChartSpec());
+        onClose();
+        return;
+      }
+      const series: ChartBarSegmentItem[] = barRows.map((r, i) => {
+        const vals = parseBarValuesList(r.valuesStr, maxCat);
+        const name = (r.name ?? "").trim() || `Series ${i + 1}`;
+        const base: ChartBarSegmentItem = {
+          id: r.id || newChartSliceId(),
+          name,
+          values: vals,
+        };
+        if (r.labelColor.trim()) base.labelColor = r.labelColor.trim();
+        const lfsRaw = Number(String(r.labelFontSizeStr ?? "").trim().replace(/,/g, "."));
+        if (Number.isFinite(lfsRaw) && lfsRaw > 0) {
+          base.labelFontSize = Math.min(14, Math.max(2, lfsRaw));
+        }
+        if (r.fillStyle === "none") {
+          base.fillStyle = "none";
+          if (r.color.trim()) base.color = r.color.trim();
+          return base;
+        }
+        if (r.fillStyle === "gradient") {
+          base.fillStyle = "gradient";
+          const g1 = r.gradientColor1.trim();
+          const g2 = r.gradientColor2.trim();
+          const fb = DEFAULT_PIE_SLICE_COLORS[i % DEFAULT_PIE_SLICE_COLORS.length];
+          base.gradientColors = [g1 || fb, g2 || g1 || fb] as [string, string];
+          return base;
+        }
+        base.fillStyle = "solid";
+        if (r.color.trim()) base.color = r.color.trim();
+        return base;
+      });
+      const lineChart: NodeChartSpecLine = {
+        kind: "line",
+        series,
+        ...(labelParts.length ? { categoryLabels: labelParts.slice(0, maxCat) } : {}),
+        ...(showLineArea ? { showAreaFill: true } : { showAreaFill: false }),
+        areaFillOpacity: Math.min(1, Math.max(0, lineAreaOpacity)),
+        ...(lineSmooth ? { smooth: true } : { smooth: false }),
+        ...(showLineDots ? { showDots: true } : { showDots: false }),
+        dotRadius: Math.min(3, Math.max(0, lineDotRadius)),
+        lineStrokeWidth: Math.min(
+          LINE_CHART_POLYLINE_STROKE_MAX,
+          Math.max(LINE_CHART_POLYLINE_STROKE_MIN, lineStrokeWidth)
+        ),
+        ...(sliceBorderColor.trim() ? { sliceBorderColor: sliceBorderColor.trim() } : {}),
+        ...(chartShadow ? { shadow: true } : {}),
+        ...(showGridX ? { showGridX: true } : {}),
+        ...(showGridY ? { showGridY: true } : {}),
+        ...(gridColor.trim() ? { gridColor: gridColor.trim() } : {}),
+        ...(!showValueAxis ? { showValueAxis: false } : {}),
+        ...(axisColor.trim() ? { axisColor: axisColor.trim() } : {}),
+        ...(!showCategoryLabels ? { showCategoryLabels: false } : {}),
+        ...(showBarLegend ? { showLegend: true } : {}),
+      };
+      const catLfs = Number(
+        String(barCategoryLabelFontSizeStr ?? "").trim().replace(/,/g, ".")
+      );
+      if (Number.isFinite(catLfs) && catLfs > 0) {
+        lineChart.categoryLabelFontSize = Math.min(14, Math.max(2, catLfs));
+      }
+      const legLfs = Number(
+        String(barLegendLabelFontSizeStr ?? "").trim().replace(/,/g, ".")
+      );
+      if (Number.isFinite(legLfs) && legLfs > 0) {
+        lineChart.legendLabelFontSize = Math.min(14, Math.max(2, legLfs));
+      }
+      onSave(node.id, lineChart);
+      onClose();
+      return;
+    }
+
     if (isBar) {
       const labelParts = categoryLabelsStr
         .split(/[,;\n]+/)
@@ -633,6 +818,7 @@ export function ChartDataEditorModal({
         }
         if (r.fillStyle === "none") {
           base.fillStyle = "none";
+          if (r.color.trim()) base.color = r.color.trim();
           return base;
         }
         if (r.fillStyle === "gradient") {
@@ -769,6 +955,9 @@ export function ChartDataEditorModal({
 
   const isBarModal =
     !!node && (node.type === "generic.chart.bar" || node.chart?.kind === "bar");
+  const isLineModal =
+    !!node && (node.type === "generic.chart.line" || node.chart?.kind === "line");
+  const isCartesianModal = isBarModal || isLineModal;
 
   return (
     <div className="fixed top-0 left-0 w-screen h-screen z-[60]" style={{ pointerEvents: "auto" }}>
@@ -794,7 +983,7 @@ export function ChartDataEditorModal({
             </Tooltip>
           </div>
           <div className="p-4 space-y-3 max-h-[min(580px,72vh)] overflow-y-auto">
-            {isBarModal ? (
+            {isCartesianModal ? (
               <>
                 <div className="rounded-md border border-border/60 p-3 space-y-3 bg-muted/15">
                   <p className="text-xs font-medium text-foreground">Chart appearance</p>
@@ -803,7 +992,9 @@ export function ChartDataEditorModal({
                   >
                     <div className="space-y-1">
                       <div className="flex items-center justify-between gap-2">
-                        <Label className="text-[10px] text-muted-foreground">Segment outline</Label>
+                        <Label className="text-[10px] text-muted-foreground">
+                          {isLineModal ? "Line outline" : "Segment outline"}
+                        </Label>
                         {!isReadOnly && sliceBorderColor.trim() ? (
                           <Button
                             type="button"
@@ -836,91 +1027,195 @@ export function ChartDataEditorModal({
                           disabled={isReadOnly}
                         />
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Label htmlFor="chart-data-bar-seg-lbl" className="text-xs font-medium">
-                          Segment labels
-                        </Label>
-                        <Switch
-                          id="chart-data-bar-seg-lbl"
-                          checked={showSegmentLabels}
-                          onCheckedChange={setShowSegmentLabels}
-                          disabled={isReadOnly}
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Label htmlFor="chart-data-bar-stacked100" className="text-xs font-medium">
-                          100% stacked
-                        </Label>
-                        <Switch
-                          id="chart-data-bar-stacked100"
-                          checked={stacked100}
-                          onCheckedChange={setStacked100}
-                          disabled={isReadOnly}
-                        />
-                      </div>
+                      {!isLineModal ? (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <Label htmlFor="chart-data-bar-seg-lbl" className="text-xs font-medium">
+                              Segment labels
+                            </Label>
+                            <Switch
+                              id="chart-data-bar-seg-lbl"
+                              checked={showSegmentLabels}
+                              onCheckedChange={setShowSegmentLabels}
+                              disabled={isReadOnly}
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Label htmlFor="chart-data-bar-stacked100" className="text-xs font-medium">
+                              100% stacked
+                            </Label>
+                            <Switch
+                              id="chart-data-bar-stacked100"
+                              checked={stacked100}
+                              onCheckedChange={setStacked100}
+                              disabled={isReadOnly}
+                            />
+                          </div>
+                        </>
+                      ) : null}
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground">Orientation</Label>
-                      <Select
-                        value={barVertical ? "vertical" : "horizontal"}
-                        onValueChange={(v) => setBarVertical(v === "vertical")}
-                        disabled={isReadOnly}
-                      >
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="z-[100]">
-                          <SelectItem value="vertical">Vertical (categories on X)</SelectItem>
-                          <SelectItem value="horizontal">Horizontal (categories on Y)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between gap-2">
-                        <Label className="text-xs">Category spacing</Label>
-                        <span className="text-xs text-muted-foreground tabular-nums">
-                          {categoryGap.toFixed(2)}
-                        </span>
-                      </div>
-                      <Slider
-                        value={[categoryGap]}
-                        onValueChange={(v) => setCategoryGap(v[0] ?? 0)}
-                        min={0}
-                        max={0.8}
-                        step={0.02}
-                        disabled={isReadOnly}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between gap-2">
-                        <Label className="text-xs">Stack segment gap</Label>
-                        <span className="text-xs text-muted-foreground tabular-nums">
-                          {stackGap.toFixed(2)}
-                        </span>
-                      </div>
-                      <Slider
-                        value={[stackGap]}
-                        onValueChange={(v) => setStackGap(v[0] ?? 0)}
-                        min={0}
-                        max={0.5}
-                        step={0.02}
-                        disabled={isReadOnly}
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="chart-bar-rounded-ends" className="text-xs font-medium">
-                        Rounded column ends
-                      </Label>
-                      <Switch
-                        id="chart-bar-rounded-ends"
-                        checked={roundedColumnEnds}
-                        onCheckedChange={setRoundedColumnEnds}
-                        disabled={isReadOnly}
-                      />
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">
-                      Rounds the whole column cap (stacked columns use one outline; inner segment edges stay straight).
-                    </p>
+                    {isLineModal ? (
+                      <>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                          <div className="flex items-center gap-2">
+                            <Label htmlFor="chart-line-area" className="text-xs font-medium">
+                              Area under lines
+                            </Label>
+                            <Switch
+                              id="chart-line-area"
+                              checked={showLineArea}
+                              onCheckedChange={setShowLineArea}
+                              disabled={isReadOnly}
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Label htmlFor="chart-line-smooth" className="text-xs font-medium">
+                              Smooth curves
+                            </Label>
+                            <Switch
+                              id="chart-line-smooth"
+                              checked={lineSmooth}
+                              onCheckedChange={setLineSmooth}
+                              disabled={isReadOnly}
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Label htmlFor="chart-line-dots" className="text-xs font-medium">
+                              Point markers
+                            </Label>
+                            <Switch
+                              id="chart-line-dots"
+                              checked={showLineDots}
+                              onCheckedChange={setShowLineDots}
+                              disabled={isReadOnly}
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex justify-between gap-2">
+                            <Label className="text-xs">Marker size</Label>
+                            <span className="text-xs text-muted-foreground tabular-nums">
+                              {lineDotRadius.toFixed(2)}
+                            </span>
+                          </div>
+                          <Slider
+                            value={[lineDotRadius]}
+                            onValueChange={(v) => setLineDotRadius(v[0] ?? 0)}
+                            min={0}
+                            max={3}
+                            step={0.05}
+                            disabled={isReadOnly || !showLineDots}
+                          />
+                          <p className="text-[10px] text-muted-foreground">
+                            ViewBox units; 0 hides markers when point markers are on.
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex justify-between gap-2">
+                            <Label className="text-xs">Line width</Label>
+                            <span className="text-xs text-muted-foreground tabular-nums">
+                              {lineStrokeWidth.toFixed(2)}
+                            </span>
+                          </div>
+                          <Slider
+                            value={[lineStrokeWidth]}
+                            onValueChange={(v) => setLineStrokeWidth(v[0] ?? 1.35)}
+                            min={LINE_CHART_POLYLINE_STROKE_MIN}
+                            max={LINE_CHART_POLYLINE_STROKE_MAX}
+                            step={0.05}
+                            disabled={isReadOnly}
+                          />
+                          <p className="text-[10px] text-muted-foreground">
+                            Chart units; older diagrams without this still follow the shape border until you save.
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex justify-between gap-2">
+                            <Label className="text-xs">Area fade strength</Label>
+                            <span className="text-xs text-muted-foreground tabular-nums">
+                              {lineAreaOpacity.toFixed(2)}
+                            </span>
+                          </div>
+                          <Slider
+                            value={[lineAreaOpacity]}
+                            onValueChange={(v) => setLineAreaOpacity(v[0] ?? 0.42)}
+                            min={0.05}
+                            max={0.9}
+                            step={0.01}
+                            disabled={isReadOnly || !showLineArea}
+                          />
+                          <p className="text-[10px] text-muted-foreground">
+                            Opacity at the line; gradient falls to transparent at the baseline.
+                          </p>
+                        </div>
+                      </>
+                    ) : null}
+                    {!isLineModal ? (
+                      <>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground">Orientation</Label>
+                          <Select
+                            value={barVertical ? "vertical" : "horizontal"}
+                            onValueChange={(v) => setBarVertical(v === "vertical")}
+                            disabled={isReadOnly}
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="z-[100]">
+                              <SelectItem value="vertical">Vertical (categories on X)</SelectItem>
+                              <SelectItem value="horizontal">Horizontal (categories on Y)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex justify-between gap-2">
+                            <Label className="text-xs">Category spacing</Label>
+                            <span className="text-xs text-muted-foreground tabular-nums">
+                              {categoryGap.toFixed(2)}
+                            </span>
+                          </div>
+                          <Slider
+                            value={[categoryGap]}
+                            onValueChange={(v) => setCategoryGap(v[0] ?? 0)}
+                            min={0}
+                            max={0.8}
+                            step={0.02}
+                            disabled={isReadOnly}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex justify-between gap-2">
+                            <Label className="text-xs">Stack segment gap</Label>
+                            <span className="text-xs text-muted-foreground tabular-nums">
+                              {stackGap.toFixed(2)}
+                            </span>
+                          </div>
+                          <Slider
+                            value={[stackGap]}
+                            onValueChange={(v) => setStackGap(v[0] ?? 0)}
+                            min={0}
+                            max={0.5}
+                            step={0.02}
+                            disabled={isReadOnly}
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor="chart-bar-rounded-ends" className="text-xs font-medium">
+                            Rounded column ends
+                          </Label>
+                          <Switch
+                            id="chart-bar-rounded-ends"
+                            checked={roundedColumnEnds}
+                            onCheckedChange={setRoundedColumnEnds}
+                            disabled={isReadOnly}
+                          />
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">
+                          Rounds the whole column cap (stacked columns use one outline; inner segment edges stay straight).
+                        </p>
+                      </>
+                    ) : null}
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                       <div className="flex items-center gap-2">
                         <Label htmlFor="chart-bar-grid-v" className="text-xs font-medium">
@@ -966,17 +1261,19 @@ export function ChartDataEditorModal({
                           disabled={isReadOnly}
                         />
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Label htmlFor="chart-bar-seg-val" className="text-xs font-medium">
-                          Values in segments
-                        </Label>
-                        <Switch
-                          id="chart-bar-seg-val"
-                          checked={showBarSegmentValues}
-                          onCheckedChange={setShowBarSegmentValues}
-                          disabled={isReadOnly}
-                        />
-                      </div>
+                      {!isLineModal ? (
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor="chart-bar-seg-val" className="text-xs font-medium">
+                            Values in segments
+                          </Label>
+                          <Switch
+                            id="chart-bar-seg-val"
+                            checked={showBarSegmentValues}
+                            onCheckedChange={setShowBarSegmentValues}
+                            disabled={isReadOnly}
+                          />
+                        </div>
+                      ) : null}
                       <div className="flex items-center gap-2">
                         <Label htmlFor="chart-bar-legend" className="text-xs font-medium">
                           Bottom legend
@@ -1116,7 +1413,9 @@ export function ChartDataEditorModal({
                   />
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-muted-foreground">Stack segments</span>
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {isLineModal ? "Series" : "Stack segments"}
+                  </span>
                   {!isReadOnly && (
                     <Button variant="ghost" size="sm" className="h-6 px-2" onClick={addBarRow}>
                       <Plus className="w-3 h-3 mr-1" />
@@ -1129,7 +1428,13 @@ export function ChartDataEditorModal({
                     const fillFallback =
                       DEFAULT_PIE_SLICE_COLORS[i % DEFAULT_PIE_SLICE_COLORS.length];
                     const collapsed = collapsedBarIds.has(row.id);
-                    const summaryName = (row.name ?? "").trim() || `Segment ${i + 1}`;
+                    const summaryName =
+                      (row.name ?? "").trim() ||
+                      (isLineModal ? `Series ${i + 1}` : `Segment ${i + 1}`);
+                    const lineSeriesPreviewColor =
+                      row.fillStyle === "gradient"
+                        ? row.gradientColor1.trim() || fillFallback
+                        : row.color.trim() || fillFallback;
                     const { hasCustomLabelFontSize, labelSizeSliderValue } =
                       pieChartRowLabelSizeState(row.labelFontSizeStr);
                     return (
@@ -1181,8 +1486,17 @@ export function ChartDataEditorModal({
                                 <GripVertical className="h-4 w-4" />
                               </div>
                               {collapsed ? (
-                                <span className="flex-1 min-w-0 text-xs text-muted-foreground truncate">
-                                  {summaryName} · {row.valuesStr || "0"}
+                                <span className="flex flex-1 min-w-0 items-center gap-2 text-xs text-muted-foreground truncate">
+                                  {isLineModal ? (
+                                    <span
+                                      className="h-3 w-3 shrink-0 rounded-sm border border-border/80"
+                                      style={{ background: lineSeriesPreviewColor }}
+                                      title="Series line color"
+                                    />
+                                  ) : null}
+                                  <span className="truncate">
+                                    {summaryName} · {row.valuesStr || "0"}
+                                  </span>
                                 </span>
                               ) : (
                                 <div className="flex-1 min-w-0" aria-hidden />
@@ -1205,7 +1519,7 @@ export function ChartDataEditorModal({
                                 <Input
                                   value={row.name}
                                   onChange={(e) => updateBarRow(i, { name: e.target.value })}
-                                  placeholder="Segment name"
+                                  placeholder={isLineModal ? "Series name" : "Segment name"}
                                   className="h-8 text-xs"
                                   disabled={isReadOnly}
                                 />
@@ -1225,7 +1539,9 @@ export function ChartDataEditorModal({
                                   className={`grid grid-cols-2 gap-2 items-end ${isReadOnly ? "pointer-events-none opacity-75" : ""}`}
                                 >
                                   <div className="space-y-1 min-w-0">
-                                    <Label className="text-[10px] text-muted-foreground">Fill</Label>
+                                    <Label className="text-[10px] text-muted-foreground">
+                                      {isLineModal ? "Series style" : "Fill"}
+                                    </Label>
                                     <Select
                                       value={row.fillStyle}
                                       onValueChange={(v) =>
@@ -1237,18 +1553,40 @@ export function ChartDataEditorModal({
                                         <SelectValue placeholder="Fill type" />
                                       </SelectTrigger>
                                       <SelectContent className="z-[100] max-h-[min(280px,50vh)]">
-                                        <SelectItem value="none">None</SelectItem>
-                                        <SelectItem value="solid">Solid</SelectItem>
-                                        <SelectItem value="gradient">Gradient</SelectItem>
+                                        <SelectItem value="none">
+                                          {isLineModal ? "Line only (no fill)" : "None"}
+                                        </SelectItem>
+                                        <SelectItem value="solid">
+                                          {isLineModal ? "Solid line & area" : "Solid"}
+                                        </SelectItem>
+                                        <SelectItem value="gradient">
+                                          {isLineModal ? "Gradient line & area" : "Gradient"}
+                                        </SelectItem>
                                       </SelectContent>
                                     </Select>
                                   </div>
                                 </div>
+                                {isLineModal && row.fillStyle === "none" ? (
+                                  <div
+                                    className={`space-y-1 ${isReadOnly ? "pointer-events-none opacity-75" : ""}`}
+                                  >
+                                    <Label className="text-[10px] text-muted-foreground">Line color</Label>
+                                    <ColorPicker
+                                      value={row.color.trim() ? row.color : fillFallback}
+                                      onChange={(value) => updateBarRow(i, { color: value })}
+                                      placeholder={fillFallback}
+                                      showAlpha={true}
+                                      allowTransparent={true}
+                                    />
+                                  </div>
+                                ) : null}
                                 {row.fillStyle === "solid" ? (
                                   <div
                                     className={`space-y-1 ${isReadOnly ? "pointer-events-none opacity-75" : ""}`}
                                   >
-                                    <Label className="text-[10px] text-muted-foreground">Fill color</Label>
+                                    <Label className="text-[10px] text-muted-foreground">
+                                      {isLineModal ? "Line & area color" : "Fill color"}
+                                    </Label>
                                     <ColorPicker
                                       value={row.color.trim() ? row.color : fillFallback}
                                       onChange={(value) => updateBarRow(i, { color: value })}
@@ -1263,7 +1601,9 @@ export function ChartDataEditorModal({
                                     className={`grid grid-cols-2 gap-2 ${isReadOnly ? "pointer-events-none opacity-75" : ""}`}
                                   >
                                     <div className="space-y-1 min-w-0">
-                                      <Label className="text-[10px] text-muted-foreground">Gradient start</Label>
+                                      <Label className="text-[10px] text-muted-foreground">
+                                        {isLineModal ? "Line & area (start)" : "Gradient start"}
+                                      </Label>
                                       <ColorPicker
                                         value={
                                           row.gradientColor1.trim()
@@ -1277,7 +1617,9 @@ export function ChartDataEditorModal({
                                       />
                                     </div>
                                     <div className="space-y-1 min-w-0">
-                                      <Label className="text-[10px] text-muted-foreground">Gradient end</Label>
+                                      <Label className="text-[10px] text-muted-foreground">
+                                        {isLineModal ? "Line & area (end)" : "Gradient end"}
+                                      </Label>
                                       <ColorPicker
                                         value={
                                           row.gradientColor2.trim()

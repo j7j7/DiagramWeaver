@@ -104,7 +104,34 @@ const NodeChartBarSchema = z.object({
   legendLabelFontSize: z.number().min(2).max(14).optional(),
 });
 
-const NodeChartSpecSchema = z.discriminatedUnion("kind", [NodeChartPieSchema, NodeChartBarSchema]);
+const NodeChartLineSchema = z.object({
+  kind: z.literal("line"),
+  series: z.array(ChartBarSeriesRowSchema),
+  categoryLabels: z.array(z.string()).optional(),
+  showAreaFill: z.boolean().optional(),
+  areaFillOpacity: z.number().min(0).max(1).optional(),
+  smooth: z.boolean().optional(),
+  showDots: z.boolean().optional(),
+  dotRadius: z.number().min(0).max(3).optional(),
+  lineStrokeWidth: z.number().min(0.25).max(4).optional(),
+  sliceBorderColor: z.string().optional(),
+  shadow: z.boolean().optional(),
+  showGridX: z.boolean().optional(),
+  showGridY: z.boolean().optional(),
+  gridColor: z.string().optional(),
+  showValueAxis: z.boolean().optional(),
+  axisColor: z.string().optional(),
+  showCategoryLabels: z.boolean().optional(),
+  showLegend: z.boolean().optional(),
+  categoryLabelFontSize: z.number().min(2).max(14).optional(),
+  legendLabelFontSize: z.number().min(2).max(14).optional(),
+});
+
+const NodeChartSpecSchema = z.discriminatedUnion("kind", [
+  NodeChartPieSchema,
+  NodeChartBarSchema,
+  NodeChartLineSchema,
+]);
 
 function normalizeChartField(chart: unknown): unknown {
   if (chart == null || typeof chart !== "object") return chart;
@@ -118,6 +145,7 @@ function normalizeChartField(chart: unknown): unknown {
     delete next.columnCornerRadius;
     return next;
   }
+  if (c.kind === "line") return chart;
   if (c.kind === "pie") return chart;
   const series = c.series;
   if (

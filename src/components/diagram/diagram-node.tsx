@@ -13,7 +13,7 @@ import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { labelToRuns } from "@/lib/rich-text";
 import { TextboxRichEditor } from "./textbox-rich-editor";
 import { TextboxRichDisplay } from "./textbox-rich-display";
-import { cn, isIconOrEmojiType, isShapeNodeType } from "@/lib/utils";
+import { cn, isConnectorLineNodeType, isIconOrEmojiType, isShapeNodeType } from "@/lib/utils";
 import { ItemTypes } from "../editor/draggable-item";
 import { snapToGrid, snapDimensionToGrid, measureNodeDims } from "@/components/editor/canvas-constants";
 import { getTextStylingCSS, extractTextStylingFromNode } from "@/lib/text-styling";
@@ -42,6 +42,7 @@ import {
   UmlClassShape,
   PieChartShape,
   BarChartShape,
+  LineChartShape,
 } from "./shapes";
 import {
   SlideShapeShadowTransitionProvider,
@@ -605,6 +606,63 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
           }
         />
       );
+    } else if (nodeType === 'generic.chart.line') {
+      return (
+        <LineChartShape
+          {...shapeProps}
+          isReadOnly={isReadOnly}
+          onLineSeriesNameChange={
+            onUpdate && !isReadOnly
+              ? (seriesIndex, name) => {
+                  const c = node.chart;
+                  if (c?.kind !== "line" || !c.series || seriesIndex < 0 || seriesIndex >= c.series.length) return;
+                  const nextSeries = c.series.map((row, j) =>
+                    j === seriesIndex ? { ...row, name } : row
+                  );
+                  onUpdate({ ...node, chart: { ...c, series: nextSeries } });
+                }
+              : undefined
+          }
+          onLineCategoryLabelChange={
+            onUpdate && !isReadOnly
+              ? (categoryIndex, label) => {
+                  const c = node.chart;
+                  if (c?.kind !== "line" || !c.series?.length) return;
+                  const catCount = Math.max(
+                    1,
+                    ...c.series.map((s) => (Array.isArray(s.values) ? s.values.length : 0))
+                  );
+                  if (categoryIndex < 0 || categoryIndex >= catCount) return;
+                  const next = [...(c.categoryLabels ?? [])];
+                  while (next.length < catCount) next.push("");
+                  next[categoryIndex] = label;
+                  onUpdate({ ...node, chart: { ...c, categoryLabels: next } });
+                }
+              : undefined
+          }
+          onLinePointValueChange={
+            onUpdate && !isReadOnly
+              ? (seriesIndex, categoryIndex, value) => {
+                  const c = node.chart;
+                  if (c?.kind !== "line" || !c.series || seriesIndex < 0 || seriesIndex >= c.series.length) return;
+                  const catCount = Math.max(
+                    1,
+                    ...c.series.map((s) => (Array.isArray(s.values) ? s.values.length : 0))
+                  );
+                  if (categoryIndex < 0 || categoryIndex >= catCount) return;
+                  const nextSeries = c.series.map((row, j) => {
+                    if (j !== seriesIndex) return row;
+                    const vals = [...(row.values ?? [])];
+                    while (vals.length < catCount) vals.push(0);
+                    vals[categoryIndex] = value;
+                    return { ...row, values: vals };
+                  });
+                  onUpdate({ ...node, chart: { ...c, series: nextSeries } });
+                }
+              : undefined
+          }
+        />
+      );
     } else if (nodeType === 'generic.chart.pie' || nodeType?.startsWith('generic.chart.')) {
       return (
         <PieChartShape
@@ -650,7 +708,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
       return <ArrowheadShape {...shapeProps} />;
     } else if (nodeType === 'generic.object.chevron' || nodeType?.endsWith('.chevron')) {
       return <ChevronShape {...shapeProps} />;
-    } else if (nodeType === 'generic.object.line' || nodeType?.endsWith('.line')) {
+    } else if (isConnectorLineNodeType(nodeType)) {
       const lineNodeWithLocalPos = {
         ...visualNode,
         ...(localStartPos && { __localStartPos: localStartPos }),
@@ -942,7 +1000,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
    const isTextNode = node.type === 'generic.text.text';
   const isTextboxNode = node.type === 'generic.text.textbox';
   const isRichTextBoxLike = isTextNode || isTextboxNode;
-  const isLineNode = node.type === 'generic.object.line' || node.type?.endsWith('.line');
+  const isLineNode = isConnectorLineNodeType(node.type);
   const isLoopNode = node.type === 'generic.object.loop' || node.type?.endsWith('.loop');
   const isShapeNode = !isIconOrEmojiType(node.type) && (isShapeNodeType(node.type) || isLineNode || isLoopNode);
   const isPointNode = node.type === 'generic.object.point' || node.type?.endsWith('.point');

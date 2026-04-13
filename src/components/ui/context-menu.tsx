@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
-import { cn, isShapeNodeType } from '@/lib/utils';
+import { cn, isConnectorLineNodeType, isShapeNodeType } from '@/lib/utils';
 import { isChartNodeType } from '@/lib/chart-node';
 import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup, Plus, ArrowUp, ArrowDown, ChevronUp, ChevronDown, Circle, RotateCw, ArrowDownAZ, ArrowUpAZ, Minus, Lock, Unlock, FileEdit, PieChart } from 'lucide-react';
 
@@ -57,9 +57,7 @@ interface ContextMenuProps {
 }
 
 // Helper function to check if a node type is a line
-const isLineNodeType = (nodeType?: string): boolean => {
-  return nodeType === 'generic.object.line' || (nodeType?.endsWith('.line') ?? false);
-};
+const isLineNodeType = (nodeType?: string): boolean => isConnectorLineNodeType(nodeType);
 
 const isUmlClassNodeType = (nodeType?: string): boolean => {
   return nodeType === 'generic.object.uml-class' || (nodeType?.endsWith('.uml-class') ?? false);

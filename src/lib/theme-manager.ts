@@ -1801,7 +1801,10 @@ class ThemeManager {
           return base;
         });
         node.chart = { ...chart, series };
-      } else if (chart?.kind === 'bar' && Array.isArray(chart.series)) {
+      } else if (
+        (chart?.kind === "bar" || chart?.kind === "line") &&
+        Array.isArray(chart.series)
+      ) {
         const bgStyle = properties.backgroundStyle;
         const series: ChartBarSegmentItem[] = chart.series.map((row, i) => {
           const hue = i * CHART_THEME_HUE_STEP_DEG;

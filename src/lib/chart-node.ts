@@ -3,6 +3,7 @@ import type {
   ChartSliceFillStyle,
   NodeChartSpec,
   NodeChartSpecBar,
+  NodeChartSpecLine,
   NodeChartSpecPie,
 } from "@/lib/types";
 
@@ -155,9 +156,29 @@ export function defaultBarChartSpec(): NodeChartSpecBar {
   };
 }
 
+export function defaultLineChartSpec(): NodeChartSpecLine {
+  return {
+    kind: "line",
+    series: [
+      { id: newChartSliceId(), name: "Series A", values: [12, 28, 18, 35, 22] },
+      { id: newChartSliceId(), name: "Series B", values: [8, 16, 30, 14, 26] },
+    ],
+    showAreaFill: true,
+    areaFillOpacity: 0.42,
+    smooth: true,
+    showDots: true,
+    showGridX: false,
+    showGridY: false,
+    showValueAxis: true,
+    showCategoryLabels: true,
+  };
+}
+
 /** Palette / drop default chart payload from node `type`. */
 export function defaultChartSpecForNodeType(nodeType: string | undefined): NodeChartSpec {
-  return nodeType === "generic.chart.bar" ? defaultBarChartSpec() : defaultPieChartSpec();
+  if (nodeType === "generic.chart.bar") return defaultBarChartSpec();
+  if (nodeType === "generic.chart.line") return defaultLineChartSpec();
+  return defaultPieChartSpec();
 }
 
 export type PieSliceFillMode = "none" | "solid" | "gradient";

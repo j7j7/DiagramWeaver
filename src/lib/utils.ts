@@ -32,6 +32,16 @@ export function isGenericObjectOrChartShapeType(type: string | undefined): boole
   return !!(type?.startsWith('generic.object.') || type?.startsWith('generic.chart.'))
 }
 
+/**
+ * Polyline / connector line (`generic.object.line`, `*.object.line`, or legacy `*.line`), **not**
+ * `generic.chart.line` (line chart) — that type also ends with `.line` and must be excluded.
+ */
+export function isConnectorLineNodeType(type: string | undefined): boolean {
+  if (!type) return false
+  if (type.endsWith('chart.line')) return false
+  return type === 'generic.object.line' || type.endsWith('.line')
+}
+
 export function isShapeNodeType(nodeType: string): boolean {
   if (isIconOrEmojiType(nodeType)) return false
   if (isChartNodeType(nodeType)) return true

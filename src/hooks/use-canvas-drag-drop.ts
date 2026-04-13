@@ -6,6 +6,7 @@ import type { Transform } from "./use-canvas-transform";
 import type { PositionedNode, PositionedGroup } from "@/components/editor/canvas-constants";
 import type { DiagramData, DiagramNodeData } from "@/lib/types";
 import { getItemGroup, getGroupMembers } from "@/lib/grouping-utils";
+import { isConnectorLineNodeType } from "@/lib/utils";
 
 /** Diagram-space radius around drag origin: inside = free movement; crossing = lock to dominant axis */
 const AXIS_CONSTRAINT_DEAD_ZONE = 15;
@@ -60,8 +61,7 @@ function getCanvasDragAnchor(
 ): { x: number; y: number } | null {
   const originalItem = nodesById[itemId] || zonesById[itemId];
   if (!originalItem) return null;
-  const isLineNode =
-    originalItem.type === "generic.object.line" || originalItem.type?.endsWith(".line");
+  const isLineNode = isConnectorLineNodeType(originalItem.type);
   if (isLineNode && (originalItem as { startPos?: { x: number; y: number } }).startPos && (originalItem as { endPos?: { x: number; y: number } }).endPos) {
     const startPos = (originalItem as { startPos: { x: number; y: number } }).startPos;
     const endPos = (originalItem as { endPos: { x: number; y: number } }).endPos;

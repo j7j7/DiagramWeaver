@@ -37,8 +37,8 @@ export interface CustomImageOptions {
   orientation: CustomImageOrientation;
 }
 
-/** Extensible chart kinds — add `line`, etc. alongside renderers and editors. */
-export type ChartKind = "pie" | "bar";
+/** Extensible chart kinds — add new renderers and editors per kind. */
+export type ChartKind = "pie" | "bar" | "line";
 
 /** Slice fill mode — mirrors shape `backgroundStyle` (none / solid / gradient). */
 export type ChartSliceFillStyle = "none" | "solid" | "gradient";
@@ -73,6 +73,7 @@ export interface ChartBarSegmentItem {
   name: string;
   /** Per-category magnitudes; shorter arrays pad with 0 at the end when rendering. */
   values: number[];
+  /** Bar: segment fill when `fillStyle` is solid/omitted. Line chart: stroke (and dots); with `fillStyle: 'none'`, area is unfilled but this still sets the line color. */
   color?: string;
   labelColor?: string;
   fillStyle?: ChartSliceFillStyle;
@@ -147,8 +148,38 @@ export interface NodeChartSpecBar {
   legendLabelFontSize?: number;
 }
 
+/** Line chart (`generic.chart.line`). Series rows are separate lines; each has `values[]` per category. */
+export interface NodeChartSpecLine {
+  kind: "line";
+  series: ChartBarSegmentItem[];
+  categoryLabels?: string[];
+  /** Gradient fill from the line down to the baseline (per series). */
+  showAreaFill?: boolean;
+  /** Peak opacity of the area at the line (0-1); fades to transparent at baseline. Default ~0.42. */
+  areaFillOpacity?: number;
+  /** Draw smooth Catmull–Rom–style curves between points. */
+  smooth?: boolean;
+  /** Show markers at each category point. Omitted = true. */
+  showDots?: boolean;
+  /** Point marker radius in SVG viewBox units (0 hides markers when point markers are on). Default ~1.85 when omitted. Max 3. */
+  dotRadius?: number;
+  /** Polyline stroke width in SVG viewBox units (0.25–4). Omitted = derived from node border (~1.35 when border off). */
+  lineStrokeWidth?: number;
+  sliceBorderColor?: string;
+  shadow?: boolean;
+  showGridX?: boolean;
+  showGridY?: boolean;
+  gridColor?: string;
+  showValueAxis?: boolean;
+  axisColor?: string;
+  showCategoryLabels?: boolean;
+  showLegend?: boolean;
+  categoryLabelFontSize?: number;
+  legendLabelFontSize?: number;
+}
+
 /** Chart configuration on a node (`generic.chart.*`). */
-export type NodeChartSpec = NodeChartSpecPie | NodeChartSpecBar;
+export type NodeChartSpec = NodeChartSpecPie | NodeChartSpecBar | NodeChartSpecLine;
 
 export interface DiagramNodeData {
   id: string;

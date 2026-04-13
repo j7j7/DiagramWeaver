@@ -456,7 +456,15 @@ export function ResourceBrowser({ onResourceSelect, onResourceActivate }: Resour
     // For generic object shapes, use ResourceIcon with theme-aware grey (works in light and dark mode)
     if (provider === 'generic' && category === 'object' && resource.name) {
       const slug = resource.name.replace(/\s+/g, '-').toLowerCase();
-      const type = `generic.object.${slug}`;
+      const chartType =
+        slug === 'pie-chart'
+          ? 'generic.chart.pie'
+          : slug === 'bar-chart'
+            ? 'generic.chart.bar'
+            : slug === 'line-chart'
+              ? 'generic.chart.line'
+              : null;
+      const type = chartType ?? `generic.object.${slug}`;
       return (
         <span className="text-muted-foreground inline-flex items-center justify-center">
           <ResourceIcon type={type} className="w-6 h-6" stroke="currentColor" fill="currentColor" />

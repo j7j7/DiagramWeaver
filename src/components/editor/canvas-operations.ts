@@ -15,7 +15,7 @@ import {
   type PositionedNode,
   type PositionedGroup,
 } from "./canvas-constants";
-import { isShapeNodeType, isIconOrEmojiType } from "@/lib/utils";
+import { isConnectorLineNodeType, isShapeNodeType, isIconOrEmojiType } from "@/lib/utils";
 import { defaultChartSpecForNodeType } from "@/lib/chart-node";
 // Zones removed - no zone layout
 
@@ -106,7 +106,7 @@ export function useCanvasOperations({
                                 itemType === 'generic.object.uml-class' ||
                                 itemType === 'generic.chart.pie' ||
                                 itemType?.startsWith('generic.chart.') ||
-                                itemType === 'generic.object.line' ||
+                                isConnectorLineNodeType(itemType) ||
                                 itemType?.endsWith('.square') ||
                                 itemType?.endsWith('.circle') ||
                                 itemType?.endsWith('.point') ||
@@ -124,8 +124,7 @@ export function useCanvasOperations({
                                 itemType?.endsWith('.octagon') ||
                                 itemType?.endsWith('.jigsaw') ||
                                 itemType?.endsWith('.arrowhead') ||
-                                itemType?.endsWith('.uml-class') ||
-                                itemType?.endsWith('.line'));
+                                itemType?.endsWith('.uml-class'));
       
       // Check if this is a textbox resource
       const isTextboxResource = itemType === 'generic.text.textbox' || itemType?.endsWith('.textbox');
@@ -166,7 +165,7 @@ export function useCanvasOperations({
              itemType === 'generic.object.text-box-heading' ? 180 :
              itemType === 'generic.object.cloud' ? 80 :
              itemType === 'generic.object.line' ? 150 :
-             itemType === 'generic.chart.bar' ? 100 :
+             itemType === 'generic.chart.bar' || itemType === 'generic.chart.line' ? 100 :
              60
            ) : isRichTextBoxLikeResource ? snapDimensionToGrid(240, 40) : undefined, // Initial width - 100% wider than before (was 120)
            height: isShapeResource ? snapDimensionToGrid(
@@ -177,7 +176,7 @@ export function useCanvasOperations({
              itemType === 'generic.object.text-box-heading' ? 90 :
              itemType === 'generic.object.cloud' ? 50 :
              itemType === 'generic.object.line' ? 100 :
-             itemType === 'generic.chart.bar' ? 68 :
+             itemType === 'generic.chart.bar' || itemType === 'generic.chart.line' ? 68 :
              60
            ) : isRichTextBoxLikeResource ? snapDimensionToGrid(80, 40) : undefined, // Initial height - same as textbox for plain text
           // Apply default text color for text resources
@@ -229,6 +228,7 @@ export function useCanvasOperations({
           }),
           ...((itemType === 'generic.chart.pie' ||
             itemType === 'generic.chart.bar' ||
+            itemType === 'generic.chart.line' ||
             itemType?.startsWith('generic.chart.')) &&
             !isFromScratchPad && {
             chart: defaultChartSpecForNodeType(itemType),
@@ -273,7 +273,8 @@ export function useCanvasOperations({
           const isShapeNode = isShapeNodeType(node.type);
           const isTextboxNode = node.type === 'generic.text.textbox';
           const isTextNode = node.type === 'generic.text.text';
-          const isIconNode = !isShapeNode && !isTextboxNode && !isTextNode && node.type !== 'generic.object.line' && !node.type?.endsWith?.('.line');
+          const isIconNode =
+            !isShapeNode && !isTextboxNode && !isTextNode && !isConnectorLineNodeType(node.type);
 
           if (isIconNode) {
             const minLabelWidth = 80;
@@ -445,7 +446,7 @@ export function useCanvasOperations({
           importId: undefined,
           groupId: undefined,
         };
-        if (original.type === "generic.object.line" || original.type?.endsWith(".line")) {
+        if (isConnectorLineNodeType(original.type)) {
           const ox = original.x ?? 0;
           const oy = original.y ?? 0;
           const ddx = snappedX - ox;
@@ -540,7 +541,7 @@ export function useCanvasOperations({
             currentNodes = currentNodes.map(n => {
               if (n.id === item.id) {
                 // Special handling for line shapes - move both endpoints
-                if (n.type === 'generic.object.line' || n.type?.endsWith('.line')) {
+                if (isConnectorLineNodeType(n.type)) {
                   const currentStartPos = (n as any).startPos || { x: n.x || 0, y: (n.y || 0) + 50 };
                   const currentEndPos = (n as any).endPos || { x: (n.x || 0) + 150, y: (n.y || 0) + 50 };
                   const deltaX = snappedX - (n.x || 0);
@@ -784,7 +785,7 @@ export function useCanvasOperations({
              currentNodes = currentNodes.map(n => {
                if (n.id === item.id) {
                  // Special handling for line shapes - move both endpoints
-                 if (n.type === 'generic.object.line' || n.type?.endsWith('.line')) {
+                 if (isConnectorLineNodeType(n.type)) {
                    const currentStartPos = (n as any).startPos || { x: n.x || 0, y: n.y || 0 };
                    const currentEndPos = (n as any).endPos || { x: (n.x || 0) + 150, y: n.y || 0 };
                    const deltaX = snappedX - originalX;

@@ -59,7 +59,7 @@ import { DiagramTheme } from '@/lib/theme-types';
 import { themeManager } from '@/lib/theme-manager';
 import { extractTextStylingFromNode, extractTextStylingFromGroup, applyTextStylingToZone, applyTextStylingToNode } from '@/lib/text-styling';
 import { extractUmlClassTextStylingFromNode, applyUmlClassTextStylingToNode, DEFAULT_UML_CLASS_TEXT_STYLING } from '@/lib/uml-text-styling';
-import { cn, isShapeNodeType, isIconOrEmojiType } from '@/lib/utils';
+import { cn, isConnectorLineNodeType, isShapeNodeType, isIconOrEmojiType } from '@/lib/utils';
 import { extractVisualStylingFromNode, extractVisualStylingFromGroup } from '@/lib/visual-styling';
 import { extractLineStylingFromNode, applyLineStylingToNode } from '@/lib/line-styling';
 import { toConnectionAnimationPatch } from '@/lib/connection-animation';
@@ -471,7 +471,8 @@ export function ContextToolbar({
     (selectedItem as any)?.type === 'generic.object.jigsaw' ||
     (selectedItem as any)?.type === 'generic.object.arrowhead' ||
     (selectedItem as any)?.type === 'generic.object.chevron' ||
-    (selectedItem as any)?.type === 'generic.object.line' ||
+    isConnectorLineNodeType((selectedItem as any)?.type) ||
+    (selectedItem as any)?.type?.startsWith('generic.chart.') ||
     (selectedItem as any)?.type?.endsWith('.square') ||
     (selectedItem as any)?.type?.endsWith('.circle') ||
     (selectedItem as any)?.type?.endsWith('.point') ||
@@ -489,10 +490,9 @@ export function ContextToolbar({
     (selectedItem as any)?.type?.endsWith('.octagon') ||
     (selectedItem as any)?.type?.endsWith('.jigsaw') ||
     (selectedItem as any)?.type?.endsWith('.arrowhead') ||
-    (selectedItem as any)?.type?.endsWith('.chevron') ||
-    (selectedItem as any)?.type?.endsWith('.line')
+    (selectedItem as any)?.type?.endsWith('.chevron')
   );
-  const isLineNode = isNode && ((selectedItem as any)?.type === 'generic.object.line' || (selectedItem as any)?.type?.endsWith('.line'));
+  const isLineNode = isNode && isConnectorLineNodeType((selectedItem as any)?.type);
   const isUmlClassNode = isNode && ((selectedItem as any)?.type === 'generic.object.uml-class' || (selectedItem as any)?.type?.endsWith('.uml-class'));
 
   const getCurrentUmlClassTextStyling = useMemo(() => {
@@ -1218,7 +1218,7 @@ export function ContextToolbar({
       
       // Update nodes (only line nodes)
       updatedDiagramData.nodes = updatedDiagramData.nodes.map(node => {
-        if (selectedItemIds.has(node.id) && (node.type === 'generic.object.line' || node.type?.endsWith('.line'))) {
+        if (selectedItemIds.has(node.id) && isConnectorLineNodeType(node.type)) {
           return applyLineStylingToNode(node, styling);
         }
         return node;
@@ -1275,7 +1275,7 @@ export function ContextToolbar({
       
       // Update nodes (only line nodes)
       updatedDiagramData.nodes = updatedDiagramData.nodes.map(node => {
-        if (selectedItemIds.has(node.id) && (node.type === 'generic.object.line' || node.type?.endsWith('.line'))) {
+        if (selectedItemIds.has(node.id) && isConnectorLineNodeType(node.type)) {
           return applyLineStylingToNode(node, defaultStyling);
         }
         return node;

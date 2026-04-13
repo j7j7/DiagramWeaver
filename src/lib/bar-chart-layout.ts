@@ -86,7 +86,7 @@ function defaultBarLabelFontSize(seriesItem: ChartBarSegmentItem | undefined): n
 
 /** Average glyph width factor for Latin sans-serif in SVG user units (relative to `fontSize`). */
 const BAR_LABEL_CHAR_WIDTH_EM = 0.55;
-const BAR_LABEL_LINE_HEIGHT_EM = 1.15;
+export const BAR_LABEL_LINE_HEIGHT_EM = 1.15;
 
 export function resolveBarCategoryLabelFontSize(spec: NodeChartSpecBar): number {
   const v = spec.categoryLabelFontSize;
@@ -170,7 +170,7 @@ export function wrapBarLabelLines(
   return lines;
 }
 
-function computeBarLegendBandHeight(
+export function computeBarLegendBandHeight(
   entries: BarLegendEntry[],
   plotW: number,
   fontSize: number
@@ -600,8 +600,9 @@ export function barColumnClipPathHorizontal(
   ].join(" ");
 }
 
-export function barLegendEntries(spec: NodeChartSpecBar): BarLegendEntry[] {
-  const seriesRaw = Array.isArray(spec.series) ? spec.series : [];
+/** Legend rows for any chart that uses `ChartBarSegmentItem[]` (bar, line, …). */
+export function chartSegmentLegendEntries(series: ChartBarSegmentItem[] | undefined): BarLegendEntry[] {
+  const seriesRaw = Array.isArray(series) ? series : [];
   if (seriesRaw.length === 0) return [];
   return seriesRaw.map((row, i) => {
     const fill = resolveBarFill(row, i);
@@ -611,4 +612,8 @@ export function barLegendEntries(spec: NodeChartSpecBar): BarLegendEntry[] {
       ...fill,
     };
   });
+}
+
+export function barLegendEntries(spec: NodeChartSpecBar): BarLegendEntry[] {
+  return chartSegmentLegendEntries(spec.series);
 }

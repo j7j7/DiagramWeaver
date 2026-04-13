@@ -4,8 +4,8 @@ import React, { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { polygonToRoundedPath } from '@/components/diagram/shapes/shape-utils';
 import { getTextEffectsShadowCss } from '@/lib/text-styling';
-import type { NodeChartSpec, NodeChartSpecBar } from '@/lib/types';
-import { pieSlicesForSvg, truncatePieSliceLabel, defaultBarChartSpec } from '@/lib/chart-node';
+import type { NodeChartSpec, NodeChartSpecBar, NodeChartSpecLine } from '@/lib/types';
+import { pieSlicesForSvg, truncatePieSliceLabel, defaultBarChartSpec, defaultLineChartSpec } from '@/lib/chart-node';
 import {
   barChartWantsRoundedColumnEnds,
   barColumnAutoRoundRadius,
@@ -13,8 +13,17 @@ import {
   barColumnClipPathVertical,
   barLegendEntries,
   buildBarChartLayout,
+  chartSegmentLegendEntries,
   wrapBarLabelLines,
 } from '@/lib/bar-chart-layout';
+import {
+  buildLineChartLayout,
+  lineAreaClosedPath,
+  lineChartPolylineStrokeFallbackFromNodeBorder,
+  linePathPolyline,
+  linePathSmooth,
+  resolveLineChartPolylineStrokeWidth,
+} from '@/lib/line-chart-layout';
 
 function formatBarPreviewValue(n: number): string {
   if (!Number.isFinite(n)) return '';
@@ -709,6 +718,304 @@ export function ShapePreview({
                   <text key={`va-${i}`} x={x} y={plot.y0 + plot.h + 4} textAnchor="middle" fill={axisC} fontSize={3.1} fontWeight={500} pointerEvents="none">
                     {Number.isInteger(t) ? String(t) : t.toFixed(1)}
                   </text>
+                );
+              })
+            : null}
+        </svg>
+      );
+    }
+
+    if (type === 'generic.chart.line' || chart?.kind === 'line') {
+      const spec: NodeChartSpecLine = chart?.kind === 'line' ? chart : defaultLineChartSpec();
+      const model = buildLineChartLayout(spec, { vbW: 100, vbH: 68 });
+      const gradBase = `sp-line-${gradientId.replace(/:/g, '')}`;
+      const sw = borderStyle === 'none' ? 0 : strokeWidth;
+      const axisC = spec.axisColor?.trim() || effectiveBorderColor;
+      const gridC = spec.gridColor?.trim() || 'rgba(148,163,184,0.45)';
+      const smooth = spec.smooth !== false;
+      const showArea = spec.showAreaFill !== false;
+      const areaOp = Math.max(0, Math.min(1, spec.areaFillOpacity ?? 0.42));
+      const dotRConfigured =
+        typeof spec.dotRadius === 'number' && Number.isFinite(spec.dotRadius)
+          ? Math.min(3, Math.max(0, spec.dotRadius))
+          : null;
+      const dotR = dotRConfigured != null && dotRConfigured > 0 ? dotRConfigured : 1.85;
+      const showDots =
+        spec.showDots !== false && (dotRConfigured == null ? true : dotRConfigured > 0);
+      const lineW = resolveLineChartPolylineStrokeWidth(
+        spec,
+        lineChartPolylineStrokeFallbackFromNodeBorder(sw)
+      );
+      const {
+        plot,
+        valueAxisMax,
+        valueTicks,
+        categoryCount,
+        baseY,
+        vbH,
+        legendLabelFontSize,
+        legendLabelLines,
+      } = model;
+      const legendList = spec.showLegend === true ? chartSegmentLegendEntries(spec.series) : [];
+      const catSlot = plot.w / Math.max(1, categoryCount);
+      const valueGridLines = valueTicks.map((t) => ({
+        x1: plot.x0,
+        x2: plot.x0 + plot.w,
+        y1: plot.y0 + plot.h - (t / valueAxisMax) * plot.h,
+        y2: plot.y0 + plot.h - (t / valueAxisMax) * plot.h,
+      }));
+      const categoryGridLines: { x1: number; x2: number; y1: number; y2: number }[] = [];
+      for (let j = 0; j <= categoryCount; j++) {
+        const x = plot.x0 + j * catSlot;
+        categoryGridLines.push({ x1: x, x2: x, y1: plot.y0, y2: plot.y0 + plot.h });
+      }
+      const showVG = spec.showGridY === true;
+      const showCG = spec.showGridX === true;
+      const legendSlotW = legendList.length > 0 ? plot.w / Math.max(1, legendList.length) : 0;
+      const legendYLift = 1.5;
+      const previewLineDotHandlers = (tip: string) => ({
+        onPointerEnter: (e: React.PointerEvent<SVGElement>) => {
+          cancelBarPreviewLeaveTimer();
+          setBarPreviewCellTooltip({ x: e.clientX, y: e.clientY, text: tip });
+        },
+        onPointerMove: (e: React.PointerEvent<SVGElement>) => {
+          setBarPreviewCellTooltip((prev) =>
+            prev
+              ? { ...prev, x: e.clientX, y: e.clientY }
+              : { x: e.clientX, y: e.clientY, text: tip }
+          );
+        },
+        onPointerLeave: scheduleBarPreviewLeave,
+      });
+      const catLabelEls =
+        spec.showCategoryLabels !== false && Array.isArray(spec.categoryLabels)
+          ? spec.categoryLabels.slice(0, categoryCount).map((raw, j) => {
+              const lab = (raw ?? '').trim();
+              if (!lab) return null;
+              const lines = model.categoryLabelLines[j] ?? [];
+              if (lines.length === 0) return null;
+              const cx = plot.x0 + (j + 0.5) * catSlot;
+              const ty = plot.y0 + plot.h + 3.6;
+              const midY = ty - model.categoryLabelFontSize * 0.35;
+              return (
+                <BarPreviewTextBlock
+                  key={`lc-${j}`}
+                  lines={lines}
+                  x={cx}
+                  yCenter={midY}
+                  fontSize={model.categoryLabelFontSize}
+                  textAnchor="middle"
+                  fill={axisC}
+                  fontWeight={500}
+                  pointerEvents="none"
+                />
+              );
+            })
+          : null;
+      return (
+        <svg {...commonSvgProps} viewBox={`0 0 100 ${vbH}`} preserveAspectRatio="xMidYMid meet">
+          <defs>
+            {legendList.map((en, i) =>
+              en.fillMode === 'gradient' ? (
+                <linearGradient
+                  key={`lg-leg-${i}`}
+                  id={`${gradBase}-leg-${i}`}
+                  x1="0%"
+                  y1="0%"
+                  x2="100%"
+                  y2="0%"
+                >
+                  <stop offset="0%" stopColor={en.gradientColor1} />
+                  <stop offset="100%" stopColor={en.gradientColor2} />
+                </linearGradient>
+              ) : null
+            )}
+            {model.series.map((sLayout, si) => (
+              <React.Fragment key={`d-${si}`}>
+                {sLayout.fillMode === 'gradient' ? (
+                  <linearGradient id={`${gradBase}-s-${si}`} x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor={sLayout.gradientColor1} />
+                    <stop offset="100%" stopColor={sLayout.gradientColor2} />
+                  </linearGradient>
+                ) : null}
+                {showArea && sLayout.fillMode !== 'none' ? (
+                  <linearGradient
+                    id={`${gradBase}-a-${si}`}
+                    x1={plot.x0}
+                    y1={plot.y0}
+                    x2={plot.x0}
+                    y2={baseY}
+                    gradientUnits="userSpaceOnUse"
+                  >
+                    <stop offset="0%" stopColor={sLayout.strokeRgb} stopOpacity={areaOp} />
+                    <stop offset="100%" stopColor={sLayout.strokeRgb} stopOpacity={0} />
+                  </linearGradient>
+                ) : null}
+              </React.Fragment>
+            ))}
+          </defs>
+          <g pointerEvents="none">
+            {showVG
+              ? valueGridLines.map((ln, i) => (
+                  <line
+                    key={`vg-${i}`}
+                    x1={ln.x1}
+                    y1={ln.y1}
+                    x2={ln.x2}
+                    y2={ln.y2}
+                    stroke={gridC}
+                    strokeWidth={0.35}
+                    vectorEffect="non-scaling-stroke"
+                  />
+                ))
+              : null}
+            {showCG
+              ? categoryGridLines.map((ln, i) => (
+                  <line
+                    key={`cg-${i}`}
+                    x1={ln.x1}
+                    y1={ln.y1}
+                    x2={ln.x2}
+                    y2={ln.y2}
+                    stroke={gridC}
+                    strokeWidth={0.35}
+                    vectorEffect="non-scaling-stroke"
+                  />
+                ))
+              : null}
+          </g>
+          {model.series.map((sLayout, si) => {
+            const pts = sLayout.points;
+            if (pts.length === 0) return null;
+            const lineD = smooth ? linePathSmooth(pts) : linePathPolyline(pts);
+            const areaD =
+              showArea && sLayout.fillMode !== 'none'
+                ? lineAreaClosedPath(pts, smooth, baseY)
+                : '';
+            const strokePaint =
+              sLayout.fillMode === 'gradient'
+                ? `url(#${gradBase}-s-${si})`
+                : sLayout.fillMode === 'none'
+                  ? sLayout.strokeRgb
+                  : sLayout.stroke;
+            return (
+              <g key={`ls-${si}`}>
+                {areaD ? (
+                  <path
+                    d={areaD}
+                    fill={`url(#${gradBase}-a-${si})`}
+                    stroke="none"
+                  />
+                ) : null}
+                <path
+                  d={lineD}
+                  fill="none"
+                  stroke={strokePaint}
+                  strokeWidth={lineW}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  vectorEffect="non-scaling-stroke"
+                />
+                {showDots
+                  ? pts.map((p) => {
+                      const cat =
+                        spec.categoryLabels?.[p.categoryIndex]?.trim() || `P${p.categoryIndex + 1}`;
+                      const tip = `${sLayout.name}\n${cat}: ${formatBarPreviewValue(p.value)}`;
+                      return (
+                        <g key={`d-${si}-${p.categoryIndex}`}>
+                          <circle
+                            cx={p.x}
+                            cy={p.y}
+                            r={dotR + PREVIEW_BAR_HIT_STROKE_PAD}
+                            fill="transparent"
+                            stroke="none"
+                            {...previewLineDotHandlers(tip)}
+                          />
+                          <circle
+                            cx={p.x}
+                            cy={p.y}
+                            r={dotR}
+                            fill={sLayout.strokeRgb}
+                            stroke="rgba(255,255,255,0.9)"
+                            strokeWidth={0.75}
+                            vectorEffect="non-scaling-stroke"
+                            pointerEvents="none"
+                          />
+                        </g>
+                      );
+                    })
+                  : null}
+              </g>
+            );
+          })}
+          {catLabelEls}
+          {spec.showValueAxis !== false
+            ? valueTicks.map((t, i) => {
+                const y = plot.y0 + plot.h - (t / valueAxisMax) * plot.h;
+                return (
+                  <text
+                    key={`va-${i}`}
+                    x={plot.x0 - 2}
+                    y={y + 1.1}
+                    textAnchor="end"
+                    fill={axisC}
+                    fontSize={3.1}
+                    fontWeight={500}
+                    pointerEvents="none"
+                  >
+                    {Number.isInteger(t) ? String(t) : t.toFixed(1)}
+                  </text>
+                );
+              })
+            : null}
+          {legendList.length > 0
+            ? legendList.map((en, i) => {
+                const cx = plot.x0 + (i + 0.5) * legendSlotW;
+                const swL = 3;
+                const fill =
+                  en.fillMode === 'none'
+                    ? 'transparent'
+                    : en.fillMode === 'gradient'
+                      ? `url(#${gradBase}-leg-${i})`
+                      : en.solidFill;
+                const legFont = legendLabelFontSize;
+                const legLines = legendLabelLines[i] ?? [en.name];
+                const ty = vbH - 3.5 - legendYLift;
+                const legMidY = ty - legFont * 0.35;
+                return (
+                  <g key={`leg-${en.segmentIndex}`} transform={`translate(${cx}, 0)`}>
+                    <line
+                      x1={-legendSlotW / 2 + 0.5}
+                      x2={-legendSlotW / 2 + swL + 0.5}
+                      y1={legMidY}
+                      y2={legMidY}
+                      stroke={en.fillMode === 'none' ? axisC : fill}
+                      strokeWidth={1.1}
+                      strokeLinecap="round"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                    {en.fillMode !== 'none' ? (
+                      <circle
+                        cx={-legendSlotW / 2 + swL * 0.55}
+                        cy={legMidY}
+                        r={1.15}
+                        fill={en.fillMode === 'gradient' ? `url(#${gradBase}-leg-${i})` : en.solidFill}
+                        stroke="rgba(255,255,255,0.85)"
+                        strokeWidth={0.35}
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    ) : null}
+                    <BarPreviewTextBlock
+                      lines={legLines}
+                      x={-legendSlotW / 2 + swL + 1.8}
+                      yCenter={legMidY}
+                      fontSize={legFont}
+                      textAnchor="start"
+                      fill={axisC}
+                      fontWeight={500}
+                      pointerEvents="none"
+                    />
+                  </g>
                 );
               })
             : null}

@@ -68,6 +68,7 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
       provider === 'generic' && category === 'text' && derivedSlug === 'text-box-heading';
     const isPieChartPalette = provider === 'generic' && category === 'object' && derivedSlug === 'pie-chart';
     const isBarChartPalette = provider === 'generic' && category === 'object' && derivedSlug === 'bar-chart';
+    const isLineChartPalette = provider === 'generic' && category === 'object' && derivedSlug === 'line-chart';
     return {
       type: isTextPaletteTextBoxHeading
         ? 'generic.object.text-box-heading'
@@ -75,7 +76,9 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
           ? 'generic.chart.pie'
           : isBarChartPalette
             ? 'generic.chart.bar'
-            : `${provider}.${category}.${derivedSlug}`,
+            : isLineChartPalette
+              ? 'generic.chart.line'
+              : `${provider}.${category}.${derivedSlug}`,
       label: resource.name,
       provider,
       category: isTextPaletteTextBoxHeading ? 'object' : category,
@@ -158,8 +161,11 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
   };
 
   const isCompact = viewMode === 'compact';
-  const isTextBoxHeadingResource =
-    resource.name.replace(/\s+/g, '-').toLowerCase() === 'text-box-heading';
+  const derivedPaletteSlug = resource.name.replace(/\s+/g, '-').toLowerCase();
+  const isTextBoxHeadingResource = derivedPaletteSlug === 'text-box-heading';
+  const isPieChartPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'pie-chart';
+  const isBarChartPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'bar-chart';
+  const isLineChartPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'line-chart';
 
   const dragWrapper = (
     <div
@@ -184,6 +190,12 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
                 <div className={`flex h-full w-full min-h-0 flex-1 items-center justify-center text-muted-foreground ${invertInDarkMode && !isTextBoxHeadingResource ? 'dark:[&_img]:invert' : ''}`}>
                   {isTextBoxHeadingResource ? (
                     <ResourceIcon type="generic.object.text-box-heading" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
+                  ) : isPieChartPalette ? (
+                    <ResourceIcon type="generic.chart.pie" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
+                  ) : isBarChartPalette ? (
+                    <ResourceIcon type="generic.chart.bar" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
+                  ) : isLineChartPalette ? (
+                    <ResourceIcon type="generic.chart.line" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
                   ) : !imageError && iconPath ? (
                     <img
                       src={iconPath}
@@ -213,6 +225,12 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
                 <div className={`w-6 h-6 flex items-center justify-center flex-shrink-0 text-muted-foreground ${invertInDarkMode && !isTextBoxHeadingResource ? 'dark:[&_img]:invert' : ''}`}>
                   {isTextBoxHeadingResource ? (
                     <ResourceIcon type="generic.object.text-box-heading" width={24} height={24} className="shrink-0" />
+                  ) : isPieChartPalette ? (
+                    <ResourceIcon type="generic.chart.pie" width={24} height={24} className="shrink-0" />
+                  ) : isBarChartPalette ? (
+                    <ResourceIcon type="generic.chart.bar" width={24} height={24} className="shrink-0" />
+                  ) : isLineChartPalette ? (
+                    <ResourceIcon type="generic.chart.line" width={24} height={24} className="shrink-0" />
                   ) : !imageError && iconPath ? (
                     <img
                       src={iconPath}

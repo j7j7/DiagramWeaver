@@ -47,7 +47,7 @@ import { SearchResourcesModal } from "./search-resources-modal";
 import { MetadataPopup } from "./metadata-popup";
 import { snapToGrid } from "./canvas-constants";
 import { ConnectionWaypointHandles } from "../diagram/connection-waypoint-handles";
-import { isShapeNodeType } from "@/lib/utils";
+import { isConnectorLineNodeType, isShapeNodeType } from "@/lib/utils";
 import { isEventFromEditableElement } from "@/lib/keyboard-utils";
 import { getDownstreamAnimationChainNodes } from "@/lib/connection-animation";
 
@@ -348,9 +348,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     }
     
     // Helper to check if a node is a line or point (exclude from rotation)
-    const isLineNode = (node: any) => {
-      return node?.type === 'generic.object.line' || node?.type?.endsWith('.line');
-    };
+    const isLineNode = (node: any) => isConnectorLineNodeType(node?.type);
     const isPointNode = (node: any) => {
       return node?.type === 'generic.object.point' || node?.type?.endsWith('.point');
     };
@@ -790,7 +788,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     // Apply single item drag override
     if (dragPosition?.itemId && result[dragPosition.itemId]) {
       const node = result[dragPosition.itemId];
-      const isLineNode = node.type === 'generic.object.line' || node.type?.endsWith('.line');
+      const isLineNode = isConnectorLineNodeType(node.type);
       
       if (isLineNode && dragPosition.deltaX !== undefined && dragPosition.deltaY !== undefined) {
         // For line nodes, also update startPos and endPos
@@ -827,7 +825,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       Object.entries(multiDragPositions).forEach(([itemId, pos]) => {
         if (result[itemId]) {
           const node = result[itemId];
-          const isLineNode = node.type === 'generic.object.line' || node.type?.endsWith('.line');
+          const isLineNode = isConnectorLineNodeType(node.type);
           
           if (isLineNode) {
             // For line nodes, calculate delta and update startPos and endPos
@@ -1906,7 +1904,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             }}
             onLineStyling={contextMenu.itemType === 'node' && (() => {
               const node = diagramData.nodes.find(n => n.id === contextMenu.itemId);
-              return node && (node.type === 'generic.object.line' || node.type?.endsWith('.line'));
+              return node && isConnectorLineNodeType(node.type);
             })() ? () => {
               if (onTriggerLineStylingPanel) {
                 onTriggerLineStylingPanel();

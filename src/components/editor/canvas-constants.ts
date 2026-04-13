@@ -1,5 +1,5 @@
 import type { DiagramNodeData, DiagramZoneData } from "@/lib/types";
-import { isIconOrEmojiType, isShapeNodeType } from "@/lib/utils";
+import { isConnectorLineNodeType, isIconOrEmojiType, isShapeNodeType } from "@/lib/utils";
 import { getPlainTextFromRuns } from "@/lib/rich-text";
 import { getNodeSizeDimensions, getNodeSizeMultiplier } from "@/lib/visual-styling";
 import { computeUmlClassDimensions } from "@/lib/uml-utils";
@@ -43,7 +43,7 @@ export const snapDimensionToGrid = (v: number, minVal = 20): number => {
 export const measureNodeDims = (n: PositionedNode) => {
   const isTextNode = n.type === 'generic.text.text';
   const isTextboxNode = n.type === 'generic.text.textbox';
-  const isLineNode = n.type === 'generic.object.line' || n.type?.endsWith('.line');
+  const isLineNode = isConnectorLineNodeType(n.type);
   const isLoopNode = n.type === 'generic.object.loop' || n.type?.endsWith('.loop');
   const isShapeNode =
     !isIconOrEmojiType(n.type) &&

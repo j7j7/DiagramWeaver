@@ -6,12 +6,70 @@ import { buildResourceIconPath } from "@/lib/resource-mapping";
 import { getLucideIcon, getLucideIconFromTypeSlug } from "@/lib/icon-resources";
 import { CustomIconImage } from "@/components/diagram/custom-icon-image";
 import type { CustomImageOptions } from "@/lib/types";
+import { isConnectorLineNodeType } from "@/lib/utils";
 
 /** Palette JSON lists Text Box Heading under `generic.text` but runtime type is `generic.object.text-box-heading`. */
 function isTextBoxHeadingRuntimeType(type: string | undefined): boolean {
   if (!type || typeof type !== "string") return false;
   const t = type.trim().toLowerCase().replace(/\u2011/g, "-");
   return t === "generic.object.text-box-heading" || t.endsWith(".text-box-heading");
+}
+
+/** Vector thumbnails for chart nodes (palette, sidebar); wedges / bars read as charts at small sizes. */
+function ChartPalettePieGlyph(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden {...props}>
+      <path d="M12 12L12 3A9 9 0 0117.79 18.89Z" fill="currentColor" opacity={1} />
+      <path d="M12 12L17.79 18.89A9 9 0 013.14 13.56Z" fill="currentColor" opacity={0.58} />
+      <path d="M12 12L3.14 13.56A9 9 0 0112 3Z" fill="currentColor" opacity={0.34} />
+    </svg>
+  );
+}
+
+function ChartPaletteBarGlyph(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden {...props}>
+      <path
+        d="M4 20.5V5.2M4 20.5H20.8"
+        stroke="currentColor"
+        strokeWidth={1.35}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <rect x="5.9" y="10.4" width="3.35" height="10.1" rx="0.55" fill="currentColor" opacity={0.92} />
+      <rect x="10.8" y="7" width="3.35" height="13.5" rx="0.55" fill="currentColor" opacity={0.58} />
+      <rect x="15.75" y="12.6" width="3.35" height="7.9" rx="0.55" fill="currentColor" opacity={0.36} />
+    </svg>
+  );
+}
+
+function ChartPaletteLineGlyph(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden {...props}>
+      <path
+        d="M4 20.5V5.2M4 20.5H20.8"
+        stroke="currentColor"
+        strokeWidth={1.35}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity={0.55}
+      />
+      <path
+        d="M5.2 16.2 L8.4 9.8 L11.6 13.1 L14.8 6.4 L18 11.2 L20.8 7.6"
+        stroke="currentColor"
+        strokeWidth={1.65}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      <circle cx="5.2" cy="16.2" r="1.35" fill="currentColor" opacity={0.95} />
+      <circle cx="8.4" cy="9.8" r="1.35" fill="currentColor" opacity={0.85} />
+      <circle cx="11.6" cy="13.1" r="1.35" fill="currentColor" opacity={0.75} />
+      <circle cx="14.8" cy="6.4" r="1.35" fill="currentColor" opacity={0.65} />
+      <circle cx="18" cy="11.2" r="1.35" fill="currentColor" opacity={0.55} />
+      <circle cx="20.8" cy="7.6" r="1.35" fill="currentColor" opacity={0.45} />
+    </svg>
+  );
 }
 
 interface ResourceIconProps extends React.SVGProps<SVGSVGElement> {
@@ -228,6 +286,16 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
     }
   }
 
+  if (type === "generic.chart.pie") {
+    return <ChartPalettePieGlyph {...props} />;
+  }
+  if (type === "generic.chart.bar") {
+    return <ChartPaletteBarGlyph {...props} />;
+  }
+  if (type === "generic.chart.line") {
+    return <ChartPaletteLineGlyph {...props} />;
+  }
+
   // Vector preview only: matches the on-canvas shape (rounded body + dark heading strip), not the flat PNG.
   const isTextBoxHeadingType = isTextBoxHeadingRuntimeType(type);
 
@@ -255,7 +323,7 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
       type?.endsWith('.star') || type?.endsWith('.cloud') || type?.endsWith('.parallelogram') ||
       type?.endsWith('.trapezoid') || type?.endsWith('.kite') || type?.endsWith('.hexagon') ||
       type?.endsWith('.pentagon') || type?.endsWith('.octagon') || type?.endsWith('.jigsaw') ||
-      type?.endsWith('.arrowhead') || type?.endsWith('.chevron') || type?.endsWith('.uml-class') || type?.endsWith('.line'))) {
+      type?.endsWith('.arrowhead') || type?.endsWith('.chevron') || type?.endsWith('.uml-class') || isConnectorLineNodeType(type))) {
     
     // Render different shapes based on type
     const shapeType = type.split('.').pop() || 'square';
