@@ -1,7 +1,7 @@
 {
   "name": "Generic",
   "icon": "generic.png",
-  "totalResources": 31,
+  "totalResources": 32,
   "categories": {
     "text": {
       "name": "Text",
@@ -28,6 +28,11 @@
       "name": "Object",
       "path": "generic/object",
       "resources": [
+        {
+          "name": "Pie chart",
+          "file": "pie-chart.png",
+          "type": "shape"
+        },
         {
           "name": "Line",
           "file": "line.png",

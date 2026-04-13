@@ -144,6 +144,15 @@ export const DiagramNodeDataSchema = z.object({
   metaData: z.record(z.string(), z.string()).optional(), // Key/value metadata
   subDiagramId: z.string().optional(), // Links this node to a sub-diagram (double-click to navigate)
 
+  chart: z.object({
+    kind: z.enum(['pie']),
+    series: z.array(z.object({
+      id: z.string().optional(),
+      name: z.string(),
+      value: z.number(),
+      color: z.string().optional(),
+    })),
+  }).optional(),
   umlClass: z.object({
     name: z.string(),
     attributes: z.array(z.string()),

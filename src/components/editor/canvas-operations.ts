@@ -16,6 +16,7 @@ import {
   type PositionedGroup,
 } from "./canvas-constants";
 import { isShapeNodeType, isIconOrEmojiType } from "@/lib/utils";
+import { defaultPieChartSpec } from "@/lib/chart-node";
 // Zones removed - no zone layout
 
 interface UseCanvasOperationsOptions {
@@ -103,6 +104,8 @@ export function useCanvasOperations({
                                 itemType === 'generic.object.arrowhead' ||
                                 itemType === 'generic.object.chevron' ||
                                 itemType === 'generic.object.uml-class' ||
+                                itemType === 'generic.chart.pie' ||
+                                itemType?.startsWith('generic.chart.') ||
                                 itemType === 'generic.object.line' ||
                                 itemType?.endsWith('.square') ||
                                 itemType?.endsWith('.circle') ||
@@ -221,6 +224,9 @@ export function useCanvasOperations({
             headingLabel: 'HEADING',
             headingBackgroundColor: '#1f2937',
             label: 'body',
+          }),
+          ...((itemType === 'generic.chart.pie' || itemType?.startsWith('generic.chart.')) && !isFromScratchPad && {
+            chart: defaultPieChartSpec(),
           }),
           // Apply icon background setting
           ...(!iconBackgroundEnabled && {

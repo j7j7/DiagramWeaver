@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-04-13 – Canvas charts: pie (`generic.chart.pie`) + Chart data modal
+**Palette**: Generic → Object → **Pie chart** (thumbnail `pie-chart.png`). **Type** `generic.chart.pie` (not `generic.object.*`) so future `generic.chart.bar` / line stay namespaced. **Data**: `DiagramNodeData.chart` — `{ kind: 'pie', series: [{ id?, name, value, color? }] }`. Defaults from **`defaultPieChartSpec()`** (one slice, 100). **UI**: context menu **Chart data** (draggable modal, like UML editor) — add/remove/edit rows. **Render**: **`PieChartShape`** + **`pieSlicesForSvg`** in **`chart-node.ts`**. **Shape detection**: charts included in **`isShapeNodeType`** (resize, connections, visual styling). **Schema**: `chart` on **`DiagramNodeDataSchema`**.
+
 ### 2026-04-13 – Marquee multi-select: Delete removes all in one keypress
 **Issue**: Two window **`keydown`** handlers — **`EditorCanvas`** runs **`handleDeleteMultiple`** first, then **`diagram-editor`** ran **`handleItemDelete(selectedItem)`** with **stale** **`currentDiagramData`**, overwriting the batch update so only **one** item disappeared until Delete was pressed again. **Fix**: skip the parent single-item delete branch when **`selectedItemIds.size > 1`**.
 

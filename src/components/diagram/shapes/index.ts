@@ -19,5 +19,6 @@ export { ChevronShape } from './chevron';
 export { LineShape } from './line';
 export { LoopShape } from './loop';
 export { UmlClassShape } from './uml-class';
+export { PieChartShape } from './pie-chart-shape';
 export { ShapeWrapper } from './shape-wrapper';
 export { ShapeTag } from './shape-tag';

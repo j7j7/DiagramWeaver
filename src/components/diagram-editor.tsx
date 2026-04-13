@@ -9,6 +9,7 @@ import { ComponentSidebar } from './editor/component-sidebar';
 import { EditorCanvas, type EditorCanvasHandle } from './editor/editor-canvas';
 import { ConnectionContextModal } from './editor/connection-context-modal';
 import { UmlClassEditorModal } from './editor/uml-class-editor-modal';
+import { ChartDataEditorModal } from './editor/chart-data-editor-modal';
 import { computeUmlClassDimensions } from '@/lib/uml-utils';
 import { PresentationPlayer } from './editor/presentation-player';
 import { setBooleanDebounced, setItemDebounced, getBooleanSafe, getItemSafe } from '@/lib/local-storage-debounce';
@@ -539,8 +540,13 @@ function createPaletteItem(
   const derivedSlug = (resource as PaletteResource).name.replace(/\s+/g, '-').toLowerCase();
   const isTextPaletteTextBoxHeading =
     provider === 'generic' && category === 'text' && derivedSlug === 'text-box-heading';
+  const isPieChartPalette = provider === 'generic' && category === 'object' && derivedSlug === 'pie-chart';
   return {
-    type: isTextPaletteTextBoxHeading ? 'generic.object.text-box-heading' : `${provider}.${category}.${derivedSlug}`,
+    type: isTextPaletteTextBoxHeading
+      ? 'generic.object.text-box-heading'
+      : isPieChartPalette
+        ? 'generic.chart.pie'
+        : `${provider}.${category}.${derivedSlug}`,
     label: (resource as PaletteResource).name,
     provider,
     category: isTextPaletteTextBoxHeading ? 'object' : category,
@@ -762,6 +768,12 @@ export default function DiagramEditor() {
     connection: import('@/lib/types').DiagramConnectionData | null;
   }>({ visible: false, x: 0, y: 0, connection: null });
   const [umlClassEditorModal, setUmlClassEditorModal] = React.useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    itemId: string;
+  }>({ visible: false, x: 0, y: 0, itemId: '' });
+  const [chartDataEditorModal, setChartDataEditorModal] = React.useState<{
     visible: boolean;
     x: number;
     y: number;
@@ -4835,6 +4847,8 @@ export default function DiagramEditor() {
         setConnectionContextModal={setConnectionContextModal}
         umlClassEditorModal={umlClassEditorModal}
         setUmlClassEditorModal={setUmlClassEditorModal}
+        chartDataEditorModal={chartDataEditorModal}
+        setChartDataEditorModal={setChartDataEditorModal}
         setDiagramData={setDiagramData}
         updateTutorialDiagramData={updateTutorialDiagramData}
         layers={layers}
@@ -5049,6 +5063,8 @@ function DiagramEditorInner({
   setConnectionContextModal,
   umlClassEditorModal,
   setUmlClassEditorModal,
+  chartDataEditorModal,
+  setChartDataEditorModal,
   setDiagramData,
   updateTutorialDiagramData,
   setCurrentDiagramData,
@@ -5597,6 +5613,7 @@ function DiagramEditorInner({
                     onResourceActivateAtPosition={handleResourceActivateAtPosition}
                     metadataPopupsEnabled={metadataPopupsEnabled}
                     setUmlClassEditorModal={setUmlClassEditorModal}
+                    setChartDataEditorModal={setChartDataEditorModal}
                     onSubDiagramDoubleClick={!presentationModeEnabled ? handleSubDiagramDoubleClick : undefined}
                     getHasLinkedSubDiagram={getHasLinkedSubDiagram}
                     onCreateSubDiagram={handleCreateSubDiagram}
@@ -5763,6 +5780,26 @@ function DiagramEditorInner({
                 ) ?? [],
               }));
               setUmlClassEditorModal({ visible: false, x: 0, y: 0, itemId: '' });
+            }}
+            isReadOnly={isReadOnly}
+          />,
+          document.body
+        )}
+        {chartDataEditorModal.visible && chartDataEditorModal.itemId && typeof window !== 'undefined' && createPortal(
+          <ChartDataEditorModal
+            x={chartDataEditorModal.x}
+            y={chartDataEditorModal.y}
+            visible={chartDataEditorModal.visible}
+            onClose={() => setChartDataEditorModal({ visible: false, x: 0, y: 0, itemId: '' })}
+            node={diagramData.nodes?.find((n: DiagramNodeData) => n.id === chartDataEditorModal.itemId) ?? null}
+            onSave={(nodeId, chart) => {
+              setDiagramData((prev: DiagramData) => ({
+                ...prev,
+                nodes: prev.nodes?.map((n: DiagramNodeData) =>
+                  n.id === nodeId ? { ...n, chart } : n
+                ) ?? [],
+              }));
+              setChartDataEditorModal({ visible: false, x: 0, y: 0, itemId: '' });
             }}
             isReadOnly={isReadOnly}
           />,

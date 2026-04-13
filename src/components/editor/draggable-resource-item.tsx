@@ -66,8 +66,13 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
     
     const isTextPaletteTextBoxHeading =
       provider === 'generic' && category === 'text' && derivedSlug === 'text-box-heading';
+    const isPieChartPalette = provider === 'generic' && category === 'object' && derivedSlug === 'pie-chart';
     return {
-      type: isTextPaletteTextBoxHeading ? 'generic.object.text-box-heading' : `${provider}.${category}.${derivedSlug}`,
+      type: isTextPaletteTextBoxHeading
+        ? 'generic.object.text-box-heading'
+        : isPieChartPalette
+          ? 'generic.chart.pie'
+          : `${provider}.${category}.${derivedSlug}`,
       label: resource.name,
       provider,
       category: isTextPaletteTextBoxHeading ? 'object' : category,

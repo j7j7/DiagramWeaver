@@ -37,6 +37,24 @@ export interface CustomImageOptions {
   orientation: CustomImageOrientation;
 }
 
+/** Extensible chart kinds — add `bar`, `line`, etc. alongside renderers and editors. */
+export type ChartKind = "pie";
+
+/** One slice / row of chart data (pie segment today; future charts reuse name/value/color). */
+export interface ChartSeriesItem {
+  /** Stable row id; omitted in imported JSON is OK — editors assign one when saving. */
+  id?: string;
+  name: string;
+  value: number;
+  color?: string;
+}
+
+/** Chart configuration on a node (`generic.chart.*`). */
+export interface NodeChartSpec {
+  kind: ChartKind;
+  series: ChartSeriesItem[];
+}
+
 export interface DiagramNodeData {
   id: string;
   type: string; // Format: provider.category.resourcename (e.g., aws.compute.ec2)
@@ -150,6 +168,9 @@ export interface DiagramNodeData {
 
   /** When set, this icon/node links to a sub-diagram. Double-click navigates to it. */
   subDiagramId?: string;
+
+  /** Live chart data for `generic.chart.*` nodes (pie today; bar/line later). */
+  chart?: NodeChartSpec;
 
   /** UML class diagram compartments: name, attributes, methods in separate sections */
   umlClass?: {

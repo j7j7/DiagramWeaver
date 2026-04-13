@@ -499,6 +499,7 @@ const DraggableShape = ({ item, data }: { item: ScratchPadItem; data: any }) => 
             cornerRadius={(itemData as { cornerRadius?: number }).cornerRadius}
             headingBackgroundColor={(itemData as { headingBackgroundColor?: string }).headingBackgroundColor}
             headingBackgroundStyle={(itemData as { headingBackgroundStyle?: 'gradient' | 'solid' }).headingBackgroundStyle}
+            chart={(itemData as { chart?: import('@/lib/types').NodeChartSpec }).chart}
           />
         </CardContent>
       </Card>
@@ -632,7 +633,8 @@ const renderIcon = (item: ScratchPadItem) => {
                     };
                     
                     // Check if this is a shape item (exclude icon/emoji - generic.icon.star is Lucide icon)
-                    const isShape = !isIconOrEmojiType(item.type) && (item.type.startsWith('generic.object.') || 
+                    const isShape = !isIconOrEmojiType(item.type) && (item.type.startsWith('generic.object.') ||
+                      item.type.startsWith('generic.chart.') ||
                       item.type?.endsWith('.square') || item.type?.endsWith('.circle') || 
                       item.type?.endsWith('.point') || item.type?.endsWith('.rectangle') || 
                       item.type?.endsWith('.triangle') || item.type?.endsWith('.star') || 
@@ -698,7 +700,8 @@ const renderIcon = (item: ScratchPadItem) => {
                     };
                     
                     // Check if this is a shape item (exclude icon/emoji)
-                    const isShape = !isIconOrEmojiType(item.type) && (item.type.startsWith('generic.object.') || 
+                    const isShape = !isIconOrEmojiType(item.type) && (item.type.startsWith('generic.object.') ||
+                      item.type.startsWith('generic.chart.') ||
                       item.type?.endsWith('.square') || item.type?.endsWith('.circle') || 
                       item.type?.endsWith('.point') || item.type?.endsWith('.rectangle') || 
                       item.type?.endsWith('.triangle') || item.type?.endsWith('.star') || 
@@ -805,6 +808,7 @@ const renderIcon = (item: ScratchPadItem) => {
                                 isShape={(() => {
                                     const t = editingItem.type || '';
                                     return !isIconOrEmojiType(t) && (t.startsWith('generic.object.') ||
+                                      t.startsWith('generic.chart.') ||
                                       t?.endsWith('.square') || t?.endsWith('.circle') ||
                                       t?.endsWith('.point') || t?.endsWith('.rectangle') ||
                                       t?.endsWith('.rounded-rectangle') || t?.endsWith('.text-box-heading') ||

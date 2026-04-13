@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { isChartNodeType } from "@/lib/chart-node"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -28,6 +29,7 @@ export function isIconOrEmojiType(type: string | undefined): boolean {
 
 export function isShapeNodeType(nodeType: string): boolean {
   if (isIconOrEmojiType(nodeType)) return false
+  if (isChartNodeType(nodeType)) return true
   return nodeType === 'generic.object.square' ||
          nodeType === 'generic.object.circle' ||
          nodeType === 'generic.object.point' ||

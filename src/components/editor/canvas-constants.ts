@@ -1,5 +1,5 @@
 import type { DiagramNodeData, DiagramZoneData } from "@/lib/types";
-import { isIconOrEmojiType } from "@/lib/utils";
+import { isIconOrEmojiType, isShapeNodeType } from "@/lib/utils";
 import { getPlainTextFromRuns } from "@/lib/rich-text";
 import { getNodeSizeDimensions, getNodeSizeMultiplier } from "@/lib/visual-styling";
 import { computeUmlClassDimensions } from "@/lib/uml-utils";
@@ -44,47 +44,11 @@ export const measureNodeDims = (n: PositionedNode) => {
   const isTextNode = n.type === 'generic.text.text';
   const isTextboxNode = n.type === 'generic.text.textbox';
   const isLineNode = n.type === 'generic.object.line' || n.type?.endsWith('.line');
-   const isShapeNode = !isIconOrEmojiType(n.type) && (
-     n.type === 'generic.object.square' ||
-     n.type === 'generic.object.circle' ||
-     n.type === 'generic.object.point' ||
-     n.type === 'generic.object.rectangle' ||
-     n.type === 'generic.object.uml-class' ||
-     n.type === 'generic.object.rounded-rectangle' ||
-     n.type === 'generic.object.text-box-heading' ||
-     n.type === 'generic.object.triangle' ||
-     n.type === 'generic.object.star' ||
-     n.type === 'generic.object.cloud' ||
-     n.type === 'generic.object.chevron' ||
-     n.type === 'generic.object.parallelogram' ||
-     n.type === 'generic.object.trapezoid' ||
-     n.type === 'generic.object.kite' ||
-     n.type === 'generic.object.hexagon' ||
-     n.type === 'generic.object.pentagon' ||
-    n.type === 'generic.object.octagon' ||
-    n.type === 'generic.object.jigsaw' ||
-    n.type === 'generic.object.arrowhead' ||
-    n.type === 'generic.object.loop' ||
-    n.type?.endsWith('.square') ||
-     n.type?.endsWith('.circle') ||
-     n.type?.endsWith('.point') ||
-     n.type?.endsWith('.rectangle') ||
-     n.type?.endsWith('.uml-class') ||
-     n.type?.endsWith('.rounded-rectangle') ||
-     n.type?.endsWith('.text-box-heading') ||
-     n.type?.endsWith('.triangle') ||
-     n.type?.endsWith('.star') ||
-     n.type?.endsWith('.cloud') ||
-     n.type?.endsWith('.chevron') ||
-     n.type?.endsWith('.parallelogram') ||
-     n.type?.endsWith('.trapezoid') ||
-     n.type?.endsWith('.kite') ||
-     n.type?.endsWith('.hexagon') ||
-     n.type?.endsWith('.pentagon') ||
-     n.type?.endsWith('.octagon') ||
-    n.type?.endsWith('.jigsaw') ||
-    n.type?.endsWith('.arrowhead') ||
-    n.type?.endsWith('.loop'));
+  const isLoopNode = n.type === 'generic.object.loop' || n.type?.endsWith('.loop');
+  const isShapeNode =
+    !isIconOrEmojiType(n.type) &&
+    !isLineNode &&
+    (isShapeNodeType(n.type) || isLoopNode);
   const label = (n.richLabel && n.richLabel.length > 0 ? getPlainTextFromRuns(n.richLabel) : (n.label || '')).toString();
 
   // Line nodes calculate dimensions from startPos/endPos

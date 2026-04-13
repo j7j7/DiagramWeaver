@@ -1,6 +1,8 @@
 import React, { useId } from 'react';
 import { polygonToRoundedPath } from '@/components/diagram/shapes/shape-utils';
 import { getTextEffectsShadowCss } from '@/lib/text-styling';
+import type { NodeChartSpec } from '@/lib/types';
+import { pieSlicesForSvg } from '@/lib/chart-node';
 
 interface ShapePreviewProps {
   type: string;
@@ -38,6 +40,7 @@ interface ShapePreviewProps {
   cornerRadius?: number; // Rounded-rectangle only: 0=straight, 1=full
   headingBackgroundColor?: string;
   headingBackgroundStyle?: 'gradient' | 'solid';
+  chart?: NodeChartSpec;
 }
 
 // Helper function to convert gradient angle to SVG coordinates
@@ -90,7 +93,8 @@ export function ShapePreview({
   roundedEdges = false,
   cornerRadius = 0.2,
   headingBackgroundColor: headingBgColorProp,
-  headingBackgroundStyle: headingBgStyleProp
+  headingBackgroundStyle: headingBgStyleProp,
+  chart,
 }: ShapePreviewProps) {
   const textEffectsShadow = getTextEffectsShadowCss({
     textGlowBlur,
@@ -155,6 +159,25 @@ export function ShapePreview({
   const headingStripSolid = headingBgStyleProp === 'solid';
 
   const renderShape = () => {
+    if (type === 'generic.chart.pie' || type?.startsWith('generic.chart.')) {
+      const slices = pieSlicesForSvg(30, 30, 28, chart?.series);
+      const sw = borderStyle === 'none' ? 0 : strokeWidth;
+      return (
+        <svg {...commonSvgProps} viewBox="0 0 60 60" preserveAspectRatio="xMidYMid meet">
+          {slices.map((s, i) => (
+            <path
+              key={i}
+              d={s.d}
+              fill={s.fill}
+              stroke={sw ? effectiveBorderColor : 'none'}
+              strokeWidth={sw}
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
+        </svg>
+      );
+    }
+
     // Circle
     if (type === 'generic.object.circle' || type?.endsWith('.circle')) {
       const r = (Math.min(displayWidth, displayHeight) / 2) - (borderStyle === 'none' ? 0 : strokeWidth / 2);
