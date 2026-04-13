@@ -1,4 +1,10 @@
-import type { ChartSeriesItem, ChartSliceFillStyle, NodeChartSpec } from "@/lib/types";
+import type {
+  ChartSeriesItem,
+  ChartSliceFillStyle,
+  NodeChartSpec,
+  NodeChartSpecBar,
+  NodeChartSpecPie,
+} from "@/lib/types";
 
 export const DEFAULT_PIE_SLICE_COLORS = [
   "#3b82f6",
@@ -123,11 +129,35 @@ export function newChartSliceId(): string {
   return `chart-slice-${Math.random().toString(36).slice(2, 11)}`;
 }
 
-export function defaultPieChartSpec(): NodeChartSpec {
+export function defaultPieChartSpec(): NodeChartSpecPie {
   return {
     kind: "pie",
     series: [{ id: newChartSliceId(), name: "Series 1", value: 100 }],
   };
+}
+
+export function defaultBarChartSpec(): NodeChartSpecBar {
+  return {
+    kind: "bar",
+    series: [
+      { id: newChartSliceId(), name: "Segment 1", values: [10, 20, 30, 40] },
+      { id: newChartSliceId(), name: "Segment 2", values: [15, 24, 2, 4] },
+    ],
+    stacked100: false,
+    vertical: true,
+    categoryGap: 0.22,
+    stackGap: 0.12,
+    showSegmentLabels: true,
+    showGridX: false,
+    showGridY: false,
+    showValueAxis: true,
+    showCategoryLabels: true,
+  };
+}
+
+/** Palette / drop default chart payload from node `type`. */
+export function defaultChartSpecForNodeType(nodeType: string | undefined): NodeChartSpec {
+  return nodeType === "generic.chart.bar" ? defaultBarChartSpec() : defaultPieChartSpec();
 }
 
 export type PieSliceFillMode = "none" | "solid" | "gradient";
@@ -150,6 +180,11 @@ export interface PieSliceRender {
   gradientColor2: string;
   /** Resolved label font size (SVG viewBox units). */
   labelFontSize: number;
+  /**
+   * When set, pie segment hover can show this value (native SVG `<title>` tooltip).
+   * Omitted for empty-chart placeholder discs.
+   */
+  tooltipValue?: number;
 }
 
 export interface PieSliceBuildOptions {
@@ -319,6 +354,7 @@ export function pieSlicesForSvg(
           gradientColor1: s.gradientColor1,
           gradientColor2: s.gradientColor2,
           labelFontSize: resolvePieSliceLabelFontSize(s.raw, spanFull),
+          tooltipValue: s.value,
         },
       ],
     };
@@ -354,6 +390,7 @@ export function pieSlicesForSvg(
           gradientColor1: s.gradientColor1,
           gradientColor2: s.gradientColor2,
           labelFontSize: resolvePieSliceLabelFontSize(s.raw, spanFull),
+          tooltipValue: s.value,
         },
       ],
     };
@@ -390,6 +427,7 @@ export function pieSlicesForSvg(
         gradientColor1: s.gradientColor1,
         gradientColor2: s.gradientColor2,
         labelFontSize: resolvePieSliceLabelFontSize(s.raw, spanFull),
+        tooltipValue: s.value,
       });
       break;
     }
@@ -408,6 +446,7 @@ export function pieSlicesForSvg(
       gradientColor1: s.gradientColor1,
       gradientColor2: s.gradientColor2,
       labelFontSize: resolvePieSliceLabelFontSize(s.raw, arcSpan),
+      tooltipValue: s.value,
     });
     angle = endAngle;
   }

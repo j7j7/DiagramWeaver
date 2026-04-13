@@ -37,8 +37,8 @@ export interface CustomImageOptions {
   orientation: CustomImageOrientation;
 }
 
-/** Extensible chart kinds — add `bar`, `line`, etc. alongside renderers and editors. */
-export type ChartKind = "pie";
+/** Extensible chart kinds — add `line`, etc. alongside renderers and editors. */
+export type ChartKind = "pie" | "bar";
 
 /** Slice fill mode — mirrors shape `backgroundStyle` (none / solid / gradient). */
 export type ChartSliceFillStyle = "none" | "solid" | "gradient";
@@ -67,9 +67,23 @@ export interface ChartSeriesItem {
   segmentPull?: number;
 }
 
-/** Chart configuration on a node (`generic.chart.*`). */
-export interface NodeChartSpec {
-  kind: ChartKind;
+/** One stacked segment row for bar charts (`kind: 'bar'`): parallel values per category column. */
+export interface ChartBarSegmentItem {
+  id?: string;
+  name: string;
+  /** Per-category magnitudes; shorter arrays pad with 0 at the end when rendering. */
+  values: number[];
+  color?: string;
+  labelColor?: string;
+  fillStyle?: ChartSliceFillStyle;
+  gradientColors?: [string, string];
+  /** Label font size in bar chart SVG viewBox units (~2–14; default ~3.25 when omitted). */
+  labelFontSize?: number;
+}
+
+/** Pie chart data (`generic.chart.pie`). */
+export interface NodeChartSpecPie {
+  kind: "pie";
   series: ChartSeriesItem[];
   /** Wedge outline color; falls back to node `borderColor`, then `#6b7280`. */
   sliceBorderColor?: string;
@@ -77,13 +91,60 @@ export interface NodeChartSpec {
   shadow?: boolean;
   /**
    * Default radial pull for slices without `segmentPull` (SVG units, 0–3).
-   * Wedge radius uses the **maximum** effective pull across slices so the pie stays inside the design circle.
    * JSON key kept as `segmentGapDeg` for backward compatibility.
    */
   segmentGapDeg?: number;
   /** When `false`, segment names are not drawn on the pie. Omitted or `true` = show labels. */
   showSegmentLabels?: boolean;
 }
+
+/** Bar / stacked bar chart data (`generic.chart.bar`). */
+export interface NodeChartSpecBar {
+  kind: "bar";
+  /** Stack layers; each row is one color segment across all category columns. */
+  series: ChartBarSegmentItem[];
+  /** Optional label per category column (same length as columns; extra entries ignored). */
+  categoryLabels?: string[];
+  /** When true, each column fills the value axis (proportions only). */
+  stacked100?: boolean;
+  /**
+   * When true (default), categories on X and values on Y (columns grow upward).
+   * When false, horizontal bars (categories on Y, values on X).
+   */
+  vertical?: boolean;
+  /** Space between category groups as a fraction of one category slot (0–0.85). */
+  categoryGap?: number;
+  /** Gap between stacked segment bands inside a column (SVG viewBox units). */
+  stackGap?: number;
+  /**
+   * When true, column caps use rounded ends (whole stack as one outline).
+   * Vertical bars: rounded **top** only. Horizontal bars: rounded **right** (value) end only.
+   * Radius scales from bar thickness in viewBox units (like other shape rounding toggles).
+   */
+  roundedColumnEnds?: boolean;
+  /** Segment outline color; falls back to node `borderColor`, then `#6b7280`. */
+  sliceBorderColor?: string;
+  shadow?: boolean;
+  /** When false, in-bar segment names are hidden. */
+  showSegmentLabels?: boolean;
+  /** Grid lines parallel to the value axis (horizontal lines when `vertical`). */
+  showGridX?: boolean;
+  /** Grid lines parallel to the category axis (vertical lines when `vertical`). */
+  showGridY?: boolean;
+  gridColor?: string;
+  /** Draw numeric ticks on the value axis. */
+  showValueAxis?: boolean;
+  axisColor?: string;
+  /** When false, category labels under (or beside) the plot are omitted. */
+  showCategoryLabels?: boolean;
+  /** When true, draw the numeric magnitude inside each segment (when the segment is large enough). */
+  showSegmentValues?: boolean;
+  /** When true, draw a color swatch + segment name row at the bottom of the chart. */
+  showLegend?: boolean;
+}
+
+/** Chart configuration on a node (`generic.chart.*`). */
+export type NodeChartSpec = NodeChartSpecPie | NodeChartSpecBar;
 
 export interface DiagramNodeData {
   id: string;
@@ -199,7 +260,7 @@ export interface DiagramNodeData {
   /** When set, this icon/node links to a sub-diagram. Double-click navigates to it. */
   subDiagramId?: string;
 
-  /** Live chart data for `generic.chart.*` nodes (pie today; bar/line later). */
+  /** Live chart data for `generic.chart.*` nodes (pie and bar). */
   chart?: NodeChartSpec;
 
   /** UML class diagram compartments: name, attributes, methods in separate sections */

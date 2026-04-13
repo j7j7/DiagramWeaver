@@ -41,6 +41,7 @@ import {
   LoopShape,
   UmlClassShape,
   PieChartShape,
+  BarChartShape,
 } from "./shapes";
 import {
   SlideShapeShadowTransitionProvider,
@@ -226,6 +227,7 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
         (p as any).headingTextColor !== (n as any).headingTextColor) {
       return false;
     }
+    if (JSON.stringify((p as any).chart) !== JSON.stringify((n as any).chart)) return false;
     const pUml = (p as any).umlClass;
     const nUml = (n as any).umlClass;
     if (JSON.stringify(pUml) !== JSON.stringify(nUml)) return false;
@@ -546,6 +548,63 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
       );
     } else if (nodeType === 'generic.object.circle' || nodeType?.endsWith('.circle')) {
       return <CircleShape {...shapeProps} />;
+    } else if (nodeType === 'generic.chart.bar') {
+      return (
+        <BarChartShape
+          {...shapeProps}
+          isReadOnly={isReadOnly}
+          onBarSegmentNameChange={
+            onUpdate && !isReadOnly
+              ? (segmentIndex, name) => {
+                  const c = node.chart;
+                  if (c?.kind !== "bar" || !c.series || segmentIndex < 0 || segmentIndex >= c.series.length) return;
+                  const nextSeries = c.series.map((row, j) =>
+                    j === segmentIndex ? { ...row, name } : row
+                  );
+                  onUpdate({ ...node, chart: { ...c, series: nextSeries } });
+                }
+              : undefined
+          }
+          onBarCategoryLabelChange={
+            onUpdate && !isReadOnly
+              ? (categoryIndex, label) => {
+                  const c = node.chart;
+                  if (c?.kind !== "bar" || !c.series?.length) return;
+                  const catCount = Math.max(
+                    1,
+                    ...c.series.map((s) => (Array.isArray(s.values) ? s.values.length : 0))
+                  );
+                  if (categoryIndex < 0 || categoryIndex >= catCount) return;
+                  const next = [...(c.categoryLabels ?? [])];
+                  while (next.length < catCount) next.push("");
+                  next[categoryIndex] = label;
+                  onUpdate({ ...node, chart: { ...c, categoryLabels: next } });
+                }
+              : undefined
+          }
+          onBarCellValueChange={
+            onUpdate && !isReadOnly
+              ? (segmentIndex, categoryIndex, value) => {
+                  const c = node.chart;
+                  if (c?.kind !== "bar" || !c.series || segmentIndex < 0 || segmentIndex >= c.series.length) return;
+                  const catCount = Math.max(
+                    1,
+                    ...c.series.map((s) => (Array.isArray(s.values) ? s.values.length : 0))
+                  );
+                  if (categoryIndex < 0 || categoryIndex >= catCount) return;
+                  const nextSeries = c.series.map((row, j) => {
+                    if (j !== segmentIndex) return row;
+                    const vals = [...(row.values ?? [])];
+                    while (vals.length < catCount) vals.push(0);
+                    vals[categoryIndex] = value;
+                    return { ...row, values: vals };
+                  });
+                  onUpdate({ ...node, chart: { ...c, series: nextSeries } });
+                }
+              : undefined
+          }
+        />
+      );
     } else if (nodeType === 'generic.chart.pie' || nodeType?.startsWith('generic.chart.')) {
       return (
         <PieChartShape
@@ -555,7 +614,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
             onUpdate && !isReadOnly
               ? (sliceIndex, name) => {
                   const c = node.chart;
-                  if (!c?.series || sliceIndex < 0 || sliceIndex >= c.series.length) return;
+                  if (c?.kind !== "pie" || !c.series || sliceIndex < 0 || sliceIndex >= c.series.length) return;
                   const nextSeries = c.series.map((row, j) =>
                     j === sliceIndex ? { ...row, name } : row
                   );

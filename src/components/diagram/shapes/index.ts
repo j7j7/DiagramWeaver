@@ -20,5 +20,6 @@ export { LineShape } from './line';
 export { LoopShape } from './loop';
 export { UmlClassShape } from './uml-class';
 export { PieChartShape } from './pie-chart-shape';
+export { BarChartShape } from './bar-chart-shape';
 export { ShapeWrapper } from './shape-wrapper';
 export { ShapeTag } from './shape-tag';

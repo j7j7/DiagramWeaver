@@ -48,6 +48,88 @@ const HttpImageUrlSchema = z
     }
   }, "imageUrl must use http or https");
 
+const ChartPieSeriesRowSchema = z.object({
+  id: z.string().optional(),
+  name: z.string(),
+  value: z.number(),
+  color: z.string().optional(),
+  labelColor: z.string().optional(),
+  fillStyle: z.enum(["none", "solid", "gradient"]).optional(),
+  gradientColors: z.tuple([z.string(), z.string()]).optional(),
+  labelFontSize: z.number().min(2).max(14).optional(),
+  segmentPull: z.number().min(0).max(4).optional(),
+});
+
+const ChartBarSeriesRowSchema = z.object({
+  id: z.string().optional(),
+  name: z.string(),
+  values: z.array(z.number()),
+  color: z.string().optional(),
+  labelColor: z.string().optional(),
+  fillStyle: z.enum(["none", "solid", "gradient"]).optional(),
+  gradientColors: z.tuple([z.string(), z.string()]).optional(),
+  labelFontSize: z.number().min(2).max(14).optional(),
+});
+
+const NodeChartPieSchema = z.object({
+  kind: z.literal("pie"),
+  series: z.array(ChartPieSeriesRowSchema),
+  sliceBorderColor: z.string().optional(),
+  shadow: z.boolean().optional(),
+  segmentGapDeg: z.number().min(0).max(3).optional(),
+  showSegmentLabels: z.boolean().optional(),
+});
+
+const NodeChartBarSchema = z.object({
+  kind: z.literal("bar"),
+  series: z.array(ChartBarSeriesRowSchema),
+  categoryLabels: z.array(z.string()).optional(),
+  stacked100: z.boolean().optional(),
+  vertical: z.boolean().optional(),
+  categoryGap: z.number().min(0).max(0.85).optional(),
+  stackGap: z.number().min(0).max(2).optional(),
+  roundedColumnEnds: z.boolean().optional(),
+  sliceBorderColor: z.string().optional(),
+  shadow: z.boolean().optional(),
+  showSegmentLabels: z.boolean().optional(),
+  showGridX: z.boolean().optional(),
+  showGridY: z.boolean().optional(),
+  gridColor: z.string().optional(),
+  showValueAxis: z.boolean().optional(),
+  axisColor: z.string().optional(),
+  showCategoryLabels: z.boolean().optional(),
+  showSegmentValues: z.boolean().optional(),
+  showLegend: z.boolean().optional(),
+});
+
+const NodeChartSpecSchema = z.discriminatedUnion("kind", [NodeChartPieSchema, NodeChartBarSchema]);
+
+function normalizeChartField(chart: unknown): unknown {
+  if (chart == null || typeof chart !== "object") return chart;
+  const c = chart as Record<string, unknown>;
+  if (c.kind === "bar") {
+    const next = { ...c } as Record<string, unknown>;
+    const legacyR = next.columnCornerRadius;
+    if (typeof legacyR === "number" && Number.isFinite(legacyR) && legacyR > 0) {
+      next.roundedColumnEnds = true;
+    }
+    delete next.columnCornerRadius;
+    return next;
+  }
+  if (c.kind === "pie") return chart;
+  const series = c.series;
+  if (
+    Array.isArray(series) &&
+    series[0] != null &&
+    typeof series[0] === "object" &&
+    series[0] !== null &&
+    "values" in (series[0] as object)
+  ) {
+    return { ...c, kind: "bar" };
+  }
+  return { ...c, kind: "pie" };
+}
+
 // Schema for DiagramNodeData based on actual types
 export const DiagramNodeDataSchema = z.object({
   id: z.string(),
@@ -144,24 +226,7 @@ export const DiagramNodeDataSchema = z.object({
   metaData: z.record(z.string(), z.string()).optional(), // Key/value metadata
   subDiagramId: z.string().optional(), // Links this node to a sub-diagram (double-click to navigate)
 
-  chart: z.object({
-    kind: z.enum(['pie']),
-    series: z.array(z.object({
-      id: z.string().optional(),
-      name: z.string(),
-      value: z.number(),
-      color: z.string().optional(),
-      labelColor: z.string().optional(),
-      fillStyle: z.enum(['none', 'solid', 'gradient']).optional(),
-      gradientColors: z.tuple([z.string(), z.string()]).optional(),
-      labelFontSize: z.number().min(2).max(14).optional(),
-      segmentPull: z.number().min(0).max(4).optional(),
-    })),
-    sliceBorderColor: z.string().optional(),
-    shadow: z.boolean().optional(),
-    segmentGapDeg: z.number().min(0).max(3).optional(),
-    showSegmentLabels: z.boolean().optional(),
-  }).optional(),
+  chart: z.preprocess(normalizeChartField, NodeChartSpecSchema).optional(),
   umlClass: z.object({
     name: z.string(),
     attributes: z.array(z.string()),

@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type { DiagramNodeData } from "@/lib/types";
 import { getTextStylingCSS, extractTextStylingFromNode } from "@/lib/text-styling";
 
@@ -449,3 +450,66 @@ export const getRoundedEdgesProps = (roundedEdges: boolean) => {
   };
 };
 
+/**
+ * <input> styles for SVG foreignObject:1em-tall box with no UA padding so glyphs
+ * line up with <text dominantBaseline="middle" fontSize={same}> on the canvas.
+ */
+/** Upper bound for inline chart editor width (SVG user units); large enough to type long labels. */
+export const CHART_INLINE_FOREIGN_OBJECT_MAX_WIDTH = 220;
+
+/** Grows with character count; caps at {@link CHART_INLINE_FOREIGN_OBJECT_MAX_WIDTH} by default. */
+export function chartInlineForeignObjectWidth(opts: {
+  charCount: number;
+  fontSize: number;
+  minWidth?: number;
+  widthPerChar?: number;
+  extraPad?: number;
+  maxWidth?: number;
+}): number {
+  const {
+    charCount,
+    fontSize,
+    minWidth = 8,
+    widthPerChar = 0.58,
+    extraPad = 6,
+    maxWidth = CHART_INLINE_FOREIGN_OBJECT_MAX_WIDTH,
+  } = opts;
+  return Math.min(
+    maxWidth,
+    Math.max(minWidth, charCount * fontSize * widthPerChar + extraPad)
+  );
+}
+
+export function svgForeignObjectInlineInputStyle(opts: {
+  fontSize: number;
+  fontWeight: number;
+  color: string;
+  caretColor: string;
+  textAlign: "left" | "center" | "right";
+  textShadow?: string;
+}): CSSProperties {
+  const fs = opts.fontSize;
+  return {
+    display: "block",
+    boxSizing: "border-box",
+    width: "100%",
+    height: fs,
+    minHeight: fs,
+    maxHeight: fs,
+    margin: 0,
+    padding: 0,
+    border: "none",
+    borderRadius: 0,
+    fontFamily: "ui-sans-serif, system-ui, sans-serif",
+    fontWeight: opts.fontWeight,
+    fontSize: fs,
+    lineHeight: `${fs}px`,
+    textAlign: opts.textAlign,
+    color: opts.color,
+    caretColor: opts.caretColor,
+    ...(opts.textShadow ? { textShadow: opts.textShadow } : {}),
+    WebkitAppearance: "none",
+    appearance: "none",
+    outline: "none",
+  };
+}

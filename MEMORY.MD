@@ -2,6 +2,27 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-04-13 – Pie chart: segment hover shows value
+**`pieSlicesForSvg`** adds optional **`tooltipValue`** on each **`PieSliceRender`** (from the matching series row; omitted for empty/placeholder discs). **`PieChartShape`** and **`shape-preview`** show the formatted value (**`toLocaleString()`**) via **`createPortal`** to **`document.body`** (fixed UI near the pointer): native SVG **`<title>`** tooltips were unreliable inside transformed/filtered SVG on the canvas.
+
+### 2026-04-13 – Bar chart: double-click inline text (pie-style)
+**`BarChartShape`**: **`foreignObject`** inputs for **segment names** (in-bar or **legend**), **category axis labels** (`categoryLabels`), and **in-bar numeric values** when **`showSegmentValues`**. **`diagram-node`** wires **`onBarCategoryLabelChange`** and **`onBarCellValueChange`** (values clamped **≥ 0**). One active inline editor at a time (`segment` / `category` / `value`). Inline fields use the **same anchor** as the matching **`text`** (`dominantBaseline="middle"`). **`foreignObject`** height is **1em** (font size); **`svgForeignObjectInlineInputStyle`** in **`shape-utils.ts`** strips UA padding / appearance so `<input>` matches SVG text. Width uses **`chartInlineForeignObjectWidth`** (grows with typed length, cap **220** SVG units). Two-line name+value edit stacks from the **name line center**. **`PieChartShape`** uses the same helpers (no flex wrapper).
+
+### 2026-04-13 – Bar chart: uniform scaling (labels match pie)
+**`BarChartShape`** + **`shape-preview`** bar branch: **`preserveAspectRatio="xMidYMid meet"`** (was **`none`**), same idea as **`PieChartShape`** — chart scales **uniformly** when the node is resized so **text and strokes are not stretched**; letterboxing may appear if the node aspect ratio ≠ viewBox (**100×** dynamic height).
+
+### 2026-04-13 – Bar chart: rounded column ends (toggle)
+**`NodeChartSpecBar.roundedColumnEnds`**: boolean like other shape rounding toggles. Cap radius is **auto** from bar thickness in viewBox units (**`barColumnAutoRoundRadius`**). Clip paths use **quadratic** corners. Legacy **`columnCornerRadius` > 0** in JSON maps to **`roundedColumnEnds`** in **`normalizeChartField`**. **Chart data** modal: **Rounded column ends** switch.
+
+### 2026-04-13 – Bar chart: slice outline follows rounded column cap
+**`BarChartShape`** (and **`shape-preview`**): fills stay **clip-path** rounded; **per-rect stroke** lived inside the same clip, so the **outer** stroke was sheared flat. **Fix**: **fill-only** rects inside the clip, then an **unclipped** **`path`** stroked with the same **`d`** as the column clip (**`strokeLinejoin="round"`**). Hover thickens that column outline when **`hoveredKey`** matches the category.
+
+### 2026-04-13 – Bar chart: values in segments + bottom legend
+**`NodeChartSpecBar`**: **`showSegmentValues`** draws the numeric value in each segment (when large enough); with **segment labels** on, name and value stack on two lines when space allows. **`showLegend`** reserves bottom band and draws **swatch + segment name** per stack row. **`bar-chart-layout`** adds **`value`** on each **`BarRect`** and expands **`marginB`** for the legend band; category labels sit just below the plot. **Chart data** modal: **Values in segments** and **Bottom legend** switches. **`shape-preview`** matches.
+
+### 2026-04-13 – Bar chart node (`generic.chart.bar`)
+**Palette**: Generic → Object → **Bar chart** (`bar-chart.png`). **Data**: `chart.kind: 'bar'` — **`series`** rows are stack **segments**; each row has **`values: number[]`** (one magnitude per category column). Options: **`stacked100`**, **`vertical`** (swap axes: columns vs horizontal bars), **`categoryGap`** / **`stackGap`**, **`showGridX`** / **`showGridY`** (screen-space vertical vs horizontal lines), **`showValueAxis`**, **`showCategoryLabels`**, **`gridColor`**, **`axisColor`**, optional **`categoryLabels`**. Same fill modes as pie (solid / gradient / none). **Render**: **`BarChartShape`** (`SvgShapeBase`, viewBox **100×**`vbH`, **`preserveAspectRatio="xMidYMid meet"`**) via **`buildBarChartLayout`** (`bar-chart-layout.ts`). **Modal**: **`chart-data-editor-modal`** branches on bar vs pie. **Connections**: **`getShapeEdgeBounds`** — only **`generic.chart.pie`** uses circular bounds; bar uses default rectangle bbox. **Themes**: **`applyThemeToItem`** hue-steps bar segments like pie. **Schema**: `chart` is a **`kind` discriminated union** with **`normalizeChartField`** for legacy chart objects without **`kind`**.
+
 ### 2026-04-13 – Chart data modal: tighter Chart appearance + slice rows
 **`chart-data-editor-modal.tsx`**: Removed the top intro blurb (per-slice fill / gradient / labels). Removed helper blurbs under **Slice outline**, **Segment pull override**, and **Label size**. **Pie drop shadow** and **Segment labels** are on **one row** (labels + switches only, no subtext).
 

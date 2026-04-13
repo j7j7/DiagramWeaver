@@ -1,8 +1,26 @@
-import React, { useId } from 'react';
+"use client";
+
+import React, { useId, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { polygonToRoundedPath } from '@/components/diagram/shapes/shape-utils';
 import { getTextEffectsShadowCss } from '@/lib/text-styling';
-import type { NodeChartSpec } from '@/lib/types';
-import { pieSlicesForSvg, truncatePieSliceLabel } from '@/lib/chart-node';
+import type { NodeChartSpec, NodeChartSpecBar } from '@/lib/types';
+import { pieSlicesForSvg, truncatePieSliceLabel, defaultBarChartSpec } from '@/lib/chart-node';
+import {
+  barChartWantsRoundedColumnEnds,
+  barColumnAutoRoundRadius,
+  barColumnClipPathHorizontal,
+  barColumnClipPathVertical,
+  barLegendEntries,
+  buildBarChartLayout,
+  truncateBarLabel,
+} from '@/lib/bar-chart-layout';
+
+function formatBarPreviewValue(n: number): string {
+  if (!Number.isFinite(n)) return '';
+  if (Math.abs(n - Math.round(n)) < 1e-6) return String(Math.round(n));
+  return n.toFixed(1).replace(/\.0$/, '');
+}
 
 interface ShapePreviewProps {
   type: string;
@@ -96,6 +114,11 @@ export function ShapePreview({
   headingBackgroundStyle: headingBgStyleProp,
   chart,
 }: ShapePreviewProps) {
+  const [pieSliceTooltip, setPieSliceTooltip] = useState<{
+    x: number;
+    y: number;
+    text: string;
+  } | null>(null);
   const textEffectsShadow = getTextEffectsShadowCss({
     textGlowBlur,
     textGlowColor,
@@ -159,6 +182,324 @@ export function ShapePreview({
   const headingStripSolid = headingBgStyleProp === 'solid';
 
   const renderShape = () => {
+    if (type === 'generic.chart.bar' || chart?.kind === 'bar') {
+      const spec: NodeChartSpecBar = chart?.kind === 'bar' ? chart : defaultBarChartSpec();
+      const model = buildBarChartLayout(spec, { vbW: 100, vbH: 68 });
+      const sw = borderStyle === 'none' ? 0 : strokeWidth;
+      const sliceStroke = spec.sliceBorderColor?.trim() || effectiveBorderColor;
+      const gradBase = `sp-bar-${gradientId.replace(/:/g, '')}`;
+      const coords = getGradientCoordinates(gradientAngle);
+      const axisC = spec.axisColor?.trim() || effectiveBorderColor;
+      const gridC = spec.gridColor?.trim() || 'rgba(148,163,184,0.45)';
+      const vertical = spec.vertical !== false;
+      const { plot, valueAxisMax, valueTicks, categoryCount, vbH } = model;
+      const legendList = spec.showLegend === true ? barLegendEntries(spec) : [];
+      const catSlot = vertical ? plot.w / Math.max(1, categoryCount) : plot.h / Math.max(1, categoryCount);
+      const valueGridLines = valueTicks.map((t) =>
+        vertical
+          ? { x1: plot.x0, x2: plot.x0 + plot.w, y1: plot.y0 + plot.h - (t / valueAxisMax) * plot.h, y2: plot.y0 + plot.h - (t / valueAxisMax) * plot.h }
+          : { x1: plot.x0 + (t / valueAxisMax) * plot.w, x2: plot.x0 + (t / valueAxisMax) * plot.w, y1: plot.y0, y2: plot.y0 + plot.h }
+      );
+      const categoryGridLines: { x1: number; x2: number; y1: number; y2: number }[] = [];
+      for (let j = 0; j <= categoryCount; j++) {
+        if (vertical) {
+          const x = plot.x0 + j * catSlot;
+          categoryGridLines.push({ x1: x, x2: x, y1: plot.y0, y2: plot.y0 + plot.h });
+        } else {
+          const y = plot.y0 + j * catSlot;
+          categoryGridLines.push({ x1: plot.x0, x2: plot.x0 + plot.w, y1: y, y2: y });
+        }
+      }
+      const showVG = vertical ? spec.showGridY === true : spec.showGridX === true;
+      const showCG = vertical ? spec.showGridX === true : spec.showGridY === true;
+      const legendSlotW =
+        legendList.length > 0 ? plot.w / Math.max(1, legendList.length) : 0;
+      const useRoundedColumnEnds = barChartWantsRoundedColumnEnds(spec);
+      const rectsByCat = new Map<number, (typeof model.rects)[number][]>();
+      for (const r of model.rects) {
+        const arr = rectsByCat.get(r.categoryIndex) ?? [];
+        arr.push(r);
+        rectsByCat.set(r.categoryIndex, arr);
+      }
+      const clipBase = `${gradBase}-cclip`;
+      return (
+        <svg {...commonSvgProps} viewBox={`0 0 100 ${vbH}`} preserveAspectRatio="xMidYMid meet">
+          <defs>
+            {useRoundedColumnEnds
+              ? Array.from({ length: categoryCount }, (_, j) => {
+                  const list = rectsByCat.get(j) ?? [];
+                  const rAuto = barColumnAutoRoundRadius(list, vertical);
+                  const d = vertical
+                    ? barColumnClipPathVertical(list, rAuto)
+                    : barColumnClipPathHorizontal(list, rAuto);
+                  if (!d) return null;
+                  return (
+                    <clipPath key={`sp-cp-${j}`} id={`${clipBase}-${j}`} clipPathUnits="userSpaceOnUse">
+                      <path d={d} />
+                    </clipPath>
+                  );
+                })
+              : null}
+            {model.rects.map((r) =>
+              r.fillMode === 'gradient' ? (
+                <linearGradient
+                  key={`sp-bar-lg-${r.segmentIndex}-${r.categoryIndex}`}
+                  id={`${gradBase}-${r.segmentIndex}-${r.categoryIndex}`}
+                  x1={coords.x1}
+                  y1={coords.y1}
+                  x2={coords.x2}
+                  y2={coords.y2}
+                  gradientUnits="objectBoundingBox"
+                >
+                  <stop offset="0%" stopColor={r.gradientColor1} />
+                  <stop offset="100%" stopColor={r.gradientColor2} />
+                </linearGradient>
+              ) : null
+            )}
+            {legendList.map((en, i) =>
+              en.fillMode === 'gradient' ? (
+                <linearGradient
+                  key={`sp-bar-leg-${i}`}
+                  id={`${gradBase}-leg-${i}`}
+                  x1={coords.x1}
+                  y1={coords.y1}
+                  x2={coords.x2}
+                  y2={coords.y2}
+                  gradientUnits="objectBoundingBox"
+                >
+                  <stop offset="0%" stopColor={en.gradientColor1} />
+                  <stop offset="100%" stopColor={en.gradientColor2} />
+                </linearGradient>
+              ) : null
+            )}
+          </defs>
+          <g pointerEvents="none">
+            {showVG
+              ? valueGridLines.map((ln, i) => (
+                  <line key={`vg-${i}`} x1={ln.x1} y1={ln.y1} x2={ln.x2} y2={ln.y2} stroke={gridC} strokeWidth={0.35} vectorEffect="non-scaling-stroke" />
+                ))
+              : null}
+            {showCG
+              ? categoryGridLines.map((ln, i) => (
+                  <line key={`cg-${i}`} x1={ln.x1} y1={ln.y1} x2={ln.x2} y2={ln.y2} stroke={gridC} strokeWidth={0.35} vectorEffect="non-scaling-stroke" />
+                ))
+              : null}
+          </g>
+          {useRoundedColumnEnds
+            ? Array.from({ length: categoryCount }, (_, j) => {
+                const list = rectsByCat.get(j) ?? [];
+                if (list.length === 0) return null;
+                const rAuto = barColumnAutoRoundRadius(list, vertical);
+                const clipD = vertical
+                  ? barColumnClipPathVertical(list, rAuto)
+                  : barColumnClipPathHorizontal(list, rAuto);
+                const inner = list.map((r) => {
+                  const fill =
+                    r.fillMode === 'none'
+                      ? 'transparent'
+                      : r.fillMode === 'gradient'
+                        ? `url(#${gradBase}-${r.segmentIndex}-${r.categoryIndex})`
+                        : r.solidFill;
+                  const outlineOnColumnPath = !!clipD;
+                  return (
+                    <rect
+                      key={`br-${r.segmentIndex}-${r.categoryIndex}`}
+                      x={r.x}
+                      y={r.y}
+                      width={Math.max(0, r.w)}
+                      height={Math.max(0, r.h)}
+                      fill={fill}
+                      stroke={outlineOnColumnPath ? 'none' : sw ? sliceStroke : 'none'}
+                      strokeWidth={outlineOnColumnPath ? 0 : sw}
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  );
+                });
+                if (!clipD) {
+                  return <g key={`sp-col-${j}`}>{inner}</g>;
+                }
+                return (
+                  <g key={`sp-col-${j}`}>
+                    <g clipPath={`url(#${clipBase}-${j})`}>{inner}</g>
+                    {sw ? (
+                      <path
+                        d={clipD}
+                        fill="none"
+                        stroke={sliceStroke}
+                        strokeWidth={sw}
+                        strokeLinejoin="round"
+                        vectorEffect="non-scaling-stroke"
+                        pointerEvents="none"
+                      />
+                    ) : null}
+                  </g>
+                );
+              })
+            : model.rects.map((r) => {
+                const fill =
+                  r.fillMode === 'none'
+                    ? 'transparent'
+                    : r.fillMode === 'gradient'
+                      ? `url(#${gradBase}-${r.segmentIndex}-${r.categoryIndex})`
+                      : r.solidFill;
+                return (
+                  <rect
+                    key={`br-${r.segmentIndex}-${r.categoryIndex}`}
+                    x={r.x}
+                    y={r.y}
+                    width={Math.max(0, r.w)}
+                    height={Math.max(0, r.h)}
+                    fill={fill}
+                    stroke={sw ? sliceStroke : 'none'}
+                    strokeWidth={sw}
+                    vectorEffect="non-scaling-stroke"
+                  />
+                );
+              })}
+          {spec.showSegmentLabels !== false || spec.showSegmentValues === true
+            ? model.rects.map((r) => {
+                const wantsName = spec.showSegmentLabels !== false && !!r.name.trim();
+                const wantsVal = spec.showSegmentValues === true && r.value > 0;
+                if (!wantsName && !wantsVal) return null;
+                const cx = r.x + r.w / 2;
+                const cy = r.y + r.h / 2;
+                const fs = r.labelFontSize;
+                const fsV = Math.min(fs * 0.88, 3.2);
+                const twoLine = vertical ? r.h >= 8.5 : r.w >= 12;
+                const nameThin = vertical ? r.h < 4 : r.w < 4;
+                const valThin = Math.min(r.w, r.h) < 4.5;
+                const showN = wantsName && !nameThin;
+                const showV = wantsVal && !valThin;
+                if (!showN && !showV) return null;
+                if (showN && showV && twoLine) {
+                  return (
+                    <g key={`bt-${r.segmentIndex}-${r.categoryIndex}`}>
+                      <text
+                        x={cx}
+                        y={cy - fsV * 0.35}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        fill={r.labelColor}
+                        fontSize={fs}
+                        fontWeight={600}
+                        pointerEvents="none"
+                        style={{ textShadow: '0 0 1px rgba(0,0,0,0.5)' }}
+                      >
+                        {truncateBarLabel(r.name, vertical ? 8 : 10)}
+                      </text>
+                      <text
+                        x={cx}
+                        y={cy + fs * 0.42}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        fill={r.labelColor}
+                        fontSize={fsV}
+                        fontWeight={600}
+                        pointerEvents="none"
+                        style={{ textShadow: '0 0 1px rgba(0,0,0,0.5)' }}
+                      >
+                        {formatBarPreviewValue(r.value)}
+                      </text>
+                    </g>
+                  );
+                }
+                if (showV && (!showN || !twoLine)) {
+                  return (
+                    <text
+                      key={`bt-${r.segmentIndex}-${r.categoryIndex}`}
+                      x={cx}
+                      y={cy}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      fill={r.labelColor}
+                      fontSize={fsV}
+                      fontWeight={600}
+                      pointerEvents="none"
+                      style={{ textShadow: '0 0 1px rgba(0,0,0,0.5)' }}
+                    >
+                      {formatBarPreviewValue(r.value)}
+                    </text>
+                  );
+                }
+                return (
+                  <text
+                    key={`bt-${r.segmentIndex}-${r.categoryIndex}`}
+                    x={cx}
+                    y={cy}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fill={r.labelColor}
+                    fontSize={fs}
+                    fontWeight={600}
+                    pointerEvents="none"
+                    style={{ textShadow: '0 0 1px rgba(0,0,0,0.5)' }}
+                  >
+                    {truncateBarLabel(r.name, vertical ? 8 : 10)}
+                  </text>
+                );
+              })
+            : null}
+          {legendList.length > 0
+            ? legendList.map((en, i) => {
+                const cx = plot.x0 + (i + 0.5) * legendSlotW;
+                const sw = 3;
+                const fill =
+                  en.fillMode === 'none'
+                    ? 'transparent'
+                    : en.fillMode === 'gradient'
+                      ? `url(#${gradBase}-leg-${i})`
+                      : en.solidFill;
+                const maxNameLen = legendSlotW > 14 ? 12 : Math.max(4, Math.floor(legendSlotW / 1.35));
+                return (
+                  <g key={`leg-${en.segmentIndex}`} transform={`translate(${cx}, 0)`}>
+                    <rect
+                      x={-legendSlotW / 2 + 0.5}
+                      y={vbH - 6}
+                      width={sw}
+                      height={sw}
+                      rx={0.4}
+                      fill={fill}
+                      stroke={sliceStroke}
+                      strokeWidth={0.35}
+                      vectorEffect="non-scaling-stroke"
+                    />
+                    <text
+                      x={-legendSlotW / 2 + sw + 1.8}
+                      y={vbH - 3.5}
+                      textAnchor="start"
+                      fill={axisC}
+                      fontSize={2.7}
+                      fontWeight={500}
+                      pointerEvents="none"
+                    >
+                      {truncateBarLabel(en.name, maxNameLen)}
+                    </text>
+                  </g>
+                );
+              })
+            : null}
+          {spec.showValueAxis !== false
+            ? valueTicks.map((t, i) => {
+                if (vertical) {
+                  const y = plot.y0 + plot.h - (t / valueAxisMax) * plot.h;
+                  return (
+                    <text key={`va-${i}`} x={plot.x0 - 2} y={y + 1.1} textAnchor="end" fill={axisC} fontSize={3.1} fontWeight={500} pointerEvents="none">
+                      {Number.isInteger(t) ? String(t) : t.toFixed(1)}
+                    </text>
+                  );
+                }
+                const x = plot.x0 + (t / valueAxisMax) * plot.w;
+                return (
+                  <text key={`va-${i}`} x={x} y={plot.y0 + plot.h + 4} textAnchor="middle" fill={axisC} fontSize={3.1} fontWeight={500} pointerEvents="none">
+                    {Number.isInteger(t) ? String(t) : t.toFixed(1)}
+                  </text>
+                );
+              })
+            : null}
+        </svg>
+      );
+    }
+
     if (type === 'generic.chart.pie' || type?.startsWith('generic.chart.')) {
       const pieOuterR = 28;
       const { slices, rDraw } = pieSlicesForSvg(30, 30, pieOuterR, chart?.series, {
@@ -196,6 +537,7 @@ export function ShapePreview({
                 : s.fillMode === 'gradient'
                   ? `url(#${pieGradBase}-${i})`
                   : s.solidFill;
+            const showVal = s.tooltipValue != null && Number.isFinite(s.tooltipValue);
             return (
               <g key={i} transform={`translate(${s.explodeX},${s.explodeY})`}>
                 <path
@@ -204,6 +546,30 @@ export function ShapePreview({
                   stroke={sw ? sliceStroke : 'none'}
                   strokeWidth={sw}
                   vectorEffect="non-scaling-stroke"
+                  onPointerEnter={(e) => {
+                    if (showVal) {
+                      setPieSliceTooltip({
+                        x: e.clientX,
+                        y: e.clientY,
+                        text: s.tooltipValue!.toLocaleString(),
+                      });
+                    } else {
+                      setPieSliceTooltip(null);
+                    }
+                  }}
+                  onPointerMove={(e) => {
+                    if (!showVal) return;
+                    setPieSliceTooltip((prev) =>
+                      prev
+                        ? { ...prev, x: e.clientX, y: e.clientY }
+                        : {
+                            x: e.clientX,
+                            y: e.clientY,
+                            text: s.tooltipValue!.toLocaleString(),
+                          }
+                    );
+                  }}
+                  onPointerLeave={() => setPieSliceTooltip(null)}
                 />
               </g>
             );
@@ -957,45 +1323,59 @@ export function ShapePreview({
   };
 
   return (
-    <div 
-      className="relative flex items-center justify-center" 
-      style={{ 
-        width: displayWidth, 
-        height: displayHeight,
-        filter: shadow ? 'var(--shape-shadow-preview)' : undefined
-      }}
-    >
-      {renderShape()}
-      
-      {label && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none p-1">
-          <span 
-            className="font-medium leading-tight text-center"
-            style={{ 
-              color: textColor,
-              fontFamily,
-              fontWeight: fontWeight as any,
-              fontStyle: fontStyle as any,
-              textDecoration,
-              fontSize: `${fontSize}px`,
-              textShadow:
-                textEffectsShadow ??
-                (shadow && !(textOutlineWidth != null && textOutlineWidth > 0)
-                  ? 'var(--shape-text-shadow)'
-                  : undefined),
-              ...(textOutlineWidth != null && textOutlineWidth > 0
-                ? { WebkitTextStroke: `${textOutlineWidth}px ${textOutlineColor ?? "#ffffff"}` }
-                : {}),
-              maxWidth: '100%',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            {label}
-          </span>
-        </div>
-      )}
-    </div>
+    <>
+      <div
+        className="relative flex items-center justify-center"
+        style={{
+          width: displayWidth,
+          height: displayHeight,
+          filter: shadow ? 'var(--shape-shadow-preview)' : undefined,
+        }}
+      >
+        {renderShape()}
+
+        {label && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none p-1">
+            <span
+              className="font-medium leading-tight text-center"
+              style={{
+                color: textColor,
+                fontFamily,
+                fontWeight: fontWeight as any,
+                fontStyle: fontStyle as any,
+                textDecoration,
+                fontSize: `${fontSize}px`,
+                textShadow:
+                  textEffectsShadow ??
+                  (shadow && !(textOutlineWidth != null && textOutlineWidth > 0)
+                    ? 'var(--shape-text-shadow)'
+                    : undefined),
+                ...(textOutlineWidth != null && textOutlineWidth > 0
+                  ? { WebkitTextStroke: `${textOutlineWidth}px ${textOutlineColor ?? "#ffffff"}` }
+                  : {}),
+                maxWidth: '100%',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {label}
+            </span>
+          </div>
+        )}
+      </div>
+      {pieSliceTooltip != null && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              role="tooltip"
+              className="pointer-events-none fixed z-[10000] rounded-md border border-border bg-popover px-2 py-1 text-xs font-medium text-popover-foreground shadow-md"
+              style={{ left: pieSliceTooltip.x + 12, top: pieSliceTooltip.y + 12 }}
+            >
+              {pieSliceTooltip.text}
+            </div>,
+            document.body
+          )
+        : null}
+    </>
   );
 }

@@ -16,7 +16,7 @@ import {
   type PositionedGroup,
 } from "./canvas-constants";
 import { isShapeNodeType, isIconOrEmojiType } from "@/lib/utils";
-import { defaultPieChartSpec } from "@/lib/chart-node";
+import { defaultChartSpecForNodeType } from "@/lib/chart-node";
 // Zones removed - no zone layout
 
 interface UseCanvasOperationsOptions {
@@ -166,6 +166,7 @@ export function useCanvasOperations({
              itemType === 'generic.object.text-box-heading' ? 180 :
              itemType === 'generic.object.cloud' ? 80 :
              itemType === 'generic.object.line' ? 150 :
+             itemType === 'generic.chart.bar' ? 100 :
              60
            ) : isRichTextBoxLikeResource ? snapDimensionToGrid(240, 40) : undefined, // Initial width - 100% wider than before (was 120)
            height: isShapeResource ? snapDimensionToGrid(
@@ -176,6 +177,7 @@ export function useCanvasOperations({
              itemType === 'generic.object.text-box-heading' ? 90 :
              itemType === 'generic.object.cloud' ? 50 :
              itemType === 'generic.object.line' ? 100 :
+             itemType === 'generic.chart.bar' ? 68 :
              60
            ) : isRichTextBoxLikeResource ? snapDimensionToGrid(80, 40) : undefined, // Initial height - same as textbox for plain text
           // Apply default text color for text resources
@@ -225,8 +227,11 @@ export function useCanvasOperations({
             headingBackgroundColor: '#1f2937',
             label: 'body',
           }),
-          ...((itemType === 'generic.chart.pie' || itemType?.startsWith('generic.chart.')) && !isFromScratchPad && {
-            chart: defaultPieChartSpec(),
+          ...((itemType === 'generic.chart.pie' ||
+            itemType === 'generic.chart.bar' ||
+            itemType?.startsWith('generic.chart.')) &&
+            !isFromScratchPad && {
+            chart: defaultChartSpecForNodeType(itemType),
           }),
           // Apply icon background setting
           ...(!iconBackgroundEnabled && {

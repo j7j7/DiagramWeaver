@@ -1,9 +1,15 @@
 "use client";
 
 import React, { useEffect, useId, useRef, useState } from "react";
-import type { DiagramNodeData, RichTextRun } from "@/lib/types";
+import { createPortal } from "react-dom";
+import type { DiagramNodeData, NodeChartSpecPie, RichTextRun } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { SvgShapeBase } from "./svg-shape-base";
-import { getGradientCoordinates } from "./shape-utils";
+import {
+  chartInlineForeignObjectWidth,
+  getGradientCoordinates,
+  svgForeignObjectInlineInputStyle,
+} from "./shape-utils";
 import { pieSlicesForSvg, truncatePieSliceLabel } from "@/lib/chart-node";
 
 const VB_CX = 30;
@@ -42,12 +48,19 @@ export function PieChartShape(props: PieChartShapeProps) {
   const { isReadOnly = false, onPieSliceNameChange, ...svgBaseProps } = props;
   const { node, slideColorTransition } = svgBaseProps;
   const chart = node.chart;
-  const series = chart?.series;
+  const pieChart: NodeChartSpecPie | undefined = chart?.kind === "pie" ? chart : undefined;
+  const series = pieChart?.series;
   const { slices, rDraw } = pieSlicesForSvg(VB_CX, VB_CY, VB_R, series, {
-    segmentGapDeg: chart?.segmentGapDeg,
+    segmentGapDeg: pieChart?.segmentGapDeg,
   });
   const labelR = (rDraw / VB_R) * LABEL_R_AT_MAX;
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  /** Native SVG `<title>` tooltips are unreliable inside transformed/filtered SVG; use a portaled label. */
+  const [sliceHoverTooltip, setSliceHoverTooltip] = useState<{
+    x: number;
+    y: number;
+    text: string;
+  } | null>(null);
   const [editingSliceIndex, setEditingSliceIndex] = useState<number | null>(null);
   const [editingSliceNameDraft, setEditingSliceNameDraft] = useState("");
   const sliceLabelEditCancelledRef = useRef(false);
@@ -85,9 +98,9 @@ export function PieChartShape(props: PieChartShapeProps) {
   const borderStyle = node.borderStyle || "solid";
   const strokeWidth = borderStyle === "none" ? 0 : node.borderWidth || 2;
   const strokeColor =
-    chart?.sliceBorderColor?.trim() || node.borderColor || "#6b7280";
-  const svgShadow = chart?.shadow === true;
-  const showSegmentLabels = chart?.showSegmentLabels !== false;
+    pieChart?.sliceBorderColor?.trim() || node.borderColor || "#6b7280";
+  const svgShadow = pieChart?.shadow === true;
+  const showSegmentLabels = pieChart?.showSegmentLabels !== false;
 
   const gradients = slices.map((s, i) =>
     s.fillMode === "gradient" ? (
@@ -111,6 +124,8 @@ export function PieChartShape(props: PieChartShapeProps) {
       {slices.map((s, i) => {
         const isHover = hoveredIndex === i;
         const hasBorder = strokeWidth > 0;
+        const showSliceValue =
+          s.tooltipValue != null && Number.isFinite(s.tooltipValue);
         const fill =
           s.fillMode === "none"
             ? "transparent"
@@ -136,8 +151,34 @@ export function PieChartShape(props: PieChartShapeProps) {
                 filter: isHover ? "brightness(1.12)" : undefined,
                 cursor: "default",
               }}
-              onMouseEnter={() => setHoveredIndex(i)}
-              onMouseLeave={() => setHoveredIndex(null)}
+              onPointerEnter={(e) => {
+                setHoveredIndex(i);
+                if (showSliceValue) {
+                  setSliceHoverTooltip({
+                    x: e.clientX,
+                    y: e.clientY,
+                    text: s.tooltipValue!.toLocaleString(),
+                  });
+                } else {
+                  setSliceHoverTooltip(null);
+                }
+              }}
+              onPointerMove={(e) => {
+                if (!showSliceValue) return;
+                setSliceHoverTooltip((prev) =>
+                  prev
+                    ? { ...prev, x: e.clientX, y: e.clientY }
+                    : {
+                        x: e.clientX,
+                        y: e.clientY,
+                        text: s.tooltipValue!.toLocaleString(),
+                      }
+                );
+              }}
+              onPointerLeave={() => {
+                setHoveredIndex(null);
+                setSliceHoverTooltip(null);
+              }}
             />
           </g>
         );
@@ -169,11 +210,11 @@ export function PieChartShape(props: PieChartShapeProps) {
                 editingSliceNameDraft.length,
                 fullName.length
               );
-              const foW = Math.min(
-                56,
-                Math.max(8, charCount * s.labelFontSize * 0.55)
-              );
-              const foH = Math.max(5.5, s.labelFontSize * 1.35);
+              const foW = chartInlineForeignObjectWidth({
+                charCount,
+                fontSize: s.labelFontSize,
+              });
+              const foH = labelFontSizePx;
               const labelTextShadow =
                 "0 0 2px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.35)";
               return (
@@ -185,50 +226,39 @@ export function PieChartShape(props: PieChartShapeProps) {
                   height={foH}
                   style={{ overflow: "visible" }}
                 >
-                  <div
-                    className="flex h-full w-full items-center justify-center"
-                    style={{ margin: 0, padding: 0 }}
-                  >
-                    <input
-                      type="text"
-                      className="m-0 box-border min-w-0 max-w-full bg-transparent p-0 shadow-none focus:outline-none focus:ring-0"
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        border: "none",
-                        borderRadius: 0,
-                        textAlign: "center",
-                        fontFamily: "ui-sans-serif, system-ui, sans-serif",
-                        fontWeight: 600,
-                        fontSize: labelFontSizePx,
-                        lineHeight: 1,
-                        color: s.labelColor,
-                        textShadow: labelTextShadow,
-                        caretColor: s.labelColor,
-                      }}
-                      value={editingSliceNameDraft}
-                      autoFocus
-                      aria-label="Edit segment label"
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => setEditingSliceNameDraft(e.target.value)}
-                      onKeyDown={(e) => {
-                        e.stopPropagation();
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          commitSliceLabelEdit();
-                        } else if (e.key === "Escape") {
-                          e.preventDefault();
-                          cancelSliceLabelEdit();
-                        }
-                      }}
-                      onBlur={() => {
+                  <input
+                    type="text"
+                    className="m-0 box-border min-w-0 max-w-full bg-transparent shadow-none focus:outline-none focus:ring-0"
+                    style={svgForeignObjectInlineInputStyle({
+                      fontSize: labelFontSizePx,
+                      fontWeight: 600,
+                      color: s.labelColor,
+                      caretColor: s.labelColor,
+                      textAlign: "center",
+                      textShadow: labelTextShadow,
+                    })}
+                    value={editingSliceNameDraft}
+                    autoFocus
+                    aria-label="Edit segment label"
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => setEditingSliceNameDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      e.stopPropagation();
+                      if (e.key === "Enter") {
+                        e.preventDefault();
                         commitSliceLabelEdit();
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onDoubleClick={(e) => e.stopPropagation()}
-                    />
-                  </div>
+                      } else if (e.key === "Escape") {
+                        e.preventDefault();
+                        cancelSliceLabelEdit();
+                      }
+                    }}
+                    onBlur={() => {
+                      commitSliceLabelEdit();
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onDoubleClick={(e) => e.stopPropagation()}
+                  />
                 </foreignObject>
               );
             }
@@ -283,13 +313,33 @@ export function PieChartShape(props: PieChartShapeProps) {
   );
 
   return (
-    <SvgShapeBase
-      {...svgBaseProps}
-      viewBox="0 0 60 60"
-      preserveAspectRatio="xMidYMid meet"
-      slideColorTransition={slideColorTransition}
-      svgOverflowVisible={svgShadow}
-      svgContent={pieBody}
-    />
+    <>
+      <SvgShapeBase
+        {...svgBaseProps}
+        viewBox="0 0 60 60"
+        preserveAspectRatio="xMidYMid meet"
+        slideColorTransition={slideColorTransition}
+        svgOverflowVisible={svgShadow}
+        svgContent={pieBody}
+      />
+      {sliceHoverTooltip != null && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              role="tooltip"
+              className={cn(
+                "pointer-events-none fixed z-[10000] rounded-md border border-border bg-popover px-2 py-1",
+                "text-xs font-medium text-popover-foreground shadow-md"
+              )}
+              style={{
+                left: sliceHoverTooltip.x + 12,
+                top: sliceHoverTooltip.y + 12,
+              }}
+            >
+              {sliceHoverTooltip.text}
+            </div>,
+            document.body
+          )
+        : null}
+    </>
   );
 }
