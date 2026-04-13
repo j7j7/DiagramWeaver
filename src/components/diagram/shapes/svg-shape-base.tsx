@@ -33,6 +33,8 @@ interface SvgShapeBaseProps {
   onLabelDoubleClick: (e: React.MouseEvent) => void;
   slideColorTransition?: string;
   omitShapeText?: boolean;
+  /** Allow paint outside viewBox (e.g. SVG feDropShadow on pie chart). */
+  svgOverflowVisible?: boolean;
 }
 
 export function SvgShapeBase({
@@ -46,6 +48,7 @@ export function SvgShapeBase({
   overrideHeight,
   slideColorTransition,
   omitShapeText,
+  svgOverflowVisible = false,
   ...rest
 }: SvgShapeBaseProps) {
   const nodeAny = node as any;
@@ -78,6 +81,7 @@ export function SvgShapeBase({
         viewBox={viewBox}
         preserveAspectRatio={preserveAspectRatio ?? "none"}
         className="absolute inset-0 dw-slide-svg-paint-tx"
+        overflow={svgOverflowVisible ? "visible" : undefined}
       >
         {svgPaintTransition ? (
           <style>{`

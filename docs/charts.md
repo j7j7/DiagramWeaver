@@ -5,10 +5,10 @@ DiagramWeaver supports **data-driven chart nodes** under the `generic.chart.*` t
 ## User-facing workflow
 
 1. **Palette**: **Generic → Object → Pie chart** (resource `pie-chart.png`).
-2. **Data**: Right-click the node → **Chart data** → edit slices (name, value, **fill mode** none/solid/gradient, colors, label text color).
-3. **Appearance** (modal): **Slice outline** (wedge stroke color; **Use node border** clears the override so **`borderColor`** from Visual styling applies), **Pie drop shadow** (SVG `feDropShadow` on the pie geometry), **Segment separation** (0–24, radial pull in chart SVG units — see below). **Visual styling** sets **border width** / **border style**; slice **gradient direction** uses the node **`gradientAngle`** (same as rectangles). The modal outline color only applies when the chart override is set or you rely on the node border.
+2. **Data**: Right-click the node → **Chart data** → edit slices (name, value, **fill mode** none/solid/gradient, colors, **per-slice label size**, label text color). **Segment labels** can be turned off chart-wide; with **more than two** slices, slice rows open **collapsed** by default.
+3. **Appearance** (modal): **Slice outline**, **Pie drop shadow**, **Segment labels** (on/off), **Segment separation** (chart-wide default **0–3** SVG units), and per-slice **Segment pull override** (**0–24**, empty = use chart default). **Visual styling** sets **border width** / **border style**; slice **gradient direction** uses **`gradientAngle`**. The modal outline color only applies when the chart override is set or you rely on the node border.
 4. **Global styling**: **Visual styling** (context menu) controls **Border width**, **Border style** (including **none**), **Background** (solid / gradient / none), **`gradientAngle`**, and **Shadow** on the shape wrapper (`filter: var(--shape-shadow-drop)` when `useSvgShadow`). The chart’s **Pie drop shadow** is independent and stacks if both are enabled.
-5. **Diagram themes**: Applying a theme to a pie chart updates **each slice** from the theme’s **background** (solid, gradient, or none). Consecutive slices are shifted on the **hue wheel** by **18°** per slice (`CHART_THEME_HUE_STEP_DEG` in `theme-manager.ts`), so a green theme becomes green, green+18°, green+36°, … for both solid and gradient fills. **Label** colors on slices use the theme **`textColor`** when the theme defines it.
+5. **Diagram themes**: Applying a theme to a pie chart updates **each slice** from the theme’s **background** (solid, gradient, or none). Consecutive slices are shifted on the **hue wheel** by **36°** per slice (`CHART_THEME_HUE_STEP_DEG` in `theme-manager.ts`), so a green theme becomes green, green+36°, green+72°, … for both solid and gradient fills. **Label** colors on slices use the theme **`textColor`** when the theme defines it.
 
 ## Data model (`DiagramNodeData.chart`)
 
@@ -17,10 +17,11 @@ Stored as **`NodeChartSpec`** (`src/lib/types.ts`):
 | Field | Type | Purpose |
 |--------|------|---------|
 | `kind` | `'pie'` | Discriminator for editors and renderers. |
-| `series` | `ChartSeriesItem[]` | Slice rows: `id?`, `name`, `value`, `color?`, `labelColor?`, `fillStyle?` (`none` \| `solid` \| `gradient`), `gradientColors?` (`[string, string]`). |
+| `series` | `ChartSeriesItem[]` | Slice rows: `id?`, `name`, `value`, `color?`, `labelColor?`, `labelFontSize?` (2–14, SVG viewBox units), `segmentPull?` (0–24, optional radial pull replacing chart default for that slice), `fillStyle?`, `gradientColors?`. |
 | `sliceBorderColor?` | `string` | Stroke color for wedge outlines. If omitted, uses the node’s **`borderColor`** (Visual styling), then `#6b7280`. |
 | `shadow?` | `boolean` | If `true`, applies an **SVG `feDropShadow`** on the pie geometry (see `PieChartShape`). Independent of the node-level **Shadow** toggle in Visual styling (both can be on). |
-| `segmentGapDeg?` | `number` | **Radial pull** per slice in the pie’s **60×60** SVG viewBox (0–`CHART_MAX_SEGMENT_PULL`, default cap **24**). **Does not change slice angles.** Wedge **radius** is reduced by the same amount (`outerBudget − pull`, floored at `PIE_MIN_WEDGE_RADIUS`) so **pull + rDraw ≤ outer budget** — the chart stays inside the same circle as separation 0. JSON key kept for backward compatibility. |
+| `showSegmentLabels?` | `boolean` | If **`false`**, slice names are not drawn. Omitted or **`true`** = show labels. |
+| `segmentGapDeg?` | `number` | **Chart default radial pull** for slices without `segmentPull` (0–`CHART_MAX_SEGMENT_PULL`, **3**). **Does not change slice angles.** For mixed pulls, **`pieSlicesForSvg`** scales pulls so **max effective pull + rDraw ≤ outer budget** and **`rDraw ≥ PIE_MIN_WEDGE_RADIUS`**. Older JSON above **3** is clamped when applied. JSON key kept for backward compatibility. |
 
 JSON validation: `DiagramNodeDataSchema` in `src/lib/schemas.ts` (`chart` object).
 
@@ -31,12 +32,16 @@ JSON validation: `DiagramNodeDataSchema` in `src/lib/schemas.ts` (`chart` object
 | `isChartNodeType(nodeType)` | `true` if `type` starts with `generic.chart.`. |
 | `newChartSliceId()` | UUID or random id for a slice row. |
 | `defaultPieChartSpec()` | Default `NodeChartSpec` (one slice, value 100). |
-| `CHART_MAX_SEGMENT_PULL` | Max stored radial pull (24). |
-| `PIE_MIN_WEDGE_RADIUS` | Floor for wedge radius when pull is large (default5 SVG units). |
-| `computePieRadialLayout(outerBudget, segmentGapRequest)` | `{ rDraw, pull }` with `pull + rDraw ≤ outerBudget` so the pie rim stays inside the same circle. |
+| `CHART_MAX_SEGMENT_PULL` | Max **chart default** radial pull stored in `segmentGapDeg` (**3**). |
+| `CHART_MAX_PER_SLICE_SEGMENT_PULL` | Max **`series[].segmentPull`** override (**24**). |
+| `PIE_MIN_WEDGE_RADIUS` | Floor for wedge radius when pull is large (**5** SVG units). |
+| `computePieRadialLayout(outerBudget, segmentGapRequest)` | Single-slice helper: `{ rDraw, pull }` after clamping the chart default and fitting the budget. |
+| `scalePullsForOuterBudget(pulls, outerBudget)` | Scales an array of per-slice pulls so the outer rim and minimum wedge radius fit `outerBudget`. |
+| `effectiveSliceSegmentPull(seriesItem, chartDefaultPull)` | Resolved pull for one slice (`segmentPull` or chart default). |
 | `DEFAULT_PIE_SLICE_COLORS` | Palette when `series[].color` is omitted (solid). |
 | `DEFAULT_PIE_SLICE_LABEL_COLOR` | Default label fill when `labelColor` is omitted. |
-| `pieSlicesForSvg(cx, cy, outerRadiusBudget, series, options?)` | Builds wedges with radius `rDraw` from `computePieRadialLayout(outerRadiusBudget, options.segmentGapDeg)`. Returns `PieSliceRender[]`. |
+| `pieSlicesForSvg(cx, cy, outerRadiusBudget, series, options?)` | Builds wedges; returns **`{ slices, rDraw }`** where `rDraw` and per-slice explode distances come from **`scalePullsForOuterBudget`** over each slice’s effective pull. **`slices`** include resolved **`labelFontSize`** via `resolvePieSliceLabelFontSize`. |
+| `resolvePieSliceLabelFontSize(seriesItem, spanRadians)` | Per-slice label size or defaults (`DEFAULT_PIE_WEDGE_LABEL_FONT` / `DEFAULT_PIE_FULL_SLICE_LABEL_FONT`). |
 | `truncatePieSliceLabel(name, maxLen?)` | Shortens labels for small wedges / preview. |
 
 **Hue shift helper** (themes): `shiftHueOfColor(color, deltaDegrees)` in `src/lib/color-shift.ts` — used when applying diagram themes to pie slices.
@@ -59,7 +64,7 @@ JSON validation: `DiagramNodeDataSchema` in `src/lib/schemas.ts` (`chart` object
 
 ## Themes (`src/lib/theme-manager.ts`)
 
-`applyThemeToItem` updates `node.chart.series` for `generic.chart.*` nodes: each row gets `fillStyle` / `color` or `gradientColors` from **`ThemeProperties.backgroundStyle`** and colors, with **`shiftHueOfColor(..., i * 18)`** per slice index. Slice **`labelColor`** follows **`textColor`** when present.
+`applyThemeToItem` updates `node.chart.series` for `generic.chart.*` nodes: each row gets `fillStyle` / `color` or `gradientColors` from **`ThemeProperties.backgroundStyle`** and colors, with **`shiftHueOfColor(..., i * 36)`** per slice index. Slice **`labelColor`** follows **`textColor`** when present.
 
 ## Connections (pie as a circle)
 

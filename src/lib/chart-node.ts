@@ -14,11 +14,30 @@ export const DEFAULT_PIE_SLICE_COLORS = [
 /** Default slice label color when `labelColor` is omitted on a series row. */
 export const DEFAULT_PIE_SLICE_LABEL_COLOR = "#f9fafb";
 
+/** Default segment label font size (SVG viewBox units) for multi-slice wedges. */
+export const DEFAULT_PIE_WEDGE_LABEL_FONT = 4.75;
+/** Default label size for a single full disc slice. */
+export const DEFAULT_PIE_FULL_SLICE_LABEL_FONT = 5.5;
+
+export function resolvePieSliceLabelFontSize(
+  seriesItem: ChartSeriesItem | undefined,
+  spanRadians: number
+): number {
+  const v = seriesItem?.labelFontSize;
+  if (typeof v === "number" && Number.isFinite(v) && v > 0) {
+    return Math.min(14, Math.max(2, v));
+  }
+  return spanRadians >= 2 * Math.PI - 1e-6 ? DEFAULT_PIE_FULL_SLICE_LABEL_FONT : DEFAULT_PIE_WEDGE_LABEL_FONT;
+}
+
 /**
- * Max radial pull per slice in the pie SVG viewBox (60×60).
+ * Max **chart default** radial pull (slices without `segmentPull` override).
  * Stored in JSON as `chart.segmentGapDeg` for historical reasons.
  */
-export const CHART_MAX_SEGMENT_PULL = 24;
+export const CHART_MAX_SEGMENT_PULL = 3;
+
+/** Max pull when a slice sets `segmentPull` (can exceed chart default). */
+export const CHART_MAX_PER_SLICE_SEGMENT_PULL = 24;
 
 /** @deprecated Use `CHART_MAX_SEGMENT_PULL`. */
 export const MAX_SEGMENT_GAP_DEG = CHART_MAX_SEGMENT_PULL;
@@ -26,21 +45,71 @@ export const MAX_SEGMENT_GAP_DEG = CHART_MAX_SEGMENT_PULL;
 /** Floor for wedge radius when separation is large (SVG units in the pie viewBox). */
 export const PIE_MIN_WEDGE_RADIUS = 5;
 
+export function clampChartDefaultSegmentPull(v: number | undefined): number {
+  return Math.max(0, Math.min(v ?? 0, CHART_MAX_SEGMENT_PULL));
+}
+
+/** Effective pull for one slice: optional `segmentPull` replaces chart default. */
+export function effectiveSliceSegmentPull(
+  seriesItem: ChartSeriesItem | undefined,
+  chartDefaultPull: number
+): number {
+  if (seriesItem == null) return chartDefaultPull;
+  const o = seriesItem.segmentPull;
+  if (typeof o === "number" && Number.isFinite(o)) {
+    return Math.max(0, Math.min(o, CHART_MAX_PER_SLICE_SEGMENT_PULL));
+  }
+  return chartDefaultPull;
+}
+
+/**
+ * Scale per-slice pulls so `max(pull) + rDraw <= outerRadiusBudget` and `rDraw >= PIE_MIN_WEDGE_RADIUS`.
+ */
+export function scalePullsForOuterBudget(
+  pulls: number[],
+  outerRadiusBudget: number
+): { rDraw: number; pullsScaled: number[] } {
+  if (pulls.length === 0) {
+    return { rDraw: outerRadiusBudget, pullsScaled: [] };
+  }
+  const maxP = Math.max(0, ...pulls);
+  let rDraw = outerRadiusBudget - maxP;
+  if (rDraw >= PIE_MIN_WEDGE_RADIUS) {
+    return { rDraw, pullsScaled: pulls.slice() };
+  }
+  rDraw = PIE_MIN_WEDGE_RADIUS;
+  const maxAllowed = outerRadiusBudget - PIE_MIN_WEDGE_RADIUS;
+  if (maxP <= 0) {
+    return { rDraw: outerRadiusBudget, pullsScaled: pulls.map(() => 0) };
+  }
+  if (maxP <= maxAllowed) {
+    return { rDraw: outerRadiusBudget - maxP, pullsScaled: pulls.slice() };
+  }
+  const scale = maxAllowed / maxP;
+  const scaled = pulls.map((p) => p * scale);
+  const maxP2 = Math.max(0, ...scaled);
+  rDraw = Math.max(outerRadiusBudget - maxP2, PIE_MIN_WEDGE_RADIUS);
+  return { rDraw, pullsScaled: scaled };
+}
+
 /**
  * Wedge radius and radial pull so the outer rim stays within `outerRadiusBudget`:
  * `pull + rDraw <= outerRadiusBudget` (after pull clamp and min-radius floor).
+ * For multi-slice pies with mixed pulls, use `pieSlicesForSvg` instead.
  */
 export function computePieRadialLayout(
   outerRadiusBudget: number,
   segmentGapRequest: number | undefined
 ): { rDraw: number; pull: number } {
-  let pull = Math.max(0, Math.min(segmentGapRequest ?? 0, CHART_MAX_SEGMENT_PULL));
-  let rDraw = outerRadiusBudget - pull;
-  if (rDraw < PIE_MIN_WEDGE_RADIUS) {
-    rDraw = PIE_MIN_WEDGE_RADIUS;
-    pull = Math.max(0, outerRadiusBudget - rDraw);
-  }
-  return { rDraw, pull };
+  const chartDefault = clampChartDefaultSegmentPull(segmentGapRequest);
+  const { rDraw, pullsScaled } = scalePullsForOuterBudget([chartDefault], outerRadiusBudget);
+  return { rDraw, pull: pullsScaled[0] ?? 0 };
+}
+
+export interface PieSlicesForSvgResult {
+  slices: PieSliceRender[];
+  /** Wedge radius after scaling pulls to fit `outerRadiusBudget`. */
+  rDraw: number;
 }
 
 export function isChartNodeType(nodeType: string | undefined): boolean {
@@ -79,12 +148,14 @@ export interface PieSliceRender {
   /** Gradient stops when `fillMode === 'gradient'` */
   gradientColor1: string;
   gradientColor2: string;
+  /** Resolved label font size (SVG viewBox units). */
+  labelFontSize: number;
 }
 
 export interface PieSliceBuildOptions {
   /**
-   * Requested radial pull (SVG units); same as `NodeChartSpec.segmentGapDeg` in JSON.
-   * Actual pull may be reduced so wedge radius stays ≥ `PIE_MIN_WEDGE_RADIUS`.
+   * Chart default radial pull (0–3); same as `NodeChartSpec.segmentGapDeg`.
+   * Slices may override with `segmentPull` (0–24). Layout uses max pull to shrink wedge radius.
    */
   segmentGapDeg?: number;
 }
@@ -157,7 +228,7 @@ function resolveSliceFill(
 
 /**
  * SVG path commands and label metadata for pie slices (viewBox coordinates).
- * @param outerRadiusBudget — max distance from pie center to outer arc along a slice bisector after explode (e.g. 28 in a 60×60 viewBox). Wedge radius is reduced when separation &gt; 0 so the chart does not grow past this circle.
+ * @param outerRadiusBudget — max distance from pie center to outer arc along a slice bisector after explode (e.g. 28 in a 60×60 viewBox). Wedge **`rDraw`** shrinks from **max effective pull** (chart default and/or per-slice `segmentPull`) so the pie rim stays inside this circle.
  */
 export function pieSlicesForSvg(
   cx: number,
@@ -165,8 +236,8 @@ export function pieSlicesForSvg(
   outerRadiusBudget: number,
   series: ChartSeriesItem[] | undefined,
   options?: PieSliceBuildOptions
-): PieSliceRender[] {
-  const { rDraw, pull } = computePieRadialLayout(outerRadiusBudget, options?.segmentGapDeg);
+): PieSlicesForSvgResult {
+  const chartDefault = clampChartDefaultSegmentPull(options?.segmentGapDeg);
   const list = Array.isArray(series) ? series : [];
   const safe = list.map((s, i) => ({
     raw: s,
@@ -177,62 +248,80 @@ export function pieSlicesForSvg(
   }));
 
   if (safe.length === 0) {
-    return [
-      {
-        d: fullCirclePath(cx, cy, rDraw),
-        midAngle: -Math.PI / 2,
-        name: "",
-        labelColor: DEFAULT_PIE_SLICE_LABEL_COLOR,
-        span: 2 * Math.PI,
-        explodeX: 0,
-        explodeY: 0,
-        fillMode: "solid",
-        solidFill: DEFAULT_PIE_SLICE_COLORS[0],
-        gradientColor1: "",
-        gradientColor2: "",
-      },
-    ];
+    const rDraw = outerRadiusBudget;
+    return {
+      rDraw,
+      slices: [
+        {
+          d: fullCirclePath(cx, cy, rDraw),
+          midAngle: -Math.PI / 2,
+          name: "",
+          labelColor: DEFAULT_PIE_SLICE_LABEL_COLOR,
+          span: 2 * Math.PI,
+          explodeX: 0,
+          explodeY: 0,
+          fillMode: "solid",
+          solidFill: DEFAULT_PIE_SLICE_COLORS[0],
+          gradientColor1: "",
+          gradientColor2: "",
+          labelFontSize: DEFAULT_PIE_FULL_SLICE_LABEL_FONT,
+        },
+      ],
+    };
   }
 
   const sum = safe.reduce((a, b) => a + b.value, 0);
   if (sum <= 0) {
-    return [
-      {
-        d: fullCirclePath(cx, cy, rDraw),
-        midAngle: -Math.PI / 2,
-        name: "",
-        labelColor: DEFAULT_PIE_SLICE_LABEL_COLOR,
-        span: 2 * Math.PI,
-        explodeX: 0,
-        explodeY: 0,
-        fillMode: "solid",
-        solidFill: "#e5e7eb",
-        gradientColor1: "",
-        gradientColor2: "",
-      },
-    ];
+    const rDraw = outerRadiusBudget;
+    return {
+      rDraw,
+      slices: [
+        {
+          d: fullCirclePath(cx, cy, rDraw),
+          midAngle: -Math.PI / 2,
+          name: "",
+          labelColor: DEFAULT_PIE_SLICE_LABEL_COLOR,
+          span: 2 * Math.PI,
+          explodeX: 0,
+          explodeY: 0,
+          fillMode: "solid",
+          solidFill: "#e5e7eb",
+          gradientColor1: "",
+          gradientColor2: "",
+          labelFontSize: DEFAULT_PIE_FULL_SLICE_LABEL_FONT,
+        },
+      ],
+    };
   }
 
   if (safe.length === 1) {
     const s = safe[0];
     const midAngle = -Math.PI / 2;
-    const ex = pull * Math.cos(midAngle);
-    const ey = pull * Math.sin(midAngle);
-    return [
-      {
-        d: fullCirclePath(cx, cy, rDraw),
-        midAngle,
-        name: s.name,
-        labelColor: s.labelColor,
-        span: 2 * Math.PI,
-        explodeX: ex,
-        explodeY: ey,
-        fillMode: s.fillMode,
-        solidFill: s.solidFill,
-        gradientColor1: s.gradientColor1,
-        gradientColor2: s.gradientColor2,
-      },
-    ];
+    const spanFull = 2 * Math.PI;
+    const p = effectiveSliceSegmentPull(s.raw, chartDefault);
+    const { rDraw, pullsScaled } = scalePullsForOuterBudget([p], outerRadiusBudget);
+    const pull0 = pullsScaled[0] ?? 0;
+    const ex = pull0 * Math.cos(midAngle);
+    const ey = pull0 * Math.sin(midAngle);
+    return {
+      rDraw,
+      slices: [
+        {
+          d: fullCirclePath(cx, cy, rDraw),
+          midAngle,
+          name: s.name,
+          labelColor: s.labelColor,
+          span: spanFull,
+          explodeX: ex,
+          explodeY: ey,
+          fillMode: s.fillMode,
+          solidFill: s.solidFill,
+          gradientColor1: s.gradientColor1,
+          gradientColor2: s.gradientColor2,
+          labelFontSize: resolvePieSliceLabelFontSize(s.raw, spanFull),
+        },
+      ],
+    };
   }
 
   const contributors = safe
@@ -243,24 +332,35 @@ export function pieSlicesForSvg(
   if (k <= 1) {
     const s = contributors[0]?.s ?? safe[0];
     const mid = -Math.PI / 2;
-    const ex = pull * Math.cos(mid);
-    const ey = pull * Math.sin(mid);
-    return [
-      {
-        d: fullCirclePath(cx, cy, rDraw),
-        midAngle: mid,
-        name: s.name,
-        labelColor: s.labelColor,
-        span: 2 * Math.PI,
-        explodeX: ex,
-        explodeY: ey,
-        fillMode: s.fillMode,
-        solidFill: s.solidFill,
-        gradientColor1: s.gradientColor1,
-        gradientColor2: s.gradientColor2,
-      },
-    ];
+    const spanFull = 2 * Math.PI;
+    const p = effectiveSliceSegmentPull(s.raw, chartDefault);
+    const { rDraw, pullsScaled } = scalePullsForOuterBudget([p], outerRadiusBudget);
+    const pull0 = pullsScaled[0] ?? 0;
+    const ex = pull0 * Math.cos(mid);
+    const ey = pull0 * Math.sin(mid);
+    return {
+      rDraw,
+      slices: [
+        {
+          d: fullCirclePath(cx, cy, rDraw),
+          midAngle: mid,
+          name: s.name,
+          labelColor: s.labelColor,
+          span: spanFull,
+          explodeX: ex,
+          explodeY: ey,
+          fillMode: s.fillMode,
+          solidFill: s.solidFill,
+          gradientColor1: s.gradientColor1,
+          gradientColor2: s.gradientColor2,
+          labelFontSize: resolvePieSliceLabelFontSize(s.raw, spanFull),
+        },
+      ],
+    };
   }
+
+  const pullsRequested = contributors.map(({ s }) => effectiveSliceSegmentPull(s.raw, chartDefault));
+  const { rDraw, pullsScaled } = scalePullsForOuterBudget(pullsRequested, outerRadiusBudget);
 
   const paths: PieSliceRender[] = [];
   let angle = -Math.PI / 2;
@@ -271,22 +371,25 @@ export function pieSlicesForSvg(
     const startAngle = angle;
     const endAngle = angle + span;
     const midAngle = startAngle + span / 2;
-    const ex = pull * Math.cos(midAngle);
-    const ey = pull * Math.sin(midAngle);
+    const pullSlice = pullsScaled[i] ?? 0;
+    const ex = pullSlice * Math.cos(midAngle);
+    const ey = pullSlice * Math.sin(midAngle);
 
     if (span >= 2 * Math.PI - 1e-6) {
+      const spanFull = 2 * Math.PI;
       paths.push({
         d: fullCirclePath(cx, cy, rDraw),
         midAngle: -Math.PI / 2,
         name: s.name,
         labelColor: s.labelColor,
-        span: 2 * Math.PI,
+        span: spanFull,
         explodeX: ex,
         explodeY: ey,
         fillMode: s.fillMode,
         solidFill: s.solidFill,
         gradientColor1: s.gradientColor1,
         gradientColor2: s.gradientColor2,
+        labelFontSize: resolvePieSliceLabelFontSize(s.raw, spanFull),
       });
       break;
     }
@@ -304,29 +407,35 @@ export function pieSlicesForSvg(
       solidFill: s.solidFill,
       gradientColor1: s.gradientColor1,
       gradientColor2: s.gradientColor2,
+      labelFontSize: resolvePieSliceLabelFontSize(s.raw, arcSpan),
     });
     angle = endAngle;
   }
 
   if (paths.length === 0) {
-    return [
-      {
-        d: fullCirclePath(cx, cy, rDraw),
-        midAngle: -Math.PI / 2,
-        name: "",
-        labelColor: DEFAULT_PIE_SLICE_LABEL_COLOR,
-        span: 2 * Math.PI,
-        explodeX: 0,
-        explodeY: 0,
-        fillMode: "solid",
-        solidFill: "#e5e7eb",
-        gradientColor1: "",
-        gradientColor2: "",
-      },
-    ];
+    const rDraw = outerRadiusBudget;
+    return {
+      rDraw,
+      slices: [
+        {
+          d: fullCirclePath(cx, cy, rDraw),
+          midAngle: -Math.PI / 2,
+          name: "",
+          labelColor: DEFAULT_PIE_SLICE_LABEL_COLOR,
+          span: 2 * Math.PI,
+          explodeX: 0,
+          explodeY: 0,
+          fillMode: "solid",
+          solidFill: "#e5e7eb",
+          gradientColor1: "",
+          gradientColor2: "",
+          labelFontSize: DEFAULT_PIE_WEDGE_LABEL_FONT,
+        },
+      ],
+    };
   }
 
-  return paths;
+  return { slices: paths, rDraw };
 }
 
 /** Shorten label for small pie viewBox (SVG units). */

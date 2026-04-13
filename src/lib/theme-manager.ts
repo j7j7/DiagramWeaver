@@ -5,7 +5,7 @@ import { isChartNodeType } from './chart-node';
 import { shiftHueOfColor } from './color-shift';
 
 /** Hue step per pie slice when applying a diagram theme (degrees on the color wheel). */
-const CHART_THEME_HUE_STEP_DEG = 18;
+const CHART_THEME_HUE_STEP_DEG = 36;
 
 const THEME_STORAGE_KEY = 'diagram-weaver-themes';
 
@@ -1270,6 +1270,12 @@ class ThemeManager {
             base.labelColor = properties.textColor;
           } else if (sliceRow.labelColor !== undefined) {
             base.labelColor = sliceRow.labelColor;
+          }
+          if (sliceRow.labelFontSize !== undefined) {
+            base.labelFontSize = sliceRow.labelFontSize;
+          }
+          if (sliceRow.segmentPull !== undefined) {
+            base.segmentPull = sliceRow.segmentPull;
           }
           if (bgStyle === 'gradient' && properties.backgroundColors && properties.backgroundColors.length >= 2) {
             base.fillStyle = 'gradient';

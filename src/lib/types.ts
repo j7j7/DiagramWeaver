@@ -57,6 +57,14 @@ export interface ChartSeriesItem {
   fillStyle?: ChartSliceFillStyle;
   /** Gradient stops [start, end] when `fillStyle` is `gradient`. */
   gradientColors?: [string, string];
+  /**
+   * Segment label font size in pie SVG viewBox units (~2–14; defaults ~4.75 wedge / ~5.5 full disc when omitted).
+   */
+  labelFontSize?: number;
+  /**
+   * Optional radial pull for this slice only (SVG viewBox units, 0–24). When set, replaces chart `segmentGapDeg` for this slice.
+   */
+  segmentPull?: number;
 }
 
 /** Chart configuration on a node (`generic.chart.*`). */
@@ -68,11 +76,13 @@ export interface NodeChartSpec {
   /** SVG drop shadow on the pie (separate from node Visual styling shadow). */
   shadow?: boolean;
   /**
-   * Requested radial pull per slice (SVG units, ~0–24 in the 60×60 pie viewBox).
-   * Wedge radius shrinks by the same amount so the outer rim stays within the default circle; angles unchanged.
+   * Default radial pull for slices without `segmentPull` (SVG units, 0–3).
+   * Wedge radius uses the **maximum** effective pull across slices so the pie stays inside the design circle.
    * JSON key kept as `segmentGapDeg` for backward compatibility.
    */
   segmentGapDeg?: number;
+  /** When `false`, segment names are not drawn on the pie. Omitted or `true` = show labels. */
+  showSegmentLabels?: boolean;
 }
 
 export interface DiagramNodeData {

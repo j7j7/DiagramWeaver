@@ -17,10 +17,12 @@ import type {
 } from "@/lib/types";
 import {
   CHART_MAX_SEGMENT_PULL,
+  CHART_MAX_PER_SLICE_SEGMENT_PULL,
   defaultPieChartSpec,
   newChartSliceId,
   DEFAULT_PIE_SLICE_COLORS,
   DEFAULT_PIE_SLICE_LABEL_COLOR,
+  DEFAULT_PIE_WEDGE_LABEL_FONT,
 } from "@/lib/chart-node";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
@@ -41,6 +43,25 @@ function sliceFillStyleFromSeries(s: ChartSeriesItem): ChartSliceFillStyle {
   return "solid";
 }
 
+/** Parsed label size for the chart modal slider (empty string = renderer default). */
+function pieChartRowLabelSizeState(labelFontSizeStr: string): {
+  hasCustomLabelFontSize: boolean;
+  labelSizeSliderValue: number;
+} {
+  const trimmed = String(labelFontSizeStr ?? "").trim();
+  const raw = Number(trimmed.replace(/,/g, "."));
+  if (!trimmed || !Number.isFinite(raw) || raw <= 0) {
+    return {
+      hasCustomLabelFontSize: false,
+      labelSizeSliderValue: DEFAULT_PIE_WEDGE_LABEL_FONT,
+    };
+  }
+  return {
+    hasCustomLabelFontSize: true,
+    labelSizeSliderValue: Math.min(14, Math.max(2, raw)),
+  };
+}
+
 interface EditRow {
   id: string;
   name: string;
@@ -50,6 +71,10 @@ interface EditRow {
   gradientColor1: string;
   gradientColor2: string;
   labelColor: string;
+  /** Empty = use renderer default label size. */
+  labelFontSizeStr: string;
+  /** Empty = use chart "Segment separation" for this slice; otherwise 0–24 radial pull. */
+  segmentPullStr: string;
 }
 
 interface ChartDataEditorModalProps {
@@ -78,6 +103,7 @@ export function ChartDataEditorModal({
   const [sliceBorderColor, setSliceBorderColor] = useState("");
   const [chartShadow, setChartShadow] = useState(false);
   const [segmentGapDeg, setSegmentGapDeg] = useState(0);
+  const [showSegmentLabels, setShowSegmentLabels] = useState(true);
   /** Slice ids whose editor body is collapsed (header only). */
   const [collapsedSliceIds, setCollapsedSliceIds] = useState<Set<string>>(() => new Set());
 
@@ -87,30 +113,42 @@ export function ChartDataEditorModal({
       const series: ChartSeriesItem[] = spec?.series?.length
         ? spec.series.map((s) => ({ ...s }))
         : defaultPieChartSpec().series;
-      setRows(
-        series.map((s) => {
-          const fs = sliceFillStyleFromSeries(s);
-          const gc = s.gradientColors;
-          return {
-            id: s.id || newChartSliceId(),
-            name: s.name,
-            valueStr: String(s.value),
-            fillStyle: fs,
-            color: s.color ?? "",
-            gradientColor1: gc?.[0] ?? "",
-            gradientColor2: gc?.[1] ?? "",
-            labelColor: s.labelColor ?? "",
-          };
-        })
-      );
+      const nextRows: EditRow[] = series.map((s) => {
+        const fs = sliceFillStyleFromSeries(s);
+        const gc = s.gradientColors;
+        return {
+          id: s.id || newChartSliceId(),
+          name: s.name,
+          valueStr: String(s.value),
+          fillStyle: fs,
+          color: s.color ?? "",
+          gradientColor1: gc?.[0] ?? "",
+          gradientColor2: gc?.[1] ?? "",
+          labelColor: s.labelColor ?? "",
+          labelFontSizeStr:
+            s.labelFontSize != null && Number.isFinite(s.labelFontSize)
+              ? String(s.labelFontSize)
+              : "",
+          segmentPullStr:
+            s.segmentPull != null && Number.isFinite(s.segmentPull)
+              ? String(s.segmentPull)
+              : "",
+        };
+      });
+      setRows(nextRows);
       setSliceBorderColor(spec?.sliceBorderColor ?? "");
       setChartShadow(spec?.shadow === true);
+      setShowSegmentLabels(spec?.showSegmentLabels !== false);
       setSegmentGapDeg(
         typeof spec?.segmentGapDeg === "number" && spec.segmentGapDeg > 0
           ? Math.min(CHART_MAX_SEGMENT_PULL, spec.segmentGapDeg)
           : 0
       );
-      setCollapsedSliceIds(new Set());
+      if (nextRows.length > 2) {
+        setCollapsedSliceIds(new Set(nextRows.map((r) => r.id)));
+      } else {
+        setCollapsedSliceIds(new Set());
+      }
     }
   }, [visible, node]);
 
@@ -230,6 +268,17 @@ export function ChartDataEditorModal({
         value,
       };
       if (r.labelColor.trim()) base.labelColor = r.labelColor.trim();
+      const lfsRaw = Number(String(r.labelFontSizeStr ?? "").trim().replace(/,/g, "."));
+      if (Number.isFinite(lfsRaw) && lfsRaw > 0) {
+        base.labelFontSize = Math.min(14, Math.max(2, lfsRaw));
+      }
+      const spRaw = Number(String(r.segmentPullStr ?? "").trim().replace(/,/g, "."));
+      if (String(r.segmentPullStr ?? "").trim() !== "" && Number.isFinite(spRaw)) {
+        base.segmentPull = Math.min(
+          CHART_MAX_PER_SLICE_SEGMENT_PULL,
+          Math.max(0, spRaw)
+        );
+      }
 
       if (r.fillStyle === "none") {
         base.fillStyle = "none";
@@ -260,6 +309,7 @@ export function ChartDataEditorModal({
       ...(segmentGapDeg > 0
         ? { segmentGapDeg: Math.min(CHART_MAX_SEGMENT_PULL, segmentGapDeg) }
         : {}),
+      ...(!showSegmentLabels ? { showSegmentLabels: false } : {}),
     };
     onSave(node.id, chart);
     onClose();
@@ -277,6 +327,8 @@ export function ChartDataEditorModal({
         gradientColor1: "",
         gradientColor2: "",
         labelColor: "",
+        labelFontSizeStr: "",
+        segmentPullStr: "",
       },
     ]);
 
@@ -354,6 +406,13 @@ export function ChartDataEditorModal({
                   </div>
                   <Switch checked={chartShadow} onCheckedChange={setChartShadow} disabled={isReadOnly} />
                 </div>
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <Label className="text-xs font-medium">Segment labels</Label>
+                    <p className="text-[10px] text-muted-foreground">Show slice names on the pie. Size is set per slice below.</p>
+                  </div>
+                  <Switch checked={showSegmentLabels} onCheckedChange={setShowSegmentLabels} disabled={isReadOnly} />
+                </div>
                 <div className="space-y-2">
                   <div className="flex justify-between gap-2">
                     <Label className="text-xs">Segment separation</Label>
@@ -368,7 +427,7 @@ export function ChartDataEditorModal({
                     disabled={isReadOnly}
                   />
                   <p className="text-[10px] text-muted-foreground">
-                    Pulls each slice outward; wedge radius shrinks so the chart stays within the same circle. Slice angles stay the same.
+                    Default pull for every slice (0–{CHART_MAX_SEGMENT_PULL}). Wedge radius scales so the rim stays inside the design circle; angles unchanged. Per-slice overrides can pull individual slices farther (see each row).
                   </p>
                 </div>
               </div>
@@ -388,6 +447,9 @@ export function ChartDataEditorModal({
                 const fillFallback = DEFAULT_PIE_SLICE_COLORS[i % DEFAULT_PIE_SLICE_COLORS.length];
                 const collapsed = collapsedSliceIds.has(row.id);
                 const summaryName = (row.name ?? "").trim() || `Series ${i + 1}`;
+                const { hasCustomLabelFontSize, labelSizeSliderValue } = pieChartRowLabelSizeState(
+                  row.labelFontSizeStr
+                );
                 return (
                   <div
                     key={row.id}
@@ -437,6 +499,8 @@ export function ChartDataEditorModal({
                       {collapsed ? (
                         <span className="flex-1 min-w-0 text-xs text-muted-foreground truncate">
                           {summaryName} · {row.valueStr || "0"} · {row.fillStyle}
+                          {row.labelFontSizeStr.trim() ? ` · sz ${row.labelFontSizeStr}` : ""}
+                          {row.segmentPullStr.trim() ? ` · pull ${row.segmentPullStr}` : ""}
                         </span>
                       ) : (
                         <div className="flex-1 min-w-0" aria-hidden />
@@ -550,6 +614,63 @@ export function ChartDataEditorModal({
                         {row.fillStyle === "none" ? (
                           <p className="text-[10px] text-muted-foreground">This slice has no fill.</p>
                         ) : null}
+                        <div
+                          className={`space-y-1 ${isReadOnly ? "pointer-events-none opacity-75" : ""}`}
+                        >
+                          <Label className="text-[10px] text-muted-foreground">
+                            Segment pull override
+                          </Label>
+                          <Input
+                            type="text"
+                            inputMode="decimal"
+                            value={row.segmentPullStr}
+                            onChange={(e) => updateRow(i, { segmentPullStr: e.target.value })}
+                            placeholder={`Chart default (${segmentGapDeg})`}
+                            className="h-8 text-xs"
+                            disabled={isReadOnly}
+                          />
+                          <p className="text-[10px] text-muted-foreground">
+                            Optional. 0–{CHART_MAX_PER_SLICE_SEGMENT_PULL} SVG units along the slice bisector; replaces chart segment separation for this slice only. Leave empty to use the chart slider.
+                          </p>
+                        </div>
+                        <div
+                          className={`space-y-2 ${isReadOnly ? "pointer-events-none opacity-75" : ""}`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <Label className="text-[10px] text-muted-foreground">Label size</Label>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span className="text-[10px] text-muted-foreground tabular-nums">
+                                {hasCustomLabelFontSize ? labelSizeSliderValue : "Default"}
+                              </span>
+                              {!isReadOnly && hasCustomLabelFontSize ? (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-1.5 text-[10px] text-muted-foreground"
+                                  onClick={() => updateRow(i, { labelFontSizeStr: "" })}
+                                >
+                                  Use default
+                                </Button>
+                              ) : null}
+                            </div>
+                          </div>
+                          <Slider
+                            value={[labelSizeSliderValue]}
+                            onValueChange={(v) => {
+                              const next = v[0];
+                              if (next == null) return;
+                              updateRow(i, { labelFontSizeStr: String(next) });
+                            }}
+                            min={2}
+                            max={14}
+                            step={0.25}
+                            disabled={isReadOnly}
+                          />
+                          <p className="text-[10px] text-muted-foreground">
+                            SVG units (2–14). Default follows slice shape in the renderer; drag to set a fixed size, or Use default to clear.
+                          </p>
+                        </div>
                         <div
                           className={`space-y-1 ${isReadOnly ? "pointer-events-none opacity-75" : ""}`}
                         >

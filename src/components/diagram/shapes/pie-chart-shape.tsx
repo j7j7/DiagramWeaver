@@ -4,7 +4,7 @@ import React, { useId, useState } from "react";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { SvgShapeBase } from "./svg-shape-base";
 import { getGradientCoordinates } from "./shape-utils";
-import { computePieRadialLayout, pieSlicesForSvg, truncatePieSliceLabel } from "@/lib/chart-node";
+import { pieSlicesForSvg, truncatePieSliceLabel } from "@/lib/chart-node";
 
 const VB_CX = 30;
 const VB_CY = 30;
@@ -39,11 +39,10 @@ export function PieChartShape(props: PieChartShapeProps) {
   const { node, slideColorTransition } = props;
   const chart = node.chart;
   const series = chart?.series;
-  const { rDraw } = computePieRadialLayout(VB_R, chart?.segmentGapDeg);
-  const labelR = (rDraw / VB_R) * LABEL_R_AT_MAX;
-  const slices = pieSlicesForSvg(VB_CX, VB_CY, VB_R, series, {
+  const { slices, rDraw } = pieSlicesForSvg(VB_CX, VB_CY, VB_R, series, {
     segmentGapDeg: chart?.segmentGapDeg,
   });
+  const labelR = (rDraw / VB_R) * LABEL_R_AT_MAX;
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const filterId = `dw-pie-sh-${useId().replace(/:/g, "")}`;
   const gradBaseId = `dw-pie-g-${useId().replace(/:/g, "")}`;
@@ -55,6 +54,7 @@ export function PieChartShape(props: PieChartShapeProps) {
   const strokeColor =
     chart?.sliceBorderColor?.trim() || node.borderColor || "#6b7280";
   const svgShadow = chart?.shadow === true;
+  const showSegmentLabels = chart?.showSegmentLabels !== false;
 
   const gradients = slices.map((s, i) =>
     s.fillMode === "gradient" ? (
@@ -109,46 +109,51 @@ export function PieChartShape(props: PieChartShapeProps) {
           </g>
         );
       })}
-      {slices.map((s, i) => {
-        if (!s.name.trim()) return null;
-        if (slices.length > 1 && s.span < MIN_SPAN_FOR_LABEL) return null;
-        const lx = VB_CX + s.explodeX;
-        const ly = VB_CY + s.explodeY;
-        const ta =
-          s.span >= 2 * Math.PI - 1e-6
-            ? { x: lx, y: ly + 4, anchor: "middle" as const }
-            : {
-                x: lx + labelR * Math.cos(s.midAngle),
-                y: ly + labelR * Math.sin(s.midAngle),
-                anchor: "middle" as const,
-              };
-        const display = truncatePieSliceLabel(s.name, s.span >= 2 * Math.PI - 1e-6 ? 18 : 12);
-        return (
-          <text
-            key={`lbl-${i}`}
-            x={ta.x}
-            y={ta.y}
-            textAnchor={ta.anchor}
-            dominantBaseline="middle"
-            fill={s.labelColor}
-            fontSize={s.span >= 2 * Math.PI - 1e-6 ? 5.5 : 4.75}
-            fontWeight={600}
-            pointerEvents="none"
-            style={{
-              textShadow: "0 0 2px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.35)",
-            }}
-          >
-            {display}
-          </text>
-        );
-      })}
+      {showSegmentLabels
+        ? slices.map((s, i) => {
+            if (!s.name.trim()) return null;
+            if (slices.length > 1 && s.span < MIN_SPAN_FOR_LABEL) return null;
+            const lx = VB_CX + s.explodeX;
+            const ly = VB_CY + s.explodeY;
+            const isFull = s.span >= 2 * Math.PI - 1e-6;
+            const ta = isFull
+              ? { x: lx, y: ly + Math.min(6, s.labelFontSize * 0.85), anchor: "middle" as const }
+              : {
+                  x: lx + labelR * Math.cos(s.midAngle),
+                  y: ly + labelR * Math.sin(s.midAngle),
+                  anchor: "middle" as const,
+                };
+            const maxChars = isFull
+              ? Math.max(4, Math.min(24, Math.round(18 * (5.5 / s.labelFontSize))))
+              : Math.max(4, Math.min(20, Math.round(12 * (4.75 / s.labelFontSize))));
+            const display = truncatePieSliceLabel(s.name, maxChars);
+            return (
+              <text
+                key={`lbl-${i}`}
+                x={ta.x}
+                y={ta.y}
+                textAnchor={ta.anchor}
+                dominantBaseline="middle"
+                fill={s.labelColor}
+                fontSize={s.labelFontSize}
+                fontWeight={600}
+                pointerEvents="none"
+                style={{
+                  textShadow: "0 0 2px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.35)",
+                }}
+              >
+                {display}
+              </text>
+            );
+          })
+        : null}
     </>
   );
 
   const defs = (
     <defs>
       {svgShadow ? (
-        <filter id={filterId} x="-40%" y="-40%" width="180%" height="180%">
+               <filter id={filterId} x="-55%" y="-55%" width="210%" height="210%">
           <feDropShadow dx="0" dy="2" stdDeviation="2.5" floodOpacity="0.35" />
         </filter>
       ) : null}
@@ -169,6 +174,7 @@ export function PieChartShape(props: PieChartShapeProps) {
       viewBox="0 0 60 60"
       preserveAspectRatio="xMidYMid meet"
       slideColorTransition={slideColorTransition}
+      svgOverflowVisible={svgShadow}
       svgContent={pieBody}
     />
   );

@@ -2,7 +2,7 @@ import React, { useId } from 'react';
 import { polygonToRoundedPath } from '@/components/diagram/shapes/shape-utils';
 import { getTextEffectsShadowCss } from '@/lib/text-styling';
 import type { NodeChartSpec } from '@/lib/types';
-import { computePieRadialLayout, pieSlicesForSvg, truncatePieSliceLabel } from '@/lib/chart-node';
+import { pieSlicesForSvg, truncatePieSliceLabel } from '@/lib/chart-node';
 
 interface ShapePreviewProps {
   type: string;
@@ -161,11 +161,10 @@ export function ShapePreview({
   const renderShape = () => {
     if (type === 'generic.chart.pie' || type?.startsWith('generic.chart.')) {
       const pieOuterR = 28;
-      const { rDraw } = computePieRadialLayout(pieOuterR, chart?.segmentGapDeg);
-      const labelR = (rDraw / pieOuterR) * 16;
-      const slices = pieSlicesForSvg(30, 30, pieOuterR, chart?.series, {
+      const { slices, rDraw } = pieSlicesForSvg(30, 30, pieOuterR, chart?.series, {
         segmentGapDeg: chart?.segmentGapDeg,
       });
+      const labelR = (rDraw / pieOuterR) * 16;
       const sw = borderStyle === 'none' ? 0 : strokeWidth;
       const sliceStroke = chart?.sliceBorderColor?.trim() || effectiveBorderColor;
       const pieGradBase = `sp-pie-${gradientId.replace(/:/g, '')}`;
@@ -209,31 +208,36 @@ export function ShapePreview({
               </g>
             );
           })}
-          {slices.map((s, i) => {
-            if (!s.name.trim() || (slices.length > 1 && s.span < 0.11)) return null;
-            const lx = 30 + s.explodeX;
-            const ly = 30 + s.explodeY;
-            const ta =
-              s.span >= 2 * Math.PI - 1e-6
-                ? { x: lx, y: ly + 4 }
-                : { x: lx + labelR * Math.cos(s.midAngle), y: ly + labelR * Math.sin(s.midAngle) };
-            return (
-              <text
-                key={`t-${i}`}
-                x={ta.x}
-                y={ta.y}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fill={s.labelColor}
-                fontSize={4.5}
-                fontWeight={600}
-                pointerEvents="none"
-                style={{ textShadow: '0 0 1px rgba(0,0,0,0.5)' }}
-              >
-                {truncatePieSliceLabel(s.name, 10)}
-              </text>
-            );
-          })}
+                   {chart?.showSegmentLabels !== false
+            ? slices.map((s, i) => {
+                if (!s.name.trim() || (slices.length > 1 && s.span < 0.11)) return null;
+                const lx = 30 + s.explodeX;
+                const ly = 30 + s.explodeY;
+                const isFull = s.span >= 2 * Math.PI - 1e-6;
+                const ta = isFull
+                  ? { x: lx, y: ly + Math.min(6, s.labelFontSize * 0.85) }
+                  : { x: lx + labelR * Math.cos(s.midAngle), y: ly + labelR * Math.sin(s.midAngle) };
+                const maxChars = isFull
+                  ? Math.max(4, Math.min(24, Math.round(18 * (5.5 / s.labelFontSize))))
+                  : Math.max(4, Math.min(20, Math.round(12 * (4.75 / s.labelFontSize))));
+                return (
+                  <text
+                    key={`t-${i}`}
+                    x={ta.x}
+                    y={ta.y}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fill={s.labelColor}
+                    fontSize={s.labelFontSize}
+                    fontWeight={600}
+                    pointerEvents="none"
+                    style={{ textShadow: '0 0 1px rgba(0,0,0,0.5)' }}
+                  >
+                    {truncatePieSliceLabel(s.name, maxChars)}
+                  </text>
+                );
+              })
+            : null}
         </svg>
       );
     }
