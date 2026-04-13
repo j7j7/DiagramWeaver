@@ -18,6 +18,10 @@ const VB_R = 28;
 /** Label ring at separation0; scales with wedge radius when slices are pulled out. */
 const LABEL_R_AT_MAX = 16;
 const MIN_SPAN_FOR_LABEL = 0.11;
+/** Defer clearing slice hover/tooltip so brief gaps at wedge edges or layout reflow don’t flicker. */
+const SLICE_POINTER_LEAVE_DELAY_MS = 140;
+/** Invisible stroke widens the hit target slightly (SVG viewBox units, non-scaling). */
+const SLICE_HIT_STROKE_PAD = 3;
 
 interface PieChartShapeProps {
   node: DiagramNodeData & { width?: number; height?: number };
@@ -64,8 +68,70 @@ export function PieChartShape(props: PieChartShapeProps) {
   const [editingSliceIndex, setEditingSliceIndex] = useState<number | null>(null);
   const [editingSliceNameDraft, setEditingSliceNameDraft] = useState("");
   const sliceLabelEditCancelledRef = useRef(false);
+  const slicePointerLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const canEditSegmentLabel = !isReadOnly && !!onPieSliceNameChange;
+
+  const cancelSliceLeaveTimer = () => {
+    const t = slicePointerLeaveTimerRef.current;
+    if (t != null) {
+      clearTimeout(t);
+      slicePointerLeaveTimerRef.current = null;
+    }
+  };
+
+  const scheduleSliceLeave = () => {
+    cancelSliceLeaveTimer();
+    slicePointerLeaveTimerRef.current = setTimeout(() => {
+      slicePointerLeaveTimerRef.current = null;
+      setHoveredIndex(null);
+      setSliceHoverTooltip(null);
+    }, SLICE_POINTER_LEAVE_DELAY_MS);
+  };
+
+  /** Wedge + segment label share these so the tooltip doesn’t clear when moving onto the label (above the hit path). */
+  const slicePointerHandlers = (i: number, s: (typeof slices)[number]) => {
+    const showSliceValue =
+      s.tooltipValue != null && Number.isFinite(s.tooltipValue);
+    return {
+      onPointerEnter: (e: React.PointerEvent<SVGElement>) => {
+        cancelSliceLeaveTimer();
+        setHoveredIndex(i);
+        if (showSliceValue) {
+          setSliceHoverTooltip({
+            x: e.clientX,
+            y: e.clientY,
+            text: s.tooltipValue!.toLocaleString(),
+          });
+        } else {
+          setSliceHoverTooltip(null);
+        }
+      },
+      onPointerMove: (e: React.PointerEvent<SVGElement>) => {
+        if (!showSliceValue) return;
+        setSliceHoverTooltip((prev) =>
+          prev
+            ? { ...prev, x: e.clientX, y: e.clientY }
+            : {
+                x: e.clientX,
+                y: e.clientY,
+                text: s.tooltipValue!.toLocaleString(),
+              }
+        );
+      },
+      onPointerLeave: scheduleSliceLeave,
+    };
+  };
+
+  useEffect(() => {
+    return () => {
+      const t = slicePointerLeaveTimerRef.current;
+      if (t != null) {
+        clearTimeout(t);
+        slicePointerLeaveTimerRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (
@@ -124,8 +190,6 @@ export function PieChartShape(props: PieChartShapeProps) {
       {slices.map((s, i) => {
         const isHover = hoveredIndex === i;
         const hasBorder = strokeWidth > 0;
-        const showSliceValue =
-          s.tooltipValue != null && Number.isFinite(s.tooltipValue);
         const fill =
           s.fillMode === "none"
             ? "transparent"
@@ -135,6 +199,17 @@ export function PieChartShape(props: PieChartShapeProps) {
         const t = `translate(${s.explodeX},${s.explodeY})`;
         return (
           <g key={i} transform={t}>
+            {/* Stable hit target: hover stroke/brightness on the visual path can reshuffle hit-testing. */}
+            <path
+              d={s.d}
+              fill="#000000"
+              fillOpacity={0}
+              stroke="rgba(0,0,0,0)"
+              strokeWidth={SLICE_HIT_STROKE_PAD}
+              vectorEffect="non-scaling-stroke"
+              style={{ cursor: "default" }}
+              {...slicePointerHandlers(i, s)}
+            />
             <path
               d={s.d}
               fill={fill}
@@ -149,35 +224,7 @@ export function PieChartShape(props: PieChartShapeProps) {
               vectorEffect="non-scaling-stroke"
               style={{
                 filter: isHover ? "brightness(1.12)" : undefined,
-                cursor: "default",
-              }}
-              onPointerEnter={(e) => {
-                setHoveredIndex(i);
-                if (showSliceValue) {
-                  setSliceHoverTooltip({
-                    x: e.clientX,
-                    y: e.clientY,
-                    text: s.tooltipValue!.toLocaleString(),
-                  });
-                } else {
-                  setSliceHoverTooltip(null);
-                }
-              }}
-              onPointerMove={(e) => {
-                if (!showSliceValue) return;
-                setSliceHoverTooltip((prev) =>
-                  prev
-                    ? { ...prev, x: e.clientX, y: e.clientY }
-                    : {
-                        x: e.clientX,
-                        y: e.clientY,
-                        text: s.tooltipValue!.toLocaleString(),
-                      }
-                );
-              }}
-              onPointerLeave={() => {
-                setHoveredIndex(null);
-                setSliceHoverTooltip(null);
+                pointerEvents: "none",
               }}
             />
           </g>
@@ -187,6 +234,9 @@ export function PieChartShape(props: PieChartShapeProps) {
         ? slices.map((s, i) => {
             if (!s.name.trim()) return null;
             if (slices.length > 1 && s.span < MIN_SPAN_FOR_LABEL) return null;
+            const labelWantsPointer =
+              canEditSegmentLabel ||
+              (s.tooltipValue != null && Number.isFinite(s.tooltipValue));
             const lx = VB_CX + s.explodeX;
             const ly = VB_CY + s.explodeY;
             const isFull = s.span >= 2 * Math.PI - 1e-6;
@@ -225,6 +275,7 @@ export function PieChartShape(props: PieChartShapeProps) {
                   width={foW}
                   height={foH}
                   style={{ overflow: "visible" }}
+                  {...slicePointerHandlers(i, s)}
                 >
                   <input
                     type="text"
@@ -272,11 +323,12 @@ export function PieChartShape(props: PieChartShapeProps) {
                 fill={s.labelColor}
                 fontSize={s.labelFontSize}
                 fontWeight={600}
-                pointerEvents={canEditSegmentLabel ? "auto" : "none"}
+                pointerEvents={labelWantsPointer ? "auto" : "none"}
                 style={{
                   textShadow: "0 0 2px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.35)",
                   cursor: canEditSegmentLabel ? "text" : undefined,
                 }}
+                {...slicePointerHandlers(i, s)}
                 onPointerDown={(e) => canEditSegmentLabel && e.stopPropagation()}
                 onDoubleClick={(e) => {
                   if (!canEditSegmentLabel) return;

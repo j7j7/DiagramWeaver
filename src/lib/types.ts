@@ -141,6 +141,10 @@ export interface NodeChartSpecBar {
   showSegmentValues?: boolean;
   /** When true, draw a color swatch + segment name row at the bottom of the chart. */
   showLegend?: boolean;
+  /** Category axis label font size (SVG viewBox units, 2–14). Omitted = default ~2.75. */
+  categoryLabelFontSize?: number;
+  /** Bottom legend segment name font size (SVG viewBox units, 2–14). Omitted = default ~2.7. */
+  legendLabelFontSize?: number;
 }
 
 /** Chart configuration on a node (`generic.chart.*`). */

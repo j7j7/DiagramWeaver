@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { DiagramNodeData, NodeChartSpecBar, RichTextRun } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { SvgShapeBase } from "./svg-shape-base";
 import {
   chartInlineForeignObjectWidth,
@@ -15,14 +17,60 @@ import {
   barColumnClipPathVertical,
   barLegendEntries,
   buildBarChartLayout,
-  truncateBarLabel,
+  wrapBarLabelLines,
   type BarRect,
 } from "@/lib/bar-chart-layout";
 
 const VB_W = 100;
 const VB_H = 68;
-const MIN_BAR_DIM_FOR_LABEL = 4;
+/** Line spacing for wrapped bar labels (matches `bar-chart-layout`). */
+const BAR_LABEL_LINE_HEIGHT_EM = 1.15;
+
+function BarSvgTextBlock(props: {
+  lines: string[];
+  x: number;
+  yCenter: number;
+  fontSize: number;
+  textAnchor: "start" | "middle" | "end";
+  fill: string;
+  fontWeight: number;
+  pointerEvents?: "auto" | "none";
+  style?: React.CSSProperties;
+  onPointerDown?: (e: React.PointerEvent<SVGTextElement>) => void;
+  onDoubleClick?: (e: React.MouseEvent<SVGTextElement>) => void;
+  extraSvgProps?: React.SVGProps<SVGTextElement>;
+}) {
+  const lh = props.fontSize * BAR_LABEL_LINE_HEIGHT_EM;
+  const yFirst = props.yCenter - ((props.lines.length - 1) * lh) / 2;
+  return (
+    <text
+      x={props.x}
+      y={yFirst}
+      textAnchor={props.textAnchor}
+      dominantBaseline="middle"
+      fill={props.fill}
+      fontSize={props.fontSize}
+      fontWeight={props.fontWeight}
+      {...props.extraSvgProps}
+      pointerEvents={props.pointerEvents}
+      style={props.style}
+      onPointerDown={props.onPointerDown}
+      onDoubleClick={props.onDoubleClick}
+    >
+      {props.lines.map((line, i) => (
+        <tspan key={i} x={props.x} dy={i === 0 ? 0 : lh}>
+          {line}
+        </tspan>
+      ))}
+    </text>
+  );
+}
+
 const MIN_BAR_DIM_FOR_VALUE = 4.5;
+/** When values aren’t drawn in segments, defer clearing hover tooltip across brief pointer gaps. */
+const BAR_CELL_POINTER_LEAVE_DELAY_MS = 140;
+/** Invisible stroke widens bar hit targets slightly (viewBox units, non-scaling). */
+const BAR_HIT_STROKE_PAD = 0.75;
 
 interface BarChartShapeProps {
   node: DiagramNodeData & { width?: number; height?: number };
@@ -84,9 +132,15 @@ export function BarChartShape(props: BarChartShapeProps) {
 
   const model = buildBarChartLayout(chart, { vbW: VB_W, vbH: VB_H });
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
+  const [barCellHoverTooltip, setBarCellHoverTooltip] = useState<{
+    x: number;
+    y: number;
+    text: string;
+  } | null>(null);
   const [inlineEdit, setInlineEdit] = useState<BarInlineEditState | null>(null);
   const [inlineDraft, setInlineDraft] = useState("");
   const inlineEditCancelledRef = useRef(false);
+  const barPointerLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const series = chart.series;
 
@@ -126,6 +180,33 @@ export function BarChartShape(props: BarChartShapeProps) {
   const canEditSegment = !isReadOnly && !!onBarSegmentNameChange;
   const canEditCategory = !isReadOnly && !!onBarCategoryLabelChange;
   const canEditValue = !isReadOnly && !!onBarCellValueChange;
+
+  const cancelBarLeaveTimer = () => {
+    const t = barPointerLeaveTimerRef.current;
+    if (t != null) {
+      clearTimeout(t);
+      barPointerLeaveTimerRef.current = null;
+    }
+  };
+
+  const scheduleBarLeave = () => {
+    cancelBarLeaveTimer();
+    barPointerLeaveTimerRef.current = setTimeout(() => {
+      barPointerLeaveTimerRef.current = null;
+      setHoveredKey(null);
+      setBarCellHoverTooltip(null);
+    }, BAR_CELL_POINTER_LEAVE_DELAY_MS);
+  };
+
+  useEffect(() => {
+    return () => {
+      const t = barPointerLeaveTimerRef.current;
+      if (t != null) {
+        clearTimeout(t);
+        barPointerLeaveTimerRef.current = null;
+      }
+    };
+  }, []);
   const filterId = `dw-bar-sh-${useId().replace(/:/g, "")}`;
   const gradBaseId = `dw-bar-g-${useId().replace(/:/g, "")}`;
   const clipBaseId = `dw-bar-clip-${useId().replace(/:/g, "")}`;
@@ -145,7 +226,18 @@ export function BarChartShape(props: BarChartShapeProps) {
   const axisColor = chart.axisColor?.trim() || strokeColor;
   const categoryLabels = chart.categoryLabels ?? [];
 
-  const { plot, valueAxisMax, valueTicks, categoryCount, vertical, vbH } = model;
+  const {
+    plot,
+    valueAxisMax,
+    valueTicks,
+    categoryCount,
+    vertical,
+    vbH,
+    categoryLabelFontSize,
+    legendLabelFontSize,
+    categoryLabelLines,
+    legendLabelLines,
+  } = model;
 
   useEffect(() => {
     if (!inlineEdit) return;
@@ -193,6 +285,38 @@ export function BarChartShape(props: BarChartShapeProps) {
   }
 
   const rectKey = (r: BarRect) => `s${r.segmentIndex}-c${r.categoryIndex}`;
+
+  /** Hover value tooltip on segments when values aren’t rendered in the bar (see `showSegmentValues`). */
+  const barRectValueTooltipHandlers = (r: BarRect) => {
+    const k = rectKey(r);
+    const tipText =
+      !showSegmentValues && Number.isFinite(r.value) ? formatAxisNumber(r.value) : "";
+    const showTip = tipText !== "";
+    return {
+      onPointerEnter: (e: React.PointerEvent<SVGElement>) => {
+        cancelBarLeaveTimer();
+        setHoveredKey(k);
+        if (showTip) {
+          setBarCellHoverTooltip({
+            x: e.clientX,
+            y: e.clientY,
+            text: tipText,
+          });
+        } else {
+          setBarCellHoverTooltip(null);
+        }
+      },
+      onPointerMove: (e: React.PointerEvent<SVGElement>) => {
+        if (!showTip) return;
+        setBarCellHoverTooltip((prev) =>
+          prev
+            ? { ...prev, x: e.clientX, y: e.clientY }
+            : { x: e.clientX, y: e.clientY, text: tipText }
+        );
+      },
+      onPointerLeave: scheduleBarLeave,
+    };
+  };
 
   const barHoveredCategoryIndex = (key: string | null): number | null => {
     if (!key) return null;
@@ -279,26 +403,61 @@ export function BarChartShape(props: BarChartShapeProps) {
         : r.fillMode === "gradient"
           ? `url(#${gradBaseId}-${k})`
           : r.solidFill;
+    if (showSegmentValues) {
+      return (
+        <rect
+          key={k}
+          x={r.x}
+          y={r.y}
+          width={Math.max(0, r.w)}
+          height={Math.max(0, r.h)}
+          fill={fill}
+          stroke={
+            hasBorder ? strokeColor : isHover ? "rgba(255,255,255,0.9)" : "none"
+          }
+          strokeWidth={hasBorder ? (isHover ? strokeWidth + 0.75 : strokeWidth) : isHover ? 2 : 0}
+          vectorEffect="non-scaling-stroke"
+          style={{
+            filter: isHover ? "brightness(1.12)" : undefined,
+            cursor: "default",
+          }}
+          onMouseEnter={() => setHoveredKey(k)}
+          onMouseLeave={() => setHoveredKey(null)}
+        />
+      );
+    }
     return (
-      <rect
-        key={k}
-        x={r.x}
-        y={r.y}
-        width={Math.max(0, r.w)}
-        height={Math.max(0, r.h)}
-        fill={fill}
-        stroke={
-          hasBorder ? strokeColor : isHover ? "rgba(255,255,255,0.9)" : "none"
-        }
-        strokeWidth={hasBorder ? (isHover ? strokeWidth + 0.75 : strokeWidth) : isHover ? 2 : 0}
-        vectorEffect="non-scaling-stroke"
-        style={{
-          filter: isHover ? "brightness(1.12)" : undefined,
-          cursor: "default",
-        }}
-        onMouseEnter={() => setHoveredKey(k)}
-        onMouseLeave={() => setHoveredKey(null)}
-      />
+      <g key={k}>
+        <rect
+          x={r.x}
+          y={r.y}
+          width={Math.max(0, r.w)}
+          height={Math.max(0, r.h)}
+          fill="#000000"
+          fillOpacity={0}
+          stroke="rgba(0,0,0,0)"
+          strokeWidth={BAR_HIT_STROKE_PAD}
+          vectorEffect="non-scaling-stroke"
+          style={{ cursor: "default" }}
+          {...barRectValueTooltipHandlers(r)}
+        />
+        <rect
+          x={r.x}
+          y={r.y}
+          width={Math.max(0, r.w)}
+          height={Math.max(0, r.h)}
+          fill={fill}
+          stroke={
+            hasBorder ? strokeColor : isHover ? "rgba(255,255,255,0.9)" : "none"
+          }
+          strokeWidth={hasBorder ? (isHover ? strokeWidth + 0.75 : strokeWidth) : isHover ? 2 : 0}
+          vectorEffect="non-scaling-stroke"
+          style={{
+            filter: isHover ? "brightness(1.12)" : undefined,
+            pointerEvents: "none",
+          }}
+        />
+      </g>
     );
   };
 
@@ -371,14 +530,24 @@ export function BarChartShape(props: BarChartShapeProps) {
           const cy = r.y + r.h / 2;
           const fullName = (series?.[r.segmentIndex]?.name ?? r.name) || "";
 
-          const nameThin = vertical ? r.h < MIN_BAR_DIM_FOR_LABEL : r.w < MIN_BAR_DIM_FOR_LABEL;
           const valueThin =
             vertical
               ? Math.min(r.h, r.w) < MIN_BAR_DIM_FOR_VALUE
               : Math.min(r.w, r.h) < MIN_BAR_DIM_FOR_VALUE;
           const twoLineRoom = vertical ? r.h >= 8.5 : r.w >= 12;
-          const showNameLine = wantsName && !nameThin;
           const showValueLine = wantsVal && !valueThin;
+          const fs = r.labelFontSize;
+          const fsVal = Math.min(fs * 0.88, 3.2);
+          const lhSeg = fs * BAR_LABEL_LINE_HEIGHT_EM;
+          const nameMaxW = Math.max(2, vertical ? r.w - 0.5 : r.w - 0.5);
+          const reserveVal = showValueLine && twoLineRoom ? fsVal * 1.25 : 0;
+          const usableName = (vertical ? r.h : r.w) - reserveVal;
+          const maxNameLines = Math.max(1, Math.floor(usableName / lhSeg));
+          const nameLines = wantsName
+            ? wrapBarLabelLines(fullName.trim() || r.name.trim(), nameMaxW, fs, maxNameLines)
+            : [];
+          const showNameLine =
+            wantsName && nameLines.length > 0 && usableName >= lhSeg * 0.5;
           if (!showNameLine && !showValueLine) return null;
 
           const editNameHere =
@@ -394,8 +563,6 @@ export function BarChartShape(props: BarChartShapeProps) {
             inlineEdit.segmentIndex === r.segmentIndex &&
             inlineEdit.categoryIndex === r.categoryIndex;
 
-          const fs = r.labelFontSize;
-          const fsVal = Math.min(fs * 0.88, 3.2);
           const labelTextShadow = "0 0 2px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.35)";
           const valStr = formatAxisNumber(r.value);
           const valueDraftSeed = Number.isInteger(r.value)
@@ -459,13 +626,13 @@ export function BarChartShape(props: BarChartShapeProps) {
             if (showNameLine && showValueLine && twoLineRoom) {
               return (
                 <g key={`lbl-${rectKey(r)}`}>
-                  <text
+                  <BarSvgTextBlock
+                    lines={nameLines}
                     x={cx}
-                    y={cy - fsVal * 0.35}
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    fill={r.labelColor}
+                    yCenter={cy - fsVal * 0.35}
                     fontSize={fs}
+                    textAnchor="middle"
+                    fill={r.labelColor}
                     fontWeight={600}
                     pointerEvents={canEditSegment ? "auto" : "none"}
                     style={{
@@ -484,9 +651,7 @@ export function BarChartShape(props: BarChartShapeProps) {
                         fromLegend: false,
                       });
                     }}
-                  >
-                    {truncateBarLabel(r.name, vertical ? 8 : 10)}
-                  </text>
+                  />
                   {valueInput(cy + fs * 0.42)}
                 </g>
               );
@@ -589,13 +754,13 @@ export function BarChartShape(props: BarChartShapeProps) {
           if (showNameLine && showValueLine && twoLineRoom) {
             return (
               <g key={`lbl-${rectKey(r)}`}>
-                <text
+                <BarSvgTextBlock
+                  lines={nameLines}
                   x={cx}
-                  y={cy - fsVal * 0.35}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  fill={r.labelColor}
+                  yCenter={cy - fsVal * 0.35}
                   fontSize={fs}
+                  textAnchor="middle"
+                  fill={r.labelColor}
                   fontWeight={600}
                   pointerEvents={canEditSegment ? "auto" : "none"}
                   style={{
@@ -614,9 +779,7 @@ export function BarChartShape(props: BarChartShapeProps) {
                       fromLegend: false,
                     });
                   }}
-                >
-                  {truncateBarLabel(r.name, vertical ? 8 : 10)}
-                </text>
+                />
                 <text
                   x={cx}
                   y={cy + fs * 0.42}
@@ -684,17 +847,21 @@ export function BarChartShape(props: BarChartShapeProps) {
           }
 
           if (showNameLine) {
+            const wantsBarValueTipOnLabel =
+              !showSegmentValues && Number.isFinite(r.value);
             return (
-              <text
+              <BarSvgTextBlock
                 key={`lbl-${rectKey(r)}`}
+                lines={nameLines}
                 x={cx}
-                y={cy}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fill={r.labelColor}
+                yCenter={cy}
                 fontSize={fs}
+                textAnchor="middle"
+                fill={r.labelColor}
                 fontWeight={600}
-                pointerEvents={canEditSegment ? "auto" : "none"}
+                pointerEvents={
+                  canEditSegment || wantsBarValueTipOnLabel ? "auto" : "none"
+                }
                 style={{
                   textShadow: labelTextShadow,
                   cursor: canEditSegment ? "text" : undefined,
@@ -711,9 +878,12 @@ export function BarChartShape(props: BarChartShapeProps) {
                     fromLegend: false,
                   });
                 }}
-              >
-                {truncateBarLabel(r.name, vertical ? 8 : 10)}
-              </text>
+                extraSvgProps={
+                  wantsBarValueTipOnLabel
+                    ? (barRectValueTooltipHandlers(r) as React.SVGProps<SVGTextElement>)
+                    : undefined
+                }
+              />
             );
           }
 
@@ -759,25 +929,25 @@ export function BarChartShape(props: BarChartShapeProps) {
       );
     });
 
-  const catAxisFont = axisFont - 0.35;
   const catLabelsEls =
     showCategoryLabels && categoryLabels.length > 0
       ? categoryLabels.slice(0, categoryCount).map((raw, j) => {
           const lab = (raw ?? "").trim();
           if (!lab) return null;
-          const maxChars = 8;
+          const catLines = categoryLabelLines[j] ?? [];
+          if (catLines.length === 0) return null;
           const fullCat = String(raw ?? "");
-          const display = truncateBarLabel(lab, maxChars);
           const editingCat =
             inlineEdit?.kind === "category" && inlineEdit.categoryIndex === j;
+          const catFs = categoryLabelFontSize;
           if (vertical) {
             const cx = plot.x0 + (j + 0.5) * catSlot;
             const ty = plot.y0 + plot.h + 3.6;
-            const catMidY = ty - catAxisFont * 0.35;
+            const catMidY = ty - catFs * 0.35;
             if (editingCat) {
               const charCount = Math.max(4, inlineDraft.length, fullCat.length);
-              const foW = chartInlineForeignObjectWidth({ charCount, fontSize: catAxisFont });
-              const foH = catAxisFont;
+              const foW = chartInlineForeignObjectWidth({ charCount, fontSize: catFs });
+              const foH = catFs;
               return (
                 <foreignObject
                   key={`cat-${j}`}
@@ -791,7 +961,7 @@ export function BarChartShape(props: BarChartShapeProps) {
                     type="text"
                     className="m-0 box-border min-w-0 max-w-full bg-transparent shadow-none focus:outline-none focus:ring-0"
                     style={svgForeignObjectInlineInputStyle({
-                      fontSize: catAxisFont,
+                      fontSize: catFs,
                       fontWeight: 500,
                       color: axisColor,
                       caretColor: axisColor,
@@ -821,14 +991,14 @@ export function BarChartShape(props: BarChartShapeProps) {
               );
             }
             return (
-              <text
+              <BarSvgTextBlock
                 key={`cat-${j}`}
+                lines={catLines}
                 x={cx}
-                y={catMidY}
+                yCenter={catMidY}
+                fontSize={catFs}
                 textAnchor="middle"
-                dominantBaseline="middle"
                 fill={axisColor}
-                fontSize={catAxisFont}
                 fontWeight={500}
                 pointerEvents={canEditCategory ? "auto" : "none"}
                 style={{ cursor: canEditCategory ? "text" : undefined }}
@@ -840,18 +1010,16 @@ export function BarChartShape(props: BarChartShapeProps) {
                   setInlineDraft(fullCat);
                   setInlineEdit({ kind: "category", categoryIndex: j });
                 }}
-              >
-                {display}
-              </text>
+              />
             );
           }
           const cy = plot.y0 + (j + 0.5) * catSlot;
           const ty = cy + axisFont * 0.25;
-          const catMidY = ty - catAxisFont * 0.35;
+          const catMidY = ty - catFs * 0.35;
           if (editingCat) {
             const charCount = Math.max(4, inlineDraft.length, fullCat.length);
-            const foW = chartInlineForeignObjectWidth({ charCount, fontSize: catAxisFont });
-            const foH = catAxisFont;
+            const foW = chartInlineForeignObjectWidth({ charCount, fontSize: catFs });
+            const foH = catFs;
             return (
               <foreignObject
                 key={`cat-${j}`}
@@ -865,7 +1033,7 @@ export function BarChartShape(props: BarChartShapeProps) {
                   type="text"
                   className="m-0 box-border min-w-0 max-w-full bg-transparent text-right shadow-none focus:outline-none focus:ring-0"
                   style={svgForeignObjectInlineInputStyle({
-                    fontSize: catAxisFont,
+                    fontSize: catFs,
                     fontWeight: 500,
                     color: axisColor,
                     caretColor: axisColor,
@@ -895,14 +1063,14 @@ export function BarChartShape(props: BarChartShapeProps) {
             );
           }
           return (
-            <text
+            <BarSvgTextBlock
               key={`cat-${j}`}
+              lines={catLines}
               x={plot.x0 - 3}
-              y={catMidY}
+              yCenter={catMidY}
+              fontSize={catFs}
               textAnchor="end"
-              dominantBaseline="middle"
               fill={axisColor}
-              fontSize={catAxisFont}
               fontWeight={500}
               pointerEvents={canEditCategory ? "auto" : "none"}
               style={{ cursor: canEditCategory ? "text" : undefined }}
@@ -914,15 +1082,15 @@ export function BarChartShape(props: BarChartShapeProps) {
                 setInlineDraft(fullCat);
                 setInlineEdit({ kind: "category", categoryIndex: j });
               }}
-            >
-              {display}
-            </text>
+            />
           );
         })
       : null;
 
   const legendSlotW =
     showLegend && legendList.length > 0 ? plot.w / Math.max(1, legendList.length) : 0;
+  /** ~50% of layout `legendBand` (8.5 in `buildBarChartLayout`); reduces dead space below the plot. */
+  const legendYLift = 4.25;
   const legendEls =
     showLegend && legendList.length > 0 ? (
       <g aria-label="Legend">
@@ -935,15 +1103,15 @@ export function BarChartShape(props: BarChartShapeProps) {
               : en.fillMode === "gradient"
                 ? `url(#${gradBaseId}-leg-${i})`
                 : en.solidFill;
-          const maxNameLen = legendSlotW > 14 ? 12 : Math.max(4, Math.floor(legendSlotW / 1.35));
           const fullLegName = (series?.[en.segmentIndex]?.name ?? en.name) || "";
           const legendNameEdit =
             inlineEdit?.kind === "segment" &&
             inlineEdit.fromLegend &&
             inlineEdit.segmentIndex === en.segmentIndex;
-          const legFont = 2.7;
+          const legFont = legendLabelFontSize;
+          const legLines = legendLabelLines[i] ?? [en.name];
           const tx = -legendSlotW / 2 + sw + 1.8;
-          const ty = vbH - 3.5;
+          const ty = vbH - 3.5 - legendYLift;
           const legMidY = ty - legFont * 0.35;
           const legFoH = legFont;
           const legFoW = legendNameEdit
@@ -956,7 +1124,7 @@ export function BarChartShape(props: BarChartShapeProps) {
             <g key={`leg-${en.segmentIndex}`} transform={`translate(${cx}, 0)`}>
               <rect
                 x={-legendSlotW / 2 + 0.5}
-                y={vbH - 6}
+                y={legMidY - sw / 2}
                 width={sw}
                 height={sw}
                 rx={0.4}
@@ -1006,13 +1174,13 @@ export function BarChartShape(props: BarChartShapeProps) {
                   />
                 </foreignObject>
               ) : (
-                <text
+                <BarSvgTextBlock
+                  lines={legLines}
                   x={tx}
-                  y={legMidY}
-                  textAnchor="start"
-                  dominantBaseline="middle"
-                  fill={axisColor}
+                  yCenter={legMidY}
                   fontSize={legFont}
+                  textAnchor="start"
+                  fill={axisColor}
                   fontWeight={500}
                   pointerEvents={canEditSegment ? "auto" : "none"}
                   style={{ cursor: canEditSegment ? "text" : undefined }}
@@ -1028,9 +1196,7 @@ export function BarChartShape(props: BarChartShapeProps) {
                       fromLegend: true,
                     });
                   }}
-                >
-                  {truncateBarLabel(en.name, maxNameLen)}
-                </text>
+                />
               )}
             </g>
           );
@@ -1111,15 +1277,35 @@ export function BarChartShape(props: BarChartShapeProps) {
   );
 
   return (
-    <SvgShapeBase
-      {...svgBaseProps}
-      viewBox={`0 0 ${VB_W} ${vbH}`}
-      preserveAspectRatio="xMidYMid meet"
-      defaultWidth={100}
-      defaultHeight={68}
-      slideColorTransition={slideColorTransition}
-      svgOverflowVisible={svgShadow}
-      svgContent={plotBody}
-    />
+    <>
+      <SvgShapeBase
+        {...svgBaseProps}
+        viewBox={`0 0 ${VB_W} ${vbH}`}
+        preserveAspectRatio="xMidYMid meet"
+        defaultWidth={100}
+        defaultHeight={68}
+        slideColorTransition={slideColorTransition}
+        svgOverflowVisible={svgShadow}
+        svgContent={plotBody}
+      />
+      {barCellHoverTooltip != null && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              role="tooltip"
+              className={cn(
+                "pointer-events-none fixed z-[10000] rounded-md border border-border bg-popover px-2 py-1",
+                "text-xs font-medium text-popover-foreground shadow-md"
+              )}
+              style={{
+                left: barCellHoverTooltip.x + 12,
+                top: barCellHoverTooltip.y + 12,
+              }}
+            >
+              {barCellHoverTooltip.text}
+            </div>,
+            document.body
+          )
+        : null}
+    </>
   );
 }

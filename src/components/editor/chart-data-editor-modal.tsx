@@ -51,6 +51,21 @@ function sliceFillStyleFromSeries(s: ChartSeriesItem | ChartBarSegmentItem): Cha
 }
 
 /** Parsed label size for the chart modal slider (empty string = renderer default). */
+const DEFAULT_BAR_CATEGORY_LABEL_FONT = 2.75;
+const DEFAULT_BAR_LEGEND_LABEL_FONT = 2.7;
+
+function barOptionalFontSliderState(
+  sizeStr: string,
+  fallback: number
+): { hasCustom: boolean; sliderValue: number } {
+  const trimmed = String(sizeStr ?? "").trim();
+  const raw = Number(trimmed.replace(/,/g, "."));
+  if (!trimmed || !Number.isFinite(raw) || raw <= 0) {
+    return { hasCustom: false, sliderValue: fallback };
+  }
+  return { hasCustom: true, sliderValue: Math.min(14, Math.max(2, raw)) };
+}
+
 function pieChartRowLabelSizeState(labelFontSizeStr: string): {
   hasCustomLabelFontSize: boolean;
   labelSizeSliderValue: number;
@@ -276,6 +291,8 @@ export function ChartDataEditorModal({
   const [showCategoryLabels, setShowCategoryLabels] = useState(true);
   const [showBarSegmentValues, setShowBarSegmentValues] = useState(false);
   const [showBarLegend, setShowBarLegend] = useState(false);
+  const [barCategoryLabelFontSizeStr, setBarCategoryLabelFontSizeStr] = useState("");
+  const [barLegendLabelFontSizeStr, setBarLegendLabelFontSizeStr] = useState("");
 
   useEffect(() => {
     if (visible && node) {
@@ -331,6 +348,16 @@ export function ChartDataEditorModal({
         setShowCategoryLabels(spec.showCategoryLabels !== false);
         setShowBarSegmentValues(spec.showSegmentValues === true);
         setShowBarLegend(spec.showLegend === true);
+        setBarCategoryLabelFontSizeStr(
+          spec.categoryLabelFontSize != null && Number.isFinite(spec.categoryLabelFontSize)
+            ? String(spec.categoryLabelFontSize)
+            : ""
+        );
+        setBarLegendLabelFontSizeStr(
+          spec.legendLabelFontSize != null && Number.isFinite(spec.legendLabelFontSize)
+            ? String(spec.legendLabelFontSize)
+            : ""
+        );
         setSliceBorderColor(spec.sliceBorderColor ?? "");
         setChartShadow(spec.shadow === true);
         setShowSegmentLabels(spec.showSegmentLabels !== false);
@@ -641,6 +668,18 @@ export function ChartDataEditorModal({
         ...(showBarSegmentValues ? { showSegmentValues: true } : {}),
         ...(showBarLegend ? { showLegend: true } : {}),
       };
+      const catLfs = Number(
+        String(barCategoryLabelFontSizeStr ?? "").trim().replace(/,/g, ".")
+      );
+      if (Number.isFinite(catLfs) && catLfs > 0) {
+        barChart.categoryLabelFontSize = Math.min(14, Math.max(2, catLfs));
+      }
+      const legLfs = Number(
+        String(barLegendLabelFontSizeStr ?? "").trim().replace(/,/g, ".")
+      );
+      if (Number.isFinite(legLfs) && legLfs > 0) {
+        barChart.legendLabelFontSize = Math.min(14, Math.max(2, legLfs));
+      }
       onSave(node.id, barChart);
       onClose();
       return;
@@ -970,6 +1009,98 @@ export function ChartDataEditorModal({
                         allowTransparent={true}
                       />
                     </div>
+                    {(() => {
+                      const catFsState = barOptionalFontSliderState(
+                        barCategoryLabelFontSizeStr,
+                        DEFAULT_BAR_CATEGORY_LABEL_FONT
+                      );
+                      const legFsState = barOptionalFontSliderState(
+                        barLegendLabelFontSizeStr,
+                        DEFAULT_BAR_LEGEND_LABEL_FONT
+                      );
+                      return (
+                        <>
+                          <div
+                            className={`space-y-2 ${isReadOnly ? "pointer-events-none opacity-75" : ""}`}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <Label className="text-[10px] text-muted-foreground">
+                                Category label size
+                              </Label>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <span className="text-[10px] text-muted-foreground tabular-nums">
+                                  {catFsState.hasCustom
+                                    ? catFsState.sliderValue
+                                    : "Default"}
+                                </span>
+                                {!isReadOnly && catFsState.hasCustom ? (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-1.5 text-[10px] text-muted-foreground"
+                                    onClick={() => setBarCategoryLabelFontSizeStr("")}
+                                  >
+                                    Use default
+                                  </Button>
+                                ) : null}
+                              </div>
+                            </div>
+                            <Slider
+                              value={[catFsState.sliderValue]}
+                              onValueChange={(v) => {
+                                const next = v[0];
+                                if (next == null) return;
+                                setBarCategoryLabelFontSizeStr(String(next));
+                              }}
+                              min={2}
+                              max={14}
+                              step={0.25}
+                              disabled={isReadOnly}
+                            />
+                          </div>
+                          <div
+                            className={`space-y-2 ${isReadOnly ? "pointer-events-none opacity-75" : ""}`}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <Label className="text-[10px] text-muted-foreground">
+                                Legend label size
+                              </Label>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <span className="text-[10px] text-muted-foreground tabular-nums">
+                                  {legFsState.hasCustom
+                                    ? legFsState.sliderValue
+                                    : "Default"}
+                                </span>
+                                {!isReadOnly && legFsState.hasCustom ? (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-1.5 text-[10px] text-muted-foreground"
+                                    onClick={() => setBarLegendLabelFontSizeStr("")}
+                                  >
+                                    Use default
+                                  </Button>
+                                ) : null}
+                              </div>
+                            </div>
+                            <Slider
+                              value={[legFsState.sliderValue]}
+                              onValueChange={(v) => {
+                                const next = v[0];
+                                if (next == null) return;
+                                setBarLegendLabelFontSizeStr(String(next));
+                              }}
+                              min={2}
+                              max={14}
+                              step={0.25}
+                              disabled={isReadOnly}
+                            />
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
                 <div className={`space-y-1 ${isReadOnly ? "pointer-events-none opacity-75" : ""}`}>

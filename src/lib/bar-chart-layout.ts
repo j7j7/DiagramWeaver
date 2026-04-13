@@ -1,8 +1,8 @@
 import type { ChartBarSegmentItem, ChartSliceFillStyle, NodeChartSpecBar } from "@/lib/types";
+import { DEFAULT_PIE_SLICE_COLORS, DEFAULT_PIE_SLICE_LABEL_COLOR } from "@/lib/chart-node";
 
 /** Breadth fraction used for rounded column caps (matches “subtle” rounding on other shapes). */
 const BAR_COLUMN_ROUND_BREADTH_RATIO = 0.22;
-import { DEFAULT_PIE_SLICE_COLORS, DEFAULT_PIE_SLICE_LABEL_COLOR } from "@/lib/chart-node";
 
 export type BarFillMode = "none" | "solid" | "gradient";
 
@@ -33,6 +33,21 @@ export interface BarChartLayoutModel {
   vertical: boolean;
   vbW: number;
   vbH: number;
+  categoryLabelFontSize: number;
+  legendLabelFontSize: number;
+  /** Wrapped lines per category column index (length `categoryCount`). */
+  categoryLabelLines: string[][];
+  /** Wrapped lines per legend entry (same order as `barLegendEntries`). */
+  legendLabelLines: string[][];
+}
+
+export interface BarLegendEntry {
+  segmentIndex: number;
+  name: string;
+  fillMode: BarFillMode;
+  solidFill: string;
+  gradientColor1: string;
+  gradientColor2: string;
 }
 
 function resolveBarFill(
@@ -67,6 +82,112 @@ function defaultBarLabelFontSize(seriesItem: ChartBarSegmentItem | undefined): n
     return Math.min(14, Math.max(2, v));
   }
   return 3.25;
+}
+
+/** Average glyph width factor for Latin sans-serif in SVG user units (relative to `fontSize`). */
+const BAR_LABEL_CHAR_WIDTH_EM = 0.55;
+const BAR_LABEL_LINE_HEIGHT_EM = 1.15;
+
+export function resolveBarCategoryLabelFontSize(spec: NodeChartSpecBar): number {
+  const v = spec.categoryLabelFontSize;
+  if (typeof v === "number" && Number.isFinite(v) && v > 0) {
+    return Math.min(14, Math.max(2, v));
+  }
+  return 2.75;
+}
+
+export function resolveBarLegendLabelFontSize(spec: NodeChartSpecBar): number {
+  const v = spec.legendLabelFontSize;
+  if (typeof v === "number" && Number.isFinite(v) && v > 0) {
+    return Math.min(14, Math.max(2, v));
+  }
+  return 2.7;
+}
+
+export function estimateBarLabelLineWidth(text: string, fontSize: number): number {
+  if (!text || fontSize <= 0) return 0;
+  return text.length * fontSize * BAR_LABEL_CHAR_WIDTH_EM;
+}
+
+/**
+ * Word-wrap bar labels to a max width (viewBox units). Breaks on spaces; splits long tokens to fit.
+ * With `maxLines`, extra lines collapse and the last kept line may end with an ellipsis.
+ */
+export function wrapBarLabelLines(
+  raw: string,
+  maxWidth: number,
+  fontSize: number,
+  maxLines?: number
+): string[] {
+  const t = raw.replace(/\s+/g, " ").trim();
+  if (!t || maxWidth <= 0 || fontSize <= 0) return t ? [t] : [];
+
+  const words = t.split(" ");
+  const lines: string[] = [];
+  let cur = "";
+
+  const flushCur = () => {
+    if (cur) lines.push(cur);
+    cur = "";
+  };
+
+  const fits = (s: string) => estimateBarLabelLineWidth(s, fontSize) <= maxWidth;
+
+  for (const w of words) {
+    if (!w) continue;
+    const tryLine = cur ? `${cur} ${w}` : w;
+    if (fits(tryLine)) {
+      cur = tryLine;
+      continue;
+    }
+    if (cur) flushCur();
+    if (fits(w)) {
+      cur = w;
+    } else {
+      let rest = w;
+      while (rest.length > 0) {
+        let take = rest.length;
+        while (take > 0 && !fits(rest.slice(0, take))) take--;
+        if (take <= 0) take = 1;
+        lines.push(rest.slice(0, take));
+        rest = rest.slice(take);
+      }
+    }
+  }
+  flushCur();
+  if (lines.length === 0) lines.push(t);
+
+  if (maxLines != null && maxLines > 0 && lines.length > maxLines) {
+    const kept = lines.slice(0, maxLines);
+    let last = kept[maxLines - 1] ?? "";
+    const ell = "…";
+    while (last.length > 0 && !fits(last + ell)) {
+      last = last.slice(0, -1);
+    }
+    kept[maxLines - 1] = last + ell;
+    return kept;
+  }
+  return lines;
+}
+
+function computeBarLegendBandHeight(
+  entries: BarLegendEntry[],
+  plotW: number,
+  fontSize: number
+): number {
+  if (entries.length === 0) return 0;
+  const slotW = plotW / entries.length;
+  const textMaxW = Math.max(2, slotW - 5);
+  const lineH = fontSize * BAR_LABEL_LINE_HEIGHT_EM;
+  let maxLines = 1;
+  for (const en of entries) {
+    const lines = wrapBarLabelLines(en.name, textMaxW, fontSize);
+    maxLines = Math.max(maxLines, lines.length);
+  }
+  const swatchH = 3;
+  const textBlock = maxLines * lineH;
+  const rowH = Math.max(swatchH, textBlock);
+  return rowH + 5;
 }
 
 function clamp01(v: number, max = 0.85): number {
@@ -106,6 +227,18 @@ function padSeriesValues(series: ChartBarSegmentItem[], categoryCount: number): 
   });
 }
 
+type BarLayoutPack = {
+  marginL: number;
+  plotW: number;
+  plotH: number;
+  marginB: number;
+  categoryBand: number;
+  categoryLabelLines: string[][];
+  legendLabelLines: string[][];
+  /** Widest category label line (horizontal layout), for growing `marginL`. */
+  widestCategoryLine: number;
+};
+
 /**
  * Builds rectangle geometry for a bar chart inside a fixed SVG viewBox.
  */
@@ -130,20 +263,93 @@ export function buildBarChartLayout(
 
   const hasCategoryText =
     showCategoryLabels && labels.some((s) => (s ?? "").trim());
-  const categoryBand = vertical && hasCategoryText ? 5.5 : 0;
-  const legendBand = showLegend ? 8.5 : 0;
-
-  const marginL = vertical ? (showValueAxis ? 15 : 9) : showCategoryLabels ? 18 : 10;
+  const catFont = resolveBarCategoryLabelFontSize(spec);
+  const legFont = resolveBarLegendLabelFontSize(spec);
   const marginR = 8;
   const marginT = 8;
-  const marginB = vertical
-    ? 9 + categoryBand + legendBand
-    : (showValueAxis ? 12 : 9) + legendBand;
+  const legendList = showLegend ? barLegendEntries(spec) : [];
 
-  const plotX0 = marginL;
+  const categoryLabelForIndex = (j: number) => (labels[j] ?? "").trim();
+
+  const finalizeLayout = (marginL: number): BarLayoutPack => {
+    const plotW = vbW - marginL - marginR;
+    const legendBand =
+      legendList.length > 0 ? computeBarLegendBandHeight(legendList, plotW, legFont) : 0;
+
+    let categoryBand = 0;
+    const categoryLabelLines: string[][] = Array.from({ length: categoryCount }, () => []);
+
+    if (vertical && hasCategoryText) {
+      const catSlot = plotW / Math.max(1, categoryCount);
+      const maxW = Math.max(2, catSlot - 1);
+      let maxLineCount = 1;
+      for (let j = 0; j < categoryCount; j++) {
+        const lab = categoryLabelForIndex(j);
+        if (!lab) continue;
+        const lines = wrapBarLabelLines(lab, maxW, catFont);
+        categoryLabelLines[j] = lines;
+        maxLineCount = Math.max(maxLineCount, lines.length);
+      }
+      const lineH = catFont * BAR_LABEL_LINE_HEIGHT_EM;
+      categoryBand = 2.5 + maxLineCount * lineH + 1.5;
+    }
+
+    const marginB = vertical
+      ? 9 + categoryBand + legendBand
+      : (showValueAxis ? 12 : 9) + legendBand;
+    const plotH = vbH - marginT - marginB;
+
+    let widestCategoryLine = 0;
+
+    if (!vertical && hasCategoryText) {
+      const catSlot = plotH / Math.max(1, categoryCount);
+      const lineH = catFont * BAR_LABEL_LINE_HEIGHT_EM;
+      const maxLinesPerCat = Math.max(1, Math.floor((catSlot * 0.88) / lineH));
+      const maxLabelW = Math.max(4, marginL - 6);
+      for (let j = 0; j < categoryCount; j++) {
+        const lab = categoryLabelForIndex(j);
+        if (!lab) continue;
+        const lines = wrapBarLabelLines(lab, maxLabelW, catFont, maxLinesPerCat);
+        categoryLabelLines[j] = lines;
+        for (const ln of lines) {
+          widestCategoryLine = Math.max(widestCategoryLine, estimateBarLabelLineWidth(ln, catFont));
+        }
+      }
+    }
+
+    const legendLabelLines = legendList.map((en) => {
+      const slotW = plotW / Math.max(1, legendList.length);
+      return wrapBarLabelLines(en.name, Math.max(2, slotW - 5), legFont);
+    });
+
+    return {
+      marginL,
+      plotW,
+      plotH,
+      marginB,
+      categoryBand,
+      categoryLabelLines,
+      legendLabelLines,
+      widestCategoryLine,
+    };
+  };
+
+  let marginL = vertical ? (showValueAxis ? 15 : 9) : showCategoryLabels ? 18 : 10;
+  let pack = finalizeLayout(marginL);
+  if (!vertical && hasCategoryText) {
+    const needL = Math.max(
+      showCategoryLabels ? 18 : 10,
+      pack.widestCategoryLine + 9
+    );
+    if (needL > marginL + 0.25) {
+      marginL = needL;
+      pack = finalizeLayout(marginL);
+    }
+  }
+
+  const { plotW, plotH, categoryLabelLines, legendLabelLines } = pack;
+  const plotX0 = pack.marginL;
   const plotY0 = marginT;
-  const plotW = vbW - marginL - marginR;
-  const plotH = vbH - marginT - marginB;
 
   const safeSeries: ChartBarSegmentItem[] =
     seriesRaw.length > 0
@@ -271,6 +477,10 @@ export function buildBarChartLayout(
     vertical,
     vbW,
     vbH,
+    categoryLabelFontSize: catFont,
+    legendLabelFontSize: legFont,
+    categoryLabelLines,
+    legendLabelLines,
   };
 }
 
@@ -278,15 +488,6 @@ export function truncateBarLabel(name: string, maxLen = 10): string {
   const t = name.trim();
   if (t.length <= maxLen) return t;
   return `${t.slice(0, Math.max(1, maxLen - 1))}…`;
-}
-
-export interface BarLegendEntry {
-  segmentIndex: number;
-  name: string;
-  fillMode: BarFillMode;
-  solidFill: string;
-  gradientColor1: string;
-  gradientColor2: string;
 }
 
 /** One row per stack segment for the bottom legend (series order). */

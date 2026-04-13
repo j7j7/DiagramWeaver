@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useId, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { polygonToRoundedPath } from '@/components/diagram/shapes/shape-utils';
 import { getTextEffectsShadowCss } from '@/lib/text-styling';
@@ -13,7 +13,7 @@ import {
   barColumnClipPathVertical,
   barLegendEntries,
   buildBarChartLayout,
-  truncateBarLabel,
+  wrapBarLabelLines,
 } from '@/lib/bar-chart-layout';
 
 function formatBarPreviewValue(n: number): string {
@@ -21,6 +21,49 @@ function formatBarPreviewValue(n: number): string {
   if (Math.abs(n - Math.round(n)) < 1e-6) return String(Math.round(n));
   return n.toFixed(1).replace(/\.0$/, '');
 }
+
+const PREVIEW_BAR_LH_EM = 1.15;
+
+function BarPreviewTextBlock(props: {
+  lines: string[];
+  x: number;
+  yCenter: number;
+  fontSize: number;
+  textAnchor: 'start' | 'middle' | 'end';
+  fill: string;
+  fontWeight: number;
+  pointerEvents?: 'auto' | 'none';
+  style?: React.CSSProperties;
+  extra?: React.SVGProps<SVGTextElement>;
+}) {
+  const lh = props.fontSize * PREVIEW_BAR_LH_EM;
+  const yFirst = props.yCenter - ((props.lines.length - 1) * lh) / 2;
+  return (
+    <text
+      x={props.x}
+      y={yFirst}
+      textAnchor={props.textAnchor}
+      dominantBaseline="middle"
+      fill={props.fill}
+      fontSize={props.fontSize}
+      fontWeight={props.fontWeight}
+      {...props.extra}
+      pointerEvents={props.pointerEvents}
+      style={props.style}
+    >
+      {props.lines.map((line, i) => (
+        <tspan key={i} x={props.x} dy={i === 0 ? 0 : lh}>
+          {line}
+        </tspan>
+      ))}
+    </text>
+  );
+}
+
+const PREVIEW_PIE_POINTER_LEAVE_MS = 140;
+const PREVIEW_PIE_HIT_STROKE_PAD = 3;
+const PREVIEW_BAR_POINTER_LEAVE_MS = 140;
+const PREVIEW_BAR_HIT_STROKE_PAD = 0.75;
 
 interface ShapePreviewProps {
   type: string;
@@ -119,6 +162,67 @@ export function ShapePreview({
     y: number;
     text: string;
   } | null>(null);
+  const pieTooltipLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cancelPieTooltipLeaveTimer = () => {
+    const t = pieTooltipLeaveTimerRef.current;
+    if (t != null) {
+      clearTimeout(t);
+      pieTooltipLeaveTimerRef.current = null;
+    }
+  };
+
+  const schedulePieTooltipLeave = () => {
+    cancelPieTooltipLeaveTimer();
+    pieTooltipLeaveTimerRef.current = setTimeout(() => {
+      pieTooltipLeaveTimerRef.current = null;
+      setPieSliceTooltip(null);
+    }, PREVIEW_PIE_POINTER_LEAVE_MS);
+  };
+
+  useEffect(() => {
+    return () => {
+      const t = pieTooltipLeaveTimerRef.current;
+      if (t != null) {
+        clearTimeout(t);
+        pieTooltipLeaveTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  const [barPreviewCellTooltip, setBarPreviewCellTooltip] = useState<{
+    x: number;
+    y: number;
+    text: string;
+  } | null>(null);
+  const barPreviewLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cancelBarPreviewLeaveTimer = () => {
+    const t = barPreviewLeaveTimerRef.current;
+    if (t != null) {
+      clearTimeout(t);
+      barPreviewLeaveTimerRef.current = null;
+    }
+  };
+
+  const scheduleBarPreviewLeave = () => {
+    cancelBarPreviewLeaveTimer();
+    barPreviewLeaveTimerRef.current = setTimeout(() => {
+      barPreviewLeaveTimerRef.current = null;
+      setBarPreviewCellTooltip(null);
+    }, PREVIEW_BAR_POINTER_LEAVE_MS);
+  };
+
+  useEffect(() => {
+    return () => {
+      const t = barPreviewLeaveTimerRef.current;
+      if (t != null) {
+        clearTimeout(t);
+        barPreviewLeaveTimerRef.current = null;
+      }
+    };
+  }, []);
+
   const textEffectsShadow = getTextEffectsShadowCss({
     textGlowBlur,
     textGlowColor,
@@ -192,7 +296,15 @@ export function ShapePreview({
       const axisC = spec.axisColor?.trim() || effectiveBorderColor;
       const gridC = spec.gridColor?.trim() || 'rgba(148,163,184,0.45)';
       const vertical = spec.vertical !== false;
-      const { plot, valueAxisMax, valueTicks, categoryCount, vbH } = model;
+      const {
+        plot,
+        valueAxisMax,
+        valueTicks,
+        categoryCount,
+        vbH,
+        legendLabelFontSize,
+        legendLabelLines,
+      } = model;
       const legendList = spec.showLegend === true ? barLegendEntries(spec) : [];
       const catSlot = vertical ? plot.w / Math.max(1, categoryCount) : plot.h / Math.max(1, categoryCount);
       const valueGridLines = valueTicks.map((t) =>
@@ -214,6 +326,7 @@ export function ShapePreview({
       const showCG = vertical ? spec.showGridX === true : spec.showGridY === true;
       const legendSlotW =
         legendList.length > 0 ? plot.w / Math.max(1, legendList.length) : 0;
+      const legendYLift = 4.25;
       const useRoundedColumnEnds = barChartWantsRoundedColumnEnds(spec);
       const rectsByCat = new Map<number, (typeof model.rects)[number][]>();
       for (const r of model.rects) {
@@ -222,6 +335,37 @@ export function ShapePreview({
         rectsByCat.set(r.categoryIndex, arr);
       }
       const clipBase = `${gradBase}-cclip`;
+      const showBarSegmentValueHoverTip = spec.showSegmentValues !== true;
+      const previewBarValueHandlers = (r: (typeof model.rects)[number]) => {
+        const tipText =
+          showBarSegmentValueHoverTip && Number.isFinite(r.value)
+            ? formatBarPreviewValue(r.value)
+            : '';
+        const showTip = tipText !== '';
+        return {
+          onPointerEnter: (e: React.PointerEvent<SVGElement>) => {
+            cancelBarPreviewLeaveTimer();
+            if (showTip) {
+              setBarPreviewCellTooltip({
+                x: e.clientX,
+                y: e.clientY,
+                text: tipText,
+              });
+            } else {
+              setBarPreviewCellTooltip(null);
+            }
+          },
+          onPointerMove: (e: React.PointerEvent<SVGElement>) => {
+            if (!showTip) return;
+            setBarPreviewCellTooltip((prev) =>
+              prev
+                ? { ...prev, x: e.clientX, y: e.clientY }
+                : { x: e.clientX, y: e.clientY, text: tipText }
+            );
+          },
+          onPointerLeave: scheduleBarPreviewLeave,
+        };
+      };
       return (
         <svg {...commonSvgProps} viewBox={`0 0 100 ${vbH}`} preserveAspectRatio="xMidYMid meet">
           <defs>
@@ -301,18 +445,48 @@ export function ShapePreview({
                         ? `url(#${gradBase}-${r.segmentIndex}-${r.categoryIndex})`
                         : r.solidFill;
                   const outlineOnColumnPath = !!clipD;
+                  const brKey = `br-${r.segmentIndex}-${r.categoryIndex}`;
+                  if (!showBarSegmentValueHoverTip) {
+                    return (
+                      <rect
+                        key={brKey}
+                        x={r.x}
+                        y={r.y}
+                        width={Math.max(0, r.w)}
+                        height={Math.max(0, r.h)}
+                        fill={fill}
+                        stroke={outlineOnColumnPath ? 'none' : sw ? sliceStroke : 'none'}
+                        strokeWidth={outlineOnColumnPath ? 0 : sw}
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    );
+                  }
                   return (
-                    <rect
-                      key={`br-${r.segmentIndex}-${r.categoryIndex}`}
-                      x={r.x}
-                      y={r.y}
-                      width={Math.max(0, r.w)}
-                      height={Math.max(0, r.h)}
-                      fill={fill}
-                      stroke={outlineOnColumnPath ? 'none' : sw ? sliceStroke : 'none'}
-                      strokeWidth={outlineOnColumnPath ? 0 : sw}
-                      vectorEffect="non-scaling-stroke"
-                    />
+                    <g key={brKey}>
+                      <rect
+                        x={r.x}
+                        y={r.y}
+                        width={Math.max(0, r.w)}
+                        height={Math.max(0, r.h)}
+                        fill="#000000"
+                        fillOpacity={0}
+                        stroke="rgba(0,0,0,0)"
+                        strokeWidth={PREVIEW_BAR_HIT_STROKE_PAD}
+                        vectorEffect="non-scaling-stroke"
+                        {...previewBarValueHandlers(r)}
+                      />
+                      <rect
+                        x={r.x}
+                        y={r.y}
+                        width={Math.max(0, r.w)}
+                        height={Math.max(0, r.h)}
+                        fill={fill}
+                        stroke={outlineOnColumnPath ? 'none' : sw ? sliceStroke : 'none'}
+                        strokeWidth={outlineOnColumnPath ? 0 : sw}
+                        vectorEffect="non-scaling-stroke"
+                        style={{ pointerEvents: 'none' }}
+                      />
+                    </g>
                   );
                 });
                 if (!clipD) {
@@ -342,18 +516,48 @@ export function ShapePreview({
                     : r.fillMode === 'gradient'
                       ? `url(#${gradBase}-${r.segmentIndex}-${r.categoryIndex})`
                       : r.solidFill;
+                const brKey = `br-${r.segmentIndex}-${r.categoryIndex}`;
+                if (!showBarSegmentValueHoverTip) {
+                  return (
+                    <rect
+                      key={brKey}
+                      x={r.x}
+                      y={r.y}
+                      width={Math.max(0, r.w)}
+                      height={Math.max(0, r.h)}
+                      fill={fill}
+                      stroke={sw ? sliceStroke : 'none'}
+                      strokeWidth={sw}
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  );
+                }
                 return (
-                  <rect
-                    key={`br-${r.segmentIndex}-${r.categoryIndex}`}
-                    x={r.x}
-                    y={r.y}
-                    width={Math.max(0, r.w)}
-                    height={Math.max(0, r.h)}
-                    fill={fill}
-                    stroke={sw ? sliceStroke : 'none'}
-                    strokeWidth={sw}
-                    vectorEffect="non-scaling-stroke"
-                  />
+                  <g key={brKey}>
+                    <rect
+                      x={r.x}
+                      y={r.y}
+                      width={Math.max(0, r.w)}
+                      height={Math.max(0, r.h)}
+                      fill="#000000"
+                      fillOpacity={0}
+                      stroke="rgba(0,0,0,0)"
+                      strokeWidth={PREVIEW_BAR_HIT_STROKE_PAD}
+                      vectorEffect="non-scaling-stroke"
+                      {...previewBarValueHandlers(r)}
+                    />
+                    <rect
+                      x={r.x}
+                      y={r.y}
+                      width={Math.max(0, r.w)}
+                      height={Math.max(0, r.h)}
+                      fill={fill}
+                      stroke={sw ? sliceStroke : 'none'}
+                      strokeWidth={sw}
+                      vectorEffect="non-scaling-stroke"
+                      style={{ pointerEvents: 'none' }}
+                    />
+                  </g>
                 );
               })}
           {spec.showSegmentLabels !== false || spec.showSegmentValues === true
@@ -366,27 +570,32 @@ export function ShapePreview({
                 const fs = r.labelFontSize;
                 const fsV = Math.min(fs * 0.88, 3.2);
                 const twoLine = vertical ? r.h >= 8.5 : r.w >= 12;
-                const nameThin = vertical ? r.h < 4 : r.w < 4;
                 const valThin = Math.min(r.w, r.h) < 4.5;
-                const showN = wantsName && !nameThin;
                 const showV = wantsVal && !valThin;
+                const lhSeg = fs * PREVIEW_BAR_LH_EM;
+                const nameMaxW = Math.max(2, vertical ? r.w - 0.5 : r.w - 0.5);
+                const reserveVal = showV && twoLine ? fsV * 1.25 : 0;
+                const usableName = (vertical ? r.h : r.w) - reserveVal;
+                const maxNameLines = Math.max(1, Math.floor(usableName / lhSeg));
+                const nameLines = wantsName
+                  ? wrapBarLabelLines(r.name.trim(), nameMaxW, fs, maxNameLines)
+                  : [];
+                const showN = wantsName && nameLines.length > 0 && usableName >= lhSeg * 0.5;
                 if (!showN && !showV) return null;
                 if (showN && showV && twoLine) {
                   return (
                     <g key={`bt-${r.segmentIndex}-${r.categoryIndex}`}>
-                      <text
+                      <BarPreviewTextBlock
+                        lines={nameLines}
                         x={cx}
-                        y={cy - fsV * 0.35}
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                        fill={r.labelColor}
+                        yCenter={cy - fsV * 0.35}
                         fontSize={fs}
+                        textAnchor="middle"
+                        fill={r.labelColor}
                         fontWeight={600}
                         pointerEvents="none"
                         style={{ textShadow: '0 0 1px rgba(0,0,0,0.5)' }}
-                      >
-                        {truncateBarLabel(r.name, vertical ? 8 : 10)}
-                      </text>
+                      />
                       <text
                         x={cx}
                         y={cy + fs * 0.42}
@@ -421,21 +630,26 @@ export function ShapePreview({
                     </text>
                   );
                 }
+                const showBarLabelValueTip =
+                  showBarSegmentValueHoverTip && Number.isFinite(r.value);
                 return (
-                  <text
+                  <BarPreviewTextBlock
                     key={`bt-${r.segmentIndex}-${r.categoryIndex}`}
+                    lines={nameLines}
                     x={cx}
-                    y={cy}
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    fill={r.labelColor}
+                    yCenter={cy}
                     fontSize={fs}
+                    textAnchor="middle"
+                    fill={r.labelColor}
                     fontWeight={600}
-                    pointerEvents="none"
+                    pointerEvents={showBarLabelValueTip ? 'auto' : 'none'}
                     style={{ textShadow: '0 0 1px rgba(0,0,0,0.5)' }}
-                  >
-                    {truncateBarLabel(r.name, vertical ? 8 : 10)}
-                  </text>
+                    extra={
+                      showBarLabelValueTip
+                        ? (previewBarValueHandlers(r) as React.SVGProps<SVGTextElement>)
+                        : undefined
+                    }
+                  />
                 );
               })
             : null}
@@ -449,12 +663,15 @@ export function ShapePreview({
                     : en.fillMode === 'gradient'
                       ? `url(#${gradBase}-leg-${i})`
                       : en.solidFill;
-                const maxNameLen = legendSlotW > 14 ? 12 : Math.max(4, Math.floor(legendSlotW / 1.35));
+                const legFont = legendLabelFontSize;
+                const legLines = legendLabelLines[i] ?? [en.name];
+                const ty = vbH - 3.5 - legendYLift;
+                const legMidY = ty - legFont * 0.35;
                 return (
                   <g key={`leg-${en.segmentIndex}`} transform={`translate(${cx}, 0)`}>
                     <rect
                       x={-legendSlotW / 2 + 0.5}
-                      y={vbH - 6}
+                      y={legMidY - sw / 2}
                       width={sw}
                       height={sw}
                       rx={0.4}
@@ -463,17 +680,16 @@ export function ShapePreview({
                       strokeWidth={0.35}
                       vectorEffect="non-scaling-stroke"
                     />
-                    <text
+                    <BarPreviewTextBlock
+                      lines={legLines}
                       x={-legendSlotW / 2 + sw + 1.8}
-                      y={vbH - 3.5}
+                      yCenter={legMidY}
+                      fontSize={legFont}
                       textAnchor="start"
                       fill={axisC}
-                      fontSize={2.7}
                       fontWeight={500}
                       pointerEvents="none"
-                    >
-                      {truncateBarLabel(en.name, maxNameLen)}
-                    </text>
+                    />
                   </g>
                 );
               })
@@ -510,6 +726,36 @@ export function ShapePreview({
       const sliceStroke = chart?.sliceBorderColor?.trim() || effectiveBorderColor;
       const pieGradBase = `sp-pie-${gradientId.replace(/:/g, '')}`;
       const pieGradCoords = getGradientCoordinates(gradientAngle);
+      const previewPiePointerHandlers = (s: (typeof slices)[number]) => {
+        const showVal = s.tooltipValue != null && Number.isFinite(s.tooltipValue);
+        return {
+          onPointerEnter: (e: React.PointerEvent<SVGElement>) => {
+            cancelPieTooltipLeaveTimer();
+            if (showVal) {
+              setPieSliceTooltip({
+                x: e.clientX,
+                y: e.clientY,
+                text: s.tooltipValue!.toLocaleString(),
+              });
+            } else {
+              setPieSliceTooltip(null);
+            }
+          },
+          onPointerMove: (e: React.PointerEvent<SVGElement>) => {
+            if (!showVal) return;
+            setPieSliceTooltip((prev) =>
+              prev
+                ? { ...prev, x: e.clientX, y: e.clientY }
+                : {
+                    x: e.clientX,
+                    y: e.clientY,
+                    text: s.tooltipValue!.toLocaleString(),
+                  }
+            );
+          },
+          onPointerLeave: schedulePieTooltipLeave,
+        };
+      };
       return (
         <svg {...commonSvgProps} viewBox="0 0 60 60" preserveAspectRatio="xMidYMid meet">
           <defs>
@@ -537,39 +783,24 @@ export function ShapePreview({
                 : s.fillMode === 'gradient'
                   ? `url(#${pieGradBase}-${i})`
                   : s.solidFill;
-            const showVal = s.tooltipValue != null && Number.isFinite(s.tooltipValue);
             return (
               <g key={i} transform={`translate(${s.explodeX},${s.explodeY})`}>
+                <path
+                  d={s.d}
+                  fill="#000000"
+                  fillOpacity={0}
+                  stroke="rgba(0,0,0,0)"
+                  strokeWidth={PREVIEW_PIE_HIT_STROKE_PAD}
+                  vectorEffect="non-scaling-stroke"
+                  {...previewPiePointerHandlers(s)}
+                />
                 <path
                   d={s.d}
                   fill={fill}
                   stroke={sw ? sliceStroke : 'none'}
                   strokeWidth={sw}
                   vectorEffect="non-scaling-stroke"
-                  onPointerEnter={(e) => {
-                    if (showVal) {
-                      setPieSliceTooltip({
-                        x: e.clientX,
-                        y: e.clientY,
-                        text: s.tooltipValue!.toLocaleString(),
-                      });
-                    } else {
-                      setPieSliceTooltip(null);
-                    }
-                  }}
-                  onPointerMove={(e) => {
-                    if (!showVal) return;
-                    setPieSliceTooltip((prev) =>
-                      prev
-                        ? { ...prev, x: e.clientX, y: e.clientY }
-                        : {
-                            x: e.clientX,
-                            y: e.clientY,
-                            text: s.tooltipValue!.toLocaleString(),
-                          }
-                    );
-                  }}
-                  onPointerLeave={() => setPieSliceTooltip(null)}
+                  style={{ pointerEvents: 'none' }}
                 />
               </g>
             );
@@ -586,6 +817,8 @@ export function ShapePreview({
                 const maxChars = isFull
                   ? Math.max(4, Math.min(24, Math.round(18 * (5.5 / s.labelFontSize))))
                   : Math.max(4, Math.min(20, Math.round(12 * (4.75 / s.labelFontSize))));
+                const showVal =
+                  s.tooltipValue != null && Number.isFinite(s.tooltipValue);
                 return (
                   <text
                     key={`t-${i}`}
@@ -596,8 +829,9 @@ export function ShapePreview({
                     fill={s.labelColor}
                     fontSize={s.labelFontSize}
                     fontWeight={600}
-                    pointerEvents="none"
+                    pointerEvents={showVal ? 'auto' : 'none'}
                     style={{ textShadow: '0 0 1px rgba(0,0,0,0.5)' }}
+                    {...previewPiePointerHandlers(s)}
                   >
                     {truncatePieSliceLabel(s.name, maxChars)}
                   </text>
@@ -1372,6 +1606,21 @@ export function ShapePreview({
               style={{ left: pieSliceTooltip.x + 12, top: pieSliceTooltip.y + 12 }}
             >
               {pieSliceTooltip.text}
+            </div>,
+            document.body
+          )
+        : null}
+      {barPreviewCellTooltip != null && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              role="tooltip"
+              className="pointer-events-none fixed z-[10000] rounded-md border border-border bg-popover px-2 py-1 text-xs font-medium text-popover-foreground shadow-md"
+              style={{
+                left: barPreviewCellTooltip.x + 12,
+                top: barPreviewCellTooltip.y + 12,
+              }}
+            >
+              {barPreviewCellTooltip.text}
             </div>,
             document.body
           )

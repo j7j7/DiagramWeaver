@@ -100,6 +100,8 @@ const NodeChartBarSchema = z.object({
   showCategoryLabels: z.boolean().optional(),
   showSegmentValues: z.boolean().optional(),
   showLegend: z.boolean().optional(),
+  categoryLabelFontSize: z.number().min(2).max(14).optional(),
+  legendLabelFontSize: z.number().min(2).max(14).optional(),
 });
 
 const NodeChartSpecSchema = z.discriminatedUnion("kind", [NodeChartPieSchema, NodeChartBarSchema]);
