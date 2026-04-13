@@ -37,7 +37,7 @@ export function resolvePieSliceLabelFontSize(
 export const CHART_MAX_SEGMENT_PULL = 3;
 
 /** Max pull when a slice sets `segmentPull` (can exceed chart default). */
-export const CHART_MAX_PER_SLICE_SEGMENT_PULL = 24;
+export const CHART_MAX_PER_SLICE_SEGMENT_PULL = 4;
 
 /** @deprecated Use `CHART_MAX_SEGMENT_PULL`. */
 export const MAX_SEGMENT_GAP_DEG = CHART_MAX_SEGMENT_PULL;
@@ -155,7 +155,7 @@ export interface PieSliceRender {
 export interface PieSliceBuildOptions {
   /**
    * Chart default radial pull (0–3); same as `NodeChartSpec.segmentGapDeg`.
-   * Slices may override with `segmentPull` (0–24). Layout uses max pull to shrink wedge radius.
+   * Slices may override with `segmentPull` (0–4). Layout uses max pull to shrink wedge radius.
    */
   segmentGapDeg?: number;
 }

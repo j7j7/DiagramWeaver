@@ -62,7 +62,7 @@ export interface ChartSeriesItem {
    */
   labelFontSize?: number;
   /**
-   * Optional radial pull for this slice only (SVG viewBox units, 0–24). When set, replaces chart `segmentGapDeg` for this slice.
+   * Optional radial pull for this slice only (SVG viewBox units, 0–4). When set, replaces chart `segmentGapDeg` for this slice.
    */
   segmentPull?: number;
 }

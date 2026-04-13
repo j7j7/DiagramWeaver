@@ -155,7 +155,7 @@ export const DiagramNodeDataSchema = z.object({
       fillStyle: z.enum(['none', 'solid', 'gradient']).optional(),
       gradientColors: z.tuple([z.string(), z.string()]).optional(),
       labelFontSize: z.number().min(2).max(14).optional(),
-      segmentPull: z.number().min(0).max(24).optional(),
+      segmentPull: z.number().min(0).max(4).optional(),
     })),
     sliceBorderColor: z.string().optional(),
     shadow: z.boolean().optional(),

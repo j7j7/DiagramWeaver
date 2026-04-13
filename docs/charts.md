@@ -6,7 +6,7 @@ DiagramWeaver supports **data-driven chart nodes** under the `generic.chart.*` t
 
 1. **Palette**: **Generic → Object → Pie chart** (resource `pie-chart.png`).
 2. **Data**: Right-click the node → **Chart data** → edit slices (name, value, **fill mode** none/solid/gradient, colors, **per-slice label size**, label text color). **Segment labels** can be turned off chart-wide; with **more than two** slices, slice rows open **collapsed** by default.
-3. **Appearance** (modal): **Slice outline**, **Pie drop shadow**, **Segment labels** (on/off), **Segment separation** (chart-wide default **0–3** SVG units), and per-slice **Segment pull override** (**0–24**, empty = use chart default). **Visual styling** sets **border width** / **border style**; slice **gradient direction** uses **`gradientAngle`**. The modal outline color only applies when the chart override is set or you rely on the node border.
+3. **Appearance** (modal): **Slice outline**, **Pie drop shadow**, **Segment labels** (on/off), **Segment separation** (chart-wide default **0–3** SVG units), and per-slice **Segment pull override** (**0–4** slider, empty = use chart default). **Visual styling** sets **border width** / **border style**; slice **gradient direction** uses **`gradientAngle`**. The modal outline color only applies when the chart override is set or you rely on the node border.
 4. **Global styling**: **Visual styling** (context menu) controls **Border width**, **Border style** (including **none**), **Background** (solid / gradient / none), **`gradientAngle`**, and **Shadow** on the shape wrapper (`filter: var(--shape-shadow-drop)` when `useSvgShadow`). The chart’s **Pie drop shadow** is independent and stacks if both are enabled.
 5. **Diagram themes**: Applying a theme to a pie chart updates **each slice** from the theme’s **background** (solid, gradient, or none). Consecutive slices are shifted on the **hue wheel** by **36°** per slice (`CHART_THEME_HUE_STEP_DEG` in `theme-manager.ts`), so a green theme becomes green, green+36°, green+72°, … for both solid and gradient fills. **Label** colors on slices use the theme **`textColor`** when the theme defines it.
 
@@ -17,7 +17,7 @@ Stored as **`NodeChartSpec`** (`src/lib/types.ts`):
 | Field | Type | Purpose |
 |--------|------|---------|
 | `kind` | `'pie'` | Discriminator for editors and renderers. |
-| `series` | `ChartSeriesItem[]` | Slice rows: `id?`, `name`, `value`, `color?`, `labelColor?`, `labelFontSize?` (2–14, SVG viewBox units), `segmentPull?` (0–24, optional radial pull replacing chart default for that slice), `fillStyle?`, `gradientColors?`. |
+| `series` | `ChartSeriesItem[]` | Slice rows: `id?`, `name`, `value`, `color?`, `labelColor?`, `labelFontSize?` (2–14, SVG viewBox units), `segmentPull?` (0–4, optional radial pull replacing chart default for that slice), `fillStyle?`, `gradientColors?`. |
 | `sliceBorderColor?` | `string` | Stroke color for wedge outlines. If omitted, uses the node’s **`borderColor`** (Visual styling), then `#6b7280`. |
 | `shadow?` | `boolean` | If `true`, applies an **SVG `feDropShadow`** on the pie geometry (see `PieChartShape`). Independent of the node-level **Shadow** toggle in Visual styling (both can be on). |
 | `showSegmentLabels?` | `boolean` | If **`false`**, slice names are not drawn. Omitted or **`true`** = show labels. |
@@ -33,7 +33,7 @@ JSON validation: `DiagramNodeDataSchema` in `src/lib/schemas.ts` (`chart` object
 | `newChartSliceId()` | UUID or random id for a slice row. |
 | `defaultPieChartSpec()` | Default `NodeChartSpec` (one slice, value 100). |
 | `CHART_MAX_SEGMENT_PULL` | Max **chart default** radial pull stored in `segmentGapDeg` (**3**). |
-| `CHART_MAX_PER_SLICE_SEGMENT_PULL` | Max **`series[].segmentPull`** override (**24**). |
+| `CHART_MAX_PER_SLICE_SEGMENT_PULL` | Max **`series[].segmentPull`** override (**4**). |
 | `PIE_MIN_WEDGE_RADIUS` | Floor for wedge radius when pull is large (**5** SVG units). |
 | `computePieRadialLayout(outerBudget, segmentGapRequest)` | Single-slice helper: `{ rDraw, pull }` after clamping the chart default and fitting the budget. |
 | `scalePullsForOuterBudget(pulls, outerBudget)` | Scales an array of per-slice pulls so the outer rim and minimum wedge radius fit `outerBudget`. |

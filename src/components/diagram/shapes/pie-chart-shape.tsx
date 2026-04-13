@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useId, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { SvgShapeBase } from "./svg-shape-base";
 import { getGradientCoordinates } from "./shape-utils";
@@ -33,10 +33,14 @@ interface PieChartShapeProps {
   slideColorTransition?: string;
   overrideWidth?: number;
   overrideHeight?: number;
+  isReadOnly?: boolean;
+  /** Double-click segment label to edit; updates `chart.series[sliceIndex].name`. */
+  onPieSliceNameChange?: (sliceIndex: number, name: string) => void;
 }
 
 export function PieChartShape(props: PieChartShapeProps) {
-  const { node, slideColorTransition } = props;
+  const { isReadOnly = false, onPieSliceNameChange, ...svgBaseProps } = props;
+  const { node, slideColorTransition } = svgBaseProps;
   const chart = node.chart;
   const series = chart?.series;
   const { slices, rDraw } = pieSlicesForSvg(VB_CX, VB_CY, VB_R, series, {
@@ -44,6 +48,35 @@ export function PieChartShape(props: PieChartShapeProps) {
   });
   const labelR = (rDraw / VB_R) * LABEL_R_AT_MAX;
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [editingSliceIndex, setEditingSliceIndex] = useState<number | null>(null);
+  const [editingSliceNameDraft, setEditingSliceNameDraft] = useState("");
+  const sliceLabelEditCancelledRef = useRef(false);
+
+  const canEditSegmentLabel = !isReadOnly && !!onPieSliceNameChange;
+
+  useEffect(() => {
+    if (
+      editingSliceIndex != null &&
+      (!Array.isArray(series) || editingSliceIndex >= series.length)
+    ) {
+      setEditingSliceIndex(null);
+    }
+  }, [series, editingSliceIndex]);
+
+  const commitSliceLabelEdit = () => {
+    if (sliceLabelEditCancelledRef.current) {
+      sliceLabelEditCancelledRef.current = false;
+      return;
+    }
+    if (editingSliceIndex == null || !onPieSliceNameChange) return;
+    onPieSliceNameChange(editingSliceIndex, editingSliceNameDraft.trim());
+    setEditingSliceIndex(null);
+  };
+
+  const cancelSliceLabelEdit = () => {
+    sliceLabelEditCancelledRef.current = true;
+    setEditingSliceIndex(null);
+  };
   const filterId = `dw-pie-sh-${useId().replace(/:/g, "")}`;
   const gradBaseId = `dw-pie-g-${useId().replace(/:/g, "")}`;
   const gradientAngle = node.gradientAngle ?? 135;
@@ -127,6 +160,78 @@ export function PieChartShape(props: PieChartShapeProps) {
               ? Math.max(4, Math.min(24, Math.round(18 * (5.5 / s.labelFontSize))))
               : Math.max(4, Math.min(20, Math.round(12 * (4.75 / s.labelFontSize))));
             const display = truncatePieSliceLabel(s.name, maxChars);
+            const fullName = (series?.[i]?.name ?? s.name) || "";
+            if (editingSliceIndex === i) {
+              /** Match `<text fontSize>`: inner layout uses SVG user units → same numeric px in `foreignObject` (no extra × node width; SVG scales the whole subtree). */
+              const labelFontSizePx = s.labelFontSize;
+              const charCount = Math.max(
+                4,
+                editingSliceNameDraft.length,
+                fullName.length
+              );
+              const foW = Math.min(
+                56,
+                Math.max(8, charCount * s.labelFontSize * 0.55)
+              );
+              const foH = Math.max(5.5, s.labelFontSize * 1.35);
+              const labelTextShadow =
+                "0 0 2px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.35)";
+              return (
+                <foreignObject
+                  key={`lbl-${i}`}
+                  x={ta.x - foW / 2}
+                  y={ta.y - foH / 2}
+                  width={foW}
+                  height={foH}
+                  style={{ overflow: "visible" }}
+                >
+                  <div
+                    className="flex h-full w-full items-center justify-center"
+                    style={{ margin: 0, padding: 0 }}
+                  >
+                    <input
+                      type="text"
+                      className="m-0 box-border min-w-0 max-w-full bg-transparent p-0 shadow-none focus:outline-none focus:ring-0"
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        border: "none",
+                        borderRadius: 0,
+                        textAlign: "center",
+                        fontFamily: "ui-sans-serif, system-ui, sans-serif",
+                        fontWeight: 600,
+                        fontSize: labelFontSizePx,
+                        lineHeight: 1,
+                        color: s.labelColor,
+                        textShadow: labelTextShadow,
+                        caretColor: s.labelColor,
+                      }}
+                      value={editingSliceNameDraft}
+                      autoFocus
+                      aria-label="Edit segment label"
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => setEditingSliceNameDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        e.stopPropagation();
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          commitSliceLabelEdit();
+                        } else if (e.key === "Escape") {
+                          e.preventDefault();
+                          cancelSliceLabelEdit();
+                        }
+                      }}
+                      onBlur={() => {
+                        commitSliceLabelEdit();
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onDoubleClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                </foreignObject>
+              );
+            }
             return (
               <text
                 key={`lbl-${i}`}
@@ -137,9 +242,18 @@ export function PieChartShape(props: PieChartShapeProps) {
                 fill={s.labelColor}
                 fontSize={s.labelFontSize}
                 fontWeight={600}
-                pointerEvents="none"
+                pointerEvents={canEditSegmentLabel ? "auto" : "none"}
                 style={{
                   textShadow: "0 0 2px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.35)",
+                  cursor: canEditSegmentLabel ? "text" : undefined,
+                }}
+                onPointerDown={(e) => canEditSegmentLabel && e.stopPropagation()}
+                onDoubleClick={(e) => {
+                  if (!canEditSegmentLabel) return;
+                  e.stopPropagation();
+                  e.preventDefault();
+                  setEditingSliceNameDraft(fullName);
+                  setEditingSliceIndex(i);
                 }}
               >
                 {display}
@@ -170,7 +284,7 @@ export function PieChartShape(props: PieChartShapeProps) {
 
   return (
     <SvgShapeBase
-      {...props}
+      {...svgBaseProps}
       viewBox="0 0 60 60"
       preserveAspectRatio="xMidYMid meet"
       slideColorTransition={slideColorTransition}

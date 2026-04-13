@@ -547,7 +547,24 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     } else if (nodeType === 'generic.object.circle' || nodeType?.endsWith('.circle')) {
       return <CircleShape {...shapeProps} />;
     } else if (nodeType === 'generic.chart.pie' || nodeType?.startsWith('generic.chart.')) {
-      return <PieChartShape {...shapeProps} />;
+      return (
+        <PieChartShape
+          {...shapeProps}
+          isReadOnly={isReadOnly}
+          onPieSliceNameChange={
+            onUpdate && !isReadOnly
+              ? (sliceIndex, name) => {
+                  const c = node.chart;
+                  if (!c?.series || sliceIndex < 0 || sliceIndex >= c.series.length) return;
+                  const nextSeries = c.series.map((row, j) =>
+                    j === sliceIndex ? { ...row, name } : row
+                  );
+                  onUpdate({ ...node, chart: { ...c, series: nextSeries } });
+                }
+              : undefined
+          }
+        />
+      );
     } else if (nodeType === 'generic.object.point' || nodeType?.endsWith('.point')) {
       return <PointShape {...shapeProps} />;
     } else if (nodeType === 'generic.object.kite' || nodeType?.endsWith('.kite')) {

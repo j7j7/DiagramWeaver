@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useRef, useEffect, useState } from "react";
+import { useDrag, useDrop } from "react-dnd";
+import type { ConnectDragSource } from "react-dnd";
 import Draggable from "react-draggable";
 import { ChevronDown, GripVertical, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -73,8 +75,79 @@ interface EditRow {
   labelColor: string;
   /** Empty = use renderer default label size. */
   labelFontSizeStr: string;
-  /** Empty = use chart "Segment separation" for this slice; otherwise 0–24 radial pull. */
+  /** Empty = use chart "Segment separation" for this slice; otherwise 0–4 radial pull. */
   segmentPullStr: string;
+}
+
+const CHART_SLICE_REORDER_TYPE = "dw-chart-slice-reorder";
+
+function ChartSliceSortableRow({
+  index,
+  isReadOnly,
+  reorderRows,
+  className,
+  children,
+}: {
+  index: number;
+  isReadOnly: boolean;
+  reorderRows: (fromIndex: number, toIndex: number) => void;
+  className?: string;
+  children: (dragHandleRef: ConnectDragSource) => React.ReactNode;
+}) {
+  const [{ isDragging }, drag] = useDrag(
+    () => ({
+      type: CHART_SLICE_REORDER_TYPE,
+      item: { index },
+      canDrag: !isReadOnly,
+      collect: (monitor) => ({
+        isDragging: !!monitor.isDragging(),
+      }),
+    }),
+    [index, isReadOnly]
+  );
+
+  const [, drop] = useDrop(
+    () => ({
+      accept: CHART_SLICE_REORDER_TYPE,
+      hover(item: { index: number }) {
+        if (item.index === index) return;
+        reorderRows(item.index, index);
+        item.index = index;
+      },
+    }),
+    [index, reorderRows]
+  );
+
+  return (
+    <div
+      ref={drop as unknown as React.RefCallback<HTMLDivElement | null>}
+      className={cn(className, isDragging && "opacity-50")}
+    >
+      {children(drag)}
+    </div>
+  );
+}
+
+/** Parsed segment pull override for the modal slider (empty string = use chart default). */
+function pieChartRowSegmentPullState(segmentPullStr: string): {
+  hasCustomSegmentPull: boolean;
+  segmentPullSliderValue: number;
+} {
+  const trimmed = String(segmentPullStr ?? "").trim();
+  if (!trimmed) {
+    return { hasCustomSegmentPull: false, segmentPullSliderValue: 0 };
+  }
+  const raw = Number(trimmed.replace(/,/g, "."));
+  if (!Number.isFinite(raw)) {
+    return { hasCustomSegmentPull: false, segmentPullSliderValue: 0 };
+  }
+  return {
+    hasCustomSegmentPull: true,
+    segmentPullSliderValue: Math.min(
+      CHART_MAX_PER_SLICE_SEGMENT_PULL,
+      Math.max(0, raw)
+    ),
+  };
 }
 
 interface ChartDataEditorModalProps {
@@ -131,7 +204,12 @@ export function ChartDataEditorModal({
               : "",
           segmentPullStr:
             s.segmentPull != null && Number.isFinite(s.segmentPull)
-              ? String(s.segmentPull)
+              ? String(
+                  Math.min(
+                    CHART_MAX_PER_SLICE_SEGMENT_PULL,
+                    Math.max(0, s.segmentPull)
+                  )
+                )
               : "",
         };
       });
@@ -364,10 +442,6 @@ export function ChartDataEditorModal({
             </Tooltip>
           </div>
           <div className="p-4 space-y-3 max-h-[min(520px,70vh)] overflow-y-auto">
-            <p className="text-xs text-muted-foreground">
-              Per-slice fill can be none, solid, or gradient (like shape backgrounds). Gradient direction uses the node&apos;s Visual styling angle. Labels use the same color picker as Visual styling.
-            </p>
-
             <div className="rounded-md border border-border/60 p-3 space-y-3 bg-muted/15">
               <p className="text-xs font-medium text-foreground">Chart appearance</p>
               <div
@@ -395,23 +469,30 @@ export function ChartDataEditorModal({
                     showAlpha={true}
                     allowTransparent={true}
                   />
-                  <p className="text-[10px] text-muted-foreground">
-                    Overrides the node border color for pie wedges only. Border width comes from Visual styling.
-                  </p>
                 </div>
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <Label className="text-xs font-medium">Pie drop shadow</Label>
-                    <p className="text-[10px] text-muted-foreground">SVG shadow on the chart (optional with Visual styling shadow).</p>
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="chart-data-pie-shadow" className="text-xs font-medium">
+                      Pie drop shadow
+                    </Label>
+                    <Switch
+                      id="chart-data-pie-shadow"
+                      checked={chartShadow}
+                      onCheckedChange={setChartShadow}
+                      disabled={isReadOnly}
+                    />
                   </div>
-                  <Switch checked={chartShadow} onCheckedChange={setChartShadow} disabled={isReadOnly} />
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <Label className="text-xs font-medium">Segment labels</Label>
-                    <p className="text-[10px] text-muted-foreground">Show slice names on the pie. Size is set per slice below.</p>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="chart-data-segment-labels" className="text-xs font-medium">
+                      Segment labels
+                    </Label>
+                    <Switch
+                      id="chart-data-segment-labels"
+                      checked={showSegmentLabels}
+                      onCheckedChange={setShowSegmentLabels}
+                      disabled={isReadOnly}
+                    />
                   </div>
-                  <Switch checked={showSegmentLabels} onCheckedChange={setShowSegmentLabels} disabled={isReadOnly} />
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between gap-2">
@@ -450,76 +531,78 @@ export function ChartDataEditorModal({
                 const { hasCustomLabelFontSize, labelSizeSliderValue } = pieChartRowLabelSizeState(
                   row.labelFontSizeStr
                 );
+                const { hasCustomSegmentPull, segmentPullSliderValue } = pieChartRowSegmentPullState(
+                  row.segmentPullStr
+                );
                 return (
-                  <div
+                  <ChartSliceSortableRow
                     key={row.id}
+                    index={i}
+                    isReadOnly={isReadOnly}
+                    reorderRows={reorderRows}
                     className="rounded-md border border-border/60 bg-muted/20"
-                    onDragOver={(e) => {
-                      if (isReadOnly) return;
-                      e.preventDefault();
-                      e.dataTransfer.dropEffect = "move";
-                    }}
-                    onDrop={(e) => {
-                      if (isReadOnly) return;
-                      e.preventDefault();
-                      const fromStr = e.dataTransfer.getData("application/x-dw-chart-slice-index");
-                      const from = Number.parseInt(fromStr, 10);
-                      if (Number.isNaN(from)) return;
-                      reorderRows(from, i);
-                    }}
                   >
-                    <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border/40">
-                      <button
-                        type="button"
-                        className="shrink-0 p-1 rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-                        onClick={() => toggleSliceCollapsed(row.id)}
-                        aria-expanded={!collapsed}
-                        aria-label={collapsed ? "Expand slice" : "Collapse slice"}
-                      >
-                        <ChevronDown
-                          className={cn("h-4 w-4 transition-transform", collapsed && "-rotate-90")}
-                        />
-                      </button>
-                      <button
-                        type="button"
-                        className={cn(
-                          "touch-none shrink-0 p-1 rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground",
-                          isReadOnly && "pointer-events-none opacity-40"
-                        )}
-                        draggable={!isReadOnly}
-                        aria-label="Drag to reorder slice"
-                        onDragStart={(e) => {
-                          e.stopPropagation();
-                          e.dataTransfer.setData("application/x-dw-chart-slice-index", String(i));
-                          e.dataTransfer.effectAllowed = "move";
-                        }}
-                      >
-                        <GripVertical className="h-4 w-4" />
-                      </button>
-                      {collapsed ? (
-                        <span className="flex-1 min-w-0 text-xs text-muted-foreground truncate">
-                          {summaryName} · {row.valueStr || "0"} · {row.fillStyle}
-                          {row.labelFontSizeStr.trim() ? ` · sz ${row.labelFontSizeStr}` : ""}
-                          {row.segmentPullStr.trim() ? ` · pull ${row.segmentPullStr}` : ""}
-                        </span>
-                      ) : (
-                        <div className="flex-1 min-w-0" aria-hidden />
-                      )}
-                      {!isReadOnly && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-destructive"
-                          onClick={() => removeRow(i)}
-                          disabled={rows.length <= 1}
-                          aria-label="Remove slice"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      )}
-                    </div>
-                    {!collapsed ? (
-                      <div className="p-2 space-y-2">
+                    {(dragHandleRef) => (
+                      <>
+                        <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border/40">
+                          <button
+                            type="button"
+                            className="shrink-0 p-1 rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+                            onClick={() => toggleSliceCollapsed(row.id)}
+                            aria-expanded={!collapsed}
+                            aria-label={collapsed ? "Expand slice" : "Collapse slice"}
+                          >
+                            <ChevronDown
+                              className={cn("h-4 w-4 transition-transform", collapsed && "-rotate-90")}
+                            />
+                          </button>
+                          <div
+                            ref={dragHandleRef as unknown as React.Ref<HTMLDivElement>}
+                            role="button"
+                            tabIndex={isReadOnly ? -1 : 0}
+                            className={cn(
+                              "touch-none shrink-0 p-1 rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground cursor-grab active:cursor-grabbing outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                              isReadOnly && "pointer-events-none opacity-40 cursor-default"
+                            )}
+                            aria-label="Drag to reorder slice"
+                            onKeyDown={(e) => {
+                              if (isReadOnly) return;
+                              if (e.key === "ArrowUp" && i > 0) {
+                                e.preventDefault();
+                                reorderRows(i, i - 1);
+                              }
+                              if (e.key === "ArrowDown" && i < rows.length - 1) {
+                                e.preventDefault();
+                                reorderRows(i, i + 1);
+                              }
+                            }}
+                          >
+                            <GripVertical className="h-4 w-4" />
+                          </div>
+                          {collapsed ? (
+                            <span className="flex-1 min-w-0 text-xs text-muted-foreground truncate">
+                              {summaryName} · {row.valueStr || "0"} · {row.fillStyle}
+                              {row.labelFontSizeStr.trim() ? ` · sz ${row.labelFontSizeStr}` : ""}
+                              {row.segmentPullStr.trim() ? ` · pull ${row.segmentPullStr}` : ""}
+                            </span>
+                          ) : (
+                            <div className="flex-1 min-w-0" aria-hidden />
+                          )}
+                          {!isReadOnly && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-destructive"
+                              onClick={() => removeRow(i)}
+                              disabled={rows.length <= 1}
+                              aria-label="Remove slice"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          )}
+                        </div>
+                        {!collapsed ? (
+                          <div className="p-2 space-y-2">
                         <div className="flex gap-1 items-center">
                           <Input
                             value={row.name}
@@ -615,23 +698,41 @@ export function ChartDataEditorModal({
                           <p className="text-[10px] text-muted-foreground">This slice has no fill.</p>
                         ) : null}
                         <div
-                          className={`space-y-1 ${isReadOnly ? "pointer-events-none opacity-75" : ""}`}
+                          className={`space-y-2 ${isReadOnly ? "pointer-events-none opacity-75" : ""}`}
                         >
-                          <Label className="text-[10px] text-muted-foreground">
-                            Segment pull override
-                          </Label>
-                          <Input
-                            type="text"
-                            inputMode="decimal"
-                            value={row.segmentPullStr}
-                            onChange={(e) => updateRow(i, { segmentPullStr: e.target.value })}
-                            placeholder={`Chart default (${segmentGapDeg})`}
-                            className="h-8 text-xs"
+                          <div className="flex items-center justify-between gap-2">
+                            <Label className="text-[10px] text-muted-foreground">
+                              Segment pull override
+                            </Label>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span className="text-[10px] text-muted-foreground tabular-nums">
+                                {hasCustomSegmentPull ? segmentPullSliderValue : "Chart default"}
+                              </span>
+                              {!isReadOnly && hasCustomSegmentPull ? (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-1.5 text-[10px] text-muted-foreground"
+                                  onClick={() => updateRow(i, { segmentPullStr: "" })}
+                                >
+                                  Use default
+                                </Button>
+                              ) : null}
+                            </div>
+                          </div>
+                          <Slider
+                            value={[segmentPullSliderValue]}
+                            onValueChange={(v) => {
+                              const next = v[0];
+                              if (next == null) return;
+                              updateRow(i, { segmentPullStr: String(next) });
+                            }}
+                            min={0}
+                            max={CHART_MAX_PER_SLICE_SEGMENT_PULL}
+                            step={0.25}
                             disabled={isReadOnly}
                           />
-                          <p className="text-[10px] text-muted-foreground">
-                            Optional. 0–{CHART_MAX_PER_SLICE_SEGMENT_PULL} SVG units along the slice bisector; replaces chart segment separation for this slice only. Leave empty to use the chart slider.
-                          </p>
                         </div>
                         <div
                           className={`space-y-2 ${isReadOnly ? "pointer-events-none opacity-75" : ""}`}
@@ -667,9 +768,6 @@ export function ChartDataEditorModal({
                             step={0.25}
                             disabled={isReadOnly}
                           />
-                          <p className="text-[10px] text-muted-foreground">
-                            SVG units (2–14). Default follows slice shape in the renderer; drag to set a fixed size, or Use default to clear.
-                          </p>
                         </div>
                         <div
                           className={`space-y-1 ${isReadOnly ? "pointer-events-none opacity-75" : ""}`}
@@ -685,7 +783,9 @@ export function ChartDataEditorModal({
                         </div>
                       </div>
                     ) : null}
-                  </div>
+                      </>
+                    )}
+                  </ChartSliceSortableRow>
                 );
               })}
             </div>
