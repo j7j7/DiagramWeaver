@@ -187,7 +187,8 @@ function computeBarLegendBandHeight(
   const swatchH = 3;
   const textBlock = maxLines * lineH;
   const rowH = Math.max(swatchH, textBlock);
-  return rowH + 5;
+  /** Small tail margin only; large padding here inflated `marginB` and left a visible gap above the legend. */
+  return rowH + 1.25;
 }
 
 function clamp01(v: number, max = 0.85): number {
@@ -294,8 +295,11 @@ export function buildBarChartLayout(
       categoryBand = 2.5 + maxLineCount * lineH + 1.5;
     }
 
+    /** Tighter gutter when a bottom legend is present so the plot sits closer to the legend row. */
+    const verticalBelowPlot =
+      vertical && legendList.length > 0 ? 5 : vertical ? 9 : showValueAxis ? 12 : 9;
     const marginB = vertical
-      ? 9 + categoryBand + legendBand
+      ? verticalBelowPlot + categoryBand + legendBand
       : (showValueAxis ? 12 : 9) + legendBand;
     const plotH = vbH - marginT - marginB;
 

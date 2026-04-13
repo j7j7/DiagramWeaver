@@ -6,7 +6,7 @@
 **`NodeChartSpecBar`**: optional **`categoryLabelFontSize`** and **`legendLabelFontSize`** (2–14 SVG units; schema + **Chart data** modal sliders with **Use default**). **`buildBarChartLayout`** word-wraps category, legend, and reserves **`marginL`** / bottom bands from line counts (**`wrapBarLabelLines`**, **`estimateBarLabelLineWidth`**). **`BarChartShape`** / **`shape-preview`**: segment names use **`BarSvgTextBlock`** / **`BarPreviewTextBlock`** (`<tspan>` lines); legend swatch aligns to **`legMidY`**.
 
 ### 2026-04-13 – Bar chart: legend nudged up (~50% of legend band)
-**`BarChartShape`** (and **`shape-preview`** bar branch): bottom legend **swatch + labels** move up by **`legendYLift` 4.25** viewBox units (~half the **`legendBand` 8.5** reserved in **`buildBarChartLayout`**) so less empty space between the chart and legend.
+**`BarChartShape`** / preview: bottom legend uses small **`legendYLift` (~1.5)**; **`buildBarChartLayout`** tightens the real gap by a smaller **`legendBand`** tail (**`rowH + 1.25`** vs **`+ 5`**) and **`verticalBelowPlot` 5** when a legend is on (was **`9 + categoryBand + legendBand`** for all vertical bars).
 
 ### 2026-04-13 – Bar chart: segment hover shows value when values not in-bar
 **`BarChartShape`**: if **`showSegmentValues`** is off, each segment uses the same **portaled tooltip** pattern as the pie (**`createPortal`**, **~140ms** delayed **`pointerLeave`**, invisible **hit** rect + **`pointer-events: none`** paint rect). **`formatAxisNumber`** matches axis / in-bar formatting. **Segment name** `<text>` (name-only overlay) shares **`barRectValueTooltipHandlers`** so hovering the label doesn’t drop the tip. **`shape-preview`** bar branch matches for the palette.

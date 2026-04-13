@@ -326,7 +326,7 @@ export function ShapePreview({
       const showCG = vertical ? spec.showGridX === true : spec.showGridY === true;
       const legendSlotW =
         legendList.length > 0 ? plot.w / Math.max(1, legendList.length) : 0;
-      const legendYLift = 4.25;
+      const legendYLift = 1.5;
       const useRoundedColumnEnds = barChartWantsRoundedColumnEnds(spec);
       const rectsByCat = new Map<number, (typeof model.rects)[number][]>();
       for (const r of model.rects) {

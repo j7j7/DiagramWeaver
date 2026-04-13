@@ -1089,8 +1089,8 @@ export function BarChartShape(props: BarChartShapeProps) {
 
   const legendSlotW =
     showLegend && legendList.length > 0 ? plot.w / Math.max(1, legendList.length) : 0;
-  /** ~50% of layout `legendBand` (8.5 in `buildBarChartLayout`); reduces dead space below the plot. */
-  const legendYLift = 4.25;
+  /** Minor upward nudge; main legend spacing comes from `buildBarChartLayout` margin bands. */
+  const legendYLift = 1.5;
   const legendEls =
     showLegend && legendList.length > 0 ? (
       <g aria-label="Legend">
