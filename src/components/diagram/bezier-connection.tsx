@@ -4,7 +4,7 @@ import type { DiagramNodeData, DiagramGroupData, DiagramConnectionData } from "@
 import React from "react";
 import { useTheme } from "@/components/theme-provider";
 import { measureNodeDims } from "@/components/editor/canvas-constants";
-import { isIconOrEmojiType, isShapeNodeType } from "@/lib/utils";
+import { isIconOrEmojiType, isShapeNodeType, isGenericObjectOrChartShapeType } from "@/lib/utils";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
 import { getShapeEdgeBounds, shapeEdgeToPoint, isKiteShapeType, getKiteConnectionPoint } from "@/lib/shape-connection-bounds";
 import { clampConnectionAnimation } from "@/lib/connection-animation";
@@ -282,7 +282,7 @@ export function renderAnimatedShape(shape: 'dot' | 'square' | 'arrow' | 'triangl
 export function getConnectionPoint(obj: any, width: number, height: number, point: 'top' | 'bottom' | 'left' | 'right' | 'center', iconHeight?: number, connectionIndex?: number, totalConnections?: number, isToNode: boolean = false, toConnectionIndex?: number, toTotalConnections?: number, iconOffset?: number, iconWidth?: number, iconOffsetX?: number, centerEdgeAnchors?: boolean): { x: number; y: number; angleDeg?: number } {
   const isGroup = obj.type === 'group' || obj.subType === 'zone';
   const isTextNode = obj.type === 'generic.text.text' || obj.type === 'generic.text.textbox';
-  const isObjectNode = obj.type?.startsWith('generic.object.');
+  const isObjectNode = isGenericObjectOrChartShapeType(obj.type);
   const isIconLikeNode = !isGroup && !isTextNode && !isObjectNode;
   const inferredIconContainer = isIconLikeNode ? getNodeSizeDimensions((obj as any).nodeSize).container : undefined;
 
@@ -488,8 +488,8 @@ export function computeAxisDeltasForConnectionNodes(
   const toIsGroup = to.type === 'group' || to.subType === 'zone';
   const fromIsText = from.type === 'generic.text.text' || from.type === 'generic.text.textbox';
   const toIsText = to.type === 'generic.text.text' || to.type === 'generic.text.textbox';
-  const fromIsObjectNode = from.type?.startsWith('generic.object.');
-  const toIsObjectNode = to.type?.startsWith('generic.object.');
+  const fromIsObjectNode = isGenericObjectOrChartShapeType(from.type);
+  const toIsObjectNode = isGenericObjectOrChartShapeType(to.type);
   const fromIsIconLike = !fromIsGroup && !fromIsText && !fromIsObjectNode;
   const toIsIconLike = !toIsGroup && !toIsText && !toIsObjectNode;
 
@@ -656,8 +656,8 @@ export function getOptimalConnectionPoints(from: any, to: any, fromWidth: number
   const toIsGroup = to.type === 'group' || to.subType === 'zone';
   const fromIsText = from.type === 'generic.text.text' || from.type === 'generic.text.textbox';
   const toIsText = to.type === 'generic.text.text' || to.type === 'generic.text.textbox';
-  const fromIsObjectNode = from.type?.startsWith('generic.object.');
-  const toIsObjectNode = to.type?.startsWith('generic.object.');
+  const fromIsObjectNode = isGenericObjectOrChartShapeType(from.type);
+  const toIsObjectNode = isGenericObjectOrChartShapeType(to.type);
   const fromIsIconLike = !fromIsGroup && !fromIsText && !fromIsObjectNode;
   const toIsIconLike = !toIsGroup && !toIsText && !toIsObjectNode;
 

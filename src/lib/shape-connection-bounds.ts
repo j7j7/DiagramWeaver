@@ -26,6 +26,10 @@ export interface ShapeEdgeBounds {
 
 /** Returns edge bounds for a shape type; null means use full bounding box (rectangle behavior) */
 export function getShapeEdgeBounds(shapeType: string | undefined): ShapeEdgeBounds | null {
+  // Pie (and future chart nodes using the same 60×60 circular viewBox + meet)
+  if (shapeType?.startsWith?.('generic.chart.')) {
+    return { topY: 1, bottomY: 59, leftX: 1, rightX: 59, viewBoxW: 60, viewBoxH: 60 };
+  }
   if (!shapeType?.startsWith?.('generic.object.')) return null;
   const base = shapeType.replace(/^generic\.object\./, '');
   const suffix = base.includes('.') ? base.split('.').pop()! : base;

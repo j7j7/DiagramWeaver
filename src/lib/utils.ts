@@ -27,6 +27,11 @@ export function isIconOrEmojiType(type: string | undefined): boolean {
   return !!(type?.startsWith('generic.icon.') || type?.startsWith('generic.emoji.'))
 }
 
+/** Diagram object + chart nodes: use shape bounding / connection geometry, not icon-in-box layout. */
+export function isGenericObjectOrChartShapeType(type: string | undefined): boolean {
+  return !!(type?.startsWith('generic.object.') || type?.startsWith('generic.chart.'))
+}
+
 export function isShapeNodeType(nodeType: string): boolean {
   if (isIconOrEmojiType(nodeType)) return false
   if (isChartNodeType(nodeType)) return true

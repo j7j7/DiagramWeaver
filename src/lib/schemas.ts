@@ -151,7 +151,13 @@ export const DiagramNodeDataSchema = z.object({
       name: z.string(),
       value: z.number(),
       color: z.string().optional(),
+      labelColor: z.string().optional(),
+      fillStyle: z.enum(['none', 'solid', 'gradient']).optional(),
+      gradientColors: z.tuple([z.string(), z.string()]).optional(),
     })),
+    sliceBorderColor: z.string().optional(),
+    shadow: z.boolean().optional(),
+    segmentGapDeg: z.number().min(0).max(24).optional(),
   }).optional(),
   umlClass: z.object({
     name: z.string(),

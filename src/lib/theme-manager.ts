@@ -1,6 +1,11 @@
 import { DiagramTheme, ThemeProperties, ThemeApplicationOptions } from './theme-types';
-import type { DiagramNodeData, DiagramGroupData, DiagramConnectionData } from './types';
+import type { DiagramNodeData, DiagramGroupData, DiagramConnectionData, ChartSeriesItem } from './types';
 import { getThemeSpectrumSortKey } from './theme-spectrum';
+import { isChartNodeType } from './chart-node';
+import { shiftHueOfColor } from './color-shift';
+
+/** Hue step per pie slice when applying a diagram theme (degrees on the color wheel). */
+const CHART_THEME_HUE_STEP_DEG = 18;
 
 const THEME_STORAGE_KEY = 'diagram-weaver-themes';
 
@@ -1247,6 +1252,44 @@ class ThemeManager {
     }
     if (properties.borderGradientAngle !== undefined) {
       (updated as any).borderGradientAngle = properties.borderGradientAngle;
+    }
+
+    if (isChartNodeType((updated as DiagramNodeData).type)) {
+      const node = updated as DiagramNodeData;
+      const chart = node.chart;
+      if (chart?.kind === 'pie' && Array.isArray(chart.series)) {
+        const bgStyle = properties.backgroundStyle;
+        const series: ChartSeriesItem[] = chart.series.map((sliceRow, i) => {
+          const hue = i * CHART_THEME_HUE_STEP_DEG;
+          const base: ChartSeriesItem = {
+            id: sliceRow.id,
+            name: sliceRow.name,
+            value: sliceRow.value,
+          };
+          if (properties.textColor !== undefined) {
+            base.labelColor = properties.textColor;
+          } else if (sliceRow.labelColor !== undefined) {
+            base.labelColor = sliceRow.labelColor;
+          }
+          if (bgStyle === 'gradient' && properties.backgroundColors && properties.backgroundColors.length >= 2) {
+            base.fillStyle = 'gradient';
+            base.gradientColors = [
+              shiftHueOfColor(properties.backgroundColors[0], hue),
+              shiftHueOfColor(properties.backgroundColors[1], hue),
+            ];
+            return base;
+          }
+          if (bgStyle === 'none') {
+            base.fillStyle = 'none';
+            return base;
+          }
+          const c = properties.backgroundColor ?? '#6b7280';
+          base.fillStyle = 'solid';
+          base.color = shiftHueOfColor(c, hue);
+          return base;
+        });
+        node.chart = { ...chart, series };
+      }
     }
 
     return updated;

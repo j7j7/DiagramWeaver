@@ -2,7 +2,7 @@ import React, { useId } from 'react';
 import { polygonToRoundedPath } from '@/components/diagram/shapes/shape-utils';
 import { getTextEffectsShadowCss } from '@/lib/text-styling';
 import type { NodeChartSpec } from '@/lib/types';
-import { pieSlicesForSvg } from '@/lib/chart-node';
+import { computePieRadialLayout, pieSlicesForSvg, truncatePieSliceLabel } from '@/lib/chart-node';
 
 interface ShapePreviewProps {
   type: string;
@@ -160,20 +160,80 @@ export function ShapePreview({
 
   const renderShape = () => {
     if (type === 'generic.chart.pie' || type?.startsWith('generic.chart.')) {
-      const slices = pieSlicesForSvg(30, 30, 28, chart?.series);
+      const pieOuterR = 28;
+      const { rDraw } = computePieRadialLayout(pieOuterR, chart?.segmentGapDeg);
+      const labelR = (rDraw / pieOuterR) * 16;
+      const slices = pieSlicesForSvg(30, 30, pieOuterR, chart?.series, {
+        segmentGapDeg: chart?.segmentGapDeg,
+      });
       const sw = borderStyle === 'none' ? 0 : strokeWidth;
+      const sliceStroke = chart?.sliceBorderColor?.trim() || effectiveBorderColor;
+      const pieGradBase = `sp-pie-${gradientId.replace(/:/g, '')}`;
+      const pieGradCoords = getGradientCoordinates(gradientAngle);
       return (
         <svg {...commonSvgProps} viewBox="0 0 60 60" preserveAspectRatio="xMidYMid meet">
-          {slices.map((s, i) => (
-            <path
-              key={i}
-              d={s.d}
-              fill={s.fill}
-              stroke={sw ? effectiveBorderColor : 'none'}
-              strokeWidth={sw}
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
+          <defs>
+            {slices.map((s, i) =>
+              s.fillMode === 'gradient' ? (
+                <linearGradient
+                  key={`sp-pie-lg-${i}`}
+                  id={`${pieGradBase}-${i}`}
+                  x1={pieGradCoords.x1}
+                  y1={pieGradCoords.y1}
+                  x2={pieGradCoords.x2}
+                  y2={pieGradCoords.y2}
+                  gradientUnits="objectBoundingBox"
+                >
+                  <stop offset="0%" stopColor={s.gradientColor1} />
+                  <stop offset="100%" stopColor={s.gradientColor2} />
+                </linearGradient>
+              ) : null
+            )}
+          </defs>
+          {slices.map((s, i) => {
+            const fill =
+              s.fillMode === 'none'
+                ? 'transparent'
+                : s.fillMode === 'gradient'
+                  ? `url(#${pieGradBase}-${i})`
+                  : s.solidFill;
+            return (
+              <g key={i} transform={`translate(${s.explodeX},${s.explodeY})`}>
+                <path
+                  d={s.d}
+                  fill={fill}
+                  stroke={sw ? sliceStroke : 'none'}
+                  strokeWidth={sw}
+                  vectorEffect="non-scaling-stroke"
+                />
+              </g>
+            );
+          })}
+          {slices.map((s, i) => {
+            if (!s.name.trim() || (slices.length > 1 && s.span < 0.11)) return null;
+            const lx = 30 + s.explodeX;
+            const ly = 30 + s.explodeY;
+            const ta =
+              s.span >= 2 * Math.PI - 1e-6
+                ? { x: lx, y: ly + 4 }
+                : { x: lx + labelR * Math.cos(s.midAngle), y: ly + labelR * Math.sin(s.midAngle) };
+            return (
+              <text
+                key={`t-${i}`}
+                x={ta.x}
+                y={ta.y}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill={s.labelColor}
+                fontSize={4.5}
+                fontWeight={600}
+                pointerEvents="none"
+                style={{ textShadow: '0 0 1px rgba(0,0,0,0.5)' }}
+              >
+                {truncatePieSliceLabel(s.name, 10)}
+              </text>
+            );
+          })}
         </svg>
       );
     }

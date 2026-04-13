@@ -40,19 +40,39 @@ export interface CustomImageOptions {
 /** Extensible chart kinds — add `bar`, `line`, etc. alongside renderers and editors. */
 export type ChartKind = "pie";
 
+/** Slice fill mode — mirrors shape `backgroundStyle` (none / solid / gradient). */
+export type ChartSliceFillStyle = "none" | "solid" | "gradient";
+
 /** One slice / row of chart data (pie segment today; future charts reuse name/value/color). */
 export interface ChartSeriesItem {
   /** Stable row id; omitted in imported JSON is OK — editors assign one when saving. */
   id?: string;
   name: string;
   value: number;
+  /** When `fillStyle` is solid or omitted with a color, used as slice fill. */
   color?: string;
+  /** Label text color on the slice (defaults in renderer when unset). */
+  labelColor?: string;
+  /** Fill mode; omitted = solid when `color` / defaults apply. */
+  fillStyle?: ChartSliceFillStyle;
+  /** Gradient stops [start, end] when `fillStyle` is `gradient`. */
+  gradientColors?: [string, string];
 }
 
 /** Chart configuration on a node (`generic.chart.*`). */
 export interface NodeChartSpec {
   kind: ChartKind;
   series: ChartSeriesItem[];
+  /** Wedge outline color; falls back to node `borderColor`, then `#6b7280`. */
+  sliceBorderColor?: string;
+  /** SVG drop shadow on the pie (separate from node Visual styling shadow). */
+  shadow?: boolean;
+  /**
+   * Requested radial pull per slice (SVG units, ~0–24 in the 60×60 pie viewBox).
+   * Wedge radius shrinks by the same amount so the outer rim stays within the default circle; angles unchanged.
+   * JSON key kept as `segmentGapDeg` for backward compatibility.
+   */
+  segmentGapDeg?: number;
 }
 
 export interface DiagramNodeData {

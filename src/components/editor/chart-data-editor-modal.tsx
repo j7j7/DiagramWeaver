@@ -2,18 +2,54 @@
 
 import React, { useRef, useEffect, useState } from "react";
 import Draggable from "react-draggable";
-import { X, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, GripVertical, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ColorPicker } from "@/components/ui/color-picker";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import type { DiagramNodeData, ChartSeriesItem, NodeChartSpec } from "@/lib/types";
-import { defaultPieChartSpec, newChartSliceId } from "@/lib/chart-node";
+import type {
+  ChartSeriesItem,
+  ChartSliceFillStyle,
+  DiagramNodeData,
+  NodeChartSpec,
+} from "@/lib/types";
+import {
+  CHART_MAX_SEGMENT_PULL,
+  defaultPieChartSpec,
+  newChartSliceId,
+  DEFAULT_PIE_SLICE_COLORS,
+  DEFAULT_PIE_SLICE_LABEL_COLOR,
+} from "@/lib/chart-node";
+import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+function sliceFillStyleFromSeries(s: ChartSeriesItem): ChartSliceFillStyle {
+  if (s.fillStyle === "none" || s.fillStyle === "solid" || s.fillStyle === "gradient") {
+    return s.fillStyle;
+  }
+  const g = s.gradientColors;
+  if (g?.[0]?.trim() && g?.[1]?.trim()) return "gradient";
+  return "solid";
+}
 
 interface EditRow {
   id: string;
   name: string;
   valueStr: string;
+  fillStyle: ChartSliceFillStyle;
   color: string;
+  gradientColor1: string;
+  gradientColor2: string;
+  labelColor: string;
 }
 
 interface ChartDataEditorModalProps {
@@ -39,6 +75,11 @@ export function ChartDataEditorModal({
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [rows, setRows] = useState<EditRow[]>([]);
+  const [sliceBorderColor, setSliceBorderColor] = useState("");
+  const [chartShadow, setChartShadow] = useState(false);
+  const [segmentGapDeg, setSegmentGapDeg] = useState(0);
+  /** Slice ids whose editor body is collapsed (header only). */
+  const [collapsedSliceIds, setCollapsedSliceIds] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     if (visible && node) {
@@ -47,20 +88,63 @@ export function ChartDataEditorModal({
         ? spec.series.map((s) => ({ ...s }))
         : defaultPieChartSpec().series;
       setRows(
-        series.map((s) => ({
-          id: s.id || newChartSliceId(),
-          name: s.name,
-          valueStr: String(s.value),
-          color: s.color ?? "",
-        }))
+        series.map((s) => {
+          const fs = sliceFillStyleFromSeries(s);
+          const gc = s.gradientColors;
+          return {
+            id: s.id || newChartSliceId(),
+            name: s.name,
+            valueStr: String(s.value),
+            fillStyle: fs,
+            color: s.color ?? "",
+            gradientColor1: gc?.[0] ?? "",
+            gradientColor2: gc?.[1] ?? "",
+            labelColor: s.labelColor ?? "",
+          };
+        })
       );
+      setSliceBorderColor(spec?.sliceBorderColor ?? "");
+      setChartShadow(spec?.shadow === true);
+      setSegmentGapDeg(
+        typeof spec?.segmentGapDeg === "number" && spec.segmentGapDeg > 0
+          ? Math.min(CHART_MAX_SEGMENT_PULL, spec.segmentGapDeg)
+          : 0
+      );
+      setCollapsedSliceIds(new Set());
     }
   }, [visible, node]);
 
+  const toggleSliceCollapsed = (id: string) => {
+    setCollapsedSliceIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const reorderRows = (fromIndex: number, toIndex: number) => {
+    if (
+      fromIndex === toIndex ||
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= rows.length ||
+      toIndex >= rows.length
+    ) {
+      return;
+    }
+    setRows((prev) => {
+      const next = [...prev];
+      const [item] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, item);
+      return next;
+    });
+  };
+
   useEffect(() => {
     if (visible) {
-      const modalWidth = 380;
-      const modalHeight = 440;
+      const modalWidth = 460;
+      const modalHeight = 680;
       const padding = 8;
       let posX = x;
       let posY = y;
@@ -124,6 +208,10 @@ export function ChartDataEditorModal({
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
       if (panelRef.current?.contains(target)) return;
+      if (target.closest("[data-radix-select-content]")) return;
+      if (target.closest("[data-radix-select-viewport]")) return;
+      if (target.closest("[data-radix-select-item]")) return;
+      if (target.closest("[data-radix-popover-content]")) return;
       onClose();
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -136,19 +224,43 @@ export function ChartDataEditorModal({
       const raw = Number(String(r.valueStr).replace(/,/g, "."));
       const value = Number.isFinite(raw) ? Math.max(0, raw) : 0;
       const name = (r.name ?? "").trim() || `Series ${i + 1}`;
-      return {
+      const base: ChartSeriesItem = {
         id: r.id || newChartSliceId(),
         name,
         value,
-        ...(r.color.trim() ? { color: r.color.trim() } : {}),
       };
+      if (r.labelColor.trim()) base.labelColor = r.labelColor.trim();
+
+      if (r.fillStyle === "none") {
+        base.fillStyle = "none";
+        return base;
+      }
+      if (r.fillStyle === "gradient") {
+        base.fillStyle = "gradient";
+        const g1 = r.gradientColor1.trim();
+        const g2 = r.gradientColor2.trim();
+        const fb = DEFAULT_PIE_SLICE_COLORS[i % DEFAULT_PIE_SLICE_COLORS.length];
+        base.gradientColors = [g1 || fb, (g2 || g1 || fb)] as [string, string];
+        return base;
+      }
+      base.fillStyle = "solid";
+      if (r.color.trim()) base.color = r.color.trim();
+      return base;
     });
     if (cleaned.length === 0) {
       onSave(node.id, defaultPieChartSpec());
       onClose();
       return;
     }
-    const chart: NodeChartSpec = { kind: "pie", series: cleaned };
+    const chart: NodeChartSpec = {
+      kind: "pie",
+      series: cleaned,
+      ...(sliceBorderColor.trim() ? { sliceBorderColor: sliceBorderColor.trim() } : {}),
+      ...(chartShadow ? { shadow: true } : {}),
+      ...(segmentGapDeg > 0
+        ? { segmentGapDeg: Math.min(CHART_MAX_SEGMENT_PULL, segmentGapDeg) }
+        : {}),
+    };
     onSave(node.id, chart);
     onClose();
   };
@@ -156,7 +268,16 @@ export function ChartDataEditorModal({
   const addRow = () =>
     setRows((prev) => [
       ...prev,
-      { id: newChartSliceId(), name: `Series ${prev.length + 1}`, valueStr: "0", color: "" },
+      {
+        id: newChartSliceId(),
+        name: `Series ${prev.length + 1}`,
+        valueStr: "0",
+        fillStyle: "solid",
+        color: "",
+        gradientColor1: "",
+        gradientColor2: "",
+        labelColor: "",
+      },
     ]);
 
   const removeRow = (i: number) =>
@@ -177,7 +298,7 @@ export function ChartDataEditorModal({
       >
         <div
           ref={panelRef}
-          className="fixed w-[380px] rounded-md border border-border bg-popover shadow-lg p-0 z-[70]"
+          className="fixed w-[460px] rounded-md border border-border bg-popover shadow-lg p-0 z-[70]"
         >
           <div className="chart-data-modal-drag-handle flex items-center justify-between p-3 border-b cursor-move">
             <h3 className="font-semibold text-sm">Chart data</h3>
@@ -190,10 +311,69 @@ export function ChartDataEditorModal({
               <TooltipContent>Close</TooltipContent>
             </Tooltip>
           </div>
-          <div className="p-4 space-y-3 max-h-[360px] overflow-y-auto">
+          <div className="p-4 space-y-3 max-h-[min(520px,70vh)] overflow-y-auto">
             <p className="text-xs text-muted-foreground">
-              Names and numeric values define slice sizes. Optional color overrides the default palette.
+              Per-slice fill can be none, solid, or gradient (like shape backgrounds). Gradient direction uses the node&apos;s Visual styling angle. Labels use the same color picker as Visual styling.
             </p>
+
+            <div className="rounded-md border border-border/60 p-3 space-y-3 bg-muted/15">
+              <p className="text-xs font-medium text-foreground">Chart appearance</p>
+              <div
+                className={`space-y-3 ${isReadOnly ? "pointer-events-none opacity-75" : ""}`}
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-[10px] text-muted-foreground">Slice outline (wedge border)</Label>
+                    {!isReadOnly && sliceBorderColor.trim() ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-1.5 text-[10px] text-muted-foreground"
+                        onClick={() => setSliceBorderColor("")}
+                      >
+                        Use node border
+                      </Button>
+                    ) : null}
+                  </div>
+                  <ColorPicker
+                    value={sliceBorderColor.trim() ? sliceBorderColor : "#6b7280"}
+                    onChange={(value) => setSliceBorderColor(value)}
+                    placeholder="#6b7280"
+                    showAlpha={true}
+                    allowTransparent={true}
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    Overrides the node border color for pie wedges only. Border width comes from Visual styling.
+                  </p>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <Label className="text-xs font-medium">Pie drop shadow</Label>
+                    <p className="text-[10px] text-muted-foreground">SVG shadow on the chart (optional with Visual styling shadow).</p>
+                  </div>
+                  <Switch checked={chartShadow} onCheckedChange={setChartShadow} disabled={isReadOnly} />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between gap-2">
+                    <Label className="text-xs">Segment separation</Label>
+                    <span className="text-xs text-muted-foreground tabular-nums">{segmentGapDeg}</span>
+                  </div>
+                  <Slider
+                    value={[segmentGapDeg]}
+                    onValueChange={(v) => setSegmentGapDeg(v[0] ?? 0)}
+                    min={0}
+                    max={CHART_MAX_SEGMENT_PULL}
+                    step={0.5}
+                    disabled={isReadOnly}
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    Pulls each slice outward; wedge radius shrinks so the chart stays within the same circle. Slice angles stay the same.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-medium text-muted-foreground">Slices</span>
               {!isReadOnly && (
@@ -203,46 +383,190 @@ export function ChartDataEditorModal({
                 </Button>
               )}
             </div>
-            <div className="space-y-2">
-              {rows.map((row, i) => (
-                <div key={row.id} className="flex flex-wrap gap-1 items-center">
-                  <Input
-                    value={row.name}
-                    onChange={(e) => updateRow(i, { name: e.target.value })}
-                    placeholder="Name"
-                    className="h-8 text-xs flex-1 min-w-[100px]"
-                    disabled={isReadOnly}
-                  />
-                  <Input
-                    type="text"
-                    inputMode="decimal"
-                    value={row.valueStr}
-                    onChange={(e) => updateRow(i, { valueStr: e.target.value })}
-                    placeholder="Value"
-                    className="h-8 text-xs w-[72px]"
-                    disabled={isReadOnly}
-                  />
-                  <Input
-                    value={row.color}
-                    onChange={(e) => updateRow(i, { color: e.target.value })}
-                    placeholder="#hex"
-                    className="h-8 text-xs w-[72px] font-mono"
-                    disabled={isReadOnly}
-                  />
-                  {!isReadOnly && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-destructive"
-                      onClick={() => removeRow(i)}
-                      disabled={rows.length <= 1}
-                      aria-label="Remove slice"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
-                  )}
-                </div>
-              ))}
+            <div className="space-y-3">
+              {rows.map((row, i) => {
+                const fillFallback = DEFAULT_PIE_SLICE_COLORS[i % DEFAULT_PIE_SLICE_COLORS.length];
+                const collapsed = collapsedSliceIds.has(row.id);
+                const summaryName = (row.name ?? "").trim() || `Series ${i + 1}`;
+                return (
+                  <div
+                    key={row.id}
+                    className="rounded-md border border-border/60 bg-muted/20"
+                    onDragOver={(e) => {
+                      if (isReadOnly) return;
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                    }}
+                    onDrop={(e) => {
+                      if (isReadOnly) return;
+                      e.preventDefault();
+                      const fromStr = e.dataTransfer.getData("application/x-dw-chart-slice-index");
+                      const from = Number.parseInt(fromStr, 10);
+                      if (Number.isNaN(from)) return;
+                      reorderRows(from, i);
+                    }}
+                  >
+                    <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border/40">
+                      <button
+                        type="button"
+                        className="shrink-0 p-1 rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+                        onClick={() => toggleSliceCollapsed(row.id)}
+                        aria-expanded={!collapsed}
+                        aria-label={collapsed ? "Expand slice" : "Collapse slice"}
+                      >
+                        <ChevronDown
+                          className={cn("h-4 w-4 transition-transform", collapsed && "-rotate-90")}
+                        />
+                      </button>
+                      <button
+                        type="button"
+                        className={cn(
+                          "touch-none shrink-0 p-1 rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground",
+                          isReadOnly && "pointer-events-none opacity-40"
+                        )}
+                        draggable={!isReadOnly}
+                        aria-label="Drag to reorder slice"
+                        onDragStart={(e) => {
+                          e.stopPropagation();
+                          e.dataTransfer.setData("application/x-dw-chart-slice-index", String(i));
+                          e.dataTransfer.effectAllowed = "move";
+                        }}
+                      >
+                        <GripVertical className="h-4 w-4" />
+                      </button>
+                      {collapsed ? (
+                        <span className="flex-1 min-w-0 text-xs text-muted-foreground truncate">
+                          {summaryName} · {row.valueStr || "0"} · {row.fillStyle}
+                        </span>
+                      ) : (
+                        <div className="flex-1 min-w-0" aria-hidden />
+                      )}
+                      {!isReadOnly && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-destructive"
+                          onClick={() => removeRow(i)}
+                          disabled={rows.length <= 1}
+                          aria-label="Remove slice"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      )}
+                    </div>
+                    {!collapsed ? (
+                      <div className="p-2 space-y-2">
+                        <div className="flex gap-1 items-center">
+                          <Input
+                            value={row.name}
+                            onChange={(e) => updateRow(i, { name: e.target.value })}
+                            placeholder="Series name"
+                            className="h-8 text-xs flex-1 min-w-0"
+                            disabled={isReadOnly}
+                          />
+                        </div>
+                        <div
+                          className={`grid grid-cols-2 gap-2 items-end ${isReadOnly ? "pointer-events-none opacity-75" : ""}`}
+                        >
+                          <div className="space-y-1 min-w-0">
+                            <Label className="text-[10px] text-muted-foreground">Value</Label>
+                            <Input
+                              type="text"
+                              inputMode="decimal"
+                              value={row.valueStr}
+                              onChange={(e) => updateRow(i, { valueStr: e.target.value })}
+                              className="h-8 text-xs"
+                              disabled={isReadOnly}
+                            />
+                          </div>
+                          <div className="space-y-1 min-w-0">
+                            <Label className="text-[10px] text-muted-foreground">Slice fill</Label>
+                            <Select
+                              value={row.fillStyle}
+                              onValueChange={(v) =>
+                                updateRow(i, { fillStyle: v as ChartSliceFillStyle })
+                              }
+                              disabled={isReadOnly}
+                            >
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue placeholder="Fill type" />
+                              </SelectTrigger>
+                              <SelectContent className="z-[100] max-h-[min(280px,50vh)]">
+                                <SelectItem value="none">None</SelectItem>
+                                <SelectItem value="solid">Solid</SelectItem>
+                                <SelectItem value="gradient">Gradient</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        {row.fillStyle === "solid" ? (
+                          <div className={`space-y-1 ${isReadOnly ? "pointer-events-none opacity-75" : ""}`}>
+                            <Label className="text-[10px] text-muted-foreground">Fill color</Label>
+                            <ColorPicker
+                              value={row.color.trim() ? row.color : fillFallback}
+                              onChange={(value) => updateRow(i, { color: value })}
+                              placeholder={fillFallback}
+                              showAlpha={true}
+                              allowTransparent={true}
+                            />
+                          </div>
+                        ) : null}
+                        {row.fillStyle === "gradient" ? (
+                          <div
+                            className={`grid grid-cols-2 gap-2 ${isReadOnly ? "pointer-events-none opacity-75" : ""}`}
+                          >
+                            <div className="space-y-1 min-w-0">
+                              <Label className="text-[10px] text-muted-foreground">Gradient start</Label>
+                              <ColorPicker
+                                value={
+                                  row.gradientColor1.trim()
+                                    ? row.gradientColor1
+                                    : fillFallback
+                                }
+                                onChange={(value) => updateRow(i, { gradientColor1: value })}
+                                placeholder={fillFallback}
+                                showAlpha={true}
+                                allowTransparent={true}
+                              />
+                            </div>
+                            <div className="space-y-1 min-w-0">
+                              <Label className="text-[10px] text-muted-foreground">Gradient end</Label>
+                              <ColorPicker
+                                value={
+                                  row.gradientColor2.trim()
+                                    ? row.gradientColor2
+                                    : DEFAULT_PIE_SLICE_COLORS[(i + 1) % DEFAULT_PIE_SLICE_COLORS.length]
+                                }
+                                onChange={(value) => updateRow(i, { gradientColor2: value })}
+                                placeholder={
+                                  DEFAULT_PIE_SLICE_COLORS[(i + 1) % DEFAULT_PIE_SLICE_COLORS.length]
+                                }
+                                showAlpha={true}
+                                allowTransparent={true}
+                              />
+                            </div>
+                          </div>
+                        ) : null}
+                        {row.fillStyle === "none" ? (
+                          <p className="text-[10px] text-muted-foreground">This slice has no fill.</p>
+                        ) : null}
+                        <div
+                          className={`space-y-1 ${isReadOnly ? "pointer-events-none opacity-75" : ""}`}
+                        >
+                          <Label className="text-[10px] text-muted-foreground">Label text</Label>
+                          <ColorPicker
+                            value={row.labelColor.trim() ? row.labelColor : DEFAULT_PIE_SLICE_LABEL_COLOR}
+                            onChange={(value) => updateRow(i, { labelColor: value })}
+                            placeholder={DEFAULT_PIE_SLICE_LABEL_COLOR}
+                            showAlpha={true}
+                            allowTransparent={true}
+                          />
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
           </div>
           {!isReadOnly && (
