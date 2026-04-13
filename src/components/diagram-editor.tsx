@@ -722,11 +722,32 @@ export default function DiagramEditor() {
   const [alignmentGuidesEnabled, setAlignmentGuidesEnabled] = React.useState<boolean>(true);
   const [connectionsBehindNodesEnabled, setConnectionsBehindNodesEnabled] = React.useState<boolean>(true);
   const [animationConnectionsUserEnabled, setAnimationConnectionsUserEnabled] = React.useState<boolean>(true);
+  const [animationConnectionsMenuPaused, setAnimationConnectionsMenuPaused] = React.useState(false);
   const {
     idlePaused: animationConnectionsIdlePaused,
-    onCanvasActivity: onConnectionAnimationCanvasActivity,
+    onCanvasActivity: onConnectionAnimationCanvasActivityFromHook,
   } = useConnectionAnimationIdlePause(animationConnectionsUserEnabled);
-  const animationConnectionsEnabled = animationConnectionsUserEnabled && !animationConnectionsIdlePaused;
+  const onConnectionAnimationCanvasActivity = React.useCallback(() => {
+    setAnimationConnectionsMenuPaused(false);
+    onConnectionAnimationCanvasActivityFromHook();
+  }, [onConnectionAnimationCanvasActivityFromHook]);
+  const animationConnectionsEnabled =
+    animationConnectionsUserEnabled &&
+    !animationConnectionsIdlePaused &&
+    !animationConnectionsMenuPaused;
+
+  React.useEffect(() => {
+    if (!animationConnectionsUserEnabled) {
+      setAnimationConnectionsMenuPaused(false);
+    }
+  }, [animationConnectionsUserEnabled]);
+
+  const pauseConnectionAnimationsForOverlayUi = React.useCallback(() => {
+    if (animationConnectionsUserEnabled) {
+      setAnimationConnectionsMenuPaused(true);
+    }
+  }, [animationConnectionsUserEnabled]);
+
   const [animationToggleOnClickEnabled, setAnimationToggleOnClickEnabled] = React.useState<boolean>(false);
   const [animationDisabledSources, setAnimationDisabledSources] = React.useState<Set<string>>(new Set());
   const [isReadOnly, setIsReadOnly] = React.useState<boolean>(false);
@@ -3312,9 +3333,13 @@ export default function DiagramEditor() {
     }));
   };
 
-  const handleConnectionContextMenu = useCallback((e: React.MouseEvent, connection: DiagramConnectionData) => {
-    setConnectionContextModal({ visible: true, x: e.clientX, y: e.clientY, connection });
-  }, []);
+  const handleConnectionContextMenu = useCallback(
+    (e: React.MouseEvent, connection: DiagramConnectionData) => {
+      pauseConnectionAnimationsForOverlayUi();
+      setConnectionContextModal({ visible: true, x: e.clientX, y: e.clientY, connection });
+    },
+    [pauseConnectionAnimationsForOverlayUi],
+  );
 
   const handleNew = () => {
     createTab();
@@ -4852,6 +4877,9 @@ export default function DiagramEditor() {
         animationConnectionsEnabled={animationConnectionsEnabled}
         animationConnectionsUserEnabled={animationConnectionsUserEnabled}
         animationConnectionsIdlePaused={animationConnectionsIdlePaused}
+        animationConnectionsMenuPaused={animationConnectionsMenuPaused}
+        setAnimationConnectionsMenuPaused={setAnimationConnectionsMenuPaused}
+        pauseConnectionAnimationsForOverlayUi={pauseConnectionAnimationsForOverlayUi}
         setAnimationConnectionsEnabled={setAnimationConnectionsUserEnabled}
         animationToggleOnClickEnabled={animationToggleOnClickEnabled}
         setAnimationToggleOnClickEnabled={setAnimationToggleOnClickEnabled}
@@ -5075,6 +5103,9 @@ function DiagramEditorInner({
   animationConnectionsEnabled,
   animationConnectionsUserEnabled,
   animationConnectionsIdlePaused,
+  animationConnectionsMenuPaused,
+  setAnimationConnectionsMenuPaused,
+  pauseConnectionAnimationsForOverlayUi,
   setAnimationConnectionsEnabled: setAnimationConnectionsUserEnabled,
   animationToggleOnClickEnabled,
   setAnimationToggleOnClickEnabled,
@@ -5384,6 +5415,8 @@ function DiagramEditorInner({
                     animationConnectionsEnabled={animationConnectionsEnabled}
                     animationConnectionsUserEnabled={animationConnectionsUserEnabled}
                     animationConnectionsIdlePaused={animationConnectionsIdlePaused}
+                    animationConnectionsMenuPaused={animationConnectionsMenuPaused}
+                    onConnectionAnimationPauseFromMenu={pauseConnectionAnimationsForOverlayUi}
                     onToggleAnimationConnections={() => setAnimationConnectionsUserEnabled((v: boolean) => !v)}
                     animationToggleOnClickEnabled={animationToggleOnClickEnabled}
                     onToggleAnimationToggleOnClick={() => setAnimationToggleOnClickEnabled(!animationToggleOnClickEnabled)}
@@ -5522,6 +5555,7 @@ function DiagramEditorInner({
                     onConnectionUpdate={handleConnectionUpdate}
                     onConnectionWaypointAdd={handleConnectionWaypointAdd}
                     onConnectionContextMenu={handleConnectionContextMenu}
+                    onPauseConnectionAnimationsForOverlayUi={pauseConnectionAnimationsForOverlayUi}
                     externalTransform={canvasTransform}
                      onTransformChange={setCanvasTransform}
                      onLabelUpdate={handleLabelUpdate}

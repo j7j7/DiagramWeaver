@@ -10,9 +10,11 @@ interface ContextMenuState {
 
 interface UseCanvasContextMenuOptions {
   isReadOnly?: boolean;
+  /** Fired when the node/zone context menu opens (pause heavy canvas work e.g. connection animations). */
+  onContextMenuOpen?: () => void;
 }
 
-export function useCanvasContextMenu({ isReadOnly = false }: UseCanvasContextMenuOptions = {}) {
+export function useCanvasContextMenu({ isReadOnly = false, onContextMenuOpen }: UseCanvasContextMenuOptions = {}) {
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({
     visible: false,
     x: 0,
@@ -62,6 +64,7 @@ export function useCanvasContextMenu({ isReadOnly = false }: UseCanvasContextMen
     x = Math.max(padding, x);
     y = Math.max(padding, y);
 
+    onContextMenuOpen?.();
     setContextMenu({
       visible: true,
       x,

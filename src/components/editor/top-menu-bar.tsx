@@ -30,6 +30,31 @@ import { cn } from '@/lib/utils';
 
 const truncateName = (s: string, max = 20) => (s.length > max ? `${s.slice(0, max - 3)}...` : s);
 
+/** Top-level menubar labels only — pauses connection animations on open (see diagram-editor). */
+function MainMenubarTrigger({
+  onPauseConnectionAnimations,
+  ...props
+}: React.ComponentProps<typeof MenubarTrigger> & {
+  onPauseConnectionAnimations?: () => void;
+}) {
+  return (
+    <MenubarTrigger
+      {...props}
+      onPointerDown={(e) => {
+        props.onPointerDown?.(e);
+        onPauseConnectionAnimations?.();
+      }}
+      onKeyDown={(e) => {
+        props.onKeyDown?.(e);
+        if (e.defaultPrevented) return;
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+          onPauseConnectionAnimations?.();
+        }
+      }}
+    />
+  );
+}
+
 function ViewThemeSubmenu() {
   const { theme, setTheme } = useTheme();
   return (
@@ -115,6 +140,10 @@ interface TopMenuBarProps {
   animationConnectionsUserEnabled?: boolean;
   /** True when animations were auto-paused after canvas idle (effective off while preference may stay on). */
   animationConnectionsIdlePaused?: boolean;
+  /** True when animations paused because a menubar menu or canvas context UI was opened (cleared on canvas activity). */
+  animationConnectionsMenuPaused?: boolean;
+  /** Called when any top-level menubar dropdown opens; pauses connection animations like idle pause. */
+  onConnectionAnimationPauseFromMenu?: () => void;
   onToggleAnimationConnections?: () => void;
   animationToggleOnClickEnabled?: boolean;
   onToggleAnimationToggleOnClick?: () => void;
@@ -205,6 +234,8 @@ export function TopMenuBar({
   animationConnectionsEnabled,
   animationConnectionsUserEnabled,
   animationConnectionsIdlePaused,
+  animationConnectionsMenuPaused,
+  onConnectionAnimationPauseFromMenu,
   onToggleAnimationConnections,
   animationToggleOnClickEnabled,
   onToggleAnimationToggleOnClick,
@@ -314,7 +345,9 @@ export function TopMenuBar({
     <div className="flex w-full min-w-0 items-center border-b bg-card min-h-[2.5rem] overflow-x-auto">
       <Menubar className="rounded-none border-0 border-b-0 border-l-0 border-r-0 border-t-0 h-auto shrink-0" data-tutorial-id="main-menubar">
         <MenubarMenu>
-          <MenubarTrigger data-tutorial-id="file-menu">File</MenubarTrigger>
+          <MainMenubarTrigger data-tutorial-id="file-menu" onPauseConnectionAnimations={onConnectionAnimationPauseFromMenu}>
+            File
+          </MainMenubarTrigger>
           <MenubarContent>
             <MenubarItem onClick={onNew}>
               <Plus className="mr-2 h-4 w-4" />
@@ -415,7 +448,9 @@ export function TopMenuBar({
           </MenubarContent>
         </MenubarMenu>
         <MenubarMenu>
-          <MenubarTrigger data-tutorial-id="edit-menu">Edit</MenubarTrigger>
+          <MainMenubarTrigger data-tutorial-id="edit-menu" onPauseConnectionAnimations={onConnectionAnimationPauseFromMenu}>
+            Edit
+          </MainMenubarTrigger>
           <MenubarContent>
             {onCopy && (
               <MenubarItem onClick={onCopy} disabled={isReadOnly}>
@@ -488,7 +523,9 @@ export function TopMenuBar({
           </MenubarContent>
         </MenubarMenu>
         <MenubarMenu>
-          <MenubarTrigger data-tutorial-id="options-menu">Options</MenubarTrigger>
+          <MainMenubarTrigger data-tutorial-id="options-menu" onPauseConnectionAnimations={onConnectionAnimationPauseFromMenu}>
+            Options
+          </MainMenubarTrigger>
           <MenubarContent>
             {onToggleJsonPanel && (
               <MenubarItem onClick={onToggleJsonPanel} data-tutorial-id="toggle-json-menu">
@@ -740,7 +777,9 @@ export function TopMenuBar({
           </MenubarContent>
         </MenubarMenu>
         <MenubarMenu>
-          <MenubarTrigger>Layout</MenubarTrigger>
+          <MainMenubarTrigger onPauseConnectionAnimations={onConnectionAnimationPauseFromMenu}>
+            Layout
+          </MainMenubarTrigger>
           <MenubarContent>
             {onAutoLayout && (
               <MenubarItem onClick={onAutoLayout}>
@@ -810,18 +849,22 @@ export function TopMenuBar({
           className={cn('h-8 px-2', !(animationConnectionsEnabled ?? true) && 'opacity-50')}
           onClick={onToggleAnimationConnections}
           title={
-            animationConnectionsIdlePaused && (animationConnectionsUserEnabled ?? animationConnectionsEnabled ?? true)
-              ? 'Animations paused (idle); move on the canvas to resume'
-              : (animationConnectionsEnabled ?? true)
-                ? 'Disable connection line animations (Ctrl+Alt+A)'
-                : 'Enable connection line animations (Ctrl+Alt+A)'
+            animationConnectionsMenuPaused && (animationConnectionsUserEnabled ?? true)
+              ? 'Animations paused (menu or context); move on the canvas to resume'
+              : animationConnectionsIdlePaused && (animationConnectionsUserEnabled ?? animationConnectionsEnabled ?? true)
+                ? 'Animations paused (idle); move on the canvas to resume'
+                : (animationConnectionsEnabled ?? true)
+                  ? 'Disable connection line animations (Ctrl+Alt+A)'
+                  : 'Enable connection line animations (Ctrl+Alt+A)'
           }
           aria-label={
-            animationConnectionsIdlePaused && (animationConnectionsUserEnabled ?? animationConnectionsEnabled ?? true)
+            animationConnectionsMenuPaused && (animationConnectionsUserEnabled ?? true)
               ? 'Animations paused until you move on the canvas'
-              : (animationConnectionsEnabled ?? true)
-                ? 'Disable connection line animations'
-                : 'Enable connection line animations'
+              : animationConnectionsIdlePaused && (animationConnectionsUserEnabled ?? animationConnectionsEnabled ?? true)
+                ? 'Animations paused until you move on the canvas'
+                : (animationConnectionsEnabled ?? true)
+                  ? 'Disable connection line animations'
+                  : 'Enable connection line animations'
           }
           aria-pressed={(animationConnectionsEnabled ?? true) ? 'true' : 'false'}
         >
@@ -895,7 +938,9 @@ export function TopMenuBar({
 
       <Menubar className="ml-auto shrink-0 rounded-none border-0 border-b-0 border-l-0 border-r-0 border-t-0 h-auto">
         <MenubarMenu>
-          <MenubarTrigger data-tutorial-id="help-menu">Help</MenubarTrigger>
+          <MainMenubarTrigger data-tutorial-id="help-menu" onPauseConnectionAnimations={onConnectionAnimationPauseFromMenu}>
+            Help
+          </MainMenubarTrigger>
           <MenubarContent>
             <MenubarItem onClick={() => setKeyboardShortcutsOpen(true)}>
               <Keyboard className="mr-2 h-4 w-4" />
