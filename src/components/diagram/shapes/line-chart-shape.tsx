@@ -490,8 +490,16 @@ export function LineChartShape(props: LineChartShapeProps) {
                 fontSize: legFont,
               })
             : 0;
+          const legStag = chartSegmentPopAnimationStyle(
+            en.segmentIndex,
+            lineSegPopInId,
+            lineSegPopOutId,
+            cx,
+            legMidY,
+            presentationChartStagger
+          );
           return (
-            <g key={`leg-${en.segmentIndex}`} transform={`translate(${cx}, 0)`}>
+            <g key={`leg-${en.segmentIndex}`} transform={`translate(${cx}, 0)`} style={legStag}>
               <line
                 x1={-legendSlotW / 2 + 0.5}
                 x2={-legendSlotW / 2 + sw + 0.5}

@@ -429,10 +429,120 @@ export function PieChartShape(props: PieChartShapeProps) {
           VB_CY,
           presentationChartStagger
         );
+
+        let labelEl: React.ReactNode = null;
+        if (showSegmentLabels && s.name.trim() && (slices.length === 1 || s.span >= MIN_SPAN_FOR_LABEL)) {
+          const seriesIdx = s.seriesIndex ?? i;
+          const labelWantsPointer =
+            canEditSegmentLabel ||
+            (s.tooltipValue != null && Number.isFinite(s.tooltipValue));
+          const lx = VB_CX + s.explodeX;
+          const ly = VB_CY + s.explodeY;
+          const isFull = s.span >= 2 * Math.PI - 1e-6;
+          const ta = isFull
+            ? { x: lx, y: ly + Math.min(6, s.labelFontSize * 0.85), anchor: "middle" as const }
+            : {
+                x: lx + labelR * Math.cos(s.midAngle),
+                y: ly + labelR * Math.sin(s.midAngle),
+                anchor: "middle" as const,
+              };
+          const maxChars = isFull
+            ? Math.max(4, Math.min(24, Math.round(18 * (5.5 / s.labelFontSize))))
+            : Math.max(4, Math.min(20, Math.round(12 * (4.75 / s.labelFontSize))));
+          const display = truncatePieSliceLabel(s.name, maxChars);
+          const fullName = (series?.[seriesIdx]?.name ?? s.name) || "";
+          if (editingSliceIndex === seriesIdx) {
+            const labelFontSizePx = s.labelFontSize;
+            const charCount = Math.max(
+              4,
+              editingSliceNameDraft.length,
+              fullName.length
+            );
+            const foW = chartInlineForeignObjectWidth({
+              charCount,
+              fontSize: s.labelFontSize,
+            });
+            const foH = labelFontSizePx;
+            const labelTextShadow =
+              "0 0 2px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.35)";
+            labelEl = (
+              <foreignObject
+                x={ta.x - foW / 2}
+                y={ta.y - foH / 2}
+                width={foW}
+                height={foH}
+                style={{ overflow: "visible" }}
+                {...slicePointerHandlers(i, s)}
+              >
+                <input
+                  type="text"
+                  className="m-0 box-border min-w-0 max-w-full bg-transparent shadow-none focus:outline-none focus:ring-0"
+                  style={svgForeignObjectInlineInputStyle({
+                    fontSize: labelFontSizePx,
+                    fontWeight: 600,
+                    color: s.labelColor,
+                    caretColor: s.labelColor,
+                    textAlign: "center",
+                    textShadow: labelTextShadow,
+                  })}
+                  value={editingSliceNameDraft}
+                  autoFocus
+                  aria-label="Edit segment label"
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => setEditingSliceNameDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      commitSliceLabelEdit();
+                    } else if (e.key === "Escape") {
+                      e.preventDefault();
+                      cancelSliceLabelEdit();
+                    }
+                  }}
+                  onBlur={() => {
+                    commitSliceLabelEdit();
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onDoubleClick={(e) => e.stopPropagation()}
+                />
+              </foreignObject>
+            );
+          } else {
+            labelEl = (
+              <text
+                x={ta.x}
+                y={ta.y}
+                textAnchor={ta.anchor}
+                dominantBaseline="middle"
+                fill={s.labelColor}
+                fontSize={s.labelFontSize}
+                fontWeight={600}
+                pointerEvents={labelWantsPointer ? "auto" : "none"}
+                style={{
+                  textShadow: "0 0 2px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.35)",
+                  cursor: canEditSegmentLabel ? "text" : undefined,
+                }}
+                {...slicePointerHandlers(i, s)}
+                onPointerDown={(e) => canEditSegmentLabel && e.stopPropagation()}
+                onDoubleClick={(e) => {
+                  if (!canEditSegmentLabel) return;
+                  e.stopPropagation();
+                  e.preventDefault();
+                  setEditingSliceNameDraft(fullName);
+                  setEditingSliceIndex(seriesIdx);
+                }}
+              >
+                {display}
+              </text>
+            );
+          }
+        }
+
         return (
           <g key={i} transform={t}>
             <g style={segAnim}>
-              {/* Stable hit target: hover stroke/brightness on the visual path can reshuffle hit-testing. */}
               <path
                 d={s.d}
                 fill="#000000"
@@ -459,124 +569,11 @@ export function PieChartShape(props: PieChartShapeProps) {
                   pointerEvents: "none",
                 }}
               />
+              {labelEl}
             </g>
           </g>
         );
       })}
-      {showSegmentLabels
-        ? slices.map((s, i) => {
-            if (!s.name.trim()) return null;
-            if (slices.length > 1 && s.span < MIN_SPAN_FOR_LABEL) return null;
-            const seriesIdx = s.seriesIndex ?? i;
-            const labelWantsPointer =
-              canEditSegmentLabel ||
-              (s.tooltipValue != null && Number.isFinite(s.tooltipValue));
-            const lx = VB_CX + s.explodeX;
-            const ly = VB_CY + s.explodeY;
-            const isFull = s.span >= 2 * Math.PI - 1e-6;
-            const ta = isFull
-              ? { x: lx, y: ly + Math.min(6, s.labelFontSize * 0.85), anchor: "middle" as const }
-              : {
-                  x: lx + labelR * Math.cos(s.midAngle),
-                  y: ly + labelR * Math.sin(s.midAngle),
-                  anchor: "middle" as const,
-                };
-            const maxChars = isFull
-              ? Math.max(4, Math.min(24, Math.round(18 * (5.5 / s.labelFontSize))))
-              : Math.max(4, Math.min(20, Math.round(12 * (4.75 / s.labelFontSize))));
-            const display = truncatePieSliceLabel(s.name, maxChars);
-            const fullName = (series?.[seriesIdx]?.name ?? s.name) || "";
-            if (editingSliceIndex === seriesIdx) {
-              /** Match `<text fontSize>`: inner layout uses SVG user units → same numeric px in `foreignObject` (no extra × node width; SVG scales the whole subtree). */
-              const labelFontSizePx = s.labelFontSize;
-              const charCount = Math.max(
-                4,
-                editingSliceNameDraft.length,
-                fullName.length
-              );
-              const foW = chartInlineForeignObjectWidth({
-                charCount,
-                fontSize: s.labelFontSize,
-              });
-              const foH = labelFontSizePx;
-              const labelTextShadow =
-                "0 0 2px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.35)";
-              return (
-                <foreignObject
-                  key={`lbl-${seriesIdx}`}
-                  x={ta.x - foW / 2}
-                  y={ta.y - foH / 2}
-                  width={foW}
-                  height={foH}
-                  style={{ overflow: "visible" }}
-                  {...slicePointerHandlers(i, s)}
-                >
-                  <input
-                    type="text"
-                    className="m-0 box-border min-w-0 max-w-full bg-transparent shadow-none focus:outline-none focus:ring-0"
-                    style={svgForeignObjectInlineInputStyle({
-                      fontSize: labelFontSizePx,
-                      fontWeight: 600,
-                      color: s.labelColor,
-                      caretColor: s.labelColor,
-                      textAlign: "center",
-                      textShadow: labelTextShadow,
-                    })}
-                    value={editingSliceNameDraft}
-                    autoFocus
-                    aria-label="Edit segment label"
-                    onFocus={(e) => e.target.select()}
-                    onChange={(e) => setEditingSliceNameDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      e.stopPropagation();
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        commitSliceLabelEdit();
-                      } else if (e.key === "Escape") {
-                        e.preventDefault();
-                        cancelSliceLabelEdit();
-                      }
-                    }}
-                    onBlur={() => {
-                      commitSliceLabelEdit();
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onDoubleClick={(e) => e.stopPropagation()}
-                  />
-                </foreignObject>
-              );
-            }
-            return (
-              <text
-                key={`lbl-${seriesIdx}`}
-                x={ta.x}
-                y={ta.y}
-                textAnchor={ta.anchor}
-                dominantBaseline="middle"
-                fill={s.labelColor}
-                fontSize={s.labelFontSize}
-                fontWeight={600}
-                pointerEvents={labelWantsPointer ? "auto" : "none"}
-                style={{
-                  textShadow: "0 0 2px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.35)",
-                  cursor: canEditSegmentLabel ? "text" : undefined,
-                }}
-                {...slicePointerHandlers(i, s)}
-                onPointerDown={(e) => canEditSegmentLabel && e.stopPropagation()}
-                onDoubleClick={(e) => {
-                  if (!canEditSegmentLabel) return;
-                  e.stopPropagation();
-                  e.preventDefault();
-                  setEditingSliceNameDraft(fullName);
-                  setEditingSliceIndex(seriesIdx);
-                }}
-              >
-                {display}
-              </text>
-            );
-          })
-        : null}
     </>
   );
 

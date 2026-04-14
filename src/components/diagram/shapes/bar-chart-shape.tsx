@@ -366,6 +366,17 @@ export function BarChartShape(props: BarChartShapeProps) {
     return m;
   }, [model.rects]);
 
+  /** Legend row for segment S uses the same stagger step as S’s first column cell (matches segment appear order). */
+  const barLegendStaggerIndex = useMemo(() => {
+    const m = new Map<number, number>();
+    for (const r of model.rects) {
+      const idx = barStaggerIndex.get(rectKey(r)) ?? 0;
+      const prev = m.get(r.segmentIndex);
+      if (prev === undefined || idx < prev) m.set(r.segmentIndex, idx);
+    }
+    return m;
+  }, [model.rects, barStaggerIndex]);
+
   const barDragTooltipText = (r: BarRect, v: number) => {
     const cat =
       (categoryLabels[r.categoryIndex] ?? "").trim() ||
@@ -822,6 +833,15 @@ export function BarChartShape(props: BarChartShapeProps) {
             wantsName && nameLines.length > 0 && usableName >= lhSeg * 0.5;
           if (!showNameLine && !showValueLine) return null;
 
+          const segOvSt = chartSegmentPopAnimationStyle(
+            barStaggerIndex.get(rectKey(r)) ?? 0,
+            barSegPopInId,
+            barSegPopOutId,
+            cx,
+            cy,
+            presentationChartStagger
+          );
+
           const editNameHere =
             showNameLine &&
             inlineEdit?.kind === "segment" &&
@@ -897,7 +917,7 @@ export function BarChartShape(props: BarChartShapeProps) {
           if (editingValueHere && showValueLine) {
             if (showNameLine && showValueLine && twoLineRoom) {
               return (
-                <g key={`lbl-${rectKey(r)}`}>
+                <g key={`lbl-${rectKey(r)}`} style={segOvSt}>
                   <BarSvgTextBlock
                     lines={nameLines}
                     x={cx}
@@ -928,7 +948,11 @@ export function BarChartShape(props: BarChartShapeProps) {
                 </g>
               );
             }
-            return valueInput(cy);
+            return (
+              <g key={`val-edit-wrap-${rectKey(r)}`} style={segOvSt}>
+                {valueInput(cy)}
+              </g>
+            );
           }
 
           if (showNameLine && editNameHere) {
@@ -946,14 +970,14 @@ export function BarChartShape(props: BarChartShapeProps) {
             const foH = showValUnderEdit ? nameH + betweenGap + valH : nameH;
             const foTop = nameLineCenterY - nameH / 2;
             return (
-              <foreignObject
-                key={`lbl-${rectKey(r)}`}
-                x={cx - foW / 2}
-                y={foTop}
-                width={foW}
-                height={foH}
-                style={{ overflow: "visible" }}
-              >
+              <g key={`lbl-${rectKey(r)}`} style={segOvSt}>
+                <foreignObject
+                  x={cx - foW / 2}
+                  y={foTop}
+                  width={foW}
+                  height={foH}
+                  style={{ overflow: "visible" }}
+                >
                 <div
                   className="flex h-full w-full flex-col items-center justify-start gap-0"
                   style={{ margin: 0, padding: 0 }}
@@ -1010,6 +1034,7 @@ export function BarChartShape(props: BarChartShapeProps) {
                   ) : null}
                 </div>
               </foreignObject>
+              </g>
             );
           }
 
@@ -1025,7 +1050,7 @@ export function BarChartShape(props: BarChartShapeProps) {
 
           if (showNameLine && showValueLine && twoLineRoom) {
             return (
-              <g key={`lbl-${rectKey(r)}`}>
+              <g key={`lbl-${rectKey(r)}`} style={segOvSt}>
                 <BarSvgTextBlock
                   lines={nameLines}
                   x={cx}
@@ -1093,42 +1118,43 @@ export function BarChartShape(props: BarChartShapeProps) {
 
           if (showValueLine && (!showNameLine || !twoLineRoom)) {
             return (
-              <text
-                key={`val-${rectKey(r)}`}
-                x={cx}
-                y={cy}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fill={r.labelColor}
-                fontSize={fsVal}
-                fontWeight={600}
-                pointerEvents={
-                  !canEditValue ? "none" : canDragBarValue ? "none" : "auto"
-                }
-                style={{
-                  textShadow: labelTextShadow,
-                  cursor: canEditValue && !canDragBarValue ? "text" : undefined,
-                }}
-                onPointerDown={(e) => canEditValue && e.stopPropagation()}
-                onDoubleClick={(e) => {
-                  if (!canEditValue || canDragBarValue) return;
-                  if (suppressBarValueDblClickAfterDragRef.current) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    return;
+              <g key={`val-${rectKey(r)}`} style={segOvSt}>
+                <text
+                  x={cx}
+                  y={cy}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fill={r.labelColor}
+                  fontSize={fsVal}
+                  fontWeight={600}
+                  pointerEvents={
+                    !canEditValue ? "none" : canDragBarValue ? "none" : "auto"
                   }
-                  e.stopPropagation();
-                  e.preventDefault();
-                  setInlineDraft(valueDraftSeed);
-                  setInlineEdit({
-                    kind: "value",
-                    segmentIndex: r.segmentIndex,
-                    categoryIndex: r.categoryIndex,
-                  });
-                }}
-              >
-                {valStr}
-              </text>
+                  style={{
+                    textShadow: labelTextShadow,
+                    cursor: canEditValue && !canDragBarValue ? "text" : undefined,
+                  }}
+                  onPointerDown={(e) => canEditValue && e.stopPropagation()}
+                  onDoubleClick={(e) => {
+                    if (!canEditValue || canDragBarValue) return;
+                    if (suppressBarValueDblClickAfterDragRef.current) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      return;
+                    }
+                    e.stopPropagation();
+                    e.preventDefault();
+                    setInlineDraft(valueDraftSeed);
+                    setInlineEdit({
+                      kind: "value",
+                      segmentIndex: r.segmentIndex,
+                      categoryIndex: r.categoryIndex,
+                    });
+                  }}
+                >
+                  {valStr}
+                </text>
+              </g>
             );
           }
 
@@ -1136,40 +1162,41 @@ export function BarChartShape(props: BarChartShapeProps) {
             const wantsBarValueTipOnLabel =
               !showSegmentValues && Number.isFinite(r.value);
             return (
-              <BarSvgTextBlock
-                key={`lbl-${rectKey(r)}`}
-                lines={nameLines}
-                x={cx}
-                yCenter={cy}
-                fontSize={fs}
-                textAnchor="middle"
-                fill={r.labelColor}
-                fontWeight={600}
-                pointerEvents={
-                  canEditSegment || wantsBarValueTipOnLabel ? "auto" : "none"
-                }
-                style={{
-                  textShadow: labelTextShadow,
-                  cursor: canEditSegment ? "text" : undefined,
-                }}
-                onPointerDown={(e) => canEditSegment && e.stopPropagation()}
-                onDoubleClick={(e) => {
-                  if (!canEditSegment) return;
-                  e.stopPropagation();
-                  e.preventDefault();
-                  setInlineDraft(fullName);
-                  setInlineEdit({
-                    kind: "segment",
-                    segmentIndex: r.segmentIndex,
-                    fromLegend: false,
-                  });
-                }}
-                extraSvgProps={
-                  wantsBarValueTipOnLabel
-                    ? (barRectValueTooltipHandlers(r) as React.SVGProps<SVGTextElement>)
-                    : undefined
-                }
-              />
+              <g key={`lbl-${rectKey(r)}`} style={segOvSt}>
+                <BarSvgTextBlock
+                  lines={nameLines}
+                  x={cx}
+                  yCenter={cy}
+                  fontSize={fs}
+                  textAnchor="middle"
+                  fill={r.labelColor}
+                  fontWeight={600}
+                  pointerEvents={
+                    canEditSegment || wantsBarValueTipOnLabel ? "auto" : "none"
+                  }
+                  style={{
+                    textShadow: labelTextShadow,
+                    cursor: canEditSegment ? "text" : undefined,
+                  }}
+                  onPointerDown={(e) => canEditSegment && e.stopPropagation()}
+                  onDoubleClick={(e) => {
+                    if (!canEditSegment) return;
+                    e.stopPropagation();
+                    e.preventDefault();
+                    setInlineDraft(fullName);
+                    setInlineEdit({
+                      kind: "segment",
+                      segmentIndex: r.segmentIndex,
+                      fromLegend: false,
+                    });
+                  }}
+                  extraSvgProps={
+                    wantsBarValueTipOnLabel
+                      ? (barRectValueTooltipHandlers(r) as React.SVGProps<SVGTextElement>)
+                      : undefined
+                  }
+                />
+              </g>
             );
           }
 
@@ -1406,8 +1433,16 @@ export function BarChartShape(props: BarChartShapeProps) {
                 fontSize: legFont,
               })
             : 0;
+          const legStag = chartSegmentPopAnimationStyle(
+            barLegendStaggerIndex.get(en.segmentIndex) ?? 0,
+            barSegPopInId,
+            barSegPopOutId,
+            cx,
+            legMidY,
+            presentationChartStagger
+          );
           return (
-            <g key={`leg-${en.segmentIndex}`} transform={`translate(${cx}, 0)`}>
+            <g key={`leg-${en.segmentIndex}`} transform={`translate(${cx}, 0)`} style={legStag}>
               <rect
                 x={-legendSlotW / 2 + 0.5}
                 y={legMidY - sw / 2}
