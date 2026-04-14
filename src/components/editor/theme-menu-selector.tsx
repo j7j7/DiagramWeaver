@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuCheckboxItem,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -15,15 +16,17 @@ import {
   Star,
   ChevronDown
 } from 'lucide-react';
-import { DiagramTheme } from '@/lib/theme-types';
+import { DiagramTheme, ThemeMenuApplyOptions } from '@/lib/theme-types';
 import { themeManager } from '@/lib/theme-manager';
 import { getVisualStylingCSS, themePropertiesToVisualStyling } from '@/lib/visual-styling';
 
 /** Hover delay before theme description tooltip opens (ms). */
 const THEME_DESCRIPTION_TOOLTIP_DELAY_MS = 1500;
 
+const MULTI_HUE_LAYOUT_STORAGE_KEY = 'diagram-weaver-theme-multi-hue-layout';
+
 interface ThemeMenuSelectorProps {
-  onThemeSelect?: (theme: DiagramTheme) => void;
+  onThemeSelect?: (theme: DiagramTheme, options?: ThemeMenuApplyOptions) => void;
   onOpenEditor?: () => void;
   isReadOnly?: boolean;
 }
@@ -93,6 +96,7 @@ function ThemeDropdownMenuRow({
 
 export function ThemeMenuSelector({ onThemeSelect, onOpenEditor, isReadOnly = false }: ThemeMenuSelectorProps) {
   const [themes, setThemes] = useState<DiagramTheme[]>([]);
+  const [multiHueByLayout, setMultiHueByLayout] = useState(false);
 
   useEffect(() => {
     setThemes(themeManager.getThemesSorted());
@@ -104,11 +108,19 @@ export function ThemeMenuSelector({ onThemeSelect, onOpenEditor, isReadOnly = fa
     return unsubscribe;
   }, []);
 
+  useEffect(() => {
+    try {
+      setMultiHueByLayout(typeof window !== 'undefined' && localStorage.getItem(MULTI_HUE_LAYOUT_STORAGE_KEY) === '1');
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   const handleThemeSelect = (theme: DiagramTheme, e?: React.MouseEvent) => {
     if (isReadOnly) return;
     e?.stopPropagation();
     if (onThemeSelect) {
-      onThemeSelect(theme);
+      onThemeSelect(theme, { multiSelectHueByLayout: multiHueByLayout });
     }
   };
 
@@ -148,6 +160,23 @@ export function ThemeMenuSelector({ onThemeSelect, onOpenEditor, isReadOnly = fa
         align="start"
         sideOffset={8}
       >
+        <DropdownMenuCheckboxItem
+          checked={multiHueByLayout}
+          disabled={isReadOnly}
+          onSelect={(e) => e.preventDefault()}
+          onCheckedChange={(checked) => {
+            const on = checked === true;
+            setMultiHueByLayout(on);
+            try {
+              localStorage.setItem(MULTI_HUE_LAYOUT_STORAGE_KEY, on ? '1' : '0');
+            } catch {
+              /* ignore */
+            }
+          }}
+        >
+          Step hue for multi-selection (by layout)
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuSeparator />
         {favoriteThemes.length > 0 && (
           <>
             <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground flex items-center gap-1">

@@ -24,8 +24,7 @@ import { useTheme } from '@/components/theme-provider';
 import type { SelectedItem } from '../diagram-editor';
 import type { DiagramData } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { DiagramTheme } from '@/lib/theme-types';
-import { APP_BUILD, APP_SEMVER } from '@/lib/app-version';
+import { DiagramTheme, ThemeMenuApplyOptions } from '@/lib/theme-types';
 import { cn } from '@/lib/utils';
 
 const truncateName = (s: string, max = 20) => (s.length > max ? `${s.slice(0, max - 3)}...` : s);
@@ -108,8 +107,6 @@ interface TopMenuBarProps {
   canUndo?: boolean;
   canRedo?: boolean;
   onSelectAll?: () => void;
-  transform?: { x: number; y: number; k: number };
-  onTransformChange?: (transform: { x: number; y: number; k: number }) => void;
   selectedItem?: SelectedItem | null;
   selectedItemIds?: Set<string>;
   onItemUpdate?: (updatedItem: SelectedItem) => void;
@@ -151,7 +148,7 @@ interface TopMenuBarProps {
   defaultTextLabelsEnabled?: boolean;
   onToggleDefaultTextLabels?: () => void;
   onAlignObjects?: (alignment: 'top' | 'center' | 'bottom' | 'v-middle' | 'left' | 'h-center' | 'right' | 'distribute-v' | 'distribute-h') => void;
-  onThemeApplyToSelected?: (theme: DiagramTheme) => void;
+  onThemeApplyToSelected?: (theme: DiagramTheme, options?: ThemeMenuApplyOptions) => void;
   triggerTextStylingPanel?: boolean;
   triggerVisualStylingPanel?: boolean;
   triggerLineStylingPanel?: boolean;
@@ -206,8 +203,6 @@ export function TopMenuBar({
   canUndo,
   canRedo,
   onSelectAll,
-  transform,
-  onTransformChange,
   selectedItem,
   selectedItemIds = new Set(),
   onItemUpdate,
@@ -918,23 +913,11 @@ export function TopMenuBar({
           }
         </div>
       )}
-      {transform && typeof transform.k === 'number' && Number.isFinite(transform.k) && (
-        <div className="text-xs text-muted-foreground px-2 border-l border-border">
-          Zoom: {(transform.k * 100).toFixed(1)}% (k: {transform.k.toFixed(3)})
-        </div>
-      )}
       {mousePosition && (
         <div className="text-xs text-muted-foreground px-2 border-l border-border">
           Cursor: X: {mousePosition.x.toFixed(0)}, Y: {mousePosition.y.toFixed(0)}
         </div>
       )}
-
-      <div
-        className="text-xs text-muted-foreground px-2 border-l border-border tabular-nums shrink-0"
-        title={`DiagramWeaver ${APP_SEMVER} (build ${APP_BUILD})`}
-      >
-        {APP_SEMVER} · {APP_BUILD}
-      </div>
 
       <Menubar className="ml-auto shrink-0 rounded-none border-0 border-b-0 border-l-0 border-r-0 border-t-0 h-auto">
         <MenubarMenu>

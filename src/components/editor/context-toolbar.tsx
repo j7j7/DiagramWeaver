@@ -55,7 +55,7 @@ import { ConnectionAnimationControls } from './connection-animation-controls';
 import { ConnectionLineStyleFields } from './connection-line-style-fields';
 import type { SelectedItem } from '../diagram-editor';
 import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramConnectionData } from '@/lib/types';
-import { DiagramTheme } from '@/lib/theme-types';
+import { DiagramTheme, ThemeMenuApplyOptions } from '@/lib/theme-types';
 import { themeManager } from '@/lib/theme-manager';
 import { extractTextStylingFromNode, extractTextStylingFromGroup, applyTextStylingToZone, applyTextStylingToNode } from '@/lib/text-styling';
 import { extractUmlClassTextStylingFromNode, applyUmlClassTextStylingToNode, DEFAULT_UML_CLASS_TEXT_STYLING } from '@/lib/uml-text-styling';
@@ -84,7 +84,7 @@ interface ContextToolbarProps {
   /** Updates current diagram - for sub-diagram safe updates */
   onCurrentDiagramDataUpdate?: (updater: DiagramData | ((prev: DiagramData) => DiagramData)) => void;
   onAlignObjects?: (alignment: 'top' | 'center' | 'bottom' | 'v-middle' | 'left' | 'h-center' | 'right' | 'distribute-v' | 'distribute-h') => void;
-  onThemeApplyToSelected?: (theme: DiagramTheme) => void;
+  onThemeApplyToSelected?: (theme: DiagramTheme, options?: ThemeMenuApplyOptions) => void;
   textStylingPanelOpen?: boolean;
   visualStylingPanelOpen?: boolean;
   lineStylingPanelOpen?: boolean;

@@ -69,6 +69,17 @@ export interface ThemeApplicationOptions {
   applyToGroups?: boolean;
   applyToConnections?: boolean;
   preserveExistingColors?: boolean;
+  /**
+   * Added to each chart segment’s hue step and applied as a flat shift to theme colors
+   * on nodes and connections (for multi-select “step hue by layout”).
+   */
+  hueShiftDegrees?: number;
+}
+
+/** Options passed from the Themes dropdown when applying a theme to the selection. */
+export interface ThemeMenuApplyOptions {
+  /** When true and multiple items are selected, stagger hue by vertical or horizontal order. */
+  multiSelectHueByLayout?: boolean;
 }
 
 export interface ThemeEditorState {

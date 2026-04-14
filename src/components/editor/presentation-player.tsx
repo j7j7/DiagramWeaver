@@ -442,11 +442,6 @@ export function PresentationPlayer({
                   <span className="shrink-0 rounded border border-border bg-muted/50 px-2 py-0.5 text-[10px]">
                     Slide {totalSlides > 0 ? safeIndex + 1 : 0} of {totalSlides}
                   </span>
-                  {typeof currentSlide?.autoZoomLevel === 'number' && (
-                    <span className="shrink-0 rounded border border-border bg-muted/50 px-2 py-0.5 text-[10px]">
-                      {(currentSlide.autoZoomLevel * 100).toFixed(0)}%
-                    </span>
-                  )}
                 </div>
               </div>
               <div className="flex items-center gap-1">

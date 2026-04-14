@@ -2,6 +2,15 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-04-14 – Top bar: hide app version / build chip
+**`top-menu-bar`**: Removed the **`{semver} · {build}`** label (was **`APP_SEMVER` · `APP_BUILD`**). Version info remains available elsewhere (e.g. **Help → About**) via existing app version module.
+
+### 2026-04-14 – Top bar: hide zoom readout
+**`top-menu-bar`**: Removed the **Zoom: …%** (and **k:**) label from the header; **`transform` / `onTransformChange`** props were dropped from **`TopMenuBar`** (unused after the label). **`diagram-editor`** still owns **`canvasTransform`** / **`setCanvasTransform`** for the canvas. **`presentation-player`**: removed the slide-zoom **…%** badge next to “Slide N of M” in the playback toolbar (manual zoom % input in advanced controls unchanged).
+
+### 2026-04-14 – Themes: step hue across multi-selection by layout
+**`theme-menu-selector`**: Checkbox **Step hue for multi-selection (by layout)** above the theme list (persisted in **`localStorage`**). **`ThemeMenuApplyOptions.multiSelectHueByLayout`** is passed when applying a theme. **`selection-theme-order`**: orders selected node/connection ids by **top→bottom** when vertical spread ≥ horizontal spread, else **left→right** (connection anchor = midpoint of endpoint node centers). **`theme-manager`**: **`ThemeApplicationOptions.hueShiftDegrees`** shifts theme colors on nodes/connections and adds to chart series hue (**`DIAGRAM_THEME_HUE_STEP_DEG`** export, replaces internal chart-only constant). **`diagram-editor`** **`handleThemeApplyToSelected`** uses per-id hue index × step when the option is on and **>1** item is selected.
+
 ### 2026-04-14 – Editor shell flex hardening + canvas drag cleanup
 **`diagram-editor`**: **`main`** and nested canvas column wrappers use **`min-h-0`** so **`flex-1`** children can shrink inside **`h-screen overflow-hidden`** without clipping or squashing chrome in WebKit-style layouts. **`<header>`** uses **`shrink-0`** so the menubar/tab stack is not compressed. **`use-canvas-drag-drop`**: global **`mouseup`** now clears **`isDraggingRef`**, **`axisLockRef`**, and calls **`onDraggingChange(false)`** when a canvas drag was active so cancelled drags do not leave stale drag state.
 

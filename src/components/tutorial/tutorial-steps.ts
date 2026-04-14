@@ -18,7 +18,7 @@ export function getTutorialSteps(): TutorialStep[] {
     {
       id: 'a-top-bar',
       title: 'Top bar',
-      body: 'Use File, Edit, and Layout for document actions, editing, and alignment. Zoom and cursor position appear on the right.',
+      body: 'Use File, Edit, and Layout for document actions, editing, and alignment. Cursor position appears on the right.',
       target: 'main-menubar',
     },
     {

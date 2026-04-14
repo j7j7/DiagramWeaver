@@ -86,8 +86,9 @@ import { DiagramDataSchema } from '@/lib/schemas';
 import { normalizeHttpImageUrl, sanitizeCustomIconsInDiagram } from '@/lib/custom-icon-utils';
 import { parseMermaidFlowchart, parseMermaidClassDiagram, parseMermaidSequenceDiagram, detectMermaidDiagramType } from '@/lib/mermaid-parser';
 import { mermaidToDiagramData, classDiagramToDiagramData, sequenceDiagramToDiagramData } from '@/lib/mermaid-to-diagram';
-import { themeManager } from '@/lib/theme-manager';
-import { DiagramTheme } from '@/lib/theme-types';
+import { themeManager, DIAGRAM_THEME_HUE_STEP_DEG } from '@/lib/theme-manager';
+import { orderSelectedIdsForThemeHue } from '@/lib/selection-theme-order';
+import { DiagramTheme, ThemeMenuApplyOptions } from '@/lib/theme-types';
 import { TutorialProvider, useTutorial } from './tutorial/tutorial-provider';
 import { getTutorialSteps } from './tutorial/tutorial-steps';
 import { TutorialOverlay } from './tutorial/tutorial-overlay';
@@ -3617,7 +3618,8 @@ export default function DiagramEditor() {
     setDiagramData(newDiagramData);
   };
 
-  const handleThemeApplyToSelected = (theme: DiagramTheme) => {
+  const handleThemeApplyToSelected = (theme: DiagramTheme, menuOptions?: ThemeMenuApplyOptions) => {
+    const multiHue = menuOptions?.multiSelectHueByLayout === true;
     if (!selectedItemIds || selectedItemIds.size === 0) {
       // Apply to single selected item
       if (selectedItem) {
@@ -3627,16 +3629,29 @@ export default function DiagramEditor() {
     } else {
       // Apply to multiple selected items - use current diagram (root or sub) for sub-diagram support
       setCurrentDiagramData((prevData) => {
+        const orderMap =
+          multiHue && selectedItemIds.size > 1
+            ? orderSelectedIdsForThemeHue(selectedItemIds, prevData.nodes, prevData.connections ?? [])
+            : null;
+
+        const hueShiftForId = (id: string): number => {
+          if (!orderMap) return 0;
+          const idx = orderMap.get(id) ?? 0;
+          return idx * DIAGRAM_THEME_HUE_STEP_DEG;
+        };
+
         const updatedNodes = prevData.nodes.map((node) => {
           if (selectedItemIds.has(node.id)) {
-            return themeManager.applyThemeToItem(node, theme) as DiagramNodeData;
+            const hueShift = hueShiftForId(node.id);
+            return themeManager.applyThemeToItem(node, theme, { hueShiftDegrees: hueShift }) as DiagramNodeData;
           }
           return node;
         });
         const updatedConnections = (prevData.connections ?? []).map((connection) => {
           const connId = (connection as DiagramConnectionData).id ?? `${connection.from}-${connection.to}`;
           if (selectedItemIds.has(connId)) {
-            return themeManager.applyThemeToItem(connection, theme) as DiagramConnectionData;
+            const hueShift = hueShiftForId(connId);
+            return themeManager.applyThemeToItem(connection, theme, { hueShiftDegrees: hueShift }) as DiagramConnectionData;
           }
           return connection;
         });
@@ -5403,8 +5418,6 @@ function DiagramEditorInner({
                     canUndo={historyIndex > 0}
                     canRedo={historyIndex < history.length - 1}
                     onSelectAll={handleSelectAll}
-                    transform={canvasTransform}
-                    onTransformChange={setCanvasTransform}
                     selectedItem={selectedItem}
                     selectedItemIds={selectedItemIds}
                     onItemUpdate={handleItemUpdate}

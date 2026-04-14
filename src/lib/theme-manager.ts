@@ -10,8 +10,34 @@ import { getThemeSpectrumSortKey } from './theme-spectrum';
 import { isChartNodeType } from './chart-node';
 import { shiftHueOfColor } from './color-shift';
 
-/** Hue step per pie slice when applying a diagram theme (degrees on the color wheel). */
-const CHART_THEME_HUE_STEP_DEG = 36;
+/**
+ * Hue step per pie/bar/line series row and per item when multi-select hue staggering is on
+ * (degrees on the color wheel). Kept in sync with chart theming.
+ */
+export const DIAGRAM_THEME_HUE_STEP_DEG = 36;
+
+export function shiftDiagramThemePropertiesColors(
+  properties: ThemeProperties,
+  degrees: number
+): ThemeProperties {
+  if (degrees === 0) return properties;
+  const next: ThemeProperties = { ...properties };
+  if (next.borderColor) next.borderColor = shiftHueOfColor(next.borderColor, degrees);
+  if (next.borderColors?.length) {
+    next.borderColors = next.borderColors.map((c) => shiftHueOfColor(c, degrees));
+  }
+  if (next.backgroundColor) next.backgroundColor = shiftHueOfColor(next.backgroundColor, degrees);
+  if (next.backgroundColors?.length) {
+    next.backgroundColors = next.backgroundColors.map((c) => shiftHueOfColor(c, degrees));
+  }
+  if (next.lineColor) next.lineColor = shiftHueOfColor(next.lineColor, degrees);
+  if (next.textColor) next.textColor = shiftHueOfColor(next.textColor, degrees);
+  if (next.shadowColor) next.shadowColor = shiftHueOfColor(next.shadowColor, degrees);
+  if (next.textOutlineColor) next.textOutlineColor = shiftHueOfColor(next.textOutlineColor, degrees);
+  if (next.textGlowColor) next.textGlowColor = shiftHueOfColor(next.textGlowColor, degrees);
+  if (next.textShadowColor) next.textShadowColor = shiftHueOfColor(next.textShadowColor, degrees);
+  return next;
+}
 
 const THEME_STORAGE_KEY = 'diagram-weaver-themes';
 
@@ -1699,20 +1725,22 @@ class ThemeManager {
     options: ThemeApplicationOptions = {}
   ): DiagramNodeData | DiagramGroupData | DiagramConnectionData {
     const { properties } = theme;
+    const hueShift = options.hueShiftDegrees ?? 0;
+    const colorProps = hueShift !== 0 ? shiftDiagramThemePropertiesColors(properties, hueShift) : properties;
     const updated = { ...item };
 
     // Apply border properties
     if (properties.borderStyle !== undefined) {
       (updated as any).borderStyle = properties.borderStyle;
     }
-    if (properties.borderColor !== undefined) {
-      (updated as any).borderColor = properties.borderColor;
+    if (colorProps.borderColor !== undefined) {
+      (updated as any).borderColor = colorProps.borderColor;
     }
-    if (properties.borderColors !== undefined) {
-      (updated as any).borderColors = properties.borderColors;
+    if (colorProps.borderColors !== undefined) {
+      (updated as any).borderColors = colorProps.borderColors;
       // Keep legacy single-color field in sync for renderers that still read borderColor.
-      if (properties.borderColors.length > 0) {
-        (updated as any).borderColor = properties.borderColors[0];
+      if (colorProps.borderColors.length > 0) {
+        (updated as any).borderColor = colorProps.borderColors[0];
       }
     }
     if (properties.borderWidth !== undefined) {
@@ -1723,20 +1751,20 @@ class ThemeManager {
     if (properties.backgroundStyle !== undefined) {
       (updated as any).backgroundStyle = properties.backgroundStyle;
     }
-    if (properties.backgroundColor !== undefined) {
-      (updated as any).backgroundColor = properties.backgroundColor;
+    if (colorProps.backgroundColor !== undefined) {
+      (updated as any).backgroundColor = colorProps.backgroundColor;
     }
-    if (properties.backgroundColors !== undefined) {
-      (updated as any).backgroundColors = properties.backgroundColors;
+    if (colorProps.backgroundColors !== undefined) {
+      (updated as any).backgroundColors = colorProps.backgroundColors;
       // Keep legacy single-color field in sync for renderers that still read backgroundColor.
-      if (properties.backgroundColors.length > 0) {
-        (updated as any).backgroundColor = properties.backgroundColors[0];
+      if (colorProps.backgroundColors.length > 0) {
+        (updated as any).backgroundColor = colorProps.backgroundColors[0];
       }
     }
 
     // Apply line properties (for connections)
-    if ('color' in updated && properties.lineColor !== undefined) {
-      (updated as any).color = properties.lineColor;
+    if ('color' in updated && colorProps.lineColor !== undefined) {
+      (updated as any).color = colorProps.lineColor;
     }
     if ('lineWidth' in updated && properties.lineWidth !== undefined) {
       (updated as any).lineWidth = properties.lineWidth;
@@ -1748,8 +1776,8 @@ class ThemeManager {
     }
 
     // Apply text color
-    if (properties.textColor !== undefined) {
-      (updated as any).textColor = properties.textColor;
+    if (colorProps.textColor !== undefined) {
+      (updated as any).textColor = colorProps.textColor;
     }
 
     // Apply gradient angles
@@ -1766,14 +1794,14 @@ class ThemeManager {
       if (chart?.kind === 'pie' && Array.isArray(chart.series)) {
         const bgStyle = properties.backgroundStyle;
         const series: ChartSeriesItem[] = chart.series.map((sliceRow, i) => {
-          const hue = i * CHART_THEME_HUE_STEP_DEG;
+          const hue = i * DIAGRAM_THEME_HUE_STEP_DEG + hueShift;
           const base: ChartSeriesItem = {
             id: sliceRow.id,
             name: sliceRow.name,
             value: sliceRow.value,
           };
-          if (properties.textColor !== undefined) {
-            base.labelColor = properties.textColor;
+          if (colorProps.textColor !== undefined) {
+            base.labelColor = colorProps.textColor;
           } else if (sliceRow.labelColor !== undefined) {
             base.labelColor = sliceRow.labelColor;
           }
@@ -1807,14 +1835,14 @@ class ThemeManager {
       ) {
         const bgStyle = properties.backgroundStyle;
         const series: ChartBarSegmentItem[] = chart.series.map((row, i) => {
-          const hue = i * CHART_THEME_HUE_STEP_DEG;
+          const hue = i * DIAGRAM_THEME_HUE_STEP_DEG + hueShift;
           const base: ChartBarSegmentItem = {
             id: row.id,
             name: row.name,
             values: Array.isArray(row.values) ? [...row.values] : [],
           };
-          if (properties.textColor !== undefined) {
-            base.labelColor = properties.textColor;
+          if (colorProps.textColor !== undefined) {
+            base.labelColor = colorProps.textColor;
           } else if (row.labelColor !== undefined) {
             base.labelColor = row.labelColor;
           }
