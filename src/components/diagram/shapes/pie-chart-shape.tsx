@@ -11,6 +11,10 @@ import {
   svgForeignObjectInlineInputStyle,
 } from "./shape-utils";
 import { pieSlicesForSvg, truncatePieSliceLabel } from "@/lib/chart-node";
+import {
+  chartValueFromVerticalValueAxis,
+  svgUserPointFromClient,
+} from "@/lib/chart-pointer-geometry";
 
 const VB_CX = 30;
 const VB_CY = 30;
@@ -22,6 +26,15 @@ const MIN_SPAN_FOR_LABEL = 0.11;
 const SLICE_POINTER_LEAVE_DELAY_MS = 140;
 /** Invisible stroke widens the hit target slightly (SVG viewBox units, non-scaling). */
 const SLICE_HIT_STROKE_PAD = 3;
+type PieSliceDragSession = {
+  pointerId: number;
+  svg: SVGSVGElement;
+  seriesIndex: number;
+  startAxisValue: number;
+  startCellValue: number;
+  /** Frozen `max(sum, startCell*2, 1)` at pointerdown — same virtual axis for whole gesture. */
+  valueSpan: number;
+};
 
 interface PieChartShapeProps {
   node: DiagramNodeData & { width?: number; height?: number };
@@ -46,10 +59,29 @@ interface PieChartShapeProps {
   isReadOnly?: boolean;
   /** Double-click segment label to edit; updates `chart.series[sliceIndex].name`. */
   onPieSliceNameChange?: (sliceIndex: number, name: string) => void;
+  /** Drag slice value (pointer up/down); updates `chart.series[sliceIndex].value`. */
+  onPieSliceValueChange?: (sliceIndex: number, value: number) => void;
+  /** Blocks canvas node drag while a pie slice value drag is active (react-dnd `canDrag`). */
+  onPieChartValueDragSessionChange?: (active: boolean) => void;
+}
+
+function pieSeriesValueSum(series: { value?: number }[] | undefined): number {
+  if (!Array.isArray(series)) return 0;
+  return series.reduce((a, s) => {
+    const v = s.value;
+    const n = typeof v === "number" && Number.isFinite(v) ? v : 0;
+    return a + Math.max(0, n);
+  }, 0);
 }
 
 export function PieChartShape(props: PieChartShapeProps) {
-  const { isReadOnly = false, onPieSliceNameChange, ...svgBaseProps } = props;
+  const {
+    isReadOnly = false,
+    onPieSliceNameChange,
+    onPieSliceValueChange,
+    onPieChartValueDragSessionChange,
+    ...svgBaseProps
+  } = props;
   const { node, slideColorTransition } = svgBaseProps;
   const chart = node.chart;
   const pieChart: NodeChartSpecPie | undefined = chart?.kind === "pie" ? chart : undefined;
@@ -69,8 +101,12 @@ export function PieChartShape(props: PieChartShapeProps) {
   const [editingSliceNameDraft, setEditingSliceNameDraft] = useState("");
   const sliceLabelEditCancelledRef = useRef(false);
   const slicePointerLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pieSliceDragRef = useRef<PieSliceDragSession | null>(null);
 
   const canEditSegmentLabel = !isReadOnly && !!onPieSliceNameChange;
+  const canEditSliceValue = !isReadOnly && !!onPieSliceValueChange;
+  const canDragPieSliceValue =
+    canEditSliceValue && typeof onPieChartValueDragSessionChange === "function";
 
   const cancelSliceLeaveTimer = () => {
     const t = slicePointerLeaveTimerRef.current;
@@ -95,6 +131,7 @@ export function PieChartShape(props: PieChartShapeProps) {
       s.tooltipValue != null && Number.isFinite(s.tooltipValue);
     return {
       onPointerEnter: (e: React.PointerEvent<SVGElement>) => {
+        if (pieSliceDragRef.current) return;
         cancelSliceLeaveTimer();
         setHoveredIndex(i);
         if (showSliceValue) {
@@ -108,6 +145,7 @@ export function PieChartShape(props: PieChartShapeProps) {
         }
       },
       onPointerMove: (e: React.PointerEvent<SVGElement>) => {
+        if (pieSliceDragRef.current) return;
         if (!showSliceValue) return;
         setSliceHoverTooltip((prev) =>
           prev
@@ -119,8 +157,161 @@ export function PieChartShape(props: PieChartShapeProps) {
               }
         );
       },
-      onPointerLeave: scheduleSliceLeave,
+      onPointerLeave: () => {
+        if (pieSliceDragRef.current) return;
+        scheduleSliceLeave();
+      },
     };
+  };
+
+  /** Hit wedge only: tooltip + optional vertical value drag (`chart-pointer-geometry` virtual axis through pie diameter). */
+  const sliceHitPathPointerHandlers = (i: number, s: (typeof slices)[number]) => {
+    const showSliceValue =
+      s.tooltipValue != null && Number.isFinite(s.tooltipValue);
+    const seriesIndex = s.seriesIndex;
+    const sliceDraggable =
+      canDragPieSliceValue &&
+      typeof seriesIndex === "number" &&
+      seriesIndex >= 0 &&
+      showSliceValue;
+
+    const dragProps: Record<string, unknown> = sliceDraggable
+      ? {
+          "data-dw-pie-slice-value-handle": "",
+          onMouseDownCapture: (e: React.MouseEvent<SVGPathElement>) => {
+            e.stopPropagation();
+          },
+          onPointerDown: (e: React.PointerEvent<SVGPathElement>) => {
+            if (!onPieSliceValueChange) return;
+            e.stopPropagation();
+            const svg = e.currentTarget.ownerSVGElement;
+            if (!svg) return;
+            const pt = svgUserPointFromClient(svg, e.clientX, e.clientY);
+            if (!pt) return;
+            const sumNow = pieSeriesValueSum(series);
+            const startCell = Number.isFinite(s.tooltipValue) ? s.tooltipValue! : 0;
+            const valueSpan = Math.max(1, sumNow, startCell * 2);
+            const startAxis = chartValueFromVerticalValueAxis(
+              pt.y,
+              VB_CY - VB_R,
+              2 * VB_R,
+              valueSpan
+            );
+            onPieChartValueDragSessionChange?.(true);
+            try {
+              e.currentTarget.setPointerCapture(e.pointerId);
+            } catch {
+              /* ignore */
+            }
+            pieSliceDragRef.current = {
+              pointerId: e.pointerId,
+              svg,
+              seriesIndex,
+              startAxisValue: startAxis,
+              startCellValue: startCell,
+              valueSpan,
+            };
+          },
+          onPointerUp: (e: React.PointerEvent<SVGPathElement>) => {
+            const drag = pieSliceDragRef.current;
+            if (drag && drag.pointerId === e.pointerId) {
+              try {
+                e.currentTarget.releasePointerCapture(e.pointerId);
+              } catch {
+                /* ignore */
+              }
+              pieSliceDragRef.current = null;
+            }
+            onPieChartValueDragSessionChange?.(false);
+          },
+          onPointerCancel: (e: React.PointerEvent<SVGPathElement>) => {
+            const drag = pieSliceDragRef.current;
+            if (drag && drag.pointerId === e.pointerId) {
+              try {
+                e.currentTarget.releasePointerCapture(e.pointerId);
+              } catch {
+                /* ignore */
+              }
+              pieSliceDragRef.current = null;
+            }
+            onPieChartValueDragSessionChange?.(false);
+          },
+          onLostPointerCapture: () => {
+            pieSliceDragRef.current = null;
+            onPieChartValueDragSessionChange?.(false);
+          },
+        }
+      : {};
+
+    return {
+      onPointerEnter: (e: React.PointerEvent<SVGPathElement>) => {
+        if (pieSliceDragRef.current) return;
+        cancelSliceLeaveTimer();
+        setHoveredIndex(i);
+        if (showSliceValue) {
+          setSliceHoverTooltip({
+            x: e.clientX,
+            y: e.clientY,
+            text: s.tooltipValue!.toLocaleString(),
+          });
+        } else {
+          setSliceHoverTooltip(null);
+        }
+      },
+      onPointerMove: (e: React.PointerEvent<SVGPathElement>) => {
+        const drag = pieSliceDragRef.current;
+        if (
+          drag &&
+          drag.pointerId === e.pointerId &&
+          sliceDraggable &&
+          onPieSliceValueChange
+        ) {
+          const pt = svgUserPointFromClient(drag.svg, e.clientX, e.clientY);
+          if (pt) {
+            const axisV = chartValueFromVerticalValueAxis(
+              pt.y,
+              VB_CY - VB_R,
+              2 * VB_R,
+              drag.valueSpan
+            );
+            const v = Math.max(
+              0,
+              drag.startCellValue + axisV - drag.startAxisValue
+            );
+            onPieSliceValueChange(drag.seriesIndex, v);
+            cancelSliceLeaveTimer();
+            setHoveredIndex(i);
+            setSliceHoverTooltip({
+              x: e.clientX,
+              y: e.clientY,
+              text: v.toLocaleString(),
+            });
+          }
+          return;
+        }
+        if (pieSliceDragRef.current) return;
+        if (!showSliceValue) return;
+        setSliceHoverTooltip((prev) =>
+          prev
+            ? { ...prev, x: e.clientX, y: e.clientY }
+            : {
+                x: e.clientX,
+                y: e.clientY,
+                text: s.tooltipValue!.toLocaleString(),
+              }
+        );
+      },
+      onPointerLeave: (e: React.PointerEvent<SVGPathElement>) => {
+        const drag = pieSliceDragRef.current;
+        if (drag && drag.pointerId === e.pointerId) return;
+        scheduleSliceLeave();
+      },
+      ...dragProps,
+      style: {
+        cursor: sliceDraggable ? ("ns-resize" as const) : ("default" as const),
+        ...(sliceDraggable ? { touchAction: "none" as const } : {}),
+      },
+    } as React.SVGProps<SVGPathElement>;
   };
 
   useEffect(() => {
@@ -207,8 +398,7 @@ export function PieChartShape(props: PieChartShapeProps) {
               stroke="rgba(0,0,0,0)"
               strokeWidth={SLICE_HIT_STROKE_PAD}
               vectorEffect="non-scaling-stroke"
-              style={{ cursor: "default" }}
-              {...slicePointerHandlers(i, s)}
+              {...sliceHitPathPointerHandlers(i, s)}
             />
             <path
               d={s.d}
@@ -234,6 +424,7 @@ export function PieChartShape(props: PieChartShapeProps) {
         ? slices.map((s, i) => {
             if (!s.name.trim()) return null;
             if (slices.length > 1 && s.span < MIN_SPAN_FOR_LABEL) return null;
+            const seriesIdx = s.seriesIndex ?? i;
             const labelWantsPointer =
               canEditSegmentLabel ||
               (s.tooltipValue != null && Number.isFinite(s.tooltipValue));
@@ -251,8 +442,8 @@ export function PieChartShape(props: PieChartShapeProps) {
               ? Math.max(4, Math.min(24, Math.round(18 * (5.5 / s.labelFontSize))))
               : Math.max(4, Math.min(20, Math.round(12 * (4.75 / s.labelFontSize))));
             const display = truncatePieSliceLabel(s.name, maxChars);
-            const fullName = (series?.[i]?.name ?? s.name) || "";
-            if (editingSliceIndex === i) {
+            const fullName = (series?.[seriesIdx]?.name ?? s.name) || "";
+            if (editingSliceIndex === seriesIdx) {
               /** Match `<text fontSize>`: inner layout uses SVG user units → same numeric px in `foreignObject` (no extra × node width; SVG scales the whole subtree). */
               const labelFontSizePx = s.labelFontSize;
               const charCount = Math.max(
@@ -269,7 +460,7 @@ export function PieChartShape(props: PieChartShapeProps) {
                 "0 0 2px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.35)";
               return (
                 <foreignObject
-                  key={`lbl-${i}`}
+                  key={`lbl-${seriesIdx}`}
                   x={ta.x - foW / 2}
                   y={ta.y - foH / 2}
                   width={foW}
@@ -315,7 +506,7 @@ export function PieChartShape(props: PieChartShapeProps) {
             }
             return (
               <text
-                key={`lbl-${i}`}
+                key={`lbl-${seriesIdx}`}
                 x={ta.x}
                 y={ta.y}
                 textAnchor={ta.anchor}
@@ -335,7 +526,7 @@ export function PieChartShape(props: PieChartShapeProps) {
                   e.stopPropagation();
                   e.preventDefault();
                   setEditingSliceNameDraft(fullName);
-                  setEditingSliceIndex(i);
+                  setEditingSliceIndex(seriesIdx);
                 }}
               >
                 {display}

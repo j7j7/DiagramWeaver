@@ -696,6 +696,25 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
                 }
               : undefined
           }
+          onPieSliceValueChange={
+            onUpdate && !isReadOnly
+              ? (sliceIndex, value) => {
+                  const c = node.chart;
+                  if (c?.kind !== "pie" || !c.series || sliceIndex < 0 || sliceIndex >= c.series.length) return;
+                  const nextSeries = c.series.map((row, j) =>
+                    j === sliceIndex ? { ...row, value: Math.max(0, value) } : row
+                  );
+                  onUpdate({ ...node, chart: { ...c, series: nextSeries } });
+                }
+              : undefined
+          }
+          onPieChartValueDragSessionChange={
+            !isReadOnly
+              ? (active) => {
+                  chartValueDragInteractionRef.current = active;
+                }
+              : undefined
+          }
         />
       );
     } else if (nodeType === 'generic.object.point' || nodeType?.endsWith('.point')) {
@@ -1491,7 +1510,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     if (
       rawTarget instanceof Element &&
       rawTarget.closest(
-        "[data-dw-line-chart-point-handle], [data-dw-bar-cell-value-handle]"
+        "[data-dw-line-chart-point-handle], [data-dw-bar-cell-value-handle], [data-dw-pie-slice-value-handle]"
       )
     ) {
       return;
@@ -1676,7 +1695,7 @@ return (
         if (
           rawTarget instanceof Element &&
           rawTarget.closest(
-            "[data-dw-line-chart-point-handle], [data-dw-bar-cell-value-handle]"
+            "[data-dw-line-chart-point-handle], [data-dw-bar-cell-value-handle], [data-dw-pie-slice-value-handle]"
           )
         ) {
           e.preventDefault();

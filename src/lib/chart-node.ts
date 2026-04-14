@@ -278,6 +278,8 @@ export interface PieSliceRender {
    * Omitted for empty-chart placeholder discs.
    */
   tooltipValue?: number;
+  /** Index into `chart.series` for this wedge (omitted for placeholder discs; may differ from render order when zero-value rows are skipped). */
+  seriesIndex?: number;
 }
 
 export interface PieSliceBuildOptions {
@@ -448,18 +450,20 @@ export function pieSlicesForSvg(
           gradientColor2: s.gradientColor2,
           labelFontSize: resolvePieSliceLabelFontSize(s.raw, spanFull),
           tooltipValue: s.value,
+          seriesIndex: 0,
         },
       ],
     };
   }
 
   const contributors = safe
-    .map((s) => ({ s, frac: s.value / sum }))
+    .map((s, sourceIndex) => ({ s, sourceIndex, frac: s.value / sum }))
     .filter((x) => x.frac > 1e-10);
   const k = contributors.length;
 
   if (k <= 1) {
     const s = contributors[0]?.s ?? safe[0];
+    const seriesIndex = contributors[0]?.sourceIndex ?? 0;
     const mid = -Math.PI / 2;
     const spanFull = 2 * Math.PI;
     const p = effectiveSliceSegmentPull(s.raw, chartDefault);
@@ -484,6 +488,7 @@ export function pieSlicesForSvg(
           gradientColor2: s.gradientColor2,
           labelFontSize: resolvePieSliceLabelFontSize(s.raw, spanFull),
           tooltipValue: s.value,
+          seriesIndex,
         },
       ],
     };
@@ -496,7 +501,7 @@ export function pieSlicesForSvg(
   let angle = -Math.PI / 2;
 
   for (let i = 0; i < contributors.length; i++) {
-    const { s, frac } = contributors[i];
+    const { s, frac, sourceIndex } = contributors[i];
     const span = frac * 2 * Math.PI;
     const startAngle = angle;
     const endAngle = angle + span;
@@ -521,6 +526,7 @@ export function pieSlicesForSvg(
         gradientColor2: s.gradientColor2,
         labelFontSize: resolvePieSliceLabelFontSize(s.raw, spanFull),
         tooltipValue: s.value,
+        seriesIndex: sourceIndex,
       });
       break;
     }
@@ -540,6 +546,7 @@ export function pieSlicesForSvg(
       gradientColor2: s.gradientColor2,
       labelFontSize: resolvePieSliceLabelFontSize(s.raw, arcSpan),
       tooltipValue: s.value,
+      seriesIndex: sourceIndex,
     });
     angle = endAngle;
   }
