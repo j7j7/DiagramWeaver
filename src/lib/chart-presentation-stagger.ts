@@ -2,13 +2,15 @@ import type { CSSProperties } from "react";
 import type { DiagramNodeData } from "@/lib/types";
 import { isChartNodeType } from "@/lib/chart-node";
 
-/** Passed from slide transition into chart shapes for per-segment pop-in. */
+/** Passed from slide transition into chart shapes for per-segment pop-in/out. */
 export interface ChartSlideStagger {
   baseDelayMs: number;
   staggerMs: number;
   durationMs: number;
   /** CSS timing function, e.g. cubic-bezier(0.4, 0, 0.2, 1) */
   easingCss: string;
+  /** True: sequential segment fade-out (chart removed on next slide). */
+  exit?: boolean;
 }
 
 /** Delay between segment i and i+1 so the cascade reads clearly (ms). */
@@ -44,22 +46,27 @@ export function chartSegmentCountForStagger(node: DiagramNodeData): number {
   return 0;
 }
 
-/** Opacity-only so stagger reads as sequential reveals, not “whole chart scaling”. */
-export function chartSegmentPopKeyframesCss(animationName: string): string {
-  return `@keyframes ${animationName}{0%{opacity:0}100%{opacity:1}}`;
+/** Opacity-only: sequential reveals (in) or hides (out). */
+export function chartSegmentPopKeyframesCss(
+  animationNameIn: string,
+  animationNameOut: string
+): string {
+  return `@keyframes ${animationNameIn}{0%{opacity:0}100%{opacity:1}}@keyframes ${animationNameOut}{0%{opacity:1}100%{opacity:0}}`;
 }
 
 export function chartSegmentPopAnimationStyle(
   segmentIndex: number,
-  animationName: string,
+  animationNameIn: string,
+  animationNameOut: string,
   _originX: number,
   _originY: number,
   cfg: ChartSlideStagger | undefined
 ): CSSProperties | undefined {
   if (!cfg) return undefined;
+  const name = cfg.exit ? animationNameOut : animationNameIn;
   const delay = cfg.baseDelayMs + segmentIndex * cfg.staggerMs;
   return {
-    animation: `${animationName} ${cfg.durationMs}ms ${cfg.easingCss} ${delay}ms both`,
+    animation: `${name} ${cfg.durationMs}ms ${cfg.easingCss} ${delay}ms both`,
     willChange: "opacity",
   };
 }

@@ -379,7 +379,9 @@ export function PieChartShape(props: PieChartShapeProps) {
   };
   const filterId = `dw-pie-sh-${useId().replace(/:/g, "")}`;
   const gradBaseId = `dw-pie-g-${useId().replace(/:/g, "")}`;
-  const segPopId = `dwPieSeg${useId().replace(/:/g, "")}`;
+  const segAnimBase = `dwPieSeg${useId().replace(/:/g, "")}`;
+  const segPopInId = `${segAnimBase}In`;
+  const segPopOutId = `${segAnimBase}Out`;
   const gradientAngle = node.gradientAngle ?? 135;
   const gradCoords = getGradientCoordinates(gradientAngle);
 
@@ -421,7 +423,8 @@ export function PieChartShape(props: PieChartShapeProps) {
         const t = `translate(${s.explodeX},${s.explodeY})`;
         const segAnim = chartSegmentPopAnimationStyle(
           i,
-          segPopId,
+          segPopInId,
+          segPopOutId,
           VB_CX,
           VB_CY,
           presentationChartStagger
@@ -582,7 +585,7 @@ export function PieChartShape(props: PieChartShapeProps) {
       {presentationChartStagger ? (
         <style
           type="text/css"
-          dangerouslySetInnerHTML={{ __html: chartSegmentPopKeyframesCss(segPopId) }}
+          dangerouslySetInnerHTML={{ __html: chartSegmentPopKeyframesCss(segPopInId, segPopOutId) }}
         />
       ) : null}
       {svgShadow ? (

@@ -240,7 +240,9 @@ export function LineChartShape(props: LineChartShapeProps) {
   const filterId = `dw-line-sh-${useId().replace(/:/g, "")}`;
   const gradLineId = `dw-line-lg-${useId().replace(/:/g, "")}`;
   const gradAreaId = `dw-line-ag-${useId().replace(/:/g, "")}`;
-  const lineSegPopId = `dwLineSeg${useId().replace(/:/g, "")}`;
+  const lineSegAnimBase = `dwLineSeg${useId().replace(/:/g, "")}`;
+  const lineSegPopInId = `${lineSegAnimBase}In`;
+  const lineSegPopOutId = `${lineSegAnimBase}Out`;
 
   const borderStyle = node.borderStyle || "solid";
   const nodeStrokeW = borderStyle === "none" ? 0 : node.borderWidth || 2;
@@ -590,7 +592,7 @@ export function LineChartShape(props: LineChartShapeProps) {
       {presentationChartStagger ? (
         <style
           type="text/css"
-          dangerouslySetInnerHTML={{ __html: chartSegmentPopKeyframesCss(lineSegPopId) }}
+          dangerouslySetInnerHTML={{ __html: chartSegmentPopKeyframesCss(lineSegPopInId, lineSegPopOutId) }}
         />
       ) : null}
       {legendList.map((en, i) =>
@@ -659,7 +661,8 @@ export function LineChartShape(props: LineChartShapeProps) {
 
     const lineStag = chartSegmentPopAnimationStyle(
       si,
-      lineSegPopId,
+      lineSegPopInId,
+      lineSegPopOutId,
       plot.x0 + plot.w / 2,
       plot.y0 + plot.h / 2,
       presentationChartStagger

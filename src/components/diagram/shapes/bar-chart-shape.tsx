@@ -272,7 +272,9 @@ export function BarChartShape(props: BarChartShapeProps) {
   const filterId = `dw-bar-sh-${useId().replace(/:/g, "")}`;
   const gradBaseId = `dw-bar-g-${useId().replace(/:/g, "")}`;
   const clipBaseId = `dw-bar-clip-${useId().replace(/:/g, "")}`;
-  const barSegPopId = `dwBarSeg${useId().replace(/:/g, "")}`;
+  const barSegAnimBase = `dwBarSeg${useId().replace(/:/g, "")}`;
+  const barSegPopInId = `${barSegAnimBase}In`;
+  const barSegPopOutId = `${barSegAnimBase}Out`;
   const gradientAngle = node.gradientAngle ?? 135;
   const gradCoords = getGradientCoordinates(gradientAngle);
 
@@ -657,7 +659,8 @@ export function BarChartShape(props: BarChartShapeProps) {
     const k = rectKey(r);
     const stagStyle = chartSegmentPopAnimationStyle(
       barStaggerIndex.get(k) ?? 0,
-      barSegPopId,
+      barSegPopInId,
+      barSegPopOutId,
       r.x + r.w / 2,
       r.y + r.h / 2,
       presentationChartStagger
@@ -1528,7 +1531,7 @@ export function BarChartShape(props: BarChartShapeProps) {
       {presentationChartStagger ? (
         <style
           type="text/css"
-          dangerouslySetInnerHTML={{ __html: chartSegmentPopKeyframesCss(barSegPopId) }}
+          dangerouslySetInnerHTML={{ __html: chartSegmentPopKeyframesCss(barSegPopInId, barSegPopOutId) }}
         />
       ) : null}
       {svgShadow ? (

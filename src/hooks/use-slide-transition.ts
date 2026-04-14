@@ -63,6 +63,7 @@ interface SlideNodeAnimStyle {
   chartLerpEligible?: boolean;
   chartLerpFromJson?: string;
   isAppearingChart?: boolean;
+  isDisappearingChart?: boolean;
 }
 
 interface SlideAnimation {
@@ -201,13 +202,13 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
       );
 
       let opacityStart = isAppearing ? 0 : 1;
-      const opacityEnd = isDisappearing ? 0 : 1;
+      let opacityEnd = isDisappearing ? 0 : 1;
 
       const deltaX = isMoving ? (prevX - currX) : 0;
       const deltaY = isMoving ? (prevY - currY) : 0;
 
       let translateYStart = isAppearing ? 30 : 0;
-      const translateYEnd = isDisappearing ? 30 : 0;
+      let translateYEnd = isDisappearing ? 30 : 0;
 
       const easing = isAppearing ? EASE_OUT : (isDisappearing ? EASE_IN : EASE_IN_OUT);
 
@@ -237,13 +238,22 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
 
       const isChartNode =
         isChartNodeType(prevNode?.type) || isChartNodeType(currNode?.type);
-      /** Never CSS-scale the chart wrapper (reads as “whole object” scaling); segments animate inside SVG. */
-      const suppressChartOuterScale = Boolean(isChartNode && !isDisappearing);
+      const isDisappearingChart = Boolean(
+        isDisappearing && prevNode && isChartNodeType(prevNode.type),
+      );
+      /** Never CSS-scale the chart wrapper; segments animate inside SVG (appear + disappear). */
+      const suppressChartOuterScale = Boolean(
+        isChartNode && (!isDisappearing || isDisappearingChart),
+      );
 
       const isAppearingChart = Boolean(isAppearing && isChartNode);
       if (isAppearingChart) {
         opacityStart = 1;
         translateYStart = 0;
+      }
+      if (isDisappearingChart) {
+        opacityEnd = 1;
+        translateYEnd = 0;
       }
 
       const chartLerpEligible = Boolean(
@@ -293,6 +303,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
         chartLerpEligible,
         chartLerpFromJson,
         isAppearingChart,
+        isDisappearingChart,
       });
 
       if (isDisappearing) {
@@ -454,13 +465,16 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
 
     let chartTailMs = 0;
     for (const [nodeId, st] of nodeIdStyles) {
-      if (st.isDisappearing) continue;
+      const pn = prevNodesMap.get(nodeId);
       const cn = currNodesMap.get(nodeId);
-      if (!cn || !isChartNodeType(cn.type)) continue;
-      const nSeg = chartSegmentCountForStagger(cn);
+      const chartNode =
+        cn && isChartNodeType(cn.type) ? cn : pn && isChartNodeType(pn.type) ? pn : null;
+      if (!chartNode) continue;
+      const nSeg = chartSegmentCountForStagger(chartNode);
       if (nSeg <= 0) continue;
       const useStaggerTail =
         st.isAppearingChart ||
+        st.isDisappearingChart ||
         (st.chartPresentationChanged && !st.chartLerpEligible);
       if (!useStaggerTail) continue;
       const base = nodeDelayMs.get(nodeId) ?? 0;
@@ -540,15 +554,16 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
 
         const dMs0 = nodeDelayFor(nodeId);
         const useChartStagger =
-          !style.isDisappearing &&
-          (style.isAppearingChart ||
-            (!!style.chartPresentationChanged && !style.chartLerpEligible));
+          style.isAppearingChart ||
+          !!style.isDisappearingChart ||
+          (!!style.chartPresentationChanged && !style.chartLerpEligible);
         const chartSlideStagger: ChartSlideStagger | undefined = useChartStagger
           ? {
               baseDelayMs: dMs0,
               staggerMs: CHART_SLIDE_SEGMENT_STAGGER_MS,
               durationMs: TRANSITION_DURATION_MS,
               easingCss: EASE_IN_OUT,
+              exit: !!style.isDisappearingChart,
             }
           : undefined;
 
@@ -640,10 +655,14 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
           for (const [nodeId, style] of nodeIdStyles) {
             const transition = slideMotionTransition(style.easing);
             const transformX = 0;
-            const transformY = style.isResizeOnly ? 0 : style.translateYEnd;
+            const transformY = style.isDisappearingChart
+              ? 0
+              : style.isResizeOnly
+                ? 0
+                : style.translateYEnd;
 
-            const scaleX = style.isDisappearing ? 0 : 1;
-            const scaleY = style.isDisappearing ? 0 : 1;
+            const scaleX = style.isDisappearing && !style.isDisappearingChart ? 0 : 1;
+            const scaleY = style.isDisappearing && !style.isDisappearingChart ? 0 : 1;
 
             const needsTransform = transformX !== 0 || transformY !== 0 || scaleX !== 1 || scaleY !== 1;
 
@@ -666,15 +685,16 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
 
             const dMs = nodeDelayFor(nodeId);
             const useChartStagger =
-              !style.isDisappearing &&
-              (style.isAppearingChart ||
-                (!!style.chartPresentationChanged && !style.chartLerpEligible));
+              style.isAppearingChart ||
+              !!style.isDisappearingChart ||
+              (!!style.chartPresentationChanged && !style.chartLerpEligible);
             const chartSlideStagger: ChartSlideStagger | undefined = useChartStagger
               ? {
                   baseDelayMs: dMs,
                   staggerMs: CHART_SLIDE_SEGMENT_STAGGER_MS,
                   durationMs: TRANSITION_DURATION_MS,
                   easingCss: EASE_IN_OUT,
+                  exit: !!style.isDisappearingChart,
                 }
               : undefined;
 
@@ -977,7 +997,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
       setNodeStyles((prev) => {
         const next = new Map(prev);
         for (const [nodeId, style] of anim.nodeIdStyles) {
-          if (style.opacityEnd === 1) {
+          if (style.opacityEnd === 1 && !style.isDisappearing) {
             next.set(nodeId, {
               opacity: 1,
               transition: 'none',
