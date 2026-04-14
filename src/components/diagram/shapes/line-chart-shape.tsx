@@ -18,6 +18,10 @@ import {
   resolveLineChartPolylineStrokeWidth,
 } from "@/lib/line-chart-layout";
 import { chartSegmentLegendEntries } from "@/lib/bar-chart-layout";
+import {
+  chartValueFromVerticalValueAxis,
+  svgUserPointFromClient,
+} from "@/lib/chart-pointer-geometry";
 
 const VB_W = 100;
 const VB_H = 68;
@@ -27,34 +31,6 @@ const DOT_POINTER_LEAVE_DELAY_MS = 140;
 const DOT_HIT_PAD = 2.8;
 /** Ignore double-click-to-edit after a drag gesture (screen px). */
 const DOT_DRAG_SUPPRESS_DBLCLICK_PX = 6;
-
-function svgUserPointFromClient(
-  svg: SVGSVGElement,
-  clientX: number,
-  clientY: number
-): { x: number; y: number } | null {
-  const pt = svg.createSVGPoint();
-  pt.x = clientX;
-  pt.y = clientY;
-  const ctm = svg.getScreenCTM();
-  if (!ctm) return null;
-  const p = pt.matrixTransform(ctm.inverse());
-  return { x: p.x, y: p.y };
-}
-
-function lineChartValueFromSvgY(
-  svgY: number,
-  plotY0: number,
-  plotH: number,
-  valueAxisMax: number
-): number {
-  if (!Number.isFinite(svgY) || plotH <= 0 || !Number.isFinite(valueAxisMax) || valueAxisMax <= 0) {
-    return 0;
-  }
-  const t = (plotY0 + plotH - svgY) / plotH;
-  const v = t * valueAxisMax;
-  return Math.max(0, Number.isFinite(v) ? v : 0);
-}
 
 type DotDragSession = {
   pointerId: number;
@@ -724,7 +700,7 @@ export function LineChartShape(props: LineChartShapeProps) {
                         const pt = svgUserPointFromClient(drag.svg, e.clientX, e.clientY);
                         const { plot: pl, valueAxisMax: vmax } = layoutMetricsRef.current;
                         const v = pt
-                          ? lineChartValueFromSvgY(pt.y, pl.y0, pl.h, vmax)
+                          ? chartValueFromVerticalValueAxis(pt.y, pl.y0, pl.h, vmax)
                           : null;
                         if (v != null) {
                           onLinePointValueChange(drag.seriesIndex, drag.categoryIndex, v);

@@ -302,8 +302,8 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
   const [isDraggingLineEndpoint, setIsDraggingLineEndpoint] = useState(false);
   const [lineEndpointHandle, setLineEndpointHandle] = useState<'start' | 'end' | null>(null);
   const lineEndpointStartPos = useRef<{ x: number; y: number; startPoint: { x: number; y: number }; endPoint: { x: number; y: number } } | null>(null);
-  /** While true, line chart value handles are active — react-dnd must not move the node. */
-  const lineChartPointInteractionRef = useRef(false);
+  /** While true, line/bar chart value drag is active — react-dnd must not move the node. */
+  const chartValueDragInteractionRef = useRef(false);
 
   // Corner radius drag state (rounded-rectangle only)
   const [isDraggingCornerRadius, setIsDraggingCornerRadius] = useState(false);
@@ -606,6 +606,13 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
                 }
               : undefined
           }
+          onBarChartValueDragSessionChange={
+            !isReadOnly
+              ? (active) => {
+                  chartValueDragInteractionRef.current = active;
+                }
+              : undefined
+          }
         />
       );
     } else if (nodeType === 'generic.chart.line') {
@@ -666,7 +673,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
           onLineChartPointDragSessionChange={
             !isReadOnly
               ? (active) => {
-                  lineChartPointInteractionRef.current = active;
+                  chartValueDragInteractionRef.current = active;
                 }
               : undefined
           }
@@ -1051,7 +1058,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
       !isReadOnly &&
       !isEditingLabel &&
       !isEditingTag &&
-      !lineChartPointInteractionRef.current,
+      !chartValueDragInteractionRef.current,
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
@@ -1483,7 +1490,9 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     const rawTarget = e.target;
     if (
       rawTarget instanceof Element &&
-      rawTarget.closest("[data-dw-line-chart-point-handle]")
+      rawTarget.closest(
+        "[data-dw-line-chart-point-handle], [data-dw-bar-cell-value-handle]"
+      )
     ) {
       return;
     }
@@ -1666,7 +1675,9 @@ return (
         const rawTarget = e.target;
         if (
           rawTarget instanceof Element &&
-          rawTarget.closest("[data-dw-line-chart-point-handle]")
+          rawTarget.closest(
+            "[data-dw-line-chart-point-handle], [data-dw-bar-cell-value-handle]"
+          )
         ) {
           e.preventDefault();
           e.stopPropagation();

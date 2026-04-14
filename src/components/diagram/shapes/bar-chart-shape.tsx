@@ -20,6 +20,11 @@ import {
   wrapBarLabelLines,
   type BarRect,
 } from "@/lib/bar-chart-layout";
+import {
+  chartValueFromHorizontalValueAxis,
+  chartValueFromVerticalValueAxis,
+  svgUserPointFromClient,
+} from "@/lib/chart-pointer-geometry";
 
 const VB_W = 100;
 const VB_H = 68;
@@ -71,6 +76,18 @@ const MIN_BAR_DIM_FOR_VALUE = 4.5;
 const BAR_CELL_POINTER_LEAVE_DELAY_MS = 140;
 /** Invisible stroke widens bar hit targets slightly (viewBox units, non-scaling). */
 const BAR_HIT_STROKE_PAD = 0.75;
+/** Ignore double-click value edit after a bar value drag (screen px). */
+const BAR_CELL_DRAG_SUPPRESS_DBLCLICK_PX = 6;
+
+type BarCellDragSession = {
+  pointerId: number;
+  svg: SVGSVGElement;
+  segmentIndex: number;
+  categoryIndex: number;
+  startClientX: number;
+  startClientY: number;
+  maxMove: number;
+};
 
 interface BarChartShapeProps {
   node: DiagramNodeData & { width?: number; height?: number };
@@ -98,6 +115,8 @@ interface BarChartShapeProps {
   onBarCategoryLabelChange?: (categoryIndex: number, label: string) => void;
   /** Double-click in-bar numeric value; updates `series[segmentIndex].values[categoryIndex]`. */
   onBarCellValueChange?: (segmentIndex: number, categoryIndex: number, value: number) => void;
+  /** Blocks canvas node drag while a bar segment value drag is active (react-dnd `canDrag`). */
+  onBarChartValueDragSessionChange?: (active: boolean) => void;
 }
 
 type BarInlineEditState =
@@ -111,12 +130,28 @@ function formatAxisNumber(n: number): string {
   return n.toFixed(1).replace(/\.0$/, "");
 }
 
+/** Cumulative value of stacked segments below `segmentIndex` in this category (axis space). */
+function stackBelowSumForBarCell(
+  seriesRows: NodeChartSpecBar["series"],
+  categoryIndex: number,
+  segmentIndex: number
+): number {
+  if (!Array.isArray(seriesRows) || segmentIndex <= 0) return 0;
+  let s = 0;
+  for (let k = 0; k < segmentIndex; k++) {
+    const vals = seriesRows[k]?.values;
+    s += Array.isArray(vals) ? Math.max(0, vals[categoryIndex] ?? 0) : 0;
+  }
+  return s;
+}
+
 export function BarChartShape(props: BarChartShapeProps) {
   const {
     isReadOnly = false,
     onBarSegmentNameChange,
     onBarCategoryLabelChange,
     onBarCellValueChange,
+    onBarChartValueDragSessionChange,
     ...svgBaseProps
   } = props;
   const { node, slideColorTransition } = svgBaseProps;
@@ -141,6 +176,13 @@ export function BarChartShape(props: BarChartShapeProps) {
   const [inlineDraft, setInlineDraft] = useState("");
   const inlineEditCancelledRef = useRef(false);
   const barPointerLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const layoutMetricsRef = useRef({
+    plot: { x0: 0, y0: 0, w: 0, h: 0 },
+    valueAxisMax: 1,
+    vertical: true,
+  });
+  const barCellDragRef = useRef<BarCellDragSession | null>(null);
+  const suppressBarValueDblClickAfterDragRef = useRef(false);
 
   const series = chart.series;
 
@@ -180,6 +222,8 @@ export function BarChartShape(props: BarChartShapeProps) {
   const canEditSegment = !isReadOnly && !!onBarSegmentNameChange;
   const canEditCategory = !isReadOnly && !!onBarCategoryLabelChange;
   const canEditValue = !isReadOnly && !!onBarCellValueChange;
+  const canDragBarValue =
+    canEditValue && typeof onBarChartValueDragSessionChange === "function";
 
   const cancelBarLeaveTimer = () => {
     const t = barPointerLeaveTimerRef.current;
@@ -239,6 +283,8 @@ export function BarChartShape(props: BarChartShapeProps) {
     legendLabelLines,
   } = model;
 
+  layoutMetricsRef.current = { plot, valueAxisMax, vertical };
+
   useEffect(() => {
     if (!inlineEdit) return;
     if (inlineEdit.kind === "segment") {
@@ -285,6 +331,188 @@ export function BarChartShape(props: BarChartShapeProps) {
   }
 
   const rectKey = (r: BarRect) => `s${r.segmentIndex}-c${r.categoryIndex}`;
+
+  const barDragTooltipText = (r: BarRect, v: number) => {
+    const cat =
+      (categoryLabels[r.categoryIndex] ?? "").trim() ||
+      `Column ${r.categoryIndex + 1}`;
+    const seg =
+      (series?.[r.segmentIndex]?.name ?? r.name) || `Series ${r.segmentIndex + 1}`;
+    return `${seg}\n${cat}: ${formatAxisNumber(v)}`;
+  };
+
+  const valueFromPointerClient = (
+    svg: SVGSVGElement,
+    clientX: number,
+    clientY: number
+  ): number | null => {
+    const pt = svgUserPointFromClient(svg, clientX, clientY);
+    if (!pt) return null;
+    const { plot: pl, valueAxisMax: vmax, vertical: vert } = layoutMetricsRef.current;
+    return vert
+      ? chartValueFromVerticalValueAxis(pt.y, pl.y0, pl.h, vmax)
+      : chartValueFromHorizontalValueAxis(pt.x, pl.x0, pl.w, vmax);
+  };
+
+  /** Hit layer (invisible pad) or filled rect: hover tip + optional value drag. */
+  const barSegmentInteractionHandlers = (r: BarRect, layer: "hit" | "fill") => {
+    const k = rectKey(r);
+    const tipText =
+      layer === "hit" && !showSegmentValues && Number.isFinite(r.value)
+        ? formatAxisNumber(r.value)
+        : "";
+    const showTip = tipText !== "";
+    const resizeCursor = vertical ? "ns-resize" : "ew-resize";
+
+    const dragProps: Record<string, unknown> = canDragBarValue
+      ? {
+          "data-dw-bar-cell-value-handle": "",
+          onMouseDownCapture: (e: React.MouseEvent<SVGRectElement>) => {
+            e.stopPropagation();
+          },
+          onDoubleClick: (e: React.MouseEvent<SVGRectElement>) => {
+            if (suppressBarValueDblClickAfterDragRef.current) {
+              e.preventDefault();
+              e.stopPropagation();
+              return;
+            }
+            if (!onBarCellValueChange) return;
+            e.stopPropagation();
+            e.preventDefault();
+            const v = r.value;
+            setInlineDraft(
+              Number.isInteger(v) ? String(Math.round(v)) : String(v)
+            );
+            setInlineEdit({
+              kind: "value",
+              segmentIndex: r.segmentIndex,
+              categoryIndex: r.categoryIndex,
+            });
+          },
+          onPointerDown: (e: React.PointerEvent<SVGRectElement>) => {
+            if (!onBarCellValueChange) return;
+            e.stopPropagation();
+            const svg = e.currentTarget.ownerSVGElement;
+            if (!svg) return;
+            onBarChartValueDragSessionChange?.(true);
+            try {
+              e.currentTarget.setPointerCapture(e.pointerId);
+            } catch {
+              /* ignore */
+            }
+            barCellDragRef.current = {
+              pointerId: e.pointerId,
+              svg,
+              segmentIndex: r.segmentIndex,
+              categoryIndex: r.categoryIndex,
+              startClientX: e.clientX,
+              startClientY: e.clientY,
+              maxMove: 0,
+            };
+          },
+          onPointerUp: (e: React.PointerEvent<SVGRectElement>) => {
+            const drag = barCellDragRef.current;
+            if (drag && drag.pointerId === e.pointerId) {
+              if (drag.maxMove >= BAR_CELL_DRAG_SUPPRESS_DBLCLICK_PX) {
+                suppressBarValueDblClickAfterDragRef.current = true;
+                window.setTimeout(() => {
+                  suppressBarValueDblClickAfterDragRef.current = false;
+                }, 450);
+              }
+              try {
+                e.currentTarget.releasePointerCapture(e.pointerId);
+              } catch {
+                /* ignore */
+              }
+              barCellDragRef.current = null;
+            }
+            onBarChartValueDragSessionChange?.(false);
+          },
+          onPointerCancel: (e: React.PointerEvent<SVGRectElement>) => {
+            const drag = barCellDragRef.current;
+            if (drag && drag.pointerId === e.pointerId) {
+              try {
+                e.currentTarget.releasePointerCapture(e.pointerId);
+              } catch {
+                /* ignore */
+              }
+              barCellDragRef.current = null;
+            }
+            onBarChartValueDragSessionChange?.(false);
+          },
+          onLostPointerCapture: () => {
+            barCellDragRef.current = null;
+            onBarChartValueDragSessionChange?.(false);
+          },
+        }
+      : {};
+
+    return {
+      onPointerEnter: (e: React.PointerEvent<SVGRectElement>) => {
+        if (barCellDragRef.current) return;
+        cancelBarLeaveTimer();
+        setHoveredKey(k);
+        if (showTip) {
+          setBarCellHoverTooltip({
+            x: e.clientX,
+            y: e.clientY,
+            text: tipText,
+          });
+        } else {
+          setBarCellHoverTooltip(null);
+        }
+      },
+      onPointerMove: (e: React.PointerEvent<SVGRectElement>) => {
+        const drag = barCellDragRef.current;
+        if (
+          drag &&
+          drag.pointerId === e.pointerId &&
+          canDragBarValue &&
+          onBarCellValueChange
+        ) {
+          drag.maxMove = Math.max(
+            drag.maxMove,
+            Math.abs(e.clientX - drag.startClientX),
+            Math.abs(e.clientY - drag.startClientY)
+          );
+          const axisV = valueFromPointerClient(drag.svg, e.clientX, e.clientY);
+          if (axisV != null) {
+            const below = stackBelowSumForBarCell(
+              series ?? [],
+              drag.categoryIndex,
+              drag.segmentIndex
+            );
+            const v = Math.max(0, axisV - below);
+            onBarCellValueChange(drag.segmentIndex, drag.categoryIndex, v);
+            cancelBarLeaveTimer();
+            setHoveredKey(k);
+            setBarCellHoverTooltip({
+              x: e.clientX,
+              y: e.clientY,
+              text: barDragTooltipText(r, v),
+            });
+          }
+          return;
+        }
+        if (!showTip) return;
+        setBarCellHoverTooltip((prev) =>
+          prev
+            ? { ...prev, x: e.clientX, y: e.clientY }
+            : { x: e.clientX, y: e.clientY, text: tipText }
+        );
+      },
+      onPointerLeave: (e: React.PointerEvent<SVGRectElement>) => {
+        const drag = barCellDragRef.current;
+        if (drag && drag.pointerId === e.pointerId) return;
+        scheduleBarLeave();
+      },
+      ...dragProps,
+      style: {
+        cursor: canDragBarValue ? resizeCursor : "default",
+        ...(canDragBarValue ? { touchAction: "none" as const } : {}),
+      },
+    } as React.SVGProps<SVGRectElement>;
+  };
 
   /** Hover value tooltip on segments when values aren’t rendered in the bar (see `showSegmentValues`). */
   const barRectValueTooltipHandlers = (r: BarRect) => {
@@ -404,6 +632,7 @@ export function BarChartShape(props: BarChartShapeProps) {
           ? `url(#${gradBaseId}-${k})`
           : r.solidFill;
     if (showSegmentValues) {
+      const fillInteract = barSegmentInteractionHandlers(r, "fill");
       return (
         <rect
           key={k}
@@ -417,12 +646,11 @@ export function BarChartShape(props: BarChartShapeProps) {
           }
           strokeWidth={hasBorder ? (isHover ? strokeWidth + 0.75 : strokeWidth) : isHover ? 2 : 0}
           vectorEffect="non-scaling-stroke"
+          {...fillInteract}
           style={{
+            ...fillInteract.style,
             filter: isHover ? "brightness(1.12)" : undefined,
-            cursor: "default",
           }}
-          onMouseEnter={() => setHoveredKey(k)}
-          onMouseLeave={() => setHoveredKey(null)}
         />
       );
     }
@@ -438,8 +666,7 @@ export function BarChartShape(props: BarChartShapeProps) {
           stroke="rgba(0,0,0,0)"
           strokeWidth={BAR_HIT_STROKE_PAD}
           vectorEffect="non-scaling-stroke"
-          style={{ cursor: "default" }}
-          {...barRectValueTooltipHandlers(r)}
+          {...barSegmentInteractionHandlers(r, "hit")}
         />
         <rect
           x={r.x}
@@ -788,14 +1015,21 @@ export function BarChartShape(props: BarChartShapeProps) {
                   fill={r.labelColor}
                   fontSize={fsVal}
                   fontWeight={600}
-                  pointerEvents={canEditValue ? "auto" : "none"}
+                  pointerEvents={
+                    !canEditValue ? "none" : canDragBarValue ? "none" : "auto"
+                  }
                   style={{
                     textShadow: labelTextShadow,
-                    cursor: canEditValue ? "text" : undefined,
+                    cursor: canEditValue && !canDragBarValue ? "text" : undefined,
                   }}
                   onPointerDown={(e) => canEditValue && e.stopPropagation()}
                   onDoubleClick={(e) => {
-                    if (!canEditValue) return;
+                    if (!canEditValue || canDragBarValue) return;
+                    if (suppressBarValueDblClickAfterDragRef.current) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      return;
+                    }
                     e.stopPropagation();
                     e.preventDefault();
                     setInlineDraft(valueDraftSeed);
@@ -823,14 +1057,21 @@ export function BarChartShape(props: BarChartShapeProps) {
                 fill={r.labelColor}
                 fontSize={fsVal}
                 fontWeight={600}
-                pointerEvents={canEditValue ? "auto" : "none"}
+                pointerEvents={
+                  !canEditValue ? "none" : canDragBarValue ? "none" : "auto"
+                }
                 style={{
                   textShadow: labelTextShadow,
-                  cursor: canEditValue ? "text" : undefined,
+                  cursor: canEditValue && !canDragBarValue ? "text" : undefined,
                 }}
                 onPointerDown={(e) => canEditValue && e.stopPropagation()}
                 onDoubleClick={(e) => {
-                  if (!canEditValue) return;
+                  if (!canEditValue || canDragBarValue) return;
+                  if (suppressBarValueDblClickAfterDragRef.current) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                  }
                   e.stopPropagation();
                   e.preventDefault();
                   setInlineDraft(valueDraftSeed);
