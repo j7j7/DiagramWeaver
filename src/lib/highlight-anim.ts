@@ -39,8 +39,8 @@ export type HighlightAnimStagger = {
 };
 
 /**
- * Top-to-bottom, then left-to-right order among nodes with highlight animation (excludes connector lines).
- * Used to spread pulse phases evenly across one full cycle so the effect reads as a vertical cascade.
+ * Sort by y ascending then x ascending among nodes with highlight animation (excludes connector lines).
+ * Stagger indices use **`n - 1 - i`** so phase order is reversed along that line (bottom-up → top-down).
  */
 export function buildHighlightAnimStaggerOrder(
   nodesById: Record<string, DiagramNodeData & { x?: number; y?: number }>
@@ -53,7 +53,8 @@ export function buildHighlightAnimStaggerOrder(
   }
   entries.sort((a, b) => (a.y !== b.y ? a.y - b.y : a.x - b.x));
   const indexById = new Map<string, number>();
-  entries.forEach((e, i) => indexById.set(e.id, i));
+  const n = entries.length;
+  entries.forEach((e, i) => indexById.set(e.id, n > 0 ? n - 1 - i : 0));
   return { indexById, count: entries.length };
 }
 
