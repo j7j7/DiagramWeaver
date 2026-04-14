@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-04-14 – Highlight pulse: non-rect object shapes use SVG silhouette
+**`highlight-anim`**: **`ensureHighlightAnimKeyframes`** **`silhouetteMode`** **`box`** vs **`alpha`** (drop-shadow-only keyframes). **`getHighlightAnimStyleForNode`**: **`pulseFollowsShapeSilhouette`**. **`utils`**: **`isHighlightPulseShapeSilhouetteType`** — true for **`generic.object.*`** except connector **lines**, **square**, **rectangle**, **rounded-rectangle**, **text-box-heading**, **uml-class** (charts are not **`generic.object.`**, so they keep the outer-frame pulse). **`diagram-node`** moves **`data-dw-highlight-anim`** + animation **`style`** to the inner wrapper around **`renderShape()`** when silhouette applies (circle, triangle, star, kite, parallelogram, trapezoid, hexagon, loop, …).
+
 ### 2026-04-14 – Charts: lock segment values + 2dp data values
 **`valuesLocked`** on **`NodeChartSpec`** (pie / bar / line): Chart data modal switch **Lock segment values** — when on, canvas drag (and inline value edit on the shape) is disabled; the modal still edits numbers. **`roundChartDataValue`** / **`formatChartValueForEdit`** in **`chart-node`**: stored chart magnitudes round to **2** decimal places (modal save, bar/line CSV lists, pie rows, and commits from **`diagram-node`**). **`roundChartDragValue`**: pointer **drag** on pie / bar / line commits **whole non-negative integers** only (tooltips use the same); typed inline edit on the chart still allows decimals → **2dp** via **`diagram-node`**. Zod **`schemas`** accepts **`valuesLocked`**.
 

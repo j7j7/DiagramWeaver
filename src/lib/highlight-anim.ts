@@ -6,6 +6,9 @@ export const HIGHLIGHT_ANIM_DEFAULT_DURATION_SEC = 1;
 export const HIGHLIGHT_ANIM_DEFAULT_INTERVAL_SEC = 5;
 export const HIGHLIGHT_ANIM_DEFAULT_GLOW_COLOR = 'rgba(59, 130, 246, 0.85)';
 
+/** `box`: box-shadow + drop-shadow on the node frame. `alpha`: drop-shadow only, for pulses that follow SVG/canvas silhouettes (circle, triangle, …). */
+export type HighlightAnimSilhouetteMode = 'box' | 'alpha';
+
 const injectedAnimationNames = new Map<string, string>();
 
 function simpleHash(input: string): string {
@@ -81,12 +84,13 @@ function cssColorForKeyframes(color: string): string {
 export function ensureHighlightAnimKeyframes(
   durationSec: number,
   intervalSec: number,
-  color: string
+  color: string,
+  silhouetteMode: HighlightAnimSilhouetteMode = 'box'
 ): string {
   const d = clampDurationSec(durationSec);
   const i = clampIntervalSec(intervalSec);
   const safeColor = cssColorForKeyframes(color);
-  const key = `${d}|${i}|${safeColor}`;
+  const key = `${d}|${i}|${safeColor}|${silhouetteMode}`;
   const hit = injectedAnimationNames.get(key);
   if (hit) return hit;
 
@@ -102,17 +106,30 @@ export function ensureHighlightAnimKeyframes(
   const styleEl = document.createElement('style');
   styleEl.type = 'text/css';
   styleEl.setAttribute('data-dw-highlight-anim-keyframes', key.replace(/"/g, ''));
-  // Dual box-shadow + filter: some Chromium builds (notably Windows) composite drop-shadow more reliably.
-  const noneShadow = '0 0 0 0 rgba(0,0,0,0)';
-  const peakShadow = `0 0 28px 8px ${safeColor}, 0 0 14px 2px ${safeColor}`;
-  styleEl.textContent = `
+  const noneFilter = 'drop-shadow(0 0 0 rgba(0,0,0,0))';
+  const peakFilter = `drop-shadow(0 0 16px ${safeColor})`;
+  if (silhouetteMode === 'alpha') {
+    styleEl.textContent = `
 @keyframes ${name} {
-  0% { box-shadow: ${noneShadow}; filter: drop-shadow(0 0 0 rgba(0,0,0,0)); }
-  ${midPct.toFixed(4)}% { box-shadow: ${peakShadow}; filter: drop-shadow(0 0 16px ${safeColor}); }
-  ${pulseEndPct.toFixed(4)}% { box-shadow: ${noneShadow}; filter: drop-shadow(0 0 0 rgba(0,0,0,0)); }
-  100% { box-shadow: ${noneShadow}; filter: drop-shadow(0 0 0 rgba(0,0,0,0)); }
+  0% { filter: ${noneFilter}; }
+  ${midPct.toFixed(4)}% { filter: ${peakFilter}; }
+  ${pulseEndPct.toFixed(4)}% { filter: ${noneFilter}; }
+  100% { filter: ${noneFilter}; }
 }
 `;
+  } else {
+    // Dual box-shadow + filter: some Chromium builds (notably Windows) composite drop-shadow more reliably.
+    const noneShadow = '0 0 0 0 rgba(0,0,0,0)';
+    const peakShadow = `0 0 28px 8px ${safeColor}, 0 0 14px 2px ${safeColor}`;
+    styleEl.textContent = `
+@keyframes ${name} {
+  0% { box-shadow: ${noneShadow}; filter: ${noneFilter}; }
+  ${midPct.toFixed(4)}% { box-shadow: ${peakShadow}; filter: ${peakFilter}; }
+  ${pulseEndPct.toFixed(4)}% { box-shadow: ${noneShadow}; filter: ${noneFilter}; }
+  100% { box-shadow: ${noneShadow}; filter: ${noneFilter}; }
+}
+`;
+  }
   document.head.appendChild(styleEl);
   return name;
 }
@@ -126,6 +143,8 @@ export function getHighlightAnimStyleForNode(
     positionY: number;
     highlightAnimStaggerIndex?: number;
     highlightAnimStaggerCount?: number;
+    /** Pulse follows painted silhouette (e.g. SVG circle/triangle), not the rectangular node frame. */
+    pulseFollowsShapeSilhouette?: boolean;
   }
 ): CSSProperties | undefined {
   if (opts.isLineNode || opts.isDuplicateDragPreview) return undefined;
@@ -139,7 +158,8 @@ export function getHighlightAnimStyleForNode(
   const i = clampIntervalSec(intv);
   const period = d + i;
 
-  const animName = ensureHighlightAnimKeyframes(d, i, color);
+  const silhouetteMode: HighlightAnimSilhouetteMode = opts.pulseFollowsShapeSilhouette ? 'alpha' : 'box';
+  const animName = ensureHighlightAnimKeyframes(d, i, color, silhouetteMode);
   const staggerN = opts.highlightAnimStaggerCount ?? 0;
   const staggerI = opts.highlightAnimStaggerIndex;
   let delaySec: number;
@@ -152,6 +172,7 @@ export function getHighlightAnimStyleForNode(
   return {
     animation: `${animName} ${period}s ease-in-out infinite`,
     animationDelay: `-${delaySec}s`,
-    willChange: 'box-shadow, filter',
+    willChange: silhouetteMode === 'alpha' ? 'filter' : 'box-shadow, filter',
+    ...(silhouetteMode === 'alpha' ? { boxShadow: 'none' } : {}),
   };
 }

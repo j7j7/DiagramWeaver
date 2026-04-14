@@ -42,6 +42,21 @@ export function isConnectorLineNodeType(type: string | undefined): boolean {
   return type === 'generic.object.line' || type.endsWith('.line')
 }
 
+/**
+ * Highlight pulse uses animated `filter: drop-shadow` on the shape subtree so the glow follows
+ * painted geometry (SVG alpha). `false` for rectangular box-like objects and connector lines.
+ */
+export function isHighlightPulseShapeSilhouetteType(type: string | undefined): boolean {
+  if (!type || !type.startsWith('generic.object.')) return false
+  if (isConnectorLineNodeType(type)) return false
+  if (type === 'generic.object.square' || type.endsWith('.square')) return false
+  if (type === 'generic.object.rounded-rectangle' || type.endsWith('.rounded-rectangle')) return false
+  if (type === 'generic.object.text-box-heading' || type.endsWith('.text-box-heading')) return false
+  if (type === 'generic.object.uml-class' || type.endsWith('.uml-class')) return false
+  if (type === 'generic.object.rectangle' || type.endsWith('.rectangle')) return false
+  return true
+}
+
 export function isShapeNodeType(nodeType: string): boolean {
   if (isIconOrEmojiType(nodeType)) return false
   if (isChartNodeType(nodeType)) return true

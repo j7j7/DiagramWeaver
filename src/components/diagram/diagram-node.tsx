@@ -13,7 +13,7 @@ import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { labelToRuns } from "@/lib/rich-text";
 import { TextboxRichEditor } from "./textbox-rich-editor";
 import { TextboxRichDisplay } from "./textbox-rich-display";
-import { cn, isConnectorLineNodeType, isIconOrEmojiType, isShapeNodeType } from "@/lib/utils";
+import { cn, isConnectorLineNodeType, isHighlightPulseShapeSilhouetteType, isIconOrEmojiType, isShapeNodeType } from "@/lib/utils";
 import { ItemTypes } from "../editor/draggable-item";
 import { snapToGrid, snapDimensionToGrid, measureNodeDims } from "@/components/editor/canvas-constants";
 import { getTextStylingCSS, extractTextStylingFromNode } from "@/lib/text-styling";
@@ -1067,6 +1067,9 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
   const isLoopNode = node.type === 'generic.object.loop' || node.type?.endsWith('.loop');
   const isShapeNode = !isIconOrEmojiType(node.type) && (isShapeNodeType(node.type) || isLineNode || isLoopNode);
   const isPointNode = node.type === 'generic.object.point' || node.type?.endsWith('.point');
+  /** Highlight pulse uses drop-shadow on the shape subtree for non-rect `generic.object.*` types (star, kite, charts excluded on outer frame path). */
+  const highlightPulseUsesShapeSilhouette =
+    !isLineNode && isHighlightPulseShapeSilhouetteType(node.type);
    const isRoundedRectangleNode = node.type === 'generic.object.rounded-rectangle' || node.type?.endsWith('.rounded-rectangle');
    const isTextBoxHeadingNode = node.type === 'generic.object.text-box-heading' || node.type?.endsWith('.text-box-heading');
    const showsCornerRadiusHandle = isRoundedRectangleNode || isTextBoxHeadingNode;
@@ -1097,10 +1100,12 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
         positionY: positionYForHighlight,
         highlightAnimStaggerIndex,
         highlightAnimStaggerCount,
+        pulseFollowsShapeSilhouette: highlightPulseUsesShapeSilhouette,
       }),
     [
       isLineNode,
       isDuplicateDragPreview,
+      highlightPulseUsesShapeSilhouette,
       node.highlightAnim,
       node.highlightAnimDurationSec,
       node.highlightAnimIntervalSec,
@@ -1653,7 +1658,9 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
 return (
     <div
       data-node-id={node.id}
-      data-dw-highlight-anim={highlightAnimStyle ? 'true' : undefined}
+      data-dw-highlight-anim={
+        highlightAnimStyle && !highlightPulseUsesShapeSilhouette ? 'true' : undefined
+      }
       ref={(el) => {
         if (el && !isDuplicateDragPreview) {
           drag(el);
@@ -1662,7 +1669,7 @@ return (
       className={cn(
         "absolute group duration-200 ease-in-out rounded-lg",
         // Highlight pulse animates box-shadow; transitioning `filter` here can fight keyframes on some browsers (e.g. Chrome/Win).
-        node.highlightAnim && !isDuplicateDragPreview && !isLineNode
+        node.highlightAnim && !isDuplicateDragPreview && !isLineNode && !highlightPulseUsesShapeSilhouette
           ? "transition-transform"
           : "transition-[transform,filter]",
         // Hover and selection effects - not for lines, and not when locked
@@ -1722,7 +1729,7 @@ return (
         ...(isLineNode && { pointerEvents: 'none' }),
         ...(pointerEventsPassThrough && { pointerEvents: 'none' }),
         ...(isDuplicateDragPreview && { pointerEvents: 'none', opacity: 0.88 }),
-        ...highlightAnimStyle,
+        ...(highlightAnimStyle && !highlightPulseUsesShapeSilhouette ? highlightAnimStyle : {}),
         // Layer show/hide animation (opacity, transition, transform)
         ...(animationStyle && !isDuplicateDragPreview && {
           opacity: animationStyle.opacity,
@@ -1772,7 +1779,17 @@ return (
               // Shape node - render pure shape with text in different positions (resizable)
               // Use justify-start/items-start so resize extends right/down from fixed top-left (like textbox)
                 <div className="flex flex-col items-start justify-start h-full w-full relative">
-                  <div className="flex items-start justify-start" style={{ width: '100%', height: '100%' }}>
+                  <div
+                    className="flex items-start justify-start"
+                    data-dw-highlight-anim={
+                      highlightAnimStyle && highlightPulseUsesShapeSilhouette ? 'true' : undefined
+                    }
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      ...(highlightAnimStyle && highlightPulseUsesShapeSilhouette ? highlightAnimStyle : {}),
+                    }}
+                  >
                     {renderShape()}
                   </div>
                 </div>
