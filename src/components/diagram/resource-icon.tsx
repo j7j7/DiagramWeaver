@@ -7,6 +7,7 @@ import { getLucideIcon, getLucideIconFromTypeSlug } from "@/lib/icon-resources";
 import { CustomIconImage } from "@/components/diagram/custom-icon-image";
 import type { CustomImageOptions } from "@/lib/types";
 import { isConnectorLineNodeType } from "@/lib/utils";
+import { isChartNodeType } from "@/lib/chart-node";
 
 /** Palette JSON lists Text Box Heading under `generic.text` but runtime type is `generic.object.text-box-heading`. */
 function isTextBoxHeadingRuntimeType(type: string | undefined): boolean {
@@ -124,6 +125,12 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
 
     // Vector-only in UI; catalog entry lives under generic.text, not generic.object
     if (isTextBoxHeadingRuntimeType(type)) {
+      setResourceFile(null);
+      return () => ac.abort();
+    }
+
+    // Inline SVG glyphs below; generic resource JSON has no `chart` category
+    if (isChartNodeType(type)) {
       setResourceFile(null);
       return () => ac.abort();
     }

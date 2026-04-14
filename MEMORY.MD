@@ -2,6 +2,12 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-04-14 – Canvas drag perf: connections layer (investigation)
+Dragging updates **`displayNodesById`** every frame (**new object** from **`nodesWithDragPositions`**), so **`CanvasConnections`** **`React.memo`** (`nodesById` ref equality) always re-runs. **`canvas-connections`** recomputes for **all** edges each frame: edge grouping pass, **`getOptimalConnectionPoints`**, and **per-connection **`collectObstacles`** (full scan of all nodes/zones × orthogonal count). **`computeOrthogonalRoutesBatch`** reruns for all orthogonal links. **`OrthogonalConnection`** memo also requires **`prev.nodesById === next.nodesById`**, so it rarely skips during drag even when **`route`** is unchanged. **Bezier** child memo can skip for fixed endpoints, but parent work dominates. Levers: single shared obstacle build per frame; stable props / drag-overlay split; relax orthogonal memo to compare **`route`** + geometry not map refs; optional fast orthogonal during drag.
+
+### 2026-04-14 – ResourceIcon: no catalog fetch for chart types
+**`resource-icon`**: **`useEffect`** skips **`/resources/resource-generic.json`** lookup for **`generic.chart.*`** (**`isChartNodeType`**). Those types render inline pie/bar/line glyphs; the JSON has no **`chart`** category, so the previous fetch logged **Category not found: chart** in dev.
+
 ### 2026-04-14 – Connect mode: multi-select sources
 **`diagram-editor`**: **`startConnecting`** builds **`pendingConnectionSourceIds`** from all selected **node** and **zone** ids (skips connection-only selection entries); explicit **`sourceItemId`** stays single-source (e.g. context-menu / canvas flows). **`handleConnect`** adds one **connection** per source to the clicked target (dedupes ids, skips self-loops). Window cleanup uses **`clearPendingConnectionWindowState`**.
 
