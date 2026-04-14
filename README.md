@@ -37,7 +37,7 @@ An interactive diagram creation tool for building architecture and flow diagrams
 | Azure | Microsoft Azure (46 resources) |
 | GCP | Google Cloud Platform (38 resources) |
 | Kubernetes | K8s resources (24 resources) |
-| Generic | Objects, shapes, devices, text (17 resources) |
+| Generic | Objects, shapes, charts (pie, bar, line), devices, text (resource counts vary by catalog) |
 | Programming | Languages, frameworks, flowcharts (75 resources) |
 | On-Premise | Servers, databases, monitoring (66 resources) |
 
@@ -52,6 +52,7 @@ Additional providers available (can be enabled): Alibaba Cloud, OCI, SaaS, Elast
 ### Node Types
 
 - **Shapes**: Rectangle, circle, square, triangle, star, cloud, point, trapezoid, parallelogram, hexagon, pentagon, octagon, kite, jigsaw, chevron, arrow, rounded-rectangle
+- **Charts** (Generic → Object): **Pie**, **bar**, and **line** chart nodes (`generic.chart.*`) with a **Chart data** editor (series, colors, grids, legend, labels). Drag handles on the canvas adjust values (pie wedges, bar cells, line points); optional **Lock segment values** prevents drag edits while still allowing the modal. See `docs/charts.md`.
 - **Line**: Independent line element with drag endpoints (blue/green handles), customizable start/end caps (none, arrow, dot, square), thickness, and color
 - **Textbox**: Rich text with bold/italic/underline and bullet/numbered lists
 - **Label**: Text labels with styling
@@ -61,6 +62,8 @@ Additional providers available (can be enabled): Alibaba Cloud, OCI, SaaS, Elast
 ### Connections
 
 - **Curved & Orthogonal**: Choose **Curved** (bezier) or **Orthogonal** (90° axis-aligned) per connection; toggle via Connection Context Modal, Connections popover, or edge toolbar
+- **Connect from multi-selection**: Select multiple **nodes** and/or **zones**, start **Connect** (sidebar, context menu, or connect handle), then click the destination—one new connection is created **from each** selected item (self-links skipped; order follows the selection)
+- **Taper & gradient**: Optional unlocked **start/end line width** and **start/end color** along a connection (ribbon fill when varying); locks reset to a uniform stroke
 - **Connection Animations**: Animated shapes (dot, square, arrow, triangle, hexagon) along connection paths; per-connection shape, speed, size, spacing; bulk apply outbound/inbound
 - **Per-Connection Controls**: Arrow toggle, color picker, text label, text position (0–100%), line thickness, shadow
 - **Waypoints**: Add waypoints to route bezier connections around obstacles (Curved only)
@@ -75,8 +78,9 @@ Additional providers available (can be enabled): Alibaba Cloud, OCI, SaaS, Elast
 - **Selection Box**: Drag on empty canvas to draw rectangle; items within selected
 - **Multi-Drag**: Drag multiple selected items together; relative positions preserved
 
-### Groupings
+### Groupings & zones
 
+- **Zones**: Container regions on the canvas; nodes can live inside zones, and connections can use **zones** as endpoints (same as nodes for connect mode)
 - **Create Group**: Select 2+ nodes → Create grouping for coordinated movement
 - **Auto Layout**: Groupings move as blocks in auto-layout
 - **Add/Remove**: Add nodes to grouping or remove from grouping
@@ -84,8 +88,9 @@ Additional providers available (can be enabled): Alibaba Cloud, OCI, SaaS, Elast
 ### Styling & Layout
 
 - **Visual Styling Panel**: Shapes/textbox (border, background, shadow, tags); Lucide icons (color, remove background); resource items (remove background)
-- **Text Styling Panel**: Justification (left, center, right, full), vertical position (top, middle, bottom)
-- **Line Styling Panel**: Start/end caps, thickness (0.5–10px), color (for line objects)
+- **Highlight animation** (Effects): Optional repeating **glow** on nodes with duration, interval, and color; staggered wave across the canvas (top-down). Respects **reduced motion** and disables for GIF export when appropriate
+- **Text Styling Panel**: Justification (left, center, right, full), vertical position (top, middle, bottom); optional **text outline**, **glow**, and **drop shadow**; font size up to **200px**
+- **Line Styling Panel**: Start/end caps, thickness (0.5–10px), color (for line objects); optional text **shadow** toggle and outline/glow where applicable
 - **Rotation**: 0°, ±45°, ±90° for nodes; interactive corner rotation handles
 - **Resize Handles**: Edge and corner handles for shapes, textboxes, groups
 
@@ -99,6 +104,8 @@ Additional providers available (can be enabled): Alibaba Cloud, OCI, SaaS, Elast
 
 - **Live Sync**: Bidirectional sync between canvas and JSON
 - **CodeMirror**: Line numbers, syntax highlighting, bracket matching, validation
+- **Find**: Search in the JSON text (case-sensitive option, prev/next, counts); **Enter** / **Shift+Enter** to navigate matches
+- **Jump to selection**: With the panel open, selecting a node or connection on the canvas scrolls the matching JSON block into view (start of block aligned in the viewport)
 - **Keyboard Shortcut**: Ctrl+Shift+J (Cmd+Shift+J on Mac) to toggle
 - **Type Expansion**: Abbreviated types (e.g. `aws.c.ec2`) expand to full form
 - **Resizable**: Collapsible panel with localStorage persistence
@@ -122,6 +129,12 @@ See `docs/MERMAID-IMPORT.md` for full syntax and mapping.
 - **Copy Viewer URL**: Shareable URL for read-only viewer
 - **Examples**: Built-in example diagrams (File → Examples)
 
+### Presentation mode
+
+- **Decks & slides**: Build **presentation decks** where each **slide** stores a **diagram delta** (and optional layer visibility and connection-animation state) on top of the diagram
+- **Edit vs play**: Edit deck structure and slide content in the editor; **play** fullscreen with slide transitions (nodes, layers, connections—including chart segment staggers and connection timing)
+- **Docs**: See `docs/PRESENTATION-MODE.md` for the data model and behavior
+
 ### Viewer
 
 - **Read-Only Mode**: Share diagrams via URL without editing (File → Copy Viewer URL)
@@ -139,7 +152,7 @@ See `docs/MERMAID-IMPORT.md` for full syntax and mapping.
 - **Layers Panel**: Toggle layer visibility
 - **Scratch Pad**: Notes area
 - **Lines Behind Nodes**: Toggle connection line layering (behind nodes vs order-aware interleaving)
-- **Animation Connections**: Toggle animated shapes on connections (Ctrl+Alt+A)
+- **Animation Connections**: Toggle animated shapes on connections (Ctrl+Alt+A). The toolbar **Activity** control mirrors this; animations also **pause** after ~**20s** of no pointer movement on the canvas (resumes on move) and while **menu** / **context** / **modal** UI is open over the canvas—without changing your saved preference
 - **Hover Text**: Toggle node labels on hover
 - **Icon Background**: Toggle background on resource icons
 - **Alignment Guides**: Snap guides when dragging
@@ -167,34 +180,35 @@ See `docs/MERMAID-IMPORT.md` for full syntax and mapping.
 
 - **Theme Selector**: Apply themes to selected items
 - **Theme Editor**: Customize colors, borders, gradients
-- **Theme Menu**: Quick theme application from toolbar
+- **Theme Menu**: Quick theme application from toolbar (**View → Themes**); optional **Step hue for multi-selection (by layout)** applies a progressive hue shift across the current multi-selection (order follows layout: top-to-bottom or left-to-right)
+- **Built-in presets**: Expanded built-in color presets (see app menu for current list); theme rows can show a **description** tooltip after a short hover delay
 
 ### Other
 
 - **Tutorial**: In-app tutorial overlay (File → Start Tutorial)
-- **About Dialog**: Version and project info
+- **About Dialog**: App **version** and project info (**Help → About**). The main header no longer shows a live version/build chip
 - **Sequential IDs**: New nodes get IDs like `aws-database-dynamodb-1`, `grouping-2`
 - **Palette Copy/Paste**: Select resource in sidebar → Copy → Paste to add at center
 
 ## Keyboard Shortcuts
 
-|| Shortcut | Action ||
-||----------|--------||
-|| Ctrl+N | New diagram ||
-|| Ctrl+O | Load ||
-|| Ctrl+S | Save ||
-|| Ctrl+C | Copy ||
-|| Ctrl+V | Paste ||
-|| Ctrl+A | Select All ||
-|| Ctrl+Z | Undo ||
-|| Ctrl+Shift+Z | Redo ||
-|| Ctrl+0 | Fit to View ||
-|| Ctrl+Shift+J | Toggle JSON panel ||
-|| Ctrl+Shift+L | Auto Layout ||
-|| Ctrl+Alt+A | Toggle connection animations ||
-|| Ctrl+Alt+C | Toggle click-to-show animations ||
-|| Delete / Backspace | Delete selected ||
-|| Escape | Clear selection ||
+| Shortcut | Action |
+|----------|--------|
+| Ctrl+N | New diagram |
+| Ctrl+O | Load |
+| Ctrl+S | Save |
+| Ctrl+C | Copy |
+| Ctrl+V | Paste |
+| Ctrl+A | Select All |
+| Ctrl+Z | Undo |
+| Ctrl+Shift+Z | Redo |
+| Ctrl+0 | Fit to View |
+| Ctrl+Shift+J | Toggle JSON panel |
+| Ctrl+Shift+L | Auto Layout |
+| Ctrl+Alt+A | Toggle connection animations |
+| Ctrl+Alt+C | Toggle click-to-show animations |
+| Delete / Backspace | Delete selected |
+| Escape | Clear selection |
 
 ## Performance
 
@@ -298,7 +312,9 @@ src/
 ## Documentation
 
 - `docs/RESOURCES.md` – Resource and icon system
+- `docs/charts.md` – Pie, bar, and line chart nodes (`generic.chart.*`)
 - `docs/MERMAID-IMPORT.md` – Mermaid flowchart, class diagram, and sequence diagram import
+- `docs/PRESENTATION-MODE.md` – Presentation decks, slides, deltas, and playback
 - `docs/PERFORMANCE_IMPROVEMENTS.md` – Performance optimization plan and completed optimizations
 - `PERFORMANCE_BENCHMARK_REPORT.md` – Detailed performance metrics and benchmarking results
 - `ACCESSIBILITY_AUDIT_REPORT.md` – Comprehensive WCAG 2.1 Level AA accessibility audit
