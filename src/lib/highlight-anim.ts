@@ -68,6 +68,13 @@ function clampIntervalSec(v: number): number {
   return Math.min(600, v);
 }
 
+/** Avoid breaking injected @keyframes if color ever contains `;`, `}`, or newlines. */
+function cssColorForKeyframes(color: string): string {
+  const t = color.trim();
+  if (!t || /[;{}\n\r]/.test(t)) return HIGHLIGHT_ANIM_DEFAULT_GLOW_COLOR;
+  return t;
+}
+
 /**
  * Registers @keyframes once per (duration, interval, color) and returns the animation name.
  */
@@ -78,7 +85,8 @@ export function ensureHighlightAnimKeyframes(
 ): string {
   const d = clampDurationSec(durationSec);
   const i = clampIntervalSec(intervalSec);
-  const key = `${d}|${i}|${color}`;
+  const safeColor = cssColorForKeyframes(color);
+  const key = `${d}|${i}|${safeColor}`;
   const hit = injectedAnimationNames.get(key);
   if (hit) return hit;
 
@@ -92,13 +100,17 @@ export function ensureHighlightAnimKeyframes(
   const midPct = pulseEndPct / 2;
 
   const styleEl = document.createElement('style');
+  styleEl.type = 'text/css';
   styleEl.setAttribute('data-dw-highlight-anim-keyframes', key.replace(/"/g, ''));
+  // Dual box-shadow + filter: some Chromium builds (notably Windows) composite drop-shadow more reliably.
+  const noneShadow = '0 0 0 0 rgba(0,0,0,0)';
+  const peakShadow = `0 0 28px 8px ${safeColor}, 0 0 14px 2px ${safeColor}`;
   styleEl.textContent = `
 @keyframes ${name} {
-  0% { box-shadow: 0 0 0 0 transparent; }
-  ${midPct.toFixed(4)}% { box-shadow: 0 0 28px 8px ${color}, 0 0 14px 2px ${color}; }
-  ${pulseEndPct.toFixed(4)}% { box-shadow: 0 0 0 0 transparent; }
-  100% { box-shadow: 0 0 0 0 transparent; }
+  0% { box-shadow: ${noneShadow}; filter: drop-shadow(0 0 0 rgba(0,0,0,0)); }
+  ${midPct.toFixed(4)}% { box-shadow: ${peakShadow}; filter: drop-shadow(0 0 16px ${safeColor}); }
+  ${pulseEndPct.toFixed(4)}% { box-shadow: ${noneShadow}; filter: drop-shadow(0 0 0 rgba(0,0,0,0)); }
+  100% { box-shadow: ${noneShadow}; filter: drop-shadow(0 0 0 rgba(0,0,0,0)); }
 }
 `;
   document.head.appendChild(styleEl);
@@ -140,5 +152,6 @@ export function getHighlightAnimStyleForNode(
   return {
     animation: `${animName} ${period}s ease-in-out infinite`,
     animationDelay: `-${delaySec}s`,
+    willChange: 'box-shadow, filter',
   };
 }

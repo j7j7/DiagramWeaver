@@ -523,17 +523,15 @@ export function ContextToolbar({
   const getCurrentVisualStyling = useMemo(() => {
     if (!selectedItem || !diagramData) return {};
     let currentItem = selectedItem;
-    if (selectedItemIds && selectedItemIds.size > 1) {
-      if (isNode) {
-        const foundNode = diagramData.nodes.find(n => n.id === selectedItem.id);
-        currentItem = foundNode ? { ...foundNode, itemType: 'node' as const } : selectedItem;
-      }
+    if (isNode) {
+      const foundNode = diagramData.nodes.find((n) => n.id === selectedItem.id);
+      currentItem = foundNode ? { ...foundNode, itemType: 'node' as const } : selectedItem;
     }
     if (isNode) {
       return extractVisualStylingFromNode(currentItem as any);
     }
     return {};
-  }, [selectedItem, isNode, selectedItemIds, diagramData]);
+  }, [selectedItem, isNode, diagramData]);
 
   const getCurrentLineStyling = useMemo(() => {
     if (!selectedItem || !diagramData) return {};

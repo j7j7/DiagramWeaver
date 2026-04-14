@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-04-14 – Highlight UI + Windows: styling source, transition clash
+**`getCurrentVisualStyling`** always resolves the node from **`diagramData.nodes`** (single-select was using stale **`selectedItem`**, so duration/interval prefilled as defaults). **Highlight** fields use focus-aware draft sync. **Pulse** keyframes add **`filter: drop-shadow`** + **`type="text/css"`** on injected **`<style>`**, **`will-change`**, **`cssColorForKeyframes`**; when **`highlightAnim`**, node wrapper uses **`transition-transform`** only so **`transition-[transform,filter]`** does not fight **`box-shadow`/`filter`** keyframes (helps some **Chrome/Windows** builds).
+
 ### 2026-04-14 – Visual styling: highlight animation on nodes
 **`highlightAnim`** (+ **`highlightAnimDurationSec`** default **1s**, **`highlightAnimIntervalSec`** default **5s**, **`highlightAnimGlowColor`**) on **`DiagramNodeData`**: repeating **box-shadow** glow on the node wrapper; phase: **canvas-wide** **`buildHighlightAnimStaggerOrder`** sorts by **`y`** then **`x`**, assigns stagger **`n - 1 - i`** so the wave runs **top-down** (reversed from bottom-up); **editor-canvas** / **viewer-canvas** pass **`highlightAnimStaggerIndex`/`Count`** into **`DiagramNode`**; local sin hash fallback when stagger isn’t passed. **Visual Styling** panel **Effects**: checkbox **Highlight animation** plus duration, interval, and glow color (icons/emojis get the same block when the compact panel is shown). **GIF export** / **`prefers-reduced-motion`**: animation disabled. Zod + nested hierarchy round-trip for the new fields.
 

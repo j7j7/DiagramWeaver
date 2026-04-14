@@ -28,6 +28,40 @@ function HighlightAnimEffectControls({
   onStylingChange: (styling: Partial<VisualStyling>) => void;
 }) {
   const enabled = Boolean(styling.highlightAnim);
+  const committedDurStr = String(styling.highlightAnimDurationSec ?? HIGHLIGHT_ANIM_DEFAULT_DURATION_SEC);
+  const committedIntStr = String(styling.highlightAnimIntervalSec ?? HIGHLIGHT_ANIM_DEFAULT_INTERVAL_SEC);
+  const [durFocused, setDurFocused] = useState(false);
+  const [intFocused, setIntFocused] = useState(false);
+  const [durDraft, setDurDraft] = useState(committedDurStr);
+  const [intDraft, setIntDraft] = useState(committedIntStr);
+
+  const durDisplay = durFocused ? durDraft : committedDurStr;
+  const intDisplay = intFocused ? intDraft : committedIntStr;
+
+  const commitDuration = useCallback(() => {
+    const n = parseFloat(durDraft);
+    let v: number;
+    if (!Number.isFinite(n) || durDraft.trim() === "") {
+      v = HIGHLIGHT_ANIM_DEFAULT_DURATION_SEC;
+    } else {
+      v = Math.min(120, Math.max(0.05, n));
+    }
+    setDurDraft(String(v));
+    handlePropertyChange("highlightAnimDurationSec", v, true);
+  }, [durDraft, handlePropertyChange]);
+
+  const commitInterval = useCallback(() => {
+    const n = parseFloat(intDraft);
+    let v: number;
+    if (!Number.isFinite(n) || intDraft.trim() === "") {
+      v = HIGHLIGHT_ANIM_DEFAULT_INTERVAL_SEC;
+    } else {
+      v = Math.min(600, Math.max(0, n));
+    }
+    setIntDraft(String(v));
+    handlePropertyChange("highlightAnimIntervalSec", v, true);
+  }, [intDraft, handlePropertyChange]);
+
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
@@ -61,10 +95,15 @@ function HighlightAnimEffectControls({
               min={0.05}
               max={120}
               step={0.1}
-              value={styling.highlightAnimDurationSec ?? HIGHLIGHT_ANIM_DEFAULT_DURATION_SEC}
-              onChange={(e) => {
-                const n = parseFloat(e.target.value);
-                if (!Number.isNaN(n)) handlePropertyChange("highlightAnimDurationSec", n);
+              value={durDisplay}
+              onChange={(e) => setDurDraft(e.target.value)}
+              onFocus={() => {
+                setDurFocused(true);
+                setDurDraft(committedDurStr);
+              }}
+              onBlur={() => {
+                commitDuration();
+                setDurFocused(false);
               }}
               className="h-9 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
@@ -76,10 +115,15 @@ function HighlightAnimEffectControls({
               min={0}
               max={600}
               step={0.1}
-              value={styling.highlightAnimIntervalSec ?? HIGHLIGHT_ANIM_DEFAULT_INTERVAL_SEC}
-              onChange={(e) => {
-                const n = parseFloat(e.target.value);
-                if (!Number.isNaN(n)) handlePropertyChange("highlightAnimIntervalSec", n);
+              value={intDisplay}
+              onChange={(e) => setIntDraft(e.target.value)}
+              onFocus={() => {
+                setIntFocused(true);
+                setIntDraft(committedIntStr);
+              }}
+              onBlur={() => {
+                commitInterval();
+                setIntFocused(false);
               }}
               className="h-9 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />

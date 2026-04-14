@@ -1655,7 +1655,11 @@ return (
         }
       }}
       className={cn(
-        "absolute group transition-[transform,filter] duration-200 ease-in-out rounded-lg",
+        "absolute group duration-200 ease-in-out rounded-lg",
+        // Highlight pulse animates box-shadow; transitioning `filter` here can fight keyframes on some browsers (e.g. Chrome/Win).
+        node.highlightAnim && !isDuplicateDragPreview && !isLineNode
+          ? "transition-transform"
+          : "transition-[transform,filter]",
         // Hover and selection effects - not for lines, and not when locked
         !isLineNode && !(isDragging || isTouchDragging) && !(isSelected || isHighlighted || isMultiSelected) && !isLocked && !(hasLinkedSubDiagram ?? node.subDiagramId) && "node-glow-hover",
         !isLineNode && (hasLinkedSubDiagram ?? node.subDiagramId) && !(isSelected || isHighlighted || isMultiSelected) && !isLocked && "node-glow-subdiagram",
