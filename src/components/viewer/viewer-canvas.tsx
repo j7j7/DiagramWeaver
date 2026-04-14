@@ -61,6 +61,9 @@ interface ViewerCanvasProps {
     visualColorCrossfade?: { from: Record<string, unknown>; to: Record<string, unknown> };
     visualColorCrossfadeTopOpacity?: number;
     visualColorCrossfadeTopTransition?: string;
+    chartSlideStagger?: import("@/lib/chart-presentation-stagger").ChartSlideStagger;
+    chartLerpU?: number;
+    chartLerpFromJson?: string;
   }>;
   /** Connection transition styles for slide transitions */
   connectionTransitionStyles?: Map<string, {

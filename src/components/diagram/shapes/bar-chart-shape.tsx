@@ -2,7 +2,8 @@
 
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { DiagramNodeData, NodeChartSpecBar, RichTextRun } from "@/lib/types";
+import type { DiagramNodeData, NodeChartSpec, NodeChartSpecBar, RichTextRun } from "@/lib/types";
+import { lerpNodeChartForSlide } from "@/lib/chart-slide-lerp";
 import { cn } from "@/lib/utils";
 import { SvgShapeBase } from "./svg-shape-base";
 import {
@@ -25,6 +26,11 @@ import {
   chartValueFromVerticalValueAxis,
   svgUserPointFromClient,
 } from "@/lib/chart-pointer-geometry";
+import {
+  chartSegmentPopAnimationStyle,
+  chartSegmentPopKeyframesCss,
+  type ChartSlideStagger,
+} from "@/lib/chart-presentation-stagger";
 
 const VB_W = 100;
 const VB_H = 68;
@@ -121,6 +127,9 @@ interface BarChartShapeProps {
   onBarCellValueChange?: (segmentIndex: number, categoryIndex: number, value: number) => void;
   /** Blocks canvas node drag while a bar segment value drag is active (react-dnd `canDrag`). */
   onBarChartValueDragSessionChange?: (active: boolean) => void;
+  presentationChartStagger?: ChartSlideStagger;
+  presentationChartLerpU?: number;
+  presentationChartLerpFromJson?: string;
 }
 
 type BarInlineEditState =
@@ -141,11 +150,14 @@ export function BarChartShape(props: BarChartShapeProps) {
     onBarCategoryLabelChange,
     onBarCellValueChange,
     onBarChartValueDragSessionChange,
+    presentationChartStagger,
+    presentationChartLerpU,
+    presentationChartLerpFromJson,
     ...svgBaseProps
   } = props;
   const { node, slideColorTransition } = svgBaseProps;
   const chartRaw = node.chart;
-  const chart: NodeChartSpecBar =
+  const chartBase: NodeChartSpecBar =
     chartRaw?.kind === "bar"
       ? chartRaw
       : ({
@@ -153,6 +165,23 @@ export function BarChartShape(props: BarChartShapeProps) {
           series: [],
           vertical: true,
         } as NodeChartSpecBar);
+
+  const chart = useMemo(() => {
+    if (
+      presentationChartLerpFromJson == null ||
+      presentationChartLerpU == null ||
+      presentationChartLerpU >= 1 - 1e-9
+    ) {
+      return chartBase;
+    }
+    try {
+      const from = JSON.parse(presentationChartLerpFromJson) as NodeChartSpec;
+      if (!from || from.kind !== "bar" || chartBase.kind !== "bar") return chartBase;
+      return lerpNodeChartForSlide(from, chartBase, presentationChartLerpU) as NodeChartSpecBar;
+    } catch {
+      return chartBase;
+    }
+  }, [chartBase, presentationChartLerpFromJson, presentationChartLerpU]);
 
   const model = buildBarChartLayout(chart, { vbW: VB_W, vbH: VB_H });
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
@@ -243,6 +272,7 @@ export function BarChartShape(props: BarChartShapeProps) {
   const filterId = `dw-bar-sh-${useId().replace(/:/g, "")}`;
   const gradBaseId = `dw-bar-g-${useId().replace(/:/g, "")}`;
   const clipBaseId = `dw-bar-clip-${useId().replace(/:/g, "")}`;
+  const barSegPopId = `dwBarSeg${useId().replace(/:/g, "")}`;
   const gradientAngle = node.gradientAngle ?? 135;
   const gradCoords = getGradientCoordinates(gradientAngle);
 
@@ -320,6 +350,19 @@ export function BarChartShape(props: BarChartShapeProps) {
   }
 
   const rectKey = (r: BarRect) => `s${r.segmentIndex}-c${r.categoryIndex}`;
+
+  const barStaggerIndex = useMemo(() => {
+    const sorted = [...model.rects].sort((a, b) =>
+      a.categoryIndex !== b.categoryIndex
+        ? a.categoryIndex - b.categoryIndex
+        : a.segmentIndex - b.segmentIndex
+    );
+    const m = new Map<string, number>();
+    sorted.forEach((r, idx) => {
+      m.set(rectKey(r), idx);
+    });
+    return m;
+  }, [model.rects]);
 
   const barDragTooltipText = (r: BarRect, v: number) => {
     const cat =
@@ -612,6 +655,13 @@ export function BarChartShape(props: BarChartShapeProps) {
 
   const renderBarRect = (r: BarRect) => {
     const k = rectKey(r);
+    const stagStyle = chartSegmentPopAnimationStyle(
+      barStaggerIndex.get(k) ?? 0,
+      barSegPopId,
+      r.x + r.w / 2,
+      r.y + r.h / 2,
+      presentationChartStagger
+    );
     const isHover = hoveredKey === k;
     const outlineOnColumnPath =
       useRoundedColumnEnds && !!columnClipByCat.get(r.categoryIndex);
@@ -625,28 +675,29 @@ export function BarChartShape(props: BarChartShapeProps) {
     if (showSegmentValues) {
       const fillInteract = barSegmentInteractionHandlers(r, "fill");
       return (
-        <rect
-          key={k}
-          x={r.x}
-          y={r.y}
-          width={Math.max(0, r.w)}
-          height={Math.max(0, r.h)}
-          fill={fill}
-          stroke={
-            hasBorder ? strokeColor : isHover ? "rgba(255,255,255,0.9)" : "none"
-          }
-          strokeWidth={hasBorder ? (isHover ? strokeWidth + 0.75 : strokeWidth) : isHover ? 2 : 0}
-          vectorEffect="non-scaling-stroke"
-          {...fillInteract}
-          style={{
-            ...fillInteract.style,
-            filter: isHover ? "brightness(1.12)" : undefined,
-          }}
-        />
+        <g key={k} style={stagStyle}>
+          <rect
+            x={r.x}
+            y={r.y}
+            width={Math.max(0, r.w)}
+            height={Math.max(0, r.h)}
+            fill={fill}
+            stroke={
+              hasBorder ? strokeColor : isHover ? "rgba(255,255,255,0.9)" : "none"
+            }
+            strokeWidth={hasBorder ? (isHover ? strokeWidth + 0.75 : strokeWidth) : isHover ? 2 : 0}
+            vectorEffect="non-scaling-stroke"
+            {...fillInteract}
+            style={{
+              ...fillInteract.style,
+              filter: isHover ? "brightness(1.12)" : undefined,
+            }}
+          />
+        </g>
       );
     }
     return (
-      <g key={k}>
+      <g key={k} style={stagStyle}>
         <rect
           x={r.x}
           y={r.y}
@@ -1474,6 +1525,12 @@ export function BarChartShape(props: BarChartShapeProps) {
 
   const defs = (
     <defs>
+      {presentationChartStagger ? (
+        <style
+          type="text/css"
+          dangerouslySetInnerHTML={{ __html: chartSegmentPopKeyframesCss(barSegPopId) }}
+        />
+      ) : null}
       {svgShadow ? (
         <filter id={filterId} x="-40%" y="-40%" width="180%" height="180%">
           <feDropShadow dx="0" dy="1.5" stdDeviation="2" floodOpacity="0.3" />

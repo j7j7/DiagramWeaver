@@ -3,6 +3,14 @@ import type { DiagramData, DiagramNodeData, DiagramConnectionData, DiagramZoneDa
 import { extractVisualColorFields, visualColorNeedsCrossfade, visualColorSignature } from '@/lib/slide-visual-color';
 import { buildStaggerDelaysForSlideTransition } from '@/lib/slide-transition-order';
 import { easeSlideTransitionInOut } from '@/lib/ease-slide-cubic-bezier';
+import { isChartNodeType } from '@/lib/chart-node';
+import {
+  CHART_SLIDE_SEGMENT_STAGGER_MS,
+  chartPresentationSignature,
+  chartSegmentCountForStagger,
+  type ChartSlideStagger,
+} from '@/lib/chart-presentation-stagger';
+import { chartSlideLerpCompatible } from '@/lib/chart-slide-lerp';
 
 export interface SlideTransitionStyle {
   opacity: number;
@@ -21,33 +29,46 @@ export interface SlideTransitionStyle {
   visualColorCrossfade?: { from: Record<string, unknown>; to: Record<string, unknown> };
   visualColorCrossfadeTopOpacity?: number;
   visualColorCrossfadeTopTransition?: string;
+  /** Pie/bar/line: stagger segment pop during slide change (outer node scale suppressed). */
+  chartSlideStagger?: ChartSlideStagger;
+  /** 0–1 eased progress for value-only chart interpolation (same segment layout). */
+  chartLerpU?: number;
+  /** `JSON.stringify(prev.chart)` when lerping. */
+  chartLerpFromJson?: string;
+}
+
+interface SlideNodeAnimStyle {
+  deltaX: number;
+  deltaY: number;
+  opacityStart: number;
+  opacityEnd: number;
+  translateYStart: number;
+  translateYEnd: number;
+  easing: string;
+  widthStart: number;
+  widthEnd: number;
+  heightStart: number;
+  heightEnd: number;
+  isAppearing: boolean;
+  isDisappearing: boolean;
+  isResizeOnly: boolean;
+  scaleOriginX: string;
+  scaleOriginY: string;
+  hasVisualColorChange: boolean;
+  useVisualColorCrossfade: boolean;
+  visualColorMergeStart: Record<string, unknown>;
+  visualColorMergeEnd: Record<string, unknown>;
+  chartPresentationChanged?: boolean;
+  suppressChartOuterScale?: boolean;
+  chartLerpEligible?: boolean;
+  chartLerpFromJson?: string;
+  isAppearingChart?: boolean;
 }
 
 interface SlideAnimation {
   startTime: number;
   durationMs: number;
-  nodeIdStyles: Map<string, {
-    deltaX: number;
-    deltaY: number;
-    opacityStart: number;
-    opacityEnd: number;
-    translateYStart: number;
-    translateYEnd: number;
-    easing: string;
-    widthStart: number;
-    widthEnd: number;
-    heightStart: number;
-    heightEnd: number;
-    isAppearing: boolean;
-    isDisappearing: boolean;
-    isResizeOnly: boolean;
-    scaleOriginX: string;
-    scaleOriginY: string;
-    hasVisualColorChange: boolean;
-    useVisualColorCrossfade: boolean;
-    visualColorMergeStart: Record<string, unknown>;
-    visualColorMergeEnd: Record<string, unknown>;
-  }>;
+  nodeIdStyles: Map<string, SlideNodeAnimStyle>;
   connKeyStyles: Map<string, {
     opacityStart: number;
     opacityEnd: number;
@@ -67,6 +88,7 @@ interface SlideAnimation {
     };
   }>;
   connectionDelayMs: Map<string, number>;
+  nodeDelayMs: Map<string, number>;
 }
 
 const TRANSITION_DURATION_MS = 300;
@@ -132,6 +154,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
 
   const connectionSlideEffectiveStartRef = useRef<number | null>(null);
   const connectionGeomRafRef = useRef<number | null>(null);
+  const chartLerpRafRef = useRef<number | null>(null);
   const animationsRef = useRef<SlideAnimation[]>([]);
   animationsRef.current = animations;
 
@@ -145,7 +168,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
     const prevItemsMap = buildItemMap(previousDiagram);
     const currItemsMap = buildItemMap(currentDiagram);
 
-    const nodeIdStyles = new Map<string, any>();
+    const nodeIdStyles = new Map<string, SlideNodeAnimStyle>();
     const connKeyStyles = new Map<string, any>();
     const nodesToAdd: DiagramNodeData[] = [];
     const connsToAdd: DiagramConnectionData[] = [];
@@ -166,8 +189,8 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
       const currWidth = currNode?.width ?? 80;
       const currHeight = currNode?.height ?? 80;
 
-      const isAppearing = !prevNode && currNode;
-      const isDisappearing = prevNode && !currNode;
+      const isAppearing = !prevNode && !!currNode;
+      const isDisappearing = !!prevNode && !currNode;
       const isMoving = Boolean(
         prevNode &&
           currNode &&
@@ -177,18 +200,20 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
             (prevNode.rotation ?? 0) !== (currNode.rotation ?? 0)),
       );
 
-      const opacityStart = isAppearing ? 0 : 1;
+      let opacityStart = isAppearing ? 0 : 1;
       const opacityEnd = isDisappearing ? 0 : 1;
 
       const deltaX = isMoving ? (prevX - currX) : 0;
       const deltaY = isMoving ? (prevY - currY) : 0;
 
-      const translateYStart = isAppearing ? 30 : 0;
+      let translateYStart = isAppearing ? 30 : 0;
       const translateYEnd = isDisappearing ? 30 : 0;
 
       const easing = isAppearing ? EASE_OUT : (isDisappearing ? EASE_IN : EASE_IN_OUT);
 
-      const isResizeOnly = prevNode && currNode && !isMoving && (prevWidth !== currWidth || prevHeight !== currHeight);
+      const isResizeOnly = Boolean(
+        prevNode && currNode && !isMoving && (prevWidth !== currWidth || prevHeight !== currHeight),
+      );
 
       // Infer resize anchor: which edge stayed fixed during resize (from position delta)
       // Left edge moved right (x increased) -> right edge was anchor -> origin-x 100%
@@ -204,8 +229,41 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
       const useVisualColorCrossfade =
         hasVisualColorChange && visualColorNeedsCrossfade(visualColorMergeStart, visualColorMergeEnd);
 
+      const prevChartSig = prevNode ? chartPresentationSignature(prevNode) : null;
+      const currChartSig = currNode ? chartPresentationSignature(currNode) : null;
+      const chartPresentationChanged = Boolean(
+        prevChartSig != null && currChartSig != null && prevChartSig !== currChartSig
+      );
+
+      const isChartNode =
+        isChartNodeType(prevNode?.type) || isChartNodeType(currNode?.type);
+      /** Never CSS-scale the chart wrapper (reads as “whole object” scaling); segments animate inside SVG. */
+      const suppressChartOuterScale = Boolean(isChartNode && !isDisappearing);
+
+      const isAppearingChart = Boolean(isAppearing && isChartNode);
+      if (isAppearingChart) {
+        opacityStart = 1;
+        translateYStart = 0;
+      }
+
+      const chartLerpEligible = Boolean(
+        chartPresentationChanged &&
+          prevNode &&
+          currNode &&
+          chartSlideLerpCompatible(prevNode, currNode)
+      );
+      const chartLerpFromJson =
+        chartLerpEligible && prevNode?.chart
+          ? JSON.stringify(prevNode.chart)
+          : undefined;
+
       const needsNodeTransition =
-        isAppearing || isDisappearing || isMoving || isResizeOnly || hasVisualColorChange;
+        isAppearing ||
+        isDisappearing ||
+        isMoving ||
+        isResizeOnly ||
+        hasVisualColorChange ||
+        chartPresentationChanged;
 
       if (!needsNodeTransition) continue;
 
@@ -230,6 +288,11 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
         useVisualColorCrossfade,
         visualColorMergeStart,
         visualColorMergeEnd,
+        chartPresentationChanged,
+        suppressChartOuterScale,
+        chartLerpEligible,
+        chartLerpFromJson,
+        isAppearingChart,
       });
 
       if (isDisappearing) {
@@ -389,9 +452,27 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
     for (const v of nodeDelayMs.values()) maxStaggerMs = Math.max(maxStaggerMs, v);
     for (const v of connectionDelayMs.values()) maxStaggerMs = Math.max(maxStaggerMs, v);
 
+    let chartTailMs = 0;
+    for (const [nodeId, st] of nodeIdStyles) {
+      if (st.isDisappearing) continue;
+      const cn = currNodesMap.get(nodeId);
+      if (!cn || !isChartNodeType(cn.type)) continue;
+      const nSeg = chartSegmentCountForStagger(cn);
+      if (nSeg <= 0) continue;
+      const useStaggerTail =
+        st.isAppearingChart ||
+        (st.chartPresentationChanged && !st.chartLerpEligible);
+      if (!useStaggerTail) continue;
+      const base = nodeDelayMs.get(nodeId) ?? 0;
+      chartTailMs = Math.max(
+        chartTailMs,
+        base + (nSeg - 1) * CHART_SLIDE_SEGMENT_STAGGER_MS + TRANSITION_DURATION_MS
+      );
+    }
+
     const nodeDelayFor = (id: string) => nodeDelayMs.get(id) ?? 0;
     const connDelayFor = (key: string) => connectionDelayMs.get(key) ?? 0;
-    const totalDurationMs = maxStaggerMs + TRANSITION_DURATION_MS + 50;
+    const totalDurationMs = Math.max(maxStaggerMs + TRANSITION_DURATION_MS + 50, chartTailMs + 50);
 
     setAnimatingNodes(nodesToAdd);
     setAnimatingConnections(connsToAdd);
@@ -402,6 +483,7 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
       nodeIdStyles,
       connKeyStyles,
       connectionDelayMs,
+      nodeDelayMs: new Map(nodeDelayMs),
     };
 
     connectionSlideEffectiveStartRef.current = null;
@@ -424,6 +506,9 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
         let scaleX = 1;
         let scaleY = 1;
         if (style.isDisappearing) {
+          scaleX = 1;
+          scaleY = 1;
+        } else if (style.suppressChartOuterScale) {
           scaleX = 1;
           scaleY = 1;
         } else {
@@ -453,6 +538,25 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
           ? `${style.scaleOriginX ?? '0'} ${style.scaleOriginY ?? '0'}`
           : 'center';
 
+        const dMs0 = nodeDelayFor(nodeId);
+        const useChartStagger =
+          !style.isDisappearing &&
+          (style.isAppearingChart ||
+            (!!style.chartPresentationChanged && !style.chartLerpEligible));
+        const chartSlideStagger: ChartSlideStagger | undefined = useChartStagger
+          ? {
+              baseDelayMs: dMs0,
+              staggerMs: CHART_SLIDE_SEGMENT_STAGGER_MS,
+              durationMs: TRANSITION_DURATION_MS,
+              easingCss: EASE_IN_OUT,
+            }
+          : undefined;
+
+        const chartLerpFields =
+          style.chartLerpEligible && style.chartLerpFromJson
+            ? { chartLerpU: 0, chartLerpFromJson: style.chartLerpFromJson }
+            : {};
+
         if (style.hasVisualColorChange && style.useVisualColorCrossfade) {
           next.set(nodeId, {
             opacity: style.opacityStart,
@@ -465,6 +569,8 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
             },
             visualColorCrossfadeTopOpacity: 0,
             visualColorCrossfadeTopTransition: 'none',
+            ...(chartSlideStagger ? { chartSlideStagger } : {}),
+            ...chartLerpFields,
           });
         } else {
           next.set(nodeId, {
@@ -476,6 +582,8 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
               visualColorMerge: style.visualColorMergeStart,
               visualColorMergeTransition: 'none',
             } : {}),
+            ...(chartSlideStagger ? { chartSlideStagger } : {}),
+            ...chartLerpFields,
           });
         }
       }
@@ -557,6 +665,24 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
               : 'center';
 
             const dMs = nodeDelayFor(nodeId);
+            const useChartStagger =
+              !style.isDisappearing &&
+              (style.isAppearingChart ||
+                (!!style.chartPresentationChanged && !style.chartLerpEligible));
+            const chartSlideStagger: ChartSlideStagger | undefined = useChartStagger
+              ? {
+                  baseDelayMs: dMs,
+                  staggerMs: CHART_SLIDE_SEGMENT_STAGGER_MS,
+                  durationMs: TRANSITION_DURATION_MS,
+                  easingCss: EASE_IN_OUT,
+                }
+              : undefined;
+
+            const chartLerpFields =
+              style.chartLerpEligible && style.chartLerpFromJson
+                ? { chartLerpU: 0, chartLerpFromJson: style.chartLerpFromJson }
+                : {};
+
             if (style.hasVisualColorChange && style.useVisualColorCrossfade) {
               next.set(nodeId, {
                 opacity: style.opacityEnd,
@@ -570,6 +696,8 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
                 },
                 visualColorCrossfadeTopOpacity: 0,
                 visualColorCrossfadeTopTransition: slideCrossfadeOpacityWithDelay(dMs),
+                ...(chartSlideStagger ? { chartSlideStagger } : {}),
+                ...chartLerpFields,
               });
             } else if (style.hasVisualColorChange) {
               // Keep previous-slide colors but enable transition on paint props; next rAF applies end colors.
@@ -581,6 +709,8 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
                 transformOrigin,
                 visualColorMerge: style.visualColorMergeStart,
                 visualColorMergeTransition: slideMergeTransitionWithDelay(dMs),
+                ...(chartSlideStagger ? { chartSlideStagger } : {}),
+                ...chartLerpFields,
               });
             } else {
               next.set(nodeId, {
@@ -589,6 +719,8 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
                 transitionDelayMs: dMs,
                 transform,
                 transformOrigin,
+                ...(chartSlideStagger ? { chartSlideStagger } : {}),
+                ...chartLerpFields,
               });
             }
           }
@@ -701,6 +833,10 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
         cancelAnimationFrame(connectionGeomRafRef.current);
         connectionGeomRafRef.current = null;
       }
+      if (chartLerpRafRef.current !== null) {
+        cancelAnimationFrame(chartLerpRafRef.current);
+        chartLerpRafRef.current = null;
+      }
       return;
     }
 
@@ -779,6 +915,61 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
     if (animations.length === 0) return;
 
     const anim = animations[0];
+    const hasLerp = [...anim.nodeIdStyles.values()].some((s) => s.chartLerpEligible);
+    if (!hasLerp) return;
+
+    const tick = () => {
+      const t0 = connectionSlideEffectiveStartRef.current;
+      const active = animationsRef.current[0];
+      if (!active) return;
+
+      if (t0 == null) {
+        chartLerpRafRef.current = requestAnimationFrame(tick);
+        return;
+      }
+
+      const elapsed = performance.now() - t0;
+      const nodeDelays = active.nodeDelayMs;
+
+      setNodeStyles((prev) => {
+        const next = new Map(prev);
+        for (const [nodeId, st] of active.nodeIdStyles) {
+          if (!st.chartLerpEligible || !st.chartLerpFromJson) continue;
+          const existing = next.get(nodeId);
+          if (!existing) continue;
+          const delayMs = nodeDelays.get(nodeId) ?? 0;
+          const u = Math.max(0, Math.min(1, (elapsed - delayMs) / TRANSITION_DURATION_MS));
+          const p = easeSlideTransitionInOut(u);
+          next.set(nodeId, {
+            ...existing,
+            chartLerpU: p,
+            chartLerpFromJson: st.chartLerpFromJson,
+          });
+        }
+        return next;
+      });
+
+      if (elapsed < anim.durationMs + 50) {
+        chartLerpRafRef.current = requestAnimationFrame(tick);
+      } else {
+        chartLerpRafRef.current = null;
+      }
+    };
+
+    chartLerpRafRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (chartLerpRafRef.current !== null) {
+        cancelAnimationFrame(chartLerpRafRef.current);
+        chartLerpRafRef.current = null;
+      }
+    };
+  }, [animations.length]);
+
+  useEffect(() => {
+    if (animations.length === 0) return;
+
+    const anim = animations[0];
 
     const timer = setTimeout(() => {
       setAnimations([]);
@@ -798,6 +989,9 @@ export function useSlideTransition({ enabled, currentDiagram, previousDiagram }:
               visualColorCrossfade: undefined,
               visualColorCrossfadeTopOpacity: undefined,
               visualColorCrossfadeTopTransition: undefined,
+              chartSlideStagger: undefined,
+              chartLerpU: undefined,
+              chartLerpFromJson: undefined,
             });
           }
         }

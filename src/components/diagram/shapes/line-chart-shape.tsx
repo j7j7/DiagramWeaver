@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect, useId, useState, useRef } from "react";
+import React, { useEffect, useId, useMemo, useState, useRef } from "react";
 import { createPortal } from "react-dom";
-import type { DiagramNodeData, NodeChartSpecLine, RichTextRun } from "@/lib/types";
+import type { DiagramNodeData, NodeChartSpec, NodeChartSpecLine, RichTextRun } from "@/lib/types";
+import { lerpNodeChartForSlide } from "@/lib/chart-slide-lerp";
 import { cn } from "@/lib/utils";
 import { SvgShapeBase } from "./svg-shape-base";
 import {
@@ -22,6 +23,11 @@ import {
   chartValueFromVerticalValueAxis,
   svgUserPointFromClient,
 } from "@/lib/chart-pointer-geometry";
+import {
+  chartSegmentPopAnimationStyle,
+  chartSegmentPopKeyframesCss,
+  type ChartSlideStagger,
+} from "@/lib/chart-presentation-stagger";
 
 const VB_W = 100;
 const VB_H = 68;
@@ -114,6 +120,9 @@ interface LineChartShapeProps {
   onLinePointValueChange?: (seriesIndex: number, categoryIndex: number, value: number) => void;
   /** Notifies parent to block canvas node drag while a point handle is held (react-dnd `canDrag`). */
   onLineChartPointDragSessionChange?: (active: boolean) => void;
+  presentationChartStagger?: ChartSlideStagger;
+  presentationChartLerpU?: number;
+  presentationChartLerpFromJson?: string;
 }
 
 type LineInlineEditState =
@@ -128,17 +137,37 @@ export function LineChartShape(props: LineChartShapeProps) {
     onLineCategoryLabelChange,
     onLinePointValueChange,
     onLineChartPointDragSessionChange,
+    presentationChartStagger,
+    presentationChartLerpU,
+    presentationChartLerpFromJson,
     ...svgBaseProps
   } = props;
   const { node, slideColorTransition } = svgBaseProps;
   const chartRaw = node.chart;
-  const chart: NodeChartSpecLine =
+  const chartBase: NodeChartSpecLine =
     chartRaw?.kind === "line"
       ? chartRaw
       : ({
           kind: "line",
           series: [],
         } as NodeChartSpecLine);
+
+  const chart = useMemo(() => {
+    if (
+      presentationChartLerpFromJson == null ||
+      presentationChartLerpU == null ||
+      presentationChartLerpU >= 1 - 1e-9
+    ) {
+      return chartBase;
+    }
+    try {
+      const from = JSON.parse(presentationChartLerpFromJson) as NodeChartSpec;
+      if (!from || from.kind !== "line" || chartBase.kind !== "line") return chartBase;
+      return lerpNodeChartForSlide(from, chartBase, presentationChartLerpU) as NodeChartSpecLine;
+    } catch {
+      return chartBase;
+    }
+  }, [chartBase, presentationChartLerpFromJson, presentationChartLerpU]);
 
   const model = buildLineChartLayout(chart, { vbW: VB_W, vbH: VB_H });
   const vbH = model.vbH;
@@ -211,6 +240,7 @@ export function LineChartShape(props: LineChartShapeProps) {
   const filterId = `dw-line-sh-${useId().replace(/:/g, "")}`;
   const gradLineId = `dw-line-lg-${useId().replace(/:/g, "")}`;
   const gradAreaId = `dw-line-ag-${useId().replace(/:/g, "")}`;
+  const lineSegPopId = `dwLineSeg${useId().replace(/:/g, "")}`;
 
   const borderStyle = node.borderStyle || "solid";
   const nodeStrokeW = borderStyle === "none" ? 0 : node.borderWidth || 2;
@@ -557,6 +587,12 @@ export function LineChartShape(props: LineChartShapeProps) {
 
   const chartDefs = (
     <>
+      {presentationChartStagger ? (
+        <style
+          type="text/css"
+          dangerouslySetInnerHTML={{ __html: chartSegmentPopKeyframesCss(lineSegPopId) }}
+        />
+      ) : null}
       {legendList.map((en, i) =>
         en.fillMode === "gradient" ? (
           <linearGradient
@@ -621,8 +657,16 @@ export function LineChartShape(props: LineChartShapeProps) {
           ? sLayout.strokeRgb
           : sLayout.stroke;
 
+    const lineStag = chartSegmentPopAnimationStyle(
+      si,
+      lineSegPopId,
+      plot.x0 + plot.w / 2,
+      plot.y0 + plot.h / 2,
+      presentationChartStagger
+    );
+
     return (
-      <g key={`series-${si}`}>
+      <g key={`series-${si}`} style={lineStag}>
         {areaD ? (
           <path
             d={areaD}

@@ -18,6 +18,7 @@ import { ItemTypes } from "../editor/draggable-item";
 import { snapToGrid, snapDimensionToGrid, measureNodeDims } from "@/components/editor/canvas-constants";
 import { getTextStylingCSS, extractTextStylingFromNode } from "@/lib/text-styling";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
+import type { ChartSlideStagger } from "@/lib/chart-presentation-stagger";
 import {
   SquareShape,
   RectangleShape,
@@ -196,6 +197,9 @@ interface DiagramNodeProps {
     visualColorCrossfade?: { from: Record<string, unknown>; to: Record<string, unknown> };
     visualColorCrossfadeTopOpacity?: number;
     visualColorCrossfadeTopTransition?: string;
+    chartSlideStagger?: ChartSlideStagger;
+    chartLerpU?: number;
+    chartLerpFromJson?: string;
   };
   /** When node has subDiagramId, double-click navigates to sub-diagram instead of editing label */
   onSubDiagramDoubleClick?: (node: DiagramNodeData) => void;
@@ -553,8 +557,11 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
       return <CircleShape {...shapeProps} />;
     } else if (nodeType === 'generic.chart.bar') {
       return (
-        <BarChartShape
+               <BarChartShape
           {...shapeProps}
+          presentationChartStagger={animationStyle?.chartSlideStagger}
+          presentationChartLerpU={animationStyle?.chartLerpU}
+          presentationChartLerpFromJson={animationStyle?.chartLerpFromJson}
           isReadOnly={isReadOnly}
           onBarSegmentNameChange={
             onUpdate && !isReadOnly
@@ -619,6 +626,9 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
       return (
         <LineChartShape
           {...shapeProps}
+          presentationChartStagger={animationStyle?.chartSlideStagger}
+          presentationChartLerpU={animationStyle?.chartLerpU}
+          presentationChartLerpFromJson={animationStyle?.chartLerpFromJson}
           isReadOnly={isReadOnly}
           onLineSeriesNameChange={
             onUpdate && !isReadOnly
@@ -683,6 +693,9 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
       return (
         <PieChartShape
           {...shapeProps}
+          presentationChartStagger={animationStyle?.chartSlideStagger}
+          presentationChartLerpU={animationStyle?.chartLerpU}
+          presentationChartLerpFromJson={animationStyle?.chartLerpFromJson}
           isReadOnly={isReadOnly}
           onPieSliceNameChange={
             onUpdate && !isReadOnly

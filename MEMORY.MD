@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-04-14 – Presentation: chart segments stagger on slide change
+**`use-slide-transition`**: **`chartPresentationSignature`** (full **`node.chart`** JSON) detects pie/bar/line data changes between slides; **`chartSlideStagger`** is passed on **`nodeTransitionStyles`**. **`suppressChartOuterScale`** (**`isChartNodeType`**, not disappearing) skips **all** wrapper **CSS scale** during slide transitions so the chart never animates as one scaled box (including resize-only and appear). **`chart-presentation-stagger`**: sequential **opacity-only** keyframes (no segment scale) + **`CHART_SLIDE_SEGMENT_STAGGER_MS`** (~58ms) between segments; slide duration extends when many segments need to finish. **`PieChartShape`** / **`BarChartShape`** / **`LineChartShape`** apply staggered **`animation`** on each slice/bar/series group; **`diagram-node`** passes **`presentationChartStagger`** when chart data changed **without** compatible value-only lerp, or when a chart **newly appears** on the slide (wrapper opacity/translate suppressed so only segments cascade). **`chart-slide-lerp`**: when **`chartSlideLerpCompatible`** (same kind, topology, bar **`vertical`/`stacked100`**) **`chartLerpU`** is RAF-eased over the slide duration and shapes blend numeric values (**`lerpNodeChartForSlide`**) so bars/pies/lines **grow/shrink** per data instead of whole-node scale. **`nodeDelayMs`** stored on **`SlideAnimation`** for lerp timing.
+
 ### 2026-04-14 – New pie / bar charts: theme drives slice colors
 **`canvas-operations`**: Palette drops reuse one random built-in **`DiagramTheme`** (same as other shapes). After **`chart`** is set, **`themeManager.applyThemeToItem`** runs for **`generic.chart.pie`** and **`.bar`** so series **`fillStyle` / `color` / `gradientColors`** match the theme (same path as applying a theme in the UI), instead of staying on the default slice palette.
 

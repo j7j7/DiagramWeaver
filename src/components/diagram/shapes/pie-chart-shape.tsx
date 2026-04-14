@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect, useId, useRef, useState } from "react";
+import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { DiagramNodeData, NodeChartSpecPie, RichTextRun } from "@/lib/types";
+import type { DiagramNodeData, NodeChartSpec, NodeChartSpecPie, RichTextRun } from "@/lib/types";
+import { lerpNodeChartForSlide } from "@/lib/chart-slide-lerp";
 import { cn } from "@/lib/utils";
 import { SvgShapeBase } from "./svg-shape-base";
 import {
@@ -15,6 +16,11 @@ import {
   chartValueFromVerticalValueAxis,
   svgUserPointFromClient,
 } from "@/lib/chart-pointer-geometry";
+import {
+  chartSegmentPopAnimationStyle,
+  chartSegmentPopKeyframesCss,
+  type ChartSlideStagger,
+} from "@/lib/chart-presentation-stagger";
 
 const VB_CX = 30;
 const VB_CY = 30;
@@ -63,6 +69,9 @@ interface PieChartShapeProps {
   onPieSliceValueChange?: (sliceIndex: number, value: number) => void;
   /** Blocks canvas node drag while a pie slice value drag is active (react-dnd `canDrag`). */
   onPieChartValueDragSessionChange?: (active: boolean) => void;
+  presentationChartStagger?: ChartSlideStagger;
+  presentationChartLerpU?: number;
+  presentationChartLerpFromJson?: string;
 }
 
 function pieSeriesValueSum(series: { value?: number }[] | undefined): number {
@@ -80,11 +89,32 @@ export function PieChartShape(props: PieChartShapeProps) {
     onPieSliceNameChange,
     onPieSliceValueChange,
     onPieChartValueDragSessionChange,
+    presentationChartStagger,
+    presentationChartLerpU,
+    presentationChartLerpFromJson,
     ...svgBaseProps
   } = props;
   const { node, slideColorTransition } = svgBaseProps;
-  const chart = node.chart;
-  const pieChart: NodeChartSpecPie | undefined = chart?.kind === "pie" ? chart : undefined;
+  const chartRaw = node.chart;
+  const pieChartBase: NodeChartSpecPie | undefined =
+    chartRaw?.kind === "pie" ? chartRaw : undefined;
+  const pieChart = useMemo(() => {
+    if (!pieChartBase) return undefined;
+    if (
+      presentationChartLerpFromJson == null ||
+      presentationChartLerpU == null ||
+      presentationChartLerpU >= 1 - 1e-9
+    ) {
+      return pieChartBase;
+    }
+    try {
+      const from = JSON.parse(presentationChartLerpFromJson) as NodeChartSpec;
+      if (!from || from.kind !== "pie") return pieChartBase;
+      return lerpNodeChartForSlide(from, pieChartBase, presentationChartLerpU) as NodeChartSpecPie;
+    } catch {
+      return pieChartBase;
+    }
+  }, [pieChartBase, presentationChartLerpFromJson, presentationChartLerpU]);
   const series = pieChart?.series;
   const { slices, rDraw } = pieSlicesForSvg(VB_CX, VB_CY, VB_R, series, {
     segmentGapDeg: pieChart?.segmentGapDeg,
@@ -349,6 +379,7 @@ export function PieChartShape(props: PieChartShapeProps) {
   };
   const filterId = `dw-pie-sh-${useId().replace(/:/g, "")}`;
   const gradBaseId = `dw-pie-g-${useId().replace(/:/g, "")}`;
+  const segPopId = `dwPieSeg${useId().replace(/:/g, "")}`;
   const gradientAngle = node.gradientAngle ?? 135;
   const gradCoords = getGradientCoordinates(gradientAngle);
 
@@ -388,35 +419,44 @@ export function PieChartShape(props: PieChartShapeProps) {
               ? `url(#${gradBaseId}-${i})`
               : s.solidFill;
         const t = `translate(${s.explodeX},${s.explodeY})`;
+        const segAnim = chartSegmentPopAnimationStyle(
+          i,
+          segPopId,
+          VB_CX,
+          VB_CY,
+          presentationChartStagger
+        );
         return (
           <g key={i} transform={t}>
-            {/* Stable hit target: hover stroke/brightness on the visual path can reshuffle hit-testing. */}
-            <path
-              d={s.d}
-              fill="#000000"
-              fillOpacity={0}
-              stroke="rgba(0,0,0,0)"
-              strokeWidth={SLICE_HIT_STROKE_PAD}
-              vectorEffect="non-scaling-stroke"
-              {...sliceHitPathPointerHandlers(i, s)}
-            />
-            <path
-              d={s.d}
-              fill={fill}
-              stroke={
-                hasBorder
-                  ? strokeColor
-                  : isHover
-                    ? "rgba(255,255,255,0.9)"
-                    : "none"
-              }
-              strokeWidth={hasBorder ? (isHover ? strokeWidth + 0.75 : strokeWidth) : isHover ? 2 : 0}
-              vectorEffect="non-scaling-stroke"
-              style={{
-                filter: isHover ? "brightness(1.12)" : undefined,
-                pointerEvents: "none",
-              }}
-            />
+            <g style={segAnim}>
+              {/* Stable hit target: hover stroke/brightness on the visual path can reshuffle hit-testing. */}
+              <path
+                d={s.d}
+                fill="#000000"
+                fillOpacity={0}
+                stroke="rgba(0,0,0,0)"
+                strokeWidth={SLICE_HIT_STROKE_PAD}
+                vectorEffect="non-scaling-stroke"
+                {...sliceHitPathPointerHandlers(i, s)}
+              />
+              <path
+                d={s.d}
+                fill={fill}
+                stroke={
+                  hasBorder
+                    ? strokeColor
+                    : isHover
+                      ? "rgba(255,255,255,0.9)"
+                      : "none"
+                }
+                strokeWidth={hasBorder ? (isHover ? strokeWidth + 0.75 : strokeWidth) : isHover ? 2 : 0}
+                vectorEffect="non-scaling-stroke"
+                style={{
+                  filter: isHover ? "brightness(1.12)" : undefined,
+                  pointerEvents: "none",
+                }}
+              />
+            </g>
           </g>
         );
       })}
@@ -539,6 +579,12 @@ export function PieChartShape(props: PieChartShapeProps) {
 
   const defs = (
     <defs>
+      {presentationChartStagger ? (
+        <style
+          type="text/css"
+          dangerouslySetInnerHTML={{ __html: chartSegmentPopKeyframesCss(segPopId) }}
+        />
+      ) : null}
       {svgShadow ? (
                <filter id={filterId} x="-55%" y="-55%" width="210%" height="210%">
           <feDropShadow dx="0" dy="2" stdDeviation="2.5" floodOpacity="0.35" />
