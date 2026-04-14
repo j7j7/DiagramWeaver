@@ -62,7 +62,7 @@ Additional providers available (can be enabled): Alibaba Cloud, OCI, SaaS, Elast
 ### Connections
 
 - **Curved & Orthogonal**: Choose **Curved** (bezier) or **Orthogonal** (90° axis-aligned) per connection; toggle via Connection Context Modal, Connections popover, or edge toolbar
-- **Connect from multi-selection**: Select multiple **nodes** and/or **zones**, start **Connect** (sidebar, context menu, or connect handle), then click the destination—one new connection is created **from each** selected item (self-links skipped; order follows the selection)
+- **Connect from multi-selection**: Select multiple **nodes**, start **Connect** (sidebar, context menu, or connect handle), then click the destination—one new connection is created **from each** selected item (self-links skipped; order follows the selection)
 - **Taper & gradient**: Optional unlocked **start/end line width** and **start/end color** along a connection (ribbon fill when varying); locks reset to a uniform stroke
 - **Connection Animations**: Animated shapes (dot, square, arrow, triangle, hexagon) along connection paths; per-connection shape, speed, size, spacing; bulk apply outbound/inbound
 - **Per-Connection Controls**: Arrow toggle, color picker, text label, text position (0–100%), line thickness, shadow
@@ -78,12 +78,16 @@ Additional providers available (can be enabled): Alibaba Cloud, OCI, SaaS, Elast
 - **Selection Box**: Drag on empty canvas to draw rectangle; items within selected
 - **Multi-Drag**: Drag multiple selected items together; relative positions preserved
 
-### Groupings & zones
+### Groupings
 
-- **Zones**: Container regions on the canvas; nodes can live inside zones, and connections can use **zones** as endpoints (same as nodes for connect mode)
 - **Create Group**: Select 2+ nodes → Create grouping for coordinated movement
 - **Auto Layout**: Groupings move as blocks in auto-layout
 - **Add/Remove**: Add nodes to grouping or remove from grouping
+
+### Sub-diagrams
+
+- **Nested diagrams**: A node can link to a **sub-diagram** (separate canvas scoped under the main file’s `subDiagrams` data). Open it by **double-clicking** the node when it has a linked sub-diagram.
+- **Breadcrumb trail**: A bar under the header shows **Home** (root) and each drilled level, separated by chevrons. Click any earlier segment to jump back to that level without losing the stack. In the editor, breadcrumb labels can be **renamed** (where supported) so the trail matches how you think about the hierarchy.
 
 ### Styling & Layout
 
@@ -169,7 +173,7 @@ See `docs/MERMAID-IMPORT.md` for full syntax and mapping.
 
 ### Metadata
 
-- **`metaData`**: Optional key/value pairs (e.g. `"IP Address": "192.168.1.1"`) on nodes, connections, zones, and groupings
+- **`metaData`**: Optional key/value pairs (e.g. `"IP Address": "192.168.1.1"`) on nodes, connections, and groupings
 - **Properties Panel**: Right panel shows selected item name, type, and metadata; add/edit/remove via UI (Edit → Toggle Properties)
 - **Metadata Popup**: Compact popup under selected node/connection shows key/value pairs; Edit → Enable Properties toggles it
 - **Key Suggestions**: Input suggests previously used keys across the diagram for consistent property names
