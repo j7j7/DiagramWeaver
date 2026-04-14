@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-04-14 – New pie / bar charts: theme drives slice colors
+**`canvas-operations`**: Palette drops reuse one random built-in **`DiagramTheme`** (same as other shapes). After **`chart`** is set, **`themeManager.applyThemeToItem`** runs for **`generic.chart.pie`** and **`.bar`** so series **`fillStyle` / `color` / `gradientColors`** match the theme (same path as applying a theme in the UI), instead of staying on the default slice palette.
+
 ### 2026-04-14 – Top bar: hide app version / build chip
 **`top-menu-bar`**: Removed the **`{semver} · {build}`** label (was **`APP_SEMVER` · `APP_BUILD`**). Version info remains available elsewhere (e.g. **Help → About**) via existing app version module.
 

@@ -3,7 +3,7 @@ import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramGroupData, D
 import { generateConnectionId } from "@/lib/connection-order-utils";
 import { ItemTypes } from "./draggable-item";
 import { generateGroupId, generateSequentialId } from "@/lib/id-generator";
-import { DEFAULT_THEMES } from "@/lib/theme-manager";
+import themeManager, { DEFAULT_THEMES } from "@/lib/theme-manager";
 import { DEFAULT_TEXT_STYLING } from "@/lib/text-styling";
 import {
   NODE_WIDTH, 
@@ -39,11 +39,9 @@ export function useCanvasOperations({
   iconBackgroundEnabled = true,
   defaultTextLabelsEnabled = true,
 }: UseCanvasOperationsOptions) {
-  // Function to get random theme for shapes
-  const getRandomTheme = () => {
-    const themes = DEFAULT_THEMES.filter(theme => theme.isBuiltIn);
-    const randomIndex = Math.floor(Math.random() * themes.length);
-    return themes[randomIndex].properties;
+  const pickRandomBuiltInTheme = () => {
+    const themes = DEFAULT_THEMES.filter((t) => t.isBuiltIn);
+    return themes[Math.floor(Math.random() * themes.length)];
   };
 
   const addNode = useCallback((item: any, position: { x: number; y: number }, _targetGroupId: string | null) => {
@@ -140,10 +138,13 @@ export function useCanvasOperations({
         !defaultTextLabelsEnabled;
 
       if (!existingNode) {
+        const shouldApplyShapeTheme =
+          isShapeResource && itemType !== "generic.object.point" && !isFromScratchPad;
+        const randomBuiltInTheme = shouldApplyShapeTheme ? pickRandomBuiltInTheme() : null;
         // For resource items from the sidebar, use type from drag item
         // NEVER store file in node - ResourceIcon looks up file from resource catalog
         // Special handling for shape resources - make them resizable
-        const newNode: DiagramNodeData = {
+        let newNode: DiagramNodeData = {
           id: generateSequentialId(itemType, prevData),
           type: itemType,
           // Set label based on type - shapes get no default text (never use resource name like "Rectangle", "Circle")
@@ -199,8 +200,8 @@ export function useCanvasOperations({
           }),
           // Apply random theme to all shapes (except point which has special styling)
           // BUT: Don't apply random theme if coming from scratchpad with existing properties
-          ...(isShapeResource && itemType !== 'generic.object.point' && !isFromScratchPad && {
-            ...getRandomTheme(),
+          ...(randomBuiltInTheme && {
+            ...randomBuiltInTheme.properties,
             textJustify: 'center' as const,
           }),
           // Special defaults for point shape (only if not from scratchpad)
@@ -255,6 +256,12 @@ export function useCanvasOperations({
              return acc;
           }, {}),
         };
+        if (
+          randomBuiltInTheme &&
+          (itemType === "generic.chart.pie" || itemType === "generic.chart.bar")
+        ) {
+          newNode = themeManager.applyThemeToItem(newNode, randomBuiltInTheme) as DiagramNodeData;
+        }
         newNodes.push(newNode);
         newItemId = newNode.id;
       }
