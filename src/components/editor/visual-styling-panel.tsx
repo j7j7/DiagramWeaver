@@ -8,9 +8,97 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { ColorPicker } from "@/components/ui/color-picker";
 import { VisualStyling, VISUAL_STYLES, getPredefinedVisualStyle, findClosestPredefinedStyle } from "@/lib/visual-styling";
+import {
+  HIGHLIGHT_ANIM_DEFAULT_DURATION_SEC,
+  HIGHLIGHT_ANIM_DEFAULT_GLOW_COLOR,
+  HIGHLIGHT_ANIM_DEFAULT_INTERVAL_SEC,
+} from "@/lib/highlight-anim";
 import { Palette, RotateCcw, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { GradientAnglePicker } from "./gradient-angle-picker";
 import Draggable from 'react-draggable';
+
+function HighlightAnimEffectControls({
+  styling,
+  handlePropertyChange,
+  onStylingChange,
+}: {
+  styling: Partial<VisualStyling>;
+  handlePropertyChange: (property: keyof VisualStyling, value: unknown, immediate?: boolean) => void;
+  onStylingChange: (styling: Partial<VisualStyling>) => void;
+}) {
+  const enabled = Boolean(styling.highlightAnim);
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id="dw-highlight-anim"
+          checked={enabled}
+          onCheckedChange={(checked) => {
+            const on = checked === true;
+            if (on) {
+              onStylingChange({
+                highlightAnim: true,
+                highlightAnimDurationSec: styling.highlightAnimDurationSec ?? HIGHLIGHT_ANIM_DEFAULT_DURATION_SEC,
+                highlightAnimIntervalSec: styling.highlightAnimIntervalSec ?? HIGHLIGHT_ANIM_DEFAULT_INTERVAL_SEC,
+                highlightAnimGlowColor: styling.highlightAnimGlowColor ?? HIGHLIGHT_ANIM_DEFAULT_GLOW_COLOR,
+              });
+            } else {
+              handlePropertyChange("highlightAnim", false, true);
+            }
+          }}
+        />
+        <Label htmlFor="dw-highlight-anim" className="text-sm text-muted-foreground font-normal cursor-pointer">
+          Highlight animation
+        </Label>
+      </div>
+      {enabled && (
+        <div className="grid grid-cols-2 gap-2 pl-6">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Duration (s)</Label>
+            <Input
+              type="number"
+              min={0.05}
+              max={120}
+              step={0.1}
+              value={styling.highlightAnimDurationSec ?? HIGHLIGHT_ANIM_DEFAULT_DURATION_SEC}
+              onChange={(e) => {
+                const n = parseFloat(e.target.value);
+                if (!Number.isNaN(n)) handlePropertyChange("highlightAnimDurationSec", n);
+              }}
+              className="h-9 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Interval (s)</Label>
+            <Input
+              type="number"
+              min={0}
+              max={600}
+              step={0.1}
+              value={styling.highlightAnimIntervalSec ?? HIGHLIGHT_ANIM_DEFAULT_INTERVAL_SEC}
+              onChange={(e) => {
+                const n = parseFloat(e.target.value);
+                if (!Number.isNaN(n)) handlePropertyChange("highlightAnimIntervalSec", n);
+              }}
+              className="h-9 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+          </div>
+          <div className="space-y-1 col-span-2">
+            <Label className="text-xs text-muted-foreground">Glow color</Label>
+            <ColorPicker
+              value={styling.highlightAnimGlowColor ?? HIGHLIGHT_ANIM_DEFAULT_GLOW_COLOR}
+              onChange={(value) => handlePropertyChange("highlightAnimGlowColor", value)}
+              placeholder={HIGHLIGHT_ANIM_DEFAULT_GLOW_COLOR}
+              showAlpha={true}
+              allowTransparent={true}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface VisualStylingPanelProps {
   styling: Partial<VisualStyling>;
@@ -173,6 +261,20 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {!showFullStyling && (
+            <div className="bg-purple-50/50 rounded-md p-3 border border-purple-200/50">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 bg-purple-500 rounded-full shrink-0" />
+                <Label className="text-sm font-semibold text-foreground">Effects</Label>
+              </div>
+              <HighlightAnimEffectControls
+                styling={styling}
+                handlePropertyChange={handlePropertyChange}
+                onStylingChange={onStylingChange}
+              />
             </div>
           )}
 
@@ -421,6 +523,11 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                       onCheckedChange={(checked) => handlePropertyChange('roundedEdges', checked)}
                     />
                   </div>
+                  <HighlightAnimEffectControls
+                    styling={styling}
+                    handlePropertyChange={handlePropertyChange}
+                    onStylingChange={onStylingChange}
+                  />
                   {isRoundedRectangle && (
                     <div className="flex items-center justify-between gap-2">
                       <Label className="text-sm text-muted-foreground">Corner radius</Label>

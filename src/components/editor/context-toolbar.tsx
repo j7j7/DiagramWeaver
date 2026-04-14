@@ -1177,7 +1177,11 @@ export function ContextToolbar({
       iconColor: undefined,
       nodeSize: undefined,
       headingBackgroundColor: undefined,
-      headingBackgroundStyle: undefined
+      headingBackgroundStyle: undefined,
+      highlightAnim: undefined,
+      highlightAnimDurationSec: undefined,
+      highlightAnimIntervalSec: undefined,
+      highlightAnimGlowColor: undefined
     };
     
     // Check if multiple items are selected

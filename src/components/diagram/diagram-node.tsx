@@ -18,6 +18,7 @@ import { ItemTypes } from "../editor/draggable-item";
 import { snapToGrid, snapDimensionToGrid, measureNodeDims } from "@/components/editor/canvas-constants";
 import { getTextStylingCSS, extractTextStylingFromNode } from "@/lib/text-styling";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
+import { getHighlightAnimStyleForNode } from "@/lib/highlight-anim";
 import type { ChartSlideStagger } from "@/lib/chart-presentation-stagger";
 import {
   SquareShape,
@@ -209,6 +210,9 @@ interface DiagramNodeProps {
   showUrlHandleWhenReadOnly?: boolean;
   /** Alt+drag duplicate preview ghost — non-interactive, not a drag source */
   isDuplicateDragPreview?: boolean;
+  /** Canvas-wide highlight pulse order (top→bottom, left→right); from `buildHighlightAnimStaggerOrder` */
+  highlightAnimStaggerIndex?: number;
+  highlightAnimStaggerCount?: number;
   /** Editor: show top-left rotation handle (same layer as connect / resize helpers) */
   rotationHandleVisible?: boolean;
   onRotationPointerDown?: (e: React.PointerEvent) => void;
@@ -229,7 +233,11 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
         JSON.stringify((p as any).richHeadingLabel) !== JSON.stringify((n as any).richHeadingLabel) ||
         (p as any).headingBackgroundColor !== (n as any).headingBackgroundColor ||
         (p as any).headingBackgroundStyle !== (n as any).headingBackgroundStyle ||
-        (p as any).headingTextColor !== (n as any).headingTextColor) {
+        (p as any).headingTextColor !== (n as any).headingTextColor ||
+        (p as any).highlightAnim !== (n as any).highlightAnim ||
+        (p as any).highlightAnimDurationSec !== (n as any).highlightAnimDurationSec ||
+        (p as any).highlightAnimIntervalSec !== (n as any).highlightAnimIntervalSec ||
+        (p as any).highlightAnimGlowColor !== (n as any).highlightAnimGlowColor) {
       return false;
     }
     if (JSON.stringify((p as any).chart) !== JSON.stringify((n as any).chart)) return false;
@@ -275,12 +283,14 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
     prev.hasLinkedSubDiagram === next.hasLinkedSubDiagram &&
     prev.showUrlHandleWhenReadOnly === next.showUrlHandleWhenReadOnly &&
     prev.isDuplicateDragPreview === next.isDuplicateDragPreview &&
+    prev.highlightAnimStaggerIndex === next.highlightAnimStaggerIndex &&
+    prev.highlightAnimStaggerCount === next.highlightAnimStaggerCount &&
     prev.rotationHandleVisible === next.rotationHandleVisible &&
     prev.onRotationPointerDown === next.onRotationPointerDown &&
     prev.isRotationDragging === next.isRotationDragging;
 }
 
-function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onResizeStart, onResizeEnd, onPositionUpdate, onDraggingChange, onUpdate, hoverEnabled = true, isReadOnly = false, onHoverChange, onConnect, isConnectMode, transform, canvasRef, stackZIndex, pointerEventsPassThrough = false, animationStyle, onSubDiagramDoubleClick, hasLinkedSubDiagram, showUrlHandleWhenReadOnly, isDuplicateDragPreview = false, rotationHandleVisible = false, onRotationPointerDown, isRotationDragging = false }: DiagramNodeProps) {
+function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onResizeStart, onResizeEnd, onPositionUpdate, onDraggingChange, onUpdate, hoverEnabled = true, isReadOnly = false, onHoverChange, onConnect, isConnectMode, transform, canvasRef, stackZIndex, pointerEventsPassThrough = false, animationStyle, onSubDiagramDoubleClick, hasLinkedSubDiagram, showUrlHandleWhenReadOnly, isDuplicateDragPreview = false, highlightAnimStaggerIndex, highlightAnimStaggerCount, rotationHandleVisible = false, onRotationPointerDown, isRotationDragging = false }: DiagramNodeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [isEditingTag, setIsEditingTag] = useState(false);
@@ -1071,6 +1081,31 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     (isRichTextBoxLike && node.sizeMode === 'custom') ? (node.height || 40) :
     undefined
   );
+  const positionXForHighlight = resizePosition?.x ?? node.x;
+  const positionYForHighlight = resizePosition?.y ?? node.y;
+  const highlightAnimStyle = useMemo(
+    () =>
+      getHighlightAnimStyleForNode(node as DiagramNodeData & { x: number; y: number }, {
+        isLineNode,
+        isDuplicateDragPreview,
+        positionX: positionXForHighlight,
+        positionY: positionYForHighlight,
+        highlightAnimStaggerIndex,
+        highlightAnimStaggerCount,
+      }),
+    [
+      isLineNode,
+      isDuplicateDragPreview,
+      node.highlightAnim,
+      node.highlightAnimDurationSec,
+      node.highlightAnimIntervalSec,
+      node.highlightAnimGlowColor,
+      positionXForHighlight,
+      positionYForHighlight,
+      highlightAnimStaggerIndex,
+      highlightAnimStaggerCount,
+    ]
+  );
   const isLocked = node.locked || false;
   
   const [{ isDragging }, drag, preview] = useDrag(() => ({
@@ -1613,6 +1648,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
 return (
     <div
       data-node-id={node.id}
+      data-dw-highlight-anim={highlightAnimStyle ? 'true' : undefined}
       ref={(el) => {
         if (el && !isDuplicateDragPreview) {
           drag(el);
@@ -1677,6 +1713,7 @@ return (
         ...(isLineNode && { pointerEvents: 'none' }),
         ...(pointerEventsPassThrough && { pointerEvents: 'none' }),
         ...(isDuplicateDragPreview && { pointerEvents: 'none', opacity: 0.88 }),
+        ...highlightAnimStyle,
         // Layer show/hide animation (opacity, transition, transform)
         ...(animationStyle && !isDuplicateDragPreview && {
           opacity: animationStyle.opacity,

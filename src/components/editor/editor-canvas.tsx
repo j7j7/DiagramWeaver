@@ -41,6 +41,7 @@ import { getItemGroup } from "@/lib/grouping-utils";
 import { computeConnectionSlots } from "@/lib/connection-order-utils";
 import { CanvasRotationOverlay } from "./canvas-rotation-overlay";
 import { measureNodeDims } from "./canvas-constants";
+import { buildHighlightAnimStaggerOrder } from "@/lib/highlight-anim";
 import { useAlignmentGuides } from "@/hooks/use-alignment-guides";
 import { CanvasAlignmentGuides } from "./canvas-alignment-guides";
 import { SearchResourcesModal } from "./search-resources-modal";
@@ -883,6 +884,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     return r;
   }, [nodesWithDragPositions, nodesById, altKeyHeld, dragPosition, multiDragPositions]);
 
+  const highlightAnimStagger = useMemo(
+    () => buildHighlightAnimStaggerOrder(displayNodesById),
+    [displayNodesById]
+  );
+
   const duplicateDragPreviewNodes = useMemo((): DiagramNodeData[] => {
     if (!altKeyHeld || !(dragPosition || multiDragPositions)) return [];
     if (multiDragPositions && Object.keys(multiDragPositions).length > 0) {
@@ -1508,6 +1514,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   isRotationDragging={
                     rotationDragState?.isActive === true && rotationDragState.targetId === node.id
                   }
+                  highlightAnimStaggerIndex={highlightAnimStagger.indexById.get(node.id)}
+                  highlightAnimStaggerCount={highlightAnimStagger.count}
                 />
               ) : zone ? null : null;
                   return nodeEl;
@@ -1594,6 +1602,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     isRotationDragging={
                       rotationDragState?.isActive === true && rotationDragState.targetId === node.id
                     }
+                    highlightAnimStaggerIndex={highlightAnimStagger.indexById.get(node.id)}
+                    highlightAnimStaggerCount={highlightAnimStagger.count}
                   />
                 ) : zone ? null : null;
                 return [

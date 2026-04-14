@@ -187,6 +187,10 @@ export const DiagramNodeDataSchema = z.object({
   gradientAngle: z.number().optional(), // Background gradient angle in degrees
   borderGradientAngle: z.number().optional(), // Border gradient angle in degrees
   shadow: z.boolean().optional(), // Whether to show shadow around label/textbox nodes
+  highlightAnim: z.boolean().optional(),
+  highlightAnimDurationSec: z.number().optional(),
+  highlightAnimIntervalSec: z.number().optional(),
+  highlightAnimGlowColor: z.string().optional(),
   rotation: z.number().optional(), // Rotation angle in degrees (0, 45, -45, 90, -90)
   textPosition: z.enum(['above', 'center', 'under']).optional(), // Text position for shape nodes
   freeflow: z.boolean().optional(), // If true, node can be placed anywhere without joining groups/zones
@@ -522,6 +526,10 @@ export const DiagramNodeItemSchema = z.object({
   gradientAngle: z.number().optional(), // Background gradient angle in degrees
   borderGradientAngle: z.number().optional(), // Border gradient angle in degrees
   shadow: z.boolean().optional(), // Whether to show shadow around label/textbox nodes
+  highlightAnim: z.boolean().optional(),
+  highlightAnimDurationSec: z.number().optional(),
+  highlightAnimIntervalSec: z.number().optional(),
+  highlightAnimGlowColor: z.string().optional(),
   rotation: z.number().optional(), // Rotation angle in degrees (0, 45, -45, 90, -90)
   textPosition: z.enum(['above', 'center', 'under']).optional(), // Text position for shape nodes
   freeflow: z.boolean().optional(), // If true, node can be placed anywhere without joining groups/zones

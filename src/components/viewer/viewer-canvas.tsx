@@ -12,6 +12,7 @@ import { type PositionedNode, type PositionedGroup } from "../editor/canvas-cons
 import { CanvasRulers } from "../editor/canvas-rulers";
 import { computeConnectionSlots } from "@/lib/connection-order-utils";
 import { isShapeNodeType } from "@/lib/utils";
+import { buildHighlightAnimStaggerOrder } from "@/lib/highlight-anim";
 import { getDownstreamAnimationChainNodes } from "@/lib/connection-animation";
 import { MetadataPopup } from "../editor/metadata-popup";
 import type { DiagramConnectionData } from "@/lib/types";
@@ -114,6 +115,11 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
       return acc;
     }, {} as Record<string, PositionedGroup>);
   }, [processedZones]);
+
+  const highlightAnimStagger = useMemo(
+    () => buildHighlightAnimStaggerOrder(nodesById),
+    [nodesById]
+  );
 
   const connectionSlots = useMemo(
     () => computeConnectionSlots(diagramData, processedNodes, processedZones),
@@ -450,6 +456,8 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
                   hasLinkedSubDiagram={getHasLinkedSubDiagram?.(node) ?? Boolean(node.subDiagramId)}
                   showUrlHandleWhenReadOnly={openNodeLinksOnClick}
                   animationStyle={nodeTransitionStyles.get(node.id)}
+                  highlightAnimStaggerIndex={highlightAnimStagger.indexById.get(node.id)}
+                  highlightAnimStaggerCount={highlightAnimStagger.count}
                 />
               ) : null;
               return nodeEl;
@@ -481,6 +489,8 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
                     hasLinkedSubDiagram={getHasLinkedSubDiagram?.(node) ?? Boolean(node.subDiagramId)}
                     showUrlHandleWhenReadOnly={openNodeLinksOnClick}
                     animationStyle={nodeTransitionStyles.get(node.id)}
+                    highlightAnimStaggerIndex={highlightAnimStagger.indexById.get(node.id)}
+                    highlightAnimStaggerCount={highlightAnimStagger.count}
                   />
                 ) : null;
               return [

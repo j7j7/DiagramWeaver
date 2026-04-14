@@ -106,8 +106,16 @@
   .gif-export-active .node-glow-subdiagram,
   .gif-export-active .node-glow-pulse,
   .gif-export-active .node-glow-green-pulse,
-  .gif-export-active .connection-glow-hover {
+  .gif-export-active .connection-glow-hover,
+  .gif-export-active [data-dw-highlight-anim="true"] {
     filter: none !important;
+    animation: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-dw-highlight-anim="true"] {
+    animation: none !important;
   }
 }
 

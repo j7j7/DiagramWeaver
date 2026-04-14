@@ -207,6 +207,14 @@ export interface DiagramNodeData {
   gradientAngle?: number; // Background gradient angle in degrees
   borderGradientAngle?: number; // Border gradient angle in degrees
   shadow?: boolean; // Whether to show shadow around label/textbox nodes
+  /** Repeating glow pulse on canvas; phase staggered from x/y so nearby items flow. */
+  highlightAnim?: boolean;
+  /** Pulse length in seconds (default 1). */
+  highlightAnimDurationSec?: number;
+  /** Idle time between pulses in seconds (default 5). */
+  highlightAnimIntervalSec?: number;
+  /** Glow color for the pulse (default blue). */
+  highlightAnimGlowColor?: string;
   rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
   textPosition?: 'above' | 'center' | 'under'; // Text position for shape nodes
   freeflow?: boolean; // If true, node can be placed anywhere without joining groups/zones
@@ -417,6 +425,10 @@ export interface DiagramNodeItem {
   gradientAngle?: number; // Background gradient angle in degrees
   borderGradientAngle?: number; // Border gradient angle in degrees
   shadow?: boolean; // Whether to show shadow around label/textbox nodes
+  highlightAnim?: boolean;
+  highlightAnimDurationSec?: number;
+  highlightAnimIntervalSec?: number;
+  highlightAnimGlowColor?: string;
   roundedEdges?: boolean; // Whether to apply rounded edges to shapes
   rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
   textPosition?: 'above' | 'center' | 'under'; // Text position for shape nodes

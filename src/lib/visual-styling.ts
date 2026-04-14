@@ -12,6 +12,11 @@ export interface VisualStyling {
   gradientAngle?: number; // Background gradient angle in degrees
   borderGradientAngle?: number; // Border gradient angle in degrees
   shadow?: boolean;
+  /** Repeating glow pulse; phase staggered from node position on canvas. */
+  highlightAnim?: boolean;
+  highlightAnimDurationSec?: number;
+  highlightAnimIntervalSec?: number;
+  highlightAnimGlowColor?: string;
   borderWidth?: number; // Border thickness
   roundedEdges?: boolean; // Whether to apply rounded edges to shapes
   cornerRadius?: number; // Rounded-rectangle only: 0=straight, 1=full pill
@@ -216,7 +221,11 @@ export function extractVisualStylingFromNode(node: DiagramNodeData | DiagramNode
     headingBackgroundStyle: (node as any).headingBackgroundStyle,
     iconColor: (node as DiagramNodeData).iconColor,
     noIconBackground: (node as any).noIconBackground,
-    nodeSize: (node as any).nodeSize
+    nodeSize: (node as any).nodeSize,
+    highlightAnim: (node as any).highlightAnim,
+    highlightAnimDurationSec: (node as any).highlightAnimDurationSec,
+    highlightAnimIntervalSec: (node as any).highlightAnimIntervalSec,
+    highlightAnimGlowColor: (node as any).highlightAnimGlowColor
   };
 }
 
@@ -282,7 +291,20 @@ export function applyVisualStylingToNode(
         : (node as any).headingBackgroundStyle,
     iconColor: styling.iconColor !== undefined ? styling.iconColor : (node as DiagramNodeData).iconColor,
     noIconBackground: styling.noIconBackground !== undefined ? styling.noIconBackground : (node as any).noIconBackground,
-    nodeSize: styling.nodeSize !== undefined ? styling.nodeSize : (node as any).nodeSize
+    nodeSize: styling.nodeSize !== undefined ? styling.nodeSize : (node as any).nodeSize,
+    highlightAnim: styling.highlightAnim !== undefined ? styling.highlightAnim : (node as any).highlightAnim,
+    highlightAnimDurationSec:
+      styling.highlightAnimDurationSec !== undefined
+        ? styling.highlightAnimDurationSec
+        : (node as any).highlightAnimDurationSec,
+    highlightAnimIntervalSec:
+      styling.highlightAnimIntervalSec !== undefined
+        ? styling.highlightAnimIntervalSec
+        : (node as any).highlightAnimIntervalSec,
+    highlightAnimGlowColor:
+      styling.highlightAnimGlowColor !== undefined
+        ? styling.highlightAnimGlowColor
+        : (node as any).highlightAnimGlowColor
   } as DiagramNodeData | DiagramNodeItem;
 }
 
