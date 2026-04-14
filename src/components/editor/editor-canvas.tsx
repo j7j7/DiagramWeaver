@@ -765,6 +765,15 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     [setSelectedItemIds, setSelectedItem]
   );
 
+  const [isCanvasItemDragging, setIsCanvasItemDragging] = useState(false);
+  const notifyDraggingChange = useCallback(
+    (dragging: boolean) => {
+      setIsCanvasItemDragging(dragging);
+      onDraggingChange?.(dragging);
+    },
+    [onDraggingChange]
+  );
+
   const { dragPosition, multiDragPositions, hoveredGroupId, drop, altKeyHeld } = useCanvasDragDrop({
     canvasRef,
     transform,
@@ -779,7 +788,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     moveMultipleItems: operations.moveMultipleItems,
     duplicateNodesAtPositions: operations.duplicateNodesAtPositions,
     onDuplicateNodesPlaced: handleDuplicateNodesPlaced,
-    onDraggingChange,
+    onDraggingChange: notifyDraggingChange,
   });
 
   // Positions during drag (ghost/cursor); used for guides and Alt-duplicate previews
@@ -1465,6 +1474,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   transform={transform}
                   canvasRef={canvasRef}
                   isReadOnly={isReadOnly}
+                  orthogonalFastRouting={isCanvasItemDragging}
                 />
                 {connectionSlots.sortedItemIds.map((itemId, i) => {
                   const node = nodesById[itemId];
@@ -1491,7 +1501,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   onResizeEnd={handleResizeEnd}
                   onLabelUpdate={onLabelUpdate}
                   onTagUpdate={onTagUpdate}
-                  onDraggingChange={onDraggingChange}
+                  onDraggingChange={notifyDraggingChange}
                   onUpdate={handleNodeUpdate}
                   hoverEnabled={hoverEnabled}
                   isReadOnly={isReadOnly}
@@ -1534,7 +1544,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     onResizeEnd={handleResizeEnd}
                     onLabelUpdate={onLabelUpdate}
                     onTagUpdate={onTagUpdate}
-                    onDraggingChange={onDraggingChange}
+                    onDraggingChange={notifyDraggingChange}
                     onUpdate={handleNodeUpdate}
                     hoverEnabled={false}
                     isReadOnly={true}
@@ -1579,7 +1589,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     onResizeEnd={handleResizeEnd}
                     onLabelUpdate={onLabelUpdate}
                     onTagUpdate={onTagUpdate}
-                    onDraggingChange={onDraggingChange}
+                    onDraggingChange={notifyDraggingChange}
                     onUpdate={handleNodeUpdate}
                     hoverEnabled={hoverEnabled}
                     isReadOnly={isReadOnly}
@@ -1636,6 +1646,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       transform={transform}
                       canvasRef={canvasRef}
                       isReadOnly={isReadOnly}
+                      orthogonalFastRouting={isCanvasItemDragging}
                     />
                   ) : null,
                   nodeEl,
@@ -1655,7 +1666,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   onResizeEnd={handleResizeEnd}
                   onLabelUpdate={onLabelUpdate}
                   onTagUpdate={onTagUpdate}
-                  onDraggingChange={onDraggingChange}
+                  onDraggingChange={notifyDraggingChange}
                   onUpdate={handleNodeUpdate}
                   hoverEnabled={false}
                   isReadOnly={true}
@@ -1699,6 +1710,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   transform={transform}
                   canvasRef={canvasRef}
                   isReadOnly={isReadOnly}
+                  orthogonalFastRouting={isCanvasItemDragging}
                 />
               );
             })()}

@@ -68,6 +68,11 @@ export interface OrthogonalRoute {
 export interface OrthogonalRouteOptions {
   occupiedSegments?: OrthogonalSegment[];
   smoothCorners?: boolean;
+  /**
+   * Skip A* and heavy obstacle bridging — L/Z fallbacks only with empty obstacle checks.
+   * Use while dragging canvas items for responsiveness; full quality on release.
+   */
+  fastObstacleRouting?: boolean;
 }
 
 export interface OrthogonalRouteRequest extends OrthogonalRouteOptions {
@@ -802,6 +807,19 @@ function computeOrthogonalSegment(
   const stub = exitStub(sfx, sfy, fromAngle, stubLen);
   const entryStub = exitStub(stx, sty, toAngle, entryStubLen);
 
+  if (options?.fastObstacleRouting) {
+    const noObs: Rect[] = [];
+    const candidateAngles = getFallbackAngles(fromAngle, directionFromTo(sfx, sfy, stx, sty));
+    const inner =
+      findFallbackRoute(stub.x, stub.y, entryStub.x, entryStub.y, candidateAngles, noObs) ??
+      zRoute(stub.x, stub.y, entryStub.x, entryStub.y, fromAngle);
+    let fastPts = [{ x: sfx, y: sfy }, ...inner, { x: stx, y: sty }];
+    fastPts = simplifyPath(fastPts);
+    fastPts = ensureApproachSegment(fastPts, sfx, sfy, fromAngle, stubLen, noObs, options, true);
+    fastPts = ensureApproachSegment(fastPts, stx, sty, toAngle, entryStubLen, noObs, options, false);
+    return enforceOrthogonalSegments(fastPts, noObs, options);
+  }
+
   let points = astar(stub.x, stub.y, entryStub.x, entryStub.y, obstacles, fromAngle, toAngle, options);
 
   if (points) {
@@ -912,6 +930,7 @@ export function computeOrthogonalRoutesBatch(
       {
         occupiedSegments: request.occupiedSegments ?? occupiedSegments,
         smoothCorners: request.smoothCorners === true,
+        fastObstacleRouting: request.fastObstacleRouting === true,
       },
     );
 
@@ -1087,6 +1106,35 @@ export function appendInteriorObstaclesForPreferredEdges(
     if (r) pushInteriorObstacleForPreferredEdge(out, r, toPreferredEntry, PREFERRED_EDGE_STRIP_PX);
   }
   return out;
+}
+
+/** Obstacle rect tagged with diagram id for filtering per connection without rescanning maps. */
+export interface TaggedObstacleRect extends Rect {
+  sourceId: string;
+}
+
+/** Single pass over nodes + zones; reuse with {@link obstaclesForEndpoints}. */
+export function buildObstacleCatalog(
+  nodesById: Record<string, { x: number; y: number; width?: number; height?: number; type?: string; [k: string]: any }>,
+  zonesById: Record<string, { x: number; y: number; width: number; height: number; [k: string]: any }>,
+): TaggedObstacleRect[] {
+  const out: TaggedObstacleRect[] = [];
+  for (const [id, n] of Object.entries(nodesById)) {
+    const w = n.width ?? 80;
+    const h = n.height ?? 80;
+    out.push({ sourceId: id, x: n.x ?? 0, y: n.y ?? 0, width: w, height: h });
+  }
+  for (const [id, z] of Object.entries(zonesById)) {
+    out.push({ sourceId: id, x: z.x ?? 0, y: z.y ?? 0, width: z.width, height: z.height });
+  }
+  return out;
+}
+
+/** Rect list for routing excluding both connection endpoints (O(catalog length) per call). */
+export function obstaclesForEndpoints(catalog: TaggedObstacleRect[], fromId: string, toId: string): Rect[] {
+  return catalog
+    .filter((o) => o.sourceId !== fromId && o.sourceId !== toId)
+    .map((o) => ({ x: o.x, y: o.y, width: o.width, height: o.height }));
 }
 
 /**

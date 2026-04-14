@@ -9,6 +9,7 @@ import {
   collectObstacles,
   appendInteriorObstaclesForPreferredEdges,
   type OrthogonalRoute,
+  type Rect,
 } from "@/lib/orthogonal-routing";
 import {
   determineConnectionEdges,
@@ -34,6 +35,8 @@ import {
 } from "@/lib/connection-line-style";
 import { connectionStrokeDashFromLineType } from "@/lib/utils";
 
+const EMPTY_OBSTACLES: Rect[] = [];
+
 // --- Props Interface ---
 
 interface OrthogonalConnectionProps {
@@ -52,6 +55,8 @@ interface OrthogonalConnectionProps {
   onContextMenu?: (e: React.MouseEvent, connection: DiagramConnectionData) => void;
   /** Opacity/transform for slide/layer transitions — applied to path group only, not defs. */
   slideTransitionStyle?: React.CSSProperties;
+  /** When no precomputed route, use fast L/Z-only routing (e.g. canvas drag). */
+  orthogonalFastRouting?: boolean;
 }
 
 // --- Memo Comparators ---
@@ -126,8 +131,7 @@ function areOrthogonalPropsEqual(prev: OrthogonalConnectionProps, next: Orthogon
     prev.exportAnimationTimeSeconds === next.exportAnimationTimeSeconds &&
     prev.animationConnectionsEnabled === next.animationConnectionsEnabled &&
     slideTransitionStyleEqual(prev.slideTransitionStyle, next.slideTransitionStyle) &&
-    prev.nodesById === next.nodesById &&
-    prev.zonesById === next.zonesById
+    prev.orthogonalFastRouting === next.orthogonalFastRouting
   );
 }
 
@@ -150,6 +154,7 @@ function OrthogonalConnectionInner({
   onClick,
   onContextMenu,
   slideTransitionStyle,
+  orthogonalFastRouting = false,
 }: OrthogonalConnectionProps) {
   const { resolvedTheme } = useTheme();
 
@@ -174,8 +179,9 @@ function OrthogonalConnectionInner({
     [from, to, fromWidth, fromHeight, toWidth, toHeight, connectionData]
   );
 
-  // Collect obstacles (exclude source and target nodes); block interior when user picked an edge
+  // Collect obstacles only when routing here (parent normally passes precomputed route).
   const obstacles = useMemo(() => {
+    if (precomputedRoute) return EMPTY_OBSTACLES;
     const base = collectObstacles(
       nodesById,
       zonesById,
@@ -192,6 +198,7 @@ function OrthogonalConnectionInner({
       connectionData.toPreferredEntry,
     );
   }, [
+    precomputedRoute,
     nodesById,
     zonesById,
     connectionData?.from,
@@ -205,8 +212,9 @@ function OrthogonalConnectionInner({
   const route: OrthogonalRoute = useMemo(
     () => precomputedRoute ?? computeOrthogonalRoute(fromX, fromY, toX, toY, fromAngle, toAngle, obstacles, waypoints, {
       smoothCorners: connectionData?.smoothCorners === true,
+      fastObstacleRouting: orthogonalFastRouting,
     }),
-    [precomputedRoute, fromX, fromY, toX, toY, fromAngle, toAngle, obstacles, waypoints, connectionData?.smoothCorners]
+    [precomputedRoute, fromX, fromY, toX, toY, fromAngle, toAngle, obstacles, waypoints, connectionData?.smoothCorners, orthogonalFastRouting]
   );
 
   const rw = resolveConnectionWidths(connectionData);

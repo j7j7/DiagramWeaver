@@ -1,7 +1,7 @@
 import React from "react";
 import { BezierConnection, determineConnectionEdges, getOptimalConnectionPoints, calculateBezierControlPoints, getBezierPoint, getPointOnConnectionPath } from "../diagram/bezier-connection";
 import { OrthogonalConnection } from "../diagram/othogonal-connection";
-import { computeOrthogonalRoute, computeOrthogonalRoutesBatch, getPointOnOrthogonalPath, collectObstacles, appendInteriorObstaclesForPreferredEdges, type OrthogonalRoute, type OrthogonalRouteRequest } from "@/lib/orthogonal-routing";
+import { computeOrthogonalRoute, computeOrthogonalRoutesBatch, getPointOnOrthogonalPath, buildObstacleCatalog, obstaclesForEndpoints, appendInteriorObstaclesForPreferredEdges, type OrthogonalRoute, type OrthogonalRouteRequest } from "@/lib/orthogonal-routing";
 import type { DiagramData, DiagramConnectionData } from "@/lib/types";
 import { measureNodeDims, type PositionedNode, type PositionedGroup, NODE_WIDTH, BASE_NODE_HEIGHT, TEXT_NODE_HEIGHT, EXTRA_LINE_HEIGHT, CONNECTION_HELPER_Z_INDEX } from "./canvas-constants";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
@@ -64,6 +64,8 @@ interface CanvasConnectionsProps {
    * subtrees remount during playback — avoids stale SVG defs/gradients when slide deltas swap styling.
    */
   connectionRenderRevision?: string | number;
+  /** L/Z-only orthogonal paths (no A*) while dragging canvas items — full routing when false. */
+  orthogonalFastRouting?: boolean;
 }
 
 function setsEqual(a: Set<number> | undefined, b: Set<number> | undefined): boolean {
@@ -99,6 +101,7 @@ function areCanvasConnectionsPropsEqual(prev: CanvasConnectionsProps, next: Canv
     prev.canvasRef === next.canvasRef &&
     prev.isReadOnly === next.isReadOnly &&
     prev.connectionRenderRevision === next.connectionRenderRevision &&
+    prev.orthogonalFastRouting === next.orthogonalFastRouting &&
     prev.diagramData === next.diagramData &&
     prev.nodesById === next.nodesById &&
     prev.zonesById === next.zonesById &&
@@ -140,7 +143,9 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     canvasRef,
     isReadOnly = false,
     connectionRenderRevision,
+    orthogonalFastRouting = false,
   } = props;
+  const obstacleCatalog = buildObstacleCatalog(nodesById, zonesById);
   // Pre-calculate edge information for all connections
   const connectionEdgeInfo = new Map<string, { fromEdge: string; toEdge: string }>();
   const edgeGroups = new Map<string, any[]>();
@@ -402,7 +407,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
       toIconOffsetX
     );
 
-    const baseObstacles = collectObstacles(nodesById, zonesById, [edge.from, edge.to].filter(Boolean));
+    const baseObstacles = obstaclesForEndpoints(obstacleCatalog, edge.from, edge.to);
     const obstacles = appendInteriorObstaclesForPreferredEdges(
       baseObstacles,
       nodesById,
@@ -441,6 +446,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
       obstacles: layout.obstacles,
       waypoints: layout.enhancedEdge.waypoints,
       smoothCorners: layout.enhancedEdge.smoothCorners === true,
+      fastObstacleRouting: orthogonalFastRouting,
     });
   });
 
@@ -761,6 +767,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                 onClick={connectionHandlers.onClick}
                 onContextMenu={connectionHandlers.onContextMenu}
                 slideTransitionStyle={slideTransitionStyle}
+                orthogonalFastRouting={orthogonalFastRouting}
               />
             ) : (
               <BezierConnection
@@ -962,7 +969,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
       let arrowPoint: { x: number; y: number };
 
       if (connStyle === 'orthogonal') {
-        const baseObstaclesToolbar = collectObstacles(nodesById, zonesById, [edge.from, edge.to].filter(Boolean));
+        const baseObstaclesToolbar = obstaclesForEndpoints(obstacleCatalog, edge.from, edge.to);
         const obstacles = appendInteriorObstaclesForPreferredEdges(
           baseObstaclesToolbar,
           nodesById,
@@ -975,6 +982,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
         const route = orthogonalRouteMap.get(index)
           ?? computeOrthogonalRoute(fromX, fromY, toX, toY, fromAngle, toAngle, obstacles, edge?.waypoints, {
             smoothCorners: edge?.smoothCorners === true,
+            fastObstacleRouting: orthogonalFastRouting,
           });
         startPoint = getPointOnOrthogonalPath(0.1, route.points, route.totalLength);
         centerPoint = getPointOnOrthogonalPath(0.5, route.points, route.totalLength);

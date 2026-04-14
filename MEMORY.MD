@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-04-14 – Canvas drag: fast orthogonal + shared obstacle catalog
+**`orthogonal-routing`**: **`OrthogonalRouteOptions.fastObstacleRouting`** — skips A* / obstacle-aware bridging; L/Z **`findFallbackRoute`** on empty obstacles + **`ensureApproachSegment`** / **`enforceOrthogonalSegments`** with no rects. **`buildObstacleCatalog`** + **`obstaclesForEndpoints`** (one diagram scan, filter per link). **`editor-canvas`**: **`isCanvasItemDragging`** + **`notifyDraggingChange`** wraps **`onDraggingChange`** (hook + **`DiagramNode`**). **`CanvasConnections`** **`orthogonalFastRouting={isCanvasItemDragging}`** passes through batch + toolbar fallback; **`OrthogonalConnection`** skips **`collectObstacles`** when **`route`** is precomputed; memo no longer compares **`nodesById`** refs, adds **`orthogonalFastRouting`**. Full obstacle-aware routing returns on release.
+
 ### 2026-04-14 – Canvas drag perf: connections layer (investigation)
 Dragging updates **`displayNodesById`** every frame (**new object** from **`nodesWithDragPositions`**), so **`CanvasConnections`** **`React.memo`** (`nodesById` ref equality) always re-runs. **`canvas-connections`** recomputes for **all** edges each frame: edge grouping pass, **`getOptimalConnectionPoints`**, and **per-connection **`collectObstacles`** (full scan of all nodes/zones × orthogonal count). **`computeOrthogonalRoutesBatch`** reruns for all orthogonal links. **`OrthogonalConnection`** memo also requires **`prev.nodesById === next.nodesById`**, so it rarely skips during drag even when **`route`** is unchanged. **Bezier** child memo can skip for fixed endpoints, but parent work dominates. Levers: single shared obstacle build per frame; stable props / drag-overlay split; relax orthogonal memo to compare **`route`** + geometry not map refs; optional fast orthogonal during drag.
 
