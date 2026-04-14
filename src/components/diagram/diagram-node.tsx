@@ -58,6 +58,7 @@ import { RotationHandle } from "./rotation-handle";
 import { UrlHandle } from "./url-handle";
 import { computeUmlClassDimensions } from "@/lib/uml-utils";
 import { openExternalUrlInNewTab } from "@/lib/url-utils";
+import { roundChartDataValue } from "@/lib/chart-node";
 
 const NODE_WIDTH = 80;
 const BASE_NODE_HEIGHT = 80;
@@ -512,6 +513,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     };
 
     const nodeType = node.type;
+    const chartValuesLocked = visualNode.chart?.valuesLocked === true;
     if (nodeType === 'generic.object.square' || nodeType?.endsWith('.square')) {
       return <SquareShape {...shapeProps} />;
     } else     if (nodeType === 'generic.object.uml-class' || nodeType?.endsWith('.uml-class')) {
@@ -603,7 +605,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
               : undefined
           }
           onBarCellValueChange={
-            onUpdate && !isReadOnly
+            onUpdate && !isReadOnly && !chartValuesLocked
               ? (segmentIndex, categoryIndex, value) => {
                   const c = node.chart;
                   if (c?.kind !== "bar" || !c.series || segmentIndex < 0 || segmentIndex >= c.series.length) return;
@@ -612,11 +614,12 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
                     ...c.series.map((s) => (Array.isArray(s.values) ? s.values.length : 0))
                   );
                   if (categoryIndex < 0 || categoryIndex >= catCount) return;
+                  const v = roundChartDataValue(value);
                   const nextSeries = c.series.map((row, j) => {
                     if (j !== segmentIndex) return row;
                     const vals = [...(row.values ?? [])];
                     while (vals.length < catCount) vals.push(0);
-                    vals[categoryIndex] = value;
+                    vals[categoryIndex] = v;
                     return { ...row, values: vals };
                   });
                   onUpdate({ ...node, chart: { ...c, series: nextSeries } });
@@ -670,7 +673,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
               : undefined
           }
           onLinePointValueChange={
-            onUpdate && !isReadOnly
+            onUpdate && !isReadOnly && !chartValuesLocked
               ? (seriesIndex, categoryIndex, value) => {
                   const c = node.chart;
                   if (c?.kind !== "line" || !c.series || seriesIndex < 0 || seriesIndex >= c.series.length) return;
@@ -679,11 +682,12 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
                     ...c.series.map((s) => (Array.isArray(s.values) ? s.values.length : 0))
                   );
                   if (categoryIndex < 0 || categoryIndex >= catCount) return;
+                  const v = roundChartDataValue(value);
                   const nextSeries = c.series.map((row, j) => {
                     if (j !== seriesIndex) return row;
                     const vals = [...(row.values ?? [])];
                     while (vals.length < catCount) vals.push(0);
-                    vals[categoryIndex] = value;
+                    vals[categoryIndex] = v;
                     return { ...row, values: vals };
                   });
                   onUpdate({ ...node, chart: { ...c, series: nextSeries } });
@@ -720,12 +724,13 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
               : undefined
           }
           onPieSliceValueChange={
-            onUpdate && !isReadOnly
+            onUpdate && !isReadOnly && !chartValuesLocked
               ? (sliceIndex, value) => {
                   const c = node.chart;
                   if (c?.kind !== "pie" || !c.series || sliceIndex < 0 || sliceIndex >= c.series.length) return;
+                  const v = roundChartDataValue(value);
                   const nextSeries = c.series.map((row, j) =>
-                    j === sliceIndex ? { ...row, value: Math.max(0, value) } : row
+                    j === sliceIndex ? { ...row, value: v } : row
                   );
                   onUpdate({ ...node, chart: { ...c, series: nextSeries } });
                 }

@@ -78,6 +78,7 @@ const NodeChartPieSchema = z.object({
   shadow: z.boolean().optional(),
   segmentGapDeg: z.number().min(0).max(3).optional(),
   showSegmentLabels: z.boolean().optional(),
+  valuesLocked: z.boolean().optional(),
 });
 
 const NodeChartBarSchema = z.object({
@@ -102,6 +103,7 @@ const NodeChartBarSchema = z.object({
   showLegend: z.boolean().optional(),
   categoryLabelFontSize: z.number().min(2).max(14).optional(),
   legendLabelFontSize: z.number().min(2).max(14).optional(),
+  valuesLocked: z.boolean().optional(),
 });
 
 const NodeChartLineSchema = z.object({
@@ -125,6 +127,7 @@ const NodeChartLineSchema = z.object({
   showLegend: z.boolean().optional(),
   categoryLabelFontSize: z.number().min(2).max(14).optional(),
   legendLabelFontSize: z.number().min(2).max(14).optional(),
+  valuesLocked: z.boolean().optional(),
 });
 
 const NodeChartSpecSchema = z.discriminatedUnion("kind", [

@@ -113,12 +113,6 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  [data-dw-highlight-anim="true"] {
-    animation: none !important;
-  }
-}
-
 @layer base {
   * {
     @apply border-border;

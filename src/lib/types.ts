@@ -97,6 +97,8 @@ export interface NodeChartSpecPie {
   segmentGapDeg?: number;
   /** When `false`, segment names are not drawn on the pie. Omitted or `true` = show labels. */
   showSegmentLabels?: boolean;
+  /** When true, slice values cannot be changed by dragging on the canvas (modal still edits). */
+  valuesLocked?: boolean;
 }
 
 /** Bar / stacked bar chart data (`generic.chart.bar`). */
@@ -146,6 +148,8 @@ export interface NodeChartSpecBar {
   categoryLabelFontSize?: number;
   /** Bottom legend segment name font size (SVG viewBox units, 2–14). Omitted = default ~2.7. */
   legendLabelFontSize?: number;
+  /** When true, segment values cannot be changed by dragging on the canvas (modal still edits). */
+  valuesLocked?: boolean;
 }
 
 /** Line chart (`generic.chart.line`). Series rows are separate lines; each has `values[]` per category. */
@@ -176,6 +180,8 @@ export interface NodeChartSpecLine {
   showLegend?: boolean;
   categoryLabelFontSize?: number;
   legendLabelFontSize?: number;
+  /** When true, point values cannot be changed by dragging on the canvas (modal still edits). */
+  valuesLocked?: boolean;
 }
 
 /** Chart configuration on a node (`generic.chart.*`). */

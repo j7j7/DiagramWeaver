@@ -130,6 +130,25 @@ export function newChartSliceId(): string {
   return `chart-slice-${Math.random().toString(36).slice(2, 11)}`;
 }
 
+/** Non-negative chart datum rounded to at most 2 decimal places. */
+export function roundChartDataValue(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.round(Math.max(0, value) * 100) / 100;
+}
+
+/** Whole non-negative values for pointer-drag edits on the canvas (modal / typed inline still use 2 dp). */
+export function roundChartDragValue(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.round(value));
+}
+
+/** Display string for modal / labels: integers plain, else up to 2 dp without trailing zeros. */
+export function formatChartValueForEdit(value: number): string {
+  const r = roundChartDataValue(value);
+  if (Number.isInteger(r)) return String(r);
+  return r.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+}
+
 export function defaultPieChartSpec(): NodeChartSpecPie {
   return {
     kind: "pie",

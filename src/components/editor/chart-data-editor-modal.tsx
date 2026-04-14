@@ -32,6 +32,8 @@ import {
   DEFAULT_PIE_SLICE_COLORS,
   DEFAULT_PIE_SLICE_LABEL_COLOR,
   DEFAULT_PIE_WEDGE_LABEL_FONT,
+  formatChartValueForEdit,
+  roundChartDataValue,
 } from "@/lib/chart-node";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
@@ -117,7 +119,7 @@ function parseBarValuesList(raw: string, targetLen: number): number[] {
     .filter(Boolean);
   const nums = parts.map((p) => {
     const n = Number(p.replace(/,/g, "."));
-    return Number.isFinite(n) ? Math.max(0, n) : 0;
+    return roundChartDataValue(Number.isFinite(n) ? Math.max(0, n) : 0);
   });
   const out = nums.slice();
   while (out.length < targetLen) out.push(0);
@@ -307,6 +309,7 @@ export function ChartDataEditorModal({
   const [lineDotRadius, setLineDotRadius] = useState(1.85);
   const [lineStrokeWidth, setLineStrokeWidth] = useState(1.35);
   const [lineAreaOpacity, setLineAreaOpacity] = useState(0.42);
+  const [valuesLocked, setValuesLocked] = useState(false);
 
   useEffect(() => {
     if (visible && node) {
@@ -326,7 +329,9 @@ export function ChartDataEditorModal({
           return {
             id: s.id || newChartSliceId(),
             name: s.name,
-            valuesStr: (s.values ?? []).map((v) => String(v)).join(", "),
+            valuesStr: (s.values ?? [])
+              .map((v) => formatChartValueForEdit(typeof v === "number" ? v : Number(v)))
+              .join(", "),
             fillStyle: fs,
             color: s.color ?? "",
             gradientColor1: gc?.[0] ?? "",
@@ -388,6 +393,7 @@ export function ChartDataEditorModal({
             ? Math.min(1, Math.max(0, spec.areaFillOpacity))
             : 0.42
         );
+        setValuesLocked(spec.valuesLocked === true);
         if (nextBar.length > 2) {
           setCollapsedBarIds(new Set(nextBar.map((r) => r.id)));
         } else {
@@ -408,7 +414,9 @@ export function ChartDataEditorModal({
           return {
             id: s.id || newChartSliceId(),
             name: s.name,
-            valuesStr: (s.values ?? []).map((v) => String(v)).join(", "),
+            valuesStr: (s.values ?? [])
+              .map((v) => formatChartValueForEdit(typeof v === "number" ? v : Number(v)))
+              .join(", "),
             fillStyle: fs,
             color: s.color ?? "",
             gradientColor1: gc?.[0] ?? "",
@@ -424,6 +432,7 @@ export function ChartDataEditorModal({
         setCategoryLabelsStr(
           Array.isArray(spec.categoryLabels) ? spec.categoryLabels.join(", ") : ""
         );
+        setValuesLocked(spec.valuesLocked === true);
         setStacked100(spec.stacked100 === true);
         setBarVertical(spec.vertical !== false);
         setCategoryGap(
@@ -504,7 +513,7 @@ export function ChartDataEditorModal({
         return {
           id: s.id || newChartSliceId(),
           name: s.name,
-          valueStr: String(s.value),
+          valueStr: formatChartValueForEdit(typeof s.value === "number" ? s.value : Number(s.value)),
           fillStyle: fs,
           color: s.color ?? "",
           gradientColor1: gc?.[0] ?? "",
@@ -534,6 +543,7 @@ export function ChartDataEditorModal({
           ? Math.min(CHART_MAX_SEGMENT_PULL, spec.segmentGapDeg)
           : 0
       );
+      setValuesLocked(spec.valuesLocked === true);
       if (nextRows.length > 2) {
         setCollapsedSliceIds(new Set(nextRows.map((r) => r.id)));
       } else {
@@ -750,6 +760,7 @@ export function ChartDataEditorModal({
       const lineChart: NodeChartSpecLine = {
         kind: "line",
         series,
+        ...(valuesLocked ? { valuesLocked: true } : {}),
         ...(labelParts.length ? { categoryLabels: labelParts.slice(0, maxCat) } : {}),
         ...(showLineArea ? { showAreaFill: true } : { showAreaFill: false }),
         areaFillOpacity: Math.min(1, Math.max(0, lineAreaOpacity)),
@@ -837,6 +848,7 @@ export function ChartDataEditorModal({
       const barChart: NodeChartSpecBar = {
         kind: "bar",
         series,
+        ...(valuesLocked ? { valuesLocked: true } : {}),
         ...(labelParts.length ? { categoryLabels: labelParts.slice(0, maxCat) } : {}),
         ...(stacked100 ? { stacked100: true } : {}),
         ...(barVertical ? { vertical: true } : { vertical: false }),
@@ -874,7 +886,7 @@ export function ChartDataEditorModal({
 
     const cleaned: ChartSeriesItem[] = rows.map((r, i) => {
       const raw = Number(String(r.valueStr).replace(/,/g, "."));
-      const value = Number.isFinite(raw) ? Math.max(0, raw) : 0;
+      const value = roundChartDataValue(Number.isFinite(raw) ? Math.max(0, raw) : 0);
       const name = (r.name ?? "").trim() || `Series ${i + 1}`;
       const base: ChartSeriesItem = {
         id: r.id || newChartSliceId(),
@@ -918,6 +930,7 @@ export function ChartDataEditorModal({
     const chart: NodeChartSpec = {
       kind: "pie",
       series: cleaned,
+      ...(valuesLocked ? { valuesLocked: true } : {}),
       ...(sliceBorderColor.trim() ? { sliceBorderColor: sliceBorderColor.trim() } : {}),
       ...(chartShadow ? { shadow: true } : {}),
       ...(segmentGapDeg > 0
@@ -1017,7 +1030,7 @@ export function ChartDataEditorModal({
                       />
                     </div>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                      <div className="flex items-center gap-2">
+                                           <div className="flex items-center gap-2">
                         <Label htmlFor="chart-data-bar-shadow" className="text-xs font-medium">
                           Chart shadow
                         </Label>
@@ -1025,6 +1038,17 @@ export function ChartDataEditorModal({
                           id="chart-data-bar-shadow"
                           checked={chartShadow}
                           onCheckedChange={setChartShadow}
+                          disabled={isReadOnly}
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="chart-data-lock-values" className="text-xs font-medium">
+                          Lock segment values
+                        </Label>
+                        <Switch
+                          id="chart-data-lock-values"
+                          checked={valuesLocked}
+                          onCheckedChange={setValuesLocked}
                           disabled={isReadOnly}
                         />
                       </div>
@@ -1751,6 +1775,17 @@ export function ChartDataEditorModal({
                       id="chart-data-segment-labels"
                       checked={showSegmentLabels}
                       onCheckedChange={setShowSegmentLabels}
+                      disabled={isReadOnly}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="chart-data-pie-lock-values" className="text-xs font-medium">
+                      Lock segment values
+                    </Label>
+                    <Switch
+                      id="chart-data-pie-lock-values"
+                      checked={valuesLocked}
+                      onCheckedChange={setValuesLocked}
                       disabled={isReadOnly}
                     />
                   </div>

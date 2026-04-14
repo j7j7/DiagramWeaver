@@ -28,6 +28,7 @@ import {
   chartSegmentPopKeyframesCss,
   type ChartSlideStagger,
 } from "@/lib/chart-presentation-stagger";
+import { roundChartDragValue } from "@/lib/chart-node";
 
 const VB_W = 100;
 const VB_H = 68;
@@ -754,10 +755,11 @@ export function LineChartShape(props: LineChartShapeProps) {
                         );
                         const pt = svgUserPointFromClient(drag.svg, e.clientX, e.clientY);
                         const { plot: pl, valueAxisMax: vmax } = layoutMetricsRef.current;
-                        const v = pt
+                        const vRaw = pt
                           ? chartValueFromVerticalValueAxis(pt.y, pl.y0, pl.h, vmax)
                           : null;
-                        if (v != null) {
+                        if (vRaw != null) {
+                          const v = roundChartDragValue(vRaw);
                           onLinePointValueChange(drag.seriesIndex, drag.categoryIndex, v);
                           cancelLeaveTimer();
                           setHoveredDotKey(dk);

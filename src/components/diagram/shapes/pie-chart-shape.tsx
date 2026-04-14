@@ -11,7 +11,7 @@ import {
   getGradientCoordinates,
   svgForeignObjectInlineInputStyle,
 } from "./shape-utils";
-import { pieSlicesForSvg, truncatePieSliceLabel } from "@/lib/chart-node";
+import { pieSlicesForSvg, roundChartDragValue, truncatePieSliceLabel } from "@/lib/chart-node";
 import {
   chartValueFromVerticalValueAxis,
   svgUserPointFromClient,
@@ -304,8 +304,7 @@ export function PieChartShape(props: PieChartShapeProps) {
               2 * VB_R,
               drag.valueSpan
             );
-            const v = Math.max(
-              0,
+            const v = roundChartDragValue(
               drag.startCellValue + axisV - drag.startAxisValue
             );
             onPieSliceValueChange(drag.seriesIndex, v);

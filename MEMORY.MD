@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-04-14 – Charts: lock segment values + 2dp data values
+**`valuesLocked`** on **`NodeChartSpec`** (pie / bar / line): Chart data modal switch **Lock segment values** — when on, canvas drag (and inline value edit on the shape) is disabled; the modal still edits numbers. **`roundChartDataValue`** / **`formatChartValueForEdit`** in **`chart-node`**: stored chart magnitudes round to **2** decimal places (modal save, bar/line CSV lists, pie rows, and commits from **`diagram-node`**). **`roundChartDragValue`**: pointer **drag** on pie / bar / line commits **whole non-negative integers** only (tooltips use the same); typed inline edit on the chart still allows decimals → **2dp** via **`diagram-node`**. Zod **`schemas`** accepts **`valuesLocked`**.
+
 ### 2026-04-14 – Highlight UI + Windows: styling source, transition clash
 **`getCurrentVisualStyling`** always resolves the node from **`diagramData.nodes`** (single-select was using stale **`selectedItem`**, so duration/interval prefilled as defaults). **Highlight** fields use focus-aware draft sync. **Pulse** keyframes add **`filter: drop-shadow`** + **`type="text/css"`** on injected **`<style>`**, **`will-change`**, **`cssColorForKeyframes`**; when **`highlightAnim`**, node wrapper uses **`transition-transform`** only so **`transition-[transform,filter]`** does not fight **`box-shadow`/`filter`** keyframes (helps some **Chrome/Windows** builds).
 

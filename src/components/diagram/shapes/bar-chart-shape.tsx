@@ -31,6 +31,7 @@ import {
   chartSegmentPopKeyframesCss,
   type ChartSlideStagger,
 } from "@/lib/chart-presentation-stagger";
+import { roundChartDragValue } from "@/lib/chart-node";
 
 const VB_W = 100;
 const VB_H = 68;
@@ -526,8 +527,7 @@ export function BarChartShape(props: BarChartShapeProps) {
           );
           const axisV = valueFromPointerClient(drag.svg, e.clientX, e.clientY);
           if (axisV != null) {
-            const v = Math.max(
-              0,
+            const v = roundChartDragValue(
               drag.startCellValue + axisV - drag.startAxisValue
             );
             onBarCellValueChange(drag.segmentIndex, drag.categoryIndex, v);
