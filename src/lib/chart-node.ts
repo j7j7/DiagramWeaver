@@ -133,36 +133,83 @@ export function newChartSliceId(): string {
 export function defaultPieChartSpec(): NodeChartSpecPie {
   return {
     kind: "pie",
-    series: [{ id: newChartSliceId(), name: "Series 1", value: 100 }],
+    segmentGapDeg: 1,
+    series: [
+      { id: newChartSliceId(), name: "Series 1", value: 100 },
+      { id: newChartSliceId(), name: "Series 2", value: 50 },
+    ],
   };
 }
 
-export function defaultBarChartSpec(): NodeChartSpecBar {
+const LINE_CHART_DEFAULT_CATEGORY_COUNT = 5;
+const LINE_CHART_RANDOM_MIN = 1;
+const LINE_CHART_RANDOM_MAX = 100;
+
+const BAR_CHART_DEFAULT_CATEGORY_COUNT = 4;
+
+function randomCategoryRowValues(length: number, min: number, max: number): number[] {
+  const row: number[] = [];
+  for (let i = 0; i < length; i++) {
+    row.push(Math.floor(Math.random() * (max - min + 1)) + min);
+  }
+  return row;
+}
+
+function randomLineChartValues(length: number): number[] {
+  return randomCategoryRowValues(length, LINE_CHART_RANDOM_MIN, LINE_CHART_RANDOM_MAX);
+}
+
+function baseBarChartSpecFields(): Omit<NodeChartSpecBar, "kind" | "series"> {
   return {
-    kind: "bar",
-    series: [
-      { id: newChartSliceId(), name: "Segment 1", values: [10, 20, 30, 40] },
-      { id: newChartSliceId(), name: "Segment 2", values: [15, 24, 2, 4] },
-    ],
     stacked100: false,
     vertical: true,
     categoryGap: 0.22,
     stackGap: 0.12,
-    showSegmentLabels: true,
-    showGridX: false,
-    showGridY: false,
+    showSegmentLabels: false,
+    showGridX: true,
+    showGridY: true,
     showValueAxis: true,
     showCategoryLabels: true,
+    showSegmentValues: true,
+    showLegend: true,
   };
 }
 
-export function defaultLineChartSpec(): NodeChartSpecLine {
+/** Stable sample bar chart for palette preview, modals, and fallbacks (values in 1–100). */
+export function defaultBarChartSpec(): NodeChartSpecBar {
   return {
-    kind: "line",
+    kind: "bar",
     series: [
-      { id: newChartSliceId(), name: "Series A", values: [12, 28, 18, 35, 22] },
-      { id: newChartSliceId(), name: "Series B", values: [8, 16, 30, 14, 26] },
+      { id: newChartSliceId(), name: "Segment 1", values: [47, 82, 15, 91] },
+      { id: newChartSliceId(), name: "Segment 2", values: [33, 56, 78, 12] },
     ],
+    ...baseBarChartSpecFields(),
+  };
+}
+
+/** Random integer values per category (new canvas bar node). */
+export function randomBarChartSpec(): NodeChartSpecBar {
+  const n = BAR_CHART_DEFAULT_CATEGORY_COUNT;
+  return {
+    kind: "bar",
+    series: [
+      {
+        id: newChartSliceId(),
+        name: "Segment 1",
+        values: randomCategoryRowValues(n, LINE_CHART_RANDOM_MIN, LINE_CHART_RANDOM_MAX),
+      },
+      {
+        id: newChartSliceId(),
+        name: "Segment 2",
+        values: randomCategoryRowValues(n, LINE_CHART_RANDOM_MIN, LINE_CHART_RANDOM_MAX),
+      },
+    ],
+    ...baseBarChartSpecFields(),
+  };
+}
+
+function baseLineChartSpecFields(): Omit<NodeChartSpecLine, "kind" | "series"> {
+  return {
     showAreaFill: true,
     areaFillOpacity: 0.42,
     smooth: true,
@@ -174,10 +221,35 @@ export function defaultLineChartSpec(): NodeChartSpecLine {
   };
 }
 
+/** Stable sample data for palette preview, modals, and tests. */
+export function defaultLineChartSpec(): NodeChartSpecLine {
+  return {
+    kind: "line",
+    series: [
+      { id: newChartSliceId(), name: "Series A", values: [12, 28, 18, 35, 22] },
+      { id: newChartSliceId(), name: "Series B", values: [8, 16, 30, 14, 26] },
+    ],
+    ...baseLineChartSpecFields(),
+  };
+}
+
+/** Random integer values per category (new canvas node). */
+export function randomLineChartSpec(): NodeChartSpecLine {
+  const n = LINE_CHART_DEFAULT_CATEGORY_COUNT;
+  return {
+    kind: "line",
+    series: [
+      { id: newChartSliceId(), name: "Series A", values: randomLineChartValues(n) },
+      { id: newChartSliceId(), name: "Series B", values: randomLineChartValues(n) },
+    ],
+    ...baseLineChartSpecFields(),
+  };
+}
+
 /** Palette / drop default chart payload from node `type`. */
 export function defaultChartSpecForNodeType(nodeType: string | undefined): NodeChartSpec {
-  if (nodeType === "generic.chart.bar") return defaultBarChartSpec();
-  if (nodeType === "generic.chart.line") return defaultLineChartSpec();
+  if (nodeType === "generic.chart.bar") return randomBarChartSpec();
+  if (nodeType === "generic.chart.line") return randomLineChartSpec();
   return defaultPieChartSpec();
 }
 

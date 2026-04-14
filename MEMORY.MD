@@ -2,11 +2,26 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-04-14 – Pie chart: default size, two slices, segment separation
+New **`generic.chart.pie`** palette drops: **410×320** (was **60×60** via generic shape fallback). **`defaultPieChartSpec()`**: two series (**100** + **50**), **`segmentGapDeg: 1`** (chart-default radial pull).
+
+### 2026-04-14 – Bar chart: default size, sample data, display toggles
+New **`generic.chart.bar`** palette drops: **380×280** (was **100×68**). **`randomBarChartSpec()`** — two segments × **4** categories, values **1–100** random — used for new nodes (**`defaultChartSpecForNodeType`**); **`defaultBarChartSpec()`** stays a fixed **1–100** sample for preview / editor fallbacks. Defaults: **segment names in bars off**, **values in segments on**, **both grids on**, **bottom legend on**.
+
 ### 2026-04-13 – Palette: pie + bar + line chart vector thumbnails
 **`resource-icon.tsx`**: **`ChartPalettePieGlyph`**, **`ChartPaletteBarGlyph`**, **`ChartPaletteLineGlyph`** (axes + polyline + dots). **`generic.chart.pie`** / **`.bar`** / **`.line`** use these instead of catalog images where wired. **`draggable-resource-item`** / **`resource-browser`**: **`line-chart`** slug → **`generic.chart.line`**. Catalog asset **`line-chart.svg`** under **`generic/object/`** for non-ResourceIcon contexts.
 
 ### 2026-04-13 – Line chart vs connector line type guard
 **`isConnectorLineNodeType`** in **`utils.ts`**: true for **`generic.object.line`** and types ending in **`.line`**, but **false** for **`generic.chart.line`** (and any **`*chart.line`**). Replaces **`endsWith('.line')`** checks that misclassified line charts as polyline nodes (**`diagram-node`** had **`pointer-events: none`** and no **`onClick`** on the wrapper). Updated **editor-canvas**, **context-toolbar**, **canvas-constants**, **canvas-operations**, **use-canvas-drag-drop**, **context-menu**, **resource-icon**.
+
+### 2026-04-13 – Line chart: new node size + random sample data
+New **`generic.chart.line`** nodes from the palette: **470×320** (was 100×68); bar chart unchanged. **`randomLineChartSpec()`** in **`chart-node.ts`**: two series × **5** categories, values **1–100** random; used by **`defaultChartSpecForNodeType`** and empty **Chart data** save. **`defaultLineChartSpec()`** stays a fixed sample for preview / editor fallbacks.
+
+### 2026-04-13 – Line chart: point drag vs node drag (HTML5 DnD)
+Hit circles use **`data-dw-line-chart-point-handle`**. **`LineChartShape`** **`onLineChartPointDragSessionChange`**: **`true`** on point **`pointerdown`** (after **`ownerSVGElement`** check), **`false`** on **`pointerup`** / **`pointercancel`** / **`lostpointercapture`**; **`onMouseDownCapture`** **`stopPropagation`** on the hit circle. **`diagram-node`** **`lineChartPointInteractionRef`** gates **`useDrag`** **`canDrag`** so react-dnd never starts a node drag while a point is held. **`onDragStart`** **`preventDefault`** + **`handleTouchStart`** skip remain as extras.
+
+### 2026-04-13 – Line chart: drag points to edit values
+**`LineChartShape`**: pointer **capture** on dot hit-circles; **client → SVG user** coords via **`getScreenCTM().inverse()`**; value from Y with **`lineChartValueFromSvgY`** (same scale as **`buildLineChartLayout`**). **`onLinePointValueChange`** on move (read-only / no handler = no drag). **Double-click** inline edit suppressed briefly after a drag (**`DOT_DRAG_SUPPRESS_DBLCLICK_PX`**). Pointer leave during drag does not clear the tooltip.
 
 ### 2026-04-13 – Line chart: per-series line color in Chart data
 Each **`series`** row uses **`ChartBarSegmentItem.color`** (and **`gradientColors`** when style is gradient) for the polyline and markers (**`buildLineChartLayout`**). **Chart data** modal (line mode): clearer labels (**Series style**, **Line color** when **Line only**, **Line & area** for solid/gradient), collapsed row **color swatch**, and **Save** now keeps **`color`** when **`fillStyle: 'none'`** (line + bar save paths) so “line only” picks persist.

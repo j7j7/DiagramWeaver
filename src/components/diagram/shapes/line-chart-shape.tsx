@@ -25,6 +25,46 @@ const LABEL_LINE_HEIGHT_EM = 1.15;
 
 const DOT_POINTER_LEAVE_DELAY_MS = 140;
 const DOT_HIT_PAD = 2.8;
+/** Ignore double-click-to-edit after a drag gesture (screen px). */
+const DOT_DRAG_SUPPRESS_DBLCLICK_PX = 6;
+
+function svgUserPointFromClient(
+  svg: SVGSVGElement,
+  clientX: number,
+  clientY: number
+): { x: number; y: number } | null {
+  const pt = svg.createSVGPoint();
+  pt.x = clientX;
+  pt.y = clientY;
+  const ctm = svg.getScreenCTM();
+  if (!ctm) return null;
+  const p = pt.matrixTransform(ctm.inverse());
+  return { x: p.x, y: p.y };
+}
+
+function lineChartValueFromSvgY(
+  svgY: number,
+  plotY0: number,
+  plotH: number,
+  valueAxisMax: number
+): number {
+  if (!Number.isFinite(svgY) || plotH <= 0 || !Number.isFinite(valueAxisMax) || valueAxisMax <= 0) {
+    return 0;
+  }
+  const t = (plotY0 + plotH - svgY) / plotH;
+  const v = t * valueAxisMax;
+  return Math.max(0, Number.isFinite(v) ? v : 0);
+}
+
+type DotDragSession = {
+  pointerId: number;
+  svg: SVGSVGElement;
+  seriesIndex: number;
+  categoryIndex: number;
+  startClientX: number;
+  startClientY: number;
+  maxMove: number;
+};
 
 function LineSvgTextBlock(props: {
   lines: string[];
@@ -96,6 +136,8 @@ interface LineChartShapeProps {
   onLineSeriesNameChange?: (seriesIndex: number, name: string) => void;
   onLineCategoryLabelChange?: (categoryIndex: number, label: string) => void;
   onLinePointValueChange?: (seriesIndex: number, categoryIndex: number, value: number) => void;
+  /** Notifies parent to block canvas node drag while a point handle is held (react-dnd `canDrag`). */
+  onLineChartPointDragSessionChange?: (active: boolean) => void;
 }
 
 type LineInlineEditState =
@@ -109,6 +151,7 @@ export function LineChartShape(props: LineChartShapeProps) {
     onLineSeriesNameChange,
     onLineCategoryLabelChange,
     onLinePointValueChange,
+    onLineChartPointDragSessionChange,
     ...svgBaseProps
   } = props;
   const { node, slideColorTransition } = svgBaseProps;
@@ -130,6 +173,9 @@ export function LineChartShape(props: LineChartShapeProps) {
   const [inlineDraft, setInlineDraft] = useState("");
   const inlineEditCancelledRef = useRef(false);
   const leaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const layoutMetricsRef = useRef({ plot: { x0: 0, y0: 0, w: 0, h: 0 }, valueAxisMax: 1 });
+  const dotDragRef = useRef<DotDragSession | null>(null);
+  const suppressDblClickAfterDragRef = useRef(false);
 
   const series = chart.series;
 
@@ -225,6 +271,8 @@ export function LineChartShape(props: LineChartShapeProps) {
     categoryLabelLines,
     legendLabelLines,
   } = model;
+
+  layoutMetricsRef.current = { plot, valueAxisMax };
 
   useEffect(() => {
     if (!inlineEdit) return;
@@ -645,23 +693,124 @@ export function LineChartShape(props: LineChartShapeProps) {
                     r={dotR + DOT_HIT_PAD}
                     fill="transparent"
                     stroke="none"
-                    style={{ cursor: canEditValue ? "text" : "default", touchAction: "none" }}
+                    data-dw-line-chart-point-handle=""
+                    onMouseDownCapture={(e) => {
+                      if (!canEditValue || !onLinePointValueChange) return;
+                      e.stopPropagation();
+                    }}
+                    style={{
+                      cursor: canEditValue ? "ns-resize" : "default",
+                      touchAction: "none",
+                    }}
                     onPointerEnter={(e) => {
+                      if (dotDragRef.current) return;
                       cancelLeaveTimer();
                       setHoveredDotKey(dk);
                       setTooltip({ x: e.clientX, y: e.clientY, text: tip });
                     }}
                     onPointerMove={(e) => {
+                      const drag = dotDragRef.current;
+                      if (
+                        drag &&
+                        drag.pointerId === e.pointerId &&
+                        canEditValue &&
+                        onLinePointValueChange
+                      ) {
+                        drag.maxMove = Math.max(
+                          drag.maxMove,
+                          Math.abs(e.clientX - drag.startClientX),
+                          Math.abs(e.clientY - drag.startClientY)
+                        );
+                        const pt = svgUserPointFromClient(drag.svg, e.clientX, e.clientY);
+                        const { plot: pl, valueAxisMax: vmax } = layoutMetricsRef.current;
+                        const v = pt
+                          ? lineChartValueFromSvgY(pt.y, pl.y0, pl.h, vmax)
+                          : null;
+                        if (v != null) {
+                          onLinePointValueChange(drag.seriesIndex, drag.categoryIndex, v);
+                          cancelLeaveTimer();
+                          setHoveredDotKey(dk);
+                          setTooltip({
+                            x: e.clientX,
+                            y: e.clientY,
+                            text: `${sLayout.name}\n${categoryName(p.categoryIndex)}: ${formatAxisNumber(v)}`,
+                          });
+                        }
+                        return;
+                      }
                       setTooltip((prev) =>
                         prev
                           ? { ...prev, x: e.clientX, y: e.clientY }
                           : { x: e.clientX, y: e.clientY, text: tip }
                       );
                     }}
-                    onPointerLeave={scheduleLeave}
-                    onPointerDown={(e) => canEditValue && e.stopPropagation()}
+                    onPointerLeave={(e) => {
+                      const drag = dotDragRef.current;
+                      if (drag && drag.pointerId === e.pointerId) return;
+                      scheduleLeave();
+                    }}
+                    onPointerDown={(e) => {
+                      if (!canEditValue || !onLinePointValueChange) return;
+                      e.stopPropagation();
+                      const svg = e.currentTarget.ownerSVGElement;
+                      if (!svg) return;
+                      onLineChartPointDragSessionChange?.(true);
+                      try {
+                        e.currentTarget.setPointerCapture(e.pointerId);
+                      } catch {
+                        /* ignore */
+                      }
+                      dotDragRef.current = {
+                        pointerId: e.pointerId,
+                        svg,
+                        seriesIndex: si,
+                        categoryIndex: p.categoryIndex,
+                        startClientX: e.clientX,
+                        startClientY: e.clientY,
+                        maxMove: 0,
+                      };
+                    }}
+                    onPointerUp={(e) => {
+                      const drag = dotDragRef.current;
+                      if (drag && drag.pointerId === e.pointerId) {
+                        if (drag.maxMove >= DOT_DRAG_SUPPRESS_DBLCLICK_PX) {
+                          suppressDblClickAfterDragRef.current = true;
+                          window.setTimeout(() => {
+                            suppressDblClickAfterDragRef.current = false;
+                          }, 450);
+                        }
+                        try {
+                          e.currentTarget.releasePointerCapture(e.pointerId);
+                        } catch {
+                          /* ignore */
+                        }
+                        dotDragRef.current = null;
+                      }
+                      onLineChartPointDragSessionChange?.(false);
+                    }}
+                    onPointerCancel={(e) => {
+                      const drag = dotDragRef.current;
+                      if (drag && drag.pointerId === e.pointerId) {
+                        try {
+                          e.currentTarget.releasePointerCapture(e.pointerId);
+                        } catch {
+                          /* ignore */
+                        }
+                        dotDragRef.current = null;
+                      }
+                      onLineChartPointDragSessionChange?.(false);
+                    }}
+                    onLostPointerCapture={() => {
+                      dotDragRef.current = null;
+                      onLineChartPointDragSessionChange?.(false);
+                    }}
                     onDoubleClick={(e) => {
                       if (!canEditValue) return;
+                      if (suppressDblClickAfterDragRef.current) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return;
+                      }
                       e.stopPropagation();
                       e.preventDefault();
                       const v = p.value;

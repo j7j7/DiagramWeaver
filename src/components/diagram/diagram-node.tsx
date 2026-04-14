@@ -302,6 +302,8 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
   const [isDraggingLineEndpoint, setIsDraggingLineEndpoint] = useState(false);
   const [lineEndpointHandle, setLineEndpointHandle] = useState<'start' | 'end' | null>(null);
   const lineEndpointStartPos = useRef<{ x: number; y: number; startPoint: { x: number; y: number }; endPoint: { x: number; y: number } } | null>(null);
+  /** While true, line chart value handles are active — react-dnd must not move the node. */
+  const lineChartPointInteractionRef = useRef(false);
 
   // Corner radius drag state (rounded-rectangle only)
   const [isDraggingCornerRadius, setIsDraggingCornerRadius] = useState(false);
@@ -658,6 +660,13 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
                     return { ...row, values: vals };
                   });
                   onUpdate({ ...node, chart: { ...c, series: nextSeries } });
+                }
+              : undefined
+          }
+          onLineChartPointDragSessionChange={
+            !isReadOnly
+              ? (active) => {
+                  lineChartPointInteractionRef.current = active;
                 }
               : undefined
           }
@@ -1036,7 +1045,13 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
       originalType: node.type,
       label: node.label || '' 
     },
-    canDrag: () => !isDuplicateDragPreview && !isLocked && !isReadOnly && !isEditingLabel && !isEditingTag,
+    canDrag: () =>
+      !isDuplicateDragPreview &&
+      !isLocked &&
+      !isReadOnly &&
+      !isEditingLabel &&
+      !isEditingTag &&
+      !lineChartPointInteractionRef.current,
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
@@ -1465,6 +1480,13 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
 
   // Touch event handlers for mobile drag and drop
   const handleTouchStart = (e: React.TouchEvent) => {
+    const rawTarget = e.target;
+    if (
+      rawTarget instanceof Element &&
+      rawTarget.closest("[data-dw-line-chart-point-handle]")
+    ) {
+      return;
+    }
     if (isLocked || isReadOnly) {
       e.stopPropagation();
       e.preventDefault();
@@ -1640,6 +1662,16 @@ return (
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      onDragStart={(e) => {
+        const rawTarget = e.target;
+        if (
+          rawTarget instanceof Element &&
+          rawTarget.closest("[data-dw-line-chart-point-handle]")
+        ) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }}
     >
       <SlideShapeShadowTransitionProvider animationStyle={animationStyle}>
       <Popover open={isOpen && !isDragging && !isEditingLabel && !isEditingTag} onOpenChange={setIsOpen}>

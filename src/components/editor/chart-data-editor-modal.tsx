@@ -27,6 +27,7 @@ import {
   defaultBarChartSpec,
   defaultLineChartSpec,
   defaultPieChartSpec,
+  randomLineChartSpec,
   newChartSliceId,
   DEFAULT_PIE_SLICE_COLORS,
   DEFAULT_PIE_SLICE_LABEL_COLOR,
@@ -296,7 +297,7 @@ export function ChartDataEditorModal({
   const [showValueAxis, setShowValueAxis] = useState(true);
   const [axisColor, setAxisColor] = useState("");
   const [showCategoryLabels, setShowCategoryLabels] = useState(true);
-  const [showBarSegmentValues, setShowBarSegmentValues] = useState(false);
+  const [showBarSegmentValues, setShowBarSegmentValues] = useState(true);
   const [showBarLegend, setShowBarLegend] = useState(false);
   const [barCategoryLabelFontSizeStr, setBarCategoryLabelFontSizeStr] = useState("");
   const [barLegendLabelFontSizeStr, setBarLegendLabelFontSizeStr] = useState("");
@@ -712,7 +713,7 @@ export function ChartDataEditorModal({
       );
       const maxCat = Math.max(1, labelParts.length, ...rawLens, 0);
       if (barRows.length === 0) {
-        onSave(node.id, defaultLineChartSpec());
+        onSave(node.id, randomLineChartSpec());
         onClose();
         return;
       }

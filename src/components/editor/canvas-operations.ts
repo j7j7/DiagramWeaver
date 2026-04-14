@@ -165,7 +165,9 @@ export function useCanvasOperations({
              itemType === 'generic.object.text-box-heading' ? 180 :
              itemType === 'generic.object.cloud' ? 80 :
              itemType === 'generic.object.line' ? 150 :
-             itemType === 'generic.chart.bar' || itemType === 'generic.chart.line' ? 100 :
+             itemType === 'generic.chart.line' ? 470 :
+             itemType === 'generic.chart.bar' ? 380 :
+             itemType === 'generic.chart.pie' ? 410 :
              60
            ) : isRichTextBoxLikeResource ? snapDimensionToGrid(240, 40) : undefined, // Initial width - 100% wider than before (was 120)
            height: isShapeResource ? snapDimensionToGrid(
@@ -176,7 +178,9 @@ export function useCanvasOperations({
              itemType === 'generic.object.text-box-heading' ? 90 :
              itemType === 'generic.object.cloud' ? 50 :
              itemType === 'generic.object.line' ? 100 :
-             itemType === 'generic.chart.bar' || itemType === 'generic.chart.line' ? 68 :
+             itemType === 'generic.chart.line' ? 320 :
+             itemType === 'generic.chart.bar' ? 280 :
+             itemType === 'generic.chart.pie' ? 320 :
              60
            ) : isRichTextBoxLikeResource ? snapDimensionToGrid(80, 40) : undefined, // Initial height - same as textbox for plain text
           // Apply default text color for text resources
