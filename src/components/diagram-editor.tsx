@@ -5372,8 +5372,8 @@ function DiagramEditorInner({
           </button>
         )}
         
-        <main className={`flex-1 flex flex-col ${isMobile ? 'w-full' : ''} ${isMobile && sidebarOpen ? 'pointer-events-none' : ''} ${(jsonPanelOpen || propertiesPanelVisible) ? 'min-w-0' : ''}`}>
-            <header className="flex flex-col border-b bg-card">
+        <main className={`flex-1 flex flex-col min-h-0 ${isMobile ? 'w-full' : ''} ${isMobile && sidebarOpen ? 'pointer-events-none' : ''} ${(jsonPanelOpen || propertiesPanelVisible) ? 'min-w-0' : ''}`}>
+            <header className="flex shrink-0 flex-col border-b bg-card">
                 <TopMenuBar
                     onNew={handleNew}
                     onLoad={handleLoadClick}
@@ -5528,7 +5528,7 @@ function DiagramEditorInner({
                   onExitPresentationMode={handleExitPresentationMode}
                 />
             </header>
-            <div className="flex-1 flex flex-col">
+            <div className="flex min-h-0 flex-1 flex-col">
                 {!presentationModeEnabled && activeDiagramStack.length > 0 && (
                   <DiagramBreadcrumb
                     segments={[{ diagramId: null }, ...activeDiagramStack]}
@@ -5538,8 +5538,8 @@ function DiagramEditorInner({
                     isReadOnly={isReadOnly}
                   />
                 )}
-                <div className={`flex flex-1 ${(jsonPanelOpen || propertiesPanelVisible) ? 'overflow-x-auto' : ''}`}>
-                  <div className={`flex-1 h-full min-w-0 ${(jsonPanelOpen || propertiesPanelVisible) ? 'mr-2' : ''}`}>
+                <div className={`flex min-h-0 flex-1 ${(jsonPanelOpen || propertiesPanelVisible) ? 'overflow-x-auto' : ''}`}>
+                  <div className={`flex-1 h-full min-h-0 min-w-0 ${(jsonPanelOpen || propertiesPanelVisible) ? 'mr-2' : ''}`}>
                 <EditorCanvas
                     key={canvasRefreshKey}
                     ref={editorRef}

@@ -630,6 +630,9 @@ export function useCanvasDragDrop({
         // Clear both so a mouseup-before-drop frame does not show only the primary node at drag delta
         setDragPosition(null);
         setMultiDragPositions(null);
+        isDraggingRef.current = false;
+        axisLockRef.current = null;
+        onDraggingChange?.(false);
       }
     };
     
@@ -641,7 +644,7 @@ export function useCanvasDragDrop({
         dragRafIdRef.current = null;
       }
     };
-  }, []);
+  }, [onDraggingChange]);
 
   return {
     dragPosition,

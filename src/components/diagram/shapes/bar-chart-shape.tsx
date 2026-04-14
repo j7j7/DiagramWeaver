@@ -87,6 +87,10 @@ type BarCellDragSession = {
   startClientX: number;
   startClientY: number;
   maxMove: number;
+  /** Cumulative axis value at pointer (pointerdown). */
+  startAxisValue: number;
+  /** `series[segmentIndex].values[categoryIndex]` at pointerdown (same render as the bar rect). */
+  startCellValue: number;
 };
 
 interface BarChartShapeProps {
@@ -128,21 +132,6 @@ function formatAxisNumber(n: number): string {
   if (!Number.isFinite(n)) return "";
   if (Math.abs(n - Math.round(n)) < 1e-6) return String(Math.round(n));
   return n.toFixed(1).replace(/\.0$/, "");
-}
-
-/** Cumulative value of stacked segments below `segmentIndex` in this category (axis space). */
-function stackBelowSumForBarCell(
-  seriesRows: NodeChartSpecBar["series"],
-  categoryIndex: number,
-  segmentIndex: number
-): number {
-  if (!Array.isArray(seriesRows) || segmentIndex <= 0) return 0;
-  let s = 0;
-  for (let k = 0; k < segmentIndex; k++) {
-    const vals = seriesRows[k]?.values;
-    s += Array.isArray(vals) ? Math.max(0, vals[categoryIndex] ?? 0) : 0;
-  }
-  return s;
 }
 
 export function BarChartShape(props: BarChartShapeProps) {
@@ -394,6 +383,8 @@ export function BarChartShape(props: BarChartShapeProps) {
             e.stopPropagation();
             const svg = e.currentTarget.ownerSVGElement;
             if (!svg) return;
+            const startAxis =
+              valueFromPointerClient(svg, e.clientX, e.clientY) ?? 0;
             onBarChartValueDragSessionChange?.(true);
             try {
               e.currentTarget.setPointerCapture(e.pointerId);
@@ -408,6 +399,8 @@ export function BarChartShape(props: BarChartShapeProps) {
               startClientX: e.clientX,
               startClientY: e.clientY,
               maxMove: 0,
+              startAxisValue: startAxis,
+              startCellValue: Number.isFinite(r.value) ? r.value : 0,
             };
           },
           onPointerUp: (e: React.PointerEvent<SVGRectElement>) => {
@@ -477,12 +470,10 @@ export function BarChartShape(props: BarChartShapeProps) {
           );
           const axisV = valueFromPointerClient(drag.svg, e.clientX, e.clientY);
           if (axisV != null) {
-            const below = stackBelowSumForBarCell(
-              series ?? [],
-              drag.categoryIndex,
-              drag.segmentIndex
+            const v = Math.max(
+              0,
+              drag.startCellValue + axisV - drag.startAxisValue
             );
-            const v = Math.max(0, axisV - below);
             onBarCellValueChange(drag.segmentIndex, drag.categoryIndex, v);
             cancelBarLeaveTimer();
             setHoveredKey(k);
