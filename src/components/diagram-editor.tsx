@@ -136,6 +136,28 @@ import { DiagramBreadcrumb, type BreadcrumbSegment } from './editor/diagram-brea
 /** Presentation slide PNG thumbnails: poll at most this often; capture only when delta fingerprint changed. */
 const PRESENTATION_THUMB_INTERVAL_MS = 3000;
 
+/** IDs in `selectedItemIds` that exist as nodes or zones (connection endpoints), preserving selection order. */
+function collectConnectSourceIdsFromDiagram(selectedItemIds: Set<string>, diagram: DiagramData): string[] {
+  const nodeIds = new Set(diagram.nodes.map((n) => n.id));
+  const zoneIds = new Set((diagram.zones ?? []).map((z) => z.id));
+  const result: string[] = [];
+  const seen = new Set<string>();
+  for (const id of selectedItemIds) {
+    if (seen.has(id)) continue;
+    if (nodeIds.has(id) || zoneIds.has(id)) {
+      result.push(id);
+      seen.add(id);
+    }
+  }
+  return result;
+}
+
+function clearPendingConnectionWindowState(): void {
+  delete (window as unknown as { pendingConnectionSourceId?: string }).pendingConnectionSourceId;
+  delete (window as unknown as { pendingConnectionSourceIds?: string[] }).pendingConnectionSourceIds;
+  delete (window as unknown as { pendingConnectionOptions?: unknown }).pendingConnectionOptions;
+}
+
 export type SelectedItem = (
   | (DiagramNodeData & {
       itemType: 'node',
@@ -2028,49 +2050,71 @@ export default function DiagramEditor() {
   }, [currentDiagramData, activeDiagramStack, setDiagramData]);
 
   const handleConnect = (targetItem: DiagramNodeData) => {
-    const pendingSourceId = (window as any).pendingConnectionSourceId as string | undefined;
-    const sourceId = pendingSourceId || (selectedItem?.itemType === 'node' ? selectedItem.id : undefined);
+    const pendingIdsRaw = (window as unknown as { pendingConnectionSourceIds?: string[] }).pendingConnectionSourceIds;
+    const pendingSingle = (window as unknown as { pendingConnectionSourceId?: string }).pendingConnectionSourceId;
+    let sourceIds: string[] = Array.isArray(pendingIdsRaw) && pendingIdsRaw.length > 0
+      ? pendingIdsRaw
+      : pendingSingle
+        ? [pendingSingle]
+        : selectedItem?.itemType === 'node'
+          ? [selectedItem.id]
+          : [];
 
-    if (!isConnectMode || !sourceId || sourceId === targetItem.id) {
-      delete (window as any).pendingConnectionSourceId;
-      delete (window as any).pendingConnectionOptions;
+    const seen = new Set<string>();
+    sourceIds = sourceIds.filter((id) => {
+      if (!id || id === targetItem.id || seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+
+    if (!isConnectMode || sourceIds.length === 0) {
+      clearPendingConnectionWindowState();
       setIsConnectMode(false);
       return;
     }
 
-    // Get connection options from window storage or use defaults
-    const connectionOptions = (window as any).pendingConnectionOptions || {};
-    
-    const newConnection: DiagramConnectionData = { 
+    const connectionOptions = (window as unknown as { pendingConnectionOptions?: { style?: string; curvature?: number } }).pendingConnectionOptions || {};
+
+    clearPendingConnectionWindowState();
+
+    const connStyle: DiagramConnectionData['style'] =
+      connectionOptions.style === 'orthogonal' ? 'orthogonal' : 'bezier';
+    const connCurvature = connStyle === 'bezier' ? (connectionOptions.curvature ?? 0.5) : undefined;
+
+    const newConnections: DiagramConnectionData[] = sourceIds.map((fromId) => ({
       id: generateConnectionId(),
-      from: sourceId,
+      from: fromId,
       to: targetItem.id,
-      style: connectionOptions.style || 'bezier',
-      curvature: connectionOptions.style === 'bezier' ? (connectionOptions.curvature || 0.5) : undefined,
+      style: connStyle,
+      curvature: connCurvature,
       animation: toConnectionAnimationPatch(DEFAULT_CONNECTION_ANIMATION),
-    };
-    
-    // Clear stored connection options
-    delete (window as any).pendingConnectionSourceId;
-    delete (window as any).pendingConnectionOptions;
-    
-    setCurrentDiagramData(prevData => ({
-      ...prevData,
-      connections: [...prevData.connections, newConnection]
     }));
-    
+
+    setCurrentDiagramData((prevData) => ({
+      ...prevData,
+      connections: [...prevData.connections, ...newConnections],
+    }));
+
     setIsConnectMode(false);
     setSelectedItem(null); // Deselect after connecting
   };
 
   const startConnecting = (connectionOptions?: { style?: 'pathways' | 'bezier', curvature?: number; sourceItemId?: string }) => {
-    const sourceItemId = connectionOptions?.sourceItemId || (selectedItem?.itemType === 'node' ? selectedItem.id : undefined);
+    let sourceIds: string[];
+    if (connectionOptions?.sourceItemId) {
+      sourceIds = [connectionOptions.sourceItemId];
+    } else {
+      sourceIds = collectConnectSourceIdsFromDiagram(selectedItemIds, currentDiagramData);
+      if (sourceIds.length === 0 && selectedItem?.itemType === 'node') {
+        sourceIds = [selectedItem.id];
+      }
+    }
 
-    if (!sourceItemId) return;
+    if (sourceIds.length === 0) return;
 
     setIsConnectMode(true);
-    (window as any).pendingConnectionSourceId = sourceItemId;
-    (window as any).pendingConnectionOptions = connectionOptions;
+    (window as unknown as { pendingConnectionSourceIds: string[] }).pendingConnectionSourceIds = sourceIds;
+    (window as unknown as { pendingConnectionOptions?: unknown }).pendingConnectionOptions = connectionOptions;
   }
 
   const getLayerNameById = React.useCallback((layerId: string): string => {

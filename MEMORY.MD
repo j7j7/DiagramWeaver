@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-04-14 – Connect mode: multi-select sources
+**`diagram-editor`**: **`startConnecting`** builds **`pendingConnectionSourceIds`** from all selected **node** and **zone** ids (skips connection-only selection entries); explicit **`sourceItemId`** stays single-source (e.g. context-menu / canvas flows). **`handleConnect`** adds one **connection** per source to the clicked target (dedupes ids, skips self-loops). Window cleanup uses **`clearPendingConnectionWindowState`**.
+
 ### 2026-04-14 – Highlight pulse: non-rect object shapes use SVG silhouette
 **`highlight-anim`**: **`ensureHighlightAnimKeyframes`** **`silhouetteMode`** **`box`** vs **`alpha`** (drop-shadow-only keyframes). **`getHighlightAnimStyleForNode`**: **`pulseFollowsShapeSilhouette`**. **`utils`**: **`isHighlightPulseShapeSilhouetteType`** — true for **`generic.object.*`** except connector **lines**, **square**, **rectangle**, **rounded-rectangle**, **text-box-heading**, **uml-class** (charts are not **`generic.object.`**, so they keep the outer-frame pulse). **`diagram-node`** moves **`data-dw-highlight-anim`** + animation **`style`** to the inner wrapper around **`renderShape()`** when silhouette applies (circle, triangle, star, kite, parallelogram, trapezoid, hexagon, loop, …).
 
