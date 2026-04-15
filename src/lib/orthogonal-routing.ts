@@ -1113,6 +1113,15 @@ export interface TaggedObstacleRect extends Rect {
   sourceId: string;
 }
 
+/**
+ * When `ignoreConnectionAvoidance` is true on a node or zone, orthogonal routing
+ * does not treat its bounds as an obstacle (connectors may cross through it).
+ */
+// `nodesById` / `zonesById` values are loosely typed maps; read only `ignoreConnectionAvoidance`.
+export function actsAsConnectorRoutingObstacle(item: any): boolean {
+  return item?.ignoreConnectionAvoidance !== true;
+}
+
 /** Single pass over nodes + zones; reuse with {@link obstaclesForEndpoints}. */
 export function buildObstacleCatalog(
   nodesById: Record<string, { x: number; y: number; width?: number; height?: number; type?: string; [k: string]: any }>,
@@ -1120,11 +1129,13 @@ export function buildObstacleCatalog(
 ): TaggedObstacleRect[] {
   const out: TaggedObstacleRect[] = [];
   for (const [id, n] of Object.entries(nodesById)) {
+    if (!actsAsConnectorRoutingObstacle(n)) continue;
     const w = n.width ?? 80;
     const h = n.height ?? 80;
     out.push({ sourceId: id, x: n.x ?? 0, y: n.y ?? 0, width: w, height: h });
   }
   for (const [id, z] of Object.entries(zonesById)) {
+    if (!actsAsConnectorRoutingObstacle(z)) continue;
     out.push({ sourceId: id, x: z.x ?? 0, y: z.y ?? 0, width: z.width, height: z.height });
   }
   return out;
@@ -1151,6 +1162,7 @@ export function collectObstacles(
 
   for (const [id, n] of Object.entries(nodesById)) {
     if (exclude.has(id)) continue;
+    if (!actsAsConnectorRoutingObstacle(n)) continue;
     const w = n.width ?? 80;
     const h = n.height ?? 80;
     rects.push({ x: n.x, y: n.y, width: w, height: h });
@@ -1158,6 +1170,7 @@ export function collectObstacles(
 
   for (const [id, z] of Object.entries(zonesById)) {
     if (exclude.has(id)) continue;
+    if (!actsAsConnectorRoutingObstacle(z)) continue;
     rects.push({ x: z.x, y: z.y, width: z.width, height: z.height });
   }
 

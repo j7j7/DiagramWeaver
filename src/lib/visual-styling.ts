@@ -27,6 +27,8 @@ export interface VisualStyling {
   iconColor?: string; // Color for Lucide icons (context-aware, icons only)
   noIconBackground?: boolean; // Remove background from icon/resource nodes
   nodeSize?: 'normal' | 'half' | 'quarter'; // Size mode for nodes and icons
+  /** When true, orthogonal connectors do not route around this shape or zone. */
+  ignoreConnectionAvoidance?: boolean;
 }
 
 // Predefined visual styles for dropdown selection
@@ -225,7 +227,8 @@ export function extractVisualStylingFromNode(node: DiagramNodeData | DiagramNode
     highlightAnim: (node as any).highlightAnim,
     highlightAnimDurationSec: (node as any).highlightAnimDurationSec,
     highlightAnimIntervalSec: (node as any).highlightAnimIntervalSec,
-    highlightAnimGlowColor: (node as any).highlightAnimGlowColor
+    highlightAnimGlowColor: (node as any).highlightAnimGlowColor,
+    ignoreConnectionAvoidance: (node as any).ignoreConnectionAvoidance,
   };
 }
 
@@ -258,7 +261,8 @@ export function extractVisualStylingFromGroup(group: DiagramGroupData | DiagramG
     gradientAngle: group.gradientAngle,
     borderGradientAngle: group.borderGradientAngle,
     shadow: group.shadow,
-    borderWidth: group.borderWidth
+    borderWidth: group.borderWidth,
+    ignoreConnectionAvoidance: (group as any).ignoreConnectionAvoidance,
   };
 }
 
@@ -304,7 +308,11 @@ export function applyVisualStylingToNode(
     highlightAnimGlowColor:
       styling.highlightAnimGlowColor !== undefined
         ? styling.highlightAnimGlowColor
-        : (node as any).highlightAnimGlowColor
+        : (node as any).highlightAnimGlowColor,
+    ignoreConnectionAvoidance:
+      styling.ignoreConnectionAvoidance !== undefined
+        ? styling.ignoreConnectionAvoidance
+        : (node as any).ignoreConnectionAvoidance,
   } as DiagramNodeData | DiagramNodeItem;
 }
 
@@ -326,7 +334,11 @@ export function applyVisualStylingToGroup(
     gradientAngle: styling.gradientAngle ?? group.gradientAngle,
     borderGradientAngle: styling.borderGradientAngle ?? group.borderGradientAngle ?? group.gradientAngle,
     shadow: styling.shadow ?? group.shadow,
-    borderWidth: styling.borderWidth ?? group.borderWidth
+    borderWidth: styling.borderWidth ?? group.borderWidth,
+    ignoreConnectionAvoidance:
+      styling.ignoreConnectionAvoidance !== undefined
+        ? styling.ignoreConnectionAvoidance
+        : (group as any).ignoreConnectionAvoidance,
   };
 }
 

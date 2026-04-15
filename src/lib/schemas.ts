@@ -197,6 +197,7 @@ export const DiagramNodeDataSchema = z.object({
   rotation: z.number().optional(), // Rotation angle in degrees (0, 45, -45, 90, -90)
   textPosition: z.enum(['above', 'center', 'under']).optional(), // Text position for shape nodes
   freeflow: z.boolean().optional(), // If true, node can be placed anywhere without joining groups/zones
+  ignoreConnectionAvoidance: z.boolean().optional(), // Orthogonal connectors may cross this shape
   borderWidth: z.number().optional(), // Border thickness for shapes
   cornerRadius: z.number().min(0).max(1).optional(), // Rounded-rectangle only: 0=straight, 1=full round
   headingEdge: z.enum(['top', 'bottom', 'left', 'right']).optional(),
@@ -536,6 +537,7 @@ export const DiagramNodeItemSchema = z.object({
   rotation: z.number().optional(), // Rotation angle in degrees (0, 45, -45, 90, -90)
   textPosition: z.enum(['above', 'center', 'under']).optional(), // Text position for shape nodes
   freeflow: z.boolean().optional(), // If true, node can be placed anywhere without joining groups/zones
+  ignoreConnectionAvoidance: z.boolean().optional(), // Orthogonal connectors may cross this shape
   borderWidth: z.number().optional(), // Border thickness for shapes
   cornerRadius: z.number().min(0).max(1).optional(), // Rounded-rectangle only: 0=straight, 1=full round
   headingEdge: z.enum(['top', 'bottom', 'left', 'right']).optional(),
@@ -620,6 +622,7 @@ export const DiagramGroupItemSchema = z.object({
   maxItemsPerRow: z.number().optional(), // Maximum items per row (for grid layouts)
   lineColor: z.string().optional(), // Color for connections from this group
   shadow: z.boolean().optional(), // Whether to show shadow around the group/zone
+  ignoreConnectionAvoidance: z.boolean().optional(), // Orthogonal connectors may cross this zone
   objectStyle: z.string().optional(), // Predefined visual style key
   
    // Text positioning properties

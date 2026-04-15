@@ -632,6 +632,26 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                 </div>
               </div>
 
+              <div className="bg-teal-50/50 rounded-md p-3 border border-teal-200/50">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 bg-teal-500 rounded-full shrink-0" />
+                  <Label className="text-sm font-semibold text-foreground">Connectors</Label>
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 space-y-0.5">
+                    <Label className="text-sm text-muted-foreground font-normal">Let lines pass through</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Orthogonal connector paths ignore this shape as an obstacle (they may cross the outline).
+                    </p>
+                  </div>
+                  <Switch
+                    className="shrink-0 mt-0.5"
+                    checked={styling.ignoreConnectionAvoidance === true}
+                    onCheckedChange={(checked) => handlePropertyChange('ignoreConnectionAvoidance', checked, true)}
+                  />
+                </div>
+              </div>
+
               <div className="bg-indigo-50/50 rounded-md p-3 border border-indigo-200/50">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-2 h-2 bg-indigo-500 rounded-full shrink-0" />

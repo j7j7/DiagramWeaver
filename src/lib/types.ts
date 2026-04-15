@@ -224,6 +224,8 @@ export interface DiagramNodeData {
   rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
   textPosition?: 'above' | 'center' | 'under'; // Text position for shape nodes
   freeflow?: boolean; // If true, node can be placed anywhere without joining groups/zones
+  /** When true, orthogonal connectors do not route around this item (may cross its bounds). */
+  ignoreConnectionAvoidance?: boolean;
   borderWidth?: number; // Border thickness for shapes
   cornerRadius?: number; // Rounded-rectangle only: 0=straight, 1=full round
   /** Text box with linked heading (generic.object.text-box-heading): which edge the heading strip sits on */
@@ -439,6 +441,8 @@ export interface DiagramNodeItem {
   rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
   textPosition?: 'above' | 'center' | 'under'; // Text position for shape nodes
   freeflow?: boolean; // If true, node can be placed anywhere without joining groups/zones
+  /** When true, orthogonal connectors do not route around this item (may cross its bounds). */
+  ignoreConnectionAvoidance?: boolean;
   borderWidth?: number; // Border thickness for shapes
   cornerRadius?: number; // Rounded-rectangle only: 0=straight, 1=full round
   headingEdge?: 'top' | 'bottom' | 'left' | 'right';
@@ -596,6 +600,8 @@ export interface DiagramZoneData {
   maxItemsPerRow?: number; // Maximum items per row (for grid layouts)
   lineColor?: string; // Color for connections from this zone
   shadow?: boolean; // Whether to show shadow around zone
+  /** When true, orthogonal connectors do not route around this zone (may cross its bounds). */
+  ignoreConnectionAvoidance?: boolean;
    parentId?: string; // Reference to parent zone ID for hierarchy tracking
    objectStyle?: string; // Predefined visual style key (e.g., 'solid', 'gradient', 'modern', etc.)
    tag?: string; // Tag text for zone identification

@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-04-15 – Shapes: optional “pass-through” for orthogonal connector routing
+**`ignoreConnectionAvoidance`** on **`DiagramNodeData`** / **`DiagramZoneData`** (and nested item schemas): when **`true`**, **`buildObstacleCatalog`** and **`collectObstacles`** omit that item via **`actsAsConnectorRoutingObstacle`** in **`orthogonal-routing`**, so **orthogonal** links may run through the bounds. **Visual Styling** panel **Connectors**: switch **Let lines pass through**. Bezier curves were already unaffected by obstacle rects.
+
 ### 2026-04-14 – Canvas drag: fast orthogonal + shared obstacle catalog
 **`orthogonal-routing`**: **`OrthogonalRouteOptions.fastObstacleRouting`** — skips A* / obstacle-aware bridging; L/Z **`findFallbackRoute`** on empty obstacles + **`ensureApproachSegment`** / **`enforceOrthogonalSegments`** with no rects. **`buildObstacleCatalog`** + **`obstaclesForEndpoints`** (one diagram scan, filter per link). **`editor-canvas`**: **`isCanvasItemDragging`** + **`notifyDraggingChange`** wraps **`onDraggingChange`** (hook + **`DiagramNode`**). **`CanvasConnections`** **`orthogonalFastRouting={isCanvasItemDragging}`** passes through batch + toolbar fallback; **`OrthogonalConnection`** skips **`collectObstacles`** when **`route`** is precomputed; memo no longer compares **`nodesById`** refs, adds **`orthogonalFastRouting`**. Full obstacle-aware routing returns on release.
 
