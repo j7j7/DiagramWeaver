@@ -63,7 +63,7 @@ import { extractUmlClassTextStylingFromNode, applyUmlClassTextStylingToNode, DEF
 import { cn, isConnectorLineNodeType, isShapeNodeType, isIconOrEmojiType } from '@/lib/utils';
 import { isConnectorLineGeometryClosed } from '@/lib/line-curve-path';
 import { extractVisualStylingFromNode, extractVisualStylingFromGroup } from '@/lib/visual-styling';
-import { extractLineStylingFromNode, applyLineStylingToNode } from '@/lib/line-styling';
+import { extractLineStylingFromNode, applyLineStylingToNode, syncClosedConnectorLineBorderWidth } from '@/lib/line-styling';
 import { toConnectionAnimationPatch } from '@/lib/connection-animation';
 import { useToast } from '@/hooks/use-toast';
 import { normalizeExternalUrl, openExternalUrlInNewTab } from '@/lib/url-utils';
@@ -1170,7 +1170,7 @@ export function ContextToolbar({
       // Update nodes
       updatedDiagramData.nodes = updatedDiagramData.nodes.map(node => {
         if (selectedItemIds.has(node.id)) {
-          return { ...node, ...styling };
+          return syncClosedConnectorLineBorderWidth({ ...node, ...styling } as DiagramNodeData);
         }
         return node;
       });
@@ -1188,7 +1188,12 @@ export function ContextToolbar({
       onDiagramDataUpdate(updatedDiagramData);
     } else {
       // Single item selection - existing logic
-      onItemUpdate?.({ ...selectedItem as SelectedItem, ...styling } as SelectedItem);
+      onItemUpdate?.(
+        syncClosedConnectorLineBorderWidth({
+          ...selectedItem,
+          ...styling,
+        } as DiagramNodeData) as SelectedItem
+      );
     }
   };
 
@@ -1223,7 +1228,7 @@ export function ContextToolbar({
       // Update nodes
       updatedDiagramData.nodes = updatedDiagramData.nodes.map(node => {
         if (selectedItemIds.has(node.id)) {
-          return { ...node, ...defaultStyling };
+          return syncClosedConnectorLineBorderWidth({ ...node, ...defaultStyling } as DiagramNodeData);
         }
         return node;
       });
@@ -1241,7 +1246,12 @@ export function ContextToolbar({
       onDiagramDataUpdate(updatedDiagramData);
     } else {
       // Single item selection - existing logic
-      onItemUpdate?.({ ...selectedItem as SelectedItem, ...defaultStyling } as SelectedItem);
+      onItemUpdate?.(
+        syncClosedConnectorLineBorderWidth({
+          ...selectedItem,
+          ...defaultStyling,
+        } as DiagramNodeData) as SelectedItem
+      );
     }
   };
 
@@ -1279,6 +1289,9 @@ export function ContextToolbar({
       startCap: undefined,
       endCap: undefined,
       lineColor: undefined,
+      lineColorStyle: undefined,
+      lineColors: undefined,
+      lineGradientAngle: undefined,
       lineTextVerticalPosition: undefined,
       fontFamily: undefined,
       fontSize: undefined,

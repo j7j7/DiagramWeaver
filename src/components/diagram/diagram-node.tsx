@@ -53,6 +53,7 @@ import {
 import { ResizeHandles } from "./resize-handles";
 import { LineVertexHandles } from "./line-endpoint-handles";
 import { getConnectorLineVertices } from "@/lib/line-curve-path";
+import { syncClosedConnectorLineBorderWidth } from "@/lib/line-styling";
 import { ConnectHandle } from "./connect-handle";
 import { CornerRadiusHandle } from "./corner-radius-handle";
 import { RotationHandle } from "./rotation-handle";
@@ -1508,14 +1509,16 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
       const interior = next.slice(1, -1);
       const minX = Math.min(...next.map((p) => p.x));
       const minY = Math.min(...next.map((p) => p.y));
-      onUpdate({
-        ...node,
-        x: minX,
-        y: minY,
-        startPos: currentStartPos,
-        endPos: currentEndPos,
-        lineControlPoints: interior.length ? interior : undefined,
-      });
+      onUpdate(
+        syncClosedConnectorLineBorderWidth({
+          ...node,
+          x: minX,
+          y: minY,
+          startPos: currentStartPos,
+          endPos: currentEndPos,
+          lineControlPoints: interior.length ? interior : undefined,
+        })
+      );
 
       latestPositionsRef.current = { startPos: null, endPos: null };
       latestLineVerticesRef.current = null;

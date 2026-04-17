@@ -134,6 +134,9 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
     borderColors?: string[];
     borderWidth?: number;
     borderGradientAngle?: number;
+    lineColorStyle?: "solid" | "gradient";
+    lineColors?: string[];
+    lineGradientAngle?: number;
   };
 
   const hasExplicitShapeVisual =
@@ -175,15 +178,29 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
     borderStyleVs === "none" ? 0 : (parseInt(String(nodeAny.borderWidth ?? 2), 10) || 2);
   const hasVisualBorder = explicitBorderVisual && borderStyleVs !== "none" && borderStrokeWidth > 0;
 
+  const lineColor = node.lineColor || "#6b7280";
+  const lineColorStyleVs = (nodeAny.lineColorStyle || "solid") as "solid" | "gradient";
+  const needsLineBodyGradient =
+    lineColorStyleVs === "gradient" &&
+    Array.isArray(nodeAny.lineColors) &&
+    nodeAny.lineColors.length >= 2;
+  const [lineGradStart, lineGradEnd] = normalizeTwoColors(
+    nodeAny.lineColors,
+    lineColor,
+    lineColor,
+  );
+
   const needsAreaFill = closed && backgroundStyle !== "none";
   const needsFillGradient = needsAreaFill && backgroundStyle === "gradient";
   const needsBorderGradient = hasVisualBorder && borderStyleVs === "gradient";
-  const { defs: gradientDefs, fillRef, strokeRef } = useSvgGradient({
+  const { defs: gradientDefs, fillRef, strokeRef, lineStrokeRef } = useSvgGradient({
     colors: backgroundStyle === "gradient" ? [bgStart, bgEnd] : [bgStart],
     angle: gradientAngle,
     borderColors: needsBorderGradient ? [borderStart, borderEnd] : undefined,
     borderAngle: needsBorderGradient ? borderGradientAngle : undefined,
-    enabled: needsFillGradient || needsBorderGradient,
+    lineColors: needsLineBodyGradient ? [lineGradStart, lineGradEnd] : undefined,
+    lineAngle: nodeAny.lineGradientAngle ?? gradientAngle,
+    enabled: needsFillGradient || needsBorderGradient || needsLineBodyGradient,
   });
   const areaFill = needsAreaFill
     ? getShapeSvgFill(backgroundStyle, fillRef, backgroundColorFallback)
@@ -191,7 +208,11 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
   const borderStrokePaint =
     borderStyleVs === "gradient" ? (strokeRef ?? borderColorFallback) : borderColorFallback;
   const borderStrokeDasharray = borderStyleVs === "dotted" ? "3,3" : undefined;
-  
+
+  const lineBodyPaint = needsLineBodyGradient
+    ? (lineStrokeRef ?? lineColor)
+    : (stroke || lineColor);
+
   const nodeX = node.x ?? connectorLinePointBounds(vertices).minX;
   const nodeY = node.y ?? connectorLinePointBounds(vertices).minY;
   
@@ -208,9 +229,9 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
   const startCap = node.startCap || 'none';
   const endCap = node.endCap || 'none';
   
-  // Use node's lineColor or default to grey
-  const lineColor = node.lineColor || '#6b7280';
-  const actualStrokeWidth = node.lineThickness || strokeWidth;
+  /** Stroke width for the connector body: always follows Line styling (`lineThickness`), not Visual `borderWidth`. */
+  const actualStrokeWidth =
+    typeof node.lineThickness === 'number' ? node.lineThickness : strokeWidth;
   
   // Line type - determine strokeDasharray based on lineType
   const lineType = (node as any).lineType || 'solid';
@@ -242,8 +263,7 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
   const capSize = 10;
   const padding = capSize * 3;
   const textPadding = node.label ? 30 : 0;
-  const strokeExtentPad =
-    (hasVisualBorder ? borderStrokeWidth / 2 : actualStrokeWidth / 2) + 4;
+  const strokeExtentPad = actualStrokeWidth / 2 + 4;
   const absPad = padding + textPadding + strokeExtentPad;
   const expanded = curveBoundsExpanded(vertices, absPad, linePathStyle, lineSmoothJoints);
   const svgMinX = expanded.minX - nodeX;
@@ -340,7 +360,7 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
               d={closed ? pathDClosed : pathD}
               fill="none"
               stroke={borderStrokePaint}
-              strokeWidth={borderStrokeWidth}
+              strokeWidth={actualStrokeWidth}
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeDasharray={borderStrokeDasharray}
@@ -350,16 +370,17 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
             />
           )}
           <path
-            d={pathD}
+            d={closed ? pathDClosed : pathD}
+            fill={closed ? "transparent" : "none"}
             stroke="transparent"
-            strokeWidth={Math.max(
-              20,
-              (hasVisualBorder ? borderStrokeWidth : actualStrokeWidth) * 3,
-            )}
-            fill="none"
+            strokeWidth={Math.max(20, actualStrokeWidth * 3)}
             strokeLinecap="round"
             strokeLinejoin="round"
-            style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
+            style={{
+              // Open lines: only the stroked spine is clickable. Closed loops: filled interior + thick stroke halo.
+              pointerEvents: closed ? "all" : "stroke",
+              cursor: onClick ? "pointer" : undefined,
+            }}
             onClick={(e) => {
               e.stopPropagation();
               onClick?.(e as any, node);
@@ -372,7 +393,7 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
           {!hasVisualBorder && (
             <path
               d={closed ? pathDClosed : pathD}
-              stroke={stroke || lineColor}
+              stroke={lineBodyPaint}
               strokeWidth={actualStrokeWidth}
               fill="none"
               strokeLinecap="round"
@@ -393,7 +414,7 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
             relStartX - svgMinX,
             relStartY - svgMinY,
             angleToStartCap,
-            hasVisualBorder ? borderStrokePaint : lineColor,
+            hasVisualBorder ? borderStrokePaint : lineBodyPaint,
             capSize,
           )}
         {!closed &&
@@ -402,7 +423,7 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
             relEndX - svgMinX,
             relEndY - svgMinY,
             tangentEnd,
-            hasVisualBorder ? borderStrokePaint : lineColor,
+            hasVisualBorder ? borderStrokePaint : lineBodyPaint,
             capSize,
           )}
         

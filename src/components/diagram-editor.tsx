@@ -138,6 +138,7 @@ import {
   savePresentationsByTab,
 } from '@/lib/presentation-storage';
 import { DiagramBreadcrumb, type BreadcrumbSegment } from './editor/diagram-breadcrumb';
+import { isConnectorLineNodeType } from '@/lib/utils';
 
 /** Presentation slide PNG thumbnails: poll at most this often; capture only when delta fingerprint changed. */
 const PRESENTATION_THUMB_INTERVAL_MS = 3000;
@@ -2295,6 +2296,10 @@ export default function DiagramEditor() {
     if (!isConnectMode || sourceIds.length === 0) {
       clearPendingConnectionWindowState();
       setIsConnectMode(false);
+      return;
+    }
+
+    if (isConnectorLineNodeType(targetItem.type)) {
       return;
     }
 

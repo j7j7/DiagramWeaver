@@ -295,6 +295,10 @@ export interface DiagramNodeData {
   lineTextPosition?: number; // Text position along line (0-100%, default 50%)
   lineTextVerticalPosition?: 'above' | 'middle' | 'below'; // Text position relative to line
   lineTextHorizontal?: boolean; // When true, keep text horizontal (readable) for right-to-left lines
+  /** Connector body paint: `solid` uses `lineColor`; `gradient` uses `lineColors` + `lineGradientAngle`. */
+  lineColorStyle?: 'solid' | 'gradient';
+  lineColors?: string[];
+  lineGradientAngle?: number;
   
   // Lock property - prevents movement when true
   locked?: boolean; // If true, node cannot be moved
@@ -515,6 +519,9 @@ export interface DiagramNodeItem {
   lineThickness?: number; // Line thickness for line shapes (default: 2.5)
   lineType?: 'solid' | 'dashed' | 'dotted'; // Line type/style for line shapes
   lineTextVerticalPosition?: 'above' | 'middle' | 'below'; // Text position relative to line
+  lineColorStyle?: 'solid' | 'gradient';
+  lineColors?: string[];
+  lineGradientAngle?: number;
   
   // Lock property - prevents movement when true
   locked?: boolean; // If true, node cannot be moved

@@ -13,6 +13,7 @@ import { LineStyling } from "@/lib/line-styling";
 import type { DiagramNodeData } from "@/lib/types";
 import { isConnectorLineGeometryClosed } from "@/lib/line-curve-path";
 import { COMMON_FONT_FAMILIES } from "@/lib/text-styling";
+import { GradientAnglePicker } from "./gradient-angle-picker";
 import { Minus, ArrowRight, Circle, Square, RotateCcw, X, ArrowUp, ArrowDown } from "lucide-react";
 import Draggable from 'react-draggable';
 
@@ -74,6 +75,26 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
   const handleReset = () => {
     if (onReset) {
       onReset();
+    }
+  };
+
+  const handleLineColorStyleChange = (value: "solid" | "gradient") => {
+    if (value === "gradient") {
+      const base = styling.lineColor || "#6b7280";
+      const c1 = styling.lineColors?.[0] ?? base;
+      const c2 = styling.lineColors?.[1] ?? "#3b82f6";
+      onStylingChange({
+        lineColorStyle: "gradient",
+        lineColors: [c1, c2],
+        lineGradientAngle: styling.lineGradientAngle ?? 135,
+      });
+    } else {
+      onStylingChange({
+        lineColorStyle: "solid",
+        lineColors: undefined,
+        lineGradientAngle: undefined,
+        lineColor: styling.lineColor ?? styling.lineColors?.[0] ?? "#6b7280",
+      });
     }
   };
 
@@ -227,16 +248,81 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
               </>
             )}
 
-            {/* Line Color */}
-            <div className="space-y-1">
-              <Label htmlFor="line-color" className="text-xs text-slate-600">Color</Label>
-              <ColorPicker
-                value={styling.lineColor || '#000000'}
-                onChange={(value) => handlePropertyChange('lineColor', value)}
-                placeholder="#000000"
-                showAlpha={true}
-                allowTransparent={true}
-              />
+            {/* Line color / gradient (same pattern as Visual Styling border) */}
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs text-slate-600">Color style</Label>
+                  <Select
+                    value={styling.lineColorStyle || "solid"}
+                    onValueChange={(v) => handleLineColorStyleChange(v as "solid" | "gradient")}
+                  >
+                    <SelectTrigger className="h-7 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="z-[70]">
+                      <SelectItem value="solid" className="text-xs">Solid</SelectItem>
+                      <SelectItem value="gradient" className="text-xs">Gradient</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {styling.lineColorStyle === "gradient" && (
+                  <div className="space-y-1 flex flex-col justify-end">
+                    <GradientAnglePicker
+                      value={styling.lineGradientAngle ?? 135}
+                      onChange={(angle) => handlePropertyChange("lineGradientAngle", angle)}
+                      label="Dir"
+                    />
+                  </div>
+                )}
+              </div>
+              {styling.lineColorStyle === "gradient" ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-600">Start</Label>
+                    <ColorPicker
+                      value={styling.lineColors?.[0] || styling.lineColor || "#6b7280"}
+                      onChange={(value) => {
+                        const cur = styling.lineColors || [
+                          styling.lineColor || "#6b7280",
+                          "#3b82f6",
+                        ];
+                        handlePropertyChange("lineColors", [value, cur[1]]);
+                      }}
+                      placeholder="#6b7280"
+                      showAlpha={true}
+                      allowTransparent={true}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-600">End</Label>
+                    <ColorPicker
+                      value={styling.lineColors?.[1] || "#3b82f6"}
+                      onChange={(value) => {
+                        const cur = styling.lineColors || [
+                          styling.lineColor || "#6b7280",
+                          "#3b82f6",
+                        ];
+                        handlePropertyChange("lineColors", [cur[0], value]);
+                      }}
+                      placeholder="#3b82f6"
+                      showAlpha={true}
+                      allowTransparent={true}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <Label htmlFor="line-color" className="text-xs text-slate-600">Color</Label>
+                  <ColorPicker
+                    value={styling.lineColor || "#6b7280"}
+                    onChange={(value) => handlePropertyChange("lineColor", value)}
+                    placeholder="#6b7280"
+                    showAlpha={true}
+                    allowTransparent={true}
+                  />
+                </div>
+              )}
             </div>
           </div>
             </div>

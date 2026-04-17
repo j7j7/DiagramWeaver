@@ -9,6 +9,9 @@ import type {
 import { getThemeSpectrumSortKey } from './theme-spectrum';
 import { isChartNodeType } from './chart-node';
 import { shiftHueOfColor } from './color-shift';
+import { isConnectorLineGeometryClosed } from './line-curve-path';
+import { syncClosedConnectorLineBorderWidth } from './line-styling';
+import { isConnectorLineNodeType } from './utils';
 
 /**
  * Hue step per pie/bar/line series row and per item when multi-select hue staggering is on
@@ -1744,7 +1747,12 @@ class ThemeManager {
       }
     }
     if (properties.borderWidth !== undefined) {
-      (updated as any).borderWidth = properties.borderWidth;
+      const nd = updated as DiagramNodeData;
+      const skipThemeBorderWidth =
+        isConnectorLineNodeType(nd.type) && isConnectorLineGeometryClosed(nd);
+      if (!skipThemeBorderWidth) {
+        (updated as any).borderWidth = properties.borderWidth;
+      }
     }
 
     // Apply background properties
@@ -1870,7 +1878,7 @@ class ThemeManager {
       }
     }
 
-    return updated;
+    return syncClosedConnectorLineBorderWidth(updated as DiagramNodeData) as typeof updated;
   }
 }
 

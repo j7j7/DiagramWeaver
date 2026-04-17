@@ -251,6 +251,9 @@ export const DiagramNodeDataSchema = z.object({
     .optional(),
   lineSmoothJoints: z.boolean().optional(),
   lineTextVerticalPosition: z.enum(['above', 'middle', 'below']).optional(), // Text position relative to line
+  lineColorStyle: z.enum(['solid', 'gradient']).optional(),
+  lineColors: z.array(z.string()).optional(),
+  lineGradientAngle: z.number().optional(),
   
   // Lock property - prevents movement when true
   locked: z.boolean().optional(), // If true, node cannot be moved
@@ -601,6 +604,9 @@ export const DiagramNodeItemSchema = z.object({
     .optional(),
   lineSmoothJoints: z.boolean().optional(),
   lineTextVerticalPosition: z.enum(['above', 'middle', 'below']).optional(), // Text position relative to line
+  lineColorStyle: z.enum(['solid', 'gradient']).optional(),
+  lineColors: z.array(z.string()).optional(),
+  lineGradientAngle: z.number().optional(),
   
   // Lock property - prevents movement when true
   locked: z.boolean().optional(), // If true, node cannot be moved

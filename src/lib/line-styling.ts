@@ -1,5 +1,7 @@
 import type { DiagramNodeData, DiagramNodeItem } from './types';
 import type { TextStyling } from './text-styling';
+import { isConnectorLineGeometryClosed } from './line-curve-path';
+import { isConnectorLineNodeType } from './utils';
 
 // Line styling interface combining line properties and text properties
 export interface LineStyling extends TextStyling {
@@ -10,6 +12,9 @@ export interface LineStyling extends TextStyling {
   endCap?: 'none' | 'arrow' | 'dot' | 'square'; // End endpoint style
   lineColor?: string; // Line color
   lineTextVerticalPosition?: 'above' | 'middle' | 'below'; // Text position relative to line
+  lineColorStyle?: 'solid' | 'gradient';
+  lineColors?: string[];
+  lineGradientAngle?: number;
 }
 
 /**
@@ -24,6 +29,9 @@ export function extractLineStylingFromNode(node: DiagramNodeData | DiagramNodeIt
     endCap: node.endCap,
     lineColor: node.lineColor,
     lineTextVerticalPosition: (node as any).lineTextVerticalPosition,
+    lineColorStyle: (node as any).lineColorStyle,
+    lineColors: (node as any).lineColors,
+    lineGradientAngle: (node as any).lineGradientAngle,
     // Text properties
     fontFamily: node.fontFamily,
     fontSize: node.fontSize,
@@ -65,6 +73,9 @@ export function applyLineStylingToNode(
   if ('endCap' in styling) updated.endCap = styling.endCap;
   if ('lineColor' in styling) updated.lineColor = styling.lineColor;
   if ('lineTextVerticalPosition' in styling) updated.lineTextVerticalPosition = styling.lineTextVerticalPosition;
+  if ('lineColorStyle' in styling) updated.lineColorStyle = styling.lineColorStyle;
+  if ('lineColors' in styling) updated.lineColors = styling.lineColors;
+  if ('lineGradientAngle' in styling) updated.lineGradientAngle = styling.lineGradientAngle;
   
   // Text properties
   if ('fontFamily' in styling) updated.fontFamily = styling.fontFamily;
@@ -89,7 +100,7 @@ export function applyLineStylingToNode(
   if ('textJustify' in styling) updated.textJustify = styling.textJustify;
   if ('textVerticalPosition' in styling) updated.textVerticalPosition = styling.textVerticalPosition;
   
-  return updated;
+  return syncClosedConnectorLineBorderWidth(updated);
 }
 
 /**
@@ -114,3 +125,13 @@ export const DEFAULT_LINE_STYLING: LineStyling = {
   textJustify: 'center',
   textVerticalPosition: 'middle'
 };
+
+/** Closed connector lines use stroke width from line thickness; keep `borderWidth` in sync for visual styling. */
+export function syncClosedConnectorLineBorderWidth<T extends DiagramNodeData | DiagramNodeItem>(node: T): T {
+  if (!isConnectorLineNodeType(node.type)) return node;
+  if (!isConnectorLineGeometryClosed(node as DiagramNodeData)) return node;
+  const lt = (node as DiagramNodeData).lineThickness;
+  const w =
+    typeof lt === 'number' && lt > 0 ? lt : DEFAULT_LINE_STYLING.lineThickness ?? 2.5;
+  return { ...(node as object), borderWidth: w } as T;
+}

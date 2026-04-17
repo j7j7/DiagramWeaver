@@ -2,6 +2,12 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-04-17 – Closed connector line: select by clicking interior / fill
+**`LineShape`**: The invisible hit path used open **`pathD`** with **`fill="none"`** and **`pointerEvents: 'stroke'`**, so closed loops only registered clicks on the stroke spine, not the enclosed area. For **`closed`**, the hit path now uses **`pathDClosed`**, **`fill="transparent"`**, and **`pointerEvents: 'all'`** (same thick transparent stroke as before for edge tolerance).
+
+### 2026-04-17 – Connector lines cannot be connection targets
+**`diagram-editor`** **`handleConnect`**: Early return when **`isConnectorLineNodeType(targetItem.type)`** so connect mode clicks never add edges **to** polyline / **`*.line`** nodes (sources unchanged). Connect handle and context **Connect** were already hidden for lines.
+
 ### 2026-04-17 – Line vertex handles: green endpoints, yellow interior
 **`LineVertexHandles`** (`line-endpoint-handles.tsx`): **start** and **end** squares stay **green** (`#22c55e` / hover `#16a34a`); **interior** control points use **yellow** (`#eab308` / hover `#ca8a04`). Same 12px / white border as before.
 
@@ -13,6 +19,15 @@
 
 ### 2026-04-17 – Connector line: visual border stroke (solid / dotted / gradient)
 **`LineShape`**: When the node has explicit **`borderStyle`** / **`borderColor`** / **`borderColors`** / **`borderWidth`** (from Visual Styling), draws a **stroke** along **`pathD`** or **`pathDClosed`** with **`useSvgGradient`** (fill + border gradients combined like **`RectangleShape`**). **`!hasVisualBorder`** keeps the previous **`lineColor`** / **`lineThickness`** stroke; caps use border paint when the visual border is active. Bounds padding includes border/line half-width.
+
+### 2026-04-17 – Line Styling: gradient line color (connector lines)
+**Line Styling** panel: **Color style** **Solid** | **Gradient** (like Visual **Border**). Stores **`lineColorStyle`**, **`lineColors`** **[start, end]**, **`lineGradientAngle`** on the node. **`useSvgGradient`** supports an optional third gradient (**`lineColors`** / **`lineAngle`**) → **`lineStrokeRef`**. **`LineShape`** enables defs when **`needsLineBodyGradient`** and paints the body path and caps with **`lineBodyPaint`** (`url(#…)` or solid **`lineColor`**). Types / **`DiagramNodeDataSchema`** / **`DiagramNodeItemSchema`** / **`line-styling`** extract+apply updated.
+
+### 2026-04-17 – Open connector line: Line thickness vs visual border stroke
+**`LineShape`**: When **`hasVisualBorder`** (theme / Visual Styling border), the painted path used **`borderWidth`** for **`strokeWidth`**, so **Line thickness** had no effect on non-closed lines. The visible stroke now always uses **`lineThickness`** (fallback **`strokeWidth`** prop, default **2.5**); **`borderWidth`** only gates whether border **paint** (style / gradient / color) applies, not the geometric stroke width. Hit target padding follows **`actualStrokeWidth`**.
+
+### 2026-04-17 – Closed connector line: `borderWidth` tracks `lineThickness`; theme skips border width
+**`syncClosedConnectorLineBorderWidth`** in **`line-styling`**: for closed connector lines (**`isConnectorLineGeometryClosed`**), sets **`borderWidth`** to **`lineThickness`** (default **2.5** when missing). **`applyLineStylingToNode`** always runs this after merge. **`theme-manager`** **`applyThemeToItem`**: does **not** apply theme **`borderWidth`** when the target is a closed connector line; return value is still synced so stroke matches line thickness. **`diagram-node`** **`handleLineVertexDragEnd`**: commits geometry through **`syncClosedConnectorLineBorderWidth`** so closing the loop updates stored **`borderWidth`**. **`context-toolbar`** visual styling change/reset runs the same sync on merged nodes so the visual panel cannot override **`borderWidth`** for closed lines.
 
 ### 2026-04-17 – Closed connector line: hide caps in Line Styling panel
 **`LineStylingPanel`**: **`linePathClosed`** (**`isConnectorLineGeometryClosed`** on **`selectedItem` + draft `styling`**) hides **Start cap** / **End cap** controls; **`LineShape`** already skipped cap rendering when closed.
