@@ -74,6 +74,10 @@ When the first and last **rendered** vertices are within a small distance (**`is
 - **`LineShape`** appends **`Z`** to the path, draws an **area fill** from the same visual fields as other shapes (`backgroundStyle`, `backgroundColor`, `backgroundColors`, `gradientAngle`), and **does not render** start/end caps. **Line Styling** hides the Start/End cap controls while the path is closed.
 - **Context toolbar** and **context menu** expose **Visual Styling** for closed connector lines (same panel as shapes) so you can set solid/gradient fill, border, shadow, etc.
 
+### Border / outline (visual styling)
+
+When the node has **explicit** border fields from Visual Styling (`borderStyle`, `borderColor`, `borderColors`, `borderWidth`, `borderGradientAngle`), **`LineShape`** draws that border as an SVG **stroke** along the path (open: `pathD`; closed: `pathDClosed`): **solid**, **dotted**, or **gradient** (same `useSvgGradient` pattern as rectangles). **`borderStyle: none`** leaves border stroke off; the polyline then uses **Line Styling** only (`lineColor`, `lineThickness`, `lineType`). If a visual border is active, the Line Styling stroke is omitted so the outline matches normal shapes; open-line **caps** use the border paint in that case.
+
 ---
 
 ## Label and text along the line

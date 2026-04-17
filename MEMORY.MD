@@ -11,6 +11,9 @@
 ### 2026-04-17 – Line styling panel: two columns like visual styling
 **`line-styling-panel`**: **Line** block in the **left** column, **Text** block in the **right** column — **`grid grid-cols-2 gap-x-8 gap-y-4`** with **`space-y-4 min-w-0`** column wrappers (same pattern as **`visual-styling-panel`**). Panel width **`640px`** with **`max-w-[calc(100vw-2rem)]`** so both columns fit.
 
+### 2026-04-17 – Connector line: visual border stroke (solid / dotted / gradient)
+**`LineShape`**: When the node has explicit **`borderStyle`** / **`borderColor`** / **`borderColors`** / **`borderWidth`** (from Visual Styling), draws a **stroke** along **`pathD`** or **`pathDClosed`** with **`useSvgGradient`** (fill + border gradients combined like **`RectangleShape`**). **`!hasVisualBorder`** keeps the previous **`lineColor`** / **`lineThickness`** stroke; caps use border paint when the visual border is active. Bounds padding includes border/line half-width.
+
 ### 2026-04-17 – Closed connector line: hide caps in Line Styling panel
 **`LineStylingPanel`**: **`linePathClosed`** (**`isConnectorLineGeometryClosed`** on **`selectedItem` + draft `styling`**) hides **Start cap** / **End cap** controls; **`LineShape`** already skipped cap rendering when closed.
 

@@ -129,24 +129,68 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
     backgroundColor?: string;
     backgroundColors?: string[];
     gradientAngle?: number;
+    borderStyle?: string;
+    borderColor?: string;
+    borderColors?: string[];
+    borderWidth?: number;
+    borderGradientAngle?: number;
   };
-  const backgroundStyle = (nodeAny.backgroundStyle || "none") as "solid" | "gradient" | "none";
-  const backgroundColorFallback = nodeAny.backgroundColor || "#93c5fd";
+
+  const hasExplicitShapeVisual =
+    nodeAny.backgroundStyle !== undefined ||
+    nodeAny.backgroundColor !== undefined ||
+    (Array.isArray(nodeAny.backgroundColors) && nodeAny.backgroundColors.length > 0) ||
+    nodeAny.borderStyle !== undefined ||
+    nodeAny.borderColor !== undefined ||
+    (Array.isArray(nodeAny.borderColors) && nodeAny.borderColors.length > 0) ||
+    nodeAny.borderWidth !== undefined;
+
+  const backgroundColorFallback =
+    nodeAny.backgroundColor || (hasExplicitShapeVisual ? "#6b7280" : "#93c5fd");
+  const borderColorFallback =
+    nodeAny.borderColor || (hasExplicitShapeVisual ? "#6b7280" : "#374151");
   const [bgStart, bgEnd] = normalizeTwoColors(
     nodeAny.backgroundColors,
     backgroundColorFallback,
-    backgroundColorFallback,
+    hasExplicitShapeVisual ? backgroundColorFallback : backgroundColorFallback,
+  );
+  const [borderStart, borderEnd] = normalizeTwoColors(
+    nodeAny.borderColors,
+    borderColorFallback,
+    hasExplicitShapeVisual ? borderColorFallback : borderColorFallback,
   );
   const gradientAngle = nodeAny.gradientAngle ?? 135;
+  const borderGradientAngle = nodeAny.borderGradientAngle ?? gradientAngle;
+  const backgroundStyle = (nodeAny.backgroundStyle || "none") as "solid" | "gradient" | "none";
+
+  const explicitBorderVisual =
+    nodeAny.borderStyle !== undefined ||
+    nodeAny.borderColor !== undefined ||
+    (Array.isArray(nodeAny.borderColors) && nodeAny.borderColors.length > 0) ||
+    nodeAny.borderWidth !== undefined;
+  const borderStyleVs = (explicitBorderVisual
+    ? nodeAny.borderStyle || "solid"
+    : "none") as "solid" | "dotted" | "gradient" | "none";
+  const borderStrokeWidth =
+    borderStyleVs === "none" ? 0 : (parseInt(String(nodeAny.borderWidth ?? 2), 10) || 2);
+  const hasVisualBorder = explicitBorderVisual && borderStyleVs !== "none" && borderStrokeWidth > 0;
+
   const needsAreaFill = closed && backgroundStyle !== "none";
-  const { defs: fillDefs, fillRef } = useSvgGradient({
+  const needsFillGradient = needsAreaFill && backgroundStyle === "gradient";
+  const needsBorderGradient = hasVisualBorder && borderStyleVs === "gradient";
+  const { defs: gradientDefs, fillRef, strokeRef } = useSvgGradient({
     colors: backgroundStyle === "gradient" ? [bgStart, bgEnd] : [bgStart],
     angle: gradientAngle,
-    enabled: needsAreaFill && backgroundStyle === "gradient",
+    borderColors: needsBorderGradient ? [borderStart, borderEnd] : undefined,
+    borderAngle: needsBorderGradient ? borderGradientAngle : undefined,
+    enabled: needsFillGradient || needsBorderGradient,
   });
   const areaFill = needsAreaFill
     ? getShapeSvgFill(backgroundStyle, fillRef, backgroundColorFallback)
     : "none";
+  const borderStrokePaint =
+    borderStyleVs === "gradient" ? (strokeRef ?? borderColorFallback) : borderColorFallback;
+  const borderStrokeDasharray = borderStyleVs === "dotted" ? "3,3" : undefined;
   
   const nodeX = node.x ?? connectorLinePointBounds(vertices).minX;
   const nodeY = node.y ?? connectorLinePointBounds(vertices).minY;
@@ -198,7 +242,9 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
   const capSize = 10;
   const padding = capSize * 3;
   const textPadding = node.label ? 30 : 0;
-  const absPad = padding + textPadding;
+  const strokeExtentPad =
+    (hasVisualBorder ? borderStrokeWidth / 2 : actualStrokeWidth / 2) + 4;
+  const absPad = padding + textPadding + strokeExtentPad;
   const expanded = curveBoundsExpanded(vertices, absPad, linePathStyle, lineSmoothJoints);
   const svgMinX = expanded.minX - nodeX;
   const svgMinY = expanded.minY - nodeY;
@@ -279,7 +325,7 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
         }}
       >
         <g transform={`translate(${-(nodeX + svgMinX)}, ${-(nodeY + svgMinY)})`}>
-          {needsAreaFill ? fillDefs : null}
+          {gradientDefs}
           {needsAreaFill && (
             <path
               d={pathDClosed}
@@ -289,10 +335,27 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
               style={slideColorTransition !== undefined ? { transition: slideColorTransition } : undefined}
             />
           )}
+          {hasVisualBorder && (
+            <path
+              d={closed ? pathDClosed : pathD}
+              fill="none"
+              stroke={borderStrokePaint}
+              strokeWidth={borderStrokeWidth}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeDasharray={borderStrokeDasharray}
+              vectorEffect="non-scaling-stroke"
+              className="pointer-events-none"
+              style={slideColorTransition !== undefined ? { transition: slideColorTransition } : undefined}
+            />
+          )}
           <path
             d={pathD}
             stroke="transparent"
-            strokeWidth={Math.max(20, actualStrokeWidth * 3)}
+            strokeWidth={Math.max(
+              20,
+              (hasVisualBorder ? borderStrokeWidth : actualStrokeWidth) * 3,
+            )}
             fill="none"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -306,24 +369,42 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
               onContextMenu?.(e as any, node);
             }}
           />
-          <path
-            d={pathD}
-            stroke={stroke || lineColor}
-            strokeWidth={actualStrokeWidth}
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeDasharray={strokeDasharray}
-            style={{
-              pointerEvents: 'none',
-              ...(slideColorTransition !== undefined ? { transition: slideColorTransition } : {}),
-            }}
-          />
+          {!hasVisualBorder && (
+            <path
+              d={closed ? pathDClosed : pathD}
+              stroke={stroke || lineColor}
+              strokeWidth={actualStrokeWidth}
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeDasharray={strokeDasharray}
+              style={{
+                pointerEvents: 'none',
+                ...(slideColorTransition !== undefined ? { transition: slideColorTransition } : {}),
+              }}
+            />
+          )}
         </g>
         
         {/* Closed paths: no start/end caps (same vertex). */}
-        {!closed && renderLineCap(startCap, relStartX - svgMinX, relStartY - svgMinY, angleToStartCap, lineColor, capSize)}
-        {!closed && renderLineCap(endCap, relEndX - svgMinX, relEndY - svgMinY, tangentEnd, lineColor, capSize)}
+        {!closed &&
+          renderLineCap(
+            startCap,
+            relStartX - svgMinX,
+            relStartY - svgMinY,
+            angleToStartCap,
+            hasVisualBorder ? borderStrokePaint : lineColor,
+            capSize,
+          )}
+        {!closed &&
+          renderLineCap(
+            endCap,
+            relEndX - svgMinX,
+            relEndY - svgMinY,
+            tangentEnd,
+            hasVisualBorder ? borderStrokePaint : lineColor,
+            capSize,
+          )}
         
         {/* Text label */}
         {label && textLines.length > 0 && (
