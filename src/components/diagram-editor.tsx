@@ -86,7 +86,7 @@ import { DiagramDataSchema } from '@/lib/schemas';
 import { normalizeHttpImageUrl, sanitizeCustomIconsInDiagram } from '@/lib/custom-icon-utils';
 import { parseMermaidFlowchart, parseMermaidClassDiagram, parseMermaidSequenceDiagram, detectMermaidDiagramType } from '@/lib/mermaid-parser';
 import { mermaidToDiagramData, classDiagramToDiagramData, sequenceDiagramToDiagramData } from '@/lib/mermaid-to-diagram';
-import { themeManager, DIAGRAM_THEME_HUE_STEP_DEG } from '@/lib/theme-manager';
+import { themeManager, DIAGRAM_THEME_HUE_STEP_DEG, DEFAULT_THEMES } from '@/lib/theme-manager';
 import { orderSelectedIdsForThemeHue } from '@/lib/selection-theme-order';
 import { DiagramTheme, ThemeMenuApplyOptions } from '@/lib/theme-types';
 import { TutorialProvider, useTutorial } from './tutorial/tutorial-provider';
@@ -118,7 +118,7 @@ import {
   connectionSelectionIdMatches,
   selectionSetContainsConnection,
 } from '@/lib/connection-order-utils';
-import { GRID_STEP, snapToGrid } from '@/components/editor/canvas-constants';
+import { GRID_STEP, snapToGrid, snapDimensionToGrid } from '@/components/editor/canvas-constants';
 import { DEFAULT_CONNECTION_ANIMATION, toConnectionAnimationPatch, getDownstreamAnimationChainNodes } from '@/lib/connection-animation';
 import { isEventFromEditableElement } from '@/lib/keyboard-utils';
 import {
@@ -3672,6 +3672,118 @@ export default function DiagramEditor() {
     handleConnectionUpdate(from, to, { waypoints: [...existing, newWaypoint] }, connId);
   };
 
+  const handleConnectionInsertNode = React.useCallback((
+    _conn: DiagramConnectionData,
+    connectionIndex: number,
+    diagramPoint: { x: number; y: number },
+  ) => {
+    if (isReadOnly) return;
+    const snapshotConns = currentDiagramData.connections ?? [];
+    if (connectionIndex < 0 || connectionIndex >= snapshotConns.length) return;
+    const target = snapshotConns[connectionIndex] as DiagramConnectionData;
+    if (!target || target.from === target.to) return;
+    if (!confirmPresentationLayerImpact('This edit', getAffectedLayerIdsForConnection(target.from, target.to))) return;
+
+    const insertOutcome: { node: DiagramNodeData | null; newIdForLayer: string } = { node: null, newIdForLayer: '' };
+    setCurrentDiagramData((prev) => {
+      const conns = prev.connections ?? [];
+      if (connectionIndex >= conns.length) return prev;
+      const row = conns[connectionIndex] as DiagramConnectionData;
+      if (!row || row.from !== target.from || row.to !== target.to) return prev;
+      const {
+        from: _from,
+        to: _to,
+        id: _id,
+        waypoints: _wp,
+        orthogonalTrunkOffsetX: _ox,
+        orthogonalTrunkOffsetY: _oy,
+        connectionIndex: _ci,
+        totalConnections: _tc,
+        toConnectionIndex: _tci,
+        toTotalConnections: _ttc,
+        ...restRest
+      } = row;
+      const restStyle = restRest as Omit<
+        DiagramConnectionData,
+        | 'from'
+        | 'to'
+        | 'id'
+        | 'waypoints'
+        | 'orthogonalTrunkOffsetX'
+        | 'orthogonalTrunkOffsetY'
+        | 'connectionIndex'
+        | 'totalConnections'
+        | 'toConnectionIndex'
+        | 'toTotalConnections'
+      >;
+      const w = snapDimensionToGrid(80);
+      const h = snapDimensionToGrid(50);
+      const nx = snapToGrid(diagramPoint.x - w / 2);
+      const ny = snapToGrid(diagramPoint.y - h / 2);
+      const newNodeId = generateSequentialId('generic.object.rectangle', prev);
+      insertOutcome.newIdForLayer = newNodeId;
+      const builtInThemes = DEFAULT_THEMES.filter((t) => t.isBuiltIn);
+      const randomTheme = builtInThemes[Math.floor(Math.random() * builtInThemes.length)];
+      const newNode: DiagramNodeData = {
+        id: newNodeId,
+        type: 'generic.object.rectangle',
+        label: '',
+        x: nx,
+        y: ny,
+        width: w,
+        height: h,
+        sizeMode: 'custom',
+        textJustify: 'center',
+        ...(randomTheme?.properties ?? {}),
+      };
+      insertOutcome.node = newNode;
+      const endArrow = row.toArrow === true || row.arrow === true;
+      const leg1: DiagramConnectionData = {
+        ...restStyle,
+        id: generateConnectionId(),
+        from: row.from,
+        to: newNodeId,
+        fromArrow: row.fromArrow,
+        toArrow: false,
+        arrow: undefined,
+        text: row.text,
+        textPosition: row.textPosition,
+      };
+      const leg2: DiagramConnectionData = {
+        ...restStyle,
+        id: generateConnectionId(),
+        from: newNodeId,
+        to: row.to,
+        fromArrow: false,
+        toArrow: endArrow,
+        arrow: undefined,
+      };
+      const newConnections = [...conns.slice(0, connectionIndex), leg1, leg2, ...conns.slice(connectionIndex + 1)];
+      return {
+        ...prev,
+        nodes: [...(prev.nodes ?? []), newNode],
+        connections: newConnections,
+      };
+    });
+    if (insertOutcome.node && insertOutcome.newIdForLayer) {
+      const created = insertOutcome.node;
+      requestAnimationFrame(() => {
+        layers.assignItemsToLayer([insertOutcome.newIdForLayer], layers.getItemLayerById(target.from));
+      });
+      setSelectedItem({ ...created, itemType: 'node' } as SelectedItem);
+      setSelectedItemIds(new Set([created.id]));
+    }
+  }, [
+    isReadOnly,
+    currentDiagramData.connections,
+    setCurrentDiagramData,
+    confirmPresentationLayerImpact,
+    getAffectedLayerIdsForConnection,
+    layers,
+    setSelectedItem,
+    setSelectedItemIds,
+  ]);
+
   const handleConnectionWaypointRemove = (from: string, to: string, index: number, connectionId?: string) => {
     const connections = currentDiagramData.connections ?? [];
     const conn = connections.find((c) =>
@@ -5539,6 +5651,7 @@ export default function DiagramEditor() {
         handleConnectionUpdate={handleConnectionUpdate}
         disconnectConnection={disconnectConnection}
         handleConnectionWaypointAdd={handleConnectionWaypointAdd}
+        handleConnectionInsertNode={handleConnectionInsertNode}
         handleConnectionWaypointRemove={handleConnectionWaypointRemove}
         handleConnectionWaypointMove={handleConnectionWaypointMove}
         handleConnectionContextMenu={handleConnectionContextMenu}
@@ -5757,6 +5870,7 @@ function DiagramEditorInner({
   handleConnectionUpdate,
   disconnectConnection,
   handleConnectionWaypointAdd,
+  handleConnectionInsertNode,
   handleConnectionWaypointRemove,
   handleConnectionWaypointMove,
   handleConnectionContextMenu,
@@ -6272,6 +6386,7 @@ function DiagramEditorInner({
                     onConnectionWaypointMove={handleConnectionWaypointMove}
                     onConnectionUpdate={handleConnectionUpdate}
                     onConnectionWaypointAdd={handleConnectionWaypointAdd}
+                    onConnectionInsertNode={handleConnectionInsertNode}
                     onConnectionContextMenu={handleConnectionContextMenu}
                     onPauseConnectionAnimationsForOverlayUi={pauseConnectionAnimationsForOverlayUi}
                     externalTransform={canvasTransform}

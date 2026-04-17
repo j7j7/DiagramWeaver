@@ -66,6 +66,8 @@ interface ContextMenuProps {
   connectorLineShowSmoothJointsOption?: boolean;
   connectorLineSmoothJoints?: boolean;
   onToggleConnectorLineSmoothJoints?: () => void;
+  /** Connector line with start ≈ end: allow Visual Styling (fill / gradient). */
+  connectorLineClosed?: boolean;
 }
 
 // Helper function to check if a node type is a line
@@ -132,6 +134,7 @@ export function ContextMenu({
   connectorLineShowSmoothJointsOption = false,
   connectorLineSmoothJoints = false,
   onToggleConnectorLineSmoothJoints,
+  connectorLineClosed = false,
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [layerSubmenuOpen, setLayerSubmenuOpen] = useState(false);
@@ -285,7 +288,8 @@ export function ContextMenu({
         const isLucide = t.startsWith('generic.icon.');
         const isText = t.startsWith('generic.text.');
         const isResourceItem = !isShape && !isText && !isLineNodeType(t);
-        return isShape || isTextbox || isLucide || isResourceItem || isEmoji;
+        const closedLineFill = isLineNodeType(t) && connectorLineClosed;
+        return isShape || isTextbox || isLucide || isResourceItem || isEmoji || closedLineFill;
       })() && (
         <button
           className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
@@ -765,7 +769,7 @@ export function ContextMenu({
         }}
       >
         <Trash2 className="w-4 h-4 text-destructive" />
-        Delete
+        {itemType === "zone" ? "Delete zone" : "Delete node"}
       </button>
     </div>
   );

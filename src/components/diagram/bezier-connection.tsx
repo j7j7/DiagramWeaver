@@ -58,6 +58,7 @@ interface BezierConnectionProps {
   exportAnimationTimeSeconds?: number | null;
   animationConnectionsEnabled?: boolean; // When false, hide all animation shapes
   onClick?: (connection: DiagramConnectionData, event: React.MouseEvent) => void; // Click handler
+  onDoubleClick?: (connection: DiagramConnectionData, event: React.MouseEvent) => void;
   onContextMenu?: (e: React.MouseEvent, connection: DiagramConnectionData) => void;
   /** Opacity/transform for slide/layer transitions — applied to path group only, not defs (gradients stay aligned). */
   slideTransitionStyle?: React.CSSProperties;
@@ -102,7 +103,10 @@ function areBezierConnectionPropsEqual(prev: BezierConnectionProps, next: Bezier
       connectionAdvancedStyleRevisionKeyResolved(next.connectionData, nextRc) &&
     prev.exportAnimationTimeSeconds === next.exportAnimationTimeSeconds &&
     prev.animationConnectionsEnabled === next.animationConnectionsEnabled &&
-    slideTransitionStyleEqual(prev.slideTransitionStyle, next.slideTransitionStyle)
+    slideTransitionStyleEqual(prev.slideTransitionStyle, next.slideTransitionStyle) &&
+    prev.onClick === next.onClick &&
+    prev.onDoubleClick === next.onDoubleClick &&
+    prev.onContextMenu === next.onContextMenu
   );
 }
 
@@ -986,6 +990,47 @@ export function getPointOnConnectionPath(
   return getBezierPoint(localT, seg.p0x, seg.p0y, seg.cp1x, seg.cp1y, seg.cp2x, seg.cp2y, seg.p3x, seg.p3y);
 }
 
+/** Parameter t in [0,1] on the same path as `getPointOnConnectionPath`, closest to diagram point (px, py). */
+export function closestTOnConnectionPath(
+  px: number,
+  py: number,
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  fromAngle: number,
+  toAngle: number,
+  curvature: number,
+  waypoints?: Array<{ x: number; y: number }>,
+): number {
+  const samples = 96;
+  let bestT = 0.5;
+  let bestD = Infinity;
+  for (let i = 0; i <= samples; i++) {
+    const t = i / samples;
+    const p = getPointOnConnectionPath(t, fromX, fromY, toX, toY, fromAngle, toAngle, curvature, waypoints);
+    const d = (p.x - px) ** 2 + (p.y - py) ** 2;
+    if (d < bestD) {
+      bestD = d;
+      bestT = t;
+    }
+  }
+  let step = 1 / samples;
+  for (let iter = 0; iter < 8; iter++) {
+    for (const dir of [-1, 1]) {
+      const t2 = Math.max(0, Math.min(1, bestT + dir * step));
+      const p = getPointOnConnectionPath(t2, fromX, fromY, toX, toY, fromAngle, toAngle, curvature, waypoints);
+      const d = (p.x - px) ** 2 + (p.y - py) ** 2;
+      if (d < bestD) {
+        bestD = d;
+        bestT = t2;
+      }
+    }
+    step *= 0.5;
+  }
+  return bestT;
+}
+
 function BezierConnectionInner({
   from,
   to,
@@ -994,6 +1039,7 @@ function BezierConnectionInner({
   exportAnimationTimeSeconds,
   animationConnectionsEnabled = true,
   onClick,
+  onDoubleClick,
   onContextMenu,
   slideTransitionStyle,
 }: BezierConnectionProps) {
@@ -1159,6 +1205,14 @@ function BezierConnectionInner({
     }
   };
 
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (onDoubleClick && connectionData) {
+      onDoubleClick(connectionData, e);
+    }
+  };
+
   const handleContextMenu = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
@@ -1311,6 +1365,7 @@ function BezierConnectionInner({
         className="group"
         style={{ pointerEvents: 'auto', ...slideTransitionStyle }}
         onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
         onContextMenu={handleContextMenu}
         data-connection-id={connectionData?.from && connectionData?.to ? `${connectionData.from}-${connectionData.to}` : undefined}
       >

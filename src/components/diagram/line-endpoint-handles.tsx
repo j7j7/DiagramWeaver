@@ -3,9 +3,11 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 
-/** Connection endpoint handles: green `#22c55e`, white border, `rounded-sm`, 12px — see `connection-endpoint-handles.tsx` */
+/** Start/end: green (match `connection-endpoint-handles.tsx`); interior curve points: yellow */
 const GREEN = "#22c55e";
 const GREEN_ACTIVE = "#16a34a";
+const YELLOW = "#eab308";
+const YELLOW_ACTIVE = "#ca8a04";
 const HANDLE = 12;
 const HALF = HANDLE / 2;
 
@@ -51,6 +53,14 @@ export function LineVertexHandles({
         const relX = pt.x - nodeX;
         const relY = pt.y - nodeY;
         const highlighted = hoveredIndex === index || activeVertexIndex === index;
+        const isEndpoint = index === 0 || index === vertices.length - 1;
+        const fill = highlighted
+          ? isEndpoint
+            ? GREEN_ACTIVE
+            : YELLOW_ACTIVE
+          : isEndpoint
+            ? GREEN
+            : YELLOW;
         return (
           <div
             key={`line-v-${index}`}
@@ -63,7 +73,7 @@ export function LineVertexHandles({
               top: `${relY - HALF}px`,
               width: `${HANDLE}px`,
               height: `${HANDLE}px`,
-              backgroundColor: highlighted ? GREEN_ACTIVE : GREEN,
+              backgroundColor: fill,
               pointerEvents: "auto",
             }}
             onMouseEnter={() => setHoveredIndex(index)}

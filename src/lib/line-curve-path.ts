@@ -43,6 +43,18 @@ export function getConnectorLineVertices(
   return [start, ...stored, end];
 }
 
+/** True when the rendered polyline/spline closes (start ≈ end). Enables area fill on connector lines. */
+export function isConnectorLineGeometryClosed(
+  node: DiagramNodeData & { __localStartPos?: { x: number; y: number }; __localEndPos?: { x: number; y: number }; __localControlPoints?: LineControlPoint[] },
+  epsPx: number = 6,
+): boolean {
+  const v = getConnectorLineVertices(node);
+  if (v.length < 2) return false;
+  const a = v[0];
+  const b = v[v.length - 1];
+  return Math.hypot(b.x - a.x, b.y - a.y) <= epsPx;
+}
+
 const JOINT_FILLET_MAX = 14;
 const JOINT_FILLET_RATIO = 0.34;
 

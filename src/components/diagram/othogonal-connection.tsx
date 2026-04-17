@@ -79,6 +79,7 @@ interface OrthogonalConnectionProps {
   exportAnimationTimeSeconds?: number | null;
   animationConnectionsEnabled?: boolean;
   onClick?: (connection: DiagramConnectionData, event: React.MouseEvent) => void;
+  onDoubleClick?: (connection: DiagramConnectionData, event: React.MouseEvent) => void;
   onContextMenu?: (e: React.MouseEvent, connection: DiagramConnectionData) => void;
   /** Opacity/transform for slide/layer transitions — applied to path group only, not defs. */
   slideTransitionStyle?: React.CSSProperties;
@@ -190,7 +191,10 @@ function areOrthogonalPropsEqual(prev: OrthogonalConnectionProps, next: Orthogon
     diagramTransformEqual(prev.diagramTransform, next.diagramTransform) &&
     prev.diagramCanvasRef === next.diagramCanvasRef &&
     prev.onOrthogonalTrunkOffsetChange === next.onOrthogonalTrunkOffsetChange &&
-    prev.onOrthogonalTrunkOffsetYChange === next.onOrthogonalTrunkOffsetYChange
+    prev.onOrthogonalTrunkOffsetYChange === next.onOrthogonalTrunkOffsetYChange &&
+    prev.onClick === next.onClick &&
+    prev.onDoubleClick === next.onDoubleClick &&
+    prev.onContextMenu === next.onContextMenu
   );
 }
 
@@ -211,6 +215,7 @@ function OrthogonalConnectionInner({
   exportAnimationTimeSeconds,
   animationConnectionsEnabled = true,
   onClick,
+  onDoubleClick,
   onContextMenu,
   slideTransitionStyle,
   orthogonalFastRouting = false,
@@ -432,6 +437,17 @@ function OrthogonalConnectionInner({
     [connectionData, onClick]
   );
 
+  const handleDoubleClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (connectionData && onDoubleClick) {
+        e.stopPropagation();
+        e.preventDefault();
+        onDoubleClick(connectionData, e);
+      }
+    },
+    [connectionData, onDoubleClick]
+  );
+
   const handleContextMenu = useCallback(
     (e: React.MouseEvent) => {
       if (connectionData && onContextMenu) {
@@ -564,6 +580,7 @@ function OrthogonalConnectionInner({
         className="group"
         style={{ ...GROUP_STYLE, ...slideTransitionStyle }}
         onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
         onContextMenu={handleContextMenu}
         data-connection-id={
           connectionData?.from && connectionData?.to ? `${connectionData.from}-${connectionData.to}` : undefined

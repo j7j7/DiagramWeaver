@@ -61,6 +61,7 @@ import { themeManager } from '@/lib/theme-manager';
 import { extractTextStylingFromNode, extractTextStylingFromGroup, applyTextStylingToZone, applyTextStylingToNode } from '@/lib/text-styling';
 import { extractUmlClassTextStylingFromNode, applyUmlClassTextStylingToNode, DEFAULT_UML_CLASS_TEXT_STYLING } from '@/lib/uml-text-styling';
 import { cn, isConnectorLineNodeType, isShapeNodeType, isIconOrEmojiType } from '@/lib/utils';
+import { isConnectorLineGeometryClosed } from '@/lib/line-curve-path';
 import { extractVisualStylingFromNode, extractVisualStylingFromGroup } from '@/lib/visual-styling';
 import { extractLineStylingFromNode, applyLineStylingToNode } from '@/lib/line-styling';
 import { toConnectionAnimationPatch } from '@/lib/connection-animation';
@@ -507,6 +508,12 @@ export function ContextToolbar({
     (selectedItem as any)?.type?.endsWith('.chevron')
   );
   const isLineNode = isNode && isConnectorLineNodeType((selectedItem as any)?.type);
+  const isClosedConnectorLine = useMemo(() => {
+    if (!isLineNode || !diagramData || !selectedItem?.id) return false;
+    const n = diagramData.nodes.find((nn) => nn.id === selectedItem.id);
+    if (!n) return false;
+    return isConnectorLineGeometryClosed(n as DiagramNodeData);
+  }, [isLineNode, diagramData, selectedItem?.id]);
   const isUmlClassNode = isNode && ((selectedItem as any)?.type === 'generic.object.uml-class' || (selectedItem as any)?.type?.endsWith('.uml-class'));
 
   const getCurrentUmlClassTextStyling = useMemo(() => {
@@ -2129,8 +2136,8 @@ export function ContextToolbar({
           </>
         )}
 
-        {/* Visual Styling Button - shapes and textbox (full), Lucide (Icon Color + Remove bg), resource items (Remove bg only), emojis (Size + Remove bg). generic.text.text excluded. */}
-        {selectedItem && isNode && !isLineNode && (() => {
+        {/* Visual Styling Button - shapes and textbox (full), Lucide (Icon Color + Remove bg), resource items (Remove bg only), emojis (Size + Remove bg). Closed connector lines get fill (same as shapes). generic.text.text excluded. */}
+        {selectedItem && isNode && (!isLineNode || isClosedConnectorLine) && (() => {
           const t = (selectedItem as any)?.type || '';
           const isEmoji = t.startsWith('generic.emoji.');
           const isShape = isShapeNodeType(t);
@@ -2138,7 +2145,8 @@ export function ContextToolbar({
           const isLucide = t.startsWith('generic.icon.') || (selectedItem as any)?.iconType === 'lucide';
           const isText = t.startsWith('generic.text.');
           const isResourceItem = !isShape && !isText;
-          return isShape || isTextbox || isLucide || isResourceItem || isEmoji;
+          const closedLineFill = isLineNode && isClosedConnectorLine;
+          return isShape || isTextbox || isLucide || isResourceItem || isEmoji || closedLineFill;
         })() && (
           <>
             <Tooltip>
@@ -2191,11 +2199,13 @@ export function ContextToolbar({
                     const t = (selectedItem as any)?.type || '';
                     const isShape = isShapeNodeType(t);
                     const isTextbox = t === 'generic.text.textbox';
-                    return isShape || isTextbox;
+                    const closedLineFill = isLineNode && isClosedConnectorLine;
+                    return isShape || isTextbox || closedLineFill;
                   })()}
                   isShape={(() => {
                     const t = (selectedItem as any)?.type || '';
-                    return isShapeNodeType(t);
+                    const closedLineFill = isLineNode && isClosedConnectorLine;
+                    return isShapeNodeType(t) || closedLineFill;
                   })()}
                   isRoundedRectangle={
                     (selectedItem as any)?.type === 'generic.object.rounded-rectangle' ||

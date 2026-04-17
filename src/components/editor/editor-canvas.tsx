@@ -55,6 +55,7 @@ import { MetadataPopup } from "./metadata-popup";
 import { snapToGrid } from "./canvas-constants";
 import { ConnectionWaypointHandles } from "../diagram/connection-waypoint-handles";
 import { isConnectorLineNodeType, isShapeNodeType } from "@/lib/utils";
+import { isConnectorLineGeometryClosed } from "@/lib/line-curve-path";
 import { getConnectorLineVertices, insertConnectorLineMidControl } from "@/lib/line-curve-path";
 import { isEventFromEditableElement } from "@/lib/keyboard-utils";
 import { getDownstreamAnimationChainNodes } from "@/lib/connection-animation";
@@ -90,6 +91,7 @@ interface EditorCanvasProps {
   onConnectionWaypointMove?: (from: string, to: string, index: number, newPos: { x: number; y: number }, connectionId?: string) => void;
   onConnectionUpdate?: (from: string, to: string, updates: Record<string, unknown>, connectionId?: string) => void;
   onConnectionWaypointAdd?: (from: string, to: string) => void;
+  onConnectionInsertNode?: (connection: DiagramConnectionData, connectionIndex: number, diagramPoint: { x: number; y: number }) => void;
   onConnectionContextMenu?: (e: React.MouseEvent, connection: DiagramConnectionData) => void;
   externalTransform?: { x: number; y: number; k: number };
   onTransformChange?: (transform: { x: number; y: number; k: number }) => void;
@@ -186,7 +188,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, defaultTextLabelsEnabled = true, connectionsBehindNodesEnabled = true, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal, setChartDataEditorModal, nodeAnimationStyles, connectionAnimationStyles, connectionKey, connectionRenderRevision, onSubDiagramDoubleClick, getHasLinkedSubDiagram, onCreateSubDiagram, onRemoveSubDiagramLink, onPauseConnectionAnimationsForOverlayUi }: EditorCanvasProps,
+   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionInsertNode, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, defaultTextLabelsEnabled = true, connectionsBehindNodesEnabled = true, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal, setChartDataEditorModal, nodeAnimationStyles, connectionAnimationStyles, connectionKey, connectionRenderRevision, onSubDiagramDoubleClick, getHasLinkedSubDiagram, onCreateSubDiagram, onRemoveSubDiagramLink, onPauseConnectionAnimationsForOverlayUi }: EditorCanvasProps,
   ref
 ) {
   const [gifExportAnimationTimeSeconds, setGifExportAnimationTimeSeconds] = React.useState<number | null>(null);
@@ -1227,8 +1229,6 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   }, [closeContextMenu, onResetConnectionSettingsTrigger, animationToggleOnClickEnabled, isConnectMode, onNodeClickInConnectMode, onItemSelect, onAnimationDisabledSourcesChange, animationDisabledSources, diagramData]);
 
   const handleNodeContextMenu = useCallback((e: React.MouseEvent, node: DiagramNodeData) => {
-    // When in text edit, use normal browser behavior (right-click context menu)
-    if (isEventFromEditableElement(e)) return;
     e.stopPropagation();
     e.preventDefault();
     // If multiple items are selected and this node is already in the selection, preserve the selection
@@ -1257,8 +1257,6 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   }, [closeContextMenu, onResetConnectionSettingsTrigger, isConnectMode, onNodeClickInConnectMode, onItemSelect]);
 
   const handleZoneContextMenu = useCallback((e: React.MouseEvent, zone: DiagramZoneData) => {
-    // When in text edit, use normal browser behavior (right-click context menu)
-    if (isEventFromEditableElement(e)) return;
     e.stopPropagation();
     e.preventDefault();
     // If multiple items are selected and this zone is already in the selection, preserve the selection
@@ -1566,6 +1564,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   onConnectionContextMenu={onConnectionContextMenu}
                   onConnectionUpdate={onConnectionUpdate}
                   onConnectionWaypointAdd={onConnectionWaypointAdd}
+                  onConnectionInsertNode={onConnectionInsertNode}
                   stackZIndex={0}
                   exportAnimationTimeSeconds={gifExportAnimationTimeSeconds}
                   animationConnectionsEnabled={animationConnectionsEnabled}
@@ -1737,6 +1736,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       onConnectionContextMenu={onConnectionContextMenu}
                       onConnectionUpdate={onConnectionUpdate}
                       onConnectionWaypointAdd={onConnectionWaypointAdd}
+                      onConnectionInsertNode={onConnectionInsertNode}
                       connectionIndices={connIndices}
                       stackZIndex={connZIndex}
                       exportAnimationTimeSeconds={gifExportAnimationTimeSeconds}
@@ -1801,6 +1801,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   onConnectionContextMenu={onConnectionContextMenu}
                   onConnectionUpdate={onConnectionUpdate}
                   onConnectionWaypointAdd={onConnectionWaypointAdd}
+                  onConnectionInsertNode={onConnectionInsertNode}
                   connectionIndices={new Set(lastSlot)}
                   stackZIndex={2 * n}
                   exportAnimationTimeSeconds={gifExportAnimationTimeSeconds}
@@ -2050,6 +2051,12 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               closeContextMenu();
             }}
             nodeType={contextMenu.itemType === 'node' ? (diagramData.nodes.find(n => n.id === contextMenu.itemId)?.type) : undefined}
+            connectorLineClosed={(() => {
+              if (contextMenu.itemType !== 'node') return false;
+              const n = diagramData.nodes.find((nn) => nn.id === contextMenu.itemId);
+              if (!n || !isConnectorLineNodeType(n.type)) return false;
+              return isConnectorLineGeometryClosed(n);
+            })()}
             connectorLineCurved={
               contextMenu.itemType === 'node'
                 ? (diagramData.nodes.find((n) => n.id === contextMenu.itemId) as any)?.linePathStyle ===

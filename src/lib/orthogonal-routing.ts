@@ -1197,6 +1197,42 @@ export function getPointOnOrthogonalPath(
   return { x: points[points.length - 1].x, y: points[points.length - 1].y };
 }
 
+/** Parameter t in [0,1] along the orthogonal polyline, closest to diagram point (px, py). */
+export function closestTOnOrthogonalPath(
+  px: number,
+  py: number,
+  points: Array<{ x: number; y: number }>,
+  totalLength: number,
+): number {
+  if (points.length === 0 || totalLength <= 0) return 0;
+  const samples = 96;
+  let bestT = 0.5;
+  let bestD = Infinity;
+  for (let i = 0; i < samples; i++) {
+    const t = i / (samples - 1);
+    const p = getPointOnOrthogonalPath(t, points, totalLength);
+    const d = (p.x - px) ** 2 + (p.y - py) ** 2;
+    if (d < bestD) {
+      bestD = d;
+      bestT = t;
+    }
+  }
+  let step = 1 / (samples - 1);
+  for (let iter = 0; iter < 8; iter++) {
+    for (const dir of [-1, 1]) {
+      const t2 = Math.max(0, Math.min(1, bestT + dir * step));
+      const p = getPointOnOrthogonalPath(t2, points, totalLength);
+      const d = (p.x - px) ** 2 + (p.y - py) ** 2;
+      if (d < bestD) {
+        bestD = d;
+        bestT = t2;
+      }
+    }
+    step *= 0.5;
+  }
+  return bestT;
+}
+
 /**
  * When the user explicitly chooses a connection edge (fromPreferredExit / toPreferredEntry),
  * endpoints are excluded from the obstacle list — so the router would otherwise allow

@@ -1,14 +1,14 @@
 import React from "react";
-import { BezierConnection, determineConnectionEdges, getOptimalConnectionPoints, calculateBezierControlPoints, getBezierPoint, getPointOnConnectionPath } from "../diagram/bezier-connection";
+import { BezierConnection, determineConnectionEdges, getOptimalConnectionPoints, calculateBezierControlPoints, getBezierPoint, getPointOnConnectionPath, closestTOnConnectionPath } from "../diagram/bezier-connection";
 import { OrthogonalConnection } from "../diagram/othogonal-connection";
-import { computeOrthogonalRoute, computeOrthogonalRoutesBatch, getPointOnOrthogonalPath, buildObstacleCatalog, obstaclesForEndpoints, appendInteriorObstaclesForPreferredEdges, mergeOrthogonalTrunkWaypoints, type OrthogonalRoute, type OrthogonalRouteRequest } from "@/lib/orthogonal-routing";
+import { computeOrthogonalRoute, computeOrthogonalRoutesBatch, getPointOnOrthogonalPath, closestTOnOrthogonalPath, buildObstacleCatalog, obstaclesForEndpoints, appendInteriorObstaclesForPreferredEdges, mergeOrthogonalTrunkWaypoints, type OrthogonalRoute, type OrthogonalRouteRequest } from "@/lib/orthogonal-routing";
 import type { DiagramData, DiagramConnectionData } from "@/lib/types";
 import {
   stableDiagramConnectionId,
   connectionSelectionIdMatches,
   isDiagramConnectionInCanvasSelection,
 } from "@/lib/connection-order-utils";
-import { measureNodeDims, type PositionedNode, type PositionedGroup, NODE_WIDTH, BASE_NODE_HEIGHT, TEXT_NODE_HEIGHT, EXTRA_LINE_HEIGHT, CONNECTION_HELPER_Z_INDEX } from "./canvas-constants";
+import { measureNodeDims, type PositionedNode, type PositionedGroup, NODE_WIDTH, BASE_NODE_HEIGHT, TEXT_NODE_HEIGHT, EXTRA_LINE_HEIGHT, CONNECTION_HELPER_Z_INDEX, snapToGrid } from "./canvas-constants";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
 import { cn, isIconOrEmojiType, isShapeNodeType } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -33,6 +33,8 @@ interface CanvasConnectionsProps {
   onConnectionUpdate?: (from: string, to: string, updates: Record<string, unknown>, connectionId?: string) => void;
   /** Called when a waypoint needs to be added */
   onConnectionWaypointAdd?: (from: string, to: string, connectionId?: string) => void;
+  /** Double-click on a connection: insert a node at the nearest point on the path (editor only). */
+  onConnectionInsertNode?: (connection: DiagramConnectionData, connectionIndex: number, diagramPoint: { x: number; y: number }) => void;
   /** When set, only render connections whose index is in this set (for order-aware layering) */
   connectionIndices?: Set<number>;
   /** Z-index for this connection layer when using order-aware layering (enables interleaving with nodes) */
@@ -116,6 +118,7 @@ function areCanvasConnectionsPropsEqual(prev: CanvasConnectionsProps, next: Canv
     prev.onConnectionContextMenu === next.onConnectionContextMenu &&
     prev.onConnectionUpdate === next.onConnectionUpdate &&
     prev.onConnectionWaypointAdd === next.onConnectionWaypointAdd &&
+    prev.onConnectionInsertNode === next.onConnectionInsertNode &&
     setsEqual(prev.connectionIndices, next.connectionIndices);
 }
 
@@ -135,6 +138,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     onConnectionContextMenu,
     onConnectionUpdate,
     onConnectionWaypointAdd,
+    onConnectionInsertNode,
     connectionIndices,
     stackZIndex,
     exportAnimationTimeSeconds,
@@ -768,6 +772,54 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
           },
         };
 
+        const handleConnectionDoubleClick =
+          !isReadOnly && onConnectionInsertNode && transform && canvasRef?.current && edge.from !== edge.to
+            ? (_connection: DiagramConnectionData, event: React.MouseEvent) => {
+                const el = canvasRef.current;
+                if (!el) return;
+                event.stopPropagation();
+                event.preventDefault();
+                const rect = el.getBoundingClientRect();
+                const px = (event.clientX - rect.left - transform.x) / transform.k;
+                const py = (event.clientY - rect.top - transform.y) / transform.k;
+                let insertAbs: { x: number; y: number };
+                if (connStyle === "orthogonal") {
+                  const route = orthogonalRouteMap.get(index);
+                  if (!route || !(route.totalLength > 0)) return;
+                  const t = closestTOnOrthogonalPath(px, py, route.points, route.totalLength);
+                  insertAbs = getPointOnOrthogonalPath(t, route.points, route.totalLength);
+                } else {
+                  const t = closestTOnConnectionPath(
+                    px,
+                    py,
+                    fromX,
+                    fromY,
+                    toX,
+                    toY,
+                    fromAngle,
+                    toAngle,
+                    curvature,
+                    enhancedEdge.waypoints,
+                  );
+                  insertAbs = getPointOnConnectionPath(
+                    t,
+                    fromX,
+                    fromY,
+                    toX,
+                    toY,
+                    fromAngle,
+                    toAngle,
+                    curvature,
+                    enhancedEdge.waypoints,
+                  );
+                }
+                onConnectionInsertNode(enhancedEdge as DiagramConnectionData, index, {
+                  x: snapToGrid(insertAbs.x),
+                  y: snapToGrid(insertAbs.y),
+                });
+              }
+            : undefined;
+
         return (
           <g
             key={`${edge.from}-${edge.to}-${index}-${edge.toArrow ? 'arrow' : 'noarrow'}-${edge._updated || ''}-r${connectionRenderRevision ?? ''}`}
@@ -785,6 +837,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                 exportAnimationTimeSeconds={exportAnimationTimeSeconds}
                 animationConnectionsEnabled={animationConnectionsEnabled && (animationFilterSourceIds ? animationFilterSourceIds.has(edge.from) : (!animationFilterSourceId || edge.from === animationFilterSourceId)) && !animationDisabledSources.has(edge.from)}
                 onClick={connectionHandlers.onClick}
+                onDoubleClick={handleConnectionDoubleClick}
                 onContextMenu={connectionHandlers.onContextMenu}
                 slideTransitionStyle={slideTransitionStyle}
                 orthogonalFastRouting={orthogonalFastRouting}
@@ -829,6 +882,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                 exportAnimationTimeSeconds={exportAnimationTimeSeconds}
                 animationConnectionsEnabled={animationConnectionsEnabled && (animationFilterSourceIds ? animationFilterSourceIds.has(edge.from) : (!animationFilterSourceId || edge.from === animationFilterSourceId)) && !animationDisabledSources.has(edge.from)}
                 onClick={connectionHandlers.onClick}
+                onDoubleClick={handleConnectionDoubleClick}
                 onContextMenu={connectionHandlers.onContextMenu}
                 slideTransitionStyle={slideTransitionStyle}
               />

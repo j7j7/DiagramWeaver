@@ -9,11 +9,14 @@ import {
   connectorLinePointBounds,
   curveBoundsExpanded,
   getConnectorLineVertices,
+  isConnectorLineGeometryClosed,
   linePathTangentAtEnd,
   linePathTangentAtStart,
   pointAtLengthRatio,
   type LinePathStyle,
 } from "@/lib/line-curve-path";
+import { useSvgGradient } from "@/hooks/use-svg-gradient";
+import { getShapeSvgFill } from "@/components/diagram/shapes/shape-utils";
 
 interface LineShapeProps {
   node: DiagramNodeData & { width?: number; height?: number };
@@ -99,6 +102,15 @@ const renderLineCap = (
   return null;
 };
 
+function normalizeTwoColors(value: unknown, fallbackA: string, fallbackB: string): [string, string] {
+  if (Array.isArray(value)) {
+    const vals = value.filter((v): v is string => typeof v === "string" && v.length > 0);
+    if (vals.length >= 2) return [vals[0], vals[1]];
+    if (vals.length === 1) return [vals[0], vals[0]];
+  }
+  return [fallbackA, fallbackB];
+}
+
 export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, onClick, onContextMenu, slideColorTransition }: LineShapeProps) {
   const { resolvedTheme } = useTheme();
   const vertices = getConnectorLineVertices(node as DiagramNodeData & { __localStartPos?: { x: number; y: number }; __localEndPos?: { x: number; y: number }; __localControlPoints?: { x: number; y: number }[] });
@@ -109,6 +121,32 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
   const lineSmoothJoints = (node as DiagramNodeData & { lineSmoothJoints?: boolean }).lineSmoothJoints === true;
 
   const pathD = connectorLinePathD(vertices, linePathStyle, lineSmoothJoints);
+  const closed = isConnectorLineGeometryClosed(node as DiagramNodeData);
+  const pathDClosed = closed && pathD ? `${pathD.trimEnd()} Z` : pathD;
+
+  const nodeAny = node as DiagramNodeData & {
+    backgroundStyle?: string;
+    backgroundColor?: string;
+    backgroundColors?: string[];
+    gradientAngle?: number;
+  };
+  const backgroundStyle = (nodeAny.backgroundStyle || "none") as "solid" | "gradient" | "none";
+  const backgroundColorFallback = nodeAny.backgroundColor || "#93c5fd";
+  const [bgStart, bgEnd] = normalizeTwoColors(
+    nodeAny.backgroundColors,
+    backgroundColorFallback,
+    backgroundColorFallback,
+  );
+  const gradientAngle = nodeAny.gradientAngle ?? 135;
+  const needsAreaFill = closed && backgroundStyle !== "none";
+  const { defs: fillDefs, fillRef } = useSvgGradient({
+    colors: backgroundStyle === "gradient" ? [bgStart, bgEnd] : [bgStart],
+    angle: gradientAngle,
+    enabled: needsAreaFill && backgroundStyle === "gradient",
+  });
+  const areaFill = needsAreaFill
+    ? getShapeSvgFill(backgroundStyle, fillRef, backgroundColorFallback)
+    : "none";
   
   const nodeX = node.x ?? connectorLinePointBounds(vertices).minX;
   const nodeY = node.y ?? connectorLinePointBounds(vertices).minY;
@@ -241,6 +279,16 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
         }}
       >
         <g transform={`translate(${-(nodeX + svgMinX)}, ${-(nodeY + svgMinY)})`}>
+          {needsAreaFill ? fillDefs : null}
+          {needsAreaFill && (
+            <path
+              d={pathDClosed}
+              fill={areaFill}
+              stroke="none"
+              className="pointer-events-none"
+              style={slideColorTransition !== undefined ? { transition: slideColorTransition } : undefined}
+            />
+          )}
           <path
             d={pathD}
             stroke="transparent"
@@ -273,11 +321,9 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
           />
         </g>
         
-        {/* Start cap - points outward from start (backward, away from line) */}
-        {renderLineCap(startCap, relStartX - svgMinX, relStartY - svgMinY, angleToStartCap, lineColor, capSize)}
-        
-        {/* End cap - points outward from end (forward, continuing line direction) */}
-        {renderLineCap(endCap, relEndX - svgMinX, relEndY - svgMinY, tangentEnd, lineColor, capSize)}
+        {/* Closed paths: no start/end caps (same vertex). */}
+        {!closed && renderLineCap(startCap, relStartX - svgMinX, relStartY - svgMinY, angleToStartCap, lineColor, capSize)}
+        {!closed && renderLineCap(endCap, relEndX - svgMinX, relEndY - svgMinY, tangentEnd, lineColor, capSize)}
         
         {/* Text label */}
         {label && textLines.length > 0 && (

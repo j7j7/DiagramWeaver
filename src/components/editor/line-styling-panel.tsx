@@ -10,6 +10,8 @@ import { Separator } from "@/components/ui/separator";
 import { ColorPicker } from "@/components/ui/color-picker";
 import { Switch } from "@/components/ui/switch";
 import { LineStyling } from "@/lib/line-styling";
+import type { DiagramNodeData } from "@/lib/types";
+import { isConnectorLineGeometryClosed } from "@/lib/line-curve-path";
 import { COMMON_FONT_FAMILIES } from "@/lib/text-styling";
 import { Minus, ArrowRight, Circle, Square, RotateCcw, X, ArrowUp, ArrowDown } from "lucide-react";
 import Draggable from 'react-draggable';
@@ -75,6 +77,12 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
     }
   };
 
+  const linePathClosed = React.useMemo(() => {
+    if (!selectedItem) return false;
+    const merged = { ...(selectedItem as object), ...styling } as DiagramNodeData;
+    return isConnectorLineGeometryClosed(merged);
+  }, [selectedItem, styling]);
+
   return (
     <Draggable
       nodeRef={nodeRef}
@@ -83,7 +91,7 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
         setPosition({ x: data.x, y: data.y });
       }}
     >
-      <div ref={nodeRef} className="fixed top-20 left-20 z-50 bg-popover border border-border rounded-lg shadow-lg w-[24rem] cursor-move">
+      <div ref={nodeRef} className="fixed top-20 left-20 z-50 bg-popover border border-border rounded-lg shadow-lg w-[640px] max-w-[calc(100vw-2rem)] cursor-move">
         <div className="flex items-center justify-between p-3 border-b">
           <div className="flex items-center gap-2">
             <Minus className="w-4 h-4 text-blue-600" />
@@ -101,6 +109,8 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
           )}
         </div>
         <div className="p-3 space-y-2 max-h-[80vh] overflow-y-auto">
+          <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+            <div className="space-y-4 min-w-0">
           {/* Line Properties Section */}
           <div className="bg-muted/50 rounded-md p-2 border border-border">
             <div className="flex items-center gap-1.5 mb-2">
@@ -151,67 +161,71 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
               </Select>
             </div>
 
-            {/* Start Cap */}
-            <div className="space-y-1 mb-2">
-              <Label htmlFor="start-cap" className="text-xs text-slate-600">Start Cap</Label>
-              <Select
-                value={styling.startCap || 'none'}
-                onValueChange={(value) => handlePropertyChange('startCap', value as any)}
-              >
-                <SelectTrigger id="start-cap" className="h-7 text-xs">
-                  <SelectValue placeholder="Select start cap" />
-                </SelectTrigger>
-                <SelectContent className="z-[70]">
-                  <SelectItem value="none" className="text-xs flex items-center gap-2">
-                    <Minus className="w-3 h-3" />
-                    None
-                  </SelectItem>
-                  <SelectItem value="arrow" className="text-xs flex items-center gap-2">
-                    <ArrowRight className="w-3 h-3" />
-                    Arrow
-                  </SelectItem>
-                  <SelectItem value="dot" className="text-xs flex items-center gap-2">
-                    <Circle className="w-3 h-3" />
-                    Dot
-                  </SelectItem>
-                  <SelectItem value="square" className="text-xs flex items-center gap-2">
-                    <Square className="w-3 h-3" />
-                    Square
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {!linePathClosed && (
+              <>
+                {/* Start Cap */}
+                <div className="space-y-1 mb-2">
+                  <Label htmlFor="start-cap" className="text-xs text-slate-600">Start Cap</Label>
+                  <Select
+                    value={styling.startCap || 'none'}
+                    onValueChange={(value) => handlePropertyChange('startCap', value as any)}
+                  >
+                    <SelectTrigger id="start-cap" className="h-7 text-xs">
+                      <SelectValue placeholder="Select start cap" />
+                    </SelectTrigger>
+                    <SelectContent className="z-[70]">
+                      <SelectItem value="none" className="text-xs flex items-center gap-2">
+                        <Minus className="w-3 h-3" />
+                        None
+                      </SelectItem>
+                      <SelectItem value="arrow" className="text-xs flex items-center gap-2">
+                        <ArrowRight className="w-3 h-3" />
+                        Arrow
+                      </SelectItem>
+                      <SelectItem value="dot" className="text-xs flex items-center gap-2">
+                        <Circle className="w-3 h-3" />
+                        Dot
+                      </SelectItem>
+                      <SelectItem value="square" className="text-xs flex items-center gap-2">
+                        <Square className="w-3 h-3" />
+                        Square
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            {/* End Cap */}
-            <div className="space-y-1 mb-2">
-              <Label htmlFor="end-cap" className="text-xs text-slate-600">End Cap</Label>
-              <Select
-                value={styling.endCap || 'none'}
-                onValueChange={(value) => handlePropertyChange('endCap', value as any)}
-              >
-                <SelectTrigger id="end-cap" className="h-7 text-xs">
-                  <SelectValue placeholder="Select end cap" />
-                </SelectTrigger>
-                <SelectContent className="z-[70]">
-                  <SelectItem value="none" className="text-xs flex items-center gap-2">
-                    <Minus className="w-3 h-3" />
-                    None
-                  </SelectItem>
-                  <SelectItem value="arrow" className="text-xs flex items-center gap-2">
-                    <ArrowRight className="w-3 h-3" />
-                    Arrow
-                  </SelectItem>
-                  <SelectItem value="dot" className="text-xs flex items-center gap-2">
-                    <Circle className="w-3 h-3" />
-                    Dot
-                  </SelectItem>
-                  <SelectItem value="square" className="text-xs flex items-center gap-2">
-                    <Square className="w-3 h-3" />
-                    Square
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                {/* End Cap */}
+                <div className="space-y-1 mb-2">
+                  <Label htmlFor="end-cap" className="text-xs text-slate-600">End Cap</Label>
+                  <Select
+                    value={styling.endCap || 'none'}
+                    onValueChange={(value) => handlePropertyChange('endCap', value as any)}
+                  >
+                    <SelectTrigger id="end-cap" className="h-7 text-xs">
+                      <SelectValue placeholder="Select end cap" />
+                    </SelectTrigger>
+                    <SelectContent className="z-[70]">
+                      <SelectItem value="none" className="text-xs flex items-center gap-2">
+                        <Minus className="w-3 h-3" />
+                        None
+                      </SelectItem>
+                      <SelectItem value="arrow" className="text-xs flex items-center gap-2">
+                        <ArrowRight className="w-3 h-3" />
+                        Arrow
+                      </SelectItem>
+                      <SelectItem value="dot" className="text-xs flex items-center gap-2">
+                        <Circle className="w-3 h-3" />
+                        Dot
+                      </SelectItem>
+                      <SelectItem value="square" className="text-xs flex items-center gap-2">
+                        <Square className="w-3 h-3" />
+                        Square
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
 
             {/* Line Color */}
             <div className="space-y-1">
@@ -225,7 +239,8 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
               />
             </div>
           </div>
-
+            </div>
+            <div className="space-y-4 min-w-0">
           {/* Text Properties Section */}
           <div className="bg-emerald-50/50 rounded-md p-2 border border-emerald-200/50">
             <div className="flex items-center gap-1.5 mb-2">
@@ -485,6 +500,8 @@ export const LineStylingPanel = React.memo(function LineStylingPanel({
                   Below
                 </Button>
               </div>
+            </div>
+          </div>
             </div>
           </div>
 
