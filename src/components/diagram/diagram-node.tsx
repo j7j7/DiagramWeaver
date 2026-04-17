@@ -220,6 +220,9 @@ interface DiagramNodeProps {
   rotationHandleVisible?: boolean;
   onRotationPointerDown?: (e: React.PointerEvent) => void;
   isRotationDragging?: boolean;
+  /** Click (no drag) on a line vertex handle — selects that vertex for delete-point */
+  onConnectorLineVertexFocus?: (nodeId: string, vertexIndex: number) => void;
+  connectorLineFocusedVertexIndex?: number | null;
 }
 
 function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps): boolean {
@@ -293,10 +296,12 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
     prev.highlightAnimStaggerCount === next.highlightAnimStaggerCount &&
     prev.rotationHandleVisible === next.rotationHandleVisible &&
     prev.onRotationPointerDown === next.onRotationPointerDown &&
-    prev.isRotationDragging === next.isRotationDragging;
+    prev.isRotationDragging === next.isRotationDragging &&
+    prev.onConnectorLineVertexFocus === next.onConnectorLineVertexFocus &&
+    prev.connectorLineFocusedVertexIndex === next.connectorLineFocusedVertexIndex;
 }
 
-function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onResizeStart, onResizeEnd, onPositionUpdate, onDraggingChange, onUpdate, hoverEnabled = true, isReadOnly = false, onHoverChange, onConnect, isConnectMode, transform, canvasRef, stackZIndex, pointerEventsPassThrough = false, animationStyle, onSubDiagramDoubleClick, hasLinkedSubDiagram, showUrlHandleWhenReadOnly, isDuplicateDragPreview = false, highlightAnimStaggerIndex, highlightAnimStaggerCount, rotationHandleVisible = false, onRotationPointerDown, isRotationDragging = false }: DiagramNodeProps) {
+function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onResizeStart, onResizeEnd, onPositionUpdate, onDraggingChange, onUpdate, hoverEnabled = true, isReadOnly = false, onHoverChange, onConnect, isConnectMode, transform, canvasRef, stackZIndex, pointerEventsPassThrough = false, animationStyle, onSubDiagramDoubleClick, hasLinkedSubDiagram, showUrlHandleWhenReadOnly, isDuplicateDragPreview = false, highlightAnimStaggerIndex, highlightAnimStaggerCount, rotationHandleVisible = false, onRotationPointerDown, isRotationDragging = false, onConnectorLineVertexFocus, connectorLineFocusedVertexIndex = null }: DiagramNodeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [isEditingTag, setIsEditingTag] = useState(false);
@@ -328,6 +333,21 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     initialVertices: { x: number; y: number }[];
   } | null>(null);
   const latestLineVerticesRef = useRef<{ x: number; y: number }[] | null>(null);
+  const lineVertexDocListenersRef = useRef<{
+    move: (e: MouseEvent) => void;
+    up: (e: MouseEvent) => void;
+  } | null>(null);
+
+  const removeLineVertexDocListeners = useCallback(() => {
+    const L = lineVertexDocListenersRef.current;
+    if (L) {
+      document.removeEventListener("mousemove", L.move, true);
+      document.removeEventListener("mouseup", L.up, true);
+      lineVertexDocListenersRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => () => removeLineVertexDocListeners(), [removeLineVertexDocListeners]);
   /** While true, line/bar chart value drag is active — react-dnd must not move the node. */
   const chartValueDragInteractionRef = useRef(false);
   /** Plain (icon) label input: avoids multi-select blur syncing when the draft was not edited. */
@@ -1426,50 +1446,45 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     isLineNode,
   ]);
 
-  const handleLineVertexDragStart = (e: React.MouseEvent, vertexIndex: number) => {
-    if (isReadOnly) {
-      e.stopPropagation();
-      e.preventDefault();
-      return;
-    }
-    e.preventDefault();
-    e.stopPropagation();
+  const beginRealLineVertexDrag = useCallback(
+    (e: MouseEvent, vertexIndex: number) => {
+      setIsDraggingLineEndpoint(true);
+      setLineVertexIndex(vertexIndex);
+      onDraggingChange?.(true);
 
-    setIsDraggingLineEndpoint(true);
-    setLineVertexIndex(vertexIndex);
-    onDraggingChange?.(true);
+      const synth = {
+        ...node,
+        ...(localStartPos && { __localStartPos: localStartPos }),
+        ...(localEndPos && { __localEndPos: localEndPos }),
+        ...(localControlPoints && { __localControlPoints: localControlPoints }),
+      };
+      const initialVertices = getConnectorLineVertices(synth as any).map((p) => ({ ...p }));
 
-    const synth = {
-      ...node,
-      ...(localStartPos && { __localStartPos: localStartPos }),
-      ...(localEndPos && { __localEndPos: localEndPos }),
-      ...(localControlPoints && { __localControlPoints: localControlPoints }),
-    };
-    const initialVertices = getConnectorLineVertices(synth as any).map((p) => ({ ...p }));
+      const b = initialVertices.reduce(
+        (acc, p) => ({
+          minX: Math.min(acc.minX, p.x),
+          minY: Math.min(acc.minY, p.y),
+        }),
+        { minX: initialVertices[0].x, minY: initialVertices[0].y },
+      );
+      initialContainerPosRef.current = {
+        x: node.x ?? b.minX,
+        y: node.y ?? b.minY,
+      };
 
-    const b = initialVertices.reduce(
-      (acc, p) => ({
-        minX: Math.min(acc.minX, p.x),
-        minY: Math.min(acc.minY, p.y),
-      }),
-      { minX: initialVertices[0].x, minY: initialVertices[0].y }
-    );
-    initialContainerPosRef.current = {
-      x: node.x ?? b.minX,
-      y: node.y ?? b.minY,
-    };
-
-    lineVertexDragRef.current = {
-      clientX: e.clientX,
-      clientY: e.clientY,
-      vertexIndex,
-      initialVertices,
-    };
-    latestLineVerticesRef.current = initialVertices;
-  };
+      lineVertexDragRef.current = {
+        clientX: e.clientX,
+        clientY: e.clientY,
+        vertexIndex,
+        initialVertices,
+      };
+      latestLineVerticesRef.current = initialVertices;
+    },
+    [node, localStartPos, localEndPos, localControlPoints, onDraggingChange],
+  );
 
   const handleLineVertexDragMove = useCallback((e: MouseEvent | React.MouseEvent) => {
-    if (!isDraggingLineEndpoint || !lineVertexDragRef.current) return;
+    if (!lineVertexDragRef.current) return;
 
     let deltaX = e.clientX - lineVertexDragRef.current.clientX;
     let deltaY = e.clientY - lineVertexDragRef.current.clientY;
@@ -1492,7 +1507,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     const interior = next.slice(1, -1);
     setLocalControlPoints(interior.length ? interior : null);
     latestPositionsRef.current = { startPos: next[0], endPos: next[next.length - 1] };
-  }, [isDraggingLineEndpoint, transform]);
+  }, [transform]);
   
   const handleLineVertexDragEnd = useCallback(() => {
     if (onUpdate && lineVertexDragRef.current) {
@@ -1532,6 +1547,59 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     lineVertexDragRef.current = null;
   }, [onUpdate, node, localStartPos, localEndPos, localControlPoints, onDraggingChange]);
 
+  const handleLineVertexPointerDown = useCallback(
+    (e: React.MouseEvent, vertexIndex: number) => {
+      if (isReadOnly) {
+        e.stopPropagation();
+        e.preventDefault();
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+
+      removeLineVertexDocListeners();
+
+      const startX = e.clientX;
+      const startY = e.clientY;
+      let phase: "pending" | "drag" = "pending";
+
+      const onMove = (ev: MouseEvent) => {
+        if (phase === "pending") {
+          if (Math.hypot(ev.clientX - startX, ev.clientY - startY) > 5) {
+            phase = "drag";
+            beginRealLineVertexDrag(ev, vertexIndex);
+          }
+          return;
+        }
+        handleLineVertexDragMove(ev);
+      };
+
+      const onUp = (ev: MouseEvent) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        removeLineVertexDocListeners();
+        if (phase === "pending") {
+          onConnectorLineVertexFocus?.(node.id, vertexIndex);
+          return;
+        }
+        handleLineVertexDragEnd();
+      };
+
+      document.addEventListener("mousemove", onMove, true);
+      document.addEventListener("mouseup", onUp, true);
+      lineVertexDocListenersRef.current = { move: onMove, up: onUp };
+    },
+    [
+      isReadOnly,
+      removeLineVertexDocListeners,
+      beginRealLineVertexDrag,
+      node.id,
+      onConnectorLineVertexFocus,
+      handleLineVertexDragMove,
+      handleLineVertexDragEnd,
+    ],
+  );
+
   // Global mouse events for resize
   useEffect(() => {
     if (isResizing) {
@@ -1555,28 +1623,6 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
       };
     }
   }, [isResizing, resizeHandle, node.id]);
-  
-  useEffect(() => {
-    if (isDraggingLineEndpoint) {
-      const handleGlobalMouseMove = (e: MouseEvent) => {
-        handleLineVertexDragMove(e);
-      };
-
-      const handleGlobalMouseUp = (e: MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        handleLineVertexDragEnd();
-      };
-
-      document.addEventListener("mousemove", handleGlobalMouseMove, true);
-      document.addEventListener("mouseup", handleGlobalMouseUp, true);
-
-      return () => {
-        document.removeEventListener("mousemove", handleGlobalMouseMove, true);
-        document.removeEventListener("mouseup", handleGlobalMouseUp, true);
-      };
-    }
-  }, [isDraggingLineEndpoint, handleLineVertexDragMove, handleLineVertexDragEnd]);
 
   // Corner radius drag handlers (rounded-rectangle only)
   const handleCornerRadiusDragStart = useCallback((e: React.MouseEvent) => {
@@ -1944,10 +1990,11 @@ return (
            <LineVertexHandles
              visible={true}
              activeVertexIndex={lineVertexIndex}
+             focusedVertexIndex={connectorLineFocusedVertexIndex}
              vertices={vertices}
              nodeX={handleNodeX}
              nodeY={handleNodeY}
-             onStartDrag={handleLineVertexDragStart}
+             onVertexPointerDown={handleLineVertexPointerDown}
              disabled={false}
              zIndexClass="z-50"
            />

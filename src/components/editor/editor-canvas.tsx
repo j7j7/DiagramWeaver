@@ -166,6 +166,11 @@ interface EditorCanvasProps {
   onRemoveSubDiagramLink?: (nodeId: string) => void;
   /** Pause connection animations while a canvas context menu / overlay is open (same effective flag as top menubar). */
   onPauseConnectionAnimationsForOverlayUi?: () => void;
+  /** Connector line: vertex handle click target for delete-point */
+  connectorLineFocusedVertex?: { nodeId: string; vertexIndex: number } | null;
+  onConnectorLineVertexFocus?: (nodeId: string, vertexIndex: number) => void;
+  /** Return true if a focused line vertex was deleted (or delete was cancelled) — skip full node / batch delete */
+  tryDeleteConnectorLineVertexBeforeNodeDelete?: (nodeId: string) => boolean;
 }
 
 
@@ -188,7 +193,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionInsertNode, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, defaultTextLabelsEnabled = true, connectionsBehindNodesEnabled = true, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal, setChartDataEditorModal, nodeAnimationStyles, connectionAnimationStyles, connectionKey, connectionRenderRevision, onSubDiagramDoubleClick, getHasLinkedSubDiagram, onCreateSubDiagram, onRemoveSubDiagramLink, onPauseConnectionAnimationsForOverlayUi }: EditorCanvasProps,
+   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionInsertNode, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, defaultTextLabelsEnabled = true, connectionsBehindNodesEnabled = true, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal, setChartDataEditorModal, nodeAnimationStyles, connectionAnimationStyles, connectionKey, connectionRenderRevision, onSubDiagramDoubleClick, getHasLinkedSubDiagram, onCreateSubDiagram, onRemoveSubDiagramLink, onPauseConnectionAnimationsForOverlayUi, connectorLineFocusedVertex = null, onConnectorLineVertexFocus, tryDeleteConnectorLineVertexBeforeNodeDelete }: EditorCanvasProps,
   ref
 ) {
   const [gifExportAnimationTimeSeconds, setGifExportAnimationTimeSeconds] = React.useState<number | null>(null);
@@ -1314,6 +1319,17 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           return;
         }
 
+        if (
+          selectedItemIds &&
+          selectedItemIds.size === 1 &&
+          tryDeleteConnectorLineVertexBeforeNodeDelete
+        ) {
+          const onlyId = Array.from(selectedItemIds)[0];
+          if (tryDeleteConnectorLineVertexBeforeNodeDelete(onlyId)) {
+            return;
+          }
+        }
+
         // If there are multiple selected items, delete all of them
         if (selectedItemIds && selectedItemIds.size > 0) {
           operations.handleDeleteMultiple(Array.from(selectedItemIds));
@@ -1328,7 +1344,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [selectedItem, selectedItemId, selectedItemIds, onConnectionDelete, handleCopy, handlePaste, canPaste, operations]);
+  }, [selectedItem, selectedItemId, selectedItemIds, onConnectionDelete, handleCopy, handlePaste, canPaste, operations, tryDeleteConnectorLineVertexBeforeNodeDelete]);
 
   // ============================================================================
   // CANVAS DIMENSIONS TRACKING
@@ -1628,6 +1644,12 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   }
                   highlightAnimStaggerIndex={highlightAnimStagger.indexById.get(node.id)}
                   highlightAnimStaggerCount={highlightAnimStagger.count}
+                  connectorLineFocusedVertexIndex={
+                    connectorLineFocusedVertex?.nodeId === node.id
+                      ? connectorLineFocusedVertex.vertexIndex
+                      : null
+                  }
+                  onConnectorLineVertexFocus={onConnectorLineVertexFocus}
                 />
               ) : zone ? null : null;
                   return nodeEl;
@@ -1716,6 +1738,12 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     }
                     highlightAnimStaggerIndex={highlightAnimStagger.indexById.get(node.id)}
                     highlightAnimStaggerCount={highlightAnimStagger.count}
+                    connectorLineFocusedVertexIndex={
+                      connectorLineFocusedVertex?.nodeId === node.id
+                        ? connectorLineFocusedVertex.vertexIndex
+                        : null
+                    }
+                    onConnectorLineVertexFocus={onConnectorLineVertexFocus}
                   />
                 ) : zone ? null : null;
                 return [
@@ -1982,6 +2010,14 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             itemType={contextMenu.itemType}
             itemId={contextMenu.itemId}
             onDelete={() => {
+              if (
+                contextMenu.itemType === 'node' &&
+                contextMenu.itemId &&
+                tryDeleteConnectorLineVertexBeforeNodeDelete?.(contextMenu.itemId)
+              ) {
+                closeContextMenu();
+                return;
+              }
               if (contextMenu.itemType === 'node') {
                 operations.handleDelete(contextMenu.itemId);
               } else {

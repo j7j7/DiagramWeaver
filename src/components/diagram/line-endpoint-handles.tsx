@@ -15,11 +15,13 @@ export interface LineVertexHandlesProps {
   visible: boolean;
   /** Index of vertex being dragged (hidden while dragging that handle); null = show all */
   activeVertexIndex: number | null;
+  /** Click-selected vertex (e.g. for delete-point); shown with a ring */
+  focusedVertexIndex?: number | null;
   /** Absolute canvas positions: [start, ...interior controls (curved only), end] */
   vertices: { x: number; y: number }[];
   nodeX: number;
   nodeY: number;
-  onStartDrag: (event: React.MouseEvent, vertexIndex: number) => void;
+  onVertexPointerDown: (event: React.MouseEvent, vertexIndex: number) => void;
   disabled?: boolean;
   zIndexClass?: string;
 }
@@ -27,10 +29,11 @@ export interface LineVertexHandlesProps {
 export function LineVertexHandles({
   visible,
   activeVertexIndex,
+  focusedVertexIndex = null,
   vertices,
   nodeX,
   nodeY,
-  onStartDrag,
+  onVertexPointerDown,
   disabled = false,
   zIndexClass = "z-50",
 }: LineVertexHandlesProps) {
@@ -43,7 +46,7 @@ export function LineVertexHandles({
   const handleMouseDown = (e: React.MouseEvent, vertexIndex: number) => {
     e.stopPropagation();
     e.preventDefault();
-    onStartDrag(e, vertexIndex);
+    onVertexPointerDown(e, vertexIndex);
   };
 
   return (
@@ -52,7 +55,8 @@ export function LineVertexHandles({
         if (activeVertexIndex === index) return null;
         const relX = pt.x - nodeX;
         const relY = pt.y - nodeY;
-        const highlighted = hoveredIndex === index || activeVertexIndex === index;
+        const highlighted =
+          hoveredIndex === index || activeVertexIndex === index || focusedVertexIndex === index;
         const isEndpoint = index === 0 || index === vertices.length - 1;
         const fill = highlighted
           ? isEndpoint
@@ -61,11 +65,13 @@ export function LineVertexHandles({
           : isEndpoint
             ? GREEN
             : YELLOW;
+        const focused = focusedVertexIndex === index;
         return (
           <div
             key={`line-v-${index}`}
             className={cn(
               "absolute cursor-grab active:cursor-grabbing rounded-sm border-2 border-white shadow-sm",
+              focused && "ring-2 ring-primary ring-offset-1 ring-offset-background",
               zIndexClass
             )}
             style={{
@@ -79,7 +85,13 @@ export function LineVertexHandles({
             onMouseEnter={() => setHoveredIndex(index)}
             onMouseLeave={() => setHoveredIndex(null)}
             onMouseDown={(e) => handleMouseDown(e, index)}
-            title={index === 0 ? "Drag start" : index === vertices.length - 1 ? "Drag end" : "Drag curve point"}
+            title={
+              index === 0
+                ? "Click to select; drag to move start"
+                : index === vertices.length - 1
+                  ? "Click to select; drag to move end"
+                  : "Click to select; drag to move point"
+            }
           />
         );
       })}

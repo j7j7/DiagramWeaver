@@ -415,6 +415,98 @@ export function curveBoundsExpanded(
 }
 
 /** Insert a control at the midpoint of the longest segment of the open polyline. */
+/**
+ * Remove one polyline/spline vertex from a connector line node (by resolved vertex index:
+ * `[start, ...lineControlPoints, end]`, with curved + empty storage using the synthetic midpoint).
+ * Returns updated node or `null` if removal would leave too few points.
+ */
+export function removeConnectorLineVertexAtIndex(
+  node: DiagramNodeData,
+  vertexIndex: number,
+): DiagramNodeData | null {
+  const style = (((node as DiagramNodeData & { linePathStyle?: LinePathStyle }).linePathStyle ||
+    "straight") as LinePathStyle);
+  const startBase =
+    (node as DiagramNodeData & { startPos?: { x: number; y: number } }).startPos || {
+      x: node.x || 0,
+      y: node.y || 0,
+    };
+  const endBase =
+    (node as DiagramNodeData & { endPos?: { x: number; y: number } }).endPos || {
+      x: (node.x || 0) + 150,
+      y: node.y || 0,
+    };
+  const storedRaw = ((node as DiagramNodeData & { lineControlPoints?: LineControlPoint[] })
+    .lineControlPoints || []) as LineControlPoint[];
+
+  let vertices: { x: number; y: number }[];
+  if (style === "curved" && storedRaw.length === 0) {
+    vertices = [
+      { ...startBase },
+      { x: (startBase.x + endBase.x) / 2, y: (startBase.y + endBase.y) / 2 },
+      { ...endBase },
+    ];
+  } else if (style === "curved") {
+    vertices = [{ ...startBase }, ...storedRaw.map((p) => ({ ...p })), { ...endBase }];
+  } else if (storedRaw.length === 0) {
+    vertices = [{ ...startBase }, { ...endBase }];
+  } else {
+    vertices = [{ ...startBase }, ...storedRaw.map((p) => ({ ...p })), { ...endBase }];
+  }
+
+  if (vertexIndex < 0 || vertexIndex >= vertices.length) return null;
+
+  const closed = isConnectorLineGeometryClosed({
+    ...node,
+    startPos: startBase,
+    endPos: endBase,
+    lineControlPoints: storedRaw,
+  } as DiagramNodeData);
+
+  const next = vertices.filter((_, i) => i !== vertexIndex);
+
+  if (!closed && next.length < 2) return null;
+  if (closed && next.length < 3) return null;
+
+  const newStart = { ...next[0] };
+  let newEnd = { ...next[next.length - 1] };
+  let interior = next.slice(1, -1).map((p) => ({ ...p }));
+
+  let nextStyle: LinePathStyle = style;
+
+  if (closed) {
+    newEnd = { ...newStart };
+    interior = next.slice(1, -1).map((p) => ({ ...p }));
+  }
+
+  if (nextStyle === "curved" && next.length === 2) {
+    nextStyle = "straight";
+  }
+
+  const flatForBounds = closed ? [newStart, ...interior] : [newStart, ...interior, newEnd];
+  const minX = Math.min(...flatForBounds.map((p) => p.x));
+  const minY = Math.min(...flatForBounds.map((p) => p.y));
+
+  const nextNode = {
+    ...node,
+    x: minX,
+    y: minY,
+    startPos: newStart,
+    endPos: newEnd,
+    linePathStyle: nextStyle,
+  } as DiagramNodeData;
+
+  if (interior.length > 0) {
+    (nextNode as DiagramNodeData & { lineControlPoints?: LineControlPoint[] }).lineControlPoints =
+      interior;
+  } else {
+    delete (nextNode as DiagramNodeData & { lineControlPoints?: LineControlPoint[] })
+      .lineControlPoints;
+  }
+
+  return nextNode;
+}
+
 export function insertConnectorLineMidControl(
   start: { x: number; y: number },
   end: { x: number; y: number },

@@ -174,9 +174,6 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
   const borderStyleVs = (explicitBorderVisual
     ? nodeAny.borderStyle || "solid"
     : "none") as "solid" | "dotted" | "gradient" | "none";
-  const borderStrokeWidth =
-    borderStyleVs === "none" ? 0 : (parseInt(String(nodeAny.borderWidth ?? 2), 10) || 2);
-  const hasVisualBorder = explicitBorderVisual && borderStyleVs !== "none" && borderStrokeWidth > 0;
 
   const lineColor = node.lineColor || "#6b7280";
   const lineColorStyleVs = (nodeAny.lineColorStyle || "solid") as "solid" | "gradient";
@@ -192,21 +189,16 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
 
   const needsAreaFill = closed && backgroundStyle !== "none";
   const needsFillGradient = needsAreaFill && backgroundStyle === "gradient";
-  const needsBorderGradient = hasVisualBorder && borderStyleVs === "gradient";
-  const { defs: gradientDefs, fillRef, strokeRef, lineStrokeRef } = useSvgGradient({
+  const { defs: gradientDefs, fillRef, lineStrokeRef } = useSvgGradient({
     colors: backgroundStyle === "gradient" ? [bgStart, bgEnd] : [bgStart],
     angle: gradientAngle,
-    borderColors: needsBorderGradient ? [borderStart, borderEnd] : undefined,
-    borderAngle: needsBorderGradient ? borderGradientAngle : undefined,
     lineColors: needsLineBodyGradient ? [lineGradStart, lineGradEnd] : undefined,
     lineAngle: nodeAny.lineGradientAngle ?? gradientAngle,
-    enabled: needsFillGradient || needsBorderGradient || needsLineBodyGradient,
+    enabled: needsFillGradient || needsLineBodyGradient,
   });
   const areaFill = needsAreaFill
     ? getShapeSvgFill(backgroundStyle, fillRef, backgroundColorFallback)
     : "none";
-  const borderStrokePaint =
-    borderStyleVs === "gradient" ? (strokeRef ?? borderColorFallback) : borderColorFallback;
   const borderStrokeDasharray = borderStyleVs === "dotted" ? "3,3" : undefined;
 
   const lineBodyPaint = needsLineBodyGradient
@@ -243,6 +235,8 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
     // Dotted line: small dots with gaps
     strokeDasharray = `0 ${actualStrokeWidth * 2}`;
   }
+
+  const visibleStrokeDasharray = strokeDasharray ?? borderStrokeDasharray;
   
   // Get text styling from node
   const textStyling = extractTextStylingFromNode(node);
@@ -355,20 +349,6 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
               style={slideColorTransition !== undefined ? { transition: slideColorTransition } : undefined}
             />
           )}
-          {hasVisualBorder && (
-            <path
-              d={closed ? pathDClosed : pathD}
-              fill="none"
-              stroke={borderStrokePaint}
-              strokeWidth={actualStrokeWidth}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeDasharray={borderStrokeDasharray}
-              vectorEffect="non-scaling-stroke"
-              className="pointer-events-none"
-              style={slideColorTransition !== undefined ? { transition: slideColorTransition } : undefined}
-            />
-          )}
           <path
             d={closed ? pathDClosed : pathD}
             fill={closed ? "transparent" : "none"}
@@ -390,21 +370,20 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
               onContextMenu?.(e as any, node);
             }}
           />
-          {!hasVisualBorder && (
-            <path
-              d={closed ? pathDClosed : pathD}
-              stroke={lineBodyPaint}
-              strokeWidth={actualStrokeWidth}
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeDasharray={strokeDasharray}
-              style={{
-                pointerEvents: 'none',
-                ...(slideColorTransition !== undefined ? { transition: slideColorTransition } : {}),
-              }}
-            />
-          )}
+          <path
+            d={closed ? pathDClosed : pathD}
+            fill="none"
+            stroke={lineBodyPaint}
+            strokeWidth={actualStrokeWidth}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeDasharray={visibleStrokeDasharray}
+            vectorEffect="non-scaling-stroke"
+            className="pointer-events-none"
+            style={{
+              ...(slideColorTransition !== undefined ? { transition: slideColorTransition } : {}),
+            }}
+          />
         </g>
         
         {/* Closed paths: no start/end caps (same vertex). */}
@@ -414,7 +393,7 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
             relStartX - svgMinX,
             relStartY - svgMinY,
             angleToStartCap,
-            hasVisualBorder ? borderStrokePaint : lineBodyPaint,
+            lineBodyPaint,
             capSize,
           )}
         {!closed &&
@@ -423,7 +402,7 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
             relEndX - svgMinX,
             relEndY - svgMinY,
             tangentEnd,
-            hasVisualBorder ? borderStrokePaint : lineBodyPaint,
+            lineBodyPaint,
             capSize,
           )}
         

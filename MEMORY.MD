@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-04-17 – Connector line: click vertex to delete that point (not the whole line)
+**`LineVertexHandles`** / **`diagram-node`**: **Pointer down** uses a **5px** move threshold — **click** (no drag) calls **`onConnectorLineVertexFocus`**, which narrows selection to that line and stores **`connectorLineFocusedVertex`**. **Delete** (toolbar, context menu, keyboard with a **single** selection) runs **`removeConnectorLineVertexAtIndex`** (**`line-curve-path`**) when focus matches, then **`syncClosedConnectorLineBorderWidth`**. **Multi-select** is cleared on vertex focus so Delete does not batch-remove other objects. **`handleItemSelect`** / **`handleBatchSelect`** clear vertex focus.
+
 ### 2026-04-17 – Closed connector line: select by clicking interior / fill
 **`LineShape`**: The invisible hit path used open **`pathD`** with **`fill="none"`** and **`pointerEvents: 'stroke'`**, so closed loops only registered clicks on the stroke spine, not the enclosed area. For **`closed`**, the hit path now uses **`pathDClosed`**, **`fill="transparent"`**, and **`pointerEvents: 'all'`** (same thick transparent stroke as before for edge tolerance).
 
@@ -19,6 +22,9 @@
 
 ### 2026-04-17 – Connector line: visual border stroke (solid / dotted / gradient)
 **`LineShape`**: When the node has explicit **`borderStyle`** / **`borderColor`** / **`borderColors`** / **`borderWidth`** (from Visual Styling), draws a **stroke** along **`pathD`** or **`pathDClosed`** with **`useSvgGradient`** (fill + border gradients combined like **`RectangleShape`**). **`!hasVisualBorder`** keeps the previous **`lineColor`** / **`lineThickness`** stroke; caps use border paint when the visual border is active. Bounds padding includes border/line half-width.
+
+### 2026-04-17 – Connector line: Line Styling color always paints the stroke
+**`LineShape`**: When Visual Styling / theme set **border** fields, **`hasVisualBorder`** drew the visible path with **`borderStrokePaint`**, and the Line Styling path only rendered when **`!hasVisualBorder`**, so the **Line Styling** color picker had no effect on typical themed lines. The visible stroke is now **always** one path using **`lineBodyPaint`** (solid **`lineColor`** or line gradient). **`strokeDasharray`** prefers **Line type** (dashed/dotted); if solid, falls back to Visual border dotted. Border gradient defs are no longer used for this stroke. Caps match **`lineBodyPaint`**.
 
 ### 2026-04-17 – Line Styling: gradient line color (connector lines)
 **Line Styling** panel: **Color style** **Solid** | **Gradient** (like Visual **Border**). Stores **`lineColorStyle`**, **`lineColors`** **[start, end]**, **`lineGradientAngle`** on the node. **`useSvgGradient`** supports an optional third gradient (**`lineColors`** / **`lineAngle`**) → **`lineStrokeRef`**. **`LineShape`** enables defs when **`needsLineBodyGradient`** and paints the body path and caps with **`lineBodyPaint`** (`url(#…)` or solid **`lineColor`**). Types / **`DiagramNodeDataSchema`** / **`DiagramNodeItemSchema`** / **`line-styling`** extract+apply updated.

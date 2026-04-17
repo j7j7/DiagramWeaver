@@ -139,6 +139,8 @@ import {
 } from '@/lib/presentation-storage';
 import { DiagramBreadcrumb, type BreadcrumbSegment } from './editor/diagram-breadcrumb';
 import { isConnectorLineNodeType } from '@/lib/utils';
+import { removeConnectorLineVertexAtIndex } from '@/lib/line-curve-path';
+import { syncClosedConnectorLineBorderWidth } from '@/lib/line-styling';
 
 /** Presentation slide PNG thumbnails: poll at most this often; capture only when delta fingerprint changed. */
 const PRESENTATION_THUMB_INTERVAL_MS = 3000;
@@ -1170,6 +1172,16 @@ export default function DiagramEditor() {
   // Refresh key to force canvas re-render
   const [canvasRefreshKey, setCanvasRefreshKey] = React.useState(0);
 
+  /** Line shape: vertex handle click (no drag) — Delete removes this point instead of the whole node */
+  const [connectorLineFocusedVertex, setConnectorLineFocusedVertex] = React.useState<{
+    nodeId: string;
+    vertexIndex: number;
+  } | null>(null);
+
+  React.useEffect(() => {
+    setConnectorLineFocusedVertex(null);
+  }, [activeTabId]);
+
   // Sub-diagram navigation stack: empty = root; non-empty = viewing sub-diagram
   const [activeDiagramStack, setActiveDiagramStack] = React.useState<BreadcrumbSegment[]>([]);
   
@@ -1691,6 +1703,8 @@ export default function DiagramEditor() {
   }, [sidebarOpen, isMobile]);
 
   const handleItemSelect = React.useCallback((item: SelectedItem | null, shiftKey = false) => {
+    setConnectorLineFocusedVertex(null);
+
     if (isConnectMode && !item) {
       setIsConnectMode(false);
     }
@@ -1770,7 +1784,19 @@ export default function DiagramEditor() {
     setSelectedItemIds,
   ]);
 
+  const handleConnectorLineVertexFocus = React.useCallback(
+    (nodeId: string, vertexIndex: number) => {
+      const node = currentDiagramData.nodes.find((n) => n.id === nodeId);
+      if (!node || !isConnectorLineNodeType(node.type)) return;
+      setSelectedItem({ ...node, itemType: 'node' });
+      setSelectedItemIds(new Set([nodeId]));
+      setConnectorLineFocusedVertex({ nodeId, vertexIndex });
+    },
+    [currentDiagramData, setSelectedItem, setSelectedItemIds, setConnectorLineFocusedVertex],
+  );
+
   const handleBatchSelect = React.useCallback((itemIds: string[]) => {
+    setConnectorLineFocusedVertex(null);
     if (itemIds.length === 0) {
       setSelectedItem(null);
       setSelectedItemIds(new Set());
@@ -1823,7 +1849,7 @@ export default function DiagramEditor() {
       setSelectedItem(items[0]);
       setSelectedItemIds(new Set(resolvedIds));
     }
-  }, [setSelectedItem, setSelectedItemIds, animationToggleOnClickEnabled, setAnimationDisabledSources, displayDiagramData]);
+  }, [setSelectedItem, setSelectedItemIds, animationToggleOnClickEnabled, setAnimationDisabledSources, displayDiagramData, setConnectorLineFocusedVertex]);
   
   const handleItemUpdate = React.useCallback((updatedItem: SelectedItem) => {
     if (updatedItem.itemType === 'edge') return;
@@ -2035,40 +2061,6 @@ export default function DiagramEditor() {
       editorRef.current.pastePaletteItem(item, position);
     }
   };
-
-  const handleItemDelete = React.useCallback((itemToDelete: SelectedItem) => {
-    if (itemToDelete.itemType === 'node') {
-      const layerId = itemToDelete.layer || layers.getItemLayerById(itemToDelete.id);
-      if (!confirmPresentationLayerImpact('The selected item', layerId ? [layerId] : [])) return;
-    } else if (itemToDelete.itemType === 'edge') {
-      const edge = itemToDelete as { from: string; to: string };
-      if (!confirmPresentationLayerImpact('This connection', getAffectedLayerIdsForConnection(edge.from, edge.to))) return;
-    }
-
-    let newNodes = currentDiagramData.nodes;
-    let newConnections = currentDiagramData.connections;
-
-    if (itemToDelete.itemType === 'node') {
-      newNodes = currentDiagramData.nodes.filter(n => n.id !== itemToDelete.id);
-      newConnections = currentDiagramData.connections.filter((e: { from: string; to: string }) => e.from !== itemToDelete.id && e.to !== itemToDelete.id);
-    } else if (itemToDelete.itemType === 'edge') {
-      const edgeItem = itemToDelete as { from: string; to: string; id?: string };
-      const hasExactIdMatch = Boolean(
-        edgeItem.id && currentDiagramData.connections.some((e: DiagramConnectionData) => (e as DiagramConnectionData).id === edgeItem.id)
-      );
-      newConnections = currentDiagramData.connections.filter((e: DiagramConnectionData) => {
-        if (hasExactIdMatch && edgeItem.id && (e as DiagramConnectionData).id) {
-          return (e as DiagramConnectionData).id !== edgeItem.id;
-        }
-        return !(e.from === edgeItem.from && e.to === edgeItem.to);
-      });
-    }
-
-    const updatedData = { ...currentDiagramData, nodes: newNodes, connections: newConnections };
-    const nextDiagram = cleanupGroupsAfterDeletion([itemToDelete.id], updatedData);
-    setCurrentDiagramData(nextDiagram);
-    setSelectedItem(null);
-  }, [currentDiagramData, layers, setCurrentDiagramData, setSelectedItem]);
 
   const handleGroupItems = React.useCallback(() => {
     if (selectedItemIds.size < 2) {
@@ -2379,6 +2371,93 @@ export default function DiagramEditor() {
     });
     return true;
   }, [presentationModeEnabled, getLayerNameById]);
+
+  const tryDeleteConnectorLineVertexBeforeNodeDelete = React.useCallback(
+    (nodeId: string): boolean => {
+      const f = connectorLineFocusedVertex;
+      if (!f || f.nodeId !== nodeId) return false;
+      const node = currentDiagramData.nodes.find((n) => n.id === nodeId);
+      if (!node || !isConnectorLineNodeType(node.type)) return false;
+      const nextGeom = removeConnectorLineVertexAtIndex(node, f.vertexIndex);
+      if (!nextGeom) return false;
+      const layerId = node.layer || layers.getItemLayerById(nodeId);
+      if (!confirmPresentationLayerImpact('The selected item', layerId ? [layerId] : [])) return true;
+      const synced = syncClosedConnectorLineBorderWidth(nextGeom);
+      setCurrentDiagramData((prev) => ({
+        ...prev,
+        nodes: prev.nodes.map((n) => (n.id === synced.id ? synced : n)),
+      }));
+      setConnectorLineFocusedVertex(null);
+      setSelectedItem({ ...synced, itemType: 'node' });
+      return true;
+    },
+    [
+      connectorLineFocusedVertex,
+      currentDiagramData,
+      layers,
+      confirmPresentationLayerImpact,
+      setCurrentDiagramData,
+      setSelectedItem,
+    ],
+  );
+
+  const handleItemDelete = React.useCallback(
+    (itemToDelete: SelectedItem) => {
+      if (
+        itemToDelete.itemType === 'node' &&
+        isConnectorLineNodeType(itemToDelete.type) &&
+        tryDeleteConnectorLineVertexBeforeNodeDelete(itemToDelete.id)
+      ) {
+        return;
+      }
+
+      if (itemToDelete.itemType === 'node') {
+        const layerId = itemToDelete.layer || layers.getItemLayerById(itemToDelete.id);
+        if (!confirmPresentationLayerImpact('The selected item', layerId ? [layerId] : [])) return;
+      } else if (itemToDelete.itemType === 'edge') {
+        const edge = itemToDelete as { from: string; to: string };
+        if (!confirmPresentationLayerImpact('This connection', getAffectedLayerIdsForConnection(edge.from, edge.to))) return;
+      }
+
+      let newNodes = currentDiagramData.nodes;
+      let newConnections = currentDiagramData.connections;
+
+      if (itemToDelete.itemType === 'node') {
+        newNodes = currentDiagramData.nodes.filter((n) => n.id !== itemToDelete.id);
+        newConnections = currentDiagramData.connections.filter(
+          (e: { from: string; to: string }) => e.from !== itemToDelete.id && e.to !== itemToDelete.id,
+        );
+      } else if (itemToDelete.itemType === 'edge') {
+        const edgeItem = itemToDelete as { from: string; to: string; id?: string };
+        const hasExactIdMatch = Boolean(
+          edgeItem.id &&
+            currentDiagramData.connections.some(
+              (e: DiagramConnectionData) => (e as DiagramConnectionData).id === edgeItem.id,
+            ),
+        );
+        newConnections = currentDiagramData.connections.filter((e: DiagramConnectionData) => {
+          if (hasExactIdMatch && edgeItem.id && (e as DiagramConnectionData).id) {
+            return (e as DiagramConnectionData).id !== edgeItem.id;
+          }
+          return !(e.from === edgeItem.from && e.to === edgeItem.to);
+        });
+      }
+
+      const updatedData = { ...currentDiagramData, nodes: newNodes, connections: newConnections };
+      const nextDiagram = cleanupGroupsAfterDeletion([itemToDelete.id], updatedData);
+      setCurrentDiagramData(nextDiagram);
+      setSelectedItem(null);
+    },
+    [
+      currentDiagramData,
+      layers,
+      setCurrentDiagramData,
+      setSelectedItem,
+      getAffectedLayerIdsForConnection,
+      confirmPresentationLayerImpact,
+      tryDeleteConnectorLineVertexBeforeNodeDelete,
+    ],
+  );
 
   const computePresentationDisabledLayerIds = React.useCallback((
     masterDiagram: DiagramData,
@@ -5645,6 +5724,9 @@ export default function DiagramEditor() {
         handleBulkMetadataUpdate={handleBulkMetadataUpdate}
         startConnecting={startConnecting}
         handleItemDelete={handleItemDelete}
+        connectorLineFocusedVertex={connectorLineFocusedVertex}
+        handleConnectorLineVertexFocus={handleConnectorLineVertexFocus}
+        tryDeleteConnectorLineVertexBeforeNodeDelete={tryDeleteConnectorLineVertexBeforeNodeDelete}
         handleResourceSelect={handleResourceSelect}
         handleResourceActivate={handleResourceActivate}
         handleResourceActivateAtPosition={handleResourceActivateAtPosition}
@@ -5866,6 +5948,9 @@ function DiagramEditorInner({
   handleBulkMetadataUpdate,
   startConnecting,
   handleItemDelete,
+  connectorLineFocusedVertex,
+  handleConnectorLineVertexFocus,
+  tryDeleteConnectorLineVertexBeforeNodeDelete,
   handleResourceSelect,
   handleResourceActivate,
   handleResourceActivateAtPosition,
@@ -6371,6 +6456,9 @@ function DiagramEditorInner({
                     selectedItemId={selectedItem?.id}
                     selectedItem={selectedItem}
                     selectedItemIds={selectedItemIds}
+                    connectorLineFocusedVertex={connectorLineFocusedVertex}
+                    onConnectorLineVertexFocus={handleConnectorLineVertexFocus}
+                    tryDeleteConnectorLineVertexBeforeNodeDelete={tryDeleteConnectorLineVertexBeforeNodeDelete}
                     isConnectMode={isConnectMode}
                     onNodeClickInConnectMode={handleConnect}
                     onConnect={startConnecting}
