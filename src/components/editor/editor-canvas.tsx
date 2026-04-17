@@ -1692,11 +1692,17 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   : undefined;
                 const node = nodesById[itemId];
                 const zone = zonesById[itemId];
-                const connZIndex = 2 * i;
                 // Icon/text nodes: elevate z so labels stay on top of connectors. Shapes: keep original so lines can pass in front.
                 const NODE_LAYER_BASE = 100;
                 const isShape = node && isShapeNodeType(node.type);
-                const nodeZIndex = isShape ? 2 * i + 1 : NODE_LAYER_BASE + 2 * i + 1;
+                const closedConnectorLoop =
+                  node &&
+                  isConnectorLineNodeType(node.type) &&
+                  isConnectorLineGeometryClosed(node);
+                /** Closed loops use shape-tier z (`2*i+1`) so rectangles before/after in layer order stack correctly. */
+                const connZIndex = 2 * i;
+                const nodeZIndex =
+                  isShape || closedConnectorLoop ? 2 * i + 1 : NODE_LAYER_BASE + 2 * i + 1;
                 const nodeEl = node ? (
                   <DiagramNode
                     key={node.id}

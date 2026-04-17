@@ -26,6 +26,9 @@
 ### 2026-04-17 – Connector line: visual border stroke (solid / dotted / gradient)
 **`LineShape`**: When the node has explicit **`borderStyle`** / **`borderColor`** / **`borderColors`** / **`borderWidth`** (from Visual Styling), draws a **stroke** along **`pathD`** or **`pathDClosed`** with **`useSvgGradient`** (fill + border gradients combined like **`RectangleShape`**). **`!hasVisualBorder`** keeps the previous **`lineColor`** / **`lineThickness`** stroke; caps use border paint when the visual border is active. Bounds padding includes border/line half-width.
 
+### 2026-04-17 – Z-order: closed connector loops vs shapes and connections
+**`editor-canvas`** / **`viewer-canvas`**: **`isConnectorLineGeometryClosed`** nodes use the **shape** tier **`stackZIndex: 2*i+1`** (same as rectangles in **`connectionSlots.sortedItemIds`** order), not **`100+2i+1`**, so a rectangle later in the list paints above a closed loop and an earlier one below. **Open** connector lines stay on the icon/label tier. Connection slot z stays **`2*i`** (same under/over rules as for rectangular shapes). **Connections-behind-nodes** mode: all nodes use **`10+i`** including closed loops.
+
 ### 2026-04-17 – Connector line: Line Styling color always paints the stroke
 **`LineShape`**: When Visual Styling / theme set **border** fields, **`hasVisualBorder`** drew the visible path with **`borderStrokePaint`**, and the Line Styling path only rendered when **`!hasVisualBorder`**, so the **Line Styling** color picker had no effect on typical themed lines. The visible stroke is now **always** one path using **`lineBodyPaint`** (solid **`lineColor`** or line gradient). **`strokeDasharray`** prefers **Line type** (dashed/dotted); if solid, falls back to Visual border dotted. Border gradient defs are no longer used for this stroke. Caps match **`lineBodyPaint`**.
 
