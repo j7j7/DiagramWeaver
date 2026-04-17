@@ -111,7 +111,13 @@ import {
   getItemCount
 } from '@/lib/rendering-order-utils';
 import { performAutoLayout } from '@/lib/auto-layout';
-import { generateConnectionId, ensureConnectionIds } from '@/lib/connection-order-utils';
+import {
+  generateConnectionId,
+  ensureConnectionIds,
+  stableDiagramConnectionId,
+  connectionSelectionIdMatches,
+  selectionSetContainsConnection,
+} from '@/lib/connection-order-utils';
 import { snapToGrid } from '@/components/editor/canvas-constants';
 import { DEFAULT_CONNECTION_ANIMATION, toConnectionAnimationPatch, getDownstreamAnimationChainNodes } from '@/lib/connection-animation';
 import { isEventFromEditableElement } from '@/lib/keyboard-utils';
@@ -159,11 +165,6 @@ function getSelectionIdKind(id: string, diagram: DiagramData): "object" | "edge"
   if (conns.some((c) => c.id === id)) return "edge";
   if (conns.some((c) => `${c.from}-${c.to}` === id)) return "edge";
   return "unknown";
-}
-
-/** Same key as `applyConnectionUpdates` uses to match connections (uuid or `from-to-index`). */
-function stableDiagramConnectionId(conn: DiagramConnectionData, index: number): string {
-  return conn.id ?? `${conn.from}-${conn.to}-${index}`;
 }
 
 /** Resolve stable connection ids from the multi-selection set (skips ambiguous legacy keys). */
@@ -1697,6 +1698,8 @@ export default function DiagramEditor() {
       setAnimationDisabledSources(new Set());
     }
 
+    const diagramForSelectionKind = currentDiagramData;
+
     if (shiftKey && item) {
       const itemKind = item.itemType === "edge" ? "edge" : "object";
       const mergedForAnchor = new Set(selectedItemIds);
@@ -1705,7 +1708,7 @@ export default function DiagramEditor() {
       }
       const anchorOrdered = Array.from(mergedForAnchor);
       if (anchorOrdered.length > 0) {
-        const anchorKind = getSelectionIdKind(anchorOrdered[0], diagramData);
+        const anchorKind = getSelectionIdKind(anchorOrdered[0], diagramForSelectionKind);
         if (anchorKind !== "unknown" && anchorKind !== itemKind) {
           return;
         }
@@ -1729,15 +1732,42 @@ export default function DiagramEditor() {
       });
       setSelectedItem(item);
     } else {
-      setSelectedItem(item);
+      // Plain click on an item already in a multi-selection: primary only, keep the set.
+      // Use canonical connection matching (uuid vs from-to-index in the set).
+      let preserveMulti = false;
+      if (item && !shiftKey && selectedItemIds.size > 1 && item.itemType === 'edge') {
+        const conns = (displayDiagramData.connections ?? []) as DiagramConnectionData[];
+        for (let i = 0; i < conns.length; i++) {
+          if (!connectionSelectionIdMatches(item.id, conns[i], i, conns)) continue;
+          preserveMulti = selectionSetContainsConnection(selectedItemIds, conns[i], i, conns);
+          break;
+        }
+      }
 
-      if (item) {
-        setSelectedItemIds(new Set([item.id]));
+      if (preserveMulti) {
+        setSelectedItem(item);
       } else {
-        setSelectedItemIds(new Set());
+        setSelectedItem(item);
+
+        if (item) {
+          setSelectedItemIds(new Set([item.id]));
+        } else {
+          setSelectedItemIds(new Set());
+        }
       }
     }
-  }, [diagramData, isConnectMode, animationToggleOnClickEnabled, selectedItem, selectedItemIds, setIsConnectMode, setAnimationDisabledSources, setSelectedItem, setSelectedItemIds]);
+  }, [
+    currentDiagramData,
+    displayDiagramData,
+    isConnectMode,
+    animationToggleOnClickEnabled,
+    selectedItem,
+    selectedItemIds,
+    setIsConnectMode,
+    setAnimationDisabledSources,
+    setSelectedItem,
+    setSelectedItemIds,
+  ]);
 
   const handleBatchSelect = React.useCallback((itemIds: string[]) => {
     if (itemIds.length === 0) {
@@ -1747,36 +1777,39 @@ export default function DiagramEditor() {
       return;
     }
 
+    // Same graph the canvas / marquee use (current sub-diagram + visible layers + animation snapshot)
+    const dataForHits = displayDiagramData;
+
     const items: SelectedItem[] = [];
     const resolvedIds: string[] = [];
 
     for (const id of itemIds) {
-      const node = diagramData.nodes.find((n) => n.id === id);
+      const node = dataForHits.nodes.find((n) => n.id === id);
       if (node) {
         resolvedIds.push(node.id);
         items.push({ ...node, itemType: "node" as const });
         continue;
       }
 
-      const zone = diagramData.zones?.find((z) => z.id === id);
+      const zone = dataForHits.zones?.find((z) => z.id === id);
       if (zone) {
         resolvedIds.push(zone.id);
         items.push({ ...(zone as any), itemType: "node" as const, id: zone.id } as SelectedItem);
         continue;
       }
 
-      const idxBySynthetic = diagramData.connections.findIndex(
+      const idxBySynthetic = (dataForHits.connections ?? []).findIndex(
         (conn, idx) =>
           (conn as DiagramConnectionData).id === id || `${conn.from}-${conn.to}-${idx}` === id
       );
       let connection =
-        idxBySynthetic >= 0 ? diagramData.connections[idxBySynthetic] : undefined;
+        idxBySynthetic >= 0 ? dataForHits.connections![idxBySynthetic] : undefined;
       if (!connection) {
-        const legacy = diagramData.connections.filter((conn) => `${conn.from}-${conn.to}` === id);
+        const legacy = (dataForHits.connections ?? []).filter((conn) => `${conn.from}-${conn.to}` === id);
         connection = legacy.length === 1 ? legacy[0] : undefined;
       }
       if (connection) {
-        const cIdx = diagramData.connections.indexOf(connection);
+        const cIdx = (dataForHits.connections ?? []).indexOf(connection);
         const connId =
           (connection as DiagramConnectionData).id ??
           `${connection.from}-${connection.to}-${Math.max(0, cIdx)}`;
@@ -1789,7 +1822,7 @@ export default function DiagramEditor() {
       setSelectedItem(items[0]);
       setSelectedItemIds(new Set(resolvedIds));
     }
-  }, [setSelectedItem, setSelectedItemIds, animationToggleOnClickEnabled, setAnimationDisabledSources, diagramData]);
+  }, [setSelectedItem, setSelectedItemIds, animationToggleOnClickEnabled, setAnimationDisabledSources, displayDiagramData]);
   
   const handleItemUpdate = React.useCallback((updatedItem: SelectedItem) => {
     if (updatedItem.itemType === 'edge') return;

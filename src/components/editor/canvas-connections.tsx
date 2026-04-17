@@ -3,6 +3,11 @@ import { BezierConnection, determineConnectionEdges, getOptimalConnectionPoints,
 import { OrthogonalConnection } from "../diagram/othogonal-connection";
 import { computeOrthogonalRoute, computeOrthogonalRoutesBatch, getPointOnOrthogonalPath, buildObstacleCatalog, obstaclesForEndpoints, appendInteriorObstaclesForPreferredEdges, mergeOrthogonalTrunkWaypoints, type OrthogonalRoute, type OrthogonalRouteRequest } from "@/lib/orthogonal-routing";
 import type { DiagramData, DiagramConnectionData } from "@/lib/types";
+import {
+  stableDiagramConnectionId,
+  connectionSelectionIdMatches,
+  isDiagramConnectionInCanvasSelection,
+} from "@/lib/connection-order-utils";
 import { measureNodeDims, type PositionedNode, type PositionedGroup, NODE_WIDTH, BASE_NODE_HEIGHT, TEXT_NODE_HEIGHT, EXTRA_LINE_HEIGHT, CONNECTION_HELPER_Z_INDEX } from "./canvas-constants";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
 import { cn, isIconOrEmojiType, isShapeNodeType } from "@/lib/utils";
@@ -88,7 +93,7 @@ function areCanvasConnectionsPropsEqual(prev: CanvasConnectionsProps, next: Canv
   return prev.width === next.width &&
     prev.height === next.height &&
     prev.selectedItemId === next.selectedItemId &&
-    prev.selectedItemIds === next.selectedItemIds &&
+    stringSetsEqual(prev.selectedItemIds, next.selectedItemIds) &&
     prev.stackZIndex === next.stackZIndex &&
     prev.exportAnimationTimeSeconds === next.exportAnimationTimeSeconds &&
     prev.animationConnectionsEnabled === next.animationConnectionsEnabled &&
@@ -584,9 +589,18 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
           };
         }
 
-        // Check if this connection is selected (use connection id for multiple same from-to)
-        const edgeId = (edge as { id?: string }).id ?? `${edge.from}-${edge.to}-${index}`;
-        const isConnectionHighlighted = selectedItemId === edgeId || (selectedItemIds?.has(edgeId) ?? false);
+        // Selection ids may be uuid or from-to-index (marquee / tab state); match canonically.
+        const connRow = edge as DiagramConnectionData;
+        const allConns = (diagramData.connections ?? []) as DiagramConnectionData[];
+        const edgeId = stableDiagramConnectionId(connRow, index);
+        const isConnectionHighlighted = isDiagramConnectionInCanvasSelection(
+          connRow,
+          index,
+          allConns,
+          selectedItemIds,
+          selectedItemId,
+          selectedItem
+        );
         
         // Only show delete button if a node/zone is selected and this connection is associated with it
         const shouldShowDeleteButton = selectedItemId && (selectedItemId === edge.from || selectedItemId === edge.to) && onConnectionDelete;
@@ -734,27 +748,21 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
             closeContextMenu();
             if (onItemSelect) {
               const isAdditiveSelection = event.shiftKey || event.ctrlKey || event.metaKey;
-              const connId = (connection as { id?: string }).id ?? `${connection.from}-${connection.to}-${index}`;
               onItemSelect({
                 ...connection,
                 itemType: 'edge',
-                id: connId
+                id: edgeId,
               }, isAdditiveSelection);
             }
           },
           onContextMenu: (e: React.MouseEvent, connection: DiagramConnectionData) => {
             closeContextMenu();
-            if (onItemSelect) {
-              const connId = (connection as { id?: string }).id ?? `${connection.from}-${connection.to}-${index}`;
-              const isAlreadySelected = selectedItemIds?.has(connId) || selectedItemId === connId;
-
-              if (!isAlreadySelected) {
-                onItemSelect({
-                  ...connection,
-                  itemType: 'edge',
-                  id: connId
-                });
-              }
+            if (onItemSelect && !isConnectionHighlighted) {
+              onItemSelect({
+                ...connection,
+                itemType: 'edge',
+                id: edgeId,
+              });
             }
             onConnectionContextMenu?.(e, connection);
           },
@@ -839,8 +847,12 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
       const toItem = nodesById[edge.to] || zonesById[edge.to];
       if (!fromItem || !toItem) return null;
 
-      const edgeId = (edge as { id?: string }).id ?? `${edge.from}-${edge.to}-${index}`;
-      const isConnectionSelected = selectedItem?.itemType === 'edge' && selectedItem?.id === edgeId;
+      const allConnsToolbar = (diagramData.connections ?? []) as DiagramConnectionData[];
+      const edgeId = stableDiagramConnectionId(edge as DiagramConnectionData, index);
+      const isConnectionSelected =
+        selectedItem?.itemType === "edge" &&
+        !!selectedItem?.id &&
+        connectionSelectionIdMatches(selectedItem.id, edge as DiagramConnectionData, index, allConnsToolbar);
       
       if (!isConnectionSelected) return null;
 

@@ -13,6 +13,65 @@ export function ensureConnectionIds(connections: DiagramConnectionData[]): Diagr
   );
 }
 
+/** Same key as marquee selection, batch select, and `applyConnectionUpdates` (uuid or `from-to-index`). */
+export function stableDiagramConnectionId(conn: DiagramConnectionData, index: number): string {
+  return conn.id ?? `${conn.from}-${conn.to}-${index}`;
+}
+
+/**
+ * True if `rawId` from tab selection / marquee refers to this connection row (uuid, `from-to-index`,
+ * or unique legacy `from-to` when only one parallel edge exists).
+ */
+export function connectionSelectionIdMatches(
+  rawId: string,
+  conn: DiagramConnectionData,
+  index: number,
+  allConnections: DiagramConnectionData[]
+): boolean {
+  if (conn.id && rawId === conn.id) return true;
+  if (`${conn.from}-${conn.to}-${index}` === rawId) return true;
+  if (`${conn.from}-${conn.to}` === rawId) {
+    const parallel = allConnections.filter((c) => c.from === conn.from && c.to === conn.to);
+    return parallel.length === 1;
+  }
+  return false;
+}
+
+/** Whether this connection is included in the current selection set or is the primary selected edge. */
+export function isDiagramConnectionInCanvasSelection(
+  conn: DiagramConnectionData,
+  index: number,
+  allConnections: DiagramConnectionData[],
+  selectedItemIds: Set<string> | undefined,
+  selectedItemId: string | undefined,
+  selectedItem: { itemType?: string; id?: string } | null | undefined
+): boolean {
+  if (selectedItem?.itemType === "edge" && selectedItem.id && connectionSelectionIdMatches(selectedItem.id, conn, index, allConnections)) {
+    return true;
+  }
+  if (selectedItemId && connectionSelectionIdMatches(selectedItemId, conn, index, allConnections)) {
+    return true;
+  }
+  if (!selectedItemIds?.size) return false;
+  for (const id of selectedItemIds) {
+    if (connectionSelectionIdMatches(id, conn, index, allConnections)) return true;
+  }
+  return false;
+}
+
+/** True if the selection set includes this connection row (any id form: uuid, from-to-index, unique from-to). */
+export function selectionSetContainsConnection(
+  selectedItemIds: Set<string>,
+  conn: DiagramConnectionData,
+  index: number,
+  allConnections: DiagramConnectionData[]
+): boolean {
+  for (const raw of selectedItemIds) {
+    if (connectionSelectionIdMatches(raw, conn, index, allConnections)) return true;
+  }
+  return false;
+}
+
 export interface ConnectionSlotResult {
   /** Sorted items (nodes, then zones) in visual order: index 0 = back, last = front */
   sortedItemIds: string[];
