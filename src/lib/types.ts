@@ -373,7 +373,9 @@ export interface DiagramConnectionData {
   /** Stroke pattern: solid (default), dashed, or dotted — same semantics as line shapes (`lineType`). */
   lineType?: 'solid' | 'dashed' | 'dotted';
   shadow?: boolean; // Whether to show shadow around the connection line
-  
+  /** When true, stroke follows the source outline: visible border (`borderColors` / `borderColor`) before `lineColor`, then zone/icon fallbacks; else connection `color` and usual fallbacks. */
+  useSourceLineColor?: boolean;
+
   // Multiple connection support
   connectionIndex?: number; // Index of this connection among multiple connections on the same edge of the from node (0-based)
   totalConnections?: number; // Total number of connections on the same edge of the from node
@@ -393,6 +395,18 @@ export interface DiagramConnectionData {
 
   // Optional waypoints for routing connection around obstacles (absolute canvas coordinates)
   waypoints?: Array<{ x: number; y: number; id?: string }>;
+
+  /**
+   * Orthogonal Z-routes only (no manual `waypoints`): horizontal offset in px from the auto midline
+   * for the vertical trunk. Negative moves the trunk toward the left when the link runs left→right.
+   */
+  orthogonalTrunkOffsetX?: number;
+
+  /**
+   * Orthogonal Z-routes only (no manual `waypoints`, vertical-first exit): vertical offset in px from
+   * the auto midline for the horizontal trunk. Negative moves the trunk **up** when the link runs top→bottom.
+   */
+  orthogonalTrunkOffsetY?: number;
 
   /** Optional metadata as key/value pairs */
   metaData?: Record<string, string>;

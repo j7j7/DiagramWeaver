@@ -1,7 +1,155 @@
-import { useState, useCallback, useEffect } from "react";
-import type { DiagramData } from "@/lib/types";
-import { snapToGrid } from "@/components/editor/canvas-constants";
+import { useState, useCallback, useEffect, useMemo } from "react";
+import type { DiagramData, DiagramConnectionData } from "@/lib/types";
 import type { Transform } from "./use-canvas-transform";
+
+export type MarqueeSelectionMode = "none" | "objects" | "connections";
+
+interface MarqueePlan {
+  mode: MarqueeSelectionMode;
+  itemIds: string[];
+}
+
+/** Pure marquee hit-test: picks object vs connection mode by top-left-first candidate. */
+export function computeMarqueeSelectionPlan(diagramData: DiagramData, x1: number, y1: number, x2: number, y2: number): MarqueePlan {
+  const pointInRect = (x: number, y: number) => x >= x1 && x <= x2 && y >= y1 && y <= y2;
+
+  const getItemCenter = (id: string): { x: number; y: number } | null => {
+    const node = diagramData.nodes.find((n) => n.id === id);
+    if (node) {
+      const width = node.width || 80;
+      const height = node.height || 50;
+      return { x: (node.x || 0) + width / 2, y: (node.y || 0) + height / 2 };
+    }
+    const zone = diagramData.zones?.find((z) => z.id === id);
+    if (zone) {
+      const width = zone.width || 300;
+      const height = zone.height || 220;
+      return { x: (zone.x || 0) + width / 2, y: (zone.y || 0) + height / 2 };
+    }
+    return null;
+  };
+
+  const orientation = (ax: number, ay: number, bx: number, by: number, cx: number, cy: number) => {
+    const value = (by - ay) * (cx - bx) - (bx - ax) * (cy - by);
+    if (Math.abs(value) < 1e-9) return 0;
+    return value > 0 ? 1 : 2;
+  };
+
+  const onSegment = (ax: number, ay: number, bx: number, by: number, cx: number, cy: number) =>
+    bx <= Math.max(ax, cx) && bx >= Math.min(ax, cx) && by <= Math.max(ay, cy) && by >= Math.min(ay, cy);
+
+  const segmentsIntersect = (
+    p1x: number,
+    p1y: number,
+    q1x: number,
+    q1y: number,
+    p2x: number,
+    p2y: number,
+    q2x: number,
+    q2y: number
+  ) => {
+    const o1 = orientation(p1x, p1y, q1x, q1y, p2x, p2y);
+    const o2 = orientation(p1x, p1y, q1x, q1y, q2x, q2y);
+    const o3 = orientation(p2x, p2y, q2x, q2y, p1x, p1y);
+    const o4 = orientation(p2x, p2y, q2x, q2y, q1x, q1y);
+
+    if (o1 !== o2 && o3 !== o4) return true;
+    if (o1 === 0 && onSegment(p1x, p1y, p2x, p2y, q1x, q1y)) return true;
+    if (o2 === 0 && onSegment(p1x, p1y, q2x, q2y, q1x, q1y)) return true;
+    if (o3 === 0 && onSegment(p2x, p2y, p1x, p1y, q2x, q2y)) return true;
+    if (o4 === 0 && onSegment(p2x, p2y, q1x, q1y, q2x, q2y)) return true;
+    return false;
+  };
+
+  const segmentIntersectsRect = (xA: number, yA: number, xB: number, yB: number) => {
+    if (pointInRect(xA, yA) || pointInRect(xB, yB)) return true;
+    return (
+      segmentsIntersect(xA, yA, xB, yB, x1, y1, x2, y1) ||
+      segmentsIntersect(xA, yA, xB, yB, x2, y1, x2, y2) ||
+      segmentsIntersect(xA, yA, xB, yB, x2, y2, x1, y2) ||
+      segmentsIntersect(xA, yA, xB, yB, x1, y2, x1, y1)
+    );
+  };
+
+  type ObjectHit = { id: string; sortY: number; sortX: number };
+  const objectHits: ObjectHit[] = [];
+
+  diagramData.nodes.forEach((node) => {
+    const nodeX = node.x || 0;
+    const nodeY = node.y || 0;
+    const nodeWidth = node.width || 80;
+    const nodeHeight = node.height || 50;
+    if (nodeX >= x1 && nodeX + nodeWidth <= x2 && nodeY >= y1 && nodeY + nodeHeight <= y2) {
+      objectHits.push({ id: node.id, sortY: nodeY, sortX: nodeX });
+    }
+  });
+
+  diagramData.zones?.forEach((zone) => {
+    const zoneX = zone.x || 0;
+    const zoneY = zone.y || 0;
+    const zoneWidth = zone.width || 300;
+    const zoneHeight = zone.height || 220;
+    if (zoneX >= x1 && zoneX + zoneWidth <= x2 && zoneY >= y1 && zoneY + zoneHeight <= y2) {
+      objectHits.push({ id: zone.id, sortY: zoneY, sortX: zoneX });
+    }
+  });
+
+  objectHits.sort((a, b) => (a.sortY !== b.sortY ? a.sortY - b.sortY : a.sortX - b.sortX));
+
+  type ConnHit = { id: string; sortY: number; sortX: number };
+  const connectionHits: ConnHit[] = [];
+
+  (diagramData.connections ?? []).forEach((connection, index) => {
+    const fromCenter = getItemCenter(connection.from);
+    const toCenter = getItemCenter(connection.to);
+    if (!fromCenter || !toCenter) return;
+
+    const points = [
+      fromCenter,
+      ...(connection.waypoints?.map((waypoint) => ({ x: waypoint.x, y: waypoint.y })) || []),
+      toCenter,
+    ];
+
+    for (let i = 0; i < points.length - 1; i += 1) {
+      const start = points[i];
+      const end = points[i + 1];
+      if (segmentIntersectsRect(start.x, start.y, end.x, end.y)) {
+        const conn = connection as DiagramConnectionData;
+        const cid = conn.id ?? `${conn.from}-${conn.to}-${index}`;
+        const sortY = (fromCenter.y + toCenter.y) / 2;
+        const sortX = (fromCenter.x + toCenter.x) / 2;
+        connectionHits.push({ id: cid, sortY, sortX });
+        break;
+      }
+    }
+  });
+
+  connectionHits.sort((a, b) => (a.sortY !== b.sortY ? a.sortY - b.sortY : a.sortX - b.sortX));
+
+  const firstObject = objectHits[0];
+  const firstConn = connectionHits[0];
+
+  if (!firstObject && !firstConn) {
+    return { mode: "none", itemIds: [] };
+  }
+
+  if (firstObject && !firstConn) {
+    return { mode: "objects", itemIds: objectHits.map((h) => h.id) };
+  }
+
+  if (!firstObject && firstConn) {
+    return { mode: "connections", itemIds: connectionHits.map((h) => h.id) };
+  }
+
+  const objectFirst =
+    firstObject.sortY < firstConn.sortY ||
+    (firstObject.sortY === firstConn.sortY && firstObject.sortX < firstConn.sortX);
+
+  if (objectFirst) {
+    return { mode: "objects", itemIds: objectHits.map((h) => h.id) };
+  }
+  return { mode: "connections", itemIds: connectionHits.map((h) => h.id) };
+}
 
 interface UseCanvasSelectionOptions {
   canvasRef: React.RefObject<HTMLDivElement | null>;
@@ -31,6 +179,20 @@ export function useCanvasSelection({
   const [selectionStart, setSelectionStart] = useState<{ x: number; y: number } | null>(null);
   const [selectionEnd, setSelectionEnd] = useState<{ x: number; y: number } | null>(null);
   const [justCompletedSelection, setJustCompletedSelection] = useState(false);
+
+  const liveMarqueePlan = useMemo((): MarqueePlan | null => {
+    if (!selectionStart || !selectionEnd) return null;
+    const dragDeltaX = Math.abs(selectionEnd.x - selectionStart.x);
+    const dragDeltaY = Math.abs(selectionEnd.y - selectionStart.y);
+    if (dragDeltaX < 2 && dragDeltaY < 2) return null;
+    const x1 = Math.min(selectionStart.x, selectionEnd.x);
+    const y1 = Math.min(selectionStart.y, selectionEnd.y);
+    const x2 = Math.max(selectionStart.x, selectionEnd.x);
+    const y2 = Math.max(selectionStart.y, selectionEnd.y);
+    return computeMarqueeSelectionPlan(diagramData, x1, y1, x2, y2);
+  }, [selectionStart, selectionEnd, diagramData]);
+
+  const selectionMarqueeMode: MarqueeSelectionMode = liveMarqueePlan?.mode === "connections" ? "connections" : "objects";
 
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return;
@@ -143,147 +305,36 @@ export function useCanvasSelection({
       const x2 = Math.max(selectionStart.x, selectionEnd.x);
       const y2 = Math.max(selectionStart.y, selectionEnd.y);
 
-      const pointInRect = (x: number, y: number) => x >= x1 && x <= x2 && y >= y1 && y <= y2;
+      const plan = computeMarqueeSelectionPlan(diagramData, x1, y1, x2, y2);
+      const selectedIds = plan.itemIds;
 
-      const getItemCenter = (id: string): { x: number; y: number } | null => {
-        const node = diagramData.nodes.find((n) => n.id === id);
-        if (node) {
-          const width = node.width || 80;
-          const height = node.height || 50;
-          return { x: (node.x || 0) + width / 2, y: (node.y || 0) + height / 2 };
-        }
-        const zone = diagramData.zones?.find((z) => z.id === id);
-        if (zone) {
-          const width = zone.width || 300;
-          const height = zone.height || 220;
-          return { x: (zone.x || 0) + width / 2, y: (zone.y || 0) + height / 2 };
-        }
-        return null;
-      };
+      if (selectedIds.length > 0 && onBatchSelect) {
+        onBatchSelect(selectedIds);
+      } else if (selectedIds.length > 0) {
+        const firstId = selectedIds[0];
+        const primaryNode = diagramData.nodes.find((n) => n.id === firstId);
+        const primaryGroup = diagramData.zones?.find((zone) => zone.id === firstId);
 
-      const orientation = (ax: number, ay: number, bx: number, by: number, cx: number, cy: number) => {
-        const value = (by - ay) * (cx - bx) - (bx - ax) * (cy - by);
-        if (Math.abs(value) < 1e-9) return 0;
-        return value > 0 ? 1 : 2;
-      };
-
-      const onSegment = (ax: number, ay: number, bx: number, by: number, cx: number, cy: number) => (
-        bx <= Math.max(ax, cx) && bx >= Math.min(ax, cx) && by <= Math.max(ay, cy) && by >= Math.min(ay, cy)
-      );
-
-      const segmentsIntersect = (
-        p1x: number,
-        p1y: number,
-        q1x: number,
-        q1y: number,
-        p2x: number,
-        p2y: number,
-        q2x: number,
-        q2y: number
-      ) => {
-        const o1 = orientation(p1x, p1y, q1x, q1y, p2x, p2y);
-        const o2 = orientation(p1x, p1y, q1x, q1y, q2x, q2y);
-        const o3 = orientation(p2x, p2y, q2x, q2y, p1x, p1y);
-        const o4 = orientation(p2x, p2y, q2x, q2y, q1x, q1y);
-
-        if (o1 !== o2 && o3 !== o4) return true;
-        if (o1 === 0 && onSegment(p1x, p1y, p2x, p2y, q1x, q1y)) return true;
-        if (o2 === 0 && onSegment(p1x, p1y, q2x, q2y, q1x, q1y)) return true;
-        if (o3 === 0 && onSegment(p2x, p2y, p1x, p1y, q2x, q2y)) return true;
-        if (o4 === 0 && onSegment(p2x, p2y, q1x, q1y, q2x, q2y)) return true;
-        return false;
-      };
-
-      const segmentIntersectsRect = (xA: number, yA: number, xB: number, yB: number) => {
-        if (pointInRect(xA, yA) || pointInRect(xB, yB)) return true;
-        return (
-          segmentsIntersect(xA, yA, xB, yB, x1, y1, x2, y1) ||
-          segmentsIntersect(xA, yA, xB, yB, x2, y1, x2, y2) ||
-          segmentsIntersect(xA, yA, xB, yB, x2, y2, x1, y2) ||
-          segmentsIntersect(xA, yA, xB, yB, x1, y2, x1, y1)
-        );
-      };
-      
-      // Find all nodes and groups within the selection rectangle
-      const selectedIds = new Set<string>();
-      
-      // Check nodes
-      diagramData.nodes.forEach(node => {
-        const nodeX = node.x || 0;
-        const nodeY = node.y || 0;
-        const nodeWidth = node.width || 80;
-        const nodeHeight = node.height || 50;
-        
-        if (nodeX >= x1 && nodeX + nodeWidth <= x2 && nodeY >= y1 && nodeY + nodeHeight <= y2) {
-          selectedIds.add(node.id);
-        }
-      });
-      
-      // Check groups
-      diagramData.zones?.forEach(zone => {
-        const zoneX = zone.x || 0;
-        const zoneY = zone.y || 0;
-        const zoneWidth = zone.width || 300;
-        const zoneHeight = zone.height || 220;
-        
-        if (zoneX >= x1 && zoneX + zoneWidth <= x2 && zoneY >= y1 && zoneY + zoneHeight <= y2) {
-          selectedIds.add(zone.id);
-        }
-      });
-
-      // Check connections (include if any segment intersects selection rectangle)
-      diagramData.connections?.forEach((connection) => {
-        const fromCenter = getItemCenter(connection.from);
-        const toCenter = getItemCenter(connection.to);
-        if (!fromCenter || !toCenter) return;
-
-        const points = [
-          fromCenter,
-          ...(connection.waypoints?.map((waypoint) => ({ x: waypoint.x, y: waypoint.y })) || []),
-          toCenter,
-        ];
-
-        for (let index = 0; index < points.length - 1; index += 1) {
-          const start = points[index];
-          const end = points[index + 1];
-          if (segmentIntersectsRect(start.x, start.y, end.x, end.y)) {
-            selectedIds.add(`${connection.from}-${connection.to}`);
-            break;
-          }
-        }
-      });
-      
-      // Select all items within the selection rectangle
-      if (selectedIds.size > 0 && onBatchSelect) {
-        onBatchSelect(Array.from(selectedIds));
-      } else if (selectedIds.size > 0) {
-        // Fallback to individual selection if batch select not available
-        const firstId = Array.from(selectedIds)[0];
-        const primaryNode = diagramData.nodes.find(n => n.id === firstId);
-        const primaryGroup = diagramData.zones?.find(zone => zone.id === firstId);
-        
         let primaryItem = null;
         if (primaryNode) {
-          primaryItem = { ...primaryNode, itemType: 'node' as const };
+          primaryItem = { ...primaryNode, itemType: "node" as const };
         } else if (primaryGroup) {
-          primaryItem = { ...primaryGroup, itemType: 'zone' as const };
+          primaryItem = { ...primaryGroup, itemType: "zone" as const };
         }
-        
+
         if (primaryItem) {
           onItemSelect(primaryItem);
         }
       } else {
         onItemSelect(null);
       }
-      
-      // Clear selection rectangle
+
       setSelectionStart(null);
       setSelectionEnd(null);
-      
-      // Set flag to prevent canvas click from clearing selection
-      if (selectedIds.size > 0) {
+
+      if (selectedIds.length > 0) {
         setJustCompletedSelection(true);
-        setTimeout(() => setJustCompletedSelection(false), 100); // Clear flag after short delay
+        setTimeout(() => setJustCompletedSelection(false), 100);
       }
     }
   }, [selectionStart, selectionEnd, diagramData, onBatchSelect, onItemSelect]);
@@ -298,6 +349,7 @@ export function useCanvasSelection({
   return {
     selectionStart,
     selectionEnd,
+    selectionMarqueeMode,
     justCompletedSelection,
     handleCanvasClick,
     handleMouseDown,

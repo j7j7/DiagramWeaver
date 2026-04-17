@@ -1,13 +1,15 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
-import { Lock, Unlock } from "lucide-react";
+import { Info, Lock, Unlock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ColorPicker } from "@/components/ui/color-picker";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { DiagramConnectionData } from "@/lib/types";
+import { isUseSourceLineColorOn } from "@/lib/connection-line-style";
 
 export interface ConnectionLineStyleFieldsProps {
   liveConnection: DiagramConnectionData;
@@ -211,6 +213,44 @@ export function ConnectionLineStyleFields({
               </Button>
             </TooltipTrigger>
             <TooltipContent>Depth effect</TooltipContent>
+          </Tooltip>
+        </div>
+      </div>
+
+      <div className="flex items-start gap-2.5 rounded-md border border-border/60 bg-muted/20 p-2">
+        <Checkbox
+          id={`conn-use-source-line-${from}-${to}-${connectionId ?? ""}`}
+          checked={isUseSourceLineColorOn(liveConnection)}
+          onCheckedChange={(v) =>
+            onConnectionUpdate(from, to, { useSourceLineColor: v === true }, connectionId)
+          }
+          disabled={isReadOnly}
+          className="mt-0.5"
+          aria-label="Match source object outline color"
+        />
+        <div className="min-w-0 flex items-center gap-1">
+          <Label
+            htmlFor={`conn-use-source-line-${from}-${to}-${connectionId ?? ""}`}
+            className="text-xs font-medium leading-snug cursor-pointer"
+          >
+            Match source outline color
+          </Label>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 shrink-0 text-muted-foreground hover:text-foreground"
+                aria-label="How match source outline color works"
+              >
+                <Info className="h-3.5 w-3.5" aria-hidden />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-[min(280px,calc(100vw-2rem))] text-xs leading-snug">
+              Uses the source object’s connector tint or border color; if neither is set, uses the connection color
+              below.
+            </TooltipContent>
           </Tooltip>
         </div>
       </div>

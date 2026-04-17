@@ -184,7 +184,7 @@ See `docs/MERMAID-IMPORT.md` for full syntax and mapping.
 
 - **Theme Selector**: Apply themes to selected items
 - **Theme Editor**: Customize colors, borders, gradients
-- **Theme Menu**: Quick theme application from toolbar (**View → Themes**); optional **Step hue for multi-selection (by layout)** applies a progressive hue shift across the current multi-selection (order follows layout: top-to-bottom or left-to-right)
+- **Theme Menu**: Quick theme application from toolbar (**View → Themes**); enable **Step hue for multi-selection.** to apply a progressive hue shift across the current multi-selection (order follows layout: top-to-bottom or left-to-right)
 - **Built-in presets**: Expanded built-in color presets (see app menu for current list); theme rows can show a **description** tooltip after a short hover delay
 
 ### Other

@@ -209,29 +209,31 @@ export function ThemeMenuSelector({ onThemeSelect, onOpenEditor, isReadOnly = fa
             }
           }}
         >
-          Step hue for multi-selection (by layout)
+          Step hue for multi-selection.
         </DropdownMenuCheckboxItem>
-        <div
-          className="px-2 py-2 flex items-center gap-2"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <label htmlFor="theme-multi-hue-step" className="text-xs text-muted-foreground shrink-0">
-            Hue step (°)
-          </label>
-          <Input
-            id="theme-multi-hue-step"
-            type="number"
-            min={1}
-            max={360}
-            step={1}
-            className="h-8 w-[4.5rem] px-2"
-            disabled={isReadOnly}
-            value={hueStepInput}
-            onChange={(e) => setHueStepInput(e.target.value)}
-            onBlur={commitHueStepInput}
-          />
-        </div>
+        {multiHueByLayout && (
+          <div
+            className="px-2 py-2 flex items-center gap-2"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <label htmlFor="theme-multi-hue-step" className="text-xs text-muted-foreground shrink-0">
+              Hue step (°)
+            </label>
+            <Input
+              id="theme-multi-hue-step"
+              type="number"
+              min={1}
+              max={360}
+              step={1}
+              className="h-8 w-[4.5rem] px-2"
+              disabled={isReadOnly}
+              value={hueStepInput}
+              onChange={(e) => setHueStepInput(e.target.value)}
+              onBlur={commitHueStepInput}
+            />
+          </div>
+        )}
         <DropdownMenuSeparator />
         {favoriteThemes.length > 0 && (
           <>

@@ -879,6 +879,32 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     const isTop = textVerticalPosition === 'top';
     const isBottom = textVerticalPosition === 'bottom';
 
+    const iconBorderStyle = nodeAny.borderStyle;
+    const hasStoredIconOutline =
+      !nodeAny.noIconBackground &&
+      iconBorderStyle !== 'none' &&
+      Boolean(
+        (typeof nodeAny.borderColor === 'string' && nodeAny.borderColor.trim()) ||
+          (iconBorderStyle === 'gradient' && nodeAny.borderColors?.length)
+      );
+    const showCustomIconOutline =
+      hasStoredIconOutline && !isSelected && !isTargetable && !(isDragging || isTouchDragging);
+    const iconOutlineCss: React.CSSProperties = {};
+    if (showCustomIconOutline) {
+      const bw = nodeAny.borderWidth ?? 2;
+      if (iconBorderStyle === 'gradient' && nodeAny.borderColors?.length) {
+        iconOutlineCss.borderWidth = bw;
+        iconOutlineCss.borderStyle = 'solid';
+        iconOutlineCss.borderColor = nodeAny.borderColors[0];
+      } else if (typeof nodeAny.borderColor === 'string' && nodeAny.borderColor.trim()) {
+        iconOutlineCss.borderWidth = bw;
+        iconOutlineCss.borderStyle = iconBorderStyle === 'dotted' ? 'dotted' : 'solid';
+        iconOutlineCss.borderColor = nodeAny.borderColor;
+      }
+    }
+    const useDefaultIconBorderClass =
+      !nodeAny.noIconBackground && !showCustomIconOutline && !(isSelected || isTargetable);
+
     return (
       <div className={cn(
         "flex flex-col items-center w-full h-full",
@@ -887,8 +913,9 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
         <div className={cn(
           "flex items-center justify-center flex-shrink-0",
           animationStyle?.visualColorMergeTransition == null && !animationStyle?.visualColorCrossfade && "transition-colors",
-          nodeAny.noIconBackground ? "" : "rounded-lg shadow-md border bg-card dw-icon-container",
-          isSelected ? "border-primary" : nodeAny.noIconBackground || (isDragging || isTouchDragging) ? "" : "group-hover:border-accent",
+          nodeAny.noIconBackground ? "" : "rounded-lg shadow-md bg-card dw-icon-container",
+          useDefaultIconBorderClass && "border",
+          isSelected ? "border-primary" : nodeAny.noIconBackground || (isDragging || isTouchDragging) ? "" : !showCustomIconOutline && "group-hover:border-accent",
           isTargetable && "border-dashed border-primary",
           isTop && "order-2",
           isBottom && "order-1"
@@ -896,6 +923,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
         style={{
           width: container,
           height: container,
+          ...iconOutlineCss,
           ...(!animationStyle?.visualColorCrossfade && animationStyle?.visualColorMergeTransition !== undefined
             ? { transition: animationStyle.visualColorMergeTransition }
             : {}),

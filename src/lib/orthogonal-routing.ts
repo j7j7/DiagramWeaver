@@ -145,6 +145,171 @@ function zRoute(
   ];
 }
 
+/** Vertical “trunk” of a Z-shaped horizontal-first orthogonal path (horiz → vert → horiz). */
+export interface OrthogonalTrunkVerticalSegment {
+  x: number;
+  yMin: number;
+  yMax: number;
+}
+
+/**
+ * Finds the interior vertical segment of a Z-shaped path (same pattern as {@link zRoute} with horizontal first).
+ */
+export function findOrthogonalTrunkVerticalSegment(
+  points: Array<{ x: number; y: number }>,
+): OrthogonalTrunkVerticalSegment | null {
+  if (points.length < 4) return null;
+  for (let i = 1; i < points.length - 2; i++) {
+    const a = points[i - 1];
+    const b = points[i];
+    const c = points[i + 1];
+    const d = points[i + 2];
+    const horiz1 = a.y === b.y && a.x !== b.x;
+    const vert = b.x === c.x && b.y !== c.y;
+    const horiz2 = c.y === d.y && c.x !== d.x;
+    if (horiz1 && vert && horiz2) {
+      return {
+        x: b.x,
+        yMin: Math.min(b.y, c.y),
+        yMax: Math.max(b.y, c.y),
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * When there are no manual {@link DiagramConnectionData.waypoints}, optional **orthogonalTrunkOffsetX**
+ * (px) shifts the vertical trunk from the auto Z-route midline: negative moves the trunk toward the
+ * left when the route runs left→right. Returns `undefined` when no extra waypoints should be injected.
+ */
+export function mergeOrthogonalWaypointsWithTrunkOffset(
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  fromAngleDeg: number,
+  trunkOffsetX: number | undefined,
+  userWaypoints?: Array<{ x: number; y: number }>,
+): Array<{ x: number; y: number }> | undefined {
+  if (userWaypoints?.length) return userWaypoints;
+  if (trunkOffsetX == null || !Number.isFinite(trunkOffsetX) || trunkOffsetX === 0) return undefined;
+  const horizontalFirst = fromAngleDeg === 90 || fromAngleDeg === 270;
+  if (!horizontalFirst) return undefined;
+  const autoMid = snap((fromX + toX) / 2);
+  const trunkX = snap(autoMid + trunkOffsetX);
+  const minEndX = Math.min(fromX, toX);
+  const maxEndX = Math.max(fromX, toX);
+  const lo = minEndX + CELL;
+  const hi = maxEndX - CELL;
+  const clamped = lo <= hi ? Math.max(lo, Math.min(hi, trunkX)) : snap((fromX + toX) / 2);
+  return [
+    { x: clamped, y: fromY },
+    { x: clamped, y: toY },
+  ];
+}
+
+/** Horizontal “trunk” of a Z-shaped vertical-first orthogonal path (vert → horiz → vert). */
+export interface OrthogonalTrunkHorizontalSegment {
+  y: number;
+  xMin: number;
+  xMax: number;
+}
+
+/**
+ * Finds the interior horizontal segment of a Z-shaped path (same pattern as {@link zRoute} with vertical first).
+ */
+export function findOrthogonalTrunkHorizontalSegment(
+  points: Array<{ x: number; y: number }>,
+): OrthogonalTrunkHorizontalSegment | null {
+  if (points.length < 4) return null;
+  for (let i = 1; i < points.length - 2; i++) {
+    const a = points[i - 1];
+    const b = points[i];
+    const c = points[i + 1];
+    const d = points[i + 2];
+    const vert1 = a.x === b.x && a.y !== b.y;
+    const horiz = b.y === c.y && b.x !== c.x;
+    const vert2 = c.x === d.x && c.y !== d.y;
+    if (vert1 && horiz && vert2) {
+      return {
+        y: b.y,
+        xMin: Math.min(b.x, c.x),
+        xMax: Math.max(b.x, c.x),
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * When there are no manual waypoints, optional **orthogonalTrunkOffsetY** (px) shifts the horizontal trunk
+ * from the auto Z-route midline: negative moves the trunk **up** when the route runs top→bottom.
+ */
+export function mergeOrthogonalWaypointsWithTrunkOffsetY(
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  fromAngleDeg: number,
+  trunkOffsetY: number | undefined,
+  userWaypoints?: Array<{ x: number; y: number }>,
+): Array<{ x: number; y: number }> | undefined {
+  if (userWaypoints?.length) return userWaypoints;
+  if (trunkOffsetY == null || !Number.isFinite(trunkOffsetY) || trunkOffsetY === 0) return undefined;
+  const horizontalFirst = fromAngleDeg === 90 || fromAngleDeg === 270;
+  if (horizontalFirst) return undefined;
+  const autoMid = snap((fromY + toY) / 2);
+  const trunkY = snap(autoMid + trunkOffsetY);
+  const minEndY = Math.min(fromY, toY);
+  const maxEndY = Math.max(fromY, toY);
+  const lo = minEndY + CELL;
+  const hi = maxEndY - CELL;
+  const clamped = lo <= hi ? Math.max(lo, Math.min(hi, trunkY)) : snap((fromY + toY) / 2);
+  return [
+    { x: fromX, y: clamped },
+    { x: toX, y: clamped },
+  ];
+}
+
+/**
+ * Applies **orthogonalTrunkOffsetX** for horizontal-first Z-routes or **orthogonalTrunkOffsetY** for vertical-first.
+ * Manual `waypoints` disable both.
+ */
+export function mergeOrthogonalTrunkWaypoints(
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  fromAngleDeg: number,
+  trunkOffsetX: number | undefined,
+  trunkOffsetY: number | undefined,
+  userWaypoints?: Array<{ x: number; y: number }>,
+): Array<{ x: number; y: number }> | undefined {
+  if (userWaypoints?.length) return userWaypoints;
+  const horizontalFirst = fromAngleDeg === 90 || fromAngleDeg === 270;
+  if (horizontalFirst) {
+    return mergeOrthogonalWaypointsWithTrunkOffset(
+      fromX,
+      fromY,
+      toX,
+      toY,
+      fromAngleDeg,
+      trunkOffsetX,
+      undefined,
+    );
+  }
+  return mergeOrthogonalWaypointsWithTrunkOffsetY(
+    fromX,
+    fromY,
+    toX,
+    toY,
+    fromAngleDeg,
+    trunkOffsetY,
+    undefined,
+  );
+}
+
 // -----------------------------------------------------------------------------
 // Obstacle helpers
 // -----------------------------------------------------------------------------

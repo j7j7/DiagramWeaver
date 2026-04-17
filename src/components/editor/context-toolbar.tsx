@@ -46,6 +46,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Slider } from '@/components/ui/slider';
 import { ColorPicker } from '@/components/ui/color-picker';
 import { Label } from '@/components/ui/label';
+import { resolveBezierConnectionPaint, type ConnectionEndpointOutline } from '@/lib/connection-line-style';
 
 import { TextStylingPanel } from './text-styling-panel';
 import { UmlClassTextStylingPanel } from './uml-class-text-styling-panel';
@@ -1592,8 +1593,12 @@ export function ContextToolbar({
                         const connectionSmoothCorners =
                           connectionLineStyle === 'orthogonal' && liveConnection.smoothCorners === true;
 
-                        const connectionColor =
-                          liveConnection.color || toNode?.lineColor || fromNode?.lineColor || '#6b7280';
+                        const connectionColor = resolveBezierConnectionPaint(
+                          liveConnection,
+                          liveConnection.color,
+                          (fromNode ?? {}) as ConnectionEndpointOutline,
+                          (toNode ?? {}) as { lineColor?: string }
+                        ).cStart;
 
                         const textPosition = liveConnection.textPosition ?? 50;
                         const connectionText = liveConnection.text || '';

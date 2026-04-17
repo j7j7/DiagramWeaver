@@ -317,10 +317,15 @@ export const DiagramConnectionDataSchema = z.object({
   colorEnd: z.string().optional(),
   lineType: z.enum(['solid', 'dashed', 'dotted']).optional(),
   shadow: z.boolean().optional(), // Whether to show shadow around the connection line
+  useSourceLineColor: z.boolean().optional(),
   centerEdgeAnchors: z.boolean().optional(), // Attach at edge center instead of spreading along the edge
   edgeAttachmentConstraint: z.enum(['auto', 'top-bottom', 'left-right']).optional(),
   // Optional waypoints for routing connection around obstacles (absolute canvas coordinates)
   waypoints: z.array(z.object({ x: z.number(), y: z.number(), id: z.string().optional() })).optional(),
+  /** Horizontal px offset of orthogonal Z-route vertical trunk from auto midline (ignored when `waypoints` set). */
+  orthogonalTrunkOffsetX: z.number().optional(),
+  /** Vertical px offset of orthogonal Z-route horizontal trunk from auto midline, vertical-first routes only. */
+  orthogonalTrunkOffsetY: z.number().optional(),
 
   animation: z.object({
     enabled: z.boolean().optional(),

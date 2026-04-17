@@ -11,15 +11,15 @@ import { clampConnectionAnimation } from "@/lib/connection-animation";
 import { buildRibbonPolygonPath } from "@/lib/connection-ribbon-path";
 import {
   resolveConnectionWidths,
-  resolveConnectionColors,
   connectionNeedsAdvancedLineStyle,
   maxResolvedLineWidth,
   lineWidthAtPathFraction,
   scaleValuesForAnimationKeyPoints,
   CONNECTION_ANIMATION_SPACING_REF_LINE_PX,
-  connectionAdvancedStyleRevisionKey,
-  bezierConnectionColorFallback,
+  connectionAdvancedStyleRevisionKeyResolved,
+  resolveBezierConnectionPaint,
   connectionGradientIdSuffix,
+  isUseSourceLineColorOn,
 } from "@/lib/connection-line-style";
 import { connectionStrokeDashFromLineType } from "@/lib/utils";
 
@@ -64,14 +64,15 @@ interface BezierConnectionProps {
 }
 
 function positionableKey(p: BezierConnectionProps['from']): string {
-  return `${p?.id ?? ''}|${p?.x ?? ''}|${p?.y ?? ''}|${p?.width ?? ''}|${p?.height ?? ''}|${p?.type ?? ''}|${(p as any)?.label ?? ''}|${(p as any)?.lineColor ?? ''}|${(p as any)?.nodeSize ?? ''}|${(p as any)?.sizeMode ?? ''}|${(p as any)?.textPosition ?? ''}|${(p as any)?.textVerticalPosition ?? ''}|${(p as any)?.subType ?? ''}`;
+  const a = p as any;
+  return `${p?.id ?? ''}|${p?.x ?? ''}|${p?.y ?? ''}|${p?.width ?? ''}|${p?.height ?? ''}|${p?.type ?? ''}|${a?.label ?? ''}|${a?.lineColor ?? ''}|${a?.borderColor ?? ''}|${a?.borderStyle ?? ''}|${a?.borderColors?.join?.(',') ?? ''}|${a?.iconColor ?? ''}|${a?.color ?? ''}|${a?.nodeSize ?? ''}|${a?.sizeMode ?? ''}|${a?.textPosition ?? ''}|${a?.textVerticalPosition ?? ''}|${a?.subType ?? ''}`;
 }
 
 function connectionDataKey(c?: DiagramConnectionData): string {
   if (!c) return '';
   const wp = c.waypoints?.map((w) => `${w.x},${w.y}`).join(';') ?? '';
   const anim = c.animation ? JSON.stringify(c.animation) : '';
-  return `${c.from ?? ''}|${c.to ?? ''}|${(c as any).id ?? ''}|${c.style ?? ''}|${c.curvature ?? ''}|${wp}|${c.lineWidth ?? ''}|${c.lineWidthLock ?? ''}|${c.lineWidthEnd ?? ''}|${c.lineType ?? ''}|${c.shadow ?? ''}|${c.fromArrow ?? ''}|${c.toArrow ?? ''}|${c.arrow ?? ''}|${anim}|${c.color ?? ''}|${c.colorLock ?? ''}|${c.colorEnd ?? ''}|${c.centerEdgeAnchors ? '1' : ''}|${c.edgeAttachmentConstraint ?? ''}|${c.fromPreferredExit ?? ''}|${c.toPreferredEntry ?? ''}`;
+  return `${c.from ?? ''}|${c.to ?? ''}|${(c as any).id ?? ''}|${c.style ?? ''}|${c.curvature ?? ''}|${wp}|${c.lineWidth ?? ''}|${c.lineWidthLock ?? ''}|${c.lineWidthEnd ?? ''}|${c.lineType ?? ''}|${c.shadow ?? ''}|${isUseSourceLineColorOn(c) ? '1' : ''}|${c.fromArrow ?? ''}|${c.toArrow ?? ''}|${c.arrow ?? ''}|${anim}|${c.color ?? ''}|${c.colorLock ?? ''}|${c.colorEnd ?? ''}|${c.centerEdgeAnchors ? '1' : ''}|${c.edgeAttachmentConstraint ?? ''}|${c.fromPreferredExit ?? ''}|${c.toPreferredEntry ?? ''}`;
 }
 
 function slideTransitionStyleEqual(
@@ -90,15 +91,15 @@ function slideTransitionStyleEqual(
 }
 
 function areBezierConnectionPropsEqual(prev: BezierConnectionProps, next: BezierConnectionProps): boolean {
-  const prevFf = bezierConnectionColorFallback(prev.connectionColor, prev.from, prev.to);
-  const nextFf = bezierConnectionColorFallback(next.connectionColor, next.from, next.to);
+  const prevRc = resolveBezierConnectionPaint(prev.connectionData, prev.connectionColor, prev.from, prev.to);
+  const nextRc = resolveBezierConnectionPaint(next.connectionData, next.connectionColor, next.from, next.to);
   return (
     positionableKey(prev.from) === positionableKey(next.from) &&
     positionableKey(prev.to) === positionableKey(next.to) &&
     prev.connectionColor === next.connectionColor &&
     connectionDataKey(prev.connectionData) === connectionDataKey(next.connectionData) &&
-    connectionAdvancedStyleRevisionKey(prev.connectionData, prevFf) ===
-      connectionAdvancedStyleRevisionKey(next.connectionData, nextFf) &&
+    connectionAdvancedStyleRevisionKeyResolved(prev.connectionData, prevRc) ===
+      connectionAdvancedStyleRevisionKeyResolved(next.connectionData, nextRc) &&
     prev.exportAnimationTimeSeconds === next.exportAnimationTimeSeconds &&
     prev.animationConnectionsEnabled === next.animationConnectionsEnabled &&
     slideTransitionStyleEqual(prev.slideTransitionStyle, next.slideTransitionStyle)
@@ -1129,9 +1130,8 @@ function BezierConnectionInner({
     ? calculateMultiPointBezierPath(fromX, fromY, toX, toY, waypoints, curvature, fromAngle, toAngle)
     : calculateBezierPath(fromX, fromY, toX, toY, curvature, fromAngle, toAngle);
 
-  const finalConnectionColor = connectionColor || to.lineColor || from.lineColor || '#6b7280';
   const rw = resolveConnectionWidths(connectionData);
-  const rc = resolveConnectionColors(connectionData, finalConnectionColor);
+  const rc = resolveBezierConnectionPaint(connectionData, connectionColor, from, to);
   const advancedLine = connectionNeedsAdvancedLineStyle(rw, rc);
   const widthVaries = !rw.locked && rw.wStart !== rw.wEnd;
   const colorVaries = !rc.locked && rc.cStart !== rc.cEnd;
@@ -1212,9 +1212,9 @@ function BezierConnectionInner({
   const pathLength = pathDistanceLookup ? pathDistanceLookup.totalLength : pathLengthForCount;
   const distributedShapeSpacing = renderedShapeCount > 0 ? pathLength / renderedShapeCount : 0;
   const animationDuration = shouldAnimateShapes ? pathLength / speedMagnitude : 0;
-  const animationColor = animation.color ? animation.color : colorWithHalfOpacity(finalConnectionColor);
+  const animationColor = animation.color ? animation.color : colorWithHalfOpacity(rc.cStart);
   const connectionKey = `${connectionData?.from ?? from.id}-${connectionData?.to ?? to.id}-${(connectionData as { id?: string })?.id ?? ''}`.replace(/[^a-zA-Z0-9_-]/g, '_');
-  const gradIdSuffix = connectionGradientIdSuffix(connectionData, finalConnectionColor, ribbonLayout);
+  const gradIdSuffix = connectionGradientIdSuffix(connectionData, rc, ribbonLayout);
   const lineGradientId = `conn-line-grad-${connectionKey}-${gradIdSuffix}`;
   const animationPhaseResetKey = [
     animation.enabled ? '1' : '0',
@@ -1233,8 +1233,8 @@ function BezierConnectionInner({
   const strokeDashProps = advancedLine
     ? {}
     : connectionStrokeDashFromLineType(maxResolvedLineWidth(rw), connectionData?.lineType);
-  const markerFillStart = rc.locked ? finalConnectionColor : rc.cStart;
-  const markerFillEnd = rc.locked ? finalConnectionColor : rc.cEnd;
+  const markerFillStart = rc.cStart;
+  const markerFillEnd = rc.cEnd;
 
   return (
     <>
@@ -1369,7 +1369,7 @@ function BezierConnectionInner({
         ) : (
           <path
             d={pathData}
-            stroke={finalConnectionColor}
+            stroke={rc.cStart}
             className="cursor-pointer connection-glow-hover transition-[filter] duration-200"
             strokeWidth={connectionData?.lineWidth || 2.5}
             fill="none"
@@ -1612,8 +1612,12 @@ export function BezierConnectionText({ connectionData, from, to, connectionColor
     textY = textPoint.y;
   }
 
-  // Use connection color first, then 'to' node, fallback to 'from' node, then default
-  const finalConnectionColor = connectionColor || to?.lineColor || from?.lineColor || '#6b7280';
+  const textColor = resolveBezierConnectionPaint(
+    connectionData,
+    connectionColor,
+    from ?? { lineColor: undefined },
+    to ?? { lineColor: undefined }
+  ).cStart;
 
   const text = connectionData.text;
   
@@ -1655,7 +1659,7 @@ export function BezierConnectionText({ connectionData, from, to, connectionColor
       key={index}
       x={textX}
       y={startY + (index * lineHeight)}
-      fill={finalConnectionColor}
+      fill={textColor}
       fontSize="12"
       fontWeight="500"
       textAnchor="middle"

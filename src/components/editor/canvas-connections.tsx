@@ -1,7 +1,7 @@
 import React from "react";
 import { BezierConnection, determineConnectionEdges, getOptimalConnectionPoints, calculateBezierControlPoints, getBezierPoint, getPointOnConnectionPath } from "../diagram/bezier-connection";
 import { OrthogonalConnection } from "../diagram/othogonal-connection";
-import { computeOrthogonalRoute, computeOrthogonalRoutesBatch, getPointOnOrthogonalPath, buildObstacleCatalog, obstaclesForEndpoints, appendInteriorObstaclesForPreferredEdges, type OrthogonalRoute, type OrthogonalRouteRequest } from "@/lib/orthogonal-routing";
+import { computeOrthogonalRoute, computeOrthogonalRoutesBatch, getPointOnOrthogonalPath, buildObstacleCatalog, obstaclesForEndpoints, appendInteriorObstaclesForPreferredEdges, mergeOrthogonalTrunkWaypoints, type OrthogonalRoute, type OrthogonalRouteRequest } from "@/lib/orthogonal-routing";
 import type { DiagramData, DiagramConnectionData } from "@/lib/types";
 import { measureNodeDims, type PositionedNode, type PositionedGroup, NODE_WIDTH, BASE_NODE_HEIGHT, TEXT_NODE_HEIGHT, EXTRA_LINE_HEIGHT, CONNECTION_HELPER_Z_INDEX } from "./canvas-constants";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
@@ -436,6 +436,18 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     if (!layout || layout.connStyle !== "orthogonal") return;
 
     orthogonalRouteIndices.push(index);
+    const mergedWaypoints =
+      mergeOrthogonalTrunkWaypoints(
+        layout.fromX,
+        layout.fromY,
+        layout.toX,
+        layout.toY,
+        layout.fromAngle,
+        edge.orthogonalTrunkOffsetX,
+        edge.orthogonalTrunkOffsetY,
+        layout.enhancedEdge.waypoints,
+      ) ?? layout.enhancedEdge.waypoints;
+
     orthogonalRouteRequests.push({
       fromX: layout.fromX,
       fromY: layout.fromY,
@@ -444,7 +456,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
       fromAngle: layout.fromAngle,
       toAngle: layout.toAngle,
       obstacles: layout.obstacles,
-      waypoints: layout.enhancedEdge.waypoints,
+      waypoints: mergedWaypoints,
       smoothCorners: layout.enhancedEdge.smoothCorners === true,
       fastObstacleRouting: orthogonalFastRouting,
     });
@@ -768,6 +780,37 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                 onContextMenu={connectionHandlers.onContextMenu}
                 slideTransitionStyle={slideTransitionStyle}
                 orthogonalFastRouting={orthogonalFastRouting}
+                orthogonalTrunkDragEnabled={
+                  !isReadOnly && isConnectionHighlighted && !enhancedEdge.waypoints?.length
+                }
+                diagramTransform={transform}
+                diagramCanvasRef={canvasRef}
+                onOrthogonalTrunkOffsetChange={
+                  onConnectionUpdate
+                    ? (offset) =>
+                        onConnectionUpdate(
+                          edge.from,
+                          edge.to,
+                          offset === undefined
+                            ? { orthogonalTrunkOffsetX: undefined }
+                            : { orthogonalTrunkOffsetX: offset },
+                          (edge as DiagramConnectionData).id,
+                        )
+                    : undefined
+                }
+                onOrthogonalTrunkOffsetYChange={
+                  onConnectionUpdate
+                    ? (offset) =>
+                        onConnectionUpdate(
+                          edge.from,
+                          edge.to,
+                          offset === undefined
+                            ? { orthogonalTrunkOffsetY: undefined }
+                            : { orthogonalTrunkOffsetY: offset },
+                          (edge as DiagramConnectionData).id,
+                        )
+                    : undefined
+                }
               />
             ) : (
               <BezierConnection

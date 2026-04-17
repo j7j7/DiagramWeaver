@@ -2,15 +2,19 @@
 
 import React, { useMemo, useRef, useCallback } from "react";
 import { useTheme } from "@/components/theme-provider";
-import type { DiagramConnectionData, DiagramNodeData, DiagramZoneData } from "@/lib/types";
+import type { DiagramConnectionData } from "@/lib/types";
 import {
   computeOrthogonalRoute,
   getPointOnOrthogonalPath,
   collectObstacles,
   appendInteriorObstaclesForPreferredEdges,
+  mergeOrthogonalTrunkWaypoints,
+  findOrthogonalTrunkVerticalSegment,
+  findOrthogonalTrunkHorizontalSegment,
   type OrthogonalRoute,
   type Rect,
 } from "@/lib/orthogonal-routing";
+import type { DiagramTransform } from "@/components/diagram/connection-endpoint-handles";
 import {
   determineConnectionEdges,
   getOptimalConnectionPoints,
@@ -23,19 +27,42 @@ import { clampConnectionAnimation } from "@/lib/connection-animation";
 import { buildRibbonPolygonPath } from "@/lib/connection-ribbon-path";
 import {
   resolveConnectionWidths,
-  resolveConnectionColors,
   connectionNeedsAdvancedLineStyle,
   maxResolvedLineWidth,
   lineWidthAtPathFraction,
   scaleValuesForAnimationKeyPoints,
   CONNECTION_ANIMATION_SPACING_REF_LINE_PX,
-  connectionAdvancedStyleRevisionKey,
-  orthogonalConnectionColorFallback,
+  connectionAdvancedStyleRevisionKeyResolved,
+  resolveOrthogonalConnectionPaint,
   connectionGradientIdSuffix,
+  isUseSourceLineColorOn,
 } from "@/lib/connection-line-style";
 import { connectionStrokeDashFromLineType } from "@/lib/utils";
 
 const EMPTY_OBSTACLES: Rect[] = [];
+
+function clientToDiagram(
+  clientX: number,
+  clientY: number,
+  canvasRef: React.RefObject<HTMLElement | null>,
+  transform: DiagramTransform,
+): { x: number; y: number } | null {
+  const el = canvasRef.current;
+  if (!el) return null;
+  const rect = el.getBoundingClientRect();
+  const canvasRelativeX = clientX - rect.left;
+  const canvasRelativeY = clientY - rect.top;
+  return {
+    x: (canvasRelativeX - transform.x) / transform.k,
+    y: (canvasRelativeY - transform.y) / transform.k,
+  };
+}
+
+function diagramTransformEqual(a?: DiagramTransform, b?: DiagramTransform): boolean {
+  if (a === b) return true;
+  if (!a || !b) return !a && !b;
+  return a.x === b.x && a.y === b.y && a.k === b.k;
+}
 
 // --- Props Interface ---
 
@@ -57,6 +84,12 @@ interface OrthogonalConnectionProps {
   slideTransitionStyle?: React.CSSProperties;
   /** When no precomputed route, use fast L/Z-only routing (e.g. canvas drag). */
   orthogonalFastRouting?: boolean;
+  /** Editor: allow dragging the Z-route vertical trunk when set with transform + canvas ref. */
+  orthogonalTrunkDragEnabled?: boolean;
+  diagramTransform?: DiagramTransform;
+  diagramCanvasRef?: React.RefObject<HTMLElement | null>;
+  onOrthogonalTrunkOffsetChange?: (offset: number | undefined) => void;
+  onOrthogonalTrunkOffsetYChange?: (offset: number | undefined) => void;
 }
 
 // --- Memo Comparators ---
@@ -71,6 +104,11 @@ function positionablesEqual(a: OrthogonalConnectionProps["from"], b: OrthogonalC
     a.type === b.type &&
     (a as any).label === (b as any).label &&
     a.lineColor === b.lineColor &&
+    (a as any).borderColor === (b as any).borderColor &&
+    (a as any).borderStyle === (b as any).borderStyle &&
+    JSON.stringify((a as any).borderColors) === JSON.stringify((b as any).borderColors) &&
+    (a as any).iconColor === (b as any).iconColor &&
+    (a as any).color === (b as any).color &&
     (a as any).nodeSize === (b as any).nodeSize &&
     (a as any).sizeMode === (b as any).sizeMode &&
     (a as any).textPosition === (b as any).textPosition &&
@@ -100,6 +138,7 @@ function connectionDataEqual(a?: DiagramConnectionData, b?: DiagramConnectionDat
   if (a.from !== b.from || a.to !== b.to || (a as any).id !== (b as any).id) return false;
   if (a.lineWidth !== b.lineWidth || a.lineWidthLock !== b.lineWidthLock || a.lineWidthEnd !== b.lineWidthEnd) return false;
   if (a.lineType !== b.lineType || a.shadow !== b.shadow || a.color !== b.color) return false;
+  if (isUseSourceLineColorOn(a) !== isUseSourceLineColorOn(b)) return false;
   if (a.colorLock !== b.colorLock || a.colorEnd !== b.colorEnd) return false;
   if (a.fromArrow !== b.fromArrow || a.toArrow !== b.toArrow || a.arrow !== b.arrow) return false;
   if (a.centerEdgeAnchors !== b.centerEdgeAnchors) return false;
@@ -113,25 +152,45 @@ function connectionDataEqual(a?: DiagramConnectionData, b?: DiagramConnectionDat
   const animA = a.animation ? JSON.stringify(a.animation) : "";
   const animB = b.animation ? JSON.stringify(b.animation) : "";
   if (animA !== animB) return false;
+  if ((a.orthogonalTrunkOffsetX ?? 0) !== (b.orthogonalTrunkOffsetX ?? 0)) return false;
+  if ((a.orthogonalTrunkOffsetY ?? 0) !== (b.orthogonalTrunkOffsetY ?? 0)) return false;
   return true;
 }
 
 function areOrthogonalPropsEqual(prev: OrthogonalConnectionProps, next: OrthogonalConnectionProps): boolean {
-  const prevFf = orthogonalConnectionColorFallback(prev.connectionData, prev.connectionColor, prev.from, prev.to);
-  const nextFf = orthogonalConnectionColorFallback(next.connectionData, next.connectionColor, next.from, next.to);
+  const themeNeutral = "#6b7280";
+  const prevRc = resolveOrthogonalConnectionPaint(
+    prev.connectionData,
+    prev.connectionColor,
+    prev.from,
+    prev.to,
+    themeNeutral
+  );
+  const nextRc = resolveOrthogonalConnectionPaint(
+    next.connectionData,
+    next.connectionColor,
+    next.from,
+    next.to,
+    themeNeutral
+  );
   return (
     positionablesEqual(prev.from, next.from) &&
     positionablesEqual(prev.to, next.to) &&
     prev.connectionColor === next.connectionColor &&
     connectionDataEqual(prev.connectionData, next.connectionData) &&
-    connectionAdvancedStyleRevisionKey(prev.connectionData, prevFf) ===
-      connectionAdvancedStyleRevisionKey(next.connectionData, nextFf) &&
+    connectionAdvancedStyleRevisionKeyResolved(prev.connectionData, prevRc) ===
+      connectionAdvancedStyleRevisionKeyResolved(next.connectionData, nextRc) &&
     prev.route?.pathData === next.route?.pathData &&
     prev.route?.totalLength === next.route?.totalLength &&
     prev.exportAnimationTimeSeconds === next.exportAnimationTimeSeconds &&
     prev.animationConnectionsEnabled === next.animationConnectionsEnabled &&
     slideTransitionStyleEqual(prev.slideTransitionStyle, next.slideTransitionStyle) &&
-    prev.orthogonalFastRouting === next.orthogonalFastRouting
+    prev.orthogonalFastRouting === next.orthogonalFastRouting &&
+    prev.orthogonalTrunkDragEnabled === next.orthogonalTrunkDragEnabled &&
+    diagramTransformEqual(prev.diagramTransform, next.diagramTransform) &&
+    prev.diagramCanvasRef === next.diagramCanvasRef &&
+    prev.onOrthogonalTrunkOffsetChange === next.onOrthogonalTrunkOffsetChange &&
+    prev.onOrthogonalTrunkOffsetYChange === next.onOrthogonalTrunkOffsetYChange
   );
 }
 
@@ -155,17 +214,14 @@ function OrthogonalConnectionInner({
   onContextMenu,
   slideTransitionStyle,
   orthogonalFastRouting = false,
+  orthogonalTrunkDragEnabled = false,
+  diagramTransform,
+  diagramCanvasRef,
+  onOrthogonalTrunkOffsetChange,
+  onOrthogonalTrunkOffsetYChange,
 }: OrthogonalConnectionProps) {
   const { resolvedTheme } = useTheme();
-
-  // Determine connection colour
-  const finalConnectionColor = useMemo(() => {
-    if (connectionData?.color) return connectionData.color;
-    if (connectionColor) return connectionColor;
-    if (to?.lineColor) return to.lineColor;
-    if (from?.lineColor) return from.lineColor;
-    return resolvedTheme === "dark" ? "#9ca3af" : "#6b7280";
-  }, [connectionData?.color, connectionColor, to?.lineColor, from?.lineColor, resolvedTheme]);
+  const themeNeutral = resolvedTheme === "dark" ? "#9ca3af" : "#6b7280";
 
   // Compute node dimensions
   const fromWidth = (from as any).width ?? 80;
@@ -207,18 +263,131 @@ function OrthogonalConnectionInner({
     connectionData?.toPreferredEntry,
   ]);
 
-  // Route (with optional waypoints - path passes through each)
-  const waypoints = connectionData?.waypoints;
+  // Route (optional manual waypoints + orthogonal trunk offset when no manual waypoints)
   const route: OrthogonalRoute = useMemo(
-    () => precomputedRoute ?? computeOrthogonalRoute(fromX, fromY, toX, toY, fromAngle, toAngle, obstacles, waypoints, {
-      smoothCorners: connectionData?.smoothCorners === true,
-      fastObstacleRouting: orthogonalFastRouting,
-    }),
-    [precomputedRoute, fromX, fromY, toX, toY, fromAngle, toAngle, obstacles, waypoints, connectionData?.smoothCorners, orthogonalFastRouting]
+    () => {
+      if (precomputedRoute) return precomputedRoute;
+      const waypoints =
+        mergeOrthogonalTrunkWaypoints(
+          fromX,
+          fromY,
+          toX,
+          toY,
+          fromAngle,
+          connectionData?.orthogonalTrunkOffsetX,
+          connectionData?.orthogonalTrunkOffsetY,
+          connectionData?.waypoints,
+        ) ?? connectionData?.waypoints;
+      return computeOrthogonalRoute(fromX, fromY, toX, toY, fromAngle, toAngle, obstacles, waypoints, {
+        smoothCorners: connectionData?.smoothCorners === true,
+        fastObstacleRouting: orthogonalFastRouting,
+      });
+    },
+    [
+      precomputedRoute,
+      fromX,
+      fromY,
+      toX,
+      toY,
+      fromAngle,
+      toAngle,
+      obstacles,
+      connectionData?.waypoints,
+      connectionData?.orthogonalTrunkOffsetX,
+      connectionData?.orthogonalTrunkOffsetY,
+      connectionData?.smoothCorners,
+      orthogonalFastRouting,
+    ]
+  );
+
+  const trunkVertical = useMemo(
+    () =>
+      orthogonalTrunkDragEnabled && diagramTransform && diagramCanvasRef && onOrthogonalTrunkOffsetChange
+        ? findOrthogonalTrunkVerticalSegment(route.points)
+        : null,
+    [
+      orthogonalTrunkDragEnabled,
+      diagramTransform,
+      diagramCanvasRef,
+      onOrthogonalTrunkOffsetChange,
+      route.pathData,
+    ],
+  );
+
+  const onTrunkVerticalPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (!diagramTransform || !diagramCanvasRef || !onOrthogonalTrunkOffsetChange) return;
+      if (e.button !== 0) return;
+      const p = clientToDiagram(e.clientX, e.clientY, diagramCanvasRef, diagramTransform);
+      if (!p) return;
+      e.stopPropagation();
+      e.preventDefault();
+      const startDiagramX = p.x;
+      const startOffset = connectionData?.orthogonalTrunkOffsetX ?? 0;
+      const onMove = (ev: PointerEvent) => {
+        const p2 = clientToDiagram(ev.clientX, ev.clientY, diagramCanvasRef, diagramTransform);
+        if (!p2) return;
+        const next = startOffset + (p2.x - startDiagramX);
+        if (Math.abs(next) < 0.5) onOrthogonalTrunkOffsetChange(undefined);
+        else onOrthogonalTrunkOffsetChange(next);
+      };
+      const onUp = () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        window.removeEventListener("pointercancel", onUp);
+      };
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", onUp);
+    },
+    [connectionData?.orthogonalTrunkOffsetX, diagramCanvasRef, diagramTransform, onOrthogonalTrunkOffsetChange],
+  );
+
+  const trunkHorizontal = useMemo(
+    () =>
+      orthogonalTrunkDragEnabled && diagramTransform && diagramCanvasRef && onOrthogonalTrunkOffsetYChange
+        ? findOrthogonalTrunkHorizontalSegment(route.points)
+        : null,
+    [
+      orthogonalTrunkDragEnabled,
+      diagramTransform,
+      diagramCanvasRef,
+      onOrthogonalTrunkOffsetYChange,
+      route.pathData,
+    ],
+  );
+
+  const onTrunkHorizontalPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (!diagramTransform || !diagramCanvasRef || !onOrthogonalTrunkOffsetYChange) return;
+      if (e.button !== 0) return;
+      const p = clientToDiagram(e.clientX, e.clientY, diagramCanvasRef, diagramTransform);
+      if (!p) return;
+      e.stopPropagation();
+      e.preventDefault();
+      const startDiagramY = p.y;
+      const startOffset = connectionData?.orthogonalTrunkOffsetY ?? 0;
+      const onMove = (ev: PointerEvent) => {
+        const p2 = clientToDiagram(ev.clientX, ev.clientY, diagramCanvasRef, diagramTransform);
+        if (!p2) return;
+        const next = startOffset + (p2.y - startDiagramY);
+        if (Math.abs(next) < 0.5) onOrthogonalTrunkOffsetYChange(undefined);
+        else onOrthogonalTrunkOffsetYChange(next);
+      };
+      const onUp = () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        window.removeEventListener("pointercancel", onUp);
+      };
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", onUp);
+    },
+    [connectionData?.orthogonalTrunkOffsetY, diagramCanvasRef, diagramTransform, onOrthogonalTrunkOffsetYChange],
   );
 
   const rw = resolveConnectionWidths(connectionData);
-  const rc = resolveConnectionColors(connectionData, finalConnectionColor);
+  const rc = resolveOrthogonalConnectionPaint(connectionData, connectionColor, from, to, themeNeutral);
   const advancedLine = connectionNeedsAdvancedLineStyle(rw, rc);
   const widthVaries = !rw.locked && rw.wStart !== rw.wEnd;
   const colorVaries = !rc.locked && rc.cStart !== rc.cEnd;
@@ -307,9 +476,9 @@ function OrthogonalConnectionInner({
   const useStaticExportAnimation = shouldAnimateShapes && hasExportAnimationTime;
   const pathLength = pathLengthForCount;
   const animationDuration = shouldAnimateShapes ? pathLength / speedMagnitude : 0;
-  const animationColor = animation.color ? animation.color : colorWithHalfOpacity(finalConnectionColor);
+  const animationColor = animation.color ? animation.color : colorWithHalfOpacity(rc.cStart);
   const connectionKey = `${connectionData?.from ?? from.id}-${connectionData?.to ?? to.id}-${connectionData?.id ?? ""}`.replace(/[^a-zA-Z0-9_-]/g, "_");
-  const gradIdSuffix = connectionGradientIdSuffix(connectionData, finalConnectionColor, ribbonLayout);
+  const gradIdSuffix = connectionGradientIdSuffix(connectionData, rc, ribbonLayout);
   const animationPhaseResetKey = [
     animation.enabled ? "1" : "0",
     animation.shape,
@@ -328,8 +497,8 @@ function OrthogonalConnectionInner({
     ? {}
     : connectionStrokeDashFromLineType(thickness, connectionData?.lineType);
   const lineGradientId = `orth-line-grad-${connectionKey}-${gradIdSuffix}`;
-  const markerFillStart = rc.locked ? finalConnectionColor : rc.cStart;
-  const markerFillEnd = rc.locked ? finalConnectionColor : rc.cEnd;
+  const markerFillStart = rc.cStart;
+  const markerFillEnd = rc.cEnd;
 
   return (
     <>
@@ -458,7 +627,7 @@ function OrthogonalConnectionInner({
         ) : (
           <path
             d={route.pathData}
-            stroke={finalConnectionColor}
+            stroke={rc.cStart}
             className="cursor-pointer connection-glow-hover transition-[filter] duration-200"
             strokeWidth={thickness}
             strokeLinejoin="round"
@@ -469,6 +638,54 @@ function OrthogonalConnectionInner({
             markerEnd={showEndArrow ? `url(#${endMarkerId})` : undefined}
             filter={hasShadow ? `url(#${shadowFilterId})` : undefined}
           />
+        )}
+
+        {trunkVertical && (
+          <g style={{ pointerEvents: "auto" }}>
+            <line
+              x1={trunkVertical.x}
+              y1={trunkVertical.yMin}
+              x2={trunkVertical.x}
+              y2={trunkVertical.yMax}
+              stroke="transparent"
+              strokeWidth={26}
+              onPointerDown={onTrunkVerticalPointerDown}
+              className="cursor-ew-resize"
+            />
+            <line
+              x1={trunkVertical.x}
+              y1={trunkVertical.yMin}
+              x2={trunkVertical.x}
+              y2={trunkVertical.yMax}
+              stroke={resolvedTheme === "dark" ? "rgba(74,222,128,0.5)" : "rgba(34,197,94,0.45)"}
+              strokeWidth={2}
+              pointerEvents="none"
+            />
+          </g>
+        )}
+
+        {trunkHorizontal && (
+          <g style={{ pointerEvents: "auto" }}>
+            <line
+              x1={trunkHorizontal.xMin}
+              y1={trunkHorizontal.y}
+              x2={trunkHorizontal.xMax}
+              y2={trunkHorizontal.y}
+              stroke="transparent"
+              strokeWidth={26}
+              onPointerDown={onTrunkHorizontalPointerDown}
+              className="cursor-ns-resize"
+            />
+            <line
+              x1={trunkHorizontal.xMin}
+              y1={trunkHorizontal.y}
+              x2={trunkHorizontal.xMax}
+              y2={trunkHorizontal.y}
+              stroke={resolvedTheme === "dark" ? "rgba(74,222,128,0.5)" : "rgba(34,197,94,0.45)"}
+              strokeWidth={2}
+              pointerEvents="none"
+            />
+          </g>
         )}
 
         {/* Animation shapes */}

@@ -257,6 +257,13 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     return passThrough;
   }, [connectionSlots.sortedItemIds, selectedItemIds, nodesById, zonesById]);
 
+  const canGroupSelectedCanvasItems = useMemo(() => {
+    if (selectedItemIds.size < 2) return false;
+    const nodeIds = new Set(diagramData.nodes.map((n) => n.id));
+    const zoneIds = new Set((diagramData.zones ?? []).map((z) => z.id));
+    return Array.from(selectedItemIds).some((id) => nodeIds.has(id) || zoneIds.has(id));
+  }, [diagramData.nodes, diagramData.zones, selectedItemIds]);
+
   // Get the currently selected item (node or zone) for internal use
   const selectedNodeOrZone = useMemo(() => {
     if (!selectedItemId) return null;
@@ -1044,7 +1051,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   // - handleMouseDown/Move/Up: Manages selection rectangle drawing
   // - justCompletedSelection: Flag to prevent immediate deselection
   // See: src/hooks/use-canvas-selection.ts
-  const { selectionStart, selectionEnd, justCompletedSelection, handleCanvasClick, handleMouseDown: handleSelectionMouseDown, handleMouseMove: handleSelectionMouseMove, handleMouseUpOrLeave: handleSelectionMouseUpOrLeave } = useCanvasSelection({
+  const { selectionStart, selectionEnd, selectionMarqueeMode, justCompletedSelection, handleCanvasClick, handleMouseDown: handleSelectionMouseDown, handleMouseMove: handleSelectionMouseMove, handleMouseUpOrLeave: handleSelectionMouseUpOrLeave } = useCanvasSelection({
     canvasRef,
     transform,
     isConnectMode,
@@ -1802,7 +1809,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
           */}
           {selectionStart && selectionEnd && (
             <div
-              className="absolute border-2 border-blue-500 bg-blue-200/20 pointer-events-none z-[100]"
+              className={
+                selectionMarqueeMode === "connections"
+                  ? "absolute border-2 border-green-500 bg-green-200/20 pointer-events-none z-[100]"
+                  : "absolute border-2 border-blue-500 bg-blue-200/20 pointer-events-none z-[100]"
+              }
               style={{
                 left: `${Math.min(selectionStart.x, selectionEnd.x) * transform.k + transform.x}px`,
                 top: `${Math.min(selectionStart.y, selectionEnd.y) * transform.k + transform.y}px`,
@@ -2003,7 +2014,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 return zone.orientation;
               })()
             }
-            canGroup={selectedItemIds.size >= 2}
+            canGroup={canGroupSelectedCanvasItems}
             isGrouped={getItemGroup(contextMenu.itemId, diagramData) !== null}
             canAddToGroup={(() => {
               if (selectedItemIds.size < 2) return false;

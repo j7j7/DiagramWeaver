@@ -10,6 +10,7 @@ import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Switch } from "@/components/ui/switch";
 import type { DiagramConnectionData, DiagramData } from "@/lib/types";
+import { resolveBezierConnectionPaint, type ConnectionEndpointOutline } from "@/lib/connection-line-style";
 import { ConnectionAnimationControls } from "@/components/editor/connection-animation-controls";
 import { ConnectionLineStyleFields } from "@/components/editor/connection-line-style-fields";
 
@@ -57,11 +58,12 @@ export function ConnectionContextModal({
   const toNode = diagramData?.nodes.find((n) => n.id === connection.to) ||
     diagramData?.zones?.find((z) => z.id === connection.to);
 
-  const connectionColor =
-    liveConnection.color ||
-    (toNode as any)?.lineColor ||
-    (fromNode as any)?.lineColor ||
-    "#6b7280";
+  const connectionColor = resolveBezierConnectionPaint(
+    liveConnection,
+    liveConnection.color,
+    (fromNode ?? {}) as ConnectionEndpointOutline,
+    (toNode ?? {}) as { lineColor?: string }
+  ).cStart;
   const lineStyle = liveConnection.style ?? "bezier";
   const strokePattern = liveConnection.lineType ?? "solid";
   const smoothCorners = lineStyle === "orthogonal" && liveConnection.smoothCorners === true;
@@ -334,6 +336,85 @@ export function ConnectionContextModal({
                 onConnectionUpdate={onConnectionUpdate}
                 isReadOnly={isReadOnly}
               />
+            </div>
+
+            <div className="space-y-2.5 min-w-0 border-l border-border pl-3">
+              {onConnectionDisconnect && !isReadOnly && (
+                <div className="flex justify-end pb-0.5">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 gap-1.5 px-2.5 text-xs text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() => {
+                          onConnectionDisconnect(connection.from, connection.to, connId);
+                          onClose();
+                        }}
+                        aria-label="Delete connection"
+                      >
+                        <Trash2 className="h-3.5 w-3.5 shrink-0" />
+                        Delete
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" align="end">
+                      Remove this connection from the diagram
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              )}
+              <div className="space-y-1.5">
+                <Label htmlFor="connection-label-text" className="text-xs font-medium">
+                  Text
+                </Label>
+                <Input
+                  id="connection-label-text"
+                  type="text"
+                  value={localConnectionText}
+                  onChange={(e) => setLocalConnectionText(e.target.value)}
+                  onBlur={(e) => commitConnectionText((e.target as HTMLInputElement).value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      commitConnectionText((e.target as HTMLInputElement).value);
+                      (e.target as HTMLInputElement).blur();
+                    }
+                  }}
+                  placeholder="Enter connection text..."
+                  className="h-8 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="connection-text-position" className="text-xs font-medium">
+                  Text position: {textPosition}%
+                </Label>
+                <div className="flex items-center gap-1.5">
+                  <Slider
+                    id="connection-text-position"
+                    value={[textPosition]}
+                    onValueChange={(values) => handleTextPositionChange(values[0])}
+                    min={0}
+                    max={100}
+                    step={1}
+                    className="flex-1"
+                  />
+                  <Input
+                    type="number"
+                    value={textPosition}
+                    onChange={(e) =>
+                      handleTextPositionChange(
+                        Math.max(0, Math.min(100, parseInt(e.target.value) || 50))
+                      )
+                    }
+                    className="h-8 w-14 text-xs text-center shrink-0"
+                    min={0}
+                    max={100}
+                  />
+                  <span className="text-xs text-muted-foreground shrink-0">%</span>
+                </div>
+              </div>
 
               {lineStyle === "orthogonal" && (
                 <div className="space-y-1.5">
@@ -423,86 +504,6 @@ export function ConnectionContextModal({
                   </div>
                 </div>
               </div>
-            </div>
-
-            <div className="space-y-2.5 min-w-0 border-l border-border pl-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="connection-label-text" className="text-xs font-medium">
-                  Text
-                </Label>
-                <Input
-                  id="connection-label-text"
-                  type="text"
-                  value={localConnectionText}
-                  onChange={(e) => setLocalConnectionText(e.target.value)}
-                  onBlur={(e) => commitConnectionText((e.target as HTMLInputElement).value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      commitConnectionText((e.target as HTMLInputElement).value);
-                      (e.target as HTMLInputElement).blur();
-                    }
-                  }}
-                  placeholder="Enter connection text..."
-                  className="h-8 text-xs"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="connection-text-position" className="text-xs font-medium">
-                  Text position: {textPosition}%
-                </Label>
-                <div className="flex items-center gap-1.5">
-                  <Slider
-                    id="connection-text-position"
-                    value={[textPosition]}
-                    onValueChange={(values) => handleTextPositionChange(values[0])}
-                    min={0}
-                    max={100}
-                    step={1}
-                    className="flex-1"
-                  />
-                  <Input
-                    type="number"
-                    value={textPosition}
-                    onChange={(e) =>
-                      handleTextPositionChange(
-                        Math.max(0, Math.min(100, parseInt(e.target.value) || 50))
-                      )
-                    }
-                    className="h-8 w-14 text-xs text-center shrink-0"
-                    min={0}
-                    max={100}
-                  />
-                  <span className="text-xs text-muted-foreground shrink-0">%</span>
-                </div>
-              </div>
-
-              {onConnectionDisconnect && !isReadOnly && (
-                <div className="flex justify-end pt-1">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-8 gap-1.5 px-2.5 text-xs text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
-                        onClick={() => {
-                          onConnectionDisconnect(connection.from, connection.to, connId);
-                          onClose();
-                        }}
-                        aria-label="Delete connection"
-                      >
-                        <Trash2 className="h-3.5 w-3.5 shrink-0" />
-                        Delete
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" align="end">
-                      Remove this connection from the diagram
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-              )}
             </div>
           </div>
 
