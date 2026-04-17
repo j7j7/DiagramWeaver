@@ -17,13 +17,20 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { DiagramTheme, ThemeMenuApplyOptions } from '@/lib/theme-types';
-import { themeManager } from '@/lib/theme-manager';
+import { themeManager, DIAGRAM_THEME_HUE_STEP_DEG } from '@/lib/theme-manager';
+import { Input } from '@/components/ui/input';
 import { getVisualStylingCSS, themePropertiesToVisualStyling } from '@/lib/visual-styling';
 
 /** Hover delay before theme description tooltip opens (ms). */
 const THEME_DESCRIPTION_TOOLTIP_DELAY_MS = 1500;
 
 const MULTI_HUE_LAYOUT_STORAGE_KEY = 'diagram-weaver-theme-multi-hue-layout';
+const MULTI_HUE_STEP_STORAGE_KEY = 'diagram-weaver-theme-multi-hue-step-deg';
+
+function clampMultiHueStepDeg(value: number): number {
+  if (!Number.isFinite(value)) return DIAGRAM_THEME_HUE_STEP_DEG;
+  return Math.min(360, Math.max(1, Math.round(value)));
+}
 
 interface ThemeMenuSelectorProps {
   onThemeSelect?: (theme: DiagramTheme, options?: ThemeMenuApplyOptions) => void;
@@ -97,6 +104,8 @@ function ThemeDropdownMenuRow({
 export function ThemeMenuSelector({ onThemeSelect, onOpenEditor, isReadOnly = false }: ThemeMenuSelectorProps) {
   const [themes, setThemes] = useState<DiagramTheme[]>([]);
   const [multiHueByLayout, setMultiHueByLayout] = useState(false);
+  const [multiHueStepDeg, setMultiHueStepDeg] = useState(DIAGRAM_THEME_HUE_STEP_DEG);
+  const [hueStepInput, setHueStepInput] = useState(String(DIAGRAM_THEME_HUE_STEP_DEG));
 
   useEffect(() => {
     setThemes(themeManager.getThemesSorted());
@@ -110,17 +119,43 @@ export function ThemeMenuSelector({ onThemeSelect, onOpenEditor, isReadOnly = fa
 
   useEffect(() => {
     try {
-      setMultiHueByLayout(typeof window !== 'undefined' && localStorage.getItem(MULTI_HUE_LAYOUT_STORAGE_KEY) === '1');
+      if (typeof window === 'undefined') return;
+      setMultiHueByLayout(localStorage.getItem(MULTI_HUE_LAYOUT_STORAGE_KEY) === '1');
+      const rawStep = localStorage.getItem(MULTI_HUE_STEP_STORAGE_KEY);
+      if (rawStep != null) {
+        const parsed = Number(rawStep);
+        const n = clampMultiHueStepDeg(parsed);
+        setMultiHueStepDeg(n);
+        setHueStepInput(String(n));
+      }
     } catch {
       /* ignore */
     }
   }, []);
 
+  const commitHueStepInput = (): number => {
+    const raw = hueStepInput.trim();
+    const n =
+      raw === '' ? multiHueStepDeg : clampMultiHueStepDeg(Number(raw));
+    setMultiHueStepDeg(n);
+    setHueStepInput(String(n));
+    try {
+      localStorage.setItem(MULTI_HUE_STEP_STORAGE_KEY, String(n));
+    } catch {
+      /* ignore */
+    }
+    return n;
+  };
+
   const handleThemeSelect = (theme: DiagramTheme, e?: React.MouseEvent) => {
     if (isReadOnly) return;
     e?.stopPropagation();
     if (onThemeSelect) {
-      onThemeSelect(theme, { multiSelectHueByLayout: multiHueByLayout });
+      const stepDeg = commitHueStepInput();
+      onThemeSelect(theme, {
+        multiSelectHueByLayout: multiHueByLayout,
+        multiSelectHueStepDegrees: stepDeg,
+      });
     }
   };
 
@@ -176,6 +211,27 @@ export function ThemeMenuSelector({ onThemeSelect, onOpenEditor, isReadOnly = fa
         >
           Step hue for multi-selection (by layout)
         </DropdownMenuCheckboxItem>
+        <div
+          className="px-2 py-2 flex items-center gap-2"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <label htmlFor="theme-multi-hue-step" className="text-xs text-muted-foreground shrink-0">
+            Hue step (°)
+          </label>
+          <Input
+            id="theme-multi-hue-step"
+            type="number"
+            min={1}
+            max={360}
+            step={1}
+            className="h-8 w-[4.5rem] px-2"
+            disabled={isReadOnly}
+            value={hueStepInput}
+            onChange={(e) => setHueStepInput(e.target.value)}
+            onBlur={commitHueStepInput}
+          />
+        </div>
         <DropdownMenuSeparator />
         {favoriteThemes.length > 0 && (
           <>

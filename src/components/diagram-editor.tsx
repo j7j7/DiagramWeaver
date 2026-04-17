@@ -3678,10 +3678,12 @@ export default function DiagramEditor() {
             ? orderSelectedIdsForThemeHue(selectedItemIds, prevData.nodes, prevData.connections ?? [])
             : null;
 
+        const stepDeg =
+          menuOptions?.multiSelectHueStepDegrees ?? DIAGRAM_THEME_HUE_STEP_DEG;
         const hueShiftForId = (id: string): number => {
           if (!orderMap) return 0;
           const idx = orderMap.get(id) ?? 0;
-          return idx * DIAGRAM_THEME_HUE_STEP_DEG;
+          return idx * stepDeg;
         };
 
         const updatedNodes = prevData.nodes.map((node) => {

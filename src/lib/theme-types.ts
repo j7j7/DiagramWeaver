@@ -80,6 +80,11 @@ export interface ThemeApplicationOptions {
 export interface ThemeMenuApplyOptions {
   /** When true and multiple items are selected, stagger hue by vertical or horizontal order. */
   multiSelectHueByLayout?: boolean;
+  /**
+   * Degrees between consecutive items in layout order when multi-select hue stepping is on.
+   * Omit to use the default chart hue step (see `DIAGRAM_THEME_HUE_STEP_DEG`).
+   */
+  multiSelectHueStepDegrees?: number;
 }
 
 export interface ThemeEditorState {

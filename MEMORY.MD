@@ -2,6 +2,9 @@
 
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
+### 2026-04-17 – Themes menu: configurable multi-select hue step
+**`theme-menu-selector`**: **Hue step (°)** number field under **Step hue for multi-selection (by layout)** (persisted in **`localStorage`** key **`diagram-weaver-theme-multi-hue-step-deg`**, clamped **1–360**, default matches **`DIAGRAM_THEME_HUE_STEP_DEG`**). **`ThemeMenuApplyOptions.multiSelectHueStepDegrees`** is passed when applying a theme; **`diagram-editor`** **`handleThemeApplyToSelected`** multiplies layout index by this step instead of always using **`DIAGRAM_THEME_HUE_STEP_DEG`**.
+
 ### 2026-04-15 – Shapes: optional “pass-through” for orthogonal connector routing
 **`ignoreConnectionAvoidance`** on **`DiagramNodeData`** / **`DiagramZoneData`** (and nested item schemas): when **`true`**, **`buildObstacleCatalog`** and **`collectObstacles`** omit that item via **`actsAsConnectorRoutingObstacle`** in **`orthogonal-routing`**, so **orthogonal** links may run through the bounds. **Visual Styling** panel **Connectors**: switch **Let lines pass through**. Bezier curves were already unaffected by obstacle rects.
 
