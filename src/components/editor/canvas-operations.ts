@@ -464,10 +464,20 @@ export function useCanvasOperations({
           const ddy = snappedY - oy;
           const sp = (original as { startPos?: { x: number; y: number } }).startPos || { x: ox, y: oy };
           const ep = (original as { endPos?: { x: number; y: number } }).endPos || { x: ox + 150, y: oy };
+          const ctrls = (original as { lineControlPoints?: { x: number; y: number }[] }).lineControlPoints;
           next = {
             ...next,
             startPos: { x: sp.x + ddx, y: sp.y + ddy },
             endPos: { x: ep.x + ddx, y: ep.y + ddy },
+            ...(ctrls?.length
+              ? {
+                  lineControlPoints: ctrls.map((c) => ({
+                    ...c,
+                    x: c.x + ddx,
+                    y: c.y + ddy,
+                  })),
+                }
+              : {}),
           };
         }
         additions.push(next);
@@ -557,13 +567,22 @@ export function useCanvasOperations({
                   const currentEndPos = (n as any).endPos || { x: (n.x || 0) + 150, y: (n.y || 0) + 50 };
                   const deltaX = snappedX - (n.x || 0);
                   const deltaY = snappedY - (n.y || 0);
-                  
+                  const ctrls = (n as any).lineControlPoints as { x: number; y: number }[] | undefined;
                   return {
                     ...n,
                     x: snappedX,
                     y: snappedY,
                     startPos: { x: currentStartPos.x + deltaX, y: currentStartPos.y + deltaY },
-                    endPos: { x: currentEndPos.x + deltaX, y: currentEndPos.y + deltaY }
+                    endPos: { x: currentEndPos.x + deltaX, y: currentEndPos.y + deltaY },
+                    ...(ctrls?.length
+                      ? {
+                          lineControlPoints: ctrls.map((c) => ({
+                            ...c,
+                            x: c.x + deltaX,
+                            y: c.y + deltaY,
+                          })),
+                        }
+                      : {}),
                   };
                 }
                 return { ...n, x: snappedX, y: snappedY };
@@ -801,13 +820,22 @@ export function useCanvasOperations({
                    const currentEndPos = (n as any).endPos || { x: (n.x || 0) + 150, y: n.y || 0 };
                    const deltaX = snappedX - originalX;
                    const deltaY = snappedY - originalY;
-                   
+                   const ctrls = (n as any).lineControlPoints as { x: number; y: number }[] | undefined;
                    return {
                      ...n,
                      x: snappedX,
                      y: snappedY,
                      startPos: { x: currentStartPos.x + deltaX, y: currentStartPos.y + deltaY },
-                     endPos: { x: currentEndPos.x + deltaX, y: currentEndPos.y + deltaY }
+                     endPos: { x: currentEndPos.x + deltaX, y: currentEndPos.y + deltaY },
+                     ...(ctrls?.length
+                       ? {
+                           lineControlPoints: ctrls.map((c) => ({
+                             ...c,
+                             x: c.x + deltaX,
+                             y: c.y + deltaY,
+                           })),
+                         }
+                       : {}),
                    };
                  }
                  return { ...n, x: snappedX, y: snappedY };

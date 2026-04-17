@@ -286,6 +286,12 @@ export interface DiagramNodeData {
   endCap?: 'none' | 'arrow' | 'dot' | 'square'; // End endpoint style for line shapes
   lineThickness?: number; // Line thickness for line shapes (default: 2.5)
   lineType?: 'solid' | 'dashed' | 'dotted'; // Line type/style for line shapes
+  /** Polyline connector: straight segment vs smooth curve through interior control points */
+  linePathStyle?: 'straight' | 'curved';
+  /** Interior points (absolute canvas coords) between `startPos` and `endPos` — straight polylines or curved splines */
+  lineControlPoints?: Array<{ x: number; y: number; id?: string }>;
+  /** When `linePathStyle` is straight and there are interior points, draw slight rounding at corners (quadratic fillets) */
+  lineSmoothJoints?: boolean;
   lineTextPosition?: number; // Text position along line (0-100%, default 50%)
   lineTextVerticalPosition?: 'above' | 'middle' | 'below'; // Text position relative to line
   lineTextHorizontal?: boolean; // When true, keep text horizontal (readable) for right-to-left lines

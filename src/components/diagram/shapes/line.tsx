@@ -4,6 +4,16 @@ import React from "react";
 import { useTheme } from "@/components/theme-provider";
 import type { DiagramNodeData } from "@/lib/types";
 import { extractTextStylingFromNode, getSvgTextOutlineProps, getTextEffectsShadowCss } from "@/lib/text-styling";
+import {
+  connectorLinePathD,
+  connectorLinePointBounds,
+  curveBoundsExpanded,
+  getConnectorLineVertices,
+  linePathTangentAtEnd,
+  linePathTangentAtStart,
+  pointAtLengthRatio,
+  type LinePathStyle,
+} from "@/lib/line-curve-path";
 
 interface LineShapeProps {
   node: DiagramNodeData & { width?: number; height?: number };
@@ -91,39 +101,26 @@ const renderLineCap = (
 
 export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, onClick, onContextMenu, slideColorTransition }: LineShapeProps) {
   const { resolvedTheme } = useTheme();
-  // Get absolute positions (required for lines)
-  // Use local positions if available (for smooth dragging), otherwise use node positions
-  const startPos = (node as any).__localStartPos || node.startPos || { x: (node.x || 0), y: (node.y || 0) };
-  const endPos = (node as any).__localEndPos || node.endPos || { x: (node.x || 0) + 150, y: (node.y || 0) };
+  const vertices = getConnectorLineVertices(node as DiagramNodeData & { __localStartPos?: { x: number; y: number }; __localEndPos?: { x: number; y: number }; __localControlPoints?: { x: number; y: number }[] });
+  const startPos = vertices[0];
+  const endPos = vertices[vertices.length - 1];
+
+  const linePathStyle = (node as DiagramNodeData & { linePathStyle?: LinePathStyle }).linePathStyle;
+  const lineSmoothJoints = (node as DiagramNodeData & { lineSmoothJoints?: boolean }).lineSmoothJoints === true;
+
+  const pathD = connectorLinePathD(vertices, linePathStyle, lineSmoothJoints);
   
-  // Calculate bounding box
-  const minX = Math.min(startPos.x, endPos.x);
-  const minY = Math.min(startPos.y, endPos.y);
-  const maxX = Math.max(startPos.x, endPos.x);
-  const maxY = Math.max(startPos.y, endPos.y);
+  const nodeX = node.x ?? connectorLinePointBounds(vertices).minX;
+  const nodeY = node.y ?? connectorLinePointBounds(vertices).minY;
   
-  // Node position should be at top-left of bounding box (this is informational - actual positioning handled by parent)
-  const nodeX = node.x || minX;
-  const nodeY = node.y || minY;
-  
-  // Calculate relative coordinates for rendering (relative to node position)
   const relStartX = startPos.x - nodeX;
   const relStartY = startPos.y - nodeY;
   const relEndX = endPos.x - nodeX;
   const relEndY = endPos.y - nodeY;
   
-  // Calculate angle for caps
-  const dx = endPos.x - startPos.x;
-  const dy = endPos.y - startPos.y;
-  const angleToEnd = Math.atan2(dy, dx) * (180 / Math.PI);
-  const angleToStart = angleToEnd + 180;
-  const lineAngleRad = Math.atan2(dy, dx);
-  // Keep text upright for right-to-left lines (angle ~180° would flip text upside down)
-  const absAngle = Math.abs(angleToEnd);
-  const wouldFlipUpsideDown = absAngle > 90 && absAngle < 270;
-  const textRotation = (node as any).lineTextHorizontal === true || wouldFlipUpsideDown
-    ? 0
-    : angleToEnd;
+  const tangentStart = linePathTangentAtStart(vertices, linePathStyle);
+  const tangentEnd = linePathTangentAtEnd(vertices, linePathStyle);
+  const angleToStartCap = tangentStart + 180;
   
   // Line caps
   const startCap = node.startCap || 'none';
@@ -160,43 +157,32 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
       ? "0 0 3px rgba(0,0,0,1), 0 0 6px rgba(0,0,0,0.9), 1px 1px 4px rgba(0,0,0,0.9), -1px -1px 4px rgba(0,0,0,0.9), 1px -1px 4px rgba(0,0,0,0.9), -1px 1px 4px rgba(0,0,0,0.9)"
       : "0 0 3px rgba(255,255,255,1), 0 0 6px rgba(255,255,255,0.8), 1px 1px 4px rgba(255,255,255,1), -1px -1px 4px rgba(255,255,255,1), 1px -1px 4px rgba(255,255,255,1), -1px 1px 4px rgba(255,255,255,1)";
   
-  // Calculate the actual line endpoints, adjusted for cap sizes
   const capSize = 10;
-  const capOffset = capSize + actualStrokeWidth / 2;
-  
-  // Adjust line start/end based on caps to prevent overlap
-  let lineStartX = relStartX;
-  let lineStartY = relStartY;
-  let lineEndX = relEndX;
-  let lineEndY = relEndY;
-  
-  if (startCap !== 'none') {
-    const startAngleRad = (angleToEnd * Math.PI) / 180;
-    lineStartX += Math.cos(startAngleRad) * capOffset;
-    lineStartY += Math.sin(startAngleRad) * capOffset;
-  }
-  
-  if (endCap !== 'none') {
-    const endAngleRad = (angleToStart * Math.PI) / 180;
-    lineEndX += Math.cos(endAngleRad) * capOffset;
-    lineEndY += Math.sin(endAngleRad) * capOffset;
-  }
-  
-  // Calculate padding and SVG dimensions (include space for text)
   const padding = capSize * 3;
-  const textPadding = node.label ? 30 : 0; // Extra padding for text
-  const svgMinX = Math.min(relStartX, relEndX) - padding - textPadding;
-  const svgMinY = Math.min(relStartY, relEndY) - padding - textPadding;
-  const svgMaxX = Math.max(relStartX, relEndX) + padding + textPadding;
-  const svgMaxY = Math.max(relStartY, relEndY) + padding + textPadding;
-  const svgWidth = svgMaxX - svgMinX;
-  const svgHeight = svgMaxY - svgMinY;
+  const textPadding = node.label ? 30 : 0;
+  const absPad = padding + textPadding;
+  const expanded = curveBoundsExpanded(vertices, absPad, linePathStyle, lineSmoothJoints);
+  const svgMinX = expanded.minX - nodeX;
+  const svgMinY = expanded.minY - nodeY;
+  const svgMaxX = expanded.maxX - nodeX;
+  const svgMaxY = expanded.maxY - nodeY;
+  const svgWidth = Math.max(1, svgMaxX - svgMinX);
+  const svgHeight = Math.max(1, svgMaxY - svgMinY);
   
-  // Calculate text position along the line
-  const textPositionPercent = (node as any).lineTextPosition || 50; // 0-100, default 50% (middle)
+  const textPositionPercent = (node as any).lineTextPosition || 50;
   const t = textPositionPercent / 100;
-  const textX = lineStartX + (lineEndX - lineStartX) * t;
-  const textY = lineStartY + (lineEndY - lineStartY) * t;
+  const textPtAbs = pointAtLengthRatio(vertices, t, linePathStyle, lineSmoothJoints);
+  const textX = textPtAbs.x - nodeX;
+  const textY = textPtAbs.y - nodeY;
+  const textPtLo = pointAtLengthRatio(vertices, Math.max(0, t - 0.03), linePathStyle, lineSmoothJoints);
+  const textPtHi = pointAtLengthRatio(vertices, Math.min(1, t + 0.03), linePathStyle, lineSmoothJoints);
+  const lineAngleRad = Math.atan2(textPtHi.y - textPtLo.y, textPtHi.x - textPtLo.x);
+  const textDeg = (lineAngleRad * 180) / Math.PI;
+  const absAngle = Math.abs(textDeg);
+  const wouldFlipUpsideDown = absAngle > 90 && absAngle < 270;
+  const textRotation = (node as any).lineTextHorizontal === true || wouldFlipUpsideDown
+    ? 0
+    : textDeg;
   
   // Text position mode: 'above', 'below', or 'middle' (default)
   const textPosition = (node as any).lineTextVerticalPosition || 'middle';
@@ -254,46 +240,44 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
           pointerEvents: 'none', // Make SVG background non-clickable
         }}
       >
-        {/* Invisible wider hit area for easier clicking - must be first so it's behind the visible line */}
-        <line
-          x1={lineStartX - svgMinX}
-          y1={lineStartY - svgMinY}
-          x2={lineEndX - svgMinX}
-          y2={lineEndY - svgMinY}
-          stroke="transparent"
-          strokeWidth={Math.max(20, actualStrokeWidth * 3)} // Wider hit area (min 20px)
-          strokeLinecap="round"
-          style={{ pointerEvents: 'stroke', cursor: 'pointer' }} // Only stroke is clickable
-          onClick={(e) => {
-            e.stopPropagation();
-            onClick?.(e as any, node);
-          }}
-          onContextMenu={(e) => {
-            e.stopPropagation();
-            onContextMenu?.(e as any, node);
-          }}
-        />
-        {/* Main line */}
-        <line
-          x1={lineStartX - svgMinX}
-          y1={lineStartY - svgMinY}
-          x2={lineEndX - svgMinX}
-          y2={lineEndY - svgMinY}
-          stroke={stroke || lineColor}
-          strokeWidth={actualStrokeWidth}
-          strokeLinecap="round"
-          strokeDasharray={strokeDasharray}
-          style={{
-            pointerEvents: 'none',
-            ...(slideColorTransition !== undefined ? { transition: slideColorTransition } : {}),
-          }}
-        />
+        <g transform={`translate(${-(nodeX + svgMinX)}, ${-(nodeY + svgMinY)})`}>
+          <path
+            d={pathD}
+            stroke="transparent"
+            strokeWidth={Math.max(20, actualStrokeWidth * 3)}
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onClick?.(e as any, node);
+            }}
+            onContextMenu={(e) => {
+              e.stopPropagation();
+              onContextMenu?.(e as any, node);
+            }}
+          />
+          <path
+            d={pathD}
+            stroke={stroke || lineColor}
+            strokeWidth={actualStrokeWidth}
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeDasharray={strokeDasharray}
+            style={{
+              pointerEvents: 'none',
+              ...(slideColorTransition !== undefined ? { transition: slideColorTransition } : {}),
+            }}
+          />
+        </g>
         
         {/* Start cap - points outward from start (backward, away from line) */}
-        {renderLineCap(startCap, relStartX - svgMinX, relStartY - svgMinY, angleToStart, lineColor, capSize)}
+        {renderLineCap(startCap, relStartX - svgMinX, relStartY - svgMinY, angleToStartCap, lineColor, capSize)}
         
         {/* End cap - points outward from end (forward, continuing line direction) */}
-        {renderLineCap(endCap, relEndX - svgMinX, relEndY - svgMinY, angleToEnd, lineColor, capSize)}
+        {renderLineCap(endCap, relEndX - svgMinX, relEndY - svgMinY, tangentEnd, lineColor, capSize)}
         
         {/* Text label */}
         {label && textLines.length > 0 && (

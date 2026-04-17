@@ -12,7 +12,7 @@ import {
   MenubarSubTrigger,
   MenubarSubContent,
 } from '@/components/ui/menubar';
-import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type, Activity } from 'lucide-react';
+import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type, Activity, ArrowDown } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
 import { ThemeEditor } from './theme-editor';
 import { RulesEditor } from './rules-editor';
@@ -24,10 +24,92 @@ import { useTheme } from '@/components/theme-provider';
 import type { SelectedItem } from '../diagram-editor';
 import type { DiagramData } from '@/lib/types';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { DiagramTheme, ThemeMenuApplyOptions } from '@/lib/theme-types';
 import { cn } from '@/lib/utils';
 
 const truncateName = (s: string, max = 20) => (s.length > max ? `${s.slice(0, max - 3)}...` : s);
+
+const LAYOUT_GRID_STEP_STORAGE_KEY = 'dw:layout-grid-step-amount';
+
+/** Upward bump (horizontal layout curve: bulge in +y). */
+function LayoutHorizontalCurveIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <path d="M4 16 Q12 6 20 16" />
+    </svg>
+  );
+}
+
+/** Bump facing left (vertical layout curve: bulge in −x). */
+function LayoutVerticalCurveIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <path d="M16 4 Q6 12 16 20" />
+    </svg>
+  );
+}
+
+/** Staircase along **y** (Layout: Horizontal step). */
+function LayoutHorizontalStepIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <path d="M12 5v9M8 11l4 4 4-4" />
+    </svg>
+  );
+}
+
+/** Staircase along **x** (Layout: Vertical step). */
+function LayoutVerticalStepIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <path d="M5 12h8M13 8l4 4-4 4" />
+    </svg>
+  );
+}
+
+function normalizeLayoutGridStepString(raw: string): string {
+  const n = parseInt(raw.trim(), 10);
+  if (!Number.isFinite(n) || n === 0) return '1';
+  const clamped = Math.max(-99, Math.min(99, n));
+  return String(clamped);
+}
 
 /** Top-level menubar labels only — pauses connection animations on open (see diagram-editor). */
 function MainMenubarTrigger({
@@ -110,6 +192,8 @@ interface TopMenuBarProps {
   selectedItem?: SelectedItem | null;
   selectedItemIds?: Set<string>;
   onItemUpdate?: (updatedItem: SelectedItem) => void;
+  /** Multi-select: apply tag / description (`info`) / plain label to all selected nodes and zones. */
+  onBulkMetadataUpdate?: (patch: { tag?: string; info?: string; label?: string }) => void;
   onConnect?: (connectionOptions?: { style?: 'bezier', curvature?: number; sourceItemId?: string }) => void;
   onDisconnect?: () => void;
   onDelete?: () => void;
@@ -148,6 +232,15 @@ interface TopMenuBarProps {
   defaultTextLabelsEnabled?: boolean;
   onToggleDefaultTextLabels?: () => void;
   onAlignObjects?: (alignment: 'top' | 'center' | 'bottom' | 'v-middle' | 'left' | 'h-center' | 'right' | 'distribute-v' | 'distribute-h') => void;
+  /** Multi-select: linear or curved grid step; see `handleLayoutGridStep` (`horizontal-left` = step **y**; `vertical-down` = step **x**). */
+  onLayoutGridStep?: (
+    direction:
+      | 'horizontal-left'
+      | 'vertical-down'
+      | 'horizontal-curve'
+      | 'vertical-curve',
+    gridStepCount: number,
+  ) => void;
   onThemeApplyToSelected?: (theme: DiagramTheme, options?: ThemeMenuApplyOptions) => void;
   triggerTextStylingPanel?: boolean;
   triggerVisualStylingPanel?: boolean;
@@ -206,6 +299,7 @@ export function TopMenuBar({
   selectedItem,
   selectedItemIds = new Set(),
   onItemUpdate,
+  onBulkMetadataUpdate,
   onConnect,
   onDisconnect,
   onDelete,
@@ -237,6 +331,7 @@ export function TopMenuBar({
   defaultTextLabelsEnabled = true,
   onToggleDefaultTextLabels,
   onAlignObjects,
+  onLayoutGridStep,
   onThemeApplyToSelected,
   triggerTextStylingPanel = false,
   triggerVisualStylingPanel = false,
@@ -270,6 +365,48 @@ export function TopMenuBar({
   onStartTutorial,
 }: TopMenuBarProps) {
   const animMenuPreferenceOn = animationConnectionsUserEnabled ?? animationConnectionsEnabled;
+
+  const [layoutGridStepInput, setLayoutGridStepInput] = React.useState('1');
+  React.useEffect(() => {
+    try {
+      const raw = localStorage.getItem(LAYOUT_GRID_STEP_STORAGE_KEY);
+      if (raw != null && raw.trim() !== '') {
+        setLayoutGridStepInput(normalizeLayoutGridStepString(raw));
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const commitLayoutGridStepInput = React.useCallback((next: string) => {
+    const normalized = normalizeLayoutGridStepString(next);
+    setLayoutGridStepInput(normalized);
+    try {
+      localStorage.setItem(LAYOUT_GRID_STEP_STORAGE_KEY, normalized);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const parsedLayoutGridStep = React.useMemo(
+    () => parseInt(normalizeLayoutGridStepString(layoutGridStepInput), 10),
+    [layoutGridStepInput],
+  );
+
+  const layoutStaircaseCanvasCount = React.useMemo(() => {
+    if (!currentDiagramData) return 0;
+    const zones = currentDiagramData.zones || [];
+    let c = 0;
+    for (const id of selectedItemIds) {
+      if (
+        currentDiagramData.nodes.some((n) => n.id === id) ||
+        zones.some((z) => z.id === id)
+      ) {
+        c++;
+      }
+    }
+    return c;
+  }, [currentDiagramData, selectedItemIds]);
 
   const [themeEditorOpen, setThemeEditorOpen] = React.useState(false);
   const [aboutOpen, setAboutOpen] = React.useState(false);
@@ -812,6 +949,68 @@ export function TopMenuBar({
                 <MenubarItem onClick={() => onAlignObjects('distribute-v')}>
                   Distribute Vertically
                 </MenubarItem>
+                {onLayoutGridStep && (
+                  <>
+                    <MenubarSeparator />
+                    <div
+                      className="flex items-center gap-2 px-2 py-1.5 text-sm"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
+                      <label htmlFor="layout-grid-step-amount" className="text-muted-foreground shrink-0">
+                        Step amount:
+                      </label>
+                      <Input
+                        id="layout-grid-step-amount"
+                        type="number"
+                        min={-99}
+                        max={99}
+                        step={1}
+                        className="h-8 w-16 px-2"
+                        value={layoutGridStepInput}
+                        onChange={(e) => setLayoutGridStepInput(e.target.value)}
+                        onBlur={() => commitLayoutGridStepInput(layoutGridStepInput)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                    <MenubarItem
+                      onClick={() =>
+                        onLayoutGridStep('horizontal-left', parsedLayoutGridStep)
+                      }
+                      disabled={isReadOnly || layoutStaircaseCanvasCount < 2}
+                    >
+                      <LayoutHorizontalStepIcon className="mr-2 h-4 w-4 shrink-0" />
+                      Horizontal step
+                    </MenubarItem>
+                    <MenubarItem
+                      onClick={() =>
+                        onLayoutGridStep('vertical-down', parsedLayoutGridStep)
+                      }
+                      disabled={isReadOnly || layoutStaircaseCanvasCount < 2}
+                    >
+                      <LayoutVerticalStepIcon className="mr-2 h-4 w-4 shrink-0" />
+                      Vertical step
+                    </MenubarItem>
+                    <MenubarItem
+                      onClick={() =>
+                        onLayoutGridStep('horizontal-curve', parsedLayoutGridStep)
+                      }
+                      disabled={isReadOnly || layoutStaircaseCanvasCount < 3}
+                    >
+                      <LayoutHorizontalCurveIcon className="mr-2 h-4 w-4 shrink-0" />
+                      Horizontal curve
+                    </MenubarItem>
+                    <MenubarItem
+                      onClick={() =>
+                        onLayoutGridStep('vertical-curve', parsedLayoutGridStep)
+                      }
+                      disabled={isReadOnly || layoutStaircaseCanvasCount < 3}
+                    >
+                      <LayoutVerticalCurveIcon className="mr-2 h-4 w-4 shrink-0" />
+                      Vertical curve
+                    </MenubarItem>
+                  </>
+                )}
               </>
             )}
           </MenubarContent>
@@ -874,6 +1073,7 @@ export function TopMenuBar({
             selectedItem={selectedItem}
             selectedItemIds={selectedItemIds}
             onItemUpdate={onItemUpdate}
+            onBulkMetadataUpdate={onBulkMetadataUpdate}
             onConnect={onConnect}
             onDisconnect={onDisconnect}
             onDelete={onDelete}

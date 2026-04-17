@@ -39,6 +39,12 @@ import { CanvasArrowToggles } from "./canvas-arrow-toggles";
 import { CanvasConnectionText } from "./canvas-connection-text";
 import { getItemGroup } from "@/lib/grouping-utils";
 import { computeConnectionSlots } from "@/lib/connection-order-utils";
+import {
+  collectObjectIdsInSelectionOrder,
+  nextNodeLabelForAutoNumber,
+  nextZoneLabelForAutoNumber,
+  sortObjectIdsByDistanceFromAnchor,
+} from "@/lib/auto-number-labels";
 import { CanvasRotationOverlay } from "./canvas-rotation-overlay";
 import { measureNodeDims } from "./canvas-constants";
 import { buildHighlightAnimStaggerOrder } from "@/lib/highlight-anim";
@@ -49,6 +55,7 @@ import { MetadataPopup } from "./metadata-popup";
 import { snapToGrid } from "./canvas-constants";
 import { ConnectionWaypointHandles } from "../diagram/connection-waypoint-handles";
 import { isConnectorLineNodeType, isShapeNodeType } from "@/lib/utils";
+import { getConnectorLineVertices, insertConnectorLineMidControl } from "@/lib/line-curve-path";
 import { isEventFromEditableElement } from "@/lib/keyboard-utils";
 import { getDownstreamAnimationChainNodes } from "@/lib/connection-animation";
 
@@ -813,13 +820,24 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         if (originalNode) {
           const currentStartPos = (originalNode as any)?.startPos || { x: (originalNode?.x || 0), y: (originalNode?.y || 0) };
           const currentEndPos = (originalNode as any)?.endPos || { x: (originalNode?.x || 0) + 150, y: (originalNode?.y || 0) };
-          
+          const ctrls = (originalNode as any)?.lineControlPoints as { x: number; y: number }[] | undefined;
+          const dx = dragPosition.deltaX;
+          const dy = dragPosition.deltaY;
           result[dragPosition.itemId] = {
             ...node,
             x: dragPosition.x,
             y: dragPosition.y,
-            startPos: { x: currentStartPos.x + dragPosition.deltaX, y: currentStartPos.y + dragPosition.deltaY },
-            endPos: { x: currentEndPos.x + dragPosition.deltaX, y: currentEndPos.y + dragPosition.deltaY }
+            startPos: { x: currentStartPos.x + dx, y: currentStartPos.y + dy },
+            endPos: { x: currentEndPos.x + dx, y: currentEndPos.y + dy },
+            ...(ctrls?.length
+              ? {
+                  lineControlPoints: ctrls.map((c) => ({
+                    ...c,
+                    x: c.x + dx,
+                    y: c.y + dy,
+                  })),
+                }
+              : {}),
           };
         } else {
           result[dragPosition.itemId] = {
@@ -855,13 +873,23 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               
               const currentStartPos = (originalNode as any)?.startPos || { x: originalX, y: originalY };
               const currentEndPos = (originalNode as any)?.endPos || { x: originalX + 150, y: originalY };
+              const ctrls = (originalNode as any)?.lineControlPoints as { x: number; y: number }[] | undefined;
               
               result[itemId] = {
                 ...node,
                 x: pos.x,
                 y: pos.y,
                 startPos: { x: currentStartPos.x + deltaX, y: currentStartPos.y + deltaY },
-                endPos: { x: currentEndPos.x + deltaX, y: currentEndPos.y + deltaY }
+                endPos: { x: currentEndPos.x + deltaX, y: currentEndPos.y + deltaY },
+                ...(ctrls?.length
+                  ? {
+                      lineControlPoints: ctrls.map((c) => ({
+                        ...c,
+                        x: c.x + deltaX,
+                        y: c.y + deltaY,
+                      })),
+                    }
+                  : {}),
               };
             } else {
               result[itemId] = {
@@ -1041,6 +1069,74 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     selectedItemIds,
     onGifAnimationTimeUpdate: setGifExportAnimationTimeSeconds,
   });
+
+  const canAutoNumberLabels = useMemo(
+    () => collectObjectIdsInSelectionOrder(selectedItemIds, diagramData).length >= 2,
+    [selectedItemIds, diagramData]
+  );
+
+  const handleAutoNumberLabels = useCallback(() => {
+    const objectIds = collectObjectIdsInSelectionOrder(selectedItemIds, diagramData);
+    if (objectIds.length < 2) return;
+    const anchorId = objectIds[0];
+    const centerById = new Map<string, { x: number; y: number }>();
+    for (const id of objectIds) {
+      const pNode = processedNodes.find((n) => n.id === id);
+      if (pNode && typeof pNode.x === "number" && typeof pNode.y === "number") {
+        const dims = measureNodeDims(pNode);
+        const w = pNode.sizeMode === "custom" && pNode.width ? pNode.width : dims.width;
+        const h = pNode.sizeMode === "custom" && pNode.height ? pNode.height : dims.height;
+        centerById.set(id, { x: pNode.x + w / 2, y: pNode.y + h / 2 });
+        continue;
+      }
+      const pZone = processedZones.find((z) => z.id === id);
+      if (
+        pZone &&
+        typeof pZone.x === "number" &&
+        typeof pZone.y === "number" &&
+        typeof pZone.width === "number" &&
+        typeof pZone.height === "number"
+      ) {
+        centerById.set(id, { x: pZone.x + pZone.width / 2, y: pZone.y + pZone.height / 2 });
+      }
+    }
+    const ordered = sortObjectIdsByDistanceFromAnchor(anchorId, objectIds, centerById);
+
+    setDiagramData((prev) => {
+      const nodeUpdates = new Map<string, ReturnType<typeof nextNodeLabelForAutoNumber>>();
+      const zoneLabelUpdates = new Map<string, string>();
+      for (let i = 0; i < ordered.length; i++) {
+        const id = ordered[i];
+        const num = i + 1;
+        const node = prev.nodes.find((n) => n.id === id);
+        if (node) {
+          nodeUpdates.set(id, nextNodeLabelForAutoNumber(node, num));
+          continue;
+        }
+        const zone = prev.zones?.find((z) => z.id === id);
+        if (zone) {
+          zoneLabelUpdates.set(id, nextZoneLabelForAutoNumber(zone.label, num));
+        }
+      }
+      if (nodeUpdates.size === 0 && zoneLabelUpdates.size === 0) return prev;
+      return {
+        ...prev,
+        nodes: prev.nodes.map((n) => {
+          const u = nodeUpdates.get(n.id);
+          if (!u) return n;
+          return { ...n, label: u.label, richLabel: undefined };
+        }),
+        zones:
+          zoneLabelUpdates.size === 0
+            ? prev.zones
+            : (prev.zones?.map((z) => {
+                const nl = zoneLabelUpdates.get(z.id);
+                return nl !== undefined ? { ...z, label: nl } : z;
+              }) ?? []),
+      };
+    });
+    closeContextMenu();
+  }, [selectedItemIds, diagramData, processedNodes, processedZones, setDiagramData, closeContextMenu]);
 
   // ============================================================================
   // HOOK: useCanvasSelection
@@ -1954,6 +2050,109 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               closeContextMenu();
             }}
             nodeType={contextMenu.itemType === 'node' ? (diagramData.nodes.find(n => n.id === contextMenu.itemId)?.type) : undefined}
+            connectorLineCurved={
+              contextMenu.itemType === 'node'
+                ? (diagramData.nodes.find((n) => n.id === contextMenu.itemId) as any)?.linePathStyle ===
+                  'curved'
+                : false
+            }
+            onToggleConnectorLineCurved={
+              contextMenu.itemType === 'node' &&
+              (() => {
+                const n = diagramData.nodes.find((nn) => nn.id === contextMenu.itemId);
+                return n && isConnectorLineNodeType(n.type);
+              })()
+                ? () => {
+                    const id = contextMenu.itemId;
+                    setDiagramData((prev) => ({
+                      ...prev,
+                      nodes: prev.nodes.map((n) => {
+                        if (n.id !== id) return n;
+                        const c = n as any;
+                        const nextCurved = c.linePathStyle !== 'curved';
+                        let lineControlPoints = c.lineControlPoints;
+                        if (nextCurved && (!lineControlPoints || lineControlPoints.length === 0)) {
+                          const s = c.startPos || { x: c.x ?? 0, y: c.y ?? 0 };
+                          const e = c.endPos || { x: (c.x ?? 0) + 150, y: c.y ?? 0 };
+                          lineControlPoints = [{ x: (s.x + e.x) / 2, y: (s.y + e.y) / 2 }];
+                        }
+                        return {
+                          ...n,
+                          linePathStyle: nextCurved ? 'curved' : 'straight',
+                          lineControlPoints: nextCurved ? lineControlPoints : c.lineControlPoints,
+                          lineSmoothJoints: nextCurved ? false : c.lineSmoothJoints,
+                        };
+                      }),
+                    }));
+                  }
+                : undefined
+            }
+            onAddConnectorLinePoint={
+              contextMenu.itemType === 'node' &&
+              (() => {
+                const n = diagramData.nodes.find((nn) => nn.id === contextMenu.itemId);
+                return n && isConnectorLineNodeType(n.type);
+              })()
+                ? () => {
+                    const id = contextMenu.itemId;
+                    setDiagramData((prev) => ({
+                      ...prev,
+                      nodes: prev.nodes.map((n) => {
+                        if (n.id !== id) return n;
+                        const c = n as any;
+                        const s = c.startPos || { x: c.x ?? 0, y: c.y ?? 0 };
+                        const e = c.endPos || { x: (c.x ?? 0) + 150, y: c.y ?? 0 };
+                        const interior = [...(c.lineControlPoints || [])];
+                        return {
+                          ...n,
+                          lineControlPoints: insertConnectorLineMidControl(s, e, interior),
+                        };
+                      }),
+                    }));
+                  }
+                : undefined
+            }
+            connectorLineShowSmoothJointsOption={
+              contextMenu.itemType === 'node'
+                ? (() => {
+                    const c = diagramData.nodes.find((n) => n.id === contextMenu.itemId) as any;
+                    if (!c || !isConnectorLineNodeType(c.type)) return false;
+                    if (c.linePathStyle === 'curved') return false;
+                    return ((c.lineControlPoints?.length ?? 0) as number) >= 1;
+                  })()
+                : false
+            }
+            connectorLineSmoothJoints={
+              contextMenu.itemType === 'node'
+                ? (diagramData.nodes.find((n) => n.id === contextMenu.itemId) as any)?.lineSmoothJoints ===
+                  true
+                : false
+            }
+            onToggleConnectorLineSmoothJoints={
+              contextMenu.itemType === 'node' &&
+              (() => {
+                const c = diagramData.nodes.find((n) => n.id === contextMenu.itemId) as any;
+                return (
+                  c &&
+                  isConnectorLineNodeType(c.type) &&
+                  c.linePathStyle !== 'curved' &&
+                  (c.lineControlPoints?.length ?? 0) >= 1
+                );
+              })()
+                ? () => {
+                    const id = contextMenu.itemId;
+                    setDiagramData((prev) => ({
+                      ...prev,
+                      nodes: prev.nodes.map((n) => {
+                        if (n.id !== id) return n;
+                        const c = n as any;
+                        const next = c.lineSmoothJoints !== true;
+                        return { ...n, lineSmoothJoints: next };
+                      }),
+                    }));
+                  }
+                : undefined
+            }
             onToggleLock={() => {
               if (contextMenu.itemType === 'node') {
                 const node = diagramData.nodes.find(n => n.id === contextMenu.itemId);
@@ -2105,6 +2304,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             hasSubDiagramLink={contextMenu.itemType === 'node' ? Boolean(diagramData.nodes.find(n => n.id === contextMenu.itemId)?.subDiagramId) : false}
             onCreateSubDiagram={onCreateSubDiagram}
             onRemoveSubDiagramLink={onRemoveSubDiagramLink}
+            canAutoNumber={canAutoNumberLabels}
+            onAutoNumberLabels={handleAutoNumberLabels}
           />
           {metadataPopupRect &&
             !contextMenu.visible &&

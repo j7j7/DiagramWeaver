@@ -71,6 +71,7 @@ interface ContextToolbarProps {
   selectedItem: SelectedItem | null;
   selectedItemIds?: Set<string>;
   onItemUpdate?: (updatedItem: SelectedItem) => void;
+  onBulkMetadataUpdate?: (patch: { tag?: string; info?: string; label?: string }) => void;
   onConnect?: (connectionOptions?: { style?: 'bezier', curvature?: number; sourceItemId?: string }) => void;
   onDisconnect?: () => void;
   onDelete?: () => void;
@@ -106,6 +107,7 @@ export function ContextToolbar({
   selectedItem,
   selectedItemIds,
   onItemUpdate,
+  onBulkMetadataUpdate,
   onConnect,
   onDisconnect,
   onDelete,
@@ -379,14 +381,19 @@ export function ContextToolbar({
       labelDebounceRef.current = null;
     }
     const value = labelInputValue.trim();
-    if (selectedItem && selectedItem.itemType !== 'edge' && value !== ((selectedItem as { label?: string }).label || '')) {
-      const updated = { ...selectedItem, label: value } as SelectedItem;
-      if (selectedItem.type === 'generic.text.textbox' || selectedItem.type === 'generic.text.text') {
-        (updated as any).richLabel = undefined;
-      }
-      onItemUpdate?.(updated);
+    if (!selectedItem || selectedItem.itemType === 'edge') return;
+    if (value === ((selectedItem as { label?: string }).label || '')) return;
+    const multi = (selectedItemIds?.size ?? 0) > 1;
+    if (multi && onBulkMetadataUpdate) {
+      onBulkMetadataUpdate({ label: value });
+      return;
     }
-  }, [labelInputValue, selectedItem, onItemUpdate]);
+    const updated = { ...selectedItem, label: value } as SelectedItem;
+    if (selectedItem.type === 'generic.text.textbox' || selectedItem.type === 'generic.text.text') {
+      (updated as any).richLabel = undefined;
+    }
+    onItemUpdate?.(updated);
+  }, [labelInputValue, selectedItem, selectedItemIds, onItemUpdate, onBulkMetadataUpdate]);
 
   const handleLabelChange = useCallback((value: string) => {
     setLabelInputValue(value);
@@ -395,15 +402,21 @@ export function ContextToolbar({
     }
     labelDebounceRef.current = setTimeout(() => {
       labelDebounceRef.current = null;
-      if (selectedItem && selectedItem.itemType !== 'edge' && value.trim() !== ((selectedItem as { label?: string }).label || '')) {
-        const updated = { ...selectedItem, label: value.trim() } as SelectedItem;
-        if (selectedItem.type === 'generic.text.textbox' || selectedItem.type === 'generic.text.text') {
-          (updated as any).richLabel = undefined;
-        }
-        onItemUpdate?.(updated);
+      if (!selectedItem || selectedItem.itemType === 'edge') return;
+      const trimmed = value.trim();
+      if (trimmed === ((selectedItem as { label?: string }).label || '')) return;
+      const multi = (selectedItemIds?.size ?? 0) > 1;
+      if (multi && onBulkMetadataUpdate) {
+        onBulkMetadataUpdate({ label: trimmed });
+        return;
       }
+      const updated = { ...selectedItem, label: trimmed } as SelectedItem;
+      if (selectedItem.type === 'generic.text.textbox' || selectedItem.type === 'generic.text.text') {
+        (updated as any).richLabel = undefined;
+      }
+      onItemUpdate?.(updated);
     }, 350);
-  }, [selectedItem, onItemUpdate]);
+  }, [selectedItem, selectedItemIds, onItemUpdate, onBulkMetadataUpdate]);
 
   const handleLabelBlur = useCallback(() => {
     flushLabelChange();
@@ -635,18 +648,29 @@ export function ContextToolbar({
   const commitTagChange = useCallback((valueFromDom?: string) => {
     const value = valueFromDom ?? tagDraft;
     const item = selectedItem;
-    if (item && (item as { itemType: string }).itemType !== 'edge' && value !== ((item as { tag?: string }).tag || '')) {
+    if (!item || (item as { itemType: string }).itemType === 'edge') return;
+    if (value === ((item as { tag?: string }).tag || '')) return;
+    const multi = (selectedItemIds?.size ?? 0) > 1;
+    if (multi && onBulkMetadataUpdate) {
+      onBulkMetadataUpdate({ tag: value });
+    } else {
       onItemUpdate?.({ ...item, tag: value } as SelectedItem);
     }
-  }, [tagDraft, selectedItem, onItemUpdate]);
+  }, [tagDraft, selectedItem, selectedItemIds, onItemUpdate, onBulkMetadataUpdate]);
 
   const commitInfoChange = useCallback((valueFromDom?: string) => {
     const value = valueFromDom ?? descriptionDraft;
     const item = selectedItem;
-    if (item && (item as { itemType: string }).itemType !== 'edge' && value !== ((item as { info?: string }).info || '')) {
-      onItemUpdate?.({ ...item, info: value } as SelectedItem);
+    if (!item || (item as { itemType: string }).itemType === 'edge') return;
+    if (value !== ((item as { info?: string }).info || '')) {
+      const multi = (selectedItemIds?.size ?? 0) > 1;
+      if (multi && onBulkMetadataUpdate) {
+        onBulkMetadataUpdate({ info: value });
+      } else {
+        onItemUpdate?.({ ...item, info: value } as SelectedItem);
+      }
     }
-  }, [descriptionDraft, selectedItem, onItemUpdate]);
+  }, [descriptionDraft, selectedItem, selectedItemIds, onItemUpdate, onBulkMetadataUpdate]);
 
   const handleOpenNodeLink = useCallback(() => {
     if (!selectedItem || selectedItem.itemType !== 'node') return;
@@ -2144,7 +2168,14 @@ export function ContextToolbar({
                   selectedItemIds={selectedItemIds}
                   tag={(selectedItem as any)?.tag}
                   tagPosition={(selectedItem as any)?.tagPosition}
-                  onTagChange={(tag) => onItemUpdate?.({ ...selectedItem, tag } as SelectedItem)}
+                  onTagChange={(tag) => {
+                    const multi = (selectedItemIds?.size ?? 0) > 1;
+                    if (multi && onBulkMetadataUpdate) {
+                      onBulkMetadataUpdate({ tag });
+                    } else {
+                      onItemUpdate?.({ ...selectedItem, tag } as SelectedItem);
+                    }
+                  }}
                   onTagPositionChange={(tagPosition) => onItemUpdate?.({ ...selectedItem, tagPosition } as SelectedItem)}
                   isLucideIcon={(selectedItem as any)?.type?.startsWith?.('generic.icon.') || (selectedItem as any)?.iconType === 'lucide'}
                   showRemoveBackground={(() => {

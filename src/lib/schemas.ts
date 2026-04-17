@@ -245,6 +245,11 @@ export const DiagramNodeDataSchema = z.object({
   endCap: z.enum(['none', 'arrow', 'dot', 'square']).optional(), // End endpoint style for line shapes
   lineThickness: z.number().optional(), // Line thickness for line shapes (default: 2.5)
   lineType: z.enum(['solid', 'dashed', 'dotted']).optional(), // Line type/style for line shapes
+  linePathStyle: z.enum(['straight', 'curved']).optional(),
+  lineControlPoints: z
+    .array(z.object({ x: z.number(), y: z.number(), id: z.string().optional() }))
+    .optional(),
+  lineSmoothJoints: z.boolean().optional(),
   lineTextVerticalPosition: z.enum(['above', 'middle', 'below']).optional(), // Text position relative to line
   
   // Lock property - prevents movement when true
@@ -590,6 +595,11 @@ export const DiagramNodeItemSchema = z.object({
   endCap: z.enum(['none', 'arrow', 'dot', 'square']).optional(), // End endpoint style for line shapes
   lineThickness: z.number().optional(), // Line thickness for line shapes (default: 2.5)
   lineType: z.enum(['solid', 'dashed', 'dotted']).optional(), // Line type/style for line shapes
+  linePathStyle: z.enum(['straight', 'curved']).optional(),
+  lineControlPoints: z
+    .array(z.object({ x: z.number(), y: z.number(), id: z.string().optional() }))
+    .optional(),
+  lineSmoothJoints: z.boolean().optional(),
   lineTextVerticalPosition: z.enum(['above', 'middle', 'below']).optional(), // Text position relative to line
   
   // Lock property - prevents movement when true

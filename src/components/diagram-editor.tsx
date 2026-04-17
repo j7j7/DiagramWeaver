@@ -118,7 +118,7 @@ import {
   connectionSelectionIdMatches,
   selectionSetContainsConnection,
 } from '@/lib/connection-order-utils';
-import { snapToGrid } from '@/components/editor/canvas-constants';
+import { GRID_STEP, snapToGrid } from '@/components/editor/canvas-constants';
 import { DEFAULT_CONNECTION_ANIMATION, toConnectionAnimationPatch, getDownstreamAnimationChainNodes } from '@/lib/connection-animation';
 import { isEventFromEditableElement } from '@/lib/keyboard-utils';
 import {
@@ -1830,29 +1830,41 @@ export default function DiagramEditor() {
             // Find the existing node to preserve its properties
             const existingNode = prevData.nodes.find(n => n.id === updatedItem.id);
 
-            if (!existingNode) {
-                // Node doesn't exist, this shouldn't happen but handle gracefully
-                return prevData;
+            if (existingNode) {
+              const mergedNode = { ...existingNode } as DiagramNodeData;
+              Object.keys(updatedItem).forEach(key => {
+                  if (key !== 'itemType' && key !== 'id') {
+                      const value = (updatedItem as any)[key];
+                      if (value !== undefined) {
+                          (mergedNode as any)[key] = value;
+                      }
+                  }
+              });
+              return {
+                  ...prevData,
+                  nodes: prevData.nodes.map(n => n.id === updatedItem.id ? mergedNode : n)
+              };
             }
 
-            // Create merged node, ensuring we preserve all existing properties
-            // Only update properties that are explicitly provided in updatedItem
-            const mergedNode = { ...existingNode } as DiagramNodeData;
-
-            // Only copy properties that exist in updatedItem and are not undefined
-            Object.keys(updatedItem).forEach(key => {
+            const zones = prevData.zones || [];
+            const zi = zones.findIndex(z => z.id === updatedItem.id);
+            if (zi >= 0) {
+              const existingZone = zones[zi];
+              const mergedZone = { ...existingZone } as DiagramZoneData;
+              Object.keys(updatedItem).forEach(key => {
                 if (key !== 'itemType' && key !== 'id') {
-                    const value = (updatedItem as any)[key];
-                    if (value !== undefined) {
-                        (mergedNode as any)[key] = value;
-                    }
+                  const value = (updatedItem as any)[key];
+                  if (value !== undefined) {
+                    (mergedZone as any)[key] = value;
+                  }
                 }
-            });
+              });
+              const nextZones = [...zones];
+              nextZones[zi] = mergedZone;
+              return { ...prevData, zones: nextZones };
+            }
 
-            return {
-                ...prevData,
-                nodes: prevData.nodes.map(n => n.id === updatedItem.id ? mergedNode : n)
-            };
+            return prevData;
     });
 
     // Also update the selected item state if it's the one being edited
@@ -1861,35 +1873,132 @@ export default function DiagramEditor() {
     }
   }, [selectedItem, setCurrentDiagramData, setSelectedItem]);
 
-  const handleLabelUpdate = React.useCallback((nodeId: string, newLabel: string, richLabel?: import("@/lib/types").RichTextRun[]) => {
-    React.startTransition(() => {
-      setCurrentDiagramData(prevData => ({
+  /** Apply tag, description (`info`), and/or plain toolbar **label** to every selected node and zone (multi-select). */
+  const handleBulkMetadataUpdate = React.useCallback(
+    (patch: { tag?: string; info?: string; label?: string }) => {
+      if (selectedItemIds.size < 2) return;
+      const hasTag = 'tag' in patch;
+      const hasInfo = 'info' in patch;
+      const hasLabel = 'label' in patch;
+      if (!hasTag && !hasInfo && !hasLabel) return;
+
+      setCurrentDiagramData((prevData) => ({
         ...prevData,
-        nodes: prevData.nodes.map(n =>
-          n.id === nodeId
-            ? { ...n, label: newLabel, richLabel: richLabel ?? undefined }
-            : n
-        ),
+        nodes: prevData.nodes.map((n) => {
+          if (!selectedItemIds.has(n.id)) return n;
+          let next = n;
+          if (hasTag) next = { ...next, tag: patch.tag };
+          if (hasInfo) next = { ...next, info: patch.info };
+          if (hasLabel) {
+            const isPlainTextNode =
+              n.type === 'generic.text.textbox' || n.type === 'generic.text.text';
+            next = {
+              ...next,
+              label: patch.label,
+              ...(isPlainTextNode ? { richLabel: undefined } : {}),
+            };
+          }
+          return next;
+        }),
+        zones: (prevData.zones || []).map((z) => {
+          if (!selectedItemIds.has(z.id)) return z;
+          let next = z;
+          if (hasTag) next = { ...next, tag: patch.tag };
+          if (hasInfo) next = { ...next, info: patch.info };
+          if (hasLabel) next = { ...next, label: patch.label };
+          return next;
+        }),
       }));
 
-      // Also update the selected item if it's the one being edited
-      if (selectedItem?.id === nodeId && selectedItem.itemType === 'node') {
-        setSelectedItem({ ...selectedItem, label: newLabel });
+      if (
+        selectedItem?.itemType === 'node' &&
+        selectedItemIds.has(selectedItem.id)
+      ) {
+        let nextSel = selectedItem as SelectedItem;
+        if (hasTag) nextSel = { ...nextSel, tag: patch.tag } as SelectedItem;
+        if (hasInfo) nextSel = { ...nextSel, info: patch.info } as SelectedItem;
+        if (hasLabel) {
+          const t = (nextSel as { type?: string }).type;
+          const isPlainTextNode =
+            t === 'generic.text.textbox' || t === 'generic.text.text';
+          nextSel = {
+            ...nextSel,
+            label: patch.label,
+            ...(isPlainTextNode ? { richLabel: undefined } : {}),
+          } as SelectedItem;
+        }
+        setSelectedItem(nextSel);
+      }
+    },
+    [selectedItem, selectedItemIds, setCurrentDiagramData, setSelectedItem],
+  );
+
+  const handleLabelUpdate = React.useCallback((nodeId: string, newLabel: string, richLabel?: import("@/lib/types").RichTextRun[]) => {
+    React.startTransition(() => {
+      setCurrentDiagramData(prevData => {
+        const propagateToSelection =
+          selectedItemIds.size > 1 && selectedItemIds.has(nodeId);
+        const targetIds: Set<string> = propagateToSelection
+          ? new Set(
+              [...selectedItemIds].filter((id) =>
+                prevData.nodes.some((n) => n.id === id),
+              ),
+            )
+          : new Set([nodeId]);
+
+        return {
+          ...prevData,
+          nodes: prevData.nodes.map((n) =>
+            targetIds.has(n.id)
+              ? { ...n, label: newLabel, richLabel: richLabel ?? undefined }
+              : n,
+          ),
+        };
+      });
+
+      const propagateToSelection =
+        selectedItemIds.size > 1 && selectedItemIds.has(nodeId);
+      if (
+        selectedItem?.itemType === 'node' &&
+        selectedItemIds.has(selectedItem.id) &&
+        (selectedItem.id === nodeId || propagateToSelection)
+      ) {
+        if (richLabel !== undefined) {
+          setSelectedItem({ ...selectedItem, label: newLabel, richLabel });
+        } else if (propagateToSelection) {
+          setSelectedItem({ ...selectedItem, label: newLabel, richLabel: undefined });
+        } else {
+          setSelectedItem({ ...selectedItem, label: newLabel });
+        }
       }
     });
-  }, [selectedItem, setCurrentDiagramData, setSelectedItem]);
+  }, [selectedItem, selectedItemIds, setCurrentDiagramData, setSelectedItem]);
 
   const handleTagUpdate = React.useCallback((nodeId: string, newTag: string) => {
-    setCurrentDiagramData(prevData => ({
+    const propagateToSelection =
+      selectedItemIds.size > 1 && selectedItemIds.has(nodeId);
+    const targetIds: Set<string> = propagateToSelection
+      ? new Set([...selectedItemIds])
+      : new Set([nodeId]);
+
+    setCurrentDiagramData((prevData) => ({
       ...prevData,
-      nodes: prevData.nodes.map(n => n.id === nodeId ? { ...n, tag: newTag } : n)
+      nodes: prevData.nodes.map((n) =>
+        targetIds.has(n.id) ? { ...n, tag: newTag } : n,
+      ),
+      zones: (prevData.zones || []).map((z) =>
+        targetIds.has(z.id) ? { ...z, tag: newTag } : z,
+      ),
     }));
 
-    // Also update the selected item if it's the one being edited
-    if (selectedItem?.id === nodeId && selectedItem.itemType === 'node') {
+    if (
+      selectedItem?.itemType === 'node' &&
+      selectedItemIds.has(selectedItem.id) &&
+      (selectedItem.id === nodeId || propagateToSelection)
+    ) {
       setSelectedItem({ ...selectedItem, tag: newTag });
     }
-  }, [selectedItem, setCurrentDiagramData, setSelectedItem]);
+  }, [selectedItem, selectedItemIds, setCurrentDiagramData, setSelectedItem]);
 
   const handleResourceSelect = (resource: { name: string; file?: string; type?: string; hasWhiteVariant?: boolean; format?: string; iconType?: string; iconName?: string; emoji?: string; imageUrl?: string; imageOptions?: import('@/lib/types').CustomImageOptions }, provider: string, category: string) => {
     // Track the currently selected resource from the sidebar for copy/paste
@@ -4190,6 +4299,331 @@ export default function DiagramEditor() {
     }
   };
 
+  /**
+   * Linear steps (menu): **Horizontal step** sorts **leftmost** first (**`x`** then **`y`**), steps **y** only (matches
+   * horizontal curve’s **y** bulge axis; negative **step** → **up**). **Vertical step** sorts **topmost** first (**`y`**
+   * then **`x`**), steps **x** only (matches vertical curve’s **x** bulge axis; negative **step** → **right**).
+   * **vertical-curve** keeps **selection order**; **horizontal-curve** sorts **left→right**
+   * (**`x`** then **`y`**) so **leftmost** is first and **rightmost** is last.
+   * **Curved** variants: **vertical-curve** — first item fixed; last item’s **x** matches first (same column), **y**
+   * unchanged; middle **y** interpolates first→last, **x** uses `x0 + bulge·4·t·(1−t)`. **horizontal-curve** — **x**
+   * unchanged per item; last **y** matches first; middle **y** = chord plus bulge. **Bulge** from **Step amount**:
+   * **`max(GRID, |steps|·GRID)`**. ≥3 canvas items. Negative **step** flips bulge side.
+   */
+  const handleLayoutGridStep = (
+    direction:
+      | 'horizontal-left'
+      | 'vertical-down'
+      | 'horizontal-curve'
+      | 'vertical-curve',
+    stepAmount: number,
+  ) => {
+    if (isReadOnly) return;
+    const raw = Math.trunc(Number(stepAmount));
+    const steps =
+      !Number.isFinite(raw) || raw === 0
+        ? 1
+        : Math.max(-99, Math.min(99, raw));
+    const zones = currentDiagramData.zones || [];
+    const canvasTargets: string[] = [];
+    for (const id of selectedItemIds) {
+      if (
+        currentDiagramData.nodes.some((n) => n.id === id) ||
+        zones.some((z) => z.id === id)
+      ) {
+        canvasTargets.push(id);
+      }
+    }
+
+    const getSnappedPos = (
+      data: DiagramData,
+      id: string,
+    ): { x: number; y: number } => {
+      const node = data.nodes.find((nn) => nn.id === id);
+      if (node) {
+        return { x: snapToGrid(node.x || 0), y: snapToGrid(node.y || 0) };
+      }
+      const z = (data.zones || []).find((zz) => zz.id === id);
+      return { x: snapToGrid(z?.x || 0), y: snapToGrid(z?.y || 0) };
+    };
+
+    if (direction === 'horizontal-curve' || direction === 'vertical-curve') {
+      if (canvasTargets.length < 3) return;
+      let orderedTargets = [...canvasTargets];
+      if (direction === 'horizontal-curve') {
+        orderedTargets.sort((a, b) => {
+          const pa = getSnappedPos(currentDiagramData, a);
+          const pb = getSnappedPos(currentDiagramData, b);
+          if (pa.x !== pb.x) return pa.x - pb.x;
+          return pa.y - pb.y;
+        });
+      }
+      const n = orderedTargets.length;
+      const indexById = new Map(orderedTargets.map((id, i) => [id, i]));
+      const targetSet = new Set(orderedTargets);
+      const curveW = (t: number) => 4 * t * (1 - t);
+
+      const hasMovableMiddle = orderedTargets.slice(1, -1).some((id) => {
+        const node = currentDiagramData.nodes.find((x) => x.id === id);
+        if (node) return !node.locked;
+        return zones.some((z) => z.id === id);
+      });
+      if (!hasMovableMiddle) return;
+
+      setCurrentDiagramData((prev) => {
+        const zlist = prev.zones || [];
+        const p0 = getSnappedPos(prev, orderedTargets[0]);
+        const p1 = getSnappedPos(prev, orderedTargets[n - 1]);
+        const spanY = p1.y - p0.y;
+        const bulgeMag = snapToGrid(
+          Math.max(GRID_STEP, Math.abs(steps) * GRID_STEP),
+        );
+        const bulge = bulgeMag * (Math.sign(steps) || 1);
+
+        const applyCurveNode = (node: (typeof prev.nodes)[0], idx: number) => {
+          if (idx === 0) return node;
+          if (idx === n - 1) {
+            if (node.locked) return node;
+            if (direction === 'vertical-curve') {
+              return { ...node, x: p0.x, y: p1.y };
+            }
+            return {
+              ...node,
+              x: snapToGrid(node.x || 0),
+              y: p0.y,
+            };
+          }
+          if (node.locked) return node;
+          const t = idx / (n - 1);
+          const w = curveW(t);
+          if (direction === 'vertical-curve') {
+            const yLine = p0.y + spanY * t;
+            return {
+              ...node,
+              x: snapToGrid(p0.x + bulge * w),
+              y: snapToGrid(yLine),
+            };
+          }
+          const xKeep = snapToGrid(node.x || 0);
+          const yLine = p0.y + spanY * t + bulge * w;
+          return {
+            ...node,
+            x: xKeep,
+            y: snapToGrid(yLine),
+          };
+        };
+
+        const applyCurveZone = (z: (typeof zlist)[0], idx: number) => {
+          if (idx === 0) return z;
+          if (idx === n - 1) {
+            if (direction === 'vertical-curve') {
+              return { ...z, x: p0.x, y: p1.y };
+            }
+            return {
+              ...z,
+              x: snapToGrid(z.x || 0),
+              y: p0.y,
+            };
+          }
+          const t = idx / (n - 1);
+          const w = curveW(t);
+          if (direction === 'vertical-curve') {
+            const yLine = p0.y + spanY * t;
+            return {
+              ...z,
+              x: snapToGrid(p0.x + bulge * w),
+              y: snapToGrid(yLine),
+            };
+          }
+          const xKeep = snapToGrid(z.x || 0);
+          const yLine = p0.y + spanY * t + bulge * w;
+          return {
+            ...z,
+            x: xKeep,
+            y: snapToGrid(yLine),
+          };
+        };
+
+        const newNodes = prev.nodes.map((node) => {
+          if (!targetSet.has(node.id)) return node;
+          const idx = indexById.get(node.id)!;
+          return applyCurveNode(node, idx);
+        });
+        const newZones = zlist.map((z) => {
+          if (!targetSet.has(z.id)) return z;
+          const idx = indexById.get(z.id)!;
+          return applyCurveZone(z, idx);
+        });
+        return { ...prev, nodes: newNodes, zones: newZones };
+      });
+
+      if (
+        selectedItem &&
+        selectedItem.itemType !== 'edge' &&
+        orderedTargets.includes(selectedItem.id)
+      ) {
+        const idx = indexById.get(selectedItem.id)!;
+        const primaryNode = currentDiagramData.nodes.find(
+          (nn) => nn.id === selectedItem.id,
+        );
+        const primaryIsZone = zones.some((z) => z.id === selectedItem.id);
+        if (primaryNode?.locked && idx !== 0) return;
+        if (!primaryNode && !primaryIsZone) return;
+        const p0c = getSnappedPos(currentDiagramData, orderedTargets[0]);
+        const p1c = getSnappedPos(
+          currentDiagramData,
+          orderedTargets[n - 1],
+        );
+        const sY = p1c.y - p0c.y;
+        const bulgeMagC = snapToGrid(
+          Math.max(GRID_STEP, Math.abs(steps) * GRID_STEP),
+        );
+        const bulgeC = bulgeMagC * (Math.sign(steps) || 1);
+        if (idx === 0) return;
+        if (idx === n - 1) {
+          if (primaryNode?.locked) return;
+          if (direction === 'vertical-curve') {
+            setSelectedItem({
+              ...selectedItem,
+              x: p0c.x,
+              y: p1c.y,
+            } as SelectedItem);
+          } else {
+            setSelectedItem({
+              ...selectedItem,
+              x: snapToGrid(selectedItem.x || 0),
+              y: p0c.y,
+            } as SelectedItem);
+          }
+          return;
+        }
+        const t = idx / (n - 1);
+        const w = curveW(t);
+        if (direction === 'vertical-curve') {
+          setSelectedItem({
+            ...selectedItem,
+            x: snapToGrid(p0c.x + bulgeC * w),
+            y: snapToGrid(p0c.y + sY * t),
+          } as SelectedItem);
+        } else {
+          setSelectedItem({
+            ...selectedItem,
+            x: snapToGrid(selectedItem.x || 0),
+            y: snapToGrid(p0c.y + sY * t + bulgeC * w),
+          } as SelectedItem);
+        }
+      }
+      return;
+    }
+
+    if (canvasTargets.length < 2) return;
+
+    const layoutPosForStepSort = (id: string) => {
+      const node = currentDiagramData.nodes.find((nn) => nn.id === id);
+      if (node) {
+        return { x: snapToGrid(node.x || 0), y: snapToGrid(node.y || 0) };
+      }
+      const z = zones.find((zz) => zz.id === id);
+      return { x: snapToGrid(z?.x || 0), y: snapToGrid(z?.y || 0) };
+    };
+
+    const orderedTargets = [...canvasTargets];
+    if (direction === 'horizontal-left') {
+      orderedTargets.sort((a, b) => {
+        const pa = layoutPosForStepSort(a);
+        const pb = layoutPosForStepSort(b);
+        if (pa.x !== pb.x) return pa.x - pb.x;
+        return pa.y - pb.y;
+      });
+    } else if (direction === 'vertical-down') {
+      orderedTargets.sort((a, b) => {
+        const pa = layoutPosForStepSort(a);
+        const pb = layoutPosForStepSort(b);
+        if (pa.y !== pb.y) return pa.y - pb.y;
+        return pa.x - pb.x;
+      });
+    }
+
+    const anchorId = orderedTargets[0];
+    const anchorNodePre = currentDiagramData.nodes.find((n) => n.id === anchorId);
+    const anchorZonePre = anchorNodePre ? null : zones.find((z) => z.id === anchorId);
+    const ax = snapToGrid(anchorNodePre?.x ?? anchorZonePre?.x ?? 0);
+    const ay = snapToGrid(anchorNodePre?.y ?? anchorZonePre?.y ?? 0);
+
+    const indexById = new Map(orderedTargets.map((id, i) => [id, i]));
+    const targetSet = new Set(orderedTargets);
+
+    const hasMovableStep =
+      orderedTargets.slice(1).some((id) => {
+        const n = currentDiagramData.nodes.find((x) => x.id === id);
+        if (n) return !n.locked;
+        return zones.some((z) => z.id === id);
+      });
+    if (!hasMovableStep) return;
+
+    setCurrentDiagramData((prev) => {
+      const zlist = prev.zones || [];
+      const newNodes = prev.nodes.map((n) => {
+        if (!targetSet.has(n.id)) return n;
+        const idx = indexById.get(n.id)!;
+        if (idx === 0) return n;
+        if (n.locked) return n;
+        if (direction === 'vertical-down') {
+          return {
+            ...n,
+            x: snapToGrid(ax - idx * steps * GRID_STEP),
+            y: snapToGrid(n.y || 0),
+          };
+        }
+        return {
+          ...n,
+          x: snapToGrid(n.x || 0),
+          y: snapToGrid(ay + idx * steps * GRID_STEP),
+        };
+      });
+      const newZones = zlist.map((z) => {
+        if (!targetSet.has(z.id)) return z;
+        const idx = indexById.get(z.id)!;
+        if (idx === 0) return z;
+        if (direction === 'vertical-down') {
+          return {
+            ...z,
+            x: snapToGrid(ax - idx * steps * GRID_STEP),
+            y: snapToGrid(z.y || 0),
+          };
+        }
+        return {
+          ...z,
+          x: snapToGrid(z.x || 0),
+          y: snapToGrid(ay + idx * steps * GRID_STEP),
+        };
+      });
+      return { ...prev, nodes: newNodes, zones: newZones };
+    });
+
+    if (selectedItem && selectedItem.itemType !== 'edge' && indexById.has(selectedItem.id)) {
+      const idx = indexById.get(selectedItem.id)!;
+      if (idx === 0) return;
+      const primaryNode = currentDiagramData.nodes.find((n) => n.id === selectedItem.id);
+      const primaryIsZone = zones.some((z) => z.id === selectedItem.id);
+      if (primaryNode?.locked) return;
+      if (!primaryNode && !primaryIsZone) return;
+      if (direction === 'vertical-down') {
+        setSelectedItem({
+          ...selectedItem,
+          x: snapToGrid(ax - idx * steps * GRID_STEP),
+          y: snapToGrid(selectedItem.y || 0),
+        } as SelectedItem);
+      } else {
+        setSelectedItem({
+          ...selectedItem,
+          x: snapToGrid(selectedItem.x || 0),
+          y: snapToGrid(ay + idx * steps * GRID_STEP),
+        } as SelectedItem);
+      }
+    }
+  };
+
   const handleAutoLayout = () => {
     try {
       const newData = performAutoLayout(currentDiagramData);
@@ -5091,6 +5525,7 @@ export default function DiagramEditor() {
         selectedItem={selectedItem}
         selectedItemIds={selectedItemIds}
         handleItemUpdate={handleItemUpdate}
+        handleBulkMetadataUpdate={handleBulkMetadataUpdate}
         startConnecting={startConnecting}
         handleItemDelete={handleItemDelete}
         handleResourceSelect={handleResourceSelect}
@@ -5167,6 +5602,7 @@ export default function DiagramEditor() {
         isReadOnly={isReadOnly}
         setIsReadOnly={setIsReadOnly}
         handleAlignObjects={handleAlignObjects}
+        handleLayoutGridStep={handleLayoutGridStep}
         handleAutoLayout={handleAutoLayout}
         handleThemeApplyToSelected={handleThemeApplyToSelected}
         triggerTextStylingPanel={triggerTextStylingPanel}
@@ -5309,6 +5745,7 @@ function DiagramEditorInner({
   selectedItem,
   selectedItemIds,
   handleItemUpdate,
+  handleBulkMetadataUpdate,
   startConnecting,
   handleItemDelete,
   handleResourceSelect,
@@ -5395,6 +5832,7 @@ function DiagramEditorInner({
   isReadOnly,
   setIsReadOnly,
   handleAlignObjects,
+  handleLayoutGridStep,
   handleAutoLayout,
   handleThemeApplyToSelected,
   triggerTextStylingPanel,
@@ -5664,6 +6102,7 @@ function DiagramEditorInner({
                     selectedItem={selectedItem}
                     selectedItemIds={selectedItemIds}
                     onItemUpdate={handleItemUpdate}
+                    onBulkMetadataUpdate={handleBulkMetadataUpdate}
                     onConnect={startConnecting}
                     onDisconnect={disconnectSelected}
                     onDelete={() => {
@@ -5701,6 +6140,7 @@ function DiagramEditorInner({
                     isReadOnly={isReadOnly}
                     onToggleReadOnly={() => setIsReadOnly(!isReadOnly)}
                     onAlignObjects={handleAlignObjects}
+                    onLayoutGridStep={handleLayoutGridStep}
                     onAutoLayout={handleAutoLayout}
                     onThemeApplyToSelected={handleThemeApplyToSelected}
                     triggerTextStylingPanel={triggerTextStylingPanel}

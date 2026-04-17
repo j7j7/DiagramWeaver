@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/popover";
 import { ResourceIcon } from "./resource-icon";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
-import { labelToRuns } from "@/lib/rich-text";
+import { labelToRuns, normalizeRuns } from "@/lib/rich-text";
 import { TextboxRichEditor } from "./textbox-rich-editor";
 import { TextboxRichDisplay } from "./textbox-rich-display";
 import { cn, isConnectorLineNodeType, isHighlightPulseShapeSilhouetteType, isIconOrEmojiType, isShapeNodeType } from "@/lib/utils";
@@ -51,7 +51,8 @@ import {
   getSlideShapeShadowMode,
 } from "@/components/diagram/slide-shape-shadow-transition-context";
 import { ResizeHandles } from "./resize-handles";
-import { LineEndpointHandles } from "./line-endpoint-handles";
+import { LineVertexHandles } from "./line-endpoint-handles";
+import { getConnectorLineVertices } from "@/lib/line-curve-path";
 import { ConnectHandle } from "./connect-handle";
 import { CornerRadiusHandle } from "./corner-radius-handle";
 import { RotationHandle } from "./rotation-handle";
@@ -255,6 +256,9 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
     } else if (pLine.startPos !== nLine.startPos) {
       return false;
     }
+    if (pLine.linePathStyle !== nLine.linePathStyle) return false;
+    if (pLine.lineSmoothJoints !== nLine.lineSmoothJoints) return false;
+    if (JSON.stringify(pLine.lineControlPoints ?? []) !== JSON.stringify(nLine.lineControlPoints ?? [])) return false;
   }
   return prev.isSelected === next.isSelected &&
     prev.isMultiSelected === next.isMultiSelected &&
@@ -313,12 +317,21 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
   
-  // Line endpoint dragging state
+  // Line vertex dragging (endpoints + curve control points)
   const [isDraggingLineEndpoint, setIsDraggingLineEndpoint] = useState(false);
-  const [lineEndpointHandle, setLineEndpointHandle] = useState<'start' | 'end' | null>(null);
-  const lineEndpointStartPos = useRef<{ x: number; y: number; startPoint: { x: number; y: number }; endPoint: { x: number; y: number } } | null>(null);
+  const [lineVertexIndex, setLineVertexIndex] = useState<number | null>(null);
+  const lineVertexDragRef = useRef<{
+    clientX: number;
+    clientY: number;
+    vertexIndex: number;
+    initialVertices: { x: number; y: number }[];
+  } | null>(null);
+  const latestLineVerticesRef = useRef<{ x: number; y: number }[] | null>(null);
   /** While true, line/bar chart value drag is active — react-dnd must not move the node. */
   const chartValueDragInteractionRef = useRef(false);
+  /** Plain (icon) label input: avoids multi-select blur syncing when the draft was not edited. */
+  const plainLabelEditDirtyRef = useRef(false);
+  const tagEditDirtyRef = useRef(false);
 
   // Corner radius drag state (rounded-rectangle only)
   const [isDraggingCornerRadius, setIsDraggingCornerRadius] = useState(false);
@@ -331,6 +344,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     // Label double-click always enters edit mode; sub-diagram navigation only on icon/glow double-click
     setIsEditingLabel(true);
     setIsOpen(false); // Close popup when editing starts
+    plainLabelEditDirtyRef.current = false;
     setEditText(node.label || '');
     setEditRuns(node.richLabel ?? labelToRuns(node.label));
     setTimeout(() => {
@@ -343,15 +357,31 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
   };
 
   const handleLabelSubmit = () => {
-    if (onLabelUpdate && editText.trim() !== node.label) {
-      onLabelUpdate(node.id, editText.trim());
+    if (!onLabelUpdate) {
+      setIsEditingLabel(false);
+      return;
+    }
+    const next = editText.trim();
+    const prev = (node.label ?? '').trim();
+    const shouldApply = !isMultiSelected
+      ? next !== prev
+      : plainLabelEditDirtyRef.current || next !== prev;
+    plainLabelEditDirtyRef.current = false;
+    if (shouldApply) {
+      onLabelUpdate(node.id, next);
     }
     setIsEditingLabel(false);
   };
 
   const handleRichLabelSubmit = (plainText: string, runs: RichTextRun[]) => {
     if (onLabelUpdate) {
-      onLabelUpdate(node.id, plainText.trim(), runs);
+      const nextPlain = plainText.trim();
+      const normNew = normalizeRuns(runs);
+      const normPrev = normalizeRuns(node.richLabel ?? labelToRuns(node.label));
+      const unchanged = JSON.stringify(normNew) === JSON.stringify(normPrev);
+      if (!isMultiSelected || !unchanged) {
+        onLabelUpdate(node.id, nextPlain, normNew);
+      }
     }
     setIsEditingLabel(false);
   };
@@ -360,6 +390,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     e.stopPropagation();
     setIsEditingTag(true);
     setIsOpen(false); // Close popup when editing starts
+    tagEditDirtyRef.current = false;
     setEditTagText(node.tag || '');
     setTimeout(() => {
       if (tagInputRef.current) {
@@ -370,8 +401,18 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
   };
 
   const handleTagSubmit = () => {
-    if (onTagUpdate && editTagText.trim() !== node.tag) {
-      onTagUpdate(node.id, editTagText.trim());
+    if (!onTagUpdate) {
+      setIsEditingTag(false);
+      return;
+    }
+    const next = editTagText.trim();
+    const prev = (node.tag ?? '').trim();
+    const shouldApply = !isMultiSelected
+      ? next !== prev
+      : tagEditDirtyRef.current || next !== prev;
+    tagEditDirtyRef.current = false;
+    if (shouldApply) {
+      onTagUpdate(node.id, next);
     }
     setIsEditingTag(false);
   };
@@ -497,7 +538,10 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
       tagPosition: nodeAny.tagPosition,
       isEditingTag,
       editTagText,
-      onTagTextChange: setEditTagText,
+      onTagTextChange: (text: string) => {
+        tagEditDirtyRef.current = true;
+        setEditTagText(text);
+      },
       onTagSubmit: handleTagSubmit,
       onTagKeyDown: handleTagKeyDown,
       onTagDoubleClick: handleTagDoubleClick,
@@ -775,7 +819,8 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
       const lineNodeWithLocalPos = {
         ...visualNode,
         ...(localStartPos && { __localStartPos: localStartPos }),
-        ...(localEndPos && { __localEndPos: localEndPos })
+        ...(localEndPos && { __localEndPos: localEndPos }),
+        ...(localControlPoints && { __localControlPoints: localControlPoints }),
       };
       return <LineShape {...shapeProps} node={lineNodeWithLocalPos} onClick={onClick} onContextMenu={onContextMenu} />;
     } else if (nodeType === 'generic.object.loop' || nodeType?.endsWith('.loop')) {
@@ -956,7 +1001,10 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
             id={`node-input-${node.id}`}
             type="text"
             value={editText}
-            onChange={(e) => setEditText(e.target.value)}
+            onChange={(e) => {
+              plainLabelEditDirtyRef.current = true;
+              setEditText(e.target.value);
+            }}
             onBlur={handleLabelSubmit}
             onKeyDown={(e) => handleLabelKeyDown(e, false)}
             className={cn(
@@ -1330,8 +1378,54 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
   // Store initial container position when drag starts (keeps container stable during drag)
   const initialContainerPosRef = useRef<{ x: number; y: number } | null>(null);
   
-  // Line endpoint drag handlers
-  const handleLineEndpointDragStart = (e: React.MouseEvent, handle: 'start' | 'end') => {
+  // Use local state for immediate visual updates, only sync to data on drag end
+  const [localStartPos, setLocalStartPos] = useState<{ x: number; y: number } | null>(null);
+  const [localEndPos, setLocalEndPos] = useState<{ x: number; y: number } | null>(null);
+  const [localControlPoints, setLocalControlPoints] = useState<Array<{ x: number; y: number }> | null>(null);
+  const latestPositionsRef = useRef<{ startPos: { x: number; y: number } | null; endPos: { x: number; y: number } | null }>({ startPos: null, endPos: null });
+  
+  // Initialize and sync local state with node positions (but not during drag)
+  useEffect(() => {
+    if (!isDraggingLineEndpoint && isLineNode) {
+      const startPos = (node as any).startPos || { x: node.x || 0, y: node.y || 0 };
+      const endPos = (node as any).endPos || { x: (node.x || 0) + 150, y: node.y || 0 };
+      const ctrls = ((node as any).lineControlPoints ?? []) as { x: number; y: number }[];
+
+      setLocalStartPos((prev) => {
+        if (!prev || prev.x !== startPos.x || prev.y !== startPos.y) {
+          return startPos;
+        }
+        return prev;
+      });
+      setLocalEndPos((prev) => {
+        if (!prev || prev.x !== endPos.x || prev.y !== endPos.y) {
+          return endPos;
+        }
+        return prev;
+      });
+      setLocalControlPoints((prev) => {
+        const same =
+          prev &&
+          prev.length === ctrls.length &&
+          prev.every((p, i) => p.x === ctrls[i]?.x && p.y === ctrls[i]?.y);
+        if (same) return prev;
+        return ctrls.length ? ctrls.map((p) => ({ ...p })) : null;
+      });
+    }
+  }, [
+    node.id,
+    (node as any).startPos?.x,
+    (node as any).startPos?.y,
+    (node as any).endPos?.x,
+    (node as any).endPos?.y,
+    JSON.stringify((node as any).lineControlPoints ?? []),
+    (node as any).linePathStyle,
+    (node as any).lineSmoothJoints,
+    isDraggingLineEndpoint,
+    isLineNode,
+  ]);
+
+  const handleLineVertexDragStart = (e: React.MouseEvent, vertexIndex: number) => {
     if (isReadOnly) {
       e.stopPropagation();
       e.preventDefault();
@@ -1339,128 +1433,101 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     }
     e.preventDefault();
     e.stopPropagation();
-    
-    setIsDraggingLineEndpoint(true);
-    setLineEndpointHandle(handle);
-    
-    // Notify parent that dragging has started (prevents history updates during drag)
-    onDraggingChange?.(true);
-    
-    // Store absolute canvas positions (use local state if available, otherwise node state)
-    const currentStartPos = localStartPos || (node as any).startPos || { x: node.x || 0, y: node.y || 0 };
-    const currentEndPos = localEndPos || (node as any).endPos || { x: (node.x || 0) + 150, y: node.y || 0 };
-    
-    // Store initial container position (keep it stable during drag)
-    const initialMinX = Math.min(currentStartPos.x, currentEndPos.x);
-    const initialMinY = Math.min(currentStartPos.y, currentEndPos.y);
-    initialContainerPosRef.current = { x: initialMinX, y: initialMinY };
-    
-    lineEndpointStartPos.current = {
-      x: e.clientX,
-      y: e.clientY,
-      startPoint: currentStartPos,
-      endPoint: currentEndPos
-    };
-    
-    // Initialize ref with current positions
-    latestPositionsRef.current = { startPos: currentStartPos, endPos: currentEndPos };
-  };
-  
-  // Use local state for immediate visual updates, only sync to data on drag end
-  const [localStartPos, setLocalStartPos] = useState<{ x: number; y: number } | null>(null);
-  const [localEndPos, setLocalEndPos] = useState<{ x: number; y: number } | null>(null);
-  // Ref to track latest positions during drag (for reliable access on drag end)
-  const latestPositionsRef = useRef<{ startPos: { x: number; y: number } | null, endPos: { x: number; y: number } | null }>({ startPos: null, endPos: null });
-  
-  // Initialize and sync local state with node positions (but not during drag)
-  useEffect(() => {
-    if (!isDraggingLineEndpoint && isLineNode) {
-      const startPos = (node as any).startPos || { x: node.x || 0, y: node.y || 0 };
-      const endPos = (node as any).endPos || { x: (node.x || 0) + 150, y: node.y || 0 };
-      
-      // Only update if positions actually changed to avoid unnecessary state updates
-      setLocalStartPos(prev => {
-        if (!prev || prev.x !== startPos.x || prev.y !== startPos.y) {
-          return startPos;
-        }
-        return prev;
-      });
-      setLocalEndPos(prev => {
-        if (!prev || prev.x !== endPos.x || prev.y !== endPos.y) {
-          return endPos;
-        }
-        return prev;
-      });
-    }
-  }, [node.id, (node as any).startPos?.x, (node as any).startPos?.y, (node as any).endPos?.x, (node as any).endPos?.y, isDraggingLineEndpoint, isLineNode]);
 
-  const handleLineEndpointDragMove = useCallback((e: MouseEvent | React.MouseEvent) => {
-    if (!isDraggingLineEndpoint || !lineEndpointStartPos.current || !lineEndpointHandle) return;
-    
-    // Convert screen coordinates to canvas coordinates
-    let deltaX = e.clientX - lineEndpointStartPos.current.x;
-    let deltaY = e.clientY - lineEndpointStartPos.current.y;
-    
-    // Apply transform if available (convert screen delta to canvas delta)
+    setIsDraggingLineEndpoint(true);
+    setLineVertexIndex(vertexIndex);
+    onDraggingChange?.(true);
+
+    const synth = {
+      ...node,
+      ...(localStartPos && { __localStartPos: localStartPos }),
+      ...(localEndPos && { __localEndPos: localEndPos }),
+      ...(localControlPoints && { __localControlPoints: localControlPoints }),
+    };
+    const initialVertices = getConnectorLineVertices(synth as any).map((p) => ({ ...p }));
+
+    const b = initialVertices.reduce(
+      (acc, p) => ({
+        minX: Math.min(acc.minX, p.x),
+        minY: Math.min(acc.minY, p.y),
+      }),
+      { minX: initialVertices[0].x, minY: initialVertices[0].y }
+    );
+    initialContainerPosRef.current = {
+      x: node.x ?? b.minX,
+      y: node.y ?? b.minY,
+    };
+
+    lineVertexDragRef.current = {
+      clientX: e.clientX,
+      clientY: e.clientY,
+      vertexIndex,
+      initialVertices,
+    };
+    latestLineVerticesRef.current = initialVertices;
+  };
+
+  const handleLineVertexDragMove = useCallback((e: MouseEvent | React.MouseEvent) => {
+    if (!isDraggingLineEndpoint || !lineVertexDragRef.current) return;
+
+    let deltaX = e.clientX - lineVertexDragRef.current.clientX;
+    let deltaY = e.clientY - lineVertexDragRef.current.clientY;
     if (transform) {
       deltaX = deltaX / transform.k;
       deltaY = deltaY / transform.k;
     }
-    
-    let newStartPos = lineEndpointStartPos.current.startPoint;
-    let newEndPos = lineEndpointStartPos.current.endPoint;
-    
-    if (lineEndpointHandle === 'start') {
-      newStartPos = {
-        x: snapToGrid(lineEndpointStartPos.current.startPoint.x + deltaX),
-        y: snapToGrid(lineEndpointStartPos.current.startPoint.y + deltaY)
-      };
-      setLocalStartPos(newStartPos);
-      latestPositionsRef.current.startPos = newStartPos;
-    } else {
-      newEndPos = {
-        x: snapToGrid(lineEndpointStartPos.current.endPoint.x + deltaX),
-        y: snapToGrid(lineEndpointStartPos.current.endPoint.y + deltaY)
-      };
-      setLocalEndPos(newEndPos);
-      latestPositionsRef.current.endPos = newEndPos;
-    }
-    
-    // Update local state immediately for visual feedback (no data update yet)
-    // This provides instant visual feedback without triggering expensive re-renders
-  }, [isDraggingLineEndpoint, lineEndpointHandle, transform]);
+
+    const { vertexIndex, initialVertices } = lineVertexDragRef.current;
+    const iv = initialVertices[vertexIndex];
+    const moved = {
+      x: snapToGrid(iv.x + deltaX),
+      y: snapToGrid(iv.y + deltaY),
+    };
+    const next = initialVertices.map((p, i) => (i === vertexIndex ? moved : p));
+    latestLineVerticesRef.current = next;
+
+    setLocalStartPos(next[0]);
+    setLocalEndPos(next[next.length - 1]);
+    const interior = next.slice(1, -1);
+    setLocalControlPoints(interior.length ? interior : null);
+    latestPositionsRef.current = { startPos: next[0], endPos: next[next.length - 1] };
+  }, [isDraggingLineEndpoint, transform]);
   
-  const handleLineEndpointDragEnd = useCallback(() => {
-    // Only update data on drag end (not during drag) for better performance
-    if (onUpdate && lineEndpointStartPos.current) {
-      // Get the current positions from ref (most reliable) or fall back to local state or original
-      const currentStartPos = latestPositionsRef.current.startPos || localStartPos || lineEndpointStartPos.current.startPoint;
-      const currentEndPos = latestPositionsRef.current.endPos || localEndPos || lineEndpointStartPos.current.endPoint;
-      
-      const minX = Math.min(currentStartPos.x, currentEndPos.x);
-      const minY = Math.min(currentStartPos.y, currentEndPos.y);
-      
-      // Update the node with final positions
+  const handleLineVertexDragEnd = useCallback(() => {
+    if (onUpdate && lineVertexDragRef.current) {
+      const next =
+        latestLineVerticesRef.current ||
+        getConnectorLineVertices({
+          ...node,
+          ...(localStartPos && { __localStartPos: localStartPos }),
+          ...(localEndPos && { __localEndPos: localEndPos }),
+          ...(localControlPoints && { __localControlPoints: localControlPoints }),
+        } as any);
+      const currentStartPos = next[0];
+      const currentEndPos = next[next.length - 1];
+      const interior = next.slice(1, -1);
+      const minX = Math.min(...next.map((p) => p.x));
+      const minY = Math.min(...next.map((p) => p.y));
       onUpdate({
         ...node,
         x: minX,
         y: minY,
         startPos: currentStartPos,
-        endPos: currentEndPos
+        endPos: currentEndPos,
+        lineControlPoints: interior.length ? interior : undefined,
       });
-      
-      // Reset refs after update
+
       latestPositionsRef.current = { startPos: null, endPos: null };
+      latestLineVerticesRef.current = null;
       initialContainerPosRef.current = null;
     }
-    
-    // Notify parent that dragging has ended (allows history updates again)
+
     onDraggingChange?.(false);
-    
+
     setIsDraggingLineEndpoint(false);
-    setLineEndpointHandle(null);
-    lineEndpointStartPos.current = null;
-  }, [onUpdate, node, localStartPos, localEndPos, onDraggingChange]);
+    setLineVertexIndex(null);
+    lineVertexDragRef.current = null;
+  }, [onUpdate, node, localStartPos, localEndPos, localControlPoints, onDraggingChange]);
 
   // Global mouse events for resize
   useEffect(() => {
@@ -1486,28 +1553,27 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     }
   }, [isResizing, resizeHandle, node.id]);
   
-  // Global mouse events for line endpoint dragging
   useEffect(() => {
     if (isDraggingLineEndpoint) {
       const handleGlobalMouseMove = (e: MouseEvent) => {
-        handleLineEndpointDragMove(e);
+        handleLineVertexDragMove(e);
       };
-      
+
       const handleGlobalMouseUp = (e: MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        handleLineEndpointDragEnd();
+        handleLineVertexDragEnd();
       };
-      
-      document.addEventListener('mousemove', handleGlobalMouseMove, true);
-      document.addEventListener('mouseup', handleGlobalMouseUp, true);
-      
+
+      document.addEventListener("mousemove", handleGlobalMouseMove, true);
+      document.addEventListener("mouseup", handleGlobalMouseUp, true);
+
       return () => {
-        document.removeEventListener('mousemove', handleGlobalMouseMove, true);
-        document.removeEventListener('mouseup', handleGlobalMouseUp, true);
+        document.removeEventListener("mousemove", handleGlobalMouseMove, true);
+        document.removeEventListener("mouseup", handleGlobalMouseUp, true);
       };
     }
-  }, [isDraggingLineEndpoint, lineEndpointHandle, handleLineEndpointDragMove, handleLineEndpointDragEnd, localStartPos, localEndPos, onUpdate, node]);
+  }, [isDraggingLineEndpoint, handleLineVertexDragMove, handleLineVertexDragEnd]);
 
   // Corner radius drag handlers (rounded-rectangle only)
   const handleCornerRadiusDragStart = useCallback((e: React.MouseEvent) => {
@@ -1853,41 +1919,32 @@ return (
        
        {/* Line endpoint handles for line shapes - only show when THIS line is selected (not in multi-select with other items) */}
        {!isReadOnly && isLineNode && isSelected && !isMultiSelected && (() => {
-         // Get base positions - use same logic as drag start handler for consistency
-         // This ensures handles are positioned correctly even on first drag
-        const baseStartPos = localStartPos || (node as any).startPos || { x: node.x || 0, y: node.y || 0 };
-        const baseEndPos = localEndPos || (node as any).endPos || { x: (node.x || 0) + 150, y: node.y || 0 };
-         
-         // During drag, only update the handle being dragged, keep the other stable
-         const currentStartPos = isDraggingLineEndpoint && lineEndpointHandle === 'start' && localStartPos
-           ? localStartPos
-           : baseStartPos;
-         const currentEndPos = isDraggingLineEndpoint && lineEndpointHandle === 'end' && localEndPos
-           ? localEndPos
-           : baseEndPos;
-         
-         // Use node.x/y if available (matches LineShape calculation), otherwise use min of positions
-         // This ensures handles align exactly with the line endpoints
-         const nodeX = node.x ?? Math.min(currentStartPos.x, currentEndPos.x);
-         const nodeY = node.y ?? Math.min(currentStartPos.y, currentEndPos.y);
-         
-         // During drag, use stable container position to prevent handles from drifting
-         const handleNodeX = isDraggingLineEndpoint && initialContainerPosRef.current
-           ? initialContainerPosRef.current.x
-           : nodeX;
-         const handleNodeY = isDraggingLineEndpoint && initialContainerPosRef.current
-           ? initialContainerPosRef.current.y
-           : nodeY;
-         
+         const handleSynth = {
+           ...node,
+           ...(localStartPos && { __localStartPos: localStartPos }),
+           ...(localEndPos && { __localEndPos: localEndPos }),
+           ...(localControlPoints && { __localControlPoints: localControlPoints }),
+         };
+         const vertices = getConnectorLineVertices(handleSynth as any);
+         const nodeX = node.x ?? Math.min(...vertices.map((p) => p.x));
+         const nodeY = node.y ?? Math.min(...vertices.map((p) => p.y));
+         const handleNodeX =
+           isDraggingLineEndpoint && initialContainerPosRef.current
+             ? initialContainerPosRef.current.x
+             : nodeX;
+         const handleNodeY =
+           isDraggingLineEndpoint && initialContainerPosRef.current
+             ? initialContainerPosRef.current.y
+             : nodeY;
+
          return (
-           <LineEndpointHandles
+           <LineVertexHandles
              visible={true}
-             activeHandle={lineEndpointHandle}
-             startPoint={currentStartPos}
-             endPoint={currentEndPos}
+             activeVertexIndex={lineVertexIndex}
+             vertices={vertices}
              nodeX={handleNodeX}
              nodeY={handleNodeY}
-             onStartDrag={handleLineEndpointDragStart}
+             onStartDrag={handleLineVertexDragStart}
              disabled={false}
              zIndexClass="z-50"
            />

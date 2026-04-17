@@ -1,5 +1,6 @@
 import type { DiagramNodeData, DiagramZoneData } from "@/lib/types";
 import { isConnectorLineNodeType, isIconOrEmojiType, isShapeNodeType } from "@/lib/utils";
+import { connectorLinePointBounds, getConnectorLineVertices } from "@/lib/line-curve-path";
 import { getPlainTextFromRuns } from "@/lib/rich-text";
 import { getNodeSizeDimensions, getNodeSizeMultiplier } from "@/lib/visual-styling";
 import { computeUmlClassDimensions } from "@/lib/uml-utils";
@@ -26,8 +27,8 @@ export const CONNECTION_HELPER_Z_INDEX = 100000;
 export type PositionedNode = DiagramNodeData & { x: number; y: number; };
 export type PositionedGroup = DiagramZoneData & { x: number; y: number; width: number; height: number; };
 
-// Grid step for position and dimension alignment (10px) - ensures right/bottom edges tessellate
-const GRID_STEP = 10;
+/** Grid step for position and dimension alignment (px) — matches `snapToGrid` / layout stepping. */
+export const GRID_STEP = 10;
 
 // Custom snap function: snaps to 10px increments
 export const snapToGrid = (v: number): number => {
@@ -51,17 +52,13 @@ export const measureNodeDims = (n: PositionedNode) => {
     (isShapeNodeType(n.type) || isLoopNode);
   const label = (n.richLabel && n.richLabel.length > 0 ? getPlainTextFromRuns(n.richLabel) : (n.label || '')).toString();
 
-  // Line nodes calculate dimensions from startPos/endPos
+  // Line nodes calculate dimensions from startPos/endPos and optional curve controls
   if (isLineNode) {
-    const startPos = (n as any).startPos || { x: n.x || 0, y: n.y || 0 };
-    const endPos = (n as any).endPos || { x: (n.x || 0) + 150, y: n.y || 0 };
-    const minX = Math.min(startPos.x, endPos.x);
-    const minY = Math.min(startPos.y, endPos.y);
-    const maxX = Math.max(startPos.x, endPos.x);
-    const maxY = Math.max(startPos.y, endPos.y);
+    const verts = getConnectorLineVertices(n as DiagramNodeData);
+    const b = connectorLinePointBounds(verts);
     const padding = 30;
-    const w = Math.max(150, maxX - minX + padding * 2);
-    const h = Math.max(100, maxY - minY + padding * 2);
+    const w = Math.max(150, b.maxX - b.minX + padding * 2);
+    const h = Math.max(100, b.maxY - b.minY + padding * 2);
     return { width: snapDimensionToGrid(w, 150), height: snapDimensionToGrid(h, 100) };
   }
 

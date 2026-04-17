@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { cn, isConnectorLineNodeType, isShapeNodeType } from '@/lib/utils';
 import { isChartNodeType } from '@/lib/chart-node';
-import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup, Plus, ArrowUp, ArrowDown, ChevronUp, ChevronDown, Circle, RotateCw, ArrowDownAZ, ArrowUpAZ, Minus, Lock, Unlock, FileEdit, PieChart } from 'lucide-react';
+import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup, Plus, ArrowUp, ArrowDown, ChevronUp, ChevronDown, Circle, RotateCw, ArrowDownAZ, ArrowUpAZ, Minus, Lock, Unlock, FileEdit, PieChart, ListOrdered } from 'lucide-react';
 
 
 interface ContextMenuProps {
@@ -54,6 +54,18 @@ interface ContextMenuProps {
   hasSubDiagramLink?: boolean;
   onCreateSubDiagram?: (nodeId: string) => void;
   onRemoveSubDiagramLink?: (nodeId: string) => void;
+  /** When true with `onAutoNumberLabels`, show multi-select label numbering. */
+  canAutoNumber?: boolean;
+  onAutoNumberLabels?: () => void;
+  /** Polyline / connector line node: curved path vs straight segment */
+  connectorLineCurved?: boolean;
+  onToggleConnectorLineCurved?: () => void;
+  /** Insert a point at the midpoint of the longest segment (straight or curved) */
+  onAddConnectorLinePoint?: () => void;
+  /** Straight polyline with ≥1 interior point: show “Smooth joints” checkbox */
+  connectorLineShowSmoothJointsOption?: boolean;
+  connectorLineSmoothJoints?: boolean;
+  onToggleConnectorLineSmoothJoints?: () => void;
 }
 
 // Helper function to check if a node type is a line
@@ -112,6 +124,14 @@ export function ContextMenu({
   hasSubDiagramLink = false,
   onCreateSubDiagram,
   onRemoveSubDiagramLink,
+  canAutoNumber = false,
+  onAutoNumberLabels,
+  connectorLineCurved = false,
+  onToggleConnectorLineCurved,
+  onAddConnectorLinePoint,
+  connectorLineShowSmoothJointsOption = false,
+  connectorLineSmoothJoints = false,
+  onToggleConnectorLineSmoothJoints,
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [layerSubmenuOpen, setLayerSubmenuOpen] = useState(false);
@@ -245,6 +265,18 @@ export function ContextMenu({
         </button>
       )}
 
+      {onAutoNumberLabels && canAutoNumber && (
+        <button
+          className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+          onClick={() => {
+            onAutoNumberLabels();
+          }}
+        >
+          <ListOrdered className="w-4 h-4" />
+          Auto-number
+        </button>
+      )}
+
       {onVisualStyling && (() => {
         const t = nodeType || '';
         const isEmoji = t.startsWith('generic.emoji.');
@@ -278,6 +310,50 @@ export function ContextMenu({
           <Minus className="w-4 h-4" />
           Line Styling
         </button>
+      )}
+
+      {isLineNodeType(nodeType) && onToggleConnectorLineCurved && (
+        <label className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground">
+          <input
+            type="checkbox"
+            className="rounded border-border"
+            checked={connectorLineCurved}
+            onChange={() => {
+              onToggleConnectorLineCurved();
+            }}
+          />
+          Curved line
+        </label>
+      )}
+
+      {isLineNodeType(nodeType) && onAddConnectorLinePoint && (
+        <button
+          type="button"
+          className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+          onClick={() => {
+            onAddConnectorLinePoint();
+            onClose();
+          }}
+        >
+          <Plus className="w-4 h-4" />
+          Add point
+        </button>
+      )}
+
+      {isLineNodeType(nodeType) &&
+        connectorLineShowSmoothJointsOption &&
+        onToggleConnectorLineSmoothJoints && (
+        <label className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground">
+          <input
+            type="checkbox"
+            className="rounded border-border"
+            checked={connectorLineSmoothJoints}
+            onChange={() => {
+              onToggleConnectorLineSmoothJoints();
+            }}
+          />
+          Smooth joints
+        </label>
       )}
 
       {/* Render Order Submenu */}
