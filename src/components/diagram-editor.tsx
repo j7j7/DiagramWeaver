@@ -139,8 +139,11 @@ import {
 } from '@/lib/presentation-storage';
 import { DiagramBreadcrumb, type BreadcrumbSegment } from './editor/diagram-breadcrumb';
 import { isConnectorLineNodeType } from '@/lib/utils';
-import { removeConnectorLineVertexAtIndex } from '@/lib/line-curve-path';
-import { syncClosedConnectorLineBorderWidth } from '@/lib/line-styling';
+import { removeConnectorLineVertexAtIndex, isConnectorLineGeometryClosed } from '@/lib/line-curve-path';
+import {
+  syncClosedConnectorLineBorderWidth,
+  syncClosedConnectorVisualBorderFromLineStyling,
+} from '@/lib/line-styling';
 
 /** Presentation slide PNG thumbnails: poll at most this often; capture only when delta fingerprint changed. */
 const PRESENTATION_THUMB_INTERVAL_MS = 3000;
@@ -2378,11 +2381,19 @@ export default function DiagramEditor() {
       if (!f || f.nodeId !== nodeId) return false;
       const node = currentDiagramData.nodes.find((n) => n.id === nodeId);
       if (!node || !isConnectorLineNodeType(node.type)) return false;
+      const wasClosed = isConnectorLineGeometryClosed(node);
       const nextGeom = removeConnectorLineVertexAtIndex(node, f.vertexIndex);
       if (!nextGeom) return false;
       const layerId = node.layer || layers.getItemLayerById(nodeId);
       if (!confirmPresentationLayerImpact('The selected item', layerId ? [layerId] : [])) return true;
-      const synced = syncClosedConnectorLineBorderWidth(nextGeom);
+      const isNowClosed = isConnectorLineGeometryClosed(nextGeom);
+      let synced = nextGeom;
+      if (isNowClosed) {
+        synced = syncClosedConnectorLineBorderWidth(synced);
+        if (!wasClosed && isNowClosed) {
+          synced = syncClosedConnectorVisualBorderFromLineStyling(synced);
+        }
+      }
       setCurrentDiagramData((prev) => ({
         ...prev,
         nodes: prev.nodes.map((n) => (n.id === synced.id ? synced : n)),

@@ -56,7 +56,12 @@ import { snapToGrid } from "./canvas-constants";
 import { ConnectionWaypointHandles } from "../diagram/connection-waypoint-handles";
 import { isConnectorLineNodeType, isShapeNodeType } from "@/lib/utils";
 import { isConnectorLineGeometryClosed } from "@/lib/line-curve-path";
-import { getConnectorLineVertices, insertConnectorLineMidControl } from "@/lib/line-curve-path";
+import {
+  getConnectorLineVertices,
+  insertConnectorLineMidControl,
+  insertConnectorLinePointAfterVertexIndex,
+} from "@/lib/line-curve-path";
+import { syncClosedConnectorLineBorderWidth } from "@/lib/line-styling";
 import { isEventFromEditableElement } from "@/lib/keyboard-utils";
 import { getDownstreamAnimationChainNodes } from "@/lib/connection-animation";
 
@@ -2142,14 +2147,27 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       ...prev,
                       nodes: prev.nodes.map((n) => {
                         if (n.id !== id) return n;
+                        const focusedIdx =
+                          connectorLineFocusedVertex?.nodeId === id
+                            ? connectorLineFocusedVertex.vertexIndex
+                            : null;
+                        if (focusedIdx != null) {
+                          const nextGeom = insertConnectorLinePointAfterVertexIndex(
+                            n as DiagramNodeData,
+                            focusedIdx,
+                          );
+                          if (nextGeom) {
+                            return syncClosedConnectorLineBorderWidth(nextGeom);
+                          }
+                        }
                         const c = n as any;
                         const s = c.startPos || { x: c.x ?? 0, y: c.y ?? 0 };
                         const e = c.endPos || { x: (c.x ?? 0) + 150, y: c.y ?? 0 };
                         const interior = [...(c.lineControlPoints || [])];
-                        return {
+                        return syncClosedConnectorLineBorderWidth({
                           ...n,
                           lineControlPoints: insertConnectorLineMidControl(s, e, interior),
-                        };
+                        });
                       }),
                     }));
                   }

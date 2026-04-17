@@ -178,6 +178,7 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
   const lineColor = node.lineColor || "#6b7280";
   const lineColorStyleVs = (nodeAny.lineColorStyle || "solid") as "solid" | "gradient";
   const needsLineBodyGradient =
+    !closed &&
     lineColorStyleVs === "gradient" &&
     Array.isArray(nodeAny.lineColors) &&
     nodeAny.lineColors.length >= 2;
@@ -187,14 +188,21 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
     lineColor,
   );
 
+  /** Closed loops: stroke paint comes from Visual Styling border (incl. gradient), copied from Line Styling on close. */
+  const closedUsesVisualStroke =
+    closed && explicitBorderVisual && borderStyleVs !== "none";
+
   const needsAreaFill = closed && backgroundStyle !== "none";
   const needsFillGradient = needsAreaFill && backgroundStyle === "gradient";
-  const { defs: gradientDefs, fillRef, lineStrokeRef } = useSvgGradient({
+  const needsBorderGradient = closedUsesVisualStroke && borderStyleVs === "gradient";
+  const { defs: gradientDefs, fillRef, strokeRef, lineStrokeRef } = useSvgGradient({
     colors: backgroundStyle === "gradient" ? [bgStart, bgEnd] : [bgStart],
     angle: gradientAngle,
+    borderColors: needsBorderGradient ? [borderStart, borderEnd] : undefined,
+    borderAngle: needsBorderGradient ? borderGradientAngle : undefined,
     lineColors: needsLineBodyGradient ? [lineGradStart, lineGradEnd] : undefined,
     lineAngle: nodeAny.lineGradientAngle ?? gradientAngle,
-    enabled: needsFillGradient || needsLineBodyGradient,
+    enabled: needsFillGradient || needsBorderGradient || needsLineBodyGradient,
   });
   const areaFill = needsAreaFill
     ? getShapeSvgFill(backgroundStyle, fillRef, backgroundColorFallback)
@@ -204,6 +212,10 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
   const lineBodyPaint = needsLineBodyGradient
     ? (lineStrokeRef ?? lineColor)
     : (stroke || lineColor);
+
+  const borderStrokePaint =
+    borderStyleVs === "gradient" ? (strokeRef ?? borderColorFallback) : borderColorFallback;
+  const visibleStrokePaint = closedUsesVisualStroke ? borderStrokePaint : lineBodyPaint;
 
   const nodeX = node.x ?? connectorLinePointBounds(vertices).minX;
   const nodeY = node.y ?? connectorLinePointBounds(vertices).minY;
@@ -373,7 +385,7 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
           <path
             d={closed ? pathDClosed : pathD}
             fill="none"
-            stroke={lineBodyPaint}
+            stroke={visibleStrokePaint}
             strokeWidth={actualStrokeWidth}
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -393,7 +405,7 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
             relStartX - svgMinX,
             relStartY - svgMinY,
             angleToStartCap,
-            lineBodyPaint,
+            visibleStrokePaint,
             capSize,
           )}
         {!closed &&
@@ -402,7 +414,7 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
             relEndX - svgMinX,
             relEndY - svgMinY,
             tangentEnd,
-            lineBodyPaint,
+            visibleStrokePaint,
             capSize,
           )}
         

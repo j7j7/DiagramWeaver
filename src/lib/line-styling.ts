@@ -100,7 +100,24 @@ export function applyLineStylingToNode(
   if ('textJustify' in styling) updated.textJustify = styling.textJustify;
   if ('textVerticalPosition' in styling) updated.textVerticalPosition = styling.textVerticalPosition;
   
-  return syncClosedConnectorLineBorderWidth(updated);
+  if (
+    isConnectorLineNodeType(updated.type) &&
+    isConnectorLineGeometryClosed(updated as DiagramNodeData)
+  ) {
+    let out = syncClosedConnectorLineBorderWidth(updated);
+    const linePaintTouched =
+      'lineThickness' in styling ||
+      'lineType' in styling ||
+      'lineColor' in styling ||
+      'lineColorStyle' in styling ||
+      'lineColors' in styling ||
+      'lineGradientAngle' in styling;
+    if (linePaintTouched) {
+      out = syncClosedConnectorVisualBorderFromLineStyling(out);
+    }
+    return out;
+  }
+  return updated;
 }
 
 /**
@@ -126,7 +143,10 @@ export const DEFAULT_LINE_STYLING: LineStyling = {
   textVerticalPosition: 'middle'
 };
 
-/** Closed connector lines use stroke width from line thickness; keep `borderWidth` in sync for visual styling. */
+/**
+ * Closed connectors only: set `borderWidth` from `lineThickness` (used after theme apply and
+ * visual styling merges so theme border width does not override line thickness).
+ */
 export function syncClosedConnectorLineBorderWidth<T extends DiagramNodeData | DiagramNodeItem>(node: T): T {
   if (!isConnectorLineNodeType(node.type)) return node;
   if (!isConnectorLineGeometryClosed(node as DiagramNodeData)) return node;
@@ -134,4 +154,44 @@ export function syncClosedConnectorLineBorderWidth<T extends DiagramNodeData | D
   const w =
     typeof lt === 'number' && lt > 0 ? lt : DEFAULT_LINE_STYLING.lineThickness ?? 2.5;
   return { ...(node as object), borderWidth: w } as T;
+}
+
+/**
+ * Closed connectors: copy current line paint onto Visual border fields (stroke for closed loops).
+ * Call when the loop **first closes** (open → closed), or when Line Styling paint fields change — **not** on every
+ * geometry commit or text-only line edits, so Visual Styling border/gradient can own the stroke until Line paint updates.
+ */
+export function syncClosedConnectorVisualBorderFromLineStyling<T extends DiagramNodeData | DiagramNodeItem>(
+  node: T,
+): T {
+  if (!isConnectorLineNodeType(node.type)) return node;
+  if (!isConnectorLineGeometryClosed(node as DiagramNodeData)) return node;
+  const n = node as DiagramNodeData;
+  const lt = n.lineThickness;
+  const borderWidth =
+    typeof lt === 'number' && lt > 0 ? lt : DEFAULT_LINE_STYLING.lineThickness ?? 2.5;
+  const lineType = (n as any).lineType ?? 'solid';
+  const lineColorStyle = ((n as any).lineColorStyle ?? 'solid') as 'solid' | 'gradient';
+  const lineColors = (n as any).lineColors as string[] | undefined;
+
+  if (lineColorStyle === 'gradient' && Array.isArray(lineColors) && lineColors.length >= 2) {
+    const bc = [...lineColors];
+    return {
+      ...(node as object),
+      borderWidth,
+      borderStyle: 'gradient',
+      borderColors: bc,
+      borderGradientAngle: (n as any).lineGradientAngle ?? 135,
+      borderColor: bc[0],
+    } as T;
+  }
+
+  return {
+    ...(node as object),
+    borderWidth,
+    borderStyle: lineType === 'dotted' ? 'dotted' : 'solid',
+    borderColor: n.lineColor ?? '#6b7280',
+    borderColors: undefined,
+    borderGradientAngle: undefined,
+  } as T;
 }

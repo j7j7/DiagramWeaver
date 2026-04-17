@@ -414,7 +414,6 @@ export function curveBoundsExpanded(
   };
 }
 
-/** Insert a control at the midpoint of the longest segment of the open polyline. */
 /**
  * Remove one polyline/spline vertex from a connector line node (by resolved vertex index:
  * `[start, ...lineControlPoints, end]`, with curved + empty storage using the synthetic midpoint).
@@ -507,6 +506,114 @@ export function removeConnectorLineVertexAtIndex(
   return nextNode;
 }
 
+/**
+ * Insert a new vertex at the midpoint of the segment **after** `afterVertexIndex`
+ * (between `vertices[afterVertexIndex]` and `vertices[afterVertexIndex + 1]`).
+ * For **closed** lines, if `afterVertexIndex` is the last index, wraps to the segment closing the loop.
+ * Returns a full updated node or `null` if the segment is invalid (caller may fall back to longest-edge insert).
+ */
+export function insertConnectorLinePointAfterVertexIndex(
+  node: DiagramNodeData,
+  afterVertexIndex: number,
+): DiagramNodeData | null {
+  const style = (((node as DiagramNodeData & { linePathStyle?: LinePathStyle }).linePathStyle ||
+    "straight") as LinePathStyle);
+  const startBase =
+    (node as DiagramNodeData & { startPos?: { x: number; y: number } }).startPos || {
+      x: node.x || 0,
+      y: node.y || 0,
+    };
+  const endBase =
+    (node as DiagramNodeData & { endPos?: { x: number; y: number } }).endPos || {
+      x: (node.x || 0) + 150,
+      y: node.y || 0,
+    };
+  const storedRaw = ((node as DiagramNodeData & { lineControlPoints?: LineControlPoint[] })
+    .lineControlPoints || []) as LineControlPoint[];
+
+  let vertices: { x: number; y: number }[];
+  if (style === "curved" && storedRaw.length === 0) {
+    vertices = [
+      { ...startBase },
+      { x: (startBase.x + endBase.x) / 2, y: (startBase.y + endBase.y) / 2 },
+      { ...endBase },
+    ];
+  } else if (style === "curved") {
+    vertices = [{ ...startBase }, ...storedRaw.map((p) => ({ ...p })), { ...endBase }];
+  } else if (storedRaw.length === 0) {
+    vertices = [{ ...startBase }, { ...endBase }];
+  } else {
+    vertices = [{ ...startBase }, ...storedRaw.map((p) => ({ ...p })), { ...endBase }];
+  }
+
+  const n = vertices.length;
+  if (afterVertexIndex < 0 || afterVertexIndex >= n) return null;
+
+  const closed = isConnectorLineGeometryClosed({
+    ...node,
+    startPos: startBase,
+    endPos: endBase,
+    lineControlPoints: storedRaw,
+  } as DiagramNodeData);
+
+  let j = afterVertexIndex + 1;
+  if (j >= n) {
+    if (!closed) return null;
+    j = 0;
+  }
+
+  const a = vertices[afterVertexIndex];
+  const b = vertices[j];
+  const segLen = Math.hypot(b.x - a.x, b.y - a.y);
+  if (segLen < 1e-6) return null;
+
+  const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  const inserted = [
+    ...vertices.slice(0, afterVertexIndex + 1),
+    mid,
+    ...vertices.slice(afterVertexIndex + 1),
+  ];
+
+  const newStart = { ...inserted[0] };
+  let newEnd = { ...inserted[inserted.length - 1] };
+  let interior = inserted.slice(1, -1).map((p) => ({ ...p }));
+
+  let nextStyle: LinePathStyle = style;
+
+  if (closed) {
+    newEnd = { ...newStart };
+    interior = inserted.slice(1, -1).map((p) => ({ ...p }));
+  }
+
+  if (nextStyle === "curved" && inserted.length === 2) {
+    nextStyle = "straight";
+  }
+
+  const flatForBounds = closed ? [newStart, ...interior] : [newStart, ...interior, newEnd];
+  const minX = Math.min(...flatForBounds.map((p) => p.x));
+  const minY = Math.min(...flatForBounds.map((p) => p.y));
+
+  const nextNode = {
+    ...node,
+    x: minX,
+    y: minY,
+    startPos: newStart,
+    endPos: newEnd,
+    linePathStyle: nextStyle,
+  } as DiagramNodeData;
+
+  if (interior.length > 0) {
+    (nextNode as DiagramNodeData & { lineControlPoints?: LineControlPoint[] }).lineControlPoints =
+      interior;
+  } else {
+    delete (nextNode as DiagramNodeData & { lineControlPoints?: LineControlPoint[] })
+      .lineControlPoints;
+  }
+
+  return nextNode;
+}
+
+/** Insert a control at the midpoint of the longest segment of the open polyline. */
 export function insertConnectorLineMidControl(
   start: { x: number; y: number },
   end: { x: number; y: number },

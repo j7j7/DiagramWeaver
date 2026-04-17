@@ -52,8 +52,11 @@ import {
 } from "@/components/diagram/slide-shape-shadow-transition-context";
 import { ResizeHandles } from "./resize-handles";
 import { LineVertexHandles } from "./line-endpoint-handles";
-import { getConnectorLineVertices } from "@/lib/line-curve-path";
-import { syncClosedConnectorLineBorderWidth } from "@/lib/line-styling";
+import { getConnectorLineVertices, isConnectorLineGeometryClosed } from "@/lib/line-curve-path";
+import {
+  syncClosedConnectorLineBorderWidth,
+  syncClosedConnectorVisualBorderFromLineStyling,
+} from "@/lib/line-styling";
 import { ConnectHandle } from "./connect-handle";
 import { CornerRadiusHandle } from "./corner-radius-handle";
 import { RotationHandle } from "./rotation-handle";
@@ -1524,16 +1527,24 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
       const interior = next.slice(1, -1);
       const minX = Math.min(...next.map((p) => p.x));
       const minY = Math.min(...next.map((p) => p.y));
-      onUpdate(
-        syncClosedConnectorLineBorderWidth({
-          ...node,
-          x: minX,
-          y: minY,
-          startPos: currentStartPos,
-          endPos: currentEndPos,
-          lineControlPoints: interior.length ? interior : undefined,
-        })
-      );
+      const merged = {
+        ...node,
+        x: minX,
+        y: minY,
+        startPos: currentStartPos,
+        endPos: currentEndPos,
+        lineControlPoints: interior.length ? interior : undefined,
+      };
+      const wasClosed = isConnectorLineGeometryClosed(node);
+      const isNowClosed = isConnectorLineGeometryClosed(merged);
+      let out = merged;
+      if (isNowClosed) {
+        out = syncClosedConnectorLineBorderWidth(out);
+        if (!wasClosed && isNowClosed) {
+          out = syncClosedConnectorVisualBorderFromLineStyling(out);
+        }
+      }
+      onUpdate(out);
 
       latestPositionsRef.current = { startPos: null, endPos: null };
       latestLineVerticesRef.current = null;
