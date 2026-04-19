@@ -260,8 +260,6 @@ interface TopMenuBarProps {
   rulesEditorOpen?: boolean;
   rules?: import('@/lib/rules-types').DiagramRule[];
   onRulesChange?: (rules: import('@/lib/rules-types').DiagramRule[]) => void;
-  presentationModeEnabled?: boolean;
-  onTogglePresentationMode?: () => void;
   presentationHasLaterSlides?: boolean;
   onPropagateAddToLaterSlides?: () => void;
   onPropagateDeleteToLaterSlides?: () => void;
@@ -355,8 +353,6 @@ export function TopMenuBar({
   rulesEditorOpen,
   rules = [],
   onRulesChange,
-  presentationModeEnabled = false,
-  onTogglePresentationMode,
   presentationHasLaterSlides = false,
   onPropagateAddToLaterSlides,
   onPropagateDeleteToLaterSlides,
@@ -421,8 +417,7 @@ export function TopMenuBar({
     Boolean(onTogglePropertiesPanel) ||
     Boolean(onToggleLayersPanel) ||
     Boolean(onToggleScratchPad) ||
-    Boolean(onToggleRulesEditor) ||
-    Boolean(onTogglePresentationMode);
+    Boolean(onToggleRulesEditor);
 
   // Function to close connection settings panel
   const handleCloseConnectionSettingsPanel = () => {
@@ -698,16 +693,6 @@ export function TopMenuBar({
                 <MenubarItem onClick={() => onToggleRulesEditor?.()}>
                   <ListChecks className="mr-2 h-4 w-4" />
                   Rules
-                </MenubarItem>
-              </>
-            )}
-            {onTogglePresentationMode && (
-              <>
-                {(onToggleJsonPanel || onTogglePropertiesPanel || onToggleLayersPanel || onToggleScratchPad || onToggleRulesEditor) && <MenubarSeparator />}
-                <MenubarItem onClick={onTogglePresentationMode}>
-                  <Layers className="mr-2 h-4 w-4" />
-                  {presentationModeEnabled ? 'Exit Presentation Mode' : 'Enter Presentation Mode'}
-                  <MenubarShortcut>{presentationModeEnabled ? 'Alt+P' : 'Ctrl+Alt+P'}</MenubarShortcut>
                 </MenubarItem>
               </>
             )}
@@ -1096,7 +1081,6 @@ export function TopMenuBar({
             onLineStylingPanelOpenChange={setLineStylingPanelOpen}
             onConnectionSettingsPanelOpenChange={setConnectionSettingsPanelOpen}
             isReadOnly={isReadOnly}
-            presentationModeEnabled={presentationModeEnabled}
             presentationHasLaterSlides={presentationHasLaterSlides}
             onPropagateAddToLaterSlides={onPropagateAddToLaterSlides}
             onPropagateDeleteToLaterSlides={onPropagateDeleteToLaterSlides}

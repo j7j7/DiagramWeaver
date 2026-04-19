@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { DraggableItem } from './draggable-item';
@@ -9,7 +9,6 @@ import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Button } from '../ui/button';
 import type { SelectedItem } from '../diagram-editor';
-import { ScrollArea } from '../ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { ResourceBrowser } from './resource-browser';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
@@ -44,7 +43,48 @@ interface ComponentSidebarProps {
 
 export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, onConnect, onDisconnect, onItemDelete, diagramData, onResourceSelect, onResourceActivate, onToggleJsonPanel, jsonPanelOpen, onFitToView, onConnectionUpdate, onConnectionDisconnect, onCloseSidebar, isMobile, transform, onTransformChange, isReadOnly = false, collapsed = false, onToggleCollapse }: ComponentSidebarProps) {
   const { register, reset, getValues } = useForm();
-  
+
+  const selectedItemRef = useRef(selectedItem);
+  selectedItemRef.current = selectedItem;
+
+  /**
+   * `selectedItem` from the editor often gets a new object reference each render (hydration, geometry sync).
+   * Depending on `selectedItem` in an effect that calls `reset()` → max update depth. Sync only when a
+   * stable fingerprint of form-relevant fields changes; read the latest item from a ref inside the effect.
+   */
+  const sidebarFormSyncSignature = useMemo(() => {
+    if (!selectedItem) return 'none';
+    if (selectedItem.itemType === 'edge') return `edge:${selectedItem.id}`;
+    const s = selectedItem as unknown as Record<string, unknown>;
+    const pick = {
+      id: s.id,
+      itemType: s.itemType,
+      x: s.x,
+      y: s.y,
+      width: s.width,
+      height: s.height,
+      label: s.label,
+      info: s.info,
+      tag: s.tag,
+      borderStyle: s.borderStyle,
+      borderColors: s.borderColors,
+      backgroundStyle: s.backgroundStyle,
+      backgroundColors: s.backgroundColors,
+      borderColor: s.borderColor,
+      backgroundColor: s.backgroundColor,
+      textColor: s.textColor,
+      orientation: s.orientation,
+      lineColor: s.lineColor,
+      maxItemsPerRow: s.maxItemsPerRow,
+      shadow: s.shadow,
+      rotation: s.rotation,
+    };
+    try {
+      return JSON.stringify(pick);
+    } catch {
+      return `${String(s.id)}:${String(s.itemType)}`;
+    }
+  }, [selectedItem]);
 
   
   // Handler for connect button with default options
@@ -56,19 +96,20 @@ export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, 
   };
 
   useEffect(() => {
-    if (selectedItem && selectedItem.itemType !== 'edge') {
+    const si = selectedItemRef.current;
+    if (si && si.itemType !== 'edge') {
       // Initialize new gradient properties from legacy colors for backward compatibility
       const initializedItem = {
-        ...selectedItem,
-        borderStyle: selectedItem.borderStyle || 'solid',
-        borderColors: selectedItem.borderColors || [
-          selectedItem.borderColor || '#3b82f6',
-          selectedItem.borderColor || '#3b82f6'
+        ...si,
+        borderStyle: si.borderStyle || 'solid',
+        borderColors: si.borderColors || [
+          si.borderColor || '#3b82f6',
+          si.borderColor || '#3b82f6'
         ],
-        backgroundStyle: selectedItem.backgroundStyle || 'solid',
-        backgroundColors: selectedItem.backgroundColors || [
-          selectedItem.backgroundColor || '#f3f4f6',
-          selectedItem.backgroundColor || '#e5e7eb'
+        backgroundStyle: si.backgroundStyle || 'solid',
+        backgroundColors: si.backgroundColors || [
+          si.backgroundColor || '#f3f4f6',
+          si.backgroundColor || '#e5e7eb'
         ]
       };
       reset(initializedItem);
@@ -89,7 +130,7 @@ export function ComponentSidebar({ selectedItem, selectedItemIds, onItemUpdate, 
         shadow: false
       });
     }
-  }, [selectedItem, reset]);
+  }, [sidebarFormSyncSignature, reset]);
 
   const handleBlur = () => {
     if(selectedItem) {

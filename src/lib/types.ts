@@ -741,6 +741,8 @@ export interface PresentationDeck {
   id: string;
   name: string;
   slides: Slide[];
+  /** @deprecated Legacy only; migrated to `slides[0].snapshotImage` on load. */
+  baseSnapshotImage?: string;
   createdAt: number;
   updatedAt: number;
 }

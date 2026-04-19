@@ -472,6 +472,7 @@ export const PresentationDeckSchema = z.object({
   id: z.string(),
   name: z.string(),
   slides: z.array(SlideSchema).default([]),
+  baseSnapshotImage: z.string().optional(),
   createdAt: z.number(),
   updatedAt: z.number(),
 });
