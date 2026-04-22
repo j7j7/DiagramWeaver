@@ -73,6 +73,12 @@ interface CanvasConnectionsProps {
   connectionRenderRevision?: string | number;
   /** L/Z-only orthogonal paths (no A*) while dragging canvas items — full routing when false. */
   orthogonalFastRouting?: boolean;
+  /** Simulation mode: right-click opens simulation menu; left-click cycles state. */
+  simulationModeEnabled?: boolean;
+  onSimulationElementPrimaryClick?: (e: React.MouseEvent, itemId: string) => void;
+  onSimulationElementClick?: (e: React.MouseEvent, itemId: string) => void;
+  simulationStatusStyleByItemId?: Record<string, { color: string; opacity?: number; shadowColor?: string }>;
+  simulationStateStyleByItemId?: Record<string, { color: string; opacity?: number }>;
 }
 
 function setsEqual(a: Set<number> | undefined, b: Set<number> | undefined): boolean {
@@ -119,6 +125,11 @@ function areCanvasConnectionsPropsEqual(prev: CanvasConnectionsProps, next: Canv
     prev.onConnectionUpdate === next.onConnectionUpdate &&
     prev.onConnectionWaypointAdd === next.onConnectionWaypointAdd &&
     prev.onConnectionInsertNode === next.onConnectionInsertNode &&
+    prev.simulationModeEnabled === next.simulationModeEnabled &&
+    prev.onSimulationElementPrimaryClick === next.onSimulationElementPrimaryClick &&
+    prev.onSimulationElementClick === next.onSimulationElementClick &&
+    prev.simulationStatusStyleByItemId === next.simulationStatusStyleByItemId &&
+    prev.simulationStateStyleByItemId === next.simulationStateStyleByItemId &&
     setsEqual(prev.connectionIndices, next.connectionIndices);
 }
 
@@ -153,6 +164,11 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     isReadOnly = false,
     connectionRenderRevision,
     orthogonalFastRouting = false,
+    simulationModeEnabled = false,
+    onSimulationElementPrimaryClick,
+    onSimulationElementClick,
+    simulationStatusStyleByItemId,
+    simulationStateStyleByItemId,
   } = props;
   const obstacleCatalog = buildObstacleCatalog(nodesById, zonesById);
   // Pre-calculate edge information for all connections
@@ -597,6 +613,17 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
         const connRow = edge as DiagramConnectionData;
         const allConns = (diagramData.connections ?? []) as DiagramConnectionData[];
         const edgeId = stableDiagramConnectionId(connRow, index);
+        const statusStyle = simulationStatusStyleByItemId?.[edgeId];
+        const stateStyle = simulationStateStyleByItemId?.[edgeId];
+        const connectionColorOverride = statusStyle?.color ?? stateStyle?.color;
+        if (connectionColorOverride) {
+          enhancedEdge = {
+            ...enhancedEdge,
+            color: connectionColorOverride,
+            colorEnd: connectionColorOverride,
+            colorLock: true,
+          };
+        }
         const isConnectionHighlighted = isDiagramConnectionInCanvasSelection(
           connRow,
           index,
@@ -750,6 +777,10 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
         const connectionHandlers = {
           onClick: (connection: DiagramConnectionData, event: React.MouseEvent) => {
             closeContextMenu();
+            if (simulationModeEnabled) {
+              onSimulationElementPrimaryClick?.(event, edgeId);
+              return;
+            }
             if (onItemSelect) {
               const isAdditiveSelection = event.shiftKey || event.ctrlKey || event.metaKey;
               onItemSelect({
@@ -761,6 +792,12 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
           },
           onContextMenu: (e: React.MouseEvent, connection: DiagramConnectionData) => {
             closeContextMenu();
+            if (simulationModeEnabled) {
+              e.stopPropagation();
+              e.preventDefault();
+              onSimulationElementClick?.(e, edgeId);
+              return;
+            }
             if (onItemSelect && !isConnectionHighlighted) {
               onItemSelect({
                 ...connection,
@@ -824,12 +861,18 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
           <g
             key={`${edge.from}-${edge.to}-${index}-${edge.toArrow ? 'arrow' : 'noarrow'}-${edge._updated || ''}-r${connectionRenderRevision ?? ''}`}
             className={cn(isConnectionHighlighted && 'drop-shadow-[0_0_6px_rgba(0,200,150,0.8)]')}
+            style={{
+              opacity: statusStyle?.opacity ?? stateStyle?.opacity ?? 1,
+              ...(statusStyle?.shadowColor
+                ? { filter: `drop-shadow(0 0 8px ${statusStyle.shadowColor})` }
+                : {}),
+            }}
           >
             {connStyle === 'orthogonal' ? (
               <OrthogonalConnection
                 from={geomFrom}
                 to={geomTo}
-                connectionColor={edge.color}
+                connectionColor={connectionColorOverride ?? edge.color}
                 connectionData={enhancedEdge}
                 route={orthogonalRouteMap.get(index)}
                 nodesById={nodesById}
@@ -877,7 +920,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
               <BezierConnection
                 from={geomFrom}
                 to={geomTo}
-                connectionColor={edge.color}
+                connectionColor={connectionColorOverride ?? edge.color}
                 connectionData={enhancedEdge}
                 exportAnimationTimeSeconds={exportAnimationTimeSeconds}
                 animationConnectionsEnabled={animationConnectionsEnabled && (animationFilterSourceIds ? animationFilterSourceIds.has(edge.from) : (!animationFilterSourceId || edge.from === animationFilterSourceId)) && !animationDisabledSources.has(edge.from)}

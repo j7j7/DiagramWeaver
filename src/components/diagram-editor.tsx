@@ -665,6 +665,13 @@ export default function DiagramEditor() {
   const [rulesEditorOpen, setRulesEditorOpen] = React.useState<boolean>(false);
   const [rules, setRules] = React.useState<import('@/lib/rules-types').DiagramRule[]>([]);
   const [presentationModeEnabled, setPresentationModeEnabled] = React.useState<boolean>(false);
+  const [simulationModeEnabled, setSimulationModeEnabled] = React.useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const saved = localStorage.getItem('dw:simulationMode:enabled');
+      return saved !== null ? JSON.parse(saved) : false;
+    } catch { return false; }
+  });
   const presentationModeEnabledRef = React.useRef(presentationModeEnabled);
   presentationModeEnabledRef.current = presentationModeEnabled;
   const [presentationDecks, setPresentationDecks] = React.useState<PresentationDeck[]>([]);
@@ -799,6 +806,13 @@ export default function DiagramEditor() {
       localStorage.setItem('dw:presentationMode:enabled', JSON.stringify(presentationModeEnabled));
     }
   }, [presentationModeEnabled]);
+
+  // Save simulation mode to localStorage when it changes
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dw:simulationMode:enabled', JSON.stringify(simulationModeEnabled));
+    }
+  }, [simulationModeEnabled]);
 
   React.useEffect(() => {
     if (!presentationModeEnabled) {
@@ -4873,6 +4887,19 @@ export default function DiagramEditor() {
     setPresentationPlayerOpen(false);
   }, [presentationModeEnabled, tabDiagramData, toast]);
 
+  const handleToggleSimulationMode = React.useCallback(() => {
+    setSimulationModeEnabled((prev) => {
+      const next = !prev;
+      toast({
+        title: next ? 'Simulation Mode Enabled' : 'Simulation Mode Disabled',
+        description: next
+          ? 'Left-click cycles state; right-click opens simulation options.'
+          : 'Returned to normal editing interactions.',
+      });
+      return next;
+    });
+  }, [toast]);
+
   const handleCreatePresentationDeck = React.useCallback(async () => {
     const name = window.prompt('Presentation name');
     if (!name || !name.trim()) return;
@@ -5509,6 +5536,22 @@ export default function DiagramEditor() {
         }
         return;
       }
+
+      // Alt+S - Exit simulation mode
+      if (!e.ctrlKey && !e.metaKey && !e.shiftKey && e.altKey && e.key.toLowerCase() === 's') {
+        if (simulationModeEnabled) {
+          e.preventDefault();
+          handleToggleSimulationMode();
+        }
+        return;
+      }
+
+      // Ctrl+Alt+S (or Cmd+Option+S on Mac) - Toggle Simulation Mode
+      if ((isMac ? e.metaKey : e.ctrlKey) && e.altKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        handleToggleSimulationMode();
+        return;
+      }
       
       // Arrow keys - Move selected items by 10px grid
       if ((e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') && selectedItem && selectedItem.itemType !== 'edge') {
@@ -5586,7 +5629,7 @@ export default function DiagramEditor() {
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [jsonPanelOpen, historyIndex, history, selectedItem, selectedItemIds, diagramData, setDiagramData, setSelectedItem, animationConnectionsEnabled, setAnimationConnectionsUserEnabled, setAnimationToggleOnClickEnabled, isReadOnly, handleItemDelete, handleMenuCopy, handleMenuPaste, handleTogglePresentationMode, presentationModeEnabled, presentationPlayerOpen, handleEnterPresentationPlayMode]);
+  }, [jsonPanelOpen, historyIndex, history, selectedItem, selectedItemIds, diagramData, setDiagramData, setSelectedItem, animationConnectionsEnabled, setAnimationConnectionsUserEnabled, setAnimationToggleOnClickEnabled, isReadOnly, handleItemDelete, handleMenuCopy, handleMenuPaste, handleTogglePresentationMode, presentationModeEnabled, presentationPlayerOpen, handleEnterPresentationPlayMode, simulationModeEnabled, handleToggleSimulationMode]);
 
   // Persist panel width (debounced for better performance)
   React.useEffect(() => {
@@ -5933,6 +5976,8 @@ export default function DiagramEditor() {
         onImportIntoSubDiagram={activeDiagramStack.length > 0 ? handleImportIntoSubDiagramClick : undefined}
         onSubDiagramFileChange={handleSubDiagramFileChange}
         subDiagramImportInputRef={subDiagramImportInputRef}
+        simulationModeEnabled={simulationModeEnabled}
+        handleToggleSimulationMode={handleToggleSimulationMode}
       />
       <TutorialOverlay />
     </TutorialProvider>
@@ -6159,6 +6204,8 @@ function DiagramEditorInner({
   canvasRefreshKey,
   activeTab,
   toast,
+  simulationModeEnabled,
+  handleToggleSimulationMode,
 }: any) {
   const presentationConnectionRenderRevision = React.useMemo(() => {
     if (!presentationModeEnabled) return undefined;
@@ -6375,6 +6422,8 @@ function DiagramEditorInner({
                     onRulesChange={setRules}
                     presentationModeEnabled={presentationModeEnabled}
                     onTogglePresentationMode={handleTogglePresentationMode}
+                    simulationModeEnabled={simulationModeEnabled}
+                    onToggleSimulationMode={handleToggleSimulationMode}
                     presentationHasLaterSlides={presentationHasLaterSlides}
                     onPropagateAddToLaterSlides={handlePropagateAddToLaterSlides}
                     onPropagateDeleteToLaterSlides={handlePropagateDeleteToLaterSlides}
@@ -6539,6 +6588,7 @@ function DiagramEditorInner({
                     getHasLinkedSubDiagram={getHasLinkedSubDiagram}
                     onCreateSubDiagram={handleCreateSubDiagram}
                     onRemoveSubDiagramLink={handleRemoveSubDiagramLink}
+                    simulationModeEnabled={simulationModeEnabled}
                     />
                   </div>
 

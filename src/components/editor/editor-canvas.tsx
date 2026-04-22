@@ -23,6 +23,13 @@ import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramConnectionDa
 import { useToast } from "@/hooks/use-toast";
 import type { SelectedItem } from "../diagram-editor";
 import { ContextMenu } from "../ui/context-menu";
+import { SimulationPopupMenu, type SimulationFeature } from "../ui/simulation-popup-menu";
+import {
+  SimulationAvailabilityWorkspace,
+  type AvailabilityStatus,
+  type DependencyGroup,
+  type SimulationElementState,
+} from "./simulation-availability-workspace";
 import { CanvasRulers } from "./canvas-rulers";
 import { RULER_SIZE, type PositionedNode, type PositionedGroup } from "./canvas-constants";
 import { calculateLayout } from "./canvas-layout-utils";
@@ -38,7 +45,7 @@ import { CanvasConnections } from "./canvas-connections";
 import { CanvasArrowToggles } from "./canvas-arrow-toggles";
 import { CanvasConnectionText } from "./canvas-connection-text";
 import { getItemGroup } from "@/lib/grouping-utils";
-import { computeConnectionSlots } from "@/lib/connection-order-utils";
+import { computeConnectionSlots, stableDiagramConnectionId } from "@/lib/connection-order-utils";
 import {
   collectObjectIdsInSelectionOrder,
   nextNodeLabelForAutoNumber,
@@ -66,6 +73,36 @@ import { isEventFromEditableElement } from "@/lib/keyboard-utils";
 import { getDownstreamAnimationChainNodes } from "@/lib/connection-animation";
 
 const ROTATION_DRAG_SENSITIVITY_DEG_PER_PX = 0.5;
+const SIMULATION_AVAILABILITY_STATE_KEY = "simulation:availability:state";
+const SIMULATION_AVAILABILITY_GROUPS_KEY = "simulation:availability:groups";
+const SIMULATION_AVAILABILITY_STATUS_COLORS_KEY = "simulation:availability:status-colors";
+const SIMULATION_AVAILABILITY_SELF_STATE_COLORS_KEY = "simulation:availability:self-state-colors";
+const SIMULATION_AVAILABILITY_STATUS_TEXTS_KEY = "simulation:availability:status-texts";
+const SIMULATION_AVAILABILITY_STATUS_SHADOW_COLORS_KEY = "simulation:availability:status-shadow-colors";
+const SIMULATION_AVAILABILITY_STATE_OPACITY_KEY = "simulation:availability:state-opacity";
+const SIMULATION_AVAILABILITY_DEPENDENCY_OPACITY_KEY = "simulation:availability:dependency-opacity";
+const DEFAULT_SIMULATION_STATUS_COLORS: Record<AvailabilityStatus, string> = {
+  green: "#22c55e",
+  amber: "#f59e0b",
+  red: "#ef4444",
+};
+const DEFAULT_SIMULATION_SELF_STATE_COLORS: Record<SimulationElementState, string> = {
+  active: "#22c55e",
+  degraded: "#f59e0b",
+  inactive: "#ef4444",
+};
+const DEFAULT_SIMULATION_STATUS_TEXTS: Record<AvailabilityStatus, string> = {
+  green: "",
+  amber: "",
+  red: "",
+};
+const DEFAULT_SIMULATION_STATUS_SHADOW_COLORS: Record<AvailabilityStatus, string> = {
+  green: "#22c55e",
+  amber: "#f59e0b",
+  red: "#ef4444",
+};
+const DEFAULT_SIMULATION_STATE_OPACITY = 0.35;
+const DEFAULT_SIMULATION_DEPENDENCY_OPACITY = 0.8;
 
 function normalizeRotationDegrees(rotation: number): number {
   let r = rotation % 360;
@@ -76,6 +113,112 @@ function normalizeRotationDegrees(rotation: number): number {
 
 function snapRotationDegrees(rotation: number, snapStep: number): number {
   return normalizeRotationDegrees(Math.round(rotation / snapStep) * snapStep);
+}
+
+function parseSimulationJson<T>(rawValue: string | undefined, fallback: T): T {
+  if (!rawValue) return fallback;
+  try {
+    return JSON.parse(rawValue) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function parseSimulationNumber(rawValue: string | undefined, fallback: number): number {
+  if (!rawValue) return fallback;
+  const parsed = Number(rawValue);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function getSimulationStateFromMetaData(metaData?: Record<string, string>): SimulationElementState {
+  const rawState = metaData?.[SIMULATION_AVAILABILITY_STATE_KEY];
+  return rawState === "degraded" || rawState === "inactive" ? rawState : "active";
+}
+
+function getSimulationGroupsFromMetaData(metaData?: Record<string, string>): DependencyGroup[] {
+  const parsed = parseSimulationJson<DependencyGroup[]>(metaData?.[SIMULATION_AVAILABILITY_GROUPS_KEY], []);
+  return Array.isArray(parsed) ? parsed : [];
+}
+
+function getSimulationStatusColorsFromMetaData(metaData?: Record<string, string>): Record<AvailabilityStatus, string> {
+  return {
+    ...DEFAULT_SIMULATION_STATUS_COLORS,
+    ...parseSimulationJson<Record<AvailabilityStatus, string>>(
+      metaData?.[SIMULATION_AVAILABILITY_STATUS_COLORS_KEY],
+      DEFAULT_SIMULATION_STATUS_COLORS,
+    ),
+  };
+}
+
+function getSimulationSelfStateColorsFromMetaData(metaData?: Record<string, string>): Record<SimulationElementState, string> {
+  return {
+    ...DEFAULT_SIMULATION_SELF_STATE_COLORS,
+    ...parseSimulationJson<Record<SimulationElementState, string>>(
+      metaData?.[SIMULATION_AVAILABILITY_SELF_STATE_COLORS_KEY],
+      DEFAULT_SIMULATION_SELF_STATE_COLORS,
+    ),
+  };
+}
+
+function getSimulationStatusTextsFromMetaData(metaData?: Record<string, string>): Record<AvailabilityStatus, string> {
+  return {
+    ...DEFAULT_SIMULATION_STATUS_TEXTS,
+    ...parseSimulationJson<Record<AvailabilityStatus, string>>(
+      metaData?.[SIMULATION_AVAILABILITY_STATUS_TEXTS_KEY],
+      DEFAULT_SIMULATION_STATUS_TEXTS,
+    ),
+  };
+}
+
+function getSimulationStatusShadowColorsFromMetaData(metaData?: Record<string, string>): Record<AvailabilityStatus, string> {
+  return {
+    ...DEFAULT_SIMULATION_STATUS_SHADOW_COLORS,
+    ...parseSimulationJson<Record<AvailabilityStatus, string>>(
+      metaData?.[SIMULATION_AVAILABILITY_STATUS_SHADOW_COLORS_KEY],
+      DEFAULT_SIMULATION_STATUS_SHADOW_COLORS,
+    ),
+  };
+}
+
+function resolveAvailabilityThreshold(value: number, total: number): number {
+  if (value === 0) return 0;
+  if (value > 0 && value < 1) return Math.min(total, Math.max(1, Math.ceil(value * total)));
+  return Math.min(total, Math.max(1, Math.round(value)));
+}
+
+function computeDependencyGroupStatus(
+  group: DependencyGroup,
+  simulationItemStateById: Record<string, SimulationElementState>,
+): AvailabilityStatus {
+  const total = group.memberIds.length;
+  if (total === 0) return "green";
+  const getState = (id: string): SimulationElementState => simulationItemStateById[id] ?? "active";
+  const activeCount = group.memberIds.filter((id) => getState(id) !== "inactive").length;
+  const healthyCount = group.memberIds.filter((id) => getState(id) === "active").length;
+  const minHealthy = resolveAvailabilityThreshold(group.minHealthy, total);
+  const minDegraded = group.minDegraded === 0 ? 0 : resolveAvailabilityThreshold(group.minDegraded, total);
+  if (healthyCount >= minHealthy) return "green";
+  if (minDegraded === 0 || activeCount >= minDegraded) return "amber";
+  return "red";
+}
+
+function computeAvailabilityStatus(
+  groups: DependencyGroup[],
+  simulationItemStateById: Record<string, SimulationElementState>,
+): AvailabilityStatus {
+  let hasAmber = false;
+  for (const group of groups) {
+    const status = computeDependencyGroupStatus(group, simulationItemStateById);
+    if (status === "red") return "red";
+    if (status === "amber") hasAmber = true;
+  }
+  return hasAmber ? "amber" : "green";
+}
+
+function nextSimulationElementState(state: SimulationElementState): SimulationElementState {
+  if (state === "active") return "degraded";
+  if (state === "degraded") return "inactive";
+  return "active";
 }
 
 interface EditorCanvasProps {
@@ -176,6 +319,8 @@ interface EditorCanvasProps {
   onConnectorLineVertexFocus?: (nodeId: string, vertexIndex: number) => void;
   /** Return true if a focused line vertex was deleted (or delete was cancelled) — skip full node / batch delete */
   tryDeleteConnectorLineVertexBeforeNodeDelete?: (nodeId: string) => boolean;
+  /** Simulation mode enables right-click simulation menu and left-click state cycling. */
+  simulationModeEnabled?: boolean;
 }
 
 
@@ -198,7 +343,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-   { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionInsertNode, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, defaultTextLabelsEnabled = true, connectionsBehindNodesEnabled = true, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal, setChartDataEditorModal, nodeAnimationStyles, connectionAnimationStyles, connectionKey, connectionRenderRevision, onSubDiagramDoubleClick, getHasLinkedSubDiagram, onCreateSubDiagram, onRemoveSubDiagramLink, onPauseConnectionAnimationsForOverlayUi, connectorLineFocusedVertex = null, onConnectorLineVertexFocus, tryDeleteConnectorLineVertexBeforeNodeDelete }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionInsertNode, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, defaultTextLabelsEnabled = true, connectionsBehindNodesEnabled = true, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal, setChartDataEditorModal, nodeAnimationStyles, connectionAnimationStyles, connectionKey, connectionRenderRevision, onSubDiagramDoubleClick, getHasLinkedSubDiagram, onCreateSubDiagram, onRemoveSubDiagramLink, onPauseConnectionAnimationsForOverlayUi, connectorLineFocusedVertex = null, onConnectorLineVertexFocus, tryDeleteConnectorLineVertexBeforeNodeDelete, simulationModeEnabled = false }: EditorCanvasProps,
   ref
 ) {
   const [gifExportAnimationTimeSeconds, setGifExportAnimationTimeSeconds] = React.useState<number | null>(null);
@@ -304,6 +449,17 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     width: number;
     height: number;
     bottom: number;
+  } | null>(null);
+  const [simulationMenuState, setSimulationMenuState] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    itemId: string;
+    itemType: "node" | "zone" | "connection";
+  } | null>(null);
+  const [availabilityWorkspaceTarget, setAvailabilityWorkspaceTarget] = useState<{
+    itemId: string;
+    itemType: "node" | "zone" | "connection";
   } | null>(null);
 
   // Client-side rendering state
@@ -1216,10 +1372,39 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   // ============================================================================
   // Handles clicks and context menus for individual nodes and zones
   // Wrapped in useCallback for stable references (enables DiagramNode memoization)
+
+  const openSimulationMenu = useCallback(
+    (e: React.MouseEvent, itemId: string, itemType: "node" | "zone" | "connection") => {
+      e.stopPropagation();
+      e.preventDefault();
+      setSimulationMenuState({ visible: true, x: e.clientX, y: e.clientY, itemId, itemType });
+      closeContextMenu();
+    },
+    [closeContextMenu],
+  );
+
   const handleNodeClick = useCallback((e: React.MouseEvent, node: DiagramNodeData) => {
     e.stopPropagation();
     closeContextMenu();
+    setSimulationMenuState(null);
     onResetConnectionSettingsTrigger?.(); // Reset connection settings panel when clicking on a node
+
+    if (simulationModeEnabled) {
+      e.stopPropagation();
+      // cycle state inline — handleSimulationElementPrimaryClick defined later
+      setDiagramData((prev) => {
+        const metaKey = SIMULATION_AVAILABILITY_STATE_KEY;
+        const currentState = (prev.nodes.find(n => n.id === node.id)?.metaData?.[metaKey]
+          ?? prev.zones?.find(z => z.id === node.id)?.metaData?.[metaKey]
+          ?? "active") as SimulationElementState;
+        const next = nextSimulationElementState(currentState);
+        return {
+          ...prev,
+          nodes: prev.nodes.map(n => n.id === node.id ? { ...n, metaData: { ...(n.metaData ?? {}), [metaKey]: next } } : n),
+        };
+      });
+      return;
+    }
     
     // When animation mode is on: select = enable animations for this node's chain, deselect = stop.
     // Ensure this node's chain is enabled (clear from disabled) so animations show when selecting.
@@ -1236,11 +1421,16 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       const isAdditiveSelection = e.shiftKey || e.ctrlKey || e.metaKey;
       onItemSelect({ ...node, itemType: 'node' }, isAdditiveSelection); // Normal selection
     }
-  }, [closeContextMenu, onResetConnectionSettingsTrigger, animationToggleOnClickEnabled, isConnectMode, onNodeClickInConnectMode, onItemSelect, onAnimationDisabledSourcesChange, animationDisabledSources, diagramData]);
+  }, [closeContextMenu, onResetConnectionSettingsTrigger, simulationModeEnabled, setDiagramData, animationToggleOnClickEnabled, isConnectMode, onNodeClickInConnectMode, onItemSelect, onAnimationDisabledSourcesChange, animationDisabledSources, diagramData]);
 
   const handleNodeContextMenu = useCallback((e: React.MouseEvent, node: DiagramNodeData) => {
     e.stopPropagation();
     e.preventDefault();
+    setSimulationMenuState(null);
+    if (simulationModeEnabled) {
+      openSimulationMenu(e, node.id, "node");
+      return;
+    }
     // If multiple items are selected and this node is already in the selection, preserve the selection
     // Otherwise, select just this node
     if (selectedItemIds.size > 1 && selectedItemIds.has(node.id)) {
@@ -1252,23 +1442,43 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     onResetConnectionSettingsTrigger?.();
     setLastRightClickItemId(node.id);
     handleContextMenu(e, node.id, 'node'); // Opens context menu
-  }, [selectedItemIds, selectedItemId, onItemSelect, onResetConnectionSettingsTrigger, handleContextMenu]);
+  }, [simulationModeEnabled, openSimulationMenu, selectedItemIds, selectedItemId, onItemSelect, onResetConnectionSettingsTrigger, handleContextMenu]);
 
   const handleZoneClick = useCallback((e: React.MouseEvent, zone: DiagramZoneData) => {
     e.stopPropagation();
     closeContextMenu();
+    setSimulationMenuState(null);
     onResetConnectionSettingsTrigger?.(); // Reset connection settings panel when clicking on a zone
+    if (simulationModeEnabled) {
+      e.stopPropagation();
+      setDiagramData((prev) => {
+        const metaKey = SIMULATION_AVAILABILITY_STATE_KEY;
+        const currentState = (prev.zones?.find(z => z.id === zone.id)?.metaData?.[metaKey]
+          ?? "active") as SimulationElementState;
+        const next = nextSimulationElementState(currentState);
+        return {
+          ...prev,
+          zones: (prev.zones ?? []).map(z => z.id === zone.id ? { ...z, metaData: { ...(z.metaData ?? {}), [metaKey]: next } } : z),
+        };
+      });
+      return;
+    }
     if (isConnectMode) {
       onNodeClickInConnectMode(zone as any); // Zones can also be connection targets
     } else {
       const isAdditiveSelection = e.shiftKey || e.ctrlKey || e.metaKey;
       onItemSelect({ ...zone, itemType: 'node' } as Parameters<typeof onItemSelect>[0], isAdditiveSelection);
     }
-  }, [closeContextMenu, onResetConnectionSettingsTrigger, isConnectMode, onNodeClickInConnectMode, onItemSelect]);
+  }, [closeContextMenu, onResetConnectionSettingsTrigger, simulationModeEnabled, setDiagramData, isConnectMode, onNodeClickInConnectMode, onItemSelect]);
 
   const handleZoneContextMenu = useCallback((e: React.MouseEvent, zone: DiagramZoneData) => {
     e.stopPropagation();
     e.preventDefault();
+    setSimulationMenuState(null);
+    if (simulationModeEnabled) {
+      openSimulationMenu(e, zone.id, "zone");
+      return;
+    }
     // If multiple items are selected and this zone is already in the selection, preserve the selection
     // Otherwise, select just this zone
     if (selectedItemIds.size > 1 && selectedItemIds.has(zone.id)) {
@@ -1280,7 +1490,226 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     onResetConnectionSettingsTrigger?.();
     setLastRightClickItemId(zone.id);
     handleContextMenu(e, zone.id, 'zone');
-  }, [selectedItemIds, selectedItemId, onItemSelect, onResetConnectionSettingsTrigger, handleContextMenu]);
+  }, [simulationModeEnabled, openSimulationMenu, selectedItemIds, selectedItemId, onItemSelect, onResetConnectionSettingsTrigger, handleContextMenu]);
+
+  const allSimulationCanvasElements = useMemo(() => {
+    const connectionLabelById = new Map<string, string>();
+    diagramData.connections.forEach((connection, index) => {
+      const stableId = stableDiagramConnectionId(connection, index);
+      const fromLabel = nodesById[connection.from]?.label || zonesById[connection.from]?.label || connection.from;
+      const toLabel = nodesById[connection.to]?.label || zonesById[connection.to]?.label || connection.to;
+      connectionLabelById.set(stableId, connection.text?.trim() || `${fromLabel} -> ${toLabel}`);
+    });
+
+    return [
+      ...diagramData.nodes.map((node) => ({ id: node.id, label: node.label || node.id, type: "node" as const })),
+      ...(diagramData.zones ?? []).map((zone) => ({ id: zone.id, label: zone.label || zone.id, type: "zone" as const })),
+      ...diagramData.connections.map((connection, index) => ({
+        id: stableDiagramConnectionId(connection, index),
+        label: connectionLabelById.get(stableDiagramConnectionId(connection, index)) || stableDiagramConnectionId(connection, index),
+        type: "connection" as const,
+      })),
+    ];
+  }, [diagramData.connections, diagramData.nodes, diagramData.zones, nodesById, zonesById]);
+
+  const simulationItemStateById = useMemo(() => {
+    const result: Record<string, SimulationElementState> = {};
+    diagramData.nodes.forEach((node) => {
+      result[node.id] = getSimulationStateFromMetaData(node.metaData);
+    });
+    (diagramData.zones ?? []).forEach((zone) => {
+      result[zone.id] = getSimulationStateFromMetaData(zone.metaData);
+    });
+    diagramData.connections.forEach((connection, index) => {
+      result[stableDiagramConnectionId(connection, index)] = getSimulationStateFromMetaData(connection.metaData);
+    });
+    return result;
+  }, [diagramData.connections, diagramData.nodes, diagramData.zones]);
+
+  const availabilityWorkspaceItem = useMemo(() => {
+    if (!availabilityWorkspaceTarget) return null;
+    if (availabilityWorkspaceTarget.itemType === "node") {
+      return diagramData.nodes.find((node) => node.id === availabilityWorkspaceTarget.itemId) || null;
+    }
+    if (availabilityWorkspaceTarget.itemType === "zone") {
+      return diagramData.zones?.find((zone) => zone.id === availabilityWorkspaceTarget.itemId) || null;
+    }
+    const connection = diagramData.connections.find((conn, index) => stableDiagramConnectionId(conn, index) === availabilityWorkspaceTarget.itemId);
+    if (!connection) return null;
+    const fromLabel = nodesById[connection.from]?.label || zonesById[connection.from]?.label || connection.from;
+    const toLabel = nodesById[connection.to]?.label || zonesById[connection.to]?.label || connection.to;
+    return {
+      ...connection,
+      label: connection.text?.trim() || `${fromLabel} -> ${toLabel}`,
+    };
+  }, [availabilityWorkspaceTarget, diagramData.nodes, diagramData.zones, diagramData.connections, nodesById, zonesById]);
+
+  const availabilityWorkspaceConfig = useMemo(() => {
+    const metaData = availabilityWorkspaceItem?.metaData;
+    return {
+      targetState: getSimulationStateFromMetaData(metaData),
+      dependencyGroups: getSimulationGroupsFromMetaData(metaData),
+      statusColors: getSimulationStatusColorsFromMetaData(metaData),
+      statusTexts: getSimulationStatusTextsFromMetaData(metaData),
+      statusShadowColors: getSimulationStatusShadowColorsFromMetaData(metaData),
+      stateColors: getSimulationSelfStateColorsFromMetaData(metaData),
+      stateOpacity: parseSimulationNumber(metaData?.[SIMULATION_AVAILABILITY_STATE_OPACITY_KEY], DEFAULT_SIMULATION_STATE_OPACITY),
+      dependencyOpacity: parseSimulationNumber(metaData?.[SIMULATION_AVAILABILITY_DEPENDENCY_OPACITY_KEY], DEFAULT_SIMULATION_DEPENDENCY_OPACITY),
+    };
+  }, [availabilityWorkspaceItem]);
+
+  const availabilityWorkspaceStatus = useMemo(() => {
+    return computeAvailabilityStatus(availabilityWorkspaceConfig.dependencyGroups, simulationItemStateById);
+  }, [availabilityWorkspaceConfig.dependencyGroups, simulationItemStateById]);
+
+  const simulationStatusStyleByItemId = useMemo(() => {
+    const result: Record<string, { color: string; opacity?: number; shadowColor?: string }> = {};
+
+    const applyFromMeta = (itemId: string, metaData?: Record<string, string>) => {
+      const groups = getSimulationGroupsFromMetaData(metaData);
+      if (!groups.length) return;
+      const status = computeAvailabilityStatus(groups, simulationItemStateById);
+      const statusColors = getSimulationStatusColorsFromMetaData(metaData);
+      const shadowColors = getSimulationStatusShadowColorsFromMetaData(metaData);
+      const opacity = parseSimulationNumber(metaData?.[SIMULATION_AVAILABILITY_DEPENDENCY_OPACITY_KEY], DEFAULT_SIMULATION_DEPENDENCY_OPACITY);
+      result[itemId] = {
+        color: statusColors[status],
+        opacity,
+        shadowColor: shadowColors[status],
+      };
+    };
+
+    diagramData.nodes.forEach((node) => applyFromMeta(node.id, node.metaData));
+    (diagramData.zones ?? []).forEach((zone) => applyFromMeta(zone.id, zone.metaData));
+    diagramData.connections.forEach((connection, index) => {
+      applyFromMeta(stableDiagramConnectionId(connection, index), connection.metaData);
+    });
+
+    return result;
+  }, [diagramData, simulationItemStateById]);
+
+  const simulationStateStyleByItemId = useMemo(() => {
+    const result: Record<string, { color: string; opacity?: number }> = {};
+
+    const applyFromMeta = (itemId: string, metaData?: Record<string, string>) => {
+      const state = getSimulationStateFromMetaData(metaData);
+      if (state === "active") return;
+      const stateColors = getSimulationSelfStateColorsFromMetaData(metaData);
+      const opacity = parseSimulationNumber(metaData?.[SIMULATION_AVAILABILITY_STATE_OPACITY_KEY], DEFAULT_SIMULATION_STATE_OPACITY);
+      result[itemId] = {
+        color: stateColors[state],
+        opacity,
+      };
+    };
+
+    diagramData.nodes.forEach((node) => applyFromMeta(node.id, node.metaData));
+    (diagramData.zones ?? []).forEach((zone) => applyFromMeta(zone.id, zone.metaData));
+    diagramData.connections.forEach((connection, index) => {
+      applyFromMeta(stableDiagramConnectionId(connection, index), connection.metaData);
+    });
+
+    return result;
+  }, [diagramData]);
+
+  const simulationNotificationTextByItemId = useMemo(() => {
+    const result: Record<string, string> = {};
+
+    const applyFromMeta = (itemId: string, metaData?: Record<string, string>) => {
+      const groups = getSimulationGroupsFromMetaData(metaData);
+      if (!groups.length) return;
+      const status = computeAvailabilityStatus(groups, simulationItemStateById);
+      const statusTexts = getSimulationStatusTextsFromMetaData(metaData);
+      const text = statusTexts[status]?.trim();
+      if (text) result[itemId] = text;
+    };
+
+    diagramData.nodes.forEach((node) => applyFromMeta(node.id, node.metaData));
+    (diagramData.zones ?? []).forEach((zone) => applyFromMeta(zone.id, zone.metaData));
+
+    return result;
+  }, [diagramData, simulationItemStateById]);
+
+  const updateSimulationMetaDataForTarget = useCallback((updates: Record<string, string>) => {
+    if (!availabilityWorkspaceTarget) return;
+    setDiagramData((prev) => {
+      if (availabilityWorkspaceTarget.itemType === "node") {
+        return {
+          ...prev,
+          nodes: prev.nodes.map((node) =>
+            node.id === availabilityWorkspaceTarget.itemId
+              ? { ...node, metaData: { ...(node.metaData ?? {}), ...updates } }
+              : node,
+          ),
+        };
+      }
+      if (availabilityWorkspaceTarget.itemType === "connection") {
+        return {
+          ...prev,
+          connections: prev.connections.map((connection, index) => {
+            const stableId = stableDiagramConnectionId(connection, index);
+            if (stableId !== availabilityWorkspaceTarget.itemId) return connection;
+            return { ...connection, metaData: { ...(connection.metaData ?? {}), ...updates } };
+          }),
+        };
+      }
+      return {
+        ...prev,
+        zones: (prev.zones ?? []).map((zone) =>
+          zone.id === availabilityWorkspaceTarget.itemId
+            ? { ...zone, metaData: { ...(zone.metaData ?? {}), ...updates } }
+            : zone,
+        ),
+      };
+    });
+  }, [availabilityWorkspaceTarget, setDiagramData]);
+
+  const updateSimulationStateById = useCallback((itemId: string, state: SimulationElementState) => {
+    setDiagramData((prev) => ({
+      ...prev,
+      nodes: prev.nodes.map((node) =>
+        node.id === itemId
+          ? { ...node, metaData: { ...(node.metaData ?? {}), [SIMULATION_AVAILABILITY_STATE_KEY]: state } }
+          : node,
+      ),
+      zones: (prev.zones ?? []).map((zone) =>
+        zone.id === itemId
+          ? { ...zone, metaData: { ...(zone.metaData ?? {}), [SIMULATION_AVAILABILITY_STATE_KEY]: state } }
+          : zone,
+      ),
+      connections: prev.connections.map((connection, index) => {
+        const stableId = stableDiagramConnectionId(connection, index);
+        if (stableId !== itemId) return connection;
+        return {
+          ...connection,
+          metaData: { ...(connection.metaData ?? {}), [SIMULATION_AVAILABILITY_STATE_KEY]: state },
+        };
+      }),
+    }));
+  }, [setDiagramData]);
+
+  const handleSimulationElementPrimaryClick = useCallback((e: React.MouseEvent, itemId: string) => {
+    if (!simulationModeEnabled) return;
+    e.stopPropagation();
+    const current = simulationItemStateById[itemId] ?? "active";
+    updateSimulationStateById(itemId, nextSimulationElementState(current));
+  }, [simulationModeEnabled, simulationItemStateById, updateSimulationStateById]);
+
+  const handleSimulationFeatureSelect = useCallback((feature: SimulationFeature) => {
+    if (!simulationMenuState) return;
+    if (feature === "availability") {
+      setAvailabilityWorkspaceTarget({
+        itemId: simulationMenuState.itemId,
+        itemType: simulationMenuState.itemType,
+      });
+      setSimulationMenuState(null);
+      return;
+    }
+    toast({
+      title: "Simulation feature not restored yet",
+      description: `${feature.charAt(0).toUpperCase() + feature.slice(1)} simulation is not wired in this branch yet.`,
+    });
+    setSimulationMenuState(null);
+  }, [simulationMenuState, toast]);
 
   // ============================================================================
   // DRAG AND DROP SETUP
@@ -1527,6 +1956,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             // If we reach here, it's empty canvas - show search resources modal
             const target = e.target as HTMLElement;
             if (target.closest('[data-node-id]') || target.closest('[data-zone-id]')) return;
+            if (simulationModeEnabled) return;
             if (isReadOnly || !onResourceActivateAtPosition) return;
             if (!canvasRef.current) return;
             const rect = canvasRef.current.getBoundingClientRect();
@@ -1540,6 +1970,14 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             setSearchModalOpen(true);
           }}
         >
+          {simulationModeEnabled && (
+            <div className="pointer-events-none absolute bottom-4 right-4 z-30">
+              <div className="rounded-lg border border-border/60 bg-background/75 px-3 py-1.5 text-[11px] font-medium text-muted-foreground shadow-sm backdrop-blur">
+                Left-click cycles Active, Degraded, Inactive. Right-click opens simulation options.
+              </div>
+            </div>
+          )}
+
           {/* ====================================================================
               TRANSFORMABLE DIAGRAM CONTENT AREA
               ====================================================================
@@ -1558,6 +1996,129 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             }}
           >
             {/* Zones removed - diagram is flat (nodes only) */}
+
+            {simulationModeEnabled && Object.entries(simulationStatusStyleByItemId).map(([itemId, style]) => {
+              const node = displayNodesById[itemId];
+              if (node) {
+                const dims = measureNodeDims(node as PositionedNode);
+                return (
+                  <div
+                    key={`sim-status-node-${itemId}`}
+                    className="pointer-events-none absolute rounded-lg"
+                    style={{
+                      left: `${(node.x ?? 0) - 4}px`,
+                      top: `${(node.y ?? 0) - 4}px`,
+                      width: `${dims.width + 8}px`,
+                      height: `${dims.height + 8}px`,
+                      border: `2px solid ${style.color}`,
+                      boxShadow: `0 0 0 1px ${style.color}33, 0 0 14px ${style.shadowColor ?? style.color}66`,
+                      opacity: style.opacity ?? 1,
+                      zIndex: 40,
+                    }}
+                  />
+                );
+              }
+
+              const zone = displayZonesById[itemId];
+              if (zone) {
+                return (
+                  <div
+                    key={`sim-status-zone-${itemId}`}
+                    className="pointer-events-none absolute rounded-lg"
+                    style={{
+                      left: `${(zone.x ?? 0) - 4}px`,
+                      top: `${(zone.y ?? 0) - 4}px`,
+                      width: `${(zone.width ?? 300) + 8}px`,
+                      height: `${(zone.height ?? 220) + 8}px`,
+                      border: `2px solid ${style.color}`,
+                      boxShadow: `0 0 0 1px ${style.color}33, 0 0 14px ${style.shadowColor ?? style.color}66`,
+                      opacity: style.opacity ?? 1,
+                      zIndex: 40,
+                    }}
+                  />
+                );
+              }
+              return null;
+            })}
+
+            {simulationModeEnabled && Object.entries(simulationStateStyleByItemId).map(([itemId, style]) => {
+              if (simulationStatusStyleByItemId[itemId]) return null;
+              const node = displayNodesById[itemId];
+              if (node) {
+                const dims = measureNodeDims(node as PositionedNode);
+                return (
+                  <div
+                    key={`sim-state-node-${itemId}`}
+                    className="pointer-events-none absolute rounded-lg"
+                    style={{
+                      left: `${(node.x ?? 0) - 3}px`,
+                      top: `${(node.y ?? 0) - 3}px`,
+                      width: `${dims.width + 6}px`,
+                      height: `${dims.height + 6}px`,
+                      border: `2px dashed ${style.color}`,
+                      opacity: style.opacity ?? 1,
+                      zIndex: 35,
+                    }}
+                  />
+                );
+              }
+
+              const zone = displayZonesById[itemId];
+              if (zone) {
+                return (
+                  <div
+                    key={`sim-state-zone-${itemId}`}
+                    className="pointer-events-none absolute rounded-lg"
+                    style={{
+                      left: `${(zone.x ?? 0) - 3}px`,
+                      top: `${(zone.y ?? 0) - 3}px`,
+                      width: `${(zone.width ?? 300) + 6}px`,
+                      height: `${(zone.height ?? 220) + 6}px`,
+                      border: `2px dashed ${style.color}`,
+                      opacity: style.opacity ?? 1,
+                      zIndex: 35,
+                    }}
+                  />
+                );
+              }
+              return null;
+            })}
+
+            {simulationModeEnabled && Object.entries(simulationNotificationTextByItemId).map(([itemId, text]) => {
+              const node = displayNodesById[itemId];
+              if (node) {
+                return (
+                  <div
+                    key={`sim-notify-node-${itemId}`}
+                    className="pointer-events-none absolute rounded bg-background/90 px-2 py-1 text-[11px] text-foreground shadow-sm"
+                    style={{
+                      left: `${(node.x ?? 0)}px`,
+                      top: `${(node.y ?? 0) - 22}px`,
+                      zIndex: 45,
+                    }}
+                  >
+                    {text}
+                  </div>
+                );
+              }
+              const zone = displayZonesById[itemId];
+              if (zone) {
+                return (
+                  <div
+                    key={`sim-notify-zone-${itemId}`}
+                    className="pointer-events-none absolute rounded bg-background/90 px-2 py-1 text-[11px] text-foreground shadow-sm"
+                    style={{
+                      left: `${(zone.x ?? 0)}px`,
+                      top: `${(zone.y ?? 0) - 22}px`,
+                      zIndex: 45,
+                    }}
+                  >
+                    {text}
+                  </div>
+                );
+              }
+              return null;
+            })}
 
             {/* ================================================================
                 NODES + CONNECTIONS (layering mode)
@@ -1598,6 +2159,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   canvasRef={canvasRef}
                   isReadOnly={isReadOnly}
                   orthogonalFastRouting={isCanvasItemDragging}
+                  simulationModeEnabled={simulationModeEnabled}
+                  onSimulationElementPrimaryClick={handleSimulationElementPrimaryClick}
+                  onSimulationElementClick={(e, itemId) => openSimulationMenu(e, itemId, "connection")}
+                  simulationStatusStyleByItemId={simulationStatusStyleByItemId}
+                  simulationStateStyleByItemId={simulationStateStyleByItemId}
                 />
                 {connectionSlots.sortedItemIds.map((itemId, i) => {
                   const node = nodesById[itemId];
@@ -1789,6 +2355,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       canvasRef={canvasRef}
                       isReadOnly={isReadOnly}
                       orthogonalFastRouting={isCanvasItemDragging}
+                      simulationModeEnabled={simulationModeEnabled}
+                      onSimulationElementPrimaryClick={handleSimulationElementPrimaryClick}
+                      onSimulationElementClick={(e, itemId) => openSimulationMenu(e, itemId, "connection")}
+                      simulationStatusStyleByItemId={simulationStatusStyleByItemId}
+                      simulationStateStyleByItemId={simulationStateStyleByItemId}
                     />
                   ) : null,
                   nodeEl,
@@ -1854,6 +2425,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   canvasRef={canvasRef}
                   isReadOnly={isReadOnly}
                   orthogonalFastRouting={isCanvasItemDragging}
+                  simulationModeEnabled={simulationModeEnabled}
+                  onSimulationElementPrimaryClick={handleSimulationElementPrimaryClick}
+                  onSimulationElementClick={(e, itemId) => openSimulationMenu(e, itemId, "connection")}
+                  simulationStatusStyleByItemId={simulationStatusStyleByItemId}
+                  simulationStateStyleByItemId={simulationStateStyleByItemId}
                 />
               );
             })()}
@@ -2038,6 +2614,20 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             }}
             onCopy={() => {
               handleCopy(contextMenu.itemId);
+              closeContextMenu();
+            }}
+            onSimulation={() => {
+              if (!contextMenu.itemId || (contextMenu.itemType !== "node" && contextMenu.itemType !== "zone")) {
+                closeContextMenu();
+                return;
+              }
+              setSimulationMenuState({
+                visible: true,
+                x: contextMenu.x + 164,
+                y: contextMenu.y,
+                itemId: contextMenu.itemId,
+                itemType: contextMenu.itemType,
+              });
               closeContextMenu();
             }}
             onConnect={() => {
@@ -2374,6 +2964,82 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             canAutoNumber={canAutoNumberLabels}
             onAutoNumberLabels={handleAutoNumberLabels}
           />
+          <SimulationPopupMenu
+            x={simulationMenuState?.x ?? 0}
+            y={simulationMenuState?.y ?? 0}
+            visible={simulationMenuState?.visible === true}
+            onClose={() => setSimulationMenuState(null)}
+            onSelect={handleSimulationFeatureSelect}
+          />
+          {availabilityWorkspaceTarget && availabilityWorkspaceItem && (
+            <SimulationAvailabilityWorkspace
+              open={true}
+              onOpenChange={(open) => {
+                if (!open) setAvailabilityWorkspaceTarget(null);
+              }}
+              targetId={availabilityWorkspaceTarget.itemId}
+              targetLabel={availabilityWorkspaceItem.label || availabilityWorkspaceTarget.itemId}
+              targetStatus={availabilityWorkspaceStatus}
+              targetState={availabilityWorkspaceConfig.targetState}
+              dependencyGroups={availabilityWorkspaceConfig.dependencyGroups}
+              statusColors={availabilityWorkspaceConfig.statusColors}
+              statusTexts={availabilityWorkspaceConfig.statusTexts}
+              statusShadowColors={availabilityWorkspaceConfig.statusShadowColors}
+              stateColors={availabilityWorkspaceConfig.stateColors}
+              stateOpacity={availabilityWorkspaceConfig.stateOpacity}
+              dependencyOpacity={availabilityWorkspaceConfig.dependencyOpacity}
+              allCanvasElements={allSimulationCanvasElements}
+              simulationItemStateById={simulationItemStateById}
+              onItemStateChange={updateSimulationStateById}
+              onGroupsChange={(groups) => {
+                updateSimulationMetaDataForTarget({
+                  [SIMULATION_AVAILABILITY_GROUPS_KEY]: JSON.stringify(groups),
+                });
+              }}
+              onStatusColorChange={(status, color) => {
+                updateSimulationMetaDataForTarget({
+                  [SIMULATION_AVAILABILITY_STATUS_COLORS_KEY]: JSON.stringify({
+                    ...availabilityWorkspaceConfig.statusColors,
+                    [status]: color,
+                  }),
+                });
+              }}
+              onStatusTextChange={(status, text) => {
+                updateSimulationMetaDataForTarget({
+                  [SIMULATION_AVAILABILITY_STATUS_TEXTS_KEY]: JSON.stringify({
+                    ...availabilityWorkspaceConfig.statusTexts,
+                    [status]: text,
+                  }),
+                });
+              }}
+              onStatusShadowColorChange={(status, color) => {
+                updateSimulationMetaDataForTarget({
+                  [SIMULATION_AVAILABILITY_STATUS_SHADOW_COLORS_KEY]: JSON.stringify({
+                    ...availabilityWorkspaceConfig.statusShadowColors,
+                    [status]: color,
+                  }),
+                });
+              }}
+              onStateColorChange={(state, color) => {
+                updateSimulationMetaDataForTarget({
+                  [SIMULATION_AVAILABILITY_SELF_STATE_COLORS_KEY]: JSON.stringify({
+                    ...availabilityWorkspaceConfig.stateColors,
+                    [state]: color,
+                  }),
+                });
+              }}
+              onStateOpacityChange={(opacity) => {
+                updateSimulationMetaDataForTarget({
+                  [SIMULATION_AVAILABILITY_STATE_OPACITY_KEY]: String(opacity),
+                });
+              }}
+              onDependencyOpacityChange={(opacity) => {
+                updateSimulationMetaDataForTarget({
+                  [SIMULATION_AVAILABILITY_DEPENDENCY_OPACITY_KEY]: String(opacity),
+                });
+              }}
+            />
+          )}
           {metadataPopupRect &&
             !contextMenu.visible &&
             selectedItem &&

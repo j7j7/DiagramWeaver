@@ -262,6 +262,8 @@ interface TopMenuBarProps {
   onRulesChange?: (rules: import('@/lib/rules-types').DiagramRule[]) => void;
   presentationModeEnabled?: boolean;
   onTogglePresentationMode?: () => void;
+  simulationModeEnabled?: boolean;
+  onToggleSimulationMode?: () => void;
   presentationHasLaterSlides?: boolean;
   onPropagateAddToLaterSlides?: () => void;
   onPropagateDeleteToLaterSlides?: () => void;
@@ -357,6 +359,8 @@ export function TopMenuBar({
   onRulesChange,
   presentationModeEnabled = false,
   onTogglePresentationMode,
+  simulationModeEnabled = false,
+  onToggleSimulationMode,
   presentationHasLaterSlides = false,
   onPropagateAddToLaterSlides,
   onPropagateDeleteToLaterSlides,
@@ -422,7 +426,8 @@ export function TopMenuBar({
     Boolean(onToggleLayersPanel) ||
     Boolean(onToggleScratchPad) ||
     Boolean(onToggleRulesEditor) ||
-    Boolean(onTogglePresentationMode);
+    Boolean(onTogglePresentationMode) ||
+    Boolean(onToggleSimulationMode);
 
   // Function to close connection settings panel
   const handleCloseConnectionSettingsPanel = () => {
@@ -708,6 +713,16 @@ export function TopMenuBar({
                   <Layers className="mr-2 h-4 w-4" />
                   {presentationModeEnabled ? 'Exit Presentation Mode' : 'Enter Presentation Mode'}
                   <MenubarShortcut>{presentationModeEnabled ? 'Alt+P' : 'Ctrl+Alt+P'}</MenubarShortcut>
+                </MenubarItem>
+              </>
+            )}
+            {onToggleSimulationMode && (
+              <>
+                {(onToggleJsonPanel || onTogglePropertiesPanel || onToggleLayersPanel || onToggleScratchPad || onToggleRulesEditor || onTogglePresentationMode) && <MenubarSeparator />}
+                <MenubarItem onClick={onToggleSimulationMode}>
+                  <Layers className="mr-2 h-4 w-4" />
+                  {simulationModeEnabled ? 'Exit Simulation Mode' : 'Enter Simulation Mode'}
+                  <MenubarShortcut>{simulationModeEnabled ? 'Alt+S' : 'Ctrl+Alt+S'}</MenubarShortcut>
                 </MenubarItem>
               </>
             )}

@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { cn, isConnectorLineNodeType, isShapeNodeType } from '@/lib/utils';
 import { isChartNodeType } from '@/lib/chart-node';
-import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup, Plus, ArrowUp, ArrowDown, ChevronUp, ChevronDown, Circle, RotateCw, ArrowDownAZ, ArrowUpAZ, Minus, Lock, Unlock, FileEdit, PieChart, ListOrdered } from 'lucide-react';
+import { Copy, Trash2, Link, Link2Off, Move3D, Type, Palette, Network, Grid3X3, AlignLeft, AlignCenter, Layers, ChevronRight, Group, Ungroup, Plus, ArrowUp, ArrowDown, ChevronUp, ChevronDown, Circle, RotateCw, ArrowDownAZ, ArrowUpAZ, Minus, Lock, Unlock, FileEdit, PieChart, ListOrdered, Activity } from 'lucide-react';
 
 
 interface ContextMenuProps {
@@ -51,6 +51,7 @@ interface ContextMenuProps {
   isLocked?: boolean;
   onEditUmlClass?: () => void;
   onEditChartData?: () => void;
+  onSimulation?: () => void;
   hasSubDiagramLink?: boolean;
   onCreateSubDiagram?: (nodeId: string) => void;
   onRemoveSubDiagramLink?: (nodeId: string) => void;
@@ -123,6 +124,7 @@ export function ContextMenu({
   isLocked = false,
   onEditUmlClass,
   onEditChartData,
+  onSimulation,
   hasSubDiagramLink = false,
   onCreateSubDiagram,
   onRemoveSubDiagramLink,
@@ -226,6 +228,18 @@ export function ContextMenu({
         >
           <PieChart className="w-4 h-4" />
           Chart data
+        </button>
+      )}
+
+      {onSimulation && (
+        <button
+          className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+          onClick={() => {
+            onSimulation();
+          }}
+        >
+          <Activity className="w-4 h-4" />
+          Simulation
         </button>
       )}
 
