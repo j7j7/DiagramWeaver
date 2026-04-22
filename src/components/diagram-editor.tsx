@@ -664,14 +664,8 @@ export default function DiagramEditor() {
   const [layerAnimationsEnabled, setLayerAnimationsEnabled] = React.useState<boolean>(true);
   const [rulesEditorOpen, setRulesEditorOpen] = React.useState<boolean>(false);
   const [rules, setRules] = React.useState<import('@/lib/rules-types').DiagramRule[]>([]);
+  const [simulationModeEnabled, setSimulationModeEnabled] = React.useState<boolean>(false);
   const [presentationModeEnabled, setPresentationModeEnabled] = React.useState<boolean>(false);
-  const [simulationModeEnabled, setSimulationModeEnabled] = React.useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    try {
-      const saved = localStorage.getItem('dw:simulationMode:enabled');
-      return saved !== null ? JSON.parse(saved) : false;
-    } catch { return false; }
-  });
   const presentationModeEnabledRef = React.useRef(presentationModeEnabled);
   presentationModeEnabledRef.current = presentationModeEnabled;
   const [presentationDecks, setPresentationDecks] = React.useState<PresentationDeck[]>([]);
@@ -806,13 +800,6 @@ export default function DiagramEditor() {
       localStorage.setItem('dw:presentationMode:enabled', JSON.stringify(presentationModeEnabled));
     }
   }, [presentationModeEnabled]);
-
-  // Save simulation mode to localStorage when it changes
-  React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('dw:simulationMode:enabled', JSON.stringify(simulationModeEnabled));
-    }
-  }, [simulationModeEnabled]);
 
   React.useEffect(() => {
     if (!presentationModeEnabled) {
@@ -4871,6 +4858,15 @@ export default function DiagramEditor() {
     setPresentationPlayerOpen(false);
   }, [presentationModeEnabled]);
 
+  const handleToggleSimulationMode = React.useCallback(() => {
+    const next = !simulationModeEnabled;
+    setSimulationModeEnabled(next);
+    toast({
+      title: next ? 'Simulation Mode Enabled' : 'Simulation Mode Disabled',
+      description: next ? 'Use this mode to simulate diagram interactions.' : undefined,
+    });
+  }, [simulationModeEnabled, toast]);
+
   const handleTogglePresentationMode = React.useCallback(() => {
     const next = !presentationModeEnabled;
     setPresentationModeEnabled(next);
@@ -4886,19 +4882,6 @@ export default function DiagramEditor() {
     setPresentationDisabledLayerIds(new Set());
     setPresentationPlayerOpen(false);
   }, [presentationModeEnabled, tabDiagramData, toast]);
-
-  const handleToggleSimulationMode = React.useCallback(() => {
-    setSimulationModeEnabled((prev) => {
-      const next = !prev;
-      toast({
-        title: next ? 'Simulation Mode Enabled' : 'Simulation Mode Disabled',
-        description: next
-          ? 'Left-click cycles state; right-click opens simulation options.'
-          : 'Returned to normal editing interactions.',
-      });
-      return next;
-    });
-  }, [toast]);
 
   const handleCreatePresentationDeck = React.useCallback(async () => {
     const name = window.prompt('Presentation name');
@@ -5896,6 +5879,8 @@ export default function DiagramEditor() {
         presentationHasLaterSlides={hasLaterSlides}
         handlePropagateAddToLaterSlides={handlePropagateAddToLaterSlides}
         handlePropagateDeleteToLaterSlides={handlePropagateDeleteToLaterSlides}
+        simulationModeEnabled={simulationModeEnabled}
+        handleToggleSimulationMode={handleToggleSimulationMode}
         handleMovePresentationSlide={handleMovePresentationSlide}
         handleSelectPresentationSlide={handleSelectPresentationSlide}
         handleTogglePresentationSlideSelection={handleTogglePresentationSlideSelection}
@@ -5976,8 +5961,6 @@ export default function DiagramEditor() {
         onImportIntoSubDiagram={activeDiagramStack.length > 0 ? handleImportIntoSubDiagramClick : undefined}
         onSubDiagramFileChange={handleSubDiagramFileChange}
         subDiagramImportInputRef={subDiagramImportInputRef}
-        simulationModeEnabled={simulationModeEnabled}
-        handleToggleSimulationMode={handleToggleSimulationMode}
       />
       <TutorialOverlay />
     </TutorialProvider>
@@ -6132,6 +6115,8 @@ function DiagramEditorInner({
   presentationHasLaterSlides,
   handlePropagateAddToLaterSlides,
   handlePropagateDeleteToLaterSlides,
+  simulationModeEnabled,
+  handleToggleSimulationMode,
   handleMovePresentationSlide,
   handleSelectPresentationSlide,
   handleTogglePresentationSlideSelection,
@@ -6204,8 +6189,6 @@ function DiagramEditorInner({
   canvasRefreshKey,
   activeTab,
   toast,
-  simulationModeEnabled,
-  handleToggleSimulationMode,
 }: any) {
   const presentationConnectionRenderRevision = React.useMemo(() => {
     if (!presentationModeEnabled) return undefined;
@@ -6422,11 +6405,11 @@ function DiagramEditorInner({
                     onRulesChange={setRules}
                     presentationModeEnabled={presentationModeEnabled}
                     onTogglePresentationMode={handleTogglePresentationMode}
-                    simulationModeEnabled={simulationModeEnabled}
-                    onToggleSimulationMode={handleToggleSimulationMode}
                     presentationHasLaterSlides={presentationHasLaterSlides}
                     onPropagateAddToLaterSlides={handlePropagateAddToLaterSlides}
                     onPropagateDeleteToLaterSlides={handlePropagateDeleteToLaterSlides}
+                    simulationModeEnabled={simulationModeEnabled}
+                    onToggleSimulationMode={handleToggleSimulationMode}
                     onStartTutorial={handleStartTutorial}
                 />
                 {!isLoaded ? (

@@ -8,6 +8,11 @@ const MAX_POPUP_WIDTH = 320;
 const POPUP_WIDTH = 240;
 const COLLAPSED_MAX_HEIGHT = 88;
 const EXPANDED_MAX_HEIGHT = 280;
+const HIDDEN_METADATA_PREFIXES = ["simulation:"];
+
+function isVisibleMetadataKey(key: string): boolean {
+  return !HIDDEN_METADATA_PREFIXES.some((prefix) => key.startsWith(prefix));
+}
 
 interface MetadataPopupProps {
   /** Screen rect of the anchored element (from getBoundingClientRect) */
@@ -27,7 +32,7 @@ export function MetadataPopup({
   className,
 }: MetadataPopupProps) {
   const [isHovered, setIsHovered] = useState(false);
-  const entries = Object.entries(metaData);
+  const entries = Object.entries(metaData).filter(([key]) => isVisibleMetadataKey(key));
   if (entries.length === 0) return null;
 
   const pad = 8;

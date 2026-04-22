@@ -2988,14 +2988,14 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             onClose={() => setSimulationMenuState(null)}
             onSelect={handleSimulationFeatureSelect}
           />
-          {availabilityWorkspaceTarget && availabilityWorkspaceItem && (
+          {availabilityWorkspaceTarget && (
             <SimulationAvailabilityWorkspace
               open={true}
               onOpenChange={(open) => {
                 if (!open) setAvailabilityWorkspaceTarget(null);
               }}
               targetId={availabilityWorkspaceTarget.itemId}
-              targetLabel={availabilityWorkspaceItem.label || availabilityWorkspaceTarget.itemId}
+              targetLabel={availabilityWorkspaceItem?.label || availabilityWorkspaceTarget.itemId}
               targetStatus={availabilityWorkspaceStatus}
               targetState={availabilityWorkspaceConfig.targetState}
               dependencyGroups={availabilityWorkspaceConfig.dependencyGroups}

@@ -63,7 +63,11 @@ export function SimulationPopupMenu({ x, y, visible, onClose, onSelect }: Simula
         <button
           key={feature}
           className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
-          onClick={() => {
+          onMouseDown={(event) => {
+            event.stopPropagation();
+          }}
+          onClick={(event) => {
+            event.stopPropagation();
             onSelect(feature);
             onClose();
           }}
