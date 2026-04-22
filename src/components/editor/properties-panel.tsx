@@ -32,6 +32,12 @@ interface PropertiesPanelProps {
   narrowCollapsed?: boolean;
 }
 
+const HIDDEN_METADATA_PREFIXES = ["simulation:"];
+
+function isVisibleMetadataKey(key: string): boolean {
+  return !HIDDEN_METADATA_PREFIXES.some((prefix) => key.startsWith(prefix));
+}
+
 /** Collect all metadata keys used across the diagram for consistent suggestions */
 function getUsedMetadataKeys(data: DiagramData | undefined): string[] {
   if (!data) return [];
@@ -48,7 +54,7 @@ function getUsedMetadataKeys(data: DiagramData | undefined): string[] {
   (data.groupings || []).forEach((g) => {
     if (g.metaData) Object.keys(g.metaData).forEach((k) => keys.add(k));
   });
-  return Array.from(keys).sort();
+  return Array.from(keys).filter(isVisibleMetadataKey).sort();
 }
 
 export function PropertiesPanel({
@@ -79,6 +85,12 @@ export function PropertiesPanel({
     selectedItem && "metaData" in selectedItem
       ? (selectedItem.metaData ?? {})
       : undefined;
+  const visibleMetaData = useMemo(() => {
+    if (!metaData) return undefined;
+    return Object.fromEntries(
+      Object.entries(metaData).filter(([key]) => isVisibleMetadataKey(key))
+    );
+  }, [metaData]);
 
   const displayName =
     selectedItem?.itemType === "node"
@@ -505,8 +517,8 @@ export function PropertiesPanel({
                     </div>
                   )}
 
-                  {metaData &&
-                    Object.entries(metaData).map(([key, value]) => (
+                  {visibleMetaData &&
+                    Object.entries(visibleMetaData).map(([key, value]) => (
                       <div
                         key={key}
                         className="flex gap-2 items-start p-2 rounded-md border bg-background"
@@ -608,7 +620,7 @@ export function PropertiesPanel({
                       </div>
                     ))}
 
-                  {(!metaData || Object.keys(metaData).length === 0) &&
+                  {(!visibleMetaData || Object.keys(visibleMetaData).length === 0) &&
                     editingKey !== "__new__" && (
                       <div className="text-sm text-muted-foreground py-4 text-center border border-dashed rounded-md">
                         No metadata. Click + to add.

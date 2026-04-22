@@ -857,15 +857,27 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
               }
             : undefined;
 
+        const simulationFilter = (() => {
+          const parts: string[] = [];
+          if (statusStyle) {
+            const shadow = statusStyle.shadowColor ?? statusStyle.color;
+            parts.push(`drop-shadow(0 0 6px ${shadow}cc)`);
+            parts.push(`drop-shadow(0 0 3px ${shadow}88)`);
+          }
+          if (stateStyle) {
+            parts.push(`drop-shadow(0 0 12px ${stateStyle.color}bb)`);
+            parts.push(`drop-shadow(0 0 5px ${stateStyle.color}77)`);
+          }
+          return parts.length > 0 ? parts.join(' ') : undefined;
+        })();
+
         return (
           <g
             key={`${edge.from}-${edge.to}-${index}-${edge.toArrow ? 'arrow' : 'noarrow'}-${edge._updated || ''}-r${connectionRenderRevision ?? ''}`}
             className={cn(isConnectionHighlighted && 'drop-shadow-[0_0_6px_rgba(0,200,150,0.8)]')}
             style={{
               opacity: statusStyle?.opacity ?? stateStyle?.opacity ?? 1,
-              ...(statusStyle?.shadowColor
-                ? { filter: `drop-shadow(0 0 8px ${statusStyle.shadowColor})` }
-                : {}),
+              ...(simulationFilter ? { filter: simulationFilter } : {}),
             }}
           >
             {connStyle === 'orthogonal' ? (

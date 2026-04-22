@@ -130,6 +130,20 @@ function parseSimulationNumber(rawValue: string | undefined, fallback: number): 
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function hexToRgba(color: string, alpha: number): string {
+  const normalized = color.trim();
+  const hex = normalized.startsWith("#") ? normalized.slice(1) : normalized;
+  const expanded = hex.length === 3 ? hex.split("").map((ch) => ch + ch).join("") : hex;
+  if (!/^[0-9a-fA-F]{6}$/.test(expanded)) {
+    return `rgba(0, 0, 0, ${alpha})`;
+  }
+  const intVal = Number.parseInt(expanded, 16);
+  const red = (intVal >> 16) & 255;
+  const green = (intVal >> 8) & 255;
+  const blue = intVal & 255;
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}
+
 function getSimulationStateFromMetaData(metaData?: Record<string, string>): SimulationElementState {
   const rawState = metaData?.[SIMULATION_AVAILABILITY_STATE_KEY];
   return rawState === "degraded" || rawState === "inactive" ? rawState : "active";
@@ -2042,7 +2056,6 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             })}
 
             {simulationModeEnabled && Object.entries(simulationStateStyleByItemId).map(([itemId, style]) => {
-              if (simulationStatusStyleByItemId[itemId]) return null;
               const node = displayNodesById[itemId];
               if (node) {
                 const dims = measureNodeDims(node as PositionedNode);
@@ -2051,13 +2064,15 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     key={`sim-state-node-${itemId}`}
                     className="pointer-events-none absolute rounded-lg"
                     style={{
-                      left: `${(node.x ?? 0) - 3}px`,
-                      top: `${(node.y ?? 0) - 3}px`,
-                      width: `${dims.width + 6}px`,
-                      height: `${dims.height + 6}px`,
-                      border: `2px dashed ${style.color}`,
+                      left: `${(node.x ?? 0) - 1}px`,
+                      top: `${(node.y ?? 0) - 1}px`,
+                      width: `${dims.width + 2}px`,
+                      height: `${dims.height + 2}px`,
+                      border: `3px dashed ${style.color}`,
+                      backgroundColor: hexToRgba(style.color, Math.min(0.28, (style.opacity ?? 1) * 0.24)),
+                      boxShadow: `inset 0 0 0 1px ${hexToRgba("#ffffff", Math.min(0.18, (style.opacity ?? 1) * 0.16))}, 0 0 0 1px ${hexToRgba(style.color, Math.min(0.55, (style.opacity ?? 1) * 0.5))}, 0 0 24px ${hexToRgba(style.color, Math.min(0.45, (style.opacity ?? 1) * 0.42))}`,
                       opacity: style.opacity ?? 1,
-                      zIndex: 35,
+                      zIndex: 41,
                     }}
                   />
                 );
@@ -2070,13 +2085,15 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     key={`sim-state-zone-${itemId}`}
                     className="pointer-events-none absolute rounded-lg"
                     style={{
-                      left: `${(zone.x ?? 0) - 3}px`,
-                      top: `${(zone.y ?? 0) - 3}px`,
-                      width: `${(zone.width ?? 300) + 6}px`,
-                      height: `${(zone.height ?? 220) + 6}px`,
-                      border: `2px dashed ${style.color}`,
+                      left: `${(zone.x ?? 0) - 1}px`,
+                      top: `${(zone.y ?? 0) - 1}px`,
+                      width: `${(zone.width ?? 300) + 2}px`,
+                      height: `${(zone.height ?? 220) + 2}px`,
+                      border: `3px dashed ${style.color}`,
+                      backgroundColor: hexToRgba(style.color, Math.min(0.28, (style.opacity ?? 1) * 0.24)),
+                      boxShadow: `inset 0 0 0 1px ${hexToRgba("#ffffff", Math.min(0.18, (style.opacity ?? 1) * 0.16))}, 0 0 0 1px ${hexToRgba(style.color, Math.min(0.55, (style.opacity ?? 1) * 0.5))}, 0 0 24px ${hexToRgba(style.color, Math.min(0.45, (style.opacity ?? 1) * 0.42))}`,
                       opacity: style.opacity ?? 1,
-                      zIndex: 35,
+                      zIndex: 41,
                     }}
                   />
                 );
