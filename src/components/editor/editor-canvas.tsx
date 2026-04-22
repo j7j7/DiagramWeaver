@@ -27,6 +27,7 @@ import { SimulationPopupMenu, type SimulationFeature } from "../ui/simulation-po
 import {
   SimulationAvailabilityWorkspace,
   type AvailabilityStatus,
+  type DependencyEvaluationMode,
   type DependencyGroup,
   type SimulationElementState,
 } from "./simulation-availability-workspace";
@@ -151,7 +152,24 @@ function getSimulationStateFromMetaData(metaData?: Record<string, string>): Simu
 
 function getSimulationGroupsFromMetaData(metaData?: Record<string, string>): DependencyGroup[] {
   const parsed = parseSimulationJson<DependencyGroup[]>(metaData?.[SIMULATION_AVAILABILITY_GROUPS_KEY], []);
-  return Array.isArray(parsed) ? parsed : [];
+  if (!Array.isArray(parsed)) return [];
+  return parsed.map((group) => {
+    const memberModes = Object.fromEntries(
+      Object.entries(group.memberModes ?? {}).filter(([memberId, mode]) => {
+        if (!group.memberIds.includes(memberId)) return false;
+        return mode === "self" || mode === "dependencies" || mode === "both";
+      })
+    ) as Record<string, DependencyEvaluationMode>;
+
+    return {
+      ...group,
+      minUnavailable:
+        typeof group.minUnavailable === "number"
+          ? group.minUnavailable
+          : (typeof group.minDegraded === "number" ? group.minDegraded : 1),
+      memberModes,
+    };
+  });
 }
 
 function getSimulationStatusColorsFromMetaData(metaData?: Record<string, string>): Record<AvailabilityStatus, string> {
@@ -203,26 +221,54 @@ function resolveAvailabilityThreshold(value: number, total: number): number {
 function computeDependencyGroupStatus(
   group: DependencyGroup,
   simulationItemStateById: Record<string, SimulationElementState>,
+  simulationAvailabilityStatusById: Record<string, AvailabilityStatus>,
 ): AvailabilityStatus {
   const total = group.memberIds.length;
   if (total === 0) return "green";
-  const getState = (id: string): SimulationElementState => simulationItemStateById[id] ?? "active";
+
+  const availabilityToState = (status: AvailabilityStatus): SimulationElementState => {
+    if (status === "green") return "active";
+    if (status === "amber") return "degraded";
+    return "inactive";
+  };
+
+  const stateRank = (state: SimulationElementState): number => {
+    if (state === "active") return 0;
+    if (state === "degraded") return 1;
+    return 2;
+  };
+
+  const getState = (id: string): SimulationElementState => {
+    const selfState = simulationItemStateById[id] ?? "active";
+    const dependencyState = availabilityToState(simulationAvailabilityStatusById[id] ?? "green");
+    const mode = group.memberModes?.[id] ?? "both";
+    if (mode === "self") return selfState;
+    if (mode === "dependencies") return dependencyState;
+    return stateRank(selfState) >= stateRank(dependencyState) ? selfState : dependencyState;
+  };
+
   const activeCount = group.memberIds.filter((id) => getState(id) !== "inactive").length;
   const healthyCount = group.memberIds.filter((id) => getState(id) === "active").length;
   const minHealthy = resolveAvailabilityThreshold(group.minHealthy, total);
-  const minDegraded = group.minDegraded === 0 ? 0 : resolveAvailabilityThreshold(group.minDegraded, total);
+  const minUnavailableRaw =
+    typeof group.minUnavailable === "number"
+      ? group.minUnavailable
+      : (typeof group.minDegraded === "number" ? group.minDegraded : 1);
+  const minUnavailable = minUnavailableRaw === 0 ? 0 : resolveAvailabilityThreshold(minUnavailableRaw, total);
+
   if (healthyCount >= minHealthy) return "green";
-  if (minDegraded === 0 || activeCount >= minDegraded) return "amber";
+  if (minUnavailable === 0 || activeCount >= minUnavailable) return "amber";
   return "red";
 }
 
 function computeAvailabilityStatus(
   groups: DependencyGroup[],
   simulationItemStateById: Record<string, SimulationElementState>,
+  simulationAvailabilityStatusById: Record<string, AvailabilityStatus>,
 ): AvailabilityStatus {
   let hasAmber = false;
   for (const group of groups) {
-    const status = computeDependencyGroupStatus(group, simulationItemStateById);
+    const status = computeDependencyGroupStatus(group, simulationItemStateById, simulationAvailabilityStatusById);
     if (status === "red") return "red";
     if (status === "amber") hasAmber = true;
   }
@@ -1540,6 +1586,44 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     return result;
   }, [diagramData.connections, diagramData.nodes, diagramData.zones]);
 
+  const simulationAvailabilityStatusByItemId = useMemo(() => {
+    const groupsByItemId: Record<string, DependencyGroup[]> = {};
+
+    diagramData.nodes.forEach((node) => {
+      groupsByItemId[node.id] = getSimulationGroupsFromMetaData(node.metaData);
+    });
+    (diagramData.zones ?? []).forEach((zone) => {
+      groupsByItemId[zone.id] = getSimulationGroupsFromMetaData(zone.metaData);
+    });
+    diagramData.connections.forEach((connection, index) => {
+      const stableId = stableDiagramConnectionId(connection, index);
+      groupsByItemId[stableId] = getSimulationGroupsFromMetaData(connection.metaData);
+    });
+
+    const statusByItemId: Record<string, AvailabilityStatus> = {};
+    Object.keys(groupsByItemId).forEach((itemId) => {
+      statusByItemId[itemId] = "green";
+    });
+
+    for (let iteration = 0; iteration < 8; iteration++) {
+      let changed = false;
+      const nextStatusByItemId: Record<string, AvailabilityStatus> = { ...statusByItemId };
+
+      Object.entries(groupsByItemId).forEach(([itemId, groups]) => {
+        nextStatusByItemId[itemId] = computeAvailabilityStatus(groups, simulationItemStateById, statusByItemId);
+      });
+
+      Object.keys(nextStatusByItemId).forEach((itemId) => {
+        if (nextStatusByItemId[itemId] !== statusByItemId[itemId]) changed = true;
+      });
+
+      Object.assign(statusByItemId, nextStatusByItemId);
+      if (!changed) break;
+    }
+
+    return statusByItemId;
+  }, [diagramData.connections, diagramData.nodes, diagramData.zones, simulationItemStateById]);
+
   const availabilityWorkspaceItem = useMemo(() => {
     if (!availabilityWorkspaceTarget) return null;
     if (availabilityWorkspaceTarget.itemType === "node") {
@@ -1573,8 +1657,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   }, [availabilityWorkspaceItem]);
 
   const availabilityWorkspaceStatus = useMemo(() => {
-    return computeAvailabilityStatus(availabilityWorkspaceConfig.dependencyGroups, simulationItemStateById);
-  }, [availabilityWorkspaceConfig.dependencyGroups, simulationItemStateById]);
+    if (!availabilityWorkspaceTarget) return "green";
+    return simulationAvailabilityStatusByItemId[availabilityWorkspaceTarget.itemId] ?? "green";
+  }, [availabilityWorkspaceTarget, simulationAvailabilityStatusByItemId]);
 
   const simulationStatusStyleByItemId = useMemo(() => {
     const result: Record<string, { color: string; opacity?: number; shadowColor?: string }> = {};
@@ -1582,7 +1667,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     const applyFromMeta = (itemId: string, metaData?: Record<string, string>) => {
       const groups = getSimulationGroupsFromMetaData(metaData);
       if (!groups.length) return;
-      const status = computeAvailabilityStatus(groups, simulationItemStateById);
+      const status = computeAvailabilityStatus(groups, simulationItemStateById, simulationAvailabilityStatusByItemId);
       const statusColors = getSimulationStatusColorsFromMetaData(metaData);
       const shadowColors = getSimulationStatusShadowColorsFromMetaData(metaData);
       const opacity = parseSimulationNumber(metaData?.[SIMULATION_AVAILABILITY_DEPENDENCY_OPACITY_KEY], DEFAULT_SIMULATION_DEPENDENCY_OPACITY);
@@ -1600,7 +1685,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     });
 
     return result;
-  }, [diagramData, simulationItemStateById]);
+  }, [diagramData, simulationItemStateById, simulationAvailabilityStatusByItemId]);
 
   const simulationStateStyleByItemId = useMemo(() => {
     const result: Record<string, { color: string; opacity?: number }> = {};
@@ -1631,7 +1716,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     const applyFromMeta = (itemId: string, metaData?: Record<string, string>) => {
       const groups = getSimulationGroupsFromMetaData(metaData);
       if (!groups.length) return;
-      const status = computeAvailabilityStatus(groups, simulationItemStateById);
+      const status = computeAvailabilityStatus(groups, simulationItemStateById, simulationAvailabilityStatusByItemId);
       const statusTexts = getSimulationStatusTextsFromMetaData(metaData);
       const text = statusTexts[status]?.trim();
       if (text) result[itemId] = text;
@@ -1641,7 +1726,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     (diagramData.zones ?? []).forEach((zone) => applyFromMeta(zone.id, zone.metaData));
 
     return result;
-  }, [diagramData, simulationItemStateById]);
+  }, [diagramData, simulationItemStateById, simulationAvailabilityStatusByItemId]);
 
   const updateSimulationMetaDataForTarget = useCallback((updates: Record<string, string>) => {
     if (!availabilityWorkspaceTarget) return;
@@ -3007,6 +3092,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
               dependencyOpacity={availabilityWorkspaceConfig.dependencyOpacity}
               allCanvasElements={allSimulationCanvasElements}
               simulationItemStateById={simulationItemStateById}
+              simulationAvailabilityStatusById={simulationAvailabilityStatusByItemId}
               onItemStateChange={updateSimulationStateById}
               onGroupsChange={(groups) => {
                 updateSimulationMetaDataForTarget({

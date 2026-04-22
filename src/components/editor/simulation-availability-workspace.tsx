@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -25,19 +26,25 @@ import {
   MinusCircle,
   XCircle,
   Layers,
+  Info,
 } from "lucide-react";
 
 export type AvailabilityStatus = "green" | "amber" | "red";
 export type SimulationElementState = "active" | "degraded" | "inactive";
+export type DependencyEvaluationMode = "self" | "dependencies" | "both";
 
 export interface DependencyGroup {
   id: string;
   label: string;
   memberIds: string[];
+  /** Per-member evaluation mode; default is "both" when missing. */
+  memberModes?: Record<string, DependencyEvaluationMode>;
   /** Minimum number of non-inactive members for this group to be considered "healthy" */
   minHealthy: number;
-  /** Minimum number of non-inactive members for this group to be "degraded" (below = unavailable) */
-  minDegraded: number;
+  /** Minimum number of non-inactive members required to avoid unavailable. */
+  minUnavailable?: number;
+  /** Legacy field kept for backward compatibility with saved metadata. */
+  minDegraded?: number;
 }
 
 interface CanvasElement {
@@ -62,6 +69,7 @@ interface SimulationAvailabilityWorkspaceProps {
   dependencyOpacity: number;
   allCanvasElements: CanvasElement[];
   simulationItemStateById: Record<string, SimulationElementState>;
+  simulationAvailabilityStatusById: Record<string, AvailabilityStatus>;
   onItemStateChange: (itemId: string, state: SimulationElementState) => void;
   onGroupsChange: (groups: DependencyGroup[]) => void;
   onStatusColorChange: (status: AvailabilityStatus, color: string) => void;
@@ -96,6 +104,43 @@ function nextElementState(state: SimulationElementState): SimulationElementState
   return "active";
 }
 
+function statusToState(status: AvailabilityStatus): SimulationElementState {
+  if (status === "green") return "active";
+  if (status === "amber") return "degraded";
+  return "inactive";
+}
+
+function stateRank(state: SimulationElementState): number {
+  if (state === "active") return 0;
+  if (state === "degraded") return 1;
+  return 2;
+}
+
+function getMemberMode(group: DependencyGroup, memberId: string): DependencyEvaluationMode {
+  const mode = group.memberModes?.[memberId];
+  return mode === "self" || mode === "dependencies" || mode === "both" ? mode : "both";
+}
+
+function getMinUnavailable(group: DependencyGroup): number {
+  if (typeof group.minUnavailable === "number") return group.minUnavailable;
+  if (typeof group.minDegraded === "number") return group.minDegraded;
+  return 1;
+}
+
+function getEffectiveMemberState(
+  group: DependencyGroup,
+  memberId: string,
+  simulationItemStateById: Record<string, SimulationElementState>,
+  simulationAvailabilityStatusById: Record<string, AvailabilityStatus>
+): SimulationElementState {
+  const selfState = simulationItemStateById[memberId] ?? "active";
+  const dependencyState = statusToState(simulationAvailabilityStatusById[memberId] ?? "green");
+  const mode = getMemberMode(group, memberId);
+  if (mode === "self") return selfState;
+  if (mode === "dependencies") return dependencyState;
+  return stateRank(selfState) >= stateRank(dependencyState) ? selfState : dependencyState;
+}
+
 /**
  * Resolve a threshold value to an effective member count.
  * - 0 → 0 (special: "never unavailable" for minDegraded)
@@ -110,19 +155,28 @@ function resolveThreshold(val: number, total: number): number {
 
 function computeGroupStatus(
   group: DependencyGroup,
-  simulationItemStateById: Record<string, SimulationElementState>
+  simulationItemStateById: Record<string, SimulationElementState>,
+  simulationAvailabilityStatusById: Record<string, AvailabilityStatus>
 ): AvailabilityStatus {
   const total = group.memberIds.length;
   if (total === 0) return "green";
-  const getState = (id: string): SimulationElementState => simulationItemStateById[id] ?? "active";
+  const getState = (id: string): SimulationElementState =>
+    getEffectiveMemberState(group, id, simulationItemStateById, simulationAvailabilityStatusById);
   const activeCount = group.memberIds.filter((id) => getState(id) !== "inactive").length;
   const healthyCount = group.memberIds.filter((id) => getState(id) === "active").length;
   const minH = resolveThreshold(group.minHealthy, total);
-  // minDegraded=0 means the group can never be "red" (always at least degraded)
-  const minD = group.minDegraded === 0 ? 0 : resolveThreshold(group.minDegraded, total);
+  const minUVal = getMinUnavailable(group);
+  // minUnavailable=0 means the group can never be "red" (always at least degraded)
+  const minU = minUVal === 0 ? 0 : resolveThreshold(minUVal, total);
   if (healthyCount >= minH) return "green";
-  if (minD === 0 || activeCount >= minD) return "amber";
+  if (minU === 0 || activeCount >= minU) return "amber";
   return "red";
+}
+
+function modeLabel(mode: DependencyEvaluationMode): string {
+  if (mode === "self") return "Self state";
+  if (mode === "dependencies") return "Dependencies state";
+  return "Self AND dependencies";
 }
 
 function GroupStatusBadge({ status }: { status: AvailabilityStatus }) {
@@ -214,6 +268,7 @@ function DependencyGroupCard({
   group,
   allCanvasElements,
   simulationItemStateById,
+  simulationAvailabilityStatusById,
   onItemStateChange,
   onUpdate,
   onRemove,
@@ -221,6 +276,7 @@ function DependencyGroupCard({
   group: DependencyGroup;
   allCanvasElements: CanvasElement[];
   simulationItemStateById: Record<string, SimulationElementState>;
+  simulationAvailabilityStatusById: Record<string, AvailabilityStatus>;
   onItemStateChange: (itemId: string, state: SimulationElementState) => void;
   onUpdate: (updated: DependencyGroup) => void;
   onRemove: () => void;
@@ -228,7 +284,7 @@ function DependencyGroupCard({
   const [expanded, setExpanded] = useState(true);
   const [pickerOpen, setPickerOpen] = useState(false);
   const total = group.memberIds.length;
-  const groupStatus = computeGroupStatus(group, simulationItemStateById);
+  const groupStatus = computeGroupStatus(group, simulationItemStateById, simulationAvailabilityStatusById);
 
   const elementById = useMemo(() => {
     const map: Record<string, CanvasElement> = {};
@@ -243,8 +299,11 @@ function DependencyGroupCard({
       onUpdate({
         ...group,
         memberIds: newMemberIds,
+        memberModes: Object.fromEntries(
+          Object.entries(group.memberModes ?? {}).filter(([id]) => newMemberIds.includes(id))
+        ),
         minHealthy: Math.min(group.minHealthy, Math.max(1, newTotal)),
-        minDegraded: Math.min(group.minDegraded, Math.max(1, newTotal)),
+        minUnavailable: Math.min(getMinUnavailable(group), Math.max(1, newTotal)),
       });
     },
     [group, onUpdate]
@@ -253,7 +312,14 @@ function DependencyGroupCard({
   const addMember = useCallback(
     (memberId: string) => {
       if (group.memberIds.includes(memberId)) return;
-      onUpdate({ ...group, memberIds: [...group.memberIds, memberId] });
+      onUpdate({
+        ...group,
+        memberIds: [...group.memberIds, memberId],
+        memberModes: {
+          ...(group.memberModes ?? {}),
+          [memberId]: getMemberMode(group, memberId),
+        },
+      });
     },
     [group, onUpdate]
   );
@@ -263,24 +329,28 @@ function DependencyGroupCard({
       // Allow fractions 0–1 (proportion) or integers >= 1 (absolute count)
       const isFraction = val > 0 && val < 1;
       const clamped = isFraction ? Math.min(1, Math.max(0.01, val)) : Math.max(1, Math.min(val, total));
-      onUpdate({ ...group, minHealthy: clamped, minDegraded: Math.min(group.minDegraded, clamped) });
+      onUpdate({ ...group, minHealthy: clamped, minUnavailable: Math.min(getMinUnavailable(group), clamped) });
     },
     [group, onUpdate, total]
   );
 
-  const setMinDegraded = useCallback(
+  const setMinUnavailable = useCallback(
     (val: number) => {
       // 0 = never unavailable; (0,1) = fraction; >= 1 = absolute
-      if (val === 0) { onUpdate({ ...group, minDegraded: 0 }); return; }
+      if (val === 0) {
+        onUpdate({ ...group, minUnavailable: 0 });
+        return;
+      }
       const isFraction = val > 0 && val < 1;
       const clamped = isFraction ? Math.min(1, Math.max(0.01, val)) : Math.max(1, Math.min(val, total));
-      onUpdate({ ...group, minDegraded: clamped });
+      onUpdate({ ...group, minUnavailable: clamped });
     },
     [group, onUpdate, total]
   );
 
   const effHealthy = total > 0 ? resolveThreshold(group.minHealthy, total) : 0;
-  const effDegraded = total > 0 ? (group.minDegraded === 0 ? 0 : resolveThreshold(group.minDegraded, total)) : 0;
+  const minUnavailable = getMinUnavailable(group);
+  const effUnavailable = total > 0 ? (minUnavailable === 0 ? 0 : resolveThreshold(minUnavailable, total)) : 0;
 
   return (
     <div className="rounded-md border bg-card">
@@ -323,7 +393,7 @@ function DependencyGroupCard({
                 return (
                   <div
                     key={memberId}
-                    className="flex items-center gap-2 rounded border px-2 py-1 text-sm"
+                    className="flex flex-wrap items-center gap-2 rounded border px-2 py-1 text-sm"
                   >
                     <button
                       type="button"
@@ -341,6 +411,39 @@ function DependencyGroupCard({
                     >
                       {elementStateLabel(state)}
                     </button>
+                    <div className="flex items-center gap-1">
+                      <select
+                        className="h-7 min-w-[165px] rounded border bg-background px-2 text-xs"
+                        value={getMemberMode(group, memberId)}
+                        onChange={(e) => {
+                          const mode = e.target.value as DependencyEvaluationMode;
+                          onUpdate({
+                            ...group,
+                            memberModes: {
+                              ...(group.memberModes ?? {}),
+                              [memberId]: mode,
+                            },
+                          });
+                        }}
+                      >
+                        <option value="both">{modeLabel("both")}</option>
+                        <option value="self">{modeLabel("self")}</option>
+                        <option value="dependencies">{modeLabel("dependencies")}</option>
+                      </select>
+                      <TooltipProvider delayDuration={200}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-3.5 w-3.5 shrink-0 cursor-help text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent side="top" align="end" sideOffset={6} collisionPadding={16} className="z-[9999] w-[220px] whitespace-normal text-xs">
+                            <p className="font-semibold mb-1">Evaluation mode</p>
+                            <p><span className="font-medium">Self AND dependencies</span> — uses the worse of own state and dependency status.</p>
+                            <p className="mt-1"><span className="font-medium">Self state</span> — only this element&apos;s own active / degraded / inactive state.</p>
+                            <p className="mt-1"><span className="font-medium">Dependencies state</span> — only the computed dependency status, ignoring own state.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
                     <button
                       className="text-muted-foreground hover:text-destructive"
                       onClick={() => removeMember(memberId)}
@@ -406,24 +509,24 @@ function DependencyGroupCard({
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">
-                    <span className="inline-block h-2 w-2 rounded-full bg-amber-500 mr-1" />
-                    Degraded when &ge;
+                    <span className="inline-block h-2 w-2 rounded-full bg-red-500 mr-1" />
+                    Unavailable below
                   </Label>
                   <div className="flex items-center gap-1">
                     <Input
                       type="number"
                       min={0}
                       max={total}
-                      step={group.minDegraded > 0 && group.minDegraded < 1 ? 0.05 : 1}
-                      value={group.minDegraded}
-                      onChange={(e) => setMinDegraded(Number(e.target.value))}
+                      step={minUnavailable > 0 && minUnavailable < 1 ? 0.05 : 1}
+                      value={minUnavailable}
+                      onChange={(e) => setMinUnavailable(Number(e.target.value))}
                       className="h-7 w-20 text-sm"
                     />
                     <span className="text-xs text-muted-foreground">
-                      {group.minDegraded === 0
+                      {minUnavailable === 0
                         ? "(never ✗)"
-                        : group.minDegraded > 0 && group.minDegraded < 1
-                          ? <>{Math.round(group.minDegraded * 100)}% <span className="opacity-60">(={effDegraded})</span></>
+                        : minUnavailable > 0 && minUnavailable < 1
+                          ? <>{Math.round(minUnavailable * 100)}% <span className="opacity-60">(={effUnavailable})</span></>
                           : "active"}
                     </span>
                   </div>
@@ -435,35 +538,34 @@ function DependencyGroupCard({
                   : <>Healthy threshold: <span className="font-medium text-foreground">{effHealthy} of {total} member{total !== 1 ? "s" : ""}</span> must be fully active. Enter 0.01–0.99 to use a percentage instead.</>
                 }
                 {" "}
-                {group.minDegraded === 0
+                {minUnavailable === 0
                   ? <span className="text-amber-700">Unavailable is disabled — the group can only reach Degraded at worst.</span>
-                  : group.minDegraded > 0 && group.minDegraded < 1
-                    ? <>Degraded threshold: <span className="font-medium text-foreground">{Math.round(group.minDegraded * 100)}% of {total} = {effDegraded} member{effDegraded !== 1 ? "s" : ""}</span> must be alive (active or degraded). Set to 0 to never mark as Unavailable.</>
-                    : <>Degraded threshold: <span className="font-medium text-foreground">{effDegraded} of {total} member{total !== 1 ? "s" : ""}</span> must be alive. Set to 0 to never mark as Unavailable.</>
+                  : minUnavailable > 0 && minUnavailable < 1
+                    ? <>Unavailable threshold: below <span className="font-medium text-foreground">{Math.round(minUnavailable * 100)}% of {total} (= {effUnavailable})</span> alive members, this group becomes Unavailable.</>
+                    : <>Unavailable threshold: below <span className="font-medium text-foreground">{effUnavailable} of {total}</span> alive members, this group becomes Unavailable.</>
                 }
               </p>
               <p className="text-xs text-muted-foreground">
-                {effDegraded === 0 ? (
+                {effUnavailable === 0 ? (
                   <>
                     {effHealthy > 1 && <>{"\u2265" + effHealthy + " active \u2192 "}<span className="text-green-600 font-medium">Healthy</span>{" \u00B7 "}</>}
                     {"0\u2013" + (effHealthy - 1) + " active \u2192 "}
                     <span className="text-amber-600 font-medium">Degraded</span>
                     {effHealthy === 1 && <>{" \u00B7 "}{"\u2265" + effHealthy + " active \u2192 "}<span className="text-green-600 font-medium">Healthy</span></>}
                   </>
-                ) : effDegraded >= effHealthy ? (
-                  // degraded threshold equals healthy threshold — no separate degraded band
+                ) : effUnavailable >= effHealthy ? (
                   <>
-                    {"<" + effDegraded + " active \u2192 "}
+                    {"<" + effUnavailable + " active \u2192 "}
                     <span className="text-red-600 font-medium">Unavailable</span>
                     {" \u00B7 \u2265" + effHealthy + " active \u2192 "}
                     <span className="text-green-600 font-medium">Healthy</span>
                   </>
                 ) : (
                   <>
-                    {"<" + effDegraded + " active \u2192 "}
+                    {"<" + effUnavailable + " active \u2192 "}
                     <span className="text-red-600 font-medium">Unavailable</span>
                     {" \u00B7 "}
-                    {effDegraded + "\u2013" + (effHealthy - 1) + " active \u2192 "}
+                    {effUnavailable + "\u2013" + (effHealthy - 1) + " active \u2192 "}
                     <span className="text-amber-600 font-medium">Degraded</span>
                     {" \u00B7 \u2265" + effHealthy + " active \u2192 "}
                     <span className="text-green-600 font-medium">Healthy</span>
@@ -495,6 +597,7 @@ export function SimulationAvailabilityWorkspace({
   dependencyOpacity,
   allCanvasElements,
   simulationItemStateById,
+  simulationAvailabilityStatusById,
   onItemStateChange,
   onGroupsChange,
   onStatusColorChange,
@@ -509,8 +612,9 @@ export function SimulationAvailabilityWorkspace({
       id: generateGroupId(),
       label: "Group " + (dependencyGroups.length + 1),
       memberIds: [],
+      memberModes: {},
       minHealthy: 1,
-      minDegraded: 1,
+      minUnavailable: 1,
     };
     onGroupsChange([...dependencyGroups, newGroup]);
   }, [dependencyGroups, onGroupsChange]);
@@ -606,6 +710,7 @@ export function SimulationAvailabilityWorkspace({
                       group={group}
                       allCanvasElements={allCanvasElements}
                       simulationItemStateById={simulationItemStateById}
+                      simulationAvailabilityStatusById={simulationAvailabilityStatusById}
                       onItemStateChange={onItemStateChange}
                       onUpdate={updateGroup}
                       onRemove={() => removeGroup(group.id)}
