@@ -1,5 +1,8 @@
 # MEMORY.MD
 
+### 2026-04-23 – Z-order: textbox vs connection lines (order-aware mode)
+With **connections not forced behind nodes**, **`generic.text.textbox`** used the same **`100+2i+1`** stack tier as icons/plain text, so every textbox sat above all connection layers and lines always disappeared behind it. **`editor-canvas`** / **`viewer-canvas`** now treat **`generic.text.textbox`** like shapes (**`2*i+1`**) so edges interleave with layer order; **`generic.text.text`** unchanged (labels stay above connectors).
+
 ### 2026-04-22 – Cursor personal skill: Browser Use Cloud (`llms-full`)
 Global (personal) skill installed at **`~/.cursor/skills/browser-use-cloud/`**: **`SKILL.md`** plus full **`llms-full.txt`** copied from https://docs.browser-use.com/llms-full.txt (2888 lines). Cursor-managed **`~/.cursor/skills-cursor/`** was not modified. Refresh the txt from the URL if docs drift. **Console:** https://cloud.browser-use.com — **`BROWSER_USE_API_KEY`** for this repo lives in **`.env.local`** (gitignored); do not commit.
 

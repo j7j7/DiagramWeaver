@@ -473,13 +473,14 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
               const zone = zonesById[itemId];
               const NODE_LAYER_BASE = 100;
               const isShape = node && isShapeNodeType(node.type);
+              const isTextboxNode = node && node.type === 'generic.text.textbox';
               const closedConnectorLoop =
                 node &&
                 isConnectorLineNodeType(node.type) &&
                 isConnectorLineGeometryClosed(node);
               const connZIndex = 2 * i;
               const nodeZIndex =
-                isShape || closedConnectorLoop ? 2 * i + 1 : NODE_LAYER_BASE + 2 * i + 1;
+                isShape || isTextboxNode || closedConnectorLoop ? 2 * i + 1 : NODE_LAYER_BASE + 2 * i + 1;
               const nodeEl = node ? (
                 <DiagramNode
                   key={node.id}
