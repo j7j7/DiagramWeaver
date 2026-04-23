@@ -1,5 +1,11 @@
 # MEMORY.MD
 
+### 2026-04-22 – Cursor personal skill: Browser Use Cloud (`llms-full`)
+Global (personal) skill installed at **`~/.cursor/skills/browser-use-cloud/`**: **`SKILL.md`** plus full **`llms-full.txt`** copied from https://docs.browser-use.com/llms-full.txt (2888 lines). Cursor-managed **`~/.cursor/skills-cursor/`** was not modified. Refresh the txt from the URL if docs drift. **Console:** https://cloud.browser-use.com — **`BROWSER_USE_API_KEY`** for this repo lives in **`.env.local`** (gitignored); do not commit.
+
+### 2026-04-22 – Browser Use Cloud API key (workspace)
+**`BROWSER_USE_API_KEY`** is set in **`.env.local`** (gitignored). Skill **`~/.cursor/skills/browser-use-cloud/SKILL.md`** updated with **https://cloud.browser-use.com** console/key workflow. If the key was ever pasted into chat or a public repo, rotate it in Cloud settings.
+
 ## DiagramWeaver - Latest Features and Functions (Updated 2026-03-18)
 
 ### 2026-04-19 – Export PNG: multi-slide deck (`{name}-{n}.png`)
