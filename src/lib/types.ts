@@ -208,8 +208,12 @@ export interface DiagramNodeData {
   textColor?: string; // Text color for label nodes
   borderStyle?: 'solid' | 'dotted' | 'gradient' | 'none'; // Border style for label/textbox/shape nodes
   borderColors?: string[]; // Border colors for gradient [startColor, endColor]
-  backgroundStyle?: 'solid' | 'gradient' | 'none'; // Background style for label/textbox/shape nodes
+  backgroundStyle?: 'solid' | 'gradient' | 'frosted' | 'none'; // Background style for label/textbox/shape nodes
   backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
+  /** `backgroundStyle: 'frosted'`: 0 = sharp, 1 = heavy blur (backdrop diffusion). */
+  frostedDiffusion?: number;
+  /** `backgroundStyle: 'frosted'`: 0 = fully transparent, 1 = more opaque (see-through of content below). */
+  frostedTransparency?: number;
   gradientAngle?: number; // Background gradient angle in degrees
   borderGradientAngle?: number; // Border gradient angle in degrees
   shadow?: boolean; // Whether to show shadow around label/textbox nodes
@@ -452,8 +456,10 @@ export interface DiagramNodeItem {
   textColor?: string; // Text color for label nodes
   borderStyle?: 'solid' | 'dotted' | 'gradient' | 'none'; // Border style for label/textbox/shape nodes
   borderColors?: string[]; // Border colors for gradient [startColor, endColor]
-  backgroundStyle?: 'solid' | 'gradient' | 'none'; // Background style for label/textbox/shape nodes
+  backgroundStyle?: 'solid' | 'gradient' | 'frosted' | 'none'; // Background style for label/textbox/shape nodes
   backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
+  frostedDiffusion?: number;
+  frostedTransparency?: number;
   gradientAngle?: number; // Background gradient angle in degrees
   borderGradientAngle?: number; // Border gradient angle in degrees
   shadow?: boolean; // Whether to show shadow around label/textbox nodes
@@ -550,8 +556,10 @@ export interface DiagramZoneItem {
   backgroundColor?: string; // Background color (legacy, kept for compatibility)
   borderStyle?: 'solid' | 'dotted' | 'gradient' | 'none'; // Border style
   borderColors?: string[]; // Border colors for gradient [startColor, endColor]
-  backgroundStyle?: 'solid' | 'gradient' | 'none'; // Background style
+  backgroundStyle?: 'solid' | 'gradient' | 'frosted' | 'none'; // Background style
   backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
+  frostedDiffusion?: number;
+  frostedTransparency?: number;
   gradientAngle?: number; // Background gradient angle in degrees
   borderGradientAngle?: number; // Border gradient angle in degrees
   orientation?: 'horizontal' | 'vertical' | 'square'; // Zone shape orientation
@@ -619,8 +627,10 @@ export interface DiagramZoneData {
   backgroundColor?: string; // Background color (legacy, kept for compatibility)
   borderStyle?: 'solid' | 'dotted' | 'gradient' | 'none'; // Border style
   borderColors?: string[]; // Border colors for gradient [startColor, endColor]
-  backgroundStyle?: 'solid' | 'gradient' | 'none'; // Background style
+  backgroundStyle?: 'solid' | 'gradient' | 'frosted' | 'none'; // Background style
   backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
+  frostedDiffusion?: number;
+  frostedTransparency?: number;
   gradientAngle?: number; // Background gradient angle in degrees
   borderGradientAngle?: number; // Border gradient angle in degrees
   orientation?: 'horizontal' | 'vertical' | 'square'; // Zone shape orientation

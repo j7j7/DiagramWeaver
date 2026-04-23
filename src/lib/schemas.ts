@@ -185,8 +185,10 @@ export const DiagramNodeDataSchema = z.object({
   textColor: z.string().optional(), // Text color for label nodes
   borderStyle: z.enum(['solid', 'dotted', 'gradient', 'none']).optional(), // Border style for label/textbox/shape nodes
   borderColors: z.array(z.string()).optional(), // Border colors for gradient [startColor, endColor]
-  backgroundStyle: z.enum(['solid', 'gradient', 'none']).optional(), // Background style for label/textbox/shape nodes
+  backgroundStyle: z.enum(['solid', 'gradient', 'frosted', 'none']).optional(), // Background style for label/textbox/shape nodes
   backgroundColors: z.array(z.string()).optional(), // Background colors for gradient [startColor, endColor]
+  frostedDiffusion: z.number().min(0).max(1).optional(),
+  frostedTransparency: z.number().min(0).max(1).optional(),
   gradientAngle: z.number().optional(), // Background gradient angle in degrees
   borderGradientAngle: z.number().optional(), // Border gradient angle in degrees
   shadow: z.boolean().optional(), // Whether to show shadow around label/textbox nodes
@@ -366,8 +368,10 @@ export const DiagramGroupDataSchema = z.object({
   backgroundColor: z.string().optional(),
   borderStyle: z.enum(['solid', 'dotted', 'gradient', 'none']).optional(),
   borderColors: z.array(z.string()).optional(), // [startColor, endColor]
-  backgroundStyle: z.enum(['solid', 'gradient', 'none']).optional(),
+  backgroundStyle: z.enum(['solid', 'gradient', 'frosted', 'none']).optional(),
   backgroundColors: z.array(z.string()).optional(), // [startColor, endColor]
+  frostedDiffusion: z.number().min(0).max(1).optional(),
+  frostedTransparency: z.number().min(0).max(1).optional(),
   gradientAngle: z.number().optional(), // Background gradient angle in degrees
   borderGradientAngle: z.number().optional(), // Border gradient angle in degrees
   orientation: z.enum(['horizontal', 'vertical', 'square']).optional(),
@@ -539,8 +543,10 @@ export const DiagramNodeItemSchema = z.object({
   textColor: z.string().optional(), // Text color for label nodes
   borderStyle: z.enum(['solid', 'dotted', 'gradient', 'none']).optional(), // Border style for label/textbox/shape nodes
   borderColors: z.array(z.string()).optional(), // Border colors for gradient [startColor, endColor]
-  backgroundStyle: z.enum(['solid', 'gradient', 'none']).optional(), // Background style for label/textbox/shape nodes
+  backgroundStyle: z.enum(['solid', 'gradient', 'frosted', 'none']).optional(), // Background style for label/textbox/shape nodes
   backgroundColors: z.array(z.string()).optional(), // Background colors for gradient [startColor, endColor]
+  frostedDiffusion: z.number().min(0).max(1).optional(),
+  frostedTransparency: z.number().min(0).max(1).optional(),
   gradientAngle: z.number().optional(), // Background gradient angle in degrees
   borderGradientAngle: z.number().optional(), // Border gradient angle in degrees
   shadow: z.boolean().optional(), // Whether to show shadow around label/textbox nodes
@@ -636,8 +642,10 @@ export const DiagramGroupItemSchema = z.object({
   backgroundColor: z.string().optional(), // Background color (legacy, kept for compatibility)
   borderStyle: z.enum(['solid', 'dotted', 'gradient', 'none']).optional(), // Border style
   borderColors: z.array(z.string()).optional(), // Border colors for gradient [startColor, endColor]
-  backgroundStyle: z.enum(['solid', 'gradient', 'none']).optional(), // Background style
+  backgroundStyle: z.enum(['solid', 'gradient', 'frosted', 'none']).optional(), // Background style
   backgroundColors: z.array(z.string()).optional(), // Background colors for gradient [startColor, endColor]
+  frostedDiffusion: z.number().min(0).max(1).optional(),
+  frostedTransparency: z.number().min(0).max(1).optional(),
   gradientAngle: z.number().optional(), // Background gradient angle in degrees
   borderGradientAngle: z.number().optional(), // Border gradient angle in degrees
   orientation: z.enum(['horizontal', 'vertical', 'square']).optional(), // Group shape orientation

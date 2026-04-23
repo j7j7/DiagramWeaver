@@ -1174,7 +1174,7 @@ export function ShapePreview({
             cx={displayWidth / 2}
             cy={displayHeight / 2}
             r={r > 0 ? r : 0}
-            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
+            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : (effectiveBackgroundStyle === 'none' || effectiveBackgroundStyle === 'frosted') ? 'transparent' : effectiveBackgroundColor}
             stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
             strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
             strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
@@ -1208,7 +1208,7 @@ export function ShapePreview({
           {roundedEdges ? (
             <path
               d={polygonToRoundedPath(points, undefined, viewBox)}
-              fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
+              fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : (effectiveBackgroundStyle === 'none' || effectiveBackgroundStyle === 'frosted') ? 'transparent' : effectiveBackgroundColor}
               stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
               strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
               strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
@@ -1218,7 +1218,7 @@ export function ShapePreview({
           ) : (
             <polygon
               points={points}
-              fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
+              fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : (effectiveBackgroundStyle === 'none' || effectiveBackgroundStyle === 'frosted') ? 'transparent' : effectiveBackgroundColor}
               stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
               strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
               strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
@@ -1258,7 +1258,7 @@ export function ShapePreview({
                 L ${displayWidth * 0.32},${displayHeight * 0.62} 
                 L ${strokeWidth / 2},${displayHeight * 0.38} 
                 L ${displayWidth * 0.39},${displayHeight * 0.38} Z`}
-            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
+            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : (effectiveBackgroundStyle === 'none' || effectiveBackgroundStyle === 'frosted') ? 'transparent' : effectiveBackgroundColor}
             stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
             strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
             strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
@@ -1308,7 +1308,7 @@ export function ShapePreview({
                 C ${displayWidth * 0.18},${displayHeight * 0.64} ${displayWidth * 0.14},${displayHeight * 0.58} ${displayWidth * 0.14},${displayHeight * 0.52} 
                 C ${displayWidth * 0.14},${displayHeight * 0.5} ${displayWidth * 0.15},${displayHeight * 0.44} ${displayWidth * 0.2},${displayHeight * 0.42} 
                 C ${displayWidth * 0.15},${displayHeight * 0.4} ${displayWidth * 0.1},${displayHeight * 0.46} ${displayWidth * 0.1},${displayHeight * 0.5} Z`}
-            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
+            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : (effectiveBackgroundStyle === 'none' || effectiveBackgroundStyle === 'frosted') ? 'transparent' : effectiveBackgroundColor}
             stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
             strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
             strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
@@ -1340,7 +1340,7 @@ export function ShapePreview({
           </defs>
           <polygon
             points={`${displayWidth * 0.2},${strokeWidth} ${displayWidth - strokeWidth},${strokeWidth} ${displayWidth * 0.8},${displayHeight - strokeWidth} ${strokeWidth},${displayHeight - strokeWidth}`}
-            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
+            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : (effectiveBackgroundStyle === 'none' || effectiveBackgroundStyle === 'frosted') ? 'transparent' : effectiveBackgroundColor}
             stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
             strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
             strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
@@ -1376,7 +1376,7 @@ export function ShapePreview({
                 L ${displayWidth - strokeWidth},${displayHeight / 2} 
                 L ${displayWidth * 0.3},${displayHeight - strokeWidth} 
                 Z`}
-            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
+            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : (effectiveBackgroundStyle === 'none' || effectiveBackgroundStyle === 'frosted') ? 'transparent' : effectiveBackgroundColor}
             stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
             strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
             strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
@@ -1426,7 +1426,7 @@ export function ShapePreview({
           </defs>
           <polygon
             points={`${displayWidth * 0.25},${strokeWidth} ${displayWidth * 0.75},${strokeWidth} ${displayWidth - strokeWidth},${displayHeight - strokeWidth} ${strokeWidth},${displayHeight - strokeWidth}`}
-            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
+            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : (effectiveBackgroundStyle === 'none' || effectiveBackgroundStyle === 'frosted') ? 'transparent' : effectiveBackgroundColor}
             stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
             strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
             strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
@@ -1458,7 +1458,7 @@ export function ShapePreview({
           </defs>
           <polygon
             points={`${displayWidth / 2},${strokeWidth} ${displayWidth * 0.75},${displayHeight * 0.4} ${displayWidth / 2},${displayHeight - strokeWidth} ${displayWidth * 0.25},${displayHeight * 0.4}`}
-            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
+            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : (effectiveBackgroundStyle === 'none' || effectiveBackgroundStyle === 'frosted') ? 'transparent' : effectiveBackgroundColor}
             stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
             strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
             strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
@@ -1504,7 +1504,7 @@ export function ShapePreview({
           </defs>
           <polygon
             points={hexPoints.join(' ')}
-            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
+            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : (effectiveBackgroundStyle === 'none' || effectiveBackgroundStyle === 'frosted') ? 'transparent' : effectiveBackgroundColor}
             stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
             strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
             strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
@@ -1550,7 +1550,7 @@ export function ShapePreview({
           </defs>
           <polygon
             points={pentPoints.join(' ')}
-            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
+            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : (effectiveBackgroundStyle === 'none' || effectiveBackgroundStyle === 'frosted') ? 'transparent' : effectiveBackgroundColor}
             stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
             strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
             strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
@@ -1596,7 +1596,7 @@ export function ShapePreview({
           </defs>
           <polygon
             points={octPoints.join(' ')}
-            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
+            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : (effectiveBackgroundStyle === 'none' || effectiveBackgroundStyle === 'frosted') ? 'transparent' : effectiveBackgroundColor}
             stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
             strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
             strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
@@ -1640,7 +1640,7 @@ export function ShapePreview({
                 L ${displayWidth * 0.2},${displayHeight - strokeWidth} 
                 Q ${strokeWidth},${displayHeight * 0.9} ${strokeWidth},${displayHeight * 0.7} 
                 Z`}
-            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
+            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : (effectiveBackgroundStyle === 'none' || effectiveBackgroundStyle === 'frosted') ? 'transparent' : effectiveBackgroundColor}
             stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
             strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
             strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
@@ -1676,7 +1676,7 @@ export function ShapePreview({
                 L ${displayWidth - strokeWidth},${displayHeight / 2} 
                 L ${displayWidth * 0.7},${displayHeight - strokeWidth} 
                 Z`}
-            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
+            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : (effectiveBackgroundStyle === 'none' || effectiveBackgroundStyle === 'frosted') ? 'transparent' : effectiveBackgroundColor}
             stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
             strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
             strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
@@ -1715,7 +1715,7 @@ export function ShapePreview({
             height={Math.max(0, displayHeight - strokeWidth)}
             rx={radius}
             ry={radius}
-            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
+            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : (effectiveBackgroundStyle === 'none' || effectiveBackgroundStyle === 'frosted') ? 'transparent' : effectiveBackgroundColor}
             stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
             strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
             strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
@@ -1767,7 +1767,7 @@ export function ShapePreview({
             height={ih}
             rx={radius}
             ry={radius}
-            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
+            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : (effectiveBackgroundStyle === 'none' || effectiveBackgroundStyle === 'frosted') ? 'transparent' : effectiveBackgroundColor}
           />
           <path
             d={`M ${hx1 + radius} ${hy1} L ${hx2 - radius} ${hy1} Q ${hx2} ${hy1} ${hx2} ${hy1 + radius} L ${hx2} ${hb} L ${hx1} ${hb} L ${hx1} ${hy1 + radius} Q ${hx1} ${hy1} ${hx1 + radius} ${hy1} Z`}
@@ -1814,7 +1814,7 @@ export function ShapePreview({
             y={sw / 2}
             width={Math.max(0, displayWidth - sw)}
             height={Math.max(0, displayHeight - sw)}
-            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
+            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : (effectiveBackgroundStyle === 'none' || effectiveBackgroundStyle === 'frosted') ? 'transparent' : effectiveBackgroundColor}
             stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
             strokeWidth={sw}
             strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
@@ -1852,7 +1852,7 @@ export function ShapePreview({
             height={Math.max(0, displayHeight - strokeWidth)}
             rx={borderRadius}
             ry={borderRadius}
-            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : effectiveBackgroundStyle === 'none' ? 'transparent' : effectiveBackgroundColor}
+            fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : (effectiveBackgroundStyle === 'none' || effectiveBackgroundStyle === 'frosted') ? 'transparent' : effectiveBackgroundColor}
             stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
             strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}
             strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}

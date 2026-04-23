@@ -4,7 +4,7 @@ import React from "react";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { useSlideShapeShadowTransitionMode } from "@/components/diagram/slide-shape-shadow-transition-context";
 import { getNodeSizeMultiplier } from "@/lib/visual-styling";
-import { getShapeStyles } from "./shape-utils";
+import { getFrostedGlassSurfaceStyle, getShapeStyles } from "./shape-utils";
 import { ShapeTag } from "./shape-tag";
 import { ShapeText } from "./shape-text";
 
@@ -40,6 +40,8 @@ interface ShapeWrapperProps {
   slideColorTransition?: string;
   /** When true, skip ShapeText so the shape can render custom label regions (e.g. text-box-heading) */
   omitShapeText?: boolean;
+  /** When `backgroundStyle` is frosted and this is set, clips the glass layer to match SVG geometry (see SvgShapeBase). */
+  frostedGlassClipPath?: string;
 }
 
 /**
@@ -82,6 +84,7 @@ export function ShapeWrapper({
   onLabelDoubleClick,
   slideColorTransition,
   omitShapeText = false,
+  frostedGlassClipPath,
 }: ShapeWrapperProps) {
   const styles = getShapeStyles(node);
   const slideShapeShadowMode = useSlideShapeShadowTransitionMode();
@@ -116,6 +119,8 @@ export function ShapeWrapper({
   // Use a layered gradient border for all gradient borders.
   // This avoids `border-image` export glitches (gray fills in html-to-image snapshots).
   const needsGradientBorderLayer = shouldUseGradientBorderLayer(shouldSkipStyling, borderImage, borderColors);
+
+  const isFrostedBg = nodeAny.backgroundStyle === "frosted" && !shouldSkipStyling;
 
   return (
     <div
@@ -167,6 +172,7 @@ export function ShapeWrapper({
           width: needsGradientBorderLayer ? `calc(100% - ${styles.borderWidth})` : '100%',
           height: needsGradientBorderLayer ? `calc(100% - ${styles.borderWidth})` : '100%',
           margin: needsGradientBorderLayer ? `calc(${styles.borderWidth} / 2)` : 0,
+          ...(isFrostedBg ? { position: "relative", overflow: "hidden", isolation: "isolate" } : {}),
           ...(styles.shadow && !suppressLayerShadow && !useSvgShadow && needsGradientBorderLayer ? {
             boxShadow: 'var(--shape-shadow)'
           } : {}),
@@ -176,31 +182,73 @@ export function ShapeWrapper({
           ...(slideColorTransition !== undefined && !skipWrapperStyling ? { transition: slideColorTransition } : {}),
         }}
       >
-        {children ?? null}
-
-        <ShapeTag
-          tag={tag ?? ''}
-          tagPosition={tagPosition ?? 'top-left'}
-          isEditingTag={isEditingTag}
-          editTagText={editTagText}
-          onTagTextChange={onTagTextChange}
-          onTagSubmit={onTagSubmit}
-          onTagKeyDown={onTagKeyDown}
-          onTagDoubleClick={onTagDoubleClick}
-        />
-
-        {!omitShapeText ? (
-          <ShapeText
-            node={node}
-            label={label}
-            isEditingLabel={isEditingLabel}
-            editRuns={editRuns}
-            onRichLabelSubmit={onRichLabelSubmit}
-            onVerticalAlignChange={onVerticalAlignChange}
-            onLabelKeyDown={onLabelKeyDown}
-            onLabelDoubleClick={onLabelDoubleClick}
+        {isFrostedBg && styles.frostedGlass ? (
+          <div
+            style={{
+              ...getFrostedGlassSurfaceStyle(styles.frostedGlass),
+              ...(frostedGlassClipPath ? { clipPath: frostedGlassClipPath } : {}),
+            }}
+            aria-hidden
           />
         ) : null}
+
+        {isFrostedBg ? (
+          <span className="relative z-[1] flex h-full min-h-0 w-full flex-col">
+            {children ?? null}
+
+            <ShapeTag
+              tag={tag ?? ''}
+              tagPosition={tagPosition ?? 'top-left'}
+              isEditingTag={isEditingTag}
+              editTagText={editTagText}
+              onTagTextChange={onTagTextChange}
+              onTagSubmit={onTagSubmit}
+              onTagKeyDown={onTagKeyDown}
+              onTagDoubleClick={onTagDoubleClick}
+            />
+
+            {!omitShapeText ? (
+              <ShapeText
+                node={node}
+                label={label}
+                isEditingLabel={isEditingLabel}
+                editRuns={editRuns}
+                onRichLabelSubmit={onRichLabelSubmit}
+                onVerticalAlignChange={onVerticalAlignChange}
+                onLabelKeyDown={onLabelKeyDown}
+                onLabelDoubleClick={onLabelDoubleClick}
+              />
+            ) : null}
+          </span>
+        ) : (
+          <>
+            {children ?? null}
+
+            <ShapeTag
+              tag={tag ?? ''}
+              tagPosition={tagPosition ?? 'top-left'}
+              isEditingTag={isEditingTag}
+              editTagText={editTagText}
+              onTagTextChange={onTagTextChange}
+              onTagSubmit={onTagSubmit}
+              onTagKeyDown={onTagKeyDown}
+              onTagDoubleClick={onTagDoubleClick}
+            />
+
+            {!omitShapeText ? (
+              <ShapeText
+                node={node}
+                label={label}
+                isEditingLabel={isEditingLabel}
+                editRuns={editRuns}
+                onRichLabelSubmit={onRichLabelSubmit}
+                onVerticalAlignChange={onVerticalAlignChange}
+                onLabelKeyDown={onLabelKeyDown}
+                onLabelDoubleClick={onLabelDoubleClick}
+              />
+            ) : null}
+          </>
+        )}
       </div>
     </div>
   );

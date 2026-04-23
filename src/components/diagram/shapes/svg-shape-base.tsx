@@ -4,7 +4,7 @@ import React from "react";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { getNodeSizeMultiplier } from "@/lib/visual-styling";
 import { ShapeWrapper } from "./shape-wrapper";
-import { getGradientWithAngle, getShapeStyles } from "./shape-utils";
+import { getShapeStyles } from "./shape-utils";
 
 interface SvgShapeBaseProps {
   node: DiagramNodeData & { width?: number; height?: number };
@@ -35,6 +35,24 @@ interface SvgShapeBaseProps {
   omitShapeText?: boolean;
   /** Allow paint outside viewBox (e.g. SVG feDropShadow on pie chart). */
   svgOverflowVisible?: boolean;
+  /**
+   * When `node.backgroundStyle === 'frosted'`, the glass layer is clipped to this rect (viewBox user units)
+   * so it matches a transparent SVG fill. Omit for full bounding-box glass (e.g. complex polygons).
+   */
+  frostedClipRectInViewBox?: { x: number; y: number; w: number; h: number; rx?: number; ry?: number };
+}
+
+function parseViewBoxSize(viewBox: string): { vbX: number; vbY: number; vbW: number; vbH: number } {
+  const p = viewBox
+    .trim()
+    .split(/[\s,]+/)
+    .map((s) => parseFloat(s));
+  return {
+    vbX: p[0] ?? 0,
+    vbY: p[1] ?? 0,
+    vbW: p[2] ?? 0,
+    vbH: p[3] ?? 0,
+  };
 }
 
 export function SvgShapeBase({
@@ -49,6 +67,7 @@ export function SvgShapeBase({
   slideColorTransition,
   omitShapeText,
   svgOverflowVisible = false,
+  frostedClipRectInViewBox,
   ...rest
 }: SvgShapeBaseProps) {
   const nodeAny = node as any;
@@ -62,6 +81,25 @@ export function SvgShapeBase({
   const svgPaintTransition =
     slideColorTransition !== undefined && slideColorTransition !== "none" ? slideColorTransition : undefined;
 
+  let frostedGlassClipPath: string | undefined;
+  if (nodeAny.backgroundStyle === "frosted" && frostedClipRectInViewBox) {
+    const { vbX, vbY, vbW, vbH } = parseViewBoxSize(viewBox);
+    if (vbW > 0 && vbH > 0) {
+      const r = frostedClipRectInViewBox;
+      const t = ((r.y - vbY) / vbH) * 100;
+      const rgt = (vbX + vbW - (r.x + r.w)) / vbW * 100;
+      const b = (vbY + vbH - (r.y + r.h)) / vbH * 100;
+      const l = ((r.x - vbX) / vbW) * 100;
+      const rxVb = r.rx ?? 0;
+      const ryVb = r.ry ?? rxVb;
+      const roundPx =
+        rxVb > 0 || ryVb > 0
+          ? ` round ${(Math.min((rxVb * width) / vbW, (ryVb * height) / vbH))}px`
+          : "";
+      frostedGlassClipPath = `inset(${t}% ${rgt}% ${b}% ${l}%${roundPx})`;
+    }
+  }
+
   return (
     <ShapeWrapper
       node={node}
@@ -73,6 +111,7 @@ export function SvgShapeBase({
       skipWrapperStyling={true}
       slideColorTransition={slideColorTransition}
       omitShapeText={omitShapeText}
+      frostedGlassClipPath={frostedGlassClipPath}
       {...rest}
     >
       <svg

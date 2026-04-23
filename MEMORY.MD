@@ -1,5 +1,8 @@
 # MEMORY.MD
 
+### 2026-04-23 – Shape fill: frosted glass (backdrop blur)
+**`backgroundStyle: 'frosted'`** with **`frostedDiffusion`** (0–1 blur) and **`frostedTransparency`** (0–1 see-through; higher = more of the canvas below) on **`DiagramNodeData`**. Renders a **`backdrop-filter`** layer in **`shape-wrapper`** / **`uml-class`**, SVG fill transparent; **rectangle** / **rounded-rectangle** pass **`frostedClipRectInViewBox`** from **`svg-shape-base`** for inset clipping. **Visual styling panel**: Frosted glass + sliders + tint color. **Slide color crossfade** treats frosted like gradient (opacity crossfade). Zod + **`SelectedItem`** updated.
+
 ### 2026-04-23 – Z-order: textbox vs connection lines (order-aware mode)
 With **connections not forced behind nodes**, **`generic.text.textbox`** used the same **`100+2i+1`** stack tier as icons/plain text, so every textbox sat above all connection layers and lines always disappeared behind it. **`editor-canvas`** / **`viewer-canvas`** now treat **`generic.text.textbox`** like shapes (**`2*i+1`**) so edges interleave with layer order; **`generic.text.text`** unchanged (labels stay above connectors).
 

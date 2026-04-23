@@ -4,6 +4,8 @@ const VISUAL_COLOR_KEYS = [
   'backgroundColor',
   'backgroundStyle',
   'backgroundColors',
+  'frostedDiffusion',
+  'frostedTransparency',
   'gradientAngle',
   'borderColor',
   'borderColors',
@@ -39,7 +41,7 @@ export function visualColorSignature(node: DiagramNodeData): string {
 
 /** True when fill/border uses gradient paint — CSS cannot blend gradient strings; use opacity crossfade instead. */
 function hasGradientPaint(f: Record<string, unknown>): boolean {
-  return f.backgroundStyle === 'gradient' || f.borderStyle === 'gradient';
+  return f.backgroundStyle === 'gradient' || f.borderStyle === 'gradient' || f.backgroundStyle === 'frosted';
 }
 
 /**

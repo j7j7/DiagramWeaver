@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import type { DiagramNodeData } from "@/lib/types";
 import { useSlideShapeShadowTransitionMode } from "@/components/diagram/slide-shape-shadow-transition-context";
-import { getShapeStyles } from "./shape-utils";
+import { getFrostedGlassSurfaceStyle, getShapeStyles } from "./shape-utils";
 import { getTextColorForBackground } from "./shape-utils";
 import { ShapeTag } from "./shape-tag";
 import { UML_NAME_HEIGHT, UML_LINE_HEIGHT } from "@/lib/uml-utils";
@@ -94,6 +94,7 @@ export function UmlClassShape({
   const borderColors = styles.borderColors;
   const borderGradientBackground = borderImage ? String(borderImage).replace(/\s+1$/, "") : undefined;
   const needsGradientBorderLayer = shouldUseGradientBorderLayer(borderImage, borderColors);
+  const isFrostedBg = nodeAny.backgroundStyle === "frosted";
 
   const nameStyle = getCompartmentStyle(umlStyle?.name, fallbackColor);
   const attrStyle = getCompartmentStyle(umlStyle?.attributes, fallbackColor);
@@ -154,7 +155,10 @@ export function UmlClassShape({
   const isPlaceholderMethods = methods.length === 0;
 
   const Divider = () => (
-    <div style={{ height: Math.max(0.5, dividerWidth), background: dividerColor, width: "100%" }} />
+    <div
+      className="relative z-[1] shrink-0"
+      style={{ height: Math.max(0.5, dividerWidth), background: dividerColor, width: "100%" }}
+    />
   );
 
   return (
@@ -179,19 +183,23 @@ export function UmlClassShape({
           borderStyle: !needsGradientBorderLayer ? styles.borderStyle ?? "solid" : undefined,
           borderColor: !needsGradientBorderLayer ? (borderImage ? "transparent" : dividerColor) : undefined,
           borderImage: !needsGradientBorderLayer ? borderImage : undefined,
-          background: styles.background ?? nodeAny.backgroundColor ?? "#ffffff",
-          backgroundColor: styles.backgroundColor,
+          background: isFrostedBg ? "transparent" : styles.background ?? nodeAny.backgroundColor ?? "#ffffff",
+          backgroundColor: isFrostedBg ? "transparent" : styles.backgroundColor,
           borderRadius: !needsGradientBorderLayer ? borderRadius : undefined,
           width: needsGradientBorderLayer ? `calc(100% - ${styles.borderWidth})` : "100%",
           height: needsGradientBorderLayer ? `calc(100% - ${styles.borderWidth})` : "100%",
           margin: needsGradientBorderLayer ? `calc(${styles.borderWidth} / 2)` : 0,
+          ...(isFrostedBg ? { isolation: "isolate" } : {}),
           ...(styles.shadow && slideShapeShadowMode !== "crossfade" ? { boxShadow: "var(--shape-shadow-sm)" } : {}),
           ...(slideColorTransition !== undefined ? { transition: slideColorTransition } : {}),
         }}
       >
+        {isFrostedBg && styles.frostedGlass ? (
+          <div style={getFrostedGlassSurfaceStyle(styles.frostedGlass)} aria-hidden />
+        ) : null}
         {/* Name section - fixed single-line height */}
         <div
-          className={`flex items-center justify-center px-2 shrink-0 ${canEdit ? "cursor-text" : ""}`}
+          className={`relative z-[1] flex items-center justify-center px-2 shrink-0 ${canEdit ? "cursor-text" : ""}`}
           style={{ height: UML_NAME_HEIGHT, minHeight: UML_NAME_HEIGHT }}
           onDoubleClick={handleDoubleClick("name", displayName)}
         >
@@ -221,7 +229,7 @@ export function UmlClassShape({
 
         {/* Attributes section - height proportional to attribute count */}
         <div
-          className={`flex flex-col justify-start px-2 py-0.5 overflow-hidden shrink-0 ${canEdit ? "cursor-text" : ""}`}
+          className={`relative z-[1] flex flex-col justify-start px-2 py-0.5 overflow-hidden shrink-0 ${canEdit ? "cursor-text" : ""}`}
           style={{ height: displayAttributes.length * UML_LINE_HEIGHT, minHeight: displayAttributes.length * UML_LINE_HEIGHT }}
           onDoubleClick={handleDoubleClick("attributes", displayAttributes.join("\n"))}
         >
@@ -254,7 +262,7 @@ export function UmlClassShape({
 
         {/* Methods section - height proportional to method count */}
         <div
-          className={`flex flex-col justify-start px-2 py-0.5 overflow-hidden shrink-0 ${canEdit ? "cursor-text" : ""}`}
+          className={`relative z-[1] flex flex-col justify-start px-2 py-0.5 overflow-hidden shrink-0 ${canEdit ? "cursor-text" : ""}`}
           style={{ height: displayMethods.length * UML_LINE_HEIGHT, minHeight: displayMethods.length * UML_LINE_HEIGHT }}
           onDoubleClick={handleDoubleClick("methods", displayMethods.join("\n"))}
         >

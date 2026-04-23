@@ -74,6 +74,7 @@ export function RoundedRectangleShape(props: RoundedRectangleShapeProps) {
       defaultWidth={VIEWBOX_W}
       defaultHeight={VIEWBOX_H}
       viewBox={`0 0 ${vbW} ${vbH}`}
+      frostedClipRectInViewBox={{ x: half, y: half, w, h, rx, ry }}
       svgContent={
         <>
           {defs}

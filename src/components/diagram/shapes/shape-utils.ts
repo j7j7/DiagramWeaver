@@ -138,6 +138,87 @@ export const getTagPositionClasses = (position?: string) => {
   }
 };
 
+/** #rgb / #rrggbb / #rgba → rgba() for glass tint. Falls back to rgba(255,255,255,a). */
+export function hexToRgbaString(hex: string | undefined, alpha: number): string {
+  const a = Math.min(1, Math.max(0, alpha));
+  if (!hex || typeof hex !== 'string' || !hex.startsWith('#')) {
+    return `rgba(255, 255, 255, ${a})`;
+  }
+  const raw = hex.replace('#', '');
+  let r = 255;
+  let g = 255;
+  let b = 255;
+  if (raw.length === 3) {
+    r = parseInt(raw[0] + raw[0], 16);
+    g = parseInt(raw[1] + raw[1], 16);
+    b = parseInt(raw[2] + raw[2], 16);
+  } else if (raw.length >= 6) {
+    r = parseInt(raw.substring(0, 2), 16);
+    g = parseInt(raw.substring(2, 4), 16);
+    b = parseInt(raw.substring(4, 6), 16);
+  }
+  if (![r, g, b].every((n) => Number.isFinite(n))) {
+    return `rgba(255, 255, 255, ${a})`;
+  }
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+
+const DEFAULT_FROSTED_DIFFUSION = 0.45;
+const DEFAULT_FROSTED_TRANSPARENCY = 0.55; // 0 = opaque, 1 = more see-through
+
+function clamp01(n: number | undefined, fallback: number): number {
+  if (n === undefined || !Number.isFinite(n)) return fallback;
+  return Math.min(1, Math.max(0, n));
+}
+
+export type FrostedGlassParams = {
+  /** Backdrop blur radius in px */
+  blurPx: number;
+  /** CSS saturate() argument */
+  saturation: number;
+  /** Tint alpha applied on top of backdrop (0–1) */
+  tintAlpha: number;
+  /** Solid color string for the tint (rgba) */
+  tintRgba: string;
+};
+
+/**
+ * `frostedTransparency`: 0 = least see-through, 1 = most see-through (clearer view of content below).
+ * `frostedDiffusion`: 0 = sharp, 1 = strong blur.
+ */
+export function getFrostedGlassParams(
+  baseColor: string | undefined,
+  frostedDiffusion: number | undefined,
+  frostedTransparency: number | undefined
+): FrostedGlassParams {
+  const d = clamp01(frostedDiffusion, DEFAULT_FROSTED_DIFFUSION);
+  const t = clamp01(frostedTransparency, DEFAULT_FROSTED_TRANSPARENCY);
+  const blurPx = 0.5 + d * 28;
+  const saturation = 1.05 + d * 0.55;
+  // More "transparency" → lighter tint so more of the backdrop reads through
+  const tintAlpha = 0.04 + (1 - t) * 0.52;
+  return {
+    blurPx,
+    saturation,
+    tintAlpha,
+    tintRgba: hexToRgbaString(baseColor, tintAlpha),
+  };
+}
+
+export function getFrostedGlassSurfaceStyle(p: FrostedGlassParams): CSSProperties {
+  const f = `saturate(${p.saturation}) blur(${p.blurPx}px)`;
+  return {
+    position: "absolute",
+    inset: 0,
+    borderRadius: "inherit",
+    pointerEvents: "none",
+    zIndex: 0,
+    backgroundColor: p.tintRgba,
+    backdropFilter: f,
+    WebkitBackdropFilter: f,
+  };
+}
+
 // Get shape styling properties from node
 export const getShapeStyles = (node: DiagramNodeData & { width?: number; height?: number }) => {
   const nodeAny = node as any;
@@ -153,12 +234,23 @@ export const getShapeStyles = (node: DiagramNodeData & { width?: number; height?
   const shadow = nodeAny.shadow || false;
   const roundedEdges = nodeAny.roundedEdges || false;
 
+  const isFrosted = backgroundStyle === 'frosted';
+  const frostedGlass = isFrosted
+    ? getFrostedGlassParams(
+        backgroundColor,
+        nodeAny.frostedDiffusion as number | undefined,
+        nodeAny.frostedTransparency as number | undefined
+      )
+    : null;
+
   return {
-    background: backgroundStyle === 'gradient'
-      ? getGradientWithAngle(backgroundColors, gradientAngle)
-      : backgroundStyle === 'none'
-        ? 'transparent'
-        : backgroundColor,
+    background: isFrosted
+      ? 'transparent'
+      : backgroundStyle === 'gradient'
+        ? getGradientWithAngle(backgroundColors, gradientAngle)
+        : backgroundStyle === 'none'
+          ? 'transparent'
+          : backgroundColor,
     borderWidth: borderStyle === 'none' ? '0' : `${borderWidth}px`,
     borderStyle: borderStyle === 'gradient' ? 'solid' : borderStyle,
     borderColor: borderStyle === 'gradient' ? 'transparent' : borderColor,
@@ -167,11 +259,14 @@ export const getShapeStyles = (node: DiagramNodeData & { width?: number; height?
     shadow,
     roundedEdges,
     backgroundColor:
-      backgroundStyle === 'gradient'
-        ? backgroundColors[0]
-        : backgroundStyle === 'none'
-          ? 'transparent'
-          : backgroundColor,
+      isFrosted
+        ? 'transparent'
+        : backgroundStyle === 'gradient'
+          ? backgroundColors[0]
+          : backgroundStyle === 'none'
+            ? 'transparent'
+            : backgroundColor,
+    frostedGlass,
   };
 };
 
@@ -182,6 +277,7 @@ export function getShapeSvgFill(
   solidColor: string | undefined,
   solidFallback = '#6b7280'
 ): string {
+  if (backgroundStyle === 'frosted') return 'transparent';
   if (backgroundStyle === 'gradient') return gradientFillRef;
   if (backgroundStyle === 'none') return 'transparent';
   return solidColor || solidFallback;
