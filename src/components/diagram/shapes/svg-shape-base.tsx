@@ -40,6 +40,8 @@ interface SvgShapeBaseProps {
    * so it matches a transparent SVG fill. Omit for full bounding-box glass (e.g. complex polygons).
    */
   frostedClipRectInViewBox?: { x: number; y: number; w: number; h: number; rx?: number; ry?: number };
+  /** Stacking for viewport-portal frosted glass (should match the diagram node). */
+  frostedGlassZIndex?: number;
 }
 
 function parseViewBoxSize(viewBox: string): { vbX: number; vbY: number; vbW: number; vbH: number } {
@@ -68,6 +70,7 @@ export function SvgShapeBase({
   omitShapeText,
   svgOverflowVisible = false,
   frostedClipRectInViewBox,
+  frostedGlassZIndex = 2,
   ...rest
 }: SvgShapeBaseProps) {
   const nodeAny = node as any;
@@ -112,6 +115,8 @@ export function SvgShapeBase({
       slideColorTransition={slideColorTransition}
       omitShapeText={omitShapeText}
       frostedGlassClipPath={frostedGlassClipPath}
+      useFrostedGlassViewportPortal={true}
+      frostedGlassZIndex={frostedGlassZIndex}
       {...rest}
     >
       <svg

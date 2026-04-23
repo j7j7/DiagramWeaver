@@ -1553,6 +1553,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             style={{
               width: `${width}px`,
               height: `${height}px`,
+              zIndex: 1,
+              position: "relative",
               transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.k})`,
               transformOrigin: '0 0',
             }}

@@ -1,10 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { useRef } from "react";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { useSlideShapeShadowTransitionMode } from "@/components/diagram/slide-shape-shadow-transition-context";
 import { getNodeSizeMultiplier } from "@/lib/visual-styling";
 import { getFrostedGlassSurfaceStyle, getShapeStyles } from "./shape-utils";
+import { FrostedGlassPortalLayer } from "./frosted-glass-portal-layer";
 import { ShapeTag } from "./shape-tag";
 import { ShapeText } from "./shape-text";
 
@@ -42,6 +43,13 @@ interface ShapeWrapperProps {
   omitShapeText?: boolean;
   /** When `backgroundStyle` is frosted and this is set, clips the glass layer to match SVG geometry (see SvgShapeBase). */
   frostedGlassClipPath?: string;
+  /**
+   * When true, frosted `backdrop-filter` is rendered in a `fixed` portal under `#canvas-container`
+   * so it blurs the real viewport (escapes pan/zoom `transform`) while staying under the diagram layer.
+   */
+  useFrostedGlassViewportPortal?: boolean;
+  /** Stacking for the portal (shape container zIndex); should match the diagram node. */
+  frostedGlassZIndex?: number;
 }
 
 /**
@@ -85,7 +93,10 @@ export function ShapeWrapper({
   slideColorTransition,
   omitShapeText = false,
   frostedGlassClipPath,
+  useFrostedGlassViewportPortal = false,
+  frostedGlassZIndex = 2,
 }: ShapeWrapperProps) {
+  const frostedLayoutRef = useRef<HTMLDivElement | null>(null);
   const styles = getShapeStyles(node);
   const slideShapeShadowMode = useSlideShapeShadowTransitionMode();
   /** Only gradient crossfade stacks two paints; suppress per-layer shadow there and use one group filter. Merge-paint keeps the normal shadow so it never “blinks” off. */
@@ -121,6 +132,14 @@ export function ShapeWrapper({
   const needsGradientBorderLayer = shouldUseGradientBorderLayer(shouldSkipStyling, borderImage, borderColors);
 
   const isFrostedBg = nodeAny.backgroundStyle === "frosted" && !shouldSkipStyling;
+  const usePortalFrosted =
+    Boolean(
+      isFrostedBg &&
+        styles.frostedGlass &&
+        useFrostedGlassViewportPortal &&
+        typeof document !== "undefined"
+    );
+  const frostedBorderRadius = calculatedBorderRadius ?? "0px";
 
   return (
     <div
@@ -157,6 +176,7 @@ export function ShapeWrapper({
       ) : null}
 
       <div
+        ref={frostedLayoutRef}
         data-shape-bg-fallback={!shouldSkipStyling ? styles.backgroundColor : undefined}
         data-shape-border-fallback={needsGradientBorderLayer ? (borderColors?.[0] ?? undefined) : undefined}
         style={{
@@ -172,7 +192,11 @@ export function ShapeWrapper({
           width: needsGradientBorderLayer ? `calc(100% - ${styles.borderWidth})` : '100%',
           height: needsGradientBorderLayer ? `calc(100% - ${styles.borderWidth})` : '100%',
           margin: needsGradientBorderLayer ? `calc(${styles.borderWidth} / 2)` : 0,
-          ...(isFrostedBg ? { position: "relative", overflow: "hidden", isolation: "isolate" } : {}),
+          ...(isFrostedBg && !usePortalFrosted
+            ? { position: "relative", overflow: "hidden", isolation: "isolate" }
+            : isFrostedBg
+              ? { position: "relative", overflow: "hidden" }
+              : {}),
           ...(styles.shadow && !suppressLayerShadow && !useSvgShadow && needsGradientBorderLayer ? {
             boxShadow: 'var(--shape-shadow)'
           } : {}),
@@ -182,7 +206,7 @@ export function ShapeWrapper({
           ...(slideColorTransition !== undefined && !skipWrapperStyling ? { transition: slideColorTransition } : {}),
         }}
       >
-        {isFrostedBg && styles.frostedGlass ? (
+        {!usePortalFrosted && isFrostedBg && styles.frostedGlass ? (
           <div
             style={{
               ...getFrostedGlassSurfaceStyle(styles.frostedGlass),
@@ -250,6 +274,16 @@ export function ShapeWrapper({
           </>
         )}
       </div>
+
+      {usePortalFrosted && styles.frostedGlass ? (
+        <FrostedGlassPortalLayer
+          glass={styles.frostedGlass}
+          zIndex={frostedGlassZIndex}
+          targetRef={frostedLayoutRef}
+          borderRadius={frostedBorderRadius}
+          clipPath={frostedGlassClipPath}
+        />
+      ) : null}
     </div>
   );
 }

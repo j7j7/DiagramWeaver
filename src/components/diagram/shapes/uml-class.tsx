@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import type { DiagramNodeData } from "@/lib/types";
 import { useSlideShapeShadowTransitionMode } from "@/components/diagram/slide-shape-shadow-transition-context";
 import { getFrostedGlassSurfaceStyle, getShapeStyles } from "./shape-utils";
+import { FrostedGlassPortalLayer } from "./frosted-glass-portal-layer";
 import { getTextColorForBackground } from "./shape-utils";
 import { ShapeTag } from "./shape-tag";
 import { UML_NAME_HEIGHT, UML_LINE_HEIGHT } from "@/lib/uml-utils";
@@ -26,6 +27,7 @@ interface UmlClassShapeProps {
   onUmlClassUpdate?: (umlClass: { name?: string; attributes?: string[]; methods?: string[] }) => void;
   isReadOnly?: boolean;
   slideColorTransition?: string;
+  frostedGlassZIndex?: number;
 }
 
 function getCompartmentStyle(
@@ -65,7 +67,9 @@ export function UmlClassShape({
   onUmlClassUpdate,
   isReadOnly = false,
   slideColorTransition,
+  frostedGlassZIndex = 2,
 }: UmlClassShapeProps) {
+  const frostedLayoutRef = useRef<HTMLDivElement | null>(null);
   const nodeAny = node as any;
   const uml = nodeAny.umlClass;
   const umlStyle = nodeAny.umlClassStyle;
@@ -95,6 +99,9 @@ export function UmlClassShape({
   const borderGradientBackground = borderImage ? String(borderImage).replace(/\s+1$/, "") : undefined;
   const needsGradientBorderLayer = shouldUseGradientBorderLayer(borderImage, borderColors);
   const isFrostedBg = nodeAny.backgroundStyle === "frosted";
+  const usePortalFrosted = Boolean(
+    isFrostedBg && styles.frostedGlass && typeof document !== "undefined"
+  );
 
   const nameStyle = getCompartmentStyle(umlStyle?.name, fallbackColor);
   const attrStyle = getCompartmentStyle(umlStyle?.attributes, fallbackColor);
@@ -176,6 +183,7 @@ export function UmlClassShape({
         />
       ) : null}
       <div
+        ref={frostedLayoutRef}
         className="relative overflow-hidden flex flex-col w-full h-full"
         style={{
           boxSizing: "border-box",
@@ -189,12 +197,12 @@ export function UmlClassShape({
           width: needsGradientBorderLayer ? `calc(100% - ${styles.borderWidth})` : "100%",
           height: needsGradientBorderLayer ? `calc(100% - ${styles.borderWidth})` : "100%",
           margin: needsGradientBorderLayer ? `calc(${styles.borderWidth} / 2)` : 0,
-          ...(isFrostedBg ? { isolation: "isolate" } : {}),
+          ...(isFrostedBg && !usePortalFrosted ? { isolation: "isolate" } : {}),
           ...(styles.shadow && slideShapeShadowMode !== "crossfade" ? { boxShadow: "var(--shape-shadow-sm)" } : {}),
           ...(slideColorTransition !== undefined ? { transition: slideColorTransition } : {}),
         }}
       >
-        {isFrostedBg && styles.frostedGlass ? (
+        {!usePortalFrosted && isFrostedBg && styles.frostedGlass ? (
           <div style={getFrostedGlassSurfaceStyle(styles.frostedGlass)} aria-hidden />
         ) : null}
         {/* Name section - fixed single-line height */}
@@ -291,6 +299,14 @@ export function UmlClassShape({
           )}
         </div>
       </div>
+      {usePortalFrosted && styles.frostedGlass ? (
+        <FrostedGlassPortalLayer
+          glass={styles.frostedGlass}
+          zIndex={frostedGlassZIndex}
+          targetRef={frostedLayoutRef}
+          borderRadius={borderRadius}
+        />
+      ) : null}
       <ShapeTag
         tag={tag ?? ""}
         tagPosition={tagPosition ?? "top-left"}

@@ -410,6 +410,7 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
         style={{
           width: `${width}px`,
           height: `${height}px`,
+          zIndex: 1,
           transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.k})`,
           transformOrigin: '0 0',
           cursor: 'grab',

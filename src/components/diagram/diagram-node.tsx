@@ -556,6 +556,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     const shapeProps = {
       node: visualNode,
       slideColorTransition,
+      frostedGlassZIndex: stackZIndex ?? 2,
       overrideWidth: typeof displayWidth === 'number' ? displayWidth : undefined,
       overrideHeight: typeof displayHeight === 'number' ? displayHeight : undefined,
       tag: nodeAny.tag,
@@ -590,6 +591,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
         <UmlClassShape
           node={visualNode}
           slideColorTransition={slideColorTransition}
+          frostedGlassZIndex={stackZIndex ?? 2}
           overrideWidth={shapeProps.overrideWidth}
           overrideHeight={shapeProps.overrideHeight}
           label={shapeProps.label}
