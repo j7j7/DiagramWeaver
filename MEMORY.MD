@@ -1,5 +1,8 @@
 # MEMORY.MD
 
+### 2026-04-23 – Cloud environment setup + runtime verification
+Installed dependencies with `npm install`, then validated the workspace with `npm run typecheck` (pass). Started the app with `npm run dev` on `http://localhost:9003`, verified HTTP `200` via `curl -I`, and confirmed the Diagram Weaver UI loads/interacts in-browser (menu + canvas/sidebar visible and responsive). `npm run lint` currently fails in this environment because the script resolves to `next lint` with `lint` interpreted as an invalid directory (`/workspace/lint`).
+
 ### 2026-04-22 – Cursor personal skill: Browser Use Cloud (`llms-full`)
 Global (personal) skill installed at **`~/.cursor/skills/browser-use-cloud/`**: **`SKILL.md`** plus full **`llms-full.txt`** copied from https://docs.browser-use.com/llms-full.txt (2888 lines). Cursor-managed **`~/.cursor/skills-cursor/`** was not modified. Refresh the txt from the URL if docs drift. **Console:** https://cloud.browser-use.com — **`BROWSER_USE_API_KEY`** for this repo lives in **`.env.local`** (gitignored); do not commit.
 
