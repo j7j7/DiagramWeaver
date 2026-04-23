@@ -63,6 +63,7 @@ import { extractUmlClassTextStylingFromNode, applyUmlClassTextStylingToNode, DEF
 import { cn, isConnectorLineNodeType, isShapeNodeType, isIconOrEmojiType } from '@/lib/utils';
 import { isConnectorLineGeometryClosed } from '@/lib/line-curve-path';
 import { extractVisualStylingFromNode, extractVisualStylingFromGroup } from '@/lib/visual-styling';
+import { nodeTypeSupportsSvgBorderBeam } from '@/lib/border-beam-defaults';
 import { extractLineStylingFromNode, applyLineStylingToNode, syncClosedConnectorLineBorderWidth } from '@/lib/line-styling';
 import { toConnectionAnimationPatch } from '@/lib/connection-animation';
 import { useToast } from '@/hooks/use-toast';
@@ -1215,6 +1216,13 @@ export function ContextToolbar({
       highlightAnimDurationSec: undefined,
       highlightAnimIntervalSec: undefined,
       highlightAnimGlowColor: undefined,
+      borderBeam: undefined,
+      borderBeamColors: undefined,
+      borderBeamDurationSec: undefined,
+      borderBeamLength: undefined,
+      borderBeamGlow: undefined,
+      borderBeamWidth: undefined,
+      borderBeamWobble: undefined,
       ignoreConnectionAvoidance: undefined,
     };
     
@@ -2226,6 +2234,7 @@ export function ContextToolbar({
                     (selectedItem as any)?.type === 'generic.object.text-box-heading' ||
                     (selectedItem as any)?.type?.endsWith?.('.text-box-heading')
                   }
+                  showBorderBeamControls={nodeTypeSupportsSvgBorderBeam((selectedItem as any)?.type || '')}
                   noIconBackground={(() => {
                     if (!selectedItem || !diagramData) return false;
                     const item = selectedItemIds && selectedItemIds.size > 1

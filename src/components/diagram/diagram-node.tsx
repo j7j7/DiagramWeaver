@@ -246,7 +246,14 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
         (p as any).highlightAnim !== (n as any).highlightAnim ||
         (p as any).highlightAnimDurationSec !== (n as any).highlightAnimDurationSec ||
         (p as any).highlightAnimIntervalSec !== (n as any).highlightAnimIntervalSec ||
-        (p as any).highlightAnimGlowColor !== (n as any).highlightAnimGlowColor) {
+        (p as any).highlightAnimGlowColor !== (n as any).highlightAnimGlowColor ||
+        (p as any).borderBeam !== (n as any).borderBeam ||
+        JSON.stringify((p as any).borderBeamColors ?? null) !== JSON.stringify((n as any).borderBeamColors ?? null) ||
+        (p as any).borderBeamDurationSec !== (n as any).borderBeamDurationSec ||
+        (p as any).borderBeamLength !== (n as any).borderBeamLength ||
+        (p as any).borderBeamGlow !== (n as any).borderBeamGlow ||
+        (p as any).borderBeamWidth !== (n as any).borderBeamWidth ||
+        (p as any).borderBeamWobble !== (n as any).borderBeamWobble) {
       return false;
     }
     if (JSON.stringify((p as any).chart) !== JSON.stringify((n as any).chart)) return false;

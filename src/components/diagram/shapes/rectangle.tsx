@@ -5,6 +5,7 @@ import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { SvgShapeBase } from "./svg-shape-base";
 import { getShapeSvgFill } from "./shape-utils";
 import { useSvgGradient } from "@/hooks/use-svg-gradient";
+import { SvgBorderBeamLayer } from "./svg-border-beam";
 
 interface RectangleShapeProps {
   node: DiagramNodeData & { width?: number; height?: number };
@@ -100,6 +101,8 @@ export function RectangleShape(props: RectangleShapeProps) {
       : borderColorFallback;
   const strokeDasharray = borderStyle === "dotted" ? "3,3" : undefined;
 
+  const beamPathD = `M 0 0 L ${vbW} 0 L ${vbW} ${vbH} L 0 ${vbH} Z`;
+
   return (
     <SvgShapeBase
       {...props}
@@ -120,6 +123,7 @@ export function RectangleShape(props: RectangleShapeProps) {
             strokeDasharray={strokeDasharray}
             {...(strokeWidth > 0 ? { vectorEffect: "non-scaling-stroke" as const } : {})}
           />
+          <SvgBorderBeamLayer node={node} pathD={beamPathD} />
         </>
       }
     />

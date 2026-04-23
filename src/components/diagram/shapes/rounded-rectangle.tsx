@@ -5,6 +5,7 @@ import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { SvgShapeBase } from "./svg-shape-base";
 import { getShapeSvgFill } from "./shape-utils";
 import { useSvgGradient } from "@/hooks/use-svg-gradient";
+import { SvgBorderBeamLayer } from "./svg-border-beam";
 
 interface RoundedRectangleShapeProps {
   node: DiagramNodeData & { width?: number; height?: number };
@@ -68,6 +69,13 @@ export function RoundedRectangleShape(props: RoundedRectangleShapeProps) {
   const strokeColor = borderStyle === "gradient" ? strokeRef : (nodeAny.borderColor || "#6b7280");
   const strokeDasharray = borderStyle === "dotted" ? "3,3" : undefined;
 
+  const outerRx = rx + half;
+  const outerRy = ry + half;
+  const beamPathD =
+    rx <= 0.001 && ry <= 0.001
+      ? `M 0 0 L ${vbW} 0 L ${vbW} ${vbH} L 0 ${vbH} Z`
+      : `M ${outerRx} 0 L ${vbW - outerRx} 0 A ${outerRx} ${outerRy} 0 0 1 ${vbW} ${outerRy} L ${vbW} ${vbH - outerRy} A ${outerRx} ${outerRy} 0 0 1 ${vbW - outerRx} ${vbH} L ${outerRx} ${vbH} A ${outerRx} ${outerRy} 0 0 1 0 ${vbH - outerRy} L 0 ${outerRy} A ${outerRx} ${outerRy} 0 0 1 ${outerRx} 0 Z`;
+
   return (
     <SvgShapeBase
       {...props}
@@ -90,6 +98,7 @@ export function RoundedRectangleShape(props: RoundedRectangleShapeProps) {
             strokeDasharray={strokeDasharray}
             {...(strokeWidth > 0 ? { vectorEffect: "non-scaling-stroke" as const } : {})}
           />
+          <SvgBorderBeamLayer node={node} pathD={beamPathD} />
         </>
       }
     />

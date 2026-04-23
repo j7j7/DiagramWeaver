@@ -221,6 +221,20 @@ export interface DiagramNodeData {
   highlightAnimIntervalSec?: number;
   /** Glow color for the pulse (default blue). */
   highlightAnimGlowColor?: string;
+  /** Animated highlight segment along the shape outline (SVG primitives: rect/circle/rounded rect). */
+  borderBeam?: boolean;
+  /** Beam gradient: bright core → mid → transparent tail (3 stops). */
+  borderBeamColors?: string[];
+  /** Seconds for one full lap around the outline. */
+  borderBeamDurationSec?: number;
+  /** Segment length as a fraction of perimeter (0.04–0.55). */
+  borderBeamLength?: number;
+  /** Glow blur in px (Gaussian std deviation). */
+  borderBeamGlow?: number;
+  /** Beam stroke width in px. */
+  borderBeamWidth?: number;
+  /** Undulation: relative dash length variation (0–0.25). */
+  borderBeamWobble?: number;
   rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
   textPosition?: 'above' | 'center' | 'under'; // Text position for shape nodes
   freeflow?: boolean; // If true, node can be placed anywhere without joining groups/zones
@@ -461,6 +475,13 @@ export interface DiagramNodeItem {
   highlightAnimDurationSec?: number;
   highlightAnimIntervalSec?: number;
   highlightAnimGlowColor?: string;
+  borderBeam?: boolean;
+  borderBeamColors?: string[];
+  borderBeamDurationSec?: number;
+  borderBeamLength?: number;
+  borderBeamGlow?: number;
+  borderBeamWidth?: number;
+  borderBeamWobble?: number;
   roundedEdges?: boolean; // Whether to apply rounded edges to shapes
   rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
   textPosition?: 'above' | 'center' | 'under'; // Text position for shape nodes

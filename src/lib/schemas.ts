@@ -194,6 +194,13 @@ export const DiagramNodeDataSchema = z.object({
   highlightAnimDurationSec: z.number().optional(),
   highlightAnimIntervalSec: z.number().optional(),
   highlightAnimGlowColor: z.string().optional(),
+  borderBeam: z.boolean().optional(),
+  borderBeamColors: z.array(z.string()).optional(),
+  borderBeamDurationSec: z.number().optional(),
+  borderBeamLength: z.number().optional(),
+  borderBeamGlow: z.number().optional(),
+  borderBeamWidth: z.number().optional(),
+  borderBeamWobble: z.number().optional(),
   rotation: z.number().optional(), // Rotation angle in degrees (0, 45, -45, 90, -90)
   textPosition: z.enum(['above', 'center', 'under']).optional(), // Text position for shape nodes
   freeflow: z.boolean().optional(), // If true, node can be placed anywhere without joining groups/zones
@@ -548,6 +555,13 @@ export const DiagramNodeItemSchema = z.object({
   highlightAnimDurationSec: z.number().optional(),
   highlightAnimIntervalSec: z.number().optional(),
   highlightAnimGlowColor: z.string().optional(),
+  borderBeam: z.boolean().optional(),
+  borderBeamColors: z.array(z.string()).optional(),
+  borderBeamDurationSec: z.number().optional(),
+  borderBeamLength: z.number().optional(),
+  borderBeamGlow: z.number().optional(),
+  borderBeamWidth: z.number().optional(),
+  borderBeamWobble: z.number().optional(),
   rotation: z.number().optional(), // Rotation angle in degrees (0, 45, -45, 90, -90)
   textPosition: z.enum(['above', 'center', 'under']).optional(), // Text position for shape nodes
   freeflow: z.boolean().optional(), // If true, node can be placed anywhere without joining groups/zones

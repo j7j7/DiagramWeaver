@@ -13,6 +13,15 @@ import {
   HIGHLIGHT_ANIM_DEFAULT_GLOW_COLOR,
   HIGHLIGHT_ANIM_DEFAULT_INTERVAL_SEC,
 } from "@/lib/highlight-anim";
+import {
+  BORDER_BEAM_DEFAULT_COLORS,
+  BORDER_BEAM_DEFAULT_DURATION_SEC,
+  BORDER_BEAM_DEFAULT_GLOW,
+  BORDER_BEAM_DEFAULT_LENGTH,
+  BORDER_BEAM_DEFAULT_WIDTH,
+  BORDER_BEAM_DEFAULT_WOBBLE,
+} from "@/lib/border-beam-defaults";
+import { Slider } from "@/components/ui/slider";
 import { Palette, RotateCcw, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { GradientAnglePicker } from "./gradient-angle-picker";
@@ -167,9 +176,145 @@ interface VisualStylingPanelProps {
   isRoundedRectangle?: boolean;
   /** When true, shows heading strip color (text-box-heading only) */
   isTextBoxHeading?: boolean;
+  /** When true, show Border beam controls (rectangle, square, circle, rounded-rectangle). */
+  showBorderBeamControls?: boolean;
 }
 
-export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, isTextBoxHeading = false }: VisualStylingPanelProps) {
+function BorderBeamControls({
+  styling,
+  handlePropertyChange,
+  onStylingChange,
+}: {
+  styling: Partial<VisualStyling>;
+  handlePropertyChange: (property: keyof VisualStyling, value: unknown, immediate?: boolean) => void;
+  onStylingChange: (styling: Partial<VisualStyling>) => void;
+}) {
+  const enabled = Boolean(styling.borderBeam);
+  const colors = styling.borderBeamColors ?? [...BORDER_BEAM_DEFAULT_COLORS];
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id="dw-border-beam"
+          checked={enabled}
+          onCheckedChange={(checked) => {
+            const on = checked === true;
+            if (on) {
+              onStylingChange({
+                borderBeam: true,
+                borderBeamColors: styling.borderBeamColors ?? [...BORDER_BEAM_DEFAULT_COLORS],
+                borderBeamDurationSec: styling.borderBeamDurationSec ?? BORDER_BEAM_DEFAULT_DURATION_SEC,
+                borderBeamLength: styling.borderBeamLength ?? BORDER_BEAM_DEFAULT_LENGTH,
+                borderBeamGlow: styling.borderBeamGlow ?? BORDER_BEAM_DEFAULT_GLOW,
+                borderBeamWidth: styling.borderBeamWidth ?? BORDER_BEAM_DEFAULT_WIDTH,
+                borderBeamWobble: styling.borderBeamWobble ?? BORDER_BEAM_DEFAULT_WOBBLE,
+              });
+            } else {
+              handlePropertyChange("borderBeam", false, true);
+            }
+          }}
+        />
+        <Label htmlFor="dw-border-beam" className="text-sm text-muted-foreground font-normal cursor-pointer">
+          Border beam
+        </Label>
+      </div>
+      {enabled && (
+        <div className="space-y-3 pl-6">
+          <p className="text-xs text-muted-foreground">
+            Animated highlight along the outline. Works on rectangle, square, circle, and rounded rectangle.
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            {(["Core", "Mid", "Tail"] as const).map((label, i) => (
+              <div key={label} className="space-y-1 min-w-0">
+                <Label className="text-xs text-muted-foreground">{label}</Label>
+                <ColorPicker
+                  value={colors[i] ?? BORDER_BEAM_DEFAULT_COLORS[i]}
+                  onChange={(value) => {
+                    const next = [...colors];
+                    next[i] = value;
+                    while (next.length < 3) next.push(BORDER_BEAM_DEFAULT_COLORS[next.length]);
+                    handlePropertyChange("borderBeamColors", next.slice(0, 3));
+                  }}
+                  placeholder={BORDER_BEAM_DEFAULT_COLORS[i]}
+                  showAlpha={true}
+                  allowTransparent={i === 2}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Beam length</span>
+              <span>{Math.round((styling.borderBeamLength ?? BORDER_BEAM_DEFAULT_LENGTH) * 100)}%</span>
+            </div>
+            <Slider
+              value={[Math.round((styling.borderBeamLength ?? BORDER_BEAM_DEFAULT_LENGTH) * 100)]}
+              min={4}
+              max={55}
+              step={1}
+              onValueChange={([v]) => handlePropertyChange("borderBeamLength", (v ?? 18) / 100)}
+            />
+          </div>
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Loop duration</span>
+              <span>{(styling.borderBeamDurationSec ?? BORDER_BEAM_DEFAULT_DURATION_SEC).toFixed(1)}s</span>
+            </div>
+            <Slider
+              value={[Math.round((styling.borderBeamDurationSec ?? BORDER_BEAM_DEFAULT_DURATION_SEC) * 10)]}
+              min={5}
+              max={1200}
+              step={5}
+              onValueChange={([v]) => handlePropertyChange("borderBeamDurationSec", Math.max(0.5, (v ?? 40) / 10), true)}
+            />
+          </div>
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Glow</span>
+              <span>{Math.round(styling.borderBeamGlow ?? BORDER_BEAM_DEFAULT_GLOW)} px</span>
+            </div>
+            <Slider
+              value={[Math.round(styling.borderBeamGlow ?? BORDER_BEAM_DEFAULT_GLOW)]}
+              min={0}
+              max={24}
+              step={1}
+              onValueChange={([v]) => handlePropertyChange("borderBeamGlow", v ?? 0, true)}
+            />
+          </div>
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Beam width</span>
+              <span>{Math.round(styling.borderBeamWidth ?? BORDER_BEAM_DEFAULT_WIDTH)} px</span>
+            </div>
+            <Slider
+              value={[Math.round(styling.borderBeamWidth ?? BORDER_BEAM_DEFAULT_WIDTH)]}
+              min={1}
+              max={16}
+              step={1}
+              onValueChange={([v]) => handlePropertyChange("borderBeamWidth", v ?? 3, true)}
+            />
+          </div>
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Undulation</span>
+              <span>{Math.round((styling.borderBeamWobble ?? BORDER_BEAM_DEFAULT_WOBBLE) * 100)}%</span>
+            </div>
+            <Slider
+              value={[Math.round((styling.borderBeamWobble ?? BORDER_BEAM_DEFAULT_WOBBLE) * 100)]}
+              min={0}
+              max={25}
+              step={1}
+              onValueChange={([v]) => handlePropertyChange("borderBeamWobble", (v ?? 0) / 100, true)}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, isTextBoxHeading = false, showBorderBeamControls = false }: VisualStylingPanelProps) {
   const [position, setPosition] = useState({ x: 200, y: 100 });
   const [isMounted, setIsMounted] = useState(false);
   const nodeRef = useRef(null);
@@ -572,6 +717,19 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                     handlePropertyChange={handlePropertyChange}
                     onStylingChange={onStylingChange}
                   />
+                  {showBorderBeamControls && (
+                    <div className="pt-3 border-t border-border/60">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-2 h-2 bg-rose-500 rounded-full shrink-0" />
+                        <Label className="text-sm font-semibold text-foreground">Border beam</Label>
+                      </div>
+                      <BorderBeamControls
+                        styling={styling}
+                        handlePropertyChange={handlePropertyChange}
+                        onStylingChange={onStylingChange}
+                      />
+                    </div>
+                  )}
                   {isRoundedRectangle && (
                     <div className="flex items-center justify-between gap-2">
                       <Label className="text-sm text-muted-foreground">Corner radius</Label>

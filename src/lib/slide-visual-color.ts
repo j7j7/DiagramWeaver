@@ -16,6 +16,7 @@ const VISUAL_COLOR_KEYS = [
   'iconColor',
   'lineColor',
   'highlightAnimGlowColor',
+  'borderBeamColors',
 ] as const;
 
 /** Fields that affect solid/gradient fills and strokes for slide thumbnail / transition. */

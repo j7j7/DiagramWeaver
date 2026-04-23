@@ -29,6 +29,14 @@ export interface VisualStyling {
   nodeSize?: 'normal' | 'half' | 'quarter'; // Size mode for nodes and icons
   /** When true, orthogonal connectors do not route around this shape or zone. */
   ignoreConnectionAvoidance?: boolean;
+  /** Animated outline beam (rectangle, square, circle, rounded-rectangle). */
+  borderBeam?: boolean;
+  borderBeamColors?: string[];
+  borderBeamDurationSec?: number;
+  borderBeamLength?: number;
+  borderBeamGlow?: number;
+  borderBeamWidth?: number;
+  borderBeamWobble?: number;
 }
 
 // Predefined visual styles for dropdown selection
@@ -229,6 +237,13 @@ export function extractVisualStylingFromNode(node: DiagramNodeData | DiagramNode
     highlightAnimIntervalSec: (node as any).highlightAnimIntervalSec,
     highlightAnimGlowColor: (node as any).highlightAnimGlowColor,
     ignoreConnectionAvoidance: (node as any).ignoreConnectionAvoidance,
+    borderBeam: (node as any).borderBeam,
+    borderBeamColors: (node as any).borderBeamColors,
+    borderBeamDurationSec: (node as any).borderBeamDurationSec,
+    borderBeamLength: (node as any).borderBeamLength,
+    borderBeamGlow: (node as any).borderBeamGlow,
+    borderBeamWidth: (node as any).borderBeamWidth,
+    borderBeamWobble: (node as any).borderBeamWobble,
   };
 }
 
@@ -313,6 +328,14 @@ export function applyVisualStylingToNode(
       styling.ignoreConnectionAvoidance !== undefined
         ? styling.ignoreConnectionAvoidance
         : (node as any).ignoreConnectionAvoidance,
+    borderBeam: styling.borderBeam !== undefined ? styling.borderBeam : (node as any).borderBeam,
+    borderBeamColors: styling.borderBeamColors !== undefined ? styling.borderBeamColors : (node as any).borderBeamColors,
+    borderBeamDurationSec:
+      styling.borderBeamDurationSec !== undefined ? styling.borderBeamDurationSec : (node as any).borderBeamDurationSec,
+    borderBeamLength: styling.borderBeamLength !== undefined ? styling.borderBeamLength : (node as any).borderBeamLength,
+    borderBeamGlow: styling.borderBeamGlow !== undefined ? styling.borderBeamGlow : (node as any).borderBeamGlow,
+    borderBeamWidth: styling.borderBeamWidth !== undefined ? styling.borderBeamWidth : (node as any).borderBeamWidth,
+    borderBeamWobble: styling.borderBeamWobble !== undefined ? styling.borderBeamWobble : (node as any).borderBeamWobble,
   } as DiagramNodeData | DiagramNodeItem;
 }
 

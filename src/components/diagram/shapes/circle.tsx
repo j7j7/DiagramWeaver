@@ -5,6 +5,7 @@ import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { SvgShapeBase } from "./svg-shape-base";
 import { getShapeSvgFill } from "./shape-utils";
 import { useSvgGradient } from "@/hooks/use-svg-gradient";
+import { SvgBorderBeamLayer } from "./svg-border-beam";
 
 interface CircleShapeProps {
   node: DiagramNodeData & { width?: number; height?: number };
@@ -49,6 +50,10 @@ export function CircleShape(props: CircleShapeProps) {
   const strokeWidth = borderStyle === "none" ? "0" : (nodeAny.borderWidth || 2);
   const strokeDasharray = borderStyle === "dotted" ? "3,3" : undefined;
   const strokeWidthNum = borderStyle === "none" ? 0 : (parseInt(String(strokeWidth), 10) || 2);
+  const beamR = 29;
+  const cx = 30;
+  const cy = 30;
+  const circleBeamD = `M ${cx} ${cy - beamR} A ${beamR} ${beamR} 0 1 1 ${cx} ${cy + beamR} A ${beamR} ${beamR} 0 1 1 ${cx} ${cy - beamR} Z`;
 
   return (
     <SvgShapeBase
@@ -68,6 +73,7 @@ export function CircleShape(props: CircleShapeProps) {
             strokeDasharray={strokeDasharray}
             {...(strokeWidthNum > 0 ? { vectorEffect: "non-scaling-stroke" as const } : {})}
           />
+          <SvgBorderBeamLayer node={node} pathD={circleBeamD} />
         </>
       }
     />
