@@ -10,7 +10,7 @@ import {
   getFrostedGlassInlineBackdropPrimaryStyle,
   getFrostedGlassInlineBackdropSecondPassStyle,
   getFrostedInlineBackdropReactKey,
-  getFrostedInsetClipStyleForBackdropLayers,
+  getFrostedBackdropLayerClipStyle,
   getFrostedGrainOverlayStyle,
   getFrostedFineGrainOverlayStyle,
   getFrostedGlassTopEdgeHighlightStyle,
@@ -76,18 +76,6 @@ function shouldUseGradientBorderLayer(
 /** `filter` on an ancestor creates a backdrop root — inline `backdrop-filter` then won’t blur the diagram. */
 function shouldSuppressSvgDropShadowFilterForFrosted(isFrostedBg: boolean): boolean {
   return isFrostedBg;
-}
-
-/**
- * Clipping the **ancestor** of `backdrop-filter` often disables real blur in Chromium (tint/grain only).
- * For SVG rects we use `inset(...)` — omit that wrapper clip and clip grain/rims/shadow only.
- * Keep wrapper clip for `polygon(...)` so geometry stays roughly aligned (blur may stay weak there).
- */
-function frostedInlineOuterClipPath(frostedGlassClipPath: string | undefined): string | undefined {
-  if (!frostedGlassClipPath) return undefined;
-  const s = frostedGlassClipPath.trimStart().toLowerCase();
-  if (s.startsWith("inset(")) return undefined;
-  return frostedGlassClipPath;
 }
 
 export function ShapeWrapper({
@@ -161,8 +149,7 @@ export function ShapeWrapper({
       ? getFrostedGlassInlineBackdropSecondPassStyle(styles.frostedGlass)
       : undefined;
   const suppressSvgRootFilter = shouldSuppressSvgDropShadowFilterForFrosted(isFrostedBg);
-  const frostedOuterClip = frostedInlineOuterClipPath(frostedGlassClipPath);
-  const frostedInsetBackdropClip = getFrostedInsetClipStyleForBackdropLayers(frostedGlassClipPath);
+  const frostedBackdropLayerClip = getFrostedBackdropLayerClipStyle(frostedGlassClipPath);
 
   return (
     <div
@@ -244,10 +231,7 @@ export function ShapeWrapper({
                 inset: 0,
                 borderRadius: "inherit",
                 pointerEvents: "none",
-                /* No `isolation: isolate` here — it can trap `backdrop-filter` so the blur won’t see the diagram. */
-                ...(frostedOuterClip
-                  ? { clipPath: frostedOuterClip, WebkitClipPath: frostedOuterClip }
-                  : {}),
+                /* No stack-root `clip-path` here — it breaks `backdrop-filter` in Chromium; layers clip themselves. */
               }}
               aria-hidden
             >
@@ -268,7 +252,7 @@ export function ShapeWrapper({
                   )}
                   style={{
                     ...getFrostedGlassInlineBackdropPrimaryStyle(styles.frostedGlass),
-                    ...frostedInsetBackdropClip,
+                    ...frostedBackdropLayerClip,
                   }}
                   aria-hidden
                 />
@@ -278,7 +262,7 @@ export function ShapeWrapper({
                     data-frosted-export-fallback-bg={getFrostedGlassExportBackdropSecondFallbackColor(
                       styles.frostedGlass
                     )}
-                    style={{ ...frostedInlineSecondPassStyle, ...frostedInsetBackdropClip }}
+                    style={{ ...frostedInlineSecondPassStyle, ...frostedBackdropLayerClip }}
                     aria-hidden
                   />
                 ) : null}
@@ -286,7 +270,7 @@ export function ShapeWrapper({
               <div
                 style={{
                   ...getFrostedGlassTintLayerStyle(styles.frostedGlass),
-                  ...frostedInsetBackdropClip,
+                  ...frostedBackdropLayerClip,
                 }}
                 aria-hidden
               />

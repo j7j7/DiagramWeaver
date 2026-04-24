@@ -4,7 +4,7 @@ import React from "react";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { getNodeSizeMultiplier } from "@/lib/visual-styling";
 import { ShapeWrapper } from "./shape-wrapper";
-import { getShapeStyles, parseViewBoxString } from "./shape-utils";
+import { getFrostedCircleClipPathCss, getShapeStyles, parseViewBoxString } from "./shape-utils";
 
 interface SvgShapeBaseProps {
   node: DiagramNodeData & { width?: number; height?: number };
@@ -45,6 +45,11 @@ interface SvgShapeBaseProps {
    * Takes precedence over `frostedClipRectInViewBox` when both are set.
    */
   frostedClipPathOverride?: string;
+  /**
+   * When `backgroundStyle === 'frosted'`, clip inline glass to this circle in viewBox units
+   * (same coordinate space as the SVG root). Ignored if `frostedClipPathOverride` is set.
+   */
+  frostedClipCircleInViewBox?: { cx: number; cy: number; r: number };
 }
 
 export function SvgShapeBase({
@@ -61,6 +66,7 @@ export function SvgShapeBase({
   svgOverflowVisible = false,
   frostedClipRectInViewBox,
   frostedClipPathOverride,
+  frostedClipCircleInViewBox,
   ...rest
 }: SvgShapeBaseProps) {
   const nodeAny = node as any;
@@ -77,6 +83,14 @@ export function SvgShapeBase({
   let frostedGlassClipPath: string | undefined;
   if (nodeAny.backgroundStyle === "frosted" && frostedClipPathOverride) {
     frostedGlassClipPath = frostedClipPathOverride;
+  } else if (nodeAny.backgroundStyle === "frosted" && frostedClipCircleInViewBox) {
+    frostedGlassClipPath = getFrostedCircleClipPathCss(
+      viewBox,
+      frostedClipCircleInViewBox,
+      width,
+      height,
+      preserveAspectRatio
+    );
   } else if (nodeAny.backgroundStyle === "frosted" && frostedClipRectInViewBox) {
     const { vbX, vbY, vbW, vbH } = parseViewBoxString(viewBox);
     if (vbW > 0 && vbH > 0) {

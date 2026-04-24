@@ -1,5 +1,8 @@
 # MEMORY.MD
 
+### 2026-04-24 – Frosted: polygon / circle / ellipse mask + backdrop blur
+**Issue**: Rounded rects used **`getFrostedInsetClipStyleForBackdropLayers`** (blur + tint clip) while **`polygon(...)`** did not, so kites/triangles showed a **full-rect** frosted area; the stack root also used **`clip-path`** for polygons (hurt blur). **Fix**: **`getFrostedBackdropLayerClipStyle`** applies the same **`frostedGlassClipPath` to** primary/second **backdrop** + **tint** for **`inset` / `polygon` / `circle` / `ellipse`**; **no** clip on the **frost stack root** (all shapes). **`getFrostedCircleClipPathCss`** + **`frostedClipCircleInViewBox`** on **`SvgShapeBase`**; **`CircleShape`** passes **`cx, cy, r`** (matches SVG fill, **`xMidYMid meet`**) so circles mask correctly.
+
 ### 2026-04-24 – PNG/GIF export: frosted glass (blurred underlay)
 **html-to-image** / SVG **`foreignObject`** does not paint **`backdrop-filter`**. **`data-frosted-glass-stack`** on the frost stack (**`shape-wrapper`**, **`uml-class`**) carries **`data-frosted-export-blur`** / **`saturate`** from **`getFrostedGlassExportRasterStackBlurPx`** / **`getFrostedGlassExportRasterBackdropSaturate`**. Export attaches the clone to an offscreen host, hides stacks, rasterizes once (**true pixels behind** each shape), restores stacks, crops + **canvas `filter` blur** (scaled by **`pixelRatio`**) per stack, injects **`data-frosted-export-blurred-underlay`**, then strips **`backdrop-filter`**. If injection fails, falls back to opaque **`data-frosted-export-fallback-bg`**.
 

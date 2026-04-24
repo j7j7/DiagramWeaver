@@ -50,18 +50,23 @@ export function CircleShape(props: CircleShapeProps) {
   const strokeDasharray = borderStyle === "dotted" ? "3,3" : undefined;
   const strokeWidthNum = borderStyle === "none" ? 0 : (parseInt(String(strokeWidth), 10) || 2);
 
+  const circleR = 29 - strokeWidthNum / 2;
+
   return (
     <SvgShapeBase
       {...props}
       viewBox="0 0 60 60"
       preserveAspectRatio="xMidYMid meet"
+      frostedClipCircleInViewBox={
+        backgroundStyle === "frosted" ? { cx: 30, cy: 30, r: circleR } : undefined
+      }
       svgContent={
         <>
           {defs}
           <circle
             cx={30}
             cy={30}
-            r={29 - strokeWidthNum / 2}
+            r={circleR}
             fill={fillColor}
             stroke={strokeColor}
             strokeWidth={strokeWidth}

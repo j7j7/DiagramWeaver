@@ -272,19 +272,34 @@ export function getFrostedInlineBackdropReactKey(
   return `${p.blurPx}|${p.saturation}|${p.fillRgba}|${p.tintRgba}|${frostedGlassClipPath ?? ""}`;
 }
 
-/** `clip-path` on **inset(...)** (rect / rounded-rect SVG) for inline backdrop layers — matches glass to fill + corners. */
-export function getFrostedInsetClipStyleForBackdropLayers(
+/**
+ * `clip-path` on inline frosted **backdrop** / **tint** layers so blur + wash match the shape.
+ * Do **not** put these clips on a common ancestor of `backdrop-filter` (breaks blur in Chromium)
+ * — use {@link getFrostedShouldClipFrostedStackRoot} = false; clip each layer only.
+ * Supports: `inset(…)`, `polygon(…)`, `circle(…)`, `ellipse(…)`.
+ */
+export function getFrostedBackdropLayerClipStyle(
   frostedGlassClipPath: string | undefined
 ): Pick<CSSProperties, "clipPath" | "WebkitClipPath"> | undefined {
   if (!frostedGlassClipPath) return undefined;
   const s = frostedGlassClipPath.trimStart().toLowerCase();
-  if (!s.startsWith("inset(")) return undefined;
-  return { clipPath: frostedGlassClipPath, WebkitClipPath: frostedGlassClipPath };
+  if (
+    s.startsWith("inset(") ||
+    s.startsWith("polygon(") ||
+    s.startsWith("circle(") ||
+    s.startsWith("ellipse(")
+  ) {
+    return { clipPath: frostedGlassClipPath, WebkitClipPath: frostedGlassClipPath };
+  }
+  return undefined;
 }
+
+/** @deprecated Use {@link getFrostedBackdropLayerClipStyle} */
+export const getFrostedInsetClipStyleForBackdropLayers = getFrostedBackdropLayerClipStyle;
 
 /**
  * Stronger blur + micro contrast/brightness for **inline** glass (layer-order mode).
- * For **inset(...)** SVG shapes, merge {@link getFrostedInsetClipStyleForBackdropLayers} so corners match.
+ * For shaped clips, merge {@link getFrostedBackdropLayerClipStyle} so corners/edges match.
  */
 export function getFrostedGlassInlineBackdropPrimaryStyle(p: FrostedGlassParams): CSSProperties {
   const raw = p.blurPx < 0.02 ? 0 : 1.55 + p.blurPx * 1.38;
@@ -590,6 +605,39 @@ export function frostedPolygonClipForSvgPolygon(
 ): string | undefined {
   if (backgroundStyle !== "frosted") return undefined;
   return getFrostedPolygonClipPathCss(transformedPoints, viewBox);
+}
+
+/**
+ * CSS `clip-path: circle(… at …)` (or `ellipse(…)` when `preserveAspectRatio` is `none`) so
+ * frosted inline layers match a transparent SVG circle fill.
+ */
+export function getFrostedCircleClipPathCss(
+  viewBox: string,
+  c: { cx: number; cy: number; r: number },
+  width: number,
+  height: number,
+  preserveAspectRatio: string | undefined
+): string | undefined {
+  const { vbX, vbY, vbW, vbH } = parseViewBoxString(viewBox);
+  if (vbW <= 0 || vbH <= 0 || width <= 0 || height <= 0) return undefined;
+  if (!(c.r > 0) || !Number.isFinite(c.r)) return undefined;
+  const ar = (preserveAspectRatio ?? "xMidYMid meet").trim().toLowerCase();
+  if (ar === "none") {
+    const scaleX = width / vbW;
+    const scaleY = height / vbH;
+    const cxPx = (c.cx - vbX) * scaleX;
+    const cyPx = (c.cy - vbY) * scaleY;
+    const rxPx = c.r * scaleX;
+    const ryPx = c.r * scaleY;
+    return `ellipse(${rxPx}px ${ryPx}px at ${cxPx}px ${cyPx}px)`;
+  }
+  const s = Math.min(width / vbW, height / vbH);
+  const tx = (width - vbW * s) / 2;
+  const ty = (height - vbH * s) / 2;
+  const cxPx = tx + (c.cx - vbX) * s;
+  const cyPx = ty + (c.cy - vbY) * s;
+  const rPx = c.r * s;
+  return `circle(${rPx}px at ${cxPx}px ${cyPx}px)`;
 }
 
 /**
