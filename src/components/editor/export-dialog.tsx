@@ -26,6 +26,8 @@ export interface PresentationSlidesExportInfo {
   /** Deck slide count; slide 1 is the main diagram, then further slides in order. */
   totalSlides: number;
   tabName: string;
+  /** 1-based index of the slide currently open in the editor (same numbering as `-1.png`, `-2.png`, …). */
+  activeSlideNumber: number;
 }
 
 interface ExportDialogProps {
@@ -53,7 +55,7 @@ const MIN_GIF_FPS = 1;
 const MAX_GIF_FPS = 30;
 const MAX_GIF_FRAMES = 300;
 
-type PngSlideScope = 'all' | 'range' | 'single';
+type PngSlideScope = 'all' | 'range' | 'single' | 'current';
 
 export function ExportDialog({
   open,
@@ -108,6 +110,12 @@ export function ExportDialog({
         return `Slide must be between 1 and ${max}.`;
       }
     }
+    if (pngSlideScope === 'current') {
+      const cur = presentationSlides.activeSlideNumber;
+      if (!Number.isFinite(cur) || cur < 1 || cur > max) {
+        return `Current slide must be between 1 and ${max}.`;
+      }
+    }
     if (pngSlideScope === 'range') {
       const a = Math.round(pngRangeFrom);
       const b = Math.round(pngRangeTo);
@@ -144,6 +152,8 @@ export function ExportDialog({
           for (let i = lo; i <= hi; i++) {
             pngSlideNumbers.push(i);
           }
+        } else if (pngSlideScope === 'current') {
+          pngSlideNumbers = [Math.round(presentationSlides.activeSlideNumber)];
         } else {
           pngSlideNumbers = [Math.round(pngSingleSlide)];
         }
@@ -242,27 +252,38 @@ export function ExportDialog({
                     </>
                   )}
                 </div>
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-                  <RadioGroupItem value="single" id="png-single" />
-                  <Label htmlFor="png-single" className="font-normal cursor-pointer shrink-0">Single slide</Label>
-                  {pngSlideScope === 'single' && (
-                    <span className="inline-flex items-center gap-1.5">
-                      <Label htmlFor="png-one" className="text-xs text-muted-foreground whitespace-nowrap">#</Label>
-                      <Input
-                        id="png-one"
-                        className="h-8 w-[4.25rem]"
-                        type="number"
-                        min={1}
-                        max={presentationSlides.totalSlides}
-                        value={pngSingleSlide}
-                        onChange={(e) => {
-                          const v = Number(e.target.value);
-                          if (Number.isNaN(v)) return;
-                          setPngSingleSlide(v);
-                        }}
-                      />
-                    </span>
-                  )}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                    <RadioGroupItem value="single" id="png-single" />
+                    <Label htmlFor="png-single" className="font-normal cursor-pointer shrink-0">Single slide</Label>
+                    {pngSlideScope === 'single' && (
+                      <span className="inline-flex items-center gap-1.5">
+                        <Label htmlFor="png-one" className="text-xs text-muted-foreground whitespace-nowrap">#</Label>
+                        <Input
+                          id="png-one"
+                          className="h-8 w-[4.25rem]"
+                          type="number"
+                          min={1}
+                          max={presentationSlides.totalSlides}
+                          value={pngSingleSlide}
+                          onChange={(e) => {
+                            const v = Number(e.target.value);
+                            if (Number.isNaN(v)) return;
+                            setPngSingleSlide(v);
+                          }}
+                        />
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-x-2">
+                    <RadioGroupItem value="current" id="png-current" />
+                    <Label htmlFor="png-current" className="font-normal cursor-pointer">
+                      Current slide
+                      <span className="text-muted-foreground font-normal">
+                        {' '}(#{presentationSlides.activeSlideNumber})
+                      </span>
+                    </Label>
+                  </div>
                 </div>
               </RadioGroup>
               {pngSlideError && (

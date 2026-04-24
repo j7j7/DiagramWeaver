@@ -1,5 +1,8 @@
 # MEMORY.MD
 
+### 2026-04-24 – PNG/GIF export: frosted glass (blurred underlay)
+**html-to-image** / SVG **`foreignObject`** does not paint **`backdrop-filter`**. **`data-frosted-glass-stack`** on the frost stack (**`shape-wrapper`**, **`uml-class`**) carries **`data-frosted-export-blur`** / **`saturate`** from **`getFrostedGlassExportRasterStackBlurPx`** / **`getFrostedGlassExportRasterBackdropSaturate`**. Export attaches the clone to an offscreen host, hides stacks, rasterizes once (**true pixels behind** each shape), restores stacks, crops + **canvas `filter` blur** (scaled by **`pixelRatio`**) per stack, injects **`data-frosted-export-blurred-underlay`**, then strips **`backdrop-filter`**. If injection fails, falls back to opaque **`data-frosted-export-fallback-bg`**.
+
 ### 2026-04-24 – Chart data modal: tinted section cards
 **`chart-data-editor-modal`**: **`ChartModalSection`** helper (same visual language as visual/text styling panels: **`bg-*-50/50`**, border, dot + **`Label`** header, optional **`headerRight`**). **Bar/line**: **Outline & display** (muted), **Line style** (emerald, line only), **Bar layout** (amber, bar only), **Axes, grid & legend** (purple), **Categories & …** (sky, Add in header). **Pie**: **Slice outline & options** (muted), **Segment separation** (amber), **Slices** (sky). Drag handle title row: **`BarChart2`** **`text-blue-600`**, **`text-foreground`** title.
 

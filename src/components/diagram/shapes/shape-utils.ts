@@ -306,6 +306,28 @@ export function getFrostedGlassInlineBackdropPrimaryStyle(p: FrostedGlassParams)
   };
 }
 
+/** Primary blur (px) for PNG underlay — matches {@link getFrostedGlassInlineBackdropPrimaryStyle}. */
+export function getFrostedGlassExportRasterBackdropBlurPx(p: FrostedGlassParams): number {
+  const raw = p.blurPx < 0.02 ? 0 : 1.55 + p.blurPx * 1.38;
+  return Math.min(92, raw);
+}
+
+/** Saturate factor for PNG underlay canvas filter — matches primary inline backdrop. */
+export function getFrostedGlassExportRasterBackdropSaturate(p: FrostedGlassParams): number {
+  return Math.min(1.92, p.saturation * 1.14);
+}
+
+/**
+ * Effective blur for export raster (primary + softened second pass when present).
+ * Matches on-canvas stacked backdrop passes closely enough for PNG.
+ */
+export function getFrostedGlassExportRasterStackBlurPx(p: FrostedGlassParams): number {
+  const primary = getFrostedGlassExportRasterBackdropBlurPx(p);
+  if (p.blurPx < 0.18) return primary;
+  const second = Math.min(32, 3.2 + p.blurPx * 0.36);
+  return primary + second * 0.38;
+}
+
 /** Second compositing pass: softer blur so stacked backdrops read “thicker” frosted glass. */
 export function getFrostedGlassInlineBackdropSecondPassStyle(p: FrostedGlassParams): CSSProperties | undefined {
   if (p.blurPx < 0.18) return undefined;
@@ -320,6 +342,43 @@ export function getFrostedGlassInlineBackdropSecondPassStyle(p: FrostedGlassPara
     backdropFilter: `blur(${blurPx}px) saturate(1.08)`,
     WebkitBackdropFilter: `blur(${blurPx}px) saturate(1.08)`,
   };
+}
+
+function frostedRgbaComponents(rgba: string): { r: number; g: number; b: number; a: number } | null {
+  const m = rgba.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\)/);
+  if (!m) return null;
+  return { r: +m[1], g: +m[2], b: +m[3], a: m[4] !== undefined ? parseFloat(m[4]) : 1 };
+}
+
+/**
+ * html-to-image rasterizes via SVG `foreignObject`, where `backdrop-filter` does not composite.
+ * Use this as `data-frosted-export-fallback-bg` so PNG export keeps a milky glass read.
+ */
+export function getFrostedGlassExportBackdropPrimaryFallbackColor(p: FrostedGlassParams): string {
+  const fill = frostedRgbaComponents(p.fillRgba);
+  const tint = frostedRgbaComponents(p.tintRgba);
+  const fillA = fill?.a ?? 0;
+  const tintA = tint?.a ?? 0;
+  const blurBoost = p.blurPx < 0.02 ? 0 : Math.min(0.4, 0.07 + (p.blurPx / 92) * 0.33);
+  const outA = Math.min(0.9, fillA + tintA * 0.52 + blurBoost);
+  const tr = tint?.r ?? 255;
+  const tg = tint?.g ?? 255;
+  const tb = tint?.b ?? 255;
+  const fr = fill?.r ?? tr;
+  const fg = fill?.g ?? tg;
+  const fb = fill?.b ?? tb;
+  const w = Math.min(1, tintA * 2 + 0.35);
+  const r = Math.round(fr * (1 - w) + tr * w);
+  const g = Math.round(fg * (1 - w) + tg * w);
+  const b = Math.round(fb * (1 - w) + tb * w);
+  return `rgba(${r}, ${g}, ${b}, ${outA})`;
+}
+
+/** Second frosted backdrop pass: visible wash when export strips `backdrop-filter`. */
+export function getFrostedGlassExportBackdropSecondFallbackColor(p: FrostedGlassParams): string {
+  if (p.blurPx < 0.18) return "rgba(255, 255, 255, 0)";
+  const a = Math.min(0.18, 0.04 + (p.blurPx / 48) * 0.14);
+  return `rgba(255, 255, 255, ${a})`;
 }
 
 /** Inset/outer shadows only — keep off the element that runs `backdrop-filter` (Chromium often drops blur when combined). */

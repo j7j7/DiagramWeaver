@@ -15,6 +15,10 @@ import {
   getFrostedFineGrainOverlayStyle,
   getFrostedGlassTopEdgeHighlightStyle,
   getFrostedGlassLeftEdgeHighlightStyle,
+  getFrostedGlassExportBackdropPrimaryFallbackColor,
+  getFrostedGlassExportBackdropSecondFallbackColor,
+  getFrostedGlassExportRasterStackBlurPx,
+  getFrostedGlassExportRasterBackdropSaturate,
   getShapeStyles,
 } from "./shape-utils";
 import { ShapeTag } from "./shape-tag";
@@ -230,6 +234,11 @@ export function ShapeWrapper({
         {isFrostedBg && styles.frostedGlass ? (
           <>
             <div
+              data-frosted-glass-stack=""
+              data-frosted-export-blur={String(getFrostedGlassExportRasterStackBlurPx(styles.frostedGlass))}
+              data-frosted-export-saturate={String(
+                getFrostedGlassExportRasterBackdropSaturate(styles.frostedGlass)
+              )}
               style={{
                 position: "absolute",
                 inset: 0,
@@ -253,6 +262,10 @@ export function ShapeWrapper({
                 key={getFrostedInlineBackdropReactKey(styles.frostedGlass, frostedGlassClipPath)}
               >
                 <div
+                  data-frosted-backdrop=""
+                  data-frosted-export-fallback-bg={getFrostedGlassExportBackdropPrimaryFallbackColor(
+                    styles.frostedGlass
+                  )}
                   style={{
                     ...getFrostedGlassInlineBackdropPrimaryStyle(styles.frostedGlass),
                     ...frostedInsetBackdropClip,
@@ -261,6 +274,10 @@ export function ShapeWrapper({
                 />
                 {frostedInlineSecondPassStyle ? (
                   <div
+                    data-frosted-backdrop="second"
+                    data-frosted-export-fallback-bg={getFrostedGlassExportBackdropSecondFallbackColor(
+                      styles.frostedGlass
+                    )}
                     style={{ ...frostedInlineSecondPassStyle, ...frostedInsetBackdropClip }}
                     aria-hidden
                   />

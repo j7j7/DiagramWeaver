@@ -13,9 +13,13 @@ import {
   getFrostedFineGrainOverlayStyle,
   getFrostedGlassTopEdgeHighlightStyle,
   getFrostedGlassLeftEdgeHighlightStyle,
+  getFrostedGlassExportBackdropPrimaryFallbackColor,
+  getFrostedGlassExportBackdropSecondFallbackColor,
+  getFrostedGlassExportRasterStackBlurPx,
+  getFrostedGlassExportRasterBackdropSaturate,
   getShapeStyles,
+  getTextColorForBackground,
 } from "./shape-utils";
-import { getTextColorForBackground } from "./shape-utils";
 import { ShapeTag } from "./shape-tag";
 import { UML_NAME_HEIGHT, UML_LINE_HEIGHT } from "@/lib/uml-utils";
 
@@ -212,6 +216,11 @@ export function UmlClassShape({
       >
         {isFrostedBg && styles.frostedGlass ? (
           <div
+            data-frosted-glass-stack=""
+            data-frosted-export-blur={String(getFrostedGlassExportRasterStackBlurPx(styles.frostedGlass))}
+            data-frosted-export-saturate={String(
+              getFrostedGlassExportRasterBackdropSaturate(styles.frostedGlass)
+            )}
             style={{
               position: "absolute",
               inset: 0,
@@ -222,9 +231,23 @@ export function UmlClassShape({
           >
             <div style={getFrostedGlassDropShadowLayerStyle(styles.frostedGlass)} aria-hidden />
             <Fragment key={getFrostedInlineBackdropReactKey(styles.frostedGlass)}>
-              <div style={getFrostedGlassInlineBackdropPrimaryStyle(styles.frostedGlass)} aria-hidden />
+              <div
+                data-frosted-backdrop=""
+                data-frosted-export-fallback-bg={getFrostedGlassExportBackdropPrimaryFallbackColor(
+                  styles.frostedGlass
+                )}
+                style={getFrostedGlassInlineBackdropPrimaryStyle(styles.frostedGlass)}
+                aria-hidden
+              />
               {frostedInlineSecondPassStyle ? (
-                <div style={frostedInlineSecondPassStyle} aria-hidden />
+                <div
+                  data-frosted-backdrop="second"
+                  data-frosted-export-fallback-bg={getFrostedGlassExportBackdropSecondFallbackColor(
+                    styles.frostedGlass
+                  )}
+                  style={frostedInlineSecondPassStyle}
+                  aria-hidden
+                />
               ) : null}
             </Fragment>
             <div style={getFrostedGlassTintLayerStyle(styles.frostedGlass)} aria-hidden />

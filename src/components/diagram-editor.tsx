@@ -6495,11 +6495,20 @@ function DiagramEditorInner({
     if (activeDiagramStack.length > 0) return null;
     const deck = presentationDecks.find((d: PresentationDeck) => d.id === activePresentationDeckId);
     if (!deck || deck.slides.length < 1) return null;
+    const slideIdx = deck.slides.findIndex((s: Slide) => s.id === activePresentationSlideId);
+    const activeSlideNumber = slideIdx >= 0 ? slideIdx + 1 : 1;
     return {
       totalSlides: deck.slides.length,
       tabName: activeTab?.name ?? 'diagram',
+      activeSlideNumber,
     };
-  }, [activeDiagramStack.length, presentationDecks, activePresentationDeckId, activeTab?.name]);
+  }, [
+    activeDiagramStack.length,
+    presentationDecks,
+    activePresentationDeckId,
+    activePresentationSlideId,
+    activeTab?.name,
+  ]);
 
   const isPrimaryPresentationSlideActiveInner = React.useMemo(() => {
     const deck = presentationDecks.find((d: PresentationDeck) => d.id === activePresentationDeckId);
