@@ -18,6 +18,7 @@
 
 import React, { useState, useMemo, useRef, useCallback, useEffect, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
+import { Check, Minus, X } from "lucide-react";
 import { DiagramNode } from "../diagram/diagram-node";
 import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramConnectionData } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
@@ -279,6 +280,18 @@ function availabilityStatusLabel(status: AvailabilityStatus): string {
   if (status === "green") return "Healthy";
   if (status === "amber") return "Degraded";
   return "Unavailable";
+}
+
+function simulationStateBadgeLabel(state: SimulationElementState): { full: string } {
+  if (state === "active") return { full: "Active" };
+  if (state === "degraded") return { full: "Degraded" };
+  return { full: "Inactive" };
+}
+
+function simulationStateBadgeIcon(state: SimulationElementState) {
+  if (state === "active") return <Check className="h-2.5 w-2.5 text-foreground" />;
+  if (state === "degraded") return <Minus className="h-2.5 w-2.5 text-foreground" />;
+  return <X className="h-2.5 w-2.5 text-foreground" />;
 }
 
 function nextSimulationElementState(state: SimulationElementState): SimulationElementState {
@@ -1773,6 +1786,34 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     return result;
   }, [diagramData]);
 
+  const simulationStateBadgeByItemId = useMemo(() => {
+    const result: Record<string, { color: string; state: SimulationElementState; full: string }> = {};
+
+    diagramData.nodes.forEach((node) => {
+      const state = getSimulationStateFromMetaData(node.metaData);
+      const stateColors = getSimulationSelfStateColorsFromMetaData(node.metaData);
+      const labels = simulationStateBadgeLabel(state);
+      result[node.id] = {
+        color: stateColors[state],
+        state,
+        full: labels.full,
+      };
+    });
+
+    (diagramData.zones ?? []).forEach((zone) => {
+      const state = getSimulationStateFromMetaData(zone.metaData);
+      const stateColors = getSimulationSelfStateColorsFromMetaData(zone.metaData);
+      const labels = simulationStateBadgeLabel(state);
+      result[zone.id] = {
+        color: stateColors[state],
+        state,
+        full: labels.full,
+      };
+    });
+
+    return result;
+  }, [diagramData.nodes, diagramData.zones]);
+
   const simulationNotificationTextByItemId = useMemo(() => {
     const result: Record<string, string> = {};
 
@@ -2247,9 +2288,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       top: `${(node.y ?? 0) - 1}px`,
                       width: `${dims.width + 2}px`,
                       height: `${dims.height + 2}px`,
-                      border: `3px dashed ${style.color}`,
-                      backgroundColor: hexToRgba(style.color, Math.min(0.28, (style.opacity ?? 1) * 0.24)),
-                      boxShadow: `inset 0 0 0 1px ${hexToRgba("#ffffff", Math.min(0.18, (style.opacity ?? 1) * 0.16))}, 0 0 0 1px ${hexToRgba(style.color, Math.min(0.55, (style.opacity ?? 1) * 0.5))}, 0 0 24px ${hexToRgba(style.color, Math.min(0.45, (style.opacity ?? 1) * 0.42))}`,
+                      border: `2px dashed ${hexToRgba(style.color, Math.min(0.78, (style.opacity ?? 1) * 0.72))}`,
+                      boxShadow: `inset 0 0 0 1px ${hexToRgba(style.color, Math.min(0.35, (style.opacity ?? 1) * 0.32))}`,
                       opacity: style.opacity ?? 1,
                       zIndex: 41,
                     }}
@@ -2268,15 +2308,65 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       top: `${(zone.y ?? 0) - 1}px`,
                       width: `${(zone.width ?? 300) + 2}px`,
                       height: `${(zone.height ?? 220) + 2}px`,
-                      border: `3px dashed ${style.color}`,
-                      backgroundColor: hexToRgba(style.color, Math.min(0.28, (style.opacity ?? 1) * 0.24)),
-                      boxShadow: `inset 0 0 0 1px ${hexToRgba("#ffffff", Math.min(0.18, (style.opacity ?? 1) * 0.16))}, 0 0 0 1px ${hexToRgba(style.color, Math.min(0.55, (style.opacity ?? 1) * 0.5))}, 0 0 24px ${hexToRgba(style.color, Math.min(0.45, (style.opacity ?? 1) * 0.42))}`,
+                      border: `2px dashed ${hexToRgba(style.color, Math.min(0.78, (style.opacity ?? 1) * 0.72))}`,
+                      boxShadow: `inset 0 0 0 1px ${hexToRgba(style.color, Math.min(0.35, (style.opacity ?? 1) * 0.32))}`,
                       opacity: style.opacity ?? 1,
                       zIndex: 41,
                     }}
                   />
                 );
               }
+              return null;
+            })}
+
+            {simulationModeEnabled && Object.entries(simulationStateBadgeByItemId).map(([itemId, badge]) => {
+              const node = displayNodesById[itemId];
+              if (node) {
+                const dims = measureNodeDims(node as PositionedNode);
+                return (
+                  <div
+                    key={`sim-state-badge-node-${itemId}`}
+                    className="pointer-events-none absolute flex items-center gap-1 rounded-full border border-border/70 bg-background/95 px-1.5 py-0.5 text-[10px] font-semibold text-foreground shadow-sm"
+                    style={{
+                      left: `${(node.x ?? 0) + dims.width - 14}px`,
+                      top: `${(node.y ?? 0) - 10}px`,
+                      zIndex: 46,
+                    }}
+                    title={`Self state: ${badge.full}`}
+                  >
+                    <span
+                      className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full"
+                      style={{ backgroundColor: badge.color }}
+                    >
+                      {simulationStateBadgeIcon(badge.state)}
+                    </span>
+                  </div>
+                );
+              }
+
+              const zone = displayZonesById[itemId];
+              if (zone) {
+                return (
+                  <div
+                    key={`sim-state-badge-zone-${itemId}`}
+                    className="pointer-events-none absolute flex items-center gap-1 rounded-full border border-border/70 bg-background/95 px-1.5 py-0.5 text-[10px] font-semibold text-foreground shadow-sm"
+                    style={{
+                      left: `${(zone.x ?? 0) + (zone.width ?? 300) - 14}px`,
+                      top: `${(zone.y ?? 0) - 10}px`,
+                      zIndex: 46,
+                    }}
+                    title={`Self state: ${badge.full}`}
+                  >
+                    <span
+                      className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full"
+                      style={{ backgroundColor: badge.color }}
+                    >
+                      {simulationStateBadgeIcon(badge.state)}
+                    </span>
+                  </div>
+                );
+              }
+
               return null;
             })}
 
