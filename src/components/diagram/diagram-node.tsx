@@ -1815,9 +1815,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     e.preventDefault(); // Prevent any default touch behavior
   };
 
-
-
-return (
+  return (
     <div
       data-node-id={node.id}
       data-dw-highlight-anim={

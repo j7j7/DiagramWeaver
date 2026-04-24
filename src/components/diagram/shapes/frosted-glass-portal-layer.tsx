@@ -40,6 +40,8 @@ type FrostedGlassPortalLayerProps = {
 /**
  * Viewport-fixed portal under `#dw-frosted-root` (fallback `document.body`) so `backdrop-filter`
  * escapes the pan/zoom `transform` subtree. Position tracks the shape via `getBoundingClientRect()`.
+ *
+ * (Portaling into `[data-diagram-layer]` was reverted: Chromium often applies no visible backdrop blur there.)
  */
 export function FrostedGlassPortalLayer({
   glass,

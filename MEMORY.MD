@@ -1,5 +1,8 @@
 # MEMORY.MD
 
+### 2026-04-24 – Frosted glass: reverted in-layer portal (backdrop invisible)
+Portaling frosted into **`[data-diagram-layer]`** (inside pan/zoom **`transform`**) made **`backdrop-filter`** show **no** glass (Chromium often fails to sample the backdrop there). Also, when **`canUseLayer && layerTarget`**, **`useLayoutEffect` skipped `ResizeObserver`**, so viewport fallback stopped updating. **Fix**: **`FrostedGlassPortalLayer`** is **viewport-only** again (**`position: fixed`**, **`#dw-frosted-root`** / **`body`**, **`getBoundingClientRect`**). Removed **`diagramLayerRef`** / **`frostedDiagramBox`** threading.
+
 ### 2026-04-24 – Frosted glass: polygon / triangle clip (viewport portal)
 Triangle (and other **`getPolygonViewBoxAndPoints`** SVG shapes) had frosted as a **bounding rect** because the body portal ignored **`clipPath`**. **Fix**: **`getFrostedPolygonClipPathCss`** + **`frostedPolygonClipForSvgPolygon`** in **`shape-utils`** build **`polygon(...% )`** from **`transformedPoints`** + **`viewBox`**; **`SvgShapeBase`** accepts **`frostedClipPathOverride`** (overrides inset rect); **`FrostedGlassPortalLayer`** applies the same **`clipPath` / `-webkit-clip-path`** on shadow, backdrop, grain, and edge layers; **`layoutSyncKey`** includes **`frostedGlassClipPath`**. Rounded polygon fill still uses a **sharp** polygon clip (minor corner mismatch).
 

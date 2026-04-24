@@ -505,8 +505,8 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
                   canvasRef={canvasRef}
                 />
                 ) : null;
-              return [
-                connIndices ? (
+                return [
+                  connIndices ? (
                   <CanvasConnections
                     key={`conn-slot-${i}`}
                     width={width}
