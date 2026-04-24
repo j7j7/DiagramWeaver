@@ -1,5 +1,11 @@
 # MEMORY.MD
 
+### 2026-04-24 – Presentation play mode: bottom bar matches viewer
+**`presentation-player`** (`showPlaybackToolbar`): Bottom UI uses the same **`fixed` bottom-center** pill layout as **`ViewerPresentationBar`** (MonitorPlay, title, **`n / m`**, Prev/Next, Fullscreen hides the bar). **Exit** remains **`fixed` top-right** only. **Use slide zoom** checkbox sits on the bar. Auto zoom, auto-play, manual zoom %, and shortcut text moved to a **More (⋯) popover**. Removed the old docked strip, float/pin/drag toolbar, and in-bar Exit.
+
+### 2026-04-24 – React: no `transition` + `transitionDelay` mix on slide styles
+**Symptom**: Console warning when viewer/presentation animates connections — removing **`transitionDelay`** on rerender while **`transition`** shorthand is set. **Fix**: **`transitionShorthandWithDelay`** in **`css-transition-with-delay.ts`** appends delay to each comma-separated transition clause (respects **`cubic-bezier(...)`** commas). **`canvas-connections`** / **`diagram-node`** use it instead of a separate **`transitionDelay`** style. Connection memo equality no longer compares **`transitionDelay`**.
+
 ### 2026-04-24 – Presentation play mode: bottom toolbar clickable
 **`presentation-player`**: Docked playback bar used **`absolute bottom-0`** while **`ViewerCanvas`** was **`h-full`**, so the pan/zoom layer (incl. **`transform`**) overlapped the bar — **grab cursor + pan** stole clicks. **Fix**: outer shell **`flex flex-col`**; slide area **`min-h-0 flex-1`**; docked bar **`shrink-0 w-full`** (in flow, no overlap). Image / empty states centered in the **`flex-1`** region. Floating bar unchanged (**`absolute z-50`**).
 

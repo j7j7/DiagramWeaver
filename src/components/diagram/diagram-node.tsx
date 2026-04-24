@@ -19,6 +19,7 @@ import { snapToGrid, snapDimensionToGrid, measureNodeDims } from "@/components/e
 import { getTextStylingCSS, extractTextStylingFromNode } from "@/lib/text-styling";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
 import { diagramNodeVisualStylingSignature } from "@/lib/slide-visual-color";
+import { transitionShorthandWithDelay } from "@/lib/css-transition-with-delay";
 import { getHighlightAnimStyleForNode } from "@/lib/highlight-anim";
 import type { ChartSlideStagger } from "@/lib/chart-presentation-stagger";
 import {
@@ -1889,8 +1890,10 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
         // Layer show/hide animation (opacity, transition, transform)
         ...(animationStyle && !isDuplicateDragPreview && {
           opacity: animationStyle.opacity,
-          transition: animationStyle.transition,
-          ...(animationStyle.transitionDelayMs != null && { transitionDelay: `${animationStyle.transitionDelayMs}ms` }),
+          transition: transitionShorthandWithDelay(
+            animationStyle.transition,
+            animationStyle.transitionDelayMs,
+          ),
           ...(animationStyle.transform && { transform: animationStyle.transform }),
           ...(animationStyle.transformOrigin && { transformOrigin: animationStyle.transformOrigin }),
         }),

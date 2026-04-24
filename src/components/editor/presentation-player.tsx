@@ -3,10 +3,11 @@
 import React from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock3, Copy, GripVertical, Maximize2, Minimize2, MonitorPlay, Pin, PinOff, Play, Wand2, X } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, ChevronUp, Clock3, Copy, Maximize2, MoreHorizontal, MonitorPlay, Play, Wand2, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ViewerCanvas } from '@/components/viewer/viewer-canvas';
 import type { DiagramData, Slide } from '@/lib/types';
 import type { Transform } from '@/hooks/use-canvas-transform';
@@ -50,13 +51,7 @@ export function PresentationPlayer({
   const [useSlideZoom, setUseSlideZoom] = React.useState(true);
   const [autoPlayEnabled, setAutoPlayEnabled] = React.useState(false);
   const [autoPlaySeconds, setAutoPlaySeconds] = React.useState(4);
-  const [isCompactScreen, setIsCompactScreen] = React.useState(false);
-  const [controlsExpanded, setControlsExpanded] = React.useState(true);
   const [manualZoomPercentDraft, setManualZoomPercentDraft] = React.useState('100');
-  const [toolbarCollapsed, setToolbarCollapsed] = React.useState(false);
-  const [toolbarFloating, setToolbarFloating] = React.useState(false);
-  const [toolbarPosition, setToolbarPosition] = React.useState({ x: 20, y: 20 });
-  const [draggingToolbar, setDraggingToolbar] = React.useState(false);
   const [panelHidden, setPanelHidden] = React.useState(false);
   const [previousSlideIndex, setPreviousSlideIndex] = React.useState(currentIndex);
   const [previousDiagram, setPreviousDiagram] = React.useState<DiagramData | null>(null);
@@ -236,22 +231,6 @@ export function PresentationPlayer({
     setManualZoomPercentDraft(String(Number((zoom * 100).toFixed(1))));
   }, [open, currentSlide?.id, currentSlide?.autoZoomLevel, playbackTransform.k]);
 
-  React.useEffect(() => {
-    if (!open) return;
-
-    const updateScreenMode = () => {
-      const compact = window.innerWidth < 1024;
-      setIsCompactScreen(compact);
-      setControlsExpanded((prev) => (compact ? prev : true));
-    };
-
-    updateScreenMode();
-    window.addEventListener('resize', updateScreenMode);
-    return () => window.removeEventListener('resize', updateScreenMode);
-  }, [open]);
-
-  const showAdvancedControls = !isCompactScreen || controlsExpanded;
-
   const parseManualZoomLevel = React.useCallback(() => {
     const parsed = Number(manualZoomPercentDraft);
     if (!Number.isFinite(parsed) || parsed <= 0) return null;
@@ -316,46 +295,12 @@ export function PresentationPlayer({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [open, goNext, goPrevious, goFirst, goLast, onOpenChange]);
 
-  const handleToolbarMouseDown = React.useCallback((event: React.MouseEvent<HTMLDivElement>) => {
-    if (!toolbarFloating) return;
-    if (event.button !== 0) return;
-
-    const target = event.target as HTMLElement;
-    if (target.closest('button, input, select, textarea, [role="button"]')) return;
-
-    event.preventDefault();
-    setDraggingToolbar(true);
-
-    const startX = event.clientX;
-    const startY = event.clientY;
-    const originX = toolbarPosition.x;
-    const originY = toolbarPosition.y;
-
-    const onMouseMove = (moveEvent: MouseEvent) => {
-      const nextX = Math.max(8, Math.min(window.innerWidth - 420, originX + (moveEvent.clientX - startX)));
-      const nextY = Math.max(8, Math.min(window.innerHeight - 120, originY + (moveEvent.clientY - startY)));
-      setToolbarPosition({ x: nextX, y: nextY });
-    };
-
-    const onMouseUp = () => {
-      setDraggingToolbar(false);
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-    };
-
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-  }, [toolbarFloating, toolbarPosition.x, toolbarPosition.y]);
-
-  const toolbarShellClassName = toolbarFloating
-    ? 'absolute z-50 rounded-lg border border-border bg-card p-1.5 text-foreground shadow-2xl backdrop-blur-sm'
-    : 'shrink-0 w-full border-t border-border bg-card/95 p-1.5 text-foreground backdrop-blur-sm';
-
-  const toolbarShellStyle = toolbarFloating
-    ? ({ left: toolbarPosition.x, top: toolbarPosition.y, width: 'min(860px, calc(100vw - 16px))' } as React.CSSProperties)
-    : undefined;
-
   const blockInteractOutside = !showPlaybackToolbar;
+
+  const slideBarLabel = currentSlide?.title || (totalSlides > 0 ? `Slide ${safeIndex + 1}` : 'Presentation');
+
+  const playbackBarClassName =
+    'pointer-events-auto fixed bottom-4 left-1/2 z-[60] flex max-w-[min(920px,calc(100vw-2rem))] -translate-x-1/2 flex-wrap items-center gap-2 rounded-lg border border-border bg-card/95 px-3 py-2 text-foreground shadow-lg backdrop-blur-sm';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -416,192 +361,139 @@ export function PresentationPlayer({
             </div>
           )}
 
-          {showPlaybackToolbar && (panelHidden ? (
-            <Button
-              variant="outline"
-              size="sm"
-              className="absolute bottom-3 left-1/2 z-50 -translate-x-1/2 border border-border bg-card px-3 py-1.5 text-foreground hover:bg-accent"
-              onClick={() => setPanelHidden(false)}
-              title="Show panel"
-              aria-label="Show panel"
-            >
-              <ChevronUp className="h-4 w-4" />
-            </Button>
-          ) : (
-          <div className={toolbarShellClassName} style={toolbarShellStyle}>
-            <div
-              className={toolbarFloating ? 'mb-1 flex cursor-move items-center justify-between gap-2 rounded border border-border bg-muted/50 px-1.5 py-1' : 'mb-1 flex items-center justify-between gap-2'}
-              onMouseDown={handleToolbarMouseDown}
-            >
-              <div className="flex min-w-0 flex-1 items-center gap-3 text-[11px]">
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                  {toolbarFloating && <GripVertical className={draggingToolbar ? 'h-3.5 w-3.5 text-foreground' : 'h-3.5 w-3.5'} />}
-                  <span>Playback Controls</span>
-                </div>
-                <div className="flex items-center gap-2 text-foreground">
-                  <MonitorPlay className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                  <span className="truncate font-medium">{currentSlide?.title || 'Presentation'}</span>
-                  <span className="shrink-0 rounded border border-border bg-muted/50 px-2 py-0.5 text-[10px]">
-                    Slide {totalSlides > 0 ? safeIndex + 1 : 0} of {totalSlides}
+          {showPlaybackToolbar &&
+            (panelHidden ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="pointer-events-auto fixed bottom-4 left-1/2 z-[60] -translate-x-1/2 border border-border bg-card/95 px-3 py-1.5 text-foreground shadow-lg backdrop-blur-sm hover:bg-accent"
+                onClick={() => setPanelHidden(false)}
+                title="Show controls"
+                aria-label="Show controls"
+              >
+                <ChevronUp className="h-4 w-4" />
+              </Button>
+            ) : (
+              <div className={playbackBarClassName}>
+                <div className="flex min-w-0 flex-1 items-center gap-2">
+                  <MonitorPlay className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="truncate text-sm font-medium">{slideBarLabel}</span>
+                  <span className="shrink-0 rounded border border-border bg-muted/50 px-2 py-0.5 text-xs text-muted-foreground">
+                    {totalSlides > 0 ? safeIndex + 1 : 0} / {totalSlides}
                   </span>
                 </div>
-              </div>
-              <div className="flex items-center gap-1">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-5 w-5 border-border bg-muted/50 px-0 text-foreground hover:bg-muted"
-                  onClick={() => setToolbarCollapsed((prev) => !prev)}
-                  title={toolbarCollapsed ? 'Expand controls' : 'Collapse controls'}
-                >
-                  {toolbarCollapsed ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-5 w-5 border-border bg-muted/50 px-0 text-foreground hover:bg-muted"
-                  onClick={() => setToolbarFloating((prev) => !prev)}
-                  title={toolbarFloating ? 'Fix controls to bottom' : 'Float and drag controls'}
-                >
-                  {toolbarFloating ? <Pin className="h-4 w-4" /> : <PinOff className="h-4 w-4" />}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-5 w-5 border-border bg-muted/50 px-0 text-foreground hover:bg-muted"
-                  onClick={() => setPanelHidden(true)}
-                  title="Hide panel"
-                  aria-label="Hide panel"
-                >
-                  <ChevronDown className="h-2.5 w-2.5" />
-                </Button>
-                {isCompactScreen && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-5 border-border bg-muted/50 px-1 text-[10px] text-foreground hover:bg-muted"
-                    onClick={() => setControlsExpanded((prev) => !prev)}
-                  >
-                    {controlsExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
-                    {controlsExpanded ? 'Compact' : 'Expand'}
-                  </Button>
-                )}
-              </div>
-            </div>
 
-            {!toolbarCollapsed && (
-              <div className="grid gap-1 lg:grid-cols-[1fr_auto] lg:items-center">
-                <div className="flex flex-wrap items-center gap-1">
-                  <Button size="sm" className="h-6 px-1.5 text-[11px]" variant="secondary" onClick={goPrevious} disabled={totalSlides === 0}>
-                    <ChevronLeft className="h-3 w-3" />
-                    Previous
+                <label className="flex h-8 cursor-pointer select-none items-center gap-2 rounded-md border border-border bg-muted/40 px-2 text-xs text-foreground">
+                  <input
+                    type="checkbox"
+                    className="h-3.5 w-3.5 rounded border-border"
+                    checked={useSlideZoom}
+                    onChange={(e) => setUseSlideZoom(e.target.checked)}
+                  />
+                  Use slide zoom
+                </label>
+
+                <div className="flex items-center gap-1">
+                  <Button size="sm" variant="secondary" className="h-8 gap-1 px-2" onClick={goPrevious} disabled={totalSlides === 0}>
+                    <ChevronLeft className="h-4 w-4" />
+                    <span className="hidden sm:inline">Prev</span>
                   </Button>
-                  <Button size="sm" className="h-6 px-1.5 text-[11px]" variant="secondary" onClick={goNext} disabled={totalSlides === 0}>
-                    Next
-                    <ChevronRight className="h-3 w-3" />
-                  </Button>
-                  <Button size="sm" variant="outline" className="h-6 border-border bg-muted/50 px-1.5 text-[11px] text-foreground hover:bg-muted" onClick={() => onOpenChange(false)}>
-                    <X className="h-3 w-3" />
-                    Exit
+                  <Button size="sm" variant="secondary" className="h-8 gap-1 px-2" onClick={goNext} disabled={totalSlides === 0}>
+                    <span className="hidden sm:inline">Next</span>
+                    <ChevronRight className="h-4 w-4" />
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-6 border-border bg-muted/50 px-1.5 text-[11px] text-foreground hover:bg-muted"
-                    onClick={() => {
-                      applyViewerUnionFit();
-                      setUseSlideZoom(false);
-                    }}
-                    disabled={slideDiagramsForUnionFit.length === 0}
-                    title="Auto zoom — fit all slides in one view (same as viewer presentation)"
-                    aria-label="Auto zoom"
+                    className="h-8 gap-1 px-2"
+                    onClick={() => setPanelHidden(true)}
+                    disabled={totalSlides === 0}
+                    title="Hide controls (fullscreen slide)"
+                    aria-label="Hide controls"
                   >
-                    <Wand2 className="h-3 w-3" />
-                    Auto zoom
+                    <Maximize2 className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Fullscreen</span>
                   </Button>
 
-                  {showAdvancedControls && (
-                    <>
-                      <label className="ml-0.5 flex h-6 items-center gap-1 rounded border border-border bg-muted/50 px-1.5 text-[10px]">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button size="sm" variant="outline" className="h-8 w-8 shrink-0 px-0" title="More playback options" aria-label="More playback options">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-80 space-y-3">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 w-full justify-start gap-2"
+                        onClick={() => {
+                          applyViewerUnionFit();
+                          setUseSlideZoom(false);
+                        }}
+                        disabled={slideDiagramsForUnionFit.length === 0}
+                      >
+                        <Wand2 className="h-3.5 w-3.5" />
+                        Auto zoom (fit all slides)
+                      </Button>
+
+                      <label className="flex cursor-pointer items-center gap-2 text-sm">
                         <input
                           type="checkbox"
+                          className="h-3.5 w-3.5 rounded border-border"
                           checked={autoPlayEnabled}
                           onChange={(e) => setAutoPlayEnabled(e.target.checked)}
                         />
-                        <Play className="h-2.5 w-2.5" />
+                        <Play className="h-3.5 w-3.5 text-muted-foreground" />
                         Auto-play
                       </label>
 
-                      <label className="flex h-6 items-center gap-1 rounded border border-border bg-muted/50 px-1.5 text-[10px]">
-                        <input
-                          type="checkbox"
-                          checked={useSlideZoom}
-                          onChange={(e) => setUseSlideZoom(e.target.checked)}
-                        />
-                        Use slide zoom
-                      </label>
-
-                      <div className="flex h-6 items-center gap-1 rounded border border-border bg-muted/50 px-1.5">
-                        <Clock3 className="h-2.5 w-2.5 text-muted-foreground" />
+                      <div className="flex items-center gap-2">
+                        <Clock3 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                         <Input
                           type="number"
                           min={1}
                           max={120}
                           value={autoPlaySeconds}
                           onChange={(e) => setAutoPlaySeconds(Number(e.target.value) || 1)}
-                          className="h-5 w-12 border-border bg-muted px-1 text-[10px] text-foreground"
+                          className="h-8 w-16 text-xs"
                         />
-                        <span className="text-[10px] text-muted-foreground">sec</span>
+                        <span className="text-xs text-muted-foreground">sec per slide</span>
                       </div>
 
-                      <div className="flex h-6 items-center gap-1 rounded border border-border bg-muted/50 px-1">
-                        <Input
-                          type="number"
-                          min={10}
-                          max={250}
-                          value={manualZoomPercentDraft}
-                          onChange={(e) => setManualZoomPercentDraft(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              handleApplyZoomToCurrent();
-                            }
-                          }}
-                          className="h-5 w-12 border-border bg-muted px-1 text-[10px] text-foreground"
-                        />
-                        <span className="text-[10px] text-muted-foreground">%</span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-5 w-5 border-border bg-transparent px-0 text-foreground hover:bg-muted"
-                          onClick={handleApplyZoomToCurrent}
-                          disabled={!currentSlide}
-                          title="Apply zoom to current snapshot"
-                        >
-                          <Check className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-5 w-5 border-border bg-transparent px-0 text-foreground hover:bg-muted"
-                          onClick={handleApplyZoomToAll}
-                          disabled={!currentSlide || totalSlides === 0}
-                          title="Apply zoom to all snapshots"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
+                      <div className="space-y-1">
+                        <div className="text-xs font-medium text-muted-foreground">Manual zoom %</div>
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="number"
+                            min={10}
+                            max={250}
+                            value={manualZoomPercentDraft}
+                            onChange={(e) => setManualZoomPercentDraft(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleApplyZoomToCurrent();
+                              }
+                            }}
+                            className="h-8 w-20 text-xs"
+                          />
+                          <Button size="sm" variant="outline" className="h-8 w-8 px-0" onClick={handleApplyZoomToCurrent} disabled={!currentSlide} title="Apply to current snapshot">
+                            <Check className="h-4 w-4" />
+                          </Button>
+                          <Button size="sm" variant="outline" className="h-8 w-8 px-0" onClick={handleApplyZoomToAll} disabled={!currentSlide || totalSlides === 0} title="Apply to all snapshots">
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                    </>
-                  )}
-                </div>
 
-                <div className="text-[10px] text-muted-foreground lg:text-right">
-                  Space = next · ← → = prev/next · ↑ ↓ = first/last · Esc = exit
+                      <p className="text-[10px] leading-relaxed text-muted-foreground">
+                        Space = next · ← → = prev/next · ↑ ↓ = first/last · Esc = exit
+                      </p>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
-            )}
-          </div>
-          ))}
+            ))}
         </div>
       </DialogContent>
     </Dialog>

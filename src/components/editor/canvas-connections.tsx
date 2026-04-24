@@ -10,6 +10,7 @@ import {
 } from "@/lib/connection-order-utils";
 import { measureNodeDims, type PositionedNode, type PositionedGroup, NODE_WIDTH, BASE_NODE_HEIGHT, TEXT_NODE_HEIGHT, EXTRA_LINE_HEIGHT, CONNECTION_HELPER_Z_INDEX, snapToGrid } from "./canvas-constants";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
+import { transitionShorthandWithDelay } from "@/lib/css-transition-with-delay";
 import { cn, isIconOrEmojiType, isShapeNodeType } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ConnectionEndpointHandles, type DiagramTransform } from "../diagram/connection-endpoint-handles";
@@ -534,10 +535,10 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
         const slideTransitionStyle = slideConnStyle
           ? {
               opacity: slideConnStyle.opacity,
-              transition: slideConnStyle.transition,
-              ...(slideConnStyle.transitionDelayMs != null && {
-                transitionDelay: `${slideConnStyle.transitionDelayMs}ms`,
-              }),
+              transition: transitionShorthandWithDelay(
+                slideConnStyle.transition,
+                slideConnStyle.transitionDelayMs,
+              ),
               ...(slideConnStyle.transform && { transform: slideConnStyle.transform }),
             }
           : undefined;

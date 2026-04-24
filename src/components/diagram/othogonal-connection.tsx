@@ -128,8 +128,7 @@ function slideTransitionStyleEqual(
   return (
     a.opacity === b.opacity &&
     a.transform === b.transform &&
-    a.transition === b.transition &&
-    a.transitionDelay === b.transitionDelay
+    a.transition === b.transition
   );
 }
 
