@@ -189,7 +189,6 @@ export const DiagramNodeDataSchema = z.object({
   backgroundColors: z.array(z.string()).optional(), // Background colors for gradient [startColor, endColor]
   frostedDiffusion: z.number().min(0).max(1).optional(),
   frostedTransparency: z.number().min(0).max(1).optional(),
-  frostedGlassQuality: z.enum(['simulated', 'backdrop']).optional(),
   gradientAngle: z.number().optional(), // Background gradient angle in degrees
   borderGradientAngle: z.number().optional(), // Border gradient angle in degrees
   shadow: z.boolean().optional(), // Whether to show shadow around label/textbox nodes
@@ -373,7 +372,6 @@ export const DiagramGroupDataSchema = z.object({
   backgroundColors: z.array(z.string()).optional(), // [startColor, endColor]
   frostedDiffusion: z.number().min(0).max(1).optional(),
   frostedTransparency: z.number().min(0).max(1).optional(),
-  frostedGlassQuality: z.enum(['simulated', 'backdrop']).optional(),
   gradientAngle: z.number().optional(), // Background gradient angle in degrees
   borderGradientAngle: z.number().optional(), // Border gradient angle in degrees
   orientation: z.enum(['horizontal', 'vertical', 'square']).optional(),
@@ -549,7 +547,6 @@ export const DiagramNodeItemSchema = z.object({
   backgroundColors: z.array(z.string()).optional(), // Background colors for gradient [startColor, endColor]
   frostedDiffusion: z.number().min(0).max(1).optional(),
   frostedTransparency: z.number().min(0).max(1).optional(),
-  frostedGlassQuality: z.enum(['simulated', 'backdrop']).optional(),
   gradientAngle: z.number().optional(), // Background gradient angle in degrees
   borderGradientAngle: z.number().optional(), // Border gradient angle in degrees
   shadow: z.boolean().optional(), // Whether to show shadow around label/textbox nodes
@@ -649,7 +646,6 @@ export const DiagramGroupItemSchema = z.object({
   backgroundColors: z.array(z.string()).optional(), // Background colors for gradient [startColor, endColor]
   frostedDiffusion: z.number().min(0).max(1).optional(),
   frostedTransparency: z.number().min(0).max(1).optional(),
-  frostedGlassQuality: z.enum(['simulated', 'backdrop']).optional(),
   gradientAngle: z.number().optional(), // Background gradient angle in degrees
   borderGradientAngle: z.number().optional(), // Border gradient angle in degrees
   orientation: z.enum(['horizontal', 'vertical', 'square']).optional(), // Group shape orientation

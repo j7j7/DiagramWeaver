@@ -36,8 +36,8 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
       </head>
       {/*
-        Avoid `overflow-hidden` on body: Chromium treats it as a backdrop root; frosted glass
-        then shows tint without blur. Rely on the app shell for clipping (e.g. diagram-editor).
+        Avoid `overflow-hidden` on body: Chromium can treat it as a backdrop root and affect
+        `backdrop-filter` in descendants. Rely on the app shell for clipping (e.g. diagram-editor).
         Mobile globals may still set `overflow-x: hidden` on body — desktop stays overflow visible.
       */}
       <body className="font-body antialiased h-dvh min-h-0 w-full">
@@ -49,11 +49,6 @@ export default function RootLayout({
             </RecentColorsProvider>
           </TooltipProvider>
         </ThemeProvider>
-        <div
-          id="dw-frosted-root"
-          className="pointer-events-none fixed inset-0 z-[44] overflow-visible"
-          aria-hidden
-        />
       </body>
     </html>
   );

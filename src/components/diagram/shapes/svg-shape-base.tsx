@@ -45,10 +45,6 @@ interface SvgShapeBaseProps {
    * Takes precedence over `frostedClipRectInViewBox` when both are set.
    */
   frostedClipPathOverride?: string;
-  /** Stacking for viewport-portal frosted glass (should match the diagram node). */
-  frostedGlassZIndex?: number;
-  frostedPanZoom?: { x: number; y: number; k: number };
-  frostedCanvasRef?: React.RefObject<HTMLElement | null>;
 }
 
 export function SvgShapeBase({
@@ -65,9 +61,6 @@ export function SvgShapeBase({
   svgOverflowVisible = false,
   frostedClipRectInViewBox,
   frostedClipPathOverride,
-  frostedGlassZIndex = 2,
-  frostedPanZoom,
-  frostedCanvasRef,
   ...rest
 }: SvgShapeBaseProps) {
   const nodeAny = node as any;
@@ -119,10 +112,6 @@ export function SvgShapeBase({
       slideColorTransition={slideColorTransition}
       omitShapeText={omitShapeText}
       frostedGlassClipPath={frostedGlassClipPath}
-      useFrostedGlassViewportPortal={true}
-      frostedGlassZIndex={frostedGlassZIndex}
-      frostedPanZoom={frostedPanZoom}
-      frostedCanvasRef={frostedCanvasRef}
       {...rest}
     >
       <svg

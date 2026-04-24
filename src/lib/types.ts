@@ -214,11 +214,6 @@ export interface DiagramNodeData {
   frostedDiffusion?: number;
   /** `backgroundStyle: 'frosted'`: 0 = fully transparent, 1 = more opaque (see-through of content below). */
   frostedTransparency?: number;
-  /**
-   * `backgroundStyle: 'frosted'`: `simulated` = inline `backdrop-filter` on the shape (blur behind; nodes above stay sharp).
-   * `backdrop` = viewport portal blur (often more reliable; stacking may not match layer list).
-   */
-  frostedGlassQuality?: 'simulated' | 'backdrop';
   gradientAngle?: number; // Background gradient angle in degrees
   borderGradientAngle?: number; // Border gradient angle in degrees
   shadow?: boolean; // Whether to show shadow around label/textbox nodes
@@ -465,7 +460,6 @@ export interface DiagramNodeItem {
   backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
   frostedDiffusion?: number;
   frostedTransparency?: number;
-  frostedGlassQuality?: 'simulated' | 'backdrop';
   gradientAngle?: number; // Background gradient angle in degrees
   borderGradientAngle?: number; // Border gradient angle in degrees
   shadow?: boolean; // Whether to show shadow around label/textbox nodes
@@ -566,7 +560,6 @@ export interface DiagramZoneItem {
   backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
   frostedDiffusion?: number;
   frostedTransparency?: number;
-  frostedGlassQuality?: 'simulated' | 'backdrop';
   gradientAngle?: number; // Background gradient angle in degrees
   borderGradientAngle?: number; // Border gradient angle in degrees
   orientation?: 'horizontal' | 'vertical' | 'square'; // Zone shape orientation
@@ -638,7 +631,6 @@ export interface DiagramZoneData {
   backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
   frostedDiffusion?: number;
   frostedTransparency?: number;
-  frostedGlassQuality?: 'simulated' | 'backdrop';
   gradientAngle?: number; // Background gradient angle in degrees
   borderGradientAngle?: number; // Border gradient angle in degrees
   orientation?: 'horizontal' | 'vertical' | 'square'; // Zone shape orientation

@@ -558,9 +558,6 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     const shapeProps = {
       node: visualNode,
       slideColorTransition,
-      frostedGlassZIndex: stackZIndex ?? 2,
-      frostedPanZoom: transform ?? { x: 0, y: 0, k: 1 },
-      frostedCanvasRef: canvasRef,
       overrideWidth: typeof displayWidth === 'number' ? displayWidth : undefined,
       overrideHeight: typeof displayHeight === 'number' ? displayHeight : undefined,
       tag: nodeAny.tag,
@@ -595,9 +592,6 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
         <UmlClassShape
           node={visualNode}
           slideColorTransition={slideColorTransition}
-          frostedGlassZIndex={stackZIndex ?? 2}
-          frostedPanZoom={transform ?? { x: 0, y: 0, k: 1 }}
-          frostedCanvasRef={canvasRef}
           overrideWidth={shapeProps.overrideWidth}
           overrideHeight={shapeProps.overrideHeight}
           label={shapeProps.label}
@@ -1172,6 +1166,8 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
   const isTextboxNode = node.type === 'generic.text.textbox';
   const isRichTextBoxLike = isTextNode || isTextboxNode;
   const isLineNode = isConnectorLineNodeType(node.type);
+  /** Hover uses `filter: drop-shadow` on the frame, which makes a backdrop root and breaks frosted `backdrop-filter`. */
+  const isFrostedBackground = (node as DiagramNodeData).backgroundStyle === "frosted";
   const isLoopNode = node.type === 'generic.object.loop' || node.type?.endsWith('.loop');
   const isShapeNode = !isIconOrEmojiType(node.type) && (isShapeNodeType(node.type) || isLineNode || isLoopNode);
   const isPointNode = node.type === 'generic.object.point' || node.type?.endsWith('.point');
@@ -1833,8 +1829,8 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
           ? "transition-transform"
           : "transition-[transform,filter]",
         // Hover and selection effects - not for lines, and not when locked
-        !isLineNode && !(isDragging || isTouchDragging) && !(isSelected || isHighlighted || isMultiSelected) && !isLocked && !(hasLinkedSubDiagram ?? node.subDiagramId) && "node-glow-hover",
-        !isLineNode && (hasLinkedSubDiagram ?? node.subDiagramId) && !(isSelected || isHighlighted || isMultiSelected) && !isLocked && "node-glow-subdiagram",
+        !isLineNode && !(isDragging || isTouchDragging) && !(isSelected || isHighlighted || isMultiSelected) && !isLocked && !(hasLinkedSubDiagram ?? node.subDiagramId) && !isFrostedBackground && "node-glow-hover",
+        !isLineNode && (hasLinkedSubDiagram ?? node.subDiagramId) && !(isSelected || isHighlighted || isMultiSelected) && !isLocked && !isFrostedBackground && "node-glow-subdiagram",
         !isLineNode && (isSelected || isHighlighted || isMultiSelected) && "node-glow-static",
         !isLineNode && isGroupMember && !isSelected && !isHighlighted && !isMultiSelected && "node-glow-green-static",
         (isDragging || isTouchDragging) && "cursor-grabbing",

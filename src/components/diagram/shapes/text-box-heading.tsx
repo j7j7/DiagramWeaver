@@ -46,7 +46,6 @@ interface TextBoxHeadingShapeProps {
   onPatch?: (patch: Partial<DiagramNodeData>) => void;
   isReadOnly?: boolean;
   onDraggingChange?: (dragging: boolean) => void;
-  frostedGlassZIndex?: number;
 }
 
 function nearestHeadingEdge(px: number, py: number, w: number, h: number): HeadingEdge {
@@ -116,7 +115,6 @@ export function TextBoxHeadingShape(props: TextBoxHeadingShapeProps) {
     slideColorTransition,
     overrideWidth,
     overrideHeight,
-    frostedGlassZIndex = 2,
     ...rest
   } = props;
   const nodeAny = node as any;
@@ -382,8 +380,6 @@ export function TextBoxHeadingShape(props: TextBoxHeadingShapeProps) {
       skipWrapperStyling={true}
       slideColorTransition={slideColorTransition}
       omitShapeText
-      useFrostedGlassViewportPortal={true}
-      frostedGlassZIndex={frostedGlassZIndex}
       {...rest}
     >
       <div

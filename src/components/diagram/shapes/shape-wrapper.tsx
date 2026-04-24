@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Fragment, useRef } from "react";
+import React, { Fragment } from "react";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { useSlideShapeShadowTransitionMode } from "@/components/diagram/slide-shape-shadow-transition-context";
 import { getNodeSizeMultiplier } from "@/lib/visual-styling";
@@ -16,9 +16,7 @@ import {
   getFrostedGlassTopEdgeHighlightStyle,
   getFrostedGlassLeftEdgeHighlightStyle,
   getShapeStyles,
-  isFrostedBackdropBlurEnabled,
 } from "./shape-utils";
-import { FrostedGlassPortalLayer } from "./frosted-glass-portal-layer";
 import { ShapeTag } from "./shape-tag";
 import { ShapeText } from "./shape-text";
 
@@ -56,18 +54,6 @@ interface ShapeWrapperProps {
   omitShapeText?: boolean;
   /** When `backgroundStyle` is frosted and this is set, clips the glass layer to match SVG geometry (see SvgShapeBase). */
   frostedGlassClipPath?: string;
-  /**
-   * When true, frosted `backdrop-filter` is rendered in a **viewport-fixed** portal on `document.body`
-   * (or `#canvas-container` fallback)
-   * so it blurs the real viewport (escapes pan/zoom `transform`) while staying under the diagram layer.
-   */
-  useFrostedGlassViewportPortal?: boolean;
-  /** Stacking for the portal (shape container zIndex); should match the diagram node. */
-  frostedGlassZIndex?: number;
-  /** Pan/zoom from the canvas — enables in-layer frosted portal (working `backdrop-filter`). */
-  frostedPanZoom?: { x: number; y: number; k: number };
-  /** `#canvas-container` (or viewer root) — used with `frostedPanZoom` for diagram-space sizing. */
-  frostedCanvasRef?: React.RefObject<HTMLElement | null>;
 }
 
 /**
@@ -84,11 +70,8 @@ function shouldUseGradientBorderLayer(
 }
 
 /** `filter` on an ancestor creates a backdrop root — inline `backdrop-filter` then won’t blur the diagram. */
-function shouldSuppressSvgDropShadowFilterForInlineFrosted(
-  isFrostedBg: boolean,
-  usePortalFrosted: boolean
-): boolean {
-  return isFrostedBg && !usePortalFrosted;
+function shouldSuppressSvgDropShadowFilterForFrosted(isFrostedBg: boolean): boolean {
+  return isFrostedBg;
 }
 
 /**
@@ -131,12 +114,7 @@ export function ShapeWrapper({
   slideColorTransition,
   omitShapeText = false,
   frostedGlassClipPath,
-  useFrostedGlassViewportPortal = false,
-  frostedGlassZIndex = 2,
-  frostedPanZoom,
-  frostedCanvasRef,
 }: ShapeWrapperProps) {
-  const frostedLayoutRef = useRef<HTMLDivElement | null>(null);
   const styles = getShapeStyles(node);
   const slideShapeShadowMode = useSlideShapeShadowTransitionMode();
   /** Only gradient crossfade stacks two paints; suppress per-layer shadow there and use one group filter. Merge-paint keeps the normal shadow so it never “blinks” off. */
@@ -171,25 +149,14 @@ export function ShapeWrapper({
   // This avoids `border-image` export glitches (gray fills in html-to-image snapshots).
   const needsGradientBorderLayer = shouldUseGradientBorderLayer(shouldSkipStyling, borderImage, borderColors);
 
-  // Frosted glass is a separate layer (inline or viewport portal). SVG shapes skip CSS wrapper
-  // fill but still use `backgroundStyle: 'frosted'` + transparent SVG fill — must not disable glass here.
+  // Frosted glass: inline `backdrop-filter` stack. SVG shapes skip CSS wrapper fill but still use
+  // `backgroundStyle: 'frosted'` + transparent SVG fill — must not disable glass here.
   const isFrostedBg = nodeAny.backgroundStyle === "frosted";
-  /** `backdrop` quality: viewport portal. Otherwise: inline `backdrop-filter` (correct stacking vs nodes above). */
-  const usePortalFrosted = Boolean(
-    isFrostedBg &&
-      styles.frostedGlass &&
-      isFrostedBackdropBlurEnabled(node) &&
-      useFrostedGlassViewportPortal &&
-      typeof document !== "undefined"
-  );
-  const frostedBorderRadius = calculatedBorderRadius ?? "0px";
-  /** Portal uses getBoundingClientRect; position/rotation changes do not trigger ResizeObserver. */
-  const frostedLayoutSyncKey = `${node.x},${node.y},${width},${height},${nodeAny.rotation ?? 0},${frostedGlassClipPath ?? ""}`;
   const frostedInlineSecondPassStyle =
-    !usePortalFrosted && isFrostedBg && styles.frostedGlass
+    isFrostedBg && styles.frostedGlass
       ? getFrostedGlassInlineBackdropSecondPassStyle(styles.frostedGlass)
       : undefined;
-  const suppressSvgRootFilter = shouldSuppressSvgDropShadowFilterForInlineFrosted(isFrostedBg, usePortalFrosted);
+  const suppressSvgRootFilter = shouldSuppressSvgDropShadowFilterForFrosted(isFrostedBg);
   const frostedOuterClip = frostedInlineOuterClipPath(frostedGlassClipPath);
   const frostedInsetBackdropClip = getFrostedInsetClipStyleForBackdropLayers(frostedGlassClipPath);
 
@@ -234,7 +201,6 @@ export function ShapeWrapper({
       ) : null}
 
       <div
-        ref={frostedLayoutRef}
         data-shape-bg-fallback={!shouldSkipStyling ? styles.backgroundColor : undefined}
         data-shape-border-fallback={needsGradientBorderLayer ? (borderColors?.[0] ?? undefined) : undefined}
         style={{
@@ -261,7 +227,7 @@ export function ShapeWrapper({
           ...(slideColorTransition !== undefined && !skipWrapperStyling ? { transition: slideColorTransition } : {}),
         }}
       >
-        {!usePortalFrosted && isFrostedBg && styles.frostedGlass ? (
+        {isFrostedBg && styles.frostedGlass ? (
           <>
             <div
               style={{
@@ -410,19 +376,6 @@ export function ShapeWrapper({
           </>
         )}
       </div>
-
-      {usePortalFrosted && styles.frostedGlass ? (
-        <FrostedGlassPortalLayer
-          glass={styles.frostedGlass}
-          zIndex={frostedGlassZIndex}
-          targetRef={frostedLayoutRef}
-          borderRadius={frostedBorderRadius}
-          clipPath={frostedGlassClipPath}
-          panZoom={frostedPanZoom}
-          canvasContainerRef={frostedCanvasRef}
-          layoutSyncKey={frostedLayoutSyncKey}
-        />
-      ) : null}
     </div>
   );
 }

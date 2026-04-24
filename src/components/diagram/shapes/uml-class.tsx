@@ -14,9 +14,7 @@ import {
   getFrostedGlassTopEdgeHighlightStyle,
   getFrostedGlassLeftEdgeHighlightStyle,
   getShapeStyles,
-  isFrostedBackdropBlurEnabled,
 } from "./shape-utils";
-import { FrostedGlassPortalLayer } from "./frosted-glass-portal-layer";
 import { getTextColorForBackground } from "./shape-utils";
 import { ShapeTag } from "./shape-tag";
 import { UML_NAME_HEIGHT, UML_LINE_HEIGHT } from "@/lib/uml-utils";
@@ -39,9 +37,6 @@ interface UmlClassShapeProps {
   onUmlClassUpdate?: (umlClass: { name?: string; attributes?: string[]; methods?: string[] }) => void;
   isReadOnly?: boolean;
   slideColorTransition?: string;
-  frostedGlassZIndex?: number;
-  frostedPanZoom?: { x: number; y: number; k: number };
-  frostedCanvasRef?: React.RefObject<HTMLElement | null>;
 }
 
 function getCompartmentStyle(
@@ -81,11 +76,7 @@ export function UmlClassShape({
   onUmlClassUpdate,
   isReadOnly = false,
   slideColorTransition,
-  frostedGlassZIndex = 2,
-  frostedPanZoom,
-  frostedCanvasRef,
 }: UmlClassShapeProps) {
-  const frostedLayoutRef = useRef<HTMLDivElement | null>(null);
   const nodeAny = node as any;
   const uml = nodeAny.umlClass;
   const umlStyle = nodeAny.umlClassStyle;
@@ -115,9 +106,6 @@ export function UmlClassShape({
   const borderGradientBackground = borderImage ? String(borderImage).replace(/\s+1$/, "") : undefined;
   const needsGradientBorderLayer = shouldUseGradientBorderLayer(borderImage, borderColors);
   const isFrostedBg = nodeAny.backgroundStyle === "frosted";
-  const usePortalFrosted = Boolean(
-    isFrostedBg && styles.frostedGlass && isFrostedBackdropBlurEnabled(nodeAny) && typeof document !== "undefined"
-  );
 
   const nameStyle = getCompartmentStyle(umlStyle?.name, fallbackColor);
   const attrStyle = getCompartmentStyle(umlStyle?.attributes, fallbackColor);
@@ -176,9 +164,8 @@ export function UmlClassShape({
   const isPlaceholderName = !name;
   const isPlaceholderAttrs = attributes.length === 0;
   const isPlaceholderMethods = methods.length === 0;
-  const frostedLayoutSyncKey = `${node.x},${node.y},${width},${height},${nodeAny.rotation ?? 0}`;
   const frostedInlineSecondPassStyle =
-    !usePortalFrosted && isFrostedBg && styles.frostedGlass
+    isFrostedBg && styles.frostedGlass
       ? getFrostedGlassInlineBackdropSecondPassStyle(styles.frostedGlass)
       : undefined;
 
@@ -204,12 +191,11 @@ export function UmlClassShape({
         />
       ) : null}
       <div
-        ref={frostedLayoutRef}
         className="relative flex flex-col w-full h-full"
         style={{
           boxSizing: "border-box",
           /* Inline frosted: visible overflow helps Chromium sample content behind `backdrop-filter`. */
-          overflow: isFrostedBg && !usePortalFrosted ? "visible" : "hidden",
+          overflow: isFrostedBg ? "visible" : "hidden",
           borderWidth: !needsGradientBorderLayer ? styles.borderWidth : undefined,
           borderStyle: !needsGradientBorderLayer ? styles.borderStyle ?? "solid" : undefined,
           borderColor: !needsGradientBorderLayer ? (borderImage ? "transparent" : dividerColor) : undefined,
@@ -224,7 +210,7 @@ export function UmlClassShape({
           ...(slideColorTransition !== undefined ? { transition: slideColorTransition } : {}),
         }}
       >
-        {!usePortalFrosted && isFrostedBg && styles.frostedGlass ? (
+        {isFrostedBg && styles.frostedGlass ? (
           <div
             style={{
               position: "absolute",
@@ -354,17 +340,6 @@ export function UmlClassShape({
           )}
         </div>
       </div>
-      {usePortalFrosted && styles.frostedGlass ? (
-        <FrostedGlassPortalLayer
-          glass={styles.frostedGlass}
-          zIndex={frostedGlassZIndex}
-          targetRef={frostedLayoutRef}
-          borderRadius={borderRadius}
-          panZoom={frostedPanZoom}
-          canvasContainerRef={frostedCanvasRef}
-          layoutSyncKey={frostedLayoutSyncKey}
-        />
-      ) : null}
       <ShapeTag
         tag={tag ?? ""}
         tagPosition={tagPosition ?? "top-left"}

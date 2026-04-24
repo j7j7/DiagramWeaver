@@ -13,8 +13,7 @@ import {
   HIGHLIGHT_ANIM_DEFAULT_GLOW_COLOR,
   HIGHLIGHT_ANIM_DEFAULT_INTERVAL_SEC,
 } from "@/lib/highlight-anim";
-import { Info, Palette, RotateCcw, X } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Palette, RotateCcw, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { GradientAnglePicker } from "./gradient-angle-picker";
 import { Slider } from "@/components/ui/slider";
@@ -250,7 +249,6 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
         backgroundStyle: "frosted" as const,
         frostedDiffusion: styling.frostedDiffusion ?? 0.45,
         frostedTransparency: styling.frostedTransparency ?? 0.55,
-        frostedGlassQuality: styling.frostedGlassQuality ?? "backdrop",
         backgroundColor: (styling.backgroundColor as string | undefined) || "#f3f4f6",
       });
     } else {
@@ -520,54 +518,6 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                 </div>
                 {styling.backgroundStyle === 'frosted' && (
                   <div className="space-y-3 mb-2">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1.5">
-                        <Label className="text-sm text-muted-foreground">Rendering</Label>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              className="inline-flex shrink-0 rounded-sm text-muted-foreground outline-offset-2 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
-                              aria-label="About Viewport blur and Layer order"
-                            >
-                              <Info className="h-3.5 w-3.5" aria-hidden />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent
-                            side="top"
-                            className="max-w-[min(300px,calc(100vw-2rem))] space-y-2 text-xs leading-snug"
-                          >
-                            <p>
-                              <span className="font-medium">Viewport blur</span> (default) uses a fixed portal so the
-                              glass blurs what is actually on screen.
-                            </p>
-                            <p>
-                              <span className="font-medium">Layer order</span> draws blur on the shape so stacking
-                              matches the layer list, but inside a panned/zoomed canvas most browsers only show tint
-                              and noise — not a real frosted view of content below.
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </div>
-                      <Select
-                        value={styling.frostedGlassQuality ?? "backdrop"}
-                        onValueChange={(v) =>
-                          handlePropertyChange("frostedGlassQuality", v as "simulated" | "backdrop", true)
-                        }
-                      >
-                        <SelectTrigger className="h-9 text-sm">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="z-[70]">
-                          <SelectItem value="backdrop" className="text-sm">
-                            Viewport blur
-                          </SelectItem>
-                          <SelectItem value="simulated" className="text-sm">
-                            Layer order
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
                     <div className="space-y-1">
                       <Label className="text-sm text-muted-foreground">Diffusion (blur strength)</Label>
                       <div className="flex items-center gap-3 pr-1">

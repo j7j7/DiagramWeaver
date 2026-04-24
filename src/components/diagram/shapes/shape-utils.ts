@@ -334,21 +334,6 @@ export function getFrostedGlassDropShadowLayerStyle(p: FrostedGlassParams): CSSP
   };
 }
 
-/** Translucent fill + backdrop blur only (no `box-shadow`). */
-export function getFrostedGlassBackdropLayerStyle(p: FrostedGlassParams): CSSProperties {
-  const f = frostBackdropFilterValue(p);
-  return {
-    position: "absolute",
-    inset: 0,
-    borderRadius: "inherit",
-    pointerEvents: "none",
-    zIndex: 1,
-    backgroundColor: p.fillRgba,
-    backdropFilter: f,
-    WebkitBackdropFilter: f,
-  };
-}
-
 /** Colour wash from **background / tint** (`tintRgba`) — stacked above blur passes, under grain. */
 export function getFrostedGlassTintLayerStyle(p: FrostedGlassParams): CSSProperties {
   return {
@@ -358,36 +343,6 @@ export function getFrostedGlassTintLayerStyle(p: FrostedGlassParams): CSSPropert
     pointerEvents: "none",
     zIndex: 1,
     backgroundColor: p.tintRgba,
-  };
-}
-
-/**
- * When `true`, frosted uses the viewport-fixed portal under `#dw-frosted-root` so `backdrop-filter`
- * samples the real screen (pan/zoom `transform` breaks inline blur — tint/grain only).
- * When `false` (`frostedGlassQuality === 'simulated'` only), uses inline `backdrop-filter` for
- * layer-list stacking; blur is often non-functional in Chromium inside the transformed diagram.
- */
-export function isFrostedBackdropBlurEnabled(node: {
-  backgroundStyle?: string;
-  frostedGlassQuality?: "simulated" | "backdrop";
-}): boolean {
-  if (node.backgroundStyle !== "frosted") return false;
-  return node.frostedGlassQuality !== "simulated";
-}
-
-export function getFrostedGlassSurfaceStyle(p: FrostedGlassParams): CSSProperties {
-  const f = frostBackdropFilterValue(p);
-  return {
-    position: "absolute",
-    inset: 0,
-    borderRadius: "inherit",
-    pointerEvents: "none",
-    zIndex: 0,
-    // Glassmorphism stack: backdrop blur + translucent “glass” fill (see Hype4-style cards)
-    backgroundColor: p.fillRgba,
-    backdropFilter: f,
-    WebkitBackdropFilter: f,
-    boxShadow: p.glassBoxShadow,
   };
 }
 
@@ -478,13 +433,12 @@ export const getShapeStyles = (node: DiagramNodeData & { width?: number; height?
   const roundedEdges = nodeAny.roundedEdges || false;
 
   const isFrosted = backgroundStyle === 'frosted';
-  const frostedForInlineStacking = isFrosted && nodeAny.frostedGlassQuality === "simulated";
   const frostedGlass = isFrosted
     ? getFrostedGlassParams(
         backgroundColor,
         nodeAny.frostedDiffusion as number | undefined,
         nodeAny.frostedTransparency as number | undefined,
-        frostedForInlineStacking ? { forInlineStacking: true } : undefined
+        { forInlineStacking: true }
       )
     : null;
 

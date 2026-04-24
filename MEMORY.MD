@@ -1,5 +1,11 @@
 # MEMORY.MD
 
+### 2026-04-24 – Frosted: viewport portal removed; inline glass only
+Removed **`FrostedGlassPortalLayer`**, **`#dw-frosted-root`**, **`frostedGlassQuality`** / viewport UI and schema fields. All **`frosted`** backgrounds use the inline stack only; **`getFrostedGlassParams(..., { forInlineStacking: true })`** always. Dropped pan/zoom + canvas ref props from shape plumbing.
+
+### 2026-04-24 – Frosted glass: no hover/subdiagram `filter` glow
+**`node-glow-hover`** / **`.node-glow-subdiagram`** use **`filter: drop-shadow`** on the **node** wrapper — in Chromium, **`filter` on an ancestor** creates a **backdrop root**, so **inline/“fake” frosted** **`backdrop-filter`** no longer blurs. **`diagram-node`**: if **`backgroundStyle === 'frosted'`**, skip those classes (selection **`.node-glow-static`** still uses `filter` — user preference for performance).
+
 ### 2026-04-24 – Visual styling: frosted rendering help as tooltip
 **`visual-styling-panel`**: Removed inline copy for **Viewport blur** vs **Layer order** (former paragraph + long **Select** labels). **Rendering** row has an **Info** control; **`TooltipContent`** holds both explanations. Dropdown shows **Viewport blur** and **Layer order** only.
 
