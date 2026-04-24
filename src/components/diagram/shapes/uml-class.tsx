@@ -3,7 +3,13 @@
 import React, { useState, useRef, useEffect } from "react";
 import type { DiagramNodeData } from "@/lib/types";
 import { useSlideShapeShadowTransitionMode } from "@/components/diagram/slide-shape-shadow-transition-context";
-import { getFrostedGlassSurfaceStyle, getShapeStyles } from "./shape-utils";
+import {
+  getFrostedGlassSurfaceStyle,
+  getFrostedGrainOverlayStyle,
+  getFrostedGlassTopEdgeHighlightStyle,
+  getFrostedGlassLeftEdgeHighlightStyle,
+  getShapeStyles,
+} from "./shape-utils";
 import { FrostedGlassPortalLayer } from "./frosted-glass-portal-layer";
 import { getTextColorForBackground } from "./shape-utils";
 import { ShapeTag } from "./shape-tag";
@@ -28,6 +34,8 @@ interface UmlClassShapeProps {
   isReadOnly?: boolean;
   slideColorTransition?: string;
   frostedGlassZIndex?: number;
+  frostedPanZoom?: { x: number; y: number; k: number };
+  frostedCanvasRef?: React.RefObject<HTMLElement | null>;
 }
 
 function getCompartmentStyle(
@@ -68,6 +76,8 @@ export function UmlClassShape({
   isReadOnly = false,
   slideColorTransition,
   frostedGlassZIndex = 2,
+  frostedPanZoom,
+  frostedCanvasRef,
 }: UmlClassShapeProps) {
   const frostedLayoutRef = useRef<HTMLDivElement | null>(null);
   const nodeAny = node as any;
@@ -160,6 +170,7 @@ export function UmlClassShape({
   const isPlaceholderName = !name;
   const isPlaceholderAttrs = attributes.length === 0;
   const isPlaceholderMethods = methods.length === 0;
+  const frostedLayoutSyncKey = `${node.x},${node.y},${width},${height},${nodeAny.rotation ?? 0}`;
 
   const Divider = () => (
     <div
@@ -197,13 +208,25 @@ export function UmlClassShape({
           width: needsGradientBorderLayer ? `calc(100% - ${styles.borderWidth})` : "100%",
           height: needsGradientBorderLayer ? `calc(100% - ${styles.borderWidth})` : "100%",
           margin: needsGradientBorderLayer ? `calc(${styles.borderWidth} / 2)` : 0,
-          ...(isFrostedBg && !usePortalFrosted ? { isolation: "isolate" } : {}),
           ...(styles.shadow && slideShapeShadowMode !== "crossfade" ? { boxShadow: "var(--shape-shadow-sm)" } : {}),
           ...(slideColorTransition !== undefined ? { transition: slideColorTransition } : {}),
         }}
       >
         {!usePortalFrosted && isFrostedBg && styles.frostedGlass ? (
-          <div style={getFrostedGlassSurfaceStyle(styles.frostedGlass)} aria-hidden />
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              borderRadius: "inherit",
+              pointerEvents: "none",
+            }}
+            aria-hidden
+          >
+            <div style={getFrostedGlassSurfaceStyle(styles.frostedGlass)} aria-hidden />
+            <div style={getFrostedGrainOverlayStyle(styles.frostedGlass.grainOpacity)} aria-hidden />
+            <div style={getFrostedGlassTopEdgeHighlightStyle()} aria-hidden />
+            <div style={getFrostedGlassLeftEdgeHighlightStyle()} aria-hidden />
+          </div>
         ) : null}
         {/* Name section - fixed single-line height */}
         <div
@@ -305,6 +328,9 @@ export function UmlClassShape({
           zIndex={frostedGlassZIndex}
           targetRef={frostedLayoutRef}
           borderRadius={borderRadius}
+          panZoom={frostedPanZoom}
+          canvasContainerRef={frostedCanvasRef}
+          layoutSyncKey={frostedLayoutSyncKey}
         />
       ) : null}
       <ShapeTag

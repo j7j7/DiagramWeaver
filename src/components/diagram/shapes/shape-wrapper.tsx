@@ -4,7 +4,13 @@ import React, { useRef } from "react";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { useSlideShapeShadowTransitionMode } from "@/components/diagram/slide-shape-shadow-transition-context";
 import { getNodeSizeMultiplier } from "@/lib/visual-styling";
-import { getFrostedGlassSurfaceStyle, getShapeStyles } from "./shape-utils";
+import {
+  getFrostedGlassSurfaceStyle,
+  getFrostedGrainOverlayStyle,
+  getFrostedGlassTopEdgeHighlightStyle,
+  getFrostedGlassLeftEdgeHighlightStyle,
+  getShapeStyles,
+} from "./shape-utils";
 import { FrostedGlassPortalLayer } from "./frosted-glass-portal-layer";
 import { ShapeTag } from "./shape-tag";
 import { ShapeText } from "./shape-text";
@@ -44,12 +50,17 @@ interface ShapeWrapperProps {
   /** When `backgroundStyle` is frosted and this is set, clips the glass layer to match SVG geometry (see SvgShapeBase). */
   frostedGlassClipPath?: string;
   /**
-   * When true, frosted `backdrop-filter` is rendered in a `fixed` portal under `#canvas-container`
+   * When true, frosted `backdrop-filter` is rendered in a **viewport-fixed** portal on `document.body`
+   * (or `#canvas-container` fallback)
    * so it blurs the real viewport (escapes pan/zoom `transform`) while staying under the diagram layer.
    */
   useFrostedGlassViewportPortal?: boolean;
   /** Stacking for the portal (shape container zIndex); should match the diagram node. */
   frostedGlassZIndex?: number;
+  /** Pan/zoom from the canvas — enables in-layer frosted portal (working `backdrop-filter`). */
+  frostedPanZoom?: { x: number; y: number; k: number };
+  /** `#canvas-container` (or viewer root) — used with `frostedPanZoom` for diagram-space sizing. */
+  frostedCanvasRef?: React.RefObject<HTMLElement | null>;
 }
 
 /**
@@ -95,6 +106,8 @@ export function ShapeWrapper({
   frostedGlassClipPath,
   useFrostedGlassViewportPortal = false,
   frostedGlassZIndex = 2,
+  frostedPanZoom,
+  frostedCanvasRef,
 }: ShapeWrapperProps) {
   const frostedLayoutRef = useRef<HTMLDivElement | null>(null);
   const styles = getShapeStyles(node);
@@ -131,7 +144,9 @@ export function ShapeWrapper({
   // This avoids `border-image` export glitches (gray fills in html-to-image snapshots).
   const needsGradientBorderLayer = shouldUseGradientBorderLayer(shouldSkipStyling, borderImage, borderColors);
 
-  const isFrostedBg = nodeAny.backgroundStyle === "frosted" && !shouldSkipStyling;
+  // Frosted glass is a separate layer (inline or viewport portal). SVG shapes skip CSS wrapper
+  // fill but still use `backgroundStyle: 'frosted'` + transparent SVG fill — must not disable glass here.
+  const isFrostedBg = nodeAny.backgroundStyle === "frosted";
   const usePortalFrosted =
     Boolean(
       isFrostedBg &&
@@ -140,6 +155,8 @@ export function ShapeWrapper({
         typeof document !== "undefined"
     );
   const frostedBorderRadius = calculatedBorderRadius ?? "0px";
+  /** Portal uses getBoundingClientRect; position/rotation changes do not trigger ResizeObserver. */
+  const frostedLayoutSyncKey = `${node.x},${node.y},${width},${height},${nodeAny.rotation ?? 0}`;
 
   return (
     <div
@@ -192,11 +209,7 @@ export function ShapeWrapper({
           width: needsGradientBorderLayer ? `calc(100% - ${styles.borderWidth})` : '100%',
           height: needsGradientBorderLayer ? `calc(100% - ${styles.borderWidth})` : '100%',
           margin: needsGradientBorderLayer ? `calc(${styles.borderWidth} / 2)` : 0,
-          ...(isFrostedBg && !usePortalFrosted
-            ? { position: "relative", overflow: "hidden", isolation: "isolate" }
-            : isFrostedBg
-              ? { position: "relative", overflow: "hidden" }
-              : {}),
+          ...(isFrostedBg ? { position: "relative", overflow: "hidden" } : {}),
           ...(styles.shadow && !suppressLayerShadow && !useSvgShadow && needsGradientBorderLayer ? {
             boxShadow: 'var(--shape-shadow)'
           } : {}),
@@ -207,13 +220,29 @@ export function ShapeWrapper({
         }}
       >
         {!usePortalFrosted && isFrostedBg && styles.frostedGlass ? (
-          <div
-            style={{
-              ...getFrostedGlassSurfaceStyle(styles.frostedGlass),
-              ...(frostedGlassClipPath ? { clipPath: frostedGlassClipPath } : {}),
-            }}
-            aria-hidden
-          />
+          <>
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                borderRadius: "inherit",
+                pointerEvents: "none",
+                ...(frostedGlassClipPath ? { clipPath: frostedGlassClipPath } : {}),
+              }}
+              aria-hidden
+            >
+              <div style={getFrostedGlassSurfaceStyle(styles.frostedGlass)} aria-hidden />
+              <div
+                style={{
+                  ...getFrostedGrainOverlayStyle(styles.frostedGlass.grainOpacity),
+                  ...(frostedGlassClipPath ? { clipPath: frostedGlassClipPath } : {}),
+                }}
+                aria-hidden
+              />
+              <div style={getFrostedGlassTopEdgeHighlightStyle()} aria-hidden />
+              <div style={getFrostedGlassLeftEdgeHighlightStyle()} aria-hidden />
+            </div>
+          </>
         ) : null}
 
         {isFrostedBg ? (
@@ -282,6 +311,9 @@ export function ShapeWrapper({
           targetRef={frostedLayoutRef}
           borderRadius={frostedBorderRadius}
           clipPath={frostedGlassClipPath}
+          panZoom={frostedPanZoom}
+          canvasContainerRef={frostedCanvasRef}
+          layoutSyncKey={frostedLayoutSyncKey}
         />
       ) : null}
     </div>

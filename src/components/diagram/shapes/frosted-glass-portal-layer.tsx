@@ -3,52 +3,99 @@
 import React, { useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import type { FrostedGlassParams } from "./shape-utils";
-import { getFrostedGlassSurfaceStyle } from "./shape-utils";
+import {
+  getFrostedGlassBackdropLayerStyle,
+  getFrostedGlassDropShadowLayerStyle,
+  getFrostedGrainOverlayStyle,
+  getFrostedGlassTopEdgeHighlightStyle,
+  getFrostedGlassLeftEdgeHighlightStyle,
+} from "./shape-utils";
 
-type Box = { left: number; top: number; width: number; height: number };
+const FROSTED_PORTAL_MOUNT_ID = "dw-frosted-root";
+
+type Box = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
 
 type FrostedGlassPortalLayerProps = {
   glass: FrostedGlassParams;
   zIndex: number;
   targetRef: React.RefObject<HTMLElement | null>;
   borderRadius: string;
-  /** Optional clip; matches the in-tree shape clip (e.g. SVG frosted). */
   clipPath?: string;
+  panZoom?: { x: number; y: number; k: number };
+  canvasContainerRef?: React.RefObject<HTMLElement | null>;
+  /**
+   * When the node moves/resizes/rotates, `getBoundingClientRect` changes but `ResizeObserver` does not fire.
+   * Pass a string that changes with diagram `x`/`y` (and size/rotation when relevant) so the portal re-measures.
+   */
+  layoutSyncKey: string;
 };
 
 /**
- * Renders frosted glass as `position: fixed` (default host: `#canvas-container`), matching the
- * shape’s viewport box. Pan/zoom `transform` on `data-diagram-layer` makes in-tree
- * `backdrop-filter` only sample that subtree (often the dot grid). Porting out of that layer
- * restores realistic blur; host stays under the diagram so z-order vs nodes remains correct.
+ * Viewport-fixed portal under `#dw-frosted-root` (fallback `document.body`) so `backdrop-filter`
+ * escapes the pan/zoom `transform` subtree. Position tracks the shape via `getBoundingClientRect()`.
  */
-export function FrostedGlassPortalLayer({ glass, zIndex, targetRef, borderRadius, clipPath }: FrostedGlassPortalLayerProps) {
+export function FrostedGlassPortalLayer({
+  glass,
+  zIndex,
+  targetRef,
+  borderRadius,
+  clipPath: _clipPathIgnoredForBodyPortal,
+  panZoom,
+  canvasContainerRef,
+  layoutSyncKey,
+}: FrostedGlassPortalLayerProps) {
   const [box, setBox] = useState<Box | null>(null);
 
   useLayoutEffect(() => {
     const el = targetRef.current;
     if (!el) return;
     const update = () => {
-      const r = el.getBoundingClientRect();
-      setBox({ left: r.left, top: r.top, width: r.width, height: r.height });
+      const t = targetRef.current;
+      if (!t) return;
+      const tr = t.getBoundingClientRect();
+      setBox({
+        left: tr.left,
+        top: tr.top,
+        width: tr.width,
+        height: tr.height,
+      });
     };
     update();
     const ro = new ResizeObserver(update);
     ro.observe(el);
+    const canvasEl =
+      canvasContainerRef?.current ??
+      (typeof document !== "undefined" ? document.getElementById("canvas-container") : null);
+    const roCanvas = canvasEl ? new ResizeObserver(update) : null;
+    if (canvasEl && roCanvas) roCanvas.observe(canvasEl);
     window.addEventListener("scroll", update, true);
     window.addEventListener("resize", update);
     return () => {
       ro.disconnect();
+      roCanvas?.disconnect();
       window.removeEventListener("scroll", update, true);
       window.removeEventListener("resize", update);
     };
-  }, [targetRef, glass, clipPath, borderRadius, zIndex]);
+  }, [targetRef, panZoom?.x, panZoom?.y, panZoom?.k, canvasContainerRef, layoutSyncKey]);
 
   if (typeof document === "undefined" || !box) return null;
 
-  // Keep under the pannable `data-diagram-layer` (z-index 1) so nodes/icons stay visible;
-  // still escape that layer’s `transform` so `backdrop-filter` blurs the real viewport.
-  const portalHost = document.getElementById("canvas-container") ?? document.body;
+  const zi = typeof zIndex === "number" && Number.isFinite(zIndex) ? zIndex : 2;
+  /** Below shadcn `z-50`; slight spread from `stackZIndex` for multiple frosted nodes (capped &lt; 50). */
+  const z = Math.min(49, 46 + (zi % 4));
+
+  const surfaceKey = `${glass.blurPx}-${glass.saturation}-${glass.fillRgba}-${glass.glassBoxShadow}`;
+
+  const mount =
+    typeof document !== "undefined"
+      ? (document.getElementById(FROSTED_PORTAL_MOUNT_ID) ?? document.body)
+      : null;
+  if (!mount) return null;
 
   return createPortal(
     <div
@@ -59,15 +106,34 @@ export function FrostedGlassPortalLayer({ glass, zIndex, targetRef, borderRadius
         top: box.top,
         width: box.width,
         height: box.height,
-        zIndex: 0,
+        zIndex: z,
         borderRadius,
         pointerEvents: "none",
-        overflow: "hidden",
-        ...(clipPath ? { clipPath } : {}),
       }}
     >
-      <div style={getFrostedGlassSurfaceStyle(glass)} aria-hidden />
+      {/*
+        Shadow and backdrop are split: Chromium often disables blur when `box-shadow` (esp. inset)
+        shares the same element as `backdrop-filter`. Mount under `#dw-frosted-root` + no `overflow`
+        on `body` so `body` is not a backdrop-root that blocks sampling.
+      */}
+      <div style={getFrostedGlassDropShadowLayerStyle(glass)} aria-hidden />
+      <div key={surfaceKey} style={getFrostedGlassBackdropLayerStyle(glass)} aria-hidden />
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          borderRadius: "inherit",
+          overflow: "hidden",
+          pointerEvents: "none",
+          zIndex: 2,
+        }}
+        aria-hidden
+      >
+        <div style={getFrostedGrainOverlayStyle(glass.grainOpacity)} aria-hidden />
+      </div>
+      <div style={getFrostedGlassTopEdgeHighlightStyle()} aria-hidden />
+      <div style={getFrostedGlassLeftEdgeHighlightStyle()} aria-hidden />
     </div>,
-    portalHost
+    mount
   );
 }

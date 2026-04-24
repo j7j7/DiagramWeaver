@@ -129,8 +129,8 @@
     background-image: radial-gradient(circle at 0 0, hsl(var(--foreground) / 0.12) 1px, transparent 1px);
     background-size: var(--grid-size) var(--grid-size);
     background-position: 0 0;
-    /* Establish stacking context for proper z-index layering */
-    isolation: isolate;
+    /* Do not use isolation:isolate here: Chromium fails to sample sibling layers for
+       backdrop-filter (frosted glass shows tint only). Stacking uses position+z-index on the layer. */
   }
 
   /* Ensure proper layering for diagram elements */

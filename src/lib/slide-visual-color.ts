@@ -39,6 +39,23 @@ export function visualColorSignature(node: DiagramNodeData): string {
   return JSON.stringify(stable);
 }
 
+/**
+ * For `React.memo` on diagram nodes: color/frost fields plus a few non-color keys that change paint
+ * but are not in {@link VISUAL_COLOR_KEYS} (e.g. border width, shadow).
+ */
+export function diagramNodeVisualStylingSignature(node: DiagramNodeData): string {
+  const x = node as unknown as Record<string, unknown>;
+  return [
+    visualColorSignature(node),
+    x.borderWidth,
+    x.shadow,
+    x.roundedEdges,
+    x.cornerRadius,
+    x.nodeSize,
+    x.noIconBackground,
+  ].join('\0');
+}
+
 /** True when fill/border uses gradient paint — CSS cannot blend gradient strings; use opacity crossfade instead. */
 function hasGradientPaint(f: Record<string, unknown>): boolean {
   return f.backgroundStyle === 'gradient' || f.borderStyle === 'gradient' || f.backgroundStyle === 'frosted';

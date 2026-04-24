@@ -180,7 +180,23 @@ export type FrostedGlassParams = {
   tintAlpha: number;
   /** Solid color string for the tint (rgba) */
   tintRgba: string;
+  /** Glass fill over blur (glassmorphism-style translucent layer) */
+  fillRgba: string;
+  /** Compound box-shadow: outer depth + inset rim / highlights */
+  glassBoxShadow: string;
+  /** Grain / noise overlay opacity (0–1), scales with diffusion */
+  grainOpacity: number;
 };
+
+/** Tiled fractal noise for frosted-glass grain (SVG filter). */
+const FROST_GRAIN_DATA_URL = `url("data:image/svg+xml,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256">' +
+    '<filter id="g" x="-15%" y="-15%" width="130%" height="130%">' +
+    '<feTurbulence type="fractalNoise" baseFrequency="0.72" numOctaves="4" seed="7" stitchTiles="stitch"/>' +
+    '</filter>' +
+    '<rect width="100%" height="100%" filter="url(#g)"/>' +
+    '</svg>'
+)}")`;
 
 /**
  * `frostedTransparency`: 0 = least see-through, 1 = most see-through (clearer view of content below).
@@ -193,29 +209,134 @@ export function getFrostedGlassParams(
 ): FrostedGlassParams {
   const d = clamp01(frostedDiffusion, DEFAULT_FROSTED_DIFFUSION);
   const t = clamp01(frostedTransparency, DEFAULT_FROSTED_TRANSPARENCY);
-  const blurPx = 0.5 + d * 28;
+  // Blur: similar range to common glassmorphism presets (e.g. ~20px at mid diffusion)
+  const blurPx = d < 0.02 ? 0 : 2 + d * 56;
   const saturation = 1.05 + d * 0.55;
-  // More "transparency" → lighter tint so more of the backdrop reads through
+  // Tint wash (slightly stronger when “less transparent”)
   const tintAlpha = 0.04 + (1 - t) * 0.52;
+  // Glass fill: Hype4-style ~rgba(255,255,255,0.15) territory; scales with transparency slider
+  const fillAlpha = 0.06 + (1 - t) * 0.22;
+  const grainOpacity = d < 0.02 ? 0 : 0.06 + d * 0.22;
+  const depth = 0.06 + d * 0.12;
+  const rim = 0.14 + (1 - t) * 0.18;
+  const hi = 0.28 + (1 - t) * 0.35;
+  const lo = 0.06 + (1 - t) * 0.1;
+  const y = 4 + d * 10;
+  const blur = 20 + d * 28;
+  const spread = 0.5 + d * 1.5;
+  const glassBoxShadow = [
+    `0 ${y}px ${blur}px rgba(0, 0, 0, ${depth})`,
+    `inset 0 1px 0 rgba(255, 255, 255, ${hi})`,
+    `inset 0 -1px 0 rgba(255, 255, 255, ${lo})`,
+    `inset 0 0 0 ${spread}px rgba(255, 255, 255, ${rim})`,
+  ].join(", ");
   return {
     blurPx,
     saturation,
     tintAlpha,
     tintRgba: hexToRgbaString(baseColor, tintAlpha),
+    fillRgba: hexToRgbaString(baseColor, fillAlpha),
+    glassBoxShadow,
+    grainOpacity,
   };
 }
 
-export function getFrostedGlassSurfaceStyle(p: FrostedGlassParams): CSSProperties {
-  const f = `saturate(${p.saturation}) blur(${p.blurPx}px)`;
+function frostBackdropFilterValue(p: FrostedGlassParams): string {
+  const blurPx = p.blurPx < 0.02 ? 0 : p.blurPx;
+  return `blur(${blurPx}px) saturate(${p.saturation})`;
+}
+
+/** Inset/outer shadows only — keep off the element that runs `backdrop-filter` (Chromium often drops blur when combined). */
+export function getFrostedGlassDropShadowLayerStyle(p: FrostedGlassParams): CSSProperties {
   return {
     position: "absolute",
     inset: 0,
     borderRadius: "inherit",
     pointerEvents: "none",
     zIndex: 0,
-    backgroundColor: p.tintRgba,
+    boxShadow: p.glassBoxShadow,
+  };
+}
+
+/** Translucent fill + backdrop blur only (no `box-shadow`). */
+export function getFrostedGlassBackdropLayerStyle(p: FrostedGlassParams): CSSProperties {
+  const f = frostBackdropFilterValue(p);
+  return {
+    position: "absolute",
+    inset: 0,
+    borderRadius: "inherit",
+    pointerEvents: "none",
+    zIndex: 1,
+    backgroundColor: p.fillRgba,
     backdropFilter: f,
     WebkitBackdropFilter: f,
+  };
+}
+
+export function getFrostedGlassSurfaceStyle(p: FrostedGlassParams): CSSProperties {
+  const f = frostBackdropFilterValue(p);
+  return {
+    position: "absolute",
+    inset: 0,
+    borderRadius: "inherit",
+    pointerEvents: "none",
+    zIndex: 0,
+    // Glassmorphism stack: backdrop blur + translucent “glass” fill (see Hype4-style cards)
+    backgroundColor: p.fillRgba,
+    backdropFilter: f,
+    WebkitBackdropFilter: f,
+    boxShadow: p.glassBoxShadow,
+  };
+}
+
+/** Top edge highlight (Hype4 glass ::before analogue). */
+export function getFrostedGlassTopEdgeHighlightStyle(): CSSProperties {
+  return {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 1,
+    pointerEvents: "none",
+    zIndex: 3,
+    background:
+      "linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.82) 50%, transparent 100%)",
+    opacity: 0.9,
+  };
+}
+
+/** Left edge highlight (Hype4 glass ::after analogue). */
+export function getFrostedGlassLeftEdgeHighlightStyle(): CSSProperties {
+  return {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: 1,
+    pointerEvents: "none",
+    zIndex: 3,
+    background:
+      "linear-gradient(180deg, rgba(255, 255, 255, 0.78) 0%, transparent 45%, rgba(255, 255, 255, 0.28) 100%)",
+    opacity: 0.85,
+  };
+}
+
+/** Speckled grain on top of the blurred layer (realistic diffusion). */
+export function getFrostedGrainOverlayStyle(grainOpacity: number): CSSProperties {
+  if (!Number.isFinite(grainOpacity) || grainOpacity < 0.02) {
+    return { display: "none" };
+  }
+  return {
+    position: "absolute",
+    inset: 0,
+    borderRadius: "inherit",
+    pointerEvents: "none",
+    zIndex: 1,
+    opacity: Math.min(1, grainOpacity),
+    backgroundImage: FROST_GRAIN_DATA_URL,
+    backgroundRepeat: "repeat",
+    backgroundSize: "96px 96px",
+    mixBlendMode: "overlay",
   };
 }
 

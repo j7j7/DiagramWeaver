@@ -384,6 +384,7 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
         )}
     <div
       ref={canvasRef}
+      id="canvas-container"
       className="relative w-full h-full overflow-hidden bg-background"
       style={{
         cursor: isDragging ? 'grabbing' : 'grab',
@@ -460,6 +461,8 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
                   animationStyle={nodeTransitionStyles.get(node.id)}
                   highlightAnimStaggerIndex={highlightAnimStagger.indexById.get(node.id)}
                   highlightAnimStaggerCount={highlightAnimStagger.count}
+                  transform={transform}
+                  canvasRef={canvasRef}
                 />
               ) : null;
               return nodeEl;
@@ -492,13 +495,15 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
                   isReadOnly={true}
                   onHoverChange={handleNodeHover}
                   onClick={handleNodeClick}
-                    onSubDiagramDoubleClick={onSubDiagramDoubleClick ? handleSubDiagramDoubleClick : undefined}
-                    hasLinkedSubDiagram={getHasLinkedSubDiagram?.(node) ?? Boolean(node.subDiagramId)}
-                    showUrlHandleWhenReadOnly={openNodeLinksOnClick}
-                    animationStyle={nodeTransitionStyles.get(node.id)}
-                    highlightAnimStaggerIndex={highlightAnimStagger.indexById.get(node.id)}
-                    highlightAnimStaggerCount={highlightAnimStagger.count}
-                  />
+                  onSubDiagramDoubleClick={onSubDiagramDoubleClick ? handleSubDiagramDoubleClick : undefined}
+                  hasLinkedSubDiagram={getHasLinkedSubDiagram?.(node) ?? Boolean(node.subDiagramId)}
+                  showUrlHandleWhenReadOnly={openNodeLinksOnClick}
+                  animationStyle={nodeTransitionStyles.get(node.id)}
+                  highlightAnimStaggerIndex={highlightAnimStagger.indexById.get(node.id)}
+                  highlightAnimStaggerCount={highlightAnimStagger.count}
+                  transform={transform}
+                  canvasRef={canvasRef}
+                />
                 ) : null;
               return [
                 connIndices ? (

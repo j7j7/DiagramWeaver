@@ -42,6 +42,8 @@ interface SvgShapeBaseProps {
   frostedClipRectInViewBox?: { x: number; y: number; w: number; h: number; rx?: number; ry?: number };
   /** Stacking for viewport-portal frosted glass (should match the diagram node). */
   frostedGlassZIndex?: number;
+  frostedPanZoom?: { x: number; y: number; k: number };
+  frostedCanvasRef?: React.RefObject<HTMLElement | null>;
 }
 
 function parseViewBoxSize(viewBox: string): { vbX: number; vbY: number; vbW: number; vbH: number } {
@@ -71,6 +73,8 @@ export function SvgShapeBase({
   svgOverflowVisible = false,
   frostedClipRectInViewBox,
   frostedGlassZIndex = 2,
+  frostedPanZoom,
+  frostedCanvasRef,
   ...rest
 }: SvgShapeBaseProps) {
   const nodeAny = node as any;
@@ -117,6 +121,8 @@ export function SvgShapeBase({
       frostedGlassClipPath={frostedGlassClipPath}
       useFrostedGlassViewportPortal={true}
       frostedGlassZIndex={frostedGlassZIndex}
+      frostedPanZoom={frostedPanZoom}
+      frostedCanvasRef={frostedCanvasRef}
       {...rest}
     >
       <svg

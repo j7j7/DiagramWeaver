@@ -18,6 +18,7 @@ import { ItemTypes } from "../editor/draggable-item";
 import { snapToGrid, snapDimensionToGrid, measureNodeDims } from "@/components/editor/canvas-constants";
 import { getTextStylingCSS, extractTextStylingFromNode } from "@/lib/text-styling";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
+import { diagramNodeVisualStylingSignature } from "@/lib/slide-visual-color";
 import { getHighlightAnimStyleForNode } from "@/lib/highlight-anim";
 import type { ChartSlideStagger } from "@/lib/chart-presentation-stagger";
 import {
@@ -232,6 +233,7 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
   if (prev.node !== next.node) {
     const p = prev.node;
     const n = next.node;
+    if (diagramNodeVisualStylingSignature(p) !== diagramNodeVisualStylingSignature(n)) return false;
     if (p.id !== n.id || p.x !== n.x || p.y !== n.y || p.label !== n.label ||
         JSON.stringify((p as any).richLabel) !== JSON.stringify((n as any).richLabel) ||
         p.width !== n.width || p.height !== n.height || p.type !== n.type ||
@@ -557,6 +559,8 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
       node: visualNode,
       slideColorTransition,
       frostedGlassZIndex: stackZIndex ?? 2,
+      frostedPanZoom: transform ?? { x: 0, y: 0, k: 1 },
+      frostedCanvasRef: canvasRef,
       overrideWidth: typeof displayWidth === 'number' ? displayWidth : undefined,
       overrideHeight: typeof displayHeight === 'number' ? displayHeight : undefined,
       tag: nodeAny.tag,
@@ -592,6 +596,8 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
           node={visualNode}
           slideColorTransition={slideColorTransition}
           frostedGlassZIndex={stackZIndex ?? 2}
+          frostedPanZoom={transform ?? { x: 0, y: 0, k: 1 }}
+          frostedCanvasRef={canvasRef}
           overrideWidth={shapeProps.overrideWidth}
           overrideHeight={shapeProps.overrideHeight}
           label={shapeProps.label}
