@@ -720,7 +720,7 @@ export function TopMenuBar({
               <>
                 {(onToggleJsonPanel || onTogglePropertiesPanel || onToggleLayersPanel || onToggleScratchPad || onToggleRulesEditor || onTogglePresentationMode) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleSimulationMode}>
-                  <Layers className="mr-2 h-4 w-4" />
+                  <Activity className="mr-2 h-4 w-4" />
                   {simulationModeEnabled ? 'Exit Simulation Mode' : 'Enter Simulation Mode'}
                   <MenubarShortcut>{simulationModeEnabled ? 'Alt+S' : 'Ctrl+Alt+S'}</MenubarShortcut>
                 </MenubarItem>

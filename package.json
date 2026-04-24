@@ -5,8 +5,8 @@
   "scripts": {
     "predev": "node scripts/bump-build.mjs",
     "prebuild": "node scripts/bump-build.mjs",
-    "dev": "next dev --turbopack -p 9003",
-    "dev:test": "next dev --turbopack -p 9004",
+    "dev": "next dev --turbopack -H 0.0.0.0 -p 9003",
+    "dev:test": "next dev --turbopack -H 0.0.0.0 -p 9004",
     "build": "NODE_ENV=production next build",
     "start": "next start",
     "lint": "next lint",

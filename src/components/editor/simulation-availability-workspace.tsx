@@ -14,6 +14,13 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import {
   PlusCircle,
@@ -182,12 +189,12 @@ function modeLabel(mode: DependencyEvaluationMode): string {
 function GroupStatusBadge({ status }: { status: AvailabilityStatus }) {
   const colorClass =
     status === "green"
-      ? "bg-green-100 text-green-800 border-green-300"
+      ? "border-green-500/35 bg-green-500/12 text-green-700 dark:text-green-300"
       : status === "amber"
-        ? "bg-amber-100 text-amber-800 border-amber-300"
-        : "bg-red-100 text-red-800 border-red-300";
+        ? "border-amber-500/35 bg-amber-500/12 text-amber-700 dark:text-amber-300"
+        : "border-red-500/35 bg-red-500/12 text-red-700 dark:text-red-300";
   return (
-    <span className={cn("rounded border px-1.5 py-0.5 text-xs font-medium", colorClass)}>
+    <span className={cn("rounded-full border px-2 py-0.5 text-xs font-medium", colorClass)}>
       {statusLabel(status)}
     </span>
   );
@@ -223,19 +230,19 @@ function MemberPicker({
   }, [search, allCanvasElements, currentMemberIds]);
 
   return (
-    <div className="mt-2 rounded-md border bg-background shadow-sm">
+    <div className="mt-2 rounded-md border border-border/60 bg-background/80 shadow-sm">
       <div className="flex items-center gap-2 border-b px-3 py-2">
         <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-        <input
+        <Input
           autoFocus
-          className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+          className="h-7 border-none px-0 text-sm shadow-none focus-visible:ring-0"
           placeholder="Search elements..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
           <X className="h-3.5 w-3.5" />
-        </button>
+        </Button>
       </div>
       <div className="max-h-40 overflow-y-auto">
         {filtered.length === 0 ? (
@@ -248,7 +255,7 @@ function MemberPicker({
             return (
               <button
                 key={el.id}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent"
+                className="flex w-full items-center gap-2 rounded-sm px-2.5 py-1.5 text-sm transition-colors hover:bg-accent"
                 onClick={() => onAdd(el.id)}
               >
                 <ElementStateIcon state={state} className="h-3 w-3 shrink-0" />
@@ -353,30 +360,36 @@ function DependencyGroupCard({
   const effUnavailable = total > 0 ? (minUnavailable === 0 ? 0 : resolveThreshold(minUnavailable, total)) : 0;
 
   return (
-    <div className="rounded-md border bg-card">
+    <div className="rounded-md border border-border/60 bg-card/70">
       {/* Card Header */}
       <div className="flex items-center gap-2 px-3 py-2">
-        <button
-          className="text-muted-foreground hover:text-foreground"
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 text-muted-foreground"
           onClick={() => setExpanded((v) => !v)}
         >
           {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        </button>
+        </Button>
         <Layers className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-        <input
-          className="min-w-0 flex-1 bg-transparent text-sm font-medium outline-none focus:underline"
+        <Input
+          className="h-7 min-w-0 flex-1 border-none bg-transparent px-0 text-sm font-medium shadow-none focus-visible:ring-0"
           value={group.label}
           onChange={(e) => onUpdate({ ...group, label: e.target.value })}
         />
         <GroupStatusBadge status={groupStatus} />
         <span className="text-xs text-muted-foreground">{total} member{total !== 1 ? "s" : ""}</span>
-        <button
-          className="ml-1 text-muted-foreground hover:text-destructive"
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="ml-1 h-7 w-7 text-muted-foreground hover:text-destructive"
           title="Remove group"
           onClick={onRemove}
         >
           <Trash2 className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
 
       {expanded && (
@@ -391,45 +404,48 @@ function DependencyGroupCard({
                 const label = el?.label ?? memberId;
                 const state = simulationItemStateById[memberId] ?? "active";
                 return (
-                  <div
-                    key={memberId}
-                    className="flex flex-wrap items-center gap-2 rounded border px-2 py-1 text-sm"
-                  >
-                    <button
+                  <div key={memberId} className="flex flex-wrap items-center gap-2 rounded-md border border-border/60 bg-background/70 px-2 py-1 text-sm">
+                    <Button
                       type="button"
-                      className="inline-flex items-center justify-center rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 text-muted-foreground"
                       onClick={() => onItemStateChange(memberId, nextElementState(state))}
                       title={`Cycle state for ${label}`}
                     >
                       <ElementStateIcon state={state} className="h-3 w-3 shrink-0" />
-                    </button>
+                    </Button>
                     <span className="min-w-0 flex-1 truncate">{label}</span>
-                    <button
+                    <Button
                       type="button"
-                      className="shrink-0 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+                      variant="ghost"
+                      className="h-6 shrink-0 rounded px-1.5 py-0.5 text-xs text-muted-foreground"
                       onClick={() => onItemStateChange(memberId, nextElementState(state))}
                     >
                       {elementStateLabel(state)}
-                    </button>
+                    </Button>
                     <div className="flex items-center gap-1">
-                      <select
-                        className="h-7 min-w-[165px] rounded border bg-background px-2 text-xs"
+                      <Select
                         value={getMemberMode(group, memberId)}
-                        onChange={(e) => {
-                          const mode = e.target.value as DependencyEvaluationMode;
+                        onValueChange={(mode) => {
                           onUpdate({
                             ...group,
                             memberModes: {
                               ...(group.memberModes ?? {}),
-                              [memberId]: mode,
+                              [memberId]: mode as DependencyEvaluationMode,
                             },
                           });
                         }}
                       >
-                        <option value="both">{modeLabel("both")}</option>
-                        <option value="self">{modeLabel("self")}</option>
-                        <option value="dependencies">{modeLabel("dependencies")}</option>
-                      </select>
+                        <SelectTrigger className="h-7 min-w-[165px] text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="both">{modeLabel("both")}</SelectItem>
+                          <SelectItem value="self">{modeLabel("self")}</SelectItem>
+                          <SelectItem value="dependencies">{modeLabel("dependencies")}</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <TooltipProvider delayDuration={200}>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -444,12 +460,9 @@ function DependencyGroupCard({
                         </Tooltip>
                       </TooltipProvider>
                     </div>
-                    <button
-                      className="text-muted-foreground hover:text-destructive"
-                      onClick={() => removeMember(memberId)}
-                    >
+                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => removeMember(memberId)}>
                       <X className="h-3.5 w-3.5" />
-                    </button>
+                    </Button>
                   </div>
                 );
               })
@@ -480,7 +493,7 @@ function DependencyGroupCard({
 
           {/* Thresholds */}
           {total > 0 && (
-            <div className="rounded-md bg-muted/40 p-2 space-y-2">
+            <div className="space-y-2 rounded-md border border-border/60 bg-muted/20 p-2">
               <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Health Thresholds (out of {total})
               </div>
@@ -539,7 +552,7 @@ function DependencyGroupCard({
                 }
                 {" "}
                 {minUnavailable === 0
-                  ? <span className="text-amber-700">Unavailable is disabled — the group can only reach Degraded at worst.</span>
+                  ? <span className="text-amber-600 dark:text-amber-300">Unavailable is disabled - the group can only reach Degraded at worst.</span>
                   : minUnavailable > 0 && minUnavailable < 1
                     ? <>Unavailable threshold: below <span className="font-medium text-foreground">{Math.round(minUnavailable * 100)}% of {total} (= {effUnavailable})</span> alive members, this group becomes Unavailable.</>
                     : <>Unavailable threshold: below <span className="font-medium text-foreground">{effUnavailable} of {total}</span> alive members, this group becomes Unavailable.</>
@@ -804,7 +817,7 @@ export function SimulationAvailabilityWorkspace({
           <div className="space-y-3">
             <Label className="text-sm">Overlay Transparency</Label>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="rounded-md border bg-muted/20 p-3 space-y-2">
+              <div className="space-y-2 rounded-md border border-border/60 bg-muted/20 p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -823,10 +836,10 @@ export function SimulationAvailabilityWorkspace({
                   step={0.05}
                   value={stateOpacity}
                   onChange={(e) => onStateOpacityChange(Number(e.target.value))}
-                  className="w-full accent-amber-500"
+                  className="w-full accent-primary"
                 />
               </div>
-              <div className="rounded-md border bg-muted/20 p-3 space-y-2">
+              <div className="space-y-2 rounded-md border border-border/60 bg-muted/20 p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -845,7 +858,7 @@ export function SimulationAvailabilityWorkspace({
                   step={0.05}
                   value={dependencyOpacity}
                   onChange={(e) => onDependencyOpacityChange(Number(e.target.value))}
-                  className="w-full accent-green-600"
+                  className="w-full accent-primary"
                 />
               </div>
             </div>
