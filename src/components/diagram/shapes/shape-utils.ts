@@ -349,6 +349,18 @@ export function getFrostedGlassBackdropLayerStyle(p: FrostedGlassParams): CSSPro
   };
 }
 
+/** Colour wash from **background / tint** (`tintRgba`) — stacked above blur passes, under grain. */
+export function getFrostedGlassTintLayerStyle(p: FrostedGlassParams): CSSProperties {
+  return {
+    position: "absolute",
+    inset: 0,
+    borderRadius: "inherit",
+    pointerEvents: "none",
+    zIndex: 1,
+    backgroundColor: p.tintRgba,
+  };
+}
+
 /**
  * When `true`, frosted uses the viewport-fixed portal under `#dw-frosted-root` so `backdrop-filter`
  * samples the real screen (pan/zoom `transform` breaks inline blur — tint/grain only).

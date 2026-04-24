@@ -6,6 +6,7 @@ import { useSlideShapeShadowTransitionMode } from "@/components/diagram/slide-sh
 import { getNodeSizeMultiplier } from "@/lib/visual-styling";
 import {
   getFrostedGlassDropShadowLayerStyle,
+  getFrostedGlassTintLayerStyle,
   getFrostedGlassInlineBackdropPrimaryStyle,
   getFrostedGlassInlineBackdropSecondPassStyle,
   getFrostedInlineBackdropReactKey,
@@ -299,6 +300,13 @@ export function ShapeWrapper({
                   />
                 ) : null}
               </Fragment>
+              <div
+                style={{
+                  ...getFrostedGlassTintLayerStyle(styles.frostedGlass),
+                  ...frostedInsetBackdropClip,
+                }}
+                aria-hidden
+              />
               <div
                 style={{
                   position: "absolute",

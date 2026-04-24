@@ -7,6 +7,7 @@ import type { FrostedGlassParams } from "./shape-utils";
 import {
   getFrostedGlassBackdropLayerStyle,
   getFrostedGlassDropShadowLayerStyle,
+  getFrostedGlassTintLayerStyle,
   getFrostedGrainOverlayStyle,
   getFrostedFineGrainOverlayStyle,
   getFrostedGlassTopEdgeHighlightStyle,
@@ -94,7 +95,7 @@ export function FrostedGlassPortalLayer({
   /** Below shadcn `z-50`; slight spread from `stackZIndex` for multiple frosted nodes (capped &lt; 50). */
   const z = Math.min(49, 46 + (zi % 4));
 
-  const surfaceKey = `${glass.blurPx}-${glass.saturation}-${glass.fillRgba}-${glass.glassBoxShadow}`;
+  const surfaceKey = `${glass.blurPx}-${glass.saturation}-${glass.fillRgba}-${glass.tintRgba}-${glass.glassBoxShadow}`;
 
   const mount =
     typeof document !== "undefined"
@@ -128,6 +129,7 @@ export function FrostedGlassPortalLayer({
       */}
       <div style={{ ...getFrostedGlassDropShadowLayerStyle(glass), ...clipStyle }} aria-hidden />
       <div key={surfaceKey} style={{ ...getFrostedGlassBackdropLayerStyle(glass), ...clipStyle }} aria-hidden />
+      <div style={{ ...getFrostedGlassTintLayerStyle(glass), ...clipStyle }} aria-hidden />
       <div
         style={{
           position: "absolute",

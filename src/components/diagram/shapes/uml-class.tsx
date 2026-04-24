@@ -5,6 +5,7 @@ import type { DiagramNodeData } from "@/lib/types";
 import { useSlideShapeShadowTransitionMode } from "@/components/diagram/slide-shape-shadow-transition-context";
 import {
   getFrostedGlassDropShadowLayerStyle,
+  getFrostedGlassTintLayerStyle,
   getFrostedGlassInlineBackdropPrimaryStyle,
   getFrostedGlassInlineBackdropSecondPassStyle,
   getFrostedInlineBackdropReactKey,
@@ -240,6 +241,7 @@ export function UmlClassShape({
                 <div style={frostedInlineSecondPassStyle} aria-hidden />
               ) : null}
             </Fragment>
+            <div style={getFrostedGlassTintLayerStyle(styles.frostedGlass)} aria-hidden />
             <div
               style={{
                 position: "absolute",

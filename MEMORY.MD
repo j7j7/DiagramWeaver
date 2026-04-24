@@ -1,5 +1,8 @@
 # MEMORY.MD
 
+### 2026-04-24 – Visual styling: frosted rendering help as tooltip
+**`visual-styling-panel`**: Removed inline copy for **Viewport blur** vs **Layer order** (former paragraph + long **Select** labels). **Rendering** row has an **Info** control; **`TooltipContent`** holds both explanations. Dropdown shows **Viewport blur** and **Layer order** only.
+
 ### 2026-04-24 – Frosted inline on SVG shapes: `filter` + `clip-path` ancestor
 **Symptom**: Tint + grain but **no** backdrop blur (sharp icon/text through the glass). **Causes**: (1) **`filter: var(--shape-shadow-drop)`** on **`ShapeWrapper`** root when **`useSvgShadow`** — `filter` creates a **backdrop root**, so child **`backdrop-filter`** does not sample the diagram. **Fix**: skip that root **`filter`** when **`isFrostedBg && !usePortalFrosted`** (glass stack already carries depth). (2) **`clip-path`** on the **frost stack wrapper** around **`backdrop-filter`** — Chromium often disables blur. **Fix**: **`frostedInlineOuterClipPath`** — no wrapper clip for **`inset(...)`** clips (rects); clip grain/rims/shadow only. **`polygon(...)`** keeps wrapper clip (geometry; blur may stay weaker — use viewport portal if needed).
 
@@ -8,6 +11,9 @@
 
 ### 2026-04-24 – Frosted inline (layer-order): stronger blur stack
 **`simulated`** mode: **`getFrostedGlassInlineBackdropPrimaryStyle`** + second pass; **`getFrostedInsetClipStyleForBackdropLayers`** on backdrop divs for **`inset(...)`** (rounded rects). **`uml-class`**: **`overflow: visible`** when inline frosted. Portal uses **`getFrostedGlassBackdropLayerStyle`**.
+
+### 2026-04-24 – Frosted `tintRgba` layer
+**`getFrostedGlassTintLayerStyle`** — **`backgroundColor: tintRgba`** above blur, under grain (**`FrostedGlassPortalLayer`**, **`shape-wrapper`**, **`uml-class`**). **`surfaceKey`** includes **`tintRgba`**.
 
 ### 2026-04-24 – Frosted: softer low diffusion + rounded-rect clip
 **Diffusion** **`blurPx ≈ 0.35 + d^1.88 * 47.2`**, **fill** **`× (0.18 + 0.82·d)`**, **grain** **`0.012 + d^1.48 * 0.32`**. **SvgShapeBase** **`inset(… round rpx)`**: **`rPx = min(rx·sx, ry·sy, 0.48·min(w,h))`**. Inline **`getFrostedInlineBackdropReactKey(..., clipPath)`**.
