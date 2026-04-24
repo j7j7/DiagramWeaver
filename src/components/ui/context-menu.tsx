@@ -47,6 +47,8 @@ interface ContextMenuProps {
   canMoveToFront?: boolean;
   canMoveOneBack?: boolean;
   canMoveOneForward?: boolean;
+  /** Open the full stacking (z) order list panel */
+  onOpenZOrderList?: () => void;
   onToggleLock?: () => void;
   isLocked?: boolean;
   onEditUmlClass?: () => void;
@@ -116,6 +118,7 @@ export function ContextMenu({
   canMoveToFront = false,
   canMoveOneBack = false,
   canMoveOneForward = false,
+  onOpenZOrderList,
   onLayoutChange,
   onCycleItems,
   onSortItems,
@@ -361,7 +364,7 @@ export function ContextMenu({
       )}
 
       {/* Render Order Submenu */}
-      {(canMoveToBack || canMoveToFront || canMoveOneBack || canMoveOneForward) && (
+      {(canMoveToBack || canMoveToFront || canMoveOneBack || canMoveOneForward || onOpenZOrderList) && (
         <div className="relative">
           <button
             className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
@@ -383,6 +386,20 @@ export function ContextMenu({
               onMouseEnter={() => setRenderOrderSubmenuOpen(true)}
               onMouseLeave={() => setRenderOrderSubmenuOpen(false)}
             >
+              {onOpenZOrderList && (
+                <button
+                  type="button"
+                  className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+                  onClick={() => {
+                    onOpenZOrderList();
+                    setRenderOrderSubmenuOpen(false);
+                  }}
+                >
+                  <Layers className="w-4 h-4" />
+                  Stacking order list…
+                </button>
+              )}
+              {onOpenZOrderList && (onMoveToFront || onMoveToBack) && <div className="border-t border-border my-1" />}
               {onMoveToFront && (
                 <button
                   className="w-full px-3 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2"

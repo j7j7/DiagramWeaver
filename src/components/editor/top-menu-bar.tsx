@@ -12,7 +12,7 @@ import {
   MenubarSubTrigger,
   MenubarSubContent,
 } from '@/components/ui/menubar';
-import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type, Activity, ArrowDown } from 'lucide-react';
+import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks, ListOrdered, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type, Activity, ArrowDown } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
 import { ThemeEditor } from './theme-editor';
 import { RulesEditor } from './rules-editor';
@@ -253,6 +253,8 @@ interface TopMenuBarProps {
   onLineStylingPanelOpenChange?: (open: boolean) => void;
   onResetConnectionSettingsTrigger?: () => void;
   onAutoLayout?: () => void;
+  /** Stacking (z) order list — same as Layout → Stacking order list */
+  onOpenZOrderList?: () => void;
   onToggleScratchPad?: () => void;
   scratchPadOpen?: boolean;
   onToggleRulesEditor?: () => void;
@@ -346,6 +348,7 @@ export function TopMenuBar({
   onLineStylingPanelOpenChange,
   onResetConnectionSettingsTrigger,
   onAutoLayout,
+  onOpenZOrderList,
   onToggleScratchPad,
   scratchPadOpen,
   onToggleRulesEditor,
@@ -905,6 +908,18 @@ export function TopMenuBar({
                 <MenubarShortcut>Ctrl+Shift+L</MenubarShortcut>
               </MenubarItem>
             )}
+            {onOpenZOrderList && (
+              <MenubarItem
+                onClick={() => {
+                  onOpenZOrderList();
+                  onConnectionAnimationPauseFromMenu?.();
+                }}
+                disabled={isReadOnly}
+              >
+                <ListOrdered className="mr-2 h-4 w-4" />
+                Stacking order list
+              </MenubarItem>
+            )}
             {onAlignObjects && (
               <>
                 <MenubarSeparator />
@@ -1019,6 +1034,21 @@ export function TopMenuBar({
           title="Fit to View"
         >
           <Maximize2 className="h-4 w-4" />
+        </Button>
+      )}
+      {onOpenZOrderList && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 px-2"
+          onClick={() => {
+            onOpenZOrderList();
+            onConnectionAnimationPauseFromMenu?.();
+          }}
+          title="Stacking order (front to back)"
+          disabled={isReadOnly}
+        >
+          <ListOrdered className="h-4 w-4" />
         </Button>
       )}
       {onToggleAnimationConnections && (

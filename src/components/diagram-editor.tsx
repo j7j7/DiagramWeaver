@@ -10,6 +10,7 @@ import { EditorCanvas, type EditorCanvasHandle } from './editor/editor-canvas';
 import { ConnectionContextModal } from './editor/connection-context-modal';
 import { UmlClassEditorModal } from './editor/uml-class-editor-modal';
 import { ChartDataEditorModal } from './editor/chart-data-editor-modal';
+import { ZOrderListModal } from './editor/z-order-list-modal';
 import { computeUmlClassDimensions } from '@/lib/uml-utils';
 import { PresentationPlayer } from './editor/presentation-player';
 import { setBooleanDebounced, setItemDebounced, getBooleanSafe, getItemSafe } from '@/lib/local-storage-debounce';
@@ -6617,6 +6618,40 @@ function DiagramEditorInner({
     tutorialSteps.length,
   ]);
 
+  const [zOrderListModal, setZOrderListModal] = React.useState<{
+    open: boolean;
+    x: number;
+    y: number;
+  }>({ open: false, x: 100, y: 80 });
+
+  const openZOrderList = React.useCallback(
+    (point?: { x: number; y: number }, initialItemId?: string) => {
+      pauseConnectionAnimationsForOverlayUi();
+      if (initialItemId) {
+        handleBatchSelect([initialItemId]);
+      }
+      if (typeof window === 'undefined') {
+        setZOrderListModal({ open: true, x: 100, y: 80 });
+        return;
+      }
+      const w = 380;
+      const h = 480;
+      const padding = 8;
+      const cx = point?.x ?? window.innerWidth / 2 - w / 2;
+      const cy = point?.y ?? 88;
+      const x = Math.max(padding, Math.min(cx, window.innerWidth - w - padding));
+      const y = Math.max(padding, Math.min(cy, window.innerHeight - h - padding));
+      setZOrderListModal({ open: true, x, y });
+    },
+    [pauseConnectionAnimationsForOverlayUi, handleBatchSelect]
+  );
+
+  const getLayerDisplayNameForZOrder = React.useCallback(
+    (layerId: string) =>
+      layers.layersConfig.layers.find((l: { id: string; name: string }) => l.id === layerId)?.name || layerId,
+    [layers.layersConfig.layers]
+  );
+
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="flex h-screen w-screen bg-background text-foreground font-body relative overflow-hidden">
@@ -6744,6 +6779,7 @@ function DiagramEditorInner({
                     onAlignObjects={handleAlignObjects}
                     onLayoutGridStep={handleLayoutGridStep}
                     onAutoLayout={handleAutoLayout}
+                    onOpenZOrderList={() => openZOrderList()}
                     onThemeApplyToSelected={handleThemeApplyToSelected}
                     triggerTextStylingPanel={triggerTextStylingPanel}
                     triggerVisualStylingPanel={triggerVisualStylingPanel}
@@ -6920,6 +6956,8 @@ function DiagramEditorInner({
                     getHasLinkedSubDiagram={getHasLinkedSubDiagram}
                     onCreateSubDiagram={handleCreateSubDiagram}
                     onRemoveSubDiagramLink={handleRemoveSubDiagramLink}
+                    onOpenZOrderList={openZOrderList}
+                    wheelZoomSuppressed={zOrderListModal.open}
                     />
                   </div>
 
@@ -7112,6 +7150,21 @@ function DiagramEditorInner({
               setChartDataEditorModal({ visible: false, x: 0, y: 0, itemId: '' });
             }}
             isReadOnly={isReadOnly}
+          />,
+          document.body
+        )}
+        {zOrderListModal.open && typeof window !== 'undefined' && createPortal(
+          <ZOrderListModal
+            x={zOrderListModal.x}
+            y={zOrderListModal.y}
+            open={zOrderListModal.open}
+            onOpenChange={(o: boolean) => setZOrderListModal((s) => ({ ...s, open: o }))}
+            diagramData={currentDiagramData}
+            onApply={setCurrentDiagramData}
+            getLayerDisplayName={getLayerDisplayNameForZOrder}
+            isReadOnly={isReadOnly}
+            selectedItemIds={selectedItemIds}
+            onSelectCanvasItems={handleBatchSelect}
           />,
           document.body
         )}

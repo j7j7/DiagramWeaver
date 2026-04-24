@@ -1,5 +1,8 @@
 # MEMORY.MD
 
+### 2026-04-24 – Stacking order list (z-order panel)
+Draggable **Stacking order** modal (`z-order-list-modal.tsx`) lists canvas items **front → back** (matches `computeConnectionSlots` / `getBackToForwardItemOrder`). Reorder **within the same layer (or zone block)** via react-dnd; **Shift** multi-select. Updates **`nodes`/`zones` array order** through `applyFrontToBackOrderToDiagramData`; history debounces like other edits. Open from **Layout** menu, **toolbar ListOrdered** button, or **context → Render order → Stacking order list…** (passes cursor position + item id). **`wheelZoomSuppressed`** on editor canvas while open. List selection uses **`selectedItemIds` + `handleBatchSelect`**: row clicks / shift+click update canvas selection; opening from context **selects** that item; canvas changes reflect in the list highlights.
+
 ### 2026-04-24 – Z-order: `stackWithShapes` on icon nodes
 Icon/resource nodes default to **`NODE_LAYER_BASE + 2*i+1`** z-index so **connectors stay under icons**. Shapes use **`2*i+1`**, so **reordering JSON does not** put an icon behind a rectangle on the same diagram layer. Optional **`stackWithShapes: true`** on a node opts it into the shape ladder so **`computeConnectionSlots` item order** controls overlap; connectors may then draw above that node per slot order. Editor/viewer **`useShapeStackTier`**; **`nested-hierarchy`** preserves the field.
 
