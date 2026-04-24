@@ -1,5 +1,8 @@
 # MEMORY.MD
 
+### 2026-04-24 – Chart data modal: tinted section cards
+**`chart-data-editor-modal`**: **`ChartModalSection`** helper (same visual language as visual/text styling panels: **`bg-*-50/50`**, border, dot + **`Label`** header, optional **`headerRight`**). **Bar/line**: **Outline & display** (muted), **Line style** (emerald, line only), **Bar layout** (amber, bar only), **Axes, grid & legend** (purple), **Categories & …** (sky, Add in header). **Pie**: **Slice outline & options** (muted), **Segment separation** (amber), **Slices** (sky). Drag handle title row: **`BarChart2`** **`text-blue-600`**, **`text-foreground`** title.
+
 ### 2026-04-24 – Text styling panel: tinted sections (match visual styling)
 **`text-styling-panel`**: Controls grouped into section cards like **`visual-styling-panel`** — **`bg-*-50/50`**, matching borders, dot + **`Label`** headers: **Typography** (muted/primary), **Alignment & position** (amber), **Spacing & case** (emerald), **Color** (sky; includes heading text color when text-box-heading), **Outline** (amber), **Glow** (purple), **Drop shadow** (teal). Title row **`text-foreground`** + **`Type`** **`text-blue-600`**.
 

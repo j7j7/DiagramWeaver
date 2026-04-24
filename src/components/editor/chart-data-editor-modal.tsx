@@ -4,7 +4,7 @@ import React, { useRef, useEffect, useState } from "react";
 import { useDrag, useDrop } from "react-dnd";
 import type { ConnectDragSource } from "react-dnd";
 import Draggable from "react-draggable";
-import { ChevronDown, GripVertical, Plus, Trash2, X } from "lucide-react";
+import { BarChart2, ChevronDown, GripVertical, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -50,6 +50,51 @@ import {
   LINE_CHART_POLYLINE_STROKE_MIN,
   lineChartPolylineStrokeFallbackFromNodeBorder,
 } from "@/lib/line-chart-layout";
+
+type ChartModalSectionTint = "muted" | "amber" | "emerald" | "purple" | "sky" | "teal";
+
+function ChartModalSection({
+  title,
+  tint,
+  children,
+  className,
+  headerRight,
+}: {
+  title: string;
+  tint: ChartModalSectionTint;
+  children: React.ReactNode;
+  className?: string;
+  headerRight?: React.ReactNode;
+}) {
+  const box: Record<ChartModalSectionTint, string> = {
+    muted: "bg-muted/50 border border-border",
+    amber: "bg-amber-50/50 border border-amber-200/50",
+    emerald: "bg-emerald-50/50 border border-emerald-200/50",
+    purple: "bg-purple-50/50 border border-purple-200/50",
+    sky: "bg-sky-50/50 border border-sky-200/50",
+    teal: "bg-teal-50/50 border border-teal-200/50",
+  };
+  const dot: Record<ChartModalSectionTint, string> = {
+    muted: "bg-primary",
+    amber: "bg-amber-500",
+    emerald: "bg-emerald-500",
+    purple: "bg-purple-500",
+    sky: "bg-sky-500",
+    teal: "bg-teal-500",
+  };
+  return (
+    <div className={cn("rounded-md p-3 min-w-0", box[tint], className)}>
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className={cn("w-2 h-2 rounded-full shrink-0", dot[tint])} />
+          <Label className="text-sm font-semibold text-foreground">{title}</Label>
+        </div>
+        {headerRight ? <div className="shrink-0">{headerRight}</div> : null}
+      </div>
+      <div className="space-y-3">{children}</div>
+    </div>
+  );
+}
 
 function sliceFillStyleFromSeries(s: ChartSeriesItem | ChartBarSegmentItem): ChartSliceFillStyle {
   if (s.fillStyle === "none" || s.fillStyle === "solid" || s.fillStyle === "gradient") {
@@ -986,7 +1031,10 @@ export function ChartDataEditorModal({
           className="fixed w-[460px] rounded-md border border-border bg-popover shadow-lg p-0 z-[70]"
         >
           <div className="chart-data-modal-drag-handle flex items-center justify-between p-3 border-b cursor-move">
-            <h3 className="font-semibold text-sm">Chart data</h3>
+            <div className="flex items-center gap-2 min-w-0">
+              <BarChart2 className="w-4 h-4 shrink-0 text-blue-600" aria-hidden />
+              <h3 className="font-semibold text-sm text-foreground truncate">Chart data</h3>
+            </div>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0" onClick={onClose}>
@@ -999,11 +1047,8 @@ export function ChartDataEditorModal({
           <div className="p-4 space-y-3 max-h-[min(580px,72vh)] overflow-y-auto">
             {isCartesianModal ? (
               <>
-                <div className="rounded-md border border-border/60 p-3 space-y-3 bg-muted/15">
-                  <p className="text-xs font-medium text-foreground">Chart appearance</p>
-                  <div
-                    className={`space-y-3 ${isReadOnly ? "pointer-events-none opacity-75" : ""}`}
-                  >
+                <ChartModalSection title="Outline & display" tint="muted">
+                  <div className={cn(isReadOnly && "pointer-events-none opacity-75")}>
                     <div className="space-y-1">
                       <div className="flex items-center justify-between gap-2">
                         <Label className="text-[10px] text-muted-foreground">
@@ -1079,8 +1124,11 @@ export function ChartDataEditorModal({
                         </>
                       ) : null}
                     </div>
+                  </div>
+                </ChartModalSection>
                     {isLineModal ? (
-                      <>
+                <ChartModalSection title="Line style" tint="emerald">
+                  <div className={cn(isReadOnly && "pointer-events-none opacity-75")}>
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                           <div className="flex items-center gap-2">
                             <Label htmlFor="chart-line-area" className="text-xs font-medium">
@@ -1173,10 +1221,12 @@ export function ChartDataEditorModal({
                             Opacity at the line; gradient falls to transparent at the baseline.
                           </p>
                         </div>
-                      </>
+                  </div>
+                </ChartModalSection>
                     ) : null}
                     {!isLineModal ? (
-                      <>
+                <ChartModalSection title="Bar layout" tint="amber">
+                  <div className={cn(isReadOnly && "pointer-events-none opacity-75")}>
                         <div className="space-y-1">
                           <Label className="text-[10px] text-muted-foreground">Orientation</Label>
                           <Select
@@ -1239,8 +1289,11 @@ export function ChartDataEditorModal({
                         <p className="text-[10px] text-muted-foreground">
                           Rounds the whole column cap (stacked columns use one outline; inner segment edges stay straight).
                         </p>
-                      </>
+                  </div>
+                </ChartModalSection>
                     ) : null}
+                <ChartModalSection title="Axes, grid & legend" tint="purple">
+                  <div className={cn(isReadOnly && "pointer-events-none opacity-75")}>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                       <div className="flex items-center gap-2">
                         <Label htmlFor="chart-bar-grid-v" className="text-xs font-medium">
@@ -1424,8 +1477,21 @@ export function ChartDataEditorModal({
                       );
                     })()}
                   </div>
-                </div>
-                <div className={`space-y-1 ${isReadOnly ? "pointer-events-none opacity-75" : ""}`}>
+                </ChartModalSection>
+                <ChartModalSection
+                  title={isLineModal ? "Categories & series" : "Categories & stack segments"}
+                  tint="sky"
+                  headerRight={
+                    !isReadOnly ? (
+                      <Button variant="ghost" size="sm" className="h-6 px-2" onClick={addBarRow}>
+                        <Plus className="w-3 h-3 mr-1" />
+                        Add
+                      </Button>
+                    ) : undefined
+                  }
+                >
+                  <div className={cn(isReadOnly && "pointer-events-none opacity-75")}>
+                <div className="space-y-1">
                   <Label className="text-[10px] text-muted-foreground">
                     Category names (comma-separated)
                   </Label>
@@ -1436,17 +1502,6 @@ export function ChartDataEditorModal({
                     className="h-8 text-xs"
                     disabled={isReadOnly}
                   />
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    {isLineModal ? "Series" : "Stack segments"}
-                  </span>
-                  {!isReadOnly && (
-                    <Button variant="ghost" size="sm" className="h-6 px-2" onClick={addBarRow}>
-                      <Plus className="w-3 h-3 mr-1" />
-                      Add
-                    </Button>
-                  )}
                 </div>
                 <div className="space-y-3">
                   {barRows.map((row, i) => {
@@ -1724,14 +1779,13 @@ export function ChartDataEditorModal({
                     );
                   })}
                 </div>
+                  </div>
+                </ChartModalSection>
               </>
             ) : (
               <>
-            <div className="rounded-md border border-border/60 p-3 space-y-3 bg-muted/15">
-              <p className="text-xs font-medium text-foreground">Chart appearance</p>
-              <div
-                className={`space-y-3 ${isReadOnly ? "pointer-events-none opacity-75" : ""}`}
-              >
+            <ChartModalSection title="Slice outline & options" tint="muted">
+              <div className={cn(isReadOnly && "pointer-events-none opacity-75")}>
                 <div className="space-y-1">
                   <div className="flex items-center justify-between gap-2">
                     <Label className="text-[10px] text-muted-foreground">Slice outline (wedge border)</Label>
@@ -1790,6 +1844,11 @@ export function ChartDataEditorModal({
                     />
                   </div>
                 </div>
+              </div>
+            </ChartModalSection>
+
+            <ChartModalSection title="Segment separation" tint="amber">
+              <div className={cn(isReadOnly && "pointer-events-none opacity-75")}>
                 <div className="space-y-2">
                   <div className="flex justify-between gap-2">
                     <Label className="text-xs">Segment separation</Label>
@@ -1808,17 +1867,20 @@ export function ChartDataEditorModal({
                   </p>
                 </div>
               </div>
-            </div>
+            </ChartModalSection>
 
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-medium text-muted-foreground">Slices</span>
-              {!isReadOnly && (
-                <Button variant="ghost" size="sm" className="h-6 px-2" onClick={addRow}>
-                  <Plus className="w-3 h-3 mr-1" />
-                  Add
-                </Button>
-              )}
-            </div>
+            <ChartModalSection
+              title="Slices"
+              tint="sky"
+              headerRight={
+                !isReadOnly ? (
+                  <Button variant="ghost" size="sm" className="h-6 px-2" onClick={addRow}>
+                    <Plus className="w-3 h-3 mr-1" />
+                    Add
+                  </Button>
+                ) : undefined
+              }
+            >
             <div className="space-y-3">
               {rows.map((row, i) => {
                 const fillFallback = DEFAULT_PIE_SLICE_COLORS[i % DEFAULT_PIE_SLICE_COLORS.length];
@@ -2085,6 +2147,7 @@ export function ChartDataEditorModal({
                 );
               })}
             </div>
+            </ChartModalSection>
               </>
             )}
           </div>
