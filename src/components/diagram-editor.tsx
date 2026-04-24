@@ -5562,49 +5562,6 @@ export default function DiagramEditor() {
     toast,
   ]);
 
-  const handleRemovePresentationSlides = React.useCallback(() => {
-    if (!activePresentationDeckId || !activePresentationDeck) return;
-    const primaryId = activePresentationDeck.slides[0]?.id;
-    const rawIds = selectedPresentationSlideIds.size > 0
-      ? selectedPresentationSlideIds
-      : new Set(activePresentationSlideId ? [activePresentationSlideId] : []);
-    const idsToRemove = new Set([...rawIds].filter((id) => id !== primaryId));
-    if (idsToRemove.size === 0) return;
-
-    const nextSlides = activePresentationDeck.slides.filter((slide) => !idsToRemove.has(slide.id));
-    const currentStillExists = activePresentationSlideId
-      ? nextSlides.some((slide) => slide.id === activePresentationSlideId)
-      : false;
-    const nextActiveSlideId = currentStillExists
-      ? activePresentationSlideId!
-      : nextSlides[0]!.id;
-
-    setPresentationDecks((prev) => prev.map((deck) => {
-      if (deck.id !== activePresentationDeckId) return deck;
-      return {
-        ...deck,
-        slides: nextSlides,
-        updatedAt: Date.now(),
-      };
-    }));
-    setActivePresentationSlideId(nextActiveSlideId);
-    setSelectedPresentationSlideIds(new Set());
-    const slide = nextSlides.find((s) => s.id === nextActiveSlideId);
-    if (slide && slide.id === primaryId) {
-      setPresentationDraftDiagram(null);
-    } else if (slide) {
-      const master = projectVisibleDiagram(presentationMasterDiagram ?? tabDiagramData);
-      setPresentationDraftDiagram(applyDiagramDelta(master, slide.diagramDelta));
-    }
-  }, [
-    activePresentationDeckId,
-    activePresentationDeck,
-    activePresentationSlideId,
-    selectedPresentationSlideIds,
-    presentationMasterDiagram,
-    tabDiagramData,
-  ]);
-
   const handleDeletePresentationSlide = React.useCallback((slideId: string) => {
     if (!activePresentationDeckId || !activePresentationDeck) return;
     if (activePresentationDeck.slides[0]?.id === slideId) {
@@ -6217,13 +6174,11 @@ export default function DiagramEditor() {
         presentationDisabledLayerIds={presentationDisabledLayerIds}
         activePresentationSlides={activePresentationSlides}
         activePresentationSlideDiagrams={activePresentationSlideDiagrams}
-        selectedPresentationSlideIds={selectedPresentationSlideIds}
         handleSelectPresentationBaseSlide={handleSelectPresentationBaseSlide}
         handleAutoZoomPresentation={handleAutoZoomPresentation}
         handleApplyPresentationZoomToCurrent={handleApplyPresentationZoomToCurrent}
         handleApplyPresentationZoomToAll={handleApplyPresentationZoomToAll}
         handleAddPresentationSnapshot={handleAddPresentationSnapshot}
-        handleRemovePresentationSlides={handleRemovePresentationSlides}
         handleDeletePresentationSlide={handleDeletePresentationSlide}
         presentationHasLaterSlides={hasLaterSlides}
         handlePropagateAddToLaterSlides={handlePropagateAddToLaterSlides}
@@ -6447,13 +6402,11 @@ function DiagramEditorInner({
   presentationDisabledLayerIds,
   activePresentationSlides,
   activePresentationSlideDiagrams,
-  selectedPresentationSlideIds,
   handleSelectPresentationBaseSlide,
   handleAutoZoomPresentation,
   handleApplyPresentationZoomToCurrent,
   handleApplyPresentationZoomToAll,
   handleAddPresentationSnapshot,
-  handleRemovePresentationSlides,
   handleDeletePresentationSlide,
   presentationHasLaterSlides,
   handlePropagateAddToLaterSlides,
@@ -6841,12 +6794,10 @@ function DiagramEditorInner({
                   decks={presentationDecks}
                   activeDeckId={activePresentationDeckId}
                   activeSlideId={activePresentationSlideId}
-                  selectedSlideIds={selectedPresentationSlideIds}
                   onAutoZoom={handleAutoZoomPresentation}
                   onApplyZoomToCurrent={handleApplyPresentationZoomToCurrent}
                   onApplyZoomToAll={handleApplyPresentationZoomToAll}
                   onAddSnapshot={handleAddPresentationSnapshot}
-                  onRemoveSlides={handleRemovePresentationSlides}
                   onDeleteSlide={handleDeletePresentationSlide}
                   onMoveSlide={handleMovePresentationSlide}
                   onSelectSlide={handleSelectPresentationSlide}

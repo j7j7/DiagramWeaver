@@ -1,5 +1,11 @@
 # MEMORY.MD
 
+### 2026-04-24 – Text styling panel: tinted sections (match visual styling)
+**`text-styling-panel`**: Controls grouped into section cards like **`visual-styling-panel`** — **`bg-*-50/50`**, matching borders, dot + **`Label`** headers: **Typography** (muted/primary), **Alignment & position** (amber), **Spacing & case** (emerald), **Color** (sky; includes heading text color when text-box-heading), **Outline** (amber), **Glow** (purple), **Drop shadow** (teal). Title row **`text-foreground`** + **`Type`** **`text-blue-600`**.
+
+### 2026-04-24 – Presentation editor: no toolbar remove snapshot
+**`presentation-editor-panel`**: Removed the **Remove active snapshot** trash button from the main toolbar. **Per-slide** trash on each deck thumbnail ( **`onDeleteSlide`** / **`handleDeletePresentationSlide`**) is unchanged. Removed **`onRemoveSlides`**, **`handleRemovePresentationSlides`**, and the panel’s unused **`selectedSlideIds`** prop (per-tab **selectedPresentationSlideIds** state remains for ref sync / persistence).
+
 ### 2026-04-24 – Presentation play mode: bottom bar matches viewer
 **`presentation-player`** (`showPlaybackToolbar`): Bottom UI uses the same **`fixed` bottom-center** pill layout as **`ViewerPresentationBar`** (MonitorPlay, title, **`n / m`**, Prev/Next, Fullscreen hides the bar). **Exit** remains **`fixed` top-right** only. **Use slide zoom** checkbox sits on the bar. Auto zoom, auto-play, manual zoom %, and shortcut text moved to a **More (⋯) popover**. Removed the old docked strip, float/pin/drag toolbar, and in-bar Exit.
 

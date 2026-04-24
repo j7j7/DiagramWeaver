@@ -149,12 +149,10 @@ interface PresentationEditorPanelProps {
   decks: PresentationDeck[];
   activeDeckId: string | null;
   activeSlideId: string | null;
-  selectedSlideIds: Set<string>;
   onAutoZoom: () => void;
   onApplyZoomToCurrent: () => void;
   onApplyZoomToAll: () => void;
   onAddSnapshot: () => void;
-  onRemoveSlides: () => void;
   onDeleteSlide: (slideId: string) => void;
   onMoveSlide: (fromIndex: number, toIndex: number) => void;
   onSelectSlide: (slideId: string) => void;
@@ -168,12 +166,10 @@ export function PresentationEditorPanel({
   decks,
   activeDeckId,
   activeSlideId,
-  selectedSlideIds,
   onAutoZoom,
   onApplyZoomToCurrent,
   onApplyZoomToAll,
   onAddSnapshot,
-  onRemoveSlides,
   onDeleteSlide,
   onMoveSlide,
   onSelectSlide,
@@ -492,25 +488,6 @@ export function PresentationEditorPanel({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Enter play mode</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    className="h-7 w-7 px-0"
-                    onClick={onRemoveSlides}
-                    disabled={
-                      !activeDeck ||
-                      activeDeck.slides.length === 0 ||
-                      (activeSlideId === null && selectedSlideIds.size === 0)
-                    }
-                    aria-label="Remove active snapshot"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Remove active snapshot</TooltipContent>
               </Tooltip>
             </div>
         </div>
