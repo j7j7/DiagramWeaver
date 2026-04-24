@@ -1,5 +1,8 @@
 # MEMORY.MD
 
+### 2026-04-24 – Z-order: `stackWithShapes` on icon nodes
+Icon/resource nodes default to **`NODE_LAYER_BASE + 2*i+1`** z-index so **connectors stay under icons**. Shapes use **`2*i+1`**, so **reordering JSON does not** put an icon behind a rectangle on the same diagram layer. Optional **`stackWithShapes: true`** on a node opts it into the shape ladder so **`computeConnectionSlots` item order** controls overlap; connectors may then draw above that node per slot order. Editor/viewer **`useShapeStackTier`**; **`nested-hierarchy`** preserves the field.
+
 ### 2026-04-24 – Frosted: viewport portal removed; inline glass only
 Removed **`FrostedGlassPortalLayer`**, **`#dw-frosted-root`**, **`frostedGlassQuality`** / viewport UI and schema fields. All **`frosted`** backgrounds use the inline stack only; **`getFrostedGlassParams(..., { forInlineStacking: true })`** always. Dropped pan/zoom + canvas ref props from shape plumbing.
 

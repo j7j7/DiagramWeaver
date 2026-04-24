@@ -202,6 +202,12 @@ export interface DiagramNodeData {
   lineColor?: string; // Color for connections/borders
   edgePosition?: 'top' | 'bottom' | 'left' | 'right'; // Position node on edge of parent group
   layer?: string; // Layer assignment for this node
+  /**
+   * When true on icon/label nodes, use the same z-index ladder as shapes so item order within
+   * a diagram layer controls stacking. Default icon tier (+100) keeps connectors under icons;
+   * with this set, connectors may draw above the node per connection slot order.
+   */
+  stackWithShapes?: boolean;
   // Label-specific styling properties
   borderColor?: string; // Border color for label nodes
   backgroundColor?: string; // Background color for label nodes
@@ -451,6 +457,8 @@ export interface DiagramNodeItem {
   lineColor?: string; // Color for connections/borders
   edgePosition?: 'top' | 'bottom' | 'left' | 'right'; // Position node on edge of parent group
   layer?: string; // Layer assignment for this node
+  /** See `DiagramNodeData.stackWithShapes`. */
+  stackWithShapes?: boolean;
   borderColor?: string; // Border color for label nodes
   backgroundColor?: string; // Background color for label nodes
   textColor?: string; // Text color for label nodes

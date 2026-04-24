@@ -94,6 +94,7 @@ export function convertToNestedHierarchy(data: DiagramData): HierarchicalDiagram
          tag: node.tag,
          tagPosition: node.tagPosition,
          layer: node.layer, // Preserve layer information
+         stackWithShapes: node.stackWithShapes,
          groupId: node.groupId, // Preserve grouping information
          // Text styling properties
          fontFamily: node.fontFamily,
@@ -199,6 +200,7 @@ function convertGroupToNested(
          tag: node.tag,
          tagPosition: node.tagPosition,
          layer: node.layer, // Preserve layer information
+         stackWithShapes: node.stackWithShapes,
          groupId: node.groupId, // Preserve grouping information
          // Text styling properties
          fontFamily: node.fontFamily,
@@ -364,6 +366,7 @@ export function convertFromNestedHierarchy(nestedData: HierarchicalDiagramData):
              tag: nodeChild.tag,
              tagPosition: nodeChild.tagPosition,
              layer: nodeChild.layer, // Preserve layer information
+             stackWithShapes: nodeChild.stackWithShapes,
              groupId: nodeChild.groupId, // Preserve grouping information
              // Text styling properties
              fontFamily: nodeChild.fontFamily,
@@ -564,6 +567,7 @@ function processNestedGroup(
          tag: nodeChild.tag,
          tagPosition: nodeChild.tagPosition,
          layer: nodeChild.layer, // Preserve layer information
+         stackWithShapes: nodeChild.stackWithShapes,
          groupId: nodeChild.groupId, // Preserve grouping information
          // Text styling properties
          fontFamily: nodeChild.fontFamily,

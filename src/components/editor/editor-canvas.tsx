@@ -1695,6 +1695,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 const node = nodesById[itemId];
                 const zone = zonesById[itemId];
                 // Icon/text nodes: elevate z so labels stay on top of connectors. Shapes: keep original so lines can pass in front.
+                // `stackWithShapes` opts icon nodes into the shape ladder so layer item order controls overlap (e.g. icon behind a rect).
                 const NODE_LAYER_BASE = 100;
                 const isShape = node && isShapeNodeType(node.type);
                 const isTextboxNode = node && node.type === 'generic.text.textbox';
@@ -1702,10 +1703,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   node &&
                   isConnectorLineNodeType(node.type) &&
                   isConnectorLineGeometryClosed(node);
+                const useShapeStackTier =
+                  isShape || isTextboxNode || closedConnectorLoop || Boolean(node?.stackWithShapes);
                 /** Closed loops use shape-tier z (`2*i+1`) so rectangles before/after in layer order stack correctly. */
                 const connZIndex = 2 * i;
-                const nodeZIndex =
-                  isShape || isTextboxNode || closedConnectorLoop ? 2 * i + 1 : NODE_LAYER_BASE + 2 * i + 1;
+                const nodeZIndex = useShapeStackTier ? 2 * i + 1 : NODE_LAYER_BASE + 2 * i + 1;
                 const nodeEl = node ? (
                   <DiagramNode
                     key={node.id}

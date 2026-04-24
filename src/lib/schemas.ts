@@ -179,6 +179,7 @@ export const DiagramNodeDataSchema = z.object({
   lineColor: z.string().optional(), // Color for connections/borders
   edgePosition: z.enum(['top', 'bottom', 'left', 'right']).optional(), // Position node on edge of parent group
   layer: z.string().optional(), // Layer assignment for this node
+  stackWithShapes: z.boolean().optional(), // Z-index ladder with shapes (see types)
   // Label-specific styling properties
   borderColor: z.string().optional(), // Border color for label nodes
   backgroundColor: z.string().optional(), // Background color for label nodes
@@ -537,6 +538,7 @@ export const DiagramNodeItemSchema = z.object({
   lineColor: z.string().optional(), // Color for connections/borders
   edgePosition: z.enum(['top', 'bottom', 'left', 'right']).optional(), // Position node on edge of parent group
   layer: z.string().optional(), // Layer assignment for this node
+  stackWithShapes: z.boolean().optional(), // Z-index ladder with shapes (see types)
   // Label-specific styling properties
   borderColor: z.string().optional(), // Border color for label nodes
   backgroundColor: z.string().optional(), // Background color for label nodes

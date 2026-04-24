@@ -482,9 +482,10 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
                 node &&
                 isConnectorLineNodeType(node.type) &&
                 isConnectorLineGeometryClosed(node);
+              const useShapeStackTier =
+                isShape || isTextboxNode || closedConnectorLoop || Boolean(node?.stackWithShapes);
               const connZIndex = 2 * i;
-              const nodeZIndex =
-                isShape || isTextboxNode || closedConnectorLoop ? 2 * i + 1 : NODE_LAYER_BASE + 2 * i + 1;
+              const nodeZIndex = useShapeStackTier ? 2 * i + 1 : NODE_LAYER_BASE + 2 * i + 1;
               const nodeEl = node ? (
                 <DiagramNode
                   key={node.id}
