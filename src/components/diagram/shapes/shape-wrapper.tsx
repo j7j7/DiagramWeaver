@@ -9,6 +9,7 @@ import {
   getFrostedGlassInlineBackdropPrimaryStyle,
   getFrostedGlassInlineBackdropSecondPassStyle,
   getFrostedInlineBackdropReactKey,
+  getFrostedInsetClipStyleForBackdropLayers,
   getFrostedGrainOverlayStyle,
   getFrostedFineGrainOverlayStyle,
   getFrostedGlassTopEdgeHighlightStyle,
@@ -189,6 +190,7 @@ export function ShapeWrapper({
       : undefined;
   const suppressSvgRootFilter = shouldSuppressSvgDropShadowFilterForInlineFrosted(isFrostedBg, usePortalFrosted);
   const frostedOuterClip = frostedInlineOuterClipPath(frostedGlassClipPath);
+  const frostedInsetBackdropClip = getFrostedInsetClipStyleForBackdropLayers(frostedGlassClipPath);
 
   return (
     <div
@@ -280,10 +282,21 @@ export function ShapeWrapper({
                 }}
                 aria-hidden
               />
-              <Fragment key={getFrostedInlineBackdropReactKey(styles.frostedGlass)}>
-                <div style={getFrostedGlassInlineBackdropPrimaryStyle(styles.frostedGlass)} aria-hidden />
+              <Fragment
+                key={getFrostedInlineBackdropReactKey(styles.frostedGlass, frostedGlassClipPath)}
+              >
+                <div
+                  style={{
+                    ...getFrostedGlassInlineBackdropPrimaryStyle(styles.frostedGlass),
+                    ...frostedInsetBackdropClip,
+                  }}
+                  aria-hidden
+                />
                 {frostedInlineSecondPassStyle ? (
-                  <div style={frostedInlineSecondPassStyle} aria-hidden />
+                  <div
+                    style={{ ...frostedInlineSecondPassStyle, ...frostedInsetBackdropClip }}
+                    aria-hidden
+                  />
                 ) : null}
               </Fragment>
               <div

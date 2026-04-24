@@ -220,26 +220,28 @@ export function getFrostedGlassParams(
 ): FrostedGlassParams {
   const d = clamp01(frostedDiffusion, DEFAULT_FROSTED_DIFFUSION);
   const t = clamp01(frostedTransparency, DEFAULT_FROSTED_TRANSPARENCY);
-  // Blur: similar range to common glassmorphism presets (e.g. ~20px at mid diffusion)
-  const blurPx = d < 0.02 ? 0 : 2 + d * 56;
-  const saturation = 1.05 + d * 0.55;
+  // Blur: steeper power curve — very low diffusion ≈ almost sharp; high end still ~48px.
+  const blurPx = d < 0.02 ? 0 : 0.35 + Math.pow(d, 1.88) * 47.2;
+  // Saturation lift ramps up mostly in the upper half of the slider
+  const saturation = 1.005 + d * 0.18 + d * d * 0.42;
   // Tint wash (slightly stronger when “less transparent”)
   const tintAlpha = 0.04 + (1 - t) * 0.52;
-  // Glass fill: Hype4-style ~rgba(255,255,255,0.15) territory; scales with transparency slider
-  let fillAlpha = 0.06 + (1 - t) * 0.22;
-  let grainOpacity = d < 0.02 ? 0 : 0.1 + d * 0.32;
+  // Glass fill: low diffusion = much less wash over content
+  let fillAlpha = (0.052 + (1 - t) * 0.19) * (0.18 + 0.82 * d);
+  let grainOpacity = d < 0.02 ? 0 : 0.012 + Math.pow(d, 1.48) * 0.32;
   /** Lighter wash + grain so real `backdrop-filter` is visible under pan/zoom (portal keeps full strength). */
   if (options?.forInlineStacking) {
     fillAlpha *= 0.68;
     grainOpacity *= 0.52;
   }
-  const depth = 0.06 + d * 0.12;
-  const rim = 0.14 + (1 - t) * 0.18;
-  const hi = 0.28 + (1 - t) * 0.35;
-  const lo = 0.06 + (1 - t) * 0.1;
-  const y = 4 + d * 10;
-  const blur = 20 + d * 28;
-  const spread = 0.5 + d * 1.5;
+  const dDepth = 0.35 + 0.65 * d;
+  const depth = (0.035 + d * 0.1) * dDepth;
+  const rim = (0.11 + (1 - t) * 0.16) * (0.4 + 0.6 * d);
+  const hi = (0.2 + (1 - t) * 0.32) * (0.45 + 0.55 * d);
+  const lo = (0.05 + (1 - t) * 0.09) * (0.45 + 0.55 * d);
+  const y = (3 + d * 9) * dDepth;
+  const blur = (16 + d * 26) * dDepth;
+  const spread = (0.45 + d * 1.35) * (0.5 + 0.5 * d);
   const glassBoxShadow = [
     `0 ${y}px ${blur}px rgba(0, 0, 0, ${depth})`,
     `inset 0 1px 0 rgba(255, 255, 255, ${hi})`,
@@ -263,16 +265,29 @@ function frostBackdropFilterValue(p: FrostedGlassParams): string {
 }
 
 /** Force new backdrop layers when diffusion/tint changes — Chromium often ignores `blur()` updates on the same element. */
-export function getFrostedInlineBackdropReactKey(p: FrostedGlassParams): string {
-  return `${p.blurPx}|${p.saturation}|${p.fillRgba}|${p.tintRgba}`;
+export function getFrostedInlineBackdropReactKey(
+  p: FrostedGlassParams,
+  frostedGlassClipPath?: string
+): string {
+  return `${p.blurPx}|${p.saturation}|${p.fillRgba}|${p.tintRgba}|${frostedGlassClipPath ?? ""}`;
+}
+
+/** `clip-path` on **inset(...)** (rect / rounded-rect SVG) for inline backdrop layers — matches glass to fill + corners. */
+export function getFrostedInsetClipStyleForBackdropLayers(
+  frostedGlassClipPath: string | undefined
+): Pick<CSSProperties, "clipPath" | "WebkitClipPath"> | undefined {
+  if (!frostedGlassClipPath) return undefined;
+  const s = frostedGlassClipPath.trimStart().toLowerCase();
+  if (!s.startsWith("inset(")) return undefined;
+  return { clipPath: frostedGlassClipPath, WebkitClipPath: frostedGlassClipPath };
 }
 
 /**
  * Stronger blur + micro contrast/brightness for **inline** glass (layer-order mode).
- * Do not put `clip-path` on this element — apply clip on an ancestor only (Chromium blur quality).
+ * For **inset(...)** SVG shapes, merge {@link getFrostedInsetClipStyleForBackdropLayers} so corners match.
  */
 export function getFrostedGlassInlineBackdropPrimaryStyle(p: FrostedGlassParams): CSSProperties {
-  const raw = p.blurPx < 0.02 ? 0 : 12 + p.blurPx * 1.62;
+  const raw = p.blurPx < 0.02 ? 0 : 1.55 + p.blurPx * 1.38;
   const blurPx = Math.min(92, raw);
   const sat = Math.min(1.92, p.saturation * 1.14);
   const f =
@@ -293,8 +308,8 @@ export function getFrostedGlassInlineBackdropPrimaryStyle(p: FrostedGlassParams)
 
 /** Second compositing pass: softer blur so stacked backdrops read “thicker” frosted glass. */
 export function getFrostedGlassInlineBackdropSecondPassStyle(p: FrostedGlassParams): CSSProperties | undefined {
-  if (p.blurPx < 0.06) return undefined;
-  const blurPx = Math.min(34, 7 + p.blurPx * 0.42);
+  if (p.blurPx < 0.18) return undefined;
+  const blurPx = Math.min(32, 3.2 + p.blurPx * 0.36);
   return {
     position: "absolute",
     inset: 0,

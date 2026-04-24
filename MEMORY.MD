@@ -7,7 +7,10 @@
 **`isolation: isolate`** on the frost stack **ancestor** could **trap `backdrop-filter`** (blur/tint barely react to **Diffusion**). Removed from **`shape-wrapper`** / **`uml-class`**. **`getFrostedInlineBackdropReactKey`** + **`Fragment` `key`** remounts backdrop layers when **`blurPx`/tint** change (Chromium often ignores in-place **`blur()`** updates). **`getFrostedGlassParams(..., { forInlineStacking })`** when **`frostedGlassQuality !== 'backdrop'`**: lower **fill** + **grain** so a working blur reads through; viewport portal keeps full-strength grain/fill. Dropped **`will-change: backdrop-filter`** on inline layers.
 
 ### 2026-04-24 – Frosted inline (layer-order): stronger blur stack
-**`simulated`** mode uses **`getFrostedGlassInlineBackdropPrimaryStyle`** plus optional **`getFrostedGlassInlineBackdropSecondPassStyle`**. **No `clip-path` on the backdrop divs**. **`uml-class`**: **`overflow: visible`** when inline frosted. Portal path still uses **`getFrostedGlassBackdropLayerStyle`**.
+**`simulated`** mode: **`getFrostedGlassInlineBackdropPrimaryStyle`** + second pass; **`getFrostedInsetClipStyleForBackdropLayers`** on backdrop divs for **`inset(...)`** (rounded rects). **`uml-class`**: **`overflow: visible`** when inline frosted. Portal uses **`getFrostedGlassBackdropLayerStyle`**.
+
+### 2026-04-24 – Frosted: softer low diffusion + rounded-rect clip
+**Diffusion** **`blurPx ≈ 0.35 + d^1.88 * 47.2`**, **fill** **`× (0.18 + 0.82·d)`**, **grain** **`0.012 + d^1.48 * 0.32`**. **SvgShapeBase** **`inset(… round rpx)`**: **`rPx = min(rx·sx, ry·sy, 0.48·min(w,h))`**. Inline **`getFrostedInlineBackdropReactKey(..., clipPath)`**.
 
 ### 2026-04-24 – Frosted default: viewport portal (real blur)
 **`isFrostedBackdropBlurEnabled`**: **`true`** unless **`frostedGlassQuality === 'simulated'`** (omit/`backdrop` → portal). Inline blur inside **`data-diagram-layer` `transform`** usually **does not** sample the diagram — looks like tint + noise only. **Default / new frosted**: **`backdrop`** in **`visual-styling-panel`**. UI: **Viewport blur (real glass)** first; **Layer order** explicit opt-in.

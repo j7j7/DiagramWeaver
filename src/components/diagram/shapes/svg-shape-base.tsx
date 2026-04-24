@@ -94,10 +94,15 @@ export function SvgShapeBase({
       const l = ((r.x - vbX) / vbW) * 100;
       const rxVb = r.rx ?? 0;
       const ryVb = r.ry ?? rxVb;
-      const roundPx =
-        rxVb > 0 || ryVb > 0
-          ? ` round ${(Math.min((rxVb * width) / vbW, (ryVb * height) / vbH))}px`
-          : "";
+      const sx = width / vbW;
+      const sy = height / vbH;
+      let rPx = 0;
+      if (rxVb > 0 || ryVb > 0) {
+        rPx = Math.min(rxVb * sx, ryVb * sy);
+        // Cap so `inset(… round …)` stays valid for pills / large rx (matches inner rounded rect).
+        rPx = Math.min(rPx, 0.48 * Math.min(width, height));
+      }
+      const roundPx = rPx > 0 ? ` round ${rPx}px` : "";
       frostedGlassClipPath = `inset(${t}% ${rgt}% ${b}% ${l}%${roundPx})`;
     }
   }
