@@ -198,6 +198,16 @@ const FROST_GRAIN_DATA_URL = `url("data:image/svg+xml,${encodeURIComponent(
     '</svg>'
 )}")`;
 
+/** Finer speckle (higher frequency) layered with {@link FROST_GRAIN_DATA_URL}. */
+const FROST_GRAIN_FINE_DATA_URL = `url("data:image/svg+xml,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128">' +
+    '<filter id="f" x="-20%" y="-20%" width="140%" height="140%">' +
+    '<feTurbulence type="fractalNoise" baseFrequency="1.15" numOctaves="3" seed="23" stitchTiles="stitch"/>' +
+    '</filter>' +
+    '<rect width="100%" height="100%" filter="url(#f)"/>' +
+    '</svg>'
+)}")`;
+
 /**
  * `frostedTransparency`: 0 = least see-through, 1 = most see-through (clearer view of content below).
  * `frostedDiffusion`: 0 = sharp, 1 = strong blur.
@@ -205,7 +215,8 @@ const FROST_GRAIN_DATA_URL = `url("data:image/svg+xml,${encodeURIComponent(
 export function getFrostedGlassParams(
   baseColor: string | undefined,
   frostedDiffusion: number | undefined,
-  frostedTransparency: number | undefined
+  frostedTransparency: number | undefined,
+  options?: { forInlineStacking?: boolean }
 ): FrostedGlassParams {
   const d = clamp01(frostedDiffusion, DEFAULT_FROSTED_DIFFUSION);
   const t = clamp01(frostedTransparency, DEFAULT_FROSTED_TRANSPARENCY);
@@ -215,8 +226,13 @@ export function getFrostedGlassParams(
   // Tint wash (slightly stronger when “less transparent”)
   const tintAlpha = 0.04 + (1 - t) * 0.52;
   // Glass fill: Hype4-style ~rgba(255,255,255,0.15) territory; scales with transparency slider
-  const fillAlpha = 0.06 + (1 - t) * 0.22;
-  const grainOpacity = d < 0.02 ? 0 : 0.06 + d * 0.22;
+  let fillAlpha = 0.06 + (1 - t) * 0.22;
+  let grainOpacity = d < 0.02 ? 0 : 0.1 + d * 0.32;
+  /** Lighter wash + grain so real `backdrop-filter` is visible under pan/zoom (portal keeps full strength). */
+  if (options?.forInlineStacking) {
+    fillAlpha *= 0.68;
+    grainOpacity *= 0.52;
+  }
   const depth = 0.06 + d * 0.12;
   const rim = 0.14 + (1 - t) * 0.18;
   const hi = 0.28 + (1 - t) * 0.35;
@@ -246,6 +262,51 @@ function frostBackdropFilterValue(p: FrostedGlassParams): string {
   return `blur(${blurPx}px) saturate(${p.saturation})`;
 }
 
+/** Force new backdrop layers when diffusion/tint changes — Chromium often ignores `blur()` updates on the same element. */
+export function getFrostedInlineBackdropReactKey(p: FrostedGlassParams): string {
+  return `${p.blurPx}|${p.saturation}|${p.fillRgba}|${p.tintRgba}`;
+}
+
+/**
+ * Stronger blur + micro contrast/brightness for **inline** glass (layer-order mode).
+ * Do not put `clip-path` on this element — apply clip on an ancestor only (Chromium blur quality).
+ */
+export function getFrostedGlassInlineBackdropPrimaryStyle(p: FrostedGlassParams): CSSProperties {
+  const raw = p.blurPx < 0.02 ? 0 : 12 + p.blurPx * 1.62;
+  const blurPx = Math.min(92, raw);
+  const sat = Math.min(1.92, p.saturation * 1.14);
+  const f =
+    raw < 0.02
+      ? "none"
+      : `blur(${blurPx}px) saturate(${sat}) contrast(1.04) brightness(1.02)`;
+  return {
+    position: "absolute",
+    inset: 0,
+    borderRadius: "inherit",
+    pointerEvents: "none",
+    zIndex: 1,
+    backgroundColor: p.fillRgba,
+    backdropFilter: f,
+    WebkitBackdropFilter: f,
+  };
+}
+
+/** Second compositing pass: softer blur so stacked backdrops read “thicker” frosted glass. */
+export function getFrostedGlassInlineBackdropSecondPassStyle(p: FrostedGlassParams): CSSProperties | undefined {
+  if (p.blurPx < 0.06) return undefined;
+  const blurPx = Math.min(34, 7 + p.blurPx * 0.42);
+  return {
+    position: "absolute",
+    inset: 0,
+    borderRadius: "inherit",
+    pointerEvents: "none",
+    zIndex: 1,
+    backgroundColor: "rgba(255, 255, 255, 0.035)",
+    backdropFilter: `blur(${blurPx}px) saturate(1.08)`,
+    WebkitBackdropFilter: `blur(${blurPx}px) saturate(1.08)`,
+  };
+}
+
 /** Inset/outer shadows only — keep off the element that runs `backdrop-filter` (Chromium often drops blur when combined). */
 export function getFrostedGlassDropShadowLayerStyle(p: FrostedGlassParams): CSSProperties {
   return {
@@ -271,6 +332,20 @@ export function getFrostedGlassBackdropLayerStyle(p: FrostedGlassParams): CSSPro
     backdropFilter: f,
     WebkitBackdropFilter: f,
   };
+}
+
+/**
+ * When `true`, frosted uses the viewport-fixed portal under `#dw-frosted-root` so `backdrop-filter`
+ * samples the real screen (pan/zoom `transform` breaks inline blur — tint/grain only).
+ * When `false` (`frostedGlassQuality === 'simulated'` only), uses inline `backdrop-filter` for
+ * layer-list stacking; blur is often non-functional in Chromium inside the transformed diagram.
+ */
+export function isFrostedBackdropBlurEnabled(node: {
+  backgroundStyle?: string;
+  frostedGlassQuality?: "simulated" | "backdrop";
+}): boolean {
+  if (node.backgroundStyle !== "frosted") return false;
+  return node.frostedGlassQuality !== "simulated";
 }
 
 export function getFrostedGlassSurfaceStyle(p: FrostedGlassParams): CSSProperties {
@@ -340,6 +415,26 @@ export function getFrostedGrainOverlayStyle(grainOpacity: number): CSSProperties
   };
 }
 
+/** Extra high-frequency speckle (same diffusion slider as coarse grain). */
+export function getFrostedFineGrainOverlayStyle(grainOpacity: number): CSSProperties {
+  if (!Number.isFinite(grainOpacity) || grainOpacity < 0.02) {
+    return { display: "none" };
+  }
+  const o = Math.min(1, grainOpacity * 0.88);
+  return {
+    position: "absolute",
+    inset: 0,
+    borderRadius: "inherit",
+    pointerEvents: "none",
+    zIndex: 1,
+    opacity: o,
+    backgroundImage: FROST_GRAIN_FINE_DATA_URL,
+    backgroundRepeat: "repeat",
+    backgroundSize: "48px 48px",
+    mixBlendMode: "soft-light",
+  };
+}
+
 // Get shape styling properties from node
 export const getShapeStyles = (node: DiagramNodeData & { width?: number; height?: number }) => {
   const nodeAny = node as any;
@@ -356,11 +451,13 @@ export const getShapeStyles = (node: DiagramNodeData & { width?: number; height?
   const roundedEdges = nodeAny.roundedEdges || false;
 
   const isFrosted = backgroundStyle === 'frosted';
+  const frostedForInlineStacking = isFrosted && nodeAny.frostedGlassQuality === "simulated";
   const frostedGlass = isFrosted
     ? getFrostedGlassParams(
         backgroundColor,
         nodeAny.frostedDiffusion as number | undefined,
-        nodeAny.frostedTransparency as number | undefined
+        nodeAny.frostedTransparency as number | undefined,
+        frostedForInlineStacking ? { forInlineStacking: true } : undefined
       )
     : null;
 

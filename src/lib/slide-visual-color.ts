@@ -6,6 +6,7 @@ const VISUAL_COLOR_KEYS = [
   'backgroundColors',
   'frostedDiffusion',
   'frostedTransparency',
+  'frostedGlassQuality',
   'gradientAngle',
   'borderColor',
   'borderColors',

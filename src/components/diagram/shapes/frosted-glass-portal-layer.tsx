@@ -8,6 +8,7 @@ import {
   getFrostedGlassBackdropLayerStyle,
   getFrostedGlassDropShadowLayerStyle,
   getFrostedGrainOverlayStyle,
+  getFrostedFineGrainOverlayStyle,
   getFrostedGlassTopEdgeHighlightStyle,
   getFrostedGlassLeftEdgeHighlightStyle,
 } from "./shape-utils";
@@ -140,6 +141,7 @@ export function FrostedGlassPortalLayer({
         aria-hidden
       >
         <div style={getFrostedGrainOverlayStyle(glass.grainOpacity)} aria-hidden />
+        <div style={getFrostedFineGrainOverlayStyle(glass.grainOpacity)} aria-hidden />
       </div>
       <div style={{ ...getFrostedGlassTopEdgeHighlightStyle(), ...clipStyle }} aria-hidden />
       <div style={{ ...getFrostedGlassLeftEdgeHighlightStyle(), ...clipStyle }} aria-hidden />

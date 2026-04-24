@@ -1,5 +1,20 @@
 # MEMORY.MD
 
+### 2026-04-24 – Frosted inline on SVG shapes: `filter` + `clip-path` ancestor
+**Symptom**: Tint + grain but **no** backdrop blur (sharp icon/text through the glass). **Causes**: (1) **`filter: var(--shape-shadow-drop)`** on **`ShapeWrapper`** root when **`useSvgShadow`** — `filter` creates a **backdrop root**, so child **`backdrop-filter`** does not sample the diagram. **Fix**: skip that root **`filter`** when **`isFrostedBg && !usePortalFrosted`** (glass stack already carries depth). (2) **`clip-path`** on the **frost stack wrapper** around **`backdrop-filter`** — Chromium often disables blur. **Fix**: **`frostedInlineOuterClipPath`** — no wrapper clip for **`inset(...)`** clips (rects); clip grain/rims/shadow only. **`polygon(...)`** keeps wrapper clip (geometry; blur may stay weaker — use viewport portal if needed).
+
+### 2026-04-24 – Frosted inline: isolation removed + remount key + lighter wash
+**`isolation: isolate`** on the frost stack **ancestor** could **trap `backdrop-filter`** (blur/tint barely react to **Diffusion**). Removed from **`shape-wrapper`** / **`uml-class`**. **`getFrostedInlineBackdropReactKey`** + **`Fragment` `key`** remounts backdrop layers when **`blurPx`/tint** change (Chromium often ignores in-place **`blur()`** updates). **`getFrostedGlassParams(..., { forInlineStacking })`** when **`frostedGlassQuality !== 'backdrop'`**: lower **fill** + **grain** so a working blur reads through; viewport portal keeps full-strength grain/fill. Dropped **`will-change: backdrop-filter`** on inline layers.
+
+### 2026-04-24 – Frosted inline (layer-order): stronger blur stack
+**`simulated`** mode uses **`getFrostedGlassInlineBackdropPrimaryStyle`** plus optional **`getFrostedGlassInlineBackdropSecondPassStyle`**. **No `clip-path` on the backdrop divs**. **`uml-class`**: **`overflow: visible`** when inline frosted. Portal path still uses **`getFrostedGlassBackdropLayerStyle`**.
+
+### 2026-04-24 – Frosted default: viewport portal (real blur)
+**`isFrostedBackdropBlurEnabled`**: **`true`** unless **`frostedGlassQuality === 'simulated'`** (omit/`backdrop` → portal). Inline blur inside **`data-diagram-layer` `transform`** usually **does not** sample the diagram — looks like tint + noise only. **Default / new frosted**: **`backdrop`** in **`visual-styling-panel`**. UI: **Viewport blur (real glass)** first; **Layer order** explicit opt-in.
+
+### 2026-04-24 – Frosted: layer-order vs viewport (`frostedGlassQuality`)
+**`simulated`**: **inline** `backdrop-filter` — **higher z-index** nodes stay **sharp**; blur often **fails** under pan/zoom. **`backdrop`** (default): viewport portal under **`#dw-frosted-root`**. **`getFrostedGlassParams(..., { forInlineStacking })`** only when **`quality === 'simulated'`**.
+
 ### 2026-04-24 – Frosted glass: reverted in-layer portal (backdrop invisible)
 Portaling frosted into **`[data-diagram-layer]`** (inside pan/zoom **`transform`**) made **`backdrop-filter`** show **no** glass (Chromium often fails to sample the backdrop there). Also, when **`canUseLayer && layerTarget`**, **`useLayoutEffect` skipped `ResizeObserver`**, so viewport fallback stopped updating. **Fix**: **`FrostedGlassPortalLayer`** is **viewport-only** again (**`position: fixed`**, **`#dw-frosted-root`** / **`body`**, **`getBoundingClientRect`**). Removed **`diagramLayerRef`** / **`frostedDiagramBox`** threading.
 

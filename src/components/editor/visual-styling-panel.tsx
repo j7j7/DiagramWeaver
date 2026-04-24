@@ -249,6 +249,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
         backgroundStyle: "frosted" as const,
         frostedDiffusion: styling.frostedDiffusion ?? 0.45,
         frostedTransparency: styling.frostedTransparency ?? 0.55,
+        frostedGlassQuality: styling.frostedGlassQuality ?? "backdrop",
         backgroundColor: (styling.backgroundColor as string | undefined) || "#f3f4f6",
       });
     } else {
@@ -519,8 +520,30 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                 {styling.backgroundStyle === 'frosted' && (
                   <div className="space-y-3 mb-2">
                     <p className="text-xs text-muted-foreground">
-                      Blurs the canvas behind the shape; tint uses the color below. Higher transparency = more of the content below shows through.
+                      <span className="font-medium text-foreground">Viewport blur</span> (default) uses a fixed portal so the glass blurs what is actually on screen.{" "}
+                      <span className="font-medium text-foreground">Layer order</span> draws blur on the shape so stacking matches the layer list, but inside a panned/zoomed canvas most browsers only show tint and noise — not a real frosted view of content below.
                     </p>
+                    <div className="space-y-1">
+                      <Label className="text-sm text-muted-foreground">Rendering</Label>
+                      <Select
+                        value={styling.frostedGlassQuality ?? "backdrop"}
+                        onValueChange={(v) =>
+                          handlePropertyChange("frostedGlassQuality", v as "simulated" | "backdrop", true)
+                        }
+                      >
+                        <SelectTrigger className="h-9 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="z-[70]">
+                          <SelectItem value="backdrop" className="text-sm">
+                            Viewport blur (real glass)
+                          </SelectItem>
+                          <SelectItem value="simulated" className="text-sm">
+                            Layer order (stacking only; weak blur)
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <div className="space-y-1">
                       <Label className="text-sm text-muted-foreground">Diffusion (blur strength)</Label>
                       <div className="flex items-center gap-3 pr-1">

@@ -1,14 +1,19 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { Fragment, useState, useRef, useEffect } from "react";
 import type { DiagramNodeData } from "@/lib/types";
 import { useSlideShapeShadowTransitionMode } from "@/components/diagram/slide-shape-shadow-transition-context";
 import {
-  getFrostedGlassSurfaceStyle,
+  getFrostedGlassDropShadowLayerStyle,
+  getFrostedGlassInlineBackdropPrimaryStyle,
+  getFrostedGlassInlineBackdropSecondPassStyle,
+  getFrostedInlineBackdropReactKey,
   getFrostedGrainOverlayStyle,
+  getFrostedFineGrainOverlayStyle,
   getFrostedGlassTopEdgeHighlightStyle,
   getFrostedGlassLeftEdgeHighlightStyle,
   getShapeStyles,
+  isFrostedBackdropBlurEnabled,
 } from "./shape-utils";
 import { FrostedGlassPortalLayer } from "./frosted-glass-portal-layer";
 import { getTextColorForBackground } from "./shape-utils";
@@ -110,7 +115,7 @@ export function UmlClassShape({
   const needsGradientBorderLayer = shouldUseGradientBorderLayer(borderImage, borderColors);
   const isFrostedBg = nodeAny.backgroundStyle === "frosted";
   const usePortalFrosted = Boolean(
-    isFrostedBg && styles.frostedGlass && typeof document !== "undefined"
+    isFrostedBg && styles.frostedGlass && isFrostedBackdropBlurEnabled(nodeAny) && typeof document !== "undefined"
   );
 
   const nameStyle = getCompartmentStyle(umlStyle?.name, fallbackColor);
@@ -171,6 +176,10 @@ export function UmlClassShape({
   const isPlaceholderAttrs = attributes.length === 0;
   const isPlaceholderMethods = methods.length === 0;
   const frostedLayoutSyncKey = `${node.x},${node.y},${width},${height},${nodeAny.rotation ?? 0}`;
+  const frostedInlineSecondPassStyle =
+    !usePortalFrosted && isFrostedBg && styles.frostedGlass
+      ? getFrostedGlassInlineBackdropSecondPassStyle(styles.frostedGlass)
+      : undefined;
 
   const Divider = () => (
     <div
@@ -195,9 +204,11 @@ export function UmlClassShape({
       ) : null}
       <div
         ref={frostedLayoutRef}
-        className="relative overflow-hidden flex flex-col w-full h-full"
+        className="relative flex flex-col w-full h-full"
         style={{
           boxSizing: "border-box",
+          /* Inline frosted: visible overflow helps Chromium sample content behind `backdrop-filter`. */
+          overflow: isFrostedBg && !usePortalFrosted ? "visible" : "hidden",
           borderWidth: !needsGradientBorderLayer ? styles.borderWidth : undefined,
           borderStyle: !needsGradientBorderLayer ? styles.borderStyle ?? "solid" : undefined,
           borderColor: !needsGradientBorderLayer ? (borderImage ? "transparent" : dividerColor) : undefined,
@@ -222,8 +233,27 @@ export function UmlClassShape({
             }}
             aria-hidden
           >
-            <div style={getFrostedGlassSurfaceStyle(styles.frostedGlass)} aria-hidden />
-            <div style={getFrostedGrainOverlayStyle(styles.frostedGlass.grainOpacity)} aria-hidden />
+            <div style={getFrostedGlassDropShadowLayerStyle(styles.frostedGlass)} aria-hidden />
+            <Fragment key={getFrostedInlineBackdropReactKey(styles.frostedGlass)}>
+              <div style={getFrostedGlassInlineBackdropPrimaryStyle(styles.frostedGlass)} aria-hidden />
+              {frostedInlineSecondPassStyle ? (
+                <div style={frostedInlineSecondPassStyle} aria-hidden />
+              ) : null}
+            </Fragment>
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                borderRadius: "inherit",
+                overflow: "hidden",
+                pointerEvents: "none",
+                zIndex: 2,
+              }}
+              aria-hidden
+            >
+              <div style={getFrostedGrainOverlayStyle(styles.frostedGlass.grainOpacity)} aria-hidden />
+              <div style={getFrostedFineGrainOverlayStyle(styles.frostedGlass.grainOpacity)} aria-hidden />
+            </div>
             <div style={getFrostedGlassTopEdgeHighlightStyle()} aria-hidden />
             <div style={getFrostedGlassLeftEdgeHighlightStyle()} aria-hidden />
           </div>

@@ -1,15 +1,20 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { Fragment, useRef } from "react";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { useSlideShapeShadowTransitionMode } from "@/components/diagram/slide-shape-shadow-transition-context";
 import { getNodeSizeMultiplier } from "@/lib/visual-styling";
 import {
-  getFrostedGlassSurfaceStyle,
+  getFrostedGlassDropShadowLayerStyle,
+  getFrostedGlassInlineBackdropPrimaryStyle,
+  getFrostedGlassInlineBackdropSecondPassStyle,
+  getFrostedInlineBackdropReactKey,
   getFrostedGrainOverlayStyle,
+  getFrostedFineGrainOverlayStyle,
   getFrostedGlassTopEdgeHighlightStyle,
   getFrostedGlassLeftEdgeHighlightStyle,
   getShapeStyles,
+  isFrostedBackdropBlurEnabled,
 } from "./shape-utils";
 import { FrostedGlassPortalLayer } from "./frosted-glass-portal-layer";
 import { ShapeTag } from "./shape-tag";
@@ -74,6 +79,26 @@ function shouldUseGradientBorderLayer(
   borderColors: string[] | undefined
 ): boolean {
   return !shouldSkipStyling && !!(borderImage && borderColors);
+}
+
+/** `filter` on an ancestor creates a backdrop root — inline `backdrop-filter` then won’t blur the diagram. */
+function shouldSuppressSvgDropShadowFilterForInlineFrosted(
+  isFrostedBg: boolean,
+  usePortalFrosted: boolean
+): boolean {
+  return isFrostedBg && !usePortalFrosted;
+}
+
+/**
+ * Clipping the **ancestor** of `backdrop-filter` often disables real blur in Chromium (tint/grain only).
+ * For SVG rects we use `inset(...)` — omit that wrapper clip and clip grain/rims/shadow only.
+ * Keep wrapper clip for `polygon(...)` so geometry stays roughly aligned (blur may stay weak there).
+ */
+function frostedInlineOuterClipPath(frostedGlassClipPath: string | undefined): string | undefined {
+  if (!frostedGlassClipPath) return undefined;
+  const s = frostedGlassClipPath.trimStart().toLowerCase();
+  if (s.startsWith("inset(")) return undefined;
+  return frostedGlassClipPath;
 }
 
 export function ShapeWrapper({
@@ -147,16 +172,23 @@ export function ShapeWrapper({
   // Frosted glass is a separate layer (inline or viewport portal). SVG shapes skip CSS wrapper
   // fill but still use `backgroundStyle: 'frosted'` + transparent SVG fill — must not disable glass here.
   const isFrostedBg = nodeAny.backgroundStyle === "frosted";
-  const usePortalFrosted =
-    Boolean(
-      isFrostedBg &&
-        styles.frostedGlass &&
-        useFrostedGlassViewportPortal &&
-        typeof document !== "undefined"
-    );
+  /** `backdrop` quality: viewport portal. Otherwise: inline `backdrop-filter` (correct stacking vs nodes above). */
+  const usePortalFrosted = Boolean(
+    isFrostedBg &&
+      styles.frostedGlass &&
+      isFrostedBackdropBlurEnabled(node) &&
+      useFrostedGlassViewportPortal &&
+      typeof document !== "undefined"
+  );
   const frostedBorderRadius = calculatedBorderRadius ?? "0px";
   /** Portal uses getBoundingClientRect; position/rotation changes do not trigger ResizeObserver. */
   const frostedLayoutSyncKey = `${node.x},${node.y},${width},${height},${nodeAny.rotation ?? 0},${frostedGlassClipPath ?? ""}`;
+  const frostedInlineSecondPassStyle =
+    !usePortalFrosted && isFrostedBg && styles.frostedGlass
+      ? getFrostedGlassInlineBackdropSecondPassStyle(styles.frostedGlass)
+      : undefined;
+  const suppressSvgRootFilter = shouldSuppressSvgDropShadowFilterForInlineFrosted(isFrostedBg, usePortalFrosted);
+  const frostedOuterClip = frostedInlineOuterClipPath(frostedGlassClipPath);
 
   return (
     <div
@@ -174,9 +206,15 @@ export function ShapeWrapper({
         ...(styles.shadow && !suppressLayerShadow && !useSvgShadow && !needsGradientBorderLayer ? {
           boxShadow: 'var(--shape-shadow)'
         } : {}),
-        ...(styles.shadow && !suppressLayerShadow && useSvgShadow && !needsGradientBorderLayer ? {
-          filter: 'var(--shape-shadow-drop)'
-        } : {})
+        ...(styles.shadow &&
+        !suppressLayerShadow &&
+        useSvgShadow &&
+        !needsGradientBorderLayer &&
+        !suppressSvgRootFilter
+          ? {
+              filter: "var(--shape-shadow-drop)",
+            }
+          : {})
       }}
     >
       {needsGradientBorderLayer ? (
@@ -209,7 +247,8 @@ export function ShapeWrapper({
           width: needsGradientBorderLayer ? `calc(100% - ${styles.borderWidth})` : '100%',
           height: needsGradientBorderLayer ? `calc(100% - ${styles.borderWidth})` : '100%',
           margin: needsGradientBorderLayer ? `calc(${styles.borderWidth} / 2)` : 0,
-          ...(isFrostedBg ? { position: "relative", overflow: "hidden" } : {}),
+          /* `overflow: visible` helps Chromium sample siblings behind this shape for inline `backdrop-filter`. */
+          ...(isFrostedBg ? { position: "relative", overflow: "visible" } : {}),
           ...(styles.shadow && !suppressLayerShadow && !useSvgShadow && needsGradientBorderLayer ? {
             boxShadow: 'var(--shape-shadow)'
           } : {}),
@@ -227,20 +266,67 @@ export function ShapeWrapper({
                 inset: 0,
                 borderRadius: "inherit",
                 pointerEvents: "none",
-                ...(frostedGlassClipPath ? { clipPath: frostedGlassClipPath } : {}),
+                /* No `isolation: isolate` here — it can trap `backdrop-filter` so the blur won’t see the diagram. */
+                ...(frostedOuterClip
+                  ? { clipPath: frostedOuterClip, WebkitClipPath: frostedOuterClip }
+                  : {}),
               }}
               aria-hidden
             >
-              <div style={getFrostedGlassSurfaceStyle(styles.frostedGlass)} aria-hidden />
               <div
                 style={{
-                  ...getFrostedGrainOverlayStyle(styles.frostedGlass.grainOpacity),
-                  ...(frostedGlassClipPath ? { clipPath: frostedGlassClipPath } : {}),
+                  ...getFrostedGlassDropShadowLayerStyle(styles.frostedGlass),
+                  ...(frostedGlassClipPath ? { clipPath: frostedGlassClipPath, WebkitClipPath: frostedGlassClipPath } : {}),
                 }}
                 aria-hidden
               />
-              <div style={getFrostedGlassTopEdgeHighlightStyle()} aria-hidden />
-              <div style={getFrostedGlassLeftEdgeHighlightStyle()} aria-hidden />
+              <Fragment key={getFrostedInlineBackdropReactKey(styles.frostedGlass)}>
+                <div style={getFrostedGlassInlineBackdropPrimaryStyle(styles.frostedGlass)} aria-hidden />
+                {frostedInlineSecondPassStyle ? (
+                  <div style={frostedInlineSecondPassStyle} aria-hidden />
+                ) : null}
+              </Fragment>
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  borderRadius: "inherit",
+                  overflow: "hidden",
+                  pointerEvents: "none",
+                  zIndex: 2,
+                  ...(frostedGlassClipPath ? { clipPath: frostedGlassClipPath, WebkitClipPath: frostedGlassClipPath } : {}),
+                }}
+                aria-hidden
+              >
+                <div
+                  style={{
+                    ...getFrostedGrainOverlayStyle(styles.frostedGlass.grainOpacity),
+                    ...(frostedGlassClipPath ? { clipPath: frostedGlassClipPath, WebkitClipPath: frostedGlassClipPath } : {}),
+                  }}
+                  aria-hidden
+                />
+                <div
+                  style={{
+                    ...getFrostedFineGrainOverlayStyle(styles.frostedGlass.grainOpacity),
+                    ...(frostedGlassClipPath ? { clipPath: frostedGlassClipPath, WebkitClipPath: frostedGlassClipPath } : {}),
+                  }}
+                  aria-hidden
+                />
+              </div>
+              <div
+                style={{
+                  ...getFrostedGlassTopEdgeHighlightStyle(),
+                  ...(frostedGlassClipPath ? { clipPath: frostedGlassClipPath, WebkitClipPath: frostedGlassClipPath } : {}),
+                }}
+                aria-hidden
+              />
+              <div
+                style={{
+                  ...getFrostedGlassLeftEdgeHighlightStyle(),
+                  ...(frostedGlassClipPath ? { clipPath: frostedGlassClipPath, WebkitClipPath: frostedGlassClipPath } : {}),
+                }}
+                aria-hidden
+              />
             </div>
           </>
         ) : null}
