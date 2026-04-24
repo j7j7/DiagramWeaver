@@ -1,5 +1,8 @@
 # MEMORY.MD
 
+### 2026-04-24 – Presentation play mode: bottom toolbar clickable
+**`presentation-player`**: Docked playback bar used **`absolute bottom-0`** while **`ViewerCanvas`** was **`h-full`**, so the pan/zoom layer (incl. **`transform`**) overlapped the bar — **grab cursor + pan** stole clicks. **Fix**: outer shell **`flex flex-col`**; slide area **`min-h-0 flex-1`**; docked bar **`shrink-0 w-full`** (in flow, no overlap). Image / empty states centered in the **`flex-1`** region. Floating bar unchanged (**`absolute z-50`**).
+
 ### 2026-04-24 – Stacking order list (z-order panel)
 Draggable **Stacking order** modal (`z-order-list-modal.tsx`) lists canvas items **front → back** (matches `computeConnectionSlots` / `getBackToForwardItemOrder`). Reorder **within the same layer (or zone block)** via react-dnd; **Shift** multi-select. Updates **`nodes`/`zones` array order** through `applyFrontToBackOrderToDiagramData`; history debounces like other edits. Open from **Layout** menu, **toolbar ListOrdered** button, or **context → Render order → Stacking order list…** (passes cursor position + item id). **`wheelZoomSuppressed`** on editor canvas while open. List selection uses **`selectedItemIds` + `handleBatchSelect`**: row clicks / shift+click update canvas selection; opening from context **selects** that item; canvas changes reflect in the list highlights.
 

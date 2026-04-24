@@ -349,7 +349,7 @@ export function PresentationPlayer({
 
   const toolbarShellClassName = toolbarFloating
     ? 'absolute z-50 rounded-lg border border-border bg-card p-1.5 text-foreground shadow-2xl backdrop-blur-sm'
-    : 'absolute bottom-0 left-0 right-0 border-t border-border bg-card/95 p-1.5 text-foreground backdrop-blur-sm';
+    : 'shrink-0 w-full border-t border-border bg-card/95 p-1.5 text-foreground backdrop-blur-sm';
 
   const toolbarShellStyle = toolbarFloating
     ? ({ left: toolbarPosition.x, top: toolbarPosition.y, width: 'min(860px, calc(100vw - 16px))' } as React.CSSProperties)
@@ -377,12 +377,10 @@ export function PresentationPlayer({
         >
           <X className="h-4 w-4 opacity-90" strokeWidth={2.25} />
         </button>
-        <div className="relative flex h-full w-full items-center justify-center bg-black">
+        <div className="relative flex h-full w-full flex-col bg-black">
           {currentSlide ? (
             renderedDiagram ? (
-              <div
-                className="h-full w-full"
-              >
+              <div className="min-h-0 flex-1">
                 <DndProvider backend={HTML5Backend}>
                   <ViewerCanvas
                     diagramData={slideTransition.animatingDiagramData || renderedDiagram}
@@ -403,15 +401,19 @@ export function PresentationPlayer({
                 </DndProvider>
               </div>
             ) : (
-              <img
-                key={currentSlide.id}
-                src={currentSlide.snapshotImage || SLIDE_IMAGE_PLACEHOLDER}
-                alt={currentSlide.title || `Slide ${safeIndex + 1}`}
-                className="max-h-full max-w-full object-contain"
-              />
+              <div className="flex min-h-0 flex-1 items-center justify-center">
+                <img
+                  key={currentSlide.id}
+                  src={currentSlide.snapshotImage || SLIDE_IMAGE_PLACEHOLDER}
+                  alt={currentSlide.title || `Slide ${safeIndex + 1}`}
+                  className="max-h-full max-w-full object-contain"
+                />
+              </div>
             )
           ) : (
-            <div className="text-sm text-muted-foreground">No slides to present.</div>
+            <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-muted-foreground">
+              No slides to present.
+            </div>
           )}
 
           {showPlaybackToolbar && (panelHidden ? (
