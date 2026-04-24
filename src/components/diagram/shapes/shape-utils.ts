@@ -414,6 +414,47 @@ export const parsePoints = (points: string): [number, number][] => {
   });
 };
 
+/** Parse SVG `viewBox="minX minY width height"`. */
+export function parseViewBoxString(viewBox: string): { vbX: number; vbY: number; vbW: number; vbH: number } {
+  const p = viewBox
+    .trim()
+    .split(/[\s,]+/)
+    .map((s) => parseFloat(s));
+  return {
+    vbX: p[0] ?? 0,
+    vbY: p[1] ?? 0,
+    vbW: p[2] ?? 0,
+    vbH: p[3] ?? 0,
+  };
+}
+
+/**
+ * CSS `clip-path: polygon(...)` as % of the shape box, from SVG `transformedPoints` in viewBox space.
+ * Matches `preserveAspectRatio="none"` SVG layout (fills width×height).
+ */
+export function getFrostedPolygonClipPathCss(transformedPoints: string, viewBox: string): string | undefined {
+  const { vbX, vbY, vbW, vbH } = parseViewBoxString(viewBox);
+  if (vbW <= 0 || vbH <= 0) return undefined;
+  const coords = parsePoints(transformedPoints);
+  if (coords.length < 3) return undefined;
+  const pairs = coords.map(([x, y]) => {
+    const pctX = ((x - vbX) / vbW) * 100;
+    const pctY = ((y - vbY) / vbH) * 100;
+    return `${pctX}% ${pctY}%`;
+  });
+  return `polygon(${pairs.join(", ")})`;
+}
+
+/** Use with SvgShapeBase polygon shapes (`preserveAspectRatio` default `none`). */
+export function frostedPolygonClipForSvgPolygon(
+  backgroundStyle: string | undefined,
+  transformedPoints: string,
+  viewBox: string
+): string | undefined {
+  if (backgroundStyle !== "frosted") return undefined;
+  return getFrostedPolygonClipPathCss(transformedPoints, viewBox);
+}
+
 /**
  * Compute viewBox and transformed points so the shape fills its container.
  * Without this, shapes like kite/triangle use oversized viewBoxes which leave

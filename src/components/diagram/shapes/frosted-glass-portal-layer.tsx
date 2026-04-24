@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useLayoutEffect, useState } from "react";
+import type { CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import type { FrostedGlassParams } from "./shape-utils";
 import {
@@ -25,6 +26,7 @@ type FrostedGlassPortalLayerProps = {
   zIndex: number;
   targetRef: React.RefObject<HTMLElement | null>;
   borderRadius: string;
+  /** CSS `clip-path` basic shape (`inset(...)`, `polygon(...)`, …) aligned to the SVG fill. */
   clipPath?: string;
   panZoom?: { x: number; y: number; k: number };
   canvasContainerRef?: React.RefObject<HTMLElement | null>;
@@ -44,7 +46,7 @@ export function FrostedGlassPortalLayer({
   zIndex,
   targetRef,
   borderRadius,
-  clipPath: _clipPathIgnoredForBodyPortal,
+  clipPath: clipPathCss,
   panZoom,
   canvasContainerRef,
   layoutSyncKey,
@@ -97,6 +99,10 @@ export function FrostedGlassPortalLayer({
       : null;
   if (!mount) return null;
 
+  const clipStyle: CSSProperties | undefined = clipPathCss
+    ? { clipPath: clipPathCss, WebkitClipPath: clipPathCss }
+    : undefined;
+
   return createPortal(
     <div
       data-dw-frosted-glass-portal
@@ -107,7 +113,7 @@ export function FrostedGlassPortalLayer({
         width: box.width,
         height: box.height,
         zIndex: z,
-        borderRadius,
+        borderRadius: clipPathCss ? 0 : borderRadius,
         pointerEvents: "none",
       }}
     >
@@ -115,9 +121,10 @@ export function FrostedGlassPortalLayer({
         Shadow and backdrop are split: Chromium often disables blur when `box-shadow` (esp. inset)
         shares the same element as `backdrop-filter`. Mount under `#dw-frosted-root` + no `overflow`
         on `body` so `body` is not a backdrop-root that blocks sampling.
+        Apply the same clip-path on each layer so triangles/polygons match the SVG fill.
       */}
-      <div style={getFrostedGlassDropShadowLayerStyle(glass)} aria-hidden />
-      <div key={surfaceKey} style={getFrostedGlassBackdropLayerStyle(glass)} aria-hidden />
+      <div style={{ ...getFrostedGlassDropShadowLayerStyle(glass), ...clipStyle }} aria-hidden />
+      <div key={surfaceKey} style={{ ...getFrostedGlassBackdropLayerStyle(glass), ...clipStyle }} aria-hidden />
       <div
         style={{
           position: "absolute",
@@ -126,13 +133,14 @@ export function FrostedGlassPortalLayer({
           overflow: "hidden",
           pointerEvents: "none",
           zIndex: 2,
+          ...clipStyle,
         }}
         aria-hidden
       >
         <div style={getFrostedGrainOverlayStyle(glass.grainOpacity)} aria-hidden />
       </div>
-      <div style={getFrostedGlassTopEdgeHighlightStyle()} aria-hidden />
-      <div style={getFrostedGlassLeftEdgeHighlightStyle()} aria-hidden />
+      <div style={{ ...getFrostedGlassTopEdgeHighlightStyle(), ...clipStyle }} aria-hidden />
+      <div style={{ ...getFrostedGlassLeftEdgeHighlightStyle(), ...clipStyle }} aria-hidden />
     </div>,
     mount
   );

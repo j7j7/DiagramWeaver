@@ -4,7 +4,7 @@ import React from "react";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { getNodeSizeMultiplier } from "@/lib/visual-styling";
 import { ShapeWrapper } from "./shape-wrapper";
-import { getShapeStyles } from "./shape-utils";
+import { getShapeStyles, parseViewBoxString } from "./shape-utils";
 
 interface SvgShapeBaseProps {
   node: DiagramNodeData & { width?: number; height?: number };
@@ -40,23 +40,15 @@ interface SvgShapeBaseProps {
    * so it matches a transparent SVG fill. Omit for full bounding-box glass (e.g. complex polygons).
    */
   frostedClipRectInViewBox?: { x: number; y: number; w: number; h: number; rx?: number; ry?: number };
+  /**
+   * When frosted, optional CSS clip-path basic shape (e.g. `polygon(...)`) for non-rect fills.
+   * Takes precedence over `frostedClipRectInViewBox` when both are set.
+   */
+  frostedClipPathOverride?: string;
   /** Stacking for viewport-portal frosted glass (should match the diagram node). */
   frostedGlassZIndex?: number;
   frostedPanZoom?: { x: number; y: number; k: number };
   frostedCanvasRef?: React.RefObject<HTMLElement | null>;
-}
-
-function parseViewBoxSize(viewBox: string): { vbX: number; vbY: number; vbW: number; vbH: number } {
-  const p = viewBox
-    .trim()
-    .split(/[\s,]+/)
-    .map((s) => parseFloat(s));
-  return {
-    vbX: p[0] ?? 0,
-    vbY: p[1] ?? 0,
-    vbW: p[2] ?? 0,
-    vbH: p[3] ?? 0,
-  };
 }
 
 export function SvgShapeBase({
@@ -72,6 +64,7 @@ export function SvgShapeBase({
   omitShapeText,
   svgOverflowVisible = false,
   frostedClipRectInViewBox,
+  frostedClipPathOverride,
   frostedGlassZIndex = 2,
   frostedPanZoom,
   frostedCanvasRef,
@@ -89,8 +82,10 @@ export function SvgShapeBase({
     slideColorTransition !== undefined && slideColorTransition !== "none" ? slideColorTransition : undefined;
 
   let frostedGlassClipPath: string | undefined;
-  if (nodeAny.backgroundStyle === "frosted" && frostedClipRectInViewBox) {
-    const { vbX, vbY, vbW, vbH } = parseViewBoxSize(viewBox);
+  if (nodeAny.backgroundStyle === "frosted" && frostedClipPathOverride) {
+    frostedGlassClipPath = frostedClipPathOverride;
+  } else if (nodeAny.backgroundStyle === "frosted" && frostedClipRectInViewBox) {
+    const { vbX, vbY, vbW, vbH } = parseViewBoxString(viewBox);
     if (vbW > 0 && vbH > 0) {
       const r = frostedClipRectInViewBox;
       const t = ((r.y - vbY) / vbH) * 100;

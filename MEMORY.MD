@@ -1,5 +1,8 @@
 # MEMORY.MD
 
+### 2026-04-24 – Frosted glass: polygon / triangle clip (viewport portal)
+Triangle (and other **`getPolygonViewBoxAndPoints`** SVG shapes) had frosted as a **bounding rect** because the body portal ignored **`clipPath`**. **Fix**: **`getFrostedPolygonClipPathCss`** + **`frostedPolygonClipForSvgPolygon`** in **`shape-utils`** build **`polygon(...% )`** from **`transformedPoints`** + **`viewBox`**; **`SvgShapeBase`** accepts **`frostedClipPathOverride`** (overrides inset rect); **`FrostedGlassPortalLayer`** applies the same **`clipPath` / `-webkit-clip-path`** on shadow, backdrop, grain, and edge layers; **`layoutSyncKey`** includes **`frostedGlassClipPath`**. Rounded polygon fill still uses a **sharp** polygon clip (minor corner mismatch).
+
 ### 2026-04-24 – Frosted portal: re-measure after drag/move
 **`ResizeObserver`** on the glass target does not run when only **`left`/`top`** (node **`x`/`y`**) changes. **`FrostedGlassPortalLayer`** now takes **`layoutSyncKey`** (from **`node.x`**, **`y`**, rendered **`width`/`height`**, **`rotation`**) in **`useLayoutEffect`** deps; **`shape-wrapper`** and **`uml-class`** pass it.
 

@@ -156,7 +156,7 @@ export function ShapeWrapper({
     );
   const frostedBorderRadius = calculatedBorderRadius ?? "0px";
   /** Portal uses getBoundingClientRect; position/rotation changes do not trigger ResizeObserver. */
-  const frostedLayoutSyncKey = `${node.x},${node.y},${width},${height},${nodeAny.rotation ?? 0}`;
+  const frostedLayoutSyncKey = `${node.x},${node.y},${width},${height},${nodeAny.rotation ?? 0},${frostedGlassClipPath ?? ""}`;
 
   return (
     <div
