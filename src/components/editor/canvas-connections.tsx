@@ -778,6 +778,14 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
           onClick: (connection: DiagramConnectionData, event: React.MouseEvent) => {
             closeContextMenu();
             if (simulationModeEnabled) {
+              const isAdditiveSelection = event.shiftKey || event.ctrlKey || event.metaKey;
+              if (isAdditiveSelection && onItemSelect) {
+                onItemSelect({
+                  ...connection,
+                  itemType: 'edge',
+                  id: edgeId,
+                }, true);
+              }
               onSimulationElementPrimaryClick?.(event, edgeId);
               return;
             }
