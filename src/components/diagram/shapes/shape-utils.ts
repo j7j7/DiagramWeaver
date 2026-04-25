@@ -518,8 +518,9 @@ export function getFrostedFineGrainOverlayStyle(grainOpacity: number): CSSProper
 }
 
 /**
- * Smooth Perlin-style (`fractalNoise`) background texture; 0 = off, 10 = strong.
- * Render **before** speckle grain so fine grain still reads on top.
+ * Smooth Perlin-style (`fractalNoise`) luminance texture; 0 = off, 10 = strong.
+ * **`luminosity`**: reuses the frosted **backdrop** hue/saturation; only the noise’s **luminance** adds variation (no extra tint color from the SVG).
+ * Render before speckle grain.
  */
 export function getFrostedPerlinNoiseOverlayStyle(level0to10: number): CSSProperties {
   const n = clampFrostedPerlin10(level0to10);
@@ -540,7 +541,7 @@ export function getFrostedPerlinNoiseOverlayStyle(level0to10: number): CSSProper
     /** Pixel-perfect repeat: size must match {@link FROST_PERLIN_TILE_PX} / intrinsic SVG (see {@link FROST_PERLIN_DATA_URL}). */
     backgroundSize: `${px}px ${px}px`,
     backgroundPosition: "0 0",
-    mixBlendMode: "soft-light",
+    mixBlendMode: "luminosity",
   };
 }
 

@@ -1,5 +1,8 @@
 # MEMORY.MD
 
+### 2026-04-25 – Frosted Perlin: `luminosity` (no added hue)
+**`getFrostedPerlinNoiseOverlayStyle`**: **`mixBlendMode: "luminosity"`** so the `feTurbulence` tile only supplies **luminance** variation; **hue/saturation** follow the existing frosted stack (tint + backdrop), not colored noise. Replaces **`soft-light`**, which re-tinted the glass.
+
 ### 2026-04-25 – PNG export: frosted underlay + non-rect `clip-path`
 **`injectFrostedBlurredUnderlays`**: Injected **`data-frosted-export-blurred-underlay`** was a full **bbox** image (no clip), so triangles/polygons looked like **rects** in PNG. **`shape-wrapper`**: **`data-frosted-clip-path={frostedGlassClipPath}`** on **`data-frosted-glass-stack`**. **html-to-image**: copy **`clip-path` / `-webkit-clip-path`** to the underlay (same as live glass layers). UML keeps no attribute (rectangular).
 
