@@ -186,7 +186,14 @@ export type FrostedGlassParams = {
   glassBoxShadow: string;
   /** Grain / noise overlay opacity (0–1), scales with diffusion */
   grainOpacity: number;
+  /** Perlin-style smooth noise 0=off, 10=max (independent of diffusion grain). */
+  frostedPerlinNoise: number;
 };
+
+function clampFrostedPerlin10(n: number | undefined): number {
+  if (n === undefined || !Number.isFinite(n)) return 0;
+  return Math.min(10, Math.max(0, n));
+}
 
 /** Tiled fractal noise for frosted-glass grain (SVG filter). */
 const FROST_GRAIN_DATA_URL = `url("data:image/svg+xml,${encodeURIComponent(
@@ -208,15 +215,33 @@ const FROST_GRAIN_FINE_DATA_URL = `url("data:image/svg+xml,${encodeURIComponent(
     '</svg>'
 )}")`;
 
+/** Must match `background-size` 1:1 (no extra scaling) so `repeat` does not re-interpolate tile edges. */
+const FROST_PERLIN_TILE_PX = 256;
+
+/**
+ * Billowy Perlin-style texture (`fractalNoise` + `stitchTiles="stitch"`).
+ * Filter region = tile bounds; `userSpaceOnUse` + `primitiveUnits="userSpaceOnUse"` so edge stitching
+ * lines up with the repeated bitmap (oversized filter regions and arbitrary `background-size` caused seams).
+ */
+const FROST_PERLIN_DATA_URL = `url("data:image/svg+xml,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">' +
+    '<filter id="fp" x="0" y="0" width="256" height="256" filterUnits="userSpaceOnUse" primitiveUnits="userSpaceOnUse">' +
+    '<feTurbulence type="fractalNoise" baseFrequency="0.024 0.032" numOctaves="4" seed="59" stitchTiles="stitch"/>' +
+    '</filter>' +
+    '<rect x="0" y="0" width="256" height="256" filter="url(#fp)"/>' +
+    '</svg>'
+)}")`;
+
 /**
  * `frostedTransparency`: 0 = least see-through, 1 = most see-through (clearer view of content below).
  * `frostedDiffusion`: 0 = sharp, 1 = strong blur.
+ * `frostedPerlinNoise`: 0–10, smooth Perlin-style overlay (independent of diffusion speckle).
  */
 export function getFrostedGlassParams(
   baseColor: string | undefined,
   frostedDiffusion: number | undefined,
   frostedTransparency: number | undefined,
-  options?: { forInlineStacking?: boolean }
+  options?: { forInlineStacking?: boolean; frostedPerlinNoise?: number }
 ): FrostedGlassParams {
   const d = clamp01(frostedDiffusion, DEFAULT_FROSTED_DIFFUSION);
   const t = clamp01(frostedTransparency, DEFAULT_FROSTED_TRANSPARENCY);
@@ -256,6 +281,7 @@ export function getFrostedGlassParams(
     fillRgba: hexToRgbaString(baseColor, fillAlpha),
     glassBoxShadow,
     grainOpacity,
+    frostedPerlinNoise: clampFrostedPerlin10(options?.frostedPerlinNoise),
   };
 }
 
@@ -491,6 +517,33 @@ export function getFrostedFineGrainOverlayStyle(grainOpacity: number): CSSProper
   };
 }
 
+/**
+ * Smooth Perlin-style (`fractalNoise`) background texture; 0 = off, 10 = strong.
+ * Render **before** speckle grain so fine grain still reads on top.
+ */
+export function getFrostedPerlinNoiseOverlayStyle(level0to10: number): CSSProperties {
+  const n = clampFrostedPerlin10(level0to10);
+  if (n < 0.04) {
+    return { display: "none" };
+  }
+  const t = n / 10;
+  const px = FROST_PERLIN_TILE_PX;
+  return {
+    position: "absolute",
+    inset: 0,
+    borderRadius: "inherit",
+    pointerEvents: "none",
+    zIndex: 0,
+    opacity: Math.min(0.52, 0.05 + t * 0.47),
+    backgroundImage: FROST_PERLIN_DATA_URL,
+    backgroundRepeat: "repeat",
+    /** Pixel-perfect repeat: size must match {@link FROST_PERLIN_TILE_PX} / intrinsic SVG (see {@link FROST_PERLIN_DATA_URL}). */
+    backgroundSize: `${px}px ${px}px`,
+    backgroundPosition: "0 0",
+    mixBlendMode: "soft-light",
+  };
+}
+
 // Get shape styling properties from node
 export const getShapeStyles = (node: DiagramNodeData & { width?: number; height?: number }) => {
   const nodeAny = node as any;
@@ -512,7 +565,10 @@ export const getShapeStyles = (node: DiagramNodeData & { width?: number; height?
         backgroundColor,
         nodeAny.frostedDiffusion as number | undefined,
         nodeAny.frostedTransparency as number | undefined,
-        { forInlineStacking: true }
+        {
+          forInlineStacking: true,
+          frostedPerlinNoise: nodeAny.frostedPerlinNoise as number | undefined,
+        }
       )
     : null;
 

@@ -13,6 +13,8 @@ export interface VisualStyling {
   frostedDiffusion?: number;
   /** `frosted`: 0 = fully transparent, 1 = more opaque. */
   frostedTransparency?: number;
+  /** `frosted`: Perlin-style noise 0=off, 10=strong. */
+  frostedPerlinNoise?: number;
   gradientAngle?: number; // Background gradient angle in degrees
   borderGradientAngle?: number; // Border gradient angle in degrees
   shadow?: boolean;
@@ -232,6 +234,7 @@ export function extractVisualStylingFromNode(node: DiagramNodeData | DiagramNode
     headingBackgroundStyle: (node as any).headingBackgroundStyle,
     frostedDiffusion: (node as any).frostedDiffusion,
     frostedTransparency: (node as any).frostedTransparency,
+    frostedPerlinNoise: (node as any).frostedPerlinNoise,
     iconColor: (node as DiagramNodeData).iconColor,
     noIconBackground: (node as any).noIconBackground,
     nodeSize: (node as any).nodeSize,
@@ -271,6 +274,7 @@ export function extractVisualStylingFromGroup(group: DiagramGroupData | DiagramG
     backgroundColors: group.backgroundColors,
     frostedDiffusion: (group as any).frostedDiffusion,
     frostedTransparency: (group as any).frostedTransparency,
+    frostedPerlinNoise: (group as any).frostedPerlinNoise,
     gradientAngle: group.gradientAngle,
     borderGradientAngle: group.borderGradientAngle,
     shadow: group.shadow,
@@ -308,6 +312,7 @@ export function applyVisualStylingToNode(
         : (node as any).headingBackgroundStyle,
     frostedDiffusion: styling.frostedDiffusion !== undefined ? styling.frostedDiffusion : (node as any).frostedDiffusion,
     frostedTransparency: styling.frostedTransparency !== undefined ? styling.frostedTransparency : (node as any).frostedTransparency,
+    frostedPerlinNoise: styling.frostedPerlinNoise !== undefined ? styling.frostedPerlinNoise : (node as any).frostedPerlinNoise,
     iconColor: styling.iconColor !== undefined ? styling.iconColor : (node as DiagramNodeData).iconColor,
     noIconBackground: styling.noIconBackground !== undefined ? styling.noIconBackground : (node as any).noIconBackground,
     nodeSize: styling.nodeSize !== undefined ? styling.nodeSize : (node as any).nodeSize,
@@ -348,6 +353,7 @@ export function applyVisualStylingToGroup(
     backgroundColors: styling.backgroundColors ?? group.backgroundColors,
     frostedDiffusion: styling.frostedDiffusion !== undefined ? styling.frostedDiffusion : (group as any).frostedDiffusion,
     frostedTransparency: styling.frostedTransparency !== undefined ? styling.frostedTransparency : (group as any).frostedTransparency,
+    frostedPerlinNoise: styling.frostedPerlinNoise !== undefined ? styling.frostedPerlinNoise : (group as any).frostedPerlinNoise,
     gradientAngle: styling.gradientAngle ?? group.gradientAngle,
     borderGradientAngle: styling.borderGradientAngle ?? group.borderGradientAngle ?? group.gradientAngle,
     shadow: styling.shadow ?? group.shadow,

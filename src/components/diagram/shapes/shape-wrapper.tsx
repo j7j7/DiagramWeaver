@@ -13,6 +13,7 @@ import {
   getFrostedBackdropLayerClipStyle,
   getFrostedGrainOverlayStyle,
   getFrostedFineGrainOverlayStyle,
+  getFrostedPerlinNoiseOverlayStyle,
   getFrostedGlassTopEdgeHighlightStyle,
   getFrostedGlassLeftEdgeHighlightStyle,
   getFrostedGlassExportBackdropPrimaryFallbackColor,
@@ -222,6 +223,7 @@ export function ShapeWrapper({
           <>
             <div
               data-frosted-glass-stack=""
+              data-frosted-clip-path={frostedGlassClipPath || undefined}
               data-frosted-export-blur={String(getFrostedGlassExportRasterStackBlurPx(styles.frostedGlass))}
               data-frosted-export-saturate={String(
                 getFrostedGlassExportRasterBackdropSaturate(styles.frostedGlass)
@@ -286,6 +288,13 @@ export function ShapeWrapper({
                 }}
                 aria-hidden
               >
+                <div
+                  style={{
+                    ...getFrostedPerlinNoiseOverlayStyle(styles.frostedGlass.frostedPerlinNoise),
+                    ...(frostedGlassClipPath ? { clipPath: frostedGlassClipPath, WebkitClipPath: frostedGlassClipPath } : {}),
+                  }}
+                  aria-hidden
+                />
                 <div
                   style={{
                     ...getFrostedGrainOverlayStyle(styles.frostedGlass.grainOpacity),

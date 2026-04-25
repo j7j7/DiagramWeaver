@@ -1,5 +1,14 @@
 # MEMORY.MD
 
+### 2026-04-25 – PNG export: frosted underlay + non-rect `clip-path`
+**`injectFrostedBlurredUnderlays`**: Injected **`data-frosted-export-blurred-underlay`** was a full **bbox** image (no clip), so triangles/polygons looked like **rects** in PNG. **`shape-wrapper`**: **`data-frosted-clip-path={frostedGlassClipPath}`** on **`data-frosted-glass-stack`**. **html-to-image**: copy **`clip-path` / `-webkit-clip-path`** to the underlay (same as live glass layers). UML keeps no attribute (rectangular).
+
+### 2026-04-25 – Frosted Perlin: seamless tile
+**`FROST_PERLIN`**: `feTurbulence` filter region **`0,0,256,256`** **`userSpaceOnUse`** + **`primitiveUnits="userSpaceOnUse"`** (no negative overflow); **`stitchTiles="stitch"`**. **`background-size` fixed `256px`** to match intrinsic SVG—removed scaled **`backgroundSize`** to kill repeat seams from resampling.
+
+### 2026-04-25 – Frosted: Perlin noise slider (0–10)
+**`frostedPerlinNoise`**: 0=off, 10=strong; zod/schema/types, **`nested-hierarchy`**, **`VisualStyling`**, **`slide-visual-color`**. **`getFrostedGlassParams`**: `frostedPerlinNoise` in options → **`FrostedGlassParams.frostedPerlinNoise`**. **`getFrostedPerlinNoiseOverlayStyle`**: tiled SVG **`fractalNoise`** (`FROST_PERLIN_DATA_URL`), **`soft-light`**, behind diffusion speckle. **`shape-wrapper`**, **`uml-class`**: layer inside grain wrapper (with clip). **`visual-styling-panel`**: “Perlin noise (texture)” **Slider** 0..10.
+
 ### 2026-04-25 – Frosted (SVG): hide bbox edge highlights
 **`shape-wrapper`**: Hype4-style **1×1 px top/left** gradient strips sit on the **node border box**; with **`clip-path`** (`inset(… round …)`, **`polygon(…)`**) they still read as **stray L-shaped box lines** (subpixel / compositing), especially at **top-left**. **Fix**: render those two layers **only** when there is **no** **`frostedGlassClipPath`** (plain CSS frosted on **`uml-class`** + full-rect div shapes unchanged; SVG `SvgShapeBase` still gets depth from **`glassBoxShadow`**, grain, tints, backdrops).
 

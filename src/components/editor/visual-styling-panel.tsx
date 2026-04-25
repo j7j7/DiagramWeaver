@@ -249,6 +249,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
         backgroundStyle: "frosted" as const,
         frostedDiffusion: styling.frostedDiffusion ?? 0.45,
         frostedTransparency: styling.frostedTransparency ?? 0.55,
+        frostedPerlinNoise: styling.frostedPerlinNoise ?? 0,
         backgroundColor: (styling.backgroundColor as string | undefined) || "#f3f4f6",
       });
     } else {
@@ -547,6 +548,22 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                         />
                         <span className="w-8 tabular-nums text-xs text-muted-foreground">
                           {((styling.frostedTransparency ?? 0.55) * 100).toFixed(0)}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-sm text-muted-foreground">Perlin noise (texture)</Label>
+                      <div className="flex items-center gap-3 pr-1">
+                        <Slider
+                          min={0}
+                          max={10}
+                          step={1}
+                          value={[Math.min(10, Math.max(0, Math.round(Number(styling.frostedPerlinNoise ?? 0))))]}
+                          onValueChange={([v]) => handlePropertyChange("frostedPerlinNoise", v, true)}
+                          className="flex-1"
+                        />
+                        <span className="w-6 tabular-nums text-xs text-muted-foreground text-right">
+                          {Math.min(10, Math.max(0, Math.round(Number(styling.frostedPerlinNoise ?? 0))))}
                         </span>
                       </div>
                     </div>

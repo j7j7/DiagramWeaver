@@ -220,6 +220,8 @@ export interface DiagramNodeData {
   frostedDiffusion?: number;
   /** `backgroundStyle: 'frosted'`: 0 = fully transparent, 1 = more opaque (see-through of content below). */
   frostedTransparency?: number;
+  /** `backgroundStyle: 'frosted'`: smooth Perlin-style noise 0=off, 10=strong. */
+  frostedPerlinNoise?: number;
   gradientAngle?: number; // Background gradient angle in degrees
   borderGradientAngle?: number; // Border gradient angle in degrees
   shadow?: boolean; // Whether to show shadow around label/textbox nodes
@@ -468,6 +470,7 @@ export interface DiagramNodeItem {
   backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
   frostedDiffusion?: number;
   frostedTransparency?: number;
+  frostedPerlinNoise?: number;
   gradientAngle?: number; // Background gradient angle in degrees
   borderGradientAngle?: number; // Border gradient angle in degrees
   shadow?: boolean; // Whether to show shadow around label/textbox nodes
@@ -568,6 +571,7 @@ export interface DiagramZoneItem {
   backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
   frostedDiffusion?: number;
   frostedTransparency?: number;
+  frostedPerlinNoise?: number;
   gradientAngle?: number; // Background gradient angle in degrees
   borderGradientAngle?: number; // Border gradient angle in degrees
   orientation?: 'horizontal' | 'vertical' | 'square'; // Zone shape orientation
@@ -639,6 +643,7 @@ export interface DiagramZoneData {
   backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
   frostedDiffusion?: number;
   frostedTransparency?: number;
+  frostedPerlinNoise?: number;
   gradientAngle?: number; // Background gradient angle in degrees
   borderGradientAngle?: number; // Border gradient angle in degrees
   orientation?: 'horizontal' | 'vertical' | 'square'; // Zone shape orientation

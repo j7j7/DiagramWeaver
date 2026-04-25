@@ -11,6 +11,7 @@ import {
   getFrostedInlineBackdropReactKey,
   getFrostedGrainOverlayStyle,
   getFrostedFineGrainOverlayStyle,
+  getFrostedPerlinNoiseOverlayStyle,
   getFrostedGlassTopEdgeHighlightStyle,
   getFrostedGlassLeftEdgeHighlightStyle,
   getFrostedGlassExportBackdropPrimaryFallbackColor,
@@ -262,6 +263,7 @@ export function UmlClassShape({
               }}
               aria-hidden
             >
+              <div style={getFrostedPerlinNoiseOverlayStyle(styles.frostedGlass.frostedPerlinNoise)} aria-hidden />
               <div style={getFrostedGrainOverlayStyle(styles.frostedGlass.grainOpacity)} aria-hidden />
               <div style={getFrostedFineGrainOverlayStyle(styles.frostedGlass.grainOpacity)} aria-hidden />
             </div>

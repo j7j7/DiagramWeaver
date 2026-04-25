@@ -259,6 +259,7 @@ export type SelectedItem = (
       backgroundColors?: string[],
       frostedDiffusion?: number,
       frostedTransparency?: number,
+      frostedPerlinNoise?: number,
       gradientAngle?: number,
       shadow?: boolean,
       rotation?: number,

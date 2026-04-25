@@ -210,6 +210,7 @@ async function injectFrostedBlurredUnderlays(
       const underlayDiv = document.createElement('div');
       underlayDiv.setAttribute('data-frosted-export-blurred-underlay', '');
       underlayDiv.setAttribute('aria-hidden', 'true');
+      const clipPath = stack.getAttribute('data-frosted-clip-path')?.trim();
       underlayDiv.style.cssText = [
         'position:absolute',
         'inset:0',
@@ -220,6 +221,11 @@ async function injectFrostedBlurredUnderlays(
         'background-size:100% 100%',
         'background-repeat:no-repeat',
       ].join(';');
+      // Match SVG-shaped frosts (polygon / inset round): the raster underlay is a full bbox; clip like live `backdrop` layers.
+      if (clipPath && clipPath.length > 0) {
+        underlayDiv.style.setProperty('clip-path', clipPath, 'important');
+        underlayDiv.style.setProperty('-webkit-clip-path', clipPath, 'important');
+      }
 
       stack.insertBefore(underlayDiv, stack.firstChild);
       stack.setAttribute('data-frosted-export-injected', '');
