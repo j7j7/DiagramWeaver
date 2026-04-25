@@ -1,7 +1,19 @@
-import React from "react";
+import React, { useLayoutEffect, useMemo, useRef } from "react";
 import { BezierConnection, determineConnectionEdges, getOptimalConnectionPoints, calculateBezierControlPoints, getBezierPoint, getPointOnConnectionPath, closestTOnConnectionPath } from "../diagram/bezier-connection";
 import { OrthogonalConnection } from "../diagram/othogonal-connection";
-import { computeOrthogonalRoute, computeOrthogonalRoutesBatch, getPointOnOrthogonalPath, closestTOnOrthogonalPath, buildObstacleCatalog, obstaclesForEndpoints, appendInteriorObstaclesForPreferredEdges, mergeOrthogonalTrunkWaypoints, type OrthogonalRoute, type OrthogonalRouteRequest } from "@/lib/orthogonal-routing";
+import {
+  computeOrthogonalRoute,
+  computeOrthogonalRoutesBatch,
+  getPointOnOrthogonalPath,
+  closestTOnOrthogonalPath,
+  buildObstacleCatalog,
+  obstaclesForEndpoints,
+  appendInteriorObstaclesForPreferredEdges,
+  mergeOrthogonalTrunkWaypoints,
+  orthogonalRouteRequestGeometryKey,
+  type OrthogonalRoute,
+  type OrthogonalRouteRequest,
+} from "@/lib/orthogonal-routing";
 import type { DiagramData, DiagramConnectionData } from "@/lib/types";
 import {
   stableDiagramConnectionId,
@@ -15,6 +27,11 @@ import { cn, isIconOrEmojiType, isShapeNodeType } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ConnectionEndpointHandles, type DiagramTransform } from "../diagram/connection-endpoint-handles";
 import type { Positionable } from "../diagram/bezier-connection";
+import {
+  DEFAULT_VIEWPORT_OBSTACLE_PAD,
+  hostRectToDiagramViewRect,
+  mergeObstaclesByViewport,
+} from "@/lib/connector-obstacle-viewport-freeze";
 
 interface CanvasConnectionsProps {
   width: number;
@@ -74,6 +91,15 @@ interface CanvasConnectionsProps {
   connectionRenderRevision?: string | number;
   /** L/Z-only orthogonal paths (no A*) while dragging canvas items — full routing when false. */
   orthogonalFastRouting?: boolean;
+  /**
+   * Optional host viewport in CSS pixels. When set with `transform`, obstacles for nodes/zones
+   * fully outside the visible diagram (plus pad) use a frozen last-seen position until re-enter
+   * view — avoids re-routing from far-off object moves. Omit in exports / headless to use live data.
+   */
+  viewportWidthPx?: number;
+  viewportHeightPx?: number;
+  /** Pad around the view in diagram space when deciding visible vs off-screen. Default 400. */
+  viewportObstaclePadDiagramPx?: number;
 }
 
 function setsEqual(a: Set<number> | undefined, b: Set<number> | undefined): boolean {
@@ -110,6 +136,9 @@ function areCanvasConnectionsPropsEqual(prev: CanvasConnectionsProps, next: Canv
     prev.isReadOnly === next.isReadOnly &&
     prev.connectionRenderRevision === next.connectionRenderRevision &&
     prev.orthogonalFastRouting === next.orthogonalFastRouting &&
+    prev.viewportWidthPx === next.viewportWidthPx &&
+    prev.viewportHeightPx === next.viewportHeightPx &&
+    prev.viewportObstaclePadDiagramPx === next.viewportObstaclePadDiagramPx &&
     prev.diagramData === next.diagramData &&
     prev.nodesById === next.nodesById &&
     prev.zonesById === next.zonesById &&
@@ -154,73 +183,143 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     isReadOnly = false,
     connectionRenderRevision,
     orthogonalFastRouting = false,
+    viewportWidthPx,
+    viewportHeightPx,
+    viewportObstaclePadDiagramPx = DEFAULT_VIEWPORT_OBSTACLE_PAD,
   } = props;
-  const obstacleCatalog = buildObstacleCatalog(nodesById, zonesById);
-  // Pre-calculate edge information for all connections
-  const connectionEdgeInfo = new Map<string, { fromEdge: string; toEdge: string }>();
-  const edgeGroups = new Map<string, any[]>();
-  
-  // First pass: determine edges for all connections and group by node+edge
-  (diagramData.connections || []).forEach((conn: any, connIndex: number) => {
-    const fromItem = nodesById[conn.from] || zonesById[conn.from];
-    const toItem = nodesById[conn.to] || zonesById[conn.to];
-    if (!fromItem || !toItem) return;
-    
-    const fromItemDims = 'type' in fromItem ? measureNodeDims(fromItem as PositionedNode) : { width: (fromItem as any).width, height: (fromItem as any).height };
-    const toItemDims = 'type' in toItem ? measureNodeDims(toItem as PositionedNode) : { width: (toItem as any).width, height: (toItem as any).height };
-    
-    const fromPos: any = {
-      ...fromItem,
-      width: 'width' in fromItem ? (fromItem as any).width : fromItemDims.width,
-      height: 'height' in fromItem ? (fromItem as any).height : fromItemDims.height,
-    };
-    const toPos: any = {
-      ...toItem,
-      width: 'width' in toItem ? (toItem as any).width : toItemDims.width,
-      height: 'height' in toItem ? (toItem as any).height : toItemDims.height,
-    };
-    
-    const edges = determineConnectionEdges(fromPos, toPos, conn, fromItemDims.width, fromItemDims.height, toItemDims.width, toItemDims.height);
-    const edgeKey = `${conn.from}-${edges.fromEdge}`;
-    const toEdgeKey = `${conn.to}-${edges.toEdge}`;
-    
-    // Use a unique key for this connection
-    const connKey = `${conn.from}-${conn.to}-${connIndex}`;
-    connectionEdgeInfo.set(connKey, edges);
-    
-    // Compute center for sorting by relative target position
-    const toCenterY = (toPos as any).y + ((toPos as any).height ?? toItemDims.height) / 2;
-    const toCenterX = (toPos as any).x + ((toPos as any).width ?? toItemDims.width) / 2;
-    const fromCenterY = (fromPos as any).y + ((fromPos as any).height ?? fromItemDims.height) / 2;
-    const fromCenterX = (fromPos as any).x + ((fromPos as any).width ?? fromItemDims.width) / 2;
 
-    // Group connections by from node + from edge
-    if (!edgeGroups.has(edgeKey)) {
-      edgeGroups.set(edgeKey, []);
+  /**
+   * Per-connection orthogonal route cache (ref survives parent re-renders when React.memo
+   * bails out). When selection/context menu/`nodesById` identity changes without geometry
+   * changing, we skip `computeOrthogonalRoutesBatch` for that connection.
+   */
+  const orthogonalRouteCacheRef = useRef<Record<string, OrthogonalRoute>>({});
+  const obstacleViewportStateRef = useRef<Map<string, { x: number; y: number; width: number; height: number }>>(new Map());
+  const viewportSyncVersionRef = useRef(0);
+
+  useLayoutEffect(() => {
+    if (
+      transform &&
+      typeof viewportWidthPx === "number" &&
+      typeof viewportHeightPx === "number" &&
+      viewportWidthPx > 0 &&
+      viewportHeightPx > 0
+    ) {
+      viewportSyncVersionRef.current += 1;
     }
-    // For from edge: sort by target position so connections fan out toward their destinations
-    const fromSortCoord = edges.fromEdge === 'left' || edges.fromEdge === 'right' ? toCenterY : toCenterX;
-    edgeGroups.get(edgeKey)!.push({ conn, connIndex, isFrom: true, sortCoord: fromSortCoord });
+  }, [transform, viewportWidthPx, viewportHeightPx]);
 
-    // Group connections by to node + to edge
-    if (!edgeGroups.has(toEdgeKey)) {
-      edgeGroups.set(toEdgeKey, []);
+  const { nodesByIdForObstacles, zonesByIdForObstacles, obstacleViewEpoch } = useMemo(() => {
+    if (
+      !transform ||
+      typeof viewportWidthPx !== "number" ||
+      typeof viewportHeightPx !== "number" ||
+      viewportWidthPx <= 0 ||
+      viewportHeightPx <= 0
+    ) {
+      return { nodesByIdForObstacles: nodesById, zonesByIdForObstacles: zonesById, obstacleViewEpoch: 0 };
     }
-    // For to edge: sort by source position so incoming connections align with their origins
-    const toSortCoord = edges.toEdge === 'left' || edges.toEdge === 'right' ? fromCenterY : fromCenterX;
-    edgeGroups.get(toEdgeKey)!.push({ conn, connIndex, isFrom: false, sortCoord: toSortCoord });
-  });
+    const view = hostRectToDiagramViewRect(viewportWidthPx, viewportHeightPx, transform);
+    if (!view) {
+      return { nodesByIdForObstacles: nodesById, zonesByIdForObstacles: zonesById, obstacleViewEpoch: 0 };
+    }
+    const { nodesForObstacles, zonesForObstacles } = mergeObstaclesByViewport(
+      nodesById,
+      zonesById,
+      view,
+      viewportWidthPx,
+      viewportHeightPx,
+      viewportObstaclePadDiagramPx,
+      obstacleViewportStateRef,
+    );
+    return { nodesByIdForObstacles: nodesForObstacles, zonesByIdForObstacles: zonesForObstacles, obstacleViewEpoch: viewportSyncVersionRef.current };
+  }, [
+    nodesById,
+    zonesById,
+    transform,
+    viewportWidthPx,
+    viewportHeightPx,
+    viewportObstaclePadDiagramPx,
+  ]);
 
-  // Sort each edge group by relative position to reduce overlapping lines
-  edgeGroups.forEach((arr) => {
-    arr.sort((a: { sortCoord: number }, b: { sortCoord: number }) => a.sortCoord - b.sortCoord);
-  });
+  // Obstacle / edge grouping / orthogonal batch routing are diagram-geometry work only. Memoize
+  // so pan/zoom (transform updates) does not re-run A* and path building every frame.
+  const {
+    obstacleCatalog,
+    connectionEdgeInfo,
+    edgeGroups,
+    buildConnectionLayout,
+    orthogonalRouteMap,
+  } = useMemo(() => {
+    const obstacleCatalogInner = buildObstacleCatalog(nodesByIdForObstacles, zonesByIdForObstacles);
+    const connectionEdgeInfoInner = new Map<string, { fromEdge: string; toEdge: string }>();
+    const edgeGroupsInner = new Map<string, any[]>();
 
-  const visibleConnections = (diagramData.connections || [])
-    .map((edge: any, index: number) => ({ edge, index }))
-    .filter(({ index }: { index: number }) => !connectionIndices || connectionIndices.has(index));
+    (diagramData.connections || []).forEach((conn: any, connIndex: number) => {
+      const fromItem = nodesById[conn.from] || zonesById[conn.from];
+      const toItem = nodesById[conn.to] || zonesById[conn.to];
+      if (!fromItem || !toItem) return;
 
-  const buildConnectionLayout = (edge: any, index: number) => {
+      const fromItemDims = "type" in fromItem
+        ? measureNodeDims(fromItem as PositionedNode)
+        : { width: (fromItem as any).width, height: (fromItem as any).height };
+      const toItemDims = "type" in toItem
+        ? measureNodeDims(toItem as PositionedNode)
+        : { width: (toItem as any).width, height: (toItem as any).height };
+
+      const fromPos: any = {
+        ...fromItem,
+        width: "width" in fromItem ? (fromItem as any).width : fromItemDims.width,
+        height: "height" in fromItem ? (fromItem as any).height : fromItemDims.height,
+      };
+      const toPos: any = {
+        ...toItem,
+        width: "width" in toItem ? (toItem as any).width : toItemDims.width,
+        height: "height" in toItem ? (toItem as any).height : toItemDims.height,
+      };
+
+      const edges = determineConnectionEdges(
+        fromPos,
+        toPos,
+        conn,
+        fromItemDims.width,
+        fromItemDims.height,
+        toItemDims.width,
+        toItemDims.height,
+      );
+      const edgeKey = `${conn.from}-${edges.fromEdge}`;
+      const toEdgeKey = `${conn.to}-${edges.toEdge}`;
+
+      const connKey = `${conn.from}-${conn.to}-${connIndex}`;
+      connectionEdgeInfoInner.set(connKey, edges);
+
+      const toCenterY = (toPos as any).y + ((toPos as any).height ?? toItemDims.height) / 2;
+      const toCenterX = (toPos as any).x + ((toPos as any).width ?? toItemDims.width) / 2;
+      const fromCenterY = (fromPos as any).y + ((fromPos as any).height ?? fromItemDims.height) / 2;
+      const fromCenterX = (fromPos as any).x + ((fromPos as any).width ?? fromItemDims.width) / 2;
+
+      if (!edgeGroupsInner.has(edgeKey)) {
+        edgeGroupsInner.set(edgeKey, []);
+      }
+      const fromSortCoord = edges.fromEdge === "left" || edges.fromEdge === "right" ? toCenterY : toCenterX;
+      edgeGroupsInner.get(edgeKey)!.push({ conn, connIndex, isFrom: true, sortCoord: fromSortCoord });
+
+      if (!edgeGroupsInner.has(toEdgeKey)) {
+        edgeGroupsInner.set(toEdgeKey, []);
+      }
+      const toSortCoord = edges.toEdge === "left" || edges.toEdge === "right" ? fromCenterY : fromCenterX;
+      edgeGroupsInner.get(toEdgeKey)!.push({ conn, connIndex, isFrom: false, sortCoord: toSortCoord });
+    });
+
+    edgeGroupsInner.forEach((arr) => {
+      arr.sort((a: { sortCoord: number }, b: { sortCoord: number }) => a.sortCoord - b.sortCoord);
+    });
+
+    const visibleConnections = (diagramData.connections || [])
+      .map((edge: any, index: number) => ({ edge, index }))
+      .filter(({ index }: { index: number }) => !connectionIndices || connectionIndices.has(index));
+
+    const buildConnectionLayout = (edge: any, index: number) => {
     const fromItem = nodesById[edge.from] || zonesById[edge.from];
     const toItem = nodesById[edge.to] || zonesById[edge.to];
     if (!fromItem || !toItem) return null;
@@ -259,14 +358,14 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
       : toPos;
 
     const connKey = `${edge.from}-${edge.to}-${index}`;
-    const edges = !slideOff && connectionEdgeInfo.has(connKey)
-      ? connectionEdgeInfo.get(connKey)!
+    const edges = !slideOff && connectionEdgeInfoInner.has(connKey)
+      ? connectionEdgeInfoInner.get(connKey)!
       : determineConnectionEdges(geomFrom, geomTo, edge, fromItemDims.width, fromItemDims.height, toItemDims.width, toItemDims.height);
 
     const fromEdgeKey = `${edge.from}-${edges.fromEdge}`;
     const toEdgeKey = `${edge.to}-${edges.toEdge}`;
-    const fromEdgeConnections = edgeGroups.get(fromEdgeKey) || [];
-    const toEdgeConnections = edgeGroups.get(toEdgeKey) || [];
+    const fromEdgeConnections = edgeGroupsInner.get(fromEdgeKey) || [];
+    const toEdgeConnections = edgeGroupsInner.get(toEdgeKey) || [];
     const fromEdgeIndex = fromEdgeConnections.findIndex((item: any) => item.connIndex === index);
     const toEdgeIndex = toEdgeConnections.findIndex((item: any) => item.connIndex === index);
 
@@ -417,11 +516,11 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
       toIconOffsetX
     );
 
-    const baseObstacles = obstaclesForEndpoints(obstacleCatalog, edge.from, edge.to);
+    const baseObstacles = obstaclesForEndpoints(obstacleCatalogInner, edge.from, edge.to);
     const obstacles = appendInteriorObstaclesForPreferredEdges(
       baseObstacles,
-      nodesById,
-      zonesById,
+      nodesByIdForObstacles,
+      zonesByIdForObstacles,
       edge.from,
       edge.to,
       edge.fromPreferredExit,
@@ -438,48 +537,105 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     };
   };
 
-  const orthogonalRouteRequests: OrthogonalRouteRequest[] = [];
-  const orthogonalRouteIndices: number[] = [];
+    const orthogonalRouteRequests: OrthogonalRouteRequest[] = [];
+    const orthogonalRouteIndices: number[] = [];
 
-  visibleConnections.forEach(({ edge, index }) => {
-    const layout = buildConnectionLayout(edge, index);
-    if (!layout || layout.connStyle !== "orthogonal") return;
+    visibleConnections.forEach(({ edge, index }) => {
+      const layout = buildConnectionLayout(edge, index);
+      if (!layout || layout.connStyle !== "orthogonal") return;
 
-    orthogonalRouteIndices.push(index);
-    const mergedWaypoints =
-      mergeOrthogonalTrunkWaypoints(
-        layout.fromX,
-        layout.fromY,
-        layout.toX,
-        layout.toY,
-        layout.fromAngle,
-        edge.orthogonalTrunkOffsetX,
-        edge.orthogonalTrunkOffsetY,
-        layout.enhancedEdge.waypoints,
-      ) ?? layout.enhancedEdge.waypoints;
+      orthogonalRouteIndices.push(index);
+      const mergedWaypoints =
+        mergeOrthogonalTrunkWaypoints(
+          layout.fromX,
+          layout.fromY,
+          layout.toX,
+          layout.toY,
+          layout.fromAngle,
+          edge.orthogonalTrunkOffsetX,
+          edge.orthogonalTrunkOffsetY,
+          layout.enhancedEdge.waypoints,
+        ) ?? layout.enhancedEdge.waypoints;
 
-    orthogonalRouteRequests.push({
-      fromX: layout.fromX,
-      fromY: layout.fromY,
-      toX: layout.toX,
-      toY: layout.toY,
-      fromAngle: layout.fromAngle,
-      toAngle: layout.toAngle,
-      obstacles: layout.obstacles,
-      waypoints: mergedWaypoints,
-      smoothCorners: layout.enhancedEdge.smoothCorners === true,
-      fastObstacleRouting: orthogonalFastRouting,
+      orthogonalRouteRequests.push({
+        fromX: layout.fromX,
+        fromY: layout.fromY,
+        toX: layout.toX,
+        toY: layout.toY,
+        fromAngle: layout.fromAngle,
+        toAngle: layout.toAngle,
+        obstacles: layout.obstacles,
+        waypoints: mergedWaypoints,
+        smoothCorners: layout.enhancedEdge.smoothCorners === true,
+        fastObstacleRouting: orthogonalFastRouting,
+      });
     });
-  });
 
-  const orthogonalRouteMap = new Map<number, OrthogonalRoute>();
-  const orthogonalRoutes = computeOrthogonalRoutesBatch(orthogonalRouteRequests);
-  orthogonalRouteIndices.forEach((index, routeIndex) => {
-    const route = orthogonalRoutes[routeIndex];
-    if (route) {
-      orthogonalRouteMap.set(index, route);
+    const orthogonalRouteMapInner = new Map<number, OrthogonalRoute>();
+    const conns = (diagramData.connections ?? []) as DiagramConnectionData[];
+    const nOrth = orthogonalRouteIndices.length;
+    const missingRequests: OrthogonalRouteRequest[] = [];
+    const missingMeta: { index: number; cacheKey: string }[] = [];
+    const prevCache = orthogonalRouteCacheRef.current;
+
+    for (let i = 0; i < nOrth; i++) {
+      const index = orthogonalRouteIndices[i];
+      const request = orthogonalRouteRequests[i];
+      const edge = conns[index];
+      if (!edge) continue;
+      const stableId = stableDiagramConnectionId(edge, index);
+      const cacheKey = `${stableId}~${orthogonalRouteRequestGeometryKey(request)}`;
+      const hit = prevCache[cacheKey];
+      if (hit) {
+        orthogonalRouteMapInner.set(index, hit);
+      } else {
+        missingRequests.push(request);
+        missingMeta.push({ index, cacheKey });
+      }
     }
-  });
+
+    if (missingRequests.length > 0) {
+      const computed = computeOrthogonalRoutesBatch(missingRequests);
+      missingMeta.forEach((m, j) => {
+        const route = computed[j];
+        if (route) {
+          orthogonalRouteMapInner.set(m.index, route);
+        }
+      });
+    }
+
+    const newCache: Record<string, OrthogonalRoute> = {};
+    for (let i = 0; i < nOrth; i++) {
+      const index = orthogonalRouteIndices[i];
+      const request = orthogonalRouteRequests[i];
+      const edge = conns[index];
+      if (!edge) continue;
+      const stableId = stableDiagramConnectionId(edge, index);
+      const cacheKey = `${stableId}~${orthogonalRouteRequestGeometryKey(request)}`;
+      const r = orthogonalRouteMapInner.get(index);
+      if (r) newCache[cacheKey] = r;
+    }
+    orthogonalRouteCacheRef.current = newCache;
+
+    return {
+      obstacleCatalog: obstacleCatalogInner,
+      connectionEdgeInfo: connectionEdgeInfoInner,
+      edgeGroups: edgeGroupsInner,
+      buildConnectionLayout,
+      orthogonalRouteMap: orthogonalRouteMapInner,
+    };
+  }, [
+    diagramData,
+    nodesById,
+    zonesById,
+    nodesByIdForObstacles,
+    zonesByIdForObstacles,
+    obstacleViewEpoch,
+    connectionIndices,
+    connectionKey,
+    connectionAnimationStyles,
+    orthogonalFastRouting,
+  ]);
   
   return (
     <>
@@ -845,8 +1001,16 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
                 orthogonalTrunkDragEnabled={
                   !isReadOnly && isConnectionHighlighted && !enhancedEdge.waypoints?.length
                 }
-                diagramTransform={transform}
-                diagramCanvasRef={canvasRef}
+                diagramTransform={
+                  !isReadOnly && isConnectionHighlighted && !enhancedEdge.waypoints?.length
+                    ? transform
+                    : undefined
+                }
+                diagramCanvasRef={
+                  !isReadOnly && isConnectionHighlighted && !enhancedEdge.waypoints?.length
+                    ? canvasRef
+                    : undefined
+                }
                 onOrthogonalTrunkOffsetChange={
                   onConnectionUpdate
                     ? (offset) =>
@@ -1082,8 +1246,8 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
         const baseObstaclesToolbar = obstaclesForEndpoints(obstacleCatalog, edge.from, edge.to);
         const obstacles = appendInteriorObstaclesForPreferredEdges(
           baseObstaclesToolbar,
-          nodesById,
-          zonesById,
+          nodesByIdForObstacles,
+          zonesByIdForObstacles,
           edge.from,
           edge.to,
           edge.fromPreferredExit,

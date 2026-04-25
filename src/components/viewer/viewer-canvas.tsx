@@ -440,6 +440,9 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
               connectionKey={connKey}
               isReadOnly
               connectionRenderRevision={connectionRenderRevision}
+              transform={transform}
+              viewportWidthPx={canvasDimensions.width}
+              viewportHeightPx={canvasDimensions.height}
             />
             {connectionSlots.sortedItemIds.map((itemId, i) => {
               const node = nodesById[itemId];
@@ -528,6 +531,9 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
                     connectionKey={connKey}
                     isReadOnly
                     connectionRenderRevision={connectionRenderRevision}
+                    transform={transform}
+                    viewportWidthPx={canvasDimensions.width}
+                    viewportHeightPx={canvasDimensions.height}
                   />
                 ) : null,
                 nodeEl,
@@ -558,6 +564,9 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
                   connectionKey={connKey}
                   isReadOnly
                   connectionRenderRevision={connectionRenderRevision}
+                  transform={transform}
+                  viewportWidthPx={canvasDimensions.width}
+                  viewportHeightPx={canvasDimensions.height}
                 />
               );
             })()}
