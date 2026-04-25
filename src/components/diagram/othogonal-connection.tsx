@@ -400,7 +400,8 @@ function OrthogonalConnectionInner({
     if (!widthVaries || route.totalLength <= 0) {
       return { ribbonPathD: '', ...baseGrad };
     }
-    const samples = Math.max(48, Math.min(160, Math.ceil(route.totalLength / 6)));
+    // Long orthogonal paths: cap samples so width-gradient / ribbon polys stay cheap in SVG.
+    const samples = Math.max(32, Math.min(120, Math.ceil(route.totalLength / 8)));
     const pts = Array.from({ length: samples }, (_, i) =>
       getPointOnOrthogonalPath(i / (samples - 1), route.points, route.totalLength)
     );

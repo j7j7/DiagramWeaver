@@ -1,5 +1,8 @@
 # MEMORY.MD
 
+### 2026-04-25 – Orthogonal connections: pan/zoom performance
+**Issue**: Long **orthogonal** routes re-ran **`computeOrthogonalRoutesBatch`** and obstacle/edge prep on **every** **`transform`** update (pan/zoom), even though routes are diagram-space only. **Fix**: memoize **`buildObstacleCatalog`**, edge grouping, **`buildConnectionLayout`**, and **`orthogonalRouteMap`** in **`canvas-connections`** (deps: diagram + nodes + routing mode, not viewport). **`OrthogonalConnection`**: only pass **`diagramTransform`** / **`diagramCanvasRef`** when **trunk drag** is active (selected, no waypoints) so pan does not break memo on every line. **`othogonal-connection`**: slightly lower cap on width-gradient ribbon sample count for very long paths.
+
 ### 2026-04-24 – Frosted: polygon / circle / ellipse mask + backdrop blur
 **Issue**: Rounded rects used **`getFrostedInsetClipStyleForBackdropLayers`** (blur + tint clip) while **`polygon(...)`** did not, so kites/triangles showed a **full-rect** frosted area; the stack root also used **`clip-path`** for polygons (hurt blur). **Fix**: **`getFrostedBackdropLayerClipStyle`** applies the same **`frostedGlassClipPath` to** primary/second **backdrop** + **tint** for **`inset` / `polygon` / `circle` / `ellipse`**; **no** clip on the **frost stack root** (all shapes). **`getFrostedCircleClipPathCss`** + **`frostedClipCircleInViewBox`** on **`SvgShapeBase`**; **`CircleShape`** passes **`cx, cy, r`** (matches SVG fill, **`xMidYMid meet`**) so circles mask correctly.
 
