@@ -1,5 +1,8 @@
 # MEMORY.MD
 
+### 2026-04-25 – Orthogonal obstacles: freeze off-viewport items
+**Issue**: Moving or editing items **off the visible canvas** still changed **every** connection’s obstacle signature (full catalog), forcing re-routing. **Fix**: **`connector-obstacle-viewport-freeze`** — from **host width/height** + **`transform`**, compute visible **diagram** AABB (`hostRectToDiagramViewRect`). For each node/zone whose bounds are **outside** that box **+ 400px pad**, routing uses a **frozen** last position (ref map) until the item **re-enters** the pad. **`CanvasConnections`** takes optional **`viewportWidthPx` / `viewportHeightPx`** (editor **`canvasDimensions`**, viewer **`canvasDimensions`**) + **`transform`**; **`useLayoutEffect`** bumps a version so **pan** after a move off-screen updates frozen snapshot. Live positions for **endpoints** and **on-screen** obstacles unchanged.
+
 ### 2026-04-25 – Revert: corridor obstacle cull
 **Removed** **`cullDistantObstaclesForConnectionCorridor`**: centroid+box culling could **drop** obstacles the router still had to “see” (paths can jog far), so L/Z pre-pass treated routes as **obstacle-free** while full obstacles later produced **A\***/avoidance — **selection** could flip visible routing vs ref cache. Obstacle set for routing is again the **full** `obstaclesForEndpoints` + **appendInteriorObstaclesForPreferredEdges**; **per-connection ref cache** + **L/Z before A\*** remain.
 

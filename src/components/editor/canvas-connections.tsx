@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from "react";
+import React, { useLayoutEffect, useMemo, useRef } from "react";
 import { BezierConnection, determineConnectionEdges, getOptimalConnectionPoints, calculateBezierControlPoints, getBezierPoint, getPointOnConnectionPath, closestTOnConnectionPath } from "../diagram/bezier-connection";
 import { OrthogonalConnection } from "../diagram/othogonal-connection";
 import {
@@ -27,6 +27,11 @@ import { cn, isIconOrEmojiType, isShapeNodeType } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ConnectionEndpointHandles, type DiagramTransform } from "../diagram/connection-endpoint-handles";
 import type { Positionable } from "../diagram/bezier-connection";
+import {
+  DEFAULT_VIEWPORT_OBSTACLE_PAD,
+  hostRectToDiagramViewRect,
+  mergeObstaclesByViewport,
+} from "@/lib/connector-obstacle-viewport-freeze";
 
 interface CanvasConnectionsProps {
   width: number;
@@ -86,6 +91,15 @@ interface CanvasConnectionsProps {
   connectionRenderRevision?: string | number;
   /** L/Z-only orthogonal paths (no A*) while dragging canvas items — full routing when false. */
   orthogonalFastRouting?: boolean;
+  /**
+   * Optional host viewport in CSS pixels. When set with `transform`, obstacles for nodes/zones
+   * fully outside the visible diagram (plus pad) use a frozen last-seen position until re-enter
+   * view — avoids re-routing from far-off object moves. Omit in exports / headless to use live data.
+   */
+  viewportWidthPx?: number;
+  viewportHeightPx?: number;
+  /** Pad around the view in diagram space when deciding visible vs off-screen. Default 400. */
+  viewportObstaclePadDiagramPx?: number;
 }
 
 function setsEqual(a: Set<number> | undefined, b: Set<number> | undefined): boolean {
@@ -122,6 +136,9 @@ function areCanvasConnectionsPropsEqual(prev: CanvasConnectionsProps, next: Canv
     prev.isReadOnly === next.isReadOnly &&
     prev.connectionRenderRevision === next.connectionRenderRevision &&
     prev.orthogonalFastRouting === next.orthogonalFastRouting &&
+    prev.viewportWidthPx === next.viewportWidthPx &&
+    prev.viewportHeightPx === next.viewportHeightPx &&
+    prev.viewportObstaclePadDiagramPx === next.viewportObstaclePadDiagramPx &&
     prev.diagramData === next.diagramData &&
     prev.nodesById === next.nodesById &&
     prev.zonesById === next.zonesById &&
@@ -166,6 +183,9 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     isReadOnly = false,
     connectionRenderRevision,
     orthogonalFastRouting = false,
+    viewportWidthPx,
+    viewportHeightPx,
+    viewportObstaclePadDiagramPx = DEFAULT_VIEWPORT_OBSTACLE_PAD,
   } = props;
 
   /**
@@ -174,6 +194,53 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
    * changing, we skip `computeOrthogonalRoutesBatch` for that connection.
    */
   const orthogonalRouteCacheRef = useRef<Record<string, OrthogonalRoute>>({});
+  const obstacleViewportStateRef = useRef<Map<string, { x: number; y: number; width: number; height: number }>>(new Map());
+  const viewportSyncVersionRef = useRef(0);
+
+  useLayoutEffect(() => {
+    if (
+      transform &&
+      typeof viewportWidthPx === "number" &&
+      typeof viewportHeightPx === "number" &&
+      viewportWidthPx > 0 &&
+      viewportHeightPx > 0
+    ) {
+      viewportSyncVersionRef.current += 1;
+    }
+  }, [transform, viewportWidthPx, viewportHeightPx]);
+
+  const { nodesByIdForObstacles, zonesByIdForObstacles, obstacleViewEpoch } = useMemo(() => {
+    if (
+      !transform ||
+      typeof viewportWidthPx !== "number" ||
+      typeof viewportHeightPx !== "number" ||
+      viewportWidthPx <= 0 ||
+      viewportHeightPx <= 0
+    ) {
+      return { nodesByIdForObstacles: nodesById, zonesByIdForObstacles: zonesById, obstacleViewEpoch: 0 };
+    }
+    const view = hostRectToDiagramViewRect(viewportWidthPx, viewportHeightPx, transform);
+    if (!view) {
+      return { nodesByIdForObstacles: nodesById, zonesByIdForObstacles: zonesById, obstacleViewEpoch: 0 };
+    }
+    const { nodesForObstacles, zonesForObstacles } = mergeObstaclesByViewport(
+      nodesById,
+      zonesById,
+      view,
+      viewportWidthPx,
+      viewportHeightPx,
+      viewportObstaclePadDiagramPx,
+      obstacleViewportStateRef,
+    );
+    return { nodesByIdForObstacles: nodesForObstacles, zonesByIdForObstacles: zonesForObstacles, obstacleViewEpoch: viewportSyncVersionRef.current };
+  }, [
+    nodesById,
+    zonesById,
+    transform,
+    viewportWidthPx,
+    viewportHeightPx,
+    viewportObstaclePadDiagramPx,
+  ]);
 
   // Obstacle / edge grouping / orthogonal batch routing are diagram-geometry work only. Memoize
   // so pan/zoom (transform updates) does not re-run A* and path building every frame.
@@ -184,7 +251,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     buildConnectionLayout,
     orthogonalRouteMap,
   } = useMemo(() => {
-    const obstacleCatalogInner = buildObstacleCatalog(nodesById, zonesById);
+    const obstacleCatalogInner = buildObstacleCatalog(nodesByIdForObstacles, zonesByIdForObstacles);
     const connectionEdgeInfoInner = new Map<string, { fromEdge: string; toEdge: string }>();
     const edgeGroupsInner = new Map<string, any[]>();
 
@@ -452,8 +519,8 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     const baseObstacles = obstaclesForEndpoints(obstacleCatalogInner, edge.from, edge.to);
     const obstacles = appendInteriorObstaclesForPreferredEdges(
       baseObstacles,
-      nodesById,
-      zonesById,
+      nodesByIdForObstacles,
+      zonesByIdForObstacles,
       edge.from,
       edge.to,
       edge.fromPreferredExit,
@@ -561,6 +628,9 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     diagramData,
     nodesById,
     zonesById,
+    nodesByIdForObstacles,
+    zonesByIdForObstacles,
+    obstacleViewEpoch,
     connectionIndices,
     connectionKey,
     connectionAnimationStyles,
@@ -1176,8 +1246,8 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
         const baseObstaclesToolbar = obstaclesForEndpoints(obstacleCatalog, edge.from, edge.to);
         const obstacles = appendInteriorObstaclesForPreferredEdges(
           baseObstaclesToolbar,
-          nodesById,
-          zonesById,
+          nodesByIdForObstacles,
+          zonesByIdForObstacles,
           edge.from,
           edge.to,
           edge.fromPreferredExit,

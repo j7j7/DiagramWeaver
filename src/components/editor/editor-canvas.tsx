@@ -1604,6 +1604,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   canvasRef={canvasRef}
                   isReadOnly={isReadOnly}
                   orthogonalFastRouting={isCanvasItemDragging}
+                  viewportWidthPx={canvasDimensions.width}
+                  viewportHeightPx={canvasDimensions.height}
                 />
                 {connectionSlots.sortedItemIds.map((itemId, i) => {
                   const node = nodesById[itemId];
@@ -1798,6 +1800,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       canvasRef={canvasRef}
                       isReadOnly={isReadOnly}
                       orthogonalFastRouting={isCanvasItemDragging}
+                      viewportWidthPx={canvasDimensions.width}
+                      viewportHeightPx={canvasDimensions.height}
                     />
                   ) : null,
                   nodeEl,
@@ -1863,6 +1867,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   canvasRef={canvasRef}
                   isReadOnly={isReadOnly}
                   orthogonalFastRouting={isCanvasItemDragging}
+                  viewportWidthPx={canvasDimensions.width}
+                  viewportHeightPx={canvasDimensions.height}
                 />
               );
             })()}
