@@ -301,20 +301,13 @@ export function ShapeWrapper({
                   aria-hidden
                 />
               </div>
-              <div
-                style={{
-                  ...getFrostedGlassTopEdgeHighlightStyle(),
-                  ...(frostedGlassClipPath ? { clipPath: frostedGlassClipPath, WebkitClipPath: frostedGlassClipPath } : {}),
-                }}
-                aria-hidden
-              />
-              <div
-                style={{
-                  ...getFrostedGlassLeftEdgeHighlightStyle(),
-                  ...(frostedGlassClipPath ? { clipPath: frostedGlassClipPath, WebkitClipPath: frostedGlassClipPath } : {}),
-                }}
-                aria-hidden
-              />
+              {/* Bbox-aligned 1px bars read as “box edges” on non-rect clips (rounded inset / polygon) even with clip-path. */}
+              {!frostedGlassClipPath ? (
+                <>
+                  <div style={getFrostedGlassTopEdgeHighlightStyle()} aria-hidden />
+                  <div style={getFrostedGlassLeftEdgeHighlightStyle()} aria-hidden />
+                </>
+              ) : null}
             </div>
           </>
         ) : null}

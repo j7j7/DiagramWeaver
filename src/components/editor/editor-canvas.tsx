@@ -300,6 +300,14 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
 
   const { toast } = useToast();
   const canvasRef = useRef<HTMLDivElement>(null);
+  /** Latest `displayNodesById` for stable `DiagramNode` click handlers (`data-node-id` → node). */
+  const displayNodesByIdRef = useRef<Record<string, PositionedNode>>({});
+  const nodeClickHandlerRef = useRef<(e: React.MouseEvent, node: DiagramNodeData) => void>(
+    (e) => e.stopPropagation()
+  );
+  const nodeContextMenuHandlerRef = useRef<(e: React.MouseEvent, node: DiagramNodeData) => void>(
+    (e) => e.stopPropagation()
+  );
   const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 });
   const [searchModalOpen, setSearchModalOpen] = React.useState(false);
   const [metadataPopupRect, setMetadataPopupRect] = useState<{
@@ -985,6 +993,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     return r;
   }, [nodesWithDragPositions, nodesById, altKeyHeld, dragPosition, multiDragPositions]);
 
+  displayNodesByIdRef.current = displayNodesById;
+
   const highlightAnimStagger = useMemo(
     () => buildHighlightAnimStaggerOrder(displayNodesById),
     [displayNodesById]
@@ -1298,6 +1308,25 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     setLastRightClickItemId(node.id);
     handleContextMenu(e, node.id, 'node'); // Opens context menu
   }, [selectedItemIds, selectedItemId, onItemSelect, onResetConnectionSettingsTrigger, handleContextMenu]);
+
+  nodeClickHandlerRef.current = handleNodeClick;
+  nodeContextMenuHandlerRef.current = handleNodeContextMenu;
+
+  const onDiagramNodeClickStable = useCallback((e: React.MouseEvent) => {
+    const id = (e.currentTarget as HTMLElement).getAttribute("data-node-id");
+    if (!id) return;
+    const node = displayNodesByIdRef.current[id];
+    if (!node) return;
+    nodeClickHandlerRef.current(e, node);
+  }, []);
+
+  const onDiagramNodeContextMenuStable = useCallback((e: React.MouseEvent) => {
+    const id = (e.currentTarget as HTMLElement).getAttribute("data-node-id");
+    if (!id) return;
+    const node = displayNodesByIdRef.current[id];
+    if (!node) return;
+    nodeContextMenuHandlerRef.current(e, node);
+  }, []);
 
   const handleZoneClick = useCallback((e: React.MouseEvent, zone: DiagramZoneData) => {
     e.stopPropagation();
@@ -1668,8 +1697,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     getItemGroup(node.id, diagramData) !== null &&
                     getItemGroup(selectedItemId, diagramData)?.id === getItemGroup(node.id, diagramData)?.id
                   }
-                  onClick={(e: React.MouseEvent) => handleNodeClick(e, node)}
-                  onContextMenu={(e: React.MouseEvent) => handleNodeContextMenu(e, node)}
+                  onClick={onDiagramNodeClickStable}
+                  onContextMenu={onDiagramNodeContextMenuStable}
                   onResize={handleNodeResize}
                   onResizeStart={handleResizeStart}
                   onResizeEnd={handleResizeEnd}
@@ -1771,8 +1800,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       getItemGroup(node.id, diagramData) !== null &&
                       getItemGroup(selectedItemId, diagramData)?.id === getItemGroup(node.id, diagramData)?.id
                     }
-                    onClick={(e: React.MouseEvent) => handleNodeClick(e, node)}
-                    onContextMenu={(e: React.MouseEvent) => handleNodeContextMenu(e, node)}
+                    onClick={onDiagramNodeClickStable}
+                    onContextMenu={onDiagramNodeContextMenuStable}
                     onResize={handleNodeResize}
                     onResizeStart={handleResizeStart}
                     onResizeEnd={handleResizeEnd}
