@@ -226,7 +226,8 @@ const FROST_PERLIN_TILE_PX = 256;
 const FROST_PERLIN_DATA_URL = `url("data:image/svg+xml,${encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">' +
     '<filter id="fp" x="0" y="0" width="256" height="256" filterUnits="userSpaceOnUse" primitiveUnits="userSpaceOnUse">' +
-    '<feTurbulence type="fractalNoise" baseFrequency="0.024 0.032" numOctaves="4" seed="59" stitchTiles="stitch"/>' +
+    '<feTurbulence type="fractalNoise" baseFrequency="0.024 0.032" numOctaves="4" seed="59" stitchTiles="stitch" result="turb"/>' +
+    '<feColorMatrix in="turb" type="matrix" result="luma" values="0.2126 0.7152 0.0722 0 0 0.2126 0.7152 0.0722 0 0 0.2126 0.7152 0.0722 0 0 0 0 0 1 0"/>' +
     '</filter>' +
     '<rect x="0" y="0" width="256" height="256" filter="url(#fp)"/>' +
     '</svg>'
@@ -518,8 +519,8 @@ export function getFrostedFineGrainOverlayStyle(grainOpacity: number): CSSProper
 }
 
 /**
- * Smooth Perlin-style (`fractalNoise`) luminance texture; 0 = off, 10 = strong.
- * **`luminosity`**: reuses the frosted **backdrop** hue/saturation; only the noise’s **luminance** adds variation (no extra tint color from the SVG).
+ * Smooth Perlin-style (`fractalNoise` → sRGB luma on **R,G,B** via `feColorMatrix`) texture; 0 = off, 10 = strong.
+ * **`luminosity`**: backdrop provides hue/sat; the tile is strictly luminance (no chroma from `feTurbulence`).
  * Render before speckle grain.
  */
 export function getFrostedPerlinNoiseOverlayStyle(level0to10: number): CSSProperties {

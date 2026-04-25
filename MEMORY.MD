@@ -1,5 +1,7 @@
 # MEMORY.MD
 
+### 2026-04-25 – Frosted Perlin: achromatic source (`feColorMatrix`)
+**`FROST_PERLIN`** filter: **`feTurbulence` → `feColorMatrix` (sRGB luma 0.2126/0.7152/0.0722 into R, G, B)** so the bitmap is true gray before **`mixBlendMode: luminosity`**. `feTurbulence` alone can be slightly chromatic; **`luminosity` alone** was not enough.
 ### 2026-04-25 – Frosted Perlin: `luminosity` (no added hue)
 **`getFrostedPerlinNoiseOverlayStyle`**: **`mixBlendMode: "luminosity"`** so the `feTurbulence` tile only supplies **luminance** variation; **hue/saturation** follow the existing frosted stack (tint + backdrop), not colored noise. Replaces **`soft-light`**, which re-tinted the glass.
 
