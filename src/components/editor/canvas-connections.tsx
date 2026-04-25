@@ -59,6 +59,12 @@ interface CanvasConnectionsProps {
   stackZIndex?: number;
   /** During GIF export, advances animation deterministically per frame */
   exportAnimationTimeSeconds?: number | null;
+  /**
+   * When true, diagram routing (orthogonal batch + cache refresh) is skipped and the last
+   * computed layout bundle is kept — use while dragging only items with no connection endpoints
+   * so other lines stay static until drag end.
+   */
+  freezeConnectionRoutingWhileDrag?: boolean;
   /** When false, hide all animation shapes on connections (default: true) */
   animationConnectionsEnabled?: boolean;
   /** When set, only show animations for connections from this source node ID */
@@ -136,6 +142,7 @@ function areCanvasConnectionsPropsEqual(prev: CanvasConnectionsProps, next: Canv
     prev.isReadOnly === next.isReadOnly &&
     prev.connectionRenderRevision === next.connectionRenderRevision &&
     prev.orthogonalFastRouting === next.orthogonalFastRouting &&
+    prev.freezeConnectionRoutingWhileDrag === next.freezeConnectionRoutingWhileDrag &&
     prev.viewportWidthPx === next.viewportWidthPx &&
     prev.viewportHeightPx === next.viewportHeightPx &&
     prev.viewportObstaclePadDiagramPx === next.viewportObstaclePadDiagramPx &&
@@ -186,6 +193,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     viewportWidthPx,
     viewportHeightPx,
     viewportObstaclePadDiagramPx = DEFAULT_VIEWPORT_OBSTACLE_PAD,
+    freezeConnectionRoutingWhileDrag = false,
   } = props;
 
   /**
@@ -196,6 +204,16 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
   const orthogonalRouteCacheRef = useRef<Record<string, OrthogonalRoute>>({});
   const obstacleViewportStateRef = useRef<Map<string, { x: number; y: number; width: number; height: number }>>(new Map());
   const viewportSyncVersionRef = useRef(0);
+  const routingWhileDragFreezeRef = useRef<{
+    connections: DiagramData["connections"];
+    bundle: {
+      obstacleCatalog: ReturnType<typeof buildObstacleCatalog>;
+      connectionEdgeInfo: Map<string, { fromEdge: string; toEdge: string }>;
+      edgeGroups: Map<string, any[]>;
+      buildConnectionLayout: (edge: any, index: number) => any;
+      orthogonalRouteMap: Map<number, OrthogonalRoute>;
+    };
+  } | null>(null);
 
   useLayoutEffect(() => {
     if (
@@ -251,6 +269,14 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     buildConnectionLayout,
     orthogonalRouteMap,
   } = useMemo(() => {
+    if (
+      freezeConnectionRoutingWhileDrag &&
+      diagramData.connections === routingWhileDragFreezeRef.current?.connections &&
+      routingWhileDragFreezeRef.current
+    ) {
+      return { ...routingWhileDragFreezeRef.current.bundle };
+    }
+
     const obstacleCatalogInner = buildObstacleCatalog(nodesByIdForObstacles, zonesByIdForObstacles);
     const connectionEdgeInfoInner = new Map<string, { fromEdge: string; toEdge: string }>();
     const edgeGroupsInner = new Map<string, any[]>();
@@ -617,13 +643,21 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     }
     orthogonalRouteCacheRef.current = newCache;
 
-    return {
+    const bundle = {
       obstacleCatalog: obstacleCatalogInner,
       connectionEdgeInfo: connectionEdgeInfoInner,
       edgeGroups: edgeGroupsInner,
       buildConnectionLayout,
       orthogonalRouteMap: orthogonalRouteMapInner,
     };
+    if (!freezeConnectionRoutingWhileDrag) {
+      routingWhileDragFreezeRef.current = {
+        connections: diagramData.connections,
+        bundle: { ...bundle },
+      };
+    }
+
+    return bundle;
   }, [
     diagramData,
     nodesById,
@@ -635,6 +669,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     connectionKey,
     connectionAnimationStyles,
     orthogonalFastRouting,
+    freezeConnectionRoutingWhileDrag,
   ]);
   
   return (

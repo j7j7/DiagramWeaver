@@ -35,6 +35,7 @@ import { useCanvasExport } from "@/hooks/use-canvas-export";
 import { useCanvasContextMenu } from "@/hooks/use-canvas-context-menu";
 import { useCanvasOperations } from "./canvas-operations";
 import { CanvasConnections } from "./canvas-connections";
+import { getConnectionEndpointIdSet } from "@/lib/connection-endpoint-ids";
 import { CanvasArrowToggles } from "./canvas-arrow-toggles";
 import { CanvasConnectionText } from "./canvas-connection-text";
 import { getItemGroup } from "@/lib/grouping-utils";
@@ -796,6 +797,12 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   );
 
   const [isCanvasItemDragging, setIsCanvasItemDragging] = useState(false);
+
+  const connectionEndpointIdSet = useMemo(
+    () => getConnectionEndpointIdSet(diagramData.connections),
+    [diagramData.connections],
+  );
+
   const notifyDraggingChange = useCallback(
     (dragging: boolean) => {
       setIsCanvasItemDragging(dragging);
@@ -820,6 +827,28 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     onDuplicateNodesPlaced: handleDuplicateNodesPlaced,
     onDraggingChange: notifyDraggingChange,
   });
+
+  /** When dragging only non-endpoint items, other connections keep last routed paths (no L/Z “fast” flash). */
+  const freezeUnrelatedConnectionRouting = useMemo(() => {
+    if (!isCanvasItemDragging) return false;
+    if (altKeyHeld) return false;
+    if (dragPosition?.itemId) {
+      if (!connectionEndpointIdSet.has(dragPosition.itemId)) return true;
+    }
+    if (multiDragPositions && Object.keys(multiDragPositions).length > 0) {
+      for (const id of Object.keys(multiDragPositions)) {
+        if (connectionEndpointIdSet.has(id)) return false;
+      }
+      return true;
+    }
+    return false;
+  }, [
+    isCanvasItemDragging,
+    altKeyHeld,
+    dragPosition?.itemId,
+    multiDragPositions,
+    connectionEndpointIdSet,
+  ]);
 
   // Positions during drag (ghost/cursor); used for guides and Alt-duplicate previews
   const nodesWithDragPositions = useMemo(() => {
@@ -1603,7 +1632,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   transform={transform}
                   canvasRef={canvasRef}
                   isReadOnly={isReadOnly}
-                  orthogonalFastRouting={isCanvasItemDragging}
+                  freezeConnectionRoutingWhileDrag={freezeUnrelatedConnectionRouting}
+                  orthogonalFastRouting={!freezeUnrelatedConnectionRouting && isCanvasItemDragging}
                   viewportWidthPx={canvasDimensions.width}
                   viewportHeightPx={canvasDimensions.height}
                 />
@@ -1799,7 +1829,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       transform={transform}
                       canvasRef={canvasRef}
                       isReadOnly={isReadOnly}
-                      orthogonalFastRouting={isCanvasItemDragging}
+                      freezeConnectionRoutingWhileDrag={freezeUnrelatedConnectionRouting}
+                      orthogonalFastRouting={!freezeUnrelatedConnectionRouting && isCanvasItemDragging}
                       viewportWidthPx={canvasDimensions.width}
                       viewportHeightPx={canvasDimensions.height}
                     />
@@ -1866,7 +1897,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   transform={transform}
                   canvasRef={canvasRef}
                   isReadOnly={isReadOnly}
-                  orthogonalFastRouting={isCanvasItemDragging}
+                  freezeConnectionRoutingWhileDrag={freezeUnrelatedConnectionRouting}
+                  orthogonalFastRouting={!freezeUnrelatedConnectionRouting && isCanvasItemDragging}
                   viewportWidthPx={canvasDimensions.width}
                   viewportHeightPx={canvasDimensions.height}
                 />
