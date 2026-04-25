@@ -850,6 +850,17 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     connectionEndpointIdSet,
   ]);
 
+  const unrelatedConnectionRoutingDragIdsKey = useMemo(() => {
+    if (!freezeUnrelatedConnectionRouting) return "";
+    if (multiDragPositions && Object.keys(multiDragPositions).length > 0) {
+      return Object.keys(multiDragPositions).sort().join("\t");
+    }
+    if (dragPosition?.itemId) {
+      return dragPosition.itemId;
+    }
+    return "";
+  }, [freezeUnrelatedConnectionRouting, dragPosition?.itemId, multiDragPositions]);
+
   // Positions during drag (ghost/cursor); used for guides and Alt-duplicate previews
   const nodesWithDragPositions = useMemo(() => {
     const result = { ...nodesById };
@@ -1633,6 +1644,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   canvasRef={canvasRef}
                   isReadOnly={isReadOnly}
                   freezeConnectionRoutingWhileDrag={freezeUnrelatedConnectionRouting}
+                  unrelatedConnectionRoutingDragIdsKey={unrelatedConnectionRoutingDragIdsKey}
                   orthogonalFastRouting={!freezeUnrelatedConnectionRouting && isCanvasItemDragging}
                   viewportWidthPx={canvasDimensions.width}
                   viewportHeightPx={canvasDimensions.height}
@@ -1830,6 +1842,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       canvasRef={canvasRef}
                       isReadOnly={isReadOnly}
                       freezeConnectionRoutingWhileDrag={freezeUnrelatedConnectionRouting}
+                      unrelatedConnectionRoutingDragIdsKey={unrelatedConnectionRoutingDragIdsKey}
                       orthogonalFastRouting={!freezeUnrelatedConnectionRouting && isCanvasItemDragging}
                       viewportWidthPx={canvasDimensions.width}
                       viewportHeightPx={canvasDimensions.height}
@@ -1898,6 +1911,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   canvasRef={canvasRef}
                   isReadOnly={isReadOnly}
                   freezeConnectionRoutingWhileDrag={freezeUnrelatedConnectionRouting}
+                  unrelatedConnectionRoutingDragIdsKey={unrelatedConnectionRoutingDragIdsKey}
                   orthogonalFastRouting={!freezeUnrelatedConnectionRouting && isCanvasItemDragging}
                   viewportWidthPx={canvasDimensions.width}
                   viewportHeightPx={canvasDimensions.height}
