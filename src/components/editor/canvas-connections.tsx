@@ -11,7 +11,6 @@ import {
   appendInteriorObstaclesForPreferredEdges,
   mergeOrthogonalTrunkWaypoints,
   orthogonalRouteRequestGeometryKey,
-  cullDistantObstaclesForConnectionCorridor,
   type OrthogonalRoute,
   type OrthogonalRouteRequest,
 } from "@/lib/orthogonal-routing";
@@ -451,7 +450,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     );
 
     const baseObstacles = obstaclesForEndpoints(obstacleCatalogInner, edge.from, edge.to);
-    const rawObstacles = appendInteriorObstaclesForPreferredEdges(
+    const obstacles = appendInteriorObstaclesForPreferredEdges(
       baseObstacles,
       nodesById,
       zonesById,
@@ -459,26 +458,6 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
       edge.to,
       edge.fromPreferredExit,
       edge.toPreferredEntry,
-    );
-    const mergedTrunkWps = mergeOrthogonalTrunkWaypoints(
-      connectionPoints.fromX,
-      connectionPoints.fromY,
-      connectionPoints.toX,
-      connectionPoints.toY,
-      connectionPoints.fromAngle,
-      edge.orthogonalTrunkOffsetX,
-      edge.orthogonalTrunkOffsetY,
-      enhancedEdge.waypoints,
-    );
-    const obstacles = cullDistantObstaclesForConnectionCorridor(
-      rawObstacles,
-      connectionPoints.fromX,
-      connectionPoints.fromY,
-      connectionPoints.toX,
-      connectionPoints.toY,
-      connectionPoints.fromAngle,
-      connectionPoints.toAngle,
-      mergedTrunkWps ?? enhancedEdge.waypoints,
     );
 
     return {
