@@ -1,5 +1,8 @@
 # MEMORY.MD
 
+### 2026-04-25 – Orthogonal: corridor cull of remote obstacles
+**Issue**: Each connection’s obstacle list was **every** other node/zone; moving **unrelated** items still changed a huge obstacle string → **ref cache** missed. **Fix**: **`cullDistantObstaclesForConnectionCorridor`** in **`orthogonal-routing`** — AABB of **exit stubs + waypoints** (same stub length as the router) plus **asymmetric** padding (base **500** px + **0.5×** opposite span) so long horizontal runs keep a **wide** vertical swath. Filter by obstacle **centroid**; if nothing remains, **retain** full list (conservative). **`canvas-connections`** `buildConnectionLayout` applies cull with **trunk-merged** waypoints; cache key only includes **cull**d rects.
+
 ### 2026-04-25 – Orthogonal routes: per-connection ref cache
 **Issue**: **`nodesById`** (new object reference on many renders) and **selection** could invalidate **`useMemo`** in **`canvas-connections`**, re-running **`computeOrthogonalRoutesBatch`** even when **endpoint geometry and obstacles** were unchanged (e.g. right‑click, unrelated selection). **Fix**: **`orthogonalRouteRequestGeometryKey`** in **`orthogonal-routing`**; **`CanvasConnections`** holds **`useRef<Record<cacheKey, OrthogonalRoute>>`**. For each **orthogonal** connection, if **`stableId~geometryKey`** hits the ref, **reuse** the route; else compute **only** missing requests in one **batch** and **replace** the ref map with the current frame’s live routes (drop stale **stableId**s).
 
