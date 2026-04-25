@@ -1,5 +1,8 @@
 # MEMORY.MD
 
+### 2026-04-25 – Orthogonal routes: per-connection ref cache
+**Issue**: **`nodesById`** (new object reference on many renders) and **selection** could invalidate **`useMemo`** in **`canvas-connections`**, re-running **`computeOrthogonalRoutesBatch`** even when **endpoint geometry and obstacles** were unchanged (e.g. right‑click, unrelated selection). **Fix**: **`orthogonalRouteRequestGeometryKey`** in **`orthogonal-routing`**; **`CanvasConnections`** holds **`useRef<Record<cacheKey, OrthogonalRoute>>`**. For each **orthogonal** connection, if **`stableId~geometryKey`** hits the ref, **reuse** the route; else compute **only** missing requests in one **batch** and **replace** the ref map with the current frame’s live routes (drop stale **stableId**s).
+
 ### 2026-04-25 – Orthogonal routing: L/Z before A* (distance scaling)
 **Issue**: Full routing always ran **A\*** on a **10px grid** (up to **15_000** iterations) for the **stub→stub** span. Cost grows with how far the endpoints are apart in Manhattan distance; **L/Z** checks only ran when A* failed, so long connections on sparse boards did huge grid work. Any interaction that re-rendered (e.g. **context menu**) felt slow. **Fix**: **`computeOrthogonalSegment`** — after fast routing, try **`findFallbackRoute`** (L then Z) on **stub → entry stub** with **inflated** (then raw) **obstacles** **before** A*; if L/Z is clear, skip A* entirely.
 

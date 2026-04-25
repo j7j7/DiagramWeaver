@@ -1,7 +1,19 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useRef } from "react";
 import { BezierConnection, determineConnectionEdges, getOptimalConnectionPoints, calculateBezierControlPoints, getBezierPoint, getPointOnConnectionPath, closestTOnConnectionPath } from "../diagram/bezier-connection";
 import { OrthogonalConnection } from "../diagram/othogonal-connection";
-import { computeOrthogonalRoute, computeOrthogonalRoutesBatch, getPointOnOrthogonalPath, closestTOnOrthogonalPath, buildObstacleCatalog, obstaclesForEndpoints, appendInteriorObstaclesForPreferredEdges, mergeOrthogonalTrunkWaypoints, type OrthogonalRoute, type OrthogonalRouteRequest } from "@/lib/orthogonal-routing";
+import {
+  computeOrthogonalRoute,
+  computeOrthogonalRoutesBatch,
+  getPointOnOrthogonalPath,
+  closestTOnOrthogonalPath,
+  buildObstacleCatalog,
+  obstaclesForEndpoints,
+  appendInteriorObstaclesForPreferredEdges,
+  mergeOrthogonalTrunkWaypoints,
+  orthogonalRouteRequestGeometryKey,
+  type OrthogonalRoute,
+  type OrthogonalRouteRequest,
+} from "@/lib/orthogonal-routing";
 import type { DiagramData, DiagramConnectionData } from "@/lib/types";
 import {
   stableDiagramConnectionId,
@@ -155,6 +167,14 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     connectionRenderRevision,
     orthogonalFastRouting = false,
   } = props;
+
+  /**
+   * Per-connection orthogonal route cache (ref survives parent re-renders when React.memo
+   * bails out). When selection/context menu/`nodesById` identity changes without geometry
+   * changing, we skip `computeOrthogonalRoutesBatch` for that connection.
+   */
+  const orthogonalRouteCacheRef = useRef<Record<string, OrthogonalRoute>>({});
+
   // Obstacle / edge grouping / orthogonal batch routing are diagram-geometry work only. Memoize
   // so pan/zoom (transform updates) does not re-run A* and path building every frame.
   const {
@@ -485,13 +505,50 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     });
 
     const orthogonalRouteMapInner = new Map<number, OrthogonalRoute>();
-    const orthogonalRoutes = computeOrthogonalRoutesBatch(orthogonalRouteRequests);
-    orthogonalRouteIndices.forEach((index, routeIndex) => {
-      const route = orthogonalRoutes[routeIndex];
-      if (route) {
-        orthogonalRouteMapInner.set(index, route);
+    const conns = (diagramData.connections ?? []) as DiagramConnectionData[];
+    const nOrth = orthogonalRouteIndices.length;
+    const missingRequests: OrthogonalRouteRequest[] = [];
+    const missingMeta: { index: number; cacheKey: string }[] = [];
+    const prevCache = orthogonalRouteCacheRef.current;
+
+    for (let i = 0; i < nOrth; i++) {
+      const index = orthogonalRouteIndices[i];
+      const request = orthogonalRouteRequests[i];
+      const edge = conns[index];
+      if (!edge) continue;
+      const stableId = stableDiagramConnectionId(edge, index);
+      const cacheKey = `${stableId}~${orthogonalRouteRequestGeometryKey(request)}`;
+      const hit = prevCache[cacheKey];
+      if (hit) {
+        orthogonalRouteMapInner.set(index, hit);
+      } else {
+        missingRequests.push(request);
+        missingMeta.push({ index, cacheKey });
       }
-    });
+    }
+
+    if (missingRequests.length > 0) {
+      const computed = computeOrthogonalRoutesBatch(missingRequests);
+      missingMeta.forEach((m, j) => {
+        const route = computed[j];
+        if (route) {
+          orthogonalRouteMapInner.set(m.index, route);
+        }
+      });
+    }
+
+    const newCache: Record<string, OrthogonalRoute> = {};
+    for (let i = 0; i < nOrth; i++) {
+      const index = orthogonalRouteIndices[i];
+      const request = orthogonalRouteRequests[i];
+      const edge = conns[index];
+      if (!edge) continue;
+      const stableId = stableDiagramConnectionId(edge, index);
+      const cacheKey = `${stableId}~${orthogonalRouteRequestGeometryKey(request)}`;
+      const r = orthogonalRouteMapInner.get(index);
+      if (r) newCache[cacheKey] = r;
+    }
+    orthogonalRouteCacheRef.current = newCache;
 
     return {
       obstacleCatalog: obstacleCatalogInner,

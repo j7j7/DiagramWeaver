@@ -1115,6 +1115,34 @@ export function computeOrthogonalRoutesBatch(
   });
 }
 
+/**
+ * Stable string for cache invalidation: routing inputs that affect
+ * `computeOrthogonalRoute` (single segment) excluding batch `occupiedSegments`.
+ */
+export function orthogonalRouteRequestGeometryKey(request: OrthogonalRouteRequest): string {
+  const wp = request.waypoints?.length
+    ? request.waypoints
+        .map((w) => `${w.x},${w.y}`)
+        .join("|")
+    : "";
+  const obs = request.obstacles
+    .map((r) => `${r.x},${r.y},${r.width},${r.height}`)
+    .sort()
+    .join(";");
+  return [
+    request.fromX,
+    request.fromY,
+    request.toX,
+    request.toY,
+    request.fromAngle,
+    request.toAngle,
+    request.smoothCorners ? "1" : "0",
+    request.fastObstacleRouting ? "1" : "0",
+    wp,
+    obs,
+  ].join("~");
+}
+
 /** Short stub point extending from (x,y) in direction `angleDeg` by `len` px */
 function exitStub(x: number, y: number, angleDeg: number, len: number): { x: number; y: number } {
   // Convention: 0=up, 90=right, 180=down, 270=left
