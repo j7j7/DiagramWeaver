@@ -985,18 +985,29 @@ function computeOrthogonalSegment(
     return enforceOrthogonalSegments(fastPts, noObs, options);
   }
 
-  let points = astar(stub.x, stub.y, entryStub.x, entryStub.y, obstacles, fromAngle, toAngle, options);
+  const candidateAngles = getFallbackAngles(fromAngle, directionFromTo(sfx, sfy, stx, sty));
+  const inflated = obstacles.map((o) => inflateRect(o, OBSTACLE_MARGIN));
+  // Try L/Z on the inner (stub → stub) span first. A* can explore up to MAX_ITERATIONS 10px
+  // cells, so long diagonal-ish runs on sparse diagrams were disproportionately slow.
+  const innerLz =
+    findFallbackRoute(stub.x, stub.y, entryStub.x, entryStub.y, candidateAngles, inflated) ??
+    findFallbackRoute(stub.x, stub.y, entryStub.x, entryStub.y, candidateAngles, obstacles);
 
-  if (points) {
-    points = [{ x: sfx, y: sfy }, ...points, { x: stx, y: sty }];
+  let points: Array<{ x: number; y: number }>;
+  if (innerLz) {
+    points = [{ x: sfx, y: sfy }, ...innerLz, { x: stx, y: sty }];
     points = simplifyPath(points);
   } else {
-    const inflated = obstacles.map((o) => inflateRect(o, OBSTACLE_MARGIN));
-    const relaxed = obstacles.map((o) => inflateRect(o, OBSTACLE_MARGIN / 2));
-    const candidateAngles = getFallbackAngles(fromAngle, directionFromTo(sfx, sfy, stx, sty));
-    points = findFallbackRoute(sfx, sfy, stx, sty, candidateAngles, inflated)
-      ?? findFallbackRoute(sfx, sfy, stx, sty, candidateAngles, relaxed)
-      ?? zRoute(sfx, sfy, stx, sty, fromAngle);
+    const astarPath = astar(stub.x, stub.y, entryStub.x, entryStub.y, obstacles, fromAngle, toAngle, options);
+    if (astarPath) {
+      points = [{ x: sfx, y: sfy }, ...astarPath, { x: stx, y: sty }];
+      points = simplifyPath(points);
+    } else {
+      const relaxed = obstacles.map((o) => inflateRect(o, OBSTACLE_MARGIN / 2));
+      points = findFallbackRoute(sfx, sfy, stx, sty, candidateAngles, inflated)
+        ?? findFallbackRoute(sfx, sfy, stx, sty, candidateAngles, relaxed)
+        ?? zRoute(sfx, sfy, stx, sty, fromAngle);
+    }
   }
 
   points = ensureApproachSegment(points, sfx, sfy, fromAngle, stubLen, obstacles, options, true);

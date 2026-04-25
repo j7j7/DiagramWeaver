@@ -1,5 +1,8 @@
 # MEMORY.MD
 
+### 2026-04-25 – Orthogonal routing: L/Z before A* (distance scaling)
+**Issue**: Full routing always ran **A\*** on a **10px grid** (up to **15_000** iterations) for the **stub→stub** span. Cost grows with how far the endpoints are apart in Manhattan distance; **L/Z** checks only ran when A* failed, so long connections on sparse boards did huge grid work. Any interaction that re-rendered (e.g. **context menu**) felt slow. **Fix**: **`computeOrthogonalSegment`** — after fast routing, try **`findFallbackRoute`** (L then Z) on **stub → entry stub** with **inflated** (then raw) **obstacles** **before** A*; if L/Z is clear, skip A* entirely.
+
 ### 2026-04-25 – Orthogonal connections: pan/zoom performance
 **Issue**: Long **orthogonal** routes re-ran **`computeOrthogonalRoutesBatch`** and obstacle/edge prep on **every** **`transform`** update (pan/zoom), even though routes are diagram-space only. **Fix**: memoize **`buildObstacleCatalog`**, edge grouping, **`buildConnectionLayout`**, and **`orthogonalRouteMap`** in **`canvas-connections`** (deps: diagram + nodes + routing mode, not viewport). **`OrthogonalConnection`**: only pass **`diagramTransform`** / **`diagramCanvasRef`** when **trunk drag** is active (selected, no waypoints) so pan does not break memo on every line. **`othogonal-connection`**: slightly lower cap on width-gradient ribbon sample count for very long paths.
 
