@@ -32,6 +32,7 @@ import {
   hostRectToDiagramViewRect,
   mergeObstaclesByViewport,
 } from "@/lib/connector-obstacle-viewport-freeze";
+import { getConnectionEndpointIdSet } from "@/lib/connection-endpoint-ids";
 
 interface CanvasConnectionsProps {
   width: number;
@@ -107,9 +108,9 @@ interface CanvasConnectionsProps {
   /** Pad around the view in diagram space when deciding visible vs off-screen. Default 400. */
   viewportObstaclePadDiagramPx?: number;
   /**
-   * When `freezeConnectionRoutingWhileDrag` is on, id(s) of the item(s) being moved (e.g. single id,
-   * or tab-separated sorted ids for multi-drag). Used to skip live layout for connections that do
-   * not touch those ids.
+   * When `freezeConnectionRoutingWhileDrag` is on: tab-separated **dragged** canvas item id(s) — used
+   * to keep routing/layout frozen for connections that **do not** touch any of these ids; connections
+   * that share an endpoint with a dragged id recompute as you drag.
    */
   unrelatedConnectionRoutingDragIdsKey?: string;
 }
@@ -211,6 +212,19 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     );
   }, [freezeConnectionRoutingWhileDrag, unrelatedConnectionRoutingDragIdsKey]);
 
+  const connectionEndpointIdSet = useMemo(
+    () => getConnectionEndpointIdSet(diagramData.connections),
+    [diagramData.connections]
+  );
+  /** True if any dragged canvas id is an endpoint of at least one connection (partial recompute). */
+  const isPartialConnectionDragFreeze = useMemo(() => {
+    if (!freezeConnectionRoutingWhileDrag || !unrelatedConnectionRoutingDragIdsKey) return false;
+    for (const id of unrelatedConnectionRoutingDragIdsKey.split("\t").filter(Boolean)) {
+      if (connectionEndpointIdSet.has(id)) return true;
+    }
+    return false;
+  }, [freezeConnectionRoutingWhileDrag, unrelatedConnectionRoutingDragIdsKey, connectionEndpointIdSet]);
+
   /**
    * Per-connection orthogonal route cache (ref survives parent re-renders when React.memo
    * bails out). When selection/context menu/`nodesById` identity changes without geometry
@@ -286,11 +300,19 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
   } = useMemo(() => {
     if (
       freezeConnectionRoutingWhileDrag &&
+      !isPartialConnectionDragFreeze &&
       diagramData.connections === routingWhileDragFreezeRef.current?.connections &&
       routingWhileDragFreezeRef.current
     ) {
       return { ...routingWhileDragFreezeRef.current.bundle };
     }
+
+    const partialDragFrozenBundle =
+      isPartialConnectionDragFreeze &&
+      routingWhileDragFreezeRef.current?.connections === diagramData.connections &&
+      routingWhileDragFreezeRef.current
+        ? routingWhileDragFreezeRef.current.bundle
+        : null;
 
     const obstacleCatalogInner = buildObstacleCatalog(nodesByIdForObstacles, zonesByIdForObstacles);
     const connectionEdgeInfoInner = new Map<string, { fromEdge: string; toEdge: string }>();
@@ -578,10 +600,27 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     };
   };
 
+    const orthogonalRouteMapInner = new Map<number, OrthogonalRoute>();
     const orthogonalRouteRequests: OrthogonalRouteRequest[] = [];
     const orthogonalRouteIndices: number[] = [];
 
     visibleConnections.forEach(({ edge, index }) => {
+      const connStyle = edge?.style ?? "bezier";
+      if (
+        partialDragFrozenBundle &&
+        activeUnrelatedConnectionDragIdSet &&
+        connStyle === "orthogonal"
+      ) {
+        const touchesDrag =
+          activeUnrelatedConnectionDragIdSet.has(edge.from) || activeUnrelatedConnectionDragIdSet.has(edge.to);
+        if (!touchesDrag) {
+          const fr = partialDragFrozenBundle.orthogonalRouteMap.get(index);
+          if (fr) {
+            orthogonalRouteMapInner.set(index, fr);
+            return;
+          }
+        }
+      }
       const layout = buildConnectionLayout(edge, index);
       if (!layout || layout.connStyle !== "orthogonal") return;
 
@@ -612,7 +651,6 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
       });
     });
 
-    const orthogonalRouteMapInner = new Map<number, OrthogonalRoute>();
     const conns = (diagramData.connections ?? []) as DiagramConnectionData[];
     const nOrth = orthogonalRouteIndices.length;
     const missingRequests: OrthogonalRouteRequest[] = [];
@@ -685,7 +723,13 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     connectionAnimationStyles,
     orthogonalFastRouting,
     freezeConnectionRoutingWhileDrag,
+    isPartialConnectionDragFreeze,
+    activeUnrelatedConnectionDragIdSet,
   ]);
+
+  const frozenBuildForUnrelatedConnectionDrag = isPartialConnectionDragFreeze
+    ? routingWhileDragFreezeRef.current?.bundle?.buildConnectionLayout
+    : undefined;
   
   return (
     <>
@@ -789,7 +833,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
         let connStyle: string;
 
         if (useFrozenEdgeLayout) {
-          const fl = buildConnectionLayout(edge, index);
+          const fl = (frozenBuildForUnrelatedConnectionDrag ?? buildConnectionLayout)(edge, index);
           if (!fl) return null;
           effectiveGeomFrom = fl.fromPos;
           effectiveGeomTo = fl.toPos;

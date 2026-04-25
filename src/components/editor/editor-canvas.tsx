@@ -828,27 +828,17 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     onDraggingChange: notifyDraggingChange,
   });
 
-  /** When dragging only non-endpoint items, other connections keep last routed paths (no L/Z “fast” flash). */
+  /**
+   * While a canvas item is being dragged (not Alt+duplicate), connection routing for lines that
+   * do not touch the dragged item(s) can stay frozen. Non-endpoint-only drags fully reuse the
+   * last bundle; endpoint drags use a partial recompute in CanvasConnections.
+   */
   const freezeUnrelatedConnectionRouting = useMemo(() => {
-    if (!isCanvasItemDragging) return false;
     if (altKeyHeld) return false;
-    if (dragPosition?.itemId) {
-      if (!connectionEndpointIdSet.has(dragPosition.itemId)) return true;
-    }
-    if (multiDragPositions && Object.keys(multiDragPositions).length > 0) {
-      for (const id of Object.keys(multiDragPositions)) {
-        if (connectionEndpointIdSet.has(id)) return false;
-      }
-      return true;
-    }
+    if (dragPosition?.itemId) return true;
+    if (multiDragPositions && Object.keys(multiDragPositions).length > 0) return true;
     return false;
-  }, [
-    isCanvasItemDragging,
-    altKeyHeld,
-    dragPosition?.itemId,
-    multiDragPositions,
-    connectionEndpointIdSet,
-  ]);
+  }, [altKeyHeld, dragPosition?.itemId, multiDragPositions]);
 
   const unrelatedConnectionRoutingDragIdsKey = useMemo(() => {
     if (!freezeUnrelatedConnectionRouting) return "";
@@ -860,6 +850,17 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     }
     return "";
   }, [freezeUnrelatedConnectionRouting, dragPosition?.itemId, multiDragPositions]);
+
+  const hasEndpointInDrag = useMemo(() => {
+    if (!isCanvasItemDragging) return false;
+    if (dragPosition?.itemId && connectionEndpointIdSet.has(dragPosition.itemId)) return true;
+    if (multiDragPositions) {
+      for (const id of Object.keys(multiDragPositions)) {
+        if (connectionEndpointIdSet.has(id)) return true;
+      }
+    }
+    return false;
+  }, [isCanvasItemDragging, dragPosition?.itemId, multiDragPositions, connectionEndpointIdSet]);
 
   // Positions during drag (ghost/cursor); used for guides and Alt-duplicate previews
   const nodesWithDragPositions = useMemo(() => {
@@ -1645,7 +1646,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   isReadOnly={isReadOnly}
                   freezeConnectionRoutingWhileDrag={freezeUnrelatedConnectionRouting}
                   unrelatedConnectionRoutingDragIdsKey={unrelatedConnectionRoutingDragIdsKey}
-                  orthogonalFastRouting={!freezeUnrelatedConnectionRouting && isCanvasItemDragging}
+                  orthogonalFastRouting={isCanvasItemDragging && (!freezeUnrelatedConnectionRouting || hasEndpointInDrag)}
                   viewportWidthPx={canvasDimensions.width}
                   viewportHeightPx={canvasDimensions.height}
                 />
@@ -1843,7 +1844,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       isReadOnly={isReadOnly}
                       freezeConnectionRoutingWhileDrag={freezeUnrelatedConnectionRouting}
                       unrelatedConnectionRoutingDragIdsKey={unrelatedConnectionRoutingDragIdsKey}
-                      orthogonalFastRouting={!freezeUnrelatedConnectionRouting && isCanvasItemDragging}
+                      orthogonalFastRouting={isCanvasItemDragging && (!freezeUnrelatedConnectionRouting || hasEndpointInDrag)}
                       viewportWidthPx={canvasDimensions.width}
                       viewportHeightPx={canvasDimensions.height}
                     />
@@ -1912,7 +1913,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   isReadOnly={isReadOnly}
                   freezeConnectionRoutingWhileDrag={freezeUnrelatedConnectionRouting}
                   unrelatedConnectionRoutingDragIdsKey={unrelatedConnectionRoutingDragIdsKey}
-                  orthogonalFastRouting={!freezeUnrelatedConnectionRouting && isCanvasItemDragging}
+                  orthogonalFastRouting={isCanvasItemDragging && (!freezeUnrelatedConnectionRouting || hasEndpointInDrag)}
                   viewportWidthPx={canvasDimensions.width}
                   viewportHeightPx={canvasDimensions.height}
                 />

@@ -320,12 +320,20 @@ export function useCanvasDragDrop({
         };
       }
       
-      // Throttle: store in ref, schedule RAF to flush (max once per frame)
+      // Throttle: store in ref, schedule RAF to flush (max once per frame).
+      // First pointermove of a drag: also apply position synchronously so the canvas sees
+      // `dragPosition` / `multiDragPositions` in the same commit as `onDraggingChange(true)`.
+      // Otherwise connections may reroute for one frame while moving a non-endpoint item.
+      const isFirstDragHover = !isDraggingRef.current;
       if (!isDroppingOnScratchpadRef.current) {
         pendingDragRef.current = {
           single: { x: snappedX, y: snappedY, itemId: item.id, deltaX, deltaY },
           multi: newMulti,
         };
+        if (isFirstDragHover) {
+          setDragPosition(pendingDragRef.current.single);
+          setMultiDragPositions(pendingDragRef.current.multi);
+        }
         if (dragRafIdRef.current === null) {
           dragRafIdRef.current = requestAnimationFrame(() => {
             dragRafIdRef.current = null;
