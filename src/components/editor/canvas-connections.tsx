@@ -32,6 +32,7 @@ import {
   hostRectToDiagramViewRect,
   mergeObstaclesByViewport,
 } from "@/lib/connector-obstacle-viewport-freeze";
+import { getConnectionEndpointIdSet } from "@/lib/connection-endpoint-ids";
 
 interface CanvasConnectionsProps {
   width: number;
@@ -59,6 +60,12 @@ interface CanvasConnectionsProps {
   stackZIndex?: number;
   /** During GIF export, advances animation deterministically per frame */
   exportAnimationTimeSeconds?: number | null;
+  /**
+   * When true, diagram routing (orthogonal batch + cache refresh) is skipped and the last
+   * computed layout bundle is kept — use while dragging only items with no connection endpoints
+   * so other lines stay static until drag end.
+   */
+  freezeConnectionRoutingWhileDrag?: boolean;
   /** When false, hide all animation shapes on connections (default: true) */
   animationConnectionsEnabled?: boolean;
   /** When set, only show animations for connections from this source node ID */
@@ -100,6 +107,12 @@ interface CanvasConnectionsProps {
   viewportHeightPx?: number;
   /** Pad around the view in diagram space when deciding visible vs off-screen. Default 400. */
   viewportObstaclePadDiagramPx?: number;
+  /**
+   * When `freezeConnectionRoutingWhileDrag` is on: tab-separated **dragged** canvas item id(s) — used
+   * to keep routing/layout frozen for connections that **do not** touch any of these ids; connections
+   * that share an endpoint with a dragged id recompute as you drag.
+   */
+  unrelatedConnectionRoutingDragIdsKey?: string;
 }
 
 function setsEqual(a: Set<number> | undefined, b: Set<number> | undefined): boolean {
@@ -136,6 +149,8 @@ function areCanvasConnectionsPropsEqual(prev: CanvasConnectionsProps, next: Canv
     prev.isReadOnly === next.isReadOnly &&
     prev.connectionRenderRevision === next.connectionRenderRevision &&
     prev.orthogonalFastRouting === next.orthogonalFastRouting &&
+    prev.freezeConnectionRoutingWhileDrag === next.freezeConnectionRoutingWhileDrag &&
+    prev.unrelatedConnectionRoutingDragIdsKey === next.unrelatedConnectionRoutingDragIdsKey &&
     prev.viewportWidthPx === next.viewportWidthPx &&
     prev.viewportHeightPx === next.viewportHeightPx &&
     prev.viewportObstaclePadDiagramPx === next.viewportObstaclePadDiagramPx &&
@@ -186,7 +201,29 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     viewportWidthPx,
     viewportHeightPx,
     viewportObstaclePadDiagramPx = DEFAULT_VIEWPORT_OBSTACLE_PAD,
+    freezeConnectionRoutingWhileDrag = false,
+    unrelatedConnectionRoutingDragIdsKey = "",
   } = props;
+
+  const activeUnrelatedConnectionDragIdSet = useMemo(() => {
+    if (!freezeConnectionRoutingWhileDrag || !unrelatedConnectionRoutingDragIdsKey) return null;
+    return new Set(
+      unrelatedConnectionRoutingDragIdsKey.split("\t").filter(Boolean),
+    );
+  }, [freezeConnectionRoutingWhileDrag, unrelatedConnectionRoutingDragIdsKey]);
+
+  const connectionEndpointIdSet = useMemo(
+    () => getConnectionEndpointIdSet(diagramData.connections),
+    [diagramData.connections]
+  );
+  /** True if any dragged canvas id is an endpoint of at least one connection (partial recompute). */
+  const isPartialConnectionDragFreeze = useMemo(() => {
+    if (!freezeConnectionRoutingWhileDrag || !unrelatedConnectionRoutingDragIdsKey) return false;
+    for (const id of unrelatedConnectionRoutingDragIdsKey.split("\t").filter(Boolean)) {
+      if (connectionEndpointIdSet.has(id)) return true;
+    }
+    return false;
+  }, [freezeConnectionRoutingWhileDrag, unrelatedConnectionRoutingDragIdsKey, connectionEndpointIdSet]);
 
   /**
    * Per-connection orthogonal route cache (ref survives parent re-renders when React.memo
@@ -196,6 +233,16 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
   const orthogonalRouteCacheRef = useRef<Record<string, OrthogonalRoute>>({});
   const obstacleViewportStateRef = useRef<Map<string, { x: number; y: number; width: number; height: number }>>(new Map());
   const viewportSyncVersionRef = useRef(0);
+  const routingWhileDragFreezeRef = useRef<{
+    connections: DiagramData["connections"];
+    bundle: {
+      obstacleCatalog: ReturnType<typeof buildObstacleCatalog>;
+      connectionEdgeInfo: Map<string, { fromEdge: string; toEdge: string }>;
+      edgeGroups: Map<string, any[]>;
+      buildConnectionLayout: (edge: any, index: number) => any;
+      orthogonalRouteMap: Map<number, OrthogonalRoute>;
+    };
+  } | null>(null);
 
   useLayoutEffect(() => {
     if (
@@ -251,6 +298,22 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     buildConnectionLayout,
     orthogonalRouteMap,
   } = useMemo(() => {
+    if (
+      freezeConnectionRoutingWhileDrag &&
+      !isPartialConnectionDragFreeze &&
+      diagramData.connections === routingWhileDragFreezeRef.current?.connections &&
+      routingWhileDragFreezeRef.current
+    ) {
+      return { ...routingWhileDragFreezeRef.current.bundle };
+    }
+
+    const partialDragFrozenBundle =
+      isPartialConnectionDragFreeze &&
+      routingWhileDragFreezeRef.current?.connections === diagramData.connections &&
+      routingWhileDragFreezeRef.current
+        ? routingWhileDragFreezeRef.current.bundle
+        : null;
+
     const obstacleCatalogInner = buildObstacleCatalog(nodesByIdForObstacles, zonesByIdForObstacles);
     const connectionEdgeInfoInner = new Map<string, { fromEdge: string; toEdge: string }>();
     const edgeGroupsInner = new Map<string, any[]>();
@@ -537,10 +600,27 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     };
   };
 
+    const orthogonalRouteMapInner = new Map<number, OrthogonalRoute>();
     const orthogonalRouteRequests: OrthogonalRouteRequest[] = [];
     const orthogonalRouteIndices: number[] = [];
 
     visibleConnections.forEach(({ edge, index }) => {
+      const connStyle = edge?.style ?? "bezier";
+      if (
+        partialDragFrozenBundle &&
+        activeUnrelatedConnectionDragIdSet &&
+        connStyle === "orthogonal"
+      ) {
+        const touchesDrag =
+          activeUnrelatedConnectionDragIdSet.has(edge.from) || activeUnrelatedConnectionDragIdSet.has(edge.to);
+        if (!touchesDrag) {
+          const fr = partialDragFrozenBundle.orthogonalRouteMap.get(index);
+          if (fr) {
+            orthogonalRouteMapInner.set(index, fr);
+            return;
+          }
+        }
+      }
       const layout = buildConnectionLayout(edge, index);
       if (!layout || layout.connStyle !== "orthogonal") return;
 
@@ -571,7 +651,6 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
       });
     });
 
-    const orthogonalRouteMapInner = new Map<number, OrthogonalRoute>();
     const conns = (diagramData.connections ?? []) as DiagramConnectionData[];
     const nOrth = orthogonalRouteIndices.length;
     const missingRequests: OrthogonalRouteRequest[] = [];
@@ -617,13 +696,21 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     }
     orthogonalRouteCacheRef.current = newCache;
 
-    return {
+    const bundle = {
       obstacleCatalog: obstacleCatalogInner,
       connectionEdgeInfo: connectionEdgeInfoInner,
       edgeGroups: edgeGroupsInner,
       buildConnectionLayout,
       orthogonalRouteMap: orthogonalRouteMapInner,
     };
+    if (!freezeConnectionRoutingWhileDrag) {
+      routingWhileDragFreezeRef.current = {
+        connections: diagramData.connections,
+        bundle: { ...bundle },
+      };
+    }
+
+    return bundle;
   }, [
     diagramData,
     nodesById,
@@ -635,7 +722,14 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     connectionKey,
     connectionAnimationStyles,
     orthogonalFastRouting,
+    freezeConnectionRoutingWhileDrag,
+    isPartialConnectionDragFreeze,
+    activeUnrelatedConnectionDragIdSet,
   ]);
+
+  const frozenBuildForUnrelatedConnectionDrag = isPartialConnectionDragFreeze
+    ? routingWhileDragFreezeRef.current?.bundle?.buildConnectionLayout
+    : undefined;
   
   return (
     <>
@@ -707,7 +801,51 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
         const geomTo = slideOff
           ? { ...toPos, x: (toPos.x ?? 0) + slideOff.toDx, y: (toPos.y ?? 0) + slideOff.toDy }
           : toPos;
-        
+
+        const connRow = edge as DiagramConnectionData;
+        const allConns = (diagramData.connections ?? []) as DiagramConnectionData[];
+        const edgeId = stableDiagramConnectionId(connRow, index);
+        const isConnectionHighlighted = isDiagramConnectionInCanvasSelection(
+          connRow,
+          index,
+          allConns,
+          selectedItemIds,
+          selectedItemId,
+          selectedItem
+        );
+        const shouldShowDeleteButton = selectedItemId && (selectedItemId === edge.from || selectedItemId === edge.to) && onConnectionDelete;
+
+        const useFrozenEdgeLayout =
+          activeUnrelatedConnectionDragIdSet != null &&
+          !slideOff &&
+          !activeUnrelatedConnectionDragIdSet.has(edge.from) &&
+          !activeUnrelatedConnectionDragIdSet.has(edge.to);
+
+        let enhancedEdge: any;
+        let fromX: number;
+        let fromY: number;
+        let toX: number;
+        let toY: number;
+        let fromAngle: number;
+        let toAngle: number;
+        let effectiveGeomFrom = geomFrom;
+        let effectiveGeomTo = geomTo;
+        let connStyle: string;
+
+        if (useFrozenEdgeLayout) {
+          const fl = (frozenBuildForUnrelatedConnectionDrag ?? buildConnectionLayout)(edge, index);
+          if (!fl) return null;
+          effectiveGeomFrom = fl.fromPos;
+          effectiveGeomTo = fl.toPos;
+          enhancedEdge = fl.enhancedEdge;
+          fromX = fl.fromX;
+          fromY = fl.fromY;
+          toX = fl.toX;
+          toY = fl.toY;
+          fromAngle = fl.fromAngle;
+          toAngle = fl.toAngle;
+          connStyle = fl.connStyle;
+        } else {
         // Get edge information for this connection
         const connKey = `${edge.from}-${edge.to}-${index}`;
         const edges = !slideOff && connectionEdgeInfo.has(connKey)
@@ -728,7 +866,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
         const toEdgeTotal = toEdgeConnections.length;
         
         // Update edge with per-edge connection distribution info
-        let enhancedEdge: any = {
+        enhancedEdge = {
           ...edge,
           fromPreferredExit: edges.fromEdge,
           toPreferredEntry: edges.toEdge,
@@ -749,22 +887,6 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
             })),
           };
         }
-
-        // Selection ids may be uuid or from-to-index (marquee / tab state); match canonically.
-        const connRow = edge as DiagramConnectionData;
-        const allConns = (diagramData.connections ?? []) as DiagramConnectionData[];
-        const edgeId = stableDiagramConnectionId(connRow, index);
-        const isConnectionHighlighted = isDiagramConnectionInCanvasSelection(
-          connRow,
-          index,
-          allConns,
-          selectedItemIds,
-          selectedItemId,
-          selectedItem
-        );
-        
-        // Only show delete button if a node/zone is selected and this connection is associated with it
-        const shouldShowDeleteButton = selectedItemId && (selectedItemId === edge.from || selectedItemId === edge.to) && onConnectionDelete;
 
         // Calculate center point for delete button
         // Reuse similar logic from bezier-connection.tsx for calculating connection points
@@ -884,25 +1006,18 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
         const toIconOffsetX = toIconWidth ? (toWidth - toIconWidth) / 2 : undefined;
 
         // Calculate connection points
-        const connectionPoints = getOptimalConnectionPoints(geomFrom, geomTo, fromWidth, fromHeight, toWidth, toHeight, enhancedEdge, fromIconHeight, toIconHeight, fromIconOffset, toIconOffset, fromIconWidth, fromIconOffsetX, toIconWidth, toIconOffsetX);
-        const { fromX, fromY, toX, toY, fromAngle, toAngle } = connectionPoints;
-        
-        // Calculate control points for bezier curve
-        const curvature = edge?.curvature || 0.6;
-        const { cp1X, cp1Y, cp2X, cp2Y } = calculateBezierControlPoints(
-          fromX, 
-          fromY, 
-          toX, 
-          toY, 
-          curvature, 
-          fromAngle, 
-          toAngle
-        );
-        
-        // Get center point (t = 0.5)
-        const centerPoint = getBezierPoint(0.5, fromX, fromY, cp1X, cp1Y, cp2X, cp2Y, toX, toY);
+        const liveConnectionPoints = getOptimalConnectionPoints(geomFrom, geomTo, fromWidth, fromHeight, toWidth, toHeight, enhancedEdge, fromIconHeight, toIconHeight, fromIconOffset, toIconOffset, fromIconWidth, fromIconOffsetX, toIconWidth, toIconOffsetX);
+        fromX = liveConnectionPoints.fromX;
+        fromY = liveConnectionPoints.fromY;
+        toX = liveConnectionPoints.toX;
+        toY = liveConnectionPoints.toY;
+        fromAngle = liveConnectionPoints.fromAngle;
+        toAngle = liveConnectionPoints.toAngle;
 
-        const connStyle = edge.style ?? 'bezier';
+        connStyle = edge.style ?? "bezier";
+        }
+
+        const curvature = edge?.curvature || 0.6;
 
         const connectionHandlers = {
           onClick: (connection: DiagramConnectionData, event: React.MouseEvent) => {
@@ -984,8 +1099,8 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
           >
             {connStyle === 'orthogonal' ? (
               <OrthogonalConnection
-                from={geomFrom}
-                to={geomTo}
+                from={effectiveGeomFrom}
+                to={effectiveGeomTo}
                 connectionColor={edge.color}
                 connectionData={enhancedEdge}
                 route={orthogonalRouteMap.get(index)}
@@ -1040,8 +1155,8 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
               />
             ) : (
               <BezierConnection
-                from={geomFrom}
-                to={geomTo}
+                from={effectiveGeomFrom}
+                to={effectiveGeomTo}
                 connectionColor={edge.color}
                 connectionData={enhancedEdge}
                 exportAnimationTimeSeconds={exportAnimationTimeSeconds}
@@ -1243,6 +1358,19 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
       let arrowPoint: { x: number; y: number };
 
       if (connStyle === 'orthogonal') {
+        const frozenRoute = orthogonalRouteMap.get(index);
+        const useFrozenToolbarPoints =
+          freezeConnectionRoutingWhileDrag &&
+          activeUnrelatedConnectionDragIdSet != null &&
+          !activeUnrelatedConnectionDragIdSet.has(edge.from) &&
+          !activeUnrelatedConnectionDragIdSet.has(edge.to) &&
+          Boolean(frozenRoute);
+        if (useFrozenToolbarPoints && frozenRoute) {
+          const fr = frozenRoute;
+          startPoint = getPointOnOrthogonalPath(0.1, fr.points, fr.totalLength);
+          centerPoint = getPointOnOrthogonalPath(0.5, fr.points, fr.totalLength);
+          arrowPoint = getPointOnOrthogonalPath(0.9, fr.points, fr.totalLength);
+        } else {
         const baseObstaclesToolbar = obstaclesForEndpoints(obstacleCatalog, edge.from, edge.to);
         const obstacles = appendInteriorObstaclesForPreferredEdges(
           baseObstaclesToolbar,
@@ -1261,6 +1389,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
         startPoint = getPointOnOrthogonalPath(0.1, route.points, route.totalLength);
         centerPoint = getPointOnOrthogonalPath(0.5, route.points, route.totalLength);
         arrowPoint = getPointOnOrthogonalPath(0.9, route.points, route.totalLength);
+        }
       } else {
         const curvature = edge?.curvature || 0.6;
         const waypoints = edge?.waypoints;
