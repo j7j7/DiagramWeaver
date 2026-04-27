@@ -1,5 +1,8 @@
 # MEMORY.MD
 
+### 2026-04-27 – README: License section
+**`README.md`**: **License** section states the project is under **GNU GPL v3.0** and links **`LICENSE.txt`**.
+
 ### 2026-04-25 – Frosted Perlin: achromatic source (`feColorMatrix`)
 **`FROST_PERLIN`** filter: **`feTurbulence` → `feColorMatrix` (sRGB luma 0.2126/0.7152/0.0722 into R, G, B)** so the bitmap is true gray before **`mixBlendMode: luminosity`**. `feTurbulence` alone can be slightly chromatic; **`luminosity` alone** was not enough.
 ### 2026-04-25 – Frosted Perlin: `luminosity` (no added hue)

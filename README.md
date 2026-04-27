@@ -324,3 +324,7 @@ src/
 - `ACCESSIBILITY_AUDIT_REPORT.md` – Comprehensive WCAG 2.1 Level AA accessibility audit
 - `AGENTS.md` – Build commands and code style
 - `MEMORY.MD` – Detailed feature history and implementation notes
+
+## License
+
+This project is licensed under the **GNU General Public License v3.0** (GPL-3.0). See [`LICENSE.txt`](LICENSE.txt) for the full license text.
