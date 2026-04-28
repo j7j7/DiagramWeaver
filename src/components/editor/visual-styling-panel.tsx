@@ -16,7 +16,6 @@ import {
   highlightGlowApproxHaloPx,
 } from "@/lib/highlight-anim";
 import { Palette, RotateCcw, X } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
 import { GradientAnglePicker } from "./gradient-angle-picker";
 import { Slider } from "@/components/ui/slider";
 import Draggable from 'react-draggable';
@@ -56,14 +55,11 @@ function HighlightAnimEffectControls({
   styling,
   handlePropertyChange,
   onStylingChange,
-  variant = "checkbox",
 }: {
   styling: Partial<VisualStyling>;
   handlePropertyChange: (property: keyof VisualStyling, value: unknown, immediate?: boolean) => void;
   onStylingChange: (styling: Partial<VisualStyling>) => void;
-  variant?: "checkbox" | "triState";
 }) {
-  const enabled = Boolean(styling.highlightAnim);
   const triSelect: "off" | "constant" | "pulse" = !styling.highlightAnim
     ? "off"
     : styling.highlightAnimMode === "constant"
@@ -103,9 +99,8 @@ function HighlightAnimEffectControls({
     handlePropertyChange("highlightAnimIntervalSec", v, true);
   }, [intDraft, handlePropertyChange]);
 
-  if (variant === "triState") {
-    return (
-      <div className="space-y-3">
+  return (
+    <div className="space-y-3">
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">Glow</Label>
           <Select
@@ -220,99 +215,6 @@ function HighlightAnimEffectControls({
           </div>
         )}
       </div>
-    );
-  }
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <Checkbox
-          id="dw-highlight-anim"
-          checked={enabled}
-          onCheckedChange={(checked) => {
-            const on = checked === true;
-            if (on) {
-              onStylingChange({
-                highlightAnim: true,
-                highlightAnimMode: "pulse",
-                highlightAnimDurationSec: styling.highlightAnimDurationSec ?? HIGHLIGHT_ANIM_DEFAULT_DURATION_SEC,
-                highlightAnimIntervalSec: styling.highlightAnimIntervalSec ?? HIGHLIGHT_ANIM_DEFAULT_INTERVAL_SEC,
-                highlightAnimGlowColor: styling.highlightAnimGlowColor ?? HIGHLIGHT_ANIM_DEFAULT_GLOW_COLOR,
-                highlightAnimGlowIntensity:
-                  styling.highlightAnimGlowIntensity ?? HIGHLIGHT_ANIM_DEFAULT_GLOW_INTENSITY,
-              });
-            } else {
-              onStylingChange({ highlightAnim: false, highlightAnimMode: undefined });
-            }
-          }}
-        />
-        <Label htmlFor="dw-highlight-anim" className="text-sm text-muted-foreground font-normal cursor-pointer">
-          Highlight animation
-        </Label>
-      </div>
-      {enabled && styling.highlightAnimMode !== "constant" && (
-        <div className="grid grid-cols-2 gap-2 pl-6">
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Duration (s)</Label>
-            <Input
-              type="number"
-              min={0.05}
-              max={120}
-              step={0.1}
-              value={durDisplay}
-              onChange={(e) => setDurDraft(e.target.value)}
-              onFocus={() => {
-                setDurFocused(true);
-                setDurDraft(committedDurStr);
-              }}
-              onBlur={() => {
-                commitDuration();
-                setDurFocused(false);
-              }}
-              className="h-9 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Interval (s)</Label>
-            <Input
-              type="number"
-              min={0}
-              max={600}
-              step={0.1}
-              value={intDisplay}
-              onChange={(e) => setIntDraft(e.target.value)}
-              onFocus={() => {
-                setIntFocused(true);
-                setIntDraft(committedIntStr);
-              }}
-              onBlur={() => {
-                commitInterval();
-                setIntFocused(false);
-              }}
-              className="h-9 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            />
-          </div>
-        </div>
-      )}
-      {enabled && (
-        <div className="space-y-4 pl-6">
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Glow color</Label>
-            <ColorPicker
-              value={styling.highlightAnimGlowColor ?? HIGHLIGHT_ANIM_DEFAULT_GLOW_COLOR}
-              onChange={(value) => handlePropertyChange("highlightAnimGlowColor", value)}
-              placeholder={HIGHLIGHT_ANIM_DEFAULT_GLOW_COLOR}
-              showAlpha={true}
-              allowTransparent={true}
-            />
-          </div>
-          <HighlightGlowStrengthSlider
-            intensity={styling.highlightAnimGlowIntensity ?? HIGHLIGHT_ANIM_DEFAULT_GLOW_INTENSITY}
-            onChange={(nv) => handlePropertyChange("highlightAnimGlowIntensity", nv, true)}
-          />
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -504,7 +406,6 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                 styling={styling}
                 handlePropertyChange={handlePropertyChange}
                 onStylingChange={onStylingChange}
-                variant="triState"
               />
             </div>
           )}
@@ -816,7 +717,6 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                     styling={styling}
                     handlePropertyChange={handlePropertyChange}
                     onStylingChange={onStylingChange}
-                    variant="checkbox"
                   />
                   {isRoundedRectangle && (
                     <div className="flex items-center justify-between gap-2">

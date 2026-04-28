@@ -1,5 +1,8 @@
 # MEMORY.MD
 
+### 2026-04-28 – Full Visual Styling: same Glow Off / Constant / Pulse as compact
+**`HighlightAnimEffectControls`** is a single **`Glow`** select + colour/spread/time (compact + full two-column **`showFullStyling`**); removed **`Highlight animation`** checkbox path. **`Checkbox`** import dropped. Patch bumped.
+
 ### 2026-04-28 – Glow spread: blur radius mapping (not opacity)
 **`highlightAnimGlowIntensity`**: **lerp** blur/spread px from a **small** halo to the **legacy peak** (`16` / `28` / …) via **`buildGlowPeakCss`** and **`highlightGlowApproxHaloPx`** — not **× peak** (avoids matching colour alpha). **`highlight-anim`**: **`HighlightAnimSilhouetteMode`** / **`clampHighlightGlowIntensity`** hoisted. UI: **Glow spread (~size)** with **~N px** readout. Patch bumped.
 
