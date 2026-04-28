@@ -1,4 +1,4 @@
-import type { DiagramData } from '@/lib/types';
+import type { DiagramData, DiagramDelta } from '@/lib/types';
 import { applyDiagramDelta, computeDiagramDelta } from '@/lib/presentation-delta';
 
 function assert(condition: boolean, message: string): void {
@@ -45,4 +45,22 @@ export function runPresentationDeltaUtilityTests(): void {
 
   const noChangeDelta = computeDiagramDelta(base, base);
   assert(noChangeDelta.operations.length === 0, 'No-change diagrams should generate no operations');
+
+  const fullReplaceThenConnections: DiagramDelta = {
+    version: '1.0',
+    compressed: true,
+    operations: [
+      { op: 'replace', path: '', value: current },
+      {
+        op: 'replace',
+        path: '/connections',
+        value: [] as DiagramData['connections'],
+      },
+    ],
+  };
+  const multiOpResult = applyDiagramDelta(base, fullReplaceThenConnections);
+  assert(
+    deepEqual(multiOpResult.connections, []),
+    'Root replace then /connections patch should apply both ops in order',
+  );
 }

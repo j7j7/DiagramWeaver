@@ -1,7 +1,8 @@
-import type { DiagramData, DiagramDelta, PresentationDeck, Slide } from '@/lib/types';
+import type { DiagramConnectionData, DiagramData, DiagramDelta, PresentationDeck, Slide } from '@/lib/types';
+import { ensureConnectionIds } from '@/lib/connection-order-utils';
 import { PresentationDeckListSchema } from '@/lib/schemas';
 import { projectVisibleDiagram } from '@/lib/presentation-delta';
-import { migratePresentationDecks } from '@/lib/presentation-primary-slide';
+import { createPresentationPrimarySlide, migratePresentationDecks } from '@/lib/presentation-primary-slide';
 
 /** Placeholder used when compact JSON omits real PNG thumbnails — must be replaced by canvas capture in the editor. */
 export const PRESENTATION_THUMBNAIL_PLACEHOLDER =
@@ -125,6 +126,9 @@ export function extractEmbeddedPresentations(
     const hydratedDecks: PresentationDeck[] = (compactRaw.d as CompactDeckV2[]).map((rawDeck, deckIndex) => {
       const deck = (rawDeck && typeof rawDeck === 'object' ? rawDeck : {}) as CompactDeckV2;
       const slidesRaw = Array.isArray(deck.s) ? deck.s : [];
+      const deckId = `deck-${now}-${deckIndex}`;
+      /** Matches unified model ids so migratePresentationDeckToUnifiedSlides does not prepend a duplicate primary. */
+      const primarySlideId = createPresentationPrimarySlide(deckId, { createdAt: now }).id;
 
       const slides: Slide[] = slidesRaw.map((rawSlide, slideIndex) => {
         const slide = (rawSlide && typeof rawSlide === 'object' ? rawSlide : {}) as CompactSlideV2;
@@ -184,7 +188,7 @@ export function extractEmbeddedPresentations(
           operations.push({
             op: 'replace',
             path: '/connections',
-            value: connectionsFromRefs,
+            value: ensureConnectionIds(connectionsFromRefs as DiagramConnectionData[]),
           });
         }
 
@@ -197,7 +201,7 @@ export function extractEmbeddedPresentations(
           : undefined;
 
         return {
-          id: `slide-${now}-${deckIndex}-${slideIndex}`,
+          id: slideIndex === 0 ? primarySlideId : `slide-${now}-${deckIndex}-${slideIndex}`,
           title: slide.t || `Snapshot ${slideIndex + 1}`,
           snapshotImage: PRESENTATION_THUMBNAIL_PLACEHOLDER,
           diagramDelta: {
@@ -214,7 +218,7 @@ export function extractEmbeddedPresentations(
       });
 
       return {
-        id: `deck-${now}-${deckIndex}`,
+        id: deckId,
         name: (deck.n && String(deck.n).trim()) || `Presentation ${deckIndex + 1}`,
         slides,
         createdAt: now,

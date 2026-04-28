@@ -500,3 +500,5 @@ export function useLayerAnimation(
     connectionKey: connKey,
   };
 }
+
+export type LayerAnimationApi = ReturnType<typeof useLayerAnimation>;

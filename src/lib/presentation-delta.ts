@@ -141,13 +141,14 @@ export function computeDiagramDelta(baseDiagram: DiagramData, currentDiagram: Di
 }
 
 export function applyDiagramDelta(baseDiagram: DiagramData, delta: DiagramDelta): DiagramData {
-  const next = deepClone(baseDiagram);
+  let next = deepClone(baseDiagram);
 
   for (const operation of delta.operations) {
     const path = normalizePath(operation.path);
 
     if (path.length === 0 && operation.op === 'replace') {
-      return deepClone(operation.value as DiagramData);
+      next = deepClone(operation.value as DiagramData);
+      continue;
     }
 
     if (operation.op === 'remove') {

@@ -388,3 +388,5 @@ export function useLayers({ diagramData, setDiagramData, toast }: UseLayersOptio
     updateActiveLayerFromSelection
   };
 }
+
+export type UseLayersApi = ReturnType<typeof useLayers>;

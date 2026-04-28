@@ -1,76 +1,7 @@
 "use client";
-import React, { useRef, useCallback, useLayoutEffect, useEffect, Suspense } from 'react';
+import React, { useRef, useCallback, useEffect } from 'react';
 import { flushSync } from 'react-dom';
-import { createPortal } from 'react-dom';
-import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
-import { Panel, Group as PanelGroup } from 'react-resizable-panels';
-import { ComponentSidebar } from './editor/component-sidebar';
-import { EditorCanvas, type EditorCanvasHandle } from './editor/editor-canvas';
-import { ConnectionContextModal } from './editor/connection-context-modal';
-import { UmlClassEditorModal } from './editor/uml-class-editor-modal';
-import { ChartDataEditorModal } from './editor/chart-data-editor-modal';
-import { ZOrderListModal } from './editor/z-order-list-modal';
-import { computeUmlClassDimensions } from '@/lib/uml-utils';
-import { PresentationPlayer } from './editor/presentation-player';
-import { setBooleanDebounced, setItemDebounced, getBooleanSafe, getItemSafe } from '@/lib/local-storage-debounce';
-import dynamic from 'next/dynamic';
-
-const TopMenuBar = dynamic(() => import('./editor/top-menu-bar').then(mod => ({ default: mod.TopMenuBar })), {
-  ssr: false,
-  loading: () => <div className="flex items-center border-b bg-card min-h-[2.5rem] overflow-x-auto">
-    <div className="flex h-10 items-center space-x-1 rounded-md border bg-background p-1">
-      <div className="flex cursor-default select-none items-center rounded-sm px-3 py-1.5 text-sm font-medium">Loading...</div>
-    </div>
-  </div>
-});
-
-// Lazy load large panels for better initial load performance
-const JsonEditorPanel = dynamic(() => import('./editor/json-editor-panel').then(mod => ({ default: mod.JsonEditorPanel })), {
-  ssr: false,
-  loading: () => <div className="flex items-center justify-center h-full min-w-[200px] border-l bg-card">
-    <div className="text-sm text-muted-foreground">Loading JSON…</div>
-  </div>
-});
-
-const PresentationEditorPanel = dynamic(() => import('./editor/presentation-editor-panel').then(mod => ({ default: mod.PresentationEditorPanel })), {
-  ssr: false,
-  loading: () => <div className="flex items-center justify-center h-12 border-b bg-card">
-    <div className="text-sm text-muted-foreground">Loading Presentation Editor...</div>
-  </div>
-});
-
-const LayersPanel = dynamic(() => import('./editor/layers-panel').then(mod => ({ default: mod.LayersPanel })), {
-  ssr: false,
-  loading: () => <div className="p-4 border rounded-md bg-card shadow-lg">
-    <div className="text-sm text-muted-foreground">Loading Layers Panel...</div>
-  </div>
-});
-
-const PropertiesPanel = dynamic(() => import('./editor/properties-panel').then(mod => ({ default: mod.PropertiesPanel })), {
-  ssr: false,
-  loading: () => <div className="p-4 border-t bg-card">
-    <div className="text-sm text-muted-foreground">Loading Properties Panel...</div>
-  </div>
-});
-
-const ScratchPad = dynamic(() => import('./editor/scratch-pad').then(mod => ({ default: mod.ScratchPad })), {
-  ssr: false,
-});
-
-import { TabBar } from './editor/tab-bar';
-import { ExportDialog } from './editor/export-dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Button } from '@/components/ui/button';
+import type { EditorCanvasHandle } from './editor/editor-canvas';
 import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramConnectionData, PresentationDeck, Slide, DiagramDelta } from '@/lib/types';
 import { generateSequentialId } from '@/lib/id-generator';
 import { useToast } from '@/hooks/use-toast';
@@ -90,8 +21,7 @@ import { mermaidToDiagramData, classDiagramToDiagramData, sequenceDiagramToDiagr
 import { themeManager, DIAGRAM_THEME_HUE_STEP_DEG, DEFAULT_THEMES } from '@/lib/theme-manager';
 import { orderSelectedIdsForThemeHue } from '@/lib/selection-theme-order';
 import { DiagramTheme, ThemeMenuApplyOptions } from '@/lib/theme-types';
-import { TutorialProvider, useTutorial } from './tutorial/tutorial-provider';
-import { getTutorialSteps } from './tutorial/tutorial-steps';
+import { TutorialProvider } from './tutorial/tutorial-provider';
 import { TutorialOverlay } from './tutorial/tutorial-overlay';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { 
@@ -121,577 +51,54 @@ import {
 } from '@/lib/connection-order-utils';
 import { GRID_STEP, snapToGrid, snapDimensionToGrid } from '@/components/editor/canvas-constants';
 import { DEFAULT_CONNECTION_ANIMATION, toConnectionAnimationPatch, getDownstreamAnimationChainNodes } from '@/lib/connection-animation';
-import { isEventFromEditableElement } from '@/lib/keyboard-utils';
 import {
   applyDiagramDelta,
   computeDiagramDelta,
   listVisibleLayerIds,
   projectVisibleDiagram,
 } from '@/lib/presentation-delta';
-import { sanitizeExportBasename } from '@/components/editor/export-dialog';
-import {
-  computeSlidePlaybackTransform,
-  computeUnionFitTransformForDiagrams,
-  pruneConnectionsToVisibleNodes,
-} from '@/lib/presentation-viewport-fit';
-import { extractEmbeddedPresentations, slideNeedsPresentationThumbnailSnapshot } from '@/lib/extract-embedded-presentations';
-import {
-  loadPresentationsByTab,
-  savePresentationsByTab,
-} from '@/lib/presentation-storage';
+import { computeUnionFitTransformForDiagrams, pruneConnectionsToVisibleNodes } from '@/lib/presentation-viewport-fit';
+import { extractEmbeddedPresentations } from '@/lib/extract-embedded-presentations';
+import { savePresentationsByTab } from '@/lib/presentation-storage';
 import { collapsePresentationDecksToOne } from '@/lib/presentation-deck-merge';
 import { createPresentationPrimarySlide } from '@/lib/presentation-primary-slide';
-import { DiagramBreadcrumb, type BreadcrumbSegment } from './editor/diagram-breadcrumb';
-import { isConnectorLineNodeType } from '@/lib/utils';
+import type { BreadcrumbSegment } from './editor/diagram-breadcrumb';
 import { removeConnectorLineVertexAtIndex, isConnectorLineGeometryClosed } from '@/lib/line-curve-path';
 import {
   syncClosedConnectorLineBorderWidth,
   syncClosedConnectorVisualBorderFromLineStyling,
 } from '@/lib/line-styling';
+import { isConnectorLineNodeType } from '@/lib/utils';
 
-/** Presentation slide PNG thumbnails: poll at most this often; capture only when delta fingerprint changed. */
-const PRESENTATION_THUMB_INTERVAL_MS = 3000;
+import type { SelectedItem, PaletteResource, PaletteSelection } from '@/components/editor/diagram-editor-types';
+export type { SelectedItem } from '@/components/editor/diagram-editor-types';
+import {
+  EMPTY_TAB_DIAGRAM_FALLBACK,
+  collectConnectSourceIdsFromDiagram,
+  getSelectionIdKind,
+  connectionIdsFromSelectionSet,
+  clearPendingConnectionWindowState,
+  safeClone,
+  blankSlideVisibleFromMaster,
+  createPaletteItem,
+} from '@/lib/diagram-editor/editor-support';
+import { DiagramEditorInner } from './diagram-editor-inner';
+import { useDiagramEditorHistory } from '@/hooks/use-diagram-editor-history';
+import { useDiagramEditorKeyboard } from '@/hooks/use-diagram-editor-keyboard';
+import { usePresentationStorageHydration } from '@/hooks/use-presentation-storage-hydration';
+import { usePresentationTabSwitchSync } from '@/hooks/use-presentation-tab-switch-sync';
+import { useDiagramEditorRulesScratchLayerEffects } from '@/hooks/use-diagram-editor-rules-scratch-layer-effects';
+import { useToolbarTriggerAutoResets } from '@/hooks/use-toolbar-trigger-auto-reset';
+import { useDiagramEditorClientBootstrap } from '@/hooks/use-diagram-editor-client-bootstrap';
+import { usePresentationSlideViewportSync } from '@/hooks/use-presentation-slide-viewport-sync';
+import { useDiagramEditorOptionPersistence } from '@/hooks/use-diagram-editor-option-persistence';
+import { usePresentationThumbnails } from '@/hooks/use-presentation-thumbnails';
+import { createDiagramSaveHandler } from '@/lib/diagram-editor/diagram-editor-save-handler';
+import { createDiagramExportHandlers } from '@/lib/diagram-editor/diagram-editor-export-handlers';
+import type { DiagramEditorToastFn } from '@/components/editor/diagram-editor-inner-props';
 
-/** Stable when `activeTab.diagramData` is missing (legacy / corrupt rows). A fresh `{}` each render caused presentation master `useEffect` to loop. */
-const EMPTY_TAB_DIAGRAM_FALLBACK: DiagramData = { nodes: [], connections: [], groupings: [] };
-
-/** Union bounds for PNG export / thumbnails: one entry per deck slide (slide 0 = main). */
-function buildPresentationUnionDiagramsForPngExport(args: {
-  tabDiagram: DiagramData;
-  presentationMaster: DiagramData | null;
-  deckSlides: Slide[];
-  activeSlideId: string | null;
-  draft: DiagramData | null;
-  layersFilteredBase: DiagramData;
-}): DiagramData[] {
-  const master = projectVisibleDiagram(args.presentationMaster ?? args.tabDiagram);
-  return args.deckSlides.map((slide) => {
-    if (args.activeSlideId && slide.id === args.activeSlideId && args.draft) {
-      return projectVisibleDiagram(args.draft);
-    }
-    return projectVisibleDiagram(applyDiagramDelta(master, slide.diagramDelta));
-  });
-}
-
-async function waitTwoAnimationFrames(): Promise<void> {
-  await new Promise<void>((resolve) => {
-    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-  });
-}
-
-/** IDs in `selectedItemIds` that exist as nodes or zones (connection endpoints), preserving selection order. */
-function collectConnectSourceIdsFromDiagram(selectedItemIds: Set<string>, diagram: DiagramData): string[] {
-  const nodeIds = new Set(diagram.nodes.map((n) => n.id));
-  const zoneIds = new Set((diagram.zones ?? []).map((z) => z.id));
-  const result: string[] = [];
-  const seen = new Set<string>();
-  for (const id of selectedItemIds) {
-    if (seen.has(id)) continue;
-    if (nodeIds.has(id) || zoneIds.has(id)) {
-      result.push(id);
-      seen.add(id);
-    }
-  }
-  return result;
-}
-
-function getSelectionIdKind(id: string, diagram: DiagramData): "object" | "edge" | "unknown" {
-  if (diagram.nodes.some((n) => n.id === id)) return "object";
-  if (diagram.zones?.some((z) => z.id === id)) return "object";
-  const conns = diagram.connections ?? [];
-  if (conns.some((c) => c.id === id)) return "edge";
-  if (conns.some((c) => `${c.from}-${c.to}` === id)) return "edge";
-  return "unknown";
-}
-
-/** Resolve stable connection ids from the multi-selection set (skips ambiguous legacy keys). */
-function connectionIdsFromSelectionSet(
-  selectedItemIds: Set<string>,
-  connections: DiagramConnectionData[]
-): string[] {
-  const out: string[] = [];
-  for (const raw of selectedItemIds) {
-    const byId = connections.find((c) => c.id === raw);
-    if (byId?.id) {
-      out.push(byId.id);
-      continue;
-    }
-    let resolved: string | undefined;
-    for (let idx = 0; idx < connections.length; idx++) {
-      const c = connections[idx];
-      if (`${c.from}-${c.to}-${idx}` === raw) {
-        resolved = stableDiagramConnectionId(c, idx);
-        break;
-      }
-    }
-    if (resolved) {
-      out.push(resolved);
-      continue;
-    }
-    const legacyMatches = connections
-      .map((c, idx) => ({ c, idx }))
-      .filter(({ c }) => `${c.from}-${c.to}` === raw);
-    if (legacyMatches.length === 1) {
-      const { c, idx } = legacyMatches[0];
-      out.push(stableDiagramConnectionId(c, idx));
-    }
-  }
-  return [...new Set(out)];
-}
-
-function clearPendingConnectionWindowState(): void {
-  delete (window as unknown as { pendingConnectionSourceId?: string }).pendingConnectionSourceId;
-  delete (window as unknown as { pendingConnectionSourceIds?: string[] }).pendingConnectionSourceIds;
-  delete (window as unknown as { pendingConnectionOptions?: unknown }).pendingConnectionOptions;
-}
-
-export type SelectedItem = (
-  | (DiagramNodeData & {
-      itemType: 'node',
-      id: string,
-      // Zone styling properties for nodes
-      borderColor?: string,
-      textColor?: string,
-      backgroundColor?: string,
-      borderStyle?: 'solid' | 'dotted' | 'gradient' | 'none',
-      borderColors?: string[],
-      backgroundStyle?: 'solid' | 'gradient' | 'frosted' | 'none',
-      backgroundColors?: string[],
-      frostedDiffusion?: number,
-      frostedTransparency?: number,
-      frostedPerlinNoise?: number,
-      gradientAngle?: number,
-      shadow?: boolean,
-      rotation?: number,
-      textPosition?: 'above' | 'center' | 'under',
-      textJustify?: 'left' | 'center' | 'right' | 'full',
-      textVerticalPosition?: 'top' | 'middle' | 'bottom',
-      fontFamily?: string,
-      fontSize?: number,
-      fontWeight?: 'normal' | 'bold' | '100' | '200' | '300' | '400' | '500' | '600' | '700' | '800' | '900',
-      fontStyle?: 'normal' | 'italic' | 'oblique',
-      textDecoration?: 'none' | 'underline' | 'overline' | 'line-through',
-      textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize',
-      letterSpacing?: number,
-      lineHeight?: number,
-      textOpacity?: number,
-      borderWidth?: number,
-      objectStyle?: string,
-      width?: number,
-      height?: number,
-      sizeMode?: 'auto' | 'custom',
-      minWidth?: number,
-      minHeight?: number,
-      orientation?: 'horizontal' | 'vertical' | 'square',
-      maxItemsPerRow?: number,
-      lineColor?: string,
-      parentId?: string,
-      tag?: string,
-      tagPosition?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right'
-    })
-  | (DiagramConnectionData & { 
-      itemType: 'edge', 
-      id: string,
-      // Additional edge properties
-      freeflow?: boolean,
-      edgePosition?: number
-    })
-);
-
-interface PaletteResource {
-  name: string;
-  file?: string; // Optional for icon resources (symbols/emojis)
-  type?: string;
-  hasWhiteVariant?: boolean;
-  format?: string;
-  iconType?: string;
-  iconName?: string;
-  emoji?: string;
-}
-
-interface PaletteSelection {
-  resource: PaletteResource;
-  provider: string;
-  category: string;
-}
-
-type CompactOpCode = 0 | 1 | 2; // 0=add, 1=remove, 2=replace
-type CompactOperation = [CompactOpCode, string, unknown?];
-
-type CompactAnimationStateV2 = {
-  e?: 0; // only stored when animations are disabled
-  f?: string[];
-  x?: string[];
-};
-
-type CompactSlideV2 = {
-  d?: { o: CompactOperation[] };
-  r?: {
-    n?: string[]; // visible node ids (resolved from base diagram)
-    l?: string[]; // visible layer ids (resolved from base diagram)
-    c?: unknown[]; // stripped connections array (resolved from deck table)
-    ni?: number; // node id set index in deck table
-    li?: number; // layer id set index in deck table
-    ci?: number; // connection array index in deck table
-  };
-  t?: string;
-  a?: CompactAnimationStateV2;
-  z?: number;
-  px?: number;
-  py?: number;
-};
-
-type CompactDeckV2 = {
-  n?: string;
-  tn?: string[][]; // deck-level node id set table
-  tl?: string[][]; // deck-level layer id set table
-  tc?: unknown[][]; // deck-level connection array table
-  s: CompactSlideV2[];
-};
-
-type CompactPresentationsV2 = {
-  v: 2;
-  ai?: number;
-  d: CompactDeckV2[];
-};
-
-type DiagramJsonWithPresentations = DiagramData & {
-  presentations?: CompactPresentationsV2;
-};
-
-function stableStringify(value: unknown): string {
-  return JSON.stringify(value);
-}
-
-function dedupeSlideRefSets(slides: CompactSlideV2[]): {
-  slides: CompactSlideV2[];
-  nodeTable?: string[][];
-  layerTable?: string[][];
-  connectionTable?: unknown[][];
-} {
-  const nodeCounts = new Map<string, number>();
-  const layerCounts = new Map<string, number>();
-  const connectionCounts = new Map<string, number>();
-  const nodeValues = new Map<string, string[]>();
-  const layerValues = new Map<string, string[]>();
-  const connectionValues = new Map<string, unknown[]>();
-
-  for (const slide of slides) {
-    const nodeRef = slide.r?.n;
-    const layerRef = slide.r?.l;
-    const connRef = slide.r?.c;
-
-    if (nodeRef && nodeRef.length > 0) {
-      const key = stableStringify(nodeRef);
-      nodeCounts.set(key, (nodeCounts.get(key) || 0) + 1);
-      if (!nodeValues.has(key)) nodeValues.set(key, nodeRef);
-    }
-
-    if (layerRef && layerRef.length > 0) {
-      const key = stableStringify(layerRef);
-      layerCounts.set(key, (layerCounts.get(key) || 0) + 1);
-      if (!layerValues.has(key)) layerValues.set(key, layerRef);
-    }
-
-    if (connRef && connRef.length > 0) {
-      const key = stableStringify(connRef);
-      connectionCounts.set(key, (connectionCounts.get(key) || 0) + 1);
-      if (!connectionValues.has(key)) connectionValues.set(key, connRef);
-    }
-  }
-
-  const nodeKeyToIndex = new Map<string, number>();
-  const layerKeyToIndex = new Map<string, number>();
-  const connectionKeyToIndex = new Map<string, number>();
-  const nodeTable: string[][] = [];
-  const layerTable: string[][] = [];
-  const connectionTable: unknown[][] = [];
-
-  for (const [key, count] of nodeCounts) {
-    if (count <= 1) continue;
-    const value = nodeValues.get(key);
-    if (!value) continue;
-    nodeKeyToIndex.set(key, nodeTable.length);
-    nodeTable.push(value);
-  }
-
-  for (const [key, count] of layerCounts) {
-    if (count <= 1) continue;
-    const value = layerValues.get(key);
-    if (!value) continue;
-    layerKeyToIndex.set(key, layerTable.length);
-    layerTable.push(value);
-  }
-
-  for (const [key, count] of connectionCounts) {
-    if (count <= 1) continue;
-    const value = connectionValues.get(key);
-    if (!value) continue;
-    connectionKeyToIndex.set(key, connectionTable.length);
-    connectionTable.push(value);
-  }
-
-  const compressedSlides = slides.map((slide) => {
-    const nodeRef = slide.r?.n;
-    const layerRef = slide.r?.l;
-    const connRef = slide.r?.c;
-
-    const nextRef: NonNullable<CompactSlideV2['r']> = {
-      ...slide.r,
-    };
-
-    if (nodeRef && nodeRef.length > 0) {
-      const key = stableStringify(nodeRef);
-      const index = nodeKeyToIndex.get(key);
-      if (index !== undefined) {
-        nextRef.ni = index;
-        delete nextRef.n;
-      }
-    }
-
-    if (layerRef && layerRef.length > 0) {
-      const key = stableStringify(layerRef);
-      const index = layerKeyToIndex.get(key);
-      if (index !== undefined) {
-        nextRef.li = index;
-        delete nextRef.l;
-      }
-    }
-
-    if (connRef && connRef.length > 0) {
-      const key = stableStringify(connRef);
-      const index = connectionKeyToIndex.get(key);
-      if (index !== undefined) {
-        nextRef.ci = index;
-        delete nextRef.c;
-      }
-    }
-
-    const hasRefs = Object.keys(nextRef).length > 0;
-    return {
-      ...slide,
-      r: hasRefs ? nextRef : undefined,
-    };
-  });
-
-  return {
-    slides: compressedSlides,
-    nodeTable: nodeTable.length > 0 ? nodeTable : undefined,
-    layerTable: layerTable.length > 0 ? layerTable : undefined,
-    connectionTable: connectionTable.length > 0 ? connectionTable : undefined,
-  };
-}
-
-function buildBaseNodeMap(baseDiagram: DiagramData): Map<string, DiagramData['nodes'][number]> {
-  const map = new Map<string, DiagramData['nodes'][number]>();
-  for (const node of baseDiagram.nodes || []) {
-    if (node?.id) map.set(node.id, node);
-  }
-  return map;
-}
-
-function canCompressNodeReplaceToIds(
-  operationValue: unknown,
-  baseNodeMap: Map<string, DiagramData['nodes'][number]>
-): string[] | null {
-  if (!Array.isArray(operationValue)) return null;
-  const ids: string[] = [];
-
-  for (const item of operationValue) {
-    if (!item || typeof item !== 'object') return null;
-    const id = (item as { id?: unknown }).id;
-    if (typeof id !== 'string') return null;
-    const baseNode = baseNodeMap.get(id);
-    if (!baseNode) return null;
-    if (stableStringify(baseNode) !== stableStringify(item)) return null;
-    ids.push(id);
-  }
-
-  return ids;
-}
-
-function canCompressLayerReplaceToVisibleIds(
-  operationValue: unknown,
-  baseLayers: DiagramData['layers']
-): string[] | null {
-  if (!Array.isArray(operationValue) || !baseLayers?.layers) return null;
-
-  const baseLayerById = new Map(baseLayers.layers.map((layer) => [layer.id, layer]));
-  const visibleIds: string[] = [];
-
-  for (const item of operationValue) {
-    if (!item || typeof item !== 'object') return null;
-    const id = (item as { id?: unknown }).id;
-    if (typeof id !== 'string') return null;
-    const baseLayer = baseLayerById.get(id);
-    if (!baseLayer) return null;
-
-    const candidate = item as { visible?: unknown } & Record<string, unknown>;
-    const baseWithoutVisible = { ...baseLayer, visible: undefined };
-    const itemWithoutVisible = { ...candidate, visible: undefined };
-
-    if (stableStringify(baseWithoutVisible) !== stableStringify(itemWithoutVisible)) {
-      return null;
-    }
-
-    if (candidate.visible === true) {
-      visibleIds.push(id);
-    }
-  }
-
-  return visibleIds;
-}
-
-/**
- * Strip default values from a connection object for compact delta storage.
- * Safe to round-trip: the renderer and clampConnectionAnimation fill in defaults on load.
- */
-function stripConnectionDefaults(conn: DiagramData['connections'][number]): unknown {
-  const result: Record<string, unknown> = {};
-  if (conn.id !== undefined) result.id = conn.id;
-  result.from = conn.from;
-  result.to = conn.to;
-  if (conn.text !== undefined) result.text = conn.text;
-  if (conn.textPosition !== undefined) result.textPosition = conn.textPosition;
-  if (conn.color !== undefined) result.color = conn.color;
-  if (conn.lineWidth !== undefined) result.lineWidth = conn.lineWidth;
-  if (conn.lineWidthLock === false) result.lineWidthLock = false;
-  if (conn.lineWidthEnd !== undefined) result.lineWidthEnd = conn.lineWidthEnd;
-  if (conn.colorLock === false) result.colorLock = false;
-  if (conn.colorEnd !== undefined) result.colorEnd = conn.colorEnd;
-  if (conn.shadow !== undefined) result.shadow = conn.shadow;
-  // style: 'bezier' is the default — omit it to save space
-  if (conn.style !== undefined && conn.style !== 'bezier') result.style = conn.style;
-  if (conn.smoothCorners === true) result.smoothCorners = true;
-  // curvature: 0.6 is the default — omit it to save space
-  if (conn.curvature !== undefined && conn.curvature !== 0.6) result.curvature = conn.curvature;
-  if (conn.fromPreferredExit !== undefined) result.fromPreferredExit = conn.fromPreferredExit;
-  if (conn.fromArrow !== undefined) result.fromArrow = conn.fromArrow;
-  if (conn.toPreferredEntry !== undefined) result.toPreferredEntry = conn.toPreferredEntry;
-  if (conn.toArrow !== undefined) result.toArrow = conn.toArrow;
-  if (conn.arrow !== undefined) result.arrow = conn.arrow;
-  if (conn.centerEdgeAnchors === true) result.centerEdgeAnchors = true;
-  if (conn.edgeAttachmentConstraint === 'top-bottom' || conn.edgeAttachmentConstraint === 'left-right') {
-    result.edgeAttachmentConstraint = conn.edgeAttachmentConstraint;
-  }
-  if (conn.waypoints !== undefined) result.waypoints = conn.waypoints;
-  if (conn.orthogonalTrunkOffsetX !== undefined && conn.orthogonalTrunkOffsetX !== 0) {
-    result.orthogonalTrunkOffsetX = conn.orthogonalTrunkOffsetX;
-  }
-  if (conn.orthogonalTrunkOffsetY !== undefined && conn.orthogonalTrunkOffsetY !== 0) {
-    result.orthogonalTrunkOffsetY = conn.orthogonalTrunkOffsetY;
-  }
-  if (conn.metaData !== undefined) result.metaData = conn.metaData;
-
-  if (conn.animation !== undefined) {
-    const anim = conn.animation;
-    const hasNonDefaultFields =
-      (anim.shape !== undefined && anim.shape !== 'dot') ||
-      (anim.speed !== undefined && anim.speed !== 20) ||
-      (anim.size !== undefined && anim.size !== 2) ||
-      (anim.autoCount !== undefined && anim.autoCount !== true) ||
-      (anim.shapeCount !== undefined && anim.shapeCount !== 5) ||
-      (anim.spacing !== undefined && anim.spacing !== 2) ||
-      anim.color !== undefined;
-    const enabledIsDefault = anim.enabled === false || anim.enabled === undefined;
-
-    if (!enabledIsDefault || hasNonDefaultFields) {
-      const animStripped: Record<string, unknown> = {};
-      // Keep enabled=true explicitly; keep enabled=false only when non-default fields are
-      // also present (otherwise legacy-detection in clampConnectionAnimation would infer enabled=true)
-      if (anim.enabled === true) animStripped.enabled = true;
-      else if (anim.enabled === false && hasNonDefaultFields) animStripped.enabled = false;
-      if (anim.shape !== undefined && anim.shape !== 'dot') animStripped.shape = anim.shape;
-      if (anim.speed !== undefined && anim.speed !== 20) animStripped.speed = anim.speed;
-      if (anim.size !== undefined && anim.size !== 2) animStripped.size = anim.size;
-      if (anim.autoCount !== undefined && anim.autoCount !== true) animStripped.autoCount = anim.autoCount;
-      if (anim.shapeCount !== undefined && anim.shapeCount !== 5) animStripped.shapeCount = anim.shapeCount;
-      if (anim.spacing !== undefined && anim.spacing !== 2) animStripped.spacing = anim.spacing;
-      if (anim.color !== undefined) animStripped.color = anim.color;
-      result.animation = animStripped;
-    }
-    // All-default animation → omit entirely (clampConnectionAnimation(undefined) gives all defaults)
-  }
-
-  return result;
-}
-
-function safeClone<T>(value: T): T {
-  if (value === undefined) return value;
-
-  if (typeof structuredClone === 'function') {
-    try {
-      return structuredClone(value);
-    } catch {
-      // Fall back to JSON cloning for plain serializable data.
-    }
-  }
-
-  const serialized = JSON.stringify(value);
-  if (serialized === undefined) return value;
-  return JSON.parse(serialized) as T;
-}
-
-function blankSlideVisibleFromMaster(masterVisible: DiagramData): DiagramData {
-  const next: DiagramData = {
-    nodes: [],
-    connections: [],
-    groupings: [],
-  };
-  if (masterVisible.layers) {
-    next.layers = safeClone(masterVisible.layers);
-  }
-  if (masterVisible.recentColors && masterVisible.recentColors.length > 0) {
-    next.recentColors = [...masterVisible.recentColors];
-  }
-  return next;
-}
-
-function createPaletteItem(
-  resource: PaletteResource | { name: string; iconType?: string; iconName?: string; emoji?: string; imageUrl?: string; imageOptions?: import('@/lib/types').CustomImageOptions },
-  provider: string,
-  category: string
-) {
-  const r = resource as { name: string; iconType?: string; iconName?: string; emoji?: string; file?: string; imageUrl?: string; imageOptions?: import('@/lib/types').CustomImageOptions; type?: string };
-  if (r.type === 'custom-icon' && r.imageUrl) {
-    return {
-      type: 'generic.icon.custom',
-      label: r.name || 'Custom Icon',
-      provider: 'generic',
-      category: 'icon',
-      imageUrl: r.imageUrl,
-      imageOptions: r.imageOptions,
-    };
-  }
-  if (r.iconType === 'lucide' && r.iconName) {
-    const slug = r.iconName.toLowerCase().replace(/\s+/g, '-');
-    return { type: `generic.icon.${slug}`, label: r.name, provider: 'generic', category: 'icon', iconType: 'lucide', iconName: r.iconName };
-  }
-  if (r.iconType === 'emoji' && r.emoji) {
-    const slug = r.name.replace(/\s+/g, '-').toLowerCase();
-    return { type: `generic.emoji.${slug}`, label: r.name, provider: 'generic', category: 'emoji', iconType: 'emoji', emoji: r.emoji };
-  }
-  const derivedSlug = (resource as PaletteResource).name.replace(/\s+/g, '-').toLowerCase();
-  const isTextPaletteTextBoxHeading =
-    provider === 'generic' && category === 'text' && derivedSlug === 'text-box-heading';
-  const isPieChartPalette = provider === 'generic' && category === 'object' && derivedSlug === 'pie-chart';
-  const isBarChartPalette = provider === 'generic' && category === 'object' && derivedSlug === 'bar-chart';
-  const isLineChartPalette = provider === 'generic' && category === 'object' && derivedSlug === 'line-chart';
-  return {
-    type: isTextPaletteTextBoxHeading
-      ? 'generic.object.text-box-heading'
-      : isPieChartPalette
-        ? 'generic.chart.pie'
-        : isBarChartPalette
-          ? 'generic.chart.bar'
-          : isLineChartPalette
-            ? 'generic.chart.line'
-            : `${provider}.${category}.${derivedSlug}`,
-    label: (resource as PaletteResource).name,
-    provider,
-    category: isTextPaletteTextBoxHeading ? 'object' : category,
-    file: (resource as PaletteResource).file,
-  };
+function getFilenameStem(filename: string) {
+  return filename.replace(/\.[^.]+$/, '') || filename;
 }
 
 export default function DiagramEditor() {
@@ -744,24 +151,8 @@ export default function DiagramEditor() {
   const presentationMasterFromTabSyncKeyRef = React.useRef<string | null>(null);
   /** Last `${deckId}:${slideId}` for which thumbnail fingerprint baseline was set (layout + hydration). */
   const presentationThumbFingerprintSlideKeyRef = React.useRef<string | null>(null);
-  const presentationThumbCaptureInFlightRef = React.useRef(false);
-  /** True while sequentially capturing PNG thumbnails for every slide (e.g. compact file load). */
-  const presentationThumbBackfillRunningRef = React.useRef(false);
   /** Skip persisting slide delta while temporarily switching slides for multi-slide PNG export. */
   const presentationPersistSuppressedForExportRef = React.useRef(false);
-  const presentationThumbCtxRef = React.useRef<{
-    draft: DiagramData | null;
-    master: DiagramData | null;
-    tab: DiagramData;
-    deckId: string | null;
-    slideId: string | null;
-  }>({
-    draft: null,
-    master: null,
-    tab: { nodes: [], connections: [], groupings: [] },
-    deckId: null,
-    slideId: null,
-  });
   const canvasTransformRef = React.useRef<{ x: number; y: number; k: number }>({ x: 0, y: 0, k: 1 });
   /** Tracks last slide we applied viewport for — avoids re-applying on every deck update; used when switching slides. */
   const prevPresentationSlideIdForViewportRef = React.useRef<string | null>(null);
@@ -776,73 +167,17 @@ export default function DiagramEditor() {
   const presentationPersistTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Last serialized tab diagram on base slide — used to rebase snapshot deltas when the base diagram edits. */
   const presentationPrevBaseJsonRef = React.useRef<string | null>(null);
-  const presentationHydrationStartedRef = React.useRef(false);
   const lastRestoredStackRef = React.useRef<string | null>(null);
   const [presentationStorageHydrated, setPresentationStorageHydrated] = React.useState(false);
 
-  // Restore rules from localStorage after hydration
-  React.useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const saved = getItemSafe('dw:rules');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        const rulesArray = Array.isArray(parsed?.rules) ? parsed.rules : Array.isArray(parsed) ? parsed : [];
-        if (rulesArray.length > 0 && rulesArray.every((r: any) => r && typeof r.id === 'string' && r.operator)) {
-          setRules(rulesArray);
-        }
-      } catch {
-        // ignore
-      }
-    }
-  }, []);
-
-  // Save rules to localStorage when they change (debounced)
-  React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setItemDebounced('dw:rules', JSON.stringify({ version: '1.0', rules }), 1000);
-    }
-  }, [rules]);
-
-  // Restore scratchpad visibility from localStorage after hydration
-  React.useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const saved = getItemSafe('dw:scratchpad:visible');
-    if (saved) {
-      try {
-        setScratchPadOpen(JSON.parse(saved));
-      } catch {
-        // ignore
-      }
-    }
-  }, []);
-
-  // Save scratchpad visibility to localStorage when it changes (debounced)
-  React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setItemDebounced('dw:scratchpad:visible', JSON.stringify(scratchPadOpen), 1000);
-    }
-  }, [scratchPadOpen]);
-
-  // Restore layer animations enabled from localStorage after hydration
-  React.useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const saved = getItemSafe('dw:layerAnimations:enabled');
-    if (saved !== null) {
-      try {
-        setLayerAnimationsEnabled(JSON.parse(saved));
-      } catch {
-        // ignore
-      }
-    }
-  }, []);
-
-  // Save layer animations enabled to localStorage when it changes (debounced)
-  React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setItemDebounced('dw:layerAnimations:enabled', JSON.stringify(layerAnimationsEnabled), 1000);
-    }
-  }, [layerAnimationsEnabled]);
+  useDiagramEditorRulesScratchLayerEffects({
+    rules,
+    setRules,
+    scratchPadOpen,
+    setScratchPadOpen,
+    layerAnimationsEnabled,
+    setLayerAnimationsEnabled,
+  });
 
   const [jsonPanelWidth, setJsonPanelWidth] = React.useState<number>(420);
   const [isDragging, setIsDragging] = React.useState<boolean>(false);
@@ -953,34 +288,16 @@ export default function DiagramEditor() {
     [onConnectionAnimationCanvasActivity],
   );
 
-  // Reset trigger states after they've been used
-  React.useEffect(() => {
-    if (triggerTextStylingPanel) {
-      const timer = setTimeout(() => setTriggerTextStylingPanel(false), 100);
-      return () => clearTimeout(timer);
-    }
-  }, [triggerTextStylingPanel]);
-
-  React.useEffect(() => {
-    if (triggerVisualStylingPanel) {
-      const timer = setTimeout(() => setTriggerVisualStylingPanel(false), 100);
-      return () => clearTimeout(timer);
-    }
-  }, [triggerVisualStylingPanel]);
-
-  React.useEffect(() => {
-    if (triggerLineStylingPanel) {
-      const timer = setTimeout(() => setTriggerLineStylingPanel(false), 100);
-      return () => clearTimeout(timer);
-    }
-  }, [triggerLineStylingPanel]);
-
-  React.useEffect(() => {
-    if (triggerConnectionSettingsPanel) {
-      const timer = setTimeout(() => setTriggerConnectionSettingsPanel(false), 100);
-      return () => clearTimeout(timer);
-    }
-  }, [triggerConnectionSettingsPanel]);
+  useToolbarTriggerAutoResets(
+    triggerTextStylingPanel,
+    setTriggerTextStylingPanel,
+    triggerVisualStylingPanel,
+    setTriggerVisualStylingPanel,
+    triggerLineStylingPanel,
+    setTriggerLineStylingPanel,
+    triggerConnectionSettingsPanel,
+    setTriggerConnectionSettingsPanel,
+  );
 
   // Tab management
   const {
@@ -1004,57 +321,16 @@ export default function DiagramEditor() {
     onToast: toast,
   });
 
-  // Load saved presentations for all tabs once the tab store is ready
-  React.useEffect(() => {
-    if (!isLoaded || presentationStorageHydrated || presentationHydrationStartedRef.current) return;
-    presentationHydrationStartedRef.current = true;
-
-    let cancelled = false;
-
-    loadPresentationsByTab()
-      .then((byTab) => {
-        if (cancelled || !byTab) return;
-
-        for (const [tabId, entry] of Object.entries(byTab)) {
-          const collapsed = collapsePresentationDecksToOne(entry.decks, entry.activeDeckId);
-          const existing = presentationStateByTabRef.current[tabId];
-          const deckForTab = collapsed.decks.find((d) => d.id === collapsed.activeDeckId) ?? collapsed.decks[0];
-          const primaryId = deckForTab?.slides[0]?.id ?? null;
-          const loadedSlideId = entry.activeSlideId ?? existing?.activeSlideId ?? primaryId;
-          presentationStateByTabRef.current[tabId] = {
-            decks: collapsed.decks,
-            activeDeckId: collapsed.activeDeckId,
-            activeSlideId: loadedSlideId,
-            selectedSlideIds: existing?.selectedSlideIds ?? [],
-            masterDiagram: existing?.masterDiagram ?? null,
-            draftDiagram: existing?.draftDiagram ?? null,
-          };
-        }
-
-        if (activeTabId && byTab[activeTabId]) {
-          const collapsed = collapsePresentationDecksToOne(
-            byTab[activeTabId].decks,
-            byTab[activeTabId].activeDeckId,
-          );
-          setPresentationDecks(collapsed.decks);
-          setActivePresentationDeckId(collapsed.activeDeckId);
-          const deckNow =
-            collapsed.decks.find((d) => d.id === collapsed.activeDeckId) ?? collapsed.decks[0];
-          const primaryNow = deckNow?.slides[0]?.id ?? null;
-          setActivePresentationSlideId(byTab[activeTabId].activeSlideId ?? primaryNow);
-        }
-      })
-      .catch(() => {
-        // Storage unavailable; keep in-memory behavior.
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setPresentationStorageHydrated(true);
-        }
-      });
-
-    return () => { cancelled = true; };
-  }, [isLoaded, presentationStorageHydrated, activeTabId]);
+  usePresentationStorageHydration({
+    isLoaded,
+    presentationStorageHydrated,
+    setPresentationStorageHydrated,
+    activeTabId,
+    presentationStateByTabRef,
+    setPresentationDecks,
+    setActivePresentationDeckId,
+    setActivePresentationSlideId,
+  });
 
   React.useEffect(() => {
     const liveTabIds = new Set(tabs.map((tab) => tab.id));
@@ -1071,45 +347,12 @@ export default function DiagramEditor() {
     ? tabDiagramData
     : (presentationDraftDiagram ?? tabDiagramData);
 
-  presentationThumbCtxRef.current = {
-    draft: presentationDraftDiagram,
-    master: presentationMasterDiagram,
-    tab: tabDiagramData,
-    deckId: activePresentationDeckId,
-    slideId: activePresentationSlideId,
-  };
-
   const presentationDraftDiagramRef = React.useRef(presentationDraftDiagram);
   presentationDraftDiagramRef.current = presentationDraftDiagram;
   const presentationMasterDiagramRef = React.useRef(presentationMasterDiagram);
   presentationMasterDiagramRef.current = presentationMasterDiagram;
   const tabDiagramDataRef = React.useRef(tabDiagramData);
   tabDiagramDataRef.current = tabDiagramData;
-
-  /** After slide/deck change (not draft-only edits): baseline delta fingerprint so leaving without edits skips capture. */
-  useLayoutEffect(() => {
-    if (!activePresentationSlideId) return;
-    const deckId = activePresentationDeckId;
-    const slideId = activePresentationSlideId;
-    if (!deckId || !slideId) {
-      presentationThumbFingerprintSlideKeyRef.current = null;
-      return;
-    }
-    const slideKey = `${deckId}:${slideId}`;
-    if (presentationThumbFingerprintSlideKeyRef.current === slideKey) return;
-    presentationThumbFingerprintSlideKeyRef.current = slideKey;
-
-    const draft = presentationDraftDiagramRef.current;
-    if (!draft) return;
-    const master = presentationMasterDiagramRef.current ?? tabDiagramDataRef.current;
-    try {
-      const masterBase = projectVisibleDiagram(master);
-      const fp = JSON.stringify(computeDiagramDelta(masterBase, projectVisibleDiagram(draft)));
-      presentationThumbDeltaFingerprintBySlideRef.current[slideKey] = fp;
-    } catch {
-      // ignore
-    }
-  }, [activePresentationDeckId, activePresentationSlideId]);
 
   /**
    * IndexedDB restores decks/slide selection, but not presentation master/draft. On hard refresh the active-tab
@@ -1163,9 +406,6 @@ export default function DiagramEditor() {
     presentationDecks,
   ]);
 
-  const history = activeTab?.history || [JSON.stringify({ nodes: [], connections: [], groupings: [] })];
-  const historyIndex = activeTab?.historyIndex || 0;
-  const historyRef = React.useRef(getHistoryRef(activeTabId || '') || { history: [], index: 0 });
   const selectedItem = activeTab?.selectedItem || null;
   const selectedItemIds = activeTab?.selectedItemIds || new Set();
   const isConnectMode = activeTab?.isConnectMode || false;
@@ -1379,6 +619,18 @@ export default function DiagramEditor() {
     updateActiveTab({ selectedItem: newItem });
   }, [activeTabId, selectedItem, updateActiveTab]);
 
+  const { history, historyIndex, undo, redo, updateHistory } = useDiagramEditorHistory({
+    activeTabId,
+    activeTab,
+    diagramData,
+    isDragging,
+    getHistoryRef,
+    setHistoryRef,
+    updateActiveTab,
+    setDiagramData,
+    setSelectedItem,
+  });
+
   const selectedItemForSyncRef = React.useRef(selectedItem);
   selectedItemForSyncRef.current = selectedItem;
   const setSelectedItemForSyncRef = React.useRef(setSelectedItem);
@@ -1475,43 +727,39 @@ export default function DiagramEditor() {
   const diagramDataForExportLayersRef = React.useRef<DiagramData>(currentDiagramData);
   diagramDataForExportLayersRef.current = layers.filteredDiagramData ?? currentDiagramData;
 
-  React.useEffect(() => {
-    presentationPrevBaseJsonRef.current = null;
-    presentationMasterFromTabSyncKeyRef.current = null;
-    if (!activeTabId) {
-      setPresentationDecks([]);
-      setActivePresentationDeckId(null);
-      setActivePresentationSlideId(null);
-      setSelectedPresentationSlideIds(new Set());
-      setPresentationMasterDiagram(null);
-      setPresentationDraftDiagram(null);
-      setActiveDiagramStack([]);
-      lastRestoredStackRef.current = null;
-      return;
-    }
-    setActiveDiagramStack([]);
+  const { handleExportPng, handleExportGif, handleExport } = createDiagramExportHandlers({
+    editorRef,
+    toast: toast as DiagramEditorToastFn,
+    setExportDialogOpen,
+    setExportDialogFormat,
+    activeTab,
+    activeDiagramStack,
+    activePresentationDeckId,
+    presentationDecks,
+    presentationPersistSuppressedForExportRef,
+    activePresentationSlideId,
+    setActivePresentationSlideId,
+    presentationDraftDiagram,
+    setPresentationDraftDiagram,
+    tabDiagramData,
+    presentationMasterDiagram,
+    diagramDataForExportLayersRef,
+  });
 
-    const scoped = presentationStateByTabRef.current[activeTabId];
-    if (!scoped) {
-      setPresentationDecks([]);
-      setActivePresentationDeckId(null);
-      setActivePresentationSlideId(null);
-      setSelectedPresentationSlideIds(new Set());
-      setPresentationMasterDiagram(null);
-      setPresentationDraftDiagram(null);
-      return;
-    }
-
-    setPresentationDecks(scoped.decks);
-    setActivePresentationDeckId(scoped.activeDeckId);
-    const tabDeck =
-      scoped.decks.find((d) => d.id === scoped.activeDeckId) ?? scoped.decks[0];
-    const tabPrimaryId = tabDeck?.slides[0]?.id ?? null;
-    setActivePresentationSlideId(scoped.activeSlideId ?? tabPrimaryId);
-    setSelectedPresentationSlideIds(new Set(scoped.selectedSlideIds));
-    setPresentationMasterDiagram(scoped.masterDiagram);
-    setPresentationDraftDiagram(scoped.draftDiagram);
-  }, [activeTabId]);
+  usePresentationTabSwitchSync({
+    activeTabId,
+    presentationStateByTabRef,
+    presentationPrevBaseJsonRef,
+    presentationMasterFromTabSyncKeyRef,
+    lastRestoredStackRef,
+    setPresentationDecks,
+    setActivePresentationDeckId,
+    setActivePresentationSlideId,
+    setSelectedPresentationSlideIds,
+    setPresentationMasterDiagram,
+    setPresentationDraftDiagram,
+    setActiveDiagramStack,
+  });
 
   React.useEffect(() => {
     if (!activeTabId) return;
@@ -1645,66 +893,19 @@ export default function DiagramEditor() {
     setDiagramData,
   ]);
 
-  React.useLayoutEffect(() => {
-    if (!activeTabId) {
-      prevPresentationSlideIdForViewportRef.current = null;
-      return;
-    }
-    if (!activePresentationDeckId || !activePresentationSlideId) {
-      prevPresentationSlideIdForViewportRef.current = null;
-      return;
-    }
-
-    const prevSlideId = prevPresentationSlideIdForViewportRef.current;
-    if (prevSlideId === activePresentationSlideId) {
-      return;
-    }
-
-    const deck = presentationDecks.find((d) => d.id === activePresentationDeckId);
-    const slide = deck?.slides.find((s) => s.id === activePresentationSlideId);
-    if (!deck || !slide) {
-      return;
-    }
-
-    if (prevSlideId && prevSlideId !== activePresentationSlideId) {
-      const c = canvasTransformRef.current;
-      setPresentationDecks((prevDecks) =>
-        prevDecks.map((d) => {
-          if (d.id !== activePresentationDeckId) return d;
-          return {
-            ...d,
-            slides: d.slides.map((s) =>
-              s.id === prevSlideId
-                ? { ...s, autoZoomLevel: c.k, viewPanX: c.x, viewPanY: c.y }
-                : s
-            ),
-            updatedAt: Date.now(),
-          };
-        })
-      );
-    }
-
-    const masterBase = projectVisibleDiagram(presentationMasterDiagram ?? tabDiagramData);
-    const diagramForSlide = pruneConnectionsToVisibleNodes(applyDiagramDelta(masterBase, slide.diagramDelta));
-    const vw = typeof window !== 'undefined' ? window.innerWidth : 1280;
-    const vh = typeof window !== 'undefined' ? window.innerHeight : 720;
-    const t = computeSlidePlaybackTransform(slide, diagramForSlide, vw, vh);
-    if (t) {
-      setCanvasTransform(t);
-      canvasTransformRef.current = sanitizeCanvasTransform(t);
-    }
-
-    prevPresentationSlideIdForViewportRef.current = activePresentationSlideId;
-  }, [
+  usePresentationSlideViewportSync({
     activeTabId,
     activePresentationDeckId,
     activePresentationSlideId,
     presentationDecks,
     presentationMasterDiagram,
     tabDiagramData,
+    prevPresentationSlideIdForViewportRef,
+    canvasTransformRef,
+    setPresentationDecks,
     setCanvasTransform,
     sanitizeCanvasTransform,
-  ]);
+  });
 
   React.useEffect(() => {
     return () => {
@@ -1715,138 +916,12 @@ export default function DiagramEditor() {
     };
   }, []);
 
-  const setHistory = React.useCallback((newHistory: string[]) => {
-    if (!activeTabId) return;
-    updateActiveTab({ history: newHistory });
-    setHistoryRef(activeTabId, { history: newHistory, index: historyIndex });
-  }, [activeTabId, historyIndex, updateActiveTab, setHistoryRef]);
-
-  const setHistoryIndex = React.useCallback((index: number) => {
-    if (!activeTabId) return;
-    updateActiveTab({ historyIndex: index });
-    const currentHistory = historyRef.current.history;
-    setHistoryRef(activeTabId, { history: currentHistory, index });
-  }, [activeTabId, updateActiveTab, setHistoryRef]);
-
-  // Update historyRef when active tab changes
-  React.useEffect(() => {
-    if (activeTabId && activeTab) {
-      historyRef.current = getHistoryRef(activeTabId) || { history: activeTab.history, index: activeTab.historyIndex };
-    }
-  }, [activeTabId, activeTab, getHistoryRef]);
-
-  // Debounced history update to prevent excessive processing during rapid changes
-  const historyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
-  const updateHistory = useCallback(() => {
-    if (!activeTabId || !activeTab) return;
-    
-    // Skip history updates during dragging
-    if (isDragging) {
-      return;
-    }
-    
-    const jsonString = JSON.stringify(diagramData);
-    
-    // Skip if this is same as last history entry (but not on initial load)
-    if (historyRef.current.history.length > 1 && historyRef.current.history[historyRef.current.index] === jsonString) {
-      return;
-    }
-    
-    // Update history using ref for immediate access
-    const currentHistory = historyRef.current.history.slice(0, historyRef.current.index + 1);
-    currentHistory.push(jsonString);
-    
-    // Keep only last 20 states
-    if (currentHistory.length > 20) {
-      currentHistory.shift();
-    }
-    
-    const newIndex = currentHistory.length - 1;
-    
-    // Update ref
-    historyRef.current = { history: currentHistory, index: newIndex };
-    
-    // Update tab state
-    updateActiveTab({ history: currentHistory, historyIndex: newIndex });
-    setHistoryRef(activeTabId, historyRef.current);
-  }, [diagramData, isDragging, activeTabId, activeTab, updateActiveTab, setHistoryRef]);
-
-  // Watch diagramData changes and update history with debouncing
-  React.useEffect(() => {
-    // Clear existing timeout
-    if (historyTimeoutRef.current) {
-      clearTimeout(historyTimeoutRef.current);
-    }
-    
-    // Skip history updates during dragging to prevent performance issues
-    if (isDragging) {
-      return;
-    }
-    
-    // Debounce history updates to 300ms
-    historyTimeoutRef.current = setTimeout(() => {
-      updateHistory();
-    }, 300);
-    
-    // Cleanup timeout on unmount
-    return () => {
-      if (historyTimeoutRef.current) {
-        clearTimeout(historyTimeoutRef.current);
-      }
-    };
-  }, [diagramData, updateHistory, isDragging]);
-
-  const undo = React.useCallback(() => {
-    if (!activeTabId) return;
-    const { history: currentHistory, index: currentIndex } = historyRef.current;
-    
-    if (currentIndex > 0) {
-      const newIndex = currentIndex - 1;
-      historyRef.current.index = newIndex;
-      setHistoryIndex(newIndex);
-      const newDiagramData = JSON.parse(currentHistory[newIndex]);
-      setDiagramData(newDiagramData);
-      setSelectedItem(null);
-      setHistoryRef(activeTabId, historyRef.current);
-    }
-  }, [activeTabId, setHistoryIndex, setDiagramData, setSelectedItem, setHistoryRef]);
-
-  const redo = React.useCallback(() => {
-    if (!activeTabId) return;
-    const { history: currentHistory, index: currentIndex } = historyRef.current;
-    
-    if (currentIndex < currentHistory.length - 1) {
-      const newIndex = currentIndex + 1;
-      historyRef.current.index = newIndex;
-      setHistoryIndex(newIndex);
-      const newDiagramData = JSON.parse(currentHistory[newIndex]);
-      setDiagramData(newDiagramData);
-      setSelectedItem(null);
-      setHistoryRef(activeTabId, historyRef.current);
-    }
-  }, [activeTabId, setHistoryIndex, setDiagramData, setSelectedItem, setHistoryRef]);
-
-  // Initialize client-side state after hydration
-  React.useEffect(() => {
-    setIsClient(true);
-    const savedWidth = localStorage.getItem('dw:jsonEditor:width');
-    if (savedWidth !== null) {
-      const parsed = parseInt(savedWidth, 10);
-      if (!Number.isNaN(parsed) && parsed >= 280) {
-        setJsonPanelWidth(Math.min(parsed, Math.max(300, window.innerWidth * 0.5)));
-      }
-    }
-    // Load icon background preference
-    const savedIconBackground = localStorage.getItem('dw:iconBackground:enabled');
-    if (savedIconBackground !== null) {
-      setIconBackgroundEnabled(savedIconBackground === 'true');
-    }
-    const savedDefaultTextLabels = localStorage.getItem('dw:defaultTextLabels:enabled');
-    if (savedDefaultTextLabels !== null) {
-      setDefaultTextLabelsEnabled(savedDefaultTextLabels === 'true');
-    }
-  }, []);
+  useDiagramEditorClientBootstrap({
+    setIsClient,
+    setJsonPanelWidth,
+    setIconBackgroundEnabled,
+    setDefaultTextLabelsEnabled,
+  });
 
   // Handle body scroll lock when mobile sidebar is open
   React.useEffect(() => {
@@ -2752,329 +1827,26 @@ export default function DiagramEditor() {
     persistPresentationSlideFromDiagram,
   ]);
 
-  const runPresentationThumbnailCaptureIfNeeded = React.useCallback(async () => {
-    if (presentationThumbBackfillRunningRef.current) return;
-    if (presentationThumbCaptureInFlightRef.current) return;
-    if (!editorRef.current?.captureSnapshotPng) return;
-
-    const ctx = presentationThumbCtxRef.current;
-    if (!ctx.deckId) return;
-
-    presentationThumbCaptureInFlightRef.current = true;
-    try {
-      // Slide 1 (main diagram) strip thumbnail — main tab only. Never use `layers.filteredDiagramData`
-      // here: while editing a snapshot, layers follow the draft and would change the base fingerprint + PNG.
-      const visibleMain = projectVisibleDiagram(ctx.tab);
-      let baseFingerprint: string | null = null;
-      try {
-        baseFingerprint = JSON.stringify(visibleMain);
-      } catch {
-        baseFingerprint = null;
-      }
-      if (baseFingerprint !== null) {
-        const deckForBase = presentationDecksRef.current.find((d) => d.id === ctx.deckId);
-        const primarySlide = deckForBase?.slides[0];
-        if (primarySlide) {
-          const primaryKey = `${ctx.deckId}:${primarySlide.id}`;
-          const needsPrimaryPng = slideNeedsPresentationThumbnailSnapshot(primarySlide.snapshotImage);
-          if (
-            presentationThumbDeltaFingerprintBySlideRef.current[primaryKey] !== baseFingerprint ||
-            needsPrimaryPng
-          ) {
-            const captureDeckId = ctx.deckId;
-            const capturePrimaryId = primarySlide.id;
-            try {
-              const primaryPng = await editorRef.current.captureSnapshotPng({
-                backgroundColor: 'white',
-                quality: 'medium',
-                fitContent: true,
-                unionDiagrams: [visibleMain],
-              });
-              if (presentationThumbCtxRef.current.deckId === captureDeckId) {
-                setPresentationDecks((prev) =>
-                  prev.map((d) =>
-                    d.id !== captureDeckId
-                      ? d
-                      : {
-                          ...d,
-                          slides: d.slides.map((s) =>
-                            s.id === capturePrimaryId ? { ...s, snapshotImage: primaryPng } : s,
-                          ),
-                          updatedAt: Date.now(),
-                        },
-                  ),
-                );
-                presentationThumbDeltaFingerprintBySlideRef.current[primaryKey] = baseFingerprint;
-              }
-            } catch {
-              // Retry later
-            }
-          }
-        }
-      }
-
-      const ctxSlide = presentationThumbCtxRef.current;
-      if (!ctxSlide.draft || !ctxSlide.slideId || !ctxSlide.deckId) return;
-
-      let deltaFingerprint: string;
-      try {
-        const masterBase = projectVisibleDiagram(ctxSlide.master ?? ctxSlide.tab);
-        const nextVisible = projectVisibleDiagram(ctxSlide.draft);
-        const nextDelta = computeDiagramDelta(masterBase, nextVisible);
-        deltaFingerprint = JSON.stringify(nextDelta);
-      } catch {
-        return;
-      }
-
-      const thumbKey = `${ctxSlide.deckId}:${ctxSlide.slideId}`;
-      let slideForThumb: Slide | undefined;
-      for (const d of presentationDecksRef.current) {
-        if (d.id !== ctxSlide.deckId) continue;
-        slideForThumb = d.slides.find((s) => s.id === ctxSlide.slideId);
-        break;
-      }
-      const snapshotNeedsRealPng =
-        slideForThumb && slideNeedsPresentationThumbnailSnapshot(slideForThumb.snapshotImage);
-      if (
-        presentationThumbDeltaFingerprintBySlideRef.current[thumbKey] === deltaFingerprint &&
-        !snapshotNeedsRealPng
-      ) {
-        return;
-      }
-
-      const captureDeckId = ctxSlide.deckId;
-      const captureSlideId = ctxSlide.slideId;
-
-      const snapshotImage = await editorRef.current.captureSnapshotPng({
-        backgroundColor: 'white',
-        quality: 'medium',
-        fitContent: true,
-        unionDiagrams: activePresentationSlideDiagramsForThumbnailCapture,
-      });
-
-      if (
-        presentationThumbCtxRef.current.slideId !== captureSlideId ||
-        presentationThumbCtxRef.current.deckId !== captureDeckId
-      ) {
-        return;
-      }
-
-      setPresentationDecks((prev) =>
-        prev.map((d) => {
-          if (d.id !== captureDeckId) return d;
-          return {
-            ...d,
-            slides: d.slides.map((s) =>
-              s.id === captureSlideId ? { ...s, snapshotImage } : s
-            ),
-            updatedAt: Date.now(),
-          };
-        })
-      );
-      presentationThumbDeltaFingerprintBySlideRef.current[thumbKey] = deltaFingerprint;
-    } catch {
-      // Retry on a later interval or slide change
-    } finally {
-      presentationThumbCaptureInFlightRef.current = false;
-    }
-  }, [setPresentationDecks, activePresentationSlideDiagramsForThumbnailCapture]);
-
-  const captureOutgoingSlideThumbnailIfNeeded = React.useCallback(async () => {
-    if (presentationThumbBackfillRunningRef.current) return;
-    await runPresentationThumbnailCaptureIfNeeded();
-  }, [runPresentationThumbnailCaptureIfNeeded]);
-
-  React.useEffect(() => {
-    if (!activePresentationDeckId) return;
-
-    const id = window.setInterval(() => {
-      void runPresentationThumbnailCaptureIfNeeded();
-    }, PRESENTATION_THUMB_INTERVAL_MS);
-    return () => window.clearInterval(id);
-  }, [activePresentationDeckId, runPresentationThumbnailCaptureIfNeeded]);
-
-  React.useEffect(() => {
-    if (!activePresentationDeckId) return;
-    void runPresentationThumbnailCaptureIfNeeded();
-  }, [activePresentationDeckId, activePresentationSlideId, tabDiagramData, runPresentationThumbnailCaptureIfNeeded]);
-
-  /**
-   * Compact / legacy loads use SVG placeholders for `snapshotImage`. Capture real PNGs for every slide
-   * (sequential: each slide must be the active draft for `captureSnapshotPng` + union fit).
-   */
-  React.useEffect(() => {
-    if (!presentationMasterDiagram) return;
-
-    const decksSnapshot = presentationDecksRef.current;
-    if (decksSnapshot.length === 0) return;
-
-    const needsAny = decksSnapshot.some((d) =>
-      d.slides.some((s) => slideNeedsPresentationThumbnailSnapshot(s.snapshotImage)),
-    );
-    if (!needsAny) return;
-
-    let cancelled = false;
-    const savedDeckId = activePresentationDeckId;
-    const savedSlideId = activePresentationSlideId;
-    const masterBase = projectVisibleDiagram(presentationMasterDiagram);
-
-    const waitForEditor = async () => {
-      for (let i = 0; i < 45; i++) {
-        if (cancelled) return false;
-        if (editorRef.current?.captureSnapshotPng) return true;
-        await new Promise<void>((r) => requestAnimationFrame(() => r()));
-      }
-      return Boolean(editorRef.current?.captureSnapshotPng);
-    };
-
-    presentationThumbBackfillRunningRef.current = true;
-
-    void (async () => {
-      const ready = await waitForEditor();
-      if (!ready || cancelled) {
-        presentationThumbBackfillRunningRef.current = false;
-        return;
-      }
-
-      try {
-        for (const deck of decksSnapshot) {
-          const slidesNeeding = deck.slides.filter((s) =>
-            slideNeedsPresentationThumbnailSnapshot(s.snapshotImage),
-          );
-          if (slidesNeeding.length === 0) continue;
-
-          for (const slide of slidesNeeding) {
-            if (cancelled) return;
-
-            if (deck.slides[0]?.id === slide.id) {
-              const visibleMain = masterBase;
-              try {
-                const primaryPng = await editorRef.current!.captureSnapshotPng!({
-                  backgroundColor: 'white',
-                  quality: 'medium',
-                  fitContent: true,
-                  unionDiagrams: [visibleMain],
-                });
-                if (cancelled) return;
-                flushSync(() => {
-                  setPresentationDecks((prev) =>
-                    prev.map((d) =>
-                      d.id !== deck.id
-                        ? d
-                        : {
-                            ...d,
-                            slides: d.slides.map((s) =>
-                              s.id === slide.id ? { ...s, snapshotImage: primaryPng } : s,
-                            ),
-                            updatedAt: Date.now(),
-                          },
-                    ),
-                  );
-                });
-                try {
-                  presentationThumbDeltaFingerprintBySlideRef.current[`${deck.id}:${slide.id}`] =
-                    JSON.stringify(visibleMain);
-                } catch {
-                  // ignore
-                }
-              } catch {
-                // Next slide
-              }
-              await new Promise<void>((r) =>
-                requestAnimationFrame(() => requestAnimationFrame(() => r())),
-              );
-              continue;
-            }
-
-            const draftDiagram = projectVisibleDiagram(
-              applyDiagramDelta(masterBase, slide.diagramDelta),
-            );
-            const unionDiagrams = deck.slides.map((s) =>
-              s.id === slide.id
-                ? draftDiagram
-                : projectVisibleDiagram(applyDiagramDelta(masterBase, s.diagramDelta)),
-            );
-
-            flushSync(() => {
-              setActivePresentationDeckId(deck.id);
-              setActivePresentationSlideId(slide.id);
-              setPresentationDraftDiagram(draftDiagram);
-            });
-
-            await new Promise<void>((r) =>
-              requestAnimationFrame(() => requestAnimationFrame(() => r())),
-            );
-            if (cancelled) return;
-
-            try {
-              const snapshotImage = await editorRef.current!.captureSnapshotPng!({
-                backgroundColor: 'white',
-                quality: 'medium',
-                fitContent: true,
-                unionDiagrams,
-              });
-
-              if (cancelled) return;
-
-              flushSync(() => {
-                setPresentationDecks((prev) =>
-                  prev.map((d) => {
-                    if (d.id !== deck.id) return d;
-                    return {
-                      ...d,
-                      slides: d.slides.map((s) =>
-                        s.id === slide.id ? { ...s, snapshotImage } : s,
-                      ),
-                      updatedAt: Date.now(),
-                    };
-                  }),
-                );
-              });
-              try {
-                const fp = JSON.stringify(
-                  computeDiagramDelta(masterBase, projectVisibleDiagram(draftDiagram)),
-                );
-                presentationThumbDeltaFingerprintBySlideRef.current[`${deck.id}:${slide.id}`] = fp;
-              } catch {
-                // ignore
-              }
-            } catch {
-              // Next slide or restore
-            }
-          }
-        }
-      } finally {
-        if (savedDeckId && savedSlideId) {
-          const restoreDeck = presentationDecksRef.current.find((d) => d.id === savedDeckId);
-          const restoreSlide = restoreDeck?.slides.find((s) => s.id === savedSlideId);
-          if (restoreDeck && restoreSlide) {
-            if (restoreDeck.slides[0]?.id === restoreSlide.id) {
-              flushSync(() => {
-                setActivePresentationDeckId(savedDeckId);
-                setActivePresentationSlideId(savedSlideId);
-                setPresentationDraftDiagram(null);
-              });
-            } else {
-              const restoreDraft = projectVisibleDiagram(
-                applyDiagramDelta(masterBase, restoreSlide.diagramDelta),
-              );
-              flushSync(() => {
-                setActivePresentationDeckId(savedDeckId);
-                setActivePresentationSlideId(savedSlideId);
-                setPresentationDraftDiagram(restoreDraft);
-              });
-            }
-          }
-        }
-        presentationThumbBackfillRunningRef.current = false;
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- active deck/slide are restore targets for this run only; omitting avoids re-entry on every slide change.
-  }, [presentationMasterDiagram, presentationDeckIdentityKey]);
+  const { captureOutgoingSlideThumbnailIfNeeded } = usePresentationThumbnails({
+    editorRef,
+    presentationDecksRef,
+    presentationDraftDiagramRef,
+    presentationMasterDiagramRef,
+    tabDiagramDataRef,
+    presentationThumbDeltaFingerprintBySlideRef,
+    presentationThumbFingerprintSlideKeyRef,
+    presentationDraftDiagram,
+    presentationMasterDiagram,
+    tabDiagramData,
+    activePresentationDeckId,
+    activePresentationSlideId,
+    activePresentationSlideDiagramsForThumbnailCapture,
+    presentationDeckIdentityKey,
+    setPresentationDecks,
+    setActivePresentationDeckId,
+    setActivePresentationSlideId,
+    setPresentationDraftDiagram,
+  });
 
   const activeStripSlideIndex =
     activePresentationDeck && activePresentationSlideId
@@ -3225,158 +1997,17 @@ export default function DiagramEditor() {
     toast({ title: 'Connection Disconnected', description: 'Connection has been removed.' });
   }, [diagramData, selectedItem, setDiagramData, setSelectedItem, confirmPresentationLayerImpact, getAffectedLayerIdsForConnection, layers]);
 
-  const getFilenameStem = (filename: string) =>
-    filename.replace(/\.[^.]+$/, '') || filename;
-
-  const handleSave = async (tabId?: string): Promise<boolean> => {
-    const targetTabId = (typeof tabId === 'string' ? tabId : undefined) ?? activeTabId;
-    const targetTab = targetTabId ? getTab(targetTabId) : activeTab;
-    if (!targetTabId || !targetTab) return false;
-
-    const baseForPresentationCompression = projectVisibleDiagram(presentationMasterDiagram ?? targetTab.diagramData);
-    const baseNodeMap = buildBaseNodeMap(baseForPresentationCompression);
-
-    const compactDecks: CompactDeckV2[] = presentationDecks.map((deck) => {
-      const rawSlides: CompactSlideV2[] = deck.slides.map((slide, index) => {
-        const compactRefs: CompactSlideV2['r'] = {};
-        const compactOps: CompactOperation[] = [];
-
-        for (const operation of slide.diagramDelta.operations || []) {
-          if (operation.op === 'replace' && operation.path === '/nodes') {
-            const compressedIds = canCompressNodeReplaceToIds(operation.value, baseNodeMap);
-            if (compressedIds) {
-              compactRefs.n = compressedIds;
-              continue;
-            }
-          }
-
-          if (operation.op === 'replace' && operation.path === '/layers/layers') {
-            const compressedVisibleLayerIds = canCompressLayerReplaceToVisibleIds(
-              operation.value,
-              baseForPresentationCompression.layers
-            );
-            if (compressedVisibleLayerIds) {
-              compactRefs.l = compressedVisibleLayerIds;
-              continue;
-            }
-          }
-
-          if (operation.op === 'replace' && operation.path === '/connections' && Array.isArray(operation.value)) {
-            compactRefs.c = (operation.value as DiagramData['connections']).map(stripConnectionDefaults);
-            continue;
-          }
-
-          const code: CompactOpCode = operation.op === 'add' ? 0 : operation.op === 'remove' ? 1 : 2;
-          compactOps.push(
-            operation.value === undefined
-              ? [code, operation.path]
-              : [code, operation.path, operation.value]
-          );
-        }
-
-        const animationState = slide.animationState;
-        const compactAnimation: CompactAnimationStateV2 | undefined = animationState
-          ? {
-              e: animationState.enabled ? undefined : 0,
-              f: animationState.filterSourceIds && animationState.filterSourceIds.length > 0
-                ? animationState.filterSourceIds
-                : undefined,
-              x: animationState.disabledSourceIds && animationState.disabledSourceIds.length > 0
-                ? animationState.disabledSourceIds
-                : undefined,
-            }
-          : undefined;
-
-        const hasCompactAnimation = Boolean(
-          compactAnimation && (
-            compactAnimation.e !== undefined ||
-            (compactAnimation.f && compactAnimation.f.length > 0) ||
-            (compactAnimation.x && compactAnimation.x.length > 0)
-          )
-        );
-
-        const defaultTitle = `Snapshot ${index + 1}`;
-        return {
-          d: compactOps.length > 0 ? { o: compactOps } : undefined,
-          r: (compactRefs.n || compactRefs.l || compactRefs.c) ? compactRefs : undefined,
-          t: slide.title && slide.title !== defaultTitle ? slide.title : undefined,
-          a: hasCompactAnimation ? compactAnimation : undefined,
-          z: typeof slide.autoZoomLevel === 'number' && Number.isFinite(slide.autoZoomLevel)
-            ? Number(slide.autoZoomLevel.toFixed(4))
-            : undefined,
-          px: typeof slide.viewPanX === 'number' && Number.isFinite(slide.viewPanX)
-            ? Number(slide.viewPanX.toFixed(2))
-            : undefined,
-          py: typeof slide.viewPanY === 'number' && Number.isFinite(slide.viewPanY)
-            ? Number(slide.viewPanY.toFixed(2))
-            : undefined,
-        };
-      });
-
-      const deduped = dedupeSlideRefSets(rawSlides);
-      return {
-        n: deck.name || undefined,
-        tn: deduped.nodeTable,
-        tl: deduped.layerTable,
-        tc: deduped.connectionTable,
-        s: deduped.slides,
-      };
-    });
-
-    const activeDeckIndex = activePresentationDeckId
-      ? presentationDecks.findIndex((deck) => deck.id === activePresentationDeckId)
-      : -1;
-
-    const dataToSave: DiagramJsonWithPresentations = {
-      ...targetTab.diagramData,
-      presentations: {
-        v: 2,
-        ai: activeDeckIndex >= 0 ? activeDeckIndex : undefined,
-        d: compactDecks,
-      },
-    };
-    const jsonString = JSON.stringify(dataToSave, null, 2);
-    const suggestedName = `${targetTab.name.replace(/\s+/g, '-').toLowerCase()}.json`;
-
-    // Try to use the File System Access API if available (Chromium browsers)
-    if ('showSaveFilePicker' in window) {
-      try {
-        const handle = await (window as any).showSaveFilePicker({
-          suggestedName,
-          types: [{
-            description: 'JSON Files',
-            accept: { 'application/json': ['.json'] }
-          }]
-        });
-        const writable = await handle.createWritable();
-        await writable.write(jsonString);
-        await writable.close();
-        const fileName = 'name' in handle ? String(handle.name) : suggestedName;
-        updateTab(targetTabId, { name: getFilenameStem(fileName) });
-        markTabAsSaved(targetTabId);
-        toast({ title: 'Diagram Saved', description: 'Your diagram has been saved successfully.' });
-        return true;
-      } catch (error: any) {
-        if (error.name === 'AbortError') return false;
-        console.log('File System Access API failed, falling back to download:', error);
-      }
-    }
-
-    // Fallback: automatic download
-    const blob = new Blob([jsonString], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = suggestedName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    updateTab(targetTabId, { name: getFilenameStem(suggestedName) });
-    markTabAsSaved(targetTabId);
-    toast({ title: 'Diagram Saved', description: 'Your diagram has been downloaded.' });
-    return true;
-  };
+  const handleSave = createDiagramSaveHandler({
+    activeTabId,
+    activeTab,
+    getTab,
+    updateTab,
+    markTabAsSaved,
+    toast: toast as DiagramEditorToastFn,
+    presentationMasterDiagram,
+    presentationDecks,
+    activePresentationDeckId,
+  });
 
   const handleLoadClick = () => {
     fileInputRef.current?.click();
@@ -4369,216 +3000,6 @@ export default function DiagramEditor() {
       setSelectedItem(null);
     }
   }, [diagramData, setSelectedItemIds, setSelectedItem]);
-
-  const handleExportPng = async () => {
-    setExportDialogFormat('png');
-    setExportDialogOpen(true);
-  };
-
-  const handleExportGif = async () => {
-    setExportDialogFormat('gif');
-    setExportDialogOpen(true);
-  };
-
-  const handleExport = async (options: {
-    format: 'png' | 'gif';
-    backgroundColor: 'transparent' | 'white' | 'dark';
-    quality?: 'low' | 'medium' | 'high';
-    fps?: number;
-    durationSeconds?: number;
-    /** 1-based slide indices matching deck order (slide 1 = main diagram). */
-    pngSlideNumbers?: number[];
-    exportBasename?: string;
-  }) => {
-    setExportDialogOpen(false);
-    if (!editorRef.current) return;
-
-    if (options.format === 'gif') {
-      await editorRef.current.exportGif({
-        backgroundColor: options.backgroundColor,
-        quality: options.quality || 'medium',
-        fps: options.fps,
-        durationSeconds: options.durationSeconds,
-      });
-      return;
-    }
-
-    const basename =
-      sanitizeExportBasename(options.exportBasename?.trim() || activeTab?.name || 'diagram') || 'diagram';
-
-    const deck =
-      activeDiagramStack.length === 0 && activePresentationDeckId
-        ? presentationDecks.find((d) => d.id === activePresentationDeckId)
-        : null;
-    const totalSlides = deck ? deck.slides.length : 0;
-    const wantMulti =
-      Boolean(options.pngSlideNumbers && options.pngSlideNumbers.length > 0 && deck && totalSlides >= 1);
-
-    if (wantMulti && deck && totalSlides >= 1) {
-      const indices = [...new Set(options.pngSlideNumbers!)].filter(
-        (n) => Number.isInteger(n) && n >= 1 && n <= totalSlides,
-      );
-      if (indices.length === 0) {
-        toast({
-          variant: 'destructive',
-          title: 'Export cancelled',
-          description: 'No valid slides in range.',
-        });
-        return;
-      }
-      indices.sort((a, b) => a - b);
-
-      const savedSlideId = activePresentationSlideId;
-      const savedDraft = presentationDraftDiagram;
-      presentationPersistSuppressedForExportRef.current = true;
-
-      const blobs: { slideNumber: number; blob: Blob }[] = [];
-
-      try {
-        for (const slideNum of indices) {
-          let activeIdForUnion: string | null = null;
-          let draftForUnion: DiagramData | null = null;
-
-          const slide = deck.slides[slideNum - 1];
-          if (!slide) continue;
-          const masterBase = projectVisibleDiagram(presentationMasterDiagram ?? tabDiagramData);
-          if (deck.slides[0]?.id === slide.id) {
-            flushSync(() => {
-              setActivePresentationSlideId(slide.id);
-              setPresentationDraftDiagram(null);
-            });
-            activeIdForUnion = slide.id;
-            draftForUnion = null;
-          } else {
-            const resolved =
-              savedSlideId === slide.id && savedDraft
-                ? savedDraft
-                : applyDiagramDelta(masterBase, slide.diagramDelta);
-            activeIdForUnion = slide.id;
-            draftForUnion = resolved;
-            flushSync(() => {
-              setActivePresentationSlideId(slide.id);
-              setPresentationDraftDiagram(safeClone(resolved));
-            });
-          }
-
-          await waitTwoAnimationFrames();
-
-          const unionDiagrams = buildPresentationUnionDiagramsForPngExport({
-            tabDiagram: tabDiagramData,
-            presentationMaster: presentationMasterDiagram,
-            deckSlides: deck.slides,
-            activeSlideId: activeIdForUnion,
-            draft: draftForUnion,
-            layersFilteredBase: diagramDataForExportLayersRef.current,
-          });
-
-          const dataUrl = await editorRef.current.captureSnapshotPng({
-            backgroundColor: options.backgroundColor,
-            quality: options.quality || 'medium',
-            fitContent: true,
-            unionDiagrams,
-          });
-          const blob = await (await fetch(dataUrl)).blob();
-          blobs.push({ slideNumber: slideNum, blob });
-        }
-      } catch (err) {
-        blobs.length = 0;
-        console.error('Multi-slide PNG export failed:', err);
-        toast({
-          variant: 'destructive',
-          title: 'Export failed',
-          description: 'Could not export one or more slides.',
-        });
-      } finally {
-        flushSync(() => {
-          setActivePresentationSlideId(savedSlideId);
-          setPresentationDraftDiagram(savedDraft);
-        });
-        presentationPersistSuppressedForExportRef.current = false;
-      }
-
-      if (blobs.length === 0) return;
-
-      const writeViaDirectoryPicker = async (): Promise<boolean> => {
-        const w = window as Window & { showDirectoryPicker?: () => Promise<FileSystemDirectoryHandle> };
-        if (typeof w.showDirectoryPicker !== 'function') return false;
-        try {
-          const dir = await w.showDirectoryPicker();
-          for (const { slideNumber, blob } of blobs) {
-            const name = `${basename}-${slideNumber}.png`;
-            const fh = await dir.getFileHandle(name, { create: true });
-            const writable = await fh.createWritable();
-            await writable.write(blob);
-            await writable.close();
-          }
-          return true;
-        } catch (e: unknown) {
-          if (e && typeof e === 'object' && (e as { name?: string }).name === 'AbortError') return false;
-          return false;
-        }
-      };
-
-      if (blobs.length === 1) {
-        const { slideNumber, blob } = blobs[0]!;
-        const suggestedName = `${basename}-${slideNumber}.png`;
-        if (typeof window.showSaveFilePicker === 'function') {
-          try {
-            const handle = await window.showSaveFilePicker({
-              suggestedName,
-              types: [{ description: 'PNG Images', accept: { 'image/png': ['.png'] } }],
-            });
-            const writable = await handle.createWritable();
-            await writable.write(blob);
-            await writable.close();
-            toast({ title: 'Exported', description: `${suggestedName} saved.` });
-            return;
-          } catch (e: unknown) {
-            if (e && typeof e === 'object' && (e as { name?: string }).name === 'AbortError') return;
-          }
-        }
-        const link = document.createElement('a');
-        link.download = suggestedName;
-        link.href = URL.createObjectURL(blob);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(link.href);
-        toast({ title: 'Exported', description: `${suggestedName} downloaded.` });
-        return;
-      }
-
-      if (await writeViaDirectoryPicker()) {
-        toast({
-          title: 'Exported',
-          description: `${blobs.length} PNG files saved (${basename}-#.png).`,
-        });
-        return;
-      }
-
-      for (const { slideNumber, blob } of blobs) {
-        const name = `${basename}-${slideNumber}.png`;
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.download = name;
-        link.href = url;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      }
-      toast({
-        title: 'Exported',
-        description: `${blobs.length} PNG files downloaded (${basename}-#.png).`,
-      });
-      return;
-    }
-
-    await editorRef.current.exportPng({
-      backgroundColor: options.backgroundColor,
-      quality: options.quality || 'medium',
-    });
-  };
 
   const handleTabClose = async (tabId: string) => {
     const tab = tabs.find(t => t.id === tabId);
@@ -5811,309 +4232,58 @@ export default function DiagramEditor() {
     }
   };
 
-  // Keyboard shortcuts
-  React.useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const isMac = navigator.userAgent.toUpperCase().includes('MAC');
+  useDiagramEditorKeyboard({
+    jsonPanelOpen,
+    historyIndex,
+    history,
+    selectedItem,
+    selectedItemIds,
+    diagramData,
+    setDiagramData,
+    setSelectedItem,
+    setSelectedItemIds,
+    animationConnectionsEnabled,
+    setAnimationConnectionsUserEnabled,
+    animationToggleOnClickEnabled,
+    setAnimationToggleOnClickEnabled,
+    isReadOnly,
+    handleItemDelete,
+    handleMenuCopy,
+    handleMenuPaste,
+    presentationPlayerOpen,
+    handleEnterPresentationPlayMode,
+    simulationModeEnabled,
+    handleToggleSimulationMode,
+    toggleJsonPanel,
+    handleNew,
+    handleLoadClick,
+    handleSave,
+    undo,
+    redo,
+    handleSelectAll,
+    editorRef,
+    handleGroupItems,
+    handleUngroupItems,
+    handleAutoLayout,
+  });
 
-      if (isEventFromEditableElement(e)) return;
-      
-      // Ctrl+Shift+J (or Cmd+Shift+J on Mac) - Toggle JSON Panel
-      if ((isMac ? e.metaKey : e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'j') {
-        e.preventDefault();
-        toggleJsonPanel();
-      }
-      
-      // Ctrl+N (or Cmd+N on Mac) - New
-      if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === 'n' && !e.shiftKey) {
-        e.preventDefault();
-        handleNew();
-      }
-      
-      // Ctrl+O (or Cmd+O on Mac) - Load
-      if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === 'o' && !e.shiftKey) {
-        e.preventDefault();
-        handleLoadClick();
-      }
-      
-      // Ctrl+S (or Cmd+S on Mac) - Save
-      if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === 's' && !e.shiftKey) {
-        e.preventDefault();
-        handleSave();
-      }
-      
-      // Ctrl+Z (or Cmd+Z on Mac) - Undo
-      if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        undo();
-      }
-      
-      // Ctrl+Shift+Z (or Cmd+Shift+Z on Mac) - Redo
-      if ((isMac ? e.metaKey : e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'z') {
-        e.preventDefault();
-        redo();
-      }
-      
-      // Ctrl+Y (or Cmd+Y on Mac) - Redo (alternative)
-      if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === 'y') {
-        e.preventDefault();
-        redo();
-      }
-      
-      // Ctrl+A (or Cmd+A on Mac) - Select All
-      if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === 'a' && !e.shiftKey) {
-        e.preventDefault();
-        handleSelectAll();
-      }
-
-      // Ctrl+C (or Cmd+C on Mac) - Copy selection
-      if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === 'c' && !e.shiftKey && !e.altKey) {
-        e.preventDefault();
-        handleMenuCopy();
-        return;
-      }
-
-      // Ctrl+V (or Cmd+V on Mac) - Paste
-      if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === 'v' && !e.shiftKey && !e.altKey) {
-        e.preventDefault();
-        handleMenuPaste();
-        return;
-      }
-
-      // Ctrl+0 (or Cmd+0 on Mac) - Fit to View
-      if ((isMac ? e.metaKey : e.ctrlKey) && e.key === '0' && !e.shiftKey && !e.altKey) {
-        e.preventDefault();
-        editorRef.current?.fitToView();
-        return;
-      }
-
-      // Escape key - Clear multi-selection
-      if (e.key === 'Escape' && selectedItemIds.size > 1) {
-        e.preventDefault();
-        setSelectedItemIds(new Set());
-        return;
-      }
-
-      // Delete/Backspace - Delete selected item (including selected connection).
-      // Multi-select is handled in EditorCanvas (handleDeleteMultiple). That listener runs first
-      // (child useEffect); if we also run single-item delete here we apply stale currentDiagramData
-      // and overwrite the batch delete (one item removed, rest remain until a second keypress).
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedItem && !isReadOnly) {
-        if (selectedItemIds.size > 1) {
-          return;
-        }
-        e.preventDefault();
-        handleItemDelete(selectedItem);
-        return;
-      }
-      
-      // Ctrl+G (or Cmd+G on Mac) - Group selected items
-      if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === 'g' && !e.shiftKey) {
-        e.preventDefault();
-        handleGroupItems();
-        return;
-      }
-      
-      // Ctrl+Shift+G (or Cmd+Shift+G on Mac) - Ungroup selected items
-      if ((isMac ? e.metaKey : e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'g') {
-        e.preventDefault();
-        handleUngroupItems();
-        return;
-      }
-      
-      // Ctrl+Shift+L (or Cmd+Shift+L on Mac) - Auto Layout
-      if ((isMac ? e.metaKey : e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'l') {
-        e.preventDefault();
-        handleAutoLayout();
-        return;
-      }
-      
-      // Ctrl+Alt+A (or Cmd+Option+A on Mac) - Toggle Animation Connections (user preference)
-      if ((isMac ? e.metaKey : e.ctrlKey) && e.altKey && e.key.toLowerCase() === 'a') {
-        e.preventDefault();
-        setAnimationConnectionsUserEnabled((v) => !v);
-        return;
-      }
-      
-      // Ctrl+Alt+C (or Cmd+Option+C on Mac) - Toggle Click to Toggle Animations
-      if ((isMac ? e.metaKey : e.ctrlKey) && e.altKey && e.key.toLowerCase() === 'c') {
-        e.preventDefault();
-        if (animationConnectionsEnabled) {
-          setAnimationToggleOnClickEnabled(!animationToggleOnClickEnabled);
-        }
-        return;
-      }
-
-      // Ctrl+Alt+P (or Cmd+Option+P on Mac) — start presentation playback
-      if ((isMac ? e.metaKey : e.ctrlKey) && e.altKey && e.key.toLowerCase() === 'p') {
-        e.preventDefault();
-        if (!presentationPlayerOpen) {
-          handleEnterPresentationPlayMode();
-        }
-        return;
-      }
-
-      // Alt+S - Exit simulation mode
-      if (!e.ctrlKey && !e.metaKey && !e.shiftKey && e.altKey && e.key.toLowerCase() === 's') {
-        if (simulationModeEnabled) {
-          e.preventDefault();
-          handleToggleSimulationMode();
-        }
-        return;
-      }
-
-      // Ctrl+Alt+S (or Cmd+Option+S on Mac) - Toggle Simulation Mode
-      if ((isMac ? e.metaKey : e.ctrlKey) && e.altKey && e.key.toLowerCase() === 's') {
-        e.preventDefault();
-        handleToggleSimulationMode();
-        return;
-      }
-      
-      // Arrow keys - Move selected items by 10px grid
-      if ((e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') && selectedItem && selectedItem.itemType !== 'edge') {
-        e.preventDefault();
-        
-        const gridSize = 10; // Use 10px for arrow key movement
-        let deltaX = 0;
-        let deltaY = 0;
-        
-        switch (e.key) {
-          case 'ArrowUp':
-            deltaY -= gridSize;
-            break;
-          case 'ArrowDown':
-            deltaY += gridSize;
-            break;
-          case 'ArrowLeft':
-            deltaX -= gridSize;
-            break;
-          case 'ArrowRight':
-            deltaX += gridSize;
-            break;
-        }
-        
-        // Determine which items to move (multi-selection or single selection)
-        const itemIdsToMove = selectedItemIds.size > 0 ? Array.from(selectedItemIds) : [selectedItem.id];
-        
-        // Filter out locked nodes
-        const unlockedItemIds = itemIdsToMove.filter(id => {
-          const node = diagramData.nodes.find(n => n.id === id);
-          return !node || !node.locked;
-        });
-        
-        // If all items are locked, don't move anything
-        if (unlockedItemIds.length === 0) {
-          return;
-        }
-        
-        setDiagramData(prevData => {
-          const newNodes = [...prevData.nodes];
-          unlockedItemIds.forEach(id => {
-            const nodeIndex = newNodes.findIndex(n => n.id === id);
-            if (nodeIndex !== -1) {
-              const node = newNodes[nodeIndex];
-              newNodes[nodeIndex] = { 
-                ...node, 
-                x: Math.round(((node.x || 0) + deltaX) / gridSize) * gridSize,
-                y: Math.round(((node.y || 0) + deltaY) / gridSize) * gridSize
-              };
-            }
-          });
-          return { ...prevData, nodes: newNodes };
-        });
-        
-        const updatedSelectedItems: SelectedItem[] = [];
-        unlockedItemIds.forEach(id => {
-          const updatedNode = diagramData.nodes.find(n => n.id === id);
-          if (updatedNode) {
-            updatedSelectedItems.push({ 
-              ...updatedNode, 
-              itemType: 'node',
-              x: Math.round(((updatedNode.x || 0) + deltaX) / gridSize) * gridSize,
-              y: Math.round(((updatedNode.y || 0) + deltaY) / gridSize) * gridSize
-            } as SelectedItem);
-          }
-        });
-        
-        // Update the primary selected item
-        const updatedPrimary = updatedSelectedItems.find(item => item.id === selectedItem.id);
-        if (updatedPrimary) {
-          setSelectedItem(updatedPrimary);
-        }
-      }
-    };
-    
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [jsonPanelOpen, historyIndex, history, selectedItem, selectedItemIds, diagramData, setDiagramData, setSelectedItem, animationConnectionsEnabled, setAnimationConnectionsUserEnabled, setAnimationToggleOnClickEnabled, isReadOnly, handleItemDelete, handleMenuCopy, handleMenuPaste, presentationPlayerOpen, handleEnterPresentationPlayMode, simulationModeEnabled, handleToggleSimulationMode]);
-
-  // Persist panel width (debounced for better performance)
-  React.useEffect(() => {
-    if (isClient) {
-      setItemDebounced('dw:jsonEditor:width', String(jsonPanelWidth), 200);
-    }
-  }, [jsonPanelWidth, isClient]);
-
-  // Persist icon background preference (debounced)
-  React.useEffect(() => {
-    if (isClient) {
-      setBooleanDebounced('dw:iconBackground:enabled', iconBackgroundEnabled);
-    }
-  }, [iconBackgroundEnabled, isClient]);
-
-  // Persist default text labels for new palette drops (debounced)
-  React.useEffect(() => {
-    if (isClient) {
-      setBooleanDebounced('dw:defaultTextLabels:enabled', defaultTextLabelsEnabled);
-    }
-  }, [defaultTextLabelsEnabled, isClient]);
-
-  // Persist alignment guides preference (debounced)
-  React.useEffect(() => {
-    if (isClient) {
-      setBooleanDebounced('dw:alignmentGuides:enabled', alignmentGuidesEnabled);
-    }
-  }, [alignmentGuidesEnabled, isClient]);
-
-  // Restore panel state from localStorage after hydration (avoids hydration mismatch)
-  React.useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const savedCollapsed = getItemSafe('dw:propertiesPanel:collapsed');
-    if (savedCollapsed !== null) setRightPanelCollapsed(savedCollapsed === 'true');
-    const savedVisible = getItemSafe('dw:propertiesPanel:visible');
-    if (savedVisible !== null) setPropertiesPanelVisible(savedVisible !== 'false');
-    const savedPopups = getItemSafe('dw:metadataPopups:enabled');
-    if (savedPopups !== null) setMetadataPopupsEnabled(savedPopups !== 'false');
-    const savedGuides = getItemSafe('dw:alignmentGuides:enabled');
-    if (savedGuides !== null) setAlignmentGuidesEnabled(savedGuides !== 'false');
-    const savedConnectionsBehind = getItemSafe('dw:connectionsBehindNodes:enabled');
-    if (savedConnectionsBehind !== null) setConnectionsBehindNodesEnabled(savedConnectionsBehind !== 'false');
-    const savedAnimationConnections = getItemSafe('dw:animationConnections:enabled');
-    if (savedAnimationConnections !== null) setAnimationConnectionsUserEnabled(savedAnimationConnections !== 'false');
-    const savedAnimationToggleOnClick = getItemSafe('dw:animationToggleOnClick:enabled');
-    if (savedAnimationToggleOnClick !== null) setAnimationToggleOnClickEnabled(savedAnimationToggleOnClick === 'true');
-  }, []);
-
-  // Persist connections-behind-nodes preference (debounced)
-  React.useEffect(() => {
-    if (isClient) {
-      setBooleanDebounced('dw:connectionsBehindNodes:enabled', connectionsBehindNodesEnabled);
-    }
-  }, [connectionsBehindNodesEnabled, isClient]);
-
-  // Persist animation connections preference (debounced; user intent only — not idle auto-pause)
-  React.useEffect(() => {
-    if (isClient) {
-      setBooleanDebounced('dw:animationConnections:enabled', animationConnectionsUserEnabled);
-    }
-  }, [animationConnectionsUserEnabled, isClient]);
-
-  // Persist animation toggle on click preference (debounced)
-  React.useEffect(() => {
-    if (isClient) {
-      setBooleanDebounced('dw:animationToggleOnClick:enabled', animationToggleOnClickEnabled);
-    }
-  }, [animationToggleOnClickEnabled, isClient]);
+  useDiagramEditorOptionPersistence({
+    isClient,
+    jsonPanelWidth,
+    iconBackgroundEnabled,
+    defaultTextLabelsEnabled,
+    alignmentGuidesEnabled,
+    connectionsBehindNodesEnabled,
+    animationConnectionsUserEnabled,
+    animationToggleOnClickEnabled,
+    setRightPanelCollapsed,
+    setPropertiesPanelVisible,
+    setMetadataPopupsEnabled,
+    setAlignmentGuidesEnabled,
+    setConnectionsBehindNodesEnabled,
+    setAnimationConnectionsUserEnabled,
+    setAnimationToggleOnClickEnabled,
+  });
 
   // Reset click-to-toggle disabled sources when it's enabled
   React.useEffect(() => {
@@ -6393,992 +4563,5 @@ export default function DiagramEditor() {
       <TutorialOverlay />
     </TutorialProvider>
     </TooltipProvider>
-  );
-}
-
-function DiagramEditorInner({
-  canPasteFromMenu,
-  isMobile,
-  sidebarOpen,
-  setSidebarOpen,
-  leftPanelCollapsed,
-  setLeftPanelCollapsed,
-  rightPanelCollapsed,
-  setRightPanelCollapsed,
-  propertiesPanelVisible,
-  onTogglePropertiesPanel,
-  metadataPopupsEnabled,
-  onToggleMetadataPopups,
-  selectedItem,
-  selectedItemIds,
-  handleItemUpdate,
-  handleBulkMetadataUpdate,
-  startConnecting,
-  handleItemDelete,
-  connectorLineFocusedVertex,
-  handleConnectorLineVertexFocus,
-  tryDeleteConnectorLineVertexBeforeNodeDelete,
-  handleResourceSelect,
-  handleResourceActivate,
-  handleResourceActivateAtPosition,
-  toggleJsonPanel,
-  jsonPanelOpen,
-  editorRef,
-  handleConnectionUpdate,
-  disconnectConnection,
-  handleConnectionWaypointAdd,
-  handleConnectionInsertNode,
-  handleConnectionWaypointRemove,
-  handleConnectionWaypointMove,
-  handleConnectionContextMenu,
-  connectionContextModal,
-  setConnectionContextModal,
-  umlClassEditorModal,
-  setUmlClassEditorModal,
-  chartDataEditorModal,
-  setChartDataEditorModal,
-  setDiagramData,
-  updateTutorialDiagramData,
-  setCurrentDiagramData,
-  currentDiagramData,
-  activeDiagramStack,
-  handleBreadcrumbNavigate,
-  handleBreadcrumbSegmentRename,
-  handleSubDiagramDoubleClick,
-  getHasLinkedSubDiagram,
-  handleCreateSubDiagram,
-  handleRemoveSubDiagramLink,
-  onImportIntoSubDiagram,
-  onSubDiagramFileChange,
-  subDiagramImportInputRef,
-  layers,
-  layerAnimationsEnabled,
-  setLayerAnimationsEnabled,
-  displayDiagramData,
-  layerAnimation,
-  handleToggleLayerVisibility,
-  canvasTransform,
-  setCanvasTransform,
-  handleNew,
-  handleLoadClick,
-  handleMermaidImportClick,
-  handleMermaidFileChange,
-  mermaidInputRef,
-  handleSave,
-  handleLoadExample,
-  createTab,
-  handleExportSvg,
-  handleExportGif,
-  handleMenuCopy,
-  handleMenuPaste,
-  canPaste,
-  undo,
-  redo,
-  historyIndex,
-  history,
-  handleSelectAll,
-  mousePosition,
-  hoverEnabled,
-  setHoverEnabled,
-  iconBackgroundEnabled,
-  setIconBackgroundEnabled,
-  defaultTextLabelsEnabled,
-  setDefaultTextLabelsEnabled,
-  alignmentGuidesEnabled,
-  setAlignmentGuidesEnabled,
-  connectionsBehindNodesEnabled,
-  setConnectionsBehindNodesEnabled,
-  animationConnectionsEnabled,
-  animationConnectionsUserEnabled,
-  animationConnectionsIdlePaused,
-  animationConnectionsMenuPaused,
-  setAnimationConnectionsMenuPaused,
-  pauseConnectionAnimationsForOverlayUi,
-  setAnimationConnectionsEnabled: setAnimationConnectionsUserEnabled,
-  animationToggleOnClickEnabled,
-  setAnimationToggleOnClickEnabled,
-  effectiveAnimationFilterIds,
-  animationDisabledSources,
-  setAnimationDisabledSources,
-  isReadOnly,
-  setIsReadOnly,
-  handleAlignObjects,
-  handleLayoutGridStep,
-  handleAutoLayout,
-  handleThemeApplyToSelected,
-  triggerTextStylingPanel,
-  setTriggerTextStylingPanel,
-  triggerVisualStylingPanel,
-  setTriggerVisualStylingPanel,
-  triggerLineStylingPanel,
-  setTriggerLineStylingPanel,
-  triggerConnectionSettingsPanel,
-  setTriggerConnectionSettingsPanel,
-  setScratchPadOpen,
-  scratchPadOpen,
-  rulesEditorOpen,
-  setRulesEditorOpen,
-  rules,
-  setRules,
-  presentationDecks,
-  activePresentationDeckId,
-  activePresentationSlideId,
-  presentationDisabledLayerIds,
-  activePresentationSlides,
-  activePresentationSlideDiagrams,
-  handleSelectPresentationBaseSlide,
-  handleAutoZoomPresentation,
-  handleApplyPresentationZoomToCurrent,
-  handleApplyPresentationZoomToAll,
-  handleAddPresentationSnapshot,
-  handleAddBlankPresentationSlide,
-  handleDeletePresentationSlide,
-  presentationHasLaterSlides,
-  handlePropagateAddToLaterSlides,
-  handlePropagateDeleteToLaterSlides,
-  simulationModeEnabled,
-  handleToggleSimulationMode,
-  handleMovePresentationSlide,
-  handleSelectPresentationSlide,
-  handleTogglePresentationSlideSelection,
-  handlePreviousPresentationSlide,
-  handleNextPresentationSlide,
-  handleEnterPresentationPlayMode,
-  presentationPlayerSlides,
-  presentationPlayerSlideDiagrams,
-  presentationPlayerOpen,
-  setPresentationPlayerOpen,
-  presentationPlayerIndex,
-  setPresentationPlayerIndex,
-  tabs,
-  activeTabId,
-  isLoaded,
-  switchTab,
-  handleTabClose,
-  reorderTabs,
-  fileInputRef,
-  handleFileChange,
-  jsonPanelOpen: jsonPanelOpenInner,
-  jsonPanelWidth,
-  setJsonPanelWidth,
-  diagramData,
-  handleJsonValidChange,
-  toggleJsonPanel: toggleJsonPanelInner,
-  exportDialogOpen,
-  exportDialogFormat,
-  setExportDialogOpen,
-  handleExport,
-  refreshCanvas,
-  updateHistory,
-  closeTabDialogOpen,
-  setCloseTabDialogOpen,
-  pendingCloseTabId,
-  setPendingCloseTabId,
-  handleCloseTabConfirm,
-  handleCloseTabSave,
-  animationSelectionDialogOpen,
-  setAnimationSelectionDialogOpen,
-  animationOverwriteDialogOpen,
-  setAnimationOverwriteDialogOpen,
-  animationDisableConfirmDialogOpen,
-  setAnimationDisableConfirmDialogOpen,
-  animationCurrentOnlyDialogOpen,
-  setAnimationCurrentOnlyDialogOpen,
-  handleAnimationApplyCurrentOnly,
-  handleAnimationApplySelectedConfirm,
-  handleAnimationDisableConfirm,
-  handleAnimationOverwriteConfirm,
-  handleItemSelect,
-  handleBatchSelect,
-  setSelectedItemIds,
-  setSelectedItem,
-  isConnectMode,
-  handleConnect,
-  setIsConnectMode,
-  disconnectSelected,
-  handleLabelUpdate,
-  handleTagUpdate,
-  setIsDragging,
-  setCanPaste,
-  setMousePosition,
-  handleGroupItems,
-  handleUngroupItems,
-  handleRemoveFromGroup,
-  handleAddToGroup,
-  handleMoveToBack,
-  handleMoveToFront,
-  handleMoveOneBack,
-  handleMoveOneForward,
-  canvasRefreshKey,
-  activeTab,
-  toast,
-}: any) {
-  const presentationConnectionRenderRevision = React.useMemo(
-    () => `${activePresentationDeckId ?? ''}-${activePresentationSlideId ?? ''}`,
-    [activePresentationDeckId, activePresentationSlideId],
-  );
-
-  const exportPresentationSlidesInfo = React.useMemo(() => {
-    if (activeDiagramStack.length > 0) return null;
-    const deck = presentationDecks.find((d: PresentationDeck) => d.id === activePresentationDeckId);
-    if (!deck || deck.slides.length < 1) return null;
-    const slideIdx = deck.slides.findIndex((s: Slide) => s.id === activePresentationSlideId);
-    const activeSlideNumber = slideIdx >= 0 ? slideIdx + 1 : 1;
-    return {
-      totalSlides: deck.slides.length,
-      tabName: activeTab?.name ?? 'diagram',
-      activeSlideNumber,
-    };
-  }, [
-    activeDiagramStack.length,
-    presentationDecks,
-    activePresentationDeckId,
-    activePresentationSlideId,
-    activeTab?.name,
-  ]);
-
-  const isPrimaryPresentationSlideActiveInner = React.useMemo(() => {
-    const deck = presentationDecks.find((d: PresentationDeck) => d.id === activePresentationDeckId);
-    const pid = deck?.slides[0]?.id;
-    return Boolean(pid && activePresentationSlideId === pid);
-  }, [presentationDecks, activePresentationDeckId, activePresentationSlideId]);
-
-  const { start, isOpen: tutorialOpen, steps: tutorialSteps, currentIndex: tutorialStepIndex } = useTutorial();
-
-  const handleStartTutorial = React.useCallback(() => {
-    start(getTutorialSteps());
-  }, [start]);
-
-  // `updateTutorialDiagramData` updates the tutorial tab even when another tab is active.
-  const updateTutorialDiagramDataRef = React.useRef(updateTutorialDiagramData);
-  updateTutorialDiagramDataRef.current = updateTutorialDiagramData;
-
-  // When the Connections step starts, add A→B on the tutorial diagram so the user only adds A→C next.
-  const tutorialStepId = tutorialSteps[tutorialStepIndex]?.id;
-  useEffect(() => {
-    if (!tutorialOpen || !tutorialSteps.length) return;
-    if (activeDiagramStack.length > 0) return;
-    if (tutorialStepId !== 'c-intro') return;
-
-    const FROM = 'tutorial-shape-a';
-    const TO = 'tutorial-shape-b';
-
-    updateTutorialDiagramDataRef.current((prev: DiagramData) => {
-      const nodes = prev.nodes || [];
-      if (!nodes.some((n: DiagramNodeData) => n.id === FROM) || !nodes.some((n: DiagramNodeData) => n.id === TO)) return prev;
-
-      const connections = prev.connections || [];
-      const alreadyHas = connections.some(
-        (c: DiagramConnectionData) =>
-          (c.from === FROM && c.to === TO) ||
-          (c.from === TO && c.to === FROM),
-      );
-      if (alreadyHas) return prev;
-
-      const newConn: DiagramConnectionData = {
-        id: generateConnectionId(),
-        from: FROM,
-        to: TO,
-        style: 'bezier',
-        curvature: 0.6,
-        animation: {
-          enabled: false,
-          shape: 'dot',
-          speed: 20,
-          size: 2,
-          autoCount: true,
-          shapeCount: 5,
-          spacing: 2,
-        },
-        arrow: true,
-        toArrow: true,
-      };
-
-      return {
-        ...prev,
-        connections: [...connections, newConn],
-      };
-    });
-  }, [
-    tutorialOpen,
-    tutorialStepIndex,
-    tutorialStepId,
-    activeDiagramStack.length,
-    tutorialSteps.length,
-  ]);
-
-  const [zOrderListModal, setZOrderListModal] = React.useState<{
-    open: boolean;
-    x: number;
-    y: number;
-  }>({ open: false, x: 100, y: 80 });
-
-  const openZOrderList = React.useCallback(
-    (point?: { x: number; y: number }, initialItemId?: string) => {
-      pauseConnectionAnimationsForOverlayUi();
-      if (initialItemId) {
-        handleBatchSelect([initialItemId]);
-      }
-      if (typeof window === 'undefined') {
-        setZOrderListModal({ open: true, x: 100, y: 80 });
-        return;
-      }
-      const w = 380;
-      const h = 480;
-      const padding = 8;
-      const cx = point?.x ?? window.innerWidth / 2 - w / 2;
-      const cy = point?.y ?? 88;
-      const x = Math.max(padding, Math.min(cx, window.innerWidth - w - padding));
-      const y = Math.max(padding, Math.min(cy, window.innerHeight - h - padding));
-      setZOrderListModal({ open: true, x, y });
-    },
-    [pauseConnectionAnimationsForOverlayUi, handleBatchSelect]
-  );
-
-  const getLayerDisplayNameForZOrder = React.useCallback(
-    (layerId: string) =>
-      layers.layersConfig.layers.find((l: { id: string; name: string }) => l.id === layerId)?.name || layerId,
-    [layers.layersConfig.layers]
-  );
-
-  return (
-    <DndProvider backend={HTML5Backend}>
-      <div className="flex h-screen w-screen bg-background text-foreground font-body relative overflow-hidden">
-        {/* Mobile sidebar overlay */}
-        {isMobile && sidebarOpen && (
-          <div 
-            className="fixed inset-0 bg-black/50 z-40 md:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-        
-        {/* Sidebar - fixed on mobile, normal on desktop */}
-        <div className={`${isMobile ? 'fixed left-0 top-0 h-full z-50 transform transition-transform duration-300 ease-in-out' : ''} ${isMobile && !sidebarOpen ? '-translate-x-full' : ''} ${isMobile ? (leftPanelCollapsed ? 'w-12' : 'w-80') : ''}`}>
- <ComponentSidebar
-    selectedItem={selectedItem}
-    selectedItemIds={selectedItemIds}
-    onItemUpdate={handleItemUpdate}
-    onConnect={startConnecting}
-    onDisconnect={disconnectSelected}
-    onItemDelete={handleItemDelete}
-    diagramData={diagramData}
-    onResourceSelect={handleResourceSelect}
-    onResourceActivate={handleResourceActivate}
-    onToggleJsonPanel={toggleJsonPanel}
-    jsonPanelOpen={jsonPanelOpen}
-    onFitToView={() => editorRef.current?.fitToView()}
-    onConnectionUpdate={handleConnectionUpdate}
-    onConnectionDisconnect={disconnectConnection}
-    onCloseSidebar={() => setSidebarOpen(false)}
-    isMobile={isMobile}
-    transform={canvasTransform}
-    onTransformChange={setCanvasTransform}
-    collapsed={leftPanelCollapsed}
-    onToggleCollapse={() => setLeftPanelCollapsed(!leftPanelCollapsed)}
-  />
-        </div>
-        
-        {/* Mobile menu toggle button */}
-        {isMobile && (
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="fixed left-4 top-4 z-30 p-3 bg-card border border-border rounded-md shadow-lg touch-target"
-            style={{ touchAction: 'manipulation' }}
-            aria-label="Toggle sidebar"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="3" y1="6" x2="21" y2="6"></line>
-              <line x1="3" y1="12" x2="21" y2="12"></line>
-              <line x1="3" y1="18" x2="21" y2="18"></line>
-            </svg>
-          </button>
-        )}
-        
-        <main className={`flex-1 flex flex-col min-h-0 ${isMobile ? 'w-full' : ''} ${isMobile && sidebarOpen ? 'pointer-events-none' : ''} ${(jsonPanelOpen || propertiesPanelVisible) ? 'min-w-0' : ''}`}>
-            <header className="flex shrink-0 flex-col border-b bg-card">
-                <TopMenuBar
-                    onNew={handleNew}
-                    onLoad={handleLoadClick}
-                    onImportMermaid={handleMermaidImportClick}
-                    onImportIntoSubDiagram={onImportIntoSubDiagram}
-                    onSave={handleSave}
-                    onLoadExample={handleLoadExample}
-                    onNewTab={createTab}
-                    onExportSvg={handleExportSvg}
-                    onExportGif={handleExportGif}
-                    onToggleJsonPanel={toggleJsonPanel}
-                    jsonPanelOpen={jsonPanelOpen}
-                    onTogglePropertiesPanel={onTogglePropertiesPanel}
-                    propertiesPanelVisible={propertiesPanelVisible}
-                    onToggleMetadataPopups={onToggleMetadataPopups}
-                    metadataPopupsEnabled={metadataPopupsEnabled}
-                    onToggleLayersPanel={layers.toggleLayersPanel}
-                    layersPanelOpen={layers.layersPanelOpen}
-                    layerAnimationsEnabled={layerAnimationsEnabled}
-                    onToggleLayerAnimations={() => setLayerAnimationsEnabled(!layerAnimationsEnabled)}
-                    onFitToView={() => editorRef.current?.fitToView()}
-                    onCopy={handleMenuCopy}
-                    onPaste={handleMenuPaste}
-                    canPaste={canPasteFromMenu}
-                    onUndo={undo}
-                    onRedo={redo}
-                    canUndo={historyIndex > 0}
-                    canRedo={historyIndex < history.length - 1}
-                    onSelectAll={handleSelectAll}
-                    selectedItem={selectedItem}
-                    selectedItemIds={selectedItemIds}
-                    onItemUpdate={handleItemUpdate}
-                    onBulkMetadataUpdate={handleBulkMetadataUpdate}
-                    onConnect={startConnecting}
-                    onDisconnect={disconnectSelected}
-                    onDelete={() => {
-                      if (selectedItem) {
-                        handleItemDelete(selectedItem);
-                      }
-                    }}
-                    onConnectionUpdate={handleConnectionUpdate}
-                    onConnectionDisconnect={disconnectConnection}
-                    onConnectionWaypointAdd={handleConnectionWaypointAdd}
-                    onConnectionWaypointRemove={handleConnectionWaypointRemove}
-                    diagramData={diagramData}
-                    onDiagramDataUpdate={setDiagramData}
-                    currentDiagramData={currentDiagramData}
-                    onCurrentDiagramDataUpdate={setCurrentDiagramData}
-                    mousePosition={mousePosition}
-                    hoverEnabled={hoverEnabled}
-                    onToggleHover={() => setHoverEnabled(!hoverEnabled)}
-                    iconBackgroundEnabled={iconBackgroundEnabled}
-                    onToggleIconBackground={() => setIconBackgroundEnabled(!iconBackgroundEnabled)}
-                    defaultTextLabelsEnabled={defaultTextLabelsEnabled}
-                    onToggleDefaultTextLabels={() => setDefaultTextLabelsEnabled(!defaultTextLabelsEnabled)}
-                    alignmentGuidesEnabled={alignmentGuidesEnabled}
-                    onToggleAlignmentGuides={() => setAlignmentGuidesEnabled(!alignmentGuidesEnabled)}
-                    connectionsBehindNodesEnabled={connectionsBehindNodesEnabled}
-                    onToggleConnectionsBehindNodes={() => setConnectionsBehindNodesEnabled(!connectionsBehindNodesEnabled)}
-                    animationConnectionsEnabled={animationConnectionsEnabled}
-                    animationConnectionsUserEnabled={animationConnectionsUserEnabled}
-                    animationConnectionsIdlePaused={animationConnectionsIdlePaused}
-                    animationConnectionsMenuPaused={animationConnectionsMenuPaused}
-                    onConnectionAnimationPauseFromMenu={pauseConnectionAnimationsForOverlayUi}
-                    onToggleAnimationConnections={() => setAnimationConnectionsUserEnabled((v: boolean) => !v)}
-                    animationToggleOnClickEnabled={animationToggleOnClickEnabled}
-                    onToggleAnimationToggleOnClick={() => setAnimationToggleOnClickEnabled(!animationToggleOnClickEnabled)}
-                    isReadOnly={isReadOnly}
-                    onToggleReadOnly={() => setIsReadOnly(!isReadOnly)}
-                    onAlignObjects={handleAlignObjects}
-                    onLayoutGridStep={handleLayoutGridStep}
-                    onAutoLayout={handleAutoLayout}
-                    onOpenZOrderList={() => openZOrderList()}
-                    onThemeApplyToSelected={handleThemeApplyToSelected}
-                    triggerTextStylingPanel={triggerTextStylingPanel}
-                    triggerVisualStylingPanel={triggerVisualStylingPanel}
-                    triggerLineStylingPanel={triggerLineStylingPanel}
-                    triggerConnectionSettingsPanel={triggerConnectionSettingsPanel}
-                    onCloseConnectionSettingsPanel={() => {
-                      // This will be passed down to close the connection settings panel
-                      // We need to emit an event or call a callback to top-menu-bar
-                    }}
-                    onToggleScratchPad={() => setScratchPadOpen(!scratchPadOpen)}
-                    scratchPadOpen={scratchPadOpen}
-                    onToggleRulesEditor={() => setRulesEditorOpen(true)}
-                    onRulesEditorOpenChange={setRulesEditorOpen}
-                    rulesEditorOpen={rulesEditorOpen}
-                    rules={rules}
-                    onRulesChange={setRules}
-                    presentationHasLaterSlides={presentationHasLaterSlides}
-                    onPropagateAddToLaterSlides={handlePropagateAddToLaterSlides}
-                    onPropagateDeleteToLaterSlides={handlePropagateDeleteToLaterSlides}
-                    simulationModeEnabled={simulationModeEnabled}
-                    onToggleSimulationMode={handleToggleSimulationMode}
-                    onStartTutorial={handleStartTutorial}
-                />
-                {!isLoaded ? (
-                  <div className="flex items-center gap-1 border-b bg-card px-3 py-2 text-sm text-muted-foreground">
-                    Loading tabs…
-                  </div>
-                ) : (
-                  activeTabId && (
-                    <TabBar
-                      tabs={tabs}
-                      activeTabId={activeTabId}
-                      onTabSelect={switchTab}
-                      onTabClose={handleTabClose}
-                      onTabReorder={reorderTabs}
-                    />
-                  )
-                )}
-                <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    accept=".json,application/json,.mmd,.mermaid,text/plain"
-                    style={{ display: 'none' }}
-                />
-                <input
-                    type="file"
-                    ref={mermaidInputRef}
-                    onChange={handleMermaidFileChange}
-                    accept=".mmd,.mermaid,text/plain"
-                    style={{ display: 'none' }}
-                />
-                <input
-                    type="file"
-                    ref={subDiagramImportInputRef}
-                    onChange={onSubDiagramFileChange}
-                    accept=".json,application/json,.mmd,.mermaid,text/plain"
-                    style={{ display: 'none' }}
-                />
-                <PresentationEditorPanel
-                  decks={presentationDecks}
-                  activeDeckId={activePresentationDeckId}
-                  activeSlideId={activePresentationSlideId}
-                  onAutoZoom={handleAutoZoomPresentation}
-                  onApplyZoomToCurrent={handleApplyPresentationZoomToCurrent}
-                  onApplyZoomToAll={handleApplyPresentationZoomToAll}
-                  onAddSnapshot={handleAddPresentationSnapshot}
-                  onAddBlankSlide={handleAddBlankPresentationSlide}
-                  onDeleteSlide={handleDeletePresentationSlide}
-                  onMoveSlide={handleMovePresentationSlide}
-                  onSelectSlide={handleSelectPresentationSlide}
-                  onSelectBaseSlide={handleSelectPresentationBaseSlide}
-                  onPreviousSlide={handlePreviousPresentationSlide}
-                  onNextSlide={handleNextPresentationSlide}
-                  onEnterPlayMode={handleEnterPresentationPlayMode}
-                />
-            </header>
-            <div className="flex min-h-0 flex-1 flex-col">
-                {activeDiagramStack.length > 0 && (
-                  <DiagramBreadcrumb
-                    segments={[{ diagramId: null }, ...activeDiagramStack]}
-                    rootLabel={activeTab?.name || 'Main Diagram'}
-                    onNavigate={handleBreadcrumbNavigate}
-                    onSegmentRename={handleBreadcrumbSegmentRename}
-                    isReadOnly={isReadOnly}
-                  />
-                )}
-                <div className={`flex min-h-0 flex-1 ${(jsonPanelOpen || propertiesPanelVisible) ? 'overflow-x-auto' : ''}`}>
-                  <div className={`flex-1 h-full min-h-0 min-w-0 ${(jsonPanelOpen || propertiesPanelVisible) ? 'mr-2' : ''}`}>
-                <EditorCanvas
-                    key={canvasRefreshKey}
-                    ref={editorRef}
-                    diagramData={displayDiagramData}
-                    nodeAnimationStyles={layerAnimation.nodeAnimationStyles}
-                    connectionAnimationStyles={layerAnimation.connectionAnimationStyles}
-                    connectionKey={layerAnimation.connectionKey}
-                    connectionRenderRevision={presentationConnectionRenderRevision}
-                    setDiagramData={setCurrentDiagramData}
-                    onItemSelect={handleItemSelect}
-                    onBatchSelect={handleBatchSelect}
-                    setSelectedItemIds={setSelectedItemIds}
-                    setSelectedItem={setSelectedItem as any}
-                    selectedItemId={selectedItem?.id}
-                    selectedItem={selectedItem}
-                    selectedItemIds={selectedItemIds}
-                    connectorLineFocusedVertex={connectorLineFocusedVertex}
-                    onConnectorLineVertexFocus={handleConnectorLineVertexFocus}
-                    tryDeleteConnectorLineVertexBeforeNodeDelete={tryDeleteConnectorLineVertexBeforeNodeDelete}
-                    isConnectMode={isConnectMode}
-                    onNodeClickInConnectMode={handleConnect}
-                    onConnect={startConnecting}
-                    onDisconnect={() => {
-                             // Remove all connections from selected item
-                             if (selectedItem) {
-                                 setCurrentDiagramData((prevData: DiagramData) => ({
-                                     ...prevData,
-                                     connections: prevData.connections?.filter((e: any) => e.from !== selectedItem.id && e.to !== selectedItem.id) || []
-                                 }));
-                                 toast({
-                                     title: "Connections Disconnected",
-                                     description: "All connections from the selected item have been removed.",
-                                 });
-                             }
-                        }}
-                    onConnectionDelete={disconnectConnection}
-                    onConnectionWaypointMove={handleConnectionWaypointMove}
-                    onConnectionUpdate={handleConnectionUpdate}
-                    onConnectionWaypointAdd={handleConnectionWaypointAdd}
-                    onConnectionInsertNode={handleConnectionInsertNode}
-                    onConnectionContextMenu={handleConnectionContextMenu}
-                    onPauseConnectionAnimationsForOverlayUi={pauseConnectionAnimationsForOverlayUi}
-                    externalTransform={canvasTransform}
-                     onTransformChange={setCanvasTransform}
-                     onLabelUpdate={handleLabelUpdate}
-                     onTagUpdate={handleTagUpdate}
-                     onDraggingChange={setIsDragging}
-                    onClipboardChange={setCanPaste}
-                    onMousePositionChange={setMousePosition}
-                    onExportComplete={() => setExportDialogOpen(false)}
-                    hoverEnabled={hoverEnabled}
-                    iconBackgroundEnabled={iconBackgroundEnabled}
-                    defaultTextLabelsEnabled={defaultTextLabelsEnabled}
-                    onSelectAll={handleSelectAll}
-                    onTriggerTextStylingPanel={() => setTriggerTextStylingPanel(true)}
-                    onTriggerVisualStylingPanel={() => setTriggerVisualStylingPanel(true)}
-                    onTriggerLineStylingPanel={() => setTriggerLineStylingPanel(true)}
-                    onTriggerConnectionSettingsPanel={() => setTriggerConnectionSettingsPanel(true)}
-                    onResetConnectionSettingsTrigger={() => setTriggerConnectionSettingsPanel(false)}
-                    layers={{
-                      getAllLayers: layers.getAllLayers,
-                      getItemLayerById: layers.getItemLayerById,
-                      assignItemsToLayer: layers.assignItemsToLayer
-                    }}
-                    onGroupItems={handleGroupItems}
-                    onUngroupItems={handleUngroupItems}
-                    onRemoveFromGroup={handleRemoveFromGroup}
-                    onAddToGroupItems={handleAddToGroup}
-                    onMoveToBack={handleMoveToBack}
-                    onMoveToFront={handleMoveToFront}
-                    onMoveOneBack={handleMoveOneBack}
-                    onMoveOneForward={handleMoveOneForward}
-                    isReadOnly={isReadOnly}
-                    alignmentGuidesEnabled={alignmentGuidesEnabled}
-                    connectionsBehindNodesEnabled={connectionsBehindNodesEnabled}
-                    animationConnectionsEnabled={animationConnectionsEnabled}
-                    animationToggleOnClickEnabled={animationToggleOnClickEnabled}
-                    animationFilterSourceIds={effectiveAnimationFilterIds}
-                    animationDisabledSources={animationDisabledSources}
-                    onAnimationDisabledSourcesChange={setAnimationDisabledSources}
-                    onResourceActivateAtPosition={handleResourceActivateAtPosition}
-                    metadataPopupsEnabled={metadataPopupsEnabled}
-                    setUmlClassEditorModal={setUmlClassEditorModal}
-                    setChartDataEditorModal={setChartDataEditorModal}
-                    onSubDiagramDoubleClick={handleSubDiagramDoubleClick}
-                    getHasLinkedSubDiagram={getHasLinkedSubDiagram}
-                    onCreateSubDiagram={handleCreateSubDiagram}
-                    onRemoveSubDiagramLink={handleRemoveSubDiagramLink}
-                    simulationModeEnabled={simulationModeEnabled}
-                    onOpenZOrderList={openZOrderList}
-                    wheelZoomSuppressed={zOrderListModal.open}
-                    />
-                  </div>
-
-                  {/* Properties Panel (metadata, item name/type) */}
-                  {propertiesPanelVisible && (
-                  <PropertiesPanel
-                    selectedItem={selectedItem}
-                    diagramData={currentDiagramData}
-                    onItemUpdate={handleItemUpdate}
-                    onConnectionUpdate={handleConnectionUpdate}
-                    collapsed={rightPanelCollapsed}
-                    onToggleCollapse={() => setRightPanelCollapsed((prev: boolean) => !prev)}
-                    isReadOnly={isReadOnly}
-                  />
-                  )}
-                  
-                  {/* Layers Panel */}
-                  {layers.layersPanelOpen && (
-                    <div className="absolute top-4 right-4 z-50">
-                      <LayersPanel
-                        layers={layers.getAllLayers()}
-                        activeLayerId={layers.layersConfig.activeLayerId}
-                        disabledLayerIds={Array.from(presentationDisabledLayerIds)}
-                        selectedItemsLayerIds={selectedItemIds.size > 0 ? 
-                          Array.from(selectedItemIds).map(id => layers.getItemLayerById(id)) : []
-                        }
-                        onAddLayer={(name: string) => {
-                          void name;
-                          if (!isPrimaryPresentationSlideActiveInner) {
-                            toast({
-                              variant: 'destructive',
-                              title: 'Layer Editing Disabled',
-                              description: 'Layer structure is locked while editing a snapshot so deltas stay valid.',
-                            });
-                            return;
-                          }
-                          layers.addNewLayer(name);
-                        }}
-                        onRemoveLayer={(layerId: string) => {
-                          void layerId;
-                          if (!isPrimaryPresentationSlideActiveInner) {
-                            toast({
-                              variant: 'destructive',
-                              title: 'Layer Editing Disabled',
-                              description: 'Layer structure is locked while editing a snapshot so deltas stay valid.',
-                            });
-                            return;
-                          }
-                          layers.removeLayerById(layerId);
-                        }}
-                        onRenameLayer={(layerId: string, newName: string) => {
-                          void layerId;
-                          void newName;
-                          if (!isPrimaryPresentationSlideActiveInner) {
-                            toast({
-                              variant: 'destructive',
-                              title: 'Layer Editing Disabled',
-                              description: 'Layer structure is locked while editing a snapshot so deltas stay valid.',
-                            });
-                            return;
-                          }
-                          layers.renameLayerById(layerId, newName);
-                        }}
-                        onToggleVisibility={(layerId: string) => {
-                          if (presentationDisabledLayerIds.has(layerId)) {
-                            toast({
-                              variant: 'destructive',
-                              title: 'Layer Editing Disabled',
-                              description: `Layer "${layers.getLayer(layerId)?.name || layerId}" was impacted by slide edits and cannot be toggled here.`,
-                            });
-                            return;
-                          }
-                          handleToggleLayerVisibility(layerId);
-                        }}
-                        onSetActiveLayer={(layerId: string) => {
-                          void layerId;
-                          if (!isPrimaryPresentationSlideActiveInner) {
-                            toast({
-                              variant: 'destructive',
-                              title: 'Layer Editing Disabled',
-                              description: 'Layer structure is locked while editing a snapshot so deltas stay valid.',
-                            });
-                            return;
-                          }
-                          layers.setActiveLayerById(layerId);
-                        }}
-                        onReorderLayers={(fromIndex: number, toIndex: number) => {
-                          void fromIndex;
-                          void toIndex;
-                          if (!isPrimaryPresentationSlideActiveInner) {
-                            toast({
-                              variant: 'destructive',
-                              title: 'Layer Editing Disabled',
-                              description: 'Layer structure is locked while editing a snapshot so deltas stay valid.',
-                            });
-                            return;
-                          }
-                          layers.reorderLayers(fromIndex, toIndex);
-                        }}
-                        onAssignSelectedItemsToLayer={selectedItemIds.size > 0 ? (layerId: string) => {
-                          if (!isPrimaryPresentationSlideActiveInner) {
-                            toast({
-                              variant: 'destructive',
-                              title: 'Layer Editing Disabled',
-                              description: 'Layer structure is locked while editing a snapshot so deltas stay valid.',
-                            });
-                            return;
-                          }
-                          layers.assignItemsToLayer(Array.from(selectedItemIds), layerId);
-                        } : undefined}
-                        onClose={layers.toggleLayersPanel}
-                        getLayerItemCount={(layerId: string) => {
-                          const items = layers.getLayerItems(layerId);
-                          return (items.nodes?.length || 0);
-                        }}
-                      />
-                    </div>
-                  )}
-                  
-                  {jsonPanelOpen && (
-                    <div className="flex-shrink-0">
-                      <JsonEditorPanel
-                        value={diagramData}
-                        onValidJsonChange={handleJsonValidChange}
-                        isOpen={jsonPanelOpen}
-                        onToggleOpen={toggleJsonPanel}
-                        widthPx={jsonPanelWidth}
-                        onWidthChange={setJsonPanelWidth}
-                        isReadOnly={isReadOnly}
-                        focusTarget={
-                          selectedItem
-                            ? selectedItem.itemType === 'node'
-                              ? { itemType: 'node' as const, id: selectedItem.id }
-                              : {
-                                  itemType: 'edge' as const,
-                                  id: selectedItem.id,
-                                  from: selectedItem.from,
-                                  to: selectedItem.to,
-                                }
-                            : null
-                        }
-                      />
-                    </div>
-                  )}
-                </div>
-            </div>
-        </main>
-        <ExportDialog
-          open={exportDialogOpen}
-          onOpenChange={setExportDialogOpen}
-          initialFormat={exportDialogFormat}
-          presentationSlides={exportPresentationSlidesInfo}
-          onExport={handleExport}
-        />
-        {umlClassEditorModal.visible && umlClassEditorModal.itemId && typeof window !== 'undefined' && createPortal(
-          <UmlClassEditorModal
-            x={umlClassEditorModal.x}
-            y={umlClassEditorModal.y}
-            visible={umlClassEditorModal.visible}
-            onClose={() => setUmlClassEditorModal({ visible: false, x: 0, y: 0, itemId: '' })}
-            node={diagramData.nodes?.find((n: DiagramNodeData) => n.id === umlClassEditorModal.itemId) ?? null}
-            onSave={(nodeId, umlClass) => {
-              const dims = computeUmlClassDimensions(umlClass.name, umlClass.attributes, umlClass.methods);
-              setDiagramData((prev: DiagramData) => ({
-                ...prev,
-                nodes: prev.nodes?.map((n: DiagramNodeData) =>
-                  n.id === nodeId ? { ...n, umlClass, width: dims.width, height: dims.height } : n
-                ) ?? [],
-              }));
-              setUmlClassEditorModal({ visible: false, x: 0, y: 0, itemId: '' });
-            }}
-            isReadOnly={isReadOnly}
-          />,
-          document.body
-        )}
-        {chartDataEditorModal.visible && chartDataEditorModal.itemId && typeof window !== 'undefined' && createPortal(
-          <ChartDataEditorModal
-            x={chartDataEditorModal.x}
-            y={chartDataEditorModal.y}
-            visible={chartDataEditorModal.visible}
-            onClose={() => setChartDataEditorModal({ visible: false, x: 0, y: 0, itemId: '' })}
-            node={diagramData.nodes?.find((n: DiagramNodeData) => n.id === chartDataEditorModal.itemId) ?? null}
-            onSave={(nodeId, chart) => {
-              setDiagramData((prev: DiagramData) => ({
-                ...prev,
-                nodes: prev.nodes?.map((n: DiagramNodeData) =>
-                  n.id === nodeId ? { ...n, chart } : n
-                ) ?? [],
-              }));
-              setChartDataEditorModal({ visible: false, x: 0, y: 0, itemId: '' });
-            }}
-            isReadOnly={isReadOnly}
-          />,
-          document.body
-        )}
-        {zOrderListModal.open && typeof window !== 'undefined' && createPortal(
-          <ZOrderListModal
-            x={zOrderListModal.x}
-            y={zOrderListModal.y}
-            open={zOrderListModal.open}
-            onOpenChange={(o: boolean) => setZOrderListModal((s) => ({ ...s, open: o }))}
-            diagramData={currentDiagramData}
-            onApply={setCurrentDiagramData}
-            getLayerDisplayName={getLayerDisplayNameForZOrder}
-            isReadOnly={isReadOnly}
-            selectedItemIds={selectedItemIds}
-            onSelectCanvasItems={handleBatchSelect}
-          />,
-          document.body
-        )}
-        {connectionContextModal.connection && typeof window !== 'undefined' && createPortal(
-          <ConnectionContextModal
-            x={connectionContextModal.x}
-            y={connectionContextModal.y}
-            visible={connectionContextModal.visible}
-            onClose={() => setConnectionContextModal({ visible: false, x: 0, y: 0, connection: null })}
-            connection={connectionContextModal.connection}
-            diagramData={diagramData}
-            onConnectionUpdate={handleConnectionUpdate}
-            onConnectionDisconnect={disconnectConnection}
-            onConnectionWaypointAdd={handleConnectionWaypointAdd}
-            onConnectionWaypointRemove={handleConnectionWaypointRemove}
-            isReadOnly={isReadOnly}
-          />,
-          document.body
-        )}
-        <ScratchPad 
-          isOpen={scratchPadOpen} 
-          onClose={() => setScratchPadOpen(false)} 
-          diagramData={diagramData}
-          setDiagramData={setDiagramData}
-          onCanvasRefresh={refreshCanvas}
-          onHistoryUpdate={updateHistory}
-        />
-        <PresentationPlayer
-          open={presentationPlayerOpen}
-          slides={presentationPlayerSlides}
-          slideDiagrams={presentationPlayerSlideDiagrams}
-          currentIndex={presentationPlayerIndex}
-          onOpenChange={setPresentationPlayerOpen}
-          onIndexChange={setPresentationPlayerIndex}
-          onApplyZoomToCurrentSlide={handleApplyPresentationZoomToCurrent}
-          onApplyZoomToAllSlides={handleApplyPresentationZoomToAll}
-        />
-        <AlertDialog
-          open={animationSelectionDialogOpen}
-          onOpenChange={setAnimationSelectionDialogOpen}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Apply animation setting</AlertDialogTitle>
-              <AlertDialogDescription>
-                Other selected connections are detected. Do you want to apply this animation setting to all selected connections, or only the current connection?
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={handleAnimationApplyCurrentOnly}>Current Only</AlertDialogCancel>
-              <AlertDialogAction onClick={handleAnimationApplySelectedConfirm}>Apply to Selected</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-        <AlertDialog
-          open={animationOverwriteDialogOpen}
-          onOpenChange={setAnimationOverwriteDialogOpen}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Overwrite animation setting</AlertDialogTitle>
-              <AlertDialogDescription>
-                Some selected connections already have animation settings. These settings will be overwritten by the new setting. Continue?
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={handleAnimationApplyCurrentOnly}>Current Only</AlertDialogCancel>
-              <AlertDialogAction onClick={handleAnimationOverwriteConfirm}>Overwrite and Apply</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-        <AlertDialog
-          open={animationDisableConfirmDialogOpen}
-          onOpenChange={setAnimationDisableConfirmDialogOpen}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Disable animation for selected connections</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will disable animation for all currently selected connections. Continue?
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={handleAnimationApplyCurrentOnly}>Current Only</AlertDialogCancel>
-              <AlertDialogAction onClick={handleAnimationDisableConfirm}>Disable and Apply</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-        <AlertDialog
-          open={animationCurrentOnlyDialogOpen}
-          onOpenChange={setAnimationCurrentOnlyDialogOpen}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Applied to current connection only</AlertDialogTitle>
-              <AlertDialogDescription>
-                Only the current connection will apply the animation setting.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogAction onClick={() => setAnimationCurrentOnlyDialogOpen(false)}>OK</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-        <AlertDialog open={closeTabDialogOpen} onOpenChange={setCloseTabDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
-              <AlertDialogDescription>
-                This tab has unsaved changes. Do you want to save them before closing?
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => {
-                setPendingCloseTabId(null);
-                setCloseTabDialogOpen(false);
-              }}>Cancel</AlertDialogCancel>
-              <Button variant="outline" onClick={handleCloseTabConfirm}>Don&apos;t Save</Button>
-              <Button onClick={handleCloseTabSave}>Save</Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
-    </DndProvider>
   );
 }
