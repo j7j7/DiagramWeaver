@@ -1,6 +1,8 @@
 import type { DiagramConnectionData, DiagramData, Slide } from "@/lib/types";
 import { stableDiagramConnectionId } from "@/lib/connection-order-utils";
-import { applyDiagramDelta, projectVisibleDiagram } from "@/lib/presentation-delta";
+import { projectVisibleDiagram } from "@/lib/presentation-delta";
+import type { PresentationDeltaMode } from "@/lib/presentation-slide-chain";
+import { resolvePresentationSlideDiagrams } from "@/lib/presentation-slide-chain";
 import type { PaletteResource } from "@/components/editor/diagram-editor-types";
 
 /** Presentation slide PNG thumbnails: poll at most this often; capture only when delta fingerprint changed. */
@@ -17,13 +19,16 @@ export function buildPresentationUnionDiagramsForPngExport(args: {
   activeSlideId: string | null;
   draft: DiagramData | null;
   layersFilteredBase: DiagramData;
+  presentationDeltaMode?: PresentationDeltaMode;
 }): DiagramData[] {
   const master = projectVisibleDiagram(args.presentationMaster ?? args.tabDiagram);
-  return args.deckSlides.map((slide) => {
+  const mode = args.presentationDeltaMode ?? 'master';
+  const resolved = resolvePresentationSlideDiagrams(master, args.deckSlides, mode);
+  return args.deckSlides.map((slide, slideIndex) => {
     if (args.activeSlideId && slide.id === args.activeSlideId && args.draft) {
       return projectVisibleDiagram(args.draft);
     }
-    return projectVisibleDiagram(applyDiagramDelta(master, slide.diagramDelta));
+    return projectVisibleDiagram(resolved[slideIndex]);
   });
 }
 

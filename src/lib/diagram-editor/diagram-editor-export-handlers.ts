@@ -10,7 +10,8 @@ import {
   waitTwoAnimationFrames,
   safeClone,
 } from "@/lib/diagram-editor/editor-support";
-import { applyDiagramDelta, projectVisibleDiagram } from "@/lib/presentation-delta";
+import { projectVisibleDiagram } from "@/lib/presentation-delta";
+import { getPresentationDeltaMode, resolvePresentationSlideDiagrams } from "@/lib/presentation-slide-chain";
 
 export interface CreateDiagramExportHandlersParams {
   editorRef: RefObject<EditorCanvasHandle | null>;
@@ -129,6 +130,8 @@ export function createDiagramExportHandlers({
           const masterBase = projectVisibleDiagram(
             presentationMasterDiagram ?? tabDiagramData,
           );
+          const deltaMode = getPresentationDeltaMode(deck);
+          const slideResolvedIndex = slideNum - 1;
           if (deck.slides[0]?.id === slide.id) {
             flushSync(() => {
               setActivePresentationSlideId(slide.id);
@@ -140,7 +143,7 @@ export function createDiagramExportHandlers({
             const resolved =
               savedSlideId === slide.id && savedDraft
                 ? savedDraft
-                : applyDiagramDelta(masterBase, slide.diagramDelta);
+                : resolvePresentationSlideDiagrams(masterBase, deck.slides, deltaMode)[slideResolvedIndex];
             activeIdForUnion = slide.id;
             draftForUnion = resolved;
             flushSync(() => {
@@ -158,6 +161,7 @@ export function createDiagramExportHandlers({
             activeSlideId: activeIdForUnion,
             draft: draftForUnion,
             layersFilteredBase: diagramDataForExportLayersRef.current,
+            presentationDeltaMode: deltaMode,
           });
 
           const dataUrl = await editorRef.current.captureSnapshotPng({

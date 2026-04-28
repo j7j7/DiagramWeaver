@@ -3,6 +3,7 @@ import { ensureConnectionIds } from '@/lib/connection-order-utils';
 import { PresentationDeckListSchema } from '@/lib/schemas';
 import { projectVisibleDiagram } from '@/lib/presentation-delta';
 import { createPresentationPrimarySlide, migratePresentationDecks } from '@/lib/presentation-primary-slide';
+import { migratePresentationDeckToChain } from '@/lib/presentation-slide-chain';
 
 /** Placeholder used when compact JSON omits real PNG thumbnails — must be replaced by canvas capture in the editor. */
 export const PRESENTATION_THUMBNAIL_PLACEHOLDER =
@@ -231,7 +232,12 @@ export function extractEmbeddedPresentations(
         ? (hydratedDecks[compactRaw.ai]?.id ?? hydratedDecks[0]?.id ?? null)
         : (hydratedDecks[0]?.id ?? null);
 
-    return { decks: migratePresentationDecks(hydratedDecks), activeDeckId };
+    const baseVisible = projectVisibleDiagram(baseDiagram);
+    const decksAfterUnified = migratePresentationDecks(hydratedDecks);
+    return {
+      decks: decksAfterUnified.map((d) => migratePresentationDeckToChain(d, baseVisible)),
+      activeDeckId,
+    };
   }
 
   const parsedDecks = PresentationDeckListSchema.safeParse(raw.presentations?.decks ?? []);
@@ -248,5 +254,10 @@ export function extractEmbeddedPresentations(
   }));
 
   const activeDeckId = raw.presentations?.activeDeckId ?? hydratedDecks[0]?.id ?? null;
-  return { decks: migratePresentationDecks(hydratedDecks), activeDeckId };
+  const baseVisible = projectVisibleDiagram(baseDiagram);
+  const decksAfterUnified = migratePresentationDecks(hydratedDecks);
+  return {
+    decks: decksAfterUnified.map((d) => migratePresentationDeckToChain(d, baseVisible)),
+    activeDeckId,
+  };
 }

@@ -12,6 +12,11 @@ import {
   computeDiagramDelta,
   projectVisibleDiagram,
 } from "@/lib/presentation-delta";
+import {
+  cumulativeDiagramThroughSlideIndex,
+  getPresentationDeltaMode,
+  resolvePresentationSlideDiagrams,
+} from "@/lib/presentation-slide-chain";
 import { slideNeedsPresentationThumbnailSnapshot } from "@/lib/extract-embedded-presentations";
 import type { EditorCanvasHandle } from "@/components/editor/editor-canvas";
 import { PRESENTATION_THUMB_INTERVAL_MS } from "@/lib/diagram-editor/editor-support";
@@ -121,9 +126,27 @@ export function usePresentationThumbnails({
       presentationMasterDiagramRef.current ?? tabDiagramDataRef.current;
     try {
       const masterBase = projectVisibleDiagram(master);
-      const fp = JSON.stringify(
-        computeDiagramDelta(masterBase, projectVisibleDiagram(draft)),
-      );
+      const deckFp = presentationDecksRef.current.find((d) => d.id === deckId);
+      const slidesFp = deckFp?.slides ?? [];
+      const mode = deckFp ? getPresentationDeltaMode(deckFp) : 'master';
+      const slideIdxFp = slidesFp.findIndex((s) => s.id === slideId);
+      const fp =
+        mode === 'master' || slideIdxFp <= 0
+          ? JSON.stringify(
+              computeDiagramDelta(masterBase, projectVisibleDiagram(draft)),
+            )
+          : JSON.stringify(
+              computeDiagramDelta(
+                projectVisibleDiagram(
+                  cumulativeDiagramThroughSlideIndex(
+                    masterBase,
+                    slidesFp,
+                    slideIdxFp - 1,
+                  ),
+                ),
+                projectVisibleDiagram(draft),
+              ),
+            );
       presentationThumbDeltaFingerprintBySlideRef.current[slideKey] = fp;
     } catch {
       // ignore
@@ -212,8 +235,31 @@ export function usePresentationThumbnails({
             ctxSlide.master ?? ctxSlide.tab,
           );
           const nextVisible = projectVisibleDiagram(ctxSlide.draft);
-          const nextDelta = computeDiagramDelta(masterBase, nextVisible);
-          deltaFingerprint = JSON.stringify(nextDelta);
+          let deckForSlide = presentationDecksRef.current.find(
+            (d) => d.id === ctxSlide.deckId,
+          );
+          if (!deckForSlide) deckForSlide = presentationDecksRef.current[0];
+          const slidesForFp = deckForSlide?.slides ?? [];
+          const mode =
+            deckForSlide ? getPresentationDeltaMode(deckForSlide) : "master";
+          const slideIdx = slidesForFp.findIndex((s) => s.id === ctxSlide.slideId);
+          if (mode === "master" || slideIdx <= 0) {
+            deltaFingerprint = JSON.stringify(
+              computeDiagramDelta(masterBase, nextVisible),
+            );
+          } else {
+            const prevBase = cumulativeDiagramThroughSlideIndex(
+              masterBase,
+              slidesForFp,
+              slideIdx - 1,
+            );
+            deltaFingerprint = JSON.stringify(
+              computeDiagramDelta(
+                projectVisibleDiagram(prevBase),
+                nextVisible,
+              ),
+            );
+          }
         } catch {
           return;
         }
@@ -398,15 +444,22 @@ export function usePresentationThumbnails({
               continue;
             }
 
-            const draftDiagram = projectVisibleDiagram(
-              applyDiagramDelta(masterBase, slide.diagramDelta),
+            const mode = getPresentationDeltaMode(deck);
+            const resolvedAll = resolvePresentationSlideDiagrams(
+              masterBase,
+              deck.slides,
+              mode,
             );
-            const unionDiagrams = deck.slides.map((s) =>
+            const slideIdx = deck.slides.findIndex((s) => s.id === slide.id);
+            const draftDiagram = projectVisibleDiagram(
+              slideIdx >= 0
+                ? resolvedAll[slideIdx]
+                : applyDiagramDelta(masterBase, slide.diagramDelta),
+            );
+            const unionDiagrams = deck.slides.map((s, i) =>
               s.id === slide.id
                 ? draftDiagram
-                : projectVisibleDiagram(
-                    applyDiagramDelta(masterBase, s.diagramDelta),
-                  ),
+                : projectVisibleDiagram(resolvedAll[i]),
             );
 
             flushSync(() => {
@@ -450,12 +503,27 @@ export function usePresentationThumbnails({
                 );
               });
               try {
-                const fp = JSON.stringify(
-                  computeDiagramDelta(
-                    masterBase,
-                    projectVisibleDiagram(draftDiagram),
-                  ),
-                );
+                const slideIdxFp = deck.slides.findIndex((s) => s.id === slide.id);
+                const fp =
+                  mode === "master" || slideIdxFp <= 0
+                    ? JSON.stringify(
+                        computeDiagramDelta(
+                          masterBase,
+                          projectVisibleDiagram(draftDiagram),
+                        ),
+                      )
+                    : JSON.stringify(
+                        computeDiagramDelta(
+                          projectVisibleDiagram(
+                            cumulativeDiagramThroughSlideIndex(
+                              masterBase,
+                              deck.slides,
+                              slideIdxFp - 1,
+                            ),
+                          ),
+                          projectVisibleDiagram(draftDiagram),
+                        ),
+                      );
                 presentationThumbDeltaFingerprintBySlideRef.current[
                   `${deck.id}:${slide.id}`
                 ] = fp;
@@ -483,11 +551,19 @@ export function usePresentationThumbnails({
                 setPresentationDraftDiagram(null);
               });
             } else {
+              const restoreMode = getPresentationDeltaMode(restoreDeck);
+              const restoredResolved = resolvePresentationSlideDiagrams(
+                masterBase,
+                restoreDeck.slides,
+                restoreMode,
+              );
+              const ridx = restoreDeck.slides.findIndex(
+                (s) => s.id === restoreSlide.id,
+              );
               const restoreDraft = projectVisibleDiagram(
-                applyDiagramDelta(
-                  masterBase,
-                  restoreSlide.diagramDelta,
-                ),
+                ridx >= 0
+                  ? restoredResolved[ridx]
+                  : applyDiagramDelta(masterBase, restoreSlide.diagramDelta),
               );
               flushSync(() => {
                 setActivePresentationDeckId(savedDeckId);

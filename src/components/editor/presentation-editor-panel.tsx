@@ -21,15 +21,24 @@ interface PrimarySlideStripProps {
 
 function PrimarySlideStripItem({ slide, active, onSelect, onMoveSlide }: PrimarySlideStripProps) {
   const ref = React.useRef<HTMLDivElement | null>(null);
+  const [{ isDragging }, drag] = useDrag({
+    type: DND_TYPE,
+    item: { index: 0 },
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  });
+
   const [, drop] = useDrop<{ index: number }>({
     accept: DND_TYPE,
     hover(item) {
-      if (item.index <= 1) return;
-      onMoveSlide(item.index, 1);
-      item.index = 1;
+      if (item.index <= 0) return;
+      onMoveSlide(item.index, 0);
+      item.index = 0;
     },
   });
-  drop(ref);
+
+  drag(drop(ref));
 
   return (
     <div
@@ -37,9 +46,10 @@ function PrimarySlideStripItem({ slide, active, onSelect, onMoveSlide }: Primary
       className={cn(
         'group flex w-[140px] shrink-0 cursor-pointer flex-col rounded-md border p-1 transition-all',
         active ? 'border-primary/50 bg-primary/10 ring-1 ring-primary/20' : 'border-border bg-background hover:bg-accent/40',
+        isDragging && 'opacity-50',
       )}
       onClick={onSelect}
-      title="Main diagram (slide 1). Drop a slide here to move it to position 2."
+      title="Main diagram (slide 1). Drag here to make a snapshot the main diagram, or drag to reorder."
     >
       <div className="relative w-full shrink-0 overflow-hidden rounded-md border bg-muted">
         <div className="aspect-video w-full">

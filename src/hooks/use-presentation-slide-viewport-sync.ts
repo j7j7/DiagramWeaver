@@ -3,6 +3,7 @@
 import { useLayoutEffect, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 import type { DiagramData, PresentationDeck, Slide } from "@/lib/types";
 import { applyDiagramDelta, projectVisibleDiagram } from "@/lib/presentation-delta";
+import { getPresentationDeltaMode, resolvePresentationSlideDiagrams } from "@/lib/presentation-slide-chain";
 import {
   computeSlidePlaybackTransform,
   pruneConnectionsToVisibleNodes,
@@ -80,7 +81,13 @@ export function usePresentationSlideViewportSync({
     }
 
     const masterBase = projectVisibleDiagram(presentationMasterDiagram ?? tabDiagramData);
-    const diagramForSlide = pruneConnectionsToVisibleNodes(applyDiagramDelta(masterBase, slide.diagramDelta));
+    const mode = getPresentationDeltaMode(deck);
+    const idx = deck.slides.findIndex((s) => s.id === slide.id);
+    const diagrams =
+      idx >= 0 ? resolvePresentationSlideDiagrams(masterBase, deck.slides, mode) : [];
+    const diagramRaw =
+      idx >= 0 ? diagrams[idx] ?? applyDiagramDelta(masterBase, slide.diagramDelta) : applyDiagramDelta(masterBase, slide.diagramDelta);
+    const diagramForSlide = pruneConnectionsToVisibleNodes(diagramRaw);
     const vw = typeof window !== "undefined" ? window.innerWidth : 1280;
     const vh = typeof window !== "undefined" ? window.innerHeight : 720;
     const t = computeSlidePlaybackTransform(slide, diagramForSlide, vw, vh);

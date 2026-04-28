@@ -18,7 +18,8 @@ import { getDiagramAtStack } from "@/lib/sub-diagram-utils";
 import { sanitizeViewState } from "@/lib/view-state-utils";
 import { getDownstreamAnimationChainNodes } from "@/lib/connection-animation";
 import { isEventFromEditableElement } from "@/lib/keyboard-utils";
-import { applyDiagramDelta, projectVisibleDiagram } from "@/lib/presentation-delta";
+import { projectVisibleDiagram } from "@/lib/presentation-delta";
+import { getPresentationDeltaMode, resolvePresentationSlideDiagrams } from "@/lib/presentation-slide-chain";
 import {
   computeUnionFitTransformForDiagrams,
   getElementVisibleViewportSize,
@@ -162,8 +163,17 @@ function ViewerPageContent() {
     if (!diagramData || !presentationEligible) return undefined;
     const master = projectVisibleDiagram(diagramData);
     const slides = activeViewerPresentationDeck?.slides ?? [];
-    return slides.map((slide) => applyDiagramDelta(master, slide.diagramDelta));
-  }, [diagramData, presentationEligible, activeViewerPresentationDeck?.slides]);
+    const mode = activeViewerPresentationDeck
+      ? getPresentationDeltaMode(activeViewerPresentationDeck)
+      : "master";
+    return resolvePresentationSlideDiagrams(master, slides, mode);
+  }, [
+    diagramData,
+    presentationEligible,
+    activeViewerPresentationDeck?.slides,
+    activeViewerPresentationDeck?.presentationDeltaMode,
+    activeViewerPresentationDeck?.id,
+  ]);
 
   const slidePresentationView = usePresentationSlideView({
     enabled: presentationEligible && !presentationPlayerOpen,
