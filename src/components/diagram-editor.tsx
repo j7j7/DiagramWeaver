@@ -632,6 +632,21 @@ function safeClone<T>(value: T): T {
   return JSON.parse(serialized) as T;
 }
 
+function blankSlideVisibleFromMaster(masterVisible: DiagramData): DiagramData {
+  const next: DiagramData = {
+    nodes: [],
+    connections: [],
+    groupings: [],
+  };
+  if (masterVisible.layers) {
+    next.layers = safeClone(masterVisible.layers);
+  }
+  if (masterVisible.recentColors && masterVisible.recentColors.length > 0) {
+    next.recentColors = [...masterVisible.recentColors];
+  }
+  return next;
+}
+
 function createPaletteItem(
   resource: PaletteResource | { name: string; iconType?: string; iconName?: string; emoji?: string; imageUrl?: string; imageOptions?: import('@/lib/types').CustomImageOptions },
   provider: string,
@@ -5516,26 +5531,33 @@ export default function DiagramEditor() {
     try {
       const payload = await capturePresentationSlidePayload();
 
-      const slide: Slide = {
-        id: `slide-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        ...payload,
-        title: `Slide ${(activePresentationDeck?.slides.length ?? 0) + 1}`,
-        createdAt: Date.now(),
-      };
+      const slideId = `slide-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const slideCreatedAt = Date.now();
 
       await captureOutgoingSlideThumbnailIfNeeded();
 
       setPresentationDecks((prev) => prev.map((deck) => {
         if (deck.id !== activePresentationDeckId) return deck;
+        const currentIdx = activePresentationSlideId
+          ? deck.slides.findIndex((s) => s.id === activePresentationSlideId)
+          : -1;
+        const insertAt = currentIdx >= 0 ? currentIdx + 1 : deck.slides.length;
+        const slide: Slide = {
+          id: slideId,
+          ...payload,
+          title: `Slide ${deck.slides.length + 1}`,
+          createdAt: slideCreatedAt,
+        };
+        const slides = [...deck.slides.slice(0, insertAt), slide, ...deck.slides.slice(insertAt)];
         return {
           ...deck,
-          slides: [...deck.slides, slide],
+          slides,
           updatedAt: Date.now(),
         };
       }));
-      setActivePresentationSlideId(slide.id);
+      setActivePresentationSlideId(slideId);
       setSelectedPresentationSlideIds(new Set());
-      toast({ title: 'Snapshot Added', description: 'Captured current visible canvas state.' });
+      toast({ title: 'Snapshot Added', description: 'Captured after the current slide; later slides shifted.' });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Could not capture snapshot';
       const lower = message.toLowerCase();
@@ -5557,9 +5579,81 @@ export default function DiagramEditor() {
     }
   }, [
     activePresentationDeckId,
+    activePresentationSlideId,
     captureOutgoingSlideThumbnailIfNeeded,
     capturePresentationSlidePayload,
-    activePresentationDeck?.slides.length,
+    toast,
+  ]);
+
+  const handleAddBlankPresentationSlide = React.useCallback(async () => {
+    if (!activePresentationDeckId) return;
+
+    try {
+      await captureOutgoingSlideThumbnailIfNeeded();
+
+      const masterBase = projectVisibleDiagram(presentationMasterDiagram ?? tabDiagramData);
+      const blankVisible = blankSlideVisibleFromMaster(masterBase);
+
+      let diagramDelta: DiagramDelta;
+      try {
+        diagramDelta = computeDiagramDelta(masterBase, blankVisible);
+        applyDiagramDelta(masterBase, diagramDelta);
+      } catch {
+        diagramDelta = {
+          version: '1.0',
+          compressed: true,
+          operations: [{ op: 'replace' as const, path: '', value: safeClone(blankVisible) }],
+        };
+      }
+
+      const slideId = `slide-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const slideCreatedAt = Date.now();
+
+      setPresentationDecks((prev) => prev.map((deck) => {
+        if (deck.id !== activePresentationDeckId) return deck;
+        const currentIdx = activePresentationSlideId
+          ? deck.slides.findIndex((s) => s.id === activePresentationSlideId)
+          : -1;
+        const insertAt = currentIdx >= 0 ? currentIdx + 1 : deck.slides.length;
+        const slide: Slide = {
+          id: slideId,
+          diagramDelta,
+          animationState: {
+            enabled: animationConnectionsEnabled,
+            filterSourceIds: effectiveAnimationFilterIds ? Array.from(effectiveAnimationFilterIds) : undefined,
+            disabledSourceIds: animationDisabledSources.size > 0 ? Array.from(animationDisabledSources) : undefined,
+          },
+          autoZoomLevel: canvasTransformRef.current.k,
+          viewPanX: canvasTransformRef.current.x,
+          viewPanY: canvasTransformRef.current.y,
+          visibleLayerIds: listVisibleLayerIds(diagramData),
+          title: `Slide ${deck.slides.length + 1}`,
+          createdAt: slideCreatedAt,
+        };
+        const slides = [...deck.slides.slice(0, insertAt), slide, ...deck.slides.slice(insertAt)];
+        return {
+          ...deck,
+          slides,
+          updatedAt: Date.now(),
+        };
+      }));
+      setActivePresentationSlideId(slideId);
+      setSelectedPresentationSlideIds(new Set());
+      toast({ title: 'Blank slide added', description: 'Inserted after the current slide.' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not add blank slide';
+      toast({ variant: 'destructive', title: 'Could not add blank slide', description: message });
+    }
+  }, [
+    activePresentationDeckId,
+    activePresentationSlideId,
+    animationConnectionsEnabled,
+    captureOutgoingSlideThumbnailIfNeeded,
+    effectiveAnimationFilterIds,
+    animationDisabledSources,
+    presentationMasterDiagram,
+    tabDiagramData,
+    diagramData,
     toast,
   ]);
 
@@ -6180,6 +6274,7 @@ export default function DiagramEditor() {
         handleApplyPresentationZoomToCurrent={handleApplyPresentationZoomToCurrent}
         handleApplyPresentationZoomToAll={handleApplyPresentationZoomToAll}
         handleAddPresentationSnapshot={handleAddPresentationSnapshot}
+        handleAddBlankPresentationSlide={handleAddBlankPresentationSlide}
         handleDeletePresentationSlide={handleDeletePresentationSlide}
         presentationHasLaterSlides={hasLaterSlides}
         handlePropagateAddToLaterSlides={handlePropagateAddToLaterSlides}
@@ -6408,6 +6503,7 @@ function DiagramEditorInner({
   handleApplyPresentationZoomToCurrent,
   handleApplyPresentationZoomToAll,
   handleAddPresentationSnapshot,
+  handleAddBlankPresentationSlide,
   handleDeletePresentationSlide,
   presentationHasLaterSlides,
   handlePropagateAddToLaterSlides,
@@ -6808,6 +6904,7 @@ function DiagramEditorInner({
                   onApplyZoomToCurrent={handleApplyPresentationZoomToCurrent}
                   onApplyZoomToAll={handleApplyPresentationZoomToAll}
                   onAddSnapshot={handleAddPresentationSnapshot}
+                  onAddBlankSlide={handleAddBlankPresentationSlide}
                   onDeleteSlide={handleDeletePresentationSlide}
                   onMoveSlide={handleMovePresentationSlide}
                   onSelectSlide={handleSelectPresentationSlide}

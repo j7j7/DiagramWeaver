@@ -1,5 +1,11 @@
 # MEMORY.MD
 
+### 2026-04-28 – Presentation: Add snapshot inserts after current slide
+**`handleAddPresentationSnapshot`**: New snapshot is **inserted after** the active slide (later slides shift), matching blank-slide behavior. Index/title use the **functional `setPresentationDecks`** updater.
+
+### 2026-04-28 – Presentation toolbar: blank slide after current
+**`presentation-editor-panel`**: **`FilePlus`** button next to **Add snapshot** inserts a **blank** slide (empty nodes/connections, master layers retained) **after** the active slide via **`handleAddBlankPresentationSlide`** in **`diagram-editor`**.
+
 ### 2026-04-27 – README: License section
 **`README.md`**: **License** section states the project is under **GNU GPL v3.0** and links **`LICENSE.txt`**.
 

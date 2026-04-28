@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useDrag, useDrop } from 'react-dnd';
-import { Check, ChevronLeft, ChevronRight, Copy, GripVertical, Maximize2, Minimize2, Pin, PinOff, Play, Plus, Trash2, Wand2 } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Copy, FilePlus, GripVertical, Maximize2, Minimize2, Pin, PinOff, Play, Plus, Trash2, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { PresentationDeck, Slide } from '@/lib/types';
@@ -153,6 +153,7 @@ interface PresentationEditorPanelProps {
   onApplyZoomToCurrent: () => void;
   onApplyZoomToAll: () => void;
   onAddSnapshot: () => void;
+  onAddBlankSlide: () => void;
   onDeleteSlide: (slideId: string) => void;
   onMoveSlide: (fromIndex: number, toIndex: number) => void;
   onSelectSlide: (slideId: string) => void;
@@ -170,6 +171,7 @@ export function PresentationEditorPanel({
   onApplyZoomToCurrent,
   onApplyZoomToAll,
   onAddSnapshot,
+  onAddBlankSlide,
   onDeleteSlide,
   onMoveSlide,
   onSelectSlide,
@@ -429,6 +431,14 @@ export function PresentationEditorPanel({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Add snapshot</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 px-0" onClick={onAddBlankSlide} disabled={!activeDeck} aria-label="Add blank slide after current">
+                    <FilePlus className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Add blank slide after current</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
