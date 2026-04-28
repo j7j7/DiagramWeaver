@@ -2,9 +2,8 @@
 
 import React from 'react';
 import { useDrag, useDrop } from 'react-dnd';
-import { Check, ChevronLeft, ChevronRight, Copy, GripVertical, LogOut, Maximize2, Minimize2, Pin, PinOff, Play, Plus, Trash2, Wand2 } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Copy, FilePlus, GripVertical, Maximize2, Minimize2, Pin, PinOff, Play, Plus, Trash2, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { PresentationDeck, Slide } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -12,6 +11,54 @@ import { cn } from '@/lib/utils';
 const DND_TYPE = 'presentation-slide-item';
 const PANEL_SETTINGS_KEY = 'dw:presentation:panelSettings';
 const SLIDE_THUMBNAIL_PLACEHOLDER = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180" viewBox="0 0 320 180"><rect width="320" height="180" fill="%2311141a"/><text x="160" y="90" text-anchor="middle" dominant-baseline="middle" fill="%23d1d5db" font-family="Arial, sans-serif" font-size="14">Slide</text></svg>';
+
+interface PrimarySlideStripProps {
+  slide: Slide;
+  active: boolean;
+  onSelect: () => void;
+  onMoveSlide: (fromIndex: number, toIndex: number) => void;
+}
+
+function PrimarySlideStripItem({ slide, active, onSelect, onMoveSlide }: PrimarySlideStripProps) {
+  const ref = React.useRef<HTMLDivElement | null>(null);
+  const [, drop] = useDrop<{ index: number }>({
+    accept: DND_TYPE,
+    hover(item) {
+      if (item.index <= 1) return;
+      onMoveSlide(item.index, 1);
+      item.index = 1;
+    },
+  });
+  drop(ref);
+
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        'group flex w-[140px] shrink-0 cursor-pointer flex-col rounded-md border p-1 transition-all',
+        active ? 'border-primary/50 bg-primary/10 ring-1 ring-primary/20' : 'border-border bg-background hover:bg-accent/40',
+      )}
+      onClick={onSelect}
+      title="Main diagram (slide 1). Drop a slide here to move it to position 2."
+    >
+      <div className="relative w-full shrink-0 overflow-hidden rounded-md border bg-muted">
+        <div className="aspect-video w-full">
+          <img
+            src={slide.snapshotImage || SLIDE_THUMBNAIL_PLACEHOLDER}
+            alt={slide.title || 'Slide 1'}
+            className="h-full w-full object-contain object-center"
+            loading="lazy"
+            decoding="async"
+          />
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center gap-1.5 pt-0.5 text-left">
+        <span className="text-[11px] font-medium text-foreground">#1</span>
+        <span className="truncate text-[10px] text-muted-foreground">{slide.title || 'Diagram'}</span>
+      </div>
+    </div>
+  );
+}
 
 interface DraggableSlideProps {
   slide: Slide;
@@ -99,59 +146,50 @@ function DraggableSlideItem({
 }
 
 interface PresentationEditorPanelProps {
-  isOpen: boolean;
   decks: PresentationDeck[];
   activeDeckId: string | null;
   activeSlideId: string | null;
-  onCreateDeck: () => void;
-  onDeleteDeck: () => void;
-  onRenameDeck: (name: string) => void;
-  onSelectDeck: (deckId: string) => void;
   onAutoZoom: () => void;
   onApplyZoomToCurrent: () => void;
   onApplyZoomToAll: () => void;
   onAddSnapshot: () => void;
-  onRemoveSlides: () => void;
+  onAddBlankSlide: () => void;
   onDeleteSlide: (slideId: string) => void;
   onMoveSlide: (fromIndex: number, toIndex: number) => void;
   onSelectSlide: (slideId: string) => void;
+  onSelectBaseSlide: () => void;
   onPreviousSlide: () => void;
   onNextSlide: () => void;
   onEnterPlayMode: () => void;
-  onExitPresentationMode: () => void;
 }
 
 export function PresentationEditorPanel({
-  isOpen,
   decks,
   activeDeckId,
   activeSlideId,
-  onCreateDeck,
-  onDeleteDeck,
-  onRenameDeck,
-  onSelectDeck,
   onAutoZoom,
   onApplyZoomToCurrent,
   onApplyZoomToAll,
   onAddSnapshot,
-  onRemoveSlides,
+  onAddBlankSlide,
   onDeleteSlide,
   onMoveSlide,
   onSelectSlide,
+  onSelectBaseSlide,
   onPreviousSlide,
   onNextSlide,
   onEnterPlayMode,
-  onExitPresentationMode,
 }: PresentationEditorPanelProps) {
   const toolbarRef = React.useRef<HTMLDivElement | null>(null);
   const snapshotsPanelRef = React.useRef<HTMLDivElement | null>(null);
   const snapshotsViewportRef = React.useRef<HTMLDivElement | null>(null);
   const activeDeck = decks.find((deck) => deck.id === activeDeckId) ?? null;
-  const activeSlideIndex = activeDeck
-    ? Math.max(0, activeDeck.slides.findIndex((slide) => slide.id === activeSlideId))
-    : -1;
+  const stripTotal = activeDeck?.slides.length ?? 0;
+  const activeStripIndex =
+    activeDeck && activeSlideId ? activeDeck.slides.findIndex((s) => s.id === activeSlideId) : -1;
+  const slideReadoutIndex = activeStripIndex >= 0 ? activeStripIndex + 1 : stripTotal > 0 ? 1 : 0;
+  const canStepSlides = stripTotal > 1;
 
-  const [renameDraft, setRenameDraft] = React.useState('');
   const [toolbarFloating, setToolbarFloating] = React.useState(false);
   const [toolbarPosition, setToolbarPosition] = React.useState({ x: 20, y: 96 });
   const [draggingToolbar, setDraggingToolbar] = React.useState(false);
@@ -159,10 +197,6 @@ export function PresentationEditorPanel({
   const [snapshotsFloating, setSnapshotsFloating] = React.useState(false);
   const [snapshotsPosition, setSnapshotsPosition] = React.useState({ x: 20, y: 220 });
   const [draggingSnapshots, setDraggingSnapshots] = React.useState(false);
-
-  React.useEffect(() => {
-    setRenameDraft(activeDeck?.name ?? '');
-  }, [activeDeck?.id, activeDeck?.name]);
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -321,8 +355,6 @@ export function PresentationEditorPanel({
     window.addEventListener('mouseup', onMouseUp);
   }, [snapshotsFloating, snapshotsPosition.x, snapshotsPosition.y, snapSnapshotsToToolbar]);
 
-  if (!isOpen) return null;
-
   const panelClassName = toolbarFloating
     ? 'fixed z-50 rounded-lg border bg-card/95 p-2 shadow-2xl backdrop-blur'
     : 'border-b bg-card/95 px-2 py-1 backdrop-blur';
@@ -345,25 +377,31 @@ export function PresentationEditorPanel({
         ref={snapshotsViewportRef}
         className="overflow-x-auto rounded-md border bg-background/60 p-1"
       >
-        {activeDeck && activeDeck.slides.length > 0 ? (
-          <div className="flex flex-nowrap gap-2">
-            {activeDeck.slides.map((slide, index) => (
-              <DraggableSlideItem
-                key={slide.id}
-                slide={slide}
-                index={index}
-                active={activeSlideIndex === index}
-                onMove={onMoveSlide}
-                onSelect={onSelectSlide}
-                onDelete={onDeleteSlide}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="flex min-h-[88px] items-center justify-center rounded-lg border border-dashed px-4 py-6 text-sm text-muted-foreground">
-            No snapshots yet. Add Snapshot to capture the current visible canvas.
-          </div>
-        )}
+        <div className="flex min-h-[88px] flex-nowrap gap-2">
+          {activeDeck && activeDeck.slides.length > 0
+            ? activeDeck.slides.map((slide, index) =>
+                index === 0 ? (
+                  <PrimarySlideStripItem
+                    key={slide.id}
+                    slide={slide}
+                    active={activeSlideId === slide.id}
+                    onSelect={onSelectBaseSlide}
+                    onMoveSlide={onMoveSlide}
+                  />
+                ) : (
+                  <DraggableSlideItem
+                    key={slide.id}
+                    slide={slide}
+                    index={index}
+                    active={activeSlideId === slide.id}
+                    onMove={onMoveSlide}
+                    onSelect={onSelectSlide}
+                    onDelete={onDeleteSlide}
+                  />
+                ),
+              )
+            : null}
+        </div>
       </div>
     </div>
   );
@@ -384,63 +422,7 @@ export function PresentationEditorPanel({
         )}
         <div className="min-w-0 flex-1 overflow-x-auto">
             <div className="flex min-w-max items-center gap-1.5 whitespace-nowrap">
-              <select
-                className="h-7 min-w-[180px] rounded-md border bg-background px-2 text-[11px]"
-                value={activeDeckId ?? ''}
-                onChange={(e) => onSelectDeck(e.target.value)}
-              >
-                <option value="" disabled>
-                  Select Presentation
-                </option>
-                {decks.map((deck) => (
-                  <option key={deck.id} value={deck.id}>
-                    {deck.name}
-                  </option>
-                ))}
-              </select>
-              <Input
-                value={renameDraft}
-                onChange={(e) => setRenameDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && activeDeck && renameDraft.trim()) {
-                    onRenameDeck(renameDraft.trim());
-                  }
-                }}
-                placeholder="Rename presentation"
-                className="h-7 w-44 text-[11px]"
-                disabled={!activeDeck}
-              />
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-7 w-7 px-0"
-                    disabled={!activeDeck || !renameDraft.trim()}
-                    onClick={() => onRenameDeck(renameDraft.trim())}
-                    aria-label="Apply presentation name"
-                  >
-                    <Check className="h-3.5 w-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Apply presentation name</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button size="sm" variant="outline" className="h-7 w-7 px-0" onClick={onCreateDeck} aria-label="Create new presentation">
-                    <Plus className="h-3.5 w-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Create presentation</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button size="sm" variant="outline" className="h-7 w-7 px-0" onClick={onDeleteDeck} disabled={!activeDeck} aria-label="Delete selected presentation">
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Delete presentation</TooltipContent>
-              </Tooltip>
+              <span className="hidden shrink-0 px-1 text-[11px] text-muted-foreground sm:inline">Slides</span>
               <span className="mx-0.5 h-5 w-px bg-border" />
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -452,6 +434,14 @@ export function PresentationEditorPanel({
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 px-0" onClick={onAddBlankSlide} disabled={!activeDeck} aria-label="Add blank slide after current">
+                    <FilePlus className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Add blank slide after current</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
                   <Button size="sm" variant="outline" className="h-7 w-7 px-0" onClick={onAutoZoom} disabled={!activeDeck} aria-label="Auto zoom">
                     <Wand2 className="h-3.5 w-3.5" />
                   </Button>
@@ -460,11 +450,11 @@ export function PresentationEditorPanel({
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button size="sm" variant="outline" className="h-7 w-7 px-0" onClick={() => onApplyZoomToCurrent()} disabled={!activeDeck || !activeSlideId} aria-label="Apply zoom to active snapshot">
+                  <Button size="sm" variant="outline" className="h-7 w-7 px-0" onClick={() => onApplyZoomToCurrent()} disabled={!activeDeck} aria-label="Apply zoom to current slide">
                     <Check className="h-3.5 w-3.5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Apply zoom to active snapshot</TooltipContent>
+                <TooltipContent>Apply zoom to current slide</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -476,48 +466,38 @@ export function PresentationEditorPanel({
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button size="sm" variant="outline" className="h-7 w-7 px-0" onClick={onPreviousSlide} disabled={!activeDeck || activeDeck.slides.length === 0} aria-label="Previous snapshot">
+                  <Button size="sm" variant="outline" className="h-7 w-7 px-0" onClick={onPreviousSlide} disabled={!activeDeck || !canStepSlides} aria-label="Previous slide">
                     <ChevronLeft className="h-3.5 w-3.5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Previous snapshot</TooltipContent>
+                <TooltipContent>Previous slide</TooltipContent>
               </Tooltip>
               <span
                 className="min-w-[2.75rem] shrink-0 text-center tabular-nums text-[11px] text-muted-foreground"
                 aria-live="polite"
                 aria-label={
-                  activeDeck && activeDeck.slides.length > 0
-                    ? `Snapshot ${activeSlideIndex + 1} of ${activeDeck.slides.length}`
-                    : 'No snapshots'
+                  activeDeck
+                    ? `Slide ${slideReadoutIndex} of ${stripTotal}`
+                    : 'No deck'
                 }
               >
-                {activeDeck && activeDeck.slides.length > 0
-                  ? `${activeSlideIndex + 1} / ${activeDeck.slides.length}`
-                  : '—'}
+                {activeDeck ? `${slideReadoutIndex} / ${stripTotal}` : '—'}
               </span>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button size="sm" variant="outline" className="h-7 w-7 px-0" onClick={onNextSlide} disabled={!activeDeck || activeDeck.slides.length === 0} aria-label="Next snapshot">
+                  <Button size="sm" variant="outline" className="h-7 w-7 px-0" onClick={onNextSlide} disabled={!activeDeck || !canStepSlides} aria-label="Next slide">
                     <ChevronRight className="h-3.5 w-3.5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Next snapshot</TooltipContent>
+                <TooltipContent>Next slide</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button size="sm" variant="secondary" className="h-7 w-7 px-0" onClick={onEnterPlayMode} disabled={!activeDeck || activeDeck.slides.length === 0} aria-label="Enter play mode">
+                  <Button size="sm" variant="secondary" className="h-7 w-7 px-0" onClick={onEnterPlayMode} disabled={!activeDeck} aria-label="Enter play mode">
                     <Play className="h-3.5 w-3.5" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Enter play mode</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button size="sm" variant="destructive" className="h-7 w-7 px-0" onClick={onRemoveSlides} disabled={!activeDeck || activeDeck.slides.length === 0} aria-label="Remove active snapshot">
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Remove active snapshot</TooltipContent>
               </Tooltip>
             </div>
         </div>
@@ -550,28 +530,13 @@ export function PresentationEditorPanel({
             </TooltipTrigger>
             <TooltipContent>{toolbarFloating ? 'Fix to window' : 'Float + drag toolbar'}</TooltipContent>
           </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 gap-1 px-2"
-                onClick={onExitPresentationMode}
-                aria-label="Exit presentation mode"
-              >
-                <LogOut className="h-3 w-3" />
-                <span className="hidden sm:inline">Exit</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Exit presentation mode</TooltipContent>
-          </Tooltip>
         </div>
         </div>
 
         {!snapshotsFloating && !snapshotsCollapsed && snapshotsList}
       </div>
 
-      {isOpen && snapshotsFloating && (
+      {snapshotsFloating && (
         <div
           ref={snapshotsPanelRef}
           className={snapshotsPanelClassName}

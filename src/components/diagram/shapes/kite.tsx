@@ -3,7 +3,13 @@
 import React from "react";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { SvgShapeBase } from "./svg-shape-base";
-import { getShapeStyles, polygonToRoundedPath, getPolygonViewBoxAndPoints, getShapeSvgFill } from "./shape-utils";
+import {
+  frostedPolygonClipForSvgPolygon,
+  getShapeStyles,
+  polygonToRoundedPath,
+  getPolygonViewBoxAndPoints,
+  getShapeSvgFill,
+} from "./shape-utils";
 import { useSvgGradient } from "@/hooks/use-svg-gradient";
 
 interface KiteShapeProps {
@@ -65,6 +71,7 @@ export function KiteShape(props: KiteShapeProps) {
       defaultWidth={defaultW}
       defaultHeight={defaultH}
       viewBox={viewBox}
+      frostedClipPathOverride={frostedPolygonClipForSvgPolygon(backgroundStyle, transformedPoints, viewBox)}
       svgContent={
         <>
           {defs}

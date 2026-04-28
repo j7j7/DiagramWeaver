@@ -66,6 +66,7 @@ export function SquareShape(props: SquareShapeProps) {
       defaultWidth={VIEWBOX_W}
       defaultHeight={VIEWBOX_H}
       viewBox={`0 0 ${vbW} ${vbH}`}
+      frostedClipRectInViewBox={{ x: half, y: half, w, h }}
       svgContent={
         <>
           {defs}

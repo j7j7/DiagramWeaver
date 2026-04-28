@@ -70,6 +70,9 @@ export function convertToNestedHierarchy(data: DiagramData): HierarchicalDiagram
         borderColors: node.borderColors,
         backgroundStyle: node.backgroundStyle,
         backgroundColors: node.backgroundColors,
+        frostedDiffusion: (node as { frostedDiffusion?: number }).frostedDiffusion,
+        frostedTransparency: (node as { frostedTransparency?: number }).frostedTransparency,
+        frostedPerlinNoise: (node as { frostedPerlinNoise?: number }).frostedPerlinNoise,
         gradientAngle: node.gradientAngle,
         borderGradientAngle: node.borderGradientAngle,
         shadow: node.shadow,
@@ -92,6 +95,7 @@ export function convertToNestedHierarchy(data: DiagramData): HierarchicalDiagram
          tag: node.tag,
          tagPosition: node.tagPosition,
          layer: node.layer, // Preserve layer information
+         stackWithShapes: node.stackWithShapes,
          groupId: node.groupId, // Preserve grouping information
          // Text styling properties
          fontFamily: node.fontFamily,
@@ -173,6 +177,9 @@ function convertGroupToNested(
         borderColors: node.borderColors,
         backgroundStyle: node.backgroundStyle,
         backgroundColors: node.backgroundColors,
+        frostedDiffusion: (node as { frostedDiffusion?: number }).frostedDiffusion,
+        frostedTransparency: (node as { frostedTransparency?: number }).frostedTransparency,
+        frostedPerlinNoise: (node as { frostedPerlinNoise?: number }).frostedPerlinNoise,
         gradientAngle: node.gradientAngle,
         borderGradientAngle: node.borderGradientAngle,
         shadow: node.shadow,
@@ -195,6 +202,7 @@ function convertGroupToNested(
          tag: node.tag,
          tagPosition: node.tagPosition,
          layer: node.layer, // Preserve layer information
+         stackWithShapes: node.stackWithShapes,
          groupId: node.groupId, // Preserve grouping information
          // Text styling properties
          fontFamily: node.fontFamily,
@@ -250,6 +258,9 @@ function convertGroupToNested(
     borderColors: zone.borderColors,
     backgroundStyle: zone.backgroundStyle,
     backgroundColors: zone.backgroundColors,
+    frostedDiffusion: (zone as { frostedDiffusion?: number }).frostedDiffusion,
+    frostedTransparency: (zone as { frostedTransparency?: number }).frostedTransparency,
+    frostedPerlinNoise: (zone as { frostedPerlinNoise?: number }).frostedPerlinNoise,
     gradientAngle: zone.gradientAngle,
     borderGradientAngle: zone.borderGradientAngle,
     orientation: zone.orientation,
@@ -336,6 +347,9 @@ export function convertFromNestedHierarchy(nestedData: HierarchicalDiagramData):
             borderColors: nodeChild.borderColors,
             backgroundStyle: nodeChild.backgroundStyle,
             backgroundColors: nodeChild.backgroundColors,
+            frostedDiffusion: (nodeChild as { frostedDiffusion?: number }).frostedDiffusion,
+            frostedTransparency: (nodeChild as { frostedTransparency?: number }).frostedTransparency,
+            frostedPerlinNoise: (nodeChild as { frostedPerlinNoise?: number }).frostedPerlinNoise,
             gradientAngle: nodeChild.gradientAngle,
             shadow: nodeChild.shadow,
             highlightAnim: nodeChild.highlightAnim,
@@ -356,6 +370,7 @@ export function convertFromNestedHierarchy(nestedData: HierarchicalDiagramData):
              tag: nodeChild.tag,
              tagPosition: nodeChild.tagPosition,
              layer: nodeChild.layer, // Preserve layer information
+             stackWithShapes: nodeChild.stackWithShapes,
              groupId: nodeChild.groupId, // Preserve grouping information
              // Text styling properties
              fontFamily: nodeChild.fontFamily,
@@ -447,6 +462,9 @@ function processNestedGroup(
     borderColors: zone.borderColors,
     backgroundStyle: zone.backgroundStyle,
     backgroundColors: zone.backgroundColors,
+    frostedDiffusion: (zone as { frostedDiffusion?: number }).frostedDiffusion,
+    frostedTransparency: (zone as { frostedTransparency?: number }).frostedTransparency,
+    frostedPerlinNoise: (zone as { frostedPerlinNoise?: number }).frostedPerlinNoise,
     gradientAngle: zone.gradientAngle,
     borderGradientAngle: zone.borderGradientAngle,
     orientation: zone.orientation,
@@ -532,6 +550,9 @@ function processNestedGroup(
         borderColors: nodeChild.borderColors,
         backgroundStyle: nodeChild.backgroundStyle,
         backgroundColors: nodeChild.backgroundColors,
+        frostedDiffusion: (nodeChild as { frostedDiffusion?: number }).frostedDiffusion,
+        frostedTransparency: (nodeChild as { frostedTransparency?: number }).frostedTransparency,
+        frostedPerlinNoise: (nodeChild as { frostedPerlinNoise?: number }).frostedPerlinNoise,
         gradientAngle: nodeChild.gradientAngle,
         borderGradientAngle: nodeChild.borderGradientAngle,
         shadow: nodeChild.shadow,
@@ -552,6 +573,7 @@ function processNestedGroup(
          tag: nodeChild.tag,
          tagPosition: nodeChild.tagPosition,
          layer: nodeChild.layer, // Preserve layer information
+         stackWithShapes: nodeChild.stackWithShapes,
          groupId: nodeChild.groupId, // Preserve grouping information
          // Text styling properties
          fontFamily: nodeChild.fontFamily,

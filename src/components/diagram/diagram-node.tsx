@@ -18,6 +18,8 @@ import { ItemTypes } from "../editor/draggable-item";
 import { snapToGrid, snapDimensionToGrid, measureNodeDims } from "@/components/editor/canvas-constants";
 import { getTextStylingCSS, extractTextStylingFromNode } from "@/lib/text-styling";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
+import { diagramNodeVisualStylingSignature } from "@/lib/slide-visual-color";
+import { transitionShorthandWithDelay } from "@/lib/css-transition-with-delay";
 import { getHighlightAnimStyleForNode } from "@/lib/highlight-anim";
 import type { ChartSlideStagger } from "@/lib/chart-presentation-stagger";
 import {
@@ -232,6 +234,7 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
   if (prev.node !== next.node) {
     const p = prev.node;
     const n = next.node;
+    if (diagramNodeVisualStylingSignature(p) !== diagramNodeVisualStylingSignature(n)) return false;
     if (p.id !== n.id || p.x !== n.x || p.y !== n.y || p.label !== n.label ||
         JSON.stringify((p as any).richLabel) !== JSON.stringify((n as any).richLabel) ||
         p.width !== n.width || p.height !== n.height || p.type !== n.type ||
@@ -1164,6 +1167,8 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
   const isTextboxNode = node.type === 'generic.text.textbox';
   const isRichTextBoxLike = isTextNode || isTextboxNode;
   const isLineNode = isConnectorLineNodeType(node.type);
+  /** Hover uses `filter: drop-shadow` on the frame, which makes a backdrop root and breaks frosted `backdrop-filter`. */
+  const isFrostedBackground = (node as DiagramNodeData).backgroundStyle === "frosted";
   const isLoopNode = node.type === 'generic.object.loop' || node.type?.endsWith('.loop');
   const isShapeNode = !isIconOrEmojiType(node.type) && (isShapeNodeType(node.type) || isLineNode || isLoopNode);
   const isPointNode = node.type === 'generic.object.point' || node.type?.endsWith('.point');
@@ -1807,9 +1812,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     e.preventDefault(); // Prevent any default touch behavior
   };
 
-
-
-return (
+  return (
     <div
       data-node-id={node.id}
       data-dw-highlight-anim={
@@ -1827,8 +1830,8 @@ return (
           ? "transition-transform"
           : "transition-[transform,filter]",
         // Hover and selection effects - not for lines, and not when locked
-        !isLineNode && !(isDragging || isTouchDragging) && !(isSelected || isHighlighted || isMultiSelected) && !isLocked && !(hasLinkedSubDiagram ?? node.subDiagramId) && "node-glow-hover",
-        !isLineNode && (hasLinkedSubDiagram ?? node.subDiagramId) && !(isSelected || isHighlighted || isMultiSelected) && !isLocked && "node-glow-subdiagram",
+        !isLineNode && !(isDragging || isTouchDragging) && !(isSelected || isHighlighted || isMultiSelected) && !isLocked && !(hasLinkedSubDiagram ?? node.subDiagramId) && !isFrostedBackground && "node-glow-hover",
+        !isLineNode && (hasLinkedSubDiagram ?? node.subDiagramId) && !(isSelected || isHighlighted || isMultiSelected) && !isLocked && !isFrostedBackground && "node-glow-subdiagram",
         !isLineNode && (isSelected || isHighlighted || isMultiSelected) && "node-glow-static",
         !isLineNode && isGroupMember && !isSelected && !isHighlighted && !isMultiSelected && "node-glow-green-static",
         (isDragging || isTouchDragging) && "cursor-grabbing",
@@ -1887,8 +1890,10 @@ return (
         // Layer show/hide animation (opacity, transition, transform)
         ...(animationStyle && !isDuplicateDragPreview && {
           opacity: animationStyle.opacity,
-          transition: animationStyle.transition,
-          ...(animationStyle.transitionDelayMs != null && { transitionDelay: `${animationStyle.transitionDelayMs}ms` }),
+          transition: transitionShorthandWithDelay(
+            animationStyle.transition,
+            animationStyle.transitionDelayMs,
+          ),
           ...(animationStyle.transform && { transform: animationStyle.transform }),
           ...(animationStyle.transformOrigin && { transformOrigin: animationStyle.transformOrigin }),
         }),

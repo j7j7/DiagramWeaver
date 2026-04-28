@@ -130,8 +130,8 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
       <div ref={nodeRef} className="fixed top-20 left-20 z-50 bg-popover border border-border rounded-lg shadow-lg w-[640px] max-w-[calc(100vw-2rem)] cursor-move">
         <div className="flex items-center justify-between px-5 py-4 border-b">
           <div className="flex items-center gap-2">
-            <Type className="w-5 h-5" />
-            <h3 className="text-base font-semibold">Text Styling</h3>
+            <Type className="w-5 h-5 text-blue-600" />
+            <h3 className="text-base font-semibold text-foreground">Text Styling</h3>
           </div>
           {onClose && (
             <Button
@@ -145,44 +145,58 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
           )}
         </div>
         <div className="grid grid-cols-2 gap-x-8 gap-y-4 p-5">
-          {/* Column 1: font, size, alignment, position, transform, spacing */}
+          {/* Column 1: typography, alignment, spacing */}
           <div className="space-y-4 min-w-0">
-            <div className="space-y-2">
-              <Label htmlFor="font-family" className="text-sm font-medium">Font Family</Label>
-              <Select
-                value={styling.fontFamily || ''}
-                onValueChange={(value) => handlePropertyChange('fontFamily', value)}
-              >
-                <SelectTrigger id="font-family" className="h-9 text-sm">
-                  <SelectValue placeholder="Select font family" />
-                </SelectTrigger>
-                <SelectContent className="z-[70]">
-                  {COMMON_FONT_FAMILIES.map((font) => (
-                    <SelectItem key={font} value={font} className="text-sm">
-                      <span style={{ fontFamily: font }}>{font.split(',')[0]}</span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="bg-muted/50 rounded-md p-3 border border-border min-w-0">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 bg-primary rounded-full shrink-0" />
+                <Label className="text-sm font-semibold text-foreground">Typography</Label>
+              </div>
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="font-family" className="text-sm text-muted-foreground">Font family</Label>
+                  <Select
+                    value={styling.fontFamily || ''}
+                    onValueChange={(value) => handlePropertyChange('fontFamily', value)}
+                  >
+                    <SelectTrigger id="font-family" className="h-9 text-sm">
+                      <SelectValue placeholder="Select font family" />
+                    </SelectTrigger>
+                    <SelectContent className="z-[70]">
+                      {COMMON_FONT_FAMILIES.map((font) => (
+                        <SelectItem key={font} value={font} className="text-sm">
+                          <span style={{ fontFamily: font }}>{font.split(',')[0]}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="font-size" className="text-sm text-muted-foreground">
+                    Font size: {styling.fontSize || 14}px
+                  </Label>
+                  <Slider
+                    id="font-size"
+                    min={8}
+                    max={200}
+                    step={1}
+                    value={[styling.fontSize || 14]}
+                    onValueChange={([value]) => handlePropertyChange('fontSize', value)}
+                    className="w-full"
+                  />
+                </div>
+              </div>
             </div>
 
+            <div className="bg-amber-50/50 rounded-md p-3 border border-amber-200/50 min-w-0">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 bg-amber-500 rounded-full shrink-0" />
+                <Label className="text-sm font-semibold text-foreground">Alignment & position</Label>
+              </div>
+              <div className="space-y-3">
             <div className="space-y-2">
-              <Label htmlFor="font-size" className="text-sm font-medium">
-                Font Size: {styling.fontSize || 14}px
-              </Label>
-              <Slider
-                id="font-size"
-                min={8}
-                max={200}
-                step={1}
-                value={[styling.fontSize || 14]}
-                onValueChange={([value]) => handlePropertyChange('fontSize', value)}
-                className="w-full"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Text Justification</Label>
+              <Label className="text-sm text-muted-foreground">Text justification</Label>
               <div className="flex flex-wrap gap-1">
                 <Button
                   variant={effectiveTextJustify === 'left' ? 'default' : 'outline'}
@@ -224,7 +238,7 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
             </div>
 
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Vertical Position</Label>
+              <Label className="text-sm text-muted-foreground">Vertical position</Label>
               <div className="flex gap-1">
                 <Button
                   variant={effectiveVerticalPosition === 'top' ? 'default' : 'outline'}
@@ -283,7 +297,7 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
 
             {selectedItem && selectedItem.itemType === 'zone' && (
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Text Position</Label>
+                <Label className="text-sm text-muted-foreground">Text position</Label>
                 <div className="grid grid-cols-2 gap-1">
                   <Button
                     variant={textPosition === 'inside' ? 'default' : 'outline'}
@@ -315,9 +329,17 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
                 </div>
               </div>
             )}
+              </div>
+            </div>
 
+            <div className="bg-emerald-50/50 rounded-md p-3 border border-emerald-200/50 min-w-0">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 bg-emerald-500 rounded-full shrink-0" />
+                <Label className="text-sm font-semibold text-foreground">Spacing & case</Label>
+              </div>
+              <div className="space-y-3">
             <div className="space-y-2">
-              <Label htmlFor="text-transform" className="text-sm font-medium">Text Transform</Label>
+              <Label htmlFor="text-transform" className="text-sm text-muted-foreground">Text transform</Label>
               <Select
                 value={styling.textTransform || 'none'}
                 onValueChange={(value) => handlePropertyChange('textTransform', value as any)}
@@ -335,8 +357,8 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="letter-spacing" className="text-sm font-medium">
-                Letter Spacing: {styling.letterSpacing || 0}px
+              <Label htmlFor="letter-spacing" className="text-sm text-muted-foreground">
+                Letter spacing: {styling.letterSpacing || 0}px
               </Label>
               <Slider
                 id="letter-spacing"
@@ -350,8 +372,8 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="line-height" className="text-sm font-medium">
-                Line Height: {styling.lineHeight || 1.4}
+              <Label htmlFor="line-height" className="text-sm text-muted-foreground">
+                Line height: {styling.lineHeight || 1.4}
               </Label>
               <Slider
                 id="line-height"
@@ -363,13 +385,21 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
                 className="w-full"
               />
             </div>
+              </div>
+            </div>
           </div>
 
-          {/* Column 2: opacity, colors, outline, glow, shadow */}
+          {/* Column 2: color, outline, glow, shadow */}
           <div className="space-y-4 min-w-0 border-l border-border pl-8">
+            <div className="bg-sky-50/50 rounded-md p-3 border border-sky-200/50 min-w-0">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 bg-sky-500 rounded-full shrink-0" />
+                <Label className="text-sm font-semibold text-foreground">Color</Label>
+              </div>
+              <div className="space-y-3">
             <div className="space-y-2">
-              <Label htmlFor="text-opacity" className="text-sm font-medium">
-                Text Opacity: {Math.round((styling.textOpacity || 1) * 100)}%
+              <Label htmlFor="text-opacity" className="text-sm text-muted-foreground">
+                Text opacity: {Math.round((styling.textOpacity || 1) * 100)}%
               </Label>
               <Slider
                 id="text-opacity"
@@ -383,8 +413,8 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="text-color" className="text-sm font-medium">
-                {isTextBoxHeading ? "Body text color" : "Text Color"}
+              <Label htmlFor="text-color" className="text-sm text-muted-foreground">
+                {isTextBoxHeading ? "Body text color" : "Text color"}
               </Label>
               <ColorPicker
                 value={styling.textColor || '#000000'}
@@ -395,9 +425,30 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
               />
             </div>
 
+            {isTextBoxHeading && (
+              <div className="space-y-2">
+                <Label className="text-sm text-muted-foreground">Heading text color</Label>
+                <ColorPicker
+                  value={styling.headingTextColor ?? "#ffffff"}
+                  onChange={(value) => handlePropertyChange("headingTextColor", value)}
+                  placeholder="#ffffff"
+                  showAlpha={true}
+                  allowTransparent={true}
+                />
+              </div>
+            )}
+              </div>
+            </div>
+
+            <div className="bg-amber-50/50 rounded-md p-3 border border-amber-200/50 min-w-0">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 bg-amber-500 rounded-full shrink-0" />
+                <Label className="text-sm font-semibold text-foreground">Outline</Label>
+              </div>
+              <div className="space-y-3">
             <div className="space-y-2">
-              <Label htmlFor="text-outline-width" className="text-sm font-medium">
-                Text outline width: {(styling.textOutlineWidth ?? 0)}px
+              <Label htmlFor="text-outline-width" className="text-sm text-muted-foreground">
+                Outline width: {(styling.textOutlineWidth ?? 0)}px
               </Label>
               <Slider
                 id="text-outline-width"
@@ -412,7 +463,7 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
 
             {(styling.textOutlineWidth ?? 0) > 0 && (
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Outline color</Label>
+                <Label className="text-sm text-muted-foreground">Outline color</Label>
                 <ColorPicker
                   value={styling.textOutlineColor ?? "#ffffff"}
                   onChange={(value) => handlePropertyChange("textOutlineColor", value)}
@@ -422,9 +473,17 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
                 />
               </div>
             )}
+              </div>
+            </div>
 
+            <div className="bg-purple-50/50 rounded-md p-3 border border-purple-200/50 min-w-0">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 bg-purple-500 rounded-full shrink-0" />
+                <Label className="text-sm font-semibold text-foreground">Glow</Label>
+              </div>
+              <div className="space-y-3">
             <div className="space-y-2">
-              <Label htmlFor="text-glow-blur" className="text-sm font-medium">
+              <Label htmlFor="text-glow-blur" className="text-sm text-muted-foreground">
                 Glow blur: {(styling.textGlowBlur ?? 0)}px
               </Label>
               <Slider
@@ -439,7 +498,7 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
             </div>
             {(styling.textGlowBlur ?? 0) > 0 && (
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Glow color</Label>
+                <Label className="text-sm text-muted-foreground">Glow color</Label>
                 <ColorPicker
                   value={styling.textGlowColor ?? "rgba(255,255,255,0.9)"}
                   onChange={(value) => handlePropertyChange("textGlowColor", value)}
@@ -449,11 +508,18 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
                 />
               </div>
             )}
+              </div>
+            </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <Label htmlFor="text-drop-shadow-enabled" className="text-sm font-medium">
-                  Drop shadow
+            <div className="bg-teal-50/50 rounded-md p-3 border border-teal-200/50 min-w-0">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 bg-teal-500 rounded-full shrink-0" />
+                <Label className="text-sm font-semibold text-foreground">Drop shadow</Label>
+              </div>
+              <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="text-drop-shadow-enabled" className="text-sm text-muted-foreground font-normal">
+                  Enable
                 </Label>
                 <Switch
                   id="text-drop-shadow-enabled"
@@ -467,7 +533,7 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
                 <>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
-                      <Label htmlFor="text-shadow-ox" className="text-xs text-muted-foreground">
+                      <Label htmlFor="text-shadow-ox" className="text-sm text-muted-foreground">
                         Offset X: {styling.textShadowOffsetX ?? 0}px
                       </Label>
                       <Slider
@@ -481,7 +547,7 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label htmlFor="text-shadow-oy" className="text-xs text-muted-foreground">
+                      <Label htmlFor="text-shadow-oy" className="text-sm text-muted-foreground">
                         Offset Y: {styling.textShadowOffsetY ?? 0}px
                       </Label>
                       <Slider
@@ -495,7 +561,7 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
                       />
                     </div>
                   </div>
-                  <Label htmlFor="text-shadow-blur" className="text-xs text-muted-foreground">
+                  <Label htmlFor="text-shadow-blur" className="text-sm text-muted-foreground">
                     Blur: {(styling.textShadowBlur ?? 0)}px
                   </Label>
                   <Slider
@@ -520,20 +586,8 @@ export const TextStylingPanel = React.memo(function TextStylingPanel({ styling, 
                   )}
                 </>
               )}
-            </div>
-
-            {isTextBoxHeading && (
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Heading text color</Label>
-                <ColorPicker
-                  value={styling.headingTextColor ?? "#ffffff"}
-                  onChange={(value) => handlePropertyChange("headingTextColor", value)}
-                  placeholder="#ffffff"
-                  showAlpha={true}
-                  allowTransparent={true}
-                />
               </div>
-            )}
+            </div>
           </div>
         </div>
       </div>

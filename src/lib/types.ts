@@ -202,14 +202,26 @@ export interface DiagramNodeData {
   lineColor?: string; // Color for connections/borders
   edgePosition?: 'top' | 'bottom' | 'left' | 'right'; // Position node on edge of parent group
   layer?: string; // Layer assignment for this node
+  /**
+   * When true on icon/label nodes, use the same z-index ladder as shapes so item order within
+   * a diagram layer controls stacking. Default icon tier (+100) keeps connectors under icons;
+   * with this set, connectors may draw above the node per connection slot order.
+   */
+  stackWithShapes?: boolean;
   // Label-specific styling properties
   borderColor?: string; // Border color for label nodes
   backgroundColor?: string; // Background color for label nodes
   textColor?: string; // Text color for label nodes
   borderStyle?: 'solid' | 'dotted' | 'gradient' | 'none'; // Border style for label/textbox/shape nodes
   borderColors?: string[]; // Border colors for gradient [startColor, endColor]
-  backgroundStyle?: 'solid' | 'gradient' | 'none'; // Background style for label/textbox/shape nodes
+  backgroundStyle?: 'solid' | 'gradient' | 'frosted' | 'none'; // Background style for label/textbox/shape nodes
   backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
+  /** `backgroundStyle: 'frosted'`: 0 = sharp, 1 = heavy blur (backdrop diffusion). */
+  frostedDiffusion?: number;
+  /** `backgroundStyle: 'frosted'`: 0 = fully transparent, 1 = more opaque (see-through of content below). */
+  frostedTransparency?: number;
+  /** `backgroundStyle: 'frosted'`: smooth Perlin-style noise 0=off, 10=strong. */
+  frostedPerlinNoise?: number;
   gradientAngle?: number; // Background gradient angle in degrees
   borderGradientAngle?: number; // Border gradient angle in degrees
   shadow?: boolean; // Whether to show shadow around label/textbox nodes
@@ -447,13 +459,18 @@ export interface DiagramNodeItem {
   lineColor?: string; // Color for connections/borders
   edgePosition?: 'top' | 'bottom' | 'left' | 'right'; // Position node on edge of parent group
   layer?: string; // Layer assignment for this node
+  /** See `DiagramNodeData.stackWithShapes`. */
+  stackWithShapes?: boolean;
   borderColor?: string; // Border color for label nodes
   backgroundColor?: string; // Background color for label nodes
   textColor?: string; // Text color for label nodes
   borderStyle?: 'solid' | 'dotted' | 'gradient' | 'none'; // Border style for label/textbox/shape nodes
   borderColors?: string[]; // Border colors for gradient [startColor, endColor]
-  backgroundStyle?: 'solid' | 'gradient' | 'none'; // Background style for label/textbox/shape nodes
+  backgroundStyle?: 'solid' | 'gradient' | 'frosted' | 'none'; // Background style for label/textbox/shape nodes
   backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
+  frostedDiffusion?: number;
+  frostedTransparency?: number;
+  frostedPerlinNoise?: number;
   gradientAngle?: number; // Background gradient angle in degrees
   borderGradientAngle?: number; // Border gradient angle in degrees
   shadow?: boolean; // Whether to show shadow around label/textbox nodes
@@ -550,8 +567,11 @@ export interface DiagramZoneItem {
   backgroundColor?: string; // Background color (legacy, kept for compatibility)
   borderStyle?: 'solid' | 'dotted' | 'gradient' | 'none'; // Border style
   borderColors?: string[]; // Border colors for gradient [startColor, endColor]
-  backgroundStyle?: 'solid' | 'gradient' | 'none'; // Background style
+  backgroundStyle?: 'solid' | 'gradient' | 'frosted' | 'none'; // Background style
   backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
+  frostedDiffusion?: number;
+  frostedTransparency?: number;
+  frostedPerlinNoise?: number;
   gradientAngle?: number; // Background gradient angle in degrees
   borderGradientAngle?: number; // Border gradient angle in degrees
   orientation?: 'horizontal' | 'vertical' | 'square'; // Zone shape orientation
@@ -619,8 +639,11 @@ export interface DiagramZoneData {
   backgroundColor?: string; // Background color (legacy, kept for compatibility)
   borderStyle?: 'solid' | 'dotted' | 'gradient' | 'none'; // Border style
   borderColors?: string[]; // Border colors for gradient [startColor, endColor]
-  backgroundStyle?: 'solid' | 'gradient' | 'none'; // Background style
+  backgroundStyle?: 'solid' | 'gradient' | 'frosted' | 'none'; // Background style
   backgroundColors?: string[]; // Background colors for gradient [startColor, endColor]
+  frostedDiffusion?: number;
+  frostedTransparency?: number;
+  frostedPerlinNoise?: number;
   gradientAngle?: number; // Background gradient angle in degrees
   borderGradientAngle?: number; // Border gradient angle in degrees
   orientation?: 'horizontal' | 'vertical' | 'square'; // Zone shape orientation
@@ -741,6 +764,8 @@ export interface PresentationDeck {
   id: string;
   name: string;
   slides: Slide[];
+  /** @deprecated Legacy only; migrated to `slides[0].snapshotImage` on load. */
+  baseSnapshotImage?: string;
   createdAt: number;
   updatedAt: number;
 }

@@ -155,6 +155,10 @@ Key functions:
 - `projectVisibleDiagram(diagramData)`
 - `listVisibleLayerIds(diagramData)`
 
+## Viewer (`/viewer`)
+
+Embedded **`presentations`** in loaded JSON are normalized the same way as in the editor: **`migratePresentationDecks`** then **`collapsePresentationDecksToOne`** (`viewer-utils` **`normalizeViewerPresentation`**). The strip and fullscreen player use the deck’s **`slides`** array only—**slide 1** is **`slides[0]`** (main diagram, empty delta vs file root); further slides use the same delta-vs-root reconstruction as the editor. **`slideDiagrams`** in the viewer is `slides.map((s) => applyDiagramDelta(master, s.diagramDelta))` with **`master = projectVisibleDiagram(diagramData)`**.
+
 ## Play Mode
 
 Play Mode runs in a fullscreen dialog and supports:

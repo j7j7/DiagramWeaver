@@ -16,6 +16,7 @@ import {
 import { Palette, RotateCcw, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { GradientAnglePicker } from "./gradient-angle-picker";
+import { Slider } from "@/components/ui/slider";
 import Draggable from 'react-draggable';
 
 function HighlightAnimEffectControls({
@@ -240,6 +241,20 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
   const handlePredefinedStyleChange = (styleKey: keyof typeof VISUAL_STYLES) => {
     const predefinedStyle = getPredefinedVisualStyle(styleKey);
     onStylingChange(predefinedStyle);
+  };
+
+  const handleBackgroundStyleSelect = (value: string) => {
+    if (value === "frosted") {
+      onStylingChange({
+        backgroundStyle: "frosted" as const,
+        frostedDiffusion: styling.frostedDiffusion ?? 0.45,
+        frostedTransparency: styling.frostedTransparency ?? 0.55,
+        frostedPerlinNoise: styling.frostedPerlinNoise ?? 0,
+        backgroundColor: (styling.backgroundColor as string | undefined) || "#f3f4f6",
+      });
+    } else {
+      handlePropertyChange("backgroundStyle", value as "solid" | "gradient" | "none", true);
+    }
   };
 
   const handleReset = () => {
@@ -481,7 +496,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                     <Label className="text-sm text-muted-foreground">Style</Label>
                     <Select
                       value={styling.backgroundStyle || 'solid'}
-                      onValueChange={(value) => handlePropertyChange('backgroundStyle', value as any)}
+                      onValueChange={handleBackgroundStyleSelect}
                     >
                       <SelectTrigger className="h-9 text-sm">
                         <SelectValue />
@@ -490,6 +505,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                         <SelectItem value="none" className="text-sm">None</SelectItem>
                         <SelectItem value="solid" className="text-sm">Solid</SelectItem>
                         <SelectItem value="gradient" className="text-sm">Gradient</SelectItem>
+                        <SelectItem value="frosted" className="text-sm">Frosted glass</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -501,6 +517,58 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                     />
                   )}
                 </div>
+                {styling.backgroundStyle === 'frosted' && (
+                  <div className="space-y-3 mb-2">
+                    <div className="space-y-1">
+                      <Label className="text-sm text-muted-foreground">Diffusion (blur strength)</Label>
+                      <div className="flex items-center gap-3 pr-1">
+                        <Slider
+                          min={0}
+                          max={1}
+                          step={0.01}
+                          value={[Math.min(1, Math.max(0, Number(styling.frostedDiffusion ?? 0.45)))]}
+                          onValueChange={([v]) => handlePropertyChange("frostedDiffusion", v, true)}
+                          className="flex-1"
+                        />
+                        <span className="w-8 tabular-nums text-xs text-muted-foreground">
+                          {((styling.frostedDiffusion ?? 0.45) * 100).toFixed(0)}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-sm text-muted-foreground">Transparency (see-through)</Label>
+                      <div className="flex items-center gap-3 pr-1">
+                        <Slider
+                          min={0}
+                          max={1}
+                          step={0.01}
+                          value={[Math.min(1, Math.max(0, Number(styling.frostedTransparency ?? 0.55)))]}
+                          onValueChange={([v]) => handlePropertyChange("frostedTransparency", v, true)}
+                          className="flex-1"
+                        />
+                        <span className="w-8 tabular-nums text-xs text-muted-foreground">
+                          {((styling.frostedTransparency ?? 0.55) * 100).toFixed(0)}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-sm text-muted-foreground">Perlin noise (texture)</Label>
+                      <div className="flex items-center gap-3 pr-1">
+                        <Slider
+                          min={0}
+                          max={10}
+                          step={1}
+                          value={[Math.min(10, Math.max(0, Math.round(Number(styling.frostedPerlinNoise ?? 0))))]}
+                          onValueChange={([v]) => handlePropertyChange("frostedPerlinNoise", v, true)}
+                          className="flex-1"
+                        />
+                        <span className="w-6 tabular-nums text-xs text-muted-foreground text-right">
+                          {Math.min(10, Math.max(0, Math.round(Number(styling.frostedPerlinNoise ?? 0))))}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 {styling.backgroundStyle && styling.backgroundStyle !== 'none' && (
                   <div className="space-y-2">
                     {styling.backgroundStyle === 'gradient' ? (
@@ -533,13 +601,18 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                         </div>
                       </div>
                     ) : (
-                      <ColorPicker
-                        value={styling.backgroundColor || '#f3f4f6'}
-                        onChange={(value) => handlePropertyChange('backgroundColor', value)}
-                        placeholder="#f3f4f6"
-                        showAlpha={true}
-                        allowTransparent={true}
-                      />
+                      <div className="space-y-1">
+                        {styling.backgroundStyle === "frosted" ? (
+                          <p className="text-xs text-muted-foreground">Tint color (applies a light wash on top of the blurred backdrop)</p>
+                        ) : null}
+                        <ColorPicker
+                          value={styling.backgroundColor || '#f3f4f6'}
+                          onChange={(value) => handlePropertyChange('backgroundColor', value)}
+                          placeholder="#f3f4f6"
+                          showAlpha={true}
+                          allowTransparent={true}
+                        />
+                      </div>
                     )}
                   </div>
                 )}

@@ -14,7 +14,7 @@ import {
   transformToFitBounds,
   type ContentBounds,
 } from '@/lib/presentation-viewport-fit';
-import { toPngWithDotGridTransform } from '@/lib/html-to-image-fit-png';
+import { toPngWithDiagramExportFixes, toPngWithDotGridTransform } from '@/lib/html-to-image-fit-png';
 
 interface UseCanvasExportOptions {
   canvasRef: React.RefObject<HTMLDivElement | null>;
@@ -194,7 +194,6 @@ export function useCanvasExport({
       throw new Error('Canvas is not ready');
     }
 
-    const { toPng } = await import('html-to-image');
     const contentDiv = (canvasRef.current.querySelector('[data-diagram-layer]') as HTMLElement | null)
       ?? (canvasRef.current.querySelector('.dot-grid') as HTMLElement | null);
     if (!contentDiv) {
@@ -290,7 +289,7 @@ export function useCanvasExport({
         }
       }
 
-      return await toPng(canvasRef.current, toPngOptions);
+      return await toPngWithDiagramExportFixes(canvasRef.current, toPngOptions);
     } finally {
       if (hadGridClass) {
         contentDiv.classList.add('dot-grid');
@@ -370,7 +369,6 @@ export function useCanvasExport({
     let gridElement: HTMLElement | null = null;
     let hadGridClass = false;
     try {
-      const { toPng } = await import('html-to-image');
       const { GIFEncoder, quantize, applyPalette } = await import('gifenc');
 
       gridElement = (canvasRef.current.querySelector('[data-diagram-layer]') as HTMLElement | null)
@@ -466,7 +464,7 @@ export function useCanvasExport({
         onGifAnimationTimeUpdate?.(currentTime);
         await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
-        const dataUrl = await toPng(exportElement, exportOptions as any);
+        const dataUrl = await toPngWithDiagramExportFixes(exportElement, exportOptions as any);
 
         const img = new Image();
         img.src = dataUrl;

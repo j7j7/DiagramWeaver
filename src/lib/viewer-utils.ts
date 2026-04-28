@@ -4,6 +4,8 @@ import { convertFromNestedHierarchy } from './nested-hierarchy';
 import { flattenDiagramOnImport, type RawDiagramData } from './flatten-on-import';
 import { ensureConnectionIds } from './connection-order-utils';
 import { extractEmbeddedPresentations, type ExtractedEmbeddedPresentations } from './extract-embedded-presentations';
+import { collapsePresentationDecksToOne } from './presentation-deck-merge';
+import { migratePresentationDecks } from './presentation-primary-slide';
 
 export const VIEWER_MAX_JSON_SIZE = 5 * 1024 * 1024; // 5MB limit
 
@@ -11,6 +13,16 @@ export type ParsedViewerParams =
   | { mode: 'inline'; json: string }
   | { mode: 'remote'; url: string }
   | { mode: 'localPick' };
+
+function normalizeViewerPresentation(
+  extracted: ExtractedEmbeddedPresentations
+): ExtractedEmbeddedPresentations | undefined {
+  if (extracted.decks.length === 0) return undefined;
+  // Ensure unified `slides[0]` = main diagram (same as editor / storage), then single deck.
+  const unified = migratePresentationDecks(extracted.decks);
+  const { decks, activeDeckId } = collapsePresentationDecksToOne(unified, extracted.activeDeckId);
+  return { decks, activeDeckId };
+}
 
 export interface ViewerData {
   diagramData: DiagramData;
@@ -239,7 +251,7 @@ export function viewerDataFromUnknownJson(json: unknown): ViewerData {
   return {
     diagramData,
     source: 'file',
-    presentation: extracted.decks.length > 0 ? extracted : undefined,
+    presentation: normalizeViewerPresentation(extracted),
   };
 }
 
@@ -260,7 +272,7 @@ export async function loadViewerData(params: ParsedViewerParams): Promise<Viewer
     return {
       diagramData,
       source: 'inline',
-      presentation: extracted.decks.length > 0 ? extracted : undefined,
+      presentation: normalizeViewerPresentation(extracted),
     };
   }
 
@@ -270,6 +282,6 @@ export async function loadViewerData(params: ParsedViewerParams): Promise<Viewer
   return {
     diagramData,
     source: 'remote',
-    presentation: extracted.decks.length > 0 ? extracted : undefined,
+    presentation: normalizeViewerPresentation(extracted),
   };
 }

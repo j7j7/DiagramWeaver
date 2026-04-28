@@ -1,5 +1,6 @@
 import type { DiagramData, PresentationDeck } from '@/lib/types';
 import { PresentationDeckListSchema } from '@/lib/schemas';
+import { migratePresentationDeckToUnifiedSlides } from '@/lib/presentation-primary-slide';
 
 const DB_NAME = 'DiagramWeaver';
 const DB_VERSION = 1;
@@ -114,7 +115,7 @@ async function readPresentationTabsFromDb(
 function normalizeDecks(raw: unknown): PresentationDeck[] {
   const parsed = PresentationDeckListSchema.safeParse(raw);
   if (!parsed.success) return [];
-  return parsed.data;
+  return parsed.data.map(migratePresentationDeckToUnifiedSlides);
 }
 
 export async function loadPresentationsFromIndexedDB(): Promise<StoredPresentationPayload | null> {

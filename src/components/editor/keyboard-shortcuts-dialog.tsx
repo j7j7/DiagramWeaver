@@ -309,15 +309,11 @@ export function KeyboardShortcutsDialog({ open, onOpenChange }: KeyboardShortcut
             ]}
           />
           <ShortcutTable
-            title="Presentation mode"
+            title="Presentation"
             rows={[
               {
-                action: "Enter presentation mode, or start playback if already in presentation mode",
+                action: "Start presentation playback (fullscreen player)",
                 keys: modAltPlus("P"),
-              },
-              {
-                action: "Exit presentation mode",
-                keys: altPlus("P"),
               },
             ]}
           />

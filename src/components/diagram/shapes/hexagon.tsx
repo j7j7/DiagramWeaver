@@ -3,7 +3,12 @@
 import React from "react";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { SvgShapeBase } from "./svg-shape-base";
-import { polygonToRoundedPath, getPolygonViewBoxAndPoints, getShapeSvgFill } from "./shape-utils";
+import {
+  frostedPolygonClipForSvgPolygon,
+  polygonToRoundedPath,
+  getPolygonViewBoxAndPoints,
+  getShapeSvgFill,
+} from "./shape-utils";
 import { useSvgGradient } from "@/hooks/use-svg-gradient";
 
 interface HexagonShapeProps {
@@ -64,6 +69,7 @@ export function HexagonShape(props: HexagonShapeProps) {
       defaultWidth={defaultW}
       defaultHeight={defaultH}
       viewBox={viewBox}
+      frostedClipPathOverride={frostedPolygonClipForSvgPolygon(backgroundStyle, transformedPoints, viewBox)}
       svgContent={
         <>
           {defs}

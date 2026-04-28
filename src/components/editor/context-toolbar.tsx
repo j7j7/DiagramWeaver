@@ -98,7 +98,6 @@ interface ContextToolbarProps {
   onConnectionSettingsPanelOpenChange?: (open: boolean) => void;
   isReadOnly?: boolean;
   /** Presentation mode: show add/remove from later slides buttons when true and hasLaterSlides */
-  presentationModeEnabled?: boolean;
   presentationHasLaterSlides?: boolean;
   onPropagateAddToLaterSlides?: () => void;
   onPropagateDeleteToLaterSlides?: () => void;
@@ -131,7 +130,6 @@ export function ContextToolbar({
   onLineStylingPanelOpenChange,
   onConnectionSettingsPanelOpenChange,
   isReadOnly = false,
-  presentationModeEnabled = false,
   presentationHasLaterSlides = false,
   onPropagateAddToLaterSlides,
   onPropagateDeleteToLaterSlides,
@@ -827,7 +825,7 @@ export function ContextToolbar({
         )}
 
         {/* Presentation: Add/Remove from later slides (for connections) */}
-        {presentationModeEnabled && presentationHasLaterSlides && onPropagateAddToLaterSlides && onPropagateDeleteToLaterSlides && (
+        {presentationHasLaterSlides && onPropagateAddToLaterSlides && onPropagateDeleteToLaterSlides && (
           <>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -2899,7 +2897,7 @@ export function ContextToolbar({
         )}
 
         {/* Presentation: Add/Remove from later slides */}
-        {presentationModeEnabled && presentationHasLaterSlides && onPropagateAddToLaterSlides && onPropagateDeleteToLaterSlides && (
+        {presentationHasLaterSlides && onPropagateAddToLaterSlides && onPropagateDeleteToLaterSlides && (
           <>
             <Tooltip>
               <TooltipTrigger asChild>

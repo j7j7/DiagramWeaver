@@ -44,6 +44,7 @@ import { useCanvasExport } from "@/hooks/use-canvas-export";
 import { useCanvasContextMenu } from "@/hooks/use-canvas-context-menu";
 import { useCanvasOperations } from "./canvas-operations";
 import { CanvasConnections } from "./canvas-connections";
+import { getConnectionEndpointIdSet } from "@/lib/connection-endpoint-ids";
 import { CanvasArrowToggles } from "./canvas-arrow-toggles";
 import { CanvasConnectionText } from "./canvas-connection-text";
 import { getItemGroup } from "@/lib/grouping-utils";
@@ -400,6 +401,10 @@ interface EditorCanvasProps {
   tryDeleteConnectorLineVertexBeforeNodeDelete?: (nodeId: string) => boolean;
   /** Simulation mode enables right-click simulation menu and left-click state cycling. */
   simulationModeEnabled?: boolean;
+  /** Open the stacking / z-order list panel (e.g. from context menu). */
+  onOpenZOrderList?: (point?: { x: number; y: number }, initialItemId?: string) => void;
+  /** When true, wheel zoom is disabled (e.g. z-order list open in parent). */
+  wheelZoomSuppressed?: boolean;
 }
 
 
@@ -422,7 +427,7 @@ export type EditorCanvasHandle = {
 };
 
 export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionInsertNode, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, defaultTextLabelsEnabled = true, connectionsBehindNodesEnabled = true, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal, setChartDataEditorModal, nodeAnimationStyles, connectionAnimationStyles, connectionKey, connectionRenderRevision, onSubDiagramDoubleClick, getHasLinkedSubDiagram, onCreateSubDiagram, onRemoveSubDiagramLink, onPauseConnectionAnimationsForOverlayUi, connectorLineFocusedVertex = null, onConnectorLineVertexFocus, tryDeleteConnectorLineVertexBeforeNodeDelete, simulationModeEnabled = false }: EditorCanvasProps,
+  { diagramData, setDiagramData, onItemSelect, onBatchSelect, setSelectedItemIds, setSelectedItem, selectedItemId, selectedItem, selectedItemIds = new Set(), isConnectMode, onNodeClickInConnectMode, onConnect, onDisconnect, onConnectionDelete, onConnectionWaypointMove, onConnectionUpdate, onConnectionWaypointAdd, onConnectionInsertNode, onConnectionContextMenu, externalTransform, onTransformChange, onLabelUpdate, onTagUpdate, onZoneTagUpdate, onDraggingChange, onClipboardChange, onMousePositionChange, onSelectionChange, onExportComplete, hoverEnabled = true, iconBackgroundEnabled = true, defaultTextLabelsEnabled = true, connectionsBehindNodesEnabled = true, animationConnectionsEnabled = true, animationToggleOnClickEnabled = false, animationFilterSourceIds, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, onSelectAll, onTriggerTextStylingPanel, onTriggerVisualStylingPanel, onTriggerLineStylingPanel, onTriggerConnectionSettingsPanel, onResetConnectionSettingsTrigger, layers, onGroupItems, onUngroupItems, onRemoveFromGroup, onAddToGroupItems, onMoveToBack, onMoveToFront, onMoveOneBack, onMoveOneForward, onZoneLayoutChange, onZoneCycle, onZoneSort, isReadOnly = false, alignmentGuidesEnabled = true, onResourceActivateAtPosition, metadataPopupsEnabled = true, setUmlClassEditorModal, setChartDataEditorModal, nodeAnimationStyles, connectionAnimationStyles, connectionKey, connectionRenderRevision, onSubDiagramDoubleClick, getHasLinkedSubDiagram, onCreateSubDiagram, onRemoveSubDiagramLink, onPauseConnectionAnimationsForOverlayUi, connectorLineFocusedVertex = null, onConnectorLineVertexFocus, tryDeleteConnectorLineVertexBeforeNodeDelete, simulationModeEnabled = false, onOpenZOrderList, wheelZoomSuppressed = false }: EditorCanvasProps,
   ref
 ) {
   const [gifExportAnimationTimeSeconds, setGifExportAnimationTimeSeconds] = React.useState<number | null>(null);
@@ -519,6 +524,14 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
 
   const { toast } = useToast();
   const canvasRef = useRef<HTMLDivElement>(null);
+  /** Latest `displayNodesById` for stable `DiagramNode` click handlers (`data-node-id` → node). */
+  const displayNodesByIdRef = useRef<Record<string, PositionedNode>>({});
+  const nodeClickHandlerRef = useRef<(e: React.MouseEvent, node: DiagramNodeData) => void>(
+    (e) => e.stopPropagation()
+  );
+  const nodeContextMenuHandlerRef = useRef<(e: React.MouseEvent, node: DiagramNodeData) => void>(
+    (e) => e.stopPropagation()
+  );
   const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 });
   const [searchModalOpen, setSearchModalOpen] = React.useState(false);
   const [metadataPopupRect, setMetadataPopupRect] = useState<{
@@ -883,7 +896,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     canvasRef,
     processedNodes,
     processedZones,
-    wheelZoomDisabled: searchModalOpen,
+    wheelZoomDisabled: searchModalOpen || wheelZoomSuppressed,
   });
 
   // Measure selected item rect for metadata popup (anchored to object)
@@ -1046,6 +1059,12 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   );
 
   const [isCanvasItemDragging, setIsCanvasItemDragging] = useState(false);
+
+  const connectionEndpointIdSet = useMemo(
+    () => getConnectionEndpointIdSet(diagramData.connections),
+    [diagramData.connections],
+  );
+
   const notifyDraggingChange = useCallback(
     (dragging: boolean) => {
       setIsCanvasItemDragging(dragging);
@@ -1070,6 +1089,40 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     onDuplicateNodesPlaced: handleDuplicateNodesPlaced,
     onDraggingChange: notifyDraggingChange,
   });
+
+  /**
+   * While a canvas item is being dragged (not Alt+duplicate), connection routing for lines that
+   * do not touch the dragged item(s) can stay frozen. Non-endpoint-only drags fully reuse the
+   * last bundle; endpoint drags use a partial recompute in CanvasConnections.
+   */
+  const freezeUnrelatedConnectionRouting = useMemo(() => {
+    if (altKeyHeld) return false;
+    if (dragPosition?.itemId) return true;
+    if (multiDragPositions && Object.keys(multiDragPositions).length > 0) return true;
+    return false;
+  }, [altKeyHeld, dragPosition?.itemId, multiDragPositions]);
+
+  const unrelatedConnectionRoutingDragIdsKey = useMemo(() => {
+    if (!freezeUnrelatedConnectionRouting) return "";
+    if (multiDragPositions && Object.keys(multiDragPositions).length > 0) {
+      return Object.keys(multiDragPositions).sort().join("\t");
+    }
+    if (dragPosition?.itemId) {
+      return dragPosition.itemId;
+    }
+    return "";
+  }, [freezeUnrelatedConnectionRouting, dragPosition?.itemId, multiDragPositions]);
+
+  const hasEndpointInDrag = useMemo(() => {
+    if (!isCanvasItemDragging) return false;
+    if (dragPosition?.itemId && connectionEndpointIdSet.has(dragPosition.itemId)) return true;
+    if (multiDragPositions) {
+      for (const id of Object.keys(multiDragPositions)) {
+        if (connectionEndpointIdSet.has(id)) return true;
+      }
+    }
+    return false;
+  }, [isCanvasItemDragging, dragPosition?.itemId, multiDragPositions, connectionEndpointIdSet]);
 
   // Positions during drag (ghost/cursor); used for guides and Alt-duplicate previews
   const nodesWithDragPositions = useMemo(() => {
@@ -1193,6 +1246,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     }
     return r;
   }, [nodesWithDragPositions, nodesById, altKeyHeld, dragPosition, multiDragPositions]);
+
+  displayNodesByIdRef.current = displayNodesById;
 
   const highlightAnimStagger = useMemo(
     () => buildHighlightAnimStaggerOrder(displayNodesById),
@@ -1585,6 +1640,25 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
     setLastRightClickItemId(node.id);
     handleContextMenu(e, node.id, 'node'); // Opens context menu
   }, [simulationModeEnabled, openSimulationMenu, selectedItemIds, selectedItemId, onItemSelect, onResetConnectionSettingsTrigger, handleContextMenu]);
+
+  nodeClickHandlerRef.current = handleNodeClick;
+  nodeContextMenuHandlerRef.current = handleNodeContextMenu;
+
+  const onDiagramNodeClickStable = useCallback((e: React.MouseEvent) => {
+    const id = (e.currentTarget as HTMLElement).getAttribute("data-node-id");
+    if (!id) return;
+    const node = displayNodesByIdRef.current[id];
+    if (!node) return;
+    nodeClickHandlerRef.current(e, node);
+  }, []);
+
+  const onDiagramNodeContextMenuStable = useCallback((e: React.MouseEvent) => {
+    const id = (e.currentTarget as HTMLElement).getAttribute("data-node-id");
+    if (!id) return;
+    const node = displayNodesByIdRef.current[id];
+    if (!node) return;
+    nodeContextMenuHandlerRef.current(e, node);
+  }, []);
 
   const handleZoneClick = useCallback((e: React.MouseEvent, zone: DiagramZoneData) => {
     e.stopPropagation();
@@ -2225,6 +2299,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             style={{
               width: `${width}px`,
               height: `${height}px`,
+              zIndex: 1,
+              position: "relative",
               transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.k})`,
               transformOrigin: '0 0',
             }}
@@ -2488,7 +2564,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   transform={transform}
                   canvasRef={canvasRef}
                   isReadOnly={isReadOnly}
-                  orthogonalFastRouting={isCanvasItemDragging}
+                  freezeConnectionRoutingWhileDrag={freezeUnrelatedConnectionRouting}
+                  unrelatedConnectionRoutingDragIdsKey={unrelatedConnectionRoutingDragIdsKey}
+                  orthogonalFastRouting={isCanvasItemDragging && (!freezeUnrelatedConnectionRouting || hasEndpointInDrag)}
+                  viewportWidthPx={canvasDimensions.width}
+                  viewportHeightPx={canvasDimensions.height}
                   simulationModeEnabled={simulationModeEnabled}
                   onSimulationElementPrimaryClick={handleSimulationElementPrimaryClick}
                   onSimulationElementClick={(e, itemId) => openSimulationMenu(e, itemId, "connection")}
@@ -2513,8 +2593,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                     getItemGroup(node.id, diagramData) !== null &&
                     getItemGroup(selectedItemId, diagramData)?.id === getItemGroup(node.id, diagramData)?.id
                   }
-                  onClick={(e: React.MouseEvent) => handleNodeClick(e, node)}
-                  onContextMenu={(e: React.MouseEvent) => handleNodeContextMenu(e, node)}
+                  onClick={onDiagramNodeClickStable}
+                  onContextMenu={onDiagramNodeContextMenuStable}
                   onResize={handleNodeResize}
                   onResizeStart={handleResizeStart}
                   onResizeEnd={handleResizeEnd}
@@ -2589,16 +2669,19 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                 const node = nodesById[itemId];
                 const zone = zonesById[itemId];
                 // Icon/text nodes: elevate z so labels stay on top of connectors. Shapes: keep original so lines can pass in front.
+                // `stackWithShapes` opts icon nodes into the shape ladder so layer item order controls overlap (e.g. icon behind a rect).
                 const NODE_LAYER_BASE = 100;
                 const isShape = node && isShapeNodeType(node.type);
+                const isTextboxNode = node && node.type === 'generic.text.textbox';
                 const closedConnectorLoop =
                   node &&
                   isConnectorLineNodeType(node.type) &&
                   isConnectorLineGeometryClosed(node);
+                const useShapeStackTier =
+                  isShape || isTextboxNode || closedConnectorLoop || Boolean(node?.stackWithShapes);
                 /** Closed loops use shape-tier z (`2*i+1`) so rectangles before/after in layer order stack correctly. */
                 const connZIndex = 2 * i;
-                const nodeZIndex =
-                  isShape || closedConnectorLoop ? 2 * i + 1 : NODE_LAYER_BASE + 2 * i + 1;
+                const nodeZIndex = useShapeStackTier ? 2 * i + 1 : NODE_LAYER_BASE + 2 * i + 1;
                 const nodeEl = node ? (
                   <DiagramNode
                     key={node.id}
@@ -2613,8 +2696,8 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       getItemGroup(node.id, diagramData) !== null &&
                       getItemGroup(selectedItemId, diagramData)?.id === getItemGroup(node.id, diagramData)?.id
                     }
-                    onClick={(e: React.MouseEvent) => handleNodeClick(e, node)}
-                    onContextMenu={(e: React.MouseEvent) => handleNodeContextMenu(e, node)}
+                    onClick={onDiagramNodeClickStable}
+                    onContextMenu={onDiagramNodeContextMenuStable}
                     onResize={handleNodeResize}
                     onResizeStart={handleResizeStart}
                     onResizeEnd={handleResizeEnd}
@@ -2684,7 +2767,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       transform={transform}
                       canvasRef={canvasRef}
                       isReadOnly={isReadOnly}
-                      orthogonalFastRouting={isCanvasItemDragging}
+                      freezeConnectionRoutingWhileDrag={freezeUnrelatedConnectionRouting}
+                      unrelatedConnectionRoutingDragIdsKey={unrelatedConnectionRoutingDragIdsKey}
+                      orthogonalFastRouting={isCanvasItemDragging && (!freezeUnrelatedConnectionRouting || hasEndpointInDrag)}
+                      viewportWidthPx={canvasDimensions.width}
+                      viewportHeightPx={canvasDimensions.height}
                       simulationModeEnabled={simulationModeEnabled}
                       onSimulationElementPrimaryClick={handleSimulationElementPrimaryClick}
                       onSimulationElementClick={(e, itemId) => openSimulationMenu(e, itemId, "connection")}
@@ -2754,7 +2841,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   transform={transform}
                   canvasRef={canvasRef}
                   isReadOnly={isReadOnly}
-                  orthogonalFastRouting={isCanvasItemDragging}
+                  freezeConnectionRoutingWhileDrag={freezeUnrelatedConnectionRouting}
+                  unrelatedConnectionRoutingDragIdsKey={unrelatedConnectionRoutingDragIdsKey}
+                  orthogonalFastRouting={isCanvasItemDragging && (!freezeUnrelatedConnectionRouting || hasEndpointInDrag)}
+                  viewportWidthPx={canvasDimensions.width}
+                  viewportHeightPx={canvasDimensions.height}
                   simulationModeEnabled={simulationModeEnabled}
                   onSimulationElementPrimaryClick={handleSimulationElementPrimaryClick}
                   onSimulationElementClick={(e, itemId) => openSimulationMenu(e, itemId, "connection")}
@@ -3293,6 +3384,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
             onRemoveSubDiagramLink={onRemoveSubDiagramLink}
             canAutoNumber={canAutoNumberLabels}
             onAutoNumberLabels={handleAutoNumberLabels}
+            onOpenZOrderList={onOpenZOrderList && (contextMenu.itemType === 'node' || contextMenu.itemType === 'zone') ? () => {
+              onPauseConnectionAnimationsForOverlayUi?.();
+              onOpenZOrderList({ x: contextMenu.x, y: contextMenu.y }, contextMenu.itemId);
+              closeContextMenu();
+            } : undefined}
           />
           <SimulationPopupMenu
             x={simulationMenuState?.x ?? 0}

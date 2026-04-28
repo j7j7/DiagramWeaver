@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 
 // Cookie helper functions
 const RESOURCE_BROWSER_COOKIE = 'resource-browser-state';
@@ -53,9 +53,6 @@ import { DEFAULT_CUSTOM_IMAGE_OPTIONS, normalizeCustomImageOptions, normalizeHtt
 import type { CustomImageOptions } from '@/lib/types';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
-import { ScrollArea } from '../ui/scroll-area';
-import { Card, CardContent } from '../ui/card';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
 import { Badge } from '../ui/badge';
 import { DraggableResourceItem } from './draggable-resource-item';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip';
@@ -231,6 +228,9 @@ export function ResourceBrowser({ onResourceSelect, onResourceActivate }: Resour
   const [customIconLoadedUrl, setCustomIconLoadedUrl] = useState<string | null>(null);
   const [customIconOptions, setCustomIconOptions] = useState<CustomImageOptions>(DEFAULT_CUSTOM_IMAGE_OPTIONS);
 
+  /** Avoid writing expansion cookies before initial `loadAll` finishes (pure state updaters only). */
+  const expansionCookieSyncRef = useRef(false);
+
   useEffect(() => {
     const loadAll = async () => {
       setIsLoading(true);
@@ -297,43 +297,42 @@ export function ResourceBrowser({ onResourceSelect, onResourceActivate }: Resour
       } catch (e) {
         console.error('Failed to load resource index:', e);
       } finally {
+        expansionCookieSyncRef.current = true;
         setIsLoading(false);
       }
     };
     loadAll();
   }, []);
 
-  const toggleProvider = (provider: string) => {
-    const newExpanded = new Set(expandedProviders);
-    if (newExpanded.has(provider)) {
-      newExpanded.delete(provider);
-    } else {
-      newExpanded.add(provider);
-    }
-    setExpandedProviders(newExpanded);
-    
-    // Save to cookie
+  useEffect(() => {
+    if (!expansionCookieSyncRef.current) return;
     const currentState = getBrowserState();
     setBrowserState({
       ...currentState,
-      expandedProviders: Array.from(newExpanded)
+      expandedProviders: Array.from(expandedProviders),
+      expandedCategories: Array.from(expandedCategories),
+    });
+  }, [expandedProviders, expandedCategories]);
+
+  const onProviderOpenChange = (provider: string, open: boolean) => {
+    setExpandedProviders((prev) => {
+      const has = prev.has(provider);
+      if (has === open) return prev;
+      const next = new Set(prev);
+      if (open) next.add(provider);
+      else next.delete(provider);
+      return next;
     });
   };
 
-  const toggleCategory = (categoryKey: string) => {
-    const newExpanded = new Set(expandedCategories);
-    if (newExpanded.has(categoryKey)) {
-      newExpanded.delete(categoryKey);
-    } else {
-      newExpanded.add(categoryKey);
-    }
-    setExpandedCategories(newExpanded);
-    
-    // Save to cookie
-    const currentState = getBrowserState();
-    setBrowserState({
-      ...currentState,
-      expandedCategories: Array.from(newExpanded)
+  const onCategoryOpenChange = (categoryFullKey: string, open: boolean) => {
+    setExpandedCategories((prev) => {
+      const has = prev.has(categoryFullKey);
+      if (has === open) return prev;
+      const next = new Set(prev);
+      if (open) next.add(categoryFullKey);
+      else next.delete(categoryFullKey);
+      return next;
     });
   };
 
@@ -349,27 +348,11 @@ export function ResourceBrowser({ onResourceSelect, onResourceActivate }: Resour
     
     setExpandedProviders(allProviders);
     setExpandedCategories(allCategories);
-    
-    // Save to cookie
-    const currentState = getBrowserState();
-    setBrowserState({
-      ...currentState,
-      expandedProviders: Array.from(allProviders),
-      expandedCategories: Array.from(allCategories)
-    });
   };
 
   const collapseAll = () => {
     setExpandedProviders(new Set());
     setExpandedCategories(new Set());
-    
-    // Save to cookie
-    const currentState = getBrowserState();
-    setBrowserState({
-      ...currentState,
-      expandedProviders: [],
-      expandedCategories: []
-    });
   };
 
   const toggleViewMode = () => {
@@ -560,11 +543,15 @@ export function ResourceBrowser({ onResourceSelect, onResourceActivate }: Resour
     );
   };
 
-  const toggleIconCategory = (key: string) => {
-    const next = new Set(expandedIconCategories);
-    if (next.has(key)) next.delete(key);
-    else next.add(key);
-    setExpandedIconCategories(next);
+  const onIconSectionOpenChange = (key: string, open: boolean) => {
+    setExpandedIconCategories((prev) => {
+      const has = prev.has(key);
+      if (has === open) return prev;
+      const next = new Set(prev);
+      if (open) next.add(key);
+      else next.delete(key);
+      return next;
+    });
   };
 
 return (
@@ -630,9 +617,9 @@ return (
         </div>
       </div>
 
-      {/* Resource Tree - Vertical Scroll */}
+      {/* Resource Tree - Vertical Scroll (native overflow avoids Radix ScrollArea measure/sync edge cases) */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        <ScrollArea className="h-full">
+        <div className="h-full min-h-0 overflow-y-auto overflow-x-hidden">
           <TooltipProvider>
           <div className="p-2">
             {isLoading ? (
@@ -656,29 +643,28 @@ return (
                 <>
                 {Object.entries(filteredProviders).map(([providerKey, provider]) => (
                   <div key={providerKey} className={`mb-2 rounded-md border ${getProviderTintClasses(providerKey)}`}>
-                    <Collapsible open={expandedProviders.has(providerKey)} onOpenChange={() => toggleProvider(providerKey)}>
-                      <CollapsibleTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          className="w-full justify-between p-3 h-auto hover:bg-accent/50 hover:text-accent-foreground touch-target"
-                        >
-                          <div className="flex items-center gap-2">
-                            {expandedProviders.has(providerKey) ? (
-                              <ChevronDown className="w-4 h-4" />
-                            ) : (
-                              <ChevronRight className="w-4 h-4" />
-                            )}
-                            <ProviderIcon provider={providerKey} />
-                            <span className="font-medium">{provider.name}</span>
-                            <Badge variant="secondary" className="ml-auto">
-                              {provider.totalResources}
-                            </Badge>
-                          </div>
-                        </Button>
-                      </CollapsibleTrigger>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="w-full justify-between p-3 h-auto hover:bg-accent/50 hover:text-accent-foreground touch-target"
+                      onClick={() => onProviderOpenChange(providerKey, !expandedProviders.has(providerKey))}
+                    >
+                      <div className="flex items-center gap-2">
+                        {expandedProviders.has(providerKey) ? (
+                          <ChevronDown className="w-4 h-4" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4" />
+                        )}
+                        <ProviderIcon provider={providerKey} />
+                        <span className="font-medium">{provider.name}</span>
+                        <Badge variant="secondary" className="ml-auto">
+                          {provider.totalResources}
+                        </Badge>
+                      </div>
+                    </Button>
 
-                      <CollapsibleContent>
-                        <div className="ml-4 pl-2 border-l-2 border-muted">
+                    {expandedProviders.has(providerKey) ? (
+                      <div className="ml-4 pl-2 border-l-2 border-muted">
                           {[
                             ...Object.entries(provider.categories),
                             ...(providerKey === 'generic' && (Object.keys(filteredIconItems.symbolSections).length > 0 || filteredIconItems.emoji.length > 0)
@@ -691,41 +677,44 @@ return (
 
                             return (
                               <div key={categoryKey} className={`mb-1 rounded-md border ${getCategoryTintClasses(categoryKey)}`}>
-                                <Collapsible open={isExpanded} onOpenChange={() => toggleCategory(categoryFullKey)}>
-                                  <CollapsibleTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      className="w-full justify-between p-2 h-auto hover:bg-accent/40 hover:text-accent-foreground touch-target"
-                                    >
-                                      <div className="flex items-center gap-1">
-                                        {isExpanded ? (
-                                          <ChevronDown className="w-3 h-3" />
-                                        ) : (
-                                          <ChevronRight className="w-3 h-3" />
-                                        )}
-                                        <span className="text-sm">{category.name}</span>
-                                        <Badge variant="outline" className="ml-auto text-xs">
-                                          {isIconCategory ? Object.values(filteredIconItems.symbolSections).flat().length + filteredIconItems.emoji.length : category.resources.length}
-                                        </Badge>
-                                      </div>
-                                    </Button>
-                                  </CollapsibleTrigger>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  className="w-full justify-between p-2 h-auto hover:bg-accent/40 hover:text-accent-foreground touch-target"
+                                  onClick={() => onCategoryOpenChange(categoryFullKey, !isExpanded)}
+                                >
+                                  <div className="flex items-center gap-1">
+                                    {isExpanded ? (
+                                      <ChevronDown className="w-3 h-3" />
+                                    ) : (
+                                      <ChevronRight className="w-3 h-3" />
+                                    )}
+                                    <span className="text-sm">{category.name}</span>
+                                    <Badge variant="outline" className="ml-auto text-xs">
+                                      {isIconCategory ? Object.values(filteredIconItems.symbolSections).flat().length + filteredIconItems.emoji.length : category.resources.length}
+                                    </Badge>
+                                  </div>
+                                </Button>
 
-                                  <CollapsibleContent>
-                                    {isIconCategory ? (
+                                {isExpanded ? (
+                                    isIconCategory ? (
                                       <div className="ml-4 pl-2 border-l-2 border-muted space-y-1">
                                         <div className="rounded-md border bg-muted/5 border-border/50">
-                                          <Collapsible open={expandedIconCategories.has('Custom Icon')} onOpenChange={() => toggleIconCategory('Custom Icon')}>
-                                            <CollapsibleTrigger asChild>
-                                              <Button variant="ghost" className="w-full justify-between p-2 h-auto hover:bg-accent/40 hover:text-accent-foreground touch-target">
-                                                <div className="flex items-center gap-1">
-                                                  {expandedIconCategories.has('Custom Icon') ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                                                  <span className="text-sm">Custom Icon</span>
-                                                </div>
-                                              </Button>
-                                            </CollapsibleTrigger>
-                                            <CollapsibleContent>
-                                              <div className="p-2 space-y-2">
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            className="w-full justify-between p-2 h-auto hover:bg-accent/40 hover:text-accent-foreground touch-target"
+                                            onClick={() =>
+                                              onIconSectionOpenChange('Custom Icon', !expandedIconCategories.has('Custom Icon'))
+                                            }
+                                          >
+                                            <div className="flex items-center gap-1">
+                                              {expandedIconCategories.has('Custom Icon') ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                                              <span className="text-sm">Custom Icon</span>
+                                            </div>
+                                          </Button>
+                                          {expandedIconCategories.has('Custom Icon') ? (
+                                            <div className="p-2 space-y-2">
                                                 <div className="flex gap-2">
                                                   <Input
                                                     value={customIconUrl}
@@ -768,68 +757,73 @@ return (
                                                   Add Custom Icon
                                                 </Button>
                                               </div>
-                                            </CollapsibleContent>
-                                          </Collapsible>
+                                          ) : null}
                                         </div>
 
                                         {Object.entries(filteredIconItems.symbolSections).map(([sectionName, icons]) => (
                                           <div key={sectionName} className="rounded-md border bg-muted/5 border-border/50">
-                                            <Collapsible open={expandedIconCategories.has(sectionName)} onOpenChange={() => toggleIconCategory(sectionName)}>
-                                              <CollapsibleTrigger asChild>
-                                                <Button variant="ghost" className="w-full justify-between p-2 h-auto hover:bg-accent/40 hover:text-accent-foreground touch-target">
-                                                  <div className="flex items-center gap-1">
-                                                    {expandedIconCategories.has(sectionName) ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                                                    <span className="text-sm">{sectionName}</span>
-                                                    <Badge variant="outline" className="ml-auto text-xs">{icons.length}</Badge>
-                                                  </div>
-                                                </Button>
-                                              </CollapsibleTrigger>
-                                              <CollapsibleContent>
-                                                <div className={`ml-4 grid touch-spacing ${
-                                                  viewMode === 'compact' ? 'grid-cols-[repeat(auto-fill,minmax(56px,1fr))] gap-1 p-1' : 'grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-2 p-2'
-                                                }`}>
-                                                  {icons.map((iconItem, index) => (
-                                                    <DraggableIconItem
-                                                      key={`${sectionName}-${index}`}
-                                                      iconItem={iconItem}
-                                                      onClick={(dragItem) => handleIconSelect(dragItem)}
-                                                      onDoubleClick={(dragItem) => handleIconActivate(dragItem)}
-                                                      viewMode={viewMode}
-                                                    />
-                                                  ))}
-                                                </div>
-                                              </CollapsibleContent>
-                                            </Collapsible>
+                                            <Button
+                                              type="button"
+                                              variant="ghost"
+                                              className="w-full justify-between p-2 h-auto hover:bg-accent/40 hover:text-accent-foreground touch-target"
+                                              onClick={() =>
+                                                onIconSectionOpenChange(sectionName, !expandedIconCategories.has(sectionName))
+                                              }
+                                            >
+                                              <div className="flex items-center gap-1">
+                                                {expandedIconCategories.has(sectionName) ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                                                <span className="text-sm">{sectionName}</span>
+                                                <Badge variant="outline" className="ml-auto text-xs">{icons.length}</Badge>
+                                              </div>
+                                            </Button>
+                                            {expandedIconCategories.has(sectionName) ? (
+                                              <div className={`ml-4 grid touch-spacing ${
+                                                viewMode === 'compact' ? 'grid-cols-[repeat(auto-fill,minmax(56px,1fr))] gap-1 p-1' : 'grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-2 p-2'
+                                              }`}>
+                                                {icons.map((iconItem, index) => (
+                                                  <DraggableIconItem
+                                                    key={`${sectionName}-${index}`}
+                                                    iconItem={iconItem}
+                                                    onClick={(dragItem) => handleIconSelect(dragItem)}
+                                                    onDoubleClick={(dragItem) => handleIconActivate(dragItem)}
+                                                    viewMode={viewMode}
+                                                  />
+                                                ))}
+                                              </div>
+                                            ) : null}
                                           </div>
                                         ))}
                                         {filteredIconItems.emoji.length > 0 && (
                                           <div className="rounded-md border bg-muted/5 border-border/50">
-                                            <Collapsible open={expandedIconCategories.has('Emojis')} onOpenChange={() => toggleIconCategory('Emojis')}>
-                                              <CollapsibleTrigger asChild>
-                                                <Button variant="ghost" className="w-full justify-between p-2 h-auto hover:bg-accent/40 hover:text-accent-foreground touch-target">
-                                                  <div className="flex items-center gap-1">
-                                                    {expandedIconCategories.has('Emojis') ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                                                    <span className="text-sm">Emojis</span>
-                                                    <Badge variant="outline" className="ml-auto text-xs">{filteredIconItems.emoji.length}</Badge>
-                                                  </div>
-                                                </Button>
-                                              </CollapsibleTrigger>
-                                              <CollapsibleContent>
-                                                <div className={`ml-4 grid touch-spacing ${
-                                                  viewMode === 'compact' ? 'grid-cols-[repeat(auto-fill,minmax(56px,1fr))] gap-1 p-1' : 'grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-2 p-2'
-                                                }`}>
-                                                  {filteredIconItems.emoji.map((iconItem, index) => (
-                                                    <DraggableIconItem
-                                                      key={`emoji-${index}`}
-                                                      iconItem={iconItem}
-                                                      onClick={(dragItem) => handleIconSelect(dragItem)}
-                                                      onDoubleClick={(dragItem) => handleIconActivate(dragItem)}
-                                                      viewMode={viewMode}
-                                                    />
-                                                  ))}
-                                                </div>
-                                              </CollapsibleContent>
-                                            </Collapsible>
+                                            <Button
+                                              type="button"
+                                              variant="ghost"
+                                              className="w-full justify-between p-2 h-auto hover:bg-accent/40 hover:text-accent-foreground touch-target"
+                                              onClick={() =>
+                                                onIconSectionOpenChange('Emojis', !expandedIconCategories.has('Emojis'))
+                                              }
+                                            >
+                                              <div className="flex items-center gap-1">
+                                                {expandedIconCategories.has('Emojis') ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                                                <span className="text-sm">Emojis</span>
+                                                <Badge variant="outline" className="ml-auto text-xs">{filteredIconItems.emoji.length}</Badge>
+                                              </div>
+                                            </Button>
+                                            {expandedIconCategories.has('Emojis') ? (
+                                              <div className={`ml-4 grid touch-spacing ${
+                                                viewMode === 'compact' ? 'grid-cols-[repeat(auto-fill,minmax(56px,1fr))] gap-1 p-1' : 'grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-2 p-2'
+                                              }`}>
+                                                {filteredIconItems.emoji.map((iconItem, index) => (
+                                                  <DraggableIconItem
+                                                    key={`emoji-${index}`}
+                                                    iconItem={iconItem}
+                                                    onClick={(dragItem) => handleIconSelect(dragItem)}
+                                                    onDoubleClick={(dragItem) => handleIconActivate(dragItem)}
+                                                    viewMode={viewMode}
+                                                  />
+                                                ))}
+                                              </div>
+                                            ) : null}
                                           </div>
                                         )}
                                       </div>
@@ -858,22 +852,20 @@ return (
                                         />
                                       ))}
                                     </div>
-                                    )}
-                                  </CollapsibleContent>
-                                </Collapsible>
+                                  )
+                                ) : null}
                               </div>
                             );
                           })}
                         </div>
-                      </CollapsibleContent>
-                    </Collapsible>
+                    ) : null}
                   </div>
                 ))}
                 </>
             )}
           </div>
           </TooltipProvider>
-        </ScrollArea>
+        </div>
       </div>
     </div>
   );

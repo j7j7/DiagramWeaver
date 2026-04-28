@@ -1,6 +1,7 @@
 import type { DiagramData, DiagramDelta, PresentationDeck, Slide } from '@/lib/types';
 import { PresentationDeckListSchema } from '@/lib/schemas';
 import { projectVisibleDiagram } from '@/lib/presentation-delta';
+import { migratePresentationDecks } from '@/lib/presentation-primary-slide';
 
 /** Placeholder used when compact JSON omits real PNG thumbnails — must be replaced by canvas capture in the editor. */
 export const PRESENTATION_THUMBNAIL_PLACEHOLDER =
@@ -226,7 +227,7 @@ export function extractEmbeddedPresentations(
         ? (hydratedDecks[compactRaw.ai]?.id ?? hydratedDecks[0]?.id ?? null)
         : (hydratedDecks[0]?.id ?? null);
 
-    return { decks: hydratedDecks, activeDeckId };
+    return { decks: migratePresentationDecks(hydratedDecks), activeDeckId };
   }
 
   const parsedDecks = PresentationDeckListSchema.safeParse(raw.presentations?.decks ?? []);
@@ -243,5 +244,5 @@ export function extractEmbeddedPresentations(
   }));
 
   const activeDeckId = raw.presentations?.activeDeckId ?? hydratedDecks[0]?.id ?? null;
-  return { decks: hydratedDecks, activeDeckId };
+  return { decks: migratePresentationDecks(hydratedDecks), activeDeckId };
 }

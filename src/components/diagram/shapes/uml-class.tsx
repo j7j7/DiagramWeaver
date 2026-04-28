@@ -1,10 +1,26 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { Fragment, useState, useRef, useEffect } from "react";
 import type { DiagramNodeData } from "@/lib/types";
 import { useSlideShapeShadowTransitionMode } from "@/components/diagram/slide-shape-shadow-transition-context";
-import { getShapeStyles } from "./shape-utils";
-import { getTextColorForBackground } from "./shape-utils";
+import {
+  getFrostedGlassDropShadowLayerStyle,
+  getFrostedGlassTintLayerStyle,
+  getFrostedGlassInlineBackdropPrimaryStyle,
+  getFrostedGlassInlineBackdropSecondPassStyle,
+  getFrostedInlineBackdropReactKey,
+  getFrostedGrainOverlayStyle,
+  getFrostedFineGrainOverlayStyle,
+  getFrostedPerlinNoiseOverlayStyle,
+  getFrostedGlassTopEdgeHighlightStyle,
+  getFrostedGlassLeftEdgeHighlightStyle,
+  getFrostedGlassExportBackdropPrimaryFallbackColor,
+  getFrostedGlassExportBackdropSecondFallbackColor,
+  getFrostedGlassExportRasterStackBlurPx,
+  getFrostedGlassExportRasterBackdropSaturate,
+  getShapeStyles,
+  getTextColorForBackground,
+} from "./shape-utils";
 import { ShapeTag } from "./shape-tag";
 import { UML_NAME_HEIGHT, UML_LINE_HEIGHT } from "@/lib/uml-utils";
 
@@ -94,6 +110,7 @@ export function UmlClassShape({
   const borderColors = styles.borderColors;
   const borderGradientBackground = borderImage ? String(borderImage).replace(/\s+1$/, "") : undefined;
   const needsGradientBorderLayer = shouldUseGradientBorderLayer(borderImage, borderColors);
+  const isFrostedBg = nodeAny.backgroundStyle === "frosted";
 
   const nameStyle = getCompartmentStyle(umlStyle?.name, fallbackColor);
   const attrStyle = getCompartmentStyle(umlStyle?.attributes, fallbackColor);
@@ -152,9 +169,16 @@ export function UmlClassShape({
   const isPlaceholderName = !name;
   const isPlaceholderAttrs = attributes.length === 0;
   const isPlaceholderMethods = methods.length === 0;
+  const frostedInlineSecondPassStyle =
+    isFrostedBg && styles.frostedGlass
+      ? getFrostedGlassInlineBackdropSecondPassStyle(styles.frostedGlass)
+      : undefined;
 
   const Divider = () => (
-    <div style={{ height: Math.max(0.5, dividerWidth), background: dividerColor, width: "100%" }} />
+    <div
+      className="relative z-[1] shrink-0"
+      style={{ height: Math.max(0.5, dividerWidth), background: dividerColor, width: "100%" }}
+    />
   );
 
   return (
@@ -172,15 +196,17 @@ export function UmlClassShape({
         />
       ) : null}
       <div
-        className="relative overflow-hidden flex flex-col w-full h-full"
+        className="relative flex flex-col w-full h-full"
         style={{
           boxSizing: "border-box",
+          /* Inline frosted: visible overflow helps Chromium sample content behind `backdrop-filter`. */
+          overflow: isFrostedBg ? "visible" : "hidden",
           borderWidth: !needsGradientBorderLayer ? styles.borderWidth : undefined,
           borderStyle: !needsGradientBorderLayer ? styles.borderStyle ?? "solid" : undefined,
           borderColor: !needsGradientBorderLayer ? (borderImage ? "transparent" : dividerColor) : undefined,
           borderImage: !needsGradientBorderLayer ? borderImage : undefined,
-          background: styles.background ?? nodeAny.backgroundColor ?? "#ffffff",
-          backgroundColor: styles.backgroundColor,
+          background: isFrostedBg ? "transparent" : styles.background ?? nodeAny.backgroundColor ?? "#ffffff",
+          backgroundColor: isFrostedBg ? "transparent" : styles.backgroundColor,
           borderRadius: !needsGradientBorderLayer ? borderRadius : undefined,
           width: needsGradientBorderLayer ? `calc(100% - ${styles.borderWidth})` : "100%",
           height: needsGradientBorderLayer ? `calc(100% - ${styles.borderWidth})` : "100%",
@@ -189,9 +215,65 @@ export function UmlClassShape({
           ...(slideColorTransition !== undefined ? { transition: slideColorTransition } : {}),
         }}
       >
+        {isFrostedBg && styles.frostedGlass ? (
+          <div
+            data-frosted-glass-stack=""
+            data-frosted-export-blur={String(getFrostedGlassExportRasterStackBlurPx(styles.frostedGlass))}
+            data-frosted-export-saturate={String(
+              getFrostedGlassExportRasterBackdropSaturate(styles.frostedGlass)
+            )}
+            style={{
+              position: "absolute",
+              inset: 0,
+              borderRadius: "inherit",
+              pointerEvents: "none",
+            }}
+            aria-hidden
+          >
+            <div style={getFrostedGlassDropShadowLayerStyle(styles.frostedGlass)} aria-hidden />
+            <Fragment key={getFrostedInlineBackdropReactKey(styles.frostedGlass)}>
+              <div
+                data-frosted-backdrop=""
+                data-frosted-export-fallback-bg={getFrostedGlassExportBackdropPrimaryFallbackColor(
+                  styles.frostedGlass
+                )}
+                style={getFrostedGlassInlineBackdropPrimaryStyle(styles.frostedGlass)}
+                aria-hidden
+              />
+              {frostedInlineSecondPassStyle ? (
+                <div
+                  data-frosted-backdrop="second"
+                  data-frosted-export-fallback-bg={getFrostedGlassExportBackdropSecondFallbackColor(
+                    styles.frostedGlass
+                  )}
+                  style={frostedInlineSecondPassStyle}
+                  aria-hidden
+                />
+              ) : null}
+            </Fragment>
+            <div style={getFrostedGlassTintLayerStyle(styles.frostedGlass)} aria-hidden />
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                borderRadius: "inherit",
+                overflow: "hidden",
+                pointerEvents: "none",
+                zIndex: 2,
+              }}
+              aria-hidden
+            >
+              <div style={getFrostedPerlinNoiseOverlayStyle(styles.frostedGlass.frostedPerlinNoise)} aria-hidden />
+              <div style={getFrostedGrainOverlayStyle(styles.frostedGlass.grainOpacity)} aria-hidden />
+              <div style={getFrostedFineGrainOverlayStyle(styles.frostedGlass.grainOpacity)} aria-hidden />
+            </div>
+            <div style={getFrostedGlassTopEdgeHighlightStyle()} aria-hidden />
+            <div style={getFrostedGlassLeftEdgeHighlightStyle()} aria-hidden />
+          </div>
+        ) : null}
         {/* Name section - fixed single-line height */}
         <div
-          className={`flex items-center justify-center px-2 shrink-0 ${canEdit ? "cursor-text" : ""}`}
+          className={`relative z-[1] flex items-center justify-center px-2 shrink-0 ${canEdit ? "cursor-text" : ""}`}
           style={{ height: UML_NAME_HEIGHT, minHeight: UML_NAME_HEIGHT }}
           onDoubleClick={handleDoubleClick("name", displayName)}
         >
@@ -221,7 +303,7 @@ export function UmlClassShape({
 
         {/* Attributes section - height proportional to attribute count */}
         <div
-          className={`flex flex-col justify-start px-2 py-0.5 overflow-hidden shrink-0 ${canEdit ? "cursor-text" : ""}`}
+          className={`relative z-[1] flex flex-col justify-start px-2 py-0.5 overflow-hidden shrink-0 ${canEdit ? "cursor-text" : ""}`}
           style={{ height: displayAttributes.length * UML_LINE_HEIGHT, minHeight: displayAttributes.length * UML_LINE_HEIGHT }}
           onDoubleClick={handleDoubleClick("attributes", displayAttributes.join("\n"))}
         >
@@ -254,7 +336,7 @@ export function UmlClassShape({
 
         {/* Methods section - height proportional to method count */}
         <div
-          className={`flex flex-col justify-start px-2 py-0.5 overflow-hidden shrink-0 ${canEdit ? "cursor-text" : ""}`}
+          className={`relative z-[1] flex flex-col justify-start px-2 py-0.5 overflow-hidden shrink-0 ${canEdit ? "cursor-text" : ""}`}
           style={{ height: displayMethods.length * UML_LINE_HEIGHT, minHeight: displayMethods.length * UML_LINE_HEIGHT }}
           onDoubleClick={handleDoubleClick("methods", displayMethods.join("\n"))}
         >

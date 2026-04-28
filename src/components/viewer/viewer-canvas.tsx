@@ -384,6 +384,7 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
         )}
     <div
       ref={canvasRef}
+      id="canvas-container"
       className="relative w-full h-full overflow-hidden bg-background"
       style={{
         cursor: isDragging ? 'grabbing' : 'grab',
@@ -410,6 +411,7 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
         style={{
           width: `${width}px`,
           height: `${height}px`,
+          zIndex: 1,
           transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.k})`,
           transformOrigin: '0 0',
           cursor: 'grab',
@@ -438,6 +440,9 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
               connectionKey={connKey}
               isReadOnly
               connectionRenderRevision={connectionRenderRevision}
+              transform={transform}
+              viewportWidthPx={canvasDimensions.width}
+              viewportHeightPx={canvasDimensions.height}
             />
             {connectionSlots.sortedItemIds.map((itemId, i) => {
               const node = nodesById[itemId];
@@ -459,6 +464,8 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
                   animationStyle={nodeTransitionStyles.get(node.id)}
                   highlightAnimStaggerIndex={highlightAnimStagger.indexById.get(node.id)}
                   highlightAnimStaggerCount={highlightAnimStagger.count}
+                  transform={transform}
+                  canvasRef={canvasRef}
                 />
               ) : null;
               return nodeEl;
@@ -473,13 +480,15 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
               const zone = zonesById[itemId];
               const NODE_LAYER_BASE = 100;
               const isShape = node && isShapeNodeType(node.type);
+              const isTextboxNode = node && node.type === 'generic.text.textbox';
               const closedConnectorLoop =
                 node &&
                 isConnectorLineNodeType(node.type) &&
                 isConnectorLineGeometryClosed(node);
+              const useShapeStackTier =
+                isShape || isTextboxNode || closedConnectorLoop || Boolean(node?.stackWithShapes);
               const connZIndex = 2 * i;
-              const nodeZIndex =
-                isShape || closedConnectorLoop ? 2 * i + 1 : NODE_LAYER_BASE + 2 * i + 1;
+              const nodeZIndex = useShapeStackTier ? 2 * i + 1 : NODE_LAYER_BASE + 2 * i + 1;
               const nodeEl = node ? (
                 <DiagramNode
                   key={node.id}
@@ -490,16 +499,18 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
                   isReadOnly={true}
                   onHoverChange={handleNodeHover}
                   onClick={handleNodeClick}
-                    onSubDiagramDoubleClick={onSubDiagramDoubleClick ? handleSubDiagramDoubleClick : undefined}
-                    hasLinkedSubDiagram={getHasLinkedSubDiagram?.(node) ?? Boolean(node.subDiagramId)}
-                    showUrlHandleWhenReadOnly={openNodeLinksOnClick}
-                    animationStyle={nodeTransitionStyles.get(node.id)}
-                    highlightAnimStaggerIndex={highlightAnimStagger.indexById.get(node.id)}
-                    highlightAnimStaggerCount={highlightAnimStagger.count}
-                  />
+                  onSubDiagramDoubleClick={onSubDiagramDoubleClick ? handleSubDiagramDoubleClick : undefined}
+                  hasLinkedSubDiagram={getHasLinkedSubDiagram?.(node) ?? Boolean(node.subDiagramId)}
+                  showUrlHandleWhenReadOnly={openNodeLinksOnClick}
+                  animationStyle={nodeTransitionStyles.get(node.id)}
+                  highlightAnimStaggerIndex={highlightAnimStagger.indexById.get(node.id)}
+                  highlightAnimStaggerCount={highlightAnimStagger.count}
+                  transform={transform}
+                  canvasRef={canvasRef}
+                />
                 ) : null;
-              return [
-                connIndices ? (
+                return [
+                  connIndices ? (
                   <CanvasConnections
                     key={`conn-slot-${i}`}
                     width={width}
@@ -520,6 +531,9 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
                     connectionKey={connKey}
                     isReadOnly
                     connectionRenderRevision={connectionRenderRevision}
+                    transform={transform}
+                    viewportWidthPx={canvasDimensions.width}
+                    viewportHeightPx={canvasDimensions.height}
                   />
                 ) : null,
                 nodeEl,
@@ -550,6 +564,9 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
                   connectionKey={connKey}
                   isReadOnly
                   connectionRenderRevision={connectionRenderRevision}
+                  transform={transform}
+                  viewportWidthPx={canvasDimensions.width}
+                  viewportHeightPx={canvasDimensions.height}
                 />
               );
             })()}

@@ -12,7 +12,7 @@ import {
   MenubarSubTrigger,
   MenubarSubContent,
 } from '@/components/ui/menubar';
-import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type, Activity, ArrowDown } from 'lucide-react';
+import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks, ListOrdered, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type, Activity, ArrowDown } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
 import { ThemeEditor } from './theme-editor';
 import { RulesEditor } from './rules-editor';
@@ -253,6 +253,8 @@ interface TopMenuBarProps {
   onLineStylingPanelOpenChange?: (open: boolean) => void;
   onResetConnectionSettingsTrigger?: () => void;
   onAutoLayout?: () => void;
+  /** Stacking (z) order list — same as Layout → Stacking order list */
+  onOpenZOrderList?: () => void;
   onToggleScratchPad?: () => void;
   scratchPadOpen?: boolean;
   onToggleRulesEditor?: () => void;
@@ -260,8 +262,6 @@ interface TopMenuBarProps {
   rulesEditorOpen?: boolean;
   rules?: import('@/lib/rules-types').DiagramRule[];
   onRulesChange?: (rules: import('@/lib/rules-types').DiagramRule[]) => void;
-  presentationModeEnabled?: boolean;
-  onTogglePresentationMode?: () => void;
   simulationModeEnabled?: boolean;
   onToggleSimulationMode?: () => void;
   presentationHasLaterSlides?: boolean;
@@ -350,6 +350,7 @@ export function TopMenuBar({
   onLineStylingPanelOpenChange,
   onResetConnectionSettingsTrigger,
   onAutoLayout,
+  onOpenZOrderList,
   onToggleScratchPad,
   scratchPadOpen,
   onToggleRulesEditor,
@@ -357,8 +358,6 @@ export function TopMenuBar({
   rulesEditorOpen,
   rules = [],
   onRulesChange,
-  presentationModeEnabled = false,
-  onTogglePresentationMode,
   simulationModeEnabled = false,
   onToggleSimulationMode,
   presentationHasLaterSlides = false,
@@ -426,7 +425,6 @@ export function TopMenuBar({
     Boolean(onToggleLayersPanel) ||
     Boolean(onToggleScratchPad) ||
     Boolean(onToggleRulesEditor) ||
-    Boolean(onTogglePresentationMode) ||
     Boolean(onToggleSimulationMode);
 
   // Function to close connection settings panel
@@ -706,19 +704,9 @@ export function TopMenuBar({
                 </MenubarItem>
               </>
             )}
-            {onTogglePresentationMode && (
-              <>
-                {(onToggleJsonPanel || onTogglePropertiesPanel || onToggleLayersPanel || onToggleScratchPad || onToggleRulesEditor) && <MenubarSeparator />}
-                <MenubarItem onClick={onTogglePresentationMode}>
-                  <Layers className="mr-2 h-4 w-4" />
-                  {presentationModeEnabled ? 'Exit Presentation Mode' : 'Enter Presentation Mode'}
-                  <MenubarShortcut>{presentationModeEnabled ? 'Alt+P' : 'Ctrl+Alt+P'}</MenubarShortcut>
-                </MenubarItem>
-              </>
-            )}
             {onToggleSimulationMode && (
               <>
-                {(onToggleJsonPanel || onTogglePropertiesPanel || onToggleLayersPanel || onToggleScratchPad || onToggleRulesEditor || onTogglePresentationMode) && <MenubarSeparator />}
+                {(onToggleJsonPanel || onTogglePropertiesPanel || onToggleLayersPanel || onToggleScratchPad || onToggleRulesEditor) && <MenubarSeparator />}
                 <MenubarItem onClick={onToggleSimulationMode}>
                   <Activity className="mr-2 h-4 w-4" />
                   {simulationModeEnabled ? 'Exit Simulation Mode' : 'Enter Simulation Mode'}
@@ -935,6 +923,18 @@ export function TopMenuBar({
                 <MenubarShortcut>Ctrl+Shift+L</MenubarShortcut>
               </MenubarItem>
             )}
+            {onOpenZOrderList && (
+              <MenubarItem
+                onClick={() => {
+                  onOpenZOrderList();
+                  onConnectionAnimationPauseFromMenu?.();
+                }}
+                disabled={isReadOnly}
+              >
+                <ListOrdered className="mr-2 h-4 w-4" />
+                Stacking order list
+              </MenubarItem>
+            )}
             {onAlignObjects && (
               <>
                 <MenubarSeparator />
@@ -1051,6 +1051,21 @@ export function TopMenuBar({
           <Maximize2 className="h-4 w-4" />
         </Button>
       )}
+      {onOpenZOrderList && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 px-2"
+          onClick={() => {
+            onOpenZOrderList();
+            onConnectionAnimationPauseFromMenu?.();
+          }}
+          title="Stacking order (front to back)"
+          disabled={isReadOnly}
+        >
+          <ListOrdered className="h-4 w-4" />
+        </Button>
+      )}
       {onToggleAnimationConnections && (
         <Button
           variant="ghost"
@@ -1111,7 +1126,6 @@ export function TopMenuBar({
             onLineStylingPanelOpenChange={setLineStylingPanelOpen}
             onConnectionSettingsPanelOpenChange={setConnectionSettingsPanelOpen}
             isReadOnly={isReadOnly}
-            presentationModeEnabled={presentationModeEnabled}
             presentationHasLaterSlides={presentationHasLaterSlides}
             onPropagateAddToLaterSlides={onPropagateAddToLaterSlides}
             onPropagateDeleteToLaterSlides={onPropagateDeleteToLaterSlides}

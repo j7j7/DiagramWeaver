@@ -138,6 +138,414 @@ export const getTagPositionClasses = (position?: string) => {
   }
 };
 
+/** #rgb / #rrggbb / #rgba → rgba() for glass tint. Falls back to rgba(255,255,255,a). */
+export function hexToRgbaString(hex: string | undefined, alpha: number): string {
+  const a = Math.min(1, Math.max(0, alpha));
+  if (!hex || typeof hex !== 'string' || !hex.startsWith('#')) {
+    return `rgba(255, 255, 255, ${a})`;
+  }
+  const raw = hex.replace('#', '');
+  let r = 255;
+  let g = 255;
+  let b = 255;
+  if (raw.length === 3) {
+    r = parseInt(raw[0] + raw[0], 16);
+    g = parseInt(raw[1] + raw[1], 16);
+    b = parseInt(raw[2] + raw[2], 16);
+  } else if (raw.length >= 6) {
+    r = parseInt(raw.substring(0, 2), 16);
+    g = parseInt(raw.substring(2, 4), 16);
+    b = parseInt(raw.substring(4, 6), 16);
+  }
+  if (![r, g, b].every((n) => Number.isFinite(n))) {
+    return `rgba(255, 255, 255, ${a})`;
+  }
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+
+const DEFAULT_FROSTED_DIFFUSION = 0.45;
+const DEFAULT_FROSTED_TRANSPARENCY = 0.55; // 0 = opaque, 1 = more see-through
+
+function clamp01(n: number | undefined, fallback: number): number {
+  if (n === undefined || !Number.isFinite(n)) return fallback;
+  return Math.min(1, Math.max(0, n));
+}
+
+export type FrostedGlassParams = {
+  /** Backdrop blur radius in px */
+  blurPx: number;
+  /** CSS saturate() argument */
+  saturation: number;
+  /** Tint alpha applied on top of backdrop (0–1) */
+  tintAlpha: number;
+  /** Solid color string for the tint (rgba) */
+  tintRgba: string;
+  /** Glass fill over blur (glassmorphism-style translucent layer) */
+  fillRgba: string;
+  /** Compound box-shadow: outer depth + inset rim / highlights */
+  glassBoxShadow: string;
+  /** Grain / noise overlay opacity (0–1), scales with diffusion */
+  grainOpacity: number;
+  /** Perlin-style smooth noise 0=off, 10=max (independent of diffusion grain). */
+  frostedPerlinNoise: number;
+};
+
+function clampFrostedPerlin10(n: number | undefined): number {
+  if (n === undefined || !Number.isFinite(n)) return 0;
+  return Math.min(10, Math.max(0, n));
+}
+
+/** Tiled fractal noise for frosted-glass grain (SVG filter). */
+const FROST_GRAIN_DATA_URL = `url("data:image/svg+xml,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256">' +
+    '<filter id="g" x="-15%" y="-15%" width="130%" height="130%">' +
+    '<feTurbulence type="fractalNoise" baseFrequency="0.72" numOctaves="4" seed="7" stitchTiles="stitch"/>' +
+    '</filter>' +
+    '<rect width="100%" height="100%" filter="url(#g)"/>' +
+    '</svg>'
+)}")`;
+
+/** Finer speckle (higher frequency) layered with {@link FROST_GRAIN_DATA_URL}. */
+const FROST_GRAIN_FINE_DATA_URL = `url("data:image/svg+xml,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128">' +
+    '<filter id="f" x="-20%" y="-20%" width="140%" height="140%">' +
+    '<feTurbulence type="fractalNoise" baseFrequency="1.15" numOctaves="3" seed="23" stitchTiles="stitch"/>' +
+    '</filter>' +
+    '<rect width="100%" height="100%" filter="url(#f)"/>' +
+    '</svg>'
+)}")`;
+
+/** Must match `background-size` 1:1 (no extra scaling) so `repeat` does not re-interpolate tile edges. */
+const FROST_PERLIN_TILE_PX = 256;
+
+/**
+ * Billowy Perlin-style texture (`fractalNoise` + `stitchTiles="stitch"`).
+ * Filter region = tile bounds; `userSpaceOnUse` + `primitiveUnits="userSpaceOnUse"` so edge stitching
+ * lines up with the repeated bitmap (oversized filter regions and arbitrary `background-size` caused seams).
+ */
+const FROST_PERLIN_DATA_URL = `url("data:image/svg+xml,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">' +
+    '<filter id="fp" x="0" y="0" width="256" height="256" filterUnits="userSpaceOnUse" primitiveUnits="userSpaceOnUse">' +
+    '<feTurbulence type="fractalNoise" baseFrequency="0.024 0.032" numOctaves="4" seed="59" stitchTiles="stitch" result="turb"/>' +
+    '<feColorMatrix in="turb" type="matrix" result="luma" values="0.2126 0.7152 0.0722 0 0 0.2126 0.7152 0.0722 0 0 0.2126 0.7152 0.0722 0 0 0 0 0 1 0"/>' +
+    '</filter>' +
+    '<rect x="0" y="0" width="256" height="256" filter="url(#fp)"/>' +
+    '</svg>'
+)}")`;
+
+/**
+ * `frostedTransparency`: 0 = least see-through, 1 = most see-through (clearer view of content below).
+ * `frostedDiffusion`: 0 = sharp, 1 = strong blur.
+ * `frostedPerlinNoise`: 0–10, smooth Perlin-style overlay (independent of diffusion speckle).
+ */
+export function getFrostedGlassParams(
+  baseColor: string | undefined,
+  frostedDiffusion: number | undefined,
+  frostedTransparency: number | undefined,
+  options?: { forInlineStacking?: boolean; frostedPerlinNoise?: number }
+): FrostedGlassParams {
+  const d = clamp01(frostedDiffusion, DEFAULT_FROSTED_DIFFUSION);
+  const t = clamp01(frostedTransparency, DEFAULT_FROSTED_TRANSPARENCY);
+  // Blur: steeper power curve — very low diffusion ≈ almost sharp; high end still ~48px.
+  const blurPx = d < 0.02 ? 0 : 0.35 + Math.pow(d, 1.88) * 47.2;
+  // Saturation lift ramps up mostly in the upper half of the slider
+  const saturation = 1.005 + d * 0.18 + d * d * 0.42;
+  // Tint wash (slightly stronger when “less transparent”)
+  const tintAlpha = 0.04 + (1 - t) * 0.52;
+  // Glass fill: low diffusion = much less wash over content
+  let fillAlpha = (0.052 + (1 - t) * 0.19) * (0.18 + 0.82 * d);
+  let grainOpacity = d < 0.02 ? 0 : 0.012 + Math.pow(d, 1.48) * 0.32;
+  /** Lighter wash + grain so real `backdrop-filter` is visible under pan/zoom (portal keeps full strength). */
+  if (options?.forInlineStacking) {
+    fillAlpha *= 0.68;
+    grainOpacity *= 0.52;
+  }
+  const dDepth = 0.35 + 0.65 * d;
+  const depth = (0.035 + d * 0.1) * dDepth;
+  const rim = (0.11 + (1 - t) * 0.16) * (0.4 + 0.6 * d);
+  const hi = (0.2 + (1 - t) * 0.32) * (0.45 + 0.55 * d);
+  const lo = (0.05 + (1 - t) * 0.09) * (0.45 + 0.55 * d);
+  const y = (3 + d * 9) * dDepth;
+  const blur = (16 + d * 26) * dDepth;
+  const spread = (0.45 + d * 1.35) * (0.5 + 0.5 * d);
+  const glassBoxShadow = [
+    `0 ${y}px ${blur}px rgba(0, 0, 0, ${depth})`,
+    `inset 0 1px 0 rgba(255, 255, 255, ${hi})`,
+    `inset 0 -1px 0 rgba(255, 255, 255, ${lo})`,
+    `inset 0 0 0 ${spread}px rgba(255, 255, 255, ${rim})`,
+  ].join(", ");
+  return {
+    blurPx,
+    saturation,
+    tintAlpha,
+    tintRgba: hexToRgbaString(baseColor, tintAlpha),
+    fillRgba: hexToRgbaString(baseColor, fillAlpha),
+    glassBoxShadow,
+    grainOpacity,
+    frostedPerlinNoise: clampFrostedPerlin10(options?.frostedPerlinNoise),
+  };
+}
+
+function frostBackdropFilterValue(p: FrostedGlassParams): string {
+  const blurPx = p.blurPx < 0.02 ? 0 : p.blurPx;
+  return `blur(${blurPx}px) saturate(${p.saturation})`;
+}
+
+/** Force new backdrop layers when diffusion/tint changes — Chromium often ignores `blur()` updates on the same element. */
+export function getFrostedInlineBackdropReactKey(
+  p: FrostedGlassParams,
+  frostedGlassClipPath?: string
+): string {
+  return `${p.blurPx}|${p.saturation}|${p.fillRgba}|${p.tintRgba}|${frostedGlassClipPath ?? ""}`;
+}
+
+/**
+ * `clip-path` on inline frosted **backdrop** / **tint** layers so blur + wash match the shape.
+ * Do **not** put these clips on a common ancestor of `backdrop-filter` (breaks blur in Chromium)
+ * — use {@link getFrostedShouldClipFrostedStackRoot} = false; clip each layer only.
+ * Supports: `inset(…)`, `polygon(…)`, `circle(…)`, `ellipse(…)`.
+ */
+export function getFrostedBackdropLayerClipStyle(
+  frostedGlassClipPath: string | undefined
+): Pick<CSSProperties, "clipPath" | "WebkitClipPath"> | undefined {
+  if (!frostedGlassClipPath) return undefined;
+  const s = frostedGlassClipPath.trimStart().toLowerCase();
+  if (
+    s.startsWith("inset(") ||
+    s.startsWith("polygon(") ||
+    s.startsWith("circle(") ||
+    s.startsWith("ellipse(")
+  ) {
+    return { clipPath: frostedGlassClipPath, WebkitClipPath: frostedGlassClipPath };
+  }
+  return undefined;
+}
+
+/** @deprecated Use {@link getFrostedBackdropLayerClipStyle} */
+export const getFrostedInsetClipStyleForBackdropLayers = getFrostedBackdropLayerClipStyle;
+
+/**
+ * Stronger blur + micro contrast/brightness for **inline** glass (layer-order mode).
+ * For shaped clips, merge {@link getFrostedBackdropLayerClipStyle} so corners/edges match.
+ */
+export function getFrostedGlassInlineBackdropPrimaryStyle(p: FrostedGlassParams): CSSProperties {
+  const raw = p.blurPx < 0.02 ? 0 : 1.55 + p.blurPx * 1.38;
+  const blurPx = Math.min(92, raw);
+  const sat = Math.min(1.92, p.saturation * 1.14);
+  const f =
+    raw < 0.02
+      ? "none"
+      : `blur(${blurPx}px) saturate(${sat}) contrast(1.04) brightness(1.02)`;
+  return {
+    position: "absolute",
+    inset: 0,
+    borderRadius: "inherit",
+    pointerEvents: "none",
+    zIndex: 1,
+    backgroundColor: p.fillRgba,
+    backdropFilter: f,
+    WebkitBackdropFilter: f,
+  };
+}
+
+/** Primary blur (px) for PNG underlay — matches {@link getFrostedGlassInlineBackdropPrimaryStyle}. */
+export function getFrostedGlassExportRasterBackdropBlurPx(p: FrostedGlassParams): number {
+  const raw = p.blurPx < 0.02 ? 0 : 1.55 + p.blurPx * 1.38;
+  return Math.min(92, raw);
+}
+
+/** Saturate factor for PNG underlay canvas filter — matches primary inline backdrop. */
+export function getFrostedGlassExportRasterBackdropSaturate(p: FrostedGlassParams): number {
+  return Math.min(1.92, p.saturation * 1.14);
+}
+
+/**
+ * Effective blur for export raster (primary + softened second pass when present).
+ * Matches on-canvas stacked backdrop passes closely enough for PNG.
+ */
+export function getFrostedGlassExportRasterStackBlurPx(p: FrostedGlassParams): number {
+  const primary = getFrostedGlassExportRasterBackdropBlurPx(p);
+  if (p.blurPx < 0.18) return primary;
+  const second = Math.min(32, 3.2 + p.blurPx * 0.36);
+  return primary + second * 0.38;
+}
+
+/** Second compositing pass: softer blur so stacked backdrops read “thicker” frosted glass. */
+export function getFrostedGlassInlineBackdropSecondPassStyle(p: FrostedGlassParams): CSSProperties | undefined {
+  if (p.blurPx < 0.18) return undefined;
+  const blurPx = Math.min(32, 3.2 + p.blurPx * 0.36);
+  return {
+    position: "absolute",
+    inset: 0,
+    borderRadius: "inherit",
+    pointerEvents: "none",
+    zIndex: 1,
+    backgroundColor: "rgba(255, 255, 255, 0.035)",
+    backdropFilter: `blur(${blurPx}px) saturate(1.08)`,
+    WebkitBackdropFilter: `blur(${blurPx}px) saturate(1.08)`,
+  };
+}
+
+function frostedRgbaComponents(rgba: string): { r: number; g: number; b: number; a: number } | null {
+  const m = rgba.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\)/);
+  if (!m) return null;
+  return { r: +m[1], g: +m[2], b: +m[3], a: m[4] !== undefined ? parseFloat(m[4]) : 1 };
+}
+
+/**
+ * html-to-image rasterizes via SVG `foreignObject`, where `backdrop-filter` does not composite.
+ * Use this as `data-frosted-export-fallback-bg` so PNG export keeps a milky glass read.
+ */
+export function getFrostedGlassExportBackdropPrimaryFallbackColor(p: FrostedGlassParams): string {
+  const fill = frostedRgbaComponents(p.fillRgba);
+  const tint = frostedRgbaComponents(p.tintRgba);
+  const fillA = fill?.a ?? 0;
+  const tintA = tint?.a ?? 0;
+  const blurBoost = p.blurPx < 0.02 ? 0 : Math.min(0.4, 0.07 + (p.blurPx / 92) * 0.33);
+  const outA = Math.min(0.9, fillA + tintA * 0.52 + blurBoost);
+  const tr = tint?.r ?? 255;
+  const tg = tint?.g ?? 255;
+  const tb = tint?.b ?? 255;
+  const fr = fill?.r ?? tr;
+  const fg = fill?.g ?? tg;
+  const fb = fill?.b ?? tb;
+  const w = Math.min(1, tintA * 2 + 0.35);
+  const r = Math.round(fr * (1 - w) + tr * w);
+  const g = Math.round(fg * (1 - w) + tg * w);
+  const b = Math.round(fb * (1 - w) + tb * w);
+  return `rgba(${r}, ${g}, ${b}, ${outA})`;
+}
+
+/** Second frosted backdrop pass: visible wash when export strips `backdrop-filter`. */
+export function getFrostedGlassExportBackdropSecondFallbackColor(p: FrostedGlassParams): string {
+  if (p.blurPx < 0.18) return "rgba(255, 255, 255, 0)";
+  const a = Math.min(0.18, 0.04 + (p.blurPx / 48) * 0.14);
+  return `rgba(255, 255, 255, ${a})`;
+}
+
+/** Inset/outer shadows only — keep off the element that runs `backdrop-filter` (Chromium often drops blur when combined). */
+export function getFrostedGlassDropShadowLayerStyle(p: FrostedGlassParams): CSSProperties {
+  return {
+    position: "absolute",
+    inset: 0,
+    borderRadius: "inherit",
+    pointerEvents: "none",
+    zIndex: 0,
+    boxShadow: p.glassBoxShadow,
+  };
+}
+
+/** Colour wash from **background / tint** (`tintRgba`) — stacked above blur passes, under grain. */
+export function getFrostedGlassTintLayerStyle(p: FrostedGlassParams): CSSProperties {
+  return {
+    position: "absolute",
+    inset: 0,
+    borderRadius: "inherit",
+    pointerEvents: "none",
+    zIndex: 1,
+    backgroundColor: p.tintRgba,
+  };
+}
+
+/** Top edge highlight (Hype4 glass ::before analogue). */
+export function getFrostedGlassTopEdgeHighlightStyle(): CSSProperties {
+  return {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 1,
+    pointerEvents: "none",
+    zIndex: 3,
+    background:
+      "linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.82) 50%, transparent 100%)",
+    opacity: 0.9,
+  };
+}
+
+/** Left edge highlight (Hype4 glass ::after analogue). */
+export function getFrostedGlassLeftEdgeHighlightStyle(): CSSProperties {
+  return {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: 1,
+    pointerEvents: "none",
+    zIndex: 3,
+    background:
+      "linear-gradient(180deg, rgba(255, 255, 255, 0.78) 0%, transparent 45%, rgba(255, 255, 255, 0.28) 100%)",
+    opacity: 0.85,
+  };
+}
+
+/** Speckled grain on top of the blurred layer (realistic diffusion). */
+export function getFrostedGrainOverlayStyle(grainOpacity: number): CSSProperties {
+  if (!Number.isFinite(grainOpacity) || grainOpacity < 0.02) {
+    return { display: "none" };
+  }
+  return {
+    position: "absolute",
+    inset: 0,
+    borderRadius: "inherit",
+    pointerEvents: "none",
+    zIndex: 1,
+    opacity: Math.min(1, grainOpacity),
+    backgroundImage: FROST_GRAIN_DATA_URL,
+    backgroundRepeat: "repeat",
+    backgroundSize: "96px 96px",
+    mixBlendMode: "overlay",
+  };
+}
+
+/** Extra high-frequency speckle (same diffusion slider as coarse grain). */
+export function getFrostedFineGrainOverlayStyle(grainOpacity: number): CSSProperties {
+  if (!Number.isFinite(grainOpacity) || grainOpacity < 0.02) {
+    return { display: "none" };
+  }
+  const o = Math.min(1, grainOpacity * 0.88);
+  return {
+    position: "absolute",
+    inset: 0,
+    borderRadius: "inherit",
+    pointerEvents: "none",
+    zIndex: 1,
+    opacity: o,
+    backgroundImage: FROST_GRAIN_FINE_DATA_URL,
+    backgroundRepeat: "repeat",
+    backgroundSize: "48px 48px",
+    mixBlendMode: "soft-light",
+  };
+}
+
+/**
+ * Smooth Perlin-style (`fractalNoise` → sRGB luma on **R,G,B** via `feColorMatrix`) texture; 0 = off, 10 = strong.
+ * **`luminosity`**: backdrop provides hue/sat; the tile is strictly luminance (no chroma from `feTurbulence`).
+ * Render before speckle grain.
+ */
+export function getFrostedPerlinNoiseOverlayStyle(level0to10: number): CSSProperties {
+  const n = clampFrostedPerlin10(level0to10);
+  if (n < 0.04) {
+    return { display: "none" };
+  }
+  const t = n / 10;
+  const px = FROST_PERLIN_TILE_PX;
+  return {
+    position: "absolute",
+    inset: 0,
+    borderRadius: "inherit",
+    pointerEvents: "none",
+    zIndex: 0,
+    opacity: Math.min(0.52, 0.05 + t * 0.47),
+    backgroundImage: FROST_PERLIN_DATA_URL,
+    backgroundRepeat: "repeat",
+    /** Pixel-perfect repeat: size must match {@link FROST_PERLIN_TILE_PX} / intrinsic SVG (see {@link FROST_PERLIN_DATA_URL}). */
+    backgroundSize: `${px}px ${px}px`,
+    backgroundPosition: "0 0",
+    mixBlendMode: "luminosity",
+  };
+}
+
 // Get shape styling properties from node
 export const getShapeStyles = (node: DiagramNodeData & { width?: number; height?: number }) => {
   const nodeAny = node as any;
@@ -153,12 +561,27 @@ export const getShapeStyles = (node: DiagramNodeData & { width?: number; height?
   const shadow = nodeAny.shadow || false;
   const roundedEdges = nodeAny.roundedEdges || false;
 
+  const isFrosted = backgroundStyle === 'frosted';
+  const frostedGlass = isFrosted
+    ? getFrostedGlassParams(
+        backgroundColor,
+        nodeAny.frostedDiffusion as number | undefined,
+        nodeAny.frostedTransparency as number | undefined,
+        {
+          forInlineStacking: true,
+          frostedPerlinNoise: nodeAny.frostedPerlinNoise as number | undefined,
+        }
+      )
+    : null;
+
   return {
-    background: backgroundStyle === 'gradient'
-      ? getGradientWithAngle(backgroundColors, gradientAngle)
-      : backgroundStyle === 'none'
-        ? 'transparent'
-        : backgroundColor,
+    background: isFrosted
+      ? 'transparent'
+      : backgroundStyle === 'gradient'
+        ? getGradientWithAngle(backgroundColors, gradientAngle)
+        : backgroundStyle === 'none'
+          ? 'transparent'
+          : backgroundColor,
     borderWidth: borderStyle === 'none' ? '0' : `${borderWidth}px`,
     borderStyle: borderStyle === 'gradient' ? 'solid' : borderStyle,
     borderColor: borderStyle === 'gradient' ? 'transparent' : borderColor,
@@ -167,11 +590,14 @@ export const getShapeStyles = (node: DiagramNodeData & { width?: number; height?
     shadow,
     roundedEdges,
     backgroundColor:
-      backgroundStyle === 'gradient'
-        ? backgroundColors[0]
-        : backgroundStyle === 'none'
-          ? 'transparent'
-          : backgroundColor,
+      isFrosted
+        ? 'transparent'
+        : backgroundStyle === 'gradient'
+          ? backgroundColors[0]
+          : backgroundStyle === 'none'
+            ? 'transparent'
+            : backgroundColor,
+    frostedGlass,
   };
 };
 
@@ -182,6 +608,7 @@ export function getShapeSvgFill(
   solidColor: string | undefined,
   solidFallback = '#6b7280'
 ): string {
+  if (backgroundStyle === 'frosted') return 'transparent';
   if (backgroundStyle === 'gradient') return gradientFillRef;
   if (backgroundStyle === 'none') return 'transparent';
   return solidColor || solidFallback;
@@ -196,6 +623,80 @@ export const parsePoints = (points: string): [number, number][] => {
     return [x, y];
   });
 };
+
+/** Parse SVG `viewBox="minX minY width height"`. */
+export function parseViewBoxString(viewBox: string): { vbX: number; vbY: number; vbW: number; vbH: number } {
+  const p = viewBox
+    .trim()
+    .split(/[\s,]+/)
+    .map((s) => parseFloat(s));
+  return {
+    vbX: p[0] ?? 0,
+    vbY: p[1] ?? 0,
+    vbW: p[2] ?? 0,
+    vbH: p[3] ?? 0,
+  };
+}
+
+/**
+ * CSS `clip-path: polygon(...)` as % of the shape box, from SVG `transformedPoints` in viewBox space.
+ * Matches `preserveAspectRatio="none"` SVG layout (fills width×height).
+ */
+export function getFrostedPolygonClipPathCss(transformedPoints: string, viewBox: string): string | undefined {
+  const { vbX, vbY, vbW, vbH } = parseViewBoxString(viewBox);
+  if (vbW <= 0 || vbH <= 0) return undefined;
+  const coords = parsePoints(transformedPoints);
+  if (coords.length < 3) return undefined;
+  const pairs = coords.map(([x, y]) => {
+    const pctX = ((x - vbX) / vbW) * 100;
+    const pctY = ((y - vbY) / vbH) * 100;
+    return `${pctX}% ${pctY}%`;
+  });
+  return `polygon(${pairs.join(", ")})`;
+}
+
+/** Use with SvgShapeBase polygon shapes (`preserveAspectRatio` default `none`). */
+export function frostedPolygonClipForSvgPolygon(
+  backgroundStyle: string | undefined,
+  transformedPoints: string,
+  viewBox: string
+): string | undefined {
+  if (backgroundStyle !== "frosted") return undefined;
+  return getFrostedPolygonClipPathCss(transformedPoints, viewBox);
+}
+
+/**
+ * CSS `clip-path: circle(… at …)` (or `ellipse(…)` when `preserveAspectRatio` is `none`) so
+ * frosted inline layers match a transparent SVG circle fill.
+ */
+export function getFrostedCircleClipPathCss(
+  viewBox: string,
+  c: { cx: number; cy: number; r: number },
+  width: number,
+  height: number,
+  preserveAspectRatio: string | undefined
+): string | undefined {
+  const { vbX, vbY, vbW, vbH } = parseViewBoxString(viewBox);
+  if (vbW <= 0 || vbH <= 0 || width <= 0 || height <= 0) return undefined;
+  if (!(c.r > 0) || !Number.isFinite(c.r)) return undefined;
+  const ar = (preserveAspectRatio ?? "xMidYMid meet").trim().toLowerCase();
+  if (ar === "none") {
+    const scaleX = width / vbW;
+    const scaleY = height / vbH;
+    const cxPx = (c.cx - vbX) * scaleX;
+    const cyPx = (c.cy - vbY) * scaleY;
+    const rxPx = c.r * scaleX;
+    const ryPx = c.r * scaleY;
+    return `ellipse(${rxPx}px ${ryPx}px at ${cxPx}px ${cyPx}px)`;
+  }
+  const s = Math.min(width / vbW, height / vbH);
+  const tx = (width - vbW * s) / 2;
+  const ty = (height - vbH * s) / 2;
+  const cxPx = tx + (c.cx - vbX) * s;
+  const cyPx = ty + (c.cy - vbY) * s;
+  const rPx = c.r * s;
+  return `circle(${rPx}px at ${cxPx}px ${cyPx}px)`;
+}
 
 /**
  * Compute viewBox and transformed points so the shape fills its container.

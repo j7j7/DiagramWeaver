@@ -22,7 +22,8 @@ export interface ViewerPresentationBarProps {
   totalSlides: number;
   onPrevious: () => void;
   onNext: () => void;
-  onExit: () => void;
+  /** When omitted, the exit control is hidden (slides are always available). */
+  onExit?: () => void;
   onFullscreen: () => void;
   className?: string;
 }
@@ -86,9 +87,11 @@ export function ViewerPresentationBar({
           <Maximize2 className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">Fullscreen</span>
         </Button>
-        <Button size="sm" variant="outline" className="h-8 px-2" onClick={onExit} title="Exit presentation view">
-          <X className="h-4 w-4" />
-        </Button>
+        {onExit ? (
+          <Button size="sm" variant="outline" className="h-8 px-2" onClick={onExit} title="Exit presentation view">
+            <X className="h-4 w-4" />
+          </Button>
+        ) : null}
       </div>
     </div>
   );
