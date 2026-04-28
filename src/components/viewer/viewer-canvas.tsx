@@ -11,7 +11,7 @@ import { CanvasConnectionText } from "../editor/canvas-connection-text";
 import { type PositionedNode, type PositionedGroup } from "../editor/canvas-constants";
 import { CanvasRulers } from "../editor/canvas-rulers";
 import { computeConnectionSlots } from "@/lib/connection-order-utils";
-import { isConnectorLineNodeType, isShapeNodeType } from "@/lib/utils";
+import { cn, isConnectorLineNodeType, isShapeNodeType } from "@/lib/utils";
 import { isConnectorLineGeometryClosed } from "@/lib/line-curve-path";
 import { buildHighlightAnimStaggerOrder } from "@/lib/highlight-anim";
 import { getDownstreamAnimationChainNodes } from "@/lib/connection-animation";
@@ -85,9 +85,11 @@ interface ViewerCanvasProps {
   skipInitialFitToView?: boolean;
   /** Bump when the logical diagram revision changes (e.g. presentation slide index) so connections remount cleanly. */
   connectionRenderRevision?: string | number;
+  /** When false, canvas background has no dot grid (e.g. presentation play mode). Default true. */
+  showDotGrid?: boolean;
 }
 
-export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, transform: externalTransform, onTransformChange, selectedItemId, selectedItem, onItemSelect, metadataPopupsEnabled = true, animationConnectionsEnabled = true, connectionsBehindNodesEnabled: connectionsBehindNodesProp, showAnimationsForSelectedOnly = false, animationFilterSourceIds, animationToggleOnClickEnabled = false, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, openNodeLinksOnClick = false, nodeTransitionStyles = new Map(), connectionTransitionStyles = new Map(), onSubDiagramDoubleClick, getHasLinkedSubDiagram, skipInitialFitToView = false, connectionRenderRevision }: ViewerCanvasProps) {
+export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, transform: externalTransform, onTransformChange, selectedItemId, selectedItem, onItemSelect, metadataPopupsEnabled = true, animationConnectionsEnabled = true, connectionsBehindNodesEnabled: connectionsBehindNodesProp, showAnimationsForSelectedOnly = false, animationFilterSourceIds, animationToggleOnClickEnabled = false, animationDisabledSources = new Set(), onAnimationDisabledSourcesChange, openNodeLinksOnClick = false, nodeTransitionStyles = new Map(), connectionTransitionStyles = new Map(), onSubDiagramDoubleClick, getHasLinkedSubDiagram, skipInitialFitToView = false, connectionRenderRevision, showDotGrid = true }: ViewerCanvasProps) {
   const [connectionsBehindNodesEnabled, setConnectionsBehindNodesEnabled] = useState(true);
   useEffect(() => {
     if (connectionsBehindNodesProp !== undefined) {
@@ -406,7 +408,7 @@ export function ViewerCanvas({ diagramData, showRulers = false, onFitToView, tra
         {/* Canvas content */}
       <div
         data-diagram-layer
-        className="absolute dot-grid"
+        className={cn("absolute", showDotGrid && "dot-grid")}
         data-viewer-background
         style={{
           width: `${width}px`,

@@ -330,6 +330,7 @@ export function PresentationPlayer({
                   <ViewerCanvas
                     diagramData={slideTransition.animatingDiagramData || renderedDiagram}
                     showRulers={false}
+                    showDotGrid={false}
                     transform={playbackTransform}
                     onTransformChange={setPlaybackTransform}
                     onFitToView={() => {}}

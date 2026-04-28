@@ -638,6 +638,7 @@ function ViewerPageContent() {
                   ? `${slidePresentationView.safeIndex}-${slidePresentationView.currentSlide?.id ?? ""}`
                   : undefined
               }
+              showDotGrid={!presentationPlayerOpen}
             />
             {slideCanvasActive && activeViewerPresentationDeck && (
                 <ViewerPresentationBar

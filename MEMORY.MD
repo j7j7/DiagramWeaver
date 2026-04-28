@@ -1,5 +1,11 @@
 # MEMORY.MD
 
+### 2026-04-28 – Presentation strip: thumbnails show index only (no slide name)
+**`presentation-editor-panel`** **`PrimarySlideStripItem`**: removed the **`slide.title` / `'Diagram'`** label under slide **#1** so the first thumbnail matches **#2** / **#3** (**`#n`** only). Patch bumped.
+
+### 2026-04-28 – Play mode: hide canvas dot grid
+**`ViewerCanvas`** / **`EditorCanvas`**: optional **`showDotGrid`** (default **true**) gates the **`dot-grid`** CSS background on the diagram layer. **`presentation-player`** passes **`showDotGrid={false}`**; **`diagram-editor-inner`** passes **`showDotGrid={!presentationPlayerOpen}`**; **`viewer/page`** passes **`showDotGrid={!presentationPlayerOpen}`** for fullscreen playback. Patch bumped.
+
 ### 2026-04-28 – Presentation snapshot strip: no undocked mode
 **`presentation-editor-panel`**: removed **floating/undocked** snapshot pane (`snapshotsFloating`, drag chrome, localStorage position). Strip stays **fixed** under the tab bar. **`diagram-editor-inner`** persistence drops deprecated **`snapshotsFloating`**, **`snapshotsPosition`**, **`toolbarFloating`**, **`toolbarPosition`** keys on save. Patch bumped.
 

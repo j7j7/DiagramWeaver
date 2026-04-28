@@ -63,7 +63,6 @@ function PrimarySlideStripItem({ slide, active, onSelect, onMoveSlide }: Primary
       </div>
       <div className="flex shrink-0 items-center gap-1.5 pt-0.5 text-left">
         <span className="text-[11px] font-medium text-foreground">#1</span>
-        <span className="truncate text-[10px] text-muted-foreground">{slide.title || 'Diagram'}</span>
       </div>
     </div>
   );

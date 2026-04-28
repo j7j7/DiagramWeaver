@@ -739,6 +739,7 @@ export function DiagramEditorInner({
                     simulationModeEnabled={simulationModeEnabled}
                     onOpenZOrderList={openZOrderList}
                     wheelZoomSuppressed={zOrderListModal.open}
+                    showDotGrid={!presentationPlayerOpen}
                     />
                   </div>
 
