@@ -419,8 +419,12 @@ export type EditorCanvasHandle = {
     quality?: 'low' | 'medium' | 'high';
     /** Fit diagram content in the bitmap only (html-to-image clone); does not change the canvas view. */
     fitContent?: boolean;
-    /** With fitContent: union bounds across these diagrams (e.g. all deck slides), same as viewer presentation. */
+    /** With fitContent: bounds for fit (one slide for thumbnails, multiple for deck-consistent framing — see `use-canvas-export`). */
     unionDiagrams?: DiagramData[];
+    fitPadding?: number;
+    /** With fitContent: output canvas sized to content (+ margin) instead of full viewport dimensions. */
+    tightContentFrame?: boolean;
+    frameBorderPx?: number;
   }) => Promise<string>;
   copy: () => void;
   paste: () => void;
@@ -2212,6 +2216,9 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       quality?: 'low' | 'medium' | 'high';
       fitContent?: boolean;
       unionDiagrams?: DiagramData[];
+      fitPadding?: number;
+      tightContentFrame?: boolean;
+      frameBorderPx?: number;
     }) => captureViewportPngDataUrl(options),
     copy: copyHandler, // Copies selected item(s)
     paste: pasteHandler, // Pastes from clipboard

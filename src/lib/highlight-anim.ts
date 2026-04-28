@@ -5,9 +5,63 @@ import { isConnectorLineNodeType } from '@/lib/utils';
 export const HIGHLIGHT_ANIM_DEFAULT_DURATION_SEC = 1;
 export const HIGHLIGHT_ANIM_DEFAULT_INTERVAL_SEC = 5;
 export const HIGHLIGHT_ANIM_DEFAULT_GLOW_COLOR = 'rgba(59, 130, 246, 0.85)';
+/** Default spread = full legacy halo peak. Stored 0–1 maps blur radii (spatial size), not RGBA opacity. */
+export const HIGHLIGHT_ANIM_DEFAULT_GLOW_INTENSITY = 1;
 
 /** `box`: box-shadow + drop-shadow on the node frame. `alpha`: drop-shadow only, for pulses that follow SVG/canvas silhouettes (circle, triangle, …). */
 export type HighlightAnimSilhouetteMode = 'box' | 'alpha';
+
+export function clampHighlightGlowIntensity(raw: number | undefined): number {
+  if (raw === undefined || !Number.isFinite(raw)) return HIGHLIGHT_ANIM_DEFAULT_GLOW_INTENSITY;
+  return Math.min(1, Math.max(0, raw));
+}
+
+/** Spatial map: spread 0=tight halo, 1=legacy peak blur radii (px). Distinct from colour-picker alpha. */
+const GLOW_DROP_BLUR_MIN = 2;
+const GLOW_DROP_BLUR_MAX = 16;
+const GLOW_BOX_BLUR_OUTER_MIN = 4;
+const GLOW_BOX_SPR_OUTER_MIN = 1;
+const GLOW_BOX_BLUR_OUTER_MAX = 28;
+const GLOW_BOX_SPR_OUTER_MAX = 8;
+const GLOW_BOX_BLUR_INNER_MIN = 2;
+const GLOW_BOX_SPR_INNER_MIN = 0.35;
+const GLOW_BOX_BLUR_INNER_MAX = 14;
+const GLOW_BOX_SPR_INNER_MAX = 2;
+
+function lerpGlowPx(minPx: number, maxPx: number, spread01: number): number {
+  const u = clampHighlightGlowIntensity(spread01);
+  return minPx + u * (maxPx - minPx);
+}
+
+function pxStr(n: number): string {
+  return `${Math.round(n * 100) / 100}px`;
+}
+
+/**
+ * Approximate halo size for UI labels (blur radius order-of-magnitude), same mapping as rendering.
+ */
+export function highlightGlowApproxHaloPx(spreadRaw: number | undefined): number {
+  const t = clampHighlightGlowIntensity(spreadRaw);
+  return Math.round(lerpGlowPx(GLOW_DROP_BLUR_MIN, GLOW_DROP_BLUR_MAX + 8, t));
+}
+
+function buildGlowPeakCss(
+  safeColor: string,
+  silhouetteMode: HighlightAnimSilhouetteMode,
+  spread01: number
+): { peakFilter: string; peakShadow: string } {
+  const dropBlur = lerpGlowPx(GLOW_DROP_BLUR_MIN, GLOW_DROP_BLUR_MAX, spread01);
+  const peakFilter = `drop-shadow(0 0 ${pxStr(dropBlur)} ${safeColor})`;
+  if (silhouetteMode === 'alpha') {
+    return { peakFilter, peakShadow: '' };
+  }
+  const b1 = lerpGlowPx(GLOW_BOX_BLUR_OUTER_MIN, GLOW_BOX_BLUR_OUTER_MAX, spread01);
+  const s1 = lerpGlowPx(GLOW_BOX_SPR_OUTER_MIN, GLOW_BOX_SPR_OUTER_MAX, spread01);
+  const b2 = lerpGlowPx(GLOW_BOX_BLUR_INNER_MIN, GLOW_BOX_BLUR_INNER_MAX, spread01);
+  const s2 = lerpGlowPx(GLOW_BOX_SPR_INNER_MIN, GLOW_BOX_SPR_INNER_MAX, spread01);
+  const peakShadow = `0 0 ${pxStr(b1)} ${pxStr(s1)} ${safeColor}, 0 0 ${pxStr(b2)} ${pxStr(s2)} ${safeColor}`;
+  return { peakFilter, peakShadow };
+}
 
 const injectedAnimationNames = new Map<string, string>();
 
@@ -51,6 +105,7 @@ export function buildHighlightAnimStaggerOrder(
   const entries: { id: string; x: number; y: number }[] = [];
   for (const [id, n] of Object.entries(nodesById)) {
     if (!n.highlightAnim) continue;
+    if (n.highlightAnimMode === 'constant') continue;
     if (isConnectorLineNodeType(n.type)) continue;
     entries.push({ id, x: n.x ?? 0, y: n.y ?? 0 });
   }
@@ -79,18 +134,41 @@ function cssColorForKeyframes(color: string): string {
 }
 
 /**
- * Registers @keyframes once per (duration, interval, color) and returns the animation name.
+ * Static glow matching the midpoint of highlight keyframes (`constant` mode).
+ */
+function getHighlightConstantGlowStyle(
+  color: string,
+  silhouetteMode: HighlightAnimSilhouetteMode,
+  spread01: number
+): CSSProperties {
+  const safeColor = cssColorForKeyframes(color);
+  const { peakFilter, peakShadow } = buildGlowPeakCss(safeColor, silhouetteMode, spread01);
+  if (silhouetteMode === 'alpha') {
+    return { filter: peakFilter, boxShadow: 'none', willChange: 'filter' };
+  }
+  return {
+    boxShadow: peakShadow,
+    filter: peakFilter,
+    willChange: 'box-shadow, filter',
+  };
+}
+
+/**
+ * Registers @keyframes once per (duration, interval, color, spread) and returns the animation name.
  */
 export function ensureHighlightAnimKeyframes(
   durationSec: number,
   intervalSec: number,
   color: string,
-  silhouetteMode: HighlightAnimSilhouetteMode = 'box'
+  silhouetteMode: HighlightAnimSilhouetteMode = 'box',
+  intensity: number = HIGHLIGHT_ANIM_DEFAULT_GLOW_INTENSITY
 ): string {
   const d = clampDurationSec(durationSec);
   const i = clampIntervalSec(intervalSec);
   const safeColor = cssColorForKeyframes(color);
-  const key = `${d}|${i}|${safeColor}|${silhouetteMode}`;
+  const m = clampHighlightGlowIntensity(intensity);
+  const mq = Math.round(m * 100);
+  const key = `${d}|${i}|${safeColor}|${silhouetteMode}|${mq}`;
   const hit = injectedAnimationNames.get(key);
   if (hit) return hit;
 
@@ -107,7 +185,7 @@ export function ensureHighlightAnimKeyframes(
   styleEl.type = 'text/css';
   styleEl.setAttribute('data-dw-highlight-anim-keyframes', key.replace(/"/g, ''));
   const noneFilter = 'drop-shadow(0 0 0 rgba(0,0,0,0))';
-  const peakFilter = `drop-shadow(0 0 16px ${safeColor})`;
+  const { peakFilter, peakShadow } = buildGlowPeakCss(safeColor, silhouetteMode, m);
   if (silhouetteMode === 'alpha') {
     styleEl.textContent = `
 @keyframes ${name} {
@@ -120,7 +198,6 @@ export function ensureHighlightAnimKeyframes(
   } else {
     // Dual box-shadow + filter: some Chromium builds (notably Windows) composite drop-shadow more reliably.
     const noneShadow = '0 0 0 0 rgba(0,0,0,0)';
-    const peakShadow = `0 0 28px 8px ${safeColor}, 0 0 14px 2px ${safeColor}`;
     styleEl.textContent = `
 @keyframes ${name} {
   0% { box-shadow: ${noneShadow}; filter: ${noneFilter}; }
@@ -150,16 +227,22 @@ export function getHighlightAnimStyleForNode(
   if (opts.isLineNode || opts.isDuplicateDragPreview) return undefined;
   if (!node.highlightAnim) return undefined;
 
+  const color = node.highlightAnimGlowColor ?? HIGHLIGHT_ANIM_DEFAULT_GLOW_COLOR;
+  const intensity = clampHighlightGlowIntensity((node as any).highlightAnimGlowIntensity);
+  const silhouetteMode: HighlightAnimSilhouetteMode = opts.pulseFollowsShapeSilhouette ? 'alpha' : 'box';
+
+  if (node.highlightAnimMode === 'constant') {
+    return getHighlightConstantGlowStyle(color, silhouetteMode, intensity);
+  }
+
   const dur = node.highlightAnimDurationSec ?? HIGHLIGHT_ANIM_DEFAULT_DURATION_SEC;
   const intv = node.highlightAnimIntervalSec ?? HIGHLIGHT_ANIM_DEFAULT_INTERVAL_SEC;
-  const color = node.highlightAnimGlowColor ?? HIGHLIGHT_ANIM_DEFAULT_GLOW_COLOR;
 
   const d = clampDurationSec(dur);
   const i = clampIntervalSec(intv);
   const period = d + i;
 
-  const silhouetteMode: HighlightAnimSilhouetteMode = opts.pulseFollowsShapeSilhouette ? 'alpha' : 'box';
-  const animName = ensureHighlightAnimKeyframes(d, i, color, silhouetteMode);
+  const animName = ensureHighlightAnimKeyframes(d, i, color, silhouetteMode, intensity);
   const staggerN = opts.highlightAnimStaggerCount ?? 0;
   const staggerI = opts.highlightAnimStaggerIndex;
   let delaySec: number;

@@ -1215,6 +1215,8 @@ export function ContextToolbar({
       highlightAnimDurationSec: undefined,
       highlightAnimIntervalSec: undefined,
       highlightAnimGlowColor: undefined,
+      highlightAnimGlowIntensity: undefined,
+      highlightAnimMode: undefined,
       ignoreConnectionAvoidance: undefined,
     };
     

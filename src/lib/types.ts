@@ -233,6 +233,10 @@ export interface DiagramNodeData {
   highlightAnimIntervalSec?: number;
   /** Glow color for the pulse (default blue). */
   highlightAnimGlowColor?: string;
+  /** Halo spatial spread `0–1` (blur radii), not RGBA opacity; default 1 = legacy full-sized glow. */
+  highlightAnimGlowIntensity?: number;
+  /** When `highlightAnim` is on: **`'constant'`** = steady glow; **`'pulse'`** or omit = repeating pulse (legacy omitted = pulse). */
+  highlightAnimMode?: 'constant' | 'pulse';
   rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
   textPosition?: 'above' | 'center' | 'under'; // Text position for shape nodes
   freeflow?: boolean; // If true, node can be placed anywhere without joining groups/zones
@@ -478,6 +482,10 @@ export interface DiagramNodeItem {
   highlightAnimDurationSec?: number;
   highlightAnimIntervalSec?: number;
   highlightAnimGlowColor?: string;
+  /** See `DiagramNodeData.highlightAnimGlowIntensity`. */
+  highlightAnimGlowIntensity?: number;
+  /** See `DiagramNodeData.highlightAnimMode`. */
+  highlightAnimMode?: 'constant' | 'pulse';
   roundedEdges?: boolean; // Whether to apply rounded edges to shapes
   rotation?: number; // Rotation angle in degrees (0, 45, -45, 90, -90)
   textPosition?: 'above' | 'center' | 'under'; // Text position for shape nodes

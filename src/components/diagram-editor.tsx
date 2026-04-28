@@ -89,7 +89,10 @@ import {
   safeClone,
   blankSlideVisibleFromMaster,
   createPaletteItem,
+  presentationThumbnailCaptureBackground,
+  withPresentationThumbnailThemeFingerprintTag,
 } from '@/lib/diagram-editor/editor-support';
+import { useTheme } from '@/components/theme-provider';
 import { DiagramEditorInner } from './diagram-editor-inner';
 import { useDiagramEditorHistory } from '@/hooks/use-diagram-editor-history';
 import { useDiagramEditorKeyboard } from '@/hooks/use-diagram-editor-keyboard';
@@ -113,6 +116,7 @@ export default function DiagramEditor() {
   const [isClient, setIsClient] = React.useState<boolean>(false);
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const { resolvedTheme } = useTheme();
   const editorRef = React.useRef<EditorCanvasHandle>(null);
   const [exportDialogOpen, setExportDialogOpen] = React.useState(false);
   const [exportDialogFormat, setExportDialogFormat] = React.useState<'png' | 'gif'>('png');
@@ -424,11 +428,13 @@ export default function DiagramEditor() {
         mode === 'master' || slideIdx <= 0
           ? masterBase
           : cumulativeDiagramThroughSlideIndex(masterBase, deck.slides, slideIdx - 1);
-      const fp = JSON.stringify(
+      const fpCore = JSON.stringify(
         computeDiagramDelta(projectVisibleDiagram(baseForFp), projectVisibleDiagram(nextDraft)),
       );
-      presentationThumbDeltaFingerprintBySlideRef.current[`${activePresentationDeckId}:${activePresentationSlideId}`] = fp;
-      presentationThumbFingerprintSlideKeyRef.current = `${activePresentationDeckId}:${activePresentationSlideId}`;
+      presentationThumbDeltaFingerprintBySlideRef.current[`${activePresentationDeckId}:${activePresentationSlideId}`] =
+        withPresentationThumbnailThemeFingerprintTag(fpCore, resolvedTheme);
+      presentationThumbFingerprintSlideKeyRef.current =
+        `${activePresentationDeckId}:${activePresentationSlideId}|thumb:${resolvedTheme}`;
     } catch {
       // ignore
     }
@@ -439,6 +445,7 @@ export default function DiagramEditor() {
     activePresentationDeckId,
     activePresentationSlideId,
     presentationDecks,
+    resolvedTheme,
   ]);
 
   const selectedItem = activeTab?.selectedItem || null;
@@ -493,6 +500,25 @@ export default function DiagramEditor() {
     presentationDraftDiagram,
     activePresentationDeck?.presentationDeltaMode,
     activePresentationDeck?.id,
+  ]);
+
+  /** One diagram: current slide only — fit/zoom for PNG strip uses this slide's bounds, not a deck-wide union. */
+  const presentationThumbnailFitUnionDiagrams = React.useMemo(() => {
+    if (!activePresentationSlideId || activePresentationSlides.length === 0) {
+      return [projectVisibleDiagram(presentationDraftDiagram ?? tabDiagramData)];
+    }
+    const idx = activePresentationSlides.findIndex((s) => s.id === activePresentationSlideId);
+    if (idx < 0) {
+      return [projectVisibleDiagram(presentationDraftDiagram ?? tabDiagramData)];
+    }
+    const d = activePresentationSlideDiagramsForThumbnailCapture[idx];
+    return [projectVisibleDiagram(d ?? presentationDraftDiagram ?? tabDiagramData)];
+  }, [
+    activePresentationSlideId,
+    activePresentationSlides,
+    activePresentationSlideDiagramsForThumbnailCapture,
+    presentationDraftDiagram,
+    tabDiagramData,
   ]);
 
   /** Deck + slide ids only (stable while editing deltas) — used to re-run placeholder thumbnail backfill after file load. */
@@ -1898,7 +1924,8 @@ export default function DiagramEditor() {
     tabDiagramData,
     activePresentationDeckId,
     activePresentationSlideId,
-    activePresentationSlideDiagramsForThumbnailCapture,
+    activeTabId,
+    presentationThumbnailFitUnionDiagrams,
     presentationDeckIdentityKey,
     setPresentationDecks,
     setActivePresentationDeckId,
@@ -3871,8 +3898,10 @@ export default function DiagramEditor() {
     captureOutgoingSlideThumbnailIfNeeded,
   ]);
 
-  const runPresentationAutoZoom = React.useCallback(async () => {
-
+  const runPresentationFitToView = React.useCallback(async (): Promise<{
+    autoZoomLevel: number;
+    viewportTransform: { x: number; y: number; k: number } | null;
+  } | null> => {
     if (activePresentationSlideDiagrams.length > 0) {
       const diagrams = activePresentationSlideDiagrams.map((d) => pruneConnectionsToVisibleNodes(d));
       const t = computeUnionFitTransformForDiagrams(
@@ -3881,18 +3910,25 @@ export default function DiagramEditor() {
         typeof window !== 'undefined' ? window.innerHeight : 720
       );
       if (t && Number.isFinite(t.k) && t.k > 0) {
-        return Number(t.k.toFixed(4));
+        return {
+          autoZoomLevel: Number(t.k.toFixed(4)),
+          viewportTransform: t,
+        };
       }
       toast({
         variant: 'destructive',
-        title: 'Auto Zoom Failed',
-        description: 'Could not compute bounds from all slide snapshots.',
+        title: 'Fit to View Failed',
+        description: 'Could not compute bounds from all slides.',
       });
       return null;
     }
 
     if (!editorRef.current?.fitToView) {
-      toast({ variant: 'destructive', title: 'Auto Zoom Failed', description: 'Canvas auto zoom API is unavailable.' });
+      toast({
+        variant: 'destructive',
+        title: 'Fit to View Failed',
+        description: 'Canvas fit API is unavailable.',
+      });
       return null;
     }
 
@@ -3900,22 +3936,37 @@ export default function DiagramEditor() {
     await new Promise((resolve) => window.setTimeout(resolve, 140));
     const zoom = canvasTransformRef.current.k;
     if (!Number.isFinite(zoom) || zoom <= 0) {
-      toast({ variant: 'destructive', title: 'Auto Zoom Failed', description: 'Could not compute an optimized zoom level.' });
+      toast({
+        variant: 'destructive',
+        title: 'Fit to View Failed',
+        description: 'Could not read zoom after fitting the canvas.',
+      });
       return null;
     }
 
-    return Number(zoom.toFixed(4));
+    return {
+      autoZoomLevel: Number(zoom.toFixed(4)),
+      viewportTransform: null,
+    };
   }, [activePresentationSlideDiagrams, toast]);
 
-  const handleAutoZoomPresentation = React.useCallback(async () => {
+  /** One “Fit to View” for the deck: union camera across slides (when multi-slide) + persist zoom on every slide. Top bar routes here when a presentation deck is active. */
+  const handlePresentationFitToView = React.useCallback(async () => {
     if (!activePresentationDeckId) return;
-    const autoZoomLevel = await runPresentationAutoZoom();
-    if (autoZoomLevel === null) return;
+    const result = await runPresentationFitToView();
+    if (result === null) return;
+    const { autoZoomLevel, viewportTransform } = result;
+
+    if (viewportTransform) {
+      const s = sanitizeCanvasTransform(viewportTransform);
+      setCanvasTransform(s);
+      canvasTransformRef.current = s;
+    }
 
     if (!activePresentationDeck || activePresentationDeck.slides.length === 0) {
       toast({
-        title: 'Auto Zoom Applied',
-        description: `Optimized zoom set to ${(autoZoomLevel * 100).toFixed(1)}%. Add snapshots to apply this value.`,
+        title: 'Fit to View',
+        description: `Zoom set to ${(autoZoomLevel * 100).toFixed(1)}%. Add slides to save this zoom on the deck.`,
       });
       return;
     }
@@ -3935,10 +3986,17 @@ export default function DiagramEditor() {
     }));
 
     toast({
-      title: 'Auto Zoom Applied To Presentation',
-      description: `All ${activePresentationDeck.slides.length} snapshot(s) now use ${(autoZoomLevel * 100).toFixed(1)}% zoom.`,
+      title: 'Fit to View',
+      description: `All ${activePresentationDeck.slides.length} slide(s) now use ${(autoZoomLevel * 100).toFixed(1)}% zoom (union of all slide content).`,
     });
-  }, [activePresentationDeckId, activePresentationDeck, runPresentationAutoZoom, toast]);
+  }, [
+    activePresentationDeckId,
+    activePresentationDeck,
+    runPresentationFitToView,
+    toast,
+    sanitizeCanvasTransform,
+    setCanvasTransform,
+  ]);
 
   const resolvePresentationZoomLevel = React.useCallback((overrideZoomLevel?: number): number | null => {
     const candidate = overrideZoomLevel ?? canvasTransformRef.current.k;
@@ -4044,8 +4102,14 @@ export default function DiagramEditor() {
     }
 
     const snapshotImage = await editorRef.current.captureSnapshotPng({
-      backgroundColor: 'white',
+      backgroundColor: presentationThumbnailCaptureBackground(resolvedTheme),
       quality: 'medium',
+      fitContent: true,
+      unionDiagrams: [
+        projectVisibleDiagram(presentationDraftDiagram ?? (layers.filteredDiagramData ?? diagramData)),
+      ],
+      tightContentFrame: true,
+      fitPadding: 40,
     });
 
     const visibleCurrent = projectVisibleDiagram(layers.filteredDiagramData ?? diagramData);
@@ -4095,15 +4159,16 @@ export default function DiagramEditor() {
     };
   }, [
     layers.filteredDiagramData,
+    presentationDraftDiagram,
     diagramData,
     presentationMasterDiagram,
     presentationDecks,
     activePresentationDeckId,
     activePresentationSlideId,
-    presentationDraftDiagram,
     animationConnectionsEnabled,
     effectiveAnimationFilterIds,
     animationDisabledSources,
+    resolvedTheme,
   ]);
 
   const handleAddPresentationSnapshot = React.useCallback(async () => {
@@ -4764,7 +4829,7 @@ export default function DiagramEditor() {
         activePresentationSlides={activePresentationSlides}
         activePresentationSlideDiagrams={activePresentationSlideDiagrams}
         handleSelectPresentationBaseSlide={handleSelectPresentationBaseSlide}
-        handleAutoZoomPresentation={handleAutoZoomPresentation}
+        handlePresentationFitToView={handlePresentationFitToView}
         handleApplyPresentationZoomToCurrent={handleApplyPresentationZoomToCurrent}
         handleApplyPresentationZoomToAll={handleApplyPresentationZoomToAll}
         handleAddPresentationSnapshot={handleAddPresentationSnapshot}

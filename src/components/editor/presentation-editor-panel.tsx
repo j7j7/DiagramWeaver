@@ -51,11 +51,12 @@ function PrimarySlideStripItem({ slide, active, onSelect, onMoveSlide }: Primary
       title="Main diagram (slide 1). Drag here to make a snapshot the main diagram, or drag to reorder."
     >
       <div className="relative w-full shrink-0 overflow-hidden rounded-md border bg-muted">
+        {/* 16:9 strip — thumbnail stretches to fill (object-fill). */}
         <div className="aspect-video w-full">
           <img
             src={slide.snapshotImage || SLIDE_THUMBNAIL_PLACEHOLDER}
             alt={slide.title || 'Slide 1'}
-            className="h-full w-full object-contain object-center"
+            className="h-full w-full object-fill object-center"
             loading="lazy"
             decoding="async"
           />
@@ -118,12 +119,12 @@ function DraggableSlideItem({
       title={slide.title || `Slide ${index + 1}`}
     >
       <div className="relative w-full shrink-0 overflow-hidden rounded-md border bg-muted">
-        {/* object-contain (not cover): canvas PNGs are not 16:9; cover cropped top/bottom in the strip */}
+        {/* PNG uses per-slide tight fit; strip is 16:9 — stretch to fill frame (minor skew if PNG aspect differs). */}
         <div className="aspect-video w-full">
           <img
             src={slide.snapshotImage || SLIDE_THUMBNAIL_PLACEHOLDER}
             alt={slide.title || `Slide ${index + 1}`}
-            className="h-full w-full object-contain object-center"
+            className="h-full w-full object-fill object-center"
             loading="lazy"
             decoding="async"
           />

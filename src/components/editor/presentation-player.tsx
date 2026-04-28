@@ -48,7 +48,7 @@ export function PresentationPlayer({
   showPlaybackToolbar = true,
 }: PresentationPlayerProps) {
   const [playbackTransform, setPlaybackTransform] = React.useState<Transform>({ x: 0, y: 0, k: 1 });
-  const [useSlideZoom, setUseSlideZoom] = React.useState(true);
+  const [useSlideZoom, setUseSlideZoom] = React.useState(false);
   const [autoPlayEnabled, setAutoPlayEnabled] = React.useState(false);
   const [autoPlaySeconds, setAutoPlaySeconds] = React.useState(4);
   const [manualZoomPercentDraft, setManualZoomPercentDraft] = React.useState('100');
@@ -149,19 +149,19 @@ export function PresentationPlayer({
   }, [slideDiagramsForUnionFit]);
 
   React.useLayoutEffect(() => {
-    if (!open || showPlaybackToolbar || slideDiagramsForUnionFit.length === 0) return;
+    if (!open || slideDiagramsForUnionFit.length === 0) return;
     if (useSlideZoom) return;
     applyViewerUnionFit();
-  }, [open, showPlaybackToolbar, slideDiagramsForUnionFit, applyViewerUnionFit, useSlideZoom]);
+  }, [open, slideDiagramsForUnionFit, applyViewerUnionFit, useSlideZoom]);
 
   React.useEffect(() => {
-    if (!open || showPlaybackToolbar) return;
+    if (!open) return;
     const onResize = () => {
       if (!useSlideZoom) applyViewerUnionFit();
     };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
-  }, [open, showPlaybackToolbar, applyViewerUnionFit, useSlideZoom]);
+  }, [open, applyViewerUnionFit, useSlideZoom]);
 
   React.useEffect(() => {
     if (!open) {
@@ -334,7 +334,7 @@ export function PresentationPlayer({
                     transform={playbackTransform}
                     onTransformChange={setPlaybackTransform}
                     onFitToView={() => {}}
-                    skipInitialFitToView={!showPlaybackToolbar}
+                    skipInitialFitToView={!showPlaybackToolbar || !useSlideZoom}
                     metadataPopupsEnabled={false}
                     openNodeLinksOnClick={true}
                     animationConnectionsEnabled={playbackAnimationEnabled}

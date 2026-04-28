@@ -198,6 +198,8 @@ export const DiagramNodeDataSchema = z.object({
   highlightAnimDurationSec: z.number().optional(),
   highlightAnimIntervalSec: z.number().optional(),
   highlightAnimGlowColor: z.string().optional(),
+  highlightAnimGlowIntensity: z.number().min(0).max(1).optional(),
+  highlightAnimMode: z.enum(['constant', 'pulse']).optional(),
   rotation: z.number().optional(), // Rotation angle in degrees (0, 45, -45, 90, -90)
   textPosition: z.enum(['above', 'center', 'under']).optional(), // Text position for shape nodes
   freeflow: z.boolean().optional(), // If true, node can be placed anywhere without joining groups/zones
@@ -560,6 +562,8 @@ export const DiagramNodeItemSchema = z.object({
   highlightAnimDurationSec: z.number().optional(),
   highlightAnimIntervalSec: z.number().optional(),
   highlightAnimGlowColor: z.string().optional(),
+  highlightAnimGlowIntensity: z.number().min(0).max(1).optional(),
+  highlightAnimMode: z.enum(['constant', 'pulse']).optional(),
   rotation: z.number().optional(), // Rotation angle in degrees (0, 45, -45, 90, -90)
   textPosition: z.enum(['above', 'center', 'under']).optional(), // Text position for shape nodes
   freeflow: z.boolean().optional(), // If true, node can be placed anywhere without joining groups/zones

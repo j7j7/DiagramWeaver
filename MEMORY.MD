@@ -1,5 +1,36 @@
 # MEMORY.MD
 
+### 2026-04-28 – Glow spread: blur radius mapping (not opacity)
+**`highlightAnimGlowIntensity`**: **lerp** blur/spread px from a **small** halo to the **legacy peak** (`16` / `28` / …) via **`buildGlowPeakCss`** and **`highlightGlowApproxHaloPx`** — not **× peak** (avoids matching colour alpha). **`highlight-anim`**: **`HighlightAnimSilhouetteMode`** / **`clampHighlightGlowIntensity`** hoisted. UI: **Glow spread (~size)** with **~N px** readout. Patch bumped.
+
+
+### 2026-04-28 – Icon visual styling: constant vs pulse glow
+**Effects** compact panel: **`highlightAnimMode`** **`'constant'`** | **`'pulse'`** (explicit **`'pulse'`** fixes merge overwriting **`'constant'`** when switching back from dropdown; omit = legacy pulse). **`getHighlightAnimStyleForNode`** only treats **`'constant'`** as static glow. Patch bumped.
+
+### 2026-04-28 – Dark mode: themed native scrollbars
+**`globals.css`**: **`--scrollbar-track`** / **`--scrollbar-thumb`** in **`:root`** and **`.dark`**; global **`scrollbar-width: thin`**, **`scrollbar-color`** (Firefox), and **WebKit** **`-webkit-scrollbar-*`** so overflow regions (e.g. resources sidebar list, JSON/CodeMirror) use dark tracks/thumbs instead of light OS chrome. Patch bumped.
+
+### 2026-04-28 – Top bar: Fit to View + presentation “auto zoom” merged
+Single **Fit to View** (**Maximize2**): with **no** active presentation deck → **`editorRef.fitToView()`** (visible canvas bounds); with **`activePresentationDeckId`** → **`handlePresentationFitToView`** (was **`handleAutoZoomPresentation`** / wand): union fit across slides, **`setCanvasTransform`** for full **x/y/k** when union succeeds, persist **`autoZoomLevel`** on all slides, clear pan. **Slides** strip in **`top-menu-bar`**: removed duplicate **Wand2** control; **`presentationToolbar`** drops **`onAutoZoom`**. **`runPresentationFitToView`** replaces **`runPresentationAutoZoom`**. Sidebar uses same **`handleTopBarFitToView`**. Patch bumped.
+
+### 2026-04-28 – Top toolbar: duplicate-slide tooltip
+**`top-menu-bar`** presentation **Slides** **+** control: tooltip / **`aria-label`** **“Add snapshot”** → **“Duplicate Slide”** / **“Duplicate slide”** (matches duplicate-current-slide behavior). Patch bumped.
+
+### 2026-04-28 – Play mode: default “Use slide zoom” off
+**`presentation-player`**: **`useSlideZoom`** defaults to **false** (union fit all slides like viewer fullscreen). **`useLayoutEffect`** / window **resize** union-fit run whenever slide zoom is off, including with the bottom **playback toolbar** (**`showPlaybackToolbar`**). **`skipInitialFitToView`** — **true** when **`!useSlideZoom`** so ViewerCanvas’s delayed single-slide fit does not override union transform. Patch bumped.
+
+### 2026-04-28 – Presentation thumbnails: debounce + slower poll
+**`PRESENTATION_THUMB_DEBOUNCE_MS`** **900** (`editor-support`): **`tabDiagramData`** / **`presentationDraftDiagram`** changes stagger thumbnail **`captureSnapshotPng`** via **`setTimeout`**. **Flush** (no debounce) on **`activePresentationDeckId`**, **`activePresentationSlideId`**, **`activeTabId`**, **`resolvedTheme`** — clears pending debounce first. **`runPresentationThumbnailCaptureRef`** avoids effect churn from **`presentationThumbnailFitUnionDiagrams`**. **`PRESENTATION_THUMB_INTERVAL_MS`** **10s** (was 3s). Patch bumped.
+
+### 2026-04-28 – Presentation thumbnails: UI light/dark backgrounds
+**`use-canvas-export`** maps **`backgroundColor: 'dark'`** → **`#0f172a`**. Strip thumbnails and **add snapshot** use **`presentationThumbnailCaptureBackground(resolvedTheme)`** (**`useTheme`** in **`diagram-editor`** / **`usePresentationThumbnails`**). **Diagram fingerprints** use **`withPresentationThumbnailThemeFingerprintTag`** so PNGs re-capture after toggling theme (not only on diagram churn). Patch bumped.
+
+### 2026-04-28 – Presentation strip: thumbnails stretch to fill frame
+**`presentation-editor-panel`** slide **`img`** uses **`object-fill`** (**`object-contain`** before): fills the **`aspect-video`** tile (may mildly stretch if PNG aspect ≠ 16:9; capture remains per-slide tight fit). Patch bumped.
+
+### 2026-04-28 – Presentation thumbnails: per-slide fit + tight frame
+Thumbnail **`captureSnapshotPng`** uses **`unionDiagrams: [that slide’s diagram]`** (not deck-wide union), plus **`tightContentFrame`** + **`fitPadding: 40`** so each PNG auto-fits all objects on **that** slide. **`presentationThumbnailFitUnionDiagrams`** memo in **`diagram-editor`**; **`use-presentation-thumbnails`** backfill uses **`[draftDiagram]`** per slide. **Add snapshot** uses **`fitContent`** + **`tightContentFrame`**. Strip **`presentation-editor-panel`**: **`object-contain`** again (no crop). **`editor-canvas`** snapshot API passes **`tightContentFrame`** / **`fitPadding`**. Patch bumped.
+
 ### 2026-04-28 – Presentation strip: thumbnails show index only (no slide name)
 **`presentation-editor-panel`** **`PrimarySlideStripItem`**: removed the **`slide.title` / `'Diagram'`** label under slide **#1** so the first thumbnail matches **#2** / **#3** (**`#n`** only). Patch bumped.
 
@@ -703,10 +734,10 @@ In **`diagram-editor`**, **`useLayoutEffect`** tracks **`prevPresentationSlideId
 **`presentation-editor-panel.tsx`** `DraggableSlideItem`: snapshot **`img`** uses **`object-contain`** inside an **`aspect-video`** frame with **`bg-muted`**, not **`object-cover`** — canvas PNGs are not 16:9, so cover cropped edges in the toolbar strip. **`loading="lazy"`** / **`decoding="async"`**.
 
 ### 2026-03-25 – Presentation play mode auto-zoom matches viewer (union of all slides)
-**PresentationPlayer** (editor play mode, toolbar visible): **Auto zoom** now calls **`applyViewerUnionFit()`** (`computeUnionFitTransformForDiagrams` over all **`slideDiagrams`**, pruned connections) and turns **Use slide zoom** off so the one camera (pan + zoom) persists — same behavior as viewer fullscreen presentation. **`diagram-editor`** **`runPresentationAutoZoom`** (presentation panel wand / apply zoom to all snapshots) uses the same union-fit **`k`** vs **`window.innerWidth`/`innerHeight`** when the deck has slides; empty deck still uses **`editorRef.fitToView()`** on the current canvas.
+**PresentationPlayer** (editor play mode, toolbar visible): **Auto zoom** now calls **`applyViewerUnionFit()`** (`computeUnionFitTransformForDiagrams` over all **`slideDiagrams`**, pruned connections) and turns **Use slide zoom** off so the one camera (pan + zoom) persists — same behavior as viewer fullscreen presentation. **`diagram-editor`** **`runPresentationFitToView`** (top bar **Fit to View** when a deck is active; was wand **auto zoom**): same union-fit **`k`** vs **`window.innerWidth`/`innerHeight`** when the deck has slides; empty diagram list still uses **`editorRef.fitToView()`** on the current canvas. Applies full union **transform** to the canvas when union succeeds.
 
 ### 2026-03-25 – Presentation thumbnails: fit content inside PNG only (no canvas change)
-**Thumbnails** call **`captureSnapshotPng({ fitContent: true, unionDiagrams: activePresentationSlideDiagramsForThumbnailCapture })`** — union uses **live `presentationDraftDiagram`** for the active slide (not only persisted delta). **`use-canvas-export`** / **`html-to-image-fit-png.ts`**: html-to-image **`cloneNode`**, then **`.dot-grid`** transform on the clone = **`computeUnionFitTransformForDiagrams`** (same as viewer embedded presentation / `PresentationPlayer`) over **all deck slides**, with **`pruneConnectionsToVisibleNodes`**. Viewport size for that math uses **`getCanvasElementSizeForImageCapture`** (full canvas **`clientWidth`/`clientHeight`**) so it matches the rasterized bitmap — not **`getElementVisibleViewportSize`** (window-clipped), which caused mis-centered PNGs (e.g. top cut off). Fallback: single-slide **`computeContentBounds`** if union fails. **Add snapshot** unchanged (no `fitContent`).
+**Thumbnails** call **`captureSnapshotPng({ fitContent: true, unionDiagrams: [that slide], tightContentFrame: true, … })`** — per-slide bounds (see **2026-04-28 – Presentation thumbnails: per-slide fit**). **`use-canvas-export`** / **`html-to-image-fit-png.ts`**: html-to-image **`cloneNode`**, then **`.dot-grid`** transform on the clone = **`computeUnionFitTransformForDiagrams`** over the given diagram(s); deck-wide union still used for **multi-slide PNG export** / **viewer** camera, not for strip thumbnails. Viewport size uses **`getCanvasElementSizeForImageCapture`**. Fallback: **`computeContentBounds`** on live canvas when union empty/fails.
 
 ### 2026-03-25 – Presentation toolbar: snapshot index between prev/next
 **Editor** `PresentationEditorPanel`: Between **Previous** and **Next** snapshot buttons, a **`n / total`** readout (`tabular-nums`, muted text); **—** when no deck/slides. File: `presentation-editor-panel.tsx`.

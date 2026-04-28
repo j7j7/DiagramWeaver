@@ -178,8 +178,8 @@ export function useCanvasExport({
     /** Padding (px) around content when fitting; matches {@link useCanvasTransform} handleFitToView when 50. */
     fitPadding?: number;
     /**
-     * When set with `fitContent`, use the same union-bounds zoom as viewer/presentation playback
-     * (all slides in the deck). Otherwise fit only the current canvas diagram.
+     * With fitContent: diagram(s) whose layout bounds define the fit zoom. One diagram = that slide only
+     * (presentation strip thumbnails); multiple = union for deck-consistent scaling (e.g. export).
      */
     unionDiagrams?: DiagramData[];
     /**

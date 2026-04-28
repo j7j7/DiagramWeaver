@@ -249,7 +249,9 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
         (p as any).highlightAnim !== (n as any).highlightAnim ||
         (p as any).highlightAnimDurationSec !== (n as any).highlightAnimDurationSec ||
         (p as any).highlightAnimIntervalSec !== (n as any).highlightAnimIntervalSec ||
-        (p as any).highlightAnimGlowColor !== (n as any).highlightAnimGlowColor) {
+        (p as any).highlightAnimGlowColor !== (n as any).highlightAnimGlowColor ||
+        (p as any).highlightAnimGlowIntensity !== (n as any).highlightAnimGlowIntensity ||
+        (p as any).highlightAnimMode !== (n as any).highlightAnimMode) {
       return false;
     }
     if (JSON.stringify((p as any).chart) !== JSON.stringify((n as any).chart)) return false;
@@ -1212,9 +1214,11 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
       isDuplicateDragPreview,
       highlightPulseUsesShapeSilhouette,
       node.highlightAnim,
+      node.highlightAnimMode,
       node.highlightAnimDurationSec,
       node.highlightAnimIntervalSec,
       node.highlightAnimGlowColor,
+      node.highlightAnimGlowIntensity,
       positionXForHighlight,
       positionYForHighlight,
       highlightAnimStaggerIndex,

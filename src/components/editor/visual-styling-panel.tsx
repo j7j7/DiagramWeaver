@@ -11,24 +11,64 @@ import { VisualStyling, VISUAL_STYLES, getPredefinedVisualStyle, findClosestPred
 import {
   HIGHLIGHT_ANIM_DEFAULT_DURATION_SEC,
   HIGHLIGHT_ANIM_DEFAULT_GLOW_COLOR,
+  HIGHLIGHT_ANIM_DEFAULT_GLOW_INTENSITY,
   HIGHLIGHT_ANIM_DEFAULT_INTERVAL_SEC,
+  highlightGlowApproxHaloPx,
 } from "@/lib/highlight-anim";
 import { Palette, RotateCcw, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { GradientAnglePicker } from "./gradient-angle-picker";
 import { Slider } from "@/components/ui/slider";
 import Draggable from 'react-draggable';
+import { cn } from "@/lib/utils";
+
+/** Spatial halo radius (blur size), distinct from RGBA opacity on the glow colour picker. */
+function HighlightGlowStrengthSlider({
+  intensity,
+  onChange,
+  className,
+}: {
+  intensity: number;
+  onChange: (value: number) => void;
+  className?: string;
+}) {
+  const v = Math.min(1, Math.max(0, Number.isFinite(intensity) ? intensity : HIGHLIGHT_ANIM_DEFAULT_GLOW_INTENSITY));
+  const approxPx = highlightGlowApproxHaloPx(v);
+  return (
+    <div className={cn("space-y-1", className)}>
+      <Label className="text-xs text-muted-foreground">Glow spread (~size)</Label>
+      <div className="flex items-center gap-3 pr-1">
+        <Slider
+          min={0}
+          max={1}
+          step={0.01}
+          value={[v]}
+          onValueChange={([nv]) => onChange(nv)}
+          className="flex-1"
+        />
+        <span className="w-14 tabular-nums text-xs text-muted-foreground text-right">~{approxPx}px</span>
+      </div>
+    </div>
+  );
+}
 
 function HighlightAnimEffectControls({
   styling,
   handlePropertyChange,
   onStylingChange,
+  variant = "checkbox",
 }: {
   styling: Partial<VisualStyling>;
   handlePropertyChange: (property: keyof VisualStyling, value: unknown, immediate?: boolean) => void;
   onStylingChange: (styling: Partial<VisualStyling>) => void;
+  variant?: "checkbox" | "triState";
 }) {
   const enabled = Boolean(styling.highlightAnim);
+  const triSelect: "off" | "constant" | "pulse" = !styling.highlightAnim
+    ? "off"
+    : styling.highlightAnimMode === "constant"
+      ? "constant"
+      : "pulse"; /* legacy omit / undefined / 'pulse' */
   const committedDurStr = String(styling.highlightAnimDurationSec ?? HIGHLIGHT_ANIM_DEFAULT_DURATION_SEC);
   const committedIntStr = String(styling.highlightAnimIntervalSec ?? HIGHLIGHT_ANIM_DEFAULT_INTERVAL_SEC);
   const [durFocused, setDurFocused] = useState(false);
@@ -63,6 +103,126 @@ function HighlightAnimEffectControls({
     handlePropertyChange("highlightAnimIntervalSec", v, true);
   }, [intDraft, handlePropertyChange]);
 
+  if (variant === "triState") {
+    return (
+      <div className="space-y-3">
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Glow</Label>
+          <Select
+            value={triSelect}
+            onValueChange={(v) => {
+              if (v === "off") {
+                onStylingChange({ highlightAnim: false, highlightAnimMode: undefined });
+              } else if (v === "constant") {
+                onStylingChange({
+                  highlightAnim: true,
+                  highlightAnimMode: "constant",
+                  highlightAnimGlowColor:
+                    styling.highlightAnimGlowColor ?? HIGHLIGHT_ANIM_DEFAULT_GLOW_COLOR,
+                  highlightAnimGlowIntensity:
+                    styling.highlightAnimGlowIntensity ?? HIGHLIGHT_ANIM_DEFAULT_GLOW_INTENSITY,
+                });
+              } else {
+                /* Explicit `'pulse'` so merges overwrite persisted `'constant'` (undefined strips in some spreads). */
+                onStylingChange({
+                  highlightAnim: true,
+                  highlightAnimMode: "pulse",
+                  highlightAnimDurationSec:
+                    styling.highlightAnimDurationSec ?? HIGHLIGHT_ANIM_DEFAULT_DURATION_SEC,
+                  highlightAnimIntervalSec:
+                    styling.highlightAnimIntervalSec ?? HIGHLIGHT_ANIM_DEFAULT_INTERVAL_SEC,
+                  highlightAnimGlowColor:
+                    styling.highlightAnimGlowColor ?? HIGHLIGHT_ANIM_DEFAULT_GLOW_COLOR,
+                  highlightAnimGlowIntensity:
+                    styling.highlightAnimGlowIntensity ?? HIGHLIGHT_ANIM_DEFAULT_GLOW_INTENSITY,
+                });
+              }
+            }}
+          >
+            <SelectTrigger className="h-9 text-sm">
+              <SelectValue placeholder="Glow" />
+            </SelectTrigger>
+            <SelectContent className="z-[70]">
+              <SelectItem value="off" className="text-sm">
+                Off
+              </SelectItem>
+              <SelectItem value="constant" className="text-sm">
+                Constant glow
+              </SelectItem>
+              <SelectItem value="pulse" className="text-sm">
+                Pulse (animate)
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {(triSelect === "constant" || triSelect === "pulse") && (
+          <div className={cn(triSelect === "pulse" && "grid grid-cols-2 gap-2")}>
+            {triSelect === "pulse" && (
+              <>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Duration (s)</Label>
+                  <Input
+                    type="number"
+                    min={0.05}
+                    max={120}
+                    step={0.1}
+                    value={durDisplay}
+                    onChange={(e) => setDurDraft(e.target.value)}
+                    onFocus={() => {
+                      setDurFocused(true);
+                      setDurDraft(committedDurStr);
+                    }}
+                    onBlur={() => {
+                      commitDuration();
+                      setDurFocused(false);
+                    }}
+                    className="h-9 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Interval (s)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={600}
+                    step={0.1}
+                    value={intDisplay}
+                    onChange={(e) => setIntDraft(e.target.value)}
+                    onFocus={() => {
+                      setIntFocused(true);
+                      setIntDraft(committedIntStr);
+                    }}
+                    onBlur={() => {
+                      commitInterval();
+                      setIntFocused(false);
+                    }}
+                    className="h-9 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                </div>
+              </>
+            )}
+            <div className={cn("space-y-3", triSelect === "pulse" && "col-span-2")}>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Glow color</Label>
+                <ColorPicker
+                  value={styling.highlightAnimGlowColor ?? HIGHLIGHT_ANIM_DEFAULT_GLOW_COLOR}
+                  onChange={(value) => handlePropertyChange("highlightAnimGlowColor", value)}
+                  placeholder={HIGHLIGHT_ANIM_DEFAULT_GLOW_COLOR}
+                  showAlpha={true}
+                  allowTransparent={true}
+                />
+              </div>
+              <HighlightGlowStrengthSlider
+                intensity={styling.highlightAnimGlowIntensity ?? HIGHLIGHT_ANIM_DEFAULT_GLOW_INTENSITY}
+                onChange={(nv) => handlePropertyChange("highlightAnimGlowIntensity", nv, true)}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
@@ -74,12 +234,15 @@ function HighlightAnimEffectControls({
             if (on) {
               onStylingChange({
                 highlightAnim: true,
+                highlightAnimMode: "pulse",
                 highlightAnimDurationSec: styling.highlightAnimDurationSec ?? HIGHLIGHT_ANIM_DEFAULT_DURATION_SEC,
                 highlightAnimIntervalSec: styling.highlightAnimIntervalSec ?? HIGHLIGHT_ANIM_DEFAULT_INTERVAL_SEC,
                 highlightAnimGlowColor: styling.highlightAnimGlowColor ?? HIGHLIGHT_ANIM_DEFAULT_GLOW_COLOR,
+                highlightAnimGlowIntensity:
+                  styling.highlightAnimGlowIntensity ?? HIGHLIGHT_ANIM_DEFAULT_GLOW_INTENSITY,
               });
             } else {
-              handlePropertyChange("highlightAnim", false, true);
+              onStylingChange({ highlightAnim: false, highlightAnimMode: undefined });
             }
           }}
         />
@@ -87,7 +250,7 @@ function HighlightAnimEffectControls({
           Highlight animation
         </Label>
       </div>
-      {enabled && (
+      {enabled && styling.highlightAnimMode !== "constant" && (
         <div className="grid grid-cols-2 gap-2 pl-6">
           <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">Duration (s)</Label>
@@ -129,7 +292,11 @@ function HighlightAnimEffectControls({
               className="h-9 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
           </div>
-          <div className="space-y-1 col-span-2">
+        </div>
+      )}
+      {enabled && (
+        <div className="space-y-4 pl-6">
+          <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">Glow color</Label>
             <ColorPicker
               value={styling.highlightAnimGlowColor ?? HIGHLIGHT_ANIM_DEFAULT_GLOW_COLOR}
@@ -139,6 +306,10 @@ function HighlightAnimEffectControls({
               allowTransparent={true}
             />
           </div>
+          <HighlightGlowStrengthSlider
+            intensity={styling.highlightAnimGlowIntensity ?? HIGHLIGHT_ANIM_DEFAULT_GLOW_INTENSITY}
+            onChange={(nv) => handlePropertyChange("highlightAnimGlowIntensity", nv, true)}
+          />
         </div>
       )}
     </div>
@@ -333,6 +504,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                 styling={styling}
                 handlePropertyChange={handlePropertyChange}
                 onStylingChange={onStylingChange}
+                variant="triState"
               />
             </div>
           )}
@@ -644,6 +816,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                     styling={styling}
                     handlePropertyChange={handlePropertyChange}
                     onStylingChange={onStylingChange}
+                    variant="checkbox"
                   />
                   {isRoundedRectangle && (
                     <div className="flex items-center justify-between gap-2">

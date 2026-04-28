@@ -225,7 +225,7 @@ export function DiagramEditorInner({
   activePresentationSlides,
   activePresentationSlideDiagrams,
   handleSelectPresentationBaseSlide,
-  handleAutoZoomPresentation,
+  handlePresentationFitToView,
   handleApplyPresentationZoomToCurrent,
   handleApplyPresentationZoomToAll,
   handleAddPresentationSnapshot,
@@ -374,6 +374,14 @@ export function DiagramEditorInner({
 
   const { start, isOpen: tutorialOpen, steps: tutorialSteps, currentIndex: tutorialStepIndex } = useTutorial();
 
+  const handleTopBarFitToView = React.useCallback(() => {
+    if (activePresentationDeckId) {
+      void handlePresentationFitToView();
+    } else {
+      editorRef.current?.fitToView();
+    }
+  }, [activePresentationDeckId, handlePresentationFitToView]);
+
   const handleStartTutorial = React.useCallback(() => {
     start(getTutorialSteps());
   }, [start]);
@@ -447,7 +455,7 @@ export function DiagramEditorInner({
     onResourceActivate={handleResourceActivate}
     onToggleJsonPanel={toggleJsonPanel}
     jsonPanelOpen={jsonPanelOpen}
-    onFitToView={() => editorRef.current?.fitToView()}
+    onFitToView={handleTopBarFitToView}
     onConnectionUpdate={handleConnectionUpdate}
     onConnectionDisconnect={disconnectConnection}
     onCloseSidebar={() => setSidebarOpen(false)}
@@ -497,7 +505,7 @@ export function DiagramEditorInner({
                     layersPanelOpen={layers.layersPanelOpen}
                     layerAnimationsEnabled={layerAnimationsEnabled}
                     onToggleLayerAnimations={() => setLayerAnimationsEnabled(!layerAnimationsEnabled)}
-                    onFitToView={() => editorRef.current?.fitToView()}
+                    onFitToView={handleTopBarFitToView}
                     onCopy={handleMenuCopy}
                     onPaste={handleMenuPaste}
                     canPaste={canPasteFromMenu}
@@ -579,7 +587,6 @@ export function DiagramEditorInner({
                       snapshotsCollapsed: presentationSnapshotsCollapsed,
                       onToggleSnapshotsCollapsed: () =>
                         setPresentationSnapshotsCollapsed((c) => !c),
-                      onAutoZoom: handleAutoZoomPresentation,
                       onApplyZoomToCurrent: handleApplyPresentationZoomToCurrent,
                       onApplyZoomToAll: handleApplyPresentationZoomToAll,
                       onAddSnapshot: handleAddPresentationSnapshot,

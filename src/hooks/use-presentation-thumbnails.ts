@@ -19,7 +19,13 @@ import {
 } from "@/lib/presentation-slide-chain";
 import { slideNeedsPresentationThumbnailSnapshot } from "@/lib/extract-embedded-presentations";
 import type { EditorCanvasHandle } from "@/components/editor/editor-canvas";
-import { PRESENTATION_THUMB_INTERVAL_MS } from "@/lib/diagram-editor/editor-support";
+import {
+  PRESENTATION_THUMB_INTERVAL_MS,
+  PRESENTATION_THUMB_DEBOUNCE_MS,
+  presentationThumbnailCaptureBackground,
+  withPresentationThumbnailThemeFingerprintTag,
+} from "@/lib/diagram-editor/editor-support";
+import { useTheme } from "@/components/theme-provider";
 
 export interface UsePresentationThumbnailsParams {
   editorRef: React.RefObject<EditorCanvasHandle | null>;
@@ -41,7 +47,11 @@ export interface UsePresentationThumbnailsParams {
   activePresentationDeckId: string | null;
   activePresentationSlideId: string | null;
 
-  activePresentationSlideDiagramsForThumbnailCapture: DiagramData[];
+  /** Current diagram tab — when it changes we flush thumbnails (no debounce) for the switched-to tab strip. */
+  activeTabId: string | null;
+
+  /** `[resolvedSlideDiagram]` for the active slide — fit math uses this slide's bounds only (not the whole deck). */
+  presentationThumbnailFitUnionDiagrams: DiagramData[];
   presentationDeckIdentityKey: string;
 
   setPresentationDecks: React.Dispatch<React.SetStateAction<PresentationDeck[]>>;
@@ -61,7 +71,8 @@ export interface UsePresentationThumbnailsResult {
 }
 
 /**
- * Presentation strip PNG thumbnails: periodic capture, slide-change capture, and placeholder backfill after load.
+ * Presentation strip PNG thumbnails: debounced after canvas/draft edits (see PRESENTATION_THUMB_DEBOUNCE_MS),
+ * flush on deck/slide/tab/theme change, slow interval catch-up, placeholder backfill after load.
  */
 export function usePresentationThumbnails({
   editorRef,
@@ -76,13 +87,15 @@ export function usePresentationThumbnails({
   tabDiagramData,
   activePresentationDeckId,
   activePresentationSlideId,
-  activePresentationSlideDiagramsForThumbnailCapture,
+  activeTabId,
+  presentationThumbnailFitUnionDiagrams,
   presentationDeckIdentityKey,
   setPresentationDecks,
   setActivePresentationDeckId,
   setActivePresentationSlideId,
   setPresentationDraftDiagram,
 }: UsePresentationThumbnailsParams): UsePresentationThumbnailsResult {
+  const { resolvedTheme } = useTheme();
   const presentationThumbCaptureInFlightRef = React.useRef(false);
   /** True while sequentially capturing PNG thumbnails for every slide (e.g. compact file load). */
   const presentationThumbBackfillRunningRef = React.useRef(false);
@@ -117,8 +130,9 @@ export function usePresentationThumbnails({
       return;
     }
     const slideKey = `${deckId}:${slideId}`;
-    if (presentationThumbFingerprintSlideKeyRef.current === slideKey) return;
-    presentationThumbFingerprintSlideKeyRef.current = slideKey;
+    const fpSlideScopeKey = `${slideKey}|thumb:${resolvedTheme}`;
+    if (presentationThumbFingerprintSlideKeyRef.current === fpSlideScopeKey) return;
+    presentationThumbFingerprintSlideKeyRef.current = fpSlideScopeKey;
 
     const draft = presentationDraftDiagramRef.current;
     if (!draft) return;
@@ -130,7 +144,7 @@ export function usePresentationThumbnails({
       const slidesFp = deckFp?.slides ?? [];
       const mode = deckFp ? getPresentationDeltaMode(deckFp) : 'master';
       const slideIdxFp = slidesFp.findIndex((s) => s.id === slideId);
-      const fp =
+      const fpCore =
         mode === 'master' || slideIdxFp <= 0
           ? JSON.stringify(
               computeDiagramDelta(masterBase, projectVisibleDiagram(draft)),
@@ -147,11 +161,12 @@ export function usePresentationThumbnails({
                 projectVisibleDiagram(draft),
               ),
             );
-      presentationThumbDeltaFingerprintBySlideRef.current[slideKey] = fp;
+      presentationThumbDeltaFingerprintBySlideRef.current[slideKey] =
+        withPresentationThumbnailThemeFingerprintTag(fpCore, resolvedTheme);
     } catch {
       // ignore
     }
-  }, [activePresentationDeckId, activePresentationSlideId]);
+  }, [activePresentationDeckId, activePresentationSlideId, resolvedTheme]);
 
   const runPresentationThumbnailCaptureIfNeeded =
     React.useCallback(async () => {
@@ -164,10 +179,14 @@ export function usePresentationThumbnails({
 
       presentationThumbCaptureInFlightRef.current = true;
       try {
+        const thumbBg = presentationThumbnailCaptureBackground(resolvedTheme);
         const visibleMain = projectVisibleDiagram(ctx.tab);
         let baseFingerprint: string | null = null;
         try {
-          baseFingerprint = JSON.stringify(visibleMain);
+          baseFingerprint = withPresentationThumbnailThemeFingerprintTag(
+            JSON.stringify(visibleMain),
+            resolvedTheme,
+          );
         } catch {
           baseFingerprint = null;
         }
@@ -192,10 +211,12 @@ export function usePresentationThumbnails({
               try {
                 const primaryPng =
                   await editorRef.current.captureSnapshotPng({
-                    backgroundColor: "white",
+                    backgroundColor: thumbBg,
                     quality: "medium",
                     fitContent: true,
                     unionDiagrams: [visibleMain],
+                    tightContentFrame: true,
+                    fitPadding: 40,
                   });
                 if (
                   presentationThumbCtxRef.current.deckId === captureDeckId
@@ -229,7 +250,7 @@ export function usePresentationThumbnails({
         const ctxSlide = presentationThumbCtxRef.current;
         if (!ctxSlide.draft || !ctxSlide.slideId || !ctxSlide.deckId) return;
 
-        let deltaFingerprint: string;
+        let deltaFpCore: string;
         try {
           const masterBase = projectVisibleDiagram(
             ctxSlide.master ?? ctxSlide.tab,
@@ -244,7 +265,7 @@ export function usePresentationThumbnails({
             deckForSlide ? getPresentationDeltaMode(deckForSlide) : "master";
           const slideIdx = slidesForFp.findIndex((s) => s.id === ctxSlide.slideId);
           if (mode === "master" || slideIdx <= 0) {
-            deltaFingerprint = JSON.stringify(
+            deltaFpCore = JSON.stringify(
               computeDiagramDelta(masterBase, nextVisible),
             );
           } else {
@@ -253,7 +274,7 @@ export function usePresentationThumbnails({
               slidesForFp,
               slideIdx - 1,
             );
-            deltaFingerprint = JSON.stringify(
+            deltaFpCore = JSON.stringify(
               computeDiagramDelta(
                 projectVisibleDiagram(prevBase),
                 nextVisible,
@@ -263,6 +284,11 @@ export function usePresentationThumbnails({
         } catch {
           return;
         }
+
+        const deltaFingerprint = withPresentationThumbnailThemeFingerprintTag(
+          deltaFpCore,
+          resolvedTheme,
+        );
 
         const thumbKey = `${ctxSlide.deckId}:${ctxSlide.slideId}`;
         let slideForThumb: Slide | undefined;
@@ -286,11 +312,13 @@ export function usePresentationThumbnails({
         const captureSlideId = ctxSlide.slideId;
 
         const snapshotImage = await editorRef.current.captureSnapshotPng({
-          backgroundColor: "white",
+          backgroundColor: thumbBg,
           quality: "medium",
           fitContent: true,
           unionDiagrams:
-            activePresentationSlideDiagramsForThumbnailCapture,
+            presentationThumbnailFitUnionDiagrams,
+          tightContentFrame: true,
+          fitPadding: 40,
         });
 
         if (
@@ -322,33 +350,77 @@ export function usePresentationThumbnails({
     }, [
       editorRef,
       presentationDecksRef,
-      activePresentationSlideDiagramsForThumbnailCapture,
+      presentationThumbnailFitUnionDiagrams,
+      resolvedTheme,
       setPresentationDecks,
     ]);
 
-  const captureOutgoingSlideThumbnailIfNeeded = React.useCallback(async () => {
-    if (presentationThumbBackfillRunningRef.current) return;
-    await runPresentationThumbnailCaptureIfNeeded();
-  }, [runPresentationThumbnailCaptureIfNeeded]);
+  const runPresentationThumbnailCaptureRef = React.useRef(
+    runPresentationThumbnailCaptureIfNeeded,
+  );
+  runPresentationThumbnailCaptureRef.current =
+    runPresentationThumbnailCaptureIfNeeded;
 
+  const presentationThumbDebounceTimerRef = React.useRef<number | null>(null);
+
+  const cancelPendingDebouncedThumbnailCapture = React.useCallback(() => {
+    if (presentationThumbDebounceTimerRef.current !== null) {
+      window.clearTimeout(presentationThumbDebounceTimerRef.current);
+      presentationThumbDebounceTimerRef.current = null;
+    }
+  }, []);
+
+  /** Deck / slide / tab / UI theme — capture now; cancel staggered diagram debounce first. */
+  React.useEffect(() => {
+    if (!activePresentationDeckId) {
+      cancelPendingDebouncedThumbnailCapture();
+      return;
+    }
+    cancelPendingDebouncedThumbnailCapture();
+    void runPresentationThumbnailCaptureRef.current();
+  }, [
+    activePresentationDeckId,
+    activePresentationSlideId,
+    activeTabId,
+    resolvedTheme,
+    cancelPendingDebouncedThumbnailCapture,
+  ]);
+
+  /** Tab main diagram + presentation draft edits — stagger capture for performance (flush on navigation above). */
+  React.useEffect(() => {
+    if (!activePresentationDeckId) {
+      cancelPendingDebouncedThumbnailCapture();
+      return;
+    }
+    cancelPendingDebouncedThumbnailCapture();
+    presentationThumbDebounceTimerRef.current = window.setTimeout(() => {
+      presentationThumbDebounceTimerRef.current = null;
+      void runPresentationThumbnailCaptureRef.current();
+    }, PRESENTATION_THUMB_DEBOUNCE_MS);
+    return () => {
+      cancelPendingDebouncedThumbnailCapture();
+    };
+  }, [
+    activePresentationDeckId,
+    tabDiagramData,
+    presentationDraftDiagram,
+    cancelPendingDebouncedThumbnailCapture,
+  ]);
+
+  /** Slow safety net when fingerprint/capture skipped. */
   React.useEffect(() => {
     if (!activePresentationDeckId) return;
 
     const id = window.setInterval(() => {
-      void runPresentationThumbnailCaptureIfNeeded();
+      void runPresentationThumbnailCaptureRef.current();
     }, PRESENTATION_THUMB_INTERVAL_MS);
     return () => window.clearInterval(id);
-  }, [activePresentationDeckId, runPresentationThumbnailCaptureIfNeeded]);
+  }, [activePresentationDeckId]);
 
-  React.useEffect(() => {
-    if (!activePresentationDeckId) return;
-    void runPresentationThumbnailCaptureIfNeeded();
-  }, [
-    activePresentationDeckId,
-    activePresentationSlideId,
-    tabDiagramData,
-    runPresentationThumbnailCaptureIfNeeded,
-  ]);
+  const captureOutgoingSlideThumbnailIfNeeded = React.useCallback(async () => {
+    if (presentationThumbBackfillRunningRef.current) return;
+    await runPresentationThumbnailCaptureRef.current();
+  }, []);
 
   React.useEffect(() => {
     if (!presentationMasterDiagram) return;
@@ -389,6 +461,7 @@ export function usePresentationThumbnails({
       }
 
       try {
+        const thumbBg = presentationThumbnailCaptureBackground(resolvedTheme);
         for (const deck of decksSnapshot) {
           const slidesNeeding = deck.slides.filter((s) =>
             slideNeedsPresentationThumbnailSnapshot(s.snapshotImage),
@@ -403,10 +476,12 @@ export function usePresentationThumbnails({
               try {
                 const primaryPng =
                   await editorRef.current!.captureSnapshotPng!({
-                    backgroundColor: "white",
+                    backgroundColor: thumbBg,
                     quality: "medium",
                     fitContent: true,
                     unionDiagrams: [visibleMain],
+                    tightContentFrame: true,
+                    fitPadding: 40,
                   });
                 if (cancelled) return;
                 flushSync(() => {
@@ -429,7 +504,10 @@ export function usePresentationThumbnails({
                 try {
                   presentationThumbDeltaFingerprintBySlideRef.current[
                     `${deck.id}:${slide.id}`
-                  ] = JSON.stringify(visibleMain);
+                  ] = withPresentationThumbnailThemeFingerprintTag(
+                    JSON.stringify(visibleMain),
+                    resolvedTheme,
+                  );
                 } catch {
                   // ignore
                 }
@@ -456,11 +534,6 @@ export function usePresentationThumbnails({
                 ? resolvedAll[slideIdx]
                 : applyDiagramDelta(masterBase, slide.diagramDelta),
             );
-            const unionDiagrams = deck.slides.map((s, i) =>
-              s.id === slide.id
-                ? draftDiagram
-                : projectVisibleDiagram(resolvedAll[i]),
-            );
 
             flushSync(() => {
               setActivePresentationDeckId(deck.id);
@@ -478,10 +551,12 @@ export function usePresentationThumbnails({
             try {
               const snapshotImage =
                 await editorRef.current!.captureSnapshotPng!({
-                  backgroundColor: "white",
+                  backgroundColor: thumbBg,
                   quality: "medium",
                   fitContent: true,
-                  unionDiagrams,
+                  unionDiagrams: [draftDiagram],
+                  tightContentFrame: true,
+                  fitPadding: 40,
                 });
 
               if (cancelled) return;
@@ -526,7 +601,7 @@ export function usePresentationThumbnails({
                       );
                 presentationThumbDeltaFingerprintBySlideRef.current[
                   `${deck.id}:${slide.id}`
-                ] = fp;
+                ] = withPresentationThumbnailThemeFingerprintTag(fp, resolvedTheme);
               } catch {
                 // ignore
               }
@@ -581,7 +656,7 @@ export function usePresentationThumbnails({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- active deck/slide are restore targets for this run only; omitting avoids re-entry on every slide change.
-  }, [presentationMasterDiagram, presentationDeckIdentityKey]);
+  }, [presentationMasterDiagram, presentationDeckIdentityKey, resolvedTheme]);
 
   return { captureOutgoingSlideThumbnailIfNeeded };
 }

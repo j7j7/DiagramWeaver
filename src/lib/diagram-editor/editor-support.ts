@@ -5,8 +5,24 @@ import type { PresentationDeltaMode } from "@/lib/presentation-slide-chain";
 import { resolvePresentationSlideDiagrams } from "@/lib/presentation-slide-chain";
 import type { PaletteResource } from "@/components/editor/diagram-editor-types";
 
-/** Presentation slide PNG thumbnails: poll at most this often; capture only when delta fingerprint changed. */
-export const PRESENTATION_THUMB_INTERVAL_MS = 3000;
+/** Presentation strip: slow catch-up poll when debounce/interval missed (ms). */
+export const PRESENTATION_THUMB_INTERVAL_MS = 10000;
+
+/** After tab canvas / presentation draft edits, wait this long with no further changes before thumbnail PNG (ms). */
+export const PRESENTATION_THUMB_DEBOUNCE_MS = 900;
+
+/** `captureViewportPngDataUrl`: light → white PNG background; dark → `#0f172a` (matches Tailwind slate). */
+export function presentationThumbnailCaptureBackground(theme: 'light' | 'dark'): 'white' | 'dark' {
+  return theme === 'dark' ? 'dark' : 'white';
+}
+
+/** Append so cached diagram fingerprints invalidate when UI theme toggles (strip PNGs stored in slides). */
+export function withPresentationThumbnailThemeFingerprintTag(
+  diagramFingerprint: string,
+  theme: 'light' | 'dark',
+): string {
+  return `${diagramFingerprint}\u007FthumbBg:${theme}`;
+}
 
 /** Stable when `activeTab.diagramData` is missing (legacy / corrupt rows). A fresh `{}` each render caused presentation master `useEffect` to loop. */
 export const EMPTY_TAB_DIAGRAM_FALLBACK: DiagramData = { nodes: [], connections: [], groupings: [] };

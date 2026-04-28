@@ -12,7 +12,7 @@ import {
   MenubarSubTrigger,
   MenubarSubContent,
 } from '@/components/ui/menubar';
-import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Minimize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks, ListOrdered, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type, Activity, ArrowDown, Check, ChevronLeft, ChevronRight, FilePlus, Play, Wand2 } from 'lucide-react';
+import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Minimize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks, ListOrdered, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type, Activity, ArrowDown, Check, ChevronLeft, ChevronRight, FilePlus, Play } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
 import { ThemeEditor } from './theme-editor';
 import { RulesEditor } from './rules-editor';
@@ -278,7 +278,6 @@ interface TopMenuBarProps {
     activeSlideId: string | null;
     snapshotsCollapsed: boolean;
     onToggleSnapshotsCollapsed: () => void;
-    onAutoZoom: () => void;
     onApplyZoomToCurrent: () => void;
     onApplyZoomToAll: () => void;
     onAddSnapshot: () => void;
@@ -1117,12 +1116,12 @@ export function TopMenuBar({
                   className="h-8 w-8 px-0"
                   onClick={presentationToolbar.onAddSnapshot}
                   disabled={isReadOnly || !presentationActiveDeck}
-                  aria-label="Add snapshot"
+                  aria-label="Duplicate slide"
                 >
                   <Plus className="h-3.5 w-3.5" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Add snapshot</TooltipContent>
+              <TooltipContent>Duplicate Slide</TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -1138,21 +1137,6 @@ export function TopMenuBar({
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Add blank slide after current</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8 w-8 px-0"
-                  onClick={presentationToolbar.onAutoZoom}
-                  disabled={isReadOnly || !presentationActiveDeck}
-                  aria-label="Auto zoom"
-                >
-                  <Wand2 className="h-3.5 w-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Auto zoom</TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>

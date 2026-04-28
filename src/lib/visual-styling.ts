@@ -23,6 +23,10 @@ export interface VisualStyling {
   highlightAnimDurationSec?: number;
   highlightAnimIntervalSec?: number;
   highlightAnimGlowColor?: string;
+  /** Spatial halo spread `0–1`; scales blur px (see highlight-anim); not colour alpha. */
+  highlightAnimGlowIntensity?: number;
+  /** `'constant'` = steady glow; `'pulse'` or omit = repeating pulse when `highlightAnim`. */
+  highlightAnimMode?: 'constant' | 'pulse';
   borderWidth?: number; // Border thickness
   roundedEdges?: boolean; // Whether to apply rounded edges to shapes
   cornerRadius?: number; // Rounded-rectangle only: 0=straight, 1=full pill
@@ -242,6 +246,8 @@ export function extractVisualStylingFromNode(node: DiagramNodeData | DiagramNode
     highlightAnimDurationSec: (node as any).highlightAnimDurationSec,
     highlightAnimIntervalSec: (node as any).highlightAnimIntervalSec,
     highlightAnimGlowColor: (node as any).highlightAnimGlowColor,
+    highlightAnimGlowIntensity: (node as any).highlightAnimGlowIntensity,
+    highlightAnimMode: (node as any).highlightAnimMode,
     ignoreConnectionAvoidance: (node as any).ignoreConnectionAvoidance,
   };
 }
@@ -329,6 +335,11 @@ export function applyVisualStylingToNode(
       styling.highlightAnimGlowColor !== undefined
         ? styling.highlightAnimGlowColor
         : (node as any).highlightAnimGlowColor,
+    highlightAnimGlowIntensity:
+      styling.highlightAnimGlowIntensity !== undefined
+        ? styling.highlightAnimGlowIntensity
+        : (node as any).highlightAnimGlowIntensity,
+    highlightAnimMode: 'highlightAnimMode' in styling ? styling.highlightAnimMode : (node as any).highlightAnimMode,
     ignoreConnectionAvoidance:
       styling.ignoreConnectionAvoidance !== undefined
         ? styling.ignoreConnectionAvoidance

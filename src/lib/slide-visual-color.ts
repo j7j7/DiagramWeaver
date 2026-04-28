@@ -54,6 +54,7 @@ export function diagramNodeVisualStylingSignature(node: DiagramNodeData): string
     x.cornerRadius,
     x.nodeSize,
     x.noIconBackground,
+    x.highlightAnimGlowIntensity,
   ].join('\0');
 }
 

@@ -43,6 +43,9 @@
     --shape-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.15);
     --shape-shadow-preview: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
     --shape-text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    /* Native scrollbars (Firefox scrollbar-color + WebKit) */
+    --scrollbar-track: 0 0% 91%;
+    --scrollbar-thumb: 0 0% 68%;
   }
   .dark {
     --background: 222 84% 4.9%;
@@ -83,6 +86,8 @@
     --shape-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35), 0 0 12px rgba(255, 255, 255, 0.1);
     --shape-shadow-preview: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3)) drop-shadow(0 0 8px rgba(255, 255, 255, 0.2));
     --shape-text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 0 4px rgba(255, 255, 255, 0.2);
+    --scrollbar-track: 222 47% 8%;
+    --scrollbar-thumb: 217 19% 28%;
   }
   /* Disable all shadows during GIF export (256-colour limit makes them look wrong) */
   .gif-export-active {
@@ -116,7 +121,29 @@
 @layer base {
   * {
     @apply border-border;
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--scrollbar-thumb)) hsl(var(--scrollbar-track));
   }
+
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: hsl(var(--scrollbar-track));
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: hsl(var(--scrollbar-thumb));
+    border-radius: 9999px;
+    border: 2px solid hsl(var(--scrollbar-track));
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    filter: brightness(1.12);
+  }
+
   body {
     @apply bg-background text-foreground;
   }
