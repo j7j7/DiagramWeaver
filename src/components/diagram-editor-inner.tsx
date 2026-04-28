@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useCallback, useState } from "react";
+import React, { useMemo, useCallback, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
@@ -90,6 +90,7 @@ const ScratchPad = dynamic(() => import("./editor/scratch-pad").then((mod) => ({
   ssr: false,
 });
 
+const PRESENTATION_PANEL_SETTINGS_KEY = 'dw:presentation:panelSettings';
 
 export function DiagramEditorInner({
   canPasteFromMenu,
@@ -336,6 +337,41 @@ export function DiagramEditorInner({
     return Boolean(pid && activePresentationSlideId === pid);
   }, [presentationDecks, activePresentationDeckId, activePresentationSlideId]);
 
+  const [presentationSnapshotsCollapsed, setPresentationSnapshotsCollapsed] = React.useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const saved = localStorage.getItem(PRESENTATION_PANEL_SETTINGS_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as Record<string, unknown>;
+        if (typeof parsed.snapshotsCollapsed === 'boolean') return parsed.snapshotsCollapsed;
+      }
+    } catch {
+      /* ignore */
+    }
+    return false;
+  });
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const prevRaw = localStorage.getItem(PRESENTATION_PANEL_SETTINGS_KEY);
+      const prev = prevRaw ? (JSON.parse(prevRaw) as Record<string, unknown>) : {};
+      const {
+        snapshotsFloating: _sF,
+        snapshotsPosition: _sP,
+        toolbarFloating: _tF,
+        toolbarPosition: _tP,
+        ...rest
+      } = prev;
+      localStorage.setItem(
+        PRESENTATION_PANEL_SETTINGS_KEY,
+        JSON.stringify({ ...rest, snapshotsCollapsed: presentationSnapshotsCollapsed }),
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [presentationSnapshotsCollapsed]);
+
   const { start, isOpen: tutorialOpen, steps: tutorialSteps, currentIndex: tutorialStepIndex } = useTutorial();
 
   const handleStartTutorial = React.useCallback(() => {
@@ -536,6 +572,22 @@ export function DiagramEditorInner({
                     simulationModeEnabled={simulationModeEnabled}
                     onToggleSimulationMode={handleToggleSimulationMode}
                     onStartTutorial={handleStartTutorial}
+                    presentationToolbar={{
+                      decks: presentationDecks,
+                      activeDeckId: activePresentationDeckId,
+                      activeSlideId: activePresentationSlideId,
+                      snapshotsCollapsed: presentationSnapshotsCollapsed,
+                      onToggleSnapshotsCollapsed: () =>
+                        setPresentationSnapshotsCollapsed((c) => !c),
+                      onAutoZoom: handleAutoZoomPresentation,
+                      onApplyZoomToCurrent: handleApplyPresentationZoomToCurrent,
+                      onApplyZoomToAll: handleApplyPresentationZoomToAll,
+                      onAddSnapshot: handleAddPresentationSnapshot,
+                      onAddBlankSlide: handleAddBlankPresentationSlide,
+                      onPreviousSlide: handlePreviousPresentationSlide,
+                      onNextSlide: handleNextPresentationSlide,
+                      onEnterPlayMode: handleEnterPresentationPlayMode,
+                    }}
                 />
                 {!isLoaded ? (
                   <div className="flex items-center gap-1 border-b bg-card px-3 py-2 text-sm text-muted-foreground">
@@ -577,18 +629,11 @@ export function DiagramEditorInner({
                   decks={presentationDecks}
                   activeDeckId={activePresentationDeckId}
                   activeSlideId={activePresentationSlideId}
-                  onAutoZoom={handleAutoZoomPresentation}
-                  onApplyZoomToCurrent={handleApplyPresentationZoomToCurrent}
-                  onApplyZoomToAll={handleApplyPresentationZoomToAll}
-                  onAddSnapshot={handleAddPresentationSnapshot}
-                  onAddBlankSlide={handleAddBlankPresentationSlide}
+                  snapshotsCollapsed={presentationSnapshotsCollapsed}
                   onDeleteSlide={handleDeletePresentationSlide}
                   onMoveSlide={handleMovePresentationSlide}
                   onSelectSlide={handleSelectPresentationSlide}
                   onSelectBaseSlide={handleSelectPresentationBaseSlide}
-                  onPreviousSlide={handlePreviousPresentationSlide}
-                  onNextSlide={handleNextPresentationSlide}
-                  onEnterPlayMode={handleEnterPresentationPlayMode}
                 />
             </header>
             <div className="flex min-h-0 flex-1 flex-col">

@@ -1,5 +1,11 @@
 # MEMORY.MD
 
+### 2026-04-28 – Presentation snapshot strip: no undocked mode
+**`presentation-editor-panel`**: removed **floating/undocked** snapshot pane (`snapshotsFloating`, drag chrome, localStorage position). Strip stays **fixed** under the tab bar. **`diagram-editor-inner`** persistence drops deprecated **`snapshotsFloating`**, **`snapshotsPosition`**, **`toolbarFloating`**, **`toolbarPosition`** keys on save. Patch bumped.
+
+### 2026-04-28 – Presentation slide controls in top toolbar
+**`top-menu-bar`**: optional **`presentationToolbar`** renders slide actions **left of** the connection **Activity** (animation) button: add snapshot/blank, auto zoom, apply zoom current/all, prev/next + readout, play, show/hide snapshot strip. Shown only when **`presentationToolbar`** is set and the canvas has **no** selection (**`!selectedItem`**, **`selectedItemIds.size === 0`**). **`diagram-editor-inner`**: **`presentationSnapshotsCollapsed`** persisted via **`dw:presentation:panelSettings`**. **`presentation-editor-panel`**: **fixed** thumbnail strip + DnD only (no undocked/floating pane).
+
 ### 2026-04-28 – Presentation: any slide can become main (slide 1)
 **`presentation-editor-panel`**: slide 1 is **draggable** (react-dnd) and accepts drops that call **`onMoveSlide(index, 0)`** (was position 2 only). **`diagram-editor`** **`handleMovePresentationSlide`**: allows **`fromIndex`/`toIndex` 0**; when the row at index 0 is not the primary id, **tab `diagramData`** + **`presentationMasterDiagram`** update to that slide’s resolved diagram; **`slides[0]`** keeps **`__dw_primary__-${deckId}`** with empty delta; duplicate primary id elsewhere gets a new **`slide-…`** id; **chain** rechains vs new base; **master** recomputes each slide delta vs new master visible. Reorder-only (slide 1 unchanged) keeps prior behavior.
 

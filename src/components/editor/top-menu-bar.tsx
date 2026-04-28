@@ -12,7 +12,7 @@ import {
   MenubarSubTrigger,
   MenubarSubContent,
 } from '@/components/ui/menubar';
-import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks, ListOrdered, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type, Activity, ArrowDown } from 'lucide-react';
+import { Plus, Upload, Download, ImageDown, Undo, Redo, Copy, Clipboard, Code, Maximize2, Minimize2, Move, Eye, EyeOff, Palette, CheckSquare, Layers, Lock, Unlock, Info, ExternalLink, PanelRight, ListChecks, ListOrdered, Network, Sun, Moon, Sparkles, Keyboard, BookOpen, Type, Activity, ArrowDown, Check, ChevronLeft, ChevronRight, FilePlus, Play, Wand2 } from 'lucide-react';
 import { ContextToolbar } from './context-toolbar';
 import { ThemeEditor } from './theme-editor';
 import { RulesEditor } from './rules-editor';
@@ -22,8 +22,9 @@ import { KeyboardShortcutsDialog } from './keyboard-shortcuts-dialog';
 import { ViewerUrlDialog } from './viewer-url-dialog';
 import { useTheme } from '@/components/theme-provider';
 import type { SelectedItem } from '../diagram-editor';
-import type { DiagramData } from '@/lib/types';
+import type { DiagramData, PresentationDeck } from '@/lib/types';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
 import { DiagramTheme, ThemeMenuApplyOptions } from '@/lib/theme-types';
 import { cn } from '@/lib/utils';
@@ -270,6 +271,22 @@ interface TopMenuBarProps {
   isReadOnly?: boolean;
   onToggleReadOnly?: () => void;
   onStartTutorial?: () => void;
+  /** When set, slide deck actions render in this bar (left of connection animation toggle) while the canvas has no selection. */
+  presentationToolbar?: {
+    decks: PresentationDeck[];
+    activeDeckId: string | null;
+    activeSlideId: string | null;
+    snapshotsCollapsed: boolean;
+    onToggleSnapshotsCollapsed: () => void;
+    onAutoZoom: () => void;
+    onApplyZoomToCurrent: () => void;
+    onApplyZoomToAll: () => void;
+    onAddSnapshot: () => void;
+    onAddBlankSlide: () => void;
+    onPreviousSlide: () => void;
+    onNextSlide: () => void;
+    onEnterPlayMode: () => void;
+  };
 }
 
 export function TopMenuBar({
@@ -366,6 +383,7 @@ export function TopMenuBar({
   isReadOnly = false,
   onToggleReadOnly,
   onStartTutorial,
+  presentationToolbar,
 }: TopMenuBarProps) {
   const animMenuPreferenceOn = animationConnectionsUserEnabled ?? animationConnectionsEnabled;
 
@@ -419,6 +437,26 @@ export function TopMenuBar({
   const [visualStylingPanelOpen, setVisualStylingPanelOpen] = React.useState(false);
   const [lineStylingPanelOpen, setLineStylingPanelOpen] = React.useState(false);
   const [connectionSettingsPanelOpen, setConnectionSettingsPanelOpen] = React.useState(false);
+
+  const hasCanvasSelection = Boolean(selectedItem) || selectedItemIds.size > 0;
+  const showPresentationToolbar = Boolean(presentationToolbar) && !hasCanvasSelection;
+
+  const presentationActiveDeck =
+    presentationToolbar && presentationToolbar.activeDeckId
+      ? presentationToolbar.decks.find((d) => d.id === presentationToolbar.activeDeckId) ?? null
+      : null;
+  const presentationStripTotal = presentationActiveDeck?.slides.length ?? 0;
+  const presentationActiveStripIndex =
+    presentationActiveDeck && presentationToolbar?.activeSlideId
+      ? presentationActiveDeck.slides.findIndex((s) => s.id === presentationToolbar.activeSlideId)
+      : -1;
+  const presentationSlideReadoutIndex =
+    presentationActiveStripIndex >= 0
+      ? presentationActiveStripIndex + 1
+      : presentationStripTotal > 0
+        ? 1
+        : 0;
+  const presentationCanStepSlides = presentationStripTotal > 1;
 
   const hasOptionsPanelMenuItems =
     Boolean(onTogglePropertiesPanel) ||
@@ -1065,6 +1103,171 @@ export function TopMenuBar({
         >
           <ListOrdered className="h-4 w-4" />
         </Button>
+      )}
+      {showPresentationToolbar && presentationToolbar && (
+        <>
+          <div className="mx-1 h-6 w-px shrink-0 bg-border" aria-hidden />
+          <div className="flex min-w-0 shrink-0 items-center gap-0.5">
+            <span className="hidden shrink-0 px-1 text-[11px] text-muted-foreground sm:inline">Slides</span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 px-0"
+                  onClick={presentationToolbar.onAddSnapshot}
+                  disabled={isReadOnly || !presentationActiveDeck}
+                  aria-label="Add snapshot"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Add snapshot</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 px-0"
+                  onClick={presentationToolbar.onAddBlankSlide}
+                  disabled={isReadOnly || !presentationActiveDeck}
+                  aria-label="Add blank slide after current"
+                >
+                  <FilePlus className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Add blank slide after current</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 w-8 px-0"
+                  onClick={presentationToolbar.onAutoZoom}
+                  disabled={isReadOnly || !presentationActiveDeck}
+                  aria-label="Auto zoom"
+                >
+                  <Wand2 className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Auto zoom</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 w-8 px-0"
+                  onClick={() => presentationToolbar.onApplyZoomToCurrent()}
+                  disabled={isReadOnly || !presentationActiveDeck}
+                  aria-label="Apply zoom to current slide"
+                >
+                  <Check className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Apply zoom to current slide</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 w-8 px-0"
+                  onClick={() => presentationToolbar.onApplyZoomToAll()}
+                  disabled={
+                    isReadOnly || !presentationActiveDeck || presentationActiveDeck.slides.length === 0
+                  }
+                  aria-label="Apply zoom to all snapshots"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Apply zoom to all snapshots</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 w-8 px-0"
+                  onClick={presentationToolbar.onPreviousSlide}
+                  disabled={isReadOnly || !presentationActiveDeck || !presentationCanStepSlides}
+                  aria-label="Previous slide"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Previous slide</TooltipContent>
+            </Tooltip>
+            <span
+              className="min-w-[2.75rem] shrink-0 text-center tabular-nums text-[11px] text-muted-foreground"
+              aria-live="polite"
+              aria-label={
+                presentationActiveDeck
+                  ? `Slide ${presentationSlideReadoutIndex} of ${presentationStripTotal}`
+                  : 'No deck'
+              }
+            >
+              {presentationActiveDeck ? `${presentationSlideReadoutIndex} / ${presentationStripTotal}` : '—'}
+            </span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 w-8 px-0"
+                  onClick={presentationToolbar.onNextSlide}
+                  disabled={isReadOnly || !presentationActiveDeck || !presentationCanStepSlides}
+                  aria-label="Next slide"
+                >
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Next slide</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="h-8 w-8 px-0"
+                  onClick={presentationToolbar.onEnterPlayMode}
+                  disabled={isReadOnly || !presentationActiveDeck}
+                  aria-label="Enter play mode"
+                >
+                  <Play className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Enter play mode</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 w-8 px-0"
+                  onClick={presentationToolbar.onToggleSnapshotsCollapsed}
+                  aria-label={
+                    presentationToolbar.snapshotsCollapsed
+                      ? 'Show snapshot previews'
+                      : 'Hide snapshot previews'
+                  }
+                >
+                  {presentationToolbar.snapshotsCollapsed ? (
+                    <Maximize2 className="h-3.5 w-3.5" />
+                  ) : (
+                    <Minimize2 className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {presentationToolbar.snapshotsCollapsed ? 'Show snapshot previews' : 'Hide snapshot previews'}
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </>
       )}
       {onToggleAnimationConnections && (
         <Button
