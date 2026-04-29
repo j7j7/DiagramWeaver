@@ -2,6 +2,12 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-04-29 – Sidebar cloud resource: matches CloudShape vector (`src/lib/cloud-shape.ts`)
+**`ResourceIcon`** skips catalog **`cloud.png`** for **`generic.object.cloud`** (like charts — vector parity with canvas) and draws **`CLOUD_SHAPE_PATH_D`** in **`CLOUD_SHAPE_VIEW_BOX`**. **`CloudShape`** imports the same constants. **`DraggableResourceItem`** forces **`ResourceIcon`** for cloud (otherwise **`cloud.png`** **`img`** wins over the **`icon`** prop). Patch bumped.
+
+### 2026-04-29 – Cloud shape SVG: recognizable fluffy silhouette
+**`CloudShape`** (`src/components/diagram/shapes/cloud.tsx`) and matching **`shape-preview`** cloud **`path`** use a classic flat-bottom silhouette with distinct upper lobes (same geometry in **`0 0 100 60`** normalized space). Patch bumped.
+
 ### 2026-04-29 – MEMORY.MD: consolidated duplicate / superseded notes
 Merged redundant **README** bullets; removed **object-fill** thumbnail note (reverted to **`object-contain`**); folded the **Apr 24 frosted portal** debugging chain into a short **superseded** summary + compact inline-stack notes; deduped **presentation collapse-toolbar** and **viewer connection labels**; merged duplicate **Connections popover** / **mint-mocha** merge lines; dropped the redundant **semver superseded** stub (history folded into the **`0.1.{patch}`** line); corrected **app build** note vs **2026-04-14** top-bar chip removal. Removed stale **“Project Overview”** tail (~600 lines: outdated Next/React snapshot, contradictory **zones** history, duplicated feature bullets). **`package.json`** patch vs **`### `** count may drift until the next intentional semver bump.
 

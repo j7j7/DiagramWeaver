@@ -1289,25 +1289,14 @@ export function ShapePreview({
             )}
           </defs>
           <path
-            d={`M ${displayWidth * 0.1},${displayHeight * 0.5} 
-                C ${displayWidth * 0.1},${displayHeight * 0.36} ${displayWidth * 0.15},${displayHeight * 0.24} ${displayWidth * 0.225},${displayHeight * 0.24} 
-                C ${displayWidth * 0.25},${displayHeight * 0.16} ${displayWidth * 0.3},${displayHeight * 0.12} ${displayWidth * 0.35},${displayHeight * 0.16} 
-                C ${displayWidth * 0.375},${displayHeight * 0.08} ${displayWidth * 0.425},${displayHeight * 0.04} ${displayWidth * 0.475},${displayHeight * 0.08} 
-                C ${displayWidth * 0.525},${displayHeight * 0.04} ${displayWidth * 0.575},${displayHeight * 0.08} ${displayWidth * 0.6},${displayHeight * 0.16} 
-                C ${displayWidth * 0.65},${displayHeight * 0.12} ${displayWidth * 0.7},${displayHeight * 0.16} ${displayWidth * 0.725},${displayHeight * 0.24} 
-                C ${displayWidth * 0.85},${displayHeight * 0.24} ${displayWidth * 0.9},${displayHeight * 0.36} ${displayWidth * 0.9},${displayHeight * 0.5} 
-                C ${displayWidth * 0.94},${displayHeight * 0.52} ${displayWidth * 0.96},${displayHeight * 0.58} ${displayWidth * 0.96},${displayHeight * 0.66} 
-                C ${displayWidth * 0.96},${displayHeight * 0.74} ${displayWidth * 0.94},${displayHeight * 0.8} ${displayWidth * 0.9},${displayHeight * 0.82} 
-                C ${displayWidth * 0.88},${displayHeight * 0.88} ${displayWidth * 0.84},${displayHeight * 0.9} ${displayWidth * 0.8},${displayHeight * 0.86} 
-                C ${displayWidth * 0.76},${displayHeight * 0.9} ${displayWidth * 0.72},${displayHeight * 0.86} ${displayWidth * 0.7},${displayHeight * 0.82} 
-                C ${displayWidth * 0.66},${displayHeight * 0.84} ${displayWidth * 0.62},${displayHeight * 0.82} ${displayWidth * 0.6},${displayHeight * 0.78} 
-                C ${displayWidth * 0.56},${displayHeight * 0.82} ${displayWidth * 0.52},${displayHeight * 0.78} ${displayWidth * 0.5},${displayHeight * 0.74} 
-                C ${displayWidth * 0.48},${displayHeight * 0.78} ${displayWidth * 0.44},${displayHeight * 0.74} ${displayWidth * 0.42},${displayHeight * 0.7} 
-                C ${displayWidth * 0.38},${displayHeight * 0.72} ${displayWidth * 0.34},${displayHeight * 0.7} ${displayWidth * 0.32},${displayHeight * 0.66} 
-                C ${displayWidth * 0.28},${displayHeight * 0.68} ${displayWidth * 0.24},${displayHeight * 0.66} ${displayWidth * 0.225},${displayHeight * 0.62} 
-                C ${displayWidth * 0.18},${displayHeight * 0.64} ${displayWidth * 0.14},${displayHeight * 0.58} ${displayWidth * 0.14},${displayHeight * 0.52} 
-                C ${displayWidth * 0.14},${displayHeight * 0.5} ${displayWidth * 0.15},${displayHeight * 0.44} ${displayWidth * 0.2},${displayHeight * 0.42} 
-                C ${displayWidth * 0.15},${displayHeight * 0.4} ${displayWidth * 0.1},${displayHeight * 0.46} ${displayWidth * 0.1},${displayHeight * 0.5} Z`}
+            d={`M ${displayWidth * 18 / 100},${displayHeight * 50 / 60}
+                L ${displayWidth * 82 / 100},${displayHeight * 50 / 60}
+                C ${displayWidth * 92 / 100},${displayHeight * 50 / 60} ${displayWidth * 96 / 100},${displayHeight * 42 / 60} ${displayWidth * 92 / 100},${displayHeight * 34 / 60}
+                C ${displayWidth * 98 / 100},${displayHeight * 28 / 60} ${displayWidth * 92 / 100},${displayHeight * 16 / 60} ${displayWidth * 80 / 100},${displayHeight * 18 / 60}
+                C ${displayWidth * 78 / 100},${displayHeight * 8 / 60} ${displayWidth * 64 / 100},${displayHeight * 6 / 60} ${displayWidth * 56 / 100},${displayHeight * 14 / 60}
+                C ${displayWidth * 50 / 100},${displayHeight * 4 / 60} ${displayWidth * 36 / 100},${displayHeight * 4 / 60} ${displayWidth * 30 / 100},${displayHeight * 16 / 60}
+                C ${displayWidth * 18 / 100},${displayHeight * 10 / 60} ${displayWidth * 6 / 100},${displayHeight * 22 / 60} ${displayWidth * 12 / 100},${displayHeight * 34 / 60}
+                C ${displayWidth * 4 / 100},${displayHeight * 38 / 60} ${displayWidth * 8 / 100},${displayHeight * 50 / 60} ${displayWidth * 18 / 100},${displayHeight * 50 / 60} Z`}
             fill={effectiveBackgroundStyle === 'gradient' ? `url(#${gradientId})` : (effectiveBackgroundStyle === 'none' || effectiveBackgroundStyle === 'frosted') ? 'transparent' : effectiveBackgroundColor}
             stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
             strokeWidth={borderStyle === 'none' ? 0 : strokeWidth}

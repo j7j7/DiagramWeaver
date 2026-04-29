@@ -8,6 +8,7 @@ import { CustomIconImage } from "@/components/diagram/custom-icon-image";
 import type { CustomImageOptions } from "@/lib/types";
 import { isConnectorLineNodeType } from "@/lib/utils";
 import { isChartNodeType } from "@/lib/chart-node";
+import { CLOUD_SHAPE_PATH_D, CLOUD_SHAPE_VIEW_BOX, isPaletteVectorCloudType } from "@/lib/cloud-shape";
 
 /** Palette JSON lists Text Box Heading under `generic.text` but runtime type is `generic.object.text-box-heading`. */
 function isTextBoxHeadingRuntimeType(type: string | undefined): boolean {
@@ -129,6 +130,12 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
       return () => ac.abort();
     }
 
+    // Vector glyph matches CloudShape; catalog PNG differs from canvas
+    if (isPaletteVectorCloudType(type)) {
+      setResourceFile(null);
+      return () => ac.abort();
+    }
+
     // Inline SVG glyphs below; generic resource JSON has no `chart` category
     if (isChartNodeType(type)) {
       setResourceFile(null);
@@ -204,6 +211,9 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
 
   const iconPath = useMemo(() => {
     if (isTextBoxHeadingRuntimeType(type)) {
+      return null;
+    }
+    if (isPaletteVectorCloudType(type)) {
       return null;
     }
 
@@ -363,8 +373,8 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
         );
       case 'cloud':
         return (
-          <svg {...props} viewBox="0 0 24 24" fill={props.fill || "currentColor"} stroke={props.stroke || "none"} strokeWidth={props.strokeWidth || 2}>
-            <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
+          <svg {...props} viewBox={CLOUD_SHAPE_VIEW_BOX} fill={props.fill || "currentColor"} stroke={props.stroke || "none"} strokeWidth={props.strokeWidth ?? 0}>
+            <path d={CLOUD_SHAPE_PATH_D} />
           </svg>
         );
       case 'rectangle':
