@@ -1,5 +1,8 @@
 # MEMORY.MD
 
+### 2026-04-29 – `docs/todo.md`: tutorial + examples backlog
+**`docs/todo.md`** — checklist tables with **`[ ]`/`[x]`** status + sub-rows (parity/IDs/examples/hygiene); epics **A** (tutorial) / **B** (examples); “at a glance” summary. Same scope as before: **`TUTORIAL-MAP`** / **`README`**, **`public/examples`** + **`public/examples/tutorial`**.
+
 ### 2026-04-29 – Diagram JSON: persist `layers` on save/load
 **`ensureDiagramLayersPersisted`** in **`layers-utils`** — if **`diagramData.layers`** is missing or fails **`validateLayersConfig`**, inject **`getDefaultLayersConfig()`** before writing/reading. Wired into **Save as .json** (**`diagram-editor-save-handler`**), **`validateAndConvertJson`** (**viewer** paths), **`parseDiagramJson`** (**`schemas`**), **`parseUnknownJsonToDiagramData`** (preserves full validated diagram + connections + ensures layers), JSON panel apply (**`json-editor-panel`**), **`sanitizeImportedDiagram`** (includes **`viewState`** in return). Patch bumped.
 
