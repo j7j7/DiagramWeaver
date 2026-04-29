@@ -1,5 +1,11 @@
 # MEMORY.MD
 
+### 2026-04-29 – README: feature-focused intro copy
+**`README.md`**: opening description rewritten to emphasize ease of use, **diagram + presentation** workflows, **icons/shapes**, **slide animations**, and polished results; brief nod to JSON/Mermaid/export for advanced users.
+
+### 2026-04-29 – README: work-in-progress notice
+**`README.md`**: added a short disclaimer at the top that the project is **work in progress**, actively developed, and **some functionality may change**.
+
 ### 2026-04-28 – Full Visual Styling: same Glow Off / Constant / Pulse as compact
 **`HighlightAnimEffectControls`** is a single **`Glow`** select + colour/spread/time (compact + full two-column **`showFullStyling`**); removed **`Highlight animation`** checkbox path. **`Checkbox`** import dropped. Patch bumped.
 
