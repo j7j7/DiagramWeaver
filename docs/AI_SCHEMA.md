@@ -1,264 +1,297 @@
 # DiagramWeaver AI Schema
 
-This document provides a comprehensive schema for AI models to generate DiagramWeaver diagrams. It includes all available node types, styling options, and resource capabilities.
+Specification for generating **diagram JSON** that the editor and viewer accept. **Authoritative definitions** live in **`src/lib/schemas.ts`** (Zod) and **`src/lib/types.ts`** (`DiagramNodeData`, `DiagramConnectionData`, `DiagramData`, …).
 
-## Overview
+Use this document as the **single prompt attachment** when asking an LLM to output diagram JSON: it combines **validity rules** (what parses) with **layout and styling conventions** (what reads well on the canvas).
 
-DiagramWeaver uses a JSON structure with three main components:
-- `nodes`: Individual diagram elements
-- `connections`: Relationships between nodes  
-- `groups`: Hierarchical containers for nodes
+---
 
-## Complete JSON Schema
+## For LLM authors: valid, good-looking diagrams
+
+### Output contract
+
+- Emit **one JSON object** only (no markdown fences inside the payload unless the user asked for fenced output).
+- Use the **flat diagram shape**: at minimum **`nodes`** and **`connections`** arrays (both may be empty but should exist for clarity).
+- **Never** use deprecated keys **`groups`**, **`rootGroupId`**, or **`DiagramData.groups`**. Use **`groupings`** only when you need coordinated selection (see below).
+- Prefer **real resource types** from `provider.category.resource` (e.g. `aws.compute.lambda`) check **`public/resources/resource-*.json`** naming when unsure; **`generic.object.*`** / **`generic.text.*`** are safe for shapes and labels.
+
+### Validity checklist (must pass parsing)
+
+| Rule | Detail |
+|------|--------|
+| Unique **`id`** per node | Stable strings: `alpaca-1`, `web-tier`, **`no spaces in ids`** (hyphens/underscores OK). |
+| **`connections` reference nodes** | Every **`from`** and **`to`** must match an existing node **`id`**. |
+| **`type`** on every node | Non-empty string; wrong types may render as missing assets—prefer known **`generic.*`** or catalog **`aws.*`**, **`azure.*`**, etc. |
+| **`groupings` consistency** | If you set **`groupId`** on a node, include a **`groupings`** entry with that **`id`** and list the node in **`memberIds`**. |
+| Custom images | **`imageUrl`** only if **`http:`** or **`https:`** (app may strip invalid URLs). |
+
+### Layout: coordinates and spacing
+
+- Positions are **canvas pixels**: **`x`** increases to the right, **`y`** increases downward (typical 2D layout).
+- **Avoid** placing every node at **`(0, 0)`**—diagrams overlap and look broken. Use a **rough grid**:
+  - **Horizontal stride** between peers: about **160–280px** (icons ~80px wide; leave gap for labels).
+  - **Vertical tiers** (layers of architecture): **140–220px** between rows.
+  - Keep the whole sketch in a **bounded region** (e.g. **x: 40–1200**, **y: 40–800**) so default zoom shows the full story; extreme coordinates make the canvas feel empty or clipped.
+- **Patterns that read well:**
+  - **Left → right** for user → API → services → data (increase **x** along the flow).
+  - **Top → bottom** for high-level to detail, or pipelines (increase **y** per stage).
+  - **Align** peers: same **`y`** for a row, same **`x`** for a column.
+- **`width`** / **`height`** on rectangles: set both with **`sizeMode`: `"custom"`** (or omit sizeMode where the app defaults sensibly for shapes). Use similar sizes within a tier so rows look intentional (e.g. all boxes **140×72**).
+
+### Visual hierarchy
+
+- **Fewer, bolder elements:** 5–25 nodes is usually clearer than 50 tiny icons; group related items with **`groupings`** + **`label`** or use a **title node** (**`generic.text.text`**) above a row.
+- **Icons vs boxes:** Cloud **resources** (**`aws.*`**, **`azure.*`**, …) for concrete services; **`generic.object.rectangle`** (or rounded via **`cornerRadius`**) for “App”, “VPC”, logical groupings when no icon fits.
+- **`nodeSize`:** **`half`** / **`quarter`** for dense rows; **`normal`** for hero nodes.
+- **`textPosition`:** For shapes, **`above`** keeps labels readable; **`center`** inside solid boxes with short labels.
+- **`label`:** Short (2–5 words); put longer explanations in **`info`** (hover/popover in app).
+
+### Color and polish
+
+- **Palette discipline:** Pick **2–4 accent colors** plus neutrals (**`#1f2937`**, **`#64748b`**, **`#e5e7eb`**). Reuse the same hex for a service family (e.g. orange **#ff9900** for AWS compute-adjacent).
+- **Contrast:** Dark text **`#0f172a`** or **`#111827`** on light fills; light text **`#f8fafc`** on dark fills. Avoid mid-gray on mid-gray.
+- **`backgroundStyle`:** **`gradient`** with **`backgroundColors`** set to **two** hex strings plus **`gradientAngle`** between **90** and **135** reads modern; **`solid`** is clearest for dense diagrams.
+- **`shadow`: true** on **1–3 focal nodes** only; overuse looks muddy.
+- **Connections:** Match **`color`** to the **target** role or a **single relationship color** (e.g. **`#6366f1`** for primary data flow). Use **`toArrow`: true** (or **`fromArrow`**) to show direction. **`lineWidth`** **2–3** for primary paths, default for secondary.
+- **`style`:** **`bezier`** is default and friendly; **`orthogonal`** + **`smoothCorners`: true** fits **boxy** architecture diagrams and right-angle corporate style.
+- **Animation:** Sparingly—enable on at most **one** primary link when the user wants motion, e.g. `{"enabled": true, "shape": "dot"}` inside **`animation`**; omit for static diagrams.
+
+### Connections that stay readable
+
+- Prefer **fewer long hops**: if two nodes are far apart, **increase spacing** or add **intermediate** nodes rather than ugly long edges.
+- **`fromPreferredExit`** / **`toPreferredEntry`:** For left-to-right flow, use **`right`** exit and **`left`** entry so lines attach cleanly.
+- **Multiple edges** between the same pair: give each connection a distinct **`id`**.
+- **`waypoints`:** Advanced; only if you must route around shapes—coordinates are **absolute** on the canvas.
+
+### Optional: `recentColors`
+
+Listing **4–8** hex strings you used helps the product color picker mirror your palette (**`recentColors`**); optional.
+
+### Anti-patterns
+
+- Overlapping nodes at identical **x,y** without offset.
+- Random **type** strings that are not in the resource catalog—use **`generic.object.rectangle`** with a **`label`** instead.
+- Neon on neon, or low-contrast pastel-on-pastel for body text.
+- **Every** connection with animation and shadow—noise, not emphasis.
+- Omitting **`nodes`** but leaving **`connections`** that reference missing ids.
+
+Smallest **valid** sketch (note non-zero **`x`** / **`y`** so the node is visible and not stacked on the origin):
 
 ```json
 {
   "nodes": [
     {
-      "id": "string",
-      "type": "string",
-      "label": "string",
-      "info": "string",
-      "x": "number",
-      "y": "number",
-      "lineColor": "string",
-      "edgePosition": "top|bottom|left|right",
-      "borderColor": "string",
-      "backgroundColor": "string",
-      "textColor": "string",
-      "borderStyle": "solid|dotted|gradient|none",
-      "borderColors": ["string", "string"],
-      "backgroundStyle": "solid|gradient|none",
-      "backgroundColors": ["string", "string"],
-      "gradientAngle": "number",
-      "shadow": "boolean",
-      "rotation": "number",
-      "textPosition": "above|center|under",
-      "freeflow": "boolean",
-      "borderWidth": "number",
-      "width": "number",
-      "height": "number",
-      "sizeMode": "auto|custom",
-      "noIconBackground": "boolean",
-      "nodeSize": "normal|half|quarter"
+      "id": "svc-1",
+      "type": "generic.object.rectangle",
+      "label": "Service",
+      "x": 180,
+      "y": 160,
+      "width": 168,
+      "height": 76,
+      "sizeMode": "custom",
+      "backgroundColor": "#f1f5f9",
+      "textColor": "#0f172a"
     }
   ],
-  "connections": [
-    {
-      "from": "string",
-      "to": "string",
-      "color": "string",
-      "text": "string",
-      "textPosition": "number",
-      "fromPreferredExit": "top|bottom|left|right|center",
-      "fromArrow": "boolean",
-      "toPreferredEntry": "top|bottom|left|right|center",
-      "toArrow": "boolean",
-      "arrow": "boolean",
-      "style": "bezier",
-      "curvature": "number",
-      "lineWidth": "number",
-      "shadow": "boolean",
-      "waypoints": [{ "x": "number", "y": "number", "id": "string (optional)" }]
-    }
-  ],
-  "groups": [
-    {
-      "id": "string",
-      "type": "group",
-      "label": "string",
-      "children": ["string"],
-      "info": "string",
-      "x": "number",
-      "y": "number",
-      "subType": "zone|group",
-      "color": "string",
-      "borderColor": "string",
-      "textColor": "string",
-      "backgroundColor": "string",
-      "borderStyle": "solid|dotted|gradient|none",
-      "borderColors": ["string", "string"],
-      "backgroundStyle": "solid|gradient|none",
-      "backgroundColors": ["string", "string"],
-      "gradientAngle": "number",
-      "orientation": "horizontal|vertical|square",
-      "maxItemsPerRow": "number",
-      "lineColor": "string",
-      "shadow": "boolean",
-      "parentId": "string",
-      "textPosition": "top-left|top-center|top-right|bottom-left|bottom-center|bottom-right|inside",
-      "width": "number",
-      "height": "number",
-      "sizeMode": "auto|custom",
-      "minWidth": "number",
-      "minHeight": "number",
-      "rotation": "number",
-      "borderWidth": "number"
-    }
-  ],
-  "rootGroupId": "string"
+  "connections": []
 }
 ```
 
-## Node Types
+---
 
-### Text Nodes
-- `generic.text.text` - Simple text
-- `generic.text.textbox` - Text with editable box background
+## Overview
 
-### Shape Nodes
-- `generic.object.square` - Square shape
-- `generic.object.rectangle` - Rectangle shape
-- `generic.object.circle` - Circle shape
-- `generic.object.triangle` - Triangle shape
-- `generic.object.star` - Star shape
-- `generic.object.cloud` - Cloud shape
+Validated diagram data (**flat format**) contains:
 
-### Resource Nodes
-Resource nodes follow the pattern: `{provider}.{category}.{resource}`
+| Key | Required | Purpose |
+|-----|----------|---------|
+| `nodes` | yes (may be empty) | Shapes, icons, lines, text, charts, etc. |
+| `connections` | yes (may be empty) | Edges between node IDs |
+| `groupings` | no | Coordination groups (`type: "grouping"`), not visual zones |
+| `layers` | no | Layer visibility, locks, palette (`LayersConfig`; defaulted on load if missing) |
+| `recentColors` | no | Recent color picker values |
+| `subDiagrams` | no | Map of **`subDiagramId` → nested `DiagramData`** |
+| `viewState` | no | Saved pan/zoom: `{ x, y, k }` |
 
-#### Available Providers and Categories
+Importer **`validateAndConvertJson`** (viewer) and **`parseDiagramJson`** flatten legacy **`zones`**, sanitize custom icons, and ensure **`layers`** where needed.
 
-**AWS (Amazon Web Services)**
-- `aws.general` - General AWS resources (Client, Disk, Internet Gateway, etc.)
-- `aws.compute` - Compute resources (EC2, Lambda, Batch, etc.)
-- `aws.storage` - Storage resources (S3, EBS, EFS, etc.)
-- `aws.database` - Database resources (RDS, DynamoDB, etc.)
-- `aws.networking` - Networking resources (VPC, CloudFront, etc.)
-- `aws.security` - Security resources (IAM, KMS, etc.)
-- `aws.analytics` - Analytics resources (Redshift, Athena, etc.)
-- `aws.ai` - AI/ML resources (SageMaker, etc.)
-- `aws.iot` - IoT resources
-- `aws.mobile` - Mobile services
-- `aws.ar` - AR/VR services
-- `aws.blockchain` - Blockchain services
-- `aws.business` - Business applications
-- `aws.cost` - Cost management
-- `aws.game` - Game development
-- `aws.management` - Management tools
-- `aws.media` - Media services
-- `aws.migration` - Migration tools
-- `aws.quantum` - Quantum technologies
-- `aws.robotics` - Robotics
-- `aws.satellite` - Satellite services
-- `aws.blockchain` - Blockchain
+**Do not use:** `groups`, `rootGroupId`, or **`DiagramData.groups`** — those are obsolete names. Visual **zones** in old files arrive as **`zones`** and are **flattened to `nodes`**; persisted files use flat **`nodes`** + optional **`groupings`**.
 
-**Azure (Microsoft Azure)**
-- `azure.aimachinelearning` - AI and Machine Learning
-- `azure.analytics` - Analytics services
-- `azure.appservices` - App Services
-- `azure.azureecosystem` - Azure ecosystem
-- `azure.compute` - Compute resources
-- `azure.container` - Container services
-- `azure.database` - Database services
-- `azure.devops` - DevOps tools
-- `azure.general` - General Azure resources
-- `azure.hpc` - High Performance Computing
-- `azure.identity` - Identity services
-- `azure.integration` - Integration services
-- `azure.iot` - IoT services
-- `azure.management` - Management tools
-- `azure.media` - Media services
-- `azure.mobile` - Mobile services
-- `azure.monitoring` - Monitoring services
-- `azure.networking` - Networking
-- `azure.security` - Security services
-- `azure.storage` - Storage services
-- `azure.web` - Web services
+---
 
-**GCP (Google Cloud Platform)**
-- `gcp.compute` - Compute Engine
-- `gcp.database` - Database services
-- `gcp.storage` - Storage services
-- `gcp.networking` - Networking
-- `gcp.bigdata` - Big Data services
-- `gcp.ai` - AI and Machine Learning
-- `gcp.analytics` - Analytics
-- `gcp.api` - API management
-- `gcp.developer` - Developer tools
-- `gcp.iot` - IoT services
-- `gcp.management` - Management tools
-- `gcp.security` - Security services
+## Top-level skeleton (flat)
 
-**Other Providers**
-- `alibabacloud` - Alibaba Cloud services
-- `digitalocean` - DigitalOcean services
-- `elastic` - Elastic Stack services
-- `firebase` - Firebase services
-- `ibm` - IBM Cloud services
-- `k8s` - Kubernetes resources
-- `oci` - Oracle Cloud Infrastructure
-- `onprem` - On-premises resources
-- `openstack` - OpenStack services
-- `outscale` - Outscale services
-- `programming` - Programming languages and frameworks
-- `saas` - SaaS applications
-- `generic` - Generic computing resources
+```json
+{
+  "nodes": [],
+  "connections": [],
+  "groupings": [],
+  "layers": {
+    "layers": [
+      { "id": "background", "name": "Background", "visible": true, "locked": false, "color": "#cbd5f5" }
+    ],
+    "activeLayerId": "background",
+    "defaultLayerId": "background"
+  },
+  "recentColors": ["#6366f1"],
+  "subDiagrams": {},
+  "viewState": { "x": 0, "y": 0, "k": 1 }
+}
+```
 
-## Styling Options
+Omit optional keys when unused. **`defaultLayerId`** is always **`"background"`** in defaults.
 
-### Gradient Angles
-- `-45` - Alt Diagonal ↗
-- `90` - Down
-- `135` - Diagonal ↘
-- `180` - Side
+---
 
-### Border Styles
-- `solid` - Solid border
-- `dotted` - Dotted border
-- `gradient` - Gradient border
-- `none` - No border
+## Nodes (`DiagramNodeData`)
 
-### Background Styles
-- `solid` - Solid background color
-- `gradient` - Gradient background
-- `none` - Transparent background
+Every node has **`id`** and **`type`**. **`type`** is usually `provider.category.resource` (e.g. `aws.compute.ec2`) or **`generic.*`** shapes/text/icons/charts.
 
-### Text Positions (for shapes)
-- `above` - Text above the shape
-- `center` - Text centered in the shape
-- `under` - Text below the shape
+Common optional fields (see Zod **`DiagramNodeDataSchema`** for the full list):
 
-### Group Orientations
-- `horizontal` - Horizontal layout
-- `vertical` - Vertical layout
-- `square` - Square/grid layout
+- **Identity / content:** `label`, `richLabel` (runs with `text`, optional `bold` / `italic` / `underline`, list/justify/font fields), `info`, `linkUrl`, `tag`, `tagPosition`
+- **Layout:** `x`, `y`, `layer`, `stackWithShapes`, `edgePosition` (`top` \| `bottom` \| `left` \| `right`), `freeflow`, `locked`, `groupId` (references a **`groupings`** entry)
+- **Box / fill:** `borderColor`, `backgroundColor`, `textColor`, `borderStyle` (`solid` \| `dotted` \| `gradient` \| `none`), `borderColors`, `backgroundStyle` (`solid` \| `gradient` \| `frosted` \| `none`), `backgroundColors`, `frostedDiffusion`, `frostedTransparency`, `frostedPerlinNoise`, `gradientAngle`, `borderGradientAngle`, `shadow`, `borderWidth`, `cornerRadius` (0–1 rounded rect)
+- **Highlight:** `highlightAnim`, `highlightAnimDurationSec`, `highlightAnimIntervalSec`, `highlightAnimGlowColor`, `highlightAnimGlowIntensity`, `highlightAnimMode` (`constant` \| `pulse`)
+- **Shape text:** `textPosition` (`above` \| `center` \| `under`), `textJustify`, `textVerticalPosition`, font fields (`fontFamily`, `fontSize`, `fontWeight`, …), outline/glow/shadow text fields
+- **Heading strip (e.g. text-box-heading):** `headingEdge`, `headingLabel`, `richHeadingLabel`, `headingBackgroundColor`, `headingBackgroundStyle`, `headingTextColor`
+- **Icons / resources:** `provider`, `category`, `file`, or **standard icons:** `iconType` (`lucide` \| `emoji`), `iconName`, `emoji`, `iconColor`; **custom image:** `imageUrl` (http/https only), `imageOptions` (crop/scale/orientation)
+- **Routing:** `ignoreConnectionAvoidance` (orthogonal may cross this shape)
+- **Line node** (`generic.object.line` style usage): `startPos`, `endPos`, `startCap`, `endCap`, `lineThickness`, `lineType`, `linePathStyle` (`straight` \| `curved`), `lineControlPoints`, `lineSmoothJoints`, `lineTextVerticalPosition`, `lineColorStyle`, `lineColors`, `lineGradientAngle`
+- **Charts:** `chart` — discriminated by **`kind`**: `pie` \| `bar` \| `line` (see schema for `series`, axes, labels, etc.)
+- **UML:** `umlClass`, `umlClassStyle`
+- **Navigation:** `subDiagramId` (key into **`subDiagrams`**)
+- **Other:** `metaData` (string map), `noIconBackground`, `nodeSize` (`normal` \| `half` \| `quarter`), `labelWidth`, `width`, `height`, `sizeMode` (`auto` \| `custom`), `rotation`, `metaData`
 
-### Group Text Positions
-- `top-left` - Top left of group
-- `top-center` - Top center of group
-- `top-right` - Top right of group
-- `bottom-left` - Bottom left of group
-- `bottom-center` - Bottom center of group
-- `bottom-right` - Bottom right of group
-- `inside` - Inside the group
+---
 
-## Connection Options
+## Connections (`DiagramConnectionData`)
 
-### Arrow Options
-- `fromArrow` - Arrow at source node
-- `toArrow` - Arrow at target node
-- `arrow` - Legacy arrow property (backward compatibility)
+Required: **`from`**, **`to`** (node IDs). **`id`** distinguishes multiple edges between the same pair.
 
-### Connection Styles
-- `bezier` - Curved connection with adjustable curvature
+Routing & style:
 
-### Connection Waypoints
-- `waypoints`: Optional array of `{ x, y, id? }` in absolute canvas coordinates
-- Route connections around obstacles by adding intermediate points
-- Path remains smooth (Catmull-Rom style bezier chain)
-- Add/remove via UI when connection is selected; drag to reposition
+| Field | Notes |
+|-------|--------|
+| `style` | `bezier` (default) or `orthogonal` |
+| `curvature` | Bezier intensity |
+| `smoothCorners` | Rounded bends for orthogonal |
+| `waypoints` | `[{ x, y, id? }]` canvas coordinates (orthogonal/bezier routing) |
+| `orthogonalTrunkOffsetX`, `orthogonalTrunkOffsetY` | Z-route trunk offsets when not using manual waypoints |
+| `fromPreferredExit`, `toPreferredEntry` | `top` \| `bottom` \| `left` \| `right` \| `center` |
+| `edgeAttachmentConstraint` | `auto` \| `top-bottom` \| `left-right` |
+| `centerEdgeAnchors` | Attach at edge midpoints |
 
-### Entry/Exit Points
-- `top` - Connect from/to top edge
-- `bottom` - Connect from/to bottom edge
-- `left` - Connect from/to left edge
-- `right` - Connect from/to right edge
-- `center` - Connect from/to center
+Stroke:
 
-## Example Diagrams
+| Field | Notes |
+|-------|--------|
+| `color`, `lineWidth` | Base stroke |
+| `lineWidthLock`, `lineWidthEnd` | Taper along path when lock false |
+| `colorLock`, `colorEnd` | Gradient along stroke when color lock false |
+| `lineType` | `solid` \| `dashed` \| `dotted` |
+| `shadow` | Stroke shadow |
+| `useSourceLineColor` | Follow source styling |
 
-### Simple AWS Architecture
+Markers & labels: `fromArrow`, `toArrow`, `arrow` (legacy), `text`, `textPosition` (0–100 along path).
+
+**Animation** (`animation`):
+
+- `enabled`, `shape` (`dot` \| `square` \| `arrow` \| `triangle` \| `hexagon`), `speed`, `size`, `color`, `autoCount`, `shapeCount`, `spacing`
+
+**Other:** `metaData`
+
+---
+
+## Groupings (`DiagramGroupingData`)
+
+Selection/movement sets — **not** drawn as zone rectangles.
+
+```json
+{
+  "id": "grp-1",
+  "type": "grouping",
+  "memberIds": ["node-a", "node-b"],
+  "label": "Optional name",
+  "locked": false
+}
+```
+
+Nodes/zones may set **`groupId`** to tie to a grouping ID.
+
+---
+
+## Legacy import: hierarchical `zones`
+
+Some files use **`zones`** with nested **`children`** (objects or IDs). **`HierarchicalDiagramDataSchema`** validates that shape; conversion merges into flat **`nodes`**. After load, **`DiagramData`** no longer carries **`zones`** in the persisted shape validated by **`DiagramDataSchema`**.
+
+Flat **`zones`** listings (without deep nesting) are handled by **`flattenDiagramOnImport`**, which merges zone positions into node **`x`**/**`y`** and drops zone records.
+
+Prefer emitting flat **`nodes`** and **`connections`** for AI-generated content unless you deliberately mirror exporter hierarchical output.
+
+Zone-like records (when used in hierarchical importers) use **`type`**: **`"zone"`**, **`children`**, optional **`subType`**: **`zone`** \| **`group`**, with styling aligned with **`DiagramGroupDataSchema`** in **`src/lib/schemas.ts`**.
+
+---
+
+## Node Types (summary)
+
+### Text / generic
+
+- `generic.text.text`, `generic.text.textbox`, and related generic text/shape **`generic.object.*`** (square, rectangle, circle, triangle, star, cloud, line, charts, …) — verify exact IDs in **`public/resources`** and the resource picker metadata.
+
+### Resource icons
+
+Pattern: **`{provider}.{category}.{resource}`** (see resource JSON under **`public/resources`**, e.g. `resource-aws.json`).
+
+Major provider **categories** (non-exhaustive; see resource files):
+
+- **AWS:** `general`, `compute`, `storage`, `database`, `networking`, `security`, `analytics`, `ai`, `iot`, `mobile`, and other service groups in resource JSON.
+- **Azure:** `general`, `compute`, `database`, `networking`, `storage`, `security`, apps, IoT, etc.
+- **GCP:** `compute`, `storage`, `database`, `networking`, `bigdata`, `ai`, etc.
+- **Others:** Alibaba, DigitalOcean, Elastic, Firebase, IBM, **k8s**, OCI, on-prem, OpenStack, programming, SaaS, **generic**, etc.
+
+---
+
+## Styling quick reference
+
+### Gradient angles (background / border)
+
+Common values include **`-45`**, **`90`**, **`135`**, **`180`** (product UI labels may vary).
+
+### Border / background modes
+
+- **Border:** `solid` \| `dotted` \| `gradient` \| `none`
+- **Fill:** `solid` \| `gradient` \| `frosted` \| `none`
+
+### Shape label position (`textPosition`)
+
+`above` \| `center` \| `under`
+
+### Zone / group labels (hierarchical **`zones`** styling)
+
+Includes `inside` plus edge variants such as **`inline-top`**, **`outside-left`**, etc. — see **`DiagramGroupDataSchema`** in **`schemas.ts`**.
+
+### Group layout (`orientation`)
+
+`horizontal` \| `vertical` \| `square` (**zones** metadata)
+
+---
+
+## Connection options (summary)
+
+- **Bezier vs orthogonal:** `style`
+- **Waypoints:** absolute canvas **`x`**, **`y`**
+- **Orthogonal tweaks:** **`smoothCorners`**, **`orthogonalTrunkOffsetX`** / **`Y`**
+- **Taper / gradient stroke:** **`lineWidthLock`** / **`lineWidthEnd`**, **`colorLock`** / **`colorEnd`**
+- **Attachment:** **`edgeAttachmentConstraint`**, **`centerEdgeAnchors`**
+- **Animation:** nested **`animation`** object
+
+---
+
+## Examples
+
+### Simple flat diagram
+
 ```json
 {
   "nodes": [
@@ -300,12 +333,12 @@ Resource nodes follow the pattern: `{provider}.{category}.{resource}`
       "toArrow": true,
       "color": "#527fff"
     }
-  ],
-  "groups": []
+  ]
 }
 ```
 
-### Styled Diagram with Groups
+### Styled nodes + orthogonal connection + grouping
+
 ```json
 {
   "nodes": [
@@ -320,7 +353,8 @@ Resource nodes follow the pattern: `{provider}.{category}.{resource}`
       "gradientAngle": 135,
       "shadow": true,
       "width": 120,
-      "height": 60
+      "height": 60,
+      "groupId": "app-pair"
     },
     {
       "id": "backend",
@@ -333,47 +367,43 @@ Resource nodes follow the pattern: `{provider}.{category}.{resource}`
       "gradientAngle": 90,
       "shadow": true,
       "width": 120,
-      "height": 60
+      "height": 60,
+      "groupId": "app-pair"
     }
   ],
   "connections": [
     {
       "from": "frontend",
       "to": "backend",
-      "style": "bezier",
-      "curvature": 0.6,
+      "style": "orthogonal",
+      "smoothCorners": true,
       "toArrow": true,
-      "color": "#333333"
+      "color": "#333333",
+      "lineWidth": 2.5,
+      "animation": { "enabled": true, "shape": "dot", "spacing": 2 }
     }
   ],
-  "groups": [
+  "groupings": [
     {
-      "id": "app-group",
-      "type": "group",
-      "label": "Application Layer",
-      "children": ["frontend", "backend"],
-      "subType": "zone",
-      "backgroundStyle": "gradient",
-      "backgroundColors": ["#f3f4f6", "#e5e7eb"],
-      "gradientAngle": 180,
-      "borderStyle": "solid",
-      "borderColor": "#6b7280",
-      "shadow": true
+      "id": "app-pair",
+      "type": "grouping",
+      "memberIds": ["frontend", "backend"],
+      "label": "Application layer"
     }
   ]
 }
 ```
 
-## Maintenance Notes
+---
 
-This schema should be updated when:
-1. New resource providers are added
-2. New node types are introduced
-3. New styling options are added
-4. Connection options are expanded
+## Maintenance
 
-To update this schema:
-1. Check `src/lib/types.ts` for type definitions
-2. Review `public/resources/resource-*.json` files for available resources
-3. Examine component implementations for new features
-4. Update the examples to reflect new capabilities
+Update this doc when **`DiagramDataSchema`**, **`DiagramNodeDataSchema`**, or **`DiagramConnectionDataSchema`** change in **`src/lib/schemas.ts`**, or when new **`generic.*`** / resource IDs ship.
+
+Suggested checks:
+
+1. **`src/lib/schemas.ts`** — Zod shapes  
+2. **`src/lib/types.ts`** — exported TypeScript interfaces and comments  
+3. **`src/lib/viewer-utils.ts`** — **`validateAndConvertJson`** behavior  
+4. **`src/lib/flatten-on-import.ts`** — legacy **`zones`** handling  
+5. **`public/resources/resource-*.json`** — provider/category/resource IDs

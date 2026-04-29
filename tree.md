@@ -7,6 +7,7 @@ Canonical narrative: **README → Development → Project Structure**. Update th
 ```
 .
 ├── docs/
+│   ├── functional.md           # Modules, hooks, routes — how code fits together (see README / AGENTS.md)
 ├── public/
 │   ├── examples/
 │   └── resources/          # Served JSON + icons (`/resources/*`)
