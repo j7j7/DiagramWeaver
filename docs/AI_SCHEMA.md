@@ -107,15 +107,15 @@ Validated diagram data (**flat format**) contains:
 |-----|----------|---------|
 | `nodes` | yes (may be empty) | Shapes, icons, lines, text, charts, etc. |
 | `connections` | yes (may be empty) | Edges between node IDs |
-| `groupings` | no | Coordination groups (`type: "grouping"`), not visual zones |
+| `groupings` | no | Coordination groups (`type: "grouping"`), not a backdrop layer |
 | `layers` | no | Layer visibility, locks, palette (`LayersConfig`; defaulted on load if missing) |
 | `recentColors` | no | Recent color picker values |
 | `subDiagrams` | no | Map of **`subDiagramId` → nested `DiagramData`** |
 | `viewState` | no | Saved pan/zoom: `{ x, y, k }` |
 
-Importer **`validateAndConvertJson`** (viewer) and **`parseDiagramJson`** flatten legacy **`zones`**, sanitize custom icons, and ensure **`layers`** where needed.
+Importer **`validateAndConvertJson`** (viewer) and **`parseDiagramJson`** sanitize custom icons and ensure **`layers`** where needed.
 
-**Do not use:** `groups`, `rootGroupId`, or **`DiagramData.groups`** — those are obsolete names. Visual **zones** in old files arrive as **`zones`** and are **flattened to `nodes`**; persisted files use flat **`nodes`** + optional **`groupings`**.
+**Do not use:** `groups`, `rootGroupId`, or **`DiagramData.groups`** — those are obsolete names. Persisted diagram JSON uses flat **`nodes`** + optional **`groupings`**.
 
 ---
 
@@ -205,7 +205,7 @@ Markers & labels: `fromArrow`, `toArrow`, `arrow` (legacy), `text`, `textPositio
 
 ## Groupings (`DiagramGroupingData`)
 
-Selection/movement sets — **not** drawn as zone rectangles.
+Selection/movement sets — **not** a visible rectangle on the canvas; members move together.
 
 ```json
 {
@@ -217,19 +217,7 @@ Selection/movement sets — **not** drawn as zone rectangles.
 }
 ```
 
-Nodes/zones may set **`groupId`** to tie to a grouping ID.
-
----
-
-## Legacy import: hierarchical `zones`
-
-Some files use **`zones`** with nested **`children`** (objects or IDs). **`HierarchicalDiagramDataSchema`** validates that shape; conversion merges into flat **`nodes`**. After load, **`DiagramData`** no longer carries **`zones`** in the persisted shape validated by **`DiagramDataSchema`**.
-
-Flat **`zones`** listings (without deep nesting) are handled by **`flattenDiagramOnImport`**, which merges zone positions into node **`x`**/**`y`** and drops zone records.
-
-Prefer emitting flat **`nodes`** and **`connections`** for AI-generated content unless you deliberately mirror exporter hierarchical output.
-
-Zone-like records (when used in hierarchical importers) use **`type`**: **`"zone"`**, **`children`**, optional **`subType`**: **`zone`** \| **`group`**, with styling aligned with **`DiagramGroupDataSchema`** in **`src/lib/schemas.ts`**.
+Nodes may set **`groupId`** to tie to a grouping ID.
 
 ---
 
@@ -267,13 +255,13 @@ Common values include **`-45`**, **`90`**, **`135`**, **`180`** (product UI labe
 
 `above` \| `center` \| `under`
 
-### Zone / group labels (hierarchical **`zones`** styling)
+### Shape / group labels (`textPosition` for group-style boxes)
 
 Includes `inside` plus edge variants such as **`inline-top`**, **`outside-left`**, etc. — see **`DiagramGroupDataSchema`** in **`schemas.ts`**.
 
 ### Group layout (`orientation`)
 
-`horizontal` \| `vertical` \| `square` (**zones** metadata)
+`horizontal` \| `vertical` \| `square` — see **`DiagramGroupDataSchema`** in **`schemas.ts`**
 
 ---
 
@@ -405,5 +393,5 @@ Suggested checks:
 1. **`src/lib/schemas.ts`** — Zod shapes  
 2. **`src/lib/types.ts`** — exported TypeScript interfaces and comments  
 3. **`src/lib/viewer-utils.ts`** — **`validateAndConvertJson`** behavior  
-4. **`src/lib/flatten-on-import.ts`** — legacy **`zones`** handling  
+4. **`src/lib/flatten-on-import.ts`** — diagram normalization on import  
 5. **`public/resources/resource-*.json`** — provider/category/resource IDs
