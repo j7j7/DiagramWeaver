@@ -2,6 +2,12 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+### 2026-04-29 – Glow spread readout: minimum ~1px (was ~4)
+**`highlight-anim`**: **`GLOW_DROP_BLUR_MIN`** **1**; outer/inner/spread **mins** at **0** so **`highlightGlowApproxHaloPx`** at spread **0** rounds to **~1px** (tight halo). Patch bumped.
+
+### 2026-04-29 – Highlight glow (effects): higher max spread, ~56px UI readout, silhouette parity with rectangles
+**`highlight-anim`**: raised **`GLOW_DROP_BLUR_MAX`** (e.g. **30**) / **`GLOW_BOX_*_MAX`**; **`highlightGlowApproxHaloPx`** → **Visual styling → Glow spread (~size)** **~56px** at full spread (**`drop + outer×0.5`**) — superseded bundles showed legacy **~24px**. **`alpha`** (circle, triangle, …): **dual** **`drop-shadow()`** plus **`GLOW_NONE_FILTER_DUAL`** keyframes; **`box`** rectangles: **box-shadow** + single drop.
+
 ### 2026-04-29 – Sidebar cloud resource: matches CloudShape vector (`src/lib/cloud-shape.ts`)
 **`ResourceIcon`** skips catalog **`cloud.png`** for **`generic.object.cloud`** (like charts — vector parity with canvas) and draws **`CLOUD_SHAPE_PATH_D`** in **`CLOUD_SHAPE_VIEW_BOX`**. **`CloudShape`** imports the same constants. **`DraggableResourceItem`** forces **`ResourceIcon`** for cloud (otherwise **`cloud.png`** **`img`** wins over the **`icon`** prop). Patch bumped.
 

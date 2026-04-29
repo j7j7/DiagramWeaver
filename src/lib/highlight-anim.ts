@@ -16,17 +16,20 @@ export function clampHighlightGlowIntensity(raw: number | undefined): number {
   return Math.min(1, Math.max(0, raw));
 }
 
-/** Spatial map: spread 0=tight halo, 1=legacy peak blur radii (px). Distinct from colour-picker alpha. */
-const GLOW_DROP_BLUR_MIN = 2;
-const GLOW_DROP_BLUR_MAX = 16;
-const GLOW_BOX_BLUR_OUTER_MIN = 4;
-const GLOW_BOX_SPR_OUTER_MIN = 1;
-const GLOW_BOX_BLUR_OUTER_MAX = 28;
-const GLOW_BOX_SPR_OUTER_MAX = 8;
-const GLOW_BOX_BLUR_INNER_MIN = 2;
-const GLOW_BOX_SPR_INNER_MIN = 0.35;
-const GLOW_BOX_BLUR_INNER_MAX = 14;
-const GLOW_BOX_SPR_INNER_MAX = 2;
+/** Spatial map: spread 0=tight halo, 1=peak blur radii (px). Distinct from colour-picker alpha. */
+const GLOW_DROP_BLUR_MIN = 1;
+const GLOW_DROP_BLUR_MAX = 30;
+const GLOW_BOX_BLUR_OUTER_MIN = 0;
+const GLOW_BOX_SPR_OUTER_MIN = 0;
+const GLOW_BOX_BLUR_OUTER_MAX = 52;
+const GLOW_BOX_SPR_OUTER_MAX = 14;
+const GLOW_BOX_BLUR_INNER_MIN = 0;
+const GLOW_BOX_SPR_INNER_MIN = 0;
+const GLOW_BOX_BLUR_INNER_MAX = 24;
+const GLOW_BOX_SPR_INNER_MAX = 4;
+/** Matches dual `drop-shadow()` count for alpha/silhouette keyframes (`none` → peak). */
+const GLOW_NONE_FILTER_DUAL =
+  'drop-shadow(0 0 0 rgba(0,0,0,0)) drop-shadow(0 0 0 rgba(0,0,0,0))';
 
 function lerpGlowPx(minPx: number, maxPx: number, spread01: number): number {
   const u = clampHighlightGlowIntensity(spread01);
@@ -38,11 +41,14 @@ function pxStr(n: number): string {
 }
 
 /**
- * Approximate halo size for UI labels (blur radius order-of-magnitude), same mapping as rendering.
+ * Approximate halo extent for **Visual styling → Glow spread (~size)** (~N px), aligned with `buildGlowPeakCss`.
+ * Spread=0 ~**1**px (tight halo); spread=1 peaks ~56px.
  */
 export function highlightGlowApproxHaloPx(spreadRaw: number | undefined): number {
   const t = clampHighlightGlowIntensity(spreadRaw);
-  return Math.round(lerpGlowPx(GLOW_DROP_BLUR_MIN, GLOW_DROP_BLUR_MAX + 8, t));
+  const drop = lerpGlowPx(GLOW_DROP_BLUR_MIN, GLOW_DROP_BLUR_MAX, t);
+  const outer = lerpGlowPx(GLOW_BOX_BLUR_OUTER_MIN, GLOW_BOX_BLUR_OUTER_MAX, t);
+  return Math.round(drop + outer * 0.5);
 }
 
 function buildGlowPeakCss(
@@ -51,10 +57,14 @@ function buildGlowPeakCss(
   spread01: number
 ): { peakFilter: string; peakShadow: string } {
   const dropBlur = lerpGlowPx(GLOW_DROP_BLUR_MIN, GLOW_DROP_BLUR_MAX, spread01);
-  const peakFilter = `drop-shadow(0 0 ${pxStr(dropBlur)} ${safeColor})`;
+  const peakFilterBase = `drop-shadow(0 0 ${pxStr(dropBlur)} ${safeColor})`;
   if (silhouetteMode === 'alpha') {
+    // Second layer mirrors outer box-shadow blur so silhouette-only glow matches box + filter on rectangles.
+    const outerFollow = lerpGlowPx(GLOW_BOX_BLUR_OUTER_MIN, GLOW_BOX_BLUR_OUTER_MAX, spread01);
+    const peakFilter = `${peakFilterBase} drop-shadow(0 0 ${pxStr(outerFollow)} ${safeColor})`;
     return { peakFilter, peakShadow: '' };
   }
+  const peakFilter = peakFilterBase;
   const b1 = lerpGlowPx(GLOW_BOX_BLUR_OUTER_MIN, GLOW_BOX_BLUR_OUTER_MAX, spread01);
   const s1 = lerpGlowPx(GLOW_BOX_SPR_OUTER_MIN, GLOW_BOX_SPR_OUTER_MAX, spread01);
   const b2 = lerpGlowPx(GLOW_BOX_BLUR_INNER_MIN, GLOW_BOX_BLUR_INNER_MAX, spread01);
@@ -184,15 +194,19 @@ export function ensureHighlightAnimKeyframes(
   const styleEl = document.createElement('style');
   styleEl.type = 'text/css';
   styleEl.setAttribute('data-dw-highlight-anim-keyframes', key.replace(/"/g, ''));
-  const noneFilter = 'drop-shadow(0 0 0 rgba(0,0,0,0))';
   const { peakFilter, peakShadow } = buildGlowPeakCss(safeColor, silhouetteMode, m);
+  /** Must match layered `peakFilter` (single vs dual drop-shadow). */
+  const noneFilterForKeyframes =
+    silhouetteMode === 'alpha'
+      ? GLOW_NONE_FILTER_DUAL
+      : 'drop-shadow(0 0 0 rgba(0,0,0,0))';
   if (silhouetteMode === 'alpha') {
     styleEl.textContent = `
 @keyframes ${name} {
-  0% { filter: ${noneFilter}; }
+  0% { filter: ${noneFilterForKeyframes}; }
   ${midPct.toFixed(4)}% { filter: ${peakFilter}; }
-  ${pulseEndPct.toFixed(4)}% { filter: ${noneFilter}; }
-  100% { filter: ${noneFilter}; }
+  ${pulseEndPct.toFixed(4)}% { filter: ${noneFilterForKeyframes}; }
+  100% { filter: ${noneFilterForKeyframes}; }
 }
 `;
   } else {
@@ -200,10 +214,10 @@ export function ensureHighlightAnimKeyframes(
     const noneShadow = '0 0 0 0 rgba(0,0,0,0)';
     styleEl.textContent = `
 @keyframes ${name} {
-  0% { box-shadow: ${noneShadow}; filter: ${noneFilter}; }
+  0% { box-shadow: ${noneShadow}; filter: ${noneFilterForKeyframes}; }
   ${midPct.toFixed(4)}% { box-shadow: ${peakShadow}; filter: ${peakFilter}; }
-  ${pulseEndPct.toFixed(4)}% { box-shadow: ${noneShadow}; filter: ${noneFilter}; }
-  100% { box-shadow: ${noneShadow}; filter: ${noneFilter}; }
+  ${pulseEndPct.toFixed(4)}% { box-shadow: ${noneShadow}; filter: ${noneFilterForKeyframes}; }
+  100% { box-shadow: ${noneShadow}; filter: ${noneFilterForKeyframes}; }
 }
 `;
   }
