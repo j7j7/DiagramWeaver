@@ -1,5 +1,5 @@
 import type { DiagramData, PresentationDeck, Slide } from '@/lib/types';
-import { applyDiagramDelta, computeDiagramDelta, projectVisibleDiagram } from '@/lib/presentation-delta';
+import { applyDiagramDelta, computeDiagramDelta } from '@/lib/presentation-delta';
 
 export type PresentationDeltaMode = 'master' | 'chain';
 
@@ -28,7 +28,8 @@ export function resolvePresentationSlideDiagrams(
 
 /**
  * After slide reorder/delete, recomputes each slide's delta from sequential base so `absoluteDiagrams[i]`
- * is preserved (visible projection used for `computeDiagramDelta` like the rest of the app).
+ * is preserved. Uses **full** topology (not `projectVisibleDiagram`) so layer visibility toggles do not
+ * encode missing nodes into stored deltas.
  */
 export function rechainSlideDeltasFromAbsoluteDiagrams(
   masterBase: DiagramData,
@@ -40,8 +41,8 @@ export function rechainSlideDeltasFromAbsoluteDiagrams(
   }
   let cur = masterBase;
   return slides.map((slide, i) => {
-    const visTarget = projectVisibleDiagram(absoluteDiagrams[i]);
-    const d = computeDiagramDelta(projectVisibleDiagram(cur), visTarget);
+    const target = absoluteDiagrams[i];
+    const d = computeDiagramDelta(cur, target);
     cur = applyDiagramDelta(cur, d);
     return { ...slide, diagramDelta: d };
   });
@@ -78,8 +79,8 @@ export function cumulativeDiagramThroughSlideIndex(
 
 /** When the tab master changes on the primary slide: rebase all non-primary slides to preserve absolutes. */
 export function rebasePresentationSlidesOnMasterEdit(
-  oldMasterVisible: DiagramData,
-  newMasterVisible: DiagramData,
+  oldMaster: DiagramData,
+  newMaster: DiagramData,
   slides: Slide[],
   mode: PresentationDeltaMode,
 ): Slide[] {
@@ -87,13 +88,13 @@ export function rebasePresentationSlidesOnMasterEdit(
   if (mode === 'master') {
     return slides.map((slide, si) => {
       if (si === 0) return slide;
-      const full = applyDiagramDelta(oldMasterVisible, slide.diagramDelta);
-      const nextDelta = computeDiagramDelta(newMasterVisible, projectVisibleDiagram(full));
+      const full = applyDiagramDelta(oldMaster, slide.diagramDelta);
+      const nextDelta = computeDiagramDelta(newMaster, full);
       return { ...slide, diagramDelta: nextDelta };
     });
   }
 
-  let curOld = oldMasterVisible;
+  let curOld = oldMaster;
   const absolutes: DiagramData[] = [];
   for (const slide of slides) {
     curOld = applyDiagramDelta(curOld, slide.diagramDelta);
@@ -101,11 +102,11 @@ export function rebasePresentationSlidesOnMasterEdit(
   }
 
   const newSlides: Slide[] = [];
-  let curNew = applyDiagramDelta(newMasterVisible, slides[0].diagramDelta);
+  let curNew = applyDiagramDelta(newMaster, slides[0].diagramDelta);
   newSlides.push(slides[0]);
 
   for (let i = 1; i < slides.length; i += 1) {
-    const d = computeDiagramDelta(projectVisibleDiagram(curNew), projectVisibleDiagram(absolutes[i]));
+    const d = computeDiagramDelta(curNew, absolutes[i]);
     curNew = applyDiagramDelta(curNew, d);
     newSlides.push({ ...slides[i], diagramDelta: d });
   }

@@ -139,7 +139,7 @@ export function usePresentationThumbnails({
     const master =
       presentationMasterDiagramRef.current ?? tabDiagramDataRef.current;
     try {
-      const masterBase = projectVisibleDiagram(master);
+      const masterRaw = master;
       const deckFp = presentationDecksRef.current.find((d) => d.id === deckId);
       const slidesFp = deckFp?.slides ?? [];
       const mode = deckFp ? getPresentationDeltaMode(deckFp) : 'master';
@@ -147,18 +147,16 @@ export function usePresentationThumbnails({
       const fpCore =
         mode === 'master' || slideIdxFp <= 0
           ? JSON.stringify(
-              computeDiagramDelta(masterBase, projectVisibleDiagram(draft)),
+              computeDiagramDelta(masterRaw, draft),
             )
           : JSON.stringify(
               computeDiagramDelta(
-                projectVisibleDiagram(
                   cumulativeDiagramThroughSlideIndex(
-                    masterBase,
+                    masterRaw,
                     slidesFp,
                     slideIdxFp - 1,
                   ),
-                ),
-                projectVisibleDiagram(draft),
+                draft,
               ),
             );
       presentationThumbDeltaFingerprintBySlideRef.current[slideKey] =
@@ -252,10 +250,8 @@ export function usePresentationThumbnails({
 
         let deltaFpCore: string;
         try {
-          const masterBase = projectVisibleDiagram(
-            ctxSlide.master ?? ctxSlide.tab,
-          );
-          const nextVisible = projectVisibleDiagram(ctxSlide.draft);
+          const masterRaw = ctxSlide.master ?? ctxSlide.tab;
+          const draftRaw = ctxSlide.draft;
           let deckForSlide = presentationDecksRef.current.find(
             (d) => d.id === ctxSlide.deckId,
           );
@@ -266,18 +262,18 @@ export function usePresentationThumbnails({
           const slideIdx = slidesForFp.findIndex((s) => s.id === ctxSlide.slideId);
           if (mode === "master" || slideIdx <= 0) {
             deltaFpCore = JSON.stringify(
-              computeDiagramDelta(masterBase, nextVisible),
+              computeDiagramDelta(masterRaw, draftRaw),
             );
           } else {
             const prevBase = cumulativeDiagramThroughSlideIndex(
-              masterBase,
+              masterRaw,
               slidesForFp,
               slideIdx - 1,
             );
             deltaFpCore = JSON.stringify(
               computeDiagramDelta(
-                projectVisibleDiagram(prevBase),
-                nextVisible,
+                prevBase,
+                draftRaw,
               ),
             );
           }
@@ -438,7 +434,8 @@ export function usePresentationThumbnails({
     let cancelled = false;
     const savedDeckId = activePresentationDeckId;
     const savedSlideId = activePresentationSlideId;
-    const masterBase = projectVisibleDiagram(presentationMasterDiagram);
+    const masterRaw = presentationMasterDiagram;
+    const primaryThumbDiagram = projectVisibleDiagram(presentationMasterDiagram);
 
     const waitForEditor = async () => {
       for (let i = 0; i < 45; i++) {
@@ -472,7 +469,7 @@ export function usePresentationThumbnails({
             if (cancelled) return;
 
             if (deck.slides[0]?.id === slide.id) {
-              const visibleMain = masterBase;
+              const visibleMain = primaryThumbDiagram;
               try {
                 const primaryPng =
                   await editorRef.current!.captureSnapshotPng!({
@@ -524,16 +521,16 @@ export function usePresentationThumbnails({
 
             const mode = getPresentationDeltaMode(deck);
             const resolvedAll = resolvePresentationSlideDiagrams(
-              masterBase,
+              masterRaw,
               deck.slides,
               mode,
             );
             const slideIdx = deck.slides.findIndex((s) => s.id === slide.id);
-            const draftDiagram = projectVisibleDiagram(
+            const resolvedFullSlide =
               slideIdx >= 0
                 ? resolvedAll[slideIdx]
-                : applyDiagramDelta(masterBase, slide.diagramDelta),
-            );
+                : applyDiagramDelta(masterRaw, slide.diagramDelta);
+            const draftDiagram = projectVisibleDiagram(resolvedFullSlide);
 
             flushSync(() => {
               setActivePresentationDeckId(deck.id);
@@ -583,20 +580,18 @@ export function usePresentationThumbnails({
                   mode === "master" || slideIdxFp <= 0
                     ? JSON.stringify(
                         computeDiagramDelta(
-                          masterBase,
-                          projectVisibleDiagram(draftDiagram),
+                          masterRaw,
+                          resolvedFullSlide,
                         ),
                       )
                     : JSON.stringify(
                         computeDiagramDelta(
-                          projectVisibleDiagram(
-                            cumulativeDiagramThroughSlideIndex(
-                              masterBase,
-                              deck.slides,
-                              slideIdxFp - 1,
-                            ),
+                          cumulativeDiagramThroughSlideIndex(
+                            masterRaw,
+                            deck.slides,
+                            slideIdxFp - 1,
                           ),
-                          projectVisibleDiagram(draftDiagram),
+                          resolvedFullSlide,
                         ),
                       );
                 presentationThumbDeltaFingerprintBySlideRef.current[
@@ -628,7 +623,7 @@ export function usePresentationThumbnails({
             } else {
               const restoreMode = getPresentationDeltaMode(restoreDeck);
               const restoredResolved = resolvePresentationSlideDiagrams(
-                masterBase,
+                masterRaw,
                 restoreDeck.slides,
                 restoreMode,
               );
@@ -638,7 +633,7 @@ export function usePresentationThumbnails({
               const restoreDraft = projectVisibleDiagram(
                 ridx >= 0
                   ? restoredResolved[ridx]
-                  : applyDiagramDelta(masterBase, restoreSlide.diagramDelta),
+                  : applyDiagramDelta(masterRaw, restoreSlide.diagramDelta),
               );
               flushSync(() => {
                 setActivePresentationDeckId(savedDeckId);

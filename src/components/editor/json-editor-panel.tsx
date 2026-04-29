@@ -9,6 +9,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { stableStringify } from '@/lib/json-utils';
 import { flattenDiagramOnImport, type RawDiagramData } from '@/lib/flatten-on-import';
+import { ensureDiagramLayersPersisted } from '@/lib/layers-utils';
 import { DiagramDataSchema } from '@/lib/schemas';
 import { ensureConnectionIds } from '@/lib/connection-order-utils';
 import { findJsonRangeForDiagramSelection, type JsonFocusTarget } from '@/lib/json-editor-focus';
@@ -372,10 +373,10 @@ export function JsonEditorPanel({
           if (!schemaResult.success) {
             validationError = schemaResult.error;
           } else {
-            finalData = {
+            finalData = ensureDiagramLayersPersisted({
               ...schemaResult.data,
               connections: ensureConnectionIds(schemaResult.data.connections || []),
-            } as DiagramData;
+            } as DiagramData);
           }
         } catch (e) {
           validationError = e;

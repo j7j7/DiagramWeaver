@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 import type { DiagramData, PresentationDeck, Slide } from "@/lib/types";
-import { applyDiagramDelta, projectVisibleDiagram } from "@/lib/presentation-delta";
+import { applyDiagramDelta } from "@/lib/presentation-delta";
 import { getPresentationDeltaMode, resolvePresentationSlideDiagrams } from "@/lib/presentation-slide-chain";
 import {
   computeSlidePlaybackTransform,
@@ -80,7 +80,7 @@ export function usePresentationSlideViewportSync({
       );
     }
 
-    const masterBase = projectVisibleDiagram(presentationMasterDiagram ?? tabDiagramData);
+    const masterBase = presentationMasterDiagram ?? tabDiagramData;
     const mode = getPresentationDeltaMode(deck);
     const idx = deck.slides.findIndex((s) => s.id === slide.id);
     const diagrams =

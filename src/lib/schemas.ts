@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { flattenDiagramOnImport } from './flatten-on-import';
 import { normalizeHttpImageUrl, sanitizeCustomIconsInDiagram } from './custom-icon-utils';
+import { ensureDiagramLayersPersisted } from './layers-utils';
 
 // Rich text run schema for textbox nodes
 const RichTextRunSchema = z.object({
@@ -525,7 +526,9 @@ export function parseDiagramJson(raw: unknown): DiagramDataValidated {
     }),
   };
   const parsed = DiagramDataSchema.parse(preSanitized) as DiagramDataValidated;
-  return sanitizeCustomIconsInDiagram(parsed) as DiagramDataValidated;
+  return ensureDiagramLayersPersisted(
+    sanitizeCustomIconsInDiagram(parsed) as DiagramDataValidated,
+  ) as DiagramDataValidated;
 }
 
 // Schema for nested node items

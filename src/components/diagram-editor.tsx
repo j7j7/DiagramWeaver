@@ -2,8 +2,9 @@
 import React, { useRef, useCallback, useEffect } from 'react';
 import { flushSync } from 'react-dom';
 import type { EditorCanvasHandle } from './editor/editor-canvas';
-import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramConnectionData, PresentationDeck, Slide, DiagramDelta } from '@/lib/types';
+import type { DiagramData, DiagramNodeData, DiagramZoneData, DiagramConnectionData, PresentationDeck, Slide, DiagramDelta, LayersConfig } from '@/lib/types';
 import { generateSequentialId } from '@/lib/id-generator';
+import { validateLayersConfig, ensureDiagramLayersPersisted } from '@/lib/layers-utils';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useDiagramTabs, TUTORIAL_TAB_NAME } from '@/hooks/use-diagram-tabs';
@@ -367,10 +368,33 @@ export default function DiagramEditor() {
   const tabDiagramDataRef = React.useRef(tabDiagramData);
   tabDiagramDataRef.current = tabDiagramData;
 
+  const presentationLayersSyncFingerprint = React.useMemo(
+    () => (tabDiagramData.layers ? JSON.stringify(tabDiagramData.layers) : ''),
+    [tabDiagramData.layers],
+  );
+
+  /** Snapshot slides derive from deltas; stale `layers` in resolved JSON must match tab (global toggles sync all slides). */
+  React.useEffect(() => {
+    if (isPrimaryPresentationSlideActive) return;
+    setPresentationDraftDiagram((prev) => {
+      if (!prev) return prev;
+      const canonical = tabDiagramDataRef.current?.layers;
+      if (!canonical || !validateLayersConfig(canonical)) return prev;
+      const prevFp = prev.layers ? JSON.stringify(prev.layers) : '';
+      if (prevFp === presentationLayersSyncFingerprint) return prev;
+      return { ...prev, layers: canonical };
+    });
+  }, [
+    isPrimaryPresentationSlideActive,
+    presentationDraftDiagram,
+    presentationLayersSyncFingerprint,
+    activePresentationSlideId,
+  ]);
+
   React.useEffect(() => {
     if (!presentationStorageHydrated || !activeTabId) return;
     if (!presentationMasterDiagram) return;
-    const masterBase = projectVisibleDiagram(presentationMasterDiagram);
+    const masterBase = presentationMasterDiagram;
     setPresentationDecks((prev) => {
       let changed = false;
       const next = prev.map((d) => {
@@ -412,26 +436,22 @@ export default function DiagramEditor() {
       return;
     }
 
-    const masterBase = projectVisibleDiagram(
-      masterMissing ? tabSnapshot : (presentationMasterDiagramRef.current ?? tabSnapshot),
-    );
+    const masterRaw = masterMissing ? tabSnapshot : (presentationMasterDiagramRef.current ?? tabSnapshot);
     const mode = getPresentationDeltaMode(deck);
     const slideIdx = deck.slides.findIndex((s) => s.id === activePresentationSlideId);
     const nextDraft =
       mode === 'master' || slideIdx <= 0
-        ? applyDiagramDelta(masterBase, slide.diagramDelta)
+        ? applyDiagramDelta(masterRaw, slide.diagramDelta)
         : applyDiagramDelta(
-            cumulativeDiagramThroughSlideIndex(masterBase, deck.slides, slideIdx - 1),
+            cumulativeDiagramThroughSlideIndex(masterRaw, deck.slides, slideIdx - 1),
             slide.diagramDelta,
           );
     try {
       const baseForFp =
         mode === 'master' || slideIdx <= 0
-          ? masterBase
-          : cumulativeDiagramThroughSlideIndex(masterBase, deck.slides, slideIdx - 1);
-      const fpCore = JSON.stringify(
-        computeDiagramDelta(projectVisibleDiagram(baseForFp), projectVisibleDiagram(nextDraft)),
-      );
+          ? masterRaw
+          : cumulativeDiagramThroughSlideIndex(masterRaw, deck.slides, slideIdx - 1);
+      const fpCore = JSON.stringify(computeDiagramDelta(baseForFp, nextDraft));
       presentationThumbDeltaFingerprintBySlideRef.current[`${activePresentationDeckId}:${activePresentationSlideId}`] =
         withPresentationThumbnailThemeFingerprintTag(fpCore, resolvedTheme);
       presentationThumbFingerprintSlideKeyRef.current =
@@ -467,22 +487,22 @@ export default function DiagramEditor() {
   }, [canvasTransform]);
   const activePresentationSlides = activePresentationDeck?.slides ?? [];
   const activePresentationSlideDiagrams = React.useMemo(() => {
-    const master = projectVisibleDiagram(presentationMasterDiagram ?? diagramData);
+    const masterFull = presentationMasterDiagram ?? tabDiagramData;
     const mode = activePresentationDeck ? getPresentationDeltaMode(activePresentationDeck) : 'master';
-    return resolvePresentationSlideDiagrams(master, activePresentationSlides, mode);
+    return resolvePresentationSlideDiagrams(masterFull, activePresentationSlides, mode);
   }, [
     activePresentationSlides,
     presentationMasterDiagram,
-    diagramData,
+    tabDiagramData,
     activePresentationDeck?.presentationDeltaMode,
     activePresentationDeck?.id,
   ]);
 
   /** Union-fit for thumbnails: active slide uses live draft so bounds match the canvas while editing. */
   const activePresentationSlideDiagramsForThumbnailCapture = React.useMemo(() => {
-    const master = projectVisibleDiagram(presentationMasterDiagram ?? diagramData);
+    const masterFull = presentationMasterDiagram ?? tabDiagramData;
     const mode = activePresentationDeck ? getPresentationDeltaMode(activePresentationDeck) : 'master';
-    const baseResolved = resolvePresentationSlideDiagrams(master, activePresentationSlides, mode);
+    const baseResolved = resolvePresentationSlideDiagrams(masterFull, activePresentationSlides, mode);
     return activePresentationSlides.map((slide, slideIndex) => {
       if (
         activePresentationSlideId &&
@@ -496,7 +516,7 @@ export default function DiagramEditor() {
   }, [
     activePresentationSlides,
     presentationMasterDiagram,
-    diagramData,
+    tabDiagramData,
     activePresentationSlideId,
     presentationDraftDiagram,
     activePresentationDeck?.presentationDeltaMode,
@@ -542,15 +562,14 @@ export default function DiagramEditor() {
     if (prevJson !== null && prevJson !== nextJson) {
       try {
         const oldMaster = JSON.parse(prevJson) as DiagramData;
-        const oldB = projectVisibleDiagram(oldMaster);
-        const newB = projectVisibleDiagram(tabDiagramData);
+        const newMaster = tabDiagramData;
         setPresentationDecks((prev) =>
           prev.map((deck) => {
             if (deck.id !== activePresentationDeckId) return deck;
             const mode = getPresentationDeltaMode(deck);
             return {
               ...deck,
-              slides: rebasePresentationSlidesOnMasterEdit(oldB, newB, deck.slides, mode),
+              slides: rebasePresentationSlidesOnMasterEdit(oldMaster, newMaster, deck.slides, mode),
               updatedAt: Date.now(),
             };
           }),
@@ -612,9 +631,9 @@ export default function DiagramEditor() {
 
   const presentationPlayerSlides = React.useMemo(() => activePresentationSlides, [activePresentationSlides]);
   const presentationPlayerSlideDiagrams = React.useMemo(() => {
-    const master = projectVisibleDiagram(presentationMasterDiagram ?? tabDiagramData);
+    const masterFull = presentationMasterDiagram ?? tabDiagramData;
     const mode = activePresentationDeck ? getPresentationDeltaMode(activePresentationDeck) : 'master';
-    return resolvePresentationSlideDiagrams(master, activePresentationSlides, mode);
+    return resolvePresentationSlideDiagrams(masterFull, activePresentationSlides, mode);
   }, [
     activePresentationSlides,
     presentationMasterDiagram,
@@ -773,11 +792,28 @@ export default function DiagramEditor() {
     }
   }, [currentDiagramData]);
 
+  /** One LayersConfig per diagram file; keep tab, master, and slide draft in sync during presentation. */
+  const applyDiagramLayersGloballyCb = React.useCallback((newLayersConfig: LayersConfig) => {
+    updateActiveTab({
+      diagramData: {
+        ...tabDiagramDataRef.current,
+        layers: newLayersConfig,
+      },
+    });
+    setPresentationMasterDiagram((m) => {
+      const base = (m ?? tabDiagramDataRef.current) as DiagramData;
+      return { ...base, layers: newLayersConfig };
+    });
+    setPresentationDraftDiagram((d) => (d ? { ...d, layers: newLayersConfig } : d));
+  }, [updateActiveTab]);
+
   // Initialize layers system (uses current diagram - root or sub)
   const layers = useLayers({
     diagramData: currentDiagramData,
     setDiagramData: setCurrentDiagramData,
-    toast
+    layerSourceKey: activeTabId,
+    applyLayersGlobally: activeDiagramStack.length === 0 ? applyDiagramLayersGloballyCb : undefined,
+    toast,
   });
 
   // Layer show/hide animations (Options menu toggle, default enabled)
@@ -1751,8 +1787,8 @@ export default function DiagramEditor() {
       return;
     }
 
-    const masterBase = projectVisibleDiagram(presentationMasterDiagram ?? tabDiagramData);
-    const nextVisible = projectVisibleDiagram(nextDiagram);
+    const masterRaw = presentationMasterDiagram ?? tabDiagramData;
+    const nextRaw = nextDiagram;
 
     setPresentationDecks((prev) => prev.map((deck) => {
       if (deck.id !== activePresentationDeckId) return deck;
@@ -1760,10 +1796,10 @@ export default function DiagramEditor() {
       const mode = getPresentationDeltaMode(deck);
       let nextDelta: DiagramDelta;
       if (mode === 'master' || slideIdx <= 0) {
-        nextDelta = computeDiagramDelta(masterBase, nextVisible);
+        nextDelta = computeDiagramDelta(masterRaw, nextRaw);
       } else {
-        const prevBase = cumulativeDiagramThroughSlideIndex(masterBase, deck.slides, slideIdx - 1);
-        nextDelta = computeDiagramDelta(projectVisibleDiagram(prevBase), nextVisible);
+        const prevBase = cumulativeDiagramThroughSlideIndex(masterRaw, deck.slides, slideIdx - 1);
+        nextDelta = computeDiagramDelta(prevBase, nextRaw);
       }
       return {
         ...deck,
@@ -1834,7 +1870,7 @@ export default function DiagramEditor() {
   const handlePropagateAddToLaterSlides = React.useCallback(() => {
     if (!activePresentationDeckId || !selectedItem || !hasLaterSlides) return;
     const draftSource = presentationDraftDiagram ?? tabDiagramData;
-    const masterBase = projectVisibleDiagram(presentationMasterDiagram ?? tabDiagramData);
+    const presentationBase = presentationMasterDiagram ?? tabDiagramData;
     let itemToAdd: DiagramNodeData | DiagramConnectionData | null = null;
     if (selectedItem.itemType === 'node') {
       const node = draftSource.nodes.find((n) => n.id === selectedItem.id);
@@ -1859,7 +1895,7 @@ export default function DiagramEditor() {
         if (mode === 'master') {
           const nextSlides = deck.slides.map((slide, idx) => {
             if (idx <= currentIdx) return slide;
-            const slideDiagram = applyDiagramDelta(masterBase, slide.diagramDelta);
+            const slideDiagram = applyDiagramDelta(presentationBase, slide.diagramDelta);
             let nextDiagram: DiagramData;
             if (itemToAdd && 'from' in itemToAdd && 'to' in itemToAdd) {
               const conn = itemToAdd as DiagramConnectionData;
@@ -1883,14 +1919,13 @@ export default function DiagramEditor() {
             } else {
               return slide;
             }
-            const nextVisible = projectVisibleDiagram(nextDiagram);
-            const nextDelta = computeDiagramDelta(masterBase, nextVisible);
+            const nextDelta = computeDiagramDelta(presentationBase, nextDiagram);
             return { ...slide, diagramDelta: nextDelta };
           });
           return { ...deck, slides: nextSlides, updatedAt: Date.now() };
         }
 
-        const absolutes = [...resolvePresentationSlideDiagrams(masterBase, deck.slides, 'chain')];
+        const absolutes = [...resolvePresentationSlideDiagrams(presentationBase, deck.slides, 'chain')];
         for (let idx = currentIdx + 1; idx < deck.slides.length; idx += 1) {
           let slideDiagram = absolutes[idx];
           let nextDiagram: DiagramData;
@@ -1918,7 +1953,7 @@ export default function DiagramEditor() {
           }
           absolutes[idx] = nextDiagram;
         }
-        const rechained = rechainSlideDeltasFromAbsoluteDiagrams(masterBase, deck.slides, absolutes);
+        const rechained = rechainSlideDeltasFromAbsoluteDiagrams(presentationBase, deck.slides, absolutes);
         return { ...deck, slides: rechained, updatedAt: Date.now() };
       }),
     );
@@ -1937,7 +1972,7 @@ export default function DiagramEditor() {
 
   const handlePropagateDeleteToLaterSlides = React.useCallback(() => {
     if (!activePresentationDeckId || !selectedItem || !hasLaterSlides) return;
-    const masterBase = projectVisibleDiagram(presentationMasterDiagram ?? tabDiagramData);
+    const presentationBase = presentationMasterDiagram ?? tabDiagramData;
     const nodeIdToRemove = selectedItem.itemType === 'node' ? selectedItem.id : null;
     const connectionToRemove =
       selectedItem.itemType === 'edge' ? { from: selectedItem.from, to: selectedItem.to, id: (selectedItem as { id?: string }).id } : null;
@@ -1953,7 +1988,7 @@ export default function DiagramEditor() {
         if (mode === 'master') {
           const nextSlides = deck.slides.map((slide, idx) => {
             if (idx <= currentIdx) return slide;
-            const slideDiagram = applyDiagramDelta(masterBase, slide.diagramDelta);
+            const slideDiagram = applyDiagramDelta(presentationBase, slide.diagramDelta);
             let nextDiagram: DiagramData;
             if (nodeIdToRemove) {
               nextDiagram = {
@@ -1976,14 +2011,13 @@ export default function DiagramEditor() {
             } else {
               return slide;
             }
-            const nextVisible = projectVisibleDiagram(nextDiagram);
-            const nextDelta = computeDiagramDelta(masterBase, nextVisible);
+            const nextDelta = computeDiagramDelta(presentationBase, nextDiagram);
             return { ...slide, diagramDelta: nextDelta };
           });
           return { ...deck, slides: nextSlides, updatedAt: Date.now() };
         }
 
-        const absolutes = [...resolvePresentationSlideDiagrams(masterBase, deck.slides, 'chain')];
+        const absolutes = [...resolvePresentationSlideDiagrams(presentationBase, deck.slides, 'chain')];
         for (let idx = currentIdx + 1; idx < deck.slides.length; idx += 1) {
           let slideDiagram = absolutes[idx];
           let nextDiagram: DiagramData;
@@ -2010,7 +2044,7 @@ export default function DiagramEditor() {
           }
           absolutes[idx] = nextDiagram;
         }
-        const rechained = rechainSlideDeltasFromAbsoluteDiagrams(masterBase, deck.slides, absolutes);
+        const rechained = rechainSlideDeltasFromAbsoluteDiagrams(presentationBase, deck.slides, absolutes);
         return { ...deck, slides: rechained, updatedAt: Date.now() };
       })
     );
@@ -2166,14 +2200,14 @@ export default function DiagramEditor() {
     if (!result.success) {
       throw new Error(`Invalid diagram format: ${result.error.message}`);
     }
-    const connections = ensureConnectionIds(result.data.connections || []);
-    const parsedData: DiagramData = {
-      nodes: result.data.nodes || [],
-      connections,
-      groupings: result.data.groupings,
-      layers: result.data.layers,
-    };
-    return sanitizeCustomIconsInDiagram(parsedData);
+    const data = result.data as DiagramData;
+    const parsedData: DiagramData = ensureDiagramLayersPersisted(
+      sanitizeCustomIconsInDiagram({
+        ...data,
+        connections: ensureConnectionIds(data.connections || []),
+      }),
+    );
+    return parsedData;
   }, []);
 
   const extractPresentationsFromDiagramJson = React.useCallback((json: unknown): {
@@ -3999,15 +4033,15 @@ export default function DiagramEditor() {
       fitPadding: 40,
     });
 
-    const visibleCurrent = projectVisibleDiagram(layers.filteredDiagramData ?? diagramData);
-    const masterBase = projectVisibleDiagram(presentationMasterDiagram ?? diagramData);
+    const topologyCurrent = presentationDraftDiagram ?? diagramData;
+    const topologyMaster = presentationMasterDiagram ?? tabDiagramData;
     const deck = presentationDecks.find((d) => d.id === activePresentationDeckId);
 
     let diagramDelta: DiagramDelta;
     try {
       if (!deck || getPresentationDeltaMode(deck) === 'master') {
-        diagramDelta = computeDiagramDelta(masterBase, visibleCurrent);
-        applyDiagramDelta(masterBase, diagramDelta);
+        diagramDelta = computeDiagramDelta(topologyMaster, topologyCurrent);
+        applyDiagramDelta(topologyMaster, diagramDelta);
       } else {
         let refIdx = activePresentationSlideId
           ? deck.slides.findIndex((s) => s.id === activePresentationSlideId)
@@ -4015,19 +4049,19 @@ export default function DiagramEditor() {
         if (refIdx < 0) refIdx = deck.slides.length > 0 ? deck.slides.length - 1 : -1;
         const prevBase =
           refIdx < 0
-            ? masterBase
-            : cumulativeDiagramThroughSlideIndex(masterBase, deck.slides, refIdx, {
+            ? topologyMaster
+            : cumulativeDiagramThroughSlideIndex(topologyMaster, deck.slides, refIdx, {
                 activeSlideId: activePresentationSlideId,
                 draftDiagram: presentationDraftDiagram ?? undefined,
               });
-        diagramDelta = computeDiagramDelta(projectVisibleDiagram(prevBase), visibleCurrent);
+        diagramDelta = computeDiagramDelta(prevBase, topologyCurrent);
         applyDiagramDelta(prevBase, diagramDelta);
       }
     } catch {
       diagramDelta = {
         version: '1.0',
         compressed: true,
-        operations: [{ op: 'replace' as const, path: '', value: safeClone(visibleCurrent) }],
+        operations: [{ op: 'replace' as const, path: '', value: safeClone(topologyCurrent) }],
       };
     }
 
@@ -4049,6 +4083,7 @@ export default function DiagramEditor() {
     presentationDraftDiagram,
     diagramData,
     presentationMasterDiagram,
+    tabDiagramData,
     presentationDecks,
     activePresentationDeckId,
     activePresentationSlideId,
@@ -4125,15 +4160,15 @@ export default function DiagramEditor() {
     try {
       await captureOutgoingSlideThumbnailIfNeeded();
 
-      const masterBase = projectVisibleDiagram(presentationMasterDiagram ?? tabDiagramData);
-      const blankVisible = blankSlideVisibleFromMaster(masterBase);
+      const masterRaw = presentationMasterDiagram ?? tabDiagramData;
+      const blankDiagram = blankSlideVisibleFromMaster(masterRaw);
       const deck = presentationDecks.find((d) => d.id === activePresentationDeckId);
 
       let diagramDelta: DiagramDelta;
       try {
         if (!deck || getPresentationDeltaMode(deck) === 'master') {
-          diagramDelta = computeDiagramDelta(masterBase, blankVisible);
-          applyDiagramDelta(masterBase, diagramDelta);
+          diagramDelta = computeDiagramDelta(masterRaw, blankDiagram);
+          applyDiagramDelta(masterRaw, diagramDelta);
         } else {
           let refIdx = activePresentationSlideId
             ? deck.slides.findIndex((s) => s.id === activePresentationSlideId)
@@ -4141,19 +4176,19 @@ export default function DiagramEditor() {
           if (refIdx < 0) refIdx = deck.slides.length > 0 ? deck.slides.length - 1 : -1;
           const prevBase =
             refIdx < 0
-              ? masterBase
-              : cumulativeDiagramThroughSlideIndex(masterBase, deck.slides, refIdx, {
+              ? masterRaw
+              : cumulativeDiagramThroughSlideIndex(masterRaw, deck.slides, refIdx, {
                   activeSlideId: activePresentationSlideId,
                   draftDiagram: presentationDraftDiagram ?? undefined,
                 });
-          diagramDelta = computeDiagramDelta(projectVisibleDiagram(prevBase), blankVisible);
+          diagramDelta = computeDiagramDelta(prevBase, blankDiagram);
           applyDiagramDelta(prevBase, diagramDelta);
         }
       } catch {
         diagramDelta = {
           version: '1.0',
           compressed: true,
-          operations: [{ op: 'replace' as const, path: '', value: safeClone(blankVisible) }],
+          operations: [{ op: 'replace' as const, path: '', value: safeClone(blankDiagram) }],
         };
       }
 
@@ -4227,16 +4262,16 @@ export default function DiagramEditor() {
     const confirmed = window.confirm(`Delete slide "${targetSlide.title || 'Untitled'}"?`);
     if (!confirmed) return;
 
-    const masterBase = projectVisibleDiagram(presentationMasterDiagram ?? tabDiagramData);
+    const masterRaw = presentationMasterDiagram ?? tabDiagramData;
     const mode = getPresentationDeltaMode(activePresentationDeck);
     let nextSlidesFiltered = activePresentationDeck.slides.filter((slide) => slide.id !== slideId);
     if (mode === 'chain') {
-      const resolved = resolvePresentationSlideDiagrams(masterBase, activePresentationDeck.slides, 'chain');
+      const resolved = resolvePresentationSlideDiagrams(masterRaw, activePresentationDeck.slides, 'chain');
       const indices = activePresentationDeck.slides
         .map((_, i) => i)
         .filter((i) => activePresentationDeck.slides[i].id !== slideId);
       nextSlidesFiltered = rechainSlideDeltasFromAbsoluteDiagrams(
-        masterBase,
+        masterRaw,
         indices.map((i) => activePresentationDeck.slides[i]),
         indices.map((i) => resolved[i]),
       );
@@ -4265,11 +4300,11 @@ export default function DiagramEditor() {
         if (nextSlidesFiltered[0]?.id === nextSlide.id) {
           setPresentationDraftDiagram(null);
         } else if (mode === 'master') {
-          setPresentationDraftDiagram(applyDiagramDelta(masterBase, nextSlide.diagramDelta));
+          setPresentationDraftDiagram(applyDiagramDelta(masterRaw, nextSlide.diagramDelta));
         } else {
           const idx = nextSlidesFiltered.findIndex((s) => s.id === nextSlide.id);
-          const diagrams = resolvePresentationSlideDiagrams(masterBase, nextSlidesFiltered, 'chain');
-          setPresentationDraftDiagram(diagrams[idx] ?? applyDiagramDelta(masterBase, nextSlide.diagramDelta));
+          const diagrams = resolvePresentationSlideDiagrams(masterRaw, nextSlidesFiltered, 'chain');
+          setPresentationDraftDiagram(diagrams[idx] ?? applyDiagramDelta(masterRaw, nextSlide.diagramDelta));
         }
       }
     } else {
@@ -4304,10 +4339,9 @@ export default function DiagramEditor() {
 
       const pid = deck.slides[0].id;
       const masterFull = presentationMasterDiagram ?? tabDiagramData;
-      const masterBaseVisible = projectVisibleDiagram(masterFull);
       const mode = getPresentationDeltaMode(deck);
 
-      const absolutes = resolvePresentationSlideDiagrams(masterBaseVisible, deck.slides, mode);
+      const absolutes = resolvePresentationSlideDiagrams(masterFull, deck.slides, mode);
 
       const nextSlides = [...deck.slides];
       const nextAbs = [...absolutes];
@@ -4358,8 +4392,8 @@ export default function DiagramEditor() {
               : {
                   ...slide,
                   diagramDelta: computeDiagramDelta(
-                    projectVisibleDiagram(baseDiagramClone),
-                    projectVisibleDiagram(nextAbs[i]),
+                    baseDiagramClone,
+                    nextAbs[i],
                   ),
                 },
           );
@@ -4374,7 +4408,7 @@ export default function DiagramEditor() {
         finalSlides = nextSlides;
       } else {
         finalSlides = rechainSlideDeltasFromAbsoluteDiagrams(
-          masterBaseVisible,
+          masterFull,
           withPrimary,
           nextAbs,
         );
@@ -4417,14 +4451,14 @@ export default function DiagramEditor() {
       if (deck.slides[0]?.id === slide.id) {
         setPresentationDraftDiagram(null);
       } else {
-        const master = projectVisibleDiagram(presentationMasterDiagram ?? tabDiagramData);
+        const masterFull = presentationMasterDiagram ?? tabDiagramData;
         const mode = getPresentationDeltaMode(deck);
         if (mode === 'master') {
-          setPresentationDraftDiagram(applyDiagramDelta(master, slide.diagramDelta));
+          setPresentationDraftDiagram(applyDiagramDelta(masterFull, slide.diagramDelta));
         } else {
           const idx = deck.slides.findIndex((s) => s.id === slide.id);
-          const diagrams = resolvePresentationSlideDiagrams(master, deck.slides, 'chain');
-          setPresentationDraftDiagram(diagrams[idx] ?? applyDiagramDelta(master, slide.diagramDelta));
+          const diagrams = resolvePresentationSlideDiagrams(masterFull, deck.slides, 'chain');
+          setPresentationDraftDiagram(diagrams[idx] ?? applyDiagramDelta(masterFull, slide.diagramDelta));
         }
       }
     }

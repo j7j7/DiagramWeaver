@@ -1,4 +1,5 @@
 import type { PresentationDeck, DiagramData } from "@/lib/types";
+import { ensureDiagramLayersPersisted } from "@/lib/layers-utils";
 import type { DiagramJsonWithPresentations } from "@/lib/diagram-editor/editor-support";
 import {
   dedupeSlideRefSets,
@@ -164,7 +165,7 @@ export function createDiagramSaveHandler({
       : -1;
 
     const dataToSave: DiagramJsonWithPresentations = {
-      ...targetTab.diagramData,
+      ...ensureDiagramLayersPersisted(targetTab.diagramData),
       presentations: {
         v: 2,
         ai: activeDeckIndex >= 0 ? activeDeckIndex : undefined,

@@ -1,5 +1,21 @@
 # MEMORY.MD
 
+### 2026-04-29 – Diagram JSON: persist `layers` on save/load
+**`ensureDiagramLayersPersisted`** in **`layers-utils`** — if **`diagramData.layers`** is missing or fails **`validateLayersConfig`**, inject **`getDefaultLayersConfig()`** before writing/reading. Wired into **Save as .json** (**`diagram-editor-save-handler`**), **`validateAndConvertJson`** (**viewer** paths), **`parseDiagramJson`** (**`schemas`**), **`parseUnknownJsonToDiagramData`** (preserves full validated diagram + connections + ensures layers), JSON panel apply (**`json-editor-panel`**), **`sanitizeImportedDiagram`** (includes **`viewState`** in return). Patch bumped.
+
+### 2026-04-29 – Layers panel: isolate state per diagram tab (`useLayers`)
+
+**`layerSourceKey: activeTabId`** on **`useLayers`** + **`[diagramData.layers, layerSourceKey]`** sync; when **`diagramData.layers`** is missing or invalid, reset to **`getDefaultLayersConfig()`**—avoids carrying the prior tab’s layer list when switching tabs. **`use-layers`**, **`diagram-editor`**. Patch bumped.
+
+### 2026-04-29 – Presentation drafts: canonical `layers` from tab after slide resolve
+Non-primary **`presentationDraftDiagram`** was rebuilt from deltas with **stale **`layers`** (visibility didn’t track tab). Effect merges **`tabDiagramData.layers`** onto snapshot drafts whenever they differ (**`presentationLayersSyncFingerprint`**). **`validateLayersConfig`**, **`diagram-editor`**. Fixes cross-slide visibility staying in sync. Patch bumped.
+
+### 2026-04-29 – Slide deltas: full topology (layer hide no longer drops nodes from persisted slides)
+Persisted **`diagramDelta`** was computed with **`projectVisibleDiagram`** (layer filter), so hiding a layer rewrote slide JSON as if nodes were **deleted**—layer panel counts hit 0 after slide switches. **All** `computeDiagramDelta` inputs for slide persistence / rechaining / propagation / blank slide / snapshot payload / viewport resolve / viewer resolve now use **full** `DiagramData`; **`projectVisibleDiagram`** remains for **rendering / PNG thumbnails only**. Touched: **`presentation-delta`** (JSDoc), **`presentation-slide-chain`**, **`diagram-editor`**, **`use-presentation-thumbnails`**, **`use-presentation-slide-viewport-sync`**, **`viewer/page`**. Patch bumped.
+
+### 2026-04-29 – Layers: shared config across presentation slides + any-slide panel
+**Layers** are **`LayersConfig`** on each tab’s **`diagramData`**. **`applyDiagramLayersGlobally`** in **`diagram-editor`** syncs **`layers`** to **`updateActiveTab`**, **`presentationMasterDiagram`**, and **`presentationDraftDiagram`** so visibility / order / active-layer / rename / add / remove behave as **one per file** while editing any slide. **`use-layers`** takes optional **`applyLayersGlobally`**; **`removeLayerById`** calls it before moving items. **`diagram-editor-inner`**: Layers panel no longer gated by primary slide (`isPrimaryPresentationSlideActiveInner` removed—assign/set active/reorder/rename/etc. on snapshot slides).
+
 ### 2026-04-29 – Undo/redo: defer snapshots during chart value drag
 Bar/line/pie **in-canvas value drags** emit **`onChartValueDragSessionChange`** from **`diagram-node`** → **`editor-canvas`** → **`diagram-editor-inner`**; **`useDiagramEditorHistory`** treats **`isDragging || chartValueDragActive`** like node drag so the debounced stack does not record every pointer-move. Patch bumped.
 

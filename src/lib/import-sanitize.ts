@@ -1,4 +1,5 @@
 import type { DiagramData, DiagramNodeData, DiagramConnectionData, DiagramGroupingData, LayersConfig } from './types';
+import { ensureDiagramLayersPersisted } from '@/lib/layers-utils';
 
 /** Collects all IDs used in a diagram tree (root + nested subDiagrams) */
 export function collectAllIdsInDiagram(root: DiagramData): {
@@ -153,14 +154,15 @@ export function sanitizeImportedDiagram(
       }
     }
 
-    return {
+    return ensureDiagramLayersPersisted({
       nodes,
       connections,
       groupings,
       layers,
       recentColors: data.recentColors,
       subDiagrams,
-    };
+      viewState: data.viewState,
+    });
   }
 
   return sanitizeDiagram(imported);

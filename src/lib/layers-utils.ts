@@ -157,6 +157,20 @@ export function validateLayersConfig(config: LayersConfig): boolean {
 }
 
 /**
+ * Ensures `diagramData.layers` is present and valid whenever the diagram is persisted or loaded from JSON.
+ * Invalid or missing configs are replaced with defaults (round-trip safe for “Save as .json”).
+ */
+export function ensureDiagramLayersPersisted(diagramData: DiagramData): DiagramData {
+  if (diagramData.layers && validateLayersConfig(diagramData.layers)) {
+    return diagramData;
+  }
+  return {
+    ...diagramData,
+    layers: getDefaultLayersConfig(),
+  };
+}
+
+/**
  * Generate a color for a new layer based on index
  */
 function generateLayerColor(existingLayers: LayerInfo[]): string {

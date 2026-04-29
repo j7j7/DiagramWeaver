@@ -331,12 +331,6 @@ export function DiagramEditorInner({
     activeTab?.name,
   ]);
 
-  const isPrimaryPresentationSlideActiveInner = React.useMemo(() => {
-    const deck = presentationDecks.find((d: PresentationDeck) => d.id === activePresentationDeckId);
-    const pid = deck?.slides[0]?.id;
-    return Boolean(pid && activePresentationSlideId === pid);
-  }, [presentationDecks, activePresentationDeckId, activePresentationSlideId]);
-
   const [presentationSnapshotsCollapsed, setPresentationSnapshotsCollapsed] = React.useState(() => {
     if (typeof window === 'undefined') return false;
     try {
@@ -774,77 +768,22 @@ export function DiagramEditorInner({
                           Array.from(selectedItemIds).map(id => layers.getItemLayerById(id)) : []
                         }
                         onAddLayer={(name: string) => {
-                          void name;
-                          if (!isPrimaryPresentationSlideActiveInner) {
-                            toast({
-                              variant: 'destructive',
-                              title: 'Layer Editing Disabled',
-                              description: 'Layer structure is locked while editing a snapshot so deltas stay valid.',
-                            });
-                            return;
-                          }
                           layers.addNewLayer(name);
                         }}
                         onRemoveLayer={(layerId: string) => {
-                          void layerId;
-                          if (!isPrimaryPresentationSlideActiveInner) {
-                            toast({
-                              variant: 'destructive',
-                              title: 'Layer Editing Disabled',
-                              description: 'Layer structure is locked while editing a snapshot so deltas stay valid.',
-                            });
-                            return;
-                          }
                           layers.removeLayerById(layerId);
                         }}
                         onRenameLayer={(layerId: string, newName: string) => {
-                          void layerId;
-                          void newName;
-                          if (!isPrimaryPresentationSlideActiveInner) {
-                            toast({
-                              variant: 'destructive',
-                              title: 'Layer Editing Disabled',
-                              description: 'Layer structure is locked while editing a snapshot so deltas stay valid.',
-                            });
-                            return;
-                          }
                           layers.renameLayerById(layerId, newName);
                         }}
                         onToggleVisibility={handleToggleLayerVisibility}
                         onSetActiveLayer={(layerId: string) => {
-                          void layerId;
-                          if (!isPrimaryPresentationSlideActiveInner) {
-                            toast({
-                              variant: 'destructive',
-                              title: 'Layer Editing Disabled',
-                              description: 'Layer structure is locked while editing a snapshot so deltas stay valid.',
-                            });
-                            return;
-                          }
                           layers.setActiveLayerById(layerId);
                         }}
                         onReorderLayers={(fromIndex: number, toIndex: number) => {
-                          void fromIndex;
-                          void toIndex;
-                          if (!isPrimaryPresentationSlideActiveInner) {
-                            toast({
-                              variant: 'destructive',
-                              title: 'Layer Editing Disabled',
-                              description: 'Layer structure is locked while editing a snapshot so deltas stay valid.',
-                            });
-                            return;
-                          }
                           layers.reorderLayers(fromIndex, toIndex);
                         }}
                         onAssignSelectedItemsToLayer={selectedItemIds.size > 0 ? (layerId: string) => {
-                          if (!isPrimaryPresentationSlideActiveInner) {
-                            toast({
-                              variant: 'destructive',
-                              title: 'Layer Editing Disabled',
-                              description: 'Layer structure is locked while editing a snapshot so deltas stay valid.',
-                            });
-                            return;
-                          }
                           layers.assignItemsToLayer(Array.from(selectedItemIds), layerId);
                         } : undefined}
                         onClose={layers.toggleLayersPanel}

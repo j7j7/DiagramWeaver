@@ -6,6 +6,7 @@ import { ensureConnectionIds } from './connection-order-utils';
 import { extractEmbeddedPresentations, type ExtractedEmbeddedPresentations } from './extract-embedded-presentations';
 import { collapsePresentationDecksToOne } from './presentation-deck-merge';
 import { migratePresentationDecks } from './presentation-primary-slide';
+import { ensureDiagramLayersPersisted } from './layers-utils';
 
 export const VIEWER_MAX_JSON_SIZE = 5 * 1024 * 1024; // 5MB limit
 
@@ -235,11 +236,11 @@ export function validateAndConvertJson(json: unknown): DiagramData {
   }
 
   const data = flatResult.data as DiagramData;
-  // Spread full parsed diagram so connection fields (e.g. edgeAttachmentConstraint) and viewState round-trip like the editor
-  return {
+  // Spread full parsed diagram so connection fields (e.g. edgeAttachmentConstraint), viewState, and layers round-trip like the editor
+  return ensureDiagramLayersPersisted({
     ...data,
     connections: ensureConnectionIds(data.connections || []),
-  };
+  });
 }
 
 /**

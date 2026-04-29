@@ -123,6 +123,11 @@ function removeByPath(target: unknown, path: string[]): void {
   delete cursor[last];
 }
 
+/**
+ * Drops nodes/connections/zones whose layer is hidden — for **canvas rendering**, thumbnails,
+ * and fit-to-view previews. Do **not** use this output as an operand when persisting slide
+ * `diagramDelta`s; deltas must encode full topology so toggling visibility does not erase nodes from slides.
+ */
 export function projectVisibleDiagram(diagramData: DiagramData): DiagramData {
   if (diagramData.layers && validateLayersConfig(diagramData.layers)) {
     return filterByVisibleLayers(diagramData);
@@ -130,6 +135,7 @@ export function projectVisibleDiagram(diagramData: DiagramData): DiagramData {
   return diagramData;
 }
 
+/** Compare full diagram JSON; layer visibility filtering is rendering-only for slide deltas. */
 export function computeDiagramDelta(baseDiagram: DiagramData, currentDiagram: DiagramData): DiagramDelta {
   const operations: DiagramDeltaOperation[] = [];
   buildDeltaRecursive(baseDiagram, currentDiagram, '', operations);

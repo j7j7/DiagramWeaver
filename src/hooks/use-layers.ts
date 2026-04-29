@@ -26,10 +26,26 @@ import {
 interface UseLayersOptions {
   diagramData: DiagramData;
   setDiagramData: React.Dispatch<React.SetStateAction<DiagramData>>;
+  /**
+   * When this value changes (e.g. active **tab** id), re-sync `layersConfig` from `diagramData`.
+   * Avoids showing the previous tab's layer list when `diagramData.layers` keeps the same reference.
+   */
+  layerSourceKey?: string | null;
+  /**
+   * Syncs `layers` to the active tab diagram, presentation master, and current slide draft so one
+   * **file/tab** has one `LayersConfig` across its presentation slides (visibility, order, active layer, …).
+   */
+  applyLayersGlobally?: (layers: LayersConfig) => void;
   toast?: (options: { variant?: 'destructive' | 'default'; title: string; description: string }) => void;
 }
 
-export function useLayers({ diagramData, setDiagramData, toast }: UseLayersOptions) {
+export function useLayers({
+  diagramData,
+  setDiagramData,
+  layerSourceKey,
+  applyLayersGlobally,
+  toast,
+}: UseLayersOptions) {
   // Initialize layers config from diagram data or default
   const [layersConfig, setLayersConfig] = useState<LayersConfig>(() => {
     if (diagramData.layers && validateLayersConfig(diagramData.layers)) {
@@ -62,12 +78,14 @@ export function useLayers({ diagramData, setDiagramData, toast }: UseLayersOptio
     }
   }, [isClient]);
 
-  // Sync layers config with diagram data
+  // Sync layers config from the current diagram (each tab has its own diagram + layers)
   useEffect(() => {
     if (diagramData.layers && validateLayersConfig(diagramData.layers)) {
       setLayersConfig(diagramData.layers);
+    } else {
+      setLayersConfig(getDefaultLayersConfig());
     }
-  }, [diagramData.layers]);
+  }, [diagramData.layers, layerSourceKey]);
 
   // Save layers panel state to localStorage
   useEffect(() => {
@@ -78,11 +96,15 @@ export function useLayers({ diagramData, setDiagramData, toast }: UseLayersOptio
 
   // Update diagram data when layers config changes
   const updateDiagramDataWithLayers = useCallback((newLayersConfig: LayersConfig) => {
-    setDiagramData(prevData => ({
+    if (applyLayersGlobally) {
+      applyLayersGlobally(newLayersConfig);
+      return;
+    }
+    setDiagramData((prevData) => ({
       ...prevData,
-      layers: newLayersConfig
+      layers: newLayersConfig,
     }));
-  }, [setDiagramData]);
+  }, [setDiagramData, applyLayersGlobally]);
 
   // Add a new layer
   const addNewLayer = useCallback((layerName: string) => {
@@ -114,15 +136,19 @@ export function useLayers({ diagramData, setDiagramData, toast }: UseLayersOptio
 
       const newConfig = removeLayer(layersConfig, layerId);
       setLayersConfig(newConfig);
-      
+
+      if (applyLayersGlobally) {
+        applyLayersGlobally(newConfig);
+      }
+
       // Move all items from the removed layer to background
-      setDiagramData(prevData => {
+      setDiagramData((prevData) => {
         const { nodes: nodesInLayer, zones: zonesInLayer } = getItemsInLayer(prevData, layerId);
-        const updatedNodes = (prevData.nodes || []).map(node => 
-          nodesInLayer.find(n => n.id === node.id) ? setItemLayer(node, DEFAULT_LAYER_ID) : node
+        const updatedNodes = (prevData.nodes || []).map((node) =>
+          nodesInLayer.find((n) => n.id === node.id) ? setItemLayer(node, DEFAULT_LAYER_ID) : node,
         ) as DiagramNodeData[];
-        const updatedZones = (prevData.zones || []).map(zone => 
-          zonesInLayer.find(z => z.id === zone.id) ? setItemLayer(zone, DEFAULT_LAYER_ID) : zone
+        const updatedZones = (prevData.zones || []).map((zone) =>
+          zonesInLayer.find((z) => z.id === zone.id) ? setItemLayer(zone, DEFAULT_LAYER_ID) : zone,
         ) as DiagramZoneData[];
 
         return {
@@ -130,23 +156,23 @@ export function useLayers({ diagramData, setDiagramData, toast }: UseLayersOptio
           nodes: updatedNodes,
           zones: updatedZones,
           connections: prevData.connections,
-          layers: newConfig
+          layers: newConfig,
         } as DiagramData;
       });
 
       toast?.({
         variant: 'default',
         title: 'Layer Removed',
-        description: 'Layer has been removed and items moved to background.'
+        description: 'Layer has been removed and items moved to background.',
       });
     } catch (error) {
       toast?.({
         variant: 'destructive',
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to remove layer'
+        description: error instanceof Error ? error.message : 'Failed to remove layer',
       });
     }
-  }, [layersConfig, setDiagramData, toast]);
+  }, [layersConfig, setDiagramData, applyLayersGlobally, toast]);
 
   // Rename a layer
   const renameLayerById = useCallback((layerId: string, newName: string) => {
