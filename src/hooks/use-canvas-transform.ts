@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { measureNodeDims, type PositionedNode, type PositionedGroup } from "@/components/editor/canvas-constants";
+import { getCanvasElementSizeForImageCapture } from "@/lib/presentation-viewport-fit";
 
 export interface Transform {
   x: number;
@@ -77,25 +78,11 @@ export function useCanvasTransform({
     if (!canvasRef.current) return;
 
     const container = canvasRef.current;
-    
-    // Get the actual bounding rectangle which shows where the element is on screen
-    const rect = container.getBoundingClientRect();
-    
-    // The canvas might be larger than the browser window, so we need to clip it
-    // to only the visible portion
-    const windowWidth = window.innerWidth;
-    const windowHeight = window.innerHeight;
-    
-    // Calculate the visible portion of the canvas
-    // If canvas extends beyond window, clip it
-    const visibleLeft = Math.max(0, rect.left);
-    const visibleTop = Math.max(0, rect.top);
-    const visibleRight = Math.min(windowWidth, rect.right);
-    const visibleBottom = Math.min(windowHeight, rect.bottom);
-    
-    // The actual visible viewport dimensions
-    const viewportWidth = visibleRight - visibleLeft;
-    const viewportHeight = visibleBottom - visibleTop;
+    // Pan/zoom applies in the canvas host’s own coordinate system (same as pointer math:
+    // clientX/Y − rect.left of this element). Use the host’s layout size — not the
+    // intersection with the browser window — or scale/centering will be wrong.
+    const { width: viewportWidth, height: viewportHeight } =
+      getCanvasElementSizeForImageCapture(container);
 
     if (viewportWidth === 0 || viewportHeight === 0) {
       return; // Can't fit if viewport has no size

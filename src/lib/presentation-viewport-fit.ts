@@ -320,25 +320,19 @@ export function computeUnionFitTransformForDiagrams(
   return transformToFitBounds(bounds, viewportWidth, viewportHeight, padding);
 }
 
-/** Matches `handleFitToView` in `use-canvas-transform`: clip element rect to the window. */
+/**
+ * Size of the canvas host used for interactive fit math (union fit, resize observers).
+ * Uses the element’s layout box — same as {@link getCanvasElementSizeForImageCapture} — not
+ * the intersection with the window (which broke pan/zoom centering when the canvas is smaller
+ * than the viewport or inset in the layout).
+ */
 export function getElementVisibleViewportSize(element: HTMLElement): { width: number; height: number } {
-  const rect = element.getBoundingClientRect();
-  const windowWidth = window.innerWidth;
-  const windowHeight = window.innerHeight;
-  const visibleLeft = Math.max(0, rect.left);
-  const visibleTop = Math.max(0, rect.top);
-  const visibleRight = Math.min(windowWidth, rect.right);
-  const visibleBottom = Math.min(windowHeight, rect.bottom);
-  return {
-    width: visibleRight - visibleLeft,
-    height: visibleBottom - visibleTop,
-  };
+  return getCanvasElementSizeForImageCapture(element);
 }
 
 /**
- * Full layout size of the canvas host (what html-to-image rasterizes). Use this for pan/zoom math when
- * generating PNGs of the canvas element — not {@link getElementVisibleViewportSize}, which clips to
- * the browser window and can mismatch the captured bitmap (e.g. top/bottom mis-centered).
+ * Full layout size of the canvas host (what html-to-image rasterizes). Prefer this for pan/zoom
+ * and fit math so dimensions match the transformed layer’s coordinate system.
  */
 export function getCanvasElementSizeForImageCapture(element: HTMLElement): { width: number; height: number } {
   const w = element.clientWidth;

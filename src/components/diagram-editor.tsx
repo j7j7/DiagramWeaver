@@ -3825,11 +3825,20 @@ export default function DiagramEditor() {
   } | null> => {
     if (activePresentationSlideDiagrams.length > 0) {
       const diagrams = activePresentationSlideDiagrams.map((d) => pruneConnectionsToVisibleNodes(d));
-      const t = computeUnionFitTransformForDiagrams(
-        diagrams,
-        typeof window !== 'undefined' ? window.innerWidth : 1280,
-        typeof window !== 'undefined' ? window.innerHeight : 720
-      );
+      const host = editorRef.current?.getCanvasHostViewportForFit?.();
+      const vw =
+        host && host.width > 0
+          ? host.width
+          : typeof window !== 'undefined'
+            ? window.innerWidth
+            : 1280;
+      const vh =
+        host && host.height > 0
+          ? host.height
+          : typeof window !== 'undefined'
+            ? window.innerHeight
+            : 720;
+      const t = computeUnionFitTransformForDiagrams(diagrams, vw, vh);
       if (t && Number.isFinite(t.k) && t.k > 0) {
         return {
           autoZoomLevel: Number(t.k.toFixed(4)),
@@ -3885,10 +3894,6 @@ export default function DiagramEditor() {
     }
 
     if (!activePresentationDeck || activePresentationDeck.slides.length === 0) {
-      toast({
-        title: 'Fit to View',
-        description: `Zoom set to ${(autoZoomLevel * 100).toFixed(1)}%. Add slides to save this zoom on the deck.`,
-      });
       return;
     }
 
@@ -3905,16 +3910,10 @@ export default function DiagramEditor() {
         updatedAt: Date.now(),
       };
     }));
-
-    toast({
-      title: 'Fit to View',
-      description: `All ${activePresentationDeck.slides.length} slide(s) now use ${(autoZoomLevel * 100).toFixed(1)}% zoom (union of all slide content).`,
-    });
   }, [
     activePresentationDeckId,
     activePresentationDeck,
     runPresentationFitToView,
-    toast,
     sanitizeCanvasTransform,
     setCanvasTransform,
   ]);

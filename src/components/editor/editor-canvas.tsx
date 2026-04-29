@@ -36,6 +36,7 @@ import { CanvasRulers } from "./canvas-rulers";
 import { RULER_SIZE, type PositionedNode, type PositionedGroup } from "./canvas-constants";
 import { calculateLayout } from "./canvas-layout-utils";
 import { useCanvasTransform } from "@/hooks/use-canvas-transform";
+import { getCanvasElementSizeForImageCapture } from "@/lib/presentation-viewport-fit";
 import { useCanvasSelection } from "@/hooks/use-canvas-selection";
 import { useCanvasInteractions } from "@/hooks/use-canvas-interactions";
 import { useCanvasDragDrop } from "@/hooks/use-canvas-drag-drop";
@@ -413,6 +414,8 @@ interface EditorCanvasProps {
 
 
 export type EditorCanvasHandle = {
+  /** Width/height of the canvas host for fit math (matches pointer / transform coordinates). */
+  getCanvasHostViewportForFit: () => { width: number; height: number } | null;
   fitToView: () => void;
   exportPng: (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high' }) => Promise<void>;
   exportGif: (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high'; fps?: number; durationSeconds?: number }) => Promise<void>;
@@ -2210,6 +2213,11 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   }, [canPaste]);
 
   React.useImperativeHandle(ref, () => ({
+    getCanvasHostViewportForFit: () => {
+      const el = canvasRef.current;
+      if (!el) return null;
+      return getCanvasElementSizeForImageCapture(el);
+    },
     fitToView: handleFitToView, // Auto-fits diagram to viewport
     exportPng: (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high' }) => exportPng(options), // Exports current viewport to PNG
     exportGif: (options?: { backgroundColor?: 'transparent' | 'white' | 'dark'; quality?: 'low' | 'medium' | 'high'; fps?: number; durationSeconds?: number }) => exportGif(options), // Exports current viewport to GIF

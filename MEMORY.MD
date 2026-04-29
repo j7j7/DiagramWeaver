@@ -1,7 +1,13 @@
 # MEMORY.MD
 
+### 2026-04-29 – Fit to View: no success toast (presentation)
+**`handlePresentationFitToView`** no longer shows a toast after a successful deck fit; error toasts unchanged. Patch bumped.
+
 ### 2026-04-29 – `docs/todo.md`: tutorial + examples backlog
 **`docs/todo.md`** — checklist tables with **`[ ]`/`[x]`** status + sub-rows (parity/IDs/examples/hygiene); epics **A** (tutorial) / **B** (examples); “at a glance” summary. Same scope as before: **`TUTORIAL-MAP`** / **`README`**, **`public/examples`** + **`public/examples/tutorial`**.
+
+### 2026-04-29 – Fit to View: host-size viewport (regression from window-clip / `innerWidth`)
+**`use-canvas-transform`** `handleFitToView` again uses the canvas host’s **`clientWidth`/`clientHeight`** (via **`getCanvasElementSizeForImageCapture`**) for scale and centering — same coordinate system as **`translate(x,y) scale(k)`** and pointer math. The Jan 2026 “visible window ∩ canvas rect” path mismatched that system and broke fit; **`runPresentationFitToView`** also used **`window.innerWidth`/`innerHeight`** for union fit, overstating space vs the real canvas → zoom too high. **`getElementVisibleViewportSize`** now delegates to **`getCanvasElementSizeForImageCapture`** (viewer union-fit **`ResizeObserver`** stays consistent). **`EditorCanvasHandle`**: **`getCanvasHostViewportForFit`**. Patch bumped.
 
 ### 2026-04-29 – Diagram JSON: persist `layers` on save/load
 **`ensureDiagramLayersPersisted`** in **`layers-utils`** — if **`diagramData.layers`** is missing or fails **`validateLayersConfig`**, inject **`getDefaultLayersConfig()`** before writing/reading. Wired into **Save as .json** (**`diagram-editor-save-handler`**), **`validateAndConvertJson`** (**viewer** paths), **`parseDiagramJson`** (**`schemas`**), **`parseUnknownJsonToDiagramData`** (preserves full validated diagram + connections + ensures layers), JSON panel apply (**`json-editor-panel`**), **`sanitizeImportedDiagram`** (includes **`viewState`** in return). Patch bumped.
