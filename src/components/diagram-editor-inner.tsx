@@ -221,7 +221,6 @@ export function DiagramEditorInner({
   presentationDecks,
   activePresentationDeckId,
   activePresentationSlideId,
-  presentationDisabledLayerIds,
   activePresentationSlides,
   activePresentationSlideDiagrams,
   handleSelectPresentationBaseSlide,
@@ -293,6 +292,7 @@ export function DiagramEditorInner({
   handleLabelUpdate,
   handleTagUpdate,
   setIsDragging,
+  setChartValueDragActive,
   setCanPaste,
   setMousePosition,
   handleGroupItems,
@@ -702,6 +702,7 @@ export function DiagramEditorInner({
                      onLabelUpdate={handleLabelUpdate}
                      onTagUpdate={handleTagUpdate}
                      onDraggingChange={setIsDragging}
+                     onChartValueDragSessionChange={setChartValueDragActive}
                     onClipboardChange={setCanPaste}
                     onMousePositionChange={setMousePosition}
                     onExportComplete={() => setExportDialogOpen(false)}
@@ -769,7 +770,6 @@ export function DiagramEditorInner({
                       <LayersPanel
                         layers={layers.getAllLayers()}
                         activeLayerId={layers.layersConfig.activeLayerId}
-                        disabledLayerIds={Array.from(presentationDisabledLayerIds)}
                         selectedItemsLayerIds={selectedItemIds.size > 0 ? 
                           Array.from(selectedItemIds).map(id => layers.getItemLayerById(id)) : []
                         }
@@ -810,17 +810,7 @@ export function DiagramEditorInner({
                           }
                           layers.renameLayerById(layerId, newName);
                         }}
-                        onToggleVisibility={(layerId: string) => {
-                          if (presentationDisabledLayerIds.has(layerId)) {
-                            toast({
-                              variant: 'destructive',
-                              title: 'Layer Editing Disabled',
-                              description: `Layer "${layers.getLayer(layerId)?.name || layerId}" was impacted by slide edits and cannot be toggled here.`,
-                            });
-                            return;
-                          }
-                          handleToggleLayerVisibility(layerId);
-                        }}
+                        onToggleVisibility={handleToggleLayerVisibility}
                         onSetActiveLayer={(layerId: string) => {
                           void layerId;
                           if (!isPrimaryPresentationSlideActiveInner) {

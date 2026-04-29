@@ -1,5 +1,26 @@
 # MEMORY.MD
 
+### 2026-04-29 – Undo/redo: defer snapshots during chart value drag
+Bar/line/pie **in-canvas value drags** emit **`onChartValueDragSessionChange`** from **`diagram-node`** → **`editor-canvas`** → **`diagram-editor-inner`**; **`useDiagramEditorHistory`** treats **`isDragging || chartValueDragActive`** like node drag so the debounced stack does not record every pointer-move. Patch bumped.
+
+### 2026-04-29 – Presentation: layers usable on all slides (remove “disabled layer” UX)
+Removed **`presentationDisabledLayerIds`** (master-vs-slide delta bookkeeping), **`confirmPresentationLayerImpact`** dialogs, **`computePresentationDisabledLayerIds`**, and the Layers panel **Disabled in presentation** badge / amber row styling. Visibility toggle and deletes/disconnects/connection edits no longer block or mark layers when snapshot slides omit master nodes. **`diagram-editor`**, **`diagram-editor-inner`**, **`layers-panel`**. Patch bumped.
+
+### 2026-04-29 – README: removed Documentation section
+**`README.md`**: dropped the **Documentation** bullet list (`docs/*.md`, **`AGENTS.md`**, **`MEMORY.MD`**, **`tree.md`**)—most repo markdown is historical change notes; **Development → Project Structure** retained.
+
+### 2026-04-29 – README project structure + doc paths; `tree.md`
+**`README.md`**: **Project Structure** aligned with repo (`docs/`, `public/`, `scripts/`, optional root **`resources/`**, **`src/`** routes and **`components/`** layout); **`types/` vs `lib/types.ts`** clarified; **`theme-provider`** / **`theme-toggle`** noted. **Documentation** links fixed to **`docs/PERFORMANCE_BENCHMARK_REPORT.md`** and **`docs/ACCESSIBILITY_AUDIT_REPORT.md`**; accessibility “see also” uses **`docs/`** path; **`tree.md`** linked. **`tree.md`**: maintained folder snapshot.
+
+### 2026-04-29 – README: interactive diagrams, metadata attributes, presentation emphasis
+**`README.md`**: intro separates **interactive** canvas + **metadata popups / attributes** from **presentation** emphasis (**Effects** glow, **slide transitions**, connection animations); **Canvas & Editor** clarifies direct manipulation; **Presentation mode** adds **Emphasis** bullet; **Viewer** / **Metadata** popup lines describe selection-anchored attributes + hover-to-expand popup.
+
+### 2026-04-29 – README: themes, bulk hue, fills (solid / gradient / frosted glass)
+**`README.md`**: **Styling & Layout** — **Themes** (toolbar presets, favorites, **Theme Editor**); **Step hue for multi-selection** + hue step / canvas ordering; **Visual Styling** — **Solid**, **Gradient**, **Frosted glass** fills.
+
+### 2026-04-29 – README: tech stack accuracy + Line node (straight/curved/closed)
+**`README.md`**: **Tech Stack** aligned with **`package.json`** (TypeScript 5, Next.js **16.x**, React **19.x**, Tailwind **3.x**, **`react-dnd`**, CodeMirror via **`@uiw/react-codemirror`**). **Node Types → Line**: documents **straight** vs **curved** paths, bend points, optional smoothed joints, **closed** geometry as filled **custom outlines**; **Line Styling Panel** bullet mentions closed fills.
+
 ### 2026-04-29 – README: feature-focused intro copy
 **`README.md`**: opening description rewritten to emphasize ease of use, **diagram + presentation** workflows, **icons/shapes**, **slide animations**, and polished results; brief nod to JSON/Mermaid/export for advanced users.
 

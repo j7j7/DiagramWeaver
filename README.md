@@ -2,23 +2,24 @@
 
 **Work in progress.** This project is under active development; some functionality may change between releases.
 
-An easy-to-use studio for diagrams and presentations. Pull from a broad library of ready-made icons and shapes—including cloud and tech symbols—to sketch flows and architectures quickly, then step into slides with transitions and animations so decks stay lively without extra tooling. Whether you’re mapping systems or presenting to an audience, you get polished visuals fast instead of rebuilding layouts by hand.
+An easy-to-use studio for diagrams and presentations. Pull from a broad library of ready-made icons and shapes—including cloud and tech symbols—to sketch flows and architectures quickly, then step into slides with transitions and animations so decks stay lively without extra tooling. Diagrams stay **interactive**: zoom and pan to explore the canvas; optional **metadata (“properties”) popups** show **attributes** for whatever you select (nodes and connections). When you **present**, combine **Effects** glow highlights with **slide transitions** and **connection animations** so playback can emphasize structure and flows step by step. Whether you’re mapping systems or presenting to an audience, you get polished visuals fast instead of rebuilding layouts by hand.
 
 Power users can still edit diagram JSON directly or bring in Mermaid; export stays portable when you need it.
 
 ## Tech Stack
 
-- **Framework**: Next.js 16 with React 19
-- **UI**: Radix UI components, TailwindCSS, shadcn/ui pattern
-- **Drag & Drop**: React DnD with HTML5 backend
-- **Icons**: Lucide React (74 symbols) + provider-specific icons (AWS, Azure, GCP, etc.)
-- **Editor**: CodeMirror for JSON editing with syntax highlighting
+- **Language**: TypeScript 5
+- **Framework**: Next.js 16.x with React 19.x
+- **UI**: Radix UI primitives, TailwindCSS 3.x, shadcn/ui-style patterns
+- **Drag & Drop**: `react-dnd` with HTML5 backend
+- **Icons**: Lucide React plus provider catalogs (AWS, Azure, GCP, etc.)
+- **Editor**: CodeMirror (`@uiw/react-codemirror`) for JSON editing with syntax highlighting and lint hooks
 
 ## Features
 
 ### Canvas & Editor
 
-- **Interactive Canvas**: Zoom, pan, grid snap (10px) for precise placement
+- **Interactive Canvas**: Zoom, pan, grid snap (10px) for precise placement; select, drag, connect, and edit objects directly on the diagram
 - **Responsive Design**: Mobile-friendly with touch support
 - **Fit to View**: Auto-scale canvas to fit all content
 - **Undo/Redo**: Full history support (Ctrl+Z / Ctrl+Shift+Z)
@@ -57,7 +58,7 @@ Additional providers available (can be enabled): Alibaba Cloud, OCI, SaaS, Elast
 
 - **Shapes**: Rectangle, circle, square, triangle, star, cloud, point, trapezoid, parallelogram, hexagon, pentagon, octagon, kite, jigsaw, chevron, arrow, rounded-rectangle
 - **Charts** (Generic → Object): **Pie**, **bar**, and **line** chart nodes (`generic.chart.*`) with a **Chart data** editor (series, colors, grids, legend, labels). Drag handles on the canvas adjust values (pie wedges, bar cells, line points); optional **Lock segment values** prevents drag edits while still allowing the modal. See `docs/charts.md`.
-- **Line**: Independent line element with drag endpoints (blue/green handles), customizable start/end caps (none, arrow, dot, square), thickness, and color
+- **Line** (standalone connector / polyline, distinct from chart **line** series): Drag endpoints (blue/green handles); insert bend points along the path. Choose **straight** (polyline; optional smoothed corners at vertices) or **curved** (smooth spline through interior points). When start and end meet, geometry **closes** so you can treat it like a filled **custom outline**. Caps (none, arrow, dot, square), thickness, solid/dashed/dotted stroke, color or gradient styling where enabled
 - **Textbox**: Rich text with bold/italic/underline and bullet/numbered lists
 - **Label**: Text labels with styling
 - **Resource Icons**: Cloud provider and on-premise resources with 80×80 icons
@@ -95,10 +96,12 @@ Additional providers available (can be enabled): Alibaba Cloud, OCI, SaaS, Elast
 
 ### Styling & Layout
 
-- **Visual Styling Panel**: Shapes/textbox (border, background, shadow, tags); Lucide icons (color, remove background); resource items (remove background)
+- **Themes** (toolbar **Themes** menu): Browse presets (**Favorites** and **All Themes**), apply a theme to the **current selection** (nodes and connections), and star themes you reuse often. Open **Theme Editor** from the menu to create, edit, import, or manage custom themes.
+- **Bulk hue when multi-selected**: In the Themes menu, enable **Step hue for multi-selection** and set **Hue step (°)**. Applying a theme then shifts colors **per selected item** by successive hue increments along canvas reading order—primarily **top-to-bottom** when the selection is taller than wide, otherwise **left-to-right**—so a group stays harmonious but not identical.
+- **Visual Styling Panel**: Shapes/textbox borders and backgrounds (shadow, tags); **background fill** modes — **Solid**, **Gradient** (angle-controlled), or **Frosted glass** (blurred backdrop through the shape with diffusion/transparency—and optional noise—where enabled); Lucide icons (color, remove background); resource items (remove background)
 - **Highlight animation** (Effects): Optional repeating **glow** on nodes with duration, interval, and color; staggered wave across the canvas (top-down). Respects **reduced motion** and disables for GIF export when appropriate
 - **Text Styling Panel**: Justification (left, center, right, full), vertical position (top, middle, bottom); optional **text outline**, **glow**, and **drop shadow**; font size up to **200px**
-- **Line Styling Panel**: Start/end caps, thickness (0.5–10px), color (for line objects); optional text **shadow** toggle and outline/glow where applicable
+- **Line Styling Panel**: Start/end caps, thickness (0.5–10px), stroke paint (for connector-line nodes—includes closed/custom-outline fills); optional text **shadow** toggle and outline/glow where applicable
 - **Rotation**: 0°, ±45°, ±90° for nodes; interactive corner rotation handles
 - **Resize Handles**: Edge and corner handles for shapes, textboxes, groups
 
@@ -141,6 +144,7 @@ See `docs/MERMAID-IMPORT.md` for full syntax and mapping.
 
 - **Decks & slides**: Build **presentation decks** where each **slide** stores a **diagram delta** (and optional layer visibility and connection-animation state) on top of the diagram
 - **Edit vs play**: Edit deck structure and slide content in the editor; **play** fullscreen with slide transitions (nodes, layers, connections—including chart segment staggers and connection timing)
+- **Emphasis**: Slide transitions reveal or move diagram elements between slides; pair them with **Effects** highlight glow on nodes (optional stagger across the slide) and **connection animations** so presentations can progressively spotlight structure and flows—without replacing spoken narrative
 - **Docs**: See `docs/PRESENTATION-MODE.md` for the data model and behavior
 
 ### Viewer
@@ -150,7 +154,7 @@ See `docs/MERMAID-IMPORT.md` for full syntax and mapping.
 - **Controls**: Zoom in/out, Fit to View, Properties panel toggle, metadata popup toggle, animation toggle
 - **Connection Animations**: Same animated shapes as editor; Show animations for selected only (downstream chain)
 - **Selection**: Click nodes or connections to view name, type, and metadata in the Properties panel
-- **Metadata Popups**: Compact popup under selected item shows key/value pairs (toggle in controls)
+- **Metadata Popups**: After selecting an item that has **`metaData`**, a compact **attributes** popup sits beside it (toggle in controls); **hover the popup** to expand truncated rows or scroll longer lists
 - **Layers Panel**: When diagram has 2+ layers, toggle layer visibility (eye/eye-off)
 - **Limits**: 5MB JSON max; 10s timeout for remote `url=` fetch
 
@@ -179,7 +183,7 @@ See `docs/MERMAID-IMPORT.md` for full syntax and mapping.
 
 - **`metaData`**: Optional key/value pairs (e.g. `"IP Address": "192.168.1.1"`) on nodes, connections, and groupings
 - **Properties Panel**: Right panel shows selected item name, type, and metadata; add/edit/remove via UI (Edit → Toggle Properties)
-- **Metadata Popup**: Compact popup under selected node/connection shows key/value pairs; Edit → Enable Properties toggles it
+- **Metadata Popup**: Anchored beside the selected node or connection when **`metaData`** exists; hover the popup to expand clipped values—enable via **Edit → Enable Properties** (or viewer toolbar toggle)
 - **Key Suggestions**: Input suggests previously used keys across the diagram for consistent property names
 - **JSON Storage**: Stored in diagram JSON as `metaData: { "Key": "value", ... }`; export/import preserves metadata
 - **Viewer**: Properties panel and popup available in read-only mode
@@ -274,7 +278,7 @@ DiagramWeaver is designed with accessibility in mind and follows WCAG 2.1 Level 
 - **Error Messages**: Clear error feedback for invalid operations
 - **Skip Links**: (Future enhancement) For keyboard navigation to main content
 
-For detailed accessibility audit results, see `ACCESSIBILITY_AUDIT_REPORT.md`.
+For detailed accessibility audit results, see [`docs/ACCESSIBILITY_AUDIT_REPORT.md`](docs/ACCESSIBILITY_AUDIT_REPORT.md).
 
 ## Development
 
@@ -304,30 +308,40 @@ See detailed guide: `docs/RESOURCES.md`
 
 ### Project Structure
 
+Repository layout (high level):
+
+```
+.
+├── docs/           # Guides, benchmarks, accessibility audit, plans
+├── public/         # Static assets served by Next.js (`/examples`, `/resources`, …)
+├── scripts/        # Node helpers (semver/build bumps, validators, …)
+├── resources/      # Optional templates / tooling beside `public/` (canonical icons live under `public/resources/`)
+├── src/            # Application source (Next.js App Router)
+├── AGENTS.md       # Contributor/agent notes for this repo
+├── MEMORY.MD       # Implementation history notes
+├── package.json
+└── …               # Config (`next.config.ts`, `tailwind.config.ts`, `tsconfig.json`, …)
+```
+
+`src/` layout:
+
 ```
 src/
-  app/              # Next.js pages and API
-  components/       # React components
-    diagram/        # Diagram nodes, shapes, connections
-    editor/         # Canvas, sidebar, toolbars, panels
-    viewer/         # Read-only viewer
-    tutorial/       # Tutorial overlay
-    ui/             # shadcn/ui primitives
-  hooks/            # use-canvas-*, use-diagram-tabs, etc.
-  lib/              # Types, schemas, utils, auto-layout, etc.
+├── app/                  # Routes: `/` (editor), `/viewer`; API handlers under `app/api/*`
+├── components/
+│   ├── diagram-editor.tsx          # Editor shell / wiring (large orchestrator)
+│   ├── diagram-editor-inner.tsx    # Layout chrome around the canvas
+│   ├── diagram/                    # Nodes, shapes, connections (canvas rendering)
+│   ├── editor/                     # Canvas, browser, panels, presentation UI
+│   ├── viewer/                     # Read-only viewer canvas and controls
+│   ├── tutorial/                   # Tutorial overlay
+│   └── ui/                         # Shared primitives (shadcn/ui-style)
+├── hooks/                # React hooks (canvas transform, tabs, persistence, …)
+├── lib/                  # Types (`types.ts`), schemas, themes, exporters, layout (`diagram-editor/` helpers)
+└── types/                # Ambient `.d.ts` stubs for libraries without bundled typings
 ```
 
-## Documentation
-
-- `docs/RESOURCES.md` – Resource and icon system
-- `docs/charts.md` – Pie, bar, and line chart nodes (`generic.chart.*`)
-- `docs/MERMAID-IMPORT.md` – Mermaid flowchart, class diagram, and sequence diagram import
-- `docs/PRESENTATION-MODE.md` – Presentation decks, slides, deltas, and playback
-- `docs/PERFORMANCE_IMPROVEMENTS.md` – Performance optimization plan and completed optimizations
-- `PERFORMANCE_BENCHMARK_REPORT.md` – Detailed performance metrics and benchmarking results
-- `ACCESSIBILITY_AUDIT_REPORT.md` – Comprehensive WCAG 2.1 Level AA accessibility audit
-- `AGENTS.md` – Build commands and code style
-- `MEMORY.MD` – Detailed feature history and implementation notes
+Diagram domain types live in **`src/lib/types.ts`** (not under `src/types/`, which holds ambient declarations only). Root-level shells under **`components/`** also include **`theme-provider.tsx`** and **`theme-toggle.tsx`** (alongside **`diagram-editor.tsx`** / **`diagram-editor-inner.tsx`**).
 
 ## License
 

@@ -38,7 +38,6 @@ import type { LayerInfo } from '@/lib/types';
 interface LayersPanelProps {
   layers: LayerInfo[];
   activeLayerId: string;
-  disabledLayerIds?: string[];
   selectedItemsLayerIds?: string[];
   onAddLayer: (name: string) => void;
   onRemoveLayer: (layerId: string) => void;
@@ -55,7 +54,6 @@ interface LayersPanelProps {
 export function LayersPanel({
   layers,
   activeLayerId,
-  disabledLayerIds = [],
   selectedItemsLayerIds = [],
   onAddLayer,
   onRemoveLayer,
@@ -271,9 +269,6 @@ export function LayersPanel({
         ) : (
           <div className="p-2">
             {layers.map((layer, index) => (
-              (() => {
-                const isLayerDisabled = disabledLayerIds.includes(layer.id);
-                return (
               <div
                 key={layer.id}
                 onDragOver={(e) => handleDragOver(e, index)}
@@ -283,7 +278,6 @@ export function LayersPanel({
                   "group flex items-center gap-2 p-2 rounded-md transition-colors",
                   "hover:bg-accent",
                   activeLayerId === layer.id && "bg-accent border border-border",
-                  isLayerDisabled && "ring-1 ring-amber-500/50 bg-amber-500/5",
                   draggedLayerIndex === index && "opacity-50"
                 )}
                 onClick={() => onSetActiveLayer(layer.id)}
@@ -347,11 +341,6 @@ export function LayersPanel({
                             : "bg-accent text-muted-foreground"
                         )}>
                           {selectedItemsLayerIds.filter(id => id === layer.id).length}
-                        </span>
-                      )}
-                      {isLayerDisabled && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300 whitespace-nowrap">
-                          Disabled in presentation
                         </span>
                       )}
                     </div>
@@ -438,8 +427,6 @@ export function LayersPanel({
                   )}
                 </div>
               </div>
-              );
-              })()
             ))}
           </div>
         )}

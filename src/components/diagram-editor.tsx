@@ -149,7 +149,6 @@ export default function DiagramEditor() {
   const isPrimaryPresentationSlideActive = Boolean(
     activePresentationPrimarySlideId && activePresentationSlideId === activePresentationPrimarySlideId,
   );
-  const [presentationDisabledLayerIds, setPresentationDisabledLayerIds] = React.useState<Set<string>>(new Set());
   const [selectedPresentationSlideIds, setSelectedPresentationSlideIds] = React.useState<Set<string>>(new Set());
   const [presentationPlayerOpen, setPresentationPlayerOpen] = React.useState<boolean>(false);
   const [presentationPlayerIndex, setPresentationPlayerIndex] = React.useState<number>(0);
@@ -193,6 +192,8 @@ export default function DiagramEditor() {
 
   const [jsonPanelWidth, setJsonPanelWidth] = React.useState<number>(420);
   const [isDragging, setIsDragging] = React.useState<boolean>(false);
+  /** Bar/line/pie value drag updates diagramData continuously; defer undo/redo snapshots until pointer-up. */
+  const [chartValueDragActive, setChartValueDragActive] = React.useState(false);
   const [canPaste, setCanPaste] = React.useState<boolean>(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const mermaidInputRef = React.useRef<HTMLInputElement>(null);
@@ -699,7 +700,7 @@ export default function DiagramEditor() {
     activeTabId,
     activeTab,
     diagramData,
-    isDragging,
+    isDragging: isDragging || chartValueDragActive,
     getHistoryRef,
     setHistoryRef,
     updateActiveTab,
@@ -1651,39 +1652,6 @@ export default function DiagramEditor() {
     (window as unknown as { pendingConnectionOptions?: unknown }).pendingConnectionOptions = connectionOptions;
   }
 
-  const getLayerNameById = React.useCallback((layerId: string): string => {
-    return layers.layersConfig.layers.find((layer) => layer.id === layerId)?.name || layerId;
-  }, [layers.layersConfig.layers]);
-
-  const getAffectedLayerIdsForConnection = React.useCallback((from: string, to: string): string[] => {
-    const ids = new Set<string>();
-    const source = currentDiagramData;
-    const fromNode = source.nodes.find((n) => n.id === from);
-    const toNode = source.nodes.find((n) => n.id === to);
-    if (fromNode?.layer) ids.add(fromNode.layer);
-    if (toNode?.layer) ids.add(toNode.layer);
-    return Array.from(ids);
-  }, [currentDiagramData]);
-
-  const confirmPresentationLayerImpact = React.useCallback((actionLabel: string, layerIds: string[]): boolean => {
-    if (layerIds.length === 0) return true;
-
-    const uniqueLayerIds = Array.from(new Set(layerIds));
-    const layerNames = uniqueLayerIds.map((id) => getLayerNameById(id));
-    const confirmed = window.confirm(
-      `${actionLabel} is assigned to layer(s): ${layerNames.join(', ')}. ` +
-      `This will disable layer functions for the affected layer(s) in Presentation Mode only. Continue?`
-    );
-    if (!confirmed) return false;
-
-    setPresentationDisabledLayerIds((prev) => {
-      const next = new Set(prev);
-      uniqueLayerIds.forEach((id) => next.add(id));
-      return next;
-    });
-    return true;
-  }, [getLayerNameById]);
-
   const tryDeleteConnectorLineVertexBeforeNodeDelete = React.useCallback(
     (nodeId: string): boolean => {
       const f = connectorLineFocusedVertex;
@@ -1693,8 +1661,6 @@ export default function DiagramEditor() {
       const wasClosed = isConnectorLineGeometryClosed(node);
       const nextGeom = removeConnectorLineVertexAtIndex(node, f.vertexIndex);
       if (!nextGeom) return false;
-      const layerId = node.layer || layers.getItemLayerById(nodeId);
-      if (!confirmPresentationLayerImpact('The selected item', layerId ? [layerId] : [])) return true;
       const isNowClosed = isConnectorLineGeometryClosed(nextGeom);
       let synced = nextGeom;
       if (isNowClosed) {
@@ -1714,8 +1680,6 @@ export default function DiagramEditor() {
     [
       connectorLineFocusedVertex,
       currentDiagramData,
-      layers,
-      confirmPresentationLayerImpact,
       setCurrentDiagramData,
       setSelectedItem,
     ],
@@ -1729,14 +1693,6 @@ export default function DiagramEditor() {
         tryDeleteConnectorLineVertexBeforeNodeDelete(itemToDelete.id)
       ) {
         return;
-      }
-
-      if (itemToDelete.itemType === 'node') {
-        const layerId = itemToDelete.layer || layers.getItemLayerById(itemToDelete.id);
-        if (!confirmPresentationLayerImpact('The selected item', layerId ? [layerId] : [])) return;
-      } else if (itemToDelete.itemType === 'edge') {
-        const edge = itemToDelete as { from: string; to: string };
-        if (!confirmPresentationLayerImpact('This connection', getAffectedLayerIdsForConnection(edge.from, edge.to))) return;
       }
 
       let newNodes = currentDiagramData.nodes;
@@ -1770,79 +1726,14 @@ export default function DiagramEditor() {
     },
     [
       currentDiagramData,
-      layers,
       setCurrentDiagramData,
       setSelectedItem,
-      getAffectedLayerIdsForConnection,
-      confirmPresentationLayerImpact,
       tryDeleteConnectorLineVertexBeforeNodeDelete,
     ],
   );
 
-  const computePresentationDisabledLayerIds = React.useCallback((
-    masterDiagram: DiagramData,
-    currentDiagram: DiagramData
-  ): Set<string> => {
-    const disabled = new Set<string>();
-
-    const currentNodeIds = new Set((currentDiagram.nodes || []).map((n) => n.id));
-    const masterNodeLayerById = new Map((masterDiagram.nodes || []).map((n) => [n.id, n.layer || 'background']));
-
-    // If a node from master is missing in presentation draft, its layer becomes disabled.
-    for (const node of masterDiagram.nodes || []) {
-      if (!currentNodeIds.has(node.id)) {
-        disabled.add(node.layer || 'background');
-      }
-    }
-
-    const currentConnectionKeys = new Set(
-      (currentDiagram.connections || []).map((c) => (c.id ? `id:${c.id}` : `pair:${c.from}->${c.to}`))
-    );
-
-    // If a master connection is missing, disable layers of its endpoint nodes.
-    for (const conn of masterDiagram.connections || []) {
-      const key = conn.id ? `id:${conn.id}` : `pair:${conn.from}->${conn.to}`;
-      if (!currentConnectionKeys.has(key)) {
-        const fromLayer = masterNodeLayerById.get(conn.from);
-        const toLayer = masterNodeLayerById.get(conn.to);
-        if (fromLayer) disabled.add(fromLayer);
-        if (toLayer) disabled.add(toLayer);
-      }
-    }
-
-    return disabled;
-  }, []);
-
-  React.useEffect(() => {
-    const master = presentationMasterDiagram ?? tabDiagramData;
-    const current = presentationDraftDiagram ?? diagramData;
-    if (!master || !current) return;
-
-    const nextDisabled = computePresentationDisabledLayerIds(master, current);
-    setPresentationDisabledLayerIds((prev) => {
-      if (prev.size === nextDisabled.size) {
-        let same = true;
-        for (const id of prev) {
-          if (!nextDisabled.has(id)) {
-            same = false;
-            break;
-          }
-        }
-        if (same) return prev;
-      }
-      return nextDisabled;
-    });
-  }, [
-    presentationMasterDiagram,
-    presentationDraftDiagram,
-    tabDiagramData,
-    diagramData,
-    computePresentationDisabledLayerIds,
-  ]);
-
   const disconnectSelected = () => {
     if (!selectedItem || selectedItem.itemType !== 'node') return;
-    if (!confirmPresentationLayerImpact('The selected item', [selectedItem.layer || layers.getItemLayerById(selectedItem.id)])) return;
     const id = selectedItem.id;
     setDiagramData(prevData => ({
       ...prevData,
@@ -2136,7 +2027,6 @@ export default function DiagramEditor() {
   ]);
 
   const disconnectConnection = React.useCallback((from: string, to: string, connectionId?: string) => {
-    if (!confirmPresentationLayerImpact('This connection', getAffectedLayerIdsForConnection(from, to))) return;
     const nextDiagram: DiagramData = {
       ...diagramData,
       connections: diagramData.connections.filter((e: DiagramConnectionData) => {
@@ -2153,7 +2043,7 @@ export default function DiagramEditor() {
       if (match) setSelectedItem(null);
     }
     toast({ title: 'Connection Disconnected', description: 'Connection has been removed.' });
-  }, [diagramData, selectedItem, setDiagramData, setSelectedItem, confirmPresentationLayerImpact, getAffectedLayerIdsForConnection, layers]);
+  }, [diagramData, selectedItem, setDiagramData, setSelectedItem]);
 
   const handleSave = createDiagramSaveHandler({
     activeTabId,
@@ -2840,7 +2730,6 @@ export default function DiagramEditor() {
     if (connectionIndex < 0 || connectionIndex >= snapshotConns.length) return;
     const target = snapshotConns[connectionIndex] as DiagramConnectionData;
     if (!target || target.from === target.to) return;
-    if (!confirmPresentationLayerImpact('This edit', getAffectedLayerIdsForConnection(target.from, target.to))) return;
 
     const insertOutcome: { node: DiagramNodeData | null; newIdForLayer: string } = { node: null, newIdForLayer: '' };
     setCurrentDiagramData((prev) => {
@@ -2935,8 +2824,6 @@ export default function DiagramEditor() {
     isReadOnly,
     currentDiagramData.connections,
     setCurrentDiagramData,
-    confirmPresentationLayerImpact,
-    getAffectedLayerIdsForConnection,
     layers,
     setSelectedItem,
     setSelectedItemIds,
@@ -4825,7 +4712,6 @@ export default function DiagramEditor() {
         presentationDecks={presentationDecks}
         activePresentationDeckId={activePresentationDeckId}
         activePresentationSlideId={activePresentationSlideId}
-        presentationDisabledLayerIds={presentationDisabledLayerIds}
         activePresentationSlides={activePresentationSlides}
         activePresentationSlideDiagrams={activePresentationSlideDiagrams}
         handleSelectPresentationBaseSlide={handleSelectPresentationBaseSlide}
@@ -4897,6 +4783,7 @@ export default function DiagramEditor() {
         handleLabelUpdate={handleLabelUpdate}
         handleTagUpdate={handleTagUpdate}
         setIsDragging={setIsDragging}
+        setChartValueDragActive={setChartValueDragActive}
         setCanPaste={setCanPaste}
         setMousePosition={setMousePositionForIdle}
         handleGroupItems={handleGroupItems}

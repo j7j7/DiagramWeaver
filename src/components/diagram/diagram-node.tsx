@@ -182,6 +182,8 @@ interface DiagramNodeProps {
   onResizeEnd?: () => void;
   onPositionUpdate?: (nodeId: string, x: number, y: number) => void;
   onDraggingChange?: (isDragging: boolean) => void;
+  /** Bar/line/pie chart value drag — parent may defer undo/redo snapshots until drag ends. */
+  onChartValueDragSessionChange?: (active: boolean) => void;
   onUpdate?: (node: DiagramNodeData) => void;
   hoverEnabled?: boolean;
   isReadOnly?: boolean;
@@ -292,6 +294,7 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
     prev.onUpdate === next.onUpdate &&
     prev.onPositionUpdate === next.onPositionUpdate &&
     prev.onDraggingChange === next.onDraggingChange &&
+    prev.onChartValueDragSessionChange === next.onChartValueDragSessionChange &&
     prev.onHoverChange === next.onHoverChange &&
     prev.onConnect === next.onConnect &&
     prev.isConnectMode === next.isConnectMode &&
@@ -309,7 +312,7 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
     prev.connectorLineFocusedVertexIndex === next.connectorLineFocusedVertexIndex;
 }
 
-function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onResizeStart, onResizeEnd, onPositionUpdate, onDraggingChange, onUpdate, hoverEnabled = true, isReadOnly = false, onHoverChange, onConnect, isConnectMode, transform, canvasRef, stackZIndex, pointerEventsPassThrough = false, animationStyle, onSubDiagramDoubleClick, hasLinkedSubDiagram, showUrlHandleWhenReadOnly, isDuplicateDragPreview = false, highlightAnimStaggerIndex, highlightAnimStaggerCount, rotationHandleVisible = false, onRotationPointerDown, isRotationDragging = false, onConnectorLineVertexFocus, connectorLineFocusedVertexIndex = null }: DiagramNodeProps) {
+function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMultiSelected, isGroupMember, onClick, onContextMenu, onLabelUpdate, onTagUpdate, onResize, onResizeStart, onResizeEnd, onPositionUpdate, onDraggingChange, onChartValueDragSessionChange, onUpdate, hoverEnabled = true, isReadOnly = false, onHoverChange, onConnect, isConnectMode, transform, canvasRef, stackZIndex, pointerEventsPassThrough = false, animationStyle, onSubDiagramDoubleClick, hasLinkedSubDiagram, showUrlHandleWhenReadOnly, isDuplicateDragPreview = false, highlightAnimStaggerIndex, highlightAnimStaggerCount, rotationHandleVisible = false, onRotationPointerDown, isRotationDragging = false, onConnectorLineVertexFocus, connectorLineFocusedVertexIndex = null }: DiagramNodeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [isEditingTag, setIsEditingTag] = useState(false);
@@ -703,6 +706,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
             !isReadOnly
               ? (active) => {
                   chartValueDragInteractionRef.current = active;
+                  onChartValueDragSessionChange?.(active);
                 }
               : undefined
           }
@@ -771,6 +775,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
             !isReadOnly
               ? (active) => {
                   chartValueDragInteractionRef.current = active;
+                  onChartValueDragSessionChange?.(active);
                 }
               : undefined
           }
@@ -813,6 +818,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
             !isReadOnly
               ? (active) => {
                   chartValueDragInteractionRef.current = active;
+                  onChartValueDragSessionChange?.(active);
                 }
               : undefined
           }
