@@ -1,10 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useRef, useState } from "react";
 import { useDrag } from "react-dnd";
 import { Card, CardContent } from "../ui/card";
 import { Tooltip, TooltipTrigger, TooltipContent } from "../ui/tooltip";
-import { ItemTypes } from "./draggable-item";
+import { ItemTypes, emitMobilePaletteDropIfOverCanvas } from "./draggable-item";
 import type { IconResourceItem } from "@/lib/icon-resources";
 
 export interface IconDragItem {
@@ -68,6 +68,47 @@ export function DraggableIconItemInner({
     [dragItem]
   );
 
+  const [isTouchDragging, setIsTouchDragging] = useState(false);
+  const touchStartPos = useRef<{ x: number; y: number } | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!e.touches?.[0]) return;
+    const t = e.touches[0];
+    touchStartPos.current = { x: t.clientX, y: t.clientY };
+    setIsTouchDragging(true);
+    (e.currentTarget as HTMLElement).style.opacity = "0.5";
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartPos.current || !e.touches?.[0]) return;
+    const t = e.touches[0];
+    if (Math.abs(t.clientX - touchStartPos.current.x) > 10 || Math.abs(t.clientY - touchStartPos.current.y) > 10) {
+      e.preventDefault();
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStartPos.current || !e.changedTouches?.[0]) {
+      setIsTouchDragging(false);
+      touchStartPos.current = null;
+      (e.currentTarget as HTMLElement).style.opacity = "1";
+      return;
+    }
+    const t = e.changedTouches[0];
+    const dx = Math.abs(t.clientX - touchStartPos.current.x);
+    const dy = Math.abs(t.clientY - touchStartPos.current.y);
+    if (dx > 10 || dy > 10) {
+      emitMobilePaletteDropIfOverCanvas({
+        touchClientX: t.clientX,
+        touchClientY: t.clientY,
+        item: dragItem,
+      });
+    }
+    (e.currentTarget as HTMLElement).style.opacity = "1";
+    setIsTouchDragging(false);
+    touchStartPos.current = null;
+  };
+
   const content =
     iconItem.iconType === "lucide" ? (
       <iconItem.IconComponent className="w-6 h-6" />
@@ -82,8 +123,11 @@ export function DraggableIconItemInner({
       <TooltipTrigger asChild>
         <div
           ref={(node) => { if (node) drag(node); }}
-          style={{ opacity: isDragging ? 0.5 : 1 }}
+          style={{ opacity: isDragging || isTouchDragging ? 0.5 : 1 }}
           className="cursor-move min-w-0"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
           onClick={() => onClick?.(dragItem)}
           onDoubleClick={() => onDoubleClick?.(dragItem)}
         >

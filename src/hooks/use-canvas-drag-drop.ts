@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type MutableRefObject } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, type MutableRefObject } from "react";
 import { useDrop } from 'react-dnd';
 import { ItemTypes } from "@/components/editor/draggable-item";
 import { snapToGrid } from "@/components/editor/canvas-constants";
@@ -625,6 +625,46 @@ export function useCanvasDragDrop({
       canDrop: monitor.canDrop(),
     }),
   }), [transform, processedZones, hoveredGroupId, moveItem, moveMultipleItems, duplicateNodesAtPositions, onDuplicateNodesPlaced, addNode, nodesById, zonesById, selectedItemIds, canvasRef, diagramData]);
+
+  // Touch palette drops (sidebar icons/shapes): HTML5 DnD is unreliable on mobile — palette items
+  // dispatch `mobileDrop` on the canvas element with viewport coordinates.
+  useLayoutEffect(() => {
+    const el = canvasRef.current;
+    if (!el || isReadOnly) return;
+
+    type MobileDropDetail = {
+      item?: unknown;
+      clientX?: number;
+      clientY?: number;
+      itemType?: string;
+    };
+
+    const onMobilePaletteDrop = (e: Event) => {
+      const ce = e as CustomEvent<MobileDropDetail>;
+      const { item, clientX, clientY, itemType } = ce.detail ?? {};
+      if (itemType !== ItemTypes.DIAGRAM_NODE || item == null) return;
+      if (typeof clientX !== "number" || typeof clientY !== "number") return;
+
+      const rect = el.getBoundingClientRect();
+      if (
+        clientX < rect.left ||
+        clientX > rect.right ||
+        clientY < rect.top ||
+        clientY > rect.bottom
+      ) {
+        return;
+      }
+
+      let x = (clientX - rect.left - transform.x) / transform.k;
+      let y = (clientY - rect.top - transform.y) / transform.k;
+      x = snapToGrid(x);
+      y = snapToGrid(y);
+      addNode(item as any, { x, y }, null);
+    };
+
+    el.addEventListener("mobileDrop", onMobilePaletteDrop as EventListener);
+    return () => el.removeEventListener("mobileDrop", onMobilePaletteDrop as EventListener);
+  }, [isReadOnly, addNode, canvasRef, transform.x, transform.y, transform.k]);
 
   // Cleanup multi-drag state when drag ends outside of drop
   useEffect(() => {

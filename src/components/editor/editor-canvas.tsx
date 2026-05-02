@@ -2263,6 +2263,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
         <div
           ref={canvasRef}
           id="canvas-container"
+          data-testid="editor-canvas"
           className="relative w-full h-full overflow-hidden"
           onClick={handleCanvasClick}
           onMouseDown={handleMouseDown}

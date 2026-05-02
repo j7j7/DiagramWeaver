@@ -1,8 +1,8 @@
 "use client";
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import { useDrag } from 'react-dnd';
 import { Card, CardContent } from '../ui/card';
-import { DraggableItem, ItemTypes } from './draggable-item';
+import { ItemTypes, emitMobilePaletteDropIfOverCanvas } from './draggable-item';
 import { Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip';
 import { buildResourceIconPath } from '@/lib/resource-mapping';
 import { ResourceIcon } from '@/components/diagram/resource-icon';
@@ -125,28 +125,12 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
     const deltaX = Math.abs(touch.clientX - touchStartPos.current.x);
     const deltaY = Math.abs(touch.clientY - touchStartPos.current.y);
     
-    // Check if it was a significant drag (not just a tap)
     if (deltaX > 10 || deltaY > 10) {
-      // Find the canvas element
-      const canvas = document.querySelector('[data-testid="editor-canvas"]') as HTMLElement;
-      if (canvas) {
-        const canvasRect = canvas.getBoundingClientRect();
-        
-        // Check if touch ended over canvas
-        if (touch.clientX >= canvasRect.left && touch.clientX <= canvasRect.right &&
-            touch.clientY >= canvasRect.top && touch.clientY <= canvasRect.bottom) {
-          
-          // Calculate position relative to canvas
-          const x = touch.clientX - canvasRect.left;
-          const y = touch.clientY - canvasRect.top;
-          
-          // Dispatch a custom event to the canvas
-          const dropEvent = new CustomEvent('mobileDrop', {
-            detail: { item, x, y, itemType: ItemTypes.DIAGRAM_NODE }
-          });
-          canvas.dispatchEvent(dropEvent);
-        }
-      }
+      emitMobilePaletteDropIfOverCanvas({
+        touchClientX: touch.clientX,
+        touchClientY: touch.clientY,
+        item,
+      });
     }
     
     // Reset styles

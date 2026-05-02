@@ -2,6 +2,10 @@
 
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
+
+### 2026-05-02 – Mobile sidebar palette drops: hook listens for `mobileDrop`, Lucide/emoji icons get touch gesture
+Sidebar items already dispatched **`mobileDrop`** without a receiver; **`data-testid="editor-canvas"`** on **`#canvas-container`** makes resolution reliable. **`useCanvasDragDrop`** attaches a **`mobileDrop`** listener (**viewport → diagram** coords matching HTML5 **`drop`**). **`emitMobilePaletteDropIfOverCanvas`** in **`draggable-item`** centralizes dispatch; **`DraggableIconItem`** adds the same long-press-drag touch path as **`DraggableResourceItem`**. Desktop HTML5 **`react-dnd`** unchanged. Patch bumped.
+
 ### 2026-04-29 – Glow spread readout: minimum ~1px (was ~4)
 **`highlight-anim`**: **`GLOW_DROP_BLUR_MIN`** **1**; outer/inner/spread **mins** at **0** so **`highlightGlowApproxHaloPx`** at spread **0** rounds to **~1px** (tight halo). Patch bumped.
 

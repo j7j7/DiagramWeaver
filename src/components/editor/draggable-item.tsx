@@ -16,6 +16,43 @@ export const ItemTypes = {
   ZONE: 'zone',
 };
 
+const EDITOR_CANVAS_SELECTOR = '[data-testid="editor-canvas"]';
+
+/**
+ * Sidebar palette touch gestures: emits `mobileDrop` on the editor canvas element with viewport
+ * coordinates — `useCanvasDragDrop` converts to diagram space with pan/zoom.
+ */
+export function emitMobilePaletteDropIfOverCanvas(opts: {
+  touchClientX: number;
+  touchClientY: number;
+  item: unknown;
+}): boolean {
+  const canvas =
+    typeof document !== "undefined" ? (document.querySelector(EDITOR_CANVAS_SELECTOR) as HTMLElement | null) : null;
+  if (!canvas) return false;
+  const canvasRect = canvas.getBoundingClientRect();
+  const { touchClientX, touchClientY, item } = opts;
+  if (
+    touchClientX < canvasRect.left ||
+    touchClientX > canvasRect.right ||
+    touchClientY < canvasRect.top ||
+    touchClientY > canvasRect.bottom
+  ) {
+    return false;
+  }
+  canvas.dispatchEvent(
+    new CustomEvent("mobileDrop", {
+      detail: {
+        item,
+        clientX: touchClientX,
+        clientY: touchClientY,
+        itemType: ItemTypes.DIAGRAM_NODE,
+      },
+    }),
+  );
+  return true;
+}
+
 export function DraggableItem({ type, label, icon, data }: DraggableItemProps) {
   const item = useMemo(() => {
     // Start with the data object, then override with props to ensure type precedence
@@ -80,26 +117,11 @@ export function DraggableItem({ type, label, icon, data }: DraggableItemProps) {
       
       // Check if it was a significant drag (not just a tap)
       if (deltaX > 10 || deltaY > 10) {
-        // Find the canvas element
-        const canvas = document.querySelector('[data-testid="editor-canvas"]') as HTMLElement;
-        if (canvas) {
-          const canvasRect = canvas.getBoundingClientRect();
-          
-          // Check if touch ended over canvas
-          if (touch.clientX >= canvasRect.left && touch.clientX <= canvasRect.right &&
-              touch.clientY >= canvasRect.top && touch.clientY <= canvasRect.bottom) {
-            
-            // Calculate position relative to canvas
-            const x = touch.clientX - canvasRect.left;
-            const y = touch.clientY - canvasRect.top;
-            
-            // Dispatch a custom event to the canvas
-            const dropEvent = new CustomEvent('mobileDrop', {
-              detail: { item, x, y, itemType: ItemTypes.DIAGRAM_NODE }
-            });
-            canvas.dispatchEvent(dropEvent);
-          }
-        }
+        emitMobilePaletteDropIfOverCanvas({
+          touchClientX: touch.clientX,
+          touchClientY: touch.clientY,
+          item,
+        });
       }
       
       // Reset styles
