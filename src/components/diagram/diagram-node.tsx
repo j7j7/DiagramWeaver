@@ -2026,13 +2026,23 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
         ) {
           e.preventDefault();
           e.stopPropagation();
+          return;
+        }
+        if (isIconNode && rawTarget instanceof HTMLImageElement) {
+          e.preventDefault();
+          e.stopPropagation();
         }
       }}
     >
       <SlideShapeShadowTransitionProvider animationStyle={animationStyle}>
       <Popover open={isOpen && !isDragging && !isEditingLabel && !isEditingTag} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
-          <div className="flex flex-col items-center justify-center h-full w-full cursor-pointer">
+          <div
+            className={cn(
+              "flex flex-col items-center justify-center h-full w-full cursor-pointer",
+              !isRichTextBoxLike && !isShapeNode && "select-none [-webkit-touch-callout:none]",
+            )}
+          >
             {isRichTextBoxLike ? (
               wrapSlideVisualCrossfade((vn) => renderRichTextBoxContentForVisualNode(vn, isTextNode))
              ) : isShapeNode ? (

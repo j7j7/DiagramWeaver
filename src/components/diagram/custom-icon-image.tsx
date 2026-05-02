@@ -117,13 +117,31 @@ export function CustomIconImage({ imageUrl, imageOptions, width, height, alt = "
     );
   }
 
+  const suppressNativeImgTouchArtifacts: React.CSSProperties = {
+    WebkitTouchCallout: "none",
+    WebkitUserSelect: "none",
+    userSelect: "none",
+    touchAction: "none",
+  };
+
   return (
-    <div className={className} style={{ ...wrapperStyle, ...containerStyle }}>
+    <div
+      className={className}
+      style={{
+        ...wrapperStyle,
+        ...containerStyle,
+        ...suppressNativeImgTouchArtifacts,
+      }}
+    >
       <img
         src={imageUrlToUse}
         alt={alt}
-        style={imageStyle}
+        draggable={false}
+        style={{ ...imageStyle, ...suppressNativeImgTouchArtifacts }}
         loading="lazy"
+        onDragStart={(e) => {
+          e.preventDefault();
+        }}
         onError={() => {
           setImgFailed(true);
           setIsLoading(false);

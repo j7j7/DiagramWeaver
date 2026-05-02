@@ -3,6 +3,9 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-02 – Touch: PNG/custom icon nodes suppress native long-press (Save Image / drag)
+Catalog **`resource-icon.tsx`** **`img`** + **`custom-icon-image`**: **`draggable={false}`**, **`touchAction: none`**, **`-webkit-touch-callout: none`**, **`user-select: none`**, **`onDragStart`**. **`diagram-node`** icon subtree: **`select-none [-webkit-touch-callout:none]`** on popover trigger; **`onDragStart`** blocks native image drag when **`isIconNode`**. Leaves existing long-hold canvas move untouched. Patch bumped.
+
 ### 2026-05-02 – Touch: second tap on selected **connection** opens context/simulation menu (Bezier + orthogonal)
 **`useDwFingerTapSyntheticClick`** tags synthetic clicks on connection **`<g>`**s (**`BezierConnection`** / **`OrthogonalConnection`**). **`canvas-connections`** routes **`dwFingerTap`** + already-selected edge to **`handleConnectionContextMenuEdge`** (same as right-click); **`isConnectMode`** disables that path. **`editor-canvas`** passes **`isConnectMode`**. Patch bumped.
 

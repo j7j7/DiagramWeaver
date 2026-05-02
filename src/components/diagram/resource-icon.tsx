@@ -322,12 +322,24 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
         src={iconPath}
         alt={type}
         loading="lazy"
+        draggable={false}
+        onDragStart={(e) => {
+          e.preventDefault();
+        }}
         onError={() => {
           console.warn(`Icon failed to load for type: ${type}, path: ${iconPath}`);
         }}
-        width={props.width || '40'}
-        height={props.height || '40'}
-        style={{ width: props.width || '40px', height: props.height || '40px', objectFit: 'contain' }}
+        width={props.width || "40"}
+        height={props.height || "40"}
+        style={{
+          width: props.width || "40px",
+          height: props.height || "40px",
+          objectFit: "contain",
+          WebkitTouchCallout: "none",
+          WebkitUserSelect: "none",
+          userSelect: "none",
+          touchAction: "none",
+        }}
       />
     );
   }
