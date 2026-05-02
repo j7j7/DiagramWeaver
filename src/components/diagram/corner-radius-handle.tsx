@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 interface CornerRadiusHandleProps {
   visible: boolean;
-  onMouseDown: (e: React.MouseEvent) => void;
+  onPointerDown: (e: React.PointerEvent) => void;
   disabled?: boolean;
   zIndexClass?: string;
   className?: string;
@@ -14,7 +14,7 @@ interface CornerRadiusHandleProps {
 
 export function CornerRadiusHandle({
   visible,
-  onMouseDown,
+  onPointerDown,
   disabled = false,
   zIndexClass = "z-50",
   className,
@@ -31,10 +31,10 @@ export function CornerRadiusHandle({
     return null;
   }
 
-  const handleDown = (e: React.MouseEvent) => {
+  const handleDown = (e: React.PointerEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    onMouseDown(e);
+    onPointerDown(e);
   };
 
   return (
@@ -55,10 +55,11 @@ export function CornerRadiusHandle({
         marginBottom: "-18px",
         marginLeft: "4px",
         cursor: "ew-resize",
+        touchAction: "none",
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onMouseDown={handleDown}
+      onPointerDown={handleDown}
     >
       <div className="dw-corner-radius-indicator" />
       <Radius className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4 h-4 text-green-700 pointer-events-none" />

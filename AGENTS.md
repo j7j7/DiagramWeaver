@@ -21,5 +21,5 @@
 - Hooks: Custom hooks in `src/hooks/` with `use-` prefix
 - Lib functions: Place in `src/lib/` with descriptive names
 - Component structure: Radix UI primitives, shadcn/ui pattern
-- ESLint config: next/core-web-vitals, next/typescript
+- ESLint: flat config **`eslint.config.mjs`** (`eslint-config-next/core-web-vitals`, relaxed **react-hooks** compiler rules + **`react-hooks/purity`** off until a dedicated cleanup)
 - No test framework configured - ask user for test commands

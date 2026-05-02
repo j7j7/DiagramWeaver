@@ -29,6 +29,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         {/* External file avoids next/script innerHTML + __next_s wrapper (server/client mismatch). */}
+        {/* eslint-disable-next-line @next/next/no-sync-scripts -- small static boot script; next/script adds hydration wrapper */}
         <script src="/theme-init.js" suppressHydrationWarning />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

@@ -22,6 +22,7 @@ import {
   isUseSourceLineColorOn,
 } from "@/lib/connection-line-style";
 import { connectionStrokeDashFromLineType } from "@/lib/utils";
+import { useDwFingerTapSyntheticClick } from "@/hooks/use-dw-finger-tap-synthetic-click";
 
 const NODE_WIDTH = 80;
 const NODE_HEIGHT = 80;
@@ -1042,6 +1043,7 @@ function BezierConnectionInner({
   onContextMenu,
   slideTransitionStyle,
 }: BezierConnectionProps) {
+  const { applyFingerTapMarkerToMouseEventIfNeeded, fingerTapTouchSvgProps } = useDwFingerTapSyntheticClick();
   // Use measureNodeDims-like logic for shapes to get actual dimensions
   const isFromShape = isShapeNodeType(from.type);
   const isToShape = isShapeNodeType(to.type);
@@ -1198,6 +1200,7 @@ function BezierConnectionInner({
   }, [widthVaries, fromX, fromY, toX, toY, fromAngle, toAngle, curvature, waypointsKey, rw.wStart, rw.wEnd]);
 
   const handleClick = (e: React.MouseEvent) => {
+    applyFingerTapMarkerToMouseEventIfNeeded(e);
     e.stopPropagation();
     if (onClick && connectionData) {
       onClick(connectionData, e);
@@ -1256,12 +1259,10 @@ function BezierConnectionInner({
   const shouldAnimateShapes = shouldRenderAnimationShapes && speedMagnitude > 0;
   const useStaticExportAnimation = shouldAnimateShapes && hasExportAnimationTime;
   const needsPathDistanceLookup = useStaticExportAnimation || (shouldRenderAnimationShapes && !shouldAnimateShapes);
-  const pathDistanceLookup = needsPathDistanceLookup
-    ? React.useMemo(
-        () => buildPathDistanceLookup(fromX, fromY, toX, toY, fromAngle, toAngle, curvature, waypoints),
-        [fromX, fromY, toX, toY, fromAngle, toAngle, curvature, waypointsKey]
-      )
-    : null;
+  const pathDistanceLookup = React.useMemo(() => {
+    if (!needsPathDistanceLookup) return null;
+    return buildPathDistanceLookup(fromX, fromY, toX, toY, fromAngle, toAngle, curvature, waypoints);
+  }, [needsPathDistanceLookup, fromX, fromY, toX, toY, fromAngle, toAngle, curvature, waypointsKey]);
   const pathLength = pathDistanceLookup ? pathDistanceLookup.totalLength : pathLengthForCount;
   const distributedShapeSpacing = renderedShapeCount > 0 ? pathLength / renderedShapeCount : 0;
   const animationDuration = shouldAnimateShapes ? pathLength / speedMagnitude : 0;
@@ -1361,6 +1362,7 @@ function BezierConnectionInner({
       </defs>
       
       <g
+        {...fingerTapTouchSvgProps}
         className="group"
         style={{ pointerEvents: 'auto', ...slideTransitionStyle }}
         onClick={handleClick}

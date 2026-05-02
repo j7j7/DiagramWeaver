@@ -3,6 +3,18 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-02 – Touch: second tap on selected **connection** opens context/simulation menu (Bezier + orthogonal)
+**`useDwFingerTapSyntheticClick`** tags synthetic clicks on connection **`<g>`**s (**`BezierConnection`** / **`OrthogonalConnection`**). **`canvas-connections`** routes **`dwFingerTap`** + already-selected edge to **`handleConnectionContextMenuEdge`** (same as right-click); **`isConnectMode`** disables that path. **`editor-canvas`** passes **`isConnectMode`**. Patch bumped.
+
+### 2026-05-02 – ESLint: `next lint` removed in Next 16 CLI; flat `eslint.config.mjs` + real `eslint-config-next`
+**`npm run lint`** runs **`eslint .`**. Replaced mistaken **`eslint-config-next@0.2.4`** with **`eslint-config-next@16.1.6`** (Vercel). Flat config extends **`eslint-config-next/core-web-vitals`**; strict **react-compiler** hooks rules relaxed / **`react-hooks/purity`** off so the repo passes with **0 errors** (warnings remain). **`bezier-connection`**: unconditional **`useMemo`** for path distance lookup. **`layout`**: scoped disable for **`@next/next/no-sync-scripts`** on **`theme-init.js`**.
+
+### 2026-05-02 – Touch: second tap on selected node opens context menu; empty canvas tap still clears selection
+**`DiagramNode`** sets **`dwFingerTap`** on the synthetic click after a short touch; **`handleNodeClick`** routes to **`handleNodeContextMenu`** when **`selectedItemIds.has(node.id)`** (and not connect-mode / modifiers). Mouse path unchanged. **`handleCanvasClick`** already clears selection on empty canvas **`click`**. Patch bumped.
+
+### 2026-05-02 – Canvas items on touch: long-press move, resize/corner-radius via pointers
+After **~420ms press** on a node (not lines, not chart value handles, not helper controls), touch-drag moves with live offset and commits via **`emitMobileCanvasDeltaMove`** → **`mobileMove`** in **`useCanvasDragDrop`** (same multi-select / group delta logic as mouse **`drop`**). Scroll before the hold cancels the timer. **`ResizeHandles`** use **`onPointerDown`** + **`touchAction: none`**; resize tracking uses document **`pointermove`/`pointerup`**. **`CornerRadiusHandle`** uses **`onPointerDown`** + pointer listeners. Mouse **`react-dnd`** unchanged. Patch bumped.
+
 ### 2026-05-02 – Mobile sidebar palette drops: hook listens for `mobileDrop`, Lucide/emoji icons get touch gesture
 Sidebar items already dispatched **`mobileDrop`** without a receiver; **`data-testid="editor-canvas"`** on **`#canvas-container`** makes resolution reliable. **`useCanvasDragDrop`** attaches a **`mobileDrop`** listener (**viewport → diagram** coords matching HTML5 **`drop`**). **`emitMobilePaletteDropIfOverCanvas`** in **`draggable-item`** centralizes dispatch; **`DraggableIconItem`** adds the same long-press-drag touch path as **`DraggableResourceItem`**. Desktop HTML5 **`react-dnd`** unchanged. Patch bumped.
 

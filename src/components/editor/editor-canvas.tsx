@@ -1601,6 +1601,15 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
 
   const handleNodeClick = useCallback((e: React.MouseEvent, node: DiagramNodeData) => {
     e.stopPropagation();
+    const fingerTap = (e as React.MouseEvent & { dwFingerTap?: boolean }).dwFingerTap === true;
+    const additive = e.shiftKey || e.ctrlKey || e.metaKey;
+
+    // Touch: second tap on an already-selected item opens the same menu as right-click (mouse unchanged).
+    if (fingerTap && !additive && !isConnectMode && selectedItemIds.has(node.id)) {
+      nodeContextMenuHandlerRef.current(e, node);
+      return;
+    }
+
     closeContextMenu();
     setSimulationMenuState(null);
     onResetConnectionSettingsTrigger?.(); // Reset connection settings panel when clicking on a node
@@ -1629,7 +1638,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
       const isAdditiveSelection = e.shiftKey || e.ctrlKey || e.metaKey;
       onItemSelect({ ...node, itemType: 'node' }, isAdditiveSelection); // Normal selection
     }
-  }, [closeContextMenu, onResetConnectionSettingsTrigger, simulationModeEnabled, animationToggleOnClickEnabled, isConnectMode, onNodeClickInConnectMode, onItemSelect, handleSimulationElementPrimaryClick, onAnimationDisabledSourcesChange, animationDisabledSources, diagramData]);
+  }, [closeContextMenu, onResetConnectionSettingsTrigger, simulationModeEnabled, animationToggleOnClickEnabled, isConnectMode, onNodeClickInConnectMode, onItemSelect, handleSimulationElementPrimaryClick, onAnimationDisabledSourcesChange, animationDisabledSources, diagramData, selectedItemIds]);
 
   const handleNodeContextMenu = useCallback((e: React.MouseEvent, node: DiagramNodeData) => {
     e.stopPropagation();
@@ -2590,6 +2599,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   viewportWidthPx={canvasDimensions.width}
                   viewportHeightPx={canvasDimensions.height}
                   simulationModeEnabled={simulationModeEnabled}
+                  isConnectMode={isConnectMode}
                   onSimulationElementPrimaryClick={handleSimulationElementPrimaryClick}
                   onSimulationElementClick={(e, itemId) => openSimulationMenu(e, itemId, "connection")}
                   simulationStatusStyleByItemId={simulationStatusStyleByItemId}
@@ -2795,6 +2805,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                       viewportWidthPx={canvasDimensions.width}
                       viewportHeightPx={canvasDimensions.height}
                       simulationModeEnabled={simulationModeEnabled}
+                      isConnectMode={isConnectMode}
                       onSimulationElementPrimaryClick={handleSimulationElementPrimaryClick}
                       onSimulationElementClick={(e, itemId) => openSimulationMenu(e, itemId, "connection")}
                       simulationStatusStyleByItemId={simulationStatusStyleByItemId}
@@ -2869,6 +2880,7 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
                   viewportWidthPx={canvasDimensions.width}
                   viewportHeightPx={canvasDimensions.height}
                   simulationModeEnabled={simulationModeEnabled}
+                  isConnectMode={isConnectMode}
                   onSimulationElementPrimaryClick={handleSimulationElementPrimaryClick}
                   onSimulationElementClick={(e, itemId) => openSimulationMenu(e, itemId, "connection")}
                   simulationStatusStyleByItemId={simulationStatusStyleByItemId}

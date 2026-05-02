@@ -666,6 +666,126 @@ export function useCanvasDragDrop({
     return () => el.removeEventListener("mobileDrop", onMobilePaletteDrop as EventListener);
   }, [isReadOnly, addNode, canvasRef, transform.x, transform.y, transform.k]);
 
+  // Touch moves for items already on the canvas (nodes/zones): long-press-drag emits `mobileMove`.
+  useLayoutEffect(() => {
+    const el = canvasRef.current;
+    if (!el || isReadOnly) return;
+
+    type MobileMoveDetail = {
+      id?: string;
+      itemType?: string;
+      clientStartX?: number;
+      clientStartY?: number;
+      clientEndX?: number;
+      clientEndY?: number;
+    };
+
+    const onMobileMove = (e: Event) => {
+      const ce = e as CustomEvent<MobileMoveDetail>;
+      const d = ce.detail ?? {};
+      const { id, itemType, clientStartX, clientStartY, clientEndX, clientEndY } = d;
+      if (
+        !id ||
+        typeof clientStartX !== "number" ||
+        typeof clientStartY !== "number" ||
+        typeof clientEndX !== "number" ||
+        typeof clientEndY !== "number"
+      ) {
+        return;
+      }
+      if (itemType !== ItemTypes.CANVAS_NODE && itemType !== ItemTypes.ZONE) return;
+
+      const rect = el.getBoundingClientRect();
+      const toDiag = (cx: number, cy: number) => ({
+        x: (cx - rect.left - transform.x) / transform.k,
+        y: (cy - rect.top - transform.y) / transform.k,
+      });
+      const start = toDiag(clientStartX, clientStartY);
+      const end = toDiag(clientEndX, clientEndY);
+      const dRaw = { x: end.x - start.x, y: end.y - start.y };
+
+      const anchor = getCanvasDragAnchor(id, nodesById, zonesById);
+      if (!anchor) return;
+
+      const newAnchorX = snapToGrid(anchor.x + dRaw.x);
+      const newAnchorY = snapToGrid(anchor.y + dRaw.y);
+      const deltaX = newAnchorX - anchor.x;
+      const deltaY = newAnchorY - anchor.y;
+
+      const scratchpadElement =
+        document.querySelector('[data-testid="scratchpad"]') ||
+        document.querySelector(".fixed.top-20.right-20");
+      const hit =
+        typeof document.elementFromPoint === "function"
+          ? document.elementFromPoint(clientEndX, clientEndY)
+          : null;
+      const droppedOnScratch = Boolean(scratchpadElement && hit && scratchpadElement.contains(hit));
+      if (droppedOnScratch) return;
+
+      const targetGroupIdForFreeflow: string | null = null;
+
+      const group = getItemGroup(id, diagramData);
+      let itemsToMoveSet = new Set<string>();
+
+      if (selectedItemIds.size > 1 && selectedItemIds.has(id)) {
+        canvasDraggableIdsFromSelection(selectedItemIds, nodesById, zonesById).forEach((mid) =>
+          itemsToMoveSet.add(mid),
+        );
+      } else if (group) {
+        getGroupMembers(group.id, diagramData).forEach((mid) => itemsToMoveSet.add(mid));
+      } else {
+        itemsToMoveSet.add(id);
+      }
+
+      if (itemsToMoveSet.size > 1) {
+        const itemsToMove: Array<{ id: string; type: string; x?: number; y?: number }> = [];
+        const newPositions: Array<{ x: number; y: number }> = [];
+        itemsToMoveSet.forEach((nid) => {
+          const n = nodesById[nid] || zonesById[nid];
+          if (!n) return;
+          const sx = n.x ?? 0;
+          const sy = n.y ?? 0;
+          const newX = snapToGrid(sx + deltaX);
+          const newY = snapToGrid(sy + deltaY);
+          const it = nodesById[nid] ? ItemTypes.CANVAS_NODE : ItemTypes.ZONE;
+          itemsToMove.push({ id: nid, type: it, x: sx, y: sy });
+          newPositions.push({ x: newX, y: newY });
+        });
+        if (itemsToMove.length > 0) {
+          moveMultipleItems(itemsToMove, newPositions, targetGroupIdForFreeflow);
+        }
+      } else {
+        const entity = nodesById[id] || zonesById[id];
+        const mvType = nodesById[id] ? ItemTypes.CANVAS_NODE : ItemTypes.ZONE;
+        moveItem(
+          {
+            id,
+            type: mvType,
+            x: entity?.x,
+            y: entity?.y,
+          },
+          { x: newAnchorX, y: newAnchorY },
+          targetGroupIdForFreeflow,
+        );
+      }
+    };
+
+    el.addEventListener("mobileMove", onMobileMove as EventListener);
+    return () => el.removeEventListener("mobileMove", onMobileMove as EventListener);
+  }, [
+    isReadOnly,
+    canvasRef,
+    transform.x,
+    transform.y,
+    transform.k,
+    moveItem,
+    moveMultipleItems,
+    nodesById,
+    zonesById,
+    selectedItemIds,
+    diagramData,
+  ]);
+
   // Cleanup multi-drag state when drag ends outside of drop
   useEffect(() => {
     const handleGlobalMouseUp = () => {

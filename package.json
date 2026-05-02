@@ -1,6 +1,6 @@
 {
   "name": "nextn",
-  "version": "0.1.488",
+  "version": "0.1.491",
   "private": true,
   "scripts": {
     "predev": "node scripts/bump-build.mjs",
@@ -9,7 +9,7 @@
     "dev:test": "next dev --turbopack -H 0.0.0.0 -p 9004",
     "build": "NODE_ENV=production next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "validate-mermaid": "node scripts/validate-mermaid.mjs"
   },
@@ -74,8 +74,8 @@
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "baseline-browser-mapping": "^2.10.0",
-    "eslint": "^10.0.0",
-    "eslint-config-next": "^0.2.4",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.1.6",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.9.3"

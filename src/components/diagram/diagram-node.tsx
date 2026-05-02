@@ -14,7 +14,7 @@ import { labelToRuns, normalizeRuns } from "@/lib/rich-text";
 import { TextboxRichEditor } from "./textbox-rich-editor";
 import { TextboxRichDisplay } from "./textbox-rich-display";
 import { cn, isConnectorLineNodeType, isHighlightPulseShapeSilhouetteType, isIconOrEmojiType, isShapeNodeType } from "@/lib/utils";
-import { ItemTypes } from "../editor/draggable-item";
+import { ItemTypes, emitMobileCanvasDeltaMove } from "../editor/draggable-item";
 import { snapToGrid, snapDimensionToGrid, measureNodeDims } from "@/components/editor/canvas-constants";
 import { getTextStylingCSS, extractTextStylingFromNode } from "@/lib/text-styling";
 import { getNodeSizeDimensions } from "@/lib/visual-styling";
@@ -898,7 +898,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
           !plainChrome && borderStyle === 'none' && (isSelected
             ? "border border-dashed border-primary opacity-100"
             : "opacity-100 hover:border hover:border-dashed hover:border-primary hover:bg-primary/5"),
-          !plainChrome && isSelected && borderStyle !== 'none' ? "border-primary" : !plainChrome && !(isDragging || isTouchDragging) && borderStyle !== 'none' && "group-hover:border-accent",
+          !plainChrome && isSelected && borderStyle !== 'none' ? "border-primary" : !plainChrome && !(isDragging || isTouchCanvasDrag) && borderStyle !== 'none' && "group-hover:border-accent",
           !plainChrome && isTargetable && "border-dashed border-primary",
           showLocalShadow && "shadow-[0_10px_15px_-3px_rgba(239,68,68,0.3),0_4px_6px_-2px_rgba(239,68,68,0.2)]"
         )}
@@ -968,7 +968,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
           (iconBorderStyle === 'gradient' && nodeAny.borderColors?.length)
       );
     const showCustomIconOutline =
-      hasStoredIconOutline && !isSelected && !isTargetable && !(isDragging || isTouchDragging);
+      hasStoredIconOutline && !isSelected && !isTargetable && !(isDragging || isTouchCanvasDrag);
     const iconOutlineCss: React.CSSProperties = {};
     if (showCustomIconOutline) {
       const bw = nodeAny.borderWidth ?? 2;
@@ -995,7 +995,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
           animationStyle?.visualColorMergeTransition == null && !animationStyle?.visualColorCrossfade && "transition-colors",
           nodeAny.noIconBackground ? "" : "rounded-lg shadow-md bg-card dw-icon-container",
           useDefaultIconBorderClass && "border",
-          isSelected ? "border-primary" : nodeAny.noIconBackground || (isDragging || isTouchDragging) ? "" : !showCustomIconOutline && "group-hover:border-accent",
+          isSelected ? "border-primary" : nodeAny.noIconBackground || (isDragging || isTouchCanvasDrag) ? "" : !showCustomIconOutline && "group-hover:border-accent",
           isTargetable && "border-dashed border-primary",
           isTop && "order-2",
           isBottom && "order-1"
@@ -1266,14 +1266,52 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     preview(getEmptyImage(), { captureDraggingState: true });
   }, [preview]);
 
-  const [isTouchDragging, setIsTouchDragging] = useState(false);
-  const touchStartPos = useRef<{ x: number; y: number } | null>(null);
-  
-  // Temporary position for dragging (doesn't update actual data until drop)
-  const [tempPosition] = useState<{ x: number; y: number } | null>(null);
-  
+  const LONG_PRESS_CANVAS_DRAG_MS = 420;
+  const TOUCH_SCROLL_CANCEL_LONG_PRESS_PX = 14;
+
+  const touchLongPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchLongPressArmedRef = useRef(false);
+  const touchDownClientRef = useRef<{ x: number; y: number } | null>(null);
+  const touchGrabDiagRef = useRef<{ x: number; y: number } | null>(null);
+  const suppressNextClickRef = useRef(false);
+  /** Next click after a short touch gesture (so the editor can route to context menu when already selected). */
+  const fingerTapForNextClickRef = useRef(false);
+
+  const [touchDragOffsetDiag, setTouchDragOffsetDiag] = useState<{ x: number; y: number } | null>(null);
+  const [isTouchCanvasDrag, setIsTouchCanvasDrag] = useState(false);
+
+  const clearTouchLongPressTimer = useCallback(() => {
+    if (touchLongPressTimerRef.current !== null) {
+      clearTimeout(touchLongPressTimerRef.current);
+      touchLongPressTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      clearTouchLongPressTimer();
+    };
+  }, [clearTouchLongPressTimer]);
+
+  const canvasClientToDiagram = useCallback(
+    (clientX: number, clientY: number): { x: number; y: number } | null => {
+      const canvasEl =
+        canvasRef?.current ??
+        (typeof document !== "undefined"
+          ? (document.querySelector('[data-testid="editor-canvas"]') as HTMLElement | null)
+          : null);
+      if (!canvasEl || transform == null) return null;
+      const rect = canvasEl.getBoundingClientRect();
+      return {
+        x: (clientX - rect.left - transform.x) / transform.k,
+        y: (clientY - rect.top - transform.y) / transform.k,
+      };
+    },
+    [canvasRef, transform],
+  );
+
   // Resize handlers
-  const handleResizeStart = (e: React.MouseEvent, handle: 'top' | 'left' | 'right' | 'bottom' | 'bottom-right') => {
+  const handleResizeStart = (e: React.MouseEvent | React.PointerEvent, handle: 'top' | 'left' | 'right' | 'bottom' | 'bottom-right') => {
     if (isReadOnly) {
       e.stopPropagation();
       e.preventDefault();
@@ -1308,7 +1346,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     };
   };
 
-  const handleResizeMove = (e: React.MouseEvent) => {
+  const handleResizeMove = (e: React.MouseEvent | React.PointerEvent) => {
     if (!isResizing || !resizeStartPos.current || !resizeHandle) return;
     
     let deltaX = e.clientX - resizeStartPos.current.x;
@@ -1626,32 +1664,34 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     ],
   );
 
-  // Global mouse events for resize
+  // Global pointer events for resize (mouse + touch).
   useEffect(() => {
     if (isResizing) {
-      const handleGlobalMouseMove = (e: MouseEvent) => {
+      const handleGlobalPointerMove = (e: PointerEvent) => {
         if (!resizeStartPos.current || !resizeHandle) return;
-        handleResizeMove(e as any);
+        handleResizeMove(e as unknown as React.PointerEvent);
       };
-      
-      const handleGlobalMouseUp = (e: MouseEvent) => {
+
+      const handleGlobalPointerUp = (e: PointerEvent) => {
         e.preventDefault();
         e.stopPropagation();
         handleResizeEnd();
       };
-      
-      document.addEventListener('mousemove', handleGlobalMouseMove, true);
-      document.addEventListener('mouseup', handleGlobalMouseUp, true);
-      
+
+      document.addEventListener("pointermove", handleGlobalPointerMove, true);
+      document.addEventListener("pointerup", handleGlobalPointerUp, true);
+      document.addEventListener("pointercancel", handleGlobalPointerUp, true);
+
       return () => {
-        document.removeEventListener('mousemove', handleGlobalMouseMove, true);
-        document.removeEventListener('mouseup', handleGlobalMouseUp, true);
+        document.removeEventListener("pointermove", handleGlobalPointerMove, true);
+        document.removeEventListener("pointerup", handleGlobalPointerUp, true);
+        document.removeEventListener("pointercancel", handleGlobalPointerUp, true);
       };
     }
   }, [isResizing, resizeHandle, node.id]);
 
   // Corner radius drag handlers (rounded-rectangle only)
-  const handleCornerRadiusDragStart = useCallback((e: React.MouseEvent) => {
+  const handleCornerRadiusDragStart = useCallback((e: React.MouseEvent | React.PointerEvent) => {
     if (isReadOnly || !onUpdate || !showsCornerRadiusHandle) return;
     e.preventDefault();
     e.stopPropagation();
@@ -1663,7 +1703,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     onDraggingChange?.(true);
   }, [isReadOnly, onUpdate, showsCornerRadiusHandle, node, onDraggingChange]);
 
-  const handleCornerRadiusDragMove = useCallback((e: MouseEvent) => {
+  const handleCornerRadiusDragMove = useCallback((e: PointerEvent | MouseEvent) => {
     if (!cornerRadiusDragRef.current) return;
     const { startX, startValue } = cornerRadiusDragRef.current;
     let deltaX = e.clientX - startX;
@@ -1687,11 +1727,15 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
 
   useEffect(() => {
     if (isDraggingCornerRadius) {
-      document.addEventListener('mousemove', handleCornerRadiusDragMove, true);
-      document.addEventListener('mouseup', handleCornerRadiusDragEnd, true);
+      const move = (ev: PointerEvent | MouseEvent) => handleCornerRadiusDragMove(ev);
+      const end = () => handleCornerRadiusDragEnd();
+      document.addEventListener("pointermove", move, true);
+      document.addEventListener("pointerup", end, true);
+      document.addEventListener("pointercancel", end, true);
       return () => {
-        document.removeEventListener('mousemove', handleCornerRadiusDragMove, true);
-        document.removeEventListener('mouseup', handleCornerRadiusDragEnd, true);
+        document.removeEventListener("pointermove", move, true);
+        document.removeEventListener("pointerup", end, true);
+        document.removeEventListener("pointercancel", end, true);
       };
     }
   }, [isDraggingCornerRadius, handleCornerRadiusDragMove, handleCornerRadiusDragEnd]);
@@ -1731,95 +1775,124 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     };
   }, [isResizing, handleResizeEnd, setIsHovered]);
 
-  // Touch event handlers for mobile drag and drop
+  // Touch: press-and-hold, then delta-drag (parity with react-dnd move; does not replace mouse DnD).
+  const touchMoveBaseEnabled =
+    !isDuplicateDragPreview &&
+    !isLocked &&
+    !isReadOnly &&
+    !isEditingLabel &&
+    !isEditingTag &&
+    !isLineNode;
+
   const handleTouchStart = (e: React.TouchEvent) => {
     const rawTarget = e.target;
+    if (chartValueDragInteractionRef.current) return;
     if (
       rawTarget instanceof Element &&
       rawTarget.closest(
-        "[data-dw-line-chart-point-handle], [data-dw-bar-cell-value-handle], [data-dw-pie-slice-value-handle]"
+        "[data-dw-line-chart-point-handle], [data-dw-bar-cell-value-handle], [data-dw-pie-slice-value-handle], .dw-connect-handle, .dw-rotation-handle, .dw-corner-radius-handle, [data-handle], .dw-resize-handle",
       )
     ) {
       return;
     }
-    if (isLocked || isReadOnly) {
-      e.stopPropagation();
-      e.preventDefault();
+    if (isLocked || isReadOnly || !touchMoveBaseEnabled) {
       return;
     }
+
+    clearTouchLongPressTimer();
+    touchLongPressArmedRef.current = false;
+    touchGrabDiagRef.current = null;
     const touch = e.touches[0];
-    touchStartPos.current = { x: touch.clientX, y: touch.clientY };
-    setIsTouchDragging(true);
-    onDraggingChange?.(true);
-    (e.currentTarget as HTMLElement).style.opacity = '0.5';
-    e.stopPropagation(); // Prevent canvas from handling this touch
-    e.preventDefault(); // Prevent any default touch behavior
+    if (!touch) return;
+    touchDownClientRef.current = { x: touch.clientX, y: touch.clientY };
+
+    touchLongPressTimerRef.current = setTimeout(() => {
+      touchLongPressTimerRef.current = null;
+      const down = touchDownClientRef.current;
+      if (!down || transform == null) return;
+      const grabDiag = canvasClientToDiagram(down.x, down.y);
+      if (!grabDiag) return;
+      touchLongPressArmedRef.current = true;
+      touchGrabDiagRef.current = grabDiag;
+      setTouchDragOffsetDiag({ x: 0, y: 0 });
+      setIsTouchCanvasDrag(true);
+      onDraggingChange?.(true);
+    }, LONG_PRESS_CANVAS_DRAG_MS);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (!touchStartPos.current) return;
-    
     const touch = e.touches[0];
-    const deltaX = Math.abs(touch.clientX - touchStartPos.current.x);
-    const deltaY = Math.abs(touch.clientY - touchStartPos.current.y);
-    
-    // Only start dragging if moved enough to prevent accidental drags
-    if (deltaX > 10 || deltaY > 10) {
-      e.preventDefault(); // Prevent scrolling when dragging
-      e.stopPropagation(); // Prevent canvas from handling this touch
+    if (!touch || !touchDownClientRef.current) return;
+
+    if (!touchLongPressArmedRef.current && touchLongPressTimerRef.current) {
+      const dx = Math.abs(touch.clientX - touchDownClientRef.current.x);
+      const dy = Math.abs(touch.clientY - touchDownClientRef.current.y);
+      if (dx > TOUCH_SCROLL_CANCEL_LONG_PRESS_PX || dy > TOUCH_SCROLL_CANCEL_LONG_PRESS_PX) {
+        clearTouchLongPressTimer();
+      }
+      return;
+    }
+
+    if (touchLongPressArmedRef.current && touchGrabDiagRef.current) {
+      const nowDiag = canvasClientToDiagram(touch.clientX, touch.clientY);
+      const grab = touchGrabDiagRef.current;
+      if (nowDiag) {
+        setTouchDragOffsetDiag({ x: nowDiag.x - grab.x, y: nowDiag.y - grab.y });
+      }
+      e.preventDefault();
+      e.stopPropagation();
     }
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (!touchStartPos.current) return;
-    
-    const touch = e.changedTouches[0];
-    const deltaX = Math.abs(touch.clientX - touchStartPos.current.x);
-    const deltaY = Math.abs(touch.clientY - touchStartPos.current.y);
-    
-    // Check if it was a significant drag (not just a tap)
-    if (deltaX > 10 || deltaY > 10) {
-      // Find the canvas element
-      const canvas = document.querySelector('[data-testid="editor-canvas"]') as HTMLElement;
-      if (canvas) {
-        const canvasRect = canvas.getBoundingClientRect();
-        
-        // Calculate position relative to canvas
-        const x = touch.clientX - canvasRect.left;
-        const y = touch.clientY - canvasRect.top;
-        
-        // Dispatch a custom event to the canvas for moving the node
-        const moveEvent = new CustomEvent('mobileMove', {
-          detail: { 
-            id: node.id, 
-            type: ItemTypes.CANVAS_NODE, 
-            x, 
-            y,
-            originalX: node.x,
-            originalY: node.y
-          }
-        });
-        canvas.dispatchEvent(moveEvent);
-      }
-    } else {
-      // This was a tap, not a drag - trigger click
-      if (onClick) {
-        const syntheticEvent = new MouseEvent('click', {
-          bubbles: true,
-          cancelable: true,
-          view: window
-        });
-        onClick(syntheticEvent as any, node);
-      }
-    }
-    
-    // Reset styles
-    (e.currentTarget as HTMLElement).style.opacity = '1';
-    setIsTouchDragging(false);
+    clearTouchLongPressTimer();
+
+    const changed = e.changedTouches[0];
+    const grabSnapshot = touchDownClientRef.current;
+    touchDownClientRef.current = null;
+
+    const wasArmed = touchLongPressArmedRef.current;
+    touchLongPressArmedRef.current = false;
+    touchGrabDiagRef.current = null;
+    setTouchDragOffsetDiag(null);
+    setIsTouchCanvasDrag(false);
     onDraggingChange?.(false);
-    touchStartPos.current = null;
-    e.stopPropagation();
-    e.preventDefault(); // Prevent any default touch behavior
+
+    if (!changed || !grabSnapshot) {
+      return;
+    }
+
+    if (wasArmed) {
+      e.preventDefault();
+      e.stopPropagation();
+      suppressNextClickRef.current = true;
+      emitMobileCanvasDeltaMove({
+        id: node.id,
+        itemType: ItemTypes.CANVAS_NODE,
+        clientStartX: grabSnapshot.x,
+        clientStartY: grabSnapshot.y,
+        clientEndX: changed.clientX,
+        clientEndY: changed.clientY,
+      });
+      return;
+    }
+
+    const ddx = Math.abs(changed.clientX - grabSnapshot.x);
+    const ddy = Math.abs(changed.clientY - grabSnapshot.y);
+    if (ddx <= TOUCH_SCROLL_CANCEL_LONG_PRESS_PX && ddy <= TOUCH_SCROLL_CANCEL_LONG_PRESS_PX) {
+      fingerTapForNextClickRef.current = true;
+    }
+  };
+
+  const handleTouchCancel = () => {
+    fingerTapForNextClickRef.current = false;
+    clearTouchLongPressTimer();
+    touchDownClientRef.current = null;
+    touchLongPressArmedRef.current = false;
+    touchGrabDiagRef.current = null;
+    setTouchDragOffsetDiag(null);
+    setIsTouchCanvasDrag(false);
+    onDraggingChange?.(false);
   };
 
   return (
@@ -1840,14 +1913,31 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
           ? "transition-transform"
           : "transition-[transform,filter]",
         // Hover and selection effects - not for lines, and not when locked
-        !isLineNode && !(isDragging || isTouchDragging) && !(isSelected || isHighlighted || isMultiSelected) && !isLocked && !(hasLinkedSubDiagram ?? node.subDiagramId) && !isFrostedBackground && "node-glow-hover",
+        !isLineNode && !(isDragging || isTouchCanvasDrag) && !(isSelected || isHighlighted || isMultiSelected) && !isLocked && !(hasLinkedSubDiagram ?? node.subDiagramId) && !isFrostedBackground && "node-glow-hover",
         !isLineNode && (hasLinkedSubDiagram ?? node.subDiagramId) && !(isSelected || isHighlighted || isMultiSelected) && !isLocked && !isFrostedBackground && "node-glow-subdiagram",
         !isLineNode && (isSelected || isHighlighted || isMultiSelected) && "node-glow-static",
         !isLineNode && isGroupMember && !isSelected && !isHighlighted && !isMultiSelected && "node-glow-green-static",
-        (isDragging || isTouchDragging) && "cursor-grabbing",
+        (isDragging || isTouchCanvasDrag) && "cursor-grabbing",
         isTargetable && "cursor-crosshair opacity-70 hover:opacity-100"
         )}
-      onClick={isLineNode ? undefined : (e) => onClick && onClick(e, node)} // Lines handle clicks in their SVG (not on container)
+      onClick={
+        isLineNode
+          ? undefined
+          : (e) => {
+              if (suppressNextClickRef.current) {
+                suppressNextClickRef.current = false;
+                fingerTapForNextClickRef.current = false;
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+              }
+              if (fingerTapForNextClickRef.current) {
+                fingerTapForNextClickRef.current = false;
+                (e as React.MouseEvent & { dwFingerTap?: boolean }).dwFingerTap = true;
+              }
+              onClick?.(e, node);
+            }
+      }
       onDoubleClick={isLineNode ? undefined : (e) => {
         if (node.subDiagramId && onSubDiagramDoubleClick) {
           e.stopPropagation();
@@ -1862,10 +1952,10 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
         // For top/left resize, use resizePosition for instant feedback
         left: isLineNode && isDraggingLineEndpoint && initialContainerPosRef.current
           ? initialContainerPosRef.current.x
-          : (resizePosition?.x ?? node.x),
+          : (resizePosition?.x ?? node.x) + (touchDragOffsetDiag?.x ?? 0),
         top: isLineNode && isDraggingLineEndpoint && initialContainerPosRef.current
           ? initialContainerPosRef.current.y
-          : (resizePosition?.y ?? node.y),
+          : (resizePosition?.y ?? node.y) + (touchDragOffsetDiag?.y ?? 0),
          width: isLineNode ? 'auto' : (typeof displayWidth === 'number' ? displayWidth :
                 (isShapeNode ? (node.width || 60) :
                 isRichTextBoxLike ?
@@ -1925,6 +2015,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchCancel}
       onDragStart={(e) => {
         const rawTarget = e.target;
         if (
@@ -2055,7 +2146,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
        {!isReadOnly && isSelected && !isMultiSelected && showsCornerRadiusHandle && onUpdate && (
          <CornerRadiusHandle
            visible={true}
-           onMouseDown={handleCornerRadiusDragStart}
+           onPointerDown={handleCornerRadiusDragStart}
            disabled={isDraggingCornerRadius}
            zIndexClass="z-50"
          />

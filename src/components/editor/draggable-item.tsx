@@ -53,6 +53,23 @@ export function emitMobilePaletteDropIfOverCanvas(opts: {
   return true;
 }
 
+/** On-canvas touch move (after long-press): diagram delta derived from viewport start/end inside `useCanvasDragDrop`. */
+export function emitMobileCanvasDeltaMove(opts: {
+  id: string;
+  itemType: typeof ItemTypes.CANVAS_NODE | typeof ItemTypes.ZONE;
+  clientStartX: number;
+  clientStartY: number;
+  clientEndX: number;
+  clientEndY: number;
+}): void {
+  const canvas =
+    typeof document !== "undefined"
+      ? (document.querySelector(EDITOR_CANVAS_SELECTOR) as HTMLElement | null)
+      : null;
+  if (!canvas) return;
+  canvas.dispatchEvent(new CustomEvent("mobileMove", { detail: opts }));
+}
+
 export function DraggableItem({ type, label, icon, data }: DraggableItemProps) {
   const item = useMemo(() => {
     // Start with the data object, then override with props to ensure type precedence

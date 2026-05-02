@@ -100,6 +100,8 @@ interface CanvasConnectionsProps {
   orthogonalFastRouting?: boolean;
   /** Simulation mode: right-click opens simulation menu; left-click cycles state. */
   simulationModeEnabled?: boolean;
+  /** When creating links with the mouse (editor). Touch ignores second-tap context menu parity with nodes. */
+  isConnectMode?: boolean;
   onSimulationElementPrimaryClick?: (e: React.MouseEvent, itemId: string) => void;
   onSimulationElementClick?: (e: React.MouseEvent, itemId: string) => void;
   simulationStatusStyleByItemId?: Record<string, { color: string; opacity?: number; shadowColor?: string }>;
@@ -163,6 +165,7 @@ function areCanvasConnectionsPropsEqual(prev: CanvasConnectionsProps, next: Canv
     prev.diagramData === next.diagramData &&
     prev.nodesById === next.nodesById &&
     prev.zonesById === next.zonesById &&
+    prev.isConnectMode === next.isConnectMode &&
     prev.onItemSelect === next.onItemSelect &&
     prev.closeContextMenu === next.closeContextMenu &&
     prev.onConnectionDelete === next.onConnectionDelete &&
@@ -210,6 +213,7 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
     connectionRenderRevision,
     orthogonalFastRouting = false,
     simulationModeEnabled = false,
+    isConnectMode = false,
     onSimulationElementPrimaryClick,
     onSimulationElementClick,
     simulationStatusStyleByItemId,
@@ -1047,47 +1051,76 @@ function CanvasConnectionsInner(props: CanvasConnectionsProps) {
 
         const curvature = edge?.curvature || 0.6;
 
+        const handleConnectionContextMenuEdge = (
+          e: React.MouseEvent,
+          connectionPayload: DiagramConnectionData,
+        ) => {
+          closeContextMenu();
+          if (simulationModeEnabled) {
+            e.stopPropagation();
+            e.preventDefault();
+            onSimulationElementClick?.(e, edgeId);
+            return;
+          }
+          if (onItemSelect && !isConnectionHighlighted) {
+            onItemSelect({
+              ...connectionPayload,
+              itemType: "edge",
+              id: edgeId,
+            });
+          }
+          onConnectionContextMenu?.(e, connectionPayload);
+        };
+
         const connectionHandlers = {
           onClick: (connection: DiagramConnectionData, event: React.MouseEvent) => {
+            const fingerTap = (event as React.MouseEvent & { dwFingerTap?: boolean }).dwFingerTap === true;
+            const isAdditiveSelection = event.shiftKey || event.ctrlKey || event.metaKey;
+            if (
+              fingerTap &&
+              !isAdditiveSelection &&
+              !isConnectMode &&
+              isDiagramConnectionInCanvasSelection(
+                connRow,
+                index,
+                allConns,
+                selectedItemIds,
+                selectedItemId,
+                selectedItem,
+              )
+            ) {
+              handleConnectionContextMenuEdge(event, enhancedEdge as DiagramConnectionData);
+              return;
+            }
+
             closeContextMenu();
             if (simulationModeEnabled) {
-              const isAdditiveSelection = event.shiftKey || event.ctrlKey || event.metaKey;
-              if (isAdditiveSelection && onItemSelect) {
-                onItemSelect({
-                  ...connection,
-                  itemType: 'edge',
-                  id: edgeId,
-                }, true);
+              const additive = event.shiftKey || event.ctrlKey || event.metaKey;
+              if (additive && onItemSelect) {
+                onItemSelect(
+                  {
+                    ...connection,
+                    itemType: "edge",
+                    id: edgeId,
+                  },
+                  true,
+                );
               }
               onSimulationElementPrimaryClick?.(event, edgeId);
               return;
             }
             if (onItemSelect) {
-              const isAdditiveSelection = event.shiftKey || event.ctrlKey || event.metaKey;
-              onItemSelect({
-                ...connection,
-                itemType: 'edge',
-                id: edgeId,
-              }, isAdditiveSelection);
+              onItemSelect(
+                {
+                  ...connection,
+                  itemType: "edge",
+                  id: edgeId,
+                },
+                isAdditiveSelection,
+              );
             }
           },
-          onContextMenu: (e: React.MouseEvent, connection: DiagramConnectionData) => {
-            closeContextMenu();
-            if (simulationModeEnabled) {
-              e.stopPropagation();
-              e.preventDefault();
-              onSimulationElementClick?.(e, edgeId);
-              return;
-            }
-            if (onItemSelect && !isConnectionHighlighted) {
-              onItemSelect({
-                ...connection,
-                itemType: 'edge',
-                id: edgeId,
-              });
-            }
-            onConnectionContextMenu?.(e, connection);
-          },
+          onContextMenu: handleConnectionContextMenuEdge,
         };
 
         const handleConnectionDoubleClick =

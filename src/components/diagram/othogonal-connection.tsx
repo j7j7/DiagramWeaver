@@ -38,6 +38,7 @@ import {
   isUseSourceLineColorOn,
 } from "@/lib/connection-line-style";
 import { connectionStrokeDashFromLineType } from "@/lib/utils";
+import { useDwFingerTapSyntheticClick } from "@/hooks/use-dw-finger-tap-synthetic-click";
 
 const EMPTY_OBSTACLES: Rect[] = [];
 
@@ -224,6 +225,7 @@ function OrthogonalConnectionInner({
   onOrthogonalTrunkOffsetChange,
   onOrthogonalTrunkOffsetYChange,
 }: OrthogonalConnectionProps) {
+  const { applyFingerTapMarkerToMouseEventIfNeeded, fingerTapTouchSvgProps } = useDwFingerTapSyntheticClick();
   const { resolvedTheme } = useTheme();
   const themeNeutral = resolvedTheme === "dark" ? "#9ca3af" : "#6b7280";
 
@@ -429,12 +431,13 @@ function OrthogonalConnectionInner({
   // Click handlers
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
+      applyFingerTapMarkerToMouseEventIfNeeded(e);
       if (connectionData && onClick) {
         e.stopPropagation();
         onClick(connectionData, e);
       }
     },
-    [connectionData, onClick]
+    [applyFingerTapMarkerToMouseEventIfNeeded, connectionData, onClick]
   );
 
   const handleDoubleClick = useCallback(
@@ -577,6 +580,7 @@ function OrthogonalConnectionInner({
       </defs>
 
       <g
+        {...fingerTapTouchSvgProps}
         className="group"
         style={{ ...GROUP_STYLE, ...slideTransitionStyle }}
         onClick={handleClick}

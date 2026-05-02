@@ -10,7 +10,10 @@ interface ResizeHandlesProps {
   visible: boolean;
   activeHandle: ResizeHandleType;
   hoveredHandle: ResizeHandleType;
-  onStart: (event: React.MouseEvent, handle: 'top' | 'left' | 'right' | 'bottom' | 'bottom-right') => void;
+  onStart: (
+    event: React.MouseEvent | React.PointerEvent,
+    handle: "top" | "left" | "right" | "bottom" | "bottom-right"
+  ) => void;
   disabled?: boolean;
   zIndexClass?: string;
   className?: string;
@@ -52,7 +55,7 @@ export function ResizeHandles({
     setLocalHoveredHandle(null);
   };
 
-  const handleMouseDown = (e: React.MouseEvent, handle: 'top' | 'left' | 'right' | 'bottom' | 'bottom-right') => {
+  const handlePointerDown = (e: React.PointerEvent, handle: 'top' | 'left' | 'right' | 'bottom' | 'bottom-right') => {
     e.stopPropagation();
     e.preventDefault();
     onStart(e, handle);
@@ -91,10 +94,11 @@ export function ResizeHandles({
           height: '12px',
           marginTop: '-10px',
           cursor: 'ns-resize',
+          touchAction: 'none',
         }}
         onMouseEnter={() => handleMouseEnter('top')}
         onMouseLeave={handleMouseLeave}
-        onMouseDown={(e) => handleMouseDown(e, 'top')}
+        onPointerDown={(e) => handlePointerDown(e, 'top')}
       >
         <div className="dw-resize-indicator dw-resize-indicator-rail" />
         <ArrowUp className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 text-green-700 pointer-events-none" />
@@ -122,10 +126,11 @@ export function ResizeHandles({
           height: '100%',
           marginLeft: '-10px',
           cursor: 'ew-resize',
+          touchAction: 'none',
         }}
         onMouseEnter={() => handleMouseEnter('left')}
         onMouseLeave={handleMouseLeave}
-        onMouseDown={(e) => handleMouseDown(e, 'left')}
+        onPointerDown={(e) => handlePointerDown(e, 'left')}
       >
         <div className="dw-resize-indicator dw-resize-indicator-rail" />
         <ArrowLeft className="absolute top-1/2 left-0 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 text-green-700 pointer-events-none" />
@@ -153,10 +158,11 @@ export function ResizeHandles({
           height: '100%',
           marginRight: '-10px',
           cursor: 'ew-resize',
+          touchAction: 'none',
         }}
         onMouseEnter={() => handleMouseEnter('right')}
         onMouseLeave={handleMouseLeave}
-        onMouseDown={(e) => handleMouseDown(e, 'right')}
+        onPointerDown={(e) => handlePointerDown(e, 'right')}
       >
         <div className="dw-resize-indicator dw-resize-indicator-rail" />
         <ArrowRight className="absolute top-1/2 right-0 transform translate-x-1/2 -translate-y-1/2 w-3 h-3 text-green-700 pointer-events-none" />
@@ -184,10 +190,11 @@ export function ResizeHandles({
           height: '12px',
           marginBottom: '-10px',
           cursor: 'ns-resize',
+          touchAction: 'none',
         }}
         onMouseEnter={() => handleMouseEnter('bottom')}
         onMouseLeave={handleMouseLeave}
-        onMouseDown={(e) => handleMouseDown(e, 'bottom')}
+        onPointerDown={(e) => handlePointerDown(e, 'bottom')}
       >
         <div className="dw-resize-indicator dw-resize-indicator-rail" />
         <ArrowDown className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 w-3 h-3 text-green-700 pointer-events-none" />
@@ -216,10 +223,11 @@ export function ResizeHandles({
           marginBottom: '-10px',
           marginRight: '-10px',
           cursor: 'nwse-resize',
+          touchAction: 'none',
         }}
         onMouseEnter={() => handleMouseEnter('bottom-right')}
         onMouseLeave={handleMouseLeave}
-        onMouseDown={(e) => handleMouseDown(e, 'bottom-right')}
+        onPointerDown={(e) => handlePointerDown(e, 'bottom-right')}
       >
         <div className="dw-resize-indicator dw-resize-indicator-knob" />
         <MoveDiagonal2 className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4 h-4 text-green-700 pointer-events-none" />
