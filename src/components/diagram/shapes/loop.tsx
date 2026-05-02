@@ -67,7 +67,7 @@ export function LoopShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
         height="100%"
         viewBox={`${-arrowSize} 0 ${width + arrowSize * 2} ${height + arrowSize}`}
         preserveAspectRatio="xMidYMid meet"
-        style={{ overflow: 'visible', pointerEvents: 'none' }}
+        style={{ overflow: 'visible', pointerEvents: 'auto' }}
       >
         <path
           d={pathD}
@@ -97,6 +97,7 @@ export function LoopShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
             fill={lineColor}
             stroke={lineColor}
             strokeWidth={1}
+            style={{ pointerEvents: "none" }}
           />
         )}
         {label && (

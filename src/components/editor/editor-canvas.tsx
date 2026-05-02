@@ -1664,21 +1664,43 @@ export const EditorCanvas = React.forwardRef<EditorCanvasHandle, EditorCanvasPro
   nodeClickHandlerRef.current = handleNodeClick;
   nodeContextMenuHandlerRef.current = handleNodeContextMenu;
 
-  const onDiagramNodeClickStable = useCallback((e: React.MouseEvent) => {
-    const id = (e.currentTarget as HTMLElement).getAttribute("data-node-id");
-    if (!id) return;
-    const node = displayNodesByIdRef.current[id];
-    if (!node) return;
-    nodeClickHandlerRef.current(e, node);
-  }, []);
+  const onDiagramNodeClickStable = useCallback(
+    (e: React.MouseEvent, nodeHint?: DiagramNodeData) => {
+      let id: string | null = null;
+      const ct = e.currentTarget;
+      if (ct instanceof Element) {
+        id = ct.getAttribute("data-node-id");
+      }
+      if (!id && e.target instanceof Element) {
+        id = e.target.closest("[data-node-id]")?.getAttribute("data-node-id") ?? null;
+      }
+      if (!id && nodeHint) id = nodeHint.id;
+      if (!id) return;
+      const node = displayNodesByIdRef.current[id] ?? (nodeHint?.id === id ? nodeHint : undefined);
+      if (!node) return;
+      nodeClickHandlerRef.current(e, node);
+    },
+    [],
+  );
 
-  const onDiagramNodeContextMenuStable = useCallback((e: React.MouseEvent) => {
-    const id = (e.currentTarget as HTMLElement).getAttribute("data-node-id");
-    if (!id) return;
-    const node = displayNodesByIdRef.current[id];
-    if (!node) return;
-    nodeContextMenuHandlerRef.current(e, node);
-  }, []);
+  const onDiagramNodeContextMenuStable = useCallback(
+    (e: React.MouseEvent, nodeHint?: DiagramNodeData) => {
+      let id: string | null = null;
+      const ct = e.currentTarget;
+      if (ct instanceof Element) {
+        id = ct.getAttribute("data-node-id");
+      }
+      if (!id && e.target instanceof Element) {
+        id = e.target.closest("[data-node-id]")?.getAttribute("data-node-id") ?? null;
+      }
+      if (!id && nodeHint) id = nodeHint.id;
+      if (!id) return;
+      const node = displayNodesByIdRef.current[id] ?? (nodeHint?.id === id ? nodeHint : undefined);
+      if (!node) return;
+      nodeContextMenuHandlerRef.current(e, node);
+    },
+    [],
+  );
 
   const handleZoneClick = useCallback((e: React.MouseEvent, zone: DiagramZoneData) => {
     e.stopPropagation();

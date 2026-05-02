@@ -21,7 +21,10 @@ export interface LineVertexHandlesProps {
   vertices: { x: number; y: number }[];
   nodeX: number;
   nodeY: number;
-  onVertexPointerDown: (event: React.MouseEvent, vertexIndex: number) => void;
+  onVertexPointerDown: (
+    event: React.PointerEvent | React.MouseEvent,
+    vertexIndex: number,
+  ) => void;
   disabled?: boolean;
   zIndexClass?: string;
 }
@@ -43,7 +46,8 @@ export function LineVertexHandles({
     return null;
   }
 
-  const handleMouseDown = (e: React.MouseEvent, vertexIndex: number) => {
+  const handlePointerDown = (e: React.PointerEvent, vertexIndex: number) => {
+    if (e.button !== 0) return;
     e.stopPropagation();
     e.preventDefault();
     onVertexPointerDown(e, vertexIndex);
@@ -69,6 +73,7 @@ export function LineVertexHandles({
         return (
           <div
             key={`line-v-${index}`}
+            data-dw-line-vertex-handle
             className={cn(
               "absolute cursor-grab active:cursor-grabbing rounded-sm border-2 border-white shadow-sm",
               focused && "ring-2 ring-primary ring-offset-1 ring-offset-background",
@@ -81,10 +86,11 @@ export function LineVertexHandles({
               height: `${HANDLE}px`,
               backgroundColor: fill,
               pointerEvents: "auto",
+              touchAction: "none",
             }}
             onMouseEnter={() => setHoveredIndex(index)}
             onMouseLeave={() => setHoveredIndex(null)}
-            onMouseDown={(e) => handleMouseDown(e, index)}
+            onPointerDown={(e) => handlePointerDown(e, index)}
             title={
               index === 0
                 ? "Click to select; drag to move start"

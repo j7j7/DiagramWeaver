@@ -3,6 +3,18 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-02 – Connector line: SVG path click/context menu lacked `data-node-id` wiring
+**`editor-canvas`**: **`onDiagramNodeClickStable`** / **`onDiagramNodeContextMenuStable`** read **`data-node-id`** **`from`** **`currentTarget`**; **`LineShape`** / **`LoopShape`** **`<path>`** targets have none, so **`line`** never selected (no vertex handles) and right-click **`return`** **`ed`** **`early`**. **`LineShape`** **`already`** **`passes`** **`(e`** **`,` **`node)`** **`—`** **`optional`** **`nodeHint`** **on** **`Stable`** **`+`** **`id`** **`from`** **`DOM`** **`(`**`**`closest`****`)`** **first** **`then`** **`fallback`** **`hint`** **`+`** **`ref`** **`/`** **`hint`** **`resolution`**. **`Loop`** **`path`** **`events`** **`inherit`** **`the`** **`same`** **`handler`**. Patch bumped.
+
+### 2026-05-02 – Connector line node: explicit width/height (auto box was 0×0, no hits)
+**`diagram-node`**: **`generic.object.line`** only fills the stack with **`position:absolute`** **`LineShape`** content, so **`width/height: auto`** collapsed the HTML box to **0×0** — no pointer path to the SVG, so no select, context menu, or vertex handles. Added **`lineLiveLayoutDims`** (**`connectorLinePointBounds`** + padding + **`snapDimensionToGrid`**, same idea as **`measureNodeDims`**, honoring **`__local*`** during endpoint drag). Keeps earlier **`<svg pointerEvents: auto>`** fix. Patch bumped.
+
+### 2026-05-02 – Line / loop SVG hit testing (select, context menu, vertex handles)
+**`line.tsx`**, **`loop.tsx`**: **`pointer-events: none`** on the root **`<svg>`** disabled the **entire** subtree in **Chromium/WebKit**, so connector lines were not selectable and green/yellow handles never appeared. **`<svg`** **`style.pointerEvents`** **`'auto'`**; **HTML** wrapper stays **`none`** so only painted paths are targets. **`renderLineCap`** arrow/dot/square **`pointerEvents: none`** so hits reach the wide transparent hit path underneath. **`loop`** arrow polygon same. Patch bumped.
+
+### 2026-05-02 – Connector line vertex handles: `pointermove`/`pointerup` (touch + stylus)
+**`LineVertexHandles`** moved from **`mousedown`** to **`pointerdown`** (`touch-none`, **`touchAction: none`**), **`data-dw-line-vertex-handle`**. **`diagram-node`** line drag uses **`document` pointer listeners** + **`pointercancel`** (replacing **`mouse*`** only) so endpoints work on phones/tablets without changing desktop mouse parity. **`handleTouchStart`** ignores hits on **`[data-dw-line-vertex-handle]`**. Patch bumped.
+
 ### 2026-05-02 – Touch: PNG/custom icon nodes suppress native long-press (Save Image / drag)
 Catalog **`resource-icon.tsx`** **`img`** + **`custom-icon-image`**: **`draggable={false}`**, **`touchAction: none`**, **`-webkit-touch-callout: none`**, **`user-select: none`**, **`onDragStart`**. **`diagram-node`** icon subtree: **`select-none [-webkit-touch-callout:none]`** on popover trigger; **`onDragStart`** blocks native image drag when **`isIconNode`**. Leaves existing long-hold canvas move untouched. Patch bumped.
 

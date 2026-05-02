@@ -54,7 +54,7 @@ import {
 } from "@/components/diagram/slide-shape-shadow-transition-context";
 import { ResizeHandles } from "./resize-handles";
 import { LineVertexHandles } from "./line-endpoint-handles";
-import { getConnectorLineVertices, isConnectorLineGeometryClosed } from "@/lib/line-curve-path";
+import { getConnectorLineVertices, isConnectorLineGeometryClosed, connectorLinePointBounds } from "@/lib/line-curve-path";
 import {
   syncClosedConnectorLineBorderWidth,
   syncClosedConnectorVisualBorderFromLineStyling,
@@ -345,15 +345,16 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
   } | null>(null);
   const latestLineVerticesRef = useRef<{ x: number; y: number }[] | null>(null);
   const lineVertexDocListenersRef = useRef<{
-    move: (e: MouseEvent) => void;
-    up: (e: MouseEvent) => void;
+    move: (e: PointerEvent) => void;
+    up: (e: PointerEvent) => void;
   } | null>(null);
 
   const removeLineVertexDocListeners = useCallback(() => {
     const L = lineVertexDocListenersRef.current;
     if (L) {
-      document.removeEventListener("mousemove", L.move, true);
-      document.removeEventListener("mouseup", L.up, true);
+      document.removeEventListener("pointermove", L.move, true);
+      document.removeEventListener("pointerup", L.up, true);
+      document.removeEventListener("pointercancel", L.up, true);
       lineVertexDocListenersRef.current = null;
     }
   }, []);
@@ -1502,8 +1503,41 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     isLineNode,
   ]);
 
+  /** Line nodes only render `position:absolute` SVG children — `width/height: auto` collapses the box to 0×0, so hits never reach the line. */
+  const lineLiveLayoutDims = useMemo(() => {
+    if (!isLineNode) return null;
+    const synth = {
+      ...node,
+      ...(localStartPos && { __localStartPos: localStartPos }),
+      ...(localEndPos && { __localEndPos: localEndPos }),
+      ...(localControlPoints && { __localControlPoints: localControlPoints }),
+    };
+    const verts = getConnectorLineVertices(synth as DiagramNodeData);
+    const b = connectorLinePointBounds(verts);
+    const padding = 30;
+    const w = Math.max(150, b.maxX - b.minX + padding * 2);
+    const h = Math.max(100, b.maxY - b.minY + padding * 2);
+    return {
+      width: snapDimensionToGrid(w, 150),
+      height: snapDimensionToGrid(h, 100),
+    };
+  }, [
+    isLineNode,
+    node,
+    node.id,
+    (node as any).startPos?.x,
+    (node as any).startPos?.y,
+    (node as any).endPos?.x,
+    (node as any).endPos?.y,
+    JSON.stringify((node as any).lineControlPoints ?? []),
+    (node as any).linePathStyle,
+    localStartPos,
+    localEndPos,
+    localControlPoints,
+  ]);
+
   const beginRealLineVertexDrag = useCallback(
-    (e: MouseEvent, vertexIndex: number) => {
+    (e: Pick<MouseEvent, "clientX" | "clientY">, vertexIndex: number) => {
       setIsDraggingLineEndpoint(true);
       setLineVertexIndex(vertexIndex);
       onDraggingChange?.(true);
@@ -1539,7 +1573,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     [node, localStartPos, localEndPos, localControlPoints, onDraggingChange],
   );
 
-  const handleLineVertexDragMove = useCallback((e: MouseEvent | React.MouseEvent) => {
+  const handleLineVertexDragMove = useCallback((e: Pick<MouseEvent, "clientX" | "clientY">) => {
     if (!lineVertexDragRef.current) return;
 
     let deltaX = e.clientX - lineVertexDragRef.current.clientX;
@@ -1612,7 +1646,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
   }, [onUpdate, node, localStartPos, localEndPos, localControlPoints, onDraggingChange]);
 
   const handleLineVertexPointerDown = useCallback(
-    (e: React.MouseEvent, vertexIndex: number) => {
+    (e: React.PointerEvent | React.MouseEvent, vertexIndex: number) => {
       if (isReadOnly) {
         e.stopPropagation();
         e.preventDefault();
@@ -1627,7 +1661,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
       const startY = e.clientY;
       let phase: "pending" | "drag" = "pending";
 
-      const onMove = (ev: MouseEvent) => {
+      const onMove = (ev: PointerEvent) => {
         if (phase === "pending") {
           if (Math.hypot(ev.clientX - startX, ev.clientY - startY) > 5) {
             phase = "drag";
@@ -1638,7 +1672,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
         handleLineVertexDragMove(ev);
       };
 
-      const onUp = (ev: MouseEvent) => {
+      const onUp = (ev: PointerEvent) => {
         ev.preventDefault();
         ev.stopPropagation();
         removeLineVertexDocListeners();
@@ -1649,8 +1683,9 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
         handleLineVertexDragEnd();
       };
 
-      document.addEventListener("mousemove", onMove, true);
-      document.addEventListener("mouseup", onUp, true);
+      document.addEventListener("pointermove", onMove, true);
+      document.addEventListener("pointerup", onUp, true);
+      document.addEventListener("pointercancel", onUp, true);
       lineVertexDocListenersRef.current = { move: onMove, up: onUp };
     },
     [
@@ -1790,7 +1825,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     if (
       rawTarget instanceof Element &&
       rawTarget.closest(
-        "[data-dw-line-chart-point-handle], [data-dw-bar-cell-value-handle], [data-dw-pie-slice-value-handle], .dw-connect-handle, .dw-rotation-handle, .dw-corner-radius-handle, [data-handle], .dw-resize-handle",
+        "[data-dw-line-chart-point-handle], [data-dw-bar-cell-value-handle], [data-dw-pie-slice-value-handle], [data-dw-line-vertex-handle], .dw-connect-handle, .dw-rotation-handle, .dw-corner-radius-handle, [data-handle], .dw-resize-handle",
       )
     ) {
       return;
@@ -1956,7 +1991,9 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
         top: isLineNode && isDraggingLineEndpoint && initialContainerPosRef.current
           ? initialContainerPosRef.current.y
           : (resizePosition?.y ?? node.y) + (touchDragOffsetDiag?.y ?? 0),
-         width: isLineNode ? 'auto' : (typeof displayWidth === 'number' ? displayWidth :
+         width: isLineNode
+           ? lineLiveLayoutDims?.width ?? (node.width as number) ?? 150
+           : (typeof displayWidth === 'number' ? displayWidth :
                 (isShapeNode ? (node.width || 60) :
                 isRichTextBoxLike ?
                  (node.sizeMode === 'custom' && node.width ? node.width : 'auto') :
@@ -1971,7 +2008,9 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
                     isShapeNode ? (node.width || 60) :
                     isRichTextBoxLike ? (node.sizeMode === 'custom' ? 'none' : 400) :
                    isRotatableNode ? 200 : (isIconNode ? 400 : NODE_WIDTH)),
-         height: isLineNode ? 'auto' : (typeof displayHeight === 'number' ? displayHeight :
+         height: isLineNode
+           ? lineLiveLayoutDims?.height ?? (node.height as number) ?? 100
+           : (typeof displayHeight === 'number' ? displayHeight :
                  (isShapeNode ? (node.height || 60) :
                  isRichTextBoxLike && node.sizeMode === 'custom' ? (node.height || 40) :
                  isRichTextBoxLike ? nodeHeight : (iconNodeDims ? iconNodeDims.height : 'auto'))),

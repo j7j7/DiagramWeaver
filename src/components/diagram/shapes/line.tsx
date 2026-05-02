@@ -66,6 +66,7 @@ const renderLineCap = (
         fill={color}
         stroke={color}
         strokeWidth={1}
+        style={{ pointerEvents: "none" }}
       />
     );
   }
@@ -79,6 +80,7 @@ const renderLineCap = (
         fill={color}
         stroke={color}
         strokeWidth={1}
+        style={{ pointerEvents: "none" }}
       />
     );
   }
@@ -95,6 +97,7 @@ const renderLineCap = (
         stroke={color}
         strokeWidth={1}
         transform={`rotate(${angle} ${x} ${y})`}
+        style={{ pointerEvents: "none" }}
       />
     );
   }
@@ -339,6 +342,7 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
       top: `${svgMinY}px`,
       width: `${svgWidth}px`,
       height: `${svgHeight}px`,
+      /** Pass events through the HTML shell; the SVG subtree decides what is hittable. */
       pointerEvents: 'none',
     }}>
       <svg
@@ -347,7 +351,8 @@ export function LineShape({ node, fill = "#000000", stroke, strokeWidth = 2.5, o
         viewBox={`0 0 ${svgWidth} ${svgHeight}`}
         style={{
           overflow: 'visible',
-          pointerEvents: 'none', // Make SVG background non-clickable
+          /** pointer-events:none on the root svg disables the subtree in Chromium/WebKit. */
+          pointerEvents: 'auto',
         }}
       >
         <g transform={`translate(${-(nodeX + svgMinX)}, ${-(nodeY + svgMinY)})`}>
