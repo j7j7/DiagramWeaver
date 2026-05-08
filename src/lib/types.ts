@@ -243,7 +243,20 @@ export interface DiagramNodeData {
   /** When true, orthogonal connectors do not route around this item (may cross its bounds). */
   ignoreConnectionAvoidance?: boolean;
   borderWidth?: number; // Border thickness for shapes
-  cornerRadius?: number; // Rounded-rectangle only: 0=straight, 1=full round
+  /** Rounded rectangle & progress bar: 0=straight, 1=full pill */
+  cornerRadius?: number;
+  /** Progress bar (`generic.object.progress-bar`): completed amount 0–100 */
+  progressPercent?: number;
+  /** Progress bar: show numeric percent on the bar (default true) */
+  progressShowPercent?: boolean;
+  /** Progress bar: unfilled section style */
+  progressTrackStyle?: 'solid' | 'gradient';
+  progressTrackColors?: string[];
+  progressTrackGradientAngle?: number;
+  /** Progress bar: filled section style */
+  progressFillStyle?: 'solid' | 'gradient';
+  progressFillColors?: string[];
+  progressFillGradientAngle?: number;
   /** Text box with linked heading (generic.object.text-box-heading): which edge the heading strip sits on */
   headingEdge?: 'top' | 'bottom' | 'left' | 'right';
   /** Heading text (separate from main body label) */
@@ -493,7 +506,16 @@ export interface DiagramNodeItem {
   /** When true, orthogonal connectors do not route around this item (may cross its bounds). */
   ignoreConnectionAvoidance?: boolean;
   borderWidth?: number; // Border thickness for shapes
-  cornerRadius?: number; // Rounded-rectangle only: 0=straight, 1=full round
+  /** Rounded rectangle & progress bar: 0=straight, 1=full pill */
+  cornerRadius?: number;
+  progressPercent?: number;
+  progressShowPercent?: boolean;
+  progressTrackStyle?: 'solid' | 'gradient';
+  progressTrackColors?: string[];
+  progressTrackGradientAngle?: number;
+  progressFillStyle?: 'solid' | 'gradient';
+  progressFillColors?: string[];
+  progressFillGradientAngle?: number;
   headingEdge?: 'top' | 'bottom' | 'left' | 'right';
   headingLabel?: string;
   richHeadingLabel?: RichTextRun[];

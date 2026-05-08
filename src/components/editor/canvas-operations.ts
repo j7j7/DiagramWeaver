@@ -88,6 +88,7 @@ export function useCanvasOperations({
                                 itemType === 'generic.object.point' ||
                                 itemType === 'generic.object.rectangle' ||
                                 itemType === 'generic.object.rounded-rectangle' ||
+                                itemType === 'generic.object.progress-bar' ||
                                 itemType === 'generic.object.text-box-heading' ||
                                 itemType === 'generic.object.triangle' ||
                                 itemType === 'generic.object.star' ||
@@ -110,6 +111,7 @@ export function useCanvasOperations({
                                 itemType?.endsWith('.point') ||
                                 itemType?.endsWith('.rectangle') ||
                                 itemType?.endsWith('.rounded-rectangle') ||
+                                itemType?.endsWith('.progress-bar') ||
                                 itemType?.endsWith('.text-box-heading') ||
                                 itemType?.endsWith('.triangle') ||
                                 itemType?.endsWith('.star') ||
@@ -163,6 +165,7 @@ export function useCanvasOperations({
              itemType === 'generic.object.rectangle' ? 80 :
              itemType === 'generic.object.uml-class' ? 120 :
              itemType === 'generic.object.rounded-rectangle' ? 80 :
+             itemType === 'generic.object.progress-bar' ? 80 :
              itemType === 'generic.object.text-box-heading' ? 180 :
              itemType === 'generic.object.cloud' ? 80 :
              itemType === 'generic.object.line' ? 150 :
@@ -176,6 +179,7 @@ export function useCanvasOperations({
              itemType === 'generic.object.rectangle' ? 50 :
              itemType === 'generic.object.uml-class' ? 80 :
              itemType === 'generic.object.rounded-rectangle' ? 50 :
+             itemType === 'generic.object.progress-bar' ? 50 :
              itemType === 'generic.object.text-box-heading' ? 90 :
              itemType === 'generic.object.cloud' ? 50 :
              itemType === 'generic.object.line' ? 100 :
@@ -230,6 +234,18 @@ export function useCanvasOperations({
             headingLabel: 'HEADING',
             headingBackgroundColor: '#1f2937',
             label: 'body',
+          }),
+          ...((itemType === 'generic.object.progress-bar' || itemType?.endsWith('.progress-bar')) && !isFromScratchPad && {
+            progressPercent: 62,
+            progressShowPercent: true,
+            cornerRadius: 0.35,
+            progressTrackStyle: 'solid' as const,
+            progressTrackColors: ['#e5e7eb'],
+            progressFillStyle: 'gradient' as const,
+            progressFillColors: ['#22c55e', '#15803d'],
+            progressTrackGradientAngle: 90,
+            progressFillGradientAngle: 90,
+            textPosition: 'above' as const,
           }),
           ...((itemType === 'generic.chart.pie' ||
             itemType === 'generic.chart.bar' ||

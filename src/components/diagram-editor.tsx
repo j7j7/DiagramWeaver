@@ -3219,6 +3219,7 @@ export default function DiagramEditor() {
                            node.type === 'generic.object.rectangle' ||
                            node.type === 'generic.object.uml-class' ||
                            node.type === 'generic.object.rounded-rectangle' ||
+                           node.type === 'generic.object.progress-bar' ||
                            node.type === 'generic.object.text-box-heading' ||
                            node.type === 'generic.object.triangle' ||
                            node.type === 'generic.object.star' ||

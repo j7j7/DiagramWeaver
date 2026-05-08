@@ -42,6 +42,13 @@ export function ShapeText({
     return null;
   }
 
+  const isProgressBar = node.type === "generic.object.progress-bar" || node.type?.endsWith(".progress-bar");
+  const showProgressPercent = isProgressBar && nodeAny.progressShowPercent !== false;
+  const progressPctRounded = Math.max(
+    0,
+    Math.min(100, Math.round(Number(nodeAny.progressPercent ?? 0))),
+  );
+
   // Show text if label exists
   if (!label) {
     return null;
@@ -78,6 +85,42 @@ export function ShapeText({
 
   // Render text inside the shape (middle position)
   if (isInside) {
+    if (isProgressBar && showProgressPercent) {
+      const pctStyle: React.CSSProperties = {
+        ...getTextStylingForNode(node),
+        fontWeight: 700,
+      };
+      return (
+        <div
+          className={`absolute inset-0 flex flex-col items-center justify-center ${isEditingLabel ? "overflow-visible" : ""}`}
+        >
+          {isEditingLabel ? (
+            <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-center gap-1 overflow-visible px-1">
+              <TextboxRichEditor
+                node={node}
+                runs={editRuns}
+                onSubmit={onRichLabelSubmit}
+                onKeyDown={onLabelKeyDown}
+                onVerticalAlignChange={onVerticalAlignChange}
+              />
+              <span className="pointer-events-none tabular-nums" style={pctStyle}>
+                {progressPctRounded}%
+              </span>
+            </div>
+          ) : (
+            <div className="pointer-events-none flex max-h-full w-full flex-col items-center justify-center gap-1 px-1">
+              <div className="pointer-events-auto min-w-0 max-w-full">
+                <TextboxRichDisplay node={node} runs={displayRuns} onDoubleClick={onLabelDoubleClick} />
+              </div>
+              <span className="tabular-nums pointer-events-none" style={pctStyle}>
+                {progressPctRounded}%
+              </span>
+            </div>
+          )}
+        </div>
+      );
+    }
+
     const innerClass = `w-full h-full flex flex-col ${getVerticalJustifyClass(effectivePosition)} px-1`;
     return (
       <div

@@ -50,6 +50,8 @@ interface SvgShapeBaseProps {
    * (same coordinate space as the SVG root). Ignored if `frostedClipPathOverride` is set.
    */
   frostedClipCircleInViewBox?: { cx: number; cy: number; r: number };
+  /** Root SVG pointer-events (`none` lets events pass except on descendants with explicit hit targets). */
+  svgPointerEvents?: React.CSSProperties["pointerEvents"];
 }
 
 export function SvgShapeBase({
@@ -67,6 +69,7 @@ export function SvgShapeBase({
   frostedClipRectInViewBox,
   frostedClipPathOverride,
   frostedClipCircleInViewBox,
+  svgPointerEvents,
   ...rest
 }: SvgShapeBaseProps) {
   const nodeAny = node as any;
@@ -135,6 +138,7 @@ export function SvgShapeBase({
         preserveAspectRatio={preserveAspectRatio ?? "none"}
         className="absolute inset-0 dw-slide-svg-paint-tx"
         overflow={svgOverflowVisible ? "visible" : undefined}
+        style={svgPointerEvents !== undefined ? { pointerEvents: svgPointerEvents } : undefined}
       >
         {svgPaintTransition ? (
           <style>{`

@@ -471,6 +471,7 @@ export function ContextToolbar({
     (selectedItem as any)?.type === 'generic.object.rectangle' ||
     (selectedItem as any)?.type === 'generic.object.uml-class' ||
     (selectedItem as any)?.type === 'generic.object.rounded-rectangle' ||
+    (selectedItem as any)?.type === 'generic.object.progress-bar' ||
     (selectedItem as any)?.type === 'generic.object.text-box-heading' ||
     (selectedItem as any)?.type === 'generic.object.triangle' ||
     (selectedItem as any)?.type === 'generic.object.star' ||
@@ -491,6 +492,7 @@ export function ContextToolbar({
     (selectedItem as any)?.type?.endsWith('.point') ||
     (selectedItem as any)?.type?.endsWith('.rectangle') ||
     (selectedItem as any)?.type?.endsWith('.rounded-rectangle') ||
+    (selectedItem as any)?.type?.endsWith('.progress-bar') ||
     (selectedItem as any)?.type?.endsWith('.text-box-heading') ||
     (selectedItem as any)?.type?.endsWith('.triangle') ||
     (selectedItem as any)?.type?.endsWith('.star') ||
@@ -2227,6 +2229,10 @@ export function ContextToolbar({
                   isTextBoxHeading={
                     (selectedItem as any)?.type === 'generic.object.text-box-heading' ||
                     (selectedItem as any)?.type?.endsWith?.('.text-box-heading')
+                  }
+                  isProgressBar={
+                    (selectedItem as any)?.type === 'generic.object.progress-bar' ||
+                    (selectedItem as any)?.type?.endsWith?.('.progress-bar')
                   }
                   noIconBackground={(() => {
                     if (!selectedItem || !diagramData) return false;

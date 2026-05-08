@@ -19,6 +19,57 @@ import { isConnectorLineNodeType } from './utils';
  */
 export const DIAGRAM_THEME_HUE_STEP_DEG = 36;
 
+/** When applying a diagram theme to a progress bar: fill hues are rotated vs the themed background hues. */
+const PROGRESS_BAR_THEME_FILL_HUE_OFFSET = 42;
+
+function isProgressBarNodeType(type?: string): boolean {
+  return type === "generic.object.progress-bar" || !!type?.endsWith(".progress-bar");
+}
+
+/** Map theme background (and border accent when theme background style is none) to `progressTrack*` / `progressFill*`. */
+function progressBarPaletteFromTheme(
+  properties: ThemeProperties,
+  colorProps: ThemeProperties,
+): Partial<DiagramNodeData> {
+  const offset = PROGRESS_BAR_THEME_FILL_HUE_OFFSET;
+  const bgStyle = properties.backgroundStyle ?? "solid";
+  const ga = properties.gradientAngle ?? 135;
+
+  if (bgStyle === "gradient" && colorProps.backgroundColors && colorProps.backgroundColors.length >= 2) {
+    const [t0, t1] = colorProps.backgroundColors;
+    return {
+      progressTrackStyle: "gradient",
+      progressTrackColors: [t0, t1],
+      progressTrackGradientAngle: ga,
+      progressFillStyle: "gradient",
+      progressFillColors: [shiftHueOfColor(t0, offset), shiftHueOfColor(t1, offset)],
+      progressFillGradientAngle: ga,
+    };
+  }
+
+  if (bgStyle === "none") {
+    const accent = colorProps.borderColors?.[0] ?? colorProps.borderColor ?? "#64748b";
+    const track = "#e8eaef";
+    return {
+      progressTrackStyle: "solid",
+      progressTrackColors: [track],
+      progressFillStyle: "gradient",
+      progressFillColors: [shiftHueOfColor(accent, offset), shiftHueOfColor(accent, offset + 22)],
+      progressFillGradientAngle: ga,
+    };
+  }
+
+  const base =
+    colorProps.backgroundColor ?? colorProps.backgroundColors?.[0] ?? "#f3f4f6";
+  return {
+    progressTrackStyle: "solid",
+    progressTrackColors: [base],
+    progressFillStyle: "gradient",
+    progressFillColors: [shiftHueOfColor(base, offset), shiftHueOfColor(base, offset + 24)],
+    progressFillGradientAngle: ga,
+  };
+}
+
 export function shiftDiagramThemePropertiesColors(
   properties: ThemeProperties,
   degrees: number
@@ -1876,6 +1927,10 @@ class ThemeManager {
         });
         node.chart = { ...chart, series };
       }
+    }
+
+    if (isProgressBarNodeType((updated as DiagramNodeData).type)) {
+      Object.assign(updated, progressBarPaletteFromTheme(properties, colorProps));
     }
 
     return syncClosedConnectorLineBorderWidth(updated as DiagramNodeData) as typeof updated;

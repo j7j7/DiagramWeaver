@@ -74,6 +74,45 @@ function ChartPaletteLineGlyph(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+/** Horizontal progress bar: muted track + saturated fill segment (resources palette). */
+function PaletteProgressBarGlyph(props: React.SVGProps<SVGSVGElement>) {
+  const clipId = React.useId().replace(/:/g, "");
+  const outlineW = (() => {
+    const w = props.strokeWidth;
+    if (w === undefined || w === null || w === "") return 1.2;
+    const n = typeof w === "number" ? w : Number(w);
+    return Number.isFinite(n) ? n : 1.2;
+  })();
+  const clipUrl = `url(#dw-pb-clip-${clipId})`;
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden {...props}>
+      <defs>
+        <clipPath id={`dw-pb-clip-${clipId}`}>
+          <rect x="2.5" y="8" width="19" height="8" rx="3" ry="3" />
+        </clipPath>
+      </defs>
+      <g clipPath={clipUrl}>
+        {/* Unfilled track */}
+        <rect x="2.5" y="8" width="19" height="8" fill="currentColor" opacity={0.2} />
+        {/* Filled portion (~58%) */}
+        <rect x="2.5" y="8" width="11" height="8" fill="currentColor" opacity={0.92} />
+      </g>
+      <rect
+        x="2.5"
+        y="8"
+        width="19"
+        height="8"
+        rx="3"
+        ry="3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={outlineW}
+        opacity={0.85}
+      />
+    </svg>
+  );
+}
+
 interface ResourceIconProps extends React.SVGProps<SVGSVGElement> {
   type: string; // Format: provider.category.resourcename (e.g., aws.compute.ec2)
   imagePath?: string; // If provided, use this exact icon path (legacy support)
@@ -348,7 +387,7 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
   // Handle shape types (exclude icon/emoji - those use Lucide/emoji above)
   if (!type.startsWith('generic.icon.') && !type.startsWith('generic.emoji.') &&
       (type.startsWith('generic.object.') || type?.endsWith('.square') || type?.endsWith('.circle') ||
-      type?.endsWith('.point') || type?.endsWith('.rectangle') || type?.endsWith('.rounded-rectangle') || type?.endsWith('.text-box-heading') || type?.endsWith('.triangle') ||
+      type?.endsWith('.point') || type?.endsWith('.rectangle') || type?.endsWith('.rounded-rectangle') || type?.endsWith('.progress-bar') || type?.endsWith('.text-box-heading') || type?.endsWith('.triangle') ||
       type?.endsWith('.star') || type?.endsWith('.cloud') || type?.endsWith('.parallelogram') ||
       type?.endsWith('.trapezoid') || type?.endsWith('.kite') || type?.endsWith('.hexagon') ||
       type?.endsWith('.pentagon') || type?.endsWith('.octagon') || type?.endsWith('.jigsaw') ||
@@ -401,6 +440,8 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
             <rect x="4" y="6" width="16" height="12" rx="2" ry="2" />
           </svg>
         );
+      case 'progress-bar':
+        return <PaletteProgressBarGlyph {...props} />;
       case 'text-box-heading':
         return (
           <svg

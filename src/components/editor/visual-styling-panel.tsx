@@ -237,13 +237,15 @@ interface VisualStylingPanelProps {
   showFullStyling?: boolean;
   /** When true, hides Size control - shapes */
   isShape?: boolean;
-  /** When true, shows corner radius control (rounded-rectangle only) */
+  /** When true, shows corner radius control (rounded-rectangle & progress-bar) */
   isRoundedRectangle?: boolean;
+  /** When true, shows progress fill/track controls */
+  isProgressBar?: boolean;
   /** When true, shows heading strip color (text-box-heading only) */
   isTextBoxHeading?: boolean;
 }
 
-export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, isTextBoxHeading = false }: VisualStylingPanelProps) {
+export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styling, onStylingChange, onReset, onClose, selectedItemIds, tag, tagPosition, onTagChange, onTagPositionChange, isLucideIcon = false, showRemoveBackground = false, noIconBackground = false, showFullStyling = true, isShape = false, isRoundedRectangle = false, isProgressBar = false, isTextBoxHeading = false }: VisualStylingPanelProps) {
   const [position, setPosition] = useState({ x: 200, y: 100 });
   const [isMounted, setIsMounted] = useState(false);
   const nodeRef = useRef(null);
@@ -718,7 +720,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                     handlePropertyChange={handlePropertyChange}
                     onStylingChange={onStylingChange}
                   />
-                  {isRoundedRectangle && (
+                  {(isRoundedRectangle || isProgressBar) && (
                     <div className="flex items-center justify-between gap-2">
                       <Label className="text-sm text-muted-foreground">Corner radius</Label>
                       <Input
@@ -726,13 +728,175 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                         min={0}
                         max={1}
                         step={0.1}
-                        value={styling.cornerRadius ?? 0.2}
+                        value={styling.cornerRadius ?? (isProgressBar ? 0.35 : 0.2)}
                         onChange={(e) => {
                           const n = parseFloat(e.target.value);
                           if (!isNaN(n)) handlePropertyChange('cornerRadius', Math.min(1, Math.max(0, n)));
                         }}
                         className="h-9 w-16 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
+                    </div>
+                  )}
+                  {isProgressBar && (
+                    <div className="space-y-3 border-t border-purple-200/50 pt-3">
+                      <Label className="text-sm font-medium text-foreground">Progress bar</Label>
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <Label className="text-sm text-muted-foreground">Fill amount</Label>
+                          <span className="tabular-nums text-xs text-muted-foreground w-12 text-right">
+                            {Math.round(styling.progressPercent ?? 62)}%
+                          </span>
+                        </div>
+                        <Slider
+                          min={0}
+                          max={100}
+                          step={1}
+                          value={[Math.round(styling.progressPercent ?? 62)]}
+                          onValueChange={([v]) => handlePropertyChange('progressPercent', v, true)}
+                          className="flex-1"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <Label className="text-sm text-muted-foreground">Show percent label</Label>
+                        <Switch
+                          checked={styling.progressShowPercent !== false}
+                          onCheckedChange={(checked) => handlePropertyChange('progressShowPercent', checked, true)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-sm text-muted-foreground">Track (unfilled)</Label>
+                        <Select
+                          value={styling.progressTrackStyle === 'gradient' ? 'gradient' : 'solid'}
+                          onValueChange={(v) =>
+                            handlePropertyChange('progressTrackStyle', v === 'gradient' ? 'gradient' : 'solid', true)
+                          }
+                        >
+                          <SelectTrigger className="h-9 text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="z-[70]">
+                            <SelectItem value="solid" className="text-sm">Solid</SelectItem>
+                            <SelectItem value="gradient" className="text-sm">Gradient</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {styling.progressTrackStyle === 'gradient' ? (
+                          <div className="grid grid-cols-2 gap-2 pt-1">
+                            <div className="flex flex-col gap-2">
+                              <Label className="text-xs text-muted-foreground">Start</Label>
+                              <ColorPicker
+                                value={styling.progressTrackColors?.[0] || '#e5e7eb'}
+                                onChange={(value) => {
+                                  const c = styling.progressTrackColors || ['#e5e7eb', '#d1d5db'];
+                                  handlePropertyChange('progressTrackColors', [value, c[1]], true);
+                                }}
+                                placeholder="#e5e7eb"
+                                showAlpha={true}
+                                allowTransparent={true}
+                              />
+                            </div>
+                            <div className="flex flex-col gap-2">
+                              <Label className="text-xs text-muted-foreground">End</Label>
+                              <ColorPicker
+                                value={styling.progressTrackColors?.[1] || '#d1d5db'}
+                                onChange={(value) => {
+                                  const c = styling.progressTrackColors || ['#e5e7eb', '#d1d5db'];
+                                  handlePropertyChange('progressTrackColors', [c[0], value], true);
+                                }}
+                                placeholder="#d1d5db"
+                                showAlpha={true}
+                                allowTransparent={true}
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="pt-1">
+                            <ColorPicker
+                              value={styling.progressTrackColors?.[0] || '#e5e7eb'}
+                              onChange={(value) => handlePropertyChange('progressTrackColors', [value], true)}
+                              placeholder="#e5e7eb"
+                              showAlpha={true}
+                              allowTransparent={true}
+                            />
+                          </div>
+                        )}
+                        {styling.progressTrackStyle === 'gradient' ? (
+                          <div className="pt-1">
+                            <Label className="text-xs text-muted-foreground">Track gradient angle</Label>
+                            <GradientAnglePicker
+                              label=""
+                              value={styling.progressTrackGradientAngle ?? 90}
+                              onChange={(a) => handlePropertyChange('progressTrackGradientAngle', a, true)}
+                            />
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-sm text-muted-foreground">Fill (complete)</Label>
+                        <Select
+                          value={styling.progressFillStyle === 'solid' ? 'solid' : 'gradient'}
+                          onValueChange={(v) =>
+                            handlePropertyChange('progressFillStyle', v === 'solid' ? 'solid' : 'gradient', true)
+                          }
+                        >
+                          <SelectTrigger className="h-9 text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="z-[70]">
+                            <SelectItem value="solid" className="text-sm">Solid</SelectItem>
+                            <SelectItem value="gradient" className="text-sm">Gradient</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {styling.progressFillStyle === 'gradient' ? (
+                          <div className="grid grid-cols-2 gap-2 pt-1">
+                            <div className="flex flex-col gap-2">
+                              <Label className="text-xs text-muted-foreground">Start</Label>
+                              <ColorPicker
+                                value={styling.progressFillColors?.[0] || '#22c55e'}
+                                onChange={(value) => {
+                                  const c = styling.progressFillColors || ['#22c55e', '#15803d'];
+                                  handlePropertyChange('progressFillColors', [value, c[1]], true);
+                                }}
+                                placeholder="#22c55e"
+                                showAlpha={true}
+                                allowTransparent={true}
+                              />
+                            </div>
+                            <div className="flex flex-col gap-2">
+                              <Label className="text-xs text-muted-foreground">End</Label>
+                              <ColorPicker
+                                value={styling.progressFillColors?.[1] || '#15803d'}
+                                onChange={(value) => {
+                                  const c = styling.progressFillColors || ['#22c55e', '#15803d'];
+                                  handlePropertyChange('progressFillColors', [c[0], value], true);
+                                }}
+                                placeholder="#15803d"
+                                showAlpha={true}
+                                allowTransparent={true}
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="pt-1">
+                            <ColorPicker
+                              value={styling.progressFillColors?.[0] || '#22c55e'}
+                              onChange={(value) => handlePropertyChange('progressFillColors', [value], true)}
+                              placeholder="#22c55e"
+                              showAlpha={true}
+                              allowTransparent={true}
+                            />
+                          </div>
+                        )}
+                        {styling.progressFillStyle === 'gradient' ? (
+                          <div className="pt-1">
+                            <Label className="text-xs text-muted-foreground">Fill gradient angle</Label>
+                            <GradientAnglePicker
+                              label=""
+                              value={styling.progressFillGradientAngle ?? 90}
+                              onChange={(a) => handlePropertyChange('progressFillGradientAngle', a, true)}
+                            />
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
                   )}
                   {isTextBoxHeading && (

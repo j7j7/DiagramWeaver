@@ -29,7 +29,16 @@ export interface VisualStyling {
   highlightAnimMode?: 'constant' | 'pulse';
   borderWidth?: number; // Border thickness
   roundedEdges?: boolean; // Whether to apply rounded edges to shapes
-  cornerRadius?: number; // Rounded-rectangle only: 0=straight, 1=full pill
+  cornerRadius?: number; // Rounded-rectangle & progress-bar only: 0=straight, 1=full pill
+  /** Progress bar: 0–100 */
+  progressPercent?: number;
+  progressShowPercent?: boolean;
+  progressTrackStyle?: 'solid' | 'gradient';
+  progressTrackColors?: string[];
+  progressTrackGradientAngle?: number;
+  progressFillStyle?: 'solid' | 'gradient';
+  progressFillColors?: string[];
+  progressFillGradientAngle?: number;
   /** Text box with heading: fill color for the heading strip */
   headingBackgroundColor?: string;
   /** Text box with heading: `gradient` = fade to transparent; `solid` = flat fill */
@@ -234,6 +243,14 @@ export function extractVisualStylingFromNode(node: DiagramNodeData | DiagramNode
     borderWidth: node.borderWidth,
     roundedEdges: (node as any).roundedEdges,
     cornerRadius: (node as any).cornerRadius,
+    progressPercent: (node as any).progressPercent,
+    progressShowPercent: (node as any).progressShowPercent,
+    progressTrackStyle: (node as any).progressTrackStyle,
+    progressTrackColors: (node as any).progressTrackColors,
+    progressTrackGradientAngle: (node as any).progressTrackGradientAngle,
+    progressFillStyle: (node as any).progressFillStyle,
+    progressFillColors: (node as any).progressFillColors,
+    progressFillGradientAngle: (node as any).progressFillGradientAngle,
     headingBackgroundColor: (node as any).headingBackgroundColor,
     headingBackgroundStyle: (node as any).headingBackgroundStyle,
     frostedDiffusion: (node as any).frostedDiffusion,
@@ -310,6 +327,25 @@ export function applyVisualStylingToNode(
     borderWidth: styling.borderWidth ?? node.borderWidth,
     roundedEdges: styling.roundedEdges ?? (node as any).roundedEdges,
     cornerRadius: styling.cornerRadius !== undefined ? styling.cornerRadius : (node as any).cornerRadius,
+    progressPercent: styling.progressPercent !== undefined ? styling.progressPercent : (node as any).progressPercent,
+    progressShowPercent:
+      styling.progressShowPercent !== undefined ? styling.progressShowPercent : (node as any).progressShowPercent,
+    progressTrackStyle:
+      styling.progressTrackStyle !== undefined ? styling.progressTrackStyle : (node as any).progressTrackStyle,
+    progressTrackColors:
+      styling.progressTrackColors !== undefined ? styling.progressTrackColors : (node as any).progressTrackColors,
+    progressTrackGradientAngle:
+      styling.progressTrackGradientAngle !== undefined
+        ? styling.progressTrackGradientAngle
+        : (node as any).progressTrackGradientAngle,
+    progressFillStyle:
+      styling.progressFillStyle !== undefined ? styling.progressFillStyle : (node as any).progressFillStyle,
+    progressFillColors:
+      styling.progressFillColors !== undefined ? styling.progressFillColors : (node as any).progressFillColors,
+    progressFillGradientAngle:
+      styling.progressFillGradientAngle !== undefined
+        ? styling.progressFillGradientAngle
+        : (node as any).progressFillGradientAngle,
     headingBackgroundColor:
       styling.headingBackgroundColor !== undefined ? styling.headingBackgroundColor : (node as any).headingBackgroundColor,
     headingBackgroundStyle:

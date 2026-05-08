@@ -47,6 +47,7 @@ import {
   PieChartShape,
   BarChartShape,
   LineChartShape,
+  ProgressBarShape,
 } from "./shapes";
 import {
   SlideShapeShadowTransitionProvider,
@@ -232,6 +233,23 @@ interface DiagramNodeProps {
   connectorLineFocusedVertexIndex?: number | null;
 }
 
+function isProgressBarType(t: string | undefined): boolean {
+  return t === "generic.object.progress-bar" || !!t?.endsWith(".progress-bar");
+}
+
+function progressBarMemoPayload(n: Record<string, unknown>): string {
+  return JSON.stringify([
+    n.progressPercent,
+    n.progressShowPercent,
+    n.progressTrackStyle,
+    n.progressTrackColors,
+    n.progressTrackGradientAngle,
+    n.progressFillStyle,
+    n.progressFillColors,
+    n.progressFillGradientAngle,
+  ]);
+}
+
 function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps): boolean {
   if (prev.node !== next.node) {
     const p = prev.node;
@@ -260,6 +278,9 @@ function areDiagramNodePropsEqual(prev: DiagramNodeProps, next: DiagramNodeProps
     const pUml = (p as any).umlClass;
     const nUml = (n as any).umlClass;
     if (JSON.stringify(pUml) !== JSON.stringify(nUml)) return false;
+    const pProg = isProgressBarType(p.type) ? progressBarMemoPayload(p as any) : '';
+    const nProg = isProgressBarType(n.type) ? progressBarMemoPayload(n as any) : '';
+    if (pProg !== nProg) return false;
     const pLine = p as any;
     const nLine = n as any;
     if (pLine.startPos && nLine.startPos) {
@@ -629,6 +650,22 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
         ? { ...visualNode, cornerRadius: localCornerRadius }
         : visualNode;
       return <RoundedRectangleShape {...shapeProps} node={roundedNode} />;
+    } else if (nodeType === 'generic.object.progress-bar' || nodeType?.endsWith('.progress-bar')) {
+      return (
+        <ProgressBarShape
+          {...shapeProps}
+          isReadOnly={isReadOnly}
+          onPatch={onUpdate ? (patch) => onUpdate({ ...node, ...patch }) : undefined}
+          onProgressDragSessionChange={
+            !isReadOnly
+              ? (active) => {
+                  chartValueDragInteractionRef.current = active;
+                  onChartValueDragSessionChange?.(active);
+                }
+              : undefined
+          }
+        />
+      );
     } else if (nodeType === 'generic.object.text-box-heading' || nodeType?.endsWith('.text-box-heading')) {
       const roundedNode = isDraggingCornerRadius && localCornerRadius !== null
         ? { ...visualNode, cornerRadius: localCornerRadius }
@@ -1825,7 +1862,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
     if (
       rawTarget instanceof Element &&
       rawTarget.closest(
-        "[data-dw-line-chart-point-handle], [data-dw-bar-cell-value-handle], [data-dw-pie-slice-value-handle], [data-dw-line-vertex-handle], .dw-connect-handle, .dw-rotation-handle, .dw-corner-radius-handle, [data-handle], .dw-resize-handle",
+        "[data-dw-line-chart-point-handle], [data-dw-bar-cell-value-handle], [data-dw-pie-slice-value-handle], [data-dw-progress-bar-drag], [data-dw-line-vertex-handle], .dw-connect-handle, .dw-rotation-handle, .dw-corner-radius-handle, [data-handle], .dw-resize-handle",
       )
     ) {
       return;
@@ -2060,7 +2097,7 @@ function DiagramNodeInner({ node, isSelected, isTargetable, isHighlighted, isMul
         if (
           rawTarget instanceof Element &&
           rawTarget.closest(
-            "[data-dw-line-chart-point-handle], [data-dw-bar-cell-value-handle], [data-dw-pie-slice-value-handle]"
+            "[data-dw-line-chart-point-handle], [data-dw-bar-cell-value-handle], [data-dw-pie-slice-value-handle], [data-dw-progress-bar-drag]"
           )
         ) {
           e.preventDefault();

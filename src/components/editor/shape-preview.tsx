@@ -1713,6 +1713,77 @@ export function ShapePreview({
       );
     }
 
+    // Progress bar (filled track preview)
+    if (type === 'generic.object.progress-bar' || type?.endsWith('.progress-bar')) {
+      const cr = Math.max(0, Math.min(1, cornerRadius));
+      const sw = borderStyle === 'none' ? 0 : strokeWidth;
+      const iw = Math.max(0, displayWidth - sw);
+      const ih = Math.max(0, displayHeight - sw);
+      const hx = sw / 2;
+      const hy = sw / 2;
+      const radius = cr * Math.min(iw, ih) * 0.5;
+      const pct = 0.62;
+      const fillWidth = iw * pct;
+      const cid = gradientId.replace(/:/g, '');
+      const trackG = `${cid}-dw-pbt`;
+      const fillG = `${cid}-dw-pbf`;
+      const ln = getGradientCoordinates(90);
+      return (
+        <svg {...commonSvgProps}>
+          <defs>
+            {borderStyle === 'gradient' && (
+              <linearGradient id={borderGradientId} x1={borderCoords.x1} y1={borderCoords.y1} x2={borderCoords.x2} y2={borderCoords.y2}>
+                <stop offset="0%" stopColor={borderColorArray[0]} />
+                <stop offset="100%" stopColor={borderColorArray[1]} />
+              </linearGradient>
+            )}
+            <linearGradient id={trackG} x1={ln.x1} y1={ln.y1} x2={ln.x2} y2={ln.y2}>
+              <stop offset="0%" stopColor="#e5e7eb" />
+              <stop offset="100%" stopColor="#d4d4d8" />
+            </linearGradient>
+            <linearGradient id={fillG} x1={ln.x1} y1={ln.y1} x2={ln.x2} y2={ln.y2}>
+              <stop offset="0%" stopColor="#22c55e" />
+              <stop offset="100%" stopColor="#15803d" />
+            </linearGradient>
+            <clipPath id={`${cid}-dw-pbc`}>
+              <rect x={hx} y={hy} width={iw} height={ih} rx={radius} ry={radius} />
+            </clipPath>
+          </defs>
+          <g clipPath={`url(#${cid}-dw-pbc)`}>
+            <rect x={hx} y={hy} width={iw} height={ih} rx={radius} ry={radius} fill={`url(#${trackG})`} />
+            {fillWidth > 0 ? (
+              <rect x={hx} y={hy} width={fillWidth} height={ih} rx={radius} ry={radius} fill={`url(#${fillG})`} />
+            ) : null}
+          </g>
+          {sw > 0 ? (
+            <rect
+              x={hx}
+              y={hy}
+              width={iw}
+              height={ih}
+              rx={radius}
+              ry={radius}
+              fill="none"
+              stroke={borderStyle === 'gradient' ? `url(#${borderGradientId})` : borderStyle === 'none' ? 'transparent' : effectiveBorderColor}
+              strokeWidth={sw}
+              strokeDasharray={borderStyle === 'dotted' ? '3,3' : undefined}
+            />
+          ) : null}
+          <text
+            x={(hx + iw / 2) as number}
+            y={(hy + ih / 2) as number}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill={textColor}
+            fontSize={Math.min(11, ih * 0.42)}
+            fontWeight={600}
+          >
+            62%
+          </text>
+        </svg>
+      );
+    }
+
     // Text box with heading (rounded body + top heading strip)
     if (type === 'generic.object.text-box-heading' || type?.endsWith('.text-box-heading')) {
       const coords = getGradientCoordinates(gradientAngle);

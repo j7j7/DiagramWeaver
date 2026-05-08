@@ -3,6 +3,21 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-08 – Progress bar palette glyph (resources list)
+**`resource-icon`** **`PaletteProgressBarGlyph`**: two-tone bar under rounded **`clipUrl`** (**`url(#dw-pb-clip-…)`** on **`<g>`**; light full track + darker **~58%** fill) plus outline (**`strokeWidth`** coerced safely). Patch bumped.
+
+### 2026-05-08 – Theme apply: progress bar track + shifted fill hues
+**`theme-manager.applyThemeToItem`**: for **`generic.object.progress-bar`**, after normal theme fields, sets **`progressTrack*`** from theme **background** (**`colorProps`**, so multi-select hue steps apply) and **`progressFill*`** as gradients with **+42°** hue shift (solid/frosted/`none`/`gradient` background modes each mapped). Patch bumped.
+
+### 2026-05-08 – Progress bar: value drag only on fill/track divider
+ **`ProgressBarShape`**: root **`<svg>`** **`pointer-events: none`**; **narrow transparent thumb** (**`pointer-events: auto`**) sits on the **boundary** between filled and track sections (`data-dw-progress-bar-drag`); rest of bar passes clicks through so **canvas move / selection** behaves like other shapes. **`SvgShapeBase`**: optional **`svgPointerEvents`**. Patch bumped.
+
+### 2026-05-08 – **`generic.object.progress-bar`** shape object
+Rounded bar with **corner radius**, **drag-to-set percent** (**`progressPercent`** 0–100, **`data-dw-progress-bar-drag`**), **`progressShowPercent`**, **`textPosition` / `textVerticalPosition`** for the **title** (rich label), **dual fills**: **`progressTrack*`** (track) and **`progressFill*`** (filled portion), each **solid | gradient** + **`progress*GradientAngle`**. **`Visual Styling`** adds a **Progress bar** section (**`progressPercent`** slider, toggle, colors, angles); **corner radius** shared with rounded-rectangle. Palette: **`public/resources/resource-generic.json`** (**Progress bar**) + **`public/resources/generic/object/progress-bar.png`**. Implements **`progress-bar.tsx`**, **`ShapeText`** stacking when centered title + percent, **`slide-visual-color`** crossfade when track/fill gradients. Patch bumped.
+
+### 2026-05-08 – Timeline shape: planning doc (`timelineobject.md`)
+New composite shape **planned**: **`generic.object.timeline`** — spine reusing connector-line geometry, **N** entry cards, **per-entry** visual/text editing via sub-selection. **`timelineobject.md`**: **even** mode recomputes spacing along the path when spine **start/end** or interior geometry changes; **manual** keeps stored per-entry **`t`** on reshape (“Redistribute evenly” optional). Not implemented yet.
+
 ### 2026-05-02 – Connector line: SVG path click/context menu lacked `data-node-id` wiring
 **`editor-canvas`**: **`onDiagramNodeClickStable`** / **`onDiagramNodeContextMenuStable`** read **`data-node-id`** **`from`** **`currentTarget`**; **`LineShape`** / **`LoopShape`** **`<path>`** targets have none, so **`line`** never selected (no vertex handles) and right-click **`return`** **`ed`** **`early`**. **`LineShape`** **`already`** **`passes`** **`(e`** **`,` **`node)`** **`—`** **`optional`** **`nodeHint`** **on** **`Stable`** **`+`** **`id`** **`from`** **`DOM`** **`(`**`**`closest`****`)`** **first** **`then`** **`fallback`** **`hint`** **`+`** **`ref`** **`/`** **`hint`** **`resolution`**. **`Loop`** **`path`** **`events`** **`inherit`** **`the`** **`same`** **`handler`**. Patch bumped.
 

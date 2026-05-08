@@ -206,7 +206,15 @@ export const DiagramNodeDataSchema = z.object({
   freeflow: z.boolean().optional(), // If true, node can be placed anywhere without joining groups/zones
   ignoreConnectionAvoidance: z.boolean().optional(), // Orthogonal connectors may cross this shape
   borderWidth: z.number().optional(), // Border thickness for shapes
-  cornerRadius: z.number().min(0).max(1).optional(), // Rounded-rectangle only: 0=straight, 1=full round
+  cornerRadius: z.number().min(0).max(1).optional(), // Rounded-rectangle / progress-bar: 0=straight, 1=full round
+  progressPercent: z.number().min(0).max(100).optional(),
+  progressShowPercent: z.boolean().optional(),
+  progressTrackStyle: z.enum(['solid', 'gradient']).optional(),
+  progressTrackColors: z.array(z.string()).optional(),
+  progressTrackGradientAngle: z.number().optional(),
+  progressFillStyle: z.enum(['solid', 'gradient']).optional(),
+  progressFillColors: z.array(z.string()).optional(),
+  progressFillGradientAngle: z.number().optional(),
   headingEdge: z.enum(['top', 'bottom', 'left', 'right']).optional(),
   headingLabel: z.string().optional(),
   richHeadingLabel: z.array(RichTextRunSchema).optional(),
@@ -572,7 +580,15 @@ export const DiagramNodeItemSchema = z.object({
   freeflow: z.boolean().optional(), // If true, node can be placed anywhere without joining groups/zones
   ignoreConnectionAvoidance: z.boolean().optional(), // Orthogonal connectors may cross this shape
   borderWidth: z.number().optional(), // Border thickness for shapes
-  cornerRadius: z.number().min(0).max(1).optional(), // Rounded-rectangle only: 0=straight, 1=full round
+  cornerRadius: z.number().min(0).max(1).optional(), // Rounded-rectangle / progress-bar: 0=straight, 1=full round
+  progressPercent: z.number().min(0).max(100).optional(),
+  progressShowPercent: z.boolean().optional(),
+  progressTrackStyle: z.enum(['solid', 'gradient']).optional(),
+  progressTrackColors: z.array(z.string()).optional(),
+  progressTrackGradientAngle: z.number().optional(),
+  progressFillStyle: z.enum(['solid', 'gradient']).optional(),
+  progressFillColors: z.array(z.string()).optional(),
+  progressFillGradientAngle: z.number().optional(),
   headingEdge: z.enum(['top', 'bottom', 'left', 'right']).optional(),
   headingLabel: z.string().optional(),
   richHeadingLabel: z.array(RichTextRunSchema).optional(),

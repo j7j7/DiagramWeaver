@@ -19,6 +19,10 @@ const VISUAL_COLOR_KEYS = [
   'iconColor',
   'lineColor',
   'highlightAnimGlowColor',
+  'progressTrackStyle',
+  'progressTrackColors',
+  'progressFillStyle',
+  'progressFillColors',
 ] as const;
 
 /** Fields that affect solid/gradient fills and strokes for slide thumbnail / transition. */
@@ -46,6 +50,19 @@ export function visualColorSignature(node: DiagramNodeData): string {
  */
 export function diagramNodeVisualStylingSignature(node: DiagramNodeData): string {
   const x = node as unknown as Record<string, unknown>;
+  const progressSig =
+    typeof node.type === 'string' && (node.type === 'generic.object.progress-bar' || node.type.endsWith('.progress-bar'))
+      ? [
+          x.progressPercent,
+          x.progressShowPercent,
+          x.progressTrackStyle,
+          x.progressTrackColors,
+          x.progressTrackGradientAngle,
+          x.progressFillStyle,
+          x.progressFillColors,
+          x.progressFillGradientAngle,
+        ].join('|')
+      : '';
   return [
     visualColorSignature(node),
     x.borderWidth,
@@ -55,12 +72,19 @@ export function diagramNodeVisualStylingSignature(node: DiagramNodeData): string
     x.nodeSize,
     x.noIconBackground,
     x.highlightAnimGlowIntensity,
+    progressSig,
   ].join('\0');
 }
 
 /** True when fill/border uses gradient paint — CSS cannot blend gradient strings; use opacity crossfade instead. */
 function hasGradientPaint(f: Record<string, unknown>): boolean {
-  return f.backgroundStyle === 'gradient' || f.borderStyle === 'gradient' || f.backgroundStyle === 'frosted';
+  return (
+    f.backgroundStyle === 'gradient' ||
+    f.borderStyle === 'gradient' ||
+    f.backgroundStyle === 'frosted' ||
+    f.progressTrackStyle === 'gradient' ||
+    f.progressFillStyle === 'gradient'
+  );
 }
 
 /**

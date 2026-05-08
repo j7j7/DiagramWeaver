@@ -1,7 +1,7 @@
 {
   "name": "Generic",
   "icon": "generic.png",
-  "totalResources": 34,
+  "totalResources": 35,
   "categories": {
     "text": {
       "name": "Text",
@@ -71,6 +71,11 @@
         {
           "name": "Rounded Rectangle",
           "file": "rounded-rectangle.png",
+          "type": "shape"
+        },
+        {
+          "name": "Progress bar",
+          "file": "progress-bar.png",
           "type": "shape"
         },
         {
