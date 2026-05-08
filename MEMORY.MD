@@ -3,6 +3,12 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-08 – Progress bar sidebar tile: `DraggableResourceItem` used PNG over `ResourceIcon`
+**`draggable-resource-item`**: **`progress-bar`** added next to **cloud** / charts — **`ResourceIcon`** **`generic.object.progress-bar`** instead of **`iconPath`** **`<img>`** (**`progress-bar.png`**), which bypassed **`PaletteProgressBarGlyph`**. Patch bumped.
+
+### 2026-05-08 – Progress bar resource icon: vector glyph vs catalog PNG
+**`resource-icon`**: **`progress-bar`** skips catalog **`progress-bar.png`** (**`setResourceFile(null)`** + **`iconPath`** **`null`** via **`isProgressBarPaletteVectorType`**, same idea as **text-box-heading**) so the resources grid shows **`PaletteProgressBarGlyph`** (light **track** + solid **~52%** **fill** + **outline**) instead of the hollow PNG. Patch bumped.
+
 ### 2026-05-08 – Visual Styling: preset select trigger fits two-line labels
 **`visual-styling-panel`** **Preset** **`SelectTrigger`**: **`h-auto`** / **`min-h-9`**, **`items-start`**, and **`[&>span]:line-clamp-none`** so preset **name + description** are not clipped by fixed **`h-9`** + default **`line-clamp-1`** on **`SelectValue`**. Patch bumped.
 

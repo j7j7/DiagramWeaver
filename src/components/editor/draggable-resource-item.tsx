@@ -151,6 +151,7 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
   const isBarChartPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'bar-chart';
   const isLineChartPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'line-chart';
   const isCloudPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'cloud';
+  const isProgressBarPalette = provider === 'generic' && category === 'object' && derivedPaletteSlug === 'progress-bar';
 
   const dragWrapper = (
     <div
@@ -183,6 +184,8 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
                     <ResourceIcon type="generic.chart.line" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
                   ) : isCloudPalette ? (
                     <ResourceIcon type="generic.object.cloud" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
+                  ) : isProgressBarPalette ? (
+                    <ResourceIcon type="generic.object.progress-bar" width={48} height={48} className="max-h-[90%] max-w-[90%] shrink-0 object-contain" />
                   ) : !imageError && iconPath ? (
                     <img
                       src={iconPath}
@@ -220,6 +223,8 @@ function DraggableResourceItemInner({ resource, provider, category, icon, onClic
                     <ResourceIcon type="generic.chart.line" width={24} height={24} className="shrink-0" />
                   ) : isCloudPalette ? (
                     <ResourceIcon type="generic.object.cloud" width={24} height={24} className="shrink-0" />
+                  ) : isProgressBarPalette ? (
+                    <ResourceIcon type="generic.object.progress-bar" width={24} height={24} className="shrink-0" />
                   ) : !imageError && iconPath ? (
                     <img
                       src={iconPath}

@@ -17,6 +17,13 @@ function isTextBoxHeadingRuntimeType(type: string | undefined): boolean {
   return t === "generic.object.text-box-heading" || t.endsWith(".text-box-heading");
 }
 
+/** Catalog `progress-bar.png` is a flat placeholder; palette uses `PaletteProgressBarGlyph` (filled + empty segments). */
+function isProgressBarPaletteVectorType(type: string | undefined): boolean {
+  if (!type || typeof type !== "string") return false;
+  const t = type.trim().toLowerCase().replace(/\u2011/g, "-");
+  return t === "generic.object.progress-bar" || t.endsWith(".progress-bar");
+}
+
 /** Vector thumbnails for chart nodes (palette, sidebar); wedges / bars read as charts at small sizes. */
 function ChartPalettePieGlyph(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -92,10 +99,10 @@ function PaletteProgressBarGlyph(props: React.SVGProps<SVGSVGElement>) {
         </clipPath>
       </defs>
       <g clipPath={clipUrl}>
-        {/* Unfilled track */}
-        <rect x="2.5" y="8" width="19" height="8" fill="currentColor" opacity={0.2} />
-        {/* Filled portion (~58%) */}
-        <rect x="2.5" y="8" width="11" height="8" fill="currentColor" opacity={0.92} />
+        {/* Empty / track segment (full bar, light) */}
+        <rect x="2.5" y="8" width="19" height="8" fill="currentColor" opacity={0.14} />
+        {/* Filled segment (~52% — reads clearly at 24×24) */}
+        <rect x="2.5" y="8" width="9.9" height="8" fill="currentColor" opacity={1} />
       </g>
       <rect
         x="2.5"
@@ -219,8 +226,8 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
 
           if (categoryData?.resources) {
             if (resource?.file) {
-              // Always use vector preview for this shape; PNG lives under generic/text, not generic/object
-              if (resourceName === "text-box-heading") {
+              // Always use vector preview; catalog PNGs are placeholders vs on-canvas / palette glyphs
+              if (resourceName === "text-box-heading" || resourceName === "progress-bar") {
                 setResourceFile(null);
               } else {
                 setResourceFile(resource.file);
@@ -250,6 +257,9 @@ export function ResourceIcon({ type, imagePath, provider, category, file, iconTy
 
   const iconPath = useMemo(() => {
     if (isTextBoxHeadingRuntimeType(type)) {
+      return null;
+    }
+    if (isProgressBarPaletteVectorType(type)) {
       return null;
     }
     if (isPaletteVectorCloudType(type)) {
