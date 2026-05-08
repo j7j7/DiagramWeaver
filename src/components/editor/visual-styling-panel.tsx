@@ -15,11 +15,12 @@ import {
   HIGHLIGHT_ANIM_DEFAULT_INTERVAL_SEC,
   highlightGlowApproxHaloPx,
 } from "@/lib/highlight-anim";
-import { Palette, RotateCcw, X } from "lucide-react";
+import { ChevronDown, Palette, RotateCcw, X } from "lucide-react";
 import { GradientAnglePicker } from "./gradient-angle-picker";
 import { Slider } from "@/components/ui/slider";
-import Draggable from 'react-draggable';
+import Draggable from "react-draggable";
 import { cn } from "@/lib/utils";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 /** Spatial halo radius (blur size), distinct from RGBA opacity on the glow colour picker. */
 function HighlightGlowStrengthSlider({
@@ -218,6 +219,38 @@ function HighlightAnimEffectControls({
   );
 }
 
+function StylingAccordionSection(props: {
+  title: string;
+  dotClassName: string;
+  outerClassName: string;
+  defaultOpen?: boolean;
+  triggerExtra?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const { title, dotClassName, outerClassName, defaultOpen = true, triggerExtra, children } = props;
+  return (
+    <Collapsible defaultOpen={defaultOpen} className={cn("group min-w-0 rounded-md border", outerClassName)}>
+      <CollapsibleTrigger
+        type="button"
+        className="flex w-full items-start gap-2 rounded-md px-3 py-2.5 text-left outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      >
+        <ChevronDown
+          className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=closed]:-rotate-90"
+          aria-hidden
+        />
+        <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", dotClassName)} />
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5 text-left">
+          <span className="text-sm font-semibold text-foreground">{title}</span>
+          {triggerExtra}
+        </span>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="space-y-3 overflow-hidden border-t border-border/70 px-3 pb-3 pt-3">
+        {children}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
 interface VisualStylingPanelProps {
   styling: Partial<VisualStyling>;
   onStylingChange: (styling: Partial<VisualStyling>) => void;
@@ -341,32 +374,42 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
   // Find the closest predefined style for the current styling
   const currentPredefinedStyle = findClosestPredefinedStyle(styling as VisualStyling);
 
+  /** Progress bar: start with every section folded so the tall panel fits; remount grid when selection or PB-ness changes so defaults apply. */
+  const accordionDefaultOpen = !isProgressBar;
+  const accordionRemountKey = `${[...(selectedItemIds ?? new Set<string>())].sort().join("|")}-${isProgressBar ? "pb" : "std"}`;
+
   return (
     <Draggable
+      handle=".dw-visual-styling-drag-handle"
       nodeRef={nodeRef}
       position={position}
       onStop={(e, data) => {
         setPosition({ x: data.x, y: data.y });
       }}
     >
-      <div ref={nodeRef} className={`fixed top-20 left-20 z-50 bg-popover border border-border rounded-lg shadow-lg cursor-move ${showFullStyling ? 'w-[640px]' : 'w-[512px]'} max-w-[calc(100vw-2rem)]`}>
-        <div className="flex items-center justify-between px-5 py-4 border-b">
-          <div className="flex items-center gap-2">
-            <Palette className="w-5 h-5 text-blue-600" />
-            <h3 className="text-base font-semibold text-foreground">{isLucideIcon ? 'Icon Styling' : 'Visual Styling'}</h3>
+      <div
+        ref={nodeRef}
+        className={cn(
+          "fixed top-20 left-20 z-50 flex max-h-[min(75vh,calc(100vh-4rem))] flex-col overflow-hidden rounded-lg border border-border bg-popover shadow-lg",
+          showFullStyling ? "w-[640px]" : "w-[512px]",
+          "max-w-[calc(100vw-2rem)]",
+        )}
+      >
+        <div className="flex shrink-0 items-center justify-between border-b px-5 py-4">
+          <div className="dw-visual-styling-drag-handle flex min-w-0 flex-1 cursor-move items-center gap-2 select-none">
+            <Palette className="h-5 w-5 shrink-0 text-blue-600" />
+            <h3 className="truncate text-base font-semibold text-foreground">
+              {isLucideIcon ? "Icon Styling" : "Visual Styling"}
+            </h3>
           </div>
           {onClose && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              className="h-9 w-9 p-0"
-            >
-              <X className="w-4 h-4" />
+            <Button variant="ghost" size="sm" onClick={onClose} className="h-9 w-9 shrink-0 p-0">
+              <X className="h-4 w-4" />
             </Button>
           )}
         </div>
-        <div className="p-5 space-y-4">
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-5">
+          <div className="space-y-4">
           {(isLucideIcon || showRemoveBackground) && (
             <div className={`grid gap-4 ${isLucideIcon && showRemoveBackground ? 'grid-cols-2' : 'grid-cols-1'}`}>
               {isLucideIcon && (
@@ -435,13 +478,9 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
           )}
 
           {showFullStyling && (
-          <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+          <div key={accordionRemountKey} className="grid grid-cols-2 gap-x-8 gap-y-4">
             <div className="space-y-4 min-w-0">
-              <div className="bg-muted/50 rounded-md p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-2 h-2 bg-primary rounded-full shrink-0" />
-                  <Label className="text-sm font-semibold text-foreground">Preset</Label>
-                </div>
+              <StylingAccordionSection defaultOpen={accordionDefaultOpen} title="Preset" dotClassName="bg-primary" outerClassName="bg-muted/50 border-border">
                 <Select
                   value={currentPredefinedStyle || 'custom'}
                   onValueChange={(value) => {
@@ -451,7 +490,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                     handlePredefinedStyleChange(value as keyof typeof VISUAL_STYLES);
                   }}
                 >
-                  <SelectTrigger className="h-9 text-sm">
+                  <SelectTrigger className="h-auto min-h-9 items-start gap-2 py-2 text-sm [&>span]:line-clamp-none [&>span]:min-w-0 [&>span]:flex-1">
                     <SelectValue placeholder="Select preset" />
                   </SelectTrigger>
                   <SelectContent className="z-[70]">
@@ -466,13 +505,9 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                     <SelectItem value="custom" className="text-sm">Custom</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
+              </StylingAccordionSection>
 
-              <div className="bg-amber-50/50 rounded-md p-3 border border-amber-200/50">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-2 h-2 bg-amber-500 rounded-full shrink-0" />
-                  <Label className="text-sm font-semibold text-foreground">Border</Label>
-                </div>
+              <StylingAccordionSection defaultOpen={accordionDefaultOpen} title="Border" dotClassName="bg-amber-500" outerClassName="border-amber-200/50 bg-amber-50/50">
                 <div className="grid grid-cols-2 gap-2 mb-2">
                   <div className="space-y-1">
                     <Label className="text-sm text-muted-foreground">Style</Label>
@@ -559,13 +594,9 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                     )}
                   </div>
                 )}
-              </div>
+              </StylingAccordionSection>
 
-              <div className="bg-emerald-50/50 rounded-md p-3 border border-emerald-200/50">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-2 h-2 bg-emerald-500 rounded-full shrink-0" />
-                  <Label className="text-sm font-semibold text-foreground">Background</Label>
-                </div>
+              <StylingAccordionSection defaultOpen={accordionDefaultOpen} title="Background" dotClassName="bg-emerald-500" outerClassName="border-emerald-200/50 bg-emerald-50/50">
                 <div className="grid grid-cols-2 gap-2 mb-2">
                   <div className="space-y-1">
                     <Label className="text-sm text-muted-foreground">Style</Label>
@@ -691,16 +722,126 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                     )}
                   </div>
                 )}
-              </div>
+              </StylingAccordionSection>
+
+              {isProgressBar ? (
+                <StylingAccordionSection
+                  defaultOpen={accordionDefaultOpen}
+                  title="Progress bar"
+                  dotClassName="bg-sky-500"
+                  outerClassName="border-sky-200/50 bg-sky-50/50"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-sm text-muted-foreground">Corner radius</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={1}
+                      step={0.1}
+                      value={styling.cornerRadius ?? 0.35}
+                      onChange={(e) => {
+                        const n = parseFloat(e.target.value);
+                        if (!isNaN(n)) handlePropertyChange('cornerRadius', Math.min(1, Math.max(0, n)));
+                      }}
+                      className="h-9 w-16 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label className="text-sm text-muted-foreground">Fill amount</Label>
+                      <span className="w-12 text-right tabular-nums text-xs text-muted-foreground">
+                        {Math.round(styling.progressPercent ?? 62)}%
+                      </span>
+                    </div>
+                    <Slider
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={[Math.round(styling.progressPercent ?? 62)]}
+                      onValueChange={([v]) => handlePropertyChange('progressPercent', v, true)}
+                      className="flex-1"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-sm text-muted-foreground">Show percent label</Label>
+                    <Switch
+                      checked={styling.progressShowPercent !== false}
+                      onCheckedChange={(checked) => handlePropertyChange('progressShowPercent', checked, true)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-sm text-muted-foreground">Fill (complete)</Label>
+                    <Select
+                      value={styling.progressFillStyle === 'solid' ? 'solid' : 'gradient'}
+                      onValueChange={(v) =>
+                        handlePropertyChange('progressFillStyle', v === 'solid' ? 'solid' : 'gradient', true)
+                      }
+                    >
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="z-[70]">
+                        <SelectItem value="solid" className="text-sm">Solid</SelectItem>
+                        <SelectItem value="gradient" className="text-sm">Gradient</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {styling.progressFillStyle === 'gradient' ? (
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <div className="flex flex-col gap-2">
+                          <Label className="text-xs text-muted-foreground">Start</Label>
+                          <ColorPicker
+                            value={styling.progressFillColors?.[0] || '#22c55e'}
+                            onChange={(value) => {
+                              const c = styling.progressFillColors || ['#22c55e', '#15803d'];
+                              handlePropertyChange('progressFillColors', [value, c[1]], true);
+                            }}
+                            placeholder="#22c55e"
+                            showAlpha={true}
+                            allowTransparent={true}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <Label className="text-xs text-muted-foreground">End</Label>
+                          <ColorPicker
+                            value={styling.progressFillColors?.[1] || '#15803d'}
+                            onChange={(value) => {
+                              const c = styling.progressFillColors || ['#22c55e', '#15803d'];
+                              handlePropertyChange('progressFillColors', [c[0], value], true);
+                            }}
+                            placeholder="#15803d"
+                            showAlpha={true}
+                            allowTransparent={true}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="pt-1">
+                        <ColorPicker
+                          value={styling.progressFillColors?.[0] || '#22c55e'}
+                          onChange={(value) => handlePropertyChange('progressFillColors', [value], true)}
+                          placeholder="#22c55e"
+                          showAlpha={true}
+                          allowTransparent={true}
+                        />
+                      </div>
+                    )}
+                    {styling.progressFillStyle === 'gradient' ? (
+                      <div className="pt-1">
+                        <Label className="text-xs text-muted-foreground">Fill gradient angle</Label>
+                        <GradientAnglePicker
+                          label=""
+                          value={styling.progressFillGradientAngle ?? 90}
+                          onChange={(a) => handlePropertyChange('progressFillGradientAngle', a, true)}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                </StylingAccordionSection>
+              ) : null}
             </div>
 
             <div className="space-y-4 min-w-0 border-l border-border pl-8">
-              <div className="bg-purple-50/50 rounded-md p-3 border border-purple-200/50">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-2 h-2 bg-purple-500 rounded-full shrink-0" />
-                  <Label className="text-sm font-semibold text-foreground">Effects</Label>
-                </div>
-                <div className="space-y-3">
+              <StylingAccordionSection defaultOpen={accordionDefaultOpen} title="Effects" dotClassName="bg-purple-500" outerClassName="border-purple-200/50 bg-purple-50/50">
                   <div className="flex items-center justify-between gap-2">
                     <Label className="text-sm text-muted-foreground">Shadow</Label>
                     <Switch
@@ -720,7 +861,7 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                     handlePropertyChange={handlePropertyChange}
                     onStylingChange={onStylingChange}
                   />
-                  {(isRoundedRectangle || isProgressBar) && (
+                  {isRoundedRectangle && !isProgressBar && (
                     <div className="flex items-center justify-between gap-2">
                       <Label className="text-sm text-muted-foreground">Corner radius</Label>
                       <Input
@@ -728,175 +869,13 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                         min={0}
                         max={1}
                         step={0.1}
-                        value={styling.cornerRadius ?? (isProgressBar ? 0.35 : 0.2)}
+                        value={styling.cornerRadius ?? 0.2}
                         onChange={(e) => {
                           const n = parseFloat(e.target.value);
                           if (!isNaN(n)) handlePropertyChange('cornerRadius', Math.min(1, Math.max(0, n)));
                         }}
                         className="h-9 w-16 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
-                    </div>
-                  )}
-                  {isProgressBar && (
-                    <div className="space-y-3 border-t border-purple-200/50 pt-3">
-                      <Label className="text-sm font-medium text-foreground">Progress bar</Label>
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <Label className="text-sm text-muted-foreground">Fill amount</Label>
-                          <span className="tabular-nums text-xs text-muted-foreground w-12 text-right">
-                            {Math.round(styling.progressPercent ?? 62)}%
-                          </span>
-                        </div>
-                        <Slider
-                          min={0}
-                          max={100}
-                          step={1}
-                          value={[Math.round(styling.progressPercent ?? 62)]}
-                          onValueChange={([v]) => handlePropertyChange('progressPercent', v, true)}
-                          className="flex-1"
-                        />
-                      </div>
-                      <div className="flex items-center justify-between gap-2">
-                        <Label className="text-sm text-muted-foreground">Show percent label</Label>
-                        <Switch
-                          checked={styling.progressShowPercent !== false}
-                          onCheckedChange={(checked) => handlePropertyChange('progressShowPercent', checked, true)}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-sm text-muted-foreground">Track (unfilled)</Label>
-                        <Select
-                          value={styling.progressTrackStyle === 'gradient' ? 'gradient' : 'solid'}
-                          onValueChange={(v) =>
-                            handlePropertyChange('progressTrackStyle', v === 'gradient' ? 'gradient' : 'solid', true)
-                          }
-                        >
-                          <SelectTrigger className="h-9 text-sm">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="z-[70]">
-                            <SelectItem value="solid" className="text-sm">Solid</SelectItem>
-                            <SelectItem value="gradient" className="text-sm">Gradient</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        {styling.progressTrackStyle === 'gradient' ? (
-                          <div className="grid grid-cols-2 gap-2 pt-1">
-                            <div className="flex flex-col gap-2">
-                              <Label className="text-xs text-muted-foreground">Start</Label>
-                              <ColorPicker
-                                value={styling.progressTrackColors?.[0] || '#e5e7eb'}
-                                onChange={(value) => {
-                                  const c = styling.progressTrackColors || ['#e5e7eb', '#d1d5db'];
-                                  handlePropertyChange('progressTrackColors', [value, c[1]], true);
-                                }}
-                                placeholder="#e5e7eb"
-                                showAlpha={true}
-                                allowTransparent={true}
-                              />
-                            </div>
-                            <div className="flex flex-col gap-2">
-                              <Label className="text-xs text-muted-foreground">End</Label>
-                              <ColorPicker
-                                value={styling.progressTrackColors?.[1] || '#d1d5db'}
-                                onChange={(value) => {
-                                  const c = styling.progressTrackColors || ['#e5e7eb', '#d1d5db'];
-                                  handlePropertyChange('progressTrackColors', [c[0], value], true);
-                                }}
-                                placeholder="#d1d5db"
-                                showAlpha={true}
-                                allowTransparent={true}
-                              />
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="pt-1">
-                            <ColorPicker
-                              value={styling.progressTrackColors?.[0] || '#e5e7eb'}
-                              onChange={(value) => handlePropertyChange('progressTrackColors', [value], true)}
-                              placeholder="#e5e7eb"
-                              showAlpha={true}
-                              allowTransparent={true}
-                            />
-                          </div>
-                        )}
-                        {styling.progressTrackStyle === 'gradient' ? (
-                          <div className="pt-1">
-                            <Label className="text-xs text-muted-foreground">Track gradient angle</Label>
-                            <GradientAnglePicker
-                              label=""
-                              value={styling.progressTrackGradientAngle ?? 90}
-                              onChange={(a) => handlePropertyChange('progressTrackGradientAngle', a, true)}
-                            />
-                          </div>
-                        ) : null}
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-sm text-muted-foreground">Fill (complete)</Label>
-                        <Select
-                          value={styling.progressFillStyle === 'solid' ? 'solid' : 'gradient'}
-                          onValueChange={(v) =>
-                            handlePropertyChange('progressFillStyle', v === 'solid' ? 'solid' : 'gradient', true)
-                          }
-                        >
-                          <SelectTrigger className="h-9 text-sm">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="z-[70]">
-                            <SelectItem value="solid" className="text-sm">Solid</SelectItem>
-                            <SelectItem value="gradient" className="text-sm">Gradient</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        {styling.progressFillStyle === 'gradient' ? (
-                          <div className="grid grid-cols-2 gap-2 pt-1">
-                            <div className="flex flex-col gap-2">
-                              <Label className="text-xs text-muted-foreground">Start</Label>
-                              <ColorPicker
-                                value={styling.progressFillColors?.[0] || '#22c55e'}
-                                onChange={(value) => {
-                                  const c = styling.progressFillColors || ['#22c55e', '#15803d'];
-                                  handlePropertyChange('progressFillColors', [value, c[1]], true);
-                                }}
-                                placeholder="#22c55e"
-                                showAlpha={true}
-                                allowTransparent={true}
-                              />
-                            </div>
-                            <div className="flex flex-col gap-2">
-                              <Label className="text-xs text-muted-foreground">End</Label>
-                              <ColorPicker
-                                value={styling.progressFillColors?.[1] || '#15803d'}
-                                onChange={(value) => {
-                                  const c = styling.progressFillColors || ['#22c55e', '#15803d'];
-                                  handlePropertyChange('progressFillColors', [c[0], value], true);
-                                }}
-                                placeholder="#15803d"
-                                showAlpha={true}
-                                allowTransparent={true}
-                              />
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="pt-1">
-                            <ColorPicker
-                              value={styling.progressFillColors?.[0] || '#22c55e'}
-                              onChange={(value) => handlePropertyChange('progressFillColors', [value], true)}
-                              placeholder="#22c55e"
-                              showAlpha={true}
-                              allowTransparent={true}
-                            />
-                          </div>
-                        )}
-                        {styling.progressFillStyle === 'gradient' ? (
-                          <div className="pt-1">
-                            <Label className="text-xs text-muted-foreground">Fill gradient angle</Label>
-                            <GradientAnglePicker
-                              label=""
-                              value={styling.progressFillGradientAngle ?? 90}
-                              onChange={(a) => handlePropertyChange('progressFillGradientAngle', a, true)}
-                            />
-                          </div>
-                        ) : null}
-                      </div>
                     </div>
                   )}
                   {isTextBoxHeading && (
@@ -939,14 +918,9 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                       />
                     </div>
                   )}
-                </div>
-              </div>
+              </StylingAccordionSection>
 
-              <div className="bg-teal-50/50 rounded-md p-3 border border-teal-200/50">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-2 h-2 bg-teal-500 rounded-full shrink-0" />
-                  <Label className="text-sm font-semibold text-foreground">Connectors</Label>
-                </div>
+              <StylingAccordionSection defaultOpen={accordionDefaultOpen} title="Connectors" dotClassName="bg-teal-500" outerClassName="border-teal-200/50 bg-teal-50/50">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 space-y-0.5">
                     <Label className="text-sm text-muted-foreground font-normal">Let lines pass through</Label>
@@ -960,13 +934,9 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                     onCheckedChange={(checked) => handlePropertyChange('ignoreConnectionAvoidance', checked, true)}
                   />
                 </div>
-              </div>
+              </StylingAccordionSection>
 
-              <div className="bg-indigo-50/50 rounded-md p-3 border border-indigo-200/50">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-2 h-2 bg-indigo-500 rounded-full shrink-0" />
-                  <Label className="text-sm font-semibold text-foreground">Tags</Label>
-                </div>
+              <StylingAccordionSection defaultOpen={accordionDefaultOpen} title="Tags" dotClassName="bg-indigo-500" outerClassName="border-indigo-200/50 bg-indigo-50/50">
                 <div className="space-y-3">
                   <div>
                     <Label className="text-sm text-muted-foreground mb-1 block">Text</Label>
@@ -997,12 +967,13 @@ export const VisualStylingPanel = React.memo(function VisualStylingPanel({ styli
                     </Select>
                   </div>
                 </div>
-              </div>
+              </StylingAccordionSection>
             </div>
           </div>
           )}
         </div>
-       </div>
-     </Draggable>
-   );
+        </div>
+      </div>
+    </Draggable>
+  );
 });

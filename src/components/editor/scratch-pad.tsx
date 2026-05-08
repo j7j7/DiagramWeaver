@@ -801,6 +801,7 @@ const renderIcon = (item: ScratchPadItem) => {
                         <TabsContent value="visual" className="py-4">
                             <VisualStylingPanel
                                 styling={editingItem.data}
+                                selectedItemIds={new Set([editingItem.id])}
                                 onStylingChange={(changes) => setEditingItem({
                                     ...editingItem,
                                     data: { ...editingItem.data, ...changes }

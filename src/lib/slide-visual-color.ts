@@ -19,8 +19,6 @@ const VISUAL_COLOR_KEYS = [
   'iconColor',
   'lineColor',
   'highlightAnimGlowColor',
-  'progressTrackStyle',
-  'progressTrackColors',
   'progressFillStyle',
   'progressFillColors',
 ] as const;
@@ -55,9 +53,6 @@ export function diagramNodeVisualStylingSignature(node: DiagramNodeData): string
       ? [
           x.progressPercent,
           x.progressShowPercent,
-          x.progressTrackStyle,
-          x.progressTrackColors,
-          x.progressTrackGradientAngle,
           x.progressFillStyle,
           x.progressFillColors,
           x.progressFillGradientAngle,
@@ -82,7 +77,6 @@ function hasGradientPaint(f: Record<string, unknown>): boolean {
     f.backgroundStyle === 'gradient' ||
     f.borderStyle === 'gradient' ||
     f.backgroundStyle === 'frosted' ||
-    f.progressTrackStyle === 'gradient' ||
     f.progressFillStyle === 'gradient'
   );
 }

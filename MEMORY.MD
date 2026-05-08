@@ -3,17 +3,26 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-08 – Visual Styling: preset select trigger fits two-line labels
+**`visual-styling-panel`** **Preset** **`SelectTrigger`**: **`h-auto`** / **`min-h-9`**, **`items-start`**, and **`[&>span]:line-clamp-none`** so preset **name + description** are not clipped by fixed **`h-9`** + default **`line-clamp-1`** on **`SelectValue`**. Patch bumped.
+
+### 2026-05-08 – Visual Styling panel: collapsible sections + scroll + progress column
+**`visual-styling-panel`**: **`StylingAccordionSection`** (**Radix Collapsible**) for **Preset**, **Border**, **Background**, **Progress bar** (left column, under Background), **Effects**, **Connectors**, **Tags**. Body **`max-h`** + **`overflow-y-auto`**; drag via **`.dw-visual-styling-drag-handle`**. **`isProgressBar`**: **`defaultOpen={false}`** on all accordions & grid **`key`** from **`selectedItemIds` + PB flag** so sections start collapsed when styling a progress bar (and refresh when switching selection). Scratch pad passes **`selectedItemIds`** so remount key is stable per item.
+
+### 2026-05-08 – Progress bar: unfilled strip = Background (remove Track styling)
+ **`ProgressBarShape`**: full-bar base paint comes from node **`background*`** (**`useSvgGradient`** + **`getShapeSvgFill`**, same layering idea as **`RoundedRectangleShape`**); only **`progressFill*`** renders the completion overlay (no duplicate “track” layer). **`VisualStyling`** / **`visual-styling-panel`**: Progress bar drops **Track** controls; hint points to **Background**. **`theme-manager`**: clears legacy **`progressTrack*`** keys on theme apply; **`progressBarFillFromTheme`** sets **`progressFill*`** hues only (**`background*`** applied in the usual theme branch). **`slide-visual-color`** and **`diagram-node`** memo omit **`progressTrack*`**. **`canvas-operations`** default **`backgroundColor`** **`#e5e7eb`** for new bars; **`shape-preview`** track uses resolved **Background**. Patch bumped.
+
 ### 2026-05-08 – Progress bar palette glyph (resources list)
 **`resource-icon`** **`PaletteProgressBarGlyph`**: two-tone bar under rounded **`clipUrl`** (**`url(#dw-pb-clip-…)`** on **`<g>`**; light full track + darker **~58%** fill) plus outline (**`strokeWidth`** coerced safely). Patch bumped.
 
-### 2026-05-08 – Theme apply: progress bar track + shifted fill hues
-**`theme-manager.applyThemeToItem`**: for **`generic.object.progress-bar`**, after normal theme fields, sets **`progressTrack*`** from theme **background** (**`colorProps`**, so multi-select hue steps apply) and **`progressFill*`** as gradients with **+42°** hue shift (solid/frosted/`none`/`gradient` background modes each mapped). Patch bumped.
+### 2026-05-08 – Theme apply: progress bar track + shifted fill hues (**superseded**)
+Older behavior wrote **`progressTrack*`** explicitly; newer line above uses theme **`background*`** as the strip and clears **`progressTrack*`**. **`progressFill*`** hues still come from **`progressBarFillFromTheme`** (**+42°** shift paths unchanged).
 
 ### 2026-05-08 – Progress bar: value drag only on fill/track divider
  **`ProgressBarShape`**: root **`<svg>`** **`pointer-events: none`**; **narrow transparent thumb** (**`pointer-events: auto`**) sits on the **boundary** between filled and track sections (`data-dw-progress-bar-drag`); rest of bar passes clicks through so **canvas move / selection** behaves like other shapes. **`SvgShapeBase`**: optional **`svgPointerEvents`**. Patch bumped.
 
-### 2026-05-08 – **`generic.object.progress-bar`** shape object
-Rounded bar with **corner radius**, **drag-to-set percent** (**`progressPercent`** 0–100, **`data-dw-progress-bar-drag`**), **`progressShowPercent`**, **`textPosition` / `textVerticalPosition`** for the **title** (rich label), **dual fills**: **`progressTrack*`** (track) and **`progressFill*`** (filled portion), each **solid | gradient** + **`progress*GradientAngle`**. **`Visual Styling`** adds a **Progress bar** section (**`progressPercent`** slider, toggle, colors, angles); **corner radius** shared with rounded-rectangle. Palette: **`public/resources/resource-generic.json`** (**Progress bar**) + **`public/resources/generic/object/progress-bar.png`**. Implements **`progress-bar.tsx`**, **`ShapeText`** stacking when centered title + percent, **`slide-visual-color`** crossfade when track/fill gradients. Patch bumped.
+### 2026-05-08 – **`generic.object.progress-bar`** shape object (**track note superseded**)
+Rounded bar with **corner radius**, **drag-to-set percent**, **`progressShowPercent`**, label placement, **completion fill** **`progressFill*`**; **unfilled** paint is node **`background*`** (see newer **“unfilled strip = Background”** entry). Palette + **`ShapeText`** stacking + slide crossfades as before.
 
 ### 2026-05-08 – Timeline shape: planning doc (`timelineobject.md`)
 New composite shape **planned**: **`generic.object.timeline`** — spine reusing connector-line geometry, **N** entry cards, **per-entry** visual/text editing via sub-selection. **`timelineobject.md`**: **even** mode recomputes spacing along the path when spine **start/end** or interior geometry changes; **manual** keeps stored per-entry **`t`** on reshape (“Redistribute evenly” optional). Not implemented yet.

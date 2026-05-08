@@ -241,9 +241,6 @@ function progressBarMemoPayload(n: Record<string, unknown>): string {
   return JSON.stringify([
     n.progressPercent,
     n.progressShowPercent,
-    n.progressTrackStyle,
-    n.progressTrackColors,
-    n.progressTrackGradientAngle,
     n.progressFillStyle,
     n.progressFillColors,
     n.progressFillGradientAngle,

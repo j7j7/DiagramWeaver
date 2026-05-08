@@ -3,7 +3,8 @@
 import React, { useCallback, useId, useRef } from "react";
 import type { DiagramNodeData, RichTextRun } from "@/lib/types";
 import { SvgShapeBase } from "./svg-shape-base";
-import { getGradientCoordinates } from "./shape-utils";
+import { getGradientCoordinates, getShapeSvgFill } from "./shape-utils";
+import { useSvgGradient } from "@/hooks/use-svg-gradient";
 
 interface ProgressBarShapeProps {
   node: DiagramNodeData & { width?: number; height?: number };
@@ -54,14 +55,24 @@ export function ProgressBarShape({
   ...rest
 }: ProgressBarShapeProps) {
   const nodeAny = node as any;
-  const safeId = useId().replace(/:/g, "");
+  const clipId = useId().replace(/:/g, "");
   const dragActiveRef = useRef(false);
 
-  const borderColors = (nodeAny.borderColors as string[] | undefined) || [
-    String(nodeAny.borderColor || "#6b7280"),
-  ];
+  const backgroundColors = nodeAny.backgroundColors || [nodeAny.backgroundColor || "#e5e7eb"];
+  const borderColors = nodeAny.borderColors || [nodeAny.borderColor || "#6b7280"];
+  const gradientAngle = nodeAny.gradientAngle || 135;
+  const borderGradientAngle = nodeAny.borderGradientAngle ?? gradientAngle;
+  const backgroundStyle = (nodeAny.backgroundStyle as string) || "solid";
   const borderStyle = (nodeAny.borderStyle as string) || "solid";
-  const borderGradientAngle = (nodeAny.borderGradientAngle as number) ?? (nodeAny.gradientAngle as number) ?? 135;
+
+  const { defs: bgDefs, fillRef: bgFillRef, strokeRef } = useSvgGradient({
+    colors: backgroundStyle === "gradient" ? backgroundColors : [backgroundColors[0]],
+    angle: gradientAngle,
+    borderColors: borderStyle === "gradient" ? borderColors : undefined,
+    borderAngle: borderStyle === "gradient" ? borderGradientAngle : undefined,
+    enabled: backgroundStyle === "gradient" || borderStyle === "gradient",
+  });
+
   const strokeWidth = borderStyle === "none" ? 0 : (parseInt(String(nodeAny.borderWidth || 2), 10) || 2);
   const half = strokeWidth / 2;
 
@@ -71,10 +82,6 @@ export function ProgressBarShape({
   const cornerRadius = Math.max(0, Math.min(1, (nodeAny.cornerRadius as number) ?? 0.35));
   const maxRadius = minDim / 2;
   const rx = Math.min(cornerRadius * maxRadius, maxRadius);
-
-  const trackStyle = ((nodeAny.progressTrackStyle as string) || "solid") as "solid" | "gradient";
-  const trackColors = ((nodeAny.progressTrackColors as string[])?.length ? nodeAny.progressTrackColors : ["#e5e7eb"]) as string[];
-  const trackGradAngle = (nodeAny.progressTrackGradientAngle as number) ?? 90;
 
   const fillStyle = ((nodeAny.progressFillStyle as string) || "gradient") as "solid" | "gradient";
   const fillColors = ((nodeAny.progressFillColors as string[])?.length
@@ -106,24 +113,19 @@ export function ProgressBarShape({
   const vbW = w + strokeWidth;
   const vbH = h + strokeWidth;
 
-  const borderGradCoords =
-    borderStyle === "gradient" && borderColors.length >= 2 ? getGradientCoordinates(borderGradientAngle) : null;
-
   const strokePaint =
     borderStyle === "none"
       ? "none"
-      : borderStyle === "gradient" && borderColors.length >= 2 && borderGradCoords
-        ? `url(#${safeId}-bord)`
+      : borderStyle === "gradient" && strokeRef
+        ? strokeRef
         : String(nodeAny.borderColor || "#6b7280");
   const strokeDasharray = borderStyle === "dotted" ? "3,3" : undefined;
 
-  const trackPaint =
-    trackStyle === "gradient" && trackColors.length >= 2 ? `url(#${safeId}-ptrack)` : (trackColors[0] ?? "#e5e7eb");
+  const trackPaint = getShapeSvgFill(backgroundStyle, bgFillRef, nodeAny.backgroundColor, "#e5e7eb");
 
   const barFillPaint =
-    fillStyle === "gradient" && fillColors.length >= 2 ? `url(#${safeId}-pfill)` : (fillColors[0] ?? "#22c55e");
+    fillStyle === "gradient" && fillColors.length >= 2 ? `url(#${clipId}-pfill)` : (fillColors[0] ?? "#22c55e");
 
-  const tCoordsTrack = trackStyle === "gradient" && trackColors.length >= 2 ? getGradientCoordinates(trackGradAngle) : null;
   const tCoordsFill = fillStyle === "gradient" && fillColors.length >= 2 ? getGradientCoordinates(fillGradAngle) : null;
 
   const pctFont = Math.min(h * 0.38, Number(nodeAny.fontSize) || 14, 28);
@@ -197,34 +199,11 @@ export function ProgressBarShape({
       svgPointerEvents="none"
       svgContent={
         <>
+          {bgDefs}
           <defs>
-            {borderStyle === "gradient" && borderColors.length >= 2 && borderGradCoords ? (
-              <linearGradient
-                id={`${safeId}-bord`}
-                x1={borderGradCoords.x1}
-                y1={borderGradCoords.y1}
-                x2={borderGradCoords.x2}
-                y2={borderGradCoords.y2}
-              >
-                <stop offset="0%" stopColor={borderColors[0]} />
-                <stop offset="100%" stopColor={borderColors[1]} />
-              </linearGradient>
-            ) : null}
-            {trackStyle === "gradient" && trackColors.length >= 2 && tCoordsTrack ? (
-              <linearGradient
-                id={`${safeId}-ptrack`}
-                x1={tCoordsTrack.x1}
-                y1={tCoordsTrack.y1}
-                x2={tCoordsTrack.x2}
-                y2={tCoordsTrack.y2}
-              >
-                <stop offset="0%" stopColor={trackColors[0]} />
-                <stop offset="100%" stopColor={trackColors[1]} />
-              </linearGradient>
-            ) : null}
             {fillStyle === "gradient" && fillColors.length >= 2 && tCoordsFill ? (
               <linearGradient
-                id={`${safeId}-pfill`}
+                id={`${clipId}-pfill`}
                 x1={tCoordsFill.x1}
                 y1={tCoordsFill.y1}
                 x2={tCoordsFill.x2}
@@ -234,12 +213,12 @@ export function ProgressBarShape({
                 <stop offset="100%" stopColor={fillColors[1]} />
               </linearGradient>
             ) : null}
-            <clipPath id={`${safeId}-inner`}>
+            <clipPath id={`${clipId}-inner`}>
               <rect x={half} y={half} width={w} height={h} rx={rx} ry={rx} />
             </clipPath>
           </defs>
 
-          <g clipPath={`url(#${safeId}-inner)`} pointerEvents="none">
+          <g clipPath={`url(#${clipId}-inner)`} pointerEvents="none">
             <rect x={half} y={half} width={w} height={h} rx={rx} ry={rx} fill={trackPaint} stroke="none" />
             {fillW > 0 ? (
               <rect x={half} y={half} width={fillW} height={h} rx={rx} ry={rx} fill={barFillPaint} stroke="none" />

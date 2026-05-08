@@ -33,9 +33,6 @@ export interface VisualStyling {
   /** Progress bar: 0–100 */
   progressPercent?: number;
   progressShowPercent?: boolean;
-  progressTrackStyle?: 'solid' | 'gradient';
-  progressTrackColors?: string[];
-  progressTrackGradientAngle?: number;
   progressFillStyle?: 'solid' | 'gradient';
   progressFillColors?: string[];
   progressFillGradientAngle?: number;
@@ -245,9 +242,6 @@ export function extractVisualStylingFromNode(node: DiagramNodeData | DiagramNode
     cornerRadius: (node as any).cornerRadius,
     progressPercent: (node as any).progressPercent,
     progressShowPercent: (node as any).progressShowPercent,
-    progressTrackStyle: (node as any).progressTrackStyle,
-    progressTrackColors: (node as any).progressTrackColors,
-    progressTrackGradientAngle: (node as any).progressTrackGradientAngle,
     progressFillStyle: (node as any).progressFillStyle,
     progressFillColors: (node as any).progressFillColors,
     progressFillGradientAngle: (node as any).progressFillGradientAngle,
@@ -330,14 +324,6 @@ export function applyVisualStylingToNode(
     progressPercent: styling.progressPercent !== undefined ? styling.progressPercent : (node as any).progressPercent,
     progressShowPercent:
       styling.progressShowPercent !== undefined ? styling.progressShowPercent : (node as any).progressShowPercent,
-    progressTrackStyle:
-      styling.progressTrackStyle !== undefined ? styling.progressTrackStyle : (node as any).progressTrackStyle,
-    progressTrackColors:
-      styling.progressTrackColors !== undefined ? styling.progressTrackColors : (node as any).progressTrackColors,
-    progressTrackGradientAngle:
-      styling.progressTrackGradientAngle !== undefined
-        ? styling.progressTrackGradientAngle
-        : (node as any).progressTrackGradientAngle,
     progressFillStyle:
       styling.progressFillStyle !== undefined ? styling.progressFillStyle : (node as any).progressFillStyle,
     progressFillColors:

@@ -1713,7 +1713,7 @@ export function ShapePreview({
       );
     }
 
-    // Progress bar (filled track preview)
+    // Progress bar (track = Background; completion fill below)
     if (type === 'generic.object.progress-bar' || type?.endsWith('.progress-bar')) {
       const cr = Math.max(0, Math.min(1, cornerRadius));
       const sw = borderStyle === 'none' ? 0 : strokeWidth;
@@ -1725,23 +1725,31 @@ export function ShapePreview({
       const pct = 0.62;
       const fillWidth = iw * pct;
       const cid = gradientId.replace(/:/g, '');
-      const trackG = `${cid}-dw-pbt`;
+      const bgCoords = getGradientCoordinates(gradientAngle);
+      const fillCoords = getGradientCoordinates(90);
       const fillG = `${cid}-dw-pbf`;
-      const ln = getGradientCoordinates(90);
+      const trackFill =
+        effectiveBackgroundStyle === 'gradient'
+          ? `url(#${gradientId})`
+          : effectiveBackgroundStyle === 'none' || effectiveBackgroundStyle === 'frosted'
+            ? 'transparent'
+            : effectiveBackgroundColor;
       return (
         <svg {...commonSvgProps}>
           <defs>
+            {effectiveBackgroundStyle === 'gradient' && (
+              <linearGradient id={gradientId} x1={bgCoords.x1} y1={bgCoords.y1} x2={bgCoords.x2} y2={bgCoords.y2}>
+                <stop offset="0%" stopColor={bgColors[0]} />
+                <stop offset="100%" stopColor={bgColors[1]} />
+              </linearGradient>
+            )}
             {borderStyle === 'gradient' && (
               <linearGradient id={borderGradientId} x1={borderCoords.x1} y1={borderCoords.y1} x2={borderCoords.x2} y2={borderCoords.y2}>
                 <stop offset="0%" stopColor={borderColorArray[0]} />
                 <stop offset="100%" stopColor={borderColorArray[1]} />
               </linearGradient>
             )}
-            <linearGradient id={trackG} x1={ln.x1} y1={ln.y1} x2={ln.x2} y2={ln.y2}>
-              <stop offset="0%" stopColor="#e5e7eb" />
-              <stop offset="100%" stopColor="#d4d4d8" />
-            </linearGradient>
-            <linearGradient id={fillG} x1={ln.x1} y1={ln.y1} x2={ln.x2} y2={ln.y2}>
+            <linearGradient id={fillG} x1={fillCoords.x1} y1={fillCoords.y1} x2={fillCoords.x2} y2={fillCoords.y2}>
               <stop offset="0%" stopColor="#22c55e" />
               <stop offset="100%" stopColor="#15803d" />
             </linearGradient>
@@ -1750,7 +1758,7 @@ export function ShapePreview({
             </clipPath>
           </defs>
           <g clipPath={`url(#${cid}-dw-pbc)`}>
-            <rect x={hx} y={hy} width={iw} height={ih} rx={radius} ry={radius} fill={`url(#${trackG})`} />
+            <rect x={hx} y={hy} width={iw} height={ih} rx={radius} ry={radius} fill={trackFill} />
             {fillWidth > 0 ? (
               <rect x={hx} y={hy} width={fillWidth} height={ih} rx={radius} ry={radius} fill={`url(#${fillG})`} />
             ) : null}

@@ -26,8 +26,8 @@ function isProgressBarNodeType(type?: string): boolean {
   return type === "generic.object.progress-bar" || !!type?.endsWith(".progress-bar");
 }
 
-/** Map theme background (and border accent when theme background style is none) to `progressTrack*` / `progressFill*`. */
-function progressBarPaletteFromTheme(
+/** Completed segment only; unfilled portion uses node `background*` (applied above in `applyThemeToItem`). */
+function progressBarFillFromTheme(
   properties: ThemeProperties,
   colorProps: ThemeProperties,
 ): Partial<DiagramNodeData> {
@@ -38,9 +38,6 @@ function progressBarPaletteFromTheme(
   if (bgStyle === "gradient" && colorProps.backgroundColors && colorProps.backgroundColors.length >= 2) {
     const [t0, t1] = colorProps.backgroundColors;
     return {
-      progressTrackStyle: "gradient",
-      progressTrackColors: [t0, t1],
-      progressTrackGradientAngle: ga,
       progressFillStyle: "gradient",
       progressFillColors: [shiftHueOfColor(t0, offset), shiftHueOfColor(t1, offset)],
       progressFillGradientAngle: ga,
@@ -49,10 +46,7 @@ function progressBarPaletteFromTheme(
 
   if (bgStyle === "none") {
     const accent = colorProps.borderColors?.[0] ?? colorProps.borderColor ?? "#64748b";
-    const track = "#e8eaef";
     return {
-      progressTrackStyle: "solid",
-      progressTrackColors: [track],
       progressFillStyle: "gradient",
       progressFillColors: [shiftHueOfColor(accent, offset), shiftHueOfColor(accent, offset + 22)],
       progressFillGradientAngle: ga,
@@ -62,8 +56,6 @@ function progressBarPaletteFromTheme(
   const base =
     colorProps.backgroundColor ?? colorProps.backgroundColors?.[0] ?? "#f3f4f6";
   return {
-    progressTrackStyle: "solid",
-    progressTrackColors: [base],
     progressFillStyle: "gradient",
     progressFillColors: [shiftHueOfColor(base, offset), shiftHueOfColor(base, offset + 24)],
     progressFillGradientAngle: ga,
@@ -1930,7 +1922,10 @@ class ThemeManager {
     }
 
     if (isProgressBarNodeType((updated as DiagramNodeData).type)) {
-      Object.assign(updated, progressBarPaletteFromTheme(properties, colorProps));
+      delete (updated as any).progressTrackStyle;
+      delete (updated as any).progressTrackColors;
+      delete (updated as any).progressTrackGradientAngle;
+      Object.assign(updated, progressBarFillFromTheme(properties, colorProps));
     }
 
     return syncClosedConnectorLineBorderWidth(updated as DiagramNodeData) as typeof updated;

@@ -249,9 +249,11 @@ export interface DiagramNodeData {
   progressPercent?: number;
   /** Progress bar: show numeric percent on the bar (default true) */
   progressShowPercent?: boolean;
-  /** Progress bar: unfilled section style */
+  /** @deprecated Ignored — unfilled portion uses `background*`; kept for backward-compatible JSON imports. */
   progressTrackStyle?: 'solid' | 'gradient';
+  /** @deprecated Ignored — use `backgroundColor` / `backgroundColors`; kept for legacy imports. */
   progressTrackColors?: string[];
+  /** @deprecated Ignored — use `gradientAngle`; kept for legacy imports. */
   progressTrackGradientAngle?: number;
   /** Progress bar: filled section style */
   progressFillStyle?: 'solid' | 'gradient';
@@ -510,8 +512,11 @@ export interface DiagramNodeItem {
   cornerRadius?: number;
   progressPercent?: number;
   progressShowPercent?: boolean;
+  /** @deprecated Ignored — unfilled uses `background*`; legacy JSON only. */
   progressTrackStyle?: 'solid' | 'gradient';
+  /** @deprecated Ignored — legacy JSON only. */
   progressTrackColors?: string[];
+  /** @deprecated Ignored — legacy JSON only. */
   progressTrackGradientAngle?: number;
   progressFillStyle?: 'solid' | 'gradient';
   progressFillColors?: string[];
