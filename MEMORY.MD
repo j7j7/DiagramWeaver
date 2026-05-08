@@ -3,6 +3,9 @@
 Reverse-dated changelog: **newer entries are closer to the top**. For **current product behavior and file layout**, use **`README.md`**, **`AGENTS.md`**, and **`docs/functional.md`**. Entries here are historical; where an older note disagrees with a newer one, **trust the newer dated line**.
 
 
+### 2026-05-08 – Fit to view / content bounds: timeline uses outer spine+card bounds
+**`handleFitToView`** (**`use-canvas-transform`**) and **`computeContentBounds`** (**`presentation-viewport-fit`**) previously boxed each node as **`(x,y) + measureNodeDims`**. **`TimelineShape`** paints inside an inner wrapper offset by **`svgMinX`/`svgMinY`**, so cards and spine often sit outside that rectangle — fit was under-zoomed and off-center. Shared **`nodeBoundingBoxForFit`** in **`canvas-constants`** delegates timelines to **`computeTimelineOuterBounds`**; other nodes unchanged. Patch bumped.
+
 ### 2026-05-08 – Timeline card drag: flip above/below spine
 Per-entry **`cardSide`** (`'above' \| 'below'`) overrides node **`timelineCardSide`** for that row. **`timelineDragSolveFromDiagramPoint`** uses signed **`dot(W, N)`** vs spine normal to pick side + distance (deadband keeps stability on the spine). Patch bumped.
 

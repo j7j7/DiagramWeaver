@@ -42,6 +42,28 @@ export const snapDimensionToGrid = (v: number, minVal = 20): number => {
   return Math.max(minVal, snapped);
 };
 
+/**
+ * Diagram-space axis-aligned bounds for pan/zoom “fit” and export union — must match painted extent.
+ * Timeline cards/spine extend outside the node’s `(x,y)+measureNodeDims` box because the inner wrapper
+ * is offset (`TimelineShape` `svgMinX`/`svgMinY`); use {@link computeTimelineOuterBounds} for those.
+ */
+export function nodeBoundingBoxForFit(n: PositionedNode): {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+} {
+  if (isTimelineNodeType(n.type)) {
+    return computeTimelineOuterBounds(n as DiagramNodeData);
+  }
+  const dims = measureNodeDims(n);
+  const x = n.x!;
+  const y = n.y!;
+  const nodeWidth = n.sizeMode === "custom" && n.width ? n.width : dims.width;
+  const nodeHeight = n.sizeMode === "custom" && n.height ? n.height : dims.height;
+  return { minX: x, minY: y, maxX: x + nodeWidth, maxY: y + nodeHeight };
+}
+
 export const measureNodeDims = (n: PositionedNode) => {
   const isTextNode = n.type === 'generic.text.text';
   const isTextboxNode = n.type === 'generic.text.textbox';

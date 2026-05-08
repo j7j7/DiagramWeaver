@@ -1,6 +1,6 @@
 import { calculateLayout } from '@/components/editor/canvas-layout-utils';
 import {
-  measureNodeDims,
+  nodeBoundingBoxForFit,
   type PositionedGroup,
   type PositionedNode,
 } from '@/components/editor/canvas-constants';
@@ -53,18 +53,11 @@ export function computeContentBounds(
   let nodeMaxY = -Infinity;
 
   validNodes.forEach((n) => {
-    const dims = measureNodeDims(n);
-    const x = n.x!;
-    const y = n.y!;
-    const width = dims.width;
-    const height = dims.height;
-    const nodeWidth = n.sizeMode === 'custom' && n.width ? n.width : width;
-    const nodeHeight = n.sizeMode === 'custom' && n.height ? n.height : height;
-
-    nodeMinX = Math.min(nodeMinX, x);
-    nodeMinY = Math.min(nodeMinY, y);
-    nodeMaxX = Math.max(nodeMaxX, x + nodeWidth);
-    nodeMaxY = Math.max(nodeMaxY, y + nodeHeight);
+    const b = nodeBoundingBoxForFit(n);
+    nodeMinX = Math.min(nodeMinX, b.minX);
+    nodeMinY = Math.min(nodeMinY, b.minY);
+    nodeMaxX = Math.max(nodeMaxX, b.maxX);
+    nodeMaxY = Math.max(nodeMaxY, b.maxY);
   });
 
   let zoneMinX = Infinity;
